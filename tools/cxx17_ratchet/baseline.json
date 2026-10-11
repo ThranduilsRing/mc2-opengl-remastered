@@ -193,11 +193,11 @@
    "LG06": 667,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2339,
+   "LG09": 2333,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 449,
-   "LG12b": 563,
+   "LG12b": 274,
    "LG13": 1293,
    "LG14": 122,
    "LG15": 0,
@@ -3420,7 +3420,7 @@
   "mclib/abldbug_print.cpp": {
    "LG09": 22,
    "LG11": 1,
-   "LG12b": 29
+   "LG12b": 25
   },
   "mclib/abldecl.cpp": {
    "LG09": 5
@@ -3445,8 +3445,7 @@
   },
   "mclib/ablerr.cpp": {
    "LG06": 2,
-   "LG12a": 1,
-   "LG12b": 9
+   "LG12a": 1
   },
   "mclib/ablerr.h": {
    "LG02": 2,
@@ -3456,7 +3455,7 @@
   },
   "mclib/ablexec.cpp": {
    "LG09": 29,
-   "LG12b": 2
+   "LG12b": 1
   },
   "mclib/ablexec.h": {
    "LG02": 9,
@@ -3483,7 +3482,6 @@
    "LG06": 13,
    "LG09": 21,
    "LG12a": 4,
-   "LG12b": 2,
    "LG17": 5
   },
   "mclib/ablscan.cpp": {
@@ -3514,7 +3512,7 @@
    "LG06": 10,
    "LG09": 6,
    "LG12a": 1,
-   "LG12b": 3
+   "LG12b": 1
   },
   "mclib/ablsymt.h": {
    "LG02": 19,
@@ -3530,20 +3528,17 @@
   "mclib/ablxstd.cpp": {
    "LG04": 2,
    "LG09": 5,
-   "LG12a": 2,
-   "LG12b": 5
+   "LG12a": 2
   },
   "mclib/ablxstd_stack.cpp": {
    "LG09": 13
   },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 26,
-   "LG12b": 22
+   "LG09": 26
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
-   "LG12a": 1,
-   "LG12b": 3
+   "LG12a": 1
   },
   "mclib/alphapalette.cpp": {
    "LG03": 2,
@@ -3629,7 +3624,7 @@
    "LG10": 2,
    "LG11": 2,
    "LG12a": 3,
-   "LG12b": 3,
+   "LG12b": 1,
    "LG20": 8
   },
   "mclib/bdactor_static.cpp": {
@@ -3659,7 +3654,7 @@
    "LG06": 2,
    "LG09": 3,
    "LG12a": 17,
-   "LG12b": 11
+   "LG12b": 1
   },
   "mclib/bdactor_update.cpp": {
    "LG03": 3,
@@ -3809,7 +3804,6 @@
    "LG05": 3,
    "LG06": 1,
    "LG09": 5,
-   "LG12b": 7,
    "LG17": 2
   },
   "mclib/csvfile.h": {
@@ -3914,8 +3908,7 @@
    "LG14": 1
   },
   "mclib/err.cpp": {
-   "LG06": 2,
-   "LG12b": 2
+   "LG06": 2
   },
   "mclib/err.h": {
    "LG06": 2
@@ -4026,8 +4019,7 @@
   },
   "mclib/gamelog.cpp": {
    "LG03": 4,
-   "LG06": 2,
-   "LG12b": 1
+   "LG06": 2
   },
   "mclib/gamelog.h": {
    "LG01": 1,
@@ -4038,7 +4030,7 @@
    "LG03": 7,
    "LG06": 1,
    "LG09": 1,
-   "LG12b": 5
+   "LG12b": 4
   },
   "mclib/genactor.h": {
    "LG01": 4,
@@ -4183,7 +4175,7 @@
    "LG06": 2,
    "LG09": 8,
    "LG12a": 1,
-   "LG12b": 11,
+   "LG12b": 5,
    "LG13": 1
   },
   "mclib/gvactor.h": {
@@ -4209,7 +4201,7 @@
    "LG05": 2,
    "LG06": 1,
    "LG09": 11,
-   "LG12b": 13,
+   "LG12b": 1,
    "LG17": 1
   },
   "mclib/heap.h": {
@@ -4222,7 +4214,6 @@
   "mclib/inifile.cpp": {
    "LG06": 28,
    "LG09": 39,
-   "LG12b": 33,
    "LG17": 3
   },
   "mclib/inifile.h": {
@@ -4234,14 +4225,12 @@
   "mclib/inifile_arrays.cpp": {
    "LG06": 15,
    "LG09": 23,
-   "LG12b": 30,
    "LG17": 1
   },
   "mclib/inifile_read.cpp": {
    "LG06": 14,
    "LG09": 13,
-   "LG11": 1,
-   "LG12b": 11
+   "LG11": 1
   },
   "mclib/lz.h": {
    "LG02": 1
@@ -4339,8 +4328,7 @@
   "mclib/mech3d_update.cpp": {
    "LG03": 4,
    "LG08": 1,
-   "LG09": 6,
-   "LG12b": 2
+   "LG09": 5
   },
   "mclib/mech_skel_import.cpp": {
    "LG06": 1,
@@ -4359,8 +4347,7 @@
   },
   "mclib/mlr/gosimage.cpp": {
    "LG06": 2,
-   "LG09": 1,
-   "LG12b": 1
+   "LG09": 1
   },
   "mclib/mlr/gosimage.hpp": {
    "LG06": 1,
@@ -4545,7 +4532,6 @@
   "mclib/mlr/mlrlookuplight.cpp": {
    "LG03": 12,
    "LG06": 1,
-   "LG12b": 3,
    "LG16": 4
   },
   "mclib/mlr/mlrlookuplight.hpp": {
@@ -4714,7 +4700,6 @@
    "LG09": 10,
    "LG11": 3,
    "LG12a": 1,
-   "LG12b": 23,
    "LG16": 19
   },
   "mclib/move_movemap_goals.cpp": {
@@ -4725,7 +4710,6 @@
    "LG03": 18,
    "LG09": 20,
    "LG12a": 2,
-   "LG12b": 12,
    "LG16": 9
   },
   "mclib/move_recon.cpp": {
@@ -4746,8 +4730,7 @@
    "LG05": 2,
    "LG06": 3,
    "LG09": 31,
-   "LG11": 1,
-   "LG12b": 3
+   "LG11": 1
   },
   "mclib/msl_internal.h": {
    "LG13": 3
@@ -4759,7 +4742,7 @@
    "LG09": 33,
    "LG11": 1,
    "LG12a": 2,
-   "LG12b": 4
+   "LG12b": 3
   },
   "mclib/msl_shape.cpp": {
    "LG03": 1,
@@ -4768,7 +4751,6 @@
    "LG09": 6,
    "LG11": 1,
    "LG12a": 1,
-   "LG12b": 1,
    "LG17": 2
   },
   "mclib/msodw.h": {
@@ -5101,7 +5083,6 @@
   },
   "mclib/stuff/note.cpp": {
    "LG09": 14,
-   "LG12b": 7,
    "LG13": 1
   },
   "mclib/stuff/note.hpp": {
@@ -5259,8 +5240,7 @@
    "LG03": 6,
    "LG09": 69,
    "LG11": 9,
-   "LG12a": 30,
-   "LG12b": 10
+   "LG12a": 30
   },
   "mclib/terrain_internal.h": {
    "LG13": 1,
@@ -5289,8 +5269,7 @@
   "mclib/terrain_update.cpp": {
    "LG09": 16,
    "LG10": 2,
-   "LG12a": 18,
-   "LG12b": 1
+   "LG12a": 18
   },
   "mclib/terrtxm.cpp": {
    "LG01": 21,
@@ -5316,7 +5295,6 @@
    "LG09": 3,
    "LG11": 1,
    "LG12a": 1,
-   "LG12b": 4,
    "LG13": 1
   },
   "mclib/terrtxm2.h": {
@@ -5331,8 +5309,7 @@
    "LG03": 4,
    "LG06": 8,
    "LG09": 44,
-   "LG12a": 4,
-   "LG12b": 11
+   "LG12a": 4
   },
   "mclib/terrtxm2_internal.h": {
    "LG05": 8,
@@ -5348,7 +5325,7 @@
    "LG06": 1,
    "LG09": 65,
    "LG12a": 12,
-   "LG12b": 13
+   "LG12b": 3
   },
   "mclib/tex_resolve_table.cpp": {
    "LG09": 13
@@ -5367,8 +5344,7 @@
   "mclib/tgl.cpp": {
    "LG06": 2,
    "LG09": 3,
-   "LG12a": 4,
-   "LG12b": 6
+   "LG12a": 4
   },
   "mclib/tgl.h": {
    "LG01": 33,
@@ -5394,7 +5370,7 @@
    "LG06": 3,
    "LG09": 70,
    "LG12a": 1,
-   "LG12b": 22
+   "LG12b": 2
   },
   "mclib/tgl_render.cpp": {
    "LG09": 12,
@@ -5468,13 +5444,11 @@
    "LG03": 4,
    "LG05": 5,
    "LG08": 10,
-   "LG09": 14,
-   "LG12b": 4
+   "LG09": 9
   },
   "mclib/txmmgr_render.cpp": {
    "LG09": 4,
-   "LG12a": 1,
-   "LG12b": 3
+   "LG12a": 1
   },
   "mclib/txmmgr_render_internal.h": {
    "LG13": 1,
@@ -5496,15 +5470,13 @@
    "LG06": 6,
    "LG09": 33,
    "LG11": 1,
-   "LG12a": 10,
-   "LG12b": 1
+   "LG12a": 10
   },
   "mclib/userinput.cpp": {
    "LG03": 4,
    "LG06": 2,
    "LG09": 13,
-   "LG12a": 4,
-   "LG12b": 2
+   "LG12a": 4
   },
   "mclib/userinput.h": {
    "LG01": 2,
@@ -5514,8 +5486,7 @@
   },
   "mclib/utilities.cpp": {
    "LG06": 1,
-   "LG09": 37,
-   "LG12b": 1
+   "LG09": 37
   },
   "mclib/utilities.h": {
    "LG02": 1,
@@ -5585,7 +5556,7 @@
    "LG20": 2
   }
  },
- "head": "55a3dbeb6",
+ "head": "fd9f2e5fd",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
