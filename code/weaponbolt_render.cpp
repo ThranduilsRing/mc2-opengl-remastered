@@ -1,5 +1,6 @@
 // WeaponBolt: bolt rendering and the VK VFX immediate-draw gates it reads.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "weaponbolt_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"

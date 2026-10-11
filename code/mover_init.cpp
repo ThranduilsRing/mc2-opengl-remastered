@@ -1,5 +1,6 @@
 // Mover: Mover::loadGameSystem, set, init and release.
 // Declared in mover.h; shared names in mover_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
 #include "mc2fmt.h"
 

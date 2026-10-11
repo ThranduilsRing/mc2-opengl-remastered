@@ -1,5 +1,6 @@
 // BattleMech: BattleMechType: loadGameSystem, init, collision and destruction handling, createInstance.
 // Declared in the class headers; shared names in mech_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech_internal.h"
 #include "mc2fmt.h"
 

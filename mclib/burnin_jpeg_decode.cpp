@@ -15,6 +15,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO          // we feed bytes from memory only
 #define STBI_ONLY_JPEG         // burnin sidecars are JPEG only
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "../3rdparty/stb/stb_image.h"
 
 extern "C" {

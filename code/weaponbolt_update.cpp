@@ -1,5 +1,6 @@
 // WeaponBolt: the per-frame bolt update (flight, impact, direct-fire modes) and its speed/straight-fire gates.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "weaponbolt_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"

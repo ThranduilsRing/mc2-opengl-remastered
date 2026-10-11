@@ -1,5 +1,6 @@
 // Terrain: Terrain::geometry with its GeoScope timing and ground-pick parity probe.
 // Declared in the class headers; shared names in terrain_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "terrain_internal.h"
 
 

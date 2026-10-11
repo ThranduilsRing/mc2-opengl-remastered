@@ -1,5 +1,6 @@
 // Mech3DAppearance: Mech3DAppearance::init, initFX, hit reactions, paint schemata and paint scheme.
 // Declared in the class headers; shared names in mech3d_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
 
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.

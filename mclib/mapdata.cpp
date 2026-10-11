@@ -11,6 +11,7 @@
 //---------------------------------------------------------------------------
 // Include Files
 #ifndef MAPDATA_H
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mapdata.h"
 #endif
 

@@ -1,5 +1,6 @@
 // TG_Shape: the per-vertex and per-face lighting phases of MultiTransformShape -- hot-colour and base colour,
 // vertex lights, fog and highlight, face lights and the triangle queue. The orchestrator is in tgl_transform.cpp.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "tgl_internal.h"
 #include "tgl_transform_frame.h"
 #include "mc2fmt.h"

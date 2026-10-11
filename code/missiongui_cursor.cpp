@@ -1,5 +1,6 @@
 // MissionInterfaceManager: camera movement, drag selection, jump/recover checks and the target / range / no-target / move / jump / run cursors.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
 
 
