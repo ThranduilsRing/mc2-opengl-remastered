@@ -160,7 +160,7 @@ typedef TG_ShadowTriangle* TG_ShadowTrianglePtr;
 
 //-------------------------------------------------------------------------------
 // TG_LightTypes
-#define 	TG_LIGHT_NONE					0xffffffff
+inline constexpr unsigned int TG_LIGHT_NONE = 0xffffffff;
 #define 	TG_LIGHT_AMBIENT				0
 #define		TG_LIGHT_INFINITE				1
 #define		TG_LIGHT_INFINITEWITHFALLOFF	2
@@ -187,13 +187,13 @@ typedef TG_ShadowTriangle* TG_ShadowTrianglePtr;
 // MAX_HW_LIGHTS_IN_WORLD, the per-object SSBO record cap), not 16.
 #define 	MAX_LIGHTS_IN_WORLD				1024
 
-#define 	TG_NODE_ID						25
+inline constexpr int TG_NODE_ID = 25;
 
-#define		MAX_SCAN_LENGTH					40
+inline constexpr int MAX_SCAN_LENGTH = 40;
 
-#define 	MAX_NODES						256
+inline constexpr int MAX_NODES = 256;
 
-#define		MAX_SHADOWS						1
+inline constexpr int MAX_SHADOWS = 1;
 //-------------------------------------------------------------------------------
 // TG_Light
 // This structure stores the information necessary to light the shape.
@@ -446,7 +446,7 @@ typedef struct _TG_ShapeRec
 
 typedef TG_ShapeRec *TG_ShapeRecPtr;
 
-#define TYPE_NODE			0
+inline constexpr int TYPE_NODE = 0;
 #define SHAPE_NODE			1
 
 class TG_TypeNode

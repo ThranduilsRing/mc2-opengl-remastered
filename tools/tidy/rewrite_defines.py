@@ -502,6 +502,7 @@ def solve_fast(proof, rounds=6):
             return kept, rejected
         sub = FastProof(proof.tree_abs, {h: proof.includers[h] for h in kept}, proof.orig, {h: proof.edited[h] for h in kept}, proof.jobs)
         sub.before = {o: proof.before[o] for o in sub.objs}
+        sub.layout_only_ok, sub.order_only_ok, sub.allow = proof.layout_only_ok, proof.order_only_ok, proof.allow
         sub.on_disk = dict(proof.on_disk)
         kept, more = sub.solve()
         rejected += more
@@ -520,10 +521,10 @@ def cmd_run(a):
     tree_abs = os.path.join(ROOT, a.tree)
     rts.apply_lane_args(a)
     a.proof_mode = "plain objhash (strict)"
-    if a.layout_only_ok and a.relaxed_proof:
-        sys.exit("rewrite_defines: --layout-only-ok and --relaxed-proof are different proof modes; pass one")
-    if a.layout_only_ok:
-        a.proof_mode = "plain objhash; objects whose only difference is static data layout (per-symbol identical) accepted: --layout-only-ok, ruling 2026-10-11"
+    if (a.layout_only_ok or a.order_only_ok) and a.relaxed_proof:
+        sys.exit("rewrite_defines: --layout-only-ok / --order-only-ok and --relaxed-proof are different proof modes; pass one")
+    if not a.relaxed_proof:
+        a.proof_mode = proof_ext.mode_text(a)
     if a.relaxed_proof:
         canonical_obj.install()
         a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
@@ -570,8 +571,8 @@ def cmd_run(a):
         inc = {rel: o for rel, _, o in picked}
         FastProof.ignore = frozenset(load_taint(a.ignore_digest_file))
         proof = (SlowProof if a.slow_bisect else FastProof)(tree_abs, inc, orig, edited, a.build_jobs)
-        proof.layout_only_ok = a.layout_only_ok
-        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok) if a.vs_gate else None
+        proof_ext.configure(proof, a)
+        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok, a.order_only_ok) if a.vs_gate else None
         if gate:
             gate.snapshot()
         if proof.baseline():
@@ -589,9 +590,8 @@ def cmd_run(a):
             if more:
                 proof.apply(set(kept))
                 proof_ext.LayoutMixin.bad_objects(proof)
-        note = layout_note(proof.layout_objects({o for r in kept for o in inc[r]}) if a.layout_only_ok else {})
-        if gate and gate.layout:
-            note += "\n" + "\n".join("  " + k for k in gate.layout) if note else layout_note(gate.layout)
+        accepted = proof.accepted_objects({o for r in kept for o in inc[r]})
+        note = proof_ext.acceptance_note(accepted, gate.accepted if gate else ())
         new_taint = taint_from_reasons(rejected) - a.taint
         if new_taint and a.taint_file:
             a.taint |= new_taint
@@ -635,7 +635,7 @@ def layout_note(objs):
 
 def commit(kept, n, nsites, proof_mode="plain objhash (strict)", note=""):
     commit_paths(kept, "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (every including object identical%s)\n\nProof: %s%s" % (
-        nsites, len(kept), " or LAYOUT-ONLY" if note else "", proof_mode, note), "cxx17 ratchet baseline tightened after LG13 batch")
+        nsites, len(kept), " or accepted as listed below" if note else "", proof_mode, note), "cxx17 ratchet baseline tightened after LG13 batch")
 
 
 def main(argv=None) -> int:
@@ -653,6 +653,8 @@ def main(argv=None) -> int:
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
     r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="compare with tools/tidy/canonical_obj.py (blind to symbol / section order and .data / .bss layout) instead of the default "
                    "plain tools/objhash.py digests; the reason goes into the commit message")
+    r.add_argument("--order-only-ok", action="store_true", help="also accept an object that objhash classifies ORDER-ONLY (only symbol-table / relocation index order differs); each is named in the commit message. DIFF still reverts")
+    r.add_argument("--no-proof-allow", action="store_true", help="ignore the bounded exceptions of tools/tidy/proof_allow.json")
     r.add_argument("--layout-only-ok", action="store_true", help="also accept an object that objhash classifies LAYOUT-ONLY (static data reordered, symbol set and every symbol's bytes identical); "
                    "each such object is named in the commit message. ORDER-ONLY and DIFF still revert. Not combinable with --relaxed-proof")
     r.add_argument("--vs-gate", action="store_true", help="also prove the Visual Studio trees (tests/unit, contract harnesses, standalone tools) that include the edited headers (tools/tidy/vs_trees.py)")

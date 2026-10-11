@@ -65,6 +65,7 @@ def _mask_fingerprint(data):
     return _TIME_LITERAL.sub(lambda m: b"#" * (len(m.group(0)) - 1) + b"\x00", data)
 _SCN_BSS = 0x80
 _SCN_NRELOC_OVFL = 0x01000000
+_SCN_LNK_COMDAT = 0x1000
 _SOURCE_EXTS = (".cpp", ".cc", ".cxx", ".c")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -195,6 +196,27 @@ def persym_digest(raw):
         if secno > 0 and cls in (2, 3) and secs[secno - 1][0] in LAYOUT_SECTIONS and not name.startswith("."):
             by_sec.setdefault(secno, []).append((val, name))
     sections, data_syms = {}, {nm: {} for nm in LAYOUT_SECTIONS}
+    static_rdata = {}                    # secno -> [(offset, name)] of the named statics of a non-COMDAT .rdata section
+    for name, secno, cls, val in table.values():
+        if secno > 0 and cls in (2, 3) and secs[secno - 1][0] == ".rdata" and not secs[secno - 1][1] & _SCN_LNK_COMDAT and not name.startswith("."):
+            static_rdata.setdefault(secno, []).append((val, name))
+    rdata_syms, nordata_sections, targets = {}, {}, set()
+    for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
+        if nm.startswith(_NONCODE_SECTIONS):
+            continue
+        labels = _reloc_labels(rel, table, sec_label)
+        targets.update(lab for _a, lab, _t in labels)
+        if nm in LAYOUT_SECTIONS:
+            continue
+        if k + 1 in static_rdata:
+            members = sorted(static_rdata[k + 1])
+            for i, (v, name) in enumerate(members):
+                end = next((w for w, _n in members[i + 1:] if w > v), len(data))
+                mine = sorted((a - v, lab, t) for a, lab, t in labels if v <= a < end)
+                rdata_syms[name] = _h(name, data[v:end].rstrip(bytes(1)), repr(mine))
+            continue
+        nordata_sections.setdefault(nm, []).append(_h(nm, str(chars), str(rawsz), _mask_fingerprint(data) if nm.startswith(".rdata") else data, repr(sorted(labels))))
+    static_names = {n for ms in static_rdata.values() for _v, n in ms}
     for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
         if nm.startswith(_NONCODE_SECTIONS):
             continue
@@ -215,7 +237,13 @@ def persym_digest(raw):
     return {"symset": _h(*sorted(_mask_symbol("%s|%d|%d|%s" % (s[0], s[2], s[3], s[4]))
                                   for s in syms if not s[4].startswith(_DBG_PREFIX))),
             "sections": {nm: _h(*sorted(hs)) for nm, hs in sections.items()},
-            "data": data_syms}
+            "data": data_syms,
+            # the view for classify_allowed: static .rdata taken out of the section multiset and the symbol set, kept per symbol
+            "nordata_sections": {nm: _h(*sorted(hs)) for nm, hs in nordata_sections.items()},
+            "nordata_symset": _h(*sorted(_mask_symbol("%s|%d|%d|%s" % (s[0], s[2], s[3], s[4]))
+                                          for s in syms if not s[4].startswith(_DBG_PREFIX) and s[0] not in static_names)),
+            "rdata_syms": rdata_syms,
+            "rdata_unreferenced": sorted(n for n in rdata_syms if _mask_symbol(n) not in targets)}
 
 
 def persym_diff(a, b):
@@ -250,6 +278,34 @@ def classify(plain_a, plain_b, ps_a, ps_b):
     if layout:
         return "LAYOUT-ONLY", layout
     return "ORDER-ONLY", sorted(differing)[:6]
+
+
+def classify_allowed(ps_a, ps_b):
+    """-> (ok, reasons): the 'unreferenced-data-dropped' class of tools/tidy/proof_allow.json.
+    True when the only difference between two objects is in the static (non-COMDAT) .rdata section: every other section, the rest of the symbol set and every .data / .bss
+    symbol are identical by name, every static present in both has identical bytes and relocation targets, and each static present in only ONE object is not the target of
+    any relocation in the object that has it (an unreferenced table the linker never reads). A reordering of the statics (all present in both) qualifies as well."""
+    if not ps_a or not ps_b or "rdata_syms" not in ps_a or "rdata_syms" not in ps_b:
+        return False, ["no per-symbol record with the .rdata view"]
+    out = []
+    if ps_a["nordata_symset"] != ps_b["nordata_symset"]:
+        out.append("symbol set outside the static .rdata")
+    for nm in sorted(set(ps_a["nordata_sections"]) | set(ps_b["nordata_sections"])):
+        if ps_a["nordata_sections"].get(nm) != ps_b["nordata_sections"].get(nm):
+            out.append("section %s" % nm)
+    for nm in LAYOUT_SECTIONS:
+        if ps_a["data"].get(nm) != ps_b["data"].get(nm):
+            out.append("%s symbols" % nm)
+    ra, rb = ps_a["rdata_syms"], ps_b["rdata_syms"]
+    for name in sorted(set(ra) | set(rb)):
+        if name in ra and name in rb:
+            if ra[name] != rb[name]:
+                out.append("static %s bytes" % name)
+        elif name in ra and name not in ps_a["rdata_unreferenced"]:
+            out.append("static %s dropped but referenced" % name)
+        elif name in rb and name not in ps_b["rdata_unreferenced"]:
+            out.append("static %s added but referenced" % name)
+    return not out, out
 
 
 def obj_digest(path, per_symbol=False):

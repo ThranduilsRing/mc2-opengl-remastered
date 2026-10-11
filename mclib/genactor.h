@@ -36,7 +36,7 @@
 #define NO_ERR						0
 #endif
 
-#define MAX_GEN_ANIMATIONS			5
+inline constexpr int MAX_GEN_ANIMATIONS = 5;
 
 //***********************************************************************
 //

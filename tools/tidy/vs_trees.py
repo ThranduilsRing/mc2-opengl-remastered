@@ -145,8 +145,8 @@ def snapshot(headers, out_path, trees=TREES):
     return doc
 
 
-def verify(path, layout_only_ok=False):
-    """-> (lines, bad count, layout-only object names)."""
+def verify(path, layout_only_ok=False, order_only_ok=False):
+    """-> (lines, bad count, [(object, label)] accepted without being identical)."""
     doc = json.load(open(path, encoding="utf-8"))
     failed = build_trees(doc["objects"], doc.get("by_header"))
     lines, bad, layout = [], 0, []
@@ -165,9 +165,9 @@ def verify(path, layout_only_ok=False):
         verdict, why = objhash.classify(before, now, before.get("persym"), now.get("persym"))
         if verdict == "IDENTICAL":
             lines.append("OK    %s" % k)
-        elif verdict == "LAYOUT-ONLY" and layout_only_ok:
-            lines.append("LAYOUT-ONLY  %s  (%s)" % (k, ", ".join(why)))
-            layout.append(k)
+        elif (verdict == "LAYOUT-ONLY" and layout_only_ok) or (verdict == "ORDER-ONLY" and order_only_ok):
+            lines.append("%s  %s  (%s)" % (verdict, k, ", ".join(why)))
+            layout.append((k, verdict))
         else:
             lines.append("FAIL  %s  %s %s" % (k, verdict, "; ".join(why[:4])))
             bad += 1
@@ -185,6 +185,7 @@ def main(argv=None):
     v = sub.add_parser("verify")
     v.add_argument("snapshot")
     v.add_argument("--layout-only-ok", action="store_true")
+    v.add_argument("--order-only-ok", action="store_true")
     a = ap.parse_args(argv)
     if a.cmd == "map":
         mp = includer_map()
@@ -197,9 +198,9 @@ def main(argv=None):
         doc = snapshot(a.headers, a.out)
         print("vs_trees: %d object(s) hashed, %d before-build failure(s)" % (len(doc["objects"]), len(doc["failed_before"])))
         return 0
-    lines, bad, layout = verify(a.snapshot, a.layout_only_ok)
+    lines, bad, layout = verify(a.snapshot, a.layout_only_ok, a.order_only_ok)
     print("\n".join(lines))
-    print("vs_trees: %d problem(s), %d layout-only" % (bad, len(layout)))
+    print("vs_trees: %d problem(s), %d accepted without being identical" % (bad, len(layout)))
     return 1 if bad else 0
 
 

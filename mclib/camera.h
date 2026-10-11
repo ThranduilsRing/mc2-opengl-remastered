@@ -91,11 +91,11 @@ enum Axes {
 
 #define MAX_LODS				3
 
-#define MAX_VIEWS				4
-#define F2_VIEW					0
-#define F3_VIEW					1
-#define F4_VIEW					2
-#define F5_VIEW					3
+inline constexpr int MAX_VIEWS = 4;
+inline constexpr int F2_VIEW = 0;
+inline constexpr int F3_VIEW = 1;
+inline constexpr int F4_VIEW = 2;
+inline constexpr int F5_VIEW = 3;
 
 //---------------------------------------------------------------------------
 // LegacyProjectionResult

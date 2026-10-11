@@ -40,18 +40,18 @@ class Camera;
 #define WIDTH			19				// really half the width...
 #define HEIGHT			4
 
-#define	BARTEST			0.001f
+inline constexpr float BARTEST = 0.001f;
 
 extern FloatHelpPtr globalFloatHelp;
 extern unsigned long currentFloatHelp;
 
 
 // would have loved to make object flags, but it looks like we're out...
-#define DRAW_NORMAL						0x00
-#define DRAW_BARS						0x01
-#define DRAW_TEXT						0x02
-#define DRAW_BRACKETS					0x04
-#define DRAW_COLORED					0x08
+inline constexpr int DRAW_NORMAL = 0x00;
+inline constexpr int DRAW_BARS = 0x01;
+inline constexpr int DRAW_TEXT = 0x02;
+inline constexpr int DRAW_BRACKETS = 0x04;
+inline constexpr int DRAW_COLORED = 0x08;
 
 
 struct _ScenarioMapCellInfo;

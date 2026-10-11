@@ -52,8 +52,8 @@
 #endif
 
 #define	MAPCELL_DIM				3
-#define	MAX_MAP_CELL_WIDTH		720
-#define TACMAP_SIZE				128.f
+inline constexpr int MAX_MAP_CELL_WIDTH = 720;
+inline constexpr float TACMAP_SIZE = 128.f;
 
 // Per-cell flags for the editor passability overlay. Defined here so that
 // mclib/quad.cpp can use them without depending on editor/ headers.
@@ -96,15 +96,15 @@ extern int g_terrainMaterialProfile;
 // Put back in Move code when Glenn moves it over.
 // 07/28/99 these numbers didn't correspond to clan/IS despite comment, so I chagned 'em.
 // These MUST be these numbers or the game will not mark LOS correctly!
-#define NOTEAM					-1
+inline constexpr int NOTEAM = -1;
 //#define TEAM1					0 	//this is PLAYER TEAM -- Single Player
-#define TEAM2					1	//this is OPFOR TEAM -- Single Player
-#define TEAM3					2	// this is allies 
-#define TEAM4					3
-#define TEAM5					4
-#define TEAM6					5
-#define TEAM7					6
-#define TEAM8					7
+inline constexpr int TEAM2 = 1;	//this is OPFOR TEAM -- Single Player
+inline constexpr int TEAM3 = 2;	// this is allies 
+inline constexpr int TEAM4 = 3;
+inline constexpr int TEAM5 = 4;
+inline constexpr int TEAM6 = 5;
+inline constexpr int TEAM7 = 6;
+inline constexpr int TEAM8 = 7;
 
 //-------------------------------------------
 // 08/01/99 -- Must have generic alignments or Heidi goes WAY south!

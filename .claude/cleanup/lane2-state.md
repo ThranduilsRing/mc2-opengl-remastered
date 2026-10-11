@@ -4,17 +4,22 @@
 Proof ledger (per commit, per object, rulings applied): .claude/cleanup/step2-never-touch-audit.md. LG14 note and results: .claude/cleanup/cxx23-step2-enums-note.md.
 
 ## Where it stands (ratchet baseline: LG13 1,707, LG14 306)
-- Merged nifty at 90bfbfed9 and 0b05530e3 (1a16f578e). Checkpoint at 797e508c3: ninja build, build_all_targets (all stages), harnesses 20/20 + doctest 2,719 cases, board 165/168, tier1 5/5.
+- Merged nifty at 90bfbfed9 and 0b05530e3 (1a16f578e); the coordinator merged 566d76a3e afterwards. Earlier checkpoint at 797e508c3: ninja build, build_all_targets (all stages), harnesses 20/20 + doctest 2,719 cases, board 165/168, tier1 5/5.
   The 3 red rows are not this lane's: capture_provenance + selftest (BANNER_FMT vs the mechcmd2.cpp printf, lane 1) and doc_links (docs/beta/* exist only untracked in mc2-main). `background_launch` is green here since
   c409592cc registered tools/tidy/vs_trees.py (the nifty row for tools/sim_determinism.py was fixed on nifty).
 - LG14 DONE for this step: 18 enums converted in 4 strict commits (929ecc662 cab34b9e2 edb92d936 b31a71d36), every object of the Ninja trees AND mc2_tests / harness trees IDENTICAL. Skips with reasons: tools/tidy/enum_skip.txt (41 names);
   the gate refused EquipmentReasonCode, UnitProfileReasonCode, Capability (tests index / loop / size arrays with `X__COUNT`) and ClassPolicy (C++17 harness tree rejects `using enum`). ActorState: dead header, skipped.
-- LG13: unitdesg.h done (69b935d96, `--layout-only-ok`, 2 LAYOUT-ONLY objects named in the message). The 30 wide headers (~660 sites) are BLOCKED, evidence in ledger section 5: (a) every wide header produces an ORDER-ONLY
-  object in editor TUs (`SingleValueDlg.cpp.obj`; even a 1-site header does), (b) 12 of them change `MapGeneratorDialog.cpp.obj` (stb_image tables dropped: DIFF). Both need rulings; nothing was relaxed by the lane.
+- LG13 (ratchet LG13 1095 from 1,707): unitdesg.h (69b935d96) and 19 wide headers in 5 commits (04f05bb87 cc8a4ab2d 17ecb3df2 51e4ae3aa 06e2957c9) under the rulings: `--layout-only-ok --order-only-ok --vs-gate`, every accepted
+  object named in the commit message, `tools/tidy/proof_allow.json` (MapGeneratorDialog, bounded, used once). Checkpoints (build_all_targets, doctest 2,719, tier1 5/5, board 165/168) at 13:13 and 14:40.
+  tgl.h (650208f38) and vfx.h went through ALONE afterwards (strict flags + gate; vfx.h had 1 accepted object named in its message): their failures inside the 5-header batch were interactions, so the other open headers are worth one-by-one runs too.
+  NOT re-checkpointed after those two commits (last full checkpoint = d5af2f719: build_all_targets, doctest 2,719, tier1 5/5, board 165/168): the next session starts with build_all_targets + doctest + tier1.
+  OPEN (4 headers, ~32 sites): dstd.h inifile.h (test_file_inifile.obj in build64-tests), txmmgr.h (gate failure with no error text: run alone) and gameos.hpp (`controlgui_hudtabs.cpp.obj`, flaky/combination-dependent: classify first).
+  The 8 headers with no including object (platform_win*.h, actor.h) cannot be proven by objects.
 
 ## Tools (tested, committed)
 - tools/objhash.py: `hash --per-symbol`, `compare --per-symbol`, `diff A.obj B.obj` (IDENTICAL / LAYOUT-ONLY / ORDER-ONLY / DIFF).
-- tools/tidy/proof_ext.py: `LayoutMixin` (opt-in LAYOUT-ONLY acceptance in the shared Proof) and `Gate` (harness / mc2_tests / standalone tool trees, snapshot before the edit, settle after: a failing file is restored and re-verified).
+- tools/tidy/proof_allow.json: bounded per-object exceptions (class `unreferenced-data-dropped`), honoured by `proof_ext.LayoutMixin.accepted` after `objhash.classify_allowed`.
+- tools/tidy/proof_ext.py: `LayoutMixin` (opt-in LAYOUT-ONLY / ORDER-ONLY acceptance in the shared Proof, the ledger) and `Gate` (harness / mc2_tests / standalone tool trees, snapshot before the edit, settle after: a failing file is restored and re-verified).
 - tools/tidy/vs_trees.py: includer map of the msbuild trees from the CL.read tlogs (a batched compile entry is a union: over-approximation), `snapshot` / `verify`, a failed target blames only the objects its errors name.
   Needs the VS trees BUILT first (`tools/build_contract_harnesses.py` builds the harnesses, `cmake --build build64-tests --config RelWithDebInfo` all of tests/unit); a failed gate build leaves partial tlogs, so rebuild them after.
 - tools/tidy/rewrite_defines.py / rewrite_enums.py: flags `--layout-only-ok`, `--vs-gate`, (enums) `--max-enums N`, `--skip-enums`; default proof PLAIN objhash; `--relaxed-proof REASON` unchanged; `stringized-by-wrapper-macro` and qualified-use refusals.
@@ -26,10 +31,11 @@ mclib/estring*, elist*, heap*, stuff/*, mlr/*, gosfx/*, memorystream*, file*, pa
 Ratchet policy: never contort code for a ratchet; a legitimate rise gets a baseline rewrite with the reason in the commit.
 
 ## Exact next steps for the next lane 2
-1. Rulings needed for the wide LG13 headers: ORDER-ONLY acceptance (a pure symbol / relocation index shift; the lane would add `--order-only-ok`, named in the commit like LAYOUT-ONLY) and the MapGeneratorDialog class
-   (`--ignore-digest-file out/editor/CMakeFiles/EditRel.dir/MapGeneratorDialog.cpp.obj`, compile-must-pass). Then batches of <= 5 headers: `py -3 tools/tidy/rewrite_defines.py run --scope all --tree build-alltargets --max-files 5
-   --max-objs 100000 --max-header-includers 100000 --layout-only-ok --vs-gate --done X --taint-file Y --commit` (use a fresh --taint-file: a differing object taints every header it includes), tier1 after every 3 batches.
-2. Without those rulings the next productive steps are outside LG13/LG14: see the orchestrator queue.
+1. Merge nifty (lane 1 keeps moving). Then the 4 open wide headers (dstd, inifile, txmmgr, gameos), one at a time with a fresh `--taint-file` (a differing object taints every header it includes): `py -3 tools/tidy/rewrite_defines.py run --scope all
+   --tree build-alltargets --max-files 1 --max-objs 100000 --max-header-includers 100000 --layout-only-ok --order-only-ok --vs-gate --done D --taint-file T --commit` after putting the header name in D's complement.
+   For dstd.h / inifile.h read the `FAIL` lines of `vs_trees.verify` (test_file_inifile.obj); txmmgr.h failed with no error text, run it alone.
+   For gameos.hpp: `python .claude/l2cfg/wide_diag.py GameOS/include/gameos.hpp CMakeFiles/mc2.dir/code/controlgui_hudtabs.cpp.obj`, then `objhash.py diff`: if it is a __TIME__ / noise class, the Proof's noise check should have caught it; if not, classify.
+2. LG13 beyond those: nothing eligible remains (the other literal defines are refused by the census: named outside C++, defined twice, C-side, macro-body). LG14: nothing eligible remains (ledger `enum_skip.txt`).
 3. Never edit tracked files while a batch runs; commit by pathspec; scripts via the Write tool (bash heredocs and non-raw python strings collapse backslashes; python and Git Bash see /tmp differently).
 
 ## Rules learned

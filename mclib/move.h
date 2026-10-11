@@ -51,10 +51,10 @@ extern uint64_t g_moveRecon_offmap_noops;
 
 #define	USE_FORESTS			0
 
-#define	MAX_GLOBALMAP_DOORS		10000
-#define	MAX_GLOBALMAP_AREAS		10000
+inline constexpr int MAX_GLOBALMAP_DOORS = 10000;
+inline constexpr int MAX_GLOBALMAP_AREAS = 10000;
 
-#define	NUM_EXTRA_DOOR_LINKS	2
+inline constexpr int NUM_EXTRA_DOOR_LINKS = 2;
 
 //#define	INNER_SPHERE	TEAM1
 //#define	CLANS			TEAM2
@@ -62,8 +62,8 @@ extern uint64_t g_moveRecon_offmap_noops;
 //#define NEUTRAL			0xff		//NEUTRALS are NOT part of the eight Teams!
 									//These are inanimate things like buildings, trees, rocks, etc.
 
-#define	SIMPLE_PATHMAP	0
-#define	SECTOR_PATHMAP	1
+inline constexpr int SIMPLE_PATHMAP = 0;
+inline constexpr int SECTOR_PATHMAP = 1;
 
 typedef enum {
 	DOOR_OFFSET_START,
@@ -71,42 +71,42 @@ typedef enum {
 	NUM_DOOR_OFFSETS
 } GlobalMapDoorOffset;
 
-#define	SECTOR_DIM				30
+inline constexpr int SECTOR_DIM = 30;
 
-#define	MOVEMAP_WIDTH			12			// Used outside of move file
-#define	MOVEMAP_MAX_CELLOBJECTS	4
+inline constexpr int MOVEMAP_WIDTH = 12;			// Used outside of move file
+inline constexpr int MOVEMAP_MAX_CELLOBJECTS = 4;
 
-#define	TILE_PRESERVED_FLAG		0x8000
+inline constexpr int TILE_PRESERVED_FLAG = 0x8000;
 
-#define	NUM_DIRECTIONS			8
-#define	HPRIME_NOT_CALCED		0xFFFFFFFF
+inline constexpr int NUM_DIRECTIONS = 8;
+inline constexpr unsigned int HPRIME_NOT_CALCED = 0xFFFFFFFF;
 
-#define	MOVEFLAG_OPEN			1
-#define	MOVEFLAG_CLOSED			2
-#define	MOVEFLAG_STEP			4
-#define	MOVEFLAG_GOAL			8
-#define	MOVEFLAG_MOVER_HERE		16
-#define	MOVEFLAG_GOAL_BLOCKED	32
-#define	MOVEFLAG_OFFMAP			64
+inline constexpr int MOVEFLAG_OPEN = 1;
+inline constexpr int MOVEFLAG_CLOSED = 2;
+inline constexpr int MOVEFLAG_STEP = 4;
+inline constexpr int MOVEFLAG_GOAL = 8;
+inline constexpr int MOVEFLAG_MOVER_HERE = 16;
+inline constexpr int MOVEFLAG_GOAL_BLOCKED = 32;
+inline constexpr int MOVEFLAG_OFFMAP = 64;
 
-#define	CELLSTATE_OPEN			0
-#define	CELLSTATE_BLOCKED		1
+inline constexpr int CELLSTATE_OPEN = 0;
+inline constexpr int CELLSTATE_BLOCKED = 1;
 
-#define	FOREST_INCREMENT		2
+inline constexpr int FOREST_INCREMENT = 2;
 
 //----------------
 // cell move costs
-#define	COST_CLEAR				100
-#define	COST_BLOCKED			10000
+inline constexpr int COST_CLEAR = 100;
+inline constexpr int COST_BLOCKED = 10000;
 
-#define	OVERLAYINDEX_NULL		41
-#define	IS_DIRTROAD_OVERLAY		0
-#define	IS_PAVEDROAD_OVERLAY	1
-#define IS_RAILROAD_OVERLAY		2
+inline constexpr int OVERLAYINDEX_NULL = 41;
+inline constexpr int IS_DIRTROAD_OVERLAY = 0;
+inline constexpr int IS_PAVEDROAD_OVERLAY = 1;
+inline constexpr int IS_RAILROAD_OVERLAY = 2;
 
-#define	SCENARIOMAP_MAX_ELEVATION			63
-#define	SCENARIOMAP_MAX_TILETYPE			127
-#define	SCENARIOMAP_MAX_OVERLAYTYPE			127
+inline constexpr int SCENARIOMAP_MAX_ELEVATION = 63;
+inline constexpr int SCENARIOMAP_MAX_TILETYPE = 127;
+inline constexpr int SCENARIOMAP_MAX_OVERLAYTYPE = 127;
 //#define	SCENARIOMAP_LAST_BASETYPE_INDEX		63
 
 //TileType and OverlayType now in terrain.h!
@@ -121,30 +121,30 @@ typedef enum {
 
 //------------------
 // class Definitions
-#define	MOVEPARAM_NONE						0
-#define	MOVEPARAM_FACE_TARGET				1
-#define	MOVEPARAM_DIR_OFFSET				2
-#define	MOVEPARAM_BACK_UP					4
-#define	MOVEPARAM_SOMEWHERE_ELSE			8
-#define	MOVEPARAM_MOVING_MOVERS				16
-#define	MOVEPARAM_MYSTERY_PARAM				32
-#define	MOVEPARAM_STATIONARY_MOVERS			64
-#define	MOVEPARAM_AVOID_PATHLOCKS			128
-#define	MOVEPARAM_INIT						256
-#define	MOVEPARAM_RECALC					512
-#define	MOVEPARAM_STEP_TOWARD_TARGET		1024
-#define	MOVEPARAM_PLAYER					2048
-#define	MOVEPARAM_RADIO_RESULT				4096
-#define	MOVEPARAM_ESCAPE_TILE				8192
-#define MOVEPARAM_STEP_ADJACENT_TARGET		16384
-#define	MOVEPARAM_SWEEP_MINES				32768
-#define	MOVEPARAM_FOLLOW_ROADS				65536
-#define	MOVEPARAM_WATER_SHALLOW				131072
-#define	MOVEPARAM_WATER_DEEP				262144
-#define	MOVEPARAM_RANDOM_OPTIMAL			524288
-#define	MOVEPARAM_JUMP						1048576
+inline constexpr int MOVEPARAM_NONE = 0;
+inline constexpr int MOVEPARAM_FACE_TARGET = 1;
+inline constexpr int MOVEPARAM_DIR_OFFSET = 2;
+inline constexpr int MOVEPARAM_BACK_UP = 4;
+inline constexpr int MOVEPARAM_SOMEWHERE_ELSE = 8;
+inline constexpr int MOVEPARAM_MOVING_MOVERS = 16;
+inline constexpr int MOVEPARAM_MYSTERY_PARAM = 32;
+inline constexpr int MOVEPARAM_STATIONARY_MOVERS = 64;
+inline constexpr int MOVEPARAM_AVOID_PATHLOCKS = 128;
+inline constexpr int MOVEPARAM_INIT = 256;
+inline constexpr int MOVEPARAM_RECALC = 512;
+inline constexpr int MOVEPARAM_STEP_TOWARD_TARGET = 1024;
+inline constexpr int MOVEPARAM_PLAYER = 2048;
+inline constexpr int MOVEPARAM_RADIO_RESULT = 4096;
+inline constexpr int MOVEPARAM_ESCAPE_TILE = 8192;
+inline constexpr int MOVEPARAM_STEP_ADJACENT_TARGET = 16384;
+inline constexpr int MOVEPARAM_SWEEP_MINES = 32768;
+inline constexpr int MOVEPARAM_FOLLOW_ROADS = 65536;
+inline constexpr int MOVEPARAM_WATER_SHALLOW = 131072;
+inline constexpr int MOVEPARAM_WATER_DEEP = 262144;
+inline constexpr int MOVEPARAM_RANDOM_OPTIMAL = 524288;
+inline constexpr int MOVEPARAM_JUMP = 1048576;
 
-#define	TACORDER_PARAM_NONE					0
+inline constexpr int TACORDER_PARAM_NONE = 0;
 #define	TACORDER_PARAM_RUN					(1<<0)
 #define	TACORDER_PARAM_WAIT					(1<<1)
 #define	TACORDER_PARAM_FACE_OBJECT			(1<<2)
@@ -174,10 +174,10 @@ typedef enum {
 #define	TACORDER_PARAM_TACTIC_TURRET		(1<<26) //67108864
 #define	TACORDER_PARAM_TACTIC_JOUST			(1<<27) //134217728
 
-#define	TACORDER_ATTACK_MASK				0x00000300
-#define	TACORDER_RANGE_MASK					0x0000FC00
-#define	TACORDER_AIM_MASK					0x00070000
-#define	TACORDER_TACTIC_MASK				0x0FC00000
+inline constexpr int TACORDER_ATTACK_MASK = 0x00000300;
+inline constexpr int TACORDER_RANGE_MASK = 0x0000FC00;
+inline constexpr int TACORDER_AIM_MASK = 0x00070000;
+inline constexpr int TACORDER_TACTIC_MASK = 0x0FC00000;
 
 #define	RELPOS_FLAG_ABS					1
 #define	RELPOS_FLAG_PASSABLE_START		2
@@ -185,12 +185,12 @@ typedef enum {
 
 #define MAX_GLOBAL_PATH					50
 
-#define	NUM_MOVE_LEVELS					2
+inline constexpr int NUM_MOVE_LEVELS = 2;
 
-#define	MAX_WALL_OBJECTS				2000
-#define	MAX_GATES_OBJECT				1000
-#define	MAX_CELL_COORDS					5000
-#define	FILL_STACK_SIZE					810000
+inline constexpr int MAX_WALL_OBJECTS = 2000;
+inline constexpr int MAX_GATES_OBJECT = 1000;
+inline constexpr int MAX_CELL_COORDS = 5000;
+inline constexpr int FILL_STACK_SIZE = 810000;
 
 
 //***************************************************************************
@@ -200,20 +200,20 @@ typedef enum {
 
 //---------------------------------------------------------------------------
 
-#define	CELL_INFO_FLAG_PASSABLE			1
-#define	CELL_INFO_FLAG_LOS				2
-#define	CELL_INFO_FLAG_WATER_DEEP		4
-#define	CELL_INFO_FLAG_WATER_SHALLOW	8
+inline constexpr int CELL_INFO_FLAG_PASSABLE = 1;
+inline constexpr int CELL_INFO_FLAG_LOS = 2;
+inline constexpr int CELL_INFO_FLAG_WATER_DEEP = 4;
+inline constexpr int CELL_INFO_FLAG_WATER_SHALLOW = 8;
 
-#define	SPECIAL_NONE					0
-#define	SPECIAL_WALL					1
-#define	SPECIAL_GATE					2
-#define	SPECIAL_LAND_BRIDGE				3
-#define	SPECIAL_FOREST					4
+inline constexpr int SPECIAL_NONE = 0;
+inline constexpr int SPECIAL_WALL = 1;
+inline constexpr int SPECIAL_GATE = 2;
+inline constexpr int SPECIAL_LAND_BRIDGE = 3;
+inline constexpr int SPECIAL_FOREST = 4;
 
-#define	MINE_NONE						0
-#define	MINE_INTACT						1
-#define	MINE_EXPLODED					2
+inline constexpr int MINE_NONE = 0;
+inline constexpr int MINE_INTACT = 1;
+inline constexpr int MINE_EXPLODED = 2;
 
 typedef struct _ScenarioMapCellInfo {
 	unsigned char		terrain;
@@ -230,73 +230,73 @@ typedef struct _ScenarioMapCellInfo {
 
 //---------------------------------------------------------------------------
 
-#define	MAPCELL_TERRAIN_SHIFT			0
-#define	MAPCELL_TERRAIN_MASK			0x0000000F
+inline constexpr int MAPCELL_TERRAIN_SHIFT = 0;
+inline constexpr int MAPCELL_TERRAIN_MASK = 0x0000000F;
 
-#define	MAPCELL_OVERLAY_SHIFT			4
-#define	MAPCELL_OVERLAY_MASK			0x00000030
+inline constexpr int MAPCELL_OVERLAY_SHIFT = 4;
+inline constexpr int MAPCELL_OVERLAY_MASK = 0x00000030;
 
-#define	MAPCELL_MOVER_SHIFT				6
-#define	MAPCELL_MOVER_MASK				0x00000040
+inline constexpr int MAPCELL_MOVER_SHIFT = 6;
+inline constexpr int MAPCELL_MOVER_MASK = 0x00000040;
 
-#define	MAPCELL_UNUSED1_SHIFT			7				// THIS BIT AVAILABLE!
-#define	MAPCELL_UNUSED1_MASK			0x00000080
+inline constexpr int MAPCELL_UNUSED1_SHIFT = 7;				// THIS BIT AVAILABLE!
+inline constexpr int MAPCELL_UNUSED1_MASK = 0x00000080;
 
-#define	MAPCELL_GATE_SHIFT				8
-#define	MAPCELL_GATE_MASK				0x00000100
+inline constexpr int MAPCELL_GATE_SHIFT = 8;
+inline constexpr int MAPCELL_GATE_MASK = 0x00000100;
 
-#define	MAPCELL_OFFMAP_SHIFT			9
-#define	MAPCELL_OFFMAP_MASK				0x00000200
+inline constexpr int MAPCELL_OFFMAP_SHIFT = 9;
+inline constexpr int MAPCELL_OFFMAP_MASK = 0x00000200;
 
-#define	MAPCELL_PASSABLE_SHIFT			10
-#define	MAPCELL_PASSABLE_MASK			0x00000400
+inline constexpr int MAPCELL_PASSABLE_SHIFT = 10;
+inline constexpr int MAPCELL_PASSABLE_MASK = 0x00000400;
 
-#define	MAPCELL_PATHLOCK_SHIFT			11
-#define	MAPCELL_PATHLOCK_MASK			0x00001800
-#define	MAPCELL_PATHLOCK_BASE			0x00000800
+inline constexpr int MAPCELL_PATHLOCK_SHIFT = 11;
+inline constexpr int MAPCELL_PATHLOCK_MASK = 0x00001800;
+inline constexpr int MAPCELL_PATHLOCK_BASE = 0x00000800;
 
-#define	MAPCELL_MINE_SHIFT				13
-#define	MAPCELL_MINE_MASK				0x0001E000
+inline constexpr int MAPCELL_MINE_SHIFT = 13;
+inline constexpr int MAPCELL_MINE_MASK = 0x0001E000;
 
-#define	MAPCELL_PRESERVED_SHIFT			17
-#define	MAPCELL_PRESERVED_MASK			0x00020000
+inline constexpr int MAPCELL_PRESERVED_SHIFT = 17;
+inline constexpr int MAPCELL_PRESERVED_MASK = 0x00020000;
 
-#define	MAPCELL_HEIGHT_SHIFT			18
-#define	MAPCELL_HEIGHT_MASK				0x003C0000
+inline constexpr int MAPCELL_HEIGHT_SHIFT = 18;
+inline constexpr int MAPCELL_HEIGHT_MASK = 0x003C0000;
 
-#define	MAPCELL_DEBUG_SHIFT				22
-#define	MAPCELL_DEBUG_MASK				0x00C00000
+inline constexpr int MAPCELL_DEBUG_SHIFT = 22;
+inline constexpr int MAPCELL_DEBUG_MASK = 0x00C00000;
 
-#define	MAPCELL_WALL_SHIFT				24
-#define	MAPCELL_WALL_MASK				0x01000000
+inline constexpr int MAPCELL_WALL_SHIFT = 24;
+inline constexpr int MAPCELL_WALL_MASK = 0x01000000;
 
-#define	MAPCELL_ROAD_SHIFT				25
-#define	MAPCELL_ROAD_MASK				0x02000000
+inline constexpr int MAPCELL_ROAD_SHIFT = 25;
+inline constexpr int MAPCELL_ROAD_MASK = 0x02000000;
 
-#define	MAPCELL_SHALLOW_SHIFT			26
-#define	MAPCELL_SHALLOW_MASK			0x04000000
+inline constexpr int MAPCELL_SHALLOW_SHIFT = 26;
+inline constexpr int MAPCELL_SHALLOW_MASK = 0x04000000;
 
-#define	MAPCELL_DEEP_SHIFT				27
-#define	MAPCELL_DEEP_MASK				0x08000000
+inline constexpr int MAPCELL_DEEP_SHIFT = 27;
+inline constexpr int MAPCELL_DEEP_MASK = 0x08000000;
 
-#define	MAPCELL_FOREST_SHIFT			28
-#define	MAPCELL_FOREST_MASK				0x10000000
+inline constexpr int MAPCELL_FOREST_SHIFT = 28;
+inline constexpr int MAPCELL_FOREST_MASK = 0x10000000;
 
 //------------------------------------------------------
 // The following are used ONLY when building map data...
-#define	MAPCELL_BUILD_WALL_SHIFT		29
-#define	MAPCELL_BUILD_WALL_MASK			0x20000000
+inline constexpr int MAPCELL_BUILD_WALL_SHIFT = 29;
+inline constexpr int MAPCELL_BUILD_WALL_MASK = 0x20000000;
 
-#define	MAPCELL_BUILD_GATE_SHIFT		30
-#define	MAPCELL_BUILD_GATE_MASK			0x40000000
+inline constexpr int MAPCELL_BUILD_GATE_SHIFT = 30;
+inline constexpr int MAPCELL_BUILD_GATE_MASK = 0x40000000;
 
-#define	MAPCELL_BUILD_LAND_BRIDGE_SHIFT	11
-#define	MAPCELL_BUILD_LAND_BRIDGE_MASK	0x00000800
+inline constexpr int MAPCELL_BUILD_LAND_BRIDGE_SHIFT = 11;
+inline constexpr int MAPCELL_BUILD_LAND_BRIDGE_MASK = 0x00000800;
 
-#define	MAPCELL_BUILD_SPECIAL_MASK		0x60000800
+inline constexpr int MAPCELL_BUILD_SPECIAL_MASK = 0x60000800;
 
-#define	MAPCELL_BUILD_NOT_SET_SHIFT		31
-#define	MAPCELL_BUILD_NOT_SET_MASK		0x80000000
+inline constexpr int MAPCELL_BUILD_NOT_SET_SHIFT = 31;
+inline constexpr unsigned int MAPCELL_BUILD_NOT_SET_MASK = 0x80000000;
 
 typedef struct _MapCell {
 	unsigned int data;
@@ -519,7 +519,7 @@ typedef PreservedCell* PreservedCellPtr;
 extern float VerticesMapSideDivTwo;
 extern float MetersMapSideDivTwo;
 
-#define	MAX_DEBUG_CELLS		1000
+inline constexpr int MAX_DEBUG_CELLS = 1000;
 
 class MissionMap {
 
@@ -956,7 +956,7 @@ typedef MovePath* MovePathPtr;
 
 
 //---------------------------------------------------------------------------
-#define	MAX_STEPS_PER_MOVEPATH 200
+inline constexpr int MAX_STEPS_PER_MOVEPATH = 200;
 
 typedef struct _PathStep {
 	short					cell[2];							// obvious
@@ -1073,18 +1073,18 @@ class MovePath {
 
 
 //******************************************************************************************
-#define	GLOBAL_FLAG_SPECIAL_IMPOSSIBLE	0x80
-#define	GLOBAL_FLAG_SPECIAL_CALC		0x40
-#define	GLOBAL_FLAG_NORMAL_OPENS		0x20
-#define	GLOBAL_FLAG_NORMAL_CLOSES		0x10
+inline constexpr int GLOBAL_FLAG_SPECIAL_IMPOSSIBLE = 0x80;
+inline constexpr int GLOBAL_FLAG_SPECIAL_CALC = 0x40;
+inline constexpr int GLOBAL_FLAG_NORMAL_OPENS = 0x20;
+inline constexpr int GLOBAL_FLAG_NORMAL_CLOSES = 0x10;
 
-#define	GLOBAL_CONFIDENCE_BAD			0
-#define GLOBAL_CONFIDENCE_AT_LEAST		1
-#define	GLOBAL_CONFIDENCE_GOOD			2
+inline constexpr int GLOBAL_CONFIDENCE_BAD = 0;
+inline constexpr int GLOBAL_CONFIDENCE_AT_LEAST = 1;
+inline constexpr int GLOBAL_CONFIDENCE_GOOD = 2;
 
-#define	GLOBALPATH_EXISTS_UNKNOWN		0
-#define	GLOBALPATH_EXISTS_TRUE			1
-#define	GLOBALPATH_EXISTS_FALSE			2
+inline constexpr int GLOBALPATH_EXISTS_UNKNOWN = 0;
+inline constexpr int GLOBALPATH_EXISTS_TRUE = 1;
+inline constexpr int GLOBALPATH_EXISTS_FALSE = 2;
 
 #pragma pack(1)
 
@@ -1181,11 +1181,11 @@ typedef struct _GlobalPathStep {
 
 typedef GlobalPathStep* GlobalPathStepPtr;
 
-#define	MAX_SPECIAL_AREAS		1500
-#define	MAX_SPECIAL_SUB_AREAS	25
-#define	MAX_CELLS_PER_SUB_AREA	49
-#define	MAX_OFFMAP_AREAS		60
-#define	MAX_GAME_OBJECT_CELLS	64
+inline constexpr int MAX_SPECIAL_AREAS = 1500;
+inline constexpr int MAX_SPECIAL_SUB_AREAS = 25;
+inline constexpr int MAX_CELLS_PER_SUB_AREA = 49;
+inline constexpr int MAX_OFFMAP_AREAS = 60;
+inline constexpr int MAX_GAME_OBJECT_CELLS = 64;
 
 typedef struct _GameObjectFootPrint {
 	short				cellPositionRow;
@@ -1520,7 +1520,7 @@ typedef GlobalMap* GlobalMapPtr;
 
 //******************************************************************************************
 
-#define	NUM_ADJ_CELLS	8
+inline constexpr int NUM_ADJ_CELLS = 8;
 
 typedef struct _MoveMapNode {
     // sebi moved 'cost' field up for less data cache misses (I hope)
@@ -1545,7 +1545,7 @@ typedef struct _MoveMapNode {
 
 typedef MoveMapNode* MoveMapNodePtr;
 
-#define	DISTANCE_TABLE_DIM 80
+inline constexpr int DISTANCE_TABLE_DIM = 80;
 
 class MoveMap {
 

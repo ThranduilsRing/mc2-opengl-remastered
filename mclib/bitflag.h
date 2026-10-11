@@ -27,10 +27,10 @@
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
-#define BITS_PER_BYTE	8
+inline constexpr int BITS_PER_BYTE = 8;
 
-#define NO_RAM_FOR_FLAG_HEAP	0xFFFA0000
-#define NUM_BITS_NOT_SUPPORTED	0xFFFA0001
+inline constexpr unsigned int NO_RAM_FOR_FLAG_HEAP = 0xFFFA0000;
+inline constexpr unsigned int NUM_BITS_NOT_SUPPORTED = 0xFFFA0001;
 
 //----------------------------------------------------------------------------------
 // Class Definitions

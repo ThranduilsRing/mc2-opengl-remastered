@@ -49,7 +49,7 @@ class VFXElement : public Element
 	virtual void draw (void);
 };
 
-#define MAX_ELEMENT_SHAPES		4
+inline constexpr int MAX_ELEMENT_SHAPES = 4;
 //---------------------------------------------------------------------------
 class VFXShapeElement : public Element
 {

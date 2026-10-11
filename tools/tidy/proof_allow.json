@@ -1,0 +1,11 @@
+{
+ "_about": "Bounded exceptions to the rewriters' object proof (coordinator ruling 2026-10-11). An entry lets ONE object differ when (a) the batch edits at least one of its headers and (b) tools/objhash.py classify_allowed confirms the class per symbol. No blanket ignores; every accepted object is named in the commit message. --no-proof-allow disables the ledger.",
+ "entries": [
+  {
+   "object": "out/editor/CMakeFiles/EditRel.dir/MapGeneratorDialog.cpp.obj",
+   "class": "unreferenced-data-dropped",
+   "headers": ["GameOS/include/gameos.hpp", "mclib/daprtype.h", "mclib/dbasegui.h", "mclib/inifile.h", "mclib/mech3d.h", "mclib/move.h", "mclib/sounds.h", "mclib/terrain.h", "mclib/txmmgr.h", "mclib/userinput.h", "mclib/vfx.h", "mclib/weaponfx.h"],
+   "reason": "The TU holds unreferenced static const tables in its non-COMDAT .rdata (stbi__z* / stbi__depth_scale_table, k_biomeFoliage); adding an inline variable to one of these headers makes MSVC lay them out in another order (or drop them). Verified per symbol: every other section, the rest of the symbol set and every .data / .bss symbol identical, every static present in both identical, any static present in only one never a relocation target. Found by editor/MapGeneratorDialog bisect 2026-10-11 (12 headers individually)."
+  }
+ ]
+}

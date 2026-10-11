@@ -38,11 +38,11 @@
 #define NO_ERR						0
 #endif
 
-#define	GV_PART_BODY				0
-#define	GV_PART_TURRET				1
-#define	NUM_GV_PARTS				2
+inline constexpr int GV_PART_BODY = 0;
+inline constexpr int GV_PART_TURRET = 1;
+inline constexpr int NUM_GV_PARTS = 2;
 
-#define MAX_GV_ANIMATIONS			10
+inline constexpr int MAX_GV_ANIMATIONS = 10;
 //***********************************************************************
 //
 // GVAppearanceType

@@ -150,7 +150,7 @@
    "LG09": 2353,
    "LG10": 20,
    "LG11": 101,
-   "LG12a": 100,
+   "LG12a": 98,
    "LG12b": 349,
    "LG13": 244,
    "LG14": 123,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 212,
    "LG12b": 245,
-   "LG13": 1126,
+   "LG13": 514,
    "LG14": 120,
    "LG15": 0,
    "LG16": 156,
@@ -2377,7 +2377,6 @@
    "LG03": 25,
    "LG09": 10,
    "LG11": 8,
-   "LG12a": 2,
    "LG12b": 1,
    "LG13": 2
   },
@@ -3264,7 +3263,7 @@
    "LG01": 3,
    "LG05": 4,
    "LG06": 2,
-   "LG13": 11
+   "LG13": 5
   },
   "mclib/apprtype.cpp": {
    "LG03": 11,
@@ -3358,8 +3357,7 @@
    "LG09": 3
   },
   "mclib/bitflag.h": {
-   "LG01": 4,
-   "LG13": 3
+   "LG01": 4
   },
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
@@ -3370,7 +3368,7 @@
   "mclib/camera.h": {
    "LG01": 7,
    "LG05": 2,
-   "LG13": 6,
+   "LG13": 1,
    "LG14": 1
   },
   "mclib/camera_daylight.cpp": {
@@ -3424,8 +3422,7 @@
    "LG13": 4
   },
   "mclib/cevfx.h": {
-   "LG01": 7,
-   "LG13": 1
+   "LG01": 7
   },
   "mclib/cident.cpp": {
    "LG06": 2,
@@ -3482,7 +3479,6 @@
    "LG01": 6,
    "LG02": 3,
    "LG06": 1,
-   "LG13": 3,
    "LG14": 1
   },
   "mclib/csvfile.cpp": {
@@ -3507,10 +3503,10 @@
   },
   "mclib/daprtype.h": {
    "LG02": 2,
-   "LG13": 21
+   "LG13": 1
   },
   "mclib/dbasegui.h": {
-   "LG13": 63
+   "LG13": 33
   },
   "mclib/dbitflag.h": {
    "LG02": 2
@@ -3527,8 +3523,7 @@
   },
   "mclib/debugging.h": {
    "LG01": 1,
-   "LG06": 2,
-   "LG13": 2
+   "LG06": 2
   },
   "mclib/det_rng.h": {
    "LG06": 2
@@ -3546,8 +3541,7 @@
    "LG02": 3
   },
   "mclib/dident.h": {
-   "LG02": 2,
-   "LG13": 1
+   "LG02": 2
   },
   "mclib/dinifile.h": {
    "LG02": 1
@@ -3635,7 +3629,7 @@
    "LG01": 1,
    "LG02": 2,
    "LG06": 4,
-   "LG13": 5,
+   "LG13": 3,
    "LG17": 2
   },
   "mclib/file.cpp": {
@@ -3664,8 +3658,7 @@
   },
   "mclib/floathelp.h": {
    "LG02": 1,
-   "LG09": 1,
-   "LG13": 1
+   "LG09": 1
   },
   "mclib/fst_hash.cpp": {
    "LG06": 3,
@@ -3717,7 +3710,7 @@
   "mclib/genactor.h": {
    "LG01": 4,
    "LG06": 1,
-   "LG13": 2
+   "LG13": 1
   },
   "mclib/genactor_frame.cpp": {
    "LG03": 1,
@@ -3862,7 +3855,7 @@
   "mclib/gvactor.h": {
    "LG01": 5,
    "LG06": 2,
-   "LG13": 5
+   "LG13": 1
   },
   "mclib/gvactor_geometry.cpp": {
    "LG03": 2,
@@ -3962,7 +3955,7 @@
    "LG02": 5,
    "LG05": 1,
    "LG06": 4,
-   "LG13": 39,
+   "LG13": 2,
    "LG14": 1
   },
   "mclib/mech3d_geometry.cpp": {
@@ -4333,7 +4326,7 @@
    "LG02": 29,
    "LG05": 1,
    "LG09": 1,
-   "LG13": 170,
+   "LG13": 33,
    "LG14": 4,
    "LG16": 50,
    "LG17": 1
@@ -4441,8 +4434,7 @@
    "LG17": 1
   },
   "mclib/objectappearance.h": {
-   "LG02": 1,
-   "LG13": 7
+   "LG02": 1
   },
   "mclib/objstatus.h": {
    "LG02": 1,
@@ -4589,9 +4581,6 @@
    "LG01": 1,
    "LG02": 2
   },
-  "mclib/sounds.h": {
-   "LG13": 207
-  },
   "mclib/soundsys.cpp": {
    "LG01": 9,
    "LG03": 8,
@@ -4605,7 +4594,7 @@
   "mclib/soundsys.h": {
    "LG01": 10,
    "LG06": 3,
-   "LG13": 11,
+   "LG13": 4,
    "LG17": 1
   },
   "mclib/spotlight_diag.cpp": {
@@ -4884,7 +4873,7 @@
   "mclib/terrain.h": {
    "LG01": 1,
    "LG02": 2,
-   "LG13": 21,
+   "LG13": 11,
    "LG14": 2
   },
   "mclib/terrain_geometry.cpp": {
@@ -4934,7 +4923,7 @@
    "LG05": 1,
    "LG06": 4,
    "LG09": 8,
-   "LG13": 10
+   "LG13": 5
   },
   "mclib/terrtxm2.cpp": {
    "LG03": 2,
@@ -4950,7 +4939,7 @@
    "LG05": 1,
    "LG06": 10,
    "LG09": 2,
-   "LG13": 3
+   "LG13": 1
   },
   "mclib/terrtxm2_bake.cpp": {
    "LG03": 4,
@@ -4996,7 +4985,7 @@
    "LG05": 1,
    "LG06": 18,
    "LG09": 7,
-   "LG13": 59,
+   "LG13": 53,
    "LG17": 6
   },
   "mclib/tgl_internal.h": {
@@ -5041,8 +5030,7 @@
   },
   "mclib/timing.h": {
    "LG01": 1,
-   "LG02": 3,
-   "LG13": 1
+   "LG02": 3
   },
   "mclib/txmmgr.cpp": {
    "LG01": 4,
@@ -5109,8 +5097,7 @@
   "mclib/userinput.h": {
    "LG01": 2,
    "LG03": 1,
-   "LG06": 2,
-   "LG13": 64
+   "LG06": 2
   },
   "mclib/utilities.cpp": {
    "LG06": 1,
@@ -5129,7 +5116,7 @@
   "mclib/vfx.h": {
    "LG02": 20,
    "LG09": 7,
-   "LG13": 22
+   "LG13": 3
   },
   "mclib/vfx_ellipse.cpp": {
    "LG09": 2
@@ -5161,8 +5148,7 @@
    "LG01": 1,
    "LG02": 1,
    "LG05": 1,
-   "LG06": 1,
-   "LG13": 31
+   "LG06": 1
   },
   "tests/unit/test_path_permutations.cpp": {
    "LG20": 3
@@ -5184,7 +5170,7 @@
    "LG20": 2
   }
  },
- "head": "780f8cfad",
+ "head": "e99ef52bb",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
