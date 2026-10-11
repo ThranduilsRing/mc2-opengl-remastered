@@ -27,6 +27,7 @@
 #include"platform_str.h" 
 #include <ctype.h> // toupper
 #include <bit>
+#include "mc2fmt.h"
 
 // NS3 boundary: the engine system allocator belongs to the heap subsystem
 // (this TU), not to whatever game/tool main links it. extern'd for all
@@ -454,13 +455,13 @@ void HeapList::initializeStatistics()
 			for (long i=0;i<50;i++)
 			{
 				char heapString[255];
-				sprintf(heapString,"Heap %d - HeapSize",i);
+				mc2::fmt::to_buf(heapString, "Heap {:d} - HeapSize", mc2::fmt::as_i32(i));
 				AddStatistic(heapString,"bytes",gos_DWORD, &(heapRecords[i].heapSize), Stat_AutoReset | Stat_Total);
 
-				sprintf(heapString,"Heap %d - TotalLeft",i);
+				mc2::fmt::to_buf(heapString, "Heap {:d} - TotalLeft", mc2::fmt::as_i32(i));
 				AddStatistic(heapString,"bytes",gos_DWORD, &(heapRecords[i].totalCoreLeft), Stat_AutoReset | Stat_Total);
 
-				sprintf(heapString,"Heap %d - CoreLeft",i);
+				mc2::fmt::to_buf(heapString, "Heap {:d} - CoreLeft", mc2::fmt::as_i32(i));
 				AddStatistic(heapString,"bytes",gos_DWORD, &(heapRecords[i].coreLeft), Stat_AutoReset | Stat_Total);
 
 				StatisticFormat( "" );
@@ -536,7 +537,7 @@ unsigned long textToLong (char *num)
 long longToText (char *result, long num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"%08X",num);
+	mc2::fmt::to_buf(temp, "{:08X}", mc2::fmt::as_u32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -639,7 +640,7 @@ void HeapList::dumpLog (void)
 		
 		if (currentHeap)
 		{
-			sprintf(msg,"ListNo: %d     Heap: %d     Type: %d     Made by: %08ld",i,heapNumber,currentHeap->heapType(),currentHeap->owner());
+			mc2::fmt::to_buf(msg, "ListNo: {:d}     Heap: {:d}     Type: {:d}     Made by: {:08d}", mc2::fmt::as_i32(i), mc2::fmt::as_i32(heapNumber), mc2::fmt::as_i32(currentHeap->heapType()), mc2::fmt::as_i32(currentHeap->owner()));
 			logFile.writeLine(msg);
 
 			if (mapResult == NO_ERR)
@@ -647,7 +648,7 @@ void HeapList::dumpLog (void)
 				mapStringSize = getStringFromMap(mapFile,currentHeap->owner(),mapInfo);
 				if (mapStringSize)
 				{
-					sprintf(msg,"Made in Function : %s",mapInfo);
+					mc2::fmt::to_buf(msg, "Made in Function : {}", mc2::fmt::safe(mapInfo));
 					logFile.writeLine(msg);
 				}
 			}
@@ -660,10 +661,10 @@ void HeapList::dumpLog (void)
 			if (currentHeap->heapType() == 1)
 			{
 				UserHeapPtr userHeap = (UserHeapPtr)currentHeap;
-				sprintf(msg,"TotalCoreLeft: %d     CoreLeft: %d",userHeap->totalCoreLeft(),userHeap->coreLeft());
+				mc2::fmt::to_buf(msg, "TotalCoreLeft: {:d}     CoreLeft: {:d}", mc2::fmt::as_i32(userHeap->totalCoreLeft()), mc2::fmt::as_i32(userHeap->coreLeft()));
 				logFile.writeLine(msg);
 				
-				sprintf(msg,"Frag Level: %f       PercentFree: %f",(float(userHeap->coreLeft())/float(userHeap->totalCoreLeft())),1.0 - (float(currentHeap->tSize()-userHeap->coreLeft())/float(currentHeap->tSize())) );
+				mc2::fmt::to_buf(msg, "Frag Level: {:f}       PercentFree: {:f}", (float(userHeap->coreLeft())/float(userHeap->totalCoreLeft())), 1.0 - (float(currentHeap->tSize()-userHeap->coreLeft())/float(currentHeap->tSize())));
 				logFile.writeLine(msg);
 				
 				totalFree += userHeap->coreLeft();
@@ -674,17 +675,17 @@ void HeapList::dumpLog (void)
 		}
 		else
 		{
-			sprintf(msg,"ListNo: %d  is Freed",i);
+			mc2::fmt::to_buf(msg, "ListNo: {:d}  is Freed", mc2::fmt::as_i32(i));
 			logFile.writeLine(msg);
 		}
 		
-		sprintf(msg,"---------------------------");
+		mc2::fmt::to_buf(msg, "---------------------------");
 		logFile.writeLine(msg);
 	}	
 	
-	sprintf(msg,"Total Committed Memory: %d      Total Free in Commit: %d",totalCommit,totalFree);
+	mc2::fmt::to_buf(msg, "Total Committed Memory: {:d}      Total Free in Commit: {:d}", mc2::fmt::as_i32(totalCommit), mc2::fmt::as_i32(totalFree));
 	logFile.writeLine(msg);
-	sprintf(msg,"---------------------------");
+	mc2::fmt::to_buf(msg, "---------------------------");
 	logFile.writeLine(msg);
 		
 	logFile.close();

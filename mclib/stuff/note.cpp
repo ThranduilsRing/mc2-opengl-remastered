@@ -8,6 +8,7 @@
 //===========================================================================//
 
 #include"stuffheaders.hpp"
+#include "mc2fmt.h"
 
 #define MAX_LINE_SIZE 512
 
@@ -76,7 +77,7 @@ void
 	Check_Object(this);
 
 	char contents[32];
-	sprintf(contents, "%f", value);
+	mc2::fmt::to_buf(contents, "{:f}", value);
 	Verify(strlen(contents) < sizeof(contents));
 
 	SetEntry(contents);
@@ -150,13 +151,7 @@ void
 
 	static char contents[64];
 	int temp;
-	temp = sprintf(
-		contents,
-		"%f %f %f",
-		value.x,
-		value.y,
-		value.z
-	);
+	temp = mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", value.x, value.y, value.z);
 	Verify (temp <sizeof(contents));
 	SetEntry(contents);
 }
@@ -208,13 +203,7 @@ void
 
 	static char
 		contents[32];
-	sprintf(
-		contents,
-		"%f %f %f",
-		value.yaw * Degrees_Per_Radian,
-		value.pitch * Degrees_Per_Radian,
-		value.roll * Degrees_Per_Radian
-	);
+	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", value.yaw * Degrees_Per_Radian, value.pitch * Degrees_Per_Radian, value.roll * Degrees_Per_Radian);
 	Verify(strlen(contents) < sizeof(contents));
 	SetEntry(contents);
 }
@@ -270,13 +259,7 @@ void
 		contents[32];
 	YawPitchRoll ypr(value);
 	Verify(strlen(contents) < sizeof(contents));
-	sprintf(
-		contents,
-		"%f %f %f",
-		ypr.yaw * Degrees_Per_Radian,
-		ypr.pitch * Degrees_Per_Radian,
-		ypr.roll * Degrees_Per_Radian
-	);
+	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", ypr.yaw * Degrees_Per_Radian, ypr.pitch * Degrees_Per_Radian, ypr.roll * Degrees_Per_Radian);
 	SetEntry(contents);
 }
 
@@ -327,16 +310,7 @@ void
 
 	static char
 		contents[64];
-	sprintf(
-		contents,
-		"%f %f %f %f %f %f",
-		value.linearMotion.x,
-		value.linearMotion.y,
-		value.linearMotion.z,
-		value.angularMotion.x,
-		value.angularMotion.y,
-		value.angularMotion.z
-	);
+	mc2::fmt::to_buf(contents, "{:f} {:f} {:f} {:f} {:f} {:f}", value.linearMotion.x, value.linearMotion.y, value.linearMotion.z, value.angularMotion.x, value.angularMotion.y, value.angularMotion.z);
 	Verify(strlen(contents) < sizeof(contents));
 	SetEntry(contents);
 }
@@ -385,13 +359,7 @@ void
 
 	static char
 		contents[32];
-	sprintf(
-		contents,
-		"%f %f %f",
-		value.red,
-		value.green,
-		value.blue
-	);
+	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", value.red, value.green, value.blue);
 	Verify(strlen(contents) < sizeof(contents));
 	SetEntry(contents);
 }
@@ -443,14 +411,7 @@ void
 
 	static char
 		contents[48];
-	sprintf(
-		contents,
-		"%f %f %f %f",
-		value.red,
-		value.green,
-		value.blue,
-		value.alpha
-	);
+	mc2::fmt::to_buf(contents, "{:f} {:f} {:f} {:f}", value.red, value.green, value.blue, value.alpha);
 	Verify(strlen(contents) < sizeof(contents));
 	SetEntry(contents);
 }

@@ -40,6 +40,7 @@ target_include_directories(render_state_contract_harness PRIVATE
     ${MC2_ROOT}/mclib
     ${MC2_ROOT}/RenderCore
     ${MC2_ROOT}/GameOS
+    ${MC2_ROOT}/GameOS/include        # mc2fmt.h (header-only; mclib/render_contract.cpp formats its buffers through it)
     ${MC2_ROOT}/3rdparty/include
 )
 

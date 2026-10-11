@@ -1,6 +1,7 @@
 // Multi shape layer: TG_TypeMultiShape loading: binary copy, ASE import, texture setup, save and destroy, with the asset-load audit events.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -656,7 +657,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
                 // sebi: looks like if there is only one texture then ASE_MATERIAL_BITMAP_ID has no index
 				// anyway original code is incorrect, because it passes i but has no format specifier for it
 				//sprintf(textId,"%s",ASE_MATERIAL_BITMAP_ID,i);
-				sprintf(textId, "%s", ASE_MATERIAL_BITMAP_ID);
+				mc2::fmt::to_buf(textId, "{}", mc2::fmt::safe(ASE_MATERIAL_BITMAP_ID));
 		
 				char *txmTemp = txmData;
 				txmData = strstr(txmData,textId);

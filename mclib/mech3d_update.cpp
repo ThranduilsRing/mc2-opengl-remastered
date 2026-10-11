@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 long Mech3DAppearance::update (bool animate) 
 {
@@ -337,10 +338,7 @@ long Mech3DAppearance::update (bool animate)
 								if (mc2_diag::tagEnabled("ANIM_CADENCE"))
 								{
 									char _ac_buf[256];
-									snprintf(_ac_buf, sizeof(_ac_buf),
-									         "{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"%p\",\"gesture\":%d,\"frame\":%u,\"frameInc\":%.4f,\"doubles\":%llu,\"advances\":%llu}",
-									         (void*)this, (int)currentGestureId, _ac_frame, frameInc,
-									         (unsigned long long)s_ac_doubles, (unsigned long long)s_ac_advances);
+									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr((void*)this), mc2::fmt::as_i32((int)currentGestureId), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64((unsigned long long)s_ac_doubles), mc2::fmt::as_u64((unsigned long long)s_ac_advances));
 									mc2_diag::writeEvent("ANIM_CADENCE", 1, (uint64_t)_ac_frame, _ac_buf);
 								}
 							}
@@ -406,7 +404,7 @@ long Mech3DAppearance::update (bool animate)
 	if (logFile && (inDebugMoveMode))
 	{
 		char msg[1024];
-		sprintf(msg,"Gesture: %d, Frame: %f, SGoal: %d, OGoal: %d, Rot: %f",currentGestureId,currentFrame,currentStateGoal,oldStateGoal,rotation);
+		mc2::fmt::to_buf(msg, "Gesture: {:d}, Frame: {:f}, SGoal: {:d}, OGoal: {:d}, Rot: {:f}", mc2::fmt::as_i32(currentGestureId), currentFrame, mc2::fmt::as_i32(currentStateGoal), mc2::fmt::as_i32(oldStateGoal), rotation);
 		logFile->writeLine(msg);
 	}
 #endif

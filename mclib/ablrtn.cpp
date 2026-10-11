@@ -13,6 +13,7 @@
 #include"platform_str.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -816,12 +817,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		static const bool s_compileFatal = mc2::gate::get<"MC2_ABL_COMPILE_FATAL">();
 		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
 			char fatalMsg[512];
-			snprintf(fatalMsg, sizeof(fatalMsg),
-				"[ABL_COMPILE_FATAL] file=%s syntaxErrors=%ld -- refusing to load a module that "
-				"failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). "
-				"Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute "
-				"errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).",
-				ModuleRegistry[NumModulesRegistered].fileName, errorCount);
+			mc2::fmt::to_buf(fatalMsg, "[ABL_COMPILE_FATAL] file={} syntaxErrors={:d} -- refusing to load a module that failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).", mc2::fmt::safe(ModuleRegistry[NumModulesRegistered].fileName), mc2::fmt::as_i32(errorCount));
 			fprintf(stderr, "%s\n", fatalMsg);
 			fflush(stderr);
 			printf("%s\n", fatalMsg);
@@ -1772,7 +1768,7 @@ void transState (SymTableNodePtr newState) {
 	if (CurFSM) {
 		CurFSM->setPrevState(CurFSM->getState());
 		CurFSM->setState(newState);
-		sprintf(SetStateDebugStr, "%s:%s, line %d", CurModule->getFileName(), newState->name, execLineNumber);
+		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(CurModule->getFileName()), mc2::fmt::safe(newState->name), mc2::fmt::as_i32(execLineNumber));
 		NewStateSet = true;
 	}
 }

@@ -44,6 +44,7 @@
 #include<stuff/stuff.hpp>
 #include<math.h>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 UserInput *userInput = nullptr;
@@ -64,7 +65,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	char realHackName[1024];
 	strcpy(realHackName,cursorFileName);
 	if (Environment.screenWidth <= 800)
-		sprintf(realHackName,"%sa",cursorFileName);
+		mc2::fmt::to_buf(realHackName, "{}a", mc2::fmt::safe(cursorFileName));
 
 	FullPathFileName cursorName;
 	cursorName.init(artPath,realHackName,".fit");
@@ -103,7 +104,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	for (long i=0;i<numCursors;i++)
 	{
 		ZoneScopedN("MouseCursorData::initCursors cursor");
-		sprintf( blockName, "Cursor%ld", i );
+		mc2::fmt::to_buf(blockName, "Cursor{:d}", mc2::fmt::as_i32(i));
 		{
 			ZoneScopedN("MouseCursorData::initCursors staticInfo");
 			cursorInfos[i].init( cursorFile, blockName,0,0,0x1);

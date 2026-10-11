@@ -1,6 +1,7 @@
 // TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile, LoadTGShapeFromASE), textures, imported meshes, camera/fog/light setup.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -109,7 +110,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		char numberData[256];
 
 		char vertexID[256];
-		sprintf(vertexID,"%s% 5d",ASE_MESH_VERTEX_ID,i);
+		mc2::fmt::to_buf(vertexID, "{}{: 5d}", mc2::fmt::safe(ASE_MESH_VERTEX_ID), mc2::fmt::as_i32(i));
 
 		char *vertexData = strstr((char *)aseBuffer,vertexID);
 		gosASSERT(vertexData != nullptr);
@@ -154,7 +155,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		char numberData[256];
 
 		char faceId[256];
-		sprintf(faceId,"%s% 5d:",ASE_MESH_FACE_ID,i);
+		mc2::fmt::to_buf(faceId, "{}{: 5d}:", mc2::fmt::safe(ASE_MESH_FACE_ID), mc2::fmt::as_i32(i));
 
 		char *faceData = strstr((char *)aseBuffer,faceId);
 		gosASSERT(faceData != nullptr);
@@ -200,7 +201,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		listOfTypeTriangles[i].renderStateFlags = 0;		//No Flags yet.
 
 		//
-		sprintf(faceId,"%s",ASE_NUM_TVFACES);
+		mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVFACES));
 
 		faceData = strstr((char *)aseBuffer,faceId);
 		if (faceData)
@@ -210,7 +211,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	
 			Stuff::Vector3D tVFaces;
 	
-			sprintf(faceId,"%s %d",ASE_MESH_TFACE_ID,i);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TFACE_ID), mc2::fmt::as_i32(i));
 	
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -228,12 +229,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(faceData,numberData);
 			tVFaces.z = (float)atol(numberData);
 	
-			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
+			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVERTEX));
 	
 			faceData = strstr((char *)aseBuffer,faceId);
 			gosASSERT(faceData != nullptr);
 	
-			sprintf(faceId,"%s %d",ASE_MESH_TVERT_ID,(int)tVFaces.x);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TVERT_ID), mc2::fmt::as_i32((int)tVFaces.x));
 	
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -266,12 +267,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 				listOfTypeTriangles[i].uvdata.v0 = 0.0f;
 			}
 	
-			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
+			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVERTEX));
 	
 			faceData = strstr((char *)aseBuffer,faceId);
 			gosASSERT(faceData != nullptr);
 	
-			sprintf(faceId,"%s %d",ASE_MESH_TVERT_ID,(int)tVFaces.y);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TVERT_ID), mc2::fmt::as_i32((int)tVFaces.y));
 	
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -302,12 +303,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 				listOfTypeTriangles[i].uvdata.v1 = 0.0f;
 			}
 	
-			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
+			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVERTEX));
 	
 			faceData = strstr((char *)aseBuffer,faceId);
 			gosASSERT(faceData != nullptr);
 	
-			sprintf(faceId,"%s %d",ASE_MESH_TVERT_ID,(int)tVFaces.z);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TVERT_ID), mc2::fmt::as_i32((int)tVFaces.z));
 	
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -349,7 +350,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		}
 
 
-		sprintf(faceId,"%s",ASE_NUM_CVFACES);
+		mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVFACES));
 
 		faceData = strstr((char *)aseBuffer,faceId);
 		if (faceData)
@@ -361,7 +362,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 			Stuff::Vector3D cVFaces;
 
-			sprintf(faceId,"%s %d",ASE_MESH_CFACE_ID,i);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_CFACE_ID), mc2::fmt::as_i32(i));
 
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -379,12 +380,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(faceData,numberData);
 			cVFaces.z = (float)atol(numberData);
 
-			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
+			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVERTEX));
 
 			faceData = strstr((char *)aseBuffer,faceId);
 			gosASSERT(faceData != nullptr);
 
-			sprintf(faceId,"%s %d",ASE_MESH_VERTCOL_ID,(int)cVFaces.x);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_VERTCOL_ID), mc2::fmt::as_i32((int)cVFaces.x));
 
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -410,12 +411,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 			listOfTypeVertices[listOfTypeTriangles[i].Vertices[0]].aRGBLight = (0xff << 24) + (redC << 16) + (greenC << 8) + blueC;
 
-			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
+			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVERTEX));
 
 			faceData = strstr((char *)aseBuffer,faceId);
 			gosASSERT(faceData != nullptr);
 
-			sprintf(faceId,"%s %d",ASE_MESH_VERTCOL_ID,(int)cVFaces.y);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_VERTCOL_ID), mc2::fmt::as_i32((int)cVFaces.y));
 
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -441,12 +442,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 			listOfTypeVertices[listOfTypeTriangles[i].Vertices[1]].aRGBLight = (0xff << 24) + (redC << 16) + (greenC << 8) + blueC;
 
-			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
+			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVERTEX));
 
 			faceData = strstr((char *)aseBuffer,faceId);
 			gosASSERT(faceData != nullptr);
 
-			sprintf(faceId,"%s %d",ASE_MESH_VERTCOL_ID,(int)cVFaces.z);
+			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_VERTCOL_ID), mc2::fmt::as_i32((int)cVFaces.z));
 
 			faceData = strstr(faceData,faceId);
 			gosASSERT(faceData != nullptr);
@@ -480,7 +481,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		}
 
 
-		sprintf(faceId,"%s %d",ASE_FACE_NORMAL_ID,i);
+		mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_FACE_NORMAL_ID), mc2::fmt::as_i32(i));
 		faceData = strstr((char *)aseBuffer,faceId);
 		gosASSERT(faceData != nullptr);		
 
@@ -498,7 +499,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		listOfTypeTriangles[i].faceNormal.y = (float)atof(numberData);
 
 		char vertexID[256];
-		sprintf(vertexID,"%s",ASE_VERTEX_NORMAL_ID);
+		mc2::fmt::to_buf(vertexID, "{}", mc2::fmt::safe(ASE_VERTEX_NORMAL_ID));
 		char *vertexData = strstr(faceData,vertexID);
 		GetNumberData(vertexData,numberData);
 		int vertexNum = atol(numberData);

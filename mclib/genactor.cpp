@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include "genactor_internal.h"
+#include "mc2fmt.h"
 
 
 //-----------------------------------------------------------------------------
@@ -104,7 +105,7 @@ void GenericAppearanceType::init (const char * fileName)
 	for (int i=0;i<MAX_GEN_ANIMATIONS;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Animation:%d",i);
+		mc2::fmt::to_buf(blockId, "Animation:{:d}", mc2::fmt::as_i32(i));
 		
 		result = iniFile.seekBlock(blockId);
 		if (result == NO_ERR)

@@ -1,6 +1,7 @@
 // ABL debugger: the statement / value printers, the execution trace hooks, showValue, assignVariable and the module-instance listing.
 // Declared in the class headers; shared names in abldbug_internal.h.
 #include "abldbug_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -359,11 +360,11 @@ long Debugger::traceDataStore (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		char valString[255];
 		sprintDataValue(valString, target, targetType);
 		if (idType->form == FRM_ARRAY)
-			sprintf(message, "STORE: (%d) %s [%d] -> %s[#] = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		//else if (idType->form == FRM_RECORD)
 		//	sprintf(message, "STORE AT LINE %d - %s.# = %s\n", execLineNumber, id->name, valString);
 		else
-			sprintf(message, "STORE: (%d) %s [%d] -> %s = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
 		if (((WatchPtr)id->info)->breakOnStore)
 			debugMode();
@@ -381,11 +382,11 @@ long Debugger::traceDataFetch (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		char valString[255];
 		sprintDataValue(valString, data, idType);
 		if (idTypePtr->form == FRM_ARRAY)
-			sprintf(message, "FETCH: (%d) %s [%d] - %s[#] = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		//else if (idTypePtr->form == FRM_RECORD)
 		//	sprintf(message, "STORE AT LINE %d - %s.# = %s\n", id->name, valString);
 		else
-			sprintf(message, "FETCH: (%d) %s [%d] - %s = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
 		if (((WatchPtr)id->info)->breakOnFetch)
 			debugMode();

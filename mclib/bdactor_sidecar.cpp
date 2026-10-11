@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: building PBR sidecar loaders, footprint shadow and override render-shape texture residency.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "mc2fmt.h"
 
 bool buildingPbrGateEnabled()
 {
@@ -175,12 +176,12 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const cha
 	const bool hadYaw = mc2::gate::isSet<"MC2_GLTF_YAW_DEG">();
 	const float oldYawNumber = mc2::gate::get<"MC2_GLTF_YAW_DEG">();
 	if (hasAxis) {
-		snprintf(axisValue, sizeof(axisValue), "%d", axis);
+		mc2::fmt::to_buf(axisValue, "{:d}", mc2::fmt::as_i32(axis));
 		_putenv_s("MC2_GLTF_AXIS", axisValue);
 		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
 	if (hasYaw) {
-		snprintf(yawValue, sizeof(yawValue), "%.3f", yawDegrees);
+		mc2::fmt::to_buf(yawValue, "{:.3f}", yawDegrees);
 		_putenv_s("MC2_GLTF_YAW_DEG", yawValue);
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}

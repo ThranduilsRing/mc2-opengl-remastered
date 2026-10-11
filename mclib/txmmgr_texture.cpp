@@ -1,6 +1,7 @@
 // MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload).
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include "mc2fmt.h"
 
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
@@ -662,10 +663,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		{
 			{
 				char _cbbuf[256];
-				snprintf(_cbbuf, sizeof(_cbbuf),
-					"[TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u",
-					nodeName ? nodeName : "<null>",
-					(unsigned)gosTextureHandle, (unsigned)lzCompSize);
+				mc2::fmt::to_buf(_cbbuf, "[TXM] zero-width texture node: nodeName={} handle={:d} lzCompSize={:d}", mc2::fmt::safe(nodeName ? nodeName : "<null>"), mc2::fmt::as_u32((unsigned)gosTextureHandle), mc2::fmt::as_u32((unsigned)lzCompSize));
 				puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
 			}
 			PAUSE(("txmmgr: Textur has zero width!"));

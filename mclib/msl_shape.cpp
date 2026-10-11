@@ -1,6 +1,7 @@
 // Multi shape layer: TG_MultiShape texture handles, node rotation and position queries, light list, render, shadows, detach and child tests.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -32,7 +33,7 @@ long TG_TypeMultiShape::GetTextureName (DWORD textureNum, char *tName, long name
 	_splitpath(listOfTextures[textureNum].textureName,nullptr,nullptr,baseName,extension);
 
 	char basePath[1024];
-	sprintf(basePath,"%s%s",baseName,extension);
+	mc2::fmt::to_buf(basePath, "{}{}", mc2::fmt::safe(baseName), mc2::fmt::safe(extension));
 
 	if (nameLength < (strlen(basePath)+1))
 		return static_cast<long>(strlen(basePath)+1);

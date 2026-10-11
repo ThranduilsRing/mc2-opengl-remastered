@@ -1,6 +1,7 @@
 // Terrain: Terrain::init (mission terrain load), the block / mover list helpers it uses.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -287,8 +288,7 @@ void Terrain::lodControlMap() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(cmPath, sizeof(cmPath),
-				         "data/missions/%s.beauty/control_map.png", stem);
+				mc2::fmt::to_buf(cmPath, "data/missions/{}.beauty/control_map.png", mc2::fmt::safe(stem));
 			}
 			FILE* cf = fopen(cmPath, "rb");
 			if (!cf)
@@ -388,8 +388,7 @@ void Terrain::lodOverlayV2() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(ovPath, sizeof(ovPath),
-				         "data/missions/%s.beauty/overlay_v2.png", stem);
+				mc2::fmt::to_buf(ovPath, "data/missions/{}.beauty/overlay_v2.png", mc2::fmt::safe(stem));
 			}
 			FILE* of = fopen(ovPath, "rb");
 			if (!of)
@@ -443,7 +442,7 @@ void Terrain::lodOverlayV2() {
 							float bTLX = -halfMapOv, bTLY = halfMapOv;
 							float bSizeX = 2.0f * halfMapOv, bSizeY = 2.0f * halfMapOv;
 							char boundsPath[620];
-							snprintf(boundsPath, sizeof(boundsPath), "%s", ovPath);
+							mc2::fmt::to_buf(boundsPath, "{}", mc2::fmt::safe(ovPath));
 							size_t plen = strlen(boundsPath);
 							if (plen > 4 && strcmp(boundsPath + plen - 4, ".png") == 0)
 								boundsPath[plen - 4] = '\0';
@@ -527,8 +526,7 @@ void Terrain::lodShorelineMask() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(slPath, sizeof(slPath),
-				         "data/missions/%s.beauty/shoreline_mask.png", stem);
+				mc2::fmt::to_buf(slPath, "data/missions/{}.beauty/shoreline_mask.png", mc2::fmt::safe(stem));
 			}
 			FILE* sf = fopen(slPath, "rb");
 			if (!sf)
@@ -587,7 +585,7 @@ void Terrain::lodShorelineMask() {
 							float sTLX = -halfMapSl, sTLY = halfMapSl;
 							float sSizeX = 2.0f * halfMapSl, sSizeY = 2.0f * halfMapSl;
 							char sBoundsPath[620];
-							snprintf(sBoundsPath, sizeof(sBoundsPath), "%s", slPath);
+							mc2::fmt::to_buf(sBoundsPath, "{}", mc2::fmt::safe(slPath));
 							size_t splen = strlen(sBoundsPath);
 							if (splen > 4 && strcmp(sBoundsPath + splen - 4, ".png") == 0)
 								sBoundsPath[splen - 4] = '\0';
@@ -654,8 +652,7 @@ void Terrain::lodWaterShore() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(wsPath, sizeof(wsPath),
-				         "data/missions/%s.beauty/visual_height_4x.r32", stem);
+				mc2::fmt::to_buf(wsPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
 			FILE* wf = fopen(wsPath, "rb");  // path-audit: loose-only
 			if (!wf)
@@ -746,8 +743,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(vhPath, sizeof(vhPath),
-				         "data/missions/%s.beauty/visual_height_4x.r32", stem);
+				mc2::fmt::to_buf(vhPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
 			FILE* vf = fopen(vhPath, "rb");
 			if (!vf)
@@ -800,8 +796,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							if (mSlash)
 							{
 								size_t dirLen = (size_t)(mSlash + 1 - mipPath);
-								snprintf(mipPath + dirLen, sizeof(mipPath) - dirLen,
-								         "visual_height_mips.r32");
+								mc2::fmt::to_buf_n(mipPath + dirLen, sizeof(mipPath) - dirLen, "visual_height_mips.r32");
 								FILE* mf = fopen(mipPath, "rb");
 								if (mf)
 								{
@@ -958,14 +953,12 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							if (s_objfadeGate)
 							{
 								char dampPath[600];
-								snprintf(dampPath, sizeof(dampPath), "%s", vhPath);
+								mc2::fmt::to_buf(dampPath, "{}", mc2::fmt::safe(vhPath));
 								char* bs2 = strrchr(dampPath, '\\');
 								char* fs2 = strrchr(dampPath, '/');
 								char* slash2 = (fs2 > bs2) ? fs2 : bs2;
 								if (slash2)
-									snprintf(slash2 + 1,
-									         sizeof(dampPath) - (size_t)(slash2 + 1 - dampPath),
-									         "visual_damp.r32");
+									mc2::fmt::to_buf_n(slash2 + 1, sizeof(dampPath) - (size_t)(slash2 + 1 - dampPath), "visual_damp.r32");
 								std::vector<float> damp((size_t)mapSide * (size_t)mapSide, 1.0f);
 								bool haveSidecar = false;
 								if (FILE* df = fopen(dampPath, "rb"))

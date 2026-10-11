@@ -1,6 +1,7 @@
 // Terrain: Terrain::update with the LOD chunk selection and morph factor helpers.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 // Phase 7.5 diagnostic: streak counter for frames where LOD chunk is enabled
@@ -725,7 +726,7 @@ long Terrain::update (void)
 				for (int by2 = 0; by2 < s_terrainChunkSide && pos < 200; ++by2)
 					for (int bx2 = 0; bx2 < s_terrainChunkSide && pos < 200; ++bx2)
 						if (blockMask & (1u << (by2 * s_terrainChunkSide + bx2)))
-							pos += snprintf(buf + pos, sizeof(buf) - pos, "(%d,%d)", bx2, by2);
+							pos += mc2::fmt::to_buf_n(buf + pos, sizeof(buf) - pos, "({:d},{:d})", mc2::fmt::as_i32(bx2), mc2::fmt::as_i32(by2));
 				buf[pos] = '\0';
 				// Camera east/north already computed above as eyeX/eyeY.
 				printf("[BlockSet] frame=%lu cmds=%d cam=(%.0f,%.0f) blocks=%s\n",

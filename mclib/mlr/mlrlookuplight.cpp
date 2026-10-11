@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include "mc2fmt.h"
 
 //#############################################################################
 //#########################    MLRLookUpLight    ################################
@@ -184,15 +185,15 @@ void
 
 	char data[256];
 
-	sprintf(data, "%f %f %f", mapOrigin.x, mapOrigin.y, mapOrigin.z);
+	mc2::fmt::to_buf(data, "{:f} {:f} {:f}", mapOrigin.x, mapOrigin.y, mapOrigin.z);
 	Verify(strlen(data) < sizeof(data));
 	page->SetEntry("MapOrigin", data);
 
-	sprintf(data, "%d %d", mapZoneCountX, mapZoneCountZ);
+	mc2::fmt::to_buf(data, "{:d} {:d}", mc2::fmt::as_i32(mapZoneCountX), mc2::fmt::as_i32(mapZoneCountZ));
 	Verify(strlen(data) < sizeof(data));
 	page->SetEntry("MapSize", data);
 
-	sprintf(data, "%f %f", zoneSizeX, zoneSizeZ);
+	mc2::fmt::to_buf(data, "{:f} {:f}", zoneSizeX, zoneSizeZ);
 	Verify(strlen(data) < sizeof(data));
 	page->SetEntry("ZoneSize", data);
 

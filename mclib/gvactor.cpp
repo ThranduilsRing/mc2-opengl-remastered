@@ -11,6 +11,7 @@
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
@@ -88,8 +89,8 @@ void GVAppearanceType::init (const char * fileName)
 		{
 			char baseName[256];
 			char baseLODDist[256];
-			sprintf(baseName,"FileName%d",i);
-			sprintf(baseLODDist,"Distance%d",i);
+			mc2::fmt::to_buf(baseName, "FileName{:d}", mc2::fmt::as_i32(i));
+			mc2::fmt::to_buf(baseLODDist, "Distance{:d}", mc2::fmt::as_i32(i));
 			
 			result = iniFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
@@ -209,7 +210,7 @@ void GVAppearanceType::init (const char * fileName)
 	for (long i=0;i<MAX_GV_ANIMATIONS;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Animation:%d",i);
+		mc2::fmt::to_buf(blockId, "Animation:{:d}", mc2::fmt::as_i32(i));
 		
 		result = iniFile.seekBlock(blockId);
 		if (result == NO_ERR)
@@ -285,7 +286,7 @@ void GVAppearanceType::init (const char * fileName)
 	for (int i=1;i<=numSmokeNodes;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Smoke_%02d",i);
+		mc2::fmt::to_buf(blockId, "Smoke_{:02d}", mc2::fmt::as_i32(i));
 			
 		nodeData[i-1].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1); 
 		gosASSERT(nodeData[i-1].nodeId != nullptr);
@@ -297,7 +298,7 @@ void GVAppearanceType::init (const char * fileName)
 	for (int i=1;i<=numWeaponNodes;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Weapon_%02d",i);
+		mc2::fmt::to_buf(blockId, "Weapon_{:02d}", mc2::fmt::as_i32(i));
 		
 		nodeData[(i-1)+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
 		gosASSERT(nodeData[(i-1)+numSmokeNodes].nodeId != nullptr);
@@ -310,7 +311,7 @@ void GVAppearanceType::init (const char * fileName)
 	for (int i=1;i<=numFootNodes;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"FootNode_%02d",i);
+		mc2::fmt::to_buf(blockId, "FootNode_{:02d}", mc2::fmt::as_i32(i));
 			
 		nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);       
 		gosASSERT(nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId != nullptr);

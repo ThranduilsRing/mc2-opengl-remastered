@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearanceType and TreeAppearanceType init/destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "mc2fmt.h"
 
 void BldgAppearanceType::init (const char * fileName)
 {
@@ -90,8 +91,8 @@ void BldgAppearanceType::init (const char * fileName)
 		{
 			char baseName[256];
 			char baseLODDist[256];
-			sprintf(baseName,"FileName%d",i);
-			sprintf(baseLODDist,"Distance%d",i);
+			mc2::fmt::to_buf(baseName, "FileName{:d}", mc2::fmt::as_i32(i));
+			mc2::fmt::to_buf(baseLODDist, "Distance{:d}", mc2::fmt::as_i32(i));
 
 			result = iniFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
@@ -182,9 +183,7 @@ void BldgAppearanceType::init (const char * fileName)
 #ifdef ENABLE_ASSIMP_IMPORTER
 			bldgRenderShape = new TG_TypeMultiShape;
 			char overridePath[1024];
-			snprintf(overridePath, sizeof(overridePath), "%s/%s",
-			         ov->manifestDir.c_str(),
-			         ov->sourceRelPath.c_str());
+			mc2::fmt::to_buf(overridePath, "{}/{}", ov->manifestDir.c_str(), ov->sourceRelPath.c_str());
 			// Guard the importer: Assimp may throw (DeadlyImportError). A throw
 			// here would leak the freshly-new'd render shape and unwind into
 			// non-exception-safe engine code, so collapse any throw to stock.
@@ -211,7 +210,7 @@ void BldgAppearanceType::init (const char * fileName)
 					if (buildingPbrGateEnabled())
 					{
 						char sidecarPath[1024];
-						snprintf(sidecarPath, sizeof(sidecarPath), "%s", overridePath);
+						mc2::fmt::to_buf(sidecarPath, "{}", mc2::fmt::safe(overridePath));
 						char* dot = strrchr(sidecarPath, '.');
 						if (dot)
 							strcpy(dot, ".mcasset.json");
@@ -332,7 +331,7 @@ void BldgAppearanceType::init (const char * fileName)
 	for (int i=0;i<MAX_BD_ANIMATIONS;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Animation:%d",i);
+		mc2::fmt::to_buf(blockId, "Animation:{:d}", mc2::fmt::as_i32(i));
 		
 		result = iniFile.seekBlock(blockId);
 		if (result == NO_ERR)
@@ -406,7 +405,7 @@ void BldgAppearanceType::init (const char * fileName)
 		for (int i=0;i<MAX_WEAPON_NODES;i++)
 		{
 			char blockId[512];
-			sprintf(blockId,"WeaponNodeId%d",i);
+			mc2::fmt::to_buf(blockId, "WeaponNodeId{:d}", mc2::fmt::as_i32(i));
 			
 			char weaponName[512];
 			result = iniFile.readIdString(blockId,weaponName,511);
@@ -540,8 +539,8 @@ void TreeAppearanceType::init (const char * fileName)
 		{
 			char baseName[256];
 			char baseLODDist[256];
-			sprintf(baseName,"FileName%d",i);
-			sprintf(baseLODDist,"Distance%d",i);
+			mc2::fmt::to_buf(baseName, "FileName{:d}", mc2::fmt::as_i32(i));
+			mc2::fmt::to_buf(baseLODDist, "Distance{:d}", mc2::fmt::as_i32(i));
 
 			result = iniFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
@@ -631,9 +630,7 @@ void TreeAppearanceType::init (const char * fileName)
 			// getTreeRenderShape(any) → LOD0 → identical to pre-LOD behavior.
 			treeRenderShape[0] = new TG_TypeMultiShape;
 			char overridePath[1024];
-			snprintf(overridePath, sizeof(overridePath), "%s/%s",
-			         ov->manifestDir.c_str(),
-			         ov->sourceRelPath.c_str());
+			mc2::fmt::to_buf(overridePath, "{}/{}", ov->manifestDir.c_str(), ov->sourceRelPath.c_str());
 			// Guard the importer: Assimp may throw (DeadlyImportError). A throw
 			// here would leak the freshly-new'd render shape and unwind into
 			// non-exception-safe engine code, so collapse any throw to stock.
@@ -690,9 +687,7 @@ void TreeAppearanceType::init (const char * fileName)
 							continue;
 						}
 						char lodPath[1024];
-						snprintf(lodPath, sizeof(lodPath), "%s/%s",
-						         ov->manifestDir.c_str(),
-						         lentry.sourceRelPath.c_str());
+						mc2::fmt::to_buf(lodPath, "{}/{}", ov->manifestDir.c_str(), lentry.sourceRelPath.c_str());
 						treeRenderShape[li] = new TG_TypeMultiShape;
 						try {
 							long lr = ImportGeometryFromFile(lodPath, treeRenderShape[li]);

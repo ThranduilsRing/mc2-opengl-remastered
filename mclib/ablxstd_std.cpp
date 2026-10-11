@@ -1,6 +1,7 @@
 // ABL standard routines: the return, print, concat, math, file, module, random and state-handle standard routines.
 // Declared in the class headers; shared names in ablxstd_internal.h.
 #include "ablxstd_internal.h"
+#include "mc2fmt.h"
 
 
 //***************************************************************************
@@ -149,26 +150,26 @@ void execStdPrint (void) {
 	char buffer[20];
 	char* s = buffer;
 	if (paramTypePtr == IntegerTypePtr)
-		sprintf(buffer, "%d", tos->integer);
+		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(tos->integer));
 	else if (paramTypePtr == BooleanTypePtr)
-		sprintf(buffer, "%s", tos->integer ? "true" : "false");
+		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(tos->integer ? "true" : "false"));
 	else if (paramTypePtr == CharTypePtr)
-		sprintf(buffer, "%c", tos->byte);
+		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(tos->byte));
 	else if (paramTypePtr == RealTypePtr)
-		sprintf(buffer, "%.4f", tos->real);
+		mc2::fmt::to_buf(buffer, "{:.4f}", tos->real);
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
 		s = (char*)tos->address;
 	pop();
 
 	if (debugger) {
 		char message[512];
-		sprintf(message, "PRINT:  \"%s\"", s);
+		mc2::fmt::to_buf(message, "PRINT:  \"{}\"", mc2::fmt::safe(s));
 		debugger->print(message);
-		sprintf(message, "   MODULE %s", CurModule->getName());
+		mc2::fmt::to_buf(message, "   MODULE {}", mc2::fmt::safe(CurModule->getName()));
 		debugger->print(message);
-		sprintf(message, "   FILE %s", CurModule->getSourceFile(FileNumber));
+		mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
 		debugger->print(message);
-		sprintf(message, "   LINE %d", execLineNumber);
+		mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(execLineNumber));
 		debugger->print(message);
 		}
 /*	else if (TACMAP) {
@@ -212,19 +213,19 @@ TypePtr execStdConcat (void) {
 	TypePtr paramTypePtr = execExpression();
 	char buffer[20];
 	if (paramTypePtr == IntegerTypePtr) {
-		sprintf(buffer, "%d", tos->integer);
+		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(tos->integer));
 		strcat(dest, buffer);
 		}
 	else if (paramTypePtr == CharTypePtr) {
-		sprintf(buffer, "%c", tos->byte);
+		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(tos->byte));
 		strcat(dest, buffer);
 		}
 	else if (paramTypePtr == RealTypePtr) {
-		sprintf(buffer, "%.2f", tos->real);
+		mc2::fmt::to_buf(buffer, "{:.2f}", tos->real);
 		strcat(dest, buffer);
 		}
 	else if (paramTypePtr == BooleanTypePtr) {
-		sprintf(buffer, "%s", tos->integer ? "true" : "false");
+		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(tos->integer ? "true" : "false"));
 		strcat(dest, buffer);
 		}
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
@@ -378,18 +379,18 @@ void execStdFatal (void) {
 
 	char message[512];
 	if (debugger) {
-		sprintf(message, "FATAL:  [%d] \"%s\"", code, s);
+		mc2::fmt::to_buf(message, "FATAL:  [{:d}] \"{}\"", mc2::fmt::as_i32(code), mc2::fmt::safe(s));
 		debugger->print(message);
-		sprintf(message, "   MODULE (%d) %s", CurModule->getId(), CurModule->getName());
+		mc2::fmt::to_buf(message, "   MODULE ({:d}) {}", mc2::fmt::as_i32(CurModule->getId()), mc2::fmt::safe(CurModule->getName()));
 		debugger->print(message);
-		sprintf(message, "   FILE %s", CurModule->getSourceFile(FileNumber));
+		mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
 		debugger->print(message);
-		sprintf(message, "   LINE %d", execLineNumber);
+		mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(execLineNumber));
 		debugger->print(message);
 		debugger->debugMode();
 		}
 	else {
-		sprintf(message, "ABL FATAL: [%d] %s", code, s);
+		mc2::fmt::to_buf(message, "ABL FATAL: [{:d}] {}", mc2::fmt::as_i32(code), mc2::fmt::safe(s));
 		ABL_Fatal(0, s);
 	}
 }
@@ -425,18 +426,18 @@ void execStdAssert (void) {
 	if (!expression) {
 		char message[512];
 		if (debugger) {
-			sprintf(message, "ASSERT:  [%d] \"%s\"", code, s);
+			mc2::fmt::to_buf(message, "ASSERT:  [{:d}] \"{}\"", mc2::fmt::as_i32(code), mc2::fmt::safe(s));
 			debugger->print(message);
-			sprintf(message, "   MODULE (%d) %s", CurModule->getId(), CurModule->getName());
+			mc2::fmt::to_buf(message, "   MODULE ({:d}) {}", mc2::fmt::as_i32(CurModule->getId()), mc2::fmt::safe(CurModule->getName()));
 			debugger->print(message);
-			sprintf(message, "   FILE %s", CurModule->getSourceFile(FileNumber));
+			mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
 			debugger->print(message);
-			sprintf(message, "   LINE %d", execLineNumber);
+			mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(execLineNumber));
 			debugger->print(message);
 			debugger->debugMode();
 			}
 		else {
-			sprintf(message, "ABL ASSERT: [%d] %s", code, s);
+			mc2::fmt::to_buf(message, "ABL ASSERT: [{:d}] {}", mc2::fmt::as_i32(code), mc2::fmt::safe(s));
 			ABL_Fatal(0, message);
 		}
 	}

@@ -1,6 +1,7 @@
 // Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -329,7 +330,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 			animScan = strstr(animScan,ASE_ANIMATION);
 	
 			char nodeName[512];
-			sprintf(nodeName,"*NODE_NAME \"%s\"",nodeId);
+			mc2::fmt::to_buf(nodeName, "*NODE_NAME \"{}\"", mc2::fmt::safe(nodeId));
 			while (animScan != nullptr)
 			{
 				animScan += strlen(ASE_ANIMATION)+1;
@@ -413,7 +414,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 						for (long j=0;j<listOfAnimation[i].numFrames;j++)
 						{
 							char *scanData;
-							sprintf(nodeName,"%s %d",ASE_ANIM_POS_SAMPLE,(int)timeStamp);
+							mc2::fmt::to_buf(nodeName, "{} {:d}", mc2::fmt::safe(ASE_ANIM_POS_SAMPLE), mc2::fmt::as_i32((int)timeStamp));
 							scanData = strstr(LineData,nodeName);
 		
 							if (scanData)
@@ -485,7 +486,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 						for (long j=0;j<listOfAnimation[i].numFrames;j++)
 						{
 							char *scanData;
-							sprintf(nodeName,"%s %d",ASE_ANIM_ROT_SAMPLE,(int)timeStamp);
+							mc2::fmt::to_buf(nodeName, "{} {:d}", mc2::fmt::safe(ASE_ANIM_ROT_SAMPLE), mc2::fmt::as_i32((int)timeStamp));
 							scanData = strstr(LineData,nodeName);
 		
 							Stuff::UnitQuaternion thisFrame;

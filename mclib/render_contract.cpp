@@ -34,6 +34,7 @@
 #include "RenderCore/terrain_subpass_contract.h"   // dominantTerrainPathLive / terrainPathsThatDrew
 #include "RenderCore/top_level_pass_executor.h"    // SAME-ORDER-EXECUTOR-VALIDATE-1 descriptor table
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace render_contract {
 
@@ -489,7 +490,7 @@ static void checkDrawBuffer(GLenum query, bool required,
     glGetIntegerv(query, &buf);
     if (buf == GL_NONE) {
         char msg[128];
-        std::snprintf(msg, sizeof(msg), "%s required but draw buffer is GL_NONE", slotName);
+        mc2::fmt::to_buf(msg, "{} required but draw buffer is GL_NONE", mc2::fmt::safe(slotName));
         fatalContractViolation(passName, hint, msg);
     }
 }

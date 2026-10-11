@@ -1,6 +1,7 @@
 // TerrainColorMap: fractal base mesh, shadow burn-in, detail / water texture reset and light recalc, and the base texture reset.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -145,7 +146,7 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	
 	//Save dstData as the height map.
 	char newName[1024];
-	sprintf(newName,"%s.height",fileName);
+	mc2::fmt::to_buf(newName, "{}.height", mc2::fmt::safe(fileName));
 		
 	FullPathFileName heightName;
 	heightName.init(terrainPath,newName,".tga");
@@ -256,7 +257,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 	if (fileName)
 	{
 		char newName[1024];
-		sprintf(newName,"%s.height",fileName);
+		mc2::fmt::to_buf(newName, "{}.height", mc2::fmt::safe(fileName));
 		
 		FullPathFileName heightName;
 		heightName.init(terrainPath,newName,".tga");
@@ -803,7 +804,7 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	if (!textureIsOKFormat(fileName))
 	{
 		char msg[2048];
-		sprintf(msg,"Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!",fileName);
+		mc2::fmt::to_buf(msg, "Texture {} is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!", mc2::fmt::safe(fileName));
 		mc2MessageBox( msg, nullptr, MBOK, IDOK );
 		return;
 	}
@@ -816,7 +817,7 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	// Detail texture is named same as colormap with .detail in name.
 	// if no file exists, no texture drawn.
 	char dName[1024];
-	sprintf(dName,"%s.detail",fileName);
+	mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
 		
 	FullPathFileName detailFile;
 	detailFile.init(texturePath,dName,".tga");
@@ -834,7 +835,7 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	if (!textureIsOKFormat(fileName))
 	{
 		char msg[2048];
-		sprintf(msg,"Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!",fileName);
+		mc2::fmt::to_buf(msg, "Texture {} is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!", mc2::fmt::safe(fileName));
 		mc2MessageBox( msg, nullptr, MBOK, IDOK );
 		return;
 	}
@@ -847,7 +848,7 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	// Water texture is named the same as the colormap with .water in name.
 	// If no file exists, no texture drawn!!
 	char dName[1024];
-	sprintf(dName,"%s.water",fileName);
+	mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
 	
 	FullPathFileName waterFile;
 	waterFile.init(texturePath,dName,".tga");
@@ -877,7 +878,7 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 		{
 			strcpy(waterFile, fileName);
 			char dName[1024];
-			sprintf(dName,"%04d.tga",i);
+			mc2::fmt::to_buf(dName, "{:04d}.tga", mc2::fmt::as_i32(i));
 			char *subStringToBeReplaced = &(waterFile[strlen(waterFile)-strlen("0000.tga")]);
 			strcpy(subStringToBeReplaced, dName);
 		}
@@ -925,7 +926,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 	colorMapName.init(texturePath,fileName,".tga");
 		
 	char newName[1024];
-	sprintf(newName,"%s.burnin",fileName);
+	mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 	FullPathFileName burnInName;
 	burnInName.init(texturePath,newName,".tga");
@@ -1078,7 +1079,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	colorMapName.init(texturePath,fileName,".tga");
 		
 	char newName[1024];
-	sprintf(newName,"%s.burnin",fileName);
+	mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 	FullPathFileName burnInName;
 	burnInName.init(texturePath,newName,".tga");
@@ -1249,13 +1250,13 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	ktx2ColormapPath[0] = '\0';
 	if (useKtx2Colormap()) {
 		char ktx2Name[1024];
-		snprintf(ktx2Name, sizeof(ktx2Name), "%s.burnin", fileName);
+		mc2::fmt::to_buf(ktx2Name, "{}.burnin", mc2::fmt::safe(fileName));
 		FullPathFileName ktx2Path;
 		ktx2Path.init(texturePath, ktx2Name, ".ktx2");
 		FILE* probe = std::fopen((const char*)ktx2Path, "rb");
 		if (probe) {
 			fclose(probe);
-			snprintf(ktx2ColormapPath, sizeof(ktx2ColormapPath), "%s", (const char*)ktx2Path);
+			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe((const char*)ktx2Path));
 			printf("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar %s\n", ktx2ColormapPath);
 		}
 	}

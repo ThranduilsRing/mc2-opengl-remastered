@@ -1,6 +1,7 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -23,7 +24,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		colorMapName.init(texturePath,fileName,".tga");
 		
 		char newName[1024];
-		sprintf(newName,"%s.burnin",fileName);
+		mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 		FullPathFileName burnInName;
 		burnInName.init(texturePath,newName,".tga");
@@ -165,7 +166,7 @@ long TerrainColorMap::init (char *fileName)
 		// Detail texture is named same as colormap with .detail in name.
 		// if no file exists, no texture drawn.
 		char dName[1024];
-		sprintf(dName,"%s.detail",fileName);
+		mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
 		
 		FullPathFileName detailFile;
 		detailFile.init(texturePath,dName,".tga");
@@ -188,7 +189,7 @@ long TerrainColorMap::init (char *fileName)
 		//Ok, now load up the water texture.
 		// Water texture is named the same as the colormap with .water in name.
 		// If no file exists, no texture drawn!!
-		sprintf(dName,"%s.water",fileName);
+		mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
 		
 		FullPathFileName waterFile;
 		waterFile.init(texturePath,dName,".tga");
@@ -213,9 +214,9 @@ long TerrainColorMap::init (char *fileName)
 		// Where 0000 is the frame number of the animation for the water detail.
 		// If the first frame does not exist, no texture is drawn!!
 		char waterDetailBaseName[1024];
-		sprintf(waterDetailBaseName,"%s.water",fileName);
+		mc2::fmt::to_buf(waterDetailBaseName, "{}.water", mc2::fmt::safe(fileName));
 		{
-			sprintf(dName,"%s%04d",waterDetailBaseName,0);
+			mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 			
 			FullPathFileName waterFile;
 			waterFile.init(texturePath,dName,".tga");
@@ -229,7 +230,7 @@ long TerrainColorMap::init (char *fileName)
 		{
 			waterDetailNodeIndex[i] = 0xffffffff;
 		}
-		sprintf(dName,"%s%04d",waterDetailBaseName,0);
+		mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 		waterFile.init(texturePath,dName,".tga");
 		{ ZoneScopedN("TerrainColorMap::init waterDetailTextures"); resetWaterDetailTextures((const char *)waterFile); }
 
@@ -263,7 +264,7 @@ long TerrainColorMap::init (char *fileName)
 		colorMapName.init(texturePath,fileName,".tga");
 		
 		char newName[1024];
-		sprintf(newName,"%s.burnin",fileName);
+		mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 		FullPathFileName burnInName;
 		burnInName.init(texturePath,newName,".tga");
@@ -506,13 +507,13 @@ long TerrainColorMap::init (char *fileName)
 	ktx2ColormapPath[0] = '\0';
 	if (cpuColorMap && useKtx2Colormap()) {
 		char ktx2Name[1024];
-		snprintf(ktx2Name, sizeof(ktx2Name), "%s.burnin", fileName);
+		mc2::fmt::to_buf(ktx2Name, "{}.burnin", mc2::fmt::safe(fileName));
 		FullPathFileName ktx2Path;
 		ktx2Path.init(texturePath, ktx2Name, ".ktx2");
 		FILE* probe = std::fopen((const char*)ktx2Path, "rb");
 		if (probe) {
 			fclose(probe);
-			snprintf(ktx2ColormapPath, sizeof(ktx2ColormapPath), "%s", (const char*)ktx2Path);
+			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe((const char*)ktx2Path));
 			printf("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar %s\n", ktx2ColormapPath);
 		}
 	}
@@ -556,7 +557,7 @@ long TerrainColorMap::init (char *fileName)
 		char *nmFileName = Terrain::colorMapName ? Terrain::colorMapName : Terrain::terrainName;
 		if (!nmFileName) nmFileName = fileName;
 		char nmName[1024];
-		sprintf(nmName, "%s.normalmap", nmFileName);
+		mc2::fmt::to_buf(nmName, "{}.normalmap", mc2::fmt::safe(nmFileName));
 		FullPathFileName normalMapPath;
 		normalMapPath.init(texturePath, nmName, ".tga");
 

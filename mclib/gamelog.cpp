@@ -25,6 +25,7 @@
 #include<stdio.h>
 #include"platform_str.h"
 #include<gameos.hpp>
+#include "mc2fmt.h"
 
 bool isSetup = false;
 
@@ -66,7 +67,7 @@ void GameLog::close (void) {
 	if (filePtr && inUse) {
 		dump();
 		char s[512];
-		sprintf(s, "\nNum Total Lines = %d\n", totalLines);
+		mc2::fmt::to_buf(s, "\nNum Total Lines = {:d}\n", mc2::fmt::as_i32(totalLines));
 		filePtr->writeString(s);
 		filePtr->close();
 		inUse = false;

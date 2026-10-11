@@ -16,6 +16,7 @@ HSTRRES gosResourceHandle = 0;
 #include"inifile.h"
 #include"mclib.h"
 #include"../GameOS/gameos/gos_profiler.h"
+#include "mc2fmt.h"
 
 
 #pragma warning(disable:4514)
@@ -278,7 +279,7 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 		if ( NO_ERR != file.seekBlock( blockName ) )
 		{
 			char errBuffer[256];
-			sprintf( errBuffer, "couldn't find static block %s", blockName );
+			mc2::fmt::to_buf(errBuffer, "couldn't find static block {}", mc2::fmt::safe(blockName));
 			Assert( 0, 0, errBuffer );
 			return;
 		}
