@@ -516,7 +516,7 @@ void __stdcall gosVideo_Command( HGOSVIDEO Handle, enum gosVideo_Command vc, flo
 // overall volume and panning is handled on channel -1. Use the define below for
 // legibility.
 //
-#define gosAudio_Mixer -1
+inline constexpr int gosAudio_Mixer = -1;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // These properties can be assigned to any channel via the gosAudio_AllocateChannelSliders
@@ -1498,7 +1498,7 @@ enum gosForce
 	gosForce_SawtoothDown
 };
 
-#define gosFOREVER -1.0f
+inline constexpr float gosFOREVER = -1.0f;
 
 typedef struct
 {
@@ -3577,22 +3577,22 @@ bool gos_GetDisplayModeByIndex(int DisplayIndex, int ModeIndex, int* XRes, int* 
 // Internal functions and types - Used by GameOS, not to be called or used by applications
 //
 //
-#define gos_ErrorNoContinue		1	// No CONTINUE is allowed from errors
+inline constexpr int gos_ErrorNoContinue = 1;	// No CONTINUE is allowed from errors
 #define gos_ErrorNoRegisters	2	// Register are not valid (takes address from where called)
-#define gos_ErrorAssert			4	// Set to signify assert ( assumes gos_ErrorNoRegisters )
+inline constexpr int gos_ErrorAssert = 4;	// Set to signify assert ( assumes gos_ErrorNoRegisters )
 #define gos_ErrorVerify			8	// Set to signify verify ( assumes gos_ErrorNoRegisters )
-#define gos_ErrorException		16	// Set to signify exception handler
-#define gos_ErrorDump			32	// ErrorTitle must be valid
-#define gos_ErrorPop			64	// Pop one more level of stack
-#define gos_ErrorPop2			128	// Pop two more levels of stack
-#define gos_ErrorStop			256	// Stop - display message
+inline constexpr int gos_ErrorException = 16;	// Set to signify exception handler
+inline constexpr int gos_ErrorDump = 32;	// ErrorTitle must be valid
+inline constexpr int gos_ErrorPop = 64;	// Pop one more level of stack
+inline constexpr int gos_ErrorPop2 = 128;	// Pop two more levels of stack
+inline constexpr int gos_ErrorStop = 256;	// Stop - display message
 #define gos_ErrorMessage		512	// Display message without a STOP: or Verify:
-#define gos_ErrorFileLine		1024// Global variables gosErrorFile and gosErrorLine contain line to display (Pass a COMPLETE path\file name)
-#define gos_ErrorRetry			2048// Retry instead of continue button
-#define gos_ErrorGameInfoFirst	4096// Show the information from GetGameInformation routine immediately after File/Line information
-#define gos_ErrorAppendRoutine	8192// append ' in Routine()+xxx' to the error  (or address if no symbols)
-#define Stat_Format				(0x40000000)// Used for formatting in statistics
-#define gos_SpewNoAddCR			1	// Don't add "\n" to spew output
+inline constexpr int gos_ErrorFileLine = 1024;// Global variables gosErrorFile and gosErrorLine contain line to display (Pass a COMPLETE path\file name)
+inline constexpr int gos_ErrorRetry = 2048;// Retry instead of continue button
+inline constexpr int gos_ErrorGameInfoFirst = 4096;// Show the information from GetGameInformation routine immediately after File/Line information
+inline constexpr int gos_ErrorAppendRoutine = 8192;// append ' in Routine()+xxx' to the error  (or address if no symbols)
+inline constexpr int Stat_Format = 0x40000000;// Used for formatting in statistics
+inline constexpr int gos_SpewNoAddCR = 1;	// Don't add "\n" to spew output
 extern char* gosErrorFile;
 extern DWORD gosErrorLine;
 extern void __cdecl InternalFunctionSpew( const char* Group, const char* Message, ... );
