@@ -254,12 +254,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 			const MoverRecord& r = recs[i];
 			char hm[17];
 			mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
-			printf("[SIMID v1 mover] simframe=%ld id=%d vd=%s "
-			       "pos=%.4f,%.4f,%.4f rot=%.4f hp=%.5f gesture=%d anim=%d "
-			       "status=%d target=%d brain=%d mstate=%d pstep=%d/%d\n",
-			       simFrame, r.id, hm, r.px, r.py, r.pz, r.rot, r.hp,
-			       r.gesture, r.animFrame, r.status, r.target,
-			       r.brainState, r.moveState, r.pathStep, r.pathSteps);
+			mc2::fmt::print_out("[SIMID v1 mover] simframe={:d} id={:d} vd={} pos={:.4f},{:.4f},{:.4f} rot={:.4f} hp={:.5f} gesture={:d} anim={:d} status={:d} target={:d} brain={:d} mstate={:d} pstep={:d}/{:d}\n", mc2::fmt::as_i32(simFrame), mc2::fmt::as_i32(r.id), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
 		}
 	}
 	fflush(stdout);

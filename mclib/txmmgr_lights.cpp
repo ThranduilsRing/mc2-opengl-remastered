@@ -370,9 +370,7 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
         if (lightDataIndex > s_lbMaxIndex) s_lbMaxIndex = lightDataIndex;
         if (lightDataIndex >= S)           ++s_lbOutOfPrefix;   // counted for ALL recipes
         if (s_lbFirstSeenIndex.size() <= 32) {
-            std::fprintf(stderr,
-                "[LIGHTBAKE-PROOF v1] event=first recipe=%d index=%u S=%u inPrefix=%d\n",
-                recipeIndex, lightDataIndex, S, (lightDataIndex < S) ? 1 : 0);
+            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=first recipe={:d} index={:d} S={:d} inPrefix={:d}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S), mc2::fmt::as_i32((lightDataIndex < S) ? 1 : 0));
             std::fflush(stderr);
             if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
                 char diag_buf[128];
@@ -382,10 +380,7 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
         }
         // Aggregate coverage so recipes beyond the 32 log-cap are accounted for.
         if ((s_lbFirstSeenIndex.size() % 256u) == 0u) {
-            std::fprintf(stderr,
-                "[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked=%zu max_index=%u S=%u out_of_prefix=%llu\n",
-                s_lbFirstSeenIndex.size(), s_lbMaxIndex, S,
-                (unsigned long long)s_lbOutOfPrefix);
+            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked={:d} max_index={:d} S={:d} out_of_prefix={:d}\n", mc2::fmt::as_size(s_lbFirstSeenIndex.size()), mc2::fmt::as_u32(s_lbMaxIndex), mc2::fmt::as_u32(S), mc2::fmt::as_u64((unsigned long long)s_lbOutOfPrefix));
             std::fflush(stderr);
             if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
                 char diag_buf[192];
@@ -396,9 +391,7 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
     } else if (it->second != lightDataIndex) {
         ++s_lbStabilityViolations;   // detection runs for ALL recipes (uncapped)
         if (s_lbStabilityViolations <= 32) {
-            std::fprintf(stderr,
-                "[LIGHTBAKE-PROOF v1] event=UNSTABLE recipe=%d was=%u now=%u S=%u\n",
-                recipeIndex, it->second, lightDataIndex, S);
+            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=UNSTABLE recipe={:d} was={:d} now={:d} S={:d}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(it->second), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S));
             std::fflush(stderr);
             if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
                 char diag_buf[128];
@@ -821,11 +814,7 @@ void mc2LightBakeParityCheck(int32_t recipeIndex,
     const bool match = (leafHash == slotHash);
     if (!match) ++s_lbParityMismatch;
     if (s_lbParityChecks <= 32 || !match) {
-        std::fprintf(stderr,
-            "[LIGHTBAKE-PROOF v1] event=slot_write_integrity recipe=%d leafHash=%016llx slotHash=%016llx "
-            "match=%d pos=(%.1f,%.1f,%.1f) appr=%s\n",
-            recipeIndex, (unsigned long long)leafHash, (unsigned long long)slotHash,
-            match ? 1 : 0, wx, wy, wz, appearance ? appearance : "?");
+        mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=slot_write_integrity recipe={:d} leafHash={:016x} slotHash={:016x} match={:d} pos=({:.1f},{:.1f},{:.1f}) appr={}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u64((unsigned long long)leafHash), mc2::fmt::as_u64((unsigned long long)slotHash), mc2::fmt::as_i32(match ? 1 : 0), wx, wy, wz, mc2::fmt::safe(appearance ? appearance : "?"));
         std::fflush(stderr);
     }
 }

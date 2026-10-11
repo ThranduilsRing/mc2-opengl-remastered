@@ -174,13 +174,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 
 		if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )
 		{
-			printf("[mechicon-logi] mech=ID:%ld iconIndex=%ld cols=%ld row=%ld col=%ld "
-			       "widgetW=%.0f widgetH=%.0f u=[%.1f,%.1f] v=[%.1f,%.1f] "
-			       "fileWidth=%.0f fileHeight=%.0f uvX=[%.3f,%.3f] uvY=[%.3f,%.3f]\n",
-			       pMech->getChassisName(), index, cols, yIndex, xIndex,
-			       width, height,
-			       u, u2, v, v2,
-			       fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
+			mc2::fmt::print_out("[mechicon-logi] mech=ID:{:d} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex), width, height, u, u2, v, v2, fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
 			fflush(stdout);
 		}
 

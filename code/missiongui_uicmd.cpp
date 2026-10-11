@@ -188,13 +188,11 @@ void MissionInterfaceManager::processUiCommandChannel()
 			// driver can gate exactly.
 			extern uint32_t g_mc2FrameCounter;
 			if (note.empty())
-				fprintf(ack, "[f=%lu] %s -> %s\n",
-					(unsigned long)g_mc2FrameCounter, line.c_str(), result);
+				mc2::fmt::print(ack, "[f={:d}] {} -> {}\n", mc2::fmt::as_u32((unsigned long)g_mc2FrameCounter), line.c_str(), mc2::fmt::safe(result));
 			else
-				fprintf(ack, "[f=%lu] %s -> %s (%s)\n",
-					(unsigned long)g_mc2FrameCounter, line.c_str(), result, note.c_str());
+				mc2::fmt::print(ack, "[f={:d}] {} -> {} ({})\n", mc2::fmt::as_u32((unsigned long)g_mc2FrameCounter), line.c_str(), mc2::fmt::safe(result), note.c_str());
 			if (!extra.empty())
-				fprintf(ack, "%s", extra.c_str());
+				mc2::fmt::print(ack, "{}", extra.c_str());
 		}
 	}
 	if (ack) {

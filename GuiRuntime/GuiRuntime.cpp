@@ -1,6 +1,7 @@
 
 
 #include "GuiRuntime_internal.h"
+#include "mc2fmt.h"
 
 
 // TERRAIN-DECAL-SLICE-0C — live cliff mesh-decal tuning panel.
@@ -578,11 +579,7 @@ void GuiRuntime::NewFrame() {
                         static bool s_traceGuiMouse = false;
                         if (!s_traceGuiMouse) {
                             s_traceGuiMouse = true;
-                            fprintf(stderr,
-                                "[GuiRuntime mouse] client=(%d,%d) cursorClient=(%ld,%ld) "
-                                "DisplaySize=(%.0f,%.0f) -> imguiMouse=(%.1f,%.1f)\n",
-                                cw, ch, cursorPt.x, cursorPt.y,
-                                io.DisplaySize.x, io.DisplaySize.y, mx, my);
+                            mc2::fmt::print_err("[GuiRuntime mouse] client=({:d},{:d}) cursorClient=({:d},{:d}) DisplaySize=({:.0f},{:.0f}) -> imguiMouse=({:.1f},{:.1f})\n", mc2::fmt::as_i32(cw), mc2::fmt::as_i32(ch), mc2::fmt::as_i32(cursorPt.x), mc2::fmt::as_i32(cursorPt.y), io.DisplaySize.x, io.DisplaySize.y, mx, my);
                             fflush(stderr);
                         }
                     }
@@ -798,18 +795,9 @@ void GuiRuntime::Render() {
             glGetIntegerv(GL_VIEWPORT, vp);
             GLenum err = glGetError();
             if (dd) {
-                fprintf(stderr,
-                    "[GuiRuntime::Render] frame0 CmdLists=%d TotalVtx=%d TotalIdx=%d "
-                    "DisplaySize=(%.0f,%.0f) FbScale=(%.3f,%.3f) "
-                    "fbo=%d prog=%d vp=(%d,%d,%d,%d) glErr=0x%X\n",
-                    dd->CmdListsCount, dd->TotalVtxCount, dd->TotalIdxCount,
-                    dd->DisplaySize.x, dd->DisplaySize.y,
-                    dd->FramebufferScale.x, dd->FramebufferScale.y,
-                    boundFbo, boundProg,
-                    vp[0], vp[1], vp[2], vp[3],
-                    (unsigned)err);
+                mc2::fmt::print_err("[GuiRuntime::Render] frame0 CmdLists={:d} TotalVtx={:d} TotalIdx={:d} DisplaySize=({:.0f},{:.0f}) FbScale=({:.3f},{:.3f}) fbo={:d} prog={:d} vp=({:d},{:d},{:d},{:d}) glErr=0x{:X}\n", mc2::fmt::as_i32(dd->CmdListsCount), mc2::fmt::as_i32(dd->TotalVtxCount), mc2::fmt::as_i32(dd->TotalIdxCount), dd->DisplaySize.x, dd->DisplaySize.y, dd->FramebufferScale.x, dd->FramebufferScale.y, mc2::fmt::as_i32(boundFbo), mc2::fmt::as_i32(boundProg), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), mc2::fmt::as_u32((unsigned)err));
             } else {
-                fprintf(stderr, "[GuiRuntime::Render] frame0 GetDrawData() returned NULL\n");
+                mc2::fmt::print_err("[GuiRuntime::Render] frame0 GetDrawData() returned NULL\n");
             }
             fflush(stderr);
         }
@@ -841,9 +829,9 @@ void GuiRuntime::Render() {
             s_errTraced = true;
             GLenum err = glGetError();
             if (err != GL_NO_ERROR)
-                fprintf(stderr, "[GuiRuntime::Render] glError after RenderDrawData: 0x%X\n", (unsigned)err);
+                mc2::fmt::print_err("[GuiRuntime::Render] glError after RenderDrawData: 0x{:X}\n", mc2::fmt::as_u32((unsigned)err));
             else
-                fprintf(stderr, "[GuiRuntime::Render] RenderDrawData completed, no GL error\n");
+                mc2::fmt::print_err("[GuiRuntime::Render] RenderDrawData completed, no GL error\n");
             fflush(stderr);
         }
     }
@@ -873,14 +861,7 @@ void GuiRuntime::Render() {
                 glReadPixels(fbw / 2,   gl_y_terrain, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, terrainPx);
             }
 
-            fprintf(stderr,
-                "[GuiRuntime PROBE] BackendRendererName=%s FontTexID=%p "
-                "imgui_px(120,19)=RGBA(%d,%d,%d,%d) "
-                "terrain_mid_px=RGBA(%d,%d,%d,%d)\n",
-                backendName ? backendName : "NULL",
-                (void*)(uintptr_t)fontTexID,
-                imguiPx[0], imguiPx[1], imguiPx[2], imguiPx[3],
-                terrainPx[0], terrainPx[1], terrainPx[2], terrainPx[3]);
+            mc2::fmt::print_err("[GuiRuntime PROBE] BackendRendererName={} FontTexID={:016X} imgui_px(120,19)=RGBA({:d},{:d},{:d},{:d}) terrain_mid_px=RGBA({:d},{:d},{:d},{:d})\n", mc2::fmt::safe(backendName ? backendName : "NULL"), mc2::fmt::as_ptr((void*)(uintptr_t)fontTexID), mc2::fmt::as_i32(imguiPx[0]), mc2::fmt::as_i32(imguiPx[1]), mc2::fmt::as_i32(imguiPx[2]), mc2::fmt::as_i32(imguiPx[3]), mc2::fmt::as_i32(terrainPx[0]), mc2::fmt::as_i32(terrainPx[1]), mc2::fmt::as_i32(terrainPx[2]), mc2::fmt::as_i32(terrainPx[3]));
             fflush(stderr);
         }
     }
@@ -909,7 +890,7 @@ void GuiRuntime::Render() {
     static bool s_cbDiagOnce = false;
     if (!s_cbDiagOnce && !fns.empty()) {
         s_cbDiagOnce = true;
-        fprintf(stderr, "[3DVIEW_DIAG v2] GuiRuntime::Render firing %zu callbacks\n", fns.size());
+        mc2::fmt::print_err("[3DVIEW_DIAG v2] GuiRuntime::Render firing {:d} callbacks\n", mc2::fmt::as_size(fns.size()));
     }
     for (auto& fn : fns)
         fn();

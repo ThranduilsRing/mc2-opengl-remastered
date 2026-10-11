@@ -11,6 +11,7 @@
 //----------------------------------------------------------------------------------
 
 #include "mission_internal.h"
+#include "mc2fmt.h"
 
 
 static float simSpeedClamp(float v)
@@ -35,8 +36,7 @@ void simSpeedSetMultiplier(float v)
 {
 	const float prev = simSpeedGetMultiplier();
 	s_simSpeedRuntime = simSpeedClamp(v);
-	fprintf(stderr, "[SIM-SPEED v1] multiplier=%.2f (was %.2f)\n",
-		(double)s_simSpeedRuntime, (double)prev);
+	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", (double)s_simSpeedRuntime, (double)prev);
 	fflush(stderr);
 }
 

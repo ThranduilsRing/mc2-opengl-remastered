@@ -12,6 +12,7 @@
 // Include Files
 
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -62,9 +63,7 @@ bool mc2TerrainLodChunkEnabled()
 	static const bool s_on = []() {
 		const bool off = !mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK">();
 		if (off)
-			printf("[8Z_VESTIGIAL] MC2_TERRAIN_LOD_CHUNK=0 opt-out is increasingly vestigial:"
-			       " slimReduce deleted (8z-A3), ACTIVE_AB/SOLID_AB retired (8z-A1)."
-			       " The chunk-OFF path retains makeLists but has no production renderer.\n");
+			mc2::fmt::print_out("[8Z_VESTIGIAL] MC2_TERRAIN_LOD_CHUNK=0 opt-out is increasingly vestigial: slimReduce deleted (8z-A3), ACTIVE_AB/SOLID_AB retired (8z-A1). The chunk-OFF path retains makeLists but has no production renderer.\n");
 		return !off;   // default ON; "0" = off
 	}();
 	return s_on;

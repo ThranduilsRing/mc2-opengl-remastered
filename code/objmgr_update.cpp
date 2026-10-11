@@ -405,7 +405,7 @@ struct TotalSpan {
             static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
         if (off < static_cast<int>(sizeof(line)))
             mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " self_us={:.1f}", selfUs);
-        fprintf(stderr, "%s\n", line);
+        mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
         fflush(stderr);
         memset(s_ns, 0, sizeof(s_ns));
         s_frames = 0;
@@ -591,8 +591,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 							if (!ap) continue;
 							if (!ap->isRecalcBoundsWorkerSafe()) {
 								if (frameJobsTrace()) {
-									printf("FRAME_JOBS WARN: unsupported appearance type at handle %ld\n",
-									       s_frameJobsHandles[i]);
+									mc2::fmt::print_out("FRAME_JOBS WARN: unsupported appearance type at handle {:d}\n", mc2::fmt::as_i32(s_frameJobsHandles[i]));
 								}
 								continue;
 							}
@@ -605,12 +604,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 
 			if (frameJobsTrace()) {
 				FrameJobsFrameStats _fj_stats = frameJobsGetFrameStats();
-				printf("FRAME_JOBS_PERF: batch=%d workers=%d handles=%d chunks=%d prepass_us=%.1f\n",
-				       frameJobsBatch(),
-				       _fj_stats.workerCount,
-				       count,
-				       _fj_stats.chunksExecuted,
-				       _fj_prepass_us);
+				mc2::fmt::print_out("FRAME_JOBS_PERF: batch={:d} workers={:d} handles={:d} chunks={:d} prepass_us={:.1f}\n", mc2::fmt::as_i32(frameJobsBatch()), mc2::fmt::as_i32(_fj_stats.workerCount), mc2::fmt::as_i32(count), mc2::fmt::as_i32(_fj_stats.chunksExecuted), _fj_prepass_us);
 			}
 
 			// FRAME-JOBS-1: emit to diagnostic JSONL trace (MC2_DIAG_TAGS=FRAME_JOBS or *)
@@ -677,16 +671,8 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			int worker_resubmit_calls = g_workerResubmitCalls.load(std::memory_order_relaxed) - prev_resubmit_calls;
 
 			if (frameJobsTrace()) {
-				printf("FRAME_JOBS_TOUCH: enabled=1 split=yes candidates=%d worker_submitted=%d"
-				       " serial_commits=%d worker_resubmit_calls=%d"
-				       " skipped_not_split_safe=%d\n",
-				       candidates, worker_submitted, serial_commits, worker_resubmit_calls,
-				       skipped_not_split_safe);
-				printf("FRAME_JOBS_TOUCH_PERF: worker_us=%.1f serial_commit_us=%.1f"
-				       " avg_worker_us_per_object=%.3f avg_serial_commit_us_per_object=%.3f\n",
-				       worker_us, commit_us,
-				       worker_us / std::max(1, worker_submitted),
-				       commit_us / std::max(1, serial_commits));
+				mc2::fmt::print_out("FRAME_JOBS_TOUCH: enabled=1 split=yes candidates={:d} worker_submitted={:d} serial_commits={:d} worker_resubmit_calls={:d} skipped_not_split_safe={:d}\n", mc2::fmt::as_i32(candidates), mc2::fmt::as_i32(worker_submitted), mc2::fmt::as_i32(serial_commits), mc2::fmt::as_i32(worker_resubmit_calls), mc2::fmt::as_i32(skipped_not_split_safe));
+				mc2::fmt::print_out("FRAME_JOBS_TOUCH_PERF: worker_us={:.1f} serial_commit_us={:.1f} avg_worker_us_per_object={:.3f} avg_serial_commit_us_per_object={:.3f}\n", worker_us, commit_us, worker_us / std::max(1, worker_submitted), commit_us / std::max(1, serial_commits));
 			}
 		}
 		// ── end FRAME-JOBS-2D pre-pass ───────────────────────────────────────────────
@@ -1157,10 +1143,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 	// registry's STATIC_PROP_REGISTRY stale-drop counter: with preserve=1 the
 	// tree-typeID stale drops go to ~0; with MC2_R2B_TOUCH_PRESERVE=0 they spike.
 	if (r2bTouchTrace && ((g_mc2FrameCounter <= 3u) || (g_mc2FrameCounter % 300u) == 0u)) {
-		std::fprintf(stderr,
-		    "R2B_STATIC_NATURAL: frame=%u skipped_full_update=%ld touched_liveness=%ld preserve=%d\n",
-		    g_mc2FrameCounter, skippedStaticNatural, touchedLiveness,
-		    r2bTouchPreserve ? 1 : 0);
+		mc2::fmt::print_err("R2B_STATIC_NATURAL: frame={:d} skipped_full_update={:d} touched_liveness={:d} preserve={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(skippedStaticNatural), mc2::fmt::as_i32(touchedLiveness), mc2::fmt::as_i32(r2bTouchPreserve ? 1 : 0));
 		std::fflush(stderr);
 	}
 
@@ -1234,11 +1217,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 	// FRAME-JOBS-1: per-frame trace
 	if (frameJobsEnabled() && frameJobsTrace()) {
 		FrameJobsFrameStats stats = frameJobsGetFrameStats();
-		printf("FRAME_JOBS: workers=%d chunks=%d handles=%d serial=%s\n",
-		       stats.workerCount,
-		       stats.chunksExecuted,
-		       frameJobsPrePassCount,
-		       stats.serialFallback ? "yes" : "no");
+		mc2::fmt::print_out("FRAME_JOBS: workers={:d} chunks={:d} handles={:d} serial={}\n", mc2::fmt::as_i32(stats.workerCount), mc2::fmt::as_i32(stats.chunksExecuted), mc2::fmt::as_i32(frameJobsPrePassCount), mc2::fmt::safe(stats.serialFallback ? "yes" : "no"));
 	}
 }
 

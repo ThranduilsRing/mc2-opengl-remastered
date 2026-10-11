@@ -246,8 +246,7 @@ void LogisticsData::appendEquipmentAddFillComponents()
 			tmp.setAmmo( MasterComponent::masterList[r.ammoMasterId].getAmmoPerTon() );
 		}
 
-		printf( "[EQUIP-ADD] mechlab row appended: id=%s ordinal=%ld name=\"%s\"\n",
-				r.qualifiedId.c_str(), r.ordinal, r.displayName.c_str() );
+		mc2::fmt::print_out("[EQUIP-ADD] mechlab row appended: id={} ordinal={:d} name=\"{}\"\n", r.qualifiedId.c_str(), mc2::fmt::as_i32(r.ordinal), r.displayName.c_str());
 	}
 }
 

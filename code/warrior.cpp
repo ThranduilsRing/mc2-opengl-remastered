@@ -2155,8 +2155,7 @@ void MechWarrior::updateActions (void) {
 					 mc2::gate::get<"MC2_VISUAL_CAPTURE_ON_FIRE">());
 				if (s_dumpOnFire && g_mc2FxFireCaptureFrame == 0) {
 					g_mc2FxFireCaptureFrame = g_mc2FrameCounter + 30u;
-					printf("[FX_FORCE_SPAWN loop] event=capture_armed frame=%u pin=%u\n",
-						g_mc2FrameCounter, g_mc2FxFireCaptureFrame);
+					mc2::fmt::print_out("[FX_FORCE_SPAWN loop] event=capture_armed frame={:d} pin={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_u32(g_mc2FxFireCaptureFrame));
 					fflush(stdout);
 				}
 			}

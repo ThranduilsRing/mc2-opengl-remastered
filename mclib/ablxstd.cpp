@@ -176,7 +176,7 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 					const char* modName = CurModule ? CurModule->getName() : "(unknown)";
 					const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
 					mc2::fmt::to_buf(err, "[ABL_SOFTFAIL] key={:d} func=(out-of-range) module={} file={} line={:d} errCode=0 — key >= NumStandardFunctions({:d}), skipping", mc2::fmt::as_i32(key), mc2::fmt::safe(modName), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
-					printf("%s\n", err); fflush(stdout);
+					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
 					return nullptr;
 				}
 				mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d} (>= {:d}) — bailing", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
@@ -204,7 +204,7 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
 					char err[255];
 					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
-					printf("%s\n", err); fflush(stdout);
+					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
 					switch (FunctionInfoTable[key].returnType) {
 						case RETURN_TYPE_INTEGER: pushInteger(0); break;
 						case RETURN_TYPE_REAL:    pushReal(0.0f); break;

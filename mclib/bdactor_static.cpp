@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
@@ -764,17 +765,7 @@ void BldgAppearance::touchSerialCommit()
 			const int64_t rLG   = g_spr_rejLightGenMismatch.exchange(0, std::memory_order_relaxed);
 			const int64_t rNFB  = g_spr_rejNeedsFullBake.exchange(0, std::memory_order_relaxed);
 			const int64_t rNSh  = g_spr_rejNoShape.exchange(0, std::memory_order_relaxed);
-			printf("STATIC_PROXY_RECON: ph2_calls=%lld bldg=%lld tree=%lld"
-			       " proxy_candidate=%lld(%.1f%%)"
-			       " rej_no_static_reg=%lld rej_bad_light_idx=%lld"
-			       " rej_no_valid_light=%lld rej_light_gen_mismatch=%lld"
-			       " rej_needs_full_bake=%lld rej_no_shape=%lld\n",
-			       (long long)ph2, (long long)bldg, (long long)tree,
-			       (long long)proxy,
-			       ph2 > 0 ? (proxy * 100.0 / ph2) : 0.0,
-			       (long long)rNS, (long long)rBL,
-			       (long long)rNVL, (long long)rLG,
-			       (long long)rNFB, (long long)rNSh);
+			mc2::fmt::print_out("STATIC_PROXY_RECON: ph2_calls={:d} bldg={:d} tree={:d} proxy_candidate={:d}({:.1f}%) rej_no_static_reg={:d} rej_bad_light_idx={:d} rej_no_valid_light={:d} rej_light_gen_mismatch={:d} rej_needs_full_bake={:d} rej_no_shape={:d}\n", mc2::fmt::as_i64((long long)ph2), mc2::fmt::as_i64((long long)bldg), mc2::fmt::as_i64((long long)tree), mc2::fmt::as_i64((long long)proxy), ph2 > 0 ? (proxy * 100.0 / ph2) : 0.0, mc2::fmt::as_i64((long long)rNS), mc2::fmt::as_i64((long long)rBL), mc2::fmt::as_i64((long long)rNVL), mc2::fmt::as_i64((long long)rLG), mc2::fmt::as_i64((long long)rNFB), mc2::fmt::as_i64((long long)rNSh));
 
 			// STATIC-REGISTRY-COVERAGE-RECON-1: print sub-breakdown when gate is on.
 			if (s_regCovEnabled) {
@@ -784,14 +775,7 @@ void BldgAppearance::touchSerialCommit()
 				const int64_t rcNBT = g_rc_notInBakeTable.exchange(0, std::memory_order_relaxed);
 				const int64_t rcEY  = g_rc_isStaticEligibleYes.exchange(0, std::memory_order_relaxed);
 				const int64_t rcEN  = g_rc_isStaticEligibleNo.exchange(0, std::memory_order_relaxed);
-				printf("STATIC_REG_COVERAGE: total_rej_no_static_reg=%lld"
-				       " sub: never_registered=%lld no_recipe=%lld"
-				       " bake_not_enabled=%lld not_in_bake_table=%lld"
-				       " is_static_eligible_yes=%lld is_static_eligible_no=%lld\n",
-				       (long long)rNS,
-				       (long long)rcNR, (long long)rcNRp,
-				       (long long)rcBN, (long long)rcNBT,
-				       (long long)rcEY, (long long)rcEN);
+				mc2::fmt::print_out("STATIC_REG_COVERAGE: total_rej_no_static_reg={:d} sub: never_registered={:d} no_recipe={:d} bake_not_enabled={:d} not_in_bake_table={:d} is_static_eligible_yes={:d} is_static_eligible_no={:d}\n", mc2::fmt::as_i64((long long)rNS), mc2::fmt::as_i64((long long)rcNR), mc2::fmt::as_i64((long long)rcNRp), mc2::fmt::as_i64((long long)rcBN), mc2::fmt::as_i64((long long)rcNBT), mc2::fmt::as_i64((long long)rcEY), mc2::fmt::as_i64((long long)rcEN));
 				// Top-20 shape names from never_registered bucket.
 				{
 					std::lock_guard<std::mutex> lk(g_rc_shapeMu);
@@ -805,14 +789,14 @@ void BldgAppearance::touchSerialCommit()
 						          [](const std::pair<int,std::string>& a, const std::pair<int,std::string>& b){
 						              return a.first > b.first;
 						          });
-						printf("STATIC_REG_COVERAGE: top_shapes(name:count):");
+						mc2::fmt::print_out("STATIC_REG_COVERAGE: top_shapes(name:count):");
 						int shown = 0;
 						for (auto& p : sorted) {
 							if (shown >= 20) break;
-							printf(" %s:%d", p.second.c_str(), p.first);
+							mc2::fmt::print_out(" {}:{:d}", p.second.c_str(), mc2::fmt::as_i32(p.first));
 							++shown;
 						}
-						printf("\n");
+						mc2::fmt::print_out("\n");
 						g_rc_shapeNames.clear();
 					}
 				}

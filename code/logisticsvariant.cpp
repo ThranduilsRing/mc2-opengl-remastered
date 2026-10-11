@@ -184,9 +184,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 		// file that does not exist would silently fall back to the legacy slot.
 		for (int s = 0; s < 3; ++s) {
 			if (uiIconOverride[s].Length() && !fileExists((const char*)uiIconOverride[s]))
-				printf("[UIProfile:VALIDATE] %s: declared UI asset '%s' not found (reason=%d)\n",
-					(const char*)fileName, (const char*)uiIconOverride[s],
-					(int)UPV_UI_ASSET_MISSING);
+				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", mc2::fmt::safe((const char*)fileName), mc2::fmt::safe((const char*)uiIconOverride[s]), mc2::fmt::as_i32((int)UPV_UI_ASSET_MISSING));
 		}
 	}
 

@@ -213,7 +213,7 @@ void runtimeError (int errCode) {
 		char softMsg[512];
 		const char* srcFile = (FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
 		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(CurModule ? CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(errCode), mc2::fmt::safe(runtimeErrorMessages[errCode]));
-		printf("%s\n", softMsg); fflush(stdout);
+		mc2::fmt::print_out("{}\n", mc2::fmt::safe(softMsg)); fflush(stdout);
 		return;
 	}
 	ABL_Fatal(-ABL_ERR_RUNTIME_ABORT, message);

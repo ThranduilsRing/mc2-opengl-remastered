@@ -42,7 +42,7 @@ TotalSpan::~TotalSpan() {
         static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
     if (off < static_cast<int>(sizeof(line)))
         mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " self_us={:.1f}", selfUs);
-    fprintf(stderr, "%s\n", line);
+    mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
     fflush(stderr);
     memset(s_ns, 0, sizeof(s_ns));
     s_frames = 0;

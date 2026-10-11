@@ -235,7 +235,7 @@ void __stdcall InitializeGameEngine()
 	}
 
 	if(!gosResourceHandle) {
-        fprintf(stderr, "Error loading ResourseDLL (mc2res)\n");
+        mc2::fmt::print_err("Error loading ResourseDLL (mc2res)\n");
 	}
 
 	//Check for enough SwapFile Space FIRST!!!

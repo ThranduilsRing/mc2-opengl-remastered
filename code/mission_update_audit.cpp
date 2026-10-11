@@ -63,7 +63,7 @@ namespace {
 		const long kCap = 64;
 		long total = ObjectManager->getNumMovers();
 		long emitted = 0;
-		printf("[MOVER v2 begin] t=%.1f count=%ld\n", scenarioTimeNow, total);
+		mc2::fmt::print_out("[MOVER v2 begin] t={:.1f} count={:d}\n", scenarioTimeNow, mc2::fmt::as_i32(total));
 		for (long i = 0; i < total && emitted < kCap; ++i) {
 			MoverPtr mover = ObjectManager->getMover(i);
 			if (!mover)

@@ -11,6 +11,7 @@
 #include <map>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 namespace mc2skel {
 namespace {
@@ -204,11 +205,10 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         if (clipDiag) {
             static int miss = 0;
             if (miss++ < 12) {
-                std::fprintf(stderr, "[CLIP-DIAG] NOT FOUND clip='%s' (scene has %u anims; first few:",
-                             clip.c_str(), scene->mNumAnimations);
+                mc2::fmt::print_err("[CLIP-DIAG] NOT FOUND clip='{}' (scene has {:d} anims; first few:", clip.c_str(), mc2::fmt::as_u32(scene->mNumAnimations));
                 for (unsigned a = 0; a < scene->mNumAnimations && a < 4; ++a)
-                    std::fprintf(stderr, " '%s'", scene->mAnimations[a]->mName.C_Str());
-                std::fprintf(stderr, ")\n");
+                    mc2::fmt::print_err(" '{}'", mc2::fmt::safe(scene->mAnimations[a]->mName.C_Str()));
+                mc2::fmt::print_err(")\n");
             }
         }
         return false;
@@ -221,8 +221,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
     if (clipDiag) {
         static int hit = 0;
         if (hit++ < 12)
-            std::fprintf(stderr, "[CLIP-DIAG] FOUND clip='%s' frame=%.2f t=%.2f dur=%.2f rotOnly=%d\n",
-                         clip.c_str(), (double)frame, t, anim->mDuration, (int)rotationOnlyEnabled());
+            mc2::fmt::print_err("[CLIP-DIAG] FOUND clip='{}' frame={:.2f} t={:.2f} dur={:.2f} rotOnly={:d}\n", clip.c_str(), (double)frame, t, anim->mDuration, mc2::fmt::as_i32((int)rotationOnlyEnabled()));
     }
     if (outTimeTicks) *outTimeTicks = t;
     if (outDurTicks) *outDurTicks = anim->mDuration;

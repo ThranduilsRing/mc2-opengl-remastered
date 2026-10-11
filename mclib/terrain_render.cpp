@@ -1,6 +1,7 @@
 // Terrain: Terrain::render, draw-command flush and the water render paths.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -59,7 +60,7 @@ void Terrain::render (void)
 			// Fires once so we know which path owns terrain on this launch.
 			static bool s_oldPathLoggedOnce = false;
 			if (!s_oldPathLoggedOnce) {
-				printf("[TerrainLOD v1] OLD draw path active (flag not set)\n");
+				mc2::fmt::print_out("[TerrainLOD v1] OLD draw path active (flag not set)\n");
 				fflush(stdout);
 				s_oldPathLoggedOnce = true;
 			}
@@ -274,7 +275,7 @@ void Terrain::flushDrawCommands (void)
 	static int s_flushCallCount = 0;
 	++s_flushCallCount;
 	if (s_flushCallCount % 600 == 0) {
-		printf("[TerrainLOD flush] count=%d cmds=%d\n", s_flushCallCount, s_cmdCount);
+		mc2::fmt::print_out("[TerrainLOD flush] count={:d} cmds={:d}\n", mc2::fmt::as_i32(s_flushCallCount), mc2::fmt::as_i32(s_cmdCount));
 		fflush(stdout);
 	}
 

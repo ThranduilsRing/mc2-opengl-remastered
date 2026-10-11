@@ -106,7 +106,7 @@ void ControlGui::setActiveHudTab( int index, const char* via )
 	if ( t->buttonCommand >= 0 )
 		getButton( t->buttonCommand )->press( true );
 	hudTabRegistry.setActive( index );
-	fprintf( stderr, "[HUD-TABS v1] dispatch tab '%s' (index %d, via %s)\n", t->id, index, via );
+	mc2::fmt::print_err("[HUD-TABS v1] dispatch tab '{}' (index {:d}, via {})\n", mc2::fmt::safe(t->id), mc2::fmt::as_i32(index), mc2::fmt::safe(via));
 }
 
 // Witness-tab body: trivial panel over the tac area rect (rectInfos[0]),
@@ -182,8 +182,7 @@ void ControlGui::hudTabRenderSimSpeed( void* user )
 			ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.1f, 0.45f, 0.1f, 1.f ) );
 		if ( ImGui::Button( kLabels[i], ImVec2( 48.f, 0.f ) ) )
 		{
-			fprintf( stderr, "[SIM-SPEED-BUTTON v1] click %.0fx (was %.2fx)\n",
-				(double)kSpeeds[i], (double)current );
+			mc2::fmt::print_err("[SIM-SPEED-BUTTON v1] click {:.0f}x (was {:.2f}x)\n", (double)kSpeeds[i], (double)current);
 			fflush( stderr );
 			simSpeedSetMultiplier( kSpeeds[i] );
 		}

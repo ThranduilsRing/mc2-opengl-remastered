@@ -587,7 +587,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
-				fprintf(f,"[LOAD-BANNER] ProgressTimer draw loadProgress=%.1f\n", loadProgress);
+				mc2::fmt::print(f, "[LOAD-BANNER] ProgressTimer draw loadProgress={:.1f}\n", loadProgress);
 				fclose(f);
 			}
 		}

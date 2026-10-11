@@ -1286,15 +1286,13 @@ void endPass(RenderCore::RenderPassId id) {
 
     fprintf(stderr, "[RENDER_PASS_TELEMETRY v3] pass=%s", c->name);
     for (int i = 0; i < readCount; ++i) {
-        fprintf(stderr, " read=%s:%s",
-            resourceName(c->reads[i]),
-            readOk[i] ? "ok" : "MISSING");
+        mc2::fmt::print_err(" read={}:{}", mc2::fmt::safe(resourceName(c->reads[i])), mc2::fmt::safe(readOk[i] ? "ok" : "MISSING"));
     }
     for (int i = 0; i < 4; ++i) {
         if (c->writes[i] == RenderCore::RenderResourceId::Unknown) break;
-        fprintf(stderr, " write=%s", resourceName(c->writes[i]));
+        mc2::fmt::print_err(" write={}", mc2::fmt::safe(resourceName(c->writes[i])));
     }
-    fprintf(stderr, "\n");
+    mc2::fmt::print_err("\n");
 }
 
 uint32_t getFrameViolationCount() {

@@ -115,7 +115,7 @@ void lowerCopy(char* dst, unsigned long cap, const char* src) {
 // Only reachable when MC2_UNIT_DEFINITION_SOURCE=generated (callers gate first),
 // so stock gate-OFF runs never print.
 void reportUnitSourceFinding(const ModderFinding& f) {
-    printf("[UNIT-SOURCE=generated] %s\n", formatModderFinding(f).c_str());
+    mc2::fmt::print_out("[UNIT-SOURCE=generated] {}\n", formatModderFinding(f).c_str());
 }
 } // namespace
 
@@ -198,9 +198,7 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
         // The shadow-compare (roster GREEN 63/63) proved generated facet VALUES ==
         // legacy-derived, so sourcing here is behavior-identical: match-legacy=YES.
         const char* label = (typeName && typeName[0]) ? typeName : stem;
-        printf("[UNIT-SOURCE=generated] core:%s loco/dmg from generated "
-               "(loco=%s dmg=%s type=%s match-legacy=YES)\n",
-               stem, locoOk ? loco : "<legacy>", dmgOk ? dmg : "<legacy>", label);
+        mc2::fmt::print_out("[UNIT-SOURCE=generated] core:{} loco/dmg from generated (loco={} dmg={} type={} match-legacy=YES)\n", mc2::fmt::safe(stem), mc2::fmt::safe(locoOk ? loco : "<legacy>"), mc2::fmt::safe(dmgOk ? dmg : "<legacy>"), mc2::fmt::safe(label));
     }
     return locoOk || dmgOk;
 }
@@ -257,8 +255,7 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
         return false;
     }
     *jumpOut = jump;
-    printf("[UNIT-SOURCE=generated] core:%s_%s jump=%s from generated "
-           "(match-legacy=YES)\n", stem, slug, jump ? "TRUE" : "FALSE");
+    mc2::fmt::print_out("[UNIT-SOURCE=generated] core:{}_{} jump={} from generated (match-legacy=YES)\n", mc2::fmt::safe(stem), mc2::fmt::safe(slug), mc2::fmt::safe(jump ? "TRUE" : "FALSE"));
     return true;
 }
 

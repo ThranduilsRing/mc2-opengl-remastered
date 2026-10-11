@@ -445,8 +445,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 }
                 const char cls = (gvd == VegDensity::kFull) ? 'F'
                                : (gvd == VegDensity::kSparse) ? 'S' : 'H';
-                fprintf(diagF, "  [%d,%d] class=%c elev=%.1f\n", gr, gc, cls,
-                        static_cast<double>(ge));
+                mc2::fmt::print(diagF, "  [{:d},{:d}] class={:c} elev={:.1f}\n", mc2::fmt::as_i32(gr), mc2::fmt::as_i32(gc), mc2::fmt::as_char(cls), static_cast<double>(ge));
             }
         }
         fclose(diagF);

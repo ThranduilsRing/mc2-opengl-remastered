@@ -48,6 +48,7 @@ FireExecutorRegistry& theFireExecutorRegistry() {
 #include "unitprofile.h"   // mc2UnitProfileDataEnabled()
 #include "cmponent.h"      // MasterComponent + masterList + weapon flag accessors
 #include <cstdio>
+#include "mc2fmt.h"
 
 // Mirror of equipment_extract._fire_executor: derive the default fireExecutor
 // NAME from a weapon MasterComponent's form + missile/streak/LBX/artillery flags.
@@ -81,7 +82,7 @@ void dumpFireExecutorProofIfEnabled() {
 
     size_t weapons = 0, bound = 0, unbound = 0;
     int shown = 0;
-    printf("[FIRE-EXECUTOR-REGISTRY-1] stock executors registered: %zu\n", reg.count());
+    mc2::fmt::print_out("[FIRE-EXECUTOR-REGISTRY-1] stock executors registered: {:d}\n", mc2::fmt::as_size(reg.count()));
 
     for (long i = 0; i < MasterComponent::numComponents; ++i) {
         MasterComponent& mc = MasterComponent::masterList[i];
@@ -95,15 +96,12 @@ void dumpFireExecutorProofIfEnabled() {
 
         const char* nm = mc.getName();
         if (shown < 8) {
-            printf("[FIRE-EXECUTOR-REGISTRY-1]   sample %s fireExecutor=%s bound=%s\n",
-                   (nm && nm[0]) ? nm : "<unnamed>", fx.c_str(),
-                   isBound ? "YES" : "NO");
+            mc2::fmt::print_out("[FIRE-EXECUTOR-REGISTRY-1]   sample {} fireExecutor={} bound={}\n", mc2::fmt::safe((nm && nm[0]) ? nm : "<unnamed>"), fx.c_str(), mc2::fmt::safe(isBound ? "YES" : "NO"));
             ++shown;
         }
     }
 
-    printf("[FIRE-EXECUTOR-REGISTRY-1] resolved: weapons=%zu  bound=%zu  unbound=%zu\n",
-           weapons, bound, unbound);
+    mc2::fmt::print_out("[FIRE-EXECUTOR-REGISTRY-1] resolved: weapons={:d}  bound={:d}  unbound={:d}\n", mc2::fmt::as_size(weapons), mc2::fmt::as_size(bound), mc2::fmt::as_size(unbound));
     if (weapons == 0)
-        printf("[FIRE-EXECUTOR-REGISTRY-1]   (no weapon-form components -- masterList not loaded?)\n");
+        mc2::fmt::print_out("[FIRE-EXECUTOR-REGISTRY-1]   (no weapon-form components -- masterList not loaded?)\n");
 }

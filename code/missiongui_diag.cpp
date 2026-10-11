@@ -1,6 +1,7 @@
 // MissionInterfaceManager: MC2_MIF_SPLIT / MC2_IFACE_COST_SPLIT phase timing and the GPU-ground-pick parity oracle.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 // ---- MC2_MIF_SPLIT: split MissionInterfaceManager::update() (the 1K 43.9ms) --
@@ -38,9 +39,8 @@ namespace missiongui_detail {
 		std::printf("[MIF_SPLIT v1] event=shutdown frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
 			s_mfFrames, s_mfInvWalks, s_mfInvHits);
 		for (int i=0;i<MF_COUNT;i++)
-			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_mfNames[i],
-				s_mfFrames?(double)s_mfSum[i]/s_mfFrames/1000.0:0.0, (double)s_mfMax[i]/1000.0);
-		std::printf("\n"); std::fflush(stdout);
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), s_mfFrames?(double)s_mfSum[i]/s_mfFrames/1000.0:0.0, (double)s_mfMax[i]/1000.0);
+		mc2::fmt::print_out("\n"); std::fflush(stdout);
 	}
 	// One [IFACE_PERF v1] line per window (or partial window at mission end).
 	void mfEmitWindow(std::string_view event) {
@@ -48,9 +48,8 @@ namespace missiongui_detail {
 		std::printf("[IFACE_PERF v1] event=%.*s frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
 			static_cast<int>(event.size()), event.data(), s_mfWinFrames, s_mfWinWalks, s_mfWinHits);
 		for (int i=0;i<MF_COUNT;i++)
-			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_mfNames[i],
-				(double)s_mfWinSum[i]/s_mfWinFrames/1000.0, (double)s_mfWinMax[i]/1000.0);
-		std::printf("\n"); std::fflush(stdout);
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), (double)s_mfWinSum[i]/s_mfWinFrames/1000.0, (double)s_mfWinMax[i]/1000.0);
+		mc2::fmt::print_out("\n"); std::fflush(stdout);
 		for (int i=0;i<MF_COUNT;i++) { s_mfWinSum[i]=0; s_mfWinMax[i]=0; }
 		s_mfWinFrames=0; s_mfWinWalks=0; s_mfWinHits=0;
 	}

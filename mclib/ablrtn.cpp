@@ -818,9 +818,9 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
 			char fatalMsg[512];
 			mc2::fmt::to_buf(fatalMsg, "[ABL_COMPILE_FATAL] file={} syntaxErrors={:d} -- refusing to load a module that failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).", mc2::fmt::safe(ModuleRegistry[NumModulesRegistered].fileName), mc2::fmt::as_i32(errorCount));
-			fprintf(stderr, "%s\n", fatalMsg);
+			mc2::fmt::print_err("{}\n", mc2::fmt::safe(fatalMsg));
 			fflush(stderr);
-			printf("%s\n", fatalMsg);
+			mc2::fmt::print_out("{}\n", mc2::fmt::safe(fatalMsg));
 			fflush(stdout);
 			exit(1);
 		}

@@ -5,6 +5,7 @@
 //===========================================================================//
 
 #include "mover_internal.h"
+#include "mc2fmt.h"
 
 
 long						MaxMoveGoalChecks = 60;
@@ -827,10 +828,7 @@ void Mover::validateLoadoutHardpointJoins (const char* unitLabel) const {
 	const std::vector<UnitProfileFinding> findings =
 		::validateUnitDefinition(in, theActionExecutorRegistry());
 	for (const UnitProfileFinding& f : findings) {
-		printf("[UnitDefinition:VALIDATE] %s: %s (reason=%d)\n",
-		       unitLabel ? unitLabel : "<unknown>",
-		       f.message ? f.message : "",
-		       static_cast<int>(f.code));
+		mc2::fmt::print_out("[UnitDefinition:VALIDATE] {}: {} (reason={:d})\n", mc2::fmt::safe(unitLabel ? unitLabel : "<unknown>"), mc2::fmt::safe(f.message ? f.message : ""), mc2::fmt::as_i32(static_cast<int>(f.code)));
 	}
 }
 

@@ -325,11 +325,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				textureFile.read(hdr, sizeof(hdr));
 				textureFile.seek(0);
 			}
-			fprintf(f,"[PREVIEW-LOAD] open=%ld size=%ld disk=%d name=%s tgaType=%u dims=%ux%u bpp=%u\n",
-				textureFileOpenResult, fsz,
-				((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1),
-				textureFullPathName,
-				hdr[2], hdr[12] | (hdr[13]<<8), hdr[14] | (hdr[15]<<8), hdr[16]);
+			mc2::fmt::print(f, "[PREVIEW-LOAD] open={:d} size={:d} disk={:d} name={} tgaType={:d} dims={:d}x{:d} bpp={:d}\n", mc2::fmt::as_i32(textureFileOpenResult), mc2::fmt::as_i32(fsz), mc2::fmt::as_i32(((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1)), mc2::fmt::safe(textureFullPathName), mc2::fmt::as_u32(hdr[2]), mc2::fmt::as_u32(hdr[12] | (hdr[13]<<8)), mc2::fmt::as_u32(hdr[14] | (hdr[15]<<8)), mc2::fmt::as_u32(hdr[16]));
 			fclose(f);
 		}
 	}
