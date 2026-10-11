@@ -846,9 +846,10 @@ TeamPtr Gate::getTeam (void) {
 }
 
 //***************************************************************************
+#include "save_struct_zero.h"
 void Gate::Save (PacketFilePtr file, long packetNum)
 {
-	GateData data{};
+	MC2_SAVE_STRUCT(GateData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

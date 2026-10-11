@@ -979,7 +979,7 @@ class MechWarrior {
 
 		void init (bool create);
 
-		void init (MechWarriorData data);
+		void init (MechWarriorData& data);   // by reference: a by-value copy leaves the struct padding as stack leftovers, which a later save writes
 
 		MechWarrior (void) {
 			init(true);

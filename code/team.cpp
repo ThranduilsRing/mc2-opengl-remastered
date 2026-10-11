@@ -482,9 +482,10 @@ void killHomeTeamTargets (void) {
 }
 
 //---------------------------------------------------------------------------
+#include "save_struct_zero.h"
 long Team::Save (PacketFilePtr file, long packetNum)
 {
-	TeamStaticData staticData{};
+	MC2_SAVE_STRUCT(TeamStaticData, staticData);
 	staticData.numTeams = numTeams;
 	staticData.homeTeamId = home->getId();
 	memcpy(staticData.relations,relations,sizeof(char) * MAX_TEAMS * MAX_TEAMS);
@@ -495,7 +496,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 
 	for (long i=0;i<numTeams;i++)
 	{
-		TeamData data{};
+		MC2_SAVE_STRUCT(TeamData, data);
 		data.id = teams[i]->getId();
 		data.rosterSize = teams[i]->rosterSize;
 		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * MAX_MOVERS_PER_TEAM);

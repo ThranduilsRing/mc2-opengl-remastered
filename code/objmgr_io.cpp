@@ -581,12 +581,13 @@ void GameObjectManager::CopyFrom (ObjectManagerData *data)
 }
 
 //-------------------------------------------------------------------
+#include "save_struct_zero.h"
 long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 {
 	int32_t *watchSave = (int32_t*)malloc(sizeof(int32_t) * (getMaxObjects() + 1));
 	memset(watchSave,0,sizeof(int32_t) * (getMaxObjects() + 1));
 
-	ObjectManagerData data{};
+	MC2_SAVE_STRUCT(ObjectManagerData, data);
 	CopyTo(&data);
 
 	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(ObjectManagerData),STORAGE_TYPE_RAW);

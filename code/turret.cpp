@@ -2285,9 +2285,10 @@ void Turret::updateDebugWindow (GameDebugWindow* debugWindow) {
 }
 
 //***************************************************************************
+#include "save_struct_zero.h"
 void Turret::Save (PacketFilePtr file, long packetNum)
 {
-	TurretData data{};
+	MC2_SAVE_STRUCT(TurretData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

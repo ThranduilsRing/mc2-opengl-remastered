@@ -819,9 +819,10 @@ void BattleMech::damageLoadedComponents (void)
 	}
 }	
 
+#include "save_struct_zero.h"
 void BattleMech::Save (PacketFilePtr file, long packetNum)
 {
-	MechData data{};
+	MC2_SAVE_STRUCT(MechData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

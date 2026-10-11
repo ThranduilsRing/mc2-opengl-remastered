@@ -1654,9 +1654,10 @@ bool TerrainObject::calcAdjacentAreaCell (long moveLevel, long areaID, long& adj
 }
 
 //***************************************************************************
+#include "save_struct_zero.h"
 void TerrainObject::Save (PacketFilePtr file, long packetNum)
 {
-	TerrainObjectData data{};
+	MC2_SAVE_STRUCT(TerrainObjectData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

@@ -286,9 +286,10 @@ bool	 Mover::isWeaponWorking (long weaponIndex)
 	return(TRUE);
 }
 
+#include "save_struct_zero.h"
 void Mover::Save (PacketFilePtr file, long packetNum)
 {
-	MoverData data{};
+	MC2_SAVE_STRUCT(MoverData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

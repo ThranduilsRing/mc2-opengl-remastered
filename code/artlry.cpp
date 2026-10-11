@@ -1700,9 +1700,10 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 }	
 
 //---------------------------------------------------------------------------
+#include "save_struct_zero.h"
 void Artillery::Save (PacketFilePtr file, long packetNum)
 {
-	ArtilleryData data{};
+	MC2_SAVE_STRUCT(ArtilleryData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

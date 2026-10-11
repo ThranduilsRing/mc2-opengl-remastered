@@ -773,7 +773,7 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	warriorBrainHandle = data.warriorBrainHandle;
 }
 
-void MechWarrior::init (MechWarriorData data)
+void MechWarrior::init (MechWarriorData& data)
 {
 	init(false);
 
@@ -810,16 +810,17 @@ void MechWarrior::init (MechWarriorData data)
 		radio->setOwner(this);
 }
 
+#include "save_struct_zero.h"
 void MechWarrior::save (PacketFilePtr file, long packetNum) 
 {
-	MechWarriorData warriorData{};
+	MC2_SAVE_STRUCT(MechWarriorData, warriorData);
 	copyToData(warriorData);
 	file->writePacket(packetNum,(MemoryPtr)&warriorData,sizeof(warriorData),STORAGE_TYPE_ZLIB);
 }
 
 long MechWarrior::Save (PacketFilePtr file, long packetNum)
 {
-	StaticMechWarriorData staticData{};
+	MC2_SAVE_STRUCT(StaticMechWarriorData, staticData);
 	staticData.numWarriors 					= numWarriors;
 	staticData.numWarriorsInCombat			= numWarriorsInCombat;
 	MemCpy(staticData.brainsEnabled,brainsEnabled);

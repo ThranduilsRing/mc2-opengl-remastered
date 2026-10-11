@@ -803,9 +803,10 @@ void GroundVehicle::render (void)
 	
 }
 
+#include "save_struct_zero.h"
 void GroundVehicle::Save (PacketFilePtr file, long packetNum)
 {
-	GroundVehicleData data{};
+	MC2_SAVE_STRUCT(GroundVehicleData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

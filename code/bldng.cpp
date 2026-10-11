@@ -1640,9 +1640,10 @@ void Building::setParentId (DWORD pId)
 }
 
 //***************************************************************************
+#include "save_struct_zero.h"
 void Building::Save (PacketFilePtr file, long packetNum)
 {
-	BuildingData data{};
+	MC2_SAVE_STRUCT(BuildingData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

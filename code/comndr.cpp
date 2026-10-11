@@ -174,9 +174,10 @@ void Commander::addToGUI (bool visible) {
 }
 
 //---------------------------------------------------------------------------
+#include "save_struct_zero.h"
 long Commander::Save (PacketFilePtr file, long packetNum)
 {
-	StaticCommanderData staticData{};
+	MC2_SAVE_STRUCT(StaticCommanderData, staticData);
 	staticData.numCommanders = numCommanders;
 	staticData.homeCommanderId = home->getId();
 
@@ -185,7 +186,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 
 	for (long i=0;i<numCommanders;i++)
 	{
-		CommanderData data{};
+		MC2_SAVE_STRUCT(CommanderData, data);
 		data.id = commanders[i]->getId();
 
 		//Allied commanders have NO team!!??!

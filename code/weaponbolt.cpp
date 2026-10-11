@@ -622,9 +622,10 @@ void WeaponBolt::setTargetPosition (Stuff::Vector3D pos)
 }
 
 //***************************************************************************
+#include "save_struct_zero.h"
 void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 {
-	WeaponBoltData data{};
+	MC2_SAVE_STRUCT(WeaponBoltData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

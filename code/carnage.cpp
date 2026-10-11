@@ -917,9 +917,10 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 }	
 
 //---------------------------------------------------------------------------
+#include "save_struct_zero.h"
 void Carnage::Save (PacketFilePtr file, long packetNum)
 {
-	CarnageData data{};
+	MC2_SAVE_STRUCT(CarnageData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
