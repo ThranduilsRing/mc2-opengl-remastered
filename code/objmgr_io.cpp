@@ -586,7 +586,7 @@ long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 	int32_t *watchSave = (int32_t*)malloc(sizeof(int32_t) * (getMaxObjects() + 1));
 	memset(watchSave,0,sizeof(int32_t) * (getMaxObjects() + 1));
 
-	ObjectManagerData data;
+	ObjectManagerData data{};
 	CopyTo(&data);
 
 	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(ObjectManagerData),STORAGE_TYPE_RAW);
@@ -675,7 +675,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 	for (long p = 0; p < numPackets; ++p) {
 		if (sizeAt(static_cast<uint32_t>(p)) != sizeof(ObjectManagerData))
 			continue;
-		ObjectManagerData data;
+		ObjectManagerData data{};
 		file->readPacket(static_cast<int>(p), reinterpret_cast<MemoryPtr>(&data));
 		HeaderCounts h = {};
 		h.byClass[kTerrain] = data.numTerrainObjects;
@@ -707,7 +707,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 //-------------------------------------------------------------------
 long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 {
-	ObjectManagerData data;
+	ObjectManagerData data{};
 	file->readPacket(packetNum,(MemoryPtr)&data);
 	packetNum++;
 
@@ -856,7 +856,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a TerrainObject.
 			// Get its data.
-			TerrainObjectData data;
+			TerrainObjectData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -893,7 +893,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(BuildingData))
 		{
 			//We have a Building.
-			BuildingData data;
+			BuildingData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -936,7 +936,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(TurretData))
 		{
 			//We have a Turret.
-			TurretData data;
+			TurretData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -972,7 +972,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(GateData))
 		{
 			//We have a Gate.
-			GateData data;
+			GateData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -1008,7 +1008,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(ArtilleryData))
 		{
 			//We have an Artillery.
-			ArtilleryData data;
+			ArtilleryData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -1033,7 +1033,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(CarnageData))
 		{
 			//We have a Carnage.
-			CarnageData data;
+			CarnageData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -1058,7 +1058,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(MechData))
 		{
 			//We have a BattleMech.
-			MechData data;
+			MechData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -1083,7 +1083,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(GroundVehicleData))
 		{
 			//We have a groundVehicle.
-			GroundVehicleData data;
+			GroundVehicleData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 
@@ -1108,7 +1108,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		else if (packetSize == sizeof(WeaponBoltData))
 		{
 			//We have a WeaponBolt.
-			WeaponBoltData data;
+			WeaponBoltData data{};
 			file->readPacket(packetNum,(MemoryPtr)(&data));
 			packetNum++;
 

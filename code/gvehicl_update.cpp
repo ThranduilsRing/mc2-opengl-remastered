@@ -805,7 +805,7 @@ void GroundVehicle::render (void)
 
 void GroundVehicle::Save (PacketFilePtr file, long packetNum)
 {
-	GroundVehicleData data;
+	GroundVehicleData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

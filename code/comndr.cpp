@@ -176,7 +176,7 @@ void Commander::addToGUI (bool visible) {
 //---------------------------------------------------------------------------
 long Commander::Save (PacketFilePtr file, long packetNum)
 {
-	StaticCommanderData staticData;
+	StaticCommanderData staticData{};
 	staticData.numCommanders = numCommanders;
 	staticData.homeCommanderId = home->getId();
 
@@ -185,7 +185,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 
 	for (long i=0;i<numCommanders;i++)
 	{
-		CommanderData data;
+		CommanderData data{};
 		data.id = commanders[i]->getId();
 
 		//Allied commanders have NO team!!??!
@@ -208,7 +208,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 //---------------------------------------------------------------------------
 long Commander::Load (PacketFilePtr file, long packetNum)
 {
-	StaticCommanderData staticData;
+	StaticCommanderData staticData{};
 	file->readPacket(packetNum,(MemoryPtr)&staticData);
 	packetNum++;
 
@@ -216,7 +216,7 @@ long Commander::Load (PacketFilePtr file, long packetNum)
 
 	for (long i=0;i<numCommanders;i++)
 	{
-		CommanderData data;
+		CommanderData data{};
 		file->readPacket(packetNum,(MemoryPtr)&data);
 		packetNum++;
 

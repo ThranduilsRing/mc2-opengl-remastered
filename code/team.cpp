@@ -484,7 +484,7 @@ void killHomeTeamTargets (void) {
 //---------------------------------------------------------------------------
 long Team::Save (PacketFilePtr file, long packetNum)
 {
-	TeamStaticData staticData;
+	TeamStaticData staticData{};
 	staticData.numTeams = numTeams;
 	staticData.homeTeamId = home->getId();
 	memcpy(staticData.relations,relations,sizeof(char) * MAX_TEAMS * MAX_TEAMS);
@@ -495,7 +495,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 
 	for (long i=0;i<numTeams;i++)
 	{
-		TeamData data;
+		TeamData data{};
 		data.id = teams[i]->getId();
 		data.rosterSize = teams[i]->rosterSize;
 		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * MAX_MOVERS_PER_TEAM);
@@ -510,7 +510,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 //---------------------------------------------------------------------------
 long Team::Load (PacketFilePtr file, long packetNum)
 {
-	TeamStaticData staticData;
+	TeamStaticData staticData{};
 
 	file->readPacket(packetNum,(MemoryPtr)&staticData);
 	packetNum++;
@@ -521,7 +521,7 @@ long Team::Load (PacketFilePtr file, long packetNum)
 
 	for (long i=0;i<numTeams;i++)
 	{
-		TeamData data;
+		TeamData data{};
 		file->readPacket(packetNum,(MemoryPtr)&data);
 		packetNum++;
 

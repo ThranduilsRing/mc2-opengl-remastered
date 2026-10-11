@@ -848,7 +848,7 @@ TeamPtr Gate::getTeam (void) {
 //***************************************************************************
 void Gate::Save (PacketFilePtr file, long packetNum)
 {
-	GateData data;
+	GateData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

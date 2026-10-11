@@ -919,7 +919,7 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 //---------------------------------------------------------------------------
 void Carnage::Save (PacketFilePtr file, long packetNum)
 {
-	CarnageData data;
+	CarnageData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

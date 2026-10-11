@@ -288,7 +288,7 @@ bool	 Mover::isWeaponWorking (long weaponIndex)
 
 void Mover::Save (PacketFilePtr file, long packetNum)
 {
-	MoverData data;
+	MoverData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

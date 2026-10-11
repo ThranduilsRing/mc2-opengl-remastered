@@ -1656,7 +1656,7 @@ bool TerrainObject::calcAdjacentAreaCell (long moveLevel, long areaID, long& adj
 //***************************************************************************
 void TerrainObject::Save (PacketFilePtr file, long packetNum)
 {
-	TerrainObjectData data;
+	TerrainObjectData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

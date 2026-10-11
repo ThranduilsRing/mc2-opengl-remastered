@@ -2287,7 +2287,7 @@ void Turret::updateDebugWindow (GameDebugWindow* debugWindow) {
 //***************************************************************************
 void Turret::Save (PacketFilePtr file, long packetNum)
 {
-	TurretData data;
+	TurretData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

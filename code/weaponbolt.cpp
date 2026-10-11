@@ -624,7 +624,7 @@ void WeaponBolt::setTargetPosition (Stuff::Vector3D pos)
 //***************************************************************************
 void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 {
-	WeaponBoltData data;
+	WeaponBoltData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

@@ -812,14 +812,14 @@ void MechWarrior::init (MechWarriorData data)
 
 void MechWarrior::save (PacketFilePtr file, long packetNum) 
 {
-	MechWarriorData warriorData;
+	MechWarriorData warriorData{};
 	copyToData(warriorData);
 	file->writePacket(packetNum,(MemoryPtr)&warriorData,sizeof(warriorData),STORAGE_TYPE_ZLIB);
 }
 
 long MechWarrior::Save (PacketFilePtr file, long packetNum)
 {
-	StaticMechWarriorData staticData;
+	StaticMechWarriorData staticData{};
 	staticData.numWarriors 					= numWarriors;
 	staticData.numWarriorsInCombat			= numWarriorsInCombat;
 	MemCpy(staticData.brainsEnabled,brainsEnabled);
@@ -844,14 +844,14 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 
 void MechWarrior::load (PacketFilePtr file, long packetNum)
 {
-	MechWarriorData warriorData;
+	MechWarriorData warriorData{};
 	file->readPacket(packetNum,(MemoryPtr)&warriorData);
 	init(warriorData);
 }
 
 long MechWarrior::Load (PacketFilePtr file, long packetNum)
 {
-	StaticMechWarriorData staticData;
+	StaticMechWarriorData staticData{};
 	file->readPacket(packetNum,(MemoryPtr)&staticData);
 	packetNum++;
 

@@ -821,7 +821,7 @@ void BattleMech::damageLoadedComponents (void)
 
 void BattleMech::Save (PacketFilePtr file, long packetNum)
 {
-	MechData data;
+	MechData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

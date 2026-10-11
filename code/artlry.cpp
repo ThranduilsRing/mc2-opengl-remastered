@@ -1702,7 +1702,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 //---------------------------------------------------------------------------
 void Artillery::Save (PacketFilePtr file, long packetNum)
 {
-	ArtilleryData data;
+	ArtilleryData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!

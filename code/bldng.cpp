@@ -1642,7 +1642,7 @@ void Building::setParentId (DWORD pId)
 //***************************************************************************
 void Building::Save (PacketFilePtr file, long packetNum)
 {
-	BuildingData data;
+	BuildingData data{};
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
