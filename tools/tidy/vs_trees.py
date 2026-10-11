@@ -17,6 +17,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -89,8 +90,21 @@ def includer_map(trees=TREES):
     return by
 
 
-def build_trees(keys):
-    """Build every target holding one of the 'tree::object' keys. -> {key: error text} for targets that failed."""
+def _error_files(text):
+    """Repo-relative, lower-case paths named by the `file(line): error` lines of a build log."""
+    out = set()
+    for m in re.finditer(r"^\s*(?:\d+>)?([A-Za-z]:[^()\n]*?)\(\d+(?:,\d+)?\)\s*:\s*(?:fatal )?error", text, re.M):
+        try:
+            out.add(os.path.relpath(m.group(1).strip(), ROOT).replace("\\", "/").lower())
+        except ValueError:
+            pass
+    return out
+
+
+def build_trees(keys, by_header=None):
+    """Build every target holding one of the 'tree::object' keys. -> {key: error text} for the objects that failed.
+    A failed target blames only the objects its errors name: the source file itself, or a header the object includes (`by_header`: header -> keys). When no error can be
+    attributed the whole target is blamed."""
     targets = {}
     for k in keys:
         tree, obj = k.split("::", 1)
@@ -100,18 +114,27 @@ def build_trees(keys):
         target = tdir[:-4] if tdir.endswith(".dir") else tdir
         r = subprocess.run([CMAKE if os.path.isfile(CMAKE) else "cmake", "--build", os.path.join(ROOT, tree), "--config", CONFIG, "--target", target],
                            capture_output=True, text=True, errors="replace", cwd=ROOT, **console_child.child_kwargs(redirected=True))
-        if r.returncode:
-            msg = "\n".join(l for l in (r.stdout + r.stderr).splitlines() if "error" in l)[-600:]
-            for k in ks:
-                failed[k] = msg
+        if not r.returncode:
+            continue
+        log = r.stdout + r.stderr
+        msg = "\n".join(l for l in log.splitlines() if "error" in l)[:600]
+        efiles = _error_files(log)
+        stems = {os.path.splitext(os.path.basename(f))[0] for f in efiles if f.endswith((".cpp", ".cc", ".cxx", ".c"))}
+        blamed = {k for k in ks if os.path.splitext(os.path.basename(k.split("::", 1)[1]))[0].lower() in stems}
+        for h, hk in (by_header or {}).items():
+            if h.lower() in efiles:
+                blamed |= set(hk) & set(ks)
+        for k in (blamed or ks):
+            failed[k] = msg
     return failed
 
 
 def snapshot(headers, out_path, trees=TREES):
     m = includer_map(trees)
     keys = sorted({k for h in headers for k in m.get(h, ())})
-    failed = build_trees(keys)
-    doc = {"headers": list(headers), "objects": {}, "failed_before": failed}
+    by_header = {h: sorted(m.get(h, ())) for h in headers}
+    failed = build_trees(keys, by_header)
+    doc = {"headers": list(headers), "by_header": by_header, "objects": {}, "failed_before": failed}
     for k in keys:
         tree, obj = k.split("::", 1)
         p = os.path.join(ROOT, tree, obj)
@@ -125,7 +148,7 @@ def snapshot(headers, out_path, trees=TREES):
 def verify(path, layout_only_ok=False):
     """-> (lines, bad count, layout-only object names)."""
     doc = json.load(open(path, encoding="utf-8"))
-    failed = build_trees(doc["objects"])
+    failed = build_trees(doc["objects"], doc.get("by_header"))
     lines, bad, layout = [], 0, []
     for k, before in sorted(doc["objects"].items()):
         if k in failed and k not in doc["failed_before"]:
