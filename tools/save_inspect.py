@@ -50,6 +50,18 @@ def kind(typ: int, size: int) -> str:
     return RECORD_SIZES.get(size, "data")
 
 
+def is_text(raw: bytes) -> bool:
+    """A packet that is a FIT/INI text file (the mission settings, the logistics data): its first bytes are printable ASCII or line breaks."""
+    head = raw[:256]
+    return bool(head) and all(c in (9, 10, 13) or 32 <= c < 127 for c in head)
+
+
+def packet_kind(typ: int, raw: bytes) -> str:
+    """kind() of a packet, with text packets told apart from other data."""
+    k = kind(typ, len(raw))
+    return "text" if k == "data" and is_text(raw) else k
+
+
 def first_diff(a: bytes, b: bytes) -> int:
     """Offset of the first differing byte; the shorter length when one is a prefix of the other; -1 when equal."""
     n = min(len(a), len(b))
@@ -67,8 +79,8 @@ def first_diff(a: bytes, b: bytes) -> int:
 
 def compare(pa, pb) -> dict:
     """Compare two unpacked packet lists. -> {"equal", "packets_a", "packets_b", "differing", "first": (index, offset, kind, size_a, size_b) | None,
-    "by_kind": {kind: [differing packets, differing bytes]}}."""
-    out = {"equal": True, "packets_a": len(pa), "packets_b": len(pb), "differing": 0, "first": None, "by_kind": {}}
+    "first_binary": the same for the first packet that is not a FIT text file, "by_kind": {kind: [differing packets, differing bytes]}}."""
+    out = {"equal": True, "packets_a": len(pa), "packets_b": len(pb), "differing": 0, "first": None, "first_binary": None, "by_kind": {}}
     for i in range(max(len(pa), len(pb))):
         ta, ra = pa[i] if i < len(pa) else (NUL, b"")
         tb, rb = pb[i] if i < len(pb) else (NUL, b"")
@@ -77,9 +89,11 @@ def compare(pa, pb) -> dict:
         out["equal"] = False
         out["differing"] += 1
         off = first_diff(ra, rb)
-        k = kind(ta, len(ra))
+        k = packet_kind(ta, ra)
         if out["first"] is None:
             out["first"] = (i, off, k, len(ra), len(rb))
+        if out["first_binary"] is None and k != "text":
+            out["first_binary"] = (i, off, k, len(ra), len(rb))
         n = min(len(ra), len(rb))
         nbytes = sum(1 for x, y in zip(ra[:n], rb[:n]) if x != y) + abs(len(ra) - len(rb))
         row = out["by_kind"].setdefault(k, [0, 0])
@@ -94,6 +108,9 @@ def describe(res: dict) -> list:
         return [f"identical: {res['packets_a']} packets"]
     i, off, k, sa, sb = res["first"]
     lines = [f"DIFFERENT: {res['differing']} of {max(res['packets_a'], res['packets_b'])} packets differ; first is packet {i} ({k}, {sa} vs {sb} bytes) at offset {off}"]
+    if res["first_binary"] and res["first_binary"] != res["first"]:
+        i, off, k, sa, sb = res["first_binary"]
+        lines.append(f"first differing non-text packet: {i} ({k}, {sa} vs {sb} bytes) at offset {off}")
     for k2, (n, nb) in sorted(res["by_kind"].items(), key=lambda kv: -kv[1][0]):
         lines.append(f"  {k2}: {n} packet(s), {nb} byte(s) differ")
     return lines
@@ -104,11 +121,11 @@ def runs(pk) -> list:
     out = []
     i = 0
     while i < len(pk):
-        k = kind(pk[i][0], len(pk[i][1]))
+        k = packet_kind(*pk[i])
         j = i
         h = hashlib.sha256()
         total = 0
-        while j < len(pk) and (k == "empty" or j - i < CHUNK) and kind(pk[j][0], len(pk[j][1])) == k:
+        while j < len(pk) and (k == "empty" or j - i < CHUNK) and packet_kind(*pk[j]) == k:
             h.update(len(pk[j][1]).to_bytes(4, "little"))
             h.update(pk[j][1])
             total += len(pk[j][1])
@@ -152,7 +169,7 @@ def selftest() -> int:
     expect(first_diff(b"abcd", b"abcdef") == 4, "a prefix differs at its end")
     expect(first_diff(b"Xbcd", b"abcd") == 0, "a difference at offset 0 is found")
     expect(first_diff(b"abcdefgh" * 100, b"abcdefgh" * 99 + b"abcdefgX") == 799, "the binary search lands on the last byte")
-    base = [(0, b"ver"), (4, b"x" * 40), (4, b"y" * 40), (NUL, b""), (4, b"z" * 8)]
+    base = [(0, b"ver"), (4, b"" * 40), (4, b"" * 40), (NUL, b""), (4, b"" * 8)]
     same = [(t, bytes(r)) for t, r in base]
     expect(compare(base, same)["equal"], "identical packet lists compare equal")
     mod = [(t, bytearray(r)) for t, r in base]
@@ -168,12 +185,13 @@ def selftest() -> int:
     try:
         res = compare(base, mod)
         expect(res["by_kind"].get("Rec40") == [1, 1] and res["by_kind"].get("data") == [1, 1], "differences are counted per record class")
-        expect([r[0] for r in runs(base)] == ["data", "Rec40", "empty", "data"], "runs group packets of one kind")
+        expect([r[0] for r in runs(base)] == ["text", "Rec40", "empty", "data"], "runs group packets of one kind")
+        expect(packet_kind(4, b"[Part1]\nx = 1\n") == "text" and packet_kind(4, b"\x00\x01" * 21) == "data", "a FIT text packet is told from binary data")
     finally:
         RECORD_SIZES.clear()
         RECORD_SIZES.update(old)
     expect(overall(base) == overall(same) and overall(base) != overall(mod), "the overall digest sees a changed byte")
-    long_run = [(4, bytes([i % 251]) * 5) for i in range(600)]
+    long_run = [(4, bytes([1 + i % 3]) * 5) for i in range(600)]
     expect(len(runs(long_run)) == 3, "a long run is cut into chunks")
     expect(len(runs([(NUL, b"")] * 600)) == 1, "a run of unwritten slots is one run")
     ok, _ = compare_runs(runs(base), runs(same))
