@@ -2122,8 +2122,8 @@ void MechWarrior::updateActions (void) {
 			}
 			if (firedCount > 0) {
 				s_nextFire = scenarioTime + 0.05f;   // ~20 volleys/sec -> a live bolt every frame
-				printf("[FX_FORCE_SPAWN loop] event=mech_fire wid=%ld weapons=%d pos=%.0f,%.0f,%.0f scenarioTime=%.2f\n",
-					myVehicle->getWatchID(), firedCount, pos.x, pos.y, pos.z, scenarioTime);
+				mc2::fmt::print_out("[FX_FORCE_SPAWN loop] event=mech_fire wid={:d} weapons={:d} pos={:.0f},{:.0f},{:.0f} scenarioTime={:.2f}\n",
+					mc2::fmt::as_i32(myVehicle->getWatchID()), mc2::fmt::as_i32(firedCount), pos.x, pos.y, pos.z, scenarioTime);
 				fflush(stdout);
 				// VK-FIELD-VFX-5: fire-event capture arm. With
 				// MC2_VK_PRESENT_DUMP_ON_FIRE set, the FIRST loop volley arms the

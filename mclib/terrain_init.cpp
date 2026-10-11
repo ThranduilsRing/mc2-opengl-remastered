@@ -205,8 +205,8 @@ void Terrain::lodAllocMeta() {
 
 	// Phase 7.5 diagnostic: startup banner — unmistakable confirmation the
 	// chunk renderer is active on this launch.
-	printf("[TerrainLOD v1] ENABLED chunks=%d x=%d ssbo=binding23 drawPath=chunk\n",
-	       s_terrainChunkSide * s_terrainChunkSide, s_terrainChunkSide);
+	mc2::fmt::print_out("[TerrainLOD v1] ENABLED chunks={:d} x={:d} ssbo=binding23 drawPath=chunk\n",
+	       mc2::fmt::as_i32(s_terrainChunkSide * s_terrainChunkSide), mc2::fmt::as_i32(s_terrainChunkSide));
 	fflush(stdout);
 
 	// Initialize per-block metadata.

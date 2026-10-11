@@ -160,8 +160,8 @@ void mirrorTerrainUniforms(GLuint src, GLuint dst) {
             default:
                 // No other uniform types exist in terrain_lod_chunk. If one is
                 // ever added, this warns rather than silently dropping it.
-                std::fprintf(stderr, "[CLIFF_TESS 3a] WARN unmirrored uniform '%s' type=0x%x\n",
-                             name, (unsigned)type);
+                mc2::fmt::print_err("[CLIFF_TESS 3a] WARN unmirrored uniform '{}' type=0x{:x}\n",
+                             mc2::fmt::safe(name), mc2::fmt::as_u32((unsigned)type));
                 break;
         }
     }
@@ -651,7 +651,7 @@ void gos_TerrainLodChunk_Init()
             mc2::fmt::print_out("[TerrainLodChunk] shader loaded prog={:d} locs: originX={:d} originY={:d} mapSide={:d} halfMap={:d} mvp={:d} lodStep={:d} skirtDepth={:d} forceColor={:d}\n", mc2::fmt::as_u32((unsigned)s_terrainProgram), mc2::fmt::as_i32(s_locBlockOriginX), mc2::fmt::as_i32(s_locBlockOriginY), mc2::fmt::as_i32(s_locMapSide), mc2::fmt::as_i32(s_locHalfMap), mc2::fmt::as_i32(s_locMvp), mc2::fmt::as_i32(s_locLodStep), mc2::fmt::as_i32(s_locSkirtDepth), mc2::fmt::as_i32(s_locForceColor));
             fflush(stdout);
             // Phase 7.5: separate startup confirmation line for easy grep.
-            printf("[TerrainLOD v1] shader program compiled OK (program=%u)\n", s_terrainProgram);
+            mc2::fmt::print_out("[TerrainLOD v1] shader program compiled OK (program={:d})\n", mc2::fmt::as_u32(s_terrainProgram));
             fflush(stdout);
         }
 

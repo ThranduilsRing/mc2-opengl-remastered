@@ -288,8 +288,8 @@ void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeNa
     const char* label = (typeName && typeName[0]) ? typeName : "<unknown>";
     for (const UnitProfileFinding& f : findings) {
         // Report-only: describe the incoherence in modder terms; do not reject.
-        printf("[UnitDefinition:VALIDATE] %s: %s (reason=%d)\n",
-               label, f.message, static_cast<int>(f.code));
+        mc2::fmt::print_out("[UnitDefinition:VALIDATE] {}: {} (reason={:d})\n",
+               mc2::fmt::safe(label), mc2::fmt::safe(f.message), mc2::fmt::as_i32(static_cast<int>(f.code)));
     }
 }
 

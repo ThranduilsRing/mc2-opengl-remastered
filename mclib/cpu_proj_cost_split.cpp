@@ -157,7 +157,7 @@ static void emit_window_stats() {
     }
 
     // Sidecars.
-    std::fprintf(stderr, "  sidecar buckets (NEVER in projection_total adjudication):\n");
+    mc2::fmt::print_err("  sidecar buckets (NEVER in projection_total adjudication):\n");
     for (int s = 0; s < SIDECAR_COUNT; ++s) {
         std::vector<int64_t> tmpA(s_winSidecarNs[s]);
         std::vector<int64_t> tmpB(s_winSidecarNs[s]);

@@ -231,8 +231,8 @@ void LogisticsData::appendEquipmentAddFillComponents()
 		{
 			// icon column is validated by the ADD pass, so this is unexpected --
 			// surface it rather than half-materializing the item.
-			printf( "[EQUIP-ADD] logistics consumer REJECTED synthesized row (id=%s ordinal=%ld) -- item absent from mechlab\n",
-					r.qualifiedId.c_str(), r.ordinal );
+			mc2::fmt::print_out( "[EQUIP-ADD] logistics consumer REJECTED synthesized row (id={} ordinal={:d}) -- item absent from mechlab\n",
+					r.qualifiedId.c_str(), mc2::fmt::as_i32(r.ordinal) );
 			components.DeleteTail();
 			continue;
 		}

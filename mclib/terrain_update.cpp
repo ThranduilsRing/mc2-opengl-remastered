@@ -705,8 +705,8 @@ long Terrain::update (void)
 							pos += mc2::fmt::to_buf_n(buf + pos, sizeof(buf) - pos, "({:d},{:d})", mc2::fmt::as_i32(bx2), mc2::fmt::as_i32(by2));
 				buf[pos] = '\0';
 				// Camera east/north already computed above as eyeX/eyeY.
-				printf("[BlockSet] frame=%lu cmds=%d cam=(%.0f,%.0f) blocks=%s\n",
-					(unsigned long)gCurrentFrame, s_cmdCount, eyeX, eyeY, buf);
+				mc2::fmt::print_out("[BlockSet] frame={:d} cmds={:d} cam=({:.0f},{:.0f}) blocks={}\n",
+					mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_cmdCount), eyeX, eyeY, mc2::fmt::safe(buf));
 				fflush(stdout);
 			}
 		}

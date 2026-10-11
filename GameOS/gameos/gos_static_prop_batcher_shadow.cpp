@@ -844,11 +844,10 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 // Translation lives in row 3 of a row-major 4x4 (col-major layout:
                 // indices 12,13,14 are the last column == translation for either
                 // convention used consistently across the island's mirror).
-                std::fprintf(f, "%s{\"typeID\":%u,\"posX\":%.4f,\"posY\":%.4f,"
-                    "\"posZ\":%.4f,\"flags\":%u}",
-                    i ? "," : "", gi.typeID,
+                mc2::fmt::print(f, "{}{{\"typeID\":{:d},\"posX\":{:.4f},\"posY\":{:.4f},\"posZ\":{:.4f},\"flags\":{:d}}}",
+                    mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_u32(gi.typeID),
                     gi.modelMatrix[12], gi.modelMatrix[13], gi.modelMatrix[14],
-                    gi.flags);
+                    mc2::fmt::as_u32(gi.flags));
             }
             mc2::fmt::print(f, "]}}\n");
             std::fclose(f);

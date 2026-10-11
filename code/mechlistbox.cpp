@@ -550,10 +550,8 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 		// getChassisName() returns a long string-table id, not a char* -- using it
 		// with %s dereferences the id value and crashes (READ at the id). Log the
 		// variant name (an EString) for the %s field instead.
-		printf("[mechicon-list] mech=%s iconIndex=%ld cols=%ld row=%ld col=%ld "
-		       "widgetW=%.0f widgetH=%.0f u=[%.1f,%.1f] v=[%.1f,%.1f] "
-		       "fileWidth=%.0f fileHeight=%.0f uvX=[%.3f,%.3f] uvY=[%.3f,%.3f]\n",
-		       (const char*)pMech->getName(), index, cols, yIndex, xIndex,
+		mc2::fmt::print_out("[mechicon-list] mech={} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n",
+		       mc2::fmt::safe((const char*)pMech->getName()), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex),
 		       width, height,
 		       u, u2, v, v2,
 		       fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);

@@ -9,8 +9,7 @@
 // Log the texture tier, clear the per-packet side tables and load the programs.
 void GpuStaticPropBatcher::finalizePrologue() {
     // One-shot log: always emit so the log confirms which tier is active.
-    std::printf("[StaticPropBatcher] tex tier: %dpx (MC2_STATICPROP_TEX_TIER)"
-                " ktx=%s\n", texTier(), s_materialKtxEnabled ? "ON" : "OFF");
+    mc2::fmt::print_out("[StaticPropBatcher] tex tier: {:d}px (MC2_STATICPROP_TEX_TIER) ktx={}\n", mc2::fmt::as_i32(texTier()), mc2::fmt::safe(s_materialKtxEnabled ? "ON" : "OFF"));
     std::fflush(stdout);
 
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
