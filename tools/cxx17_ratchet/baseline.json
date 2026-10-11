@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 712,
+   "LG13": 695,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -1947,8 +1947,7 @@
    "LG14": 1
   },
   "code/dbldng.h": {
-   "LG02": 2,
-   "LG13": 4
+   "LG02": 2
   },
   "code/dcarnage.h": {
    "LG02": 7,
@@ -1989,7 +1988,6 @@
   },
   "code/dmover.h": {
    "LG02": 2,
-   "LG13": 1,
    "LG14": 2
   },
   "code/dmultplyr.h": {
@@ -2010,7 +2008,6 @@
   },
   "code/dradio.h": {
    "LG02": 1,
-   "LG13": 1,
    "LG14": 2
   },
   "code/dteam.h": {
@@ -2019,8 +2016,7 @@
    "LG14": 1
   },
   "code/dterrobj.h": {
-   "LG02": 2,
-   "LG13": 5
+   "LG02": 2
   },
   "code/dturret.h": {
    "LG02": 2
@@ -3046,8 +3042,7 @@
   },
   "code/objtype.h": {
    "LG01": 1,
-   "LG06": 2,
-   "LG13": 1
+   "LG06": 2
   },
   "code/optionsarea.cpp": {
    "LG03": 13,
@@ -3167,7 +3162,6 @@
   },
   "code/tacordr.h": {
    "LG02": 16,
-   "LG13": 5,
    "LG14": 12
   },
   "code/tacticaloverview.cpp": {
@@ -5596,7 +5590,7 @@
    "LG20": 2
   }
  },
- "head": "311b8c9d8",
+ "head": "645576c12",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
