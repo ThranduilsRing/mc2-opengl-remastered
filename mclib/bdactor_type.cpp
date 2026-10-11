@@ -194,8 +194,8 @@ void BldgAppearanceType::init (const char * fileName)
 				if (r != 0 || bldgRenderShape->GetNumShapes() == 0)
 				{
 					delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
-					fprintf(stderr, "[MODOVERRIDE] staticProp '%s': import failed (%s), using stock render\n",
-					        bldgBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import failed ({}), using stock render\n",
+					        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 				}
 				else
@@ -224,8 +224,8 @@ void BldgAppearanceType::init (const char * fileName)
 			catch (...)
 			{
 				delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
-				fprintf(stderr, "[MODOVERRIDE] staticProp '%s': import threw (%s), using stock render\n",
-				        bldgBaseName, overridePath);
+				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import threw ({}), using stock render\n",
+				        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 				fflush(stderr);
 			}
 #else

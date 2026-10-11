@@ -46,8 +46,7 @@ RenderBackend resolveOnce() {
         return RenderBackend::Vulkan;
     }
     // Unrecognized -> GL, log the coercion once.
-    std::printf("[RENDER_BACKEND] MC2_RENDER_BACKEND=%s unrecognized (expected gl|vulkan); "
-                "coercing to GL.\n", env);
+    mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized (expected gl|vulkan); coercing to GL.\n", mc2::fmt::safe(env));
     std::fflush(stdout);
     return RenderBackend::GL;
 }

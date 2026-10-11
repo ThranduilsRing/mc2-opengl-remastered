@@ -250,7 +250,7 @@ void initInstrBanner() {
         if (mc2::gate::get<"MC2_STATIC_PROP_BAKE_SELFTEST">()) {
             // Stub: full self-test wired in Task 5 after buildRecipeFromShape
             // has callers and a registered type to test against.
-            fprintf(stderr, "[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n");
+            mc2::fmt::print_err("[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n");
             fflush(stderr);
         }
 

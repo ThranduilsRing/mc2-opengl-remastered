@@ -136,7 +136,7 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
     }
 
     // All candidates exhausted.
-    printf("[VIDEO] init: no playable candidate for '%s'\n", shortName);
+    mc2::fmt::print_out("[VIDEO] init: no playable candidate for '{}'\n", mc2::fmt::safe(shortName));
     stillPlaying  = false;
     m_sessionDone = true;
 }

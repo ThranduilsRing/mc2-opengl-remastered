@@ -140,10 +140,8 @@ void gpuSyncBarrier(GpuProducer producer, GpuConsumer consumer, const char* tag)
         // Unmapped edge == a contract miswire. Be loud and fail safe (never
         // silently skip a barrier -- that is exactly the bug class this helper
         // exists to kill).
-        std::fprintf(stderr,
-            "[GPU_SYNC] WARNING unmapped edge tag=%s producer=%d consumer=%d "
-            "-> GL_ALL_BARRIER_BITS (add the edge to gos_gpu_sync.cpp)\n",
-            tag ? tag : "(none)", (int)producer, (int)consumer);
+        mc2::fmt::print_err("[GPU_SYNC] WARNING unmapped edge tag={} producer={:d} consumer={:d} -> GL_ALL_BARRIER_BITS (add the edge to gos_gpu_sync.cpp)\n",
+            mc2::fmt::safe(tag ? tag : "(none)"), mc2::fmt::as_i32((int)producer), mc2::fmt::as_i32((int)consumer));
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
         return;
     }

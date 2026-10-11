@@ -223,17 +223,13 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
         s_chunkShadowSamplePrints++;
         // found/same at pad N is GUARANTEED iff overflow<=N (A* optimality on a
         // domain containing the optimal path). nodes_padN = popped-in-corridor.
-        std::printf("[MOVE_CHUNK_SHADOW v1] call=%llu start=(%d,%d) goal=(%d,%d) "
-            "cell_nodes=%llu cell_path_len=%d popped_box=%llu path_box=%llu "
-            "chunk_size=%d overflow_chunks=%d "
-            "rect0_same=%d rect0_nodes=%llu rect1_same=%d rect1_nodes=%llu "
-            "rect2_same=%d rect2_nodes=%llu\n",
-            (unsigned long long)g_chunkShadow_calls, startR, startC, goalR, goalC,
-            nodes, pathLen, (unsigned long long)poppedBox, (unsigned long long)pathBox,
-            cs, overflow,
-            (overflow >= 0 && overflow <= 0) ? 1 : 0, (unsigned long long)inRect0,
-            (overflow >= 0 && overflow <= 1) ? 1 : 0, (unsigned long long)inRect1,
-            (overflow >= 0 && overflow <= 2) ? 1 : 0, (unsigned long long)inRect2);
+        mc2::fmt::print_out("[MOVE_CHUNK_SHADOW v1] call={:d} start=({:d},{:d}) goal=({:d},{:d}) cell_nodes={:d} cell_path_len={:d} popped_box={:d} path_box={:d} chunk_size={:d} overflow_chunks={:d} rect0_same={:d} rect0_nodes={:d} rect1_same={:d} rect1_nodes={:d} rect2_same={:d} rect2_nodes={:d}\n",
+            mc2::fmt::as_u64((unsigned long long)g_chunkShadow_calls), mc2::fmt::as_i32(startR), mc2::fmt::as_i32(startC), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(goalC),
+            mc2::fmt::as_u64(nodes), mc2::fmt::as_i32(pathLen), mc2::fmt::as_u64((unsigned long long)poppedBox), mc2::fmt::as_u64((unsigned long long)pathBox),
+            mc2::fmt::as_i32(cs), mc2::fmt::as_i32(overflow),
+            mc2::fmt::as_i32((overflow >= 0 && overflow <= 0) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)inRect0),
+            mc2::fmt::as_i32((overflow >= 0 && overflow <= 1) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)inRect1),
+            mc2::fmt::as_i32((overflow >= 0 && overflow <= 2) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)inRect2));
         std::fflush(stdout);
     }
 }

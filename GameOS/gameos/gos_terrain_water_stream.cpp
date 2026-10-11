@@ -1681,7 +1681,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     if (locMVP < 0) {
         // Uniform not found in shader — dispatching with a zeroed MVP would
         // produce a fully-culled or garbage cull pass. Abort instead.
-        fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_terrainMVP_not_found\n");
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER v1] event=warn msg=u_terrainMVP_not_found\n");
         fflush(stderr);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);  // unbind stale thin slot
         glUseProgram(0);

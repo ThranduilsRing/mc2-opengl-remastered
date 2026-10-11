@@ -218,9 +218,8 @@ static GLuint buildPackedOrm(const char* roughPath, const char* metalPath,
     const int h = rh;
     if (expectedW > 0 && (w != expectedW || h != expectedH)) {
         // Size mismatch vs normal map -- log but continue (shader uses same UV).
-        std::fprintf(stderr,
-            "[GOS_MATERIALS] WARN: ORM (%dx%d) differs from normal (%dx%d) -- continuing\n",
-            w, h, expectedW, expectedH);
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: ORM ({:d}x{:d}) differs from normal ({:d}x{:d}) -- continuing\n",
+            mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_i32(expectedW), mc2::fmt::as_i32(expectedH));
     }
 
     // Determine bytes per pixel for each source.

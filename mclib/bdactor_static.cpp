@@ -120,10 +120,10 @@ void BldgAppearance::registerStatic() {
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->bldgRenderShape;
 	if (seamProbe)
-		fprintf(stderr, "[SEAMPROBE] bldg registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d eligible=%d renderShape=%p\n",
-			appearType->name, (int)staticReg.registered, (int)(bldgShape!=nullptr),
-			(int)GpuStaticPropRegistry::isEnabled(), (int)isStaticEligible(),
-			(void*)appearType->bldgRenderShape), fflush(stderr);
+		mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ENTER name={} registered={:d} hasShape={:d} enabled={:d} eligible={:d} renderShape={:016X}\n",
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg.registered), mc2::fmt::as_i32((int)(bldgShape!=nullptr)),
+			mc2::fmt::as_i32((int)GpuStaticPropRegistry::isEnabled()), mc2::fmt::as_i32((int)isStaticEligible()),
+			mc2::fmt::as_ptr((void*)appearType->bldgRenderShape)), fflush(stderr);
 	if (staticReg.registered) {
 		return;
 	}
@@ -134,7 +134,7 @@ void BldgAppearance::registerStatic() {
 		return;
 	}
 	if (!isStaticEligible()) {
-		if (seamProbe) fprintf(stderr, "[SEAMPROBE] bldg registerStatic ABORT name=%s reason=!isStaticEligible\n", appearType->name), fflush(stderr);
+		if (seamProbe) mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ABORT name={} reason=!isStaticEligible\n", mc2::fmt::safe(appearType->name)), fflush(stderr);
 		return;
 	}
 
@@ -224,9 +224,8 @@ void BldgAppearance::registerStatic() {
 		useCliffWallFrame = true;
 		if (mc2::gate::get<"MC2_TERRAIN_DECAL_TRACE">()) {
 			const CliffDecalTuning::Knobs& k = CliffDecalTuning::knobs();
-			fprintf(stderr, "[TERRAIN_DECAL v1] CLIFF_WALL name=%s pos=(%.1f,%.1f) "
-			        "scale=%.3f offset=%.1f lateral=%.1f lift=%.1f yaw=%.1f\n",
-			        appearType->name, position.x, position.y,
+			mc2::fmt::print_err("[TERRAIN_DECAL v1] CLIFF_WALL name={} pos=({:.1f},{:.1f}) scale={:.3f} offset={:.1f} lateral={:.1f} lift={:.1f} yaw={:.1f}\n",
+			        mc2::fmt::safe(appearType->name), position.x, position.y,
 			        k.scale, k.offset, k.lateral, k.lift, k.yawDeg),
 			    fflush(stderr);
 		}
@@ -340,13 +339,13 @@ void BldgAppearance::registerStatic() {
 				flags, &inst)) {
 			++diag_skip_unreg;
 			if (seamProbe)
-				fprintf(stderr, "[SEAMPROBE] bldg buildRecipe MISS name=%s leaf=%d child=%p node=%s (override type not in s_typeIndex) -> ABORT\n",
-					appearType->name, i, (void*)child, child->getNodeName()), fflush(stderr);
+				mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe MISS name={} leaf={:d} child={:016X} node={} (override type not in s_typeIndex) -> ABORT\n",
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
 			return;  // unregistered type — abort; first-render fallback covers it
 		}
 		if (seamProbe)
-			fprintf(stderr, "[SEAMPROBE] bldg buildRecipe HIT name=%s leaf=%d child=%p node=%s typeID=%u\n",
-				appearType->name, i, (void*)child, child->getNodeName(), inst.typeID), fflush(stderr);
+			mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe HIT name={} leaf={:d} child={:016X} node={} typeID={:d}\n",
+				mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
 		// EDITOR-STATIC-RECIPE-FROM-TYPE-1: the recipe is built from the INSTANCE
 		// bldgShape (a CreateFrom copy, bdactor.cpp). For a building placed at
 		// runtime in the editor, that copy's leaf child->myType registers AFTER the
@@ -398,9 +397,9 @@ void BldgAppearance::registerStatic() {
 	(void)GameAdapters::StaticProp::syncStaticProp(
 		bldgShape, batch.data(), batch.size(), &regIdx);
 	if (seamProbe)
-		fprintf(stderr, "[SEAMPROBE] bldg syncStaticProp name=%s batchSize=%zu regIdx=%d firstTypeID=%u\n",
-			appearType->name, batch.size(), (int)regIdx,
-			batch.empty()?0xFFFFFFFFu:batch[0].typeID), fflush(stderr);
+		mc2::fmt::print_err("[SEAMPROBE] bldg syncStaticProp name={} batchSize={:d} regIdx={:d} firstTypeID={:d}\n",
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32((int)regIdx),
+			mc2::fmt::as_u32(batch.empty()?0xFFFFFFFFu:batch[0].typeID)), fflush(stderr);
 	if (regIdx >= 0) {
 		staticReg.registered  = true;
 		staticReg.shape       = bldgShape;

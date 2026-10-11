@@ -130,8 +130,8 @@ void tglc_EnsureMatAlbedoArrayLoaded()
         }
         const RenderCore::KtxImage& img = imgs[i];
         if (!img.isCompressed || img.vkFormat != 146u) {  // VK_FORMAT_BC7_SRGB_BLOCK
-            printf("[TERRAIN_MAT_TEX] layer %d (%s): '%s' vkFormat=%u is not BC7 sRGB (146) -- albedo array disabled\n",
-                   i, kMatAlbedoChannelNames[i], path, img.vkFormat);
+            mc2::fmt::print_out("[TERRAIN_MAT_TEX] layer {:d} ({}): '{}' vkFormat={:d} is not BC7 sRGB (146) -- albedo array disabled\n",
+                   mc2::fmt::as_i32(i), mc2::fmt::safe(kMatAlbedoChannelNames[i]), mc2::fmt::safe(path), mc2::fmt::as_u32(img.vkFormat));
             fflush(stdout);
             return;
         }

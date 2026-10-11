@@ -532,8 +532,7 @@ void Terrain::lodShorelineMask() {
 				// one of them is default-OFF. The only loader a default launch
 				// actually reaches was the only silent one. Raw printf now, so
 				// "gate on but doing nothing" is visible without opting in.
-				printf("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
-				       " -- pure elevation bands, no mask modulator\n", slPath);
+				mc2::fmt::print_out("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path={} (gate on) -- pure elevation bands, no mask modulator\n", mc2::fmt::safe(slPath));
 				fflush(stdout);
 			}
 			else

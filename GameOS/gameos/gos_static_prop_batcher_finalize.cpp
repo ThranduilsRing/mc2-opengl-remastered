@@ -223,8 +223,8 @@ bool GpuStaticPropBatcher::layoutCoalesce(StaticPropFinalizeFrame& f) {
                 return true;
             }
             // Non-coalesce: conservative fallback — legacy draws it correctly regardless.
-            std::fprintf(stderr, "[DRAW_PACKET v1] WARNING: type=%u malformed src; alphaClass=0\n",
-                         typeID);
+            mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: type={:d} malformed src; alphaClass=0\n",
+                         mc2::fmt::as_u32(typeID));
             type.alphaClass = 0u;
             continue;
         }

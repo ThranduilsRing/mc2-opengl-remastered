@@ -549,9 +549,8 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 
 				// Summary line (always emitted when FSM_TODO gate is on, even if count=0).
 				// wid=-1 signals mission-level (no specific warrior context).
-				std::fprintf(stderr,
-					"[BRAIN_DISPATCH_FSM_TODO] mission=%s wid=-1 stateDefs=%d transitions=%d otherTodos=%d\n",
-					missionName, nStateDef, nTrans + nTransBack, nOther);
+				mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] mission={} wid=-1 stateDefs={:d} transitions={:d} otherTodos={:d}\n",
+					mc2::fmt::safe(missionName), mc2::fmt::as_i32(nStateDef), mc2::fmt::as_i32(nTrans + nTransBack), mc2::fmt::as_i32(nOther));
 				std::fflush(stderr);
 
 				// Detail lines: STATE_DEF, TRANS, TRANS_BACK, STATE_END only.

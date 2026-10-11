@@ -586,8 +586,8 @@ void	LogisticsData::setMissionCompleted( )
 							{
 								// Still NULL: genuine missing variant (corrupt save / unknown mech).
 								// Log and skip rather than Assert no-op (Assert is a no-op in RelWithDebInfo).
-								printf( "[LOGISTICS] setMissionCompleted: no variant for surviving mech '%s' -- mech lost\n",
-								        vname );
+								mc2::fmt::print_out( "[LOGISTICS] setMissionCompleted: no variant for surviving mech '{}' -- mech lost\n",
+								        mc2::fmt::safe(vname) );
 								fflush( stdout );
 								// LOGISTICS T4c: the actual deletion — variant unresolved, mech dropped.
 								if ( mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">() && mc2_diag::tagEnabled("LOGISTICS") )

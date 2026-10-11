@@ -102,10 +102,9 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     // the upstream gate (MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + bake) called us.
     s_visualHeightSsbo.registerNow(static_cast<uint64_t>(bytes));
     // Bound to base 26 in the draw only when displacement is active.
-    fprintf(stderr, "[VISUAL_HEIGHT v1] SSBO uploaded binding=%u V=%d bytes=%lld first=%.3f "
-            "geomorphMips=%s(%d floats)\n",
-            TERRAIN_VISUAL_HEIGHT_SSBO_BINDING, V, (long long)bytes, visualHeights[0],
-            mipFloats > 0 ? "YES" : "no", (int)mipFloats);
+    mc2::fmt::print_err("[VISUAL_HEIGHT v1] SSBO uploaded binding={:d} V={:d} bytes={:d} first={:.3f} geomorphMips={}({:d} floats)\n",
+            mc2::fmt::as_u32(TERRAIN_VISUAL_HEIGHT_SSBO_BINDING), mc2::fmt::as_i32(V), mc2::fmt::as_i64((long long)bytes), visualHeights[0],
+            mc2::fmt::safe(mipFloats > 0 ? "YES" : "no"), mc2::fmt::as_i32((int)mipFloats));
     fflush(stderr);
 }
 

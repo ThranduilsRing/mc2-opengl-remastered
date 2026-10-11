@@ -234,7 +234,7 @@ void applyClearMoveOrders(int wid, MechBrainRuntime* runtime) {
     } else {
         // Intent queue OFF: cannot scrub here (direct call forbidden). Trace + no-op,
         // mirroring the patrol NO_QUEUE path. Live use requires MC2_BRAIN_INTENT_QUEUE=1.
-        std::fprintf(stderr, "[BRAIN_CLEARMOVE_NO_QUEUE] wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n", wid);
+        mc2::fmt::print_err("[BRAIN_CLEARMOVE_NO_QUEUE] wid={:d}: requires MC2_BRAIN_INTENT_QUEUE=1\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
 }
@@ -315,8 +315,8 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
             // Already active — this is a re-tick of a body that has CorePatrol.
             // The per-tick advance is handled by tickPatrolAdvance() in warrior.cpp.
             // Do NOT re-parse; do NOT re-emit waypoint[0].  Trace only.
-            std::fprintf(stderr, "[BRAIN_PATROL_ACTIVE] already running index=%u count=%u wid=%d\n",
-                         (unsigned)prt->patrolWaypointIndex, (unsigned)prt->patrolWaypointCount, wid);
+            mc2::fmt::print_err("[BRAIN_PATROL_ACTIVE] already running index={:d} count={:d} wid={:d}\n",
+                         mc2::fmt::as_u32((unsigned)prt->patrolWaypointIndex), mc2::fmt::as_u32((unsigned)prt->patrolWaypointCount), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
             appliedEffect = true;
         } else {
@@ -372,8 +372,8 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 prt->patrolLoop   = loopMode;
                 prt->patrolActive = true;
                 prt->patrolStarted = true;  // PATROL-DRIVE-1: this path emits waypoint[0] below; skip the tickPatrolAdvance kick.
-                std::fprintf(stderr, "[BRAIN_PATROL_START] count=%u loop=%d wid=%d\n",
-                             (unsigned)wpCount, (int)loopMode, wid);
+                mc2::fmt::print_err("[BRAIN_PATROL_START] count={:d} loop={:d} wid={:d}\n",
+                             mc2::fmt::as_u32((unsigned)wpCount), mc2::fmt::as_i32((int)loopMode), mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
                 // Emit MOVETO_POINT to waypoints[0].
                 float wx = prt->patrolWaypoints[0][0];
@@ -389,7 +389,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                     // without adding a 7th setGeneralTacOrder call-site (relaxed_guard_doc
                     // contract requires count=6).  Emit a one-time warning.
                     // Live-engine usage requires MC2_BRAIN_INTENT_QUEUE=1 for patrol orders.
-                    std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] wid=%d: patrol requires MC2_BRAIN_INTENT_QUEUE=1 for order emission\n", wid);
+                    mc2::fmt::print_err("[BRAIN_PATROL_NO_QUEUE] wid={:d}: patrol requires MC2_BRAIN_INTENT_QUEUE=1 for order emission\n", mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                 }
                 appliedEffect = true;

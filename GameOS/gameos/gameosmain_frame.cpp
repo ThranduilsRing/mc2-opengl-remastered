@@ -104,18 +104,14 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                     s_drawPackets.data(), static_cast<uint32_t>(s_drawPackets.size()));
                 // maxPackets == s_drawPackets.size() == kMaxPackets >= stats.emitted: overflow impossible
 
-                std::fprintf(stderr,
-                    "[DRAW_PACKET v3] frame=%u input=%u emitted=%u"
-                    " invalid_pipeline=%u pipeline_oor=%u invalid_index=%u"
-                    " invalid_instance=%u overflow=%u"
-                    " object_sentinel=%u light_sentinel=%u sorted_packet_cap=%u\n",
-                    static_cast<uint32_t>(snap.frameIndex),
-                    bstats.inputCandidates, bstats.emitted,
-                    bstats.invalidPipeline, bstats.pipelineOutOfRange,
-                    bstats.invalidIndexCount, bstats.invalidInstanceCount,
-                    bstats.overflow,
-                    bstats.objectIndexSentinelCount, bstats.lightIndexSentinelCount,
-                    totalPackets);
+                mc2::fmt::print_err("[DRAW_PACKET v3] frame={:d} input={:d} emitted={:d} invalid_pipeline={:d} pipeline_oor={:d} invalid_index={:d} invalid_instance={:d} overflow={:d} object_sentinel={:d} light_sentinel={:d} sorted_packet_cap={:d}\n",
+                    mc2::fmt::as_u32(static_cast<uint32_t>(snap.frameIndex)),
+                    mc2::fmt::as_u32(bstats.inputCandidates), mc2::fmt::as_u32(bstats.emitted),
+                    mc2::fmt::as_u32(bstats.invalidPipeline), mc2::fmt::as_u32(bstats.pipelineOutOfRange),
+                    mc2::fmt::as_u32(bstats.invalidIndexCount), mc2::fmt::as_u32(bstats.invalidInstanceCount),
+                    mc2::fmt::as_u32(bstats.overflow),
+                    mc2::fmt::as_u32(bstats.objectIndexSentinelCount), mc2::fmt::as_u32(bstats.lightIndexSentinelCount),
+                    mc2::fmt::as_u32(totalPackets));
             }
 
             // Hard gate — REAL anomalies only, AND default-SILENT (set MC2_DRAW_PACKET_WARN=1

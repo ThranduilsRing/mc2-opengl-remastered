@@ -612,9 +612,8 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
     if (!s_submitTypeHistEnabled) return;
     // Build a typeID → name lookup by walking s_typeIndex once. n is ≤ a few
     // hundred types; quadratic walk is trivial for a 3-dump cadence.
-    std::fprintf(stderr,
-        "[SUBMIT_TYPEHIST v1] trigger=%s calls=%llu non-zero buckets:\n",
-        std::string(trigger).c_str(), (unsigned long long)s_submitTypeHistCalls);
+    mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] trigger={} calls={:d} non-zero buckets:\n",
+        std::string(trigger).c_str(), mc2::fmt::as_u64((unsigned long long)s_submitTypeHistCalls));
     for (size_t t = 0; t < s_submitTypeHist.size(); ++t) {
         if (s_submitTypeHist[t] > 0) {
             const char* name = "<unknown>";

@@ -1299,9 +1299,8 @@ static inline bool passScopeActive() {
 static void passScopeViolation(const char* what, PassIdentity id, const char* hint) {
     ++s_scope.violationCount;
     if (!s_scope.assertEnabled) return;   // TRACE-only run: track silently, no verdict noise
-    fprintf(stderr,
-        "[RENDER_PASS_CONTRACT v1] VIOLATION(%s) pass=%s hint=%s depth=%d\n",
-        what, passIdentityName(id), hint ? hint : "?", s_scope.depth);
+    mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] VIOLATION({}) pass={} hint={} depth={:d}\n",
+        mc2::fmt::safe(what), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::safe(hint ? hint : "?"), mc2::fmt::as_i32(s_scope.depth));
     fflush(stderr);
 }
 

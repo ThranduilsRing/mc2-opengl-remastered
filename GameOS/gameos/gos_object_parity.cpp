@@ -531,10 +531,8 @@ void CompareAndReport(const uint8_t* readbackBytes,
         if (snap.vertexCount == 0 || rng.vertexCount == 0) continue;
         if (snap.vertexCount != rng.vertexCount) {
             // Geometry changed between submit and draw — skip (shouldn't happen).
-            std::fprintf(stderr,
-                "[OBJECT_PARITY v1] event=vertex_count_mismatch type=%u "
-                "snap_verts=%u range_verts=%u -- skipping type\n",
-                typeId, snap.vertexCount, rng.vertexCount);
+            mc2::fmt::print_err("[OBJECT_PARITY v1] event=vertex_count_mismatch type={:d} snap_verts={:d} range_verts={:d} -- skipping type\n",
+                mc2::fmt::as_u32(typeId), mc2::fmt::as_u32(snap.vertexCount), mc2::fmt::as_u32(rng.vertexCount));
             std::fflush(stderr);
             continue;
         }

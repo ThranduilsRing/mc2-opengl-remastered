@@ -448,8 +448,8 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	if (s_lightSsboTrace) {
 		// prefixDirty is always treated as true post-orphan; log what was requested
-		std::fprintf(stderr, "[LIGHTSSBO v2] event=split_orphan prefixDirty=%d prefix=%zu suffix=%zu\n",
-		             prefixDirty ? 1 : 0, prefixBytes, totalBytes - prefixBytes);
+		mc2::fmt::print_err("[LIGHTSSBO v2] event=split_orphan prefixDirty={:d} prefix={:d} suffix={:d}\n",
+		             mc2::fmt::as_i32(prefixDirty ? 1 : 0), mc2::fmt::as_size(prefixBytes), mc2::fmt::as_size(totalBytes - prefixBytes));
 		std::fflush(stderr);
 	}
 }

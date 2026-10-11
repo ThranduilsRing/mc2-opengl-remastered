@@ -47,8 +47,7 @@ int resolve_mode()
     if (strcasecmp(v, "fatal") == 0) return MODE_FATAL;
     if (strcasecmp(v, "log") == 0)   return MODE_LOG;
 #endif
-    std::fprintf(stderr,
-                 "[VERIFY] unknown MC2_VERIFY_MODE='%s' -- defaulting to log\n", v);
+    mc2::fmt::print_err("[VERIFY] unknown MC2_VERIFY_MODE='{}' -- defaulting to log\n", mc2::fmt::safe(v));
     return MODE_LOG;
 }
 

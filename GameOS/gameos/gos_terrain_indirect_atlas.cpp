@@ -258,7 +258,7 @@ void BuildColormapAtlas() {
         }
     } else if (tcm->ktx2ColormapPath[0] != '\0' && !GLEW_ARB_texture_compression_bptc) {
         // BPTC cap absent — log once and fall through to RGBA8.
-        printf("[COLORMAP] COLORMAP-BC7-KTX2-1: BPTC unsupported, using RGBA8 fallback\n");
+        mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: BPTC unsupported, using RGBA8 fallback\n");
         tcm->ktx2ColormapPath[0] = '\0';
     }
 

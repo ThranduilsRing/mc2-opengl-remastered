@@ -96,24 +96,16 @@ void EndFrame(uint32_t frame, double dtMs) {
     if (dtMs < s_thresholdMs) return;
 
     // Primary summary line.
-    fprintf(stderr,
-        "[HITCH] frame=%u dt=%.2f"
-        " terrainSolid=%.2f staticFlush=%.2f staticSnapshot=%.2f water=%.2f"
-        " glBufData=%u glBufBytes=%llu"
-        " glBufSubData=%u glBufSubBytes=%llu"
-        " glMapBuf=%u glTexImage=%u glTexImageBytes=%llu"
-        " glBindTex=%u glUseProgram=%u"
-        " glWaitSync=%u(sig=%u to=%u)"
-        " glFence=%u glFinish=%u glFlush=%u\n",
-        frame, dtMs,
+    mc2::fmt::print_err("[HITCH] frame={:d} dt={:.2f} terrainSolid={:.2f} staticFlush={:.2f} staticSnapshot={:.2f} water={:.2f} glBufData={:d} glBufBytes={:d} glBufSubData={:d} glBufSubBytes={:d} glMapBuf={:d} glTexImage={:d} glTexImageBytes={:d} glBindTex={:d} glUseProgram={:d} glWaitSync={:d}(sig={:d} to={:d}) glFence={:d} glFinish={:d} glFlush={:d}\n",
+        mc2::fmt::as_u32(frame), dtMs,
         a.terrainSolidMs, a.staticFlushMs, a.staticSnapshotMs, a.waterMs,
-        a.glBufferDataCalls,    (unsigned long long)a.glBufferDataBytes,
-        a.glBufferSubDataCalls, (unsigned long long)a.glBufferSubDataBytes,
-        a.glMapBufferCalls,
-        a.glTexImageCalls, (unsigned long long)a.glTexImageBytes,
-        a.glBindTextureCalls, a.glUseProgramCalls,
-        a.glClientWaitSyncCalls, a.glClientWaitSyncSignaled, a.glClientWaitSyncTimedOut,
-        a.glFenceSyncCalls, a.glFinishCalls, a.glFlushCalls);
+        mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64((unsigned long long)a.glBufferDataBytes),
+        mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64((unsigned long long)a.glBufferSubDataBytes),
+        mc2::fmt::as_u32(a.glMapBufferCalls),
+        mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexImageBytes),
+        mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls),
+        mc2::fmt::as_u32(a.glClientWaitSyncCalls), mc2::fmt::as_u32(a.glClientWaitSyncSignaled), mc2::fmt::as_u32(a.glClientWaitSyncTimedOut),
+        mc2::fmt::as_u32(a.glFenceSyncCalls), mc2::fmt::as_u32(a.glFinishCalls), mc2::fmt::as_u32(a.glFlushCalls));
 
     // Detail line: terrain solid dispatch.
     if (a.terrainSolidMs > 0.0 || a.terrainBinds || a.terrainUploads || a.terrainTexImageCalls) {
@@ -135,24 +127,15 @@ void EndFrame(uint32_t frame, double dtMs) {
     }
 
     // Detail line: GL totals.
-    fprintf(stderr,
-        "[HITCH_GL]"
-        " glBufferData=%u glBufferDataBytes=%llu"
-        " glBufferSubData=%u glBufferSubDataBytes=%llu"
-        " glMapBuffer=%u"
-        " glTexImage=%u glTexImageBytes=%llu"
-        " glTexSubImage=%u glTexSubImageBytes=%llu"
-        " glBindTexture=%u glUseProgram=%u"
-        " glClientWaitSync=%u(sig=%u to=%u)"
-        " glFenceSync=%u glFinish=%u glFlush=%u\n",
-        a.glBufferDataCalls,    (unsigned long long)a.glBufferDataBytes,
-        a.glBufferSubDataCalls, (unsigned long long)a.glBufferSubDataBytes,
-        a.glMapBufferCalls,
-        a.glTexImageCalls, (unsigned long long)a.glTexImageBytes,
-        a.glTexSubImageCalls, (unsigned long long)a.glTexSubImageBytes,
-        a.glBindTextureCalls, a.glUseProgramCalls,
-        a.glClientWaitSyncCalls, a.glClientWaitSyncSignaled, a.glClientWaitSyncTimedOut,
-        a.glFenceSyncCalls, a.glFinishCalls, a.glFlushCalls);
+    mc2::fmt::print_err("[HITCH_GL] glBufferData={:d} glBufferDataBytes={:d} glBufferSubData={:d} glBufferSubDataBytes={:d} glMapBuffer={:d} glTexImage={:d} glTexImageBytes={:d} glTexSubImage={:d} glTexSubImageBytes={:d} glBindTexture={:d} glUseProgram={:d} glClientWaitSync={:d}(sig={:d} to={:d}) glFenceSync={:d} glFinish={:d} glFlush={:d}\n",
+        mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64((unsigned long long)a.glBufferDataBytes),
+        mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64((unsigned long long)a.glBufferSubDataBytes),
+        mc2::fmt::as_u32(a.glMapBufferCalls),
+        mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexImageBytes),
+        mc2::fmt::as_u32(a.glTexSubImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexSubImageBytes),
+        mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls),
+        mc2::fmt::as_u32(a.glClientWaitSyncCalls), mc2::fmt::as_u32(a.glClientWaitSyncSignaled), mc2::fmt::as_u32(a.glClientWaitSyncTimedOut),
+        mc2::fmt::as_u32(a.glFenceSyncCalls), mc2::fmt::as_u32(a.glFinishCalls), mc2::fmt::as_u32(a.glFlushCalls));
 
     // H1c frame-phase attribution line.
     {

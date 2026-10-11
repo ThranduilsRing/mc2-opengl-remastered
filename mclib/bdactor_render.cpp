@@ -126,18 +126,15 @@ long BldgAppearance::render (long depthFixup)
 						&& !s_gf_reported;
 					if (gfFirstMixed) s_gf_reported = true;
 					if (gfFirstMixed || ((s_gf_total % 200000ull) == 0ull && s_gf_agree != s_gf_total)) {  // 2026-10-05: census only when a divergence exists
-						fprintf(stderr,
-							"[GUARD_FORWARD v1] event=%s class=bldg total=%llu agree=%llu "
-							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
-							"validated_sentinel_only=%llu both_sentinel=%llu would_change=%llu\n",
-							gfFirstMixed ? "first_divergence" : "census",
-							(unsigned long long)s_gf_total,
-							(unsigned long long)s_gf_agree,
-							(unsigned long long)s_gf_differ,
-							(unsigned long long)s_gf_fwdSentinel,
-							(unsigned long long)s_gf_valSentinel,
-							(unsigned long long)s_gf_bothSentinel,
-							(unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel));
+						mc2::fmt::print_err("[GUARD_FORWARD v1] event={} class=bldg total={:d} agree={:d} differ_both_valid={:d} forwarded_sentinel_only={:d} validated_sentinel_only={:d} both_sentinel={:d} would_change={:d}\n",
+							mc2::fmt::safe(gfFirstMixed ? "first_divergence" : "census"),
+							mc2::fmt::as_u64((unsigned long long)s_gf_total),
+							mc2::fmt::as_u64((unsigned long long)s_gf_agree),
+							mc2::fmt::as_u64((unsigned long long)s_gf_differ),
+							mc2::fmt::as_u64((unsigned long long)s_gf_fwdSentinel),
+							mc2::fmt::as_u64((unsigned long long)s_gf_valSentinel),
+							mc2::fmt::as_u64((unsigned long long)s_gf_bothSentinel),
+							mc2::fmt::as_u64((unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel)));
 						fflush(stderr);
 					}
 				}
@@ -491,18 +488,15 @@ long TreeAppearance::render (long depthFixup)
 						&& !s_gf_reported;
 					if (gfFirstMixed) s_gf_reported = true;
 					if (gfFirstMixed || ((s_gf_total % 200000ull) == 0ull && s_gf_agree != s_gf_total)) {  // 2026-10-05: census only when a divergence exists
-						fprintf(stderr,
-							"[GUARD_FORWARD v1] event=%s class=tree total=%llu agree=%llu "
-							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
-							"validated_sentinel_only=%llu both_sentinel=%llu would_change=%llu\n",
-							gfFirstMixed ? "first_divergence" : "census",
-							(unsigned long long)s_gf_total,
-							(unsigned long long)s_gf_agree,
-							(unsigned long long)s_gf_differ,
-							(unsigned long long)s_gf_fwdSentinel,
-							(unsigned long long)s_gf_valSentinel,
-							(unsigned long long)s_gf_bothSentinel,
-							(unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel));
+						mc2::fmt::print_err("[GUARD_FORWARD v1] event={} class=tree total={:d} agree={:d} differ_both_valid={:d} forwarded_sentinel_only={:d} validated_sentinel_only={:d} both_sentinel={:d} would_change={:d}\n",
+							mc2::fmt::safe(gfFirstMixed ? "first_divergence" : "census"),
+							mc2::fmt::as_u64((unsigned long long)s_gf_total),
+							mc2::fmt::as_u64((unsigned long long)s_gf_agree),
+							mc2::fmt::as_u64((unsigned long long)s_gf_differ),
+							mc2::fmt::as_u64((unsigned long long)s_gf_fwdSentinel),
+							mc2::fmt::as_u64((unsigned long long)s_gf_valSentinel),
+							mc2::fmt::as_u64((unsigned long long)s_gf_bothSentinel),
+							mc2::fmt::as_u64((unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel)));
 						fflush(stderr);
 					}
 				}

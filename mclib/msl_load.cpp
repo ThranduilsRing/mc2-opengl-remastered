@@ -117,8 +117,8 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 				// (Mech3DAppearanceType::init) will see failure and leave
 				// the mech without an appearance rather than crashing the
 				// mechbay.
-				printf("[MSL] unknown nodeType=%d at index %ld/%ld — aborting load of this shape\n",
-					nodeType, i, (long)numTG_TypeShapes); fflush(stdout);
+				mc2::fmt::print_out("[MSL] unknown nodeType={:d} at index {:d}/{:d} — aborting load of this shape\n",
+					mc2::fmt::as_i32(nodeType), mc2::fmt::as_i32(i), mc2::fmt::as_i32((long)numTG_TypeShapes)); fflush(stdout);
 				aborted = true;
 				break;
 			}

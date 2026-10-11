@@ -41,7 +41,7 @@ void runAblArgGuardRepro(void) {
 
     // ---- CRASH PATH (MC2_ABL_ARG_GUARD unset) ----
     // If we reach here, guard is off.  The write below will segfault.
-    printf("[ABL_REPRO] guard OFF -- about to write relPos[0] -> WILL CRASH\n");
+    mc2::fmt::print_out("[ABL_REPRO] guard OFF -- about to write relPos[0] -> WILL CRASH\n");
     fflush(stdout);
     // Volatile prevents the compiler from eliding the null write.
     volatile float* vp = relPos;
@@ -76,7 +76,7 @@ static void runAblArgGuardRepro2A(void) {
             fflush(stdout);
             volatile float* vp = pos;
             (void)vp[0]; // read from 0x0 -> access violation
-            printf("[ABL_REPRO_2A] case1 survived -- UNEXPECTED\n");
+            mc2::fmt::print_out("[ABL_REPRO_2A] case1 survived -- UNEXPECTED\n");
             fflush(stdout);
         }
     }
@@ -97,7 +97,7 @@ static void runAblArgGuardRepro2A(void) {
             fflush(stdout);
             volatile float* vp = relPos;
             vp[0] = 1.0f; // write to 0x0 -> access violation
-            printf("[ABL_REPRO_2A] case2 survived -- UNEXPECTED\n");
+            mc2::fmt::print_out("[ABL_REPRO_2A] case2 survived -- UNEXPECTED\n");
             fflush(stdout);
         }
     }

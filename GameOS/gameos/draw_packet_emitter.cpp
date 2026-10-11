@@ -315,13 +315,10 @@ DrawPacketCompareResult comparePacketsToLegacy(
 
     // One summary line per frame — schema v1.
     // INCREMENT TAG if fields are added/removed in future slices.
-    std::fprintf(stderr,
-        "[DRAW_PACKET_COMPARE v1] frame=%u packets=%u"
-        " pipeline_invalid=%u pipeline_oob=%u"
-        " geom_mismatch=%u type_mismatch=%u alpha_mismatch=%u\n",
-        frameIndex, r.packets,
-        r.pipelineInvalid, r.pipelineOob,
-        r.geomMismatch, r.typeMismatch, r.alphaMismatch);
+    mc2::fmt::print_err("[DRAW_PACKET_COMPARE v1] frame={:d} packets={:d} pipeline_invalid={:d} pipeline_oob={:d} geom_mismatch={:d} type_mismatch={:d} alpha_mismatch={:d}\n",
+        mc2::fmt::as_u32(frameIndex), mc2::fmt::as_u32(r.packets),
+        mc2::fmt::as_u32(r.pipelineInvalid), mc2::fmt::as_u32(r.pipelineOob),
+        mc2::fmt::as_u32(r.geomMismatch), mc2::fmt::as_u32(r.typeMismatch), mc2::fmt::as_u32(r.alphaMismatch));
 
     return r;
 }

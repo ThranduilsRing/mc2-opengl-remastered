@@ -943,10 +943,9 @@ void batcher_buildCandidateLog() {
     // Summary line emitted every frame.
     // OK gate: emitted==expected (all reachable packets walked), boundsErrors==0.
     // emptyTypes is informational; a type may be registered with no geometry.
-    std::fprintf(stderr,
-        "[DRAW_CAND v0] emitted=%u expected=%u emptyTypes=%u boundsErrors=%u%s\n",
-        emitted, expected, emptyTypes, boundsErrors,
-        (emitted == expected && boundsErrors == 0) ? " OK" : " MISMATCH");
+    mc2::fmt::print_err("[DRAW_CAND v0] emitted={:d} expected={:d} emptyTypes={:d} boundsErrors={:d}{}\n",
+        mc2::fmt::as_u32(emitted), mc2::fmt::as_u32(expected), mc2::fmt::as_u32(emptyTypes), mc2::fmt::as_u32(boundsErrors),
+        mc2::fmt::safe((emitted == expected && boundsErrors == 0) ? " OK" : " MISMATCH"));
 }
 
 // Saved slot-16 GL buffer object. Slot 16 is reserved to this feature.

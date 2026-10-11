@@ -179,9 +179,9 @@ void TreeAppearance::registerStatic() {
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)
-		fprintf(stderr, "[SEAMPROBE] tree registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d renderShape=%p\n",
-			appearType->name, (int)staticReg[0].registered, (int)(treeShape!=nullptr),
-			(int)GpuStaticPropRegistry::isEnabled(), (void*)appearType->treeRenderShape[0]), fflush(stderr);
+		mc2::fmt::print_err("[SEAMPROBE] tree registerStatic ENTER name={} registered={:d} hasShape={:d} enabled={:d} renderShape={:016X}\n",
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg[0].registered), mc2::fmt::as_i32((int)(treeShape!=nullptr)),
+			mc2::fmt::as_i32((int)GpuStaticPropRegistry::isEnabled()), mc2::fmt::as_ptr((void*)appearType->treeRenderShape[0])), fflush(stderr);
 	// TREE-OVERRIDE-LOD-MVP Task 2: registered-state is now per-LOD. LOD0 is
 	// the canonical "already done" gate (it always exists — override or stock).
 	if (staticReg[0].registered) return;
@@ -280,16 +280,16 @@ void TreeAppearance::registerStatic() {
 					flags, &inst)) {
 				++t_diag_skip_unreg;
 				if (seamProbe)
-					fprintf(stderr, "[SEAMPROBE] tree buildRecipe MISS name=%s lod=%d leaf=%d child=%p node=%s -> LOD unavailable\n",
-						appearType->name, lod, i, (void*)child, child->getNodeName()), fflush(stderr);
+					mc2::fmt::print_err("[SEAMPROBE] tree buildRecipe MISS name={} lod={:d} leaf={:d} child={:016X} node={} -> LOD unavailable\n",
+						mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
 				// M4: mark THIS LOD unavailable and stop building it; do NOT
 				// abort the whole instance — other LODs still register.
 				lodMiss = true;
 				break;
 			}
 			if (seamProbe)
-				fprintf(stderr, "[SEAMPROBE] tree buildRecipe HIT name=%s lod=%d leaf=%d child=%p node=%s typeID=%u\n",
-					appearType->name, lod, i, (void*)child, child->getNodeName(), inst.typeID), fflush(stderr);
+				mc2::fmt::print_err("[SEAMPROBE] tree buildRecipe HIT name={} lod={:d} leaf={:d} child={:016X} node={} typeID={:d}\n",
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
 			// EDITOR-STATIC-RECIPE-FROM-TYPE-1 (mirror of BldgAppearance::registerStatic):
 			// re-point the recipe at the canonical primed TYPE leaf
 			// (getTreeRenderShape(lod), which carries finalized VBO geometry) instead of
@@ -345,9 +345,9 @@ void TreeAppearance::registerStatic() {
 			(void)GameAdapters::StaticProp::syncStaticProp(
 				treeShape, batch.data(), batch.size(), &regIdx);
 			if (seamProbe)
-				fprintf(stderr, "[SEAMPROBE] tree syncStaticProp name=%s lod=%d batchSize=%zu regIdx=%d firstTypeID=%u\n",
-					appearType->name, lod, batch.size(), (int)regIdx,
-					batch.empty()?0xFFFFFFFFu:batch[0].typeID), fflush(stderr);
+				mc2::fmt::print_err("[SEAMPROBE] tree syncStaticProp name={} lod={:d} batchSize={:d} regIdx={:d} firstTypeID={:d}\n",
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32((int)regIdx),
+					mc2::fmt::as_u32(batch.empty()?0xFFFFFFFFu:batch[0].typeID)), fflush(stderr);
 		}
 		if (regIdx >= 0) {
 			staticReg[lod].registered  = true;

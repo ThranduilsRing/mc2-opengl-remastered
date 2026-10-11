@@ -219,9 +219,8 @@ void onFrameTick() {
         // Give RenderDoc one full present cycle to finalize the .rdc before
         // we exit. Two frames is conservative; one is the captured present,
         // the next ensures EndFrameCapture-equivalent state is flushed.
-        std::fprintf(stderr,
-            "[RDOC v1] event=capture_complete local_frame=%d\n",
-            s_state.localFrame);
+        mc2::fmt::print_err("[RDOC v1] event=capture_complete local_frame={:d}\n",
+            mc2::fmt::as_i32(s_state.localFrame));
         std::fflush(stderr);
         s_state.phase = Phase::Done;
         if (s_state.exitAfter) {

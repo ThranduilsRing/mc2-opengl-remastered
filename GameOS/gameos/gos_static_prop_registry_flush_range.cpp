@@ -415,10 +415,8 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                     // zero_verify: elevation [2] must NEVER influence the
                     // index — recompute ignoring [2] (trivially true here
                     // since helper takes only [0],[1]) and assert equality.
-                    fprintf(stderr,
-                        "[BLKIDX v1] event=zero_verify src=registry"
-                        " blockIdx=%u z_excluded=1\n",
-                        gpuRec.blockIdx);
+                    mc2::fmt::print_err("[BLKIDX v1] event=zero_verify src=registry blockIdx={:d} z_excluded=1\n",
+                        mc2::fmt::as_u32(gpuRec.blockIdx));
                     fflush(stderr);
                 }
             }

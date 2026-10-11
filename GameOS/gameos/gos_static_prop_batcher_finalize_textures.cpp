@@ -789,13 +789,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     const bool dimOk = ktxOk && !ktxImg.isCompressed &&
                                        ktxImg.width == u.w && ktxImg.height == u.h;
                     // Always-on debug: log attempt result so we can diagnose path/dim issues.
-                    std::fprintf(stderr,
-                        "[KTX_SIDECAR] node=%lu srcName=%s path=%s "
-                        "load=%d ktxDims=%dx%d glDims=%dx%d match=%d\n",
-                        (unsigned long)u.nodeIdx, srcName, ktxPath.c_str(),
-                        (int)ktxOk,
-                        ktxOk ? ktxImg.width : 0, ktxOk ? ktxImg.height : 0,
-                        u.w, u.h, (int)dimOk);
+                    mc2::fmt::print_err("[KTX_SIDECAR] node={:d} srcName={} path={} load={:d} ktxDims={:d}x{:d} glDims={:d}x{:d} match={:d}\n",
+                        mc2::fmt::as_u32((unsigned long)u.nodeIdx), mc2::fmt::safe(srcName), ktxPath.c_str(),
+                        mc2::fmt::as_i32((int)ktxOk),
+                        mc2::fmt::as_i32(ktxOk ? ktxImg.width : 0), mc2::fmt::as_i32(ktxOk ? ktxImg.height : 0),
+                        mc2::fmt::as_i32(u.w), mc2::fmt::as_i32(u.h), mc2::fmt::as_i32((int)dimOk));
                     std::fflush(stderr);
                     if (dimOk) {
                         // KTX2 pixels are RGBA order; GL_RGBA matches.
