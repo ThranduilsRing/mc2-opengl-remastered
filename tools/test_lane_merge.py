@@ -289,3 +289,75 @@ def test_dry_run_reports_overlap_refusal(env):
     write(repo, "a.txt", "dirty\n")
     rc, out, err = merge(env, "--dry-run")
     assert rc == 4 and "overlap=1" in out and "a.txt" in err
+
+
+# ---- a merge that dies part-way (a file in the worktree is locked) --------------------------------------------------------------------
+
+sys.path.insert(0, HERE)
+import lane_merge as lm  # noqa: E402
+
+LOCKED = "error: unable to unlink old 'a.txt': Invalid argument\nfatal: merge failed"
+
+
+class _FlakyMerge:
+    """Wraps lane_merge.git: the first `merge --no-ff` writes the lane's new file (untracked), then fails like a locked-file merge."""
+
+    def __init__(self, repo, real, message=LOCKED, fail_times=1):
+        self.repo, self.real, self.message, self.left = repo, real, message, fail_times
+
+    def __call__(self, root, *args):
+        if args[:2] == ("merge", "--no-ff") and self.left > 0:
+            self.left -= 1
+            write(self.repo, "lane_new.txt", "new\n")
+            return subprocess.CompletedProcess(args, 1, stdout=self.message)
+        return self.real(root, *args)
+
+
+def _call_do_merge(repo, monkeypatch, flaky, **kw):
+    monkeypatch.setattr(lm, "git", flaky)
+    lm.do_merge(str(repo), git(repo, "rev-parse", "lane"), "merge lane", lane_files=["lane_new.txt"], **kw)
+
+
+def test_failed_merge_removes_only_the_lanes_untracked_files(env, monkeypatch):
+    repo, _ = env
+    lane_branch(repo, {"lane_new.txt": "new\n"})
+    write(repo, "mine_untracked.txt", "keep\n")
+    flaky = _FlakyMerge(repo, lm.git, message="fatal: some other failure")
+    with pytest.raises(lm.Stop) as e:
+        _call_do_merge(repo, monkeypatch, flaky)
+    assert e.value.code == 5 and "lane_new.txt" in str(e.value)
+    assert not (repo / "lane_new.txt").exists() and (repo / "mine_untracked.txt").exists()
+
+
+def test_locked_file_waits_for_the_tidy_lock_and_retries_once(env, monkeypatch):
+    repo, _ = env
+    lane_branch(repo, {"lane_new.txt": "new\n"})
+    lock = repo / "build-alltargets" / ".tidy.lock"
+    write(repo, "build-alltargets/.tidy.lock", "{}")
+    waits = []
+
+    def fake_sleep(s):
+        waits.append(s)
+        lock.unlink()
+
+    _call_do_merge(repo, monkeypatch, _FlakyMerge(repo, lm.git), sleep=fake_sleep)
+    assert waits == [10] and len(parents(repo)) == 2 and (repo / "lane_new.txt").read_text() == "new\n"
+
+
+def test_locked_file_without_a_tidy_lock_fails_at_once(env, monkeypatch):
+    repo, _ = env
+    lane_branch(repo, {"lane_new.txt": "new\n"})
+    with pytest.raises(lm.Stop) as e:
+        _call_do_merge(repo, monkeypatch, _FlakyMerge(repo, lm.git), sleep=lambda s: pytest.fail("must not wait"))
+    assert e.value.code == 5 and not (repo / "lane_new.txt").exists()
+
+
+def test_lock_that_never_clears_gives_up_and_cleans(env, monkeypatch):
+    repo, _ = env
+    lane_branch(repo, {"lane_new.txt": "new\n"})
+    write(repo, "build-alltargets/.tidy.lock", "{}")
+    ticks = iter(range(0, 10000, 100))
+    with pytest.raises(lm.Stop) as e:
+        _call_do_merge(repo, monkeypatch, _FlakyMerge(repo, lm.git), sleep=lambda s: None, clock=lambda: next(ticks),
+                       lock_wait_s=300)
+    assert e.value.code == 5 and not (repo / "lane_new.txt").exists() and (repo / "build-alltargets" / ".tidy.lock").exists()
