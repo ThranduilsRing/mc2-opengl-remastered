@@ -216,7 +216,11 @@ float BattleMech::getStatusRating (void) {
 	float armorEffect = armorHead * armorCTorso * armorTorso * armorArm * armorLeg;
 				
 	float pilotWoundTable[7] = {1.00f, 0.95f, 0.85f, 0.75f, 0.50f, 0.30f, 0.00f};
-	float pilotEffect = pilotWoundTable[(long)getPilot()->getWounds()];
+	// Wounds accumulate past 6 (a dead pilot) and the table has 7 entries: clamp so a dead pilot reads the last one.
+	long woundIndex = (long)getPilot()->getWounds();
+	if (woundIndex < 0) woundIndex = 0;
+	if (woundIndex > 6) woundIndex = 6;
+	float pilotEffect = pilotWoundTable[woundIndex];
 	if (isDestroyed() || isDisabled())
 		pilotEffect = 0.0;
 					
