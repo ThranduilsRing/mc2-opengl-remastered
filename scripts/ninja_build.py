@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from configure_ninja import DEFAULT_TARGETS, DEFAULT_TREE, NINJA, under_vcvars  # noqa: E402
+from configure_ninja import DEFAULT_TARGETS, DEFAULT_TREE, NINJA, configure, under_vcvars  # noqa: E402
 
 
 def main():
@@ -24,7 +24,12 @@ def main():
     argv = sys.argv[1:]
     if not any(not a.startswith("-") for a in argv):
         argv += DEFAULT_TARGETS
-    sys.exit(under_vcvars(subprocess.list2cmdline([NINJA, "-C", f"{root}/{DEFAULT_TREE}"] + argv)))
+    # MC2_NINJA_TREE names another tree under the repo root (lane_merge's verify builds in build-merge/ so it never collides with a lane's own
+    # build); it is configured on first use.
+    tree = os.environ.get("MC2_NINJA_TREE") or DEFAULT_TREE
+    if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
+        configure(root, tree)
+    sys.exit(under_vcvars(subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv)))
 
 
 if __name__ == "__main__":

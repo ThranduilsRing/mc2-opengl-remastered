@@ -383,14 +383,15 @@ def test_verify_runs_build_then_doctest_and_stops_at_the_first_failure(tmp_path)
         (tmp_path / "scripts" / n).write_text("")
     calls = []
 
-    def runner(root, cmd):
+    def runner(root, cmd, env=None):
+        assert env["MC2_NINJA_TREE"] == "build-merge"
         calls.append(os.path.basename(cmd[1]))
         return _R(1 if cmd[1].endswith("ninja_build.py") else 0, "boom")
 
     verdict, res = lm.verify_merged(str(tmp_path), "build", runner)
     assert verdict == "FAIL" and calls == ["ninja_build.py"] and res[0][0] == "build" and "boom" in res[0][2]
     calls.clear()
-    verdict, res = lm.verify_merged(str(tmp_path), "build", lambda root, cmd: (calls.append(os.path.basename(cmd[1])), _R(0))[1])
+    verdict, res = lm.verify_merged(str(tmp_path), "build", lambda root, cmd, env=None: (calls.append(os.path.basename(cmd[1])), _R(0))[1])
     assert verdict == "OK" and calls == ["ninja_build.py", "run-unit-tests.sh"]
 
 

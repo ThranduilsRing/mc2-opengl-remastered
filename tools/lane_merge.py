@@ -79,8 +79,8 @@ class Stop(Exception):
         self.code = code
 
 
-def run(root: str, cmd: list[str]) -> subprocess.CompletedProcess:  # non-git commands (the ratchets)
-    return subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+def run(root: str, cmd: list[str], env: dict | None = None) -> subprocess.CompletedProcess:  # non-git commands (the ratchets)
+    return subprocess.run(cmd, cwd=root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                           encoding="utf-8", errors="replace", **console_child.child_kwargs(redirected=True))
 
 
@@ -236,6 +236,12 @@ VERIFY_STEPS = {
 }
 
 
+def verify_env(root: str) -> dict:
+    """The environment of the verify steps: their own Ninja tree and doctest tree, so a verify never collides with a lane's build in
+    build64-ninja/ or build64-tests/ (a coordinator merge of a tools-only tip once failed that way)."""
+    return dict(os.environ, MC2_NINJA_TREE="build-merge", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-merge-tests"))
+
+
 def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str, int, str]]]:
     """Build and test the merged tree. -> ("OK"|"FAIL"|"SKIPPED", [(step, rc, tail)]). Stops at the first failing step."""
     if mode == "none":
@@ -246,7 +252,7 @@ def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str
         if not os.path.exists(path):
             return ("SKIPPED" if not results else "OK"), results
         cmd = ["bash", path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
-        r = runner(root, cmd)
+        r = runner(root, cmd, env=verify_env(root))
         tail = "\n".join(r.stdout.splitlines()[-8:])
         results.append((label, r.returncode, tail))
         if r.returncode != 0:

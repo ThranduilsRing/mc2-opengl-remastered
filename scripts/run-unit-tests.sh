@@ -41,7 +41,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CMAKE="${MC2_CMAKE:-C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe}"
 CFG="${MC2_TEST_CONFIG:-RelWithDebInfo}"
-BUILD_DIR="$ROOT/build64-tests"
+BUILD_DIR="${MC2_UNIT_BUILD_DIR:-$ROOT/build64-tests}"   # lane_merge verify sets its own, so it never collides with a lane's doctest run
 
 DOCTEST_ONLY=0
 DOCTEST_ARGS=()
