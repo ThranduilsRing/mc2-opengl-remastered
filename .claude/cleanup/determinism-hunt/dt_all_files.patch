@@ -1,0 +1,1247 @@
+diff --git a/GameOS/gameos/gameos.cpp b/GameOS/gameos/gameos.cpp
+index 0167d8274..1edc5037d 100644
+--- a/GameOS/gameos/gameos.cpp
++++ b/GameOS/gameos/gameos.cpp
+@@ -288,6 +288,9 @@ void __stdcall gos_Free(void* ptr)
+ // gated by MC2_DETERMINISTIC_RNG (default-OFF). When the gate is OFF every line
+ // below is the original CRT srand/rand path => byte-identical to stock.
+ static uint32_t s_lcg_state     = 0u;
++static unsigned s_dtCalls = 0;
++extern "C" unsigned dtRngState() { return s_lcg_state; }
++extern "C" unsigned dtRngCalls() { return s_dtCalls; }
+ 
+ // MC2_DETERMINISTIC_RNG=1, read once on first use. A function-local static is initialised under the language's own lock,
+ // so a gos_rand call on a worker thread cannot see the "checked" latch before the value (the old two-flag latch could).
+@@ -309,6 +312,7 @@ void __stdcall gos_srand(unsigned int seed)
+ int __stdcall gos_rand()
+ {
+     if (gos_detRngEnabled()) {
++        s_dtCalls++;
+         const int result = (int)mc2_det_rng::next15(s_lcg_state);
+         // Trace is gated twice: compile-time MC2_RNG_TRACE define AND the
+         // runtime "RNG" tag whitelist. Default builds pay nothing.
+diff --git a/code/contact.cpp b/code/contact.cpp
+index 1093e5048..cca81e52e 100644
+--- a/code/contact.cpp
++++ b/code/contact.cpp
+@@ -9,6 +9,7 @@
+ //===========================================================================//
+ 
+ #ifndef MCLIB_H
++#include "dtrace_tmp.h"
+ #include"mclib.h"
+ #endif
+ 
+@@ -404,6 +405,7 @@ bool SensorSystem::isContact (MoverPtr mover) {
+ 
+ void SensorSystem::addContact (MoverPtr mover, bool visual) {
+ 
++	DT("SADD owner=%ld mv=%ld vis=%d", (long)owner->getPartId(), (long)mover->getPartId(), (int)visual);
+ 	Assert(!isContact(mover), 0, " SensorSystem.addContact: already contact ");
+ 	if (numContacts < MAX_CONTACTS_PER_SENSOR) {
+ 		contacts[numContacts] = mover->getHandle();
+@@ -440,7 +442,8 @@ void SensorSystem::removeContact (long contactIndex) {
+ 	// This assumes the contactIndex is legitimate...
+ 
+ 	MoverPtr contact = (MoverPtr)ObjectManager->get(contacts[contactIndex] & 0x7FFF);
+-	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
++	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
++	DT("SREM owner=%ld mv=%ld", (long)owner->getPartId(), (long)contact->getPartId());
+ 	
+ 	numContacts--;
+ 	if ((numContacts > 0) && (contactIndex != numContacts)) {
+diff --git a/code/missiongui_cursor.cpp b/code/missiongui_cursor.cpp
+index c431fe28a..63cc8599a 100644
+--- a/code/missiongui_cursor.cpp
++++ b/code/missiongui_cursor.cpp
+@@ -1,6 +1,7 @@
+ // MissionInterfaceManager: camera movement, drag selection, jump/recover checks and the target / range / no-target / move / jump / run cursors.
+ // Declared in the class headers; shared names in missiongui_shared_internal.h.
+ #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
++#include "dtrace_tmp.h"
+ #include "missiongui_shared_internal.h"
+ 
+ 
+@@ -39,6 +40,7 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
+ 			scrollDown();
+ 	}
+ 
++	DT("INP mx=%ld my=%ld ax=%g ay=%g az=%g cc=%d", (long)mouseX,(long)mouseY,(double)attilaXAxis,(double)attilaYAxis,(double)attilaRZAxis,(int)cameraClicked);
+ 	if (attilaXAxis < -ATTILA_THRESHOLD)
+ 	{
+ 		float oldScrollInc = scrollInc;
+diff --git a/code/movemgr.cpp b/code/movemgr.cpp
+index d02236b10..30ec7dbe3 100644
+--- a/code/movemgr.cpp
++++ b/code/movemgr.cpp
+@@ -1,268 +1,272 @@
+-//***************************************************************************
+-//
+-//	movemgr.cpp -- File contains the MovePathManager class code
+-//
+-//	MechCommander 2
+-//
+-//---------------------------------------------------------------------------//
+-// Copyright (C) Microsoft Corporation. All rights reserved.                 //
+-//===========================================================================//
+-
+-#ifndef MCLIB_H
+-#include"mclib.h"
+-#endif
+-
+-#ifndef MOVEMGR_H
+-#include"movemgr.h"
+-#endif
+-
+-#ifndef WARRIOR_H
+-#include"warrior.h"
+-#endif
+-
+-#include"gameos.hpp"
+-#include"gos_profiler.h"
+-#include"path_trace.h"  // PATHFINDING-FACTS-1 gated PATH telemetry
+-
+-
+-long MovePathManager::numPaths = 0;
+-long MovePathManager::peakPaths = 0;
+-long MovePathManager::sourceTally[50];
+-MovePathManagerPtr PathManager = nullptr;
+-
+-// PATHFINDING-FACTS-1: per-frame path-queue activity counters (telemetry only).
+-static long s_pathQueuedThisFrame = 0;
+-
+-// PATHFINDING-FACTS-2: monotonic path-manager frame counter, advanced once per
+-// update(). Used to stamp request enqueue frames and compute oldest-request age.
+-// Telemetry only; only read/written under the cached PATH gate.
+-static long s_pathFrameCounter = 0;
+-
+-// PATHFINDING-JUMP-FAIL-1: expose the monotonic path-manager frame counter so the
+-// per-pilot jump-fail backoff (warrior.cpp) can stamp/compare failure frames on the
+-// same clock the queue uses. Advances unconditionally once per update() (line below).
+-long MovePathManager_getFrameCounter (void) { return s_pathFrameCounter; }
+-
+-//***************************************************************************
+-// PATH MANAGER class
+-//***************************************************************************
+-
+-void* MovePathManager::operator new (size_t mySize) {
+-
+-	void *result = systemHeap->Malloc(mySize);
+-	return(result);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void MovePathManager::operator delete (void* us) {
+-
+-	systemHeap->Free(us);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-long MovePathManager::init (void) {
+-
+-	for (long i = 0; i < MAX_MOVERS; i++) {
+-		pool[i].pilot = nullptr;
+-		pool[i].selectionIndex = 0;
+-		pool[i].moveParams = 0;
+-		if (i > 0)
+-			pool[i].prev = &pool[i - 1];
+-		else
+-			pool[i].prev = nullptr;
+-		if (i < (MAX_MOVERS - 1))
+-			pool[i].next = &pool[i + 1];
+-		else
+-			pool[i].next = nullptr;
+-	}
+-
+-	//------------------------------
+-	// All start on the free list...
+-	queueFront = nullptr;
+-	queueEnd = nullptr;
+-	freeList = &pool[0];
+-
+-	numPaths = 0;
+-	peakPaths = 0;
+-	for (int i =0; i < 50; i++)
+-		sourceTally[i] = 0;
+-
+-	return(NO_ERR);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void MovePathManager::destroy (void) {
+-
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void MovePathManager::remove (PathQueueRecPtr rec) {
+-
+-	//------------------------------------
+-	// Remove it from the pending queue...
+-	if (rec->prev)
+-		rec->prev->next = rec->next;
+-	else
+-		queueFront = rec->next;
+-	if (rec->next)
+-		rec->next->prev = rec->prev;
+-	else
+-		queueEnd = rec->prev;
+-
+-	//------------------------------------
+-	// Return the QRec to the free list...
+-	rec->prev = nullptr;
+-	rec->next = freeList;
+-	freeList = rec;
+-
+-	sourceTally[rec->num]--;
+-	numPaths--;
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-PathQueueRecPtr MovePathManager::remove (MechWarriorPtr pilot) {
+-
+-	PathQueueRecPtr rec = pilot->getMovePathRequest();
+-	if (rec) {
+-		remove(rec);
+-		pilot->setMovePathRequest(nullptr);
+-		return(rec);
+-	}
+-	return(nullptr);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-constexpr int DEBUG_MOVEPATH_QUEUE = 0;
+-
+-void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsigned long moveParams, long source) {
+-
+-	//-----------------------------------------------------
+-	// If the pilot is already awaiting a calc, purge it...
+-	remove(pilot);
+-
+-	if (!freeList)
+-		Fatal(0, " Too many pilots calcing paths ");
+-
+-	//---------------------------------------------
+-	// Grab the first free move path rec in line...
+-	PathQueueRecPtr pathQRec = freeList;
+-
+-	//-----------------------------------------
+-	// Cut the new record from the free list...
+-	freeList = freeList->next;
+-	if (freeList)
+-		freeList->prev = nullptr;
+-
+-	//---------------------------------------------------
+-	// New record has no next. Already has no previous...
+-	pathQRec->num = source;
+-	pathQRec->pilot = pilot;
+-	pathQRec->selectionIndex = selectionIndex;
+-	pathQRec->moveParams = moveParams;
+-
+-	if (queueEnd) {
+-		queueEnd->next = pathQRec;
+-		pathQRec->prev = queueEnd;
+-		pathQRec->next = nullptr;
+-		queueEnd = pathQRec;
+-		}
+-	else {
+-		pathQRec->prev = nullptr;
+-		pathQRec->next = nullptr;
+-		queueFront = queueEnd = pathQRec;
+-	}
+-	pilot->setMovePathRequest(pathQRec);
+-	
+-	numPaths++;
+-	sourceTally[source]++;
+-	s_pathQueuedThisFrame++;  // PATHFINDING-FACTS-1: enqueue tally (telemetry only)
+-
+-	// PATHFINDING-FACTS-2: stamp enqueue frame so update() can compute the age of
+-	// the oldest request it services. Only meaningful under the PATH gate; written
+-	// unconditionally (cheap scalar store) but consumed only when PATH is enabled.
+-	pathQRec->enqueueFrame = s_pathFrameCounter;
+-
+-	if (numPaths > peakPaths)
+-		peakPaths = numPaths;
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void MovePathManager::calcPath (void) {
+-
+-	if (queueFront) {
+-		//------------------------------
+-		// Grab the next in the queue...
+-		PathQueueRecPtr curQRec = queueFront;
+-		remove(queueFront);
+-
+-		//--------------------------------------------------
+-		// If the mover is no longer around, don't bother...
+-		MechWarriorPtr pilot = curQRec->pilot;
+-		pilot->setMovePathRequest(nullptr);
+-		MoverPtr mover = pilot->getVehicle();
+-		if (!mover)
+-			return;
+-
+-		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
+-	}
+-}
+-
+-//----------------------------------------------------------------------------------
+-void DEBUGWINS_print (char* s, long window);
+-void MovePathManager::update (void) {
+-
+-	ZoneScopedN("GameLogic.PathManager.Update");
+-
+-	#ifdef MC_PROFILE
+-	QueryPerformanceCounter(startCk);
+-	#endif
+-
+-	long numPathsToProcess = 6;
+-	//if (numPaths > 15)
+-	//	numPathsToProcess = 10;
+-
+-	// PATHFINDING-FACTS-2: capture the oldest-serviced request's age. The queue is
+-	// FIFO, so queueFront at loop entry is the oldest request we will service this
+-	// frame. Read before the loop (calcPath() pops queueFront). -1 == none serviced.
+-	long oldestEnqueueFrame = queueFront ? queueFront->enqueueFrame : 0;
+-	bool hadWorkAtEntry = (queueFront != nullptr);
+-
+-	long processedThisFrame = 0;  // PATHFINDING-FACTS-1 (telemetry only)
+-	for (long i = 0; i < numPathsToProcess; i++) {
+-		if (!queueFront)
+-			break;
+-		calcPath();
+-		processedThisFrame++;
+-	}
+-
+-	// PATHFINDING-FACTS-2: throttle-cap-hit -- did the 6-cap stop us with the queue
+-	// still non-empty? (processed == cap AND queueFront still set after the loop).
+-	int capHit = (processedThisFrame == numPathsToProcess && queueFront != nullptr) ? 1 : 0;
+-	long oldestAge = hadWorkAtEntry ? (s_pathFrameCounter - oldestEnqueueFrame) : -1;
+-
+-	// PATHFINDING-FACTS-1/2: per-frame queue depth/throttle emit (gated, default-OFF).
+-	mc2_path_trace::emitFrame(s_pathQueuedThisFrame, processedThisFrame, numPaths, peakPaths,
+-	                          oldestAge, capHit);
+-	s_pathQueuedThisFrame = 0;
+-
+-	// PATHFINDING-FACTS-2: advance the frame counter once per update().
+-	s_pathFrameCounter++;
+-
+-//	char s[50];
+-//	sprintf(s, "num paths = %d", numPaths);
+-//	DEBUGWINS_print(s, 0);
+-
+-	#ifdef MC_PROFILE
+-	QueryPerformanceCounter(endCk);
+-	srMvPathUpd += (endCk.LowPart - startCk.LowPart);
+-	#endif
+-}
+-
+-//***************************************************************************
++//***************************************************************************
++//
++//	movemgr.cpp -- File contains the MovePathManager class code
++//
++//	MechCommander 2
++//
++//---------------------------------------------------------------------------//
++// Copyright (C) Microsoft Corporation. All rights reserved.                 //
++//===========================================================================//
++
++#ifndef MCLIB_H
++#include"mclib.h"
++#endif
++
++#ifndef MOVEMGR_H
++#include"movemgr.h"
++#endif
++
++#ifndef WARRIOR_H
++#include"warrior.h"
++#endif
++
++#include"gameos.hpp"
++#include"gos_profiler.h"
++#include"dtrace_tmp.h"
++#include"mover.h"
++#include"path_trace.h"  // PATHFINDING-FACTS-1 gated PATH telemetry
++
++
++long MovePathManager::numPaths = 0;
++long MovePathManager::peakPaths = 0;
++long MovePathManager::sourceTally[50];
++MovePathManagerPtr PathManager = nullptr;
++
++// PATHFINDING-FACTS-1: per-frame path-queue activity counters (telemetry only).
++static long s_pathQueuedThisFrame = 0;
++
++// PATHFINDING-FACTS-2: monotonic path-manager frame counter, advanced once per
++// update(). Used to stamp request enqueue frames and compute oldest-request age.
++// Telemetry only; only read/written under the cached PATH gate.
++static long s_pathFrameCounter = 0;
++
++// PATHFINDING-JUMP-FAIL-1: expose the monotonic path-manager frame counter so the
++// per-pilot jump-fail backoff (warrior.cpp) can stamp/compare failure frames on the
++// same clock the queue uses. Advances unconditionally once per update() (line below).
++long MovePathManager_getFrameCounter (void) { return s_pathFrameCounter; }
++
++//***************************************************************************
++// PATH MANAGER class
++//***************************************************************************
++
++void* MovePathManager::operator new (size_t mySize) {
++
++	void *result = systemHeap->Malloc(mySize);
++	return(result);
++}
++
++//---------------------------------------------------------------------------
++
++void MovePathManager::operator delete (void* us) {
++
++	systemHeap->Free(us);
++}
++
++//---------------------------------------------------------------------------
++
++long MovePathManager::init (void) {
++
++	for (long i = 0; i < MAX_MOVERS; i++) {
++		pool[i].pilot = nullptr;
++		pool[i].selectionIndex = 0;
++		pool[i].moveParams = 0;
++		if (i > 0)
++			pool[i].prev = &pool[i - 1];
++		else
++			pool[i].prev = nullptr;
++		if (i < (MAX_MOVERS - 1))
++			pool[i].next = &pool[i + 1];
++		else
++			pool[i].next = nullptr;
++	}
++
++	//------------------------------
++	// All start on the free list...
++	queueFront = nullptr;
++	queueEnd = nullptr;
++	freeList = &pool[0];
++
++	numPaths = 0;
++	peakPaths = 0;
++	for (int i =0; i < 50; i++)
++		sourceTally[i] = 0;
++
++	return(NO_ERR);
++}
++
++//---------------------------------------------------------------------------
++
++void MovePathManager::destroy (void) {
++
++}
++
++//---------------------------------------------------------------------------
++
++void MovePathManager::remove (PathQueueRecPtr rec) {
++
++	//------------------------------------
++	// Remove it from the pending queue...
++	if (rec->prev)
++		rec->prev->next = rec->next;
++	else
++		queueFront = rec->next;
++	if (rec->next)
++		rec->next->prev = rec->prev;
++	else
++		queueEnd = rec->prev;
++
++	//------------------------------------
++	// Return the QRec to the free list...
++	rec->prev = nullptr;
++	rec->next = freeList;
++	freeList = rec;
++
++	sourceTally[rec->num]--;
++	numPaths--;
++}
++
++//---------------------------------------------------------------------------
++
++PathQueueRecPtr MovePathManager::remove (MechWarriorPtr pilot) {
++
++	PathQueueRecPtr rec = pilot->getMovePathRequest();
++	if (rec) {
++		remove(rec);
++		pilot->setMovePathRequest(nullptr);
++		return(rec);
++	}
++	return(nullptr);
++}
++
++//---------------------------------------------------------------------------
++
++constexpr int DEBUG_MOVEPATH_QUEUE = 0;
++
++void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsigned long moveParams, long source) {
++
++	//-----------------------------------------------------
++	// If the pilot is already awaiting a calc, purge it...
++	remove(pilot);
++
++	if (!freeList)
++		Fatal(0, " Too many pilots calcing paths ");
++
++	//---------------------------------------------
++	// Grab the first free move path rec in line...
++	PathQueueRecPtr pathQRec = freeList;
++
++	//-----------------------------------------
++	// Cut the new record from the free list...
++	freeList = freeList->next;
++	if (freeList)
++		freeList->prev = nullptr;
++
++	//---------------------------------------------------
++	// New record has no next. Already has no previous...
++	pathQRec->num = source;
++	pathQRec->pilot = pilot;
++	pathQRec->selectionIndex = selectionIndex;
++	pathQRec->moveParams = moveParams;
++
++	if (queueEnd) {
++		queueEnd->next = pathQRec;
++		pathQRec->prev = queueEnd;
++		pathQRec->next = nullptr;
++		queueEnd = pathQRec;
++		}
++	else {
++		pathQRec->prev = nullptr;
++		pathQRec->next = nullptr;
++		queueFront = queueEnd = pathQRec;
++	}
++	pilot->setMovePathRequest(pathQRec);
++	
++	numPaths++;
++	sourceTally[source]++;
++	s_pathQueuedThisFrame++;  // PATHFINDING-FACTS-1: enqueue tally (telemetry only)
++
++	// PATHFINDING-FACTS-2: stamp enqueue frame so update() can compute the age of
++	// the oldest request it services. Only meaningful under the PATH gate; written
++	// unconditionally (cheap scalar store) but consumed only when PATH is enabled.
++	pathQRec->enqueueFrame = s_pathFrameCounter;
++
++	if (numPaths > peakPaths)
++		peakPaths = numPaths;
++}
++
++//---------------------------------------------------------------------------
++
++void MovePathManager::calcPath (void) {
++
++	if (queueFront) {
++		//------------------------------
++		// Grab the next in the queue...
++		PathQueueRecPtr curQRec = queueFront;
++		remove(queueFront);
++
++		//--------------------------------------------------
++		// If the mover is no longer around, don't bother...
++		MechWarriorPtr pilot = curQRec->pilot;
++		pilot->setMovePathRequest(nullptr);
++		MoverPtr mover = pilot->getVehicle();
++		if (!mover)
++			return;
++
++		DT("CALC pilot=%ld src=%ld", (long)mover->getPartId(), (long)curQRec->num);
++		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
++		DT("CALCDONE pilot=%ld p0=%ld/%ld p1=%ld/%ld", (long)mover->getPartId(), (long)pilot->getMovePath(0)->curStep, (long)pilot->getMovePath(0)->numStepsWhenNotPaused, (long)pilot->getMovePath(1)->curStep, (long)pilot->getMovePath(1)->numStepsWhenNotPaused);
++	}
++}
++
++//----------------------------------------------------------------------------------
++void DEBUGWINS_print (char* s, long window);
++void MovePathManager::update (void) {
++
++	ZoneScopedN("GameLogic.PathManager.Update");
++
++	#ifdef MC_PROFILE
++	QueryPerformanceCounter(startCk);
++	#endif
++
++	long numPathsToProcess = 6;
++	//if (numPaths > 15)
++	//	numPathsToProcess = 10;
++
++	// PATHFINDING-FACTS-2: capture the oldest-serviced request's age. The queue is
++	// FIFO, so queueFront at loop entry is the oldest request we will service this
++	// frame. Read before the loop (calcPath() pops queueFront). -1 == none serviced.
++	long oldestEnqueueFrame = queueFront ? queueFront->enqueueFrame : 0;
++	bool hadWorkAtEntry = (queueFront != nullptr);
++
++	long processedThisFrame = 0;  // PATHFINDING-FACTS-1 (telemetry only)
++	for (long i = 0; i < numPathsToProcess; i++) {
++		if (!queueFront)
++			break;
++		calcPath();
++		processedThisFrame++;
++	}
++
++	// PATHFINDING-FACTS-2: throttle-cap-hit -- did the 6-cap stop us with the queue
++	// still non-empty? (processed == cap AND queueFront still set after the loop).
++	int capHit = (processedThisFrame == numPathsToProcess && queueFront != nullptr) ? 1 : 0;
++	long oldestAge = hadWorkAtEntry ? (s_pathFrameCounter - oldestEnqueueFrame) : -1;
++
++	// PATHFINDING-FACTS-1/2: per-frame queue depth/throttle emit (gated, default-OFF).
++	mc2_path_trace::emitFrame(s_pathQueuedThisFrame, processedThisFrame, numPaths, peakPaths,
++	                          oldestAge, capHit);
++	s_pathQueuedThisFrame = 0;
++
++	// PATHFINDING-FACTS-2: advance the frame counter once per update().
++	s_pathFrameCounter++;
++
++//	char s[50];
++//	sprintf(s, "num paths = %d", numPaths);
++//	DEBUGWINS_print(s, 0);
++
++	#ifdef MC_PROFILE
++	QueryPerformanceCounter(endCk);
++	srMvPathUpd += (endCk.LowPart - startCk.LowPart);
++	#endif
++}
++
++//***************************************************************************
+diff --git a/code/sim_identity.cpp b/code/sim_identity.cpp
+index 115538eb7..abe16a592 100644
+--- a/code/sim_identity.cpp
++++ b/code/sim_identity.cpp
+@@ -38,6 +38,7 @@
+ //   hundred getter calls once per capture; the per-FRAME path is opt-in.
+ //---------------------------------------------------------------------------
+ 
++#include "dtrace_tmp.h"
+ #include "objmgr.h"
+ #include "mover.h"
+ #include "warrior.h"
+@@ -250,6 +251,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame)
+ 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs));
+ 
+ 	if (simIdentityTraceDetail()) {
++		DT("RNGF state=%08x calls=%u", dtRngState(), dtRngCalls());
+ 		for (size_t i = 0; i < recs.size(); ++i) {
+ 			const MoverRecord& r = recs[i];
+ 			char hm[17];
+diff --git a/code/warrior.cpp b/code/warrior.cpp
+index b4f539edd..cebe7696f 100644
+--- a/code/warrior.cpp
++++ b/code/warrior.cpp
+@@ -4,6 +4,7 @@
+ 
+ //								WARRIOR.CPP
+ 
++#include "dtrace_tmp.h"
+ #include "warrior_internal.h"
+ #include "Gates/gate.h"
+ #include "Gates/gate_cold.h"   // str<>()
+@@ -1797,6 +1798,7 @@ void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams
+ 		}
+ 	}
+ 
++	DT("REQ pilot=%ld src=%ld params=%lu sel=%ld", (long)(getVehicle()?getVehicle()->getPartId():-1), source, moveParams, selectionIndex);
+ 	PathManager->request(this, selectionIndex, moveParams, source);
+ }
+ 
+diff --git a/code/warrior_target.cpp b/code/warrior_target.cpp
+index 9eeb34db7..c23f882c2 100644
+--- a/code/warrior_target.cpp
++++ b/code/warrior_target.cpp
+@@ -2,6 +2,7 @@
+ // Declared in the class headers; shared names in warrior_internal.h.
+ #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+ #include "warrior_internal.h"
++#include "dtrace_tmp.h"
+ 
+ 
+ 
+@@ -521,6 +522,7 @@ void MechWarrior::setLastTarget (GameObjectPtr target, bool obliterate, bool con
+ 			target->incrementAttackers();
+ 	}
+ 
++	DT("SETTGT pilot=%ld tgt=%ld", (long)getVehicle()->getPartId(), (long)(target?target->getPartId():-1));
+ 	if (target) {
+ 		lastTargetWID = target->getWatchID();
+ 		lastTargetFriendly = target->isFriendly(getVehicle());
+diff --git a/code/weather.cpp b/code/weather.cpp
+index 4d2379497..7d15df562 100644
+--- a/code/weather.cpp
++++ b/code/weather.cpp
+@@ -10,6 +10,7 @@
+ //----------------------------------------------------------------------------------
+ // Include Files
+ #ifndef WEATHER_H
++#include "dtrace_tmp.h"
+ #include"weather.h"
+ #endif
+ 
+@@ -263,6 +264,7 @@ void Weather::update (void)
+    		Stuff::Vector3D startPos = eye->getPosition();
+ 		startPos.z += BASE_RAIN_HEIGHT;
+    		float currentElevation = land->getTerrainElevation(startPos);
++		DT("WX pos=%.9g,%.9g,%.9g elev=%.9g fl=%.9g rl=%.9g ru=%.9g", (double)startPos.x,(double)startPos.y,(double)startPos.z,(double)currentElevation,(double)frameLength,(double)rainLevel,(double)rainUpdateTime);
+ 		
+ 		//----------------------------
+ 		// Update the light level
+diff --git a/mclib/ablxstd.cpp b/mclib/ablxstd.cpp
+index d8778bdb9..fcefed455 100644
+--- a/mclib/ablxstd.cpp
++++ b/mclib/ablxstd.cpp
+@@ -1,238 +1,240 @@
+-//===========================================================================//
+-// Copyright (C) Microsoft Corporation. All rights reserved.                 //
+-//===========================================================================//
+-//***************************************************************************
+-//
+-//								ABLXSTD.CPP
+-//
+-//***************************************************************************
+-
+-#include "ablxstd_internal.h"
+-#include "mc2fmt.h"
+-
+-
+-inline signed int double2long(double _in)
+-{
+-	_in+=6755399441055744.0;
+-	signed int result;
+-	memcpy(&result, &_in, sizeof(result));
+-	return result;
+-}
+-
+-//----------
+-// ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN)
+-// MC2_ABL_ARG_GUARD=1      — enables dispatch-bounds soft path + out-ptr null guards
+-// MC2_ABL_RUNTIME_SOFTFAIL=1 — log-and-continue instead of ABL_Fatal (requires ARG_GUARD)
+-// Both default OFF: behaviour is byte-identical to pre-harden when gates are off.
+-bool s_ablArgGuard      = mc2::gate::get<"MC2_ABL_ARG_GUARD">();
+-bool s_ablRuntimeSoftfail = mc2::gate::get<"MC2_ABL_RUNTIME_SOFTFAIL">();
+-
+-//--------
+-// GLOBALS
+-
+-StackItem				returnValue;
+-bool					eofFlag = false;
+-bool					ExitWithReturn = false;
+-bool					ExitFromTacOrder = false;
+-bool					SkipOrder = false;
+-TokenCodeType			ExitRoutineCodeSegment[2] = {TKN_END_FUNCTION,
+-													 TKN_SEMICOLON};
+-TokenCodeType			ExitOrderCodeSegment[2] = {TKN_END_ORDER,
+-												   TKN_SEMICOLON};
+-TokenCodeType			ExitStateCodeSegment[2] = {TKN_END_STATE,
+-												   TKN_SEMICOLON};
+-
+-//---------------------------------------------------------------------------
+-
+-extern ModuleEntryPtr ModuleRegistry;
+-
+-extern char	SetStateDebugStr[256];
+-
+-void execStdSetState (void) {
+-
+-	unsigned int stateHandle = ABLi_popInteger();
+-
+-	if (stateHandle > 0) {
+-		SymTableNodePtr stateFunction = ModuleRegistry[CurFSM->getHandle()].stateHandles[stateHandle].state;
+-		CurFSM->setPrevState(CurFSM->getState());
+-		CurFSM->setState(stateFunction);
+-		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(CurFSM->getFileName()), mc2::fmt::safe(stateFunction->name), mc2::fmt::as_i32(execLineNumber));
+-		NewStateSet = true;
+-	}
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void execStdGetFunctionHandle (void) {
+-
+-    assert(0 && "function handle is pointer cannot pass through int");
+-
+-	char* name = ABLi_popCharPtr();
+-
+-	SymTableNodePtr function = CurModule->findFunction(name, false);
+-	if (function)
+-		ABLi_pushInteger((unsigned int)reinterpret_cast<size_t>(function));
+-	else
+-		ABLi_pushInteger(0);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void execStdSetFlag (void) {
+-
+-	unsigned int bits = (unsigned int)ABLi_popInteger();
+-	unsigned int flag = (unsigned int)ABLi_popInteger();
+-	bool set = ABLi_popBoolean();
+-
+-	bits &= (flag ^ 0xFFFFFFFF);
+-	if (set)
+-		bits |= flag;
+-
+-	ABLi_pushInteger(bits);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void execStdGetFlag (void) {
+-
+-	unsigned int bits = (unsigned int)ABLi_popInteger();
+-	unsigned int flag = (unsigned int)ABLi_popInteger();
+-
+-	bool set = ((bits & flag) != 0);
+-
+-	ABLi_pushInteger(set);
+-}
+-
+-//---------------------------------------------------------------------------
+-
+-void execStdCallFunction (void) {
+-
+-    assert(0 && "function handle is pointer cannot pass through int, pass as address?");
+-
+-	unsigned int address = ABLi_popInteger();
+-
+-	if (address) {
+-//GLENN: Not functional, yet...
+-	}
+-}
+-
+-//***************************************************************************
+-
+-void initStandardRoutines (void) {
+-
+-	//-------------------------------------------------------------
+-	// Fatal and Assert will have hardcoded keys so we can look for
+-	// 'em in the rest of the ABL code (example: ignore asserts if
+-	// the assert_off option has been set).
+-	enterStandardRoutine("fatal", RTN_FATAL, false, "iC", nullptr, execStdFatal);
+-	enterStandardRoutine("assert", RTN_ASSERT, false, "biC", nullptr, execStdAssert);
+-	enterStandardRoutine("getstatehandle", RTN_GET_STATE_HANDLE, false, "C", "i", execStdGetStateHandle);
+-
+-	enterStandardRoutine("getcurrentstatehandle", -1, false, nullptr, "i", execStdGetCurrentStateHandle);
+-	enterStandardRoutine("abs", -1, false, "*", "r", execStdAbs);
+-	enterStandardRoutine("sqrt", -1, false, "*", "r", execStdSqrt);
+-	enterStandardRoutine("round", -1, false, "r", "i", execStdRound);
+-	enterStandardRoutine("trunc", -1, false, "r", "i", execStdTrunc);
+-	enterStandardRoutine("random", -1, false, "i", "i", execStdRandom);
+-	enterStandardRoutine("seedrandom", -1, false, "i", nullptr, execStdSeedRandom);
+-	enterStandardRoutine("setmaxloops", -1, false, "i", nullptr, execStdSetMaxLoops);
+-	enterStandardRoutine("fileopen", -1, false, "C", "i", execStdFileOpen);
+-	enterStandardRoutine("filewrite", -1, false, "iC", nullptr, execStdFileWrite);
+-	enterStandardRoutine("fileclose", -1, false, "i", nullptr, execStdFileClose);
+-	enterStandardRoutine("getmodule", -1, false, "CC", "i", execStdGetModule);
+-	enterStandardRoutine("resetorders", -1, false, "i", nullptr, execStdResetOrders);
+-	enterStandardRoutine("setstate", -1, false, "i", nullptr, execStdSetState);
+-	enterStandardRoutine("getfunctionhandle", -1, false, "C", "i", execStdGetFunctionHandle);
+-	enterStandardRoutine("callfunction", -1, false, "i", nullptr, execStdCallFunction);
+-	enterStandardRoutine("setflag", -1, false, "iib", "i", execStdSetFlag);
+-	enterStandardRoutine("getflag", -1, false, "ii", "b", execStdGetFlag);
+-
+-}
+-
+-//-----------------------------------------------------------------------------
+-
+-TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
+-
+-	int key = routineIdPtr->defn.info.routine.key;
+-	switch (key) {
+-		case RTN_RETURN:
+-			execStdReturn();
+-			return(nullptr);
+-		case RTN_PRINT:
+-			execStdPrint();
+-			return(nullptr);
+-		case RTN_CONCAT:
+-			return(execStdConcat());
+-		default: {
+-			if (key < 0 || key >= NumStandardFunctions) {
+-				// Mod-tolerance: ABL script called an unregistered routine key
+-				// (common with Omnitech-extended scripts running on our base
+-				// engine). ABL_Fatal is soft in Release so we'd OOB-read both
+-				// FunctionInfoTable[key] and FunctionCallbackTable[key] and
+-				// then call through a garbage pointer. Hard-bail here.
+-				char err[255];
+-				if (s_ablArgGuard && s_ablRuntimeSoftfail) {
+-					// H2/H3: soft-fail — log and synthesize default return, do NOT abort.
+-					const char* modName = CurModule ? CurModule->getName() : "(unknown)";
+-					const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
+-					mc2::fmt::to_buf(err, "[ABL_SOFTFAIL] key={:d} func=(out-of-range) module={} file={} line={:d} errCode=0 — key >= NumStandardFunctions({:d}), skipping", mc2::fmt::as_i32(key), mc2::fmt::safe(modName), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
+-					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
+-					return nullptr;
+-				}
+-				mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d} (>= {:d}) — bailing", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
+-				ABL_Fatal(0, err);
+-				return nullptr;
+-			}
+-			if (FunctionInfoTable[key].numParams > 0)
+-				getCodeToken();
+-			SkipOrder = skipOrder;
+-			// Guard: FunctionCallbackTable slots can hold non-NULL uninitialized
+-			// garbage (e.g. 0x00000000DDFD690B — low 16 bits repeat across runs,
+-			// upper bits are heap noise). NULL check alone is insufficient. Valid
+-			// code pointers on 64-bit Windows live in the high 2^47 range
+-			// (0x00007F...); anything below 0x0000_7F00_0000_0000 is bogus. On
+-			// bogus, skip the call, log key+module+line, synthesize a default
+-			// return so ABL stack stays balanced and FSM execution continues.
+-			{
+-				void (*cb)(void) = FunctionCallbackTable[key];
+-				uintptr_t cbVal = (uintptr_t)cb;
+-				// Belt-and-suspenders: root cause was MAX_STANDARD_FUNCTIONS=256
+-				// overflow (fixed in 2cfad76). This guard stays in place to catch
+-				// any future bogus-pointer case rather than dispatching into
+-				// garbage. Log is unconditional because it fires rarely; when it
+-				// does, we want the data in o.log automatically.
+-				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
+-					char err[255];
+-					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
+-					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
+-					switch (FunctionInfoTable[key].returnType) {
+-						case RETURN_TYPE_INTEGER: pushInteger(0); break;
+-						case RETURN_TYPE_REAL:    pushReal(0.0f); break;
+-						case RETURN_TYPE_BOOLEAN: pushBoolean(false); break;
+-						default: break;
+-					}
+-				} else if (cb) {
+-					(*cb)();
+-				} else {
+-					char err[255];
+-					mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d}", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
+-					ABL_Fatal(key, err);
+-				}
+-			}
+-
+-			getCodeToken();
+-			switch (FunctionInfoTable[key].returnType) {
+-				case RETURN_TYPE_NONE:
+-					return(nullptr);
+-				case RETURN_TYPE_INTEGER:
+-					return(IntegerTypePtr);
+-				case RETURN_TYPE_REAL:
+-					return(RealTypePtr);
+-				case RETURN_TYPE_BOOLEAN:
+-					return(BooleanTypePtr);
+-                default:;
+-			}
+-		}
+-	}
+-	return(nullptr);
+-}
++//===========================================================================//
++// Copyright (C) Microsoft Corporation. All rights reserved.                 //
++//===========================================================================//
++//***************************************************************************
++//
++//								ABLXSTD.CPP
++//
++//***************************************************************************
++
++#include "../code/dtrace_tmp.h"
++#include "ablxstd_internal.h"
++#include "mc2fmt.h"
++
++
++inline signed int double2long(double _in)
++{
++	_in+=6755399441055744.0;
++	signed int result;
++	memcpy(&result, &_in, sizeof(result));
++	return result;
++}
++
++//----------
++// ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN)
++// MC2_ABL_ARG_GUARD=1      — enables dispatch-bounds soft path + out-ptr null guards
++// MC2_ABL_RUNTIME_SOFTFAIL=1 — log-and-continue instead of ABL_Fatal (requires ARG_GUARD)
++// Both default OFF: behaviour is byte-identical to pre-harden when gates are off.
++bool s_ablArgGuard      = mc2::gate::get<"MC2_ABL_ARG_GUARD">();
++bool s_ablRuntimeSoftfail = mc2::gate::get<"MC2_ABL_RUNTIME_SOFTFAIL">();
++
++//--------
++// GLOBALS
++
++StackItem				returnValue;
++bool					eofFlag = false;
++bool					ExitWithReturn = false;
++bool					ExitFromTacOrder = false;
++bool					SkipOrder = false;
++TokenCodeType			ExitRoutineCodeSegment[2] = {TKN_END_FUNCTION,
++													 TKN_SEMICOLON};
++TokenCodeType			ExitOrderCodeSegment[2] = {TKN_END_ORDER,
++												   TKN_SEMICOLON};
++TokenCodeType			ExitStateCodeSegment[2] = {TKN_END_STATE,
++												   TKN_SEMICOLON};
++
++//---------------------------------------------------------------------------
++
++extern ModuleEntryPtr ModuleRegistry;
++
++extern char	SetStateDebugStr[256];
++
++void execStdSetState (void) {
++
++	unsigned int stateHandle = ABLi_popInteger();
++
++	if (stateHandle > 0) {
++		SymTableNodePtr stateFunction = ModuleRegistry[CurFSM->getHandle()].stateHandles[stateHandle].state;
++		CurFSM->setPrevState(CurFSM->getState());
++		CurFSM->setState(stateFunction);
++		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(CurFSM->getFileName()), mc2::fmt::safe(stateFunction->name), mc2::fmt::as_i32(execLineNumber));
++		NewStateSet = true;
++	}
++}
++
++//---------------------------------------------------------------------------
++
++void execStdGetFunctionHandle (void) {
++
++    assert(0 && "function handle is pointer cannot pass through int");
++
++	char* name = ABLi_popCharPtr();
++
++	SymTableNodePtr function = CurModule->findFunction(name, false);
++	if (function)
++		ABLi_pushInteger((unsigned int)reinterpret_cast<size_t>(function));
++	else
++		ABLi_pushInteger(0);
++}
++
++//---------------------------------------------------------------------------
++
++void execStdSetFlag (void) {
++
++	unsigned int bits = (unsigned int)ABLi_popInteger();
++	unsigned int flag = (unsigned int)ABLi_popInteger();
++	bool set = ABLi_popBoolean();
++
++	bits &= (flag ^ 0xFFFFFFFF);
++	if (set)
++		bits |= flag;
++
++	ABLi_pushInteger(bits);
++}
++
++//---------------------------------------------------------------------------
++
++void execStdGetFlag (void) {
++
++	unsigned int bits = (unsigned int)ABLi_popInteger();
++	unsigned int flag = (unsigned int)ABLi_popInteger();
++
++	bool set = ((bits & flag) != 0);
++
++	ABLi_pushInteger(set);
++}
++
++//---------------------------------------------------------------------------
++
++void execStdCallFunction (void) {
++
++    assert(0 && "function handle is pointer cannot pass through int, pass as address?");
++
++	unsigned int address = ABLi_popInteger();
++
++	if (address) {
++//GLENN: Not functional, yet...
++	}
++}
++
++//***************************************************************************
++
++void initStandardRoutines (void) {
++
++	//-------------------------------------------------------------
++	// Fatal and Assert will have hardcoded keys so we can look for
++	// 'em in the rest of the ABL code (example: ignore asserts if
++	// the assert_off option has been set).
++	enterStandardRoutine("fatal", RTN_FATAL, false, "iC", nullptr, execStdFatal);
++	enterStandardRoutine("assert", RTN_ASSERT, false, "biC", nullptr, execStdAssert);
++	enterStandardRoutine("getstatehandle", RTN_GET_STATE_HANDLE, false, "C", "i", execStdGetStateHandle);
++
++	enterStandardRoutine("getcurrentstatehandle", -1, false, nullptr, "i", execStdGetCurrentStateHandle);
++	enterStandardRoutine("abs", -1, false, "*", "r", execStdAbs);
++	enterStandardRoutine("sqrt", -1, false, "*", "r", execStdSqrt);
++	enterStandardRoutine("round", -1, false, "r", "i", execStdRound);
++	enterStandardRoutine("trunc", -1, false, "r", "i", execStdTrunc);
++	enterStandardRoutine("random", -1, false, "i", "i", execStdRandom);
++	enterStandardRoutine("seedrandom", -1, false, "i", nullptr, execStdSeedRandom);
++	enterStandardRoutine("setmaxloops", -1, false, "i", nullptr, execStdSetMaxLoops);
++	enterStandardRoutine("fileopen", -1, false, "C", "i", execStdFileOpen);
++	enterStandardRoutine("filewrite", -1, false, "iC", nullptr, execStdFileWrite);
++	enterStandardRoutine("fileclose", -1, false, "i", nullptr, execStdFileClose);
++	enterStandardRoutine("getmodule", -1, false, "CC", "i", execStdGetModule);
++	enterStandardRoutine("resetorders", -1, false, "i", nullptr, execStdResetOrders);
++	enterStandardRoutine("setstate", -1, false, "i", nullptr, execStdSetState);
++	enterStandardRoutine("getfunctionhandle", -1, false, "C", "i", execStdGetFunctionHandle);
++	enterStandardRoutine("callfunction", -1, false, "i", nullptr, execStdCallFunction);
++	enterStandardRoutine("setflag", -1, false, "iib", "i", execStdSetFlag);
++	enterStandardRoutine("getflag", -1, false, "ii", "b", execStdGetFlag);
++
++}
++
++//-----------------------------------------------------------------------------
++
++TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
++
++	int key = routineIdPtr->defn.info.routine.key;
++	switch (key) {
++		case RTN_RETURN:
++			execStdReturn();
++			return(nullptr);
++		case RTN_PRINT:
++			execStdPrint();
++			return(nullptr);
++		case RTN_CONCAT:
++			return(execStdConcat());
++		default: {
++			if (key < 0 || key >= NumStandardFunctions) {
++				// Mod-tolerance: ABL script called an unregistered routine key
++				// (common with Omnitech-extended scripts running on our base
++				// engine). ABL_Fatal is soft in Release so we'd OOB-read both
++				// FunctionInfoTable[key] and FunctionCallbackTable[key] and
++				// then call through a garbage pointer. Hard-bail here.
++				char err[255];
++				if (s_ablArgGuard && s_ablRuntimeSoftfail) {
++					// H2/H3: soft-fail — log and synthesize default return, do NOT abort.
++					const char* modName = CurModule ? CurModule->getName() : "(unknown)";
++					const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
++					mc2::fmt::to_buf(err, "[ABL_SOFTFAIL] key={:d} func=(out-of-range) module={} file={} line={:d} errCode=0 — key >= NumStandardFunctions({:d}), skipping", mc2::fmt::as_i32(key), mc2::fmt::safe(modName), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
++					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
++					return nullptr;
++				}
++				mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d} (>= {:d}) — bailing", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
++				ABL_Fatal(0, err);
++				return nullptr;
++			}
++			if (FunctionInfoTable[key].numParams > 0)
++				getCodeToken();
++			SkipOrder = skipOrder;
++			// Guard: FunctionCallbackTable slots can hold non-NULL uninitialized
++			// garbage (e.g. 0x00000000DDFD690B — low 16 bits repeat across runs,
++			// upper bits are heap noise). NULL check alone is insufficient. Valid
++			// code pointers on 64-bit Windows live in the high 2^47 range
++			// (0x00007F...); anything below 0x0000_7F00_0000_0000 is bogus. On
++			// bogus, skip the call, log key+module+line, synthesize a default
++			// return so ABL stack stays balanced and FSM execution continues.
++			{
++				void (*cb)(void) = FunctionCallbackTable[key];
++				uintptr_t cbVal = (uintptr_t)cb;
++				// Belt-and-suspenders: root cause was MAX_STANDARD_FUNCTIONS=256
++				// overflow (fixed in 2cfad76). This guard stays in place to catch
++				// any future bogus-pointer case rather than dispatching into
++				// garbage. Log is unconditional because it fires rarely; when it
++				// does, we want the data in o.log automatically.
++				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
++					char err[255];
++					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
++					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
++					switch (FunctionInfoTable[key].returnType) {
++						case RETURN_TYPE_INTEGER: pushInteger(0); break;
++						case RETURN_TYPE_REAL:    pushReal(0.0f); break;
++						case RETURN_TYPE_BOOLEAN: pushBoolean(false); break;
++						default: break;
++					}
++				} else if (cb) {
++					if (g_mc2FrameCounter >= 500 && g_mc2FrameCounter <= 640) DT("ABL mod=%s ln=%d fn=%s", CurModule?CurModule->getName():"?", (int)execLineNumber, routineIdPtr->name);
++					(*cb)();
++				} else {
++					char err[255];
++					mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d}", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
++					ABL_Fatal(key, err);
++				}
++			}
++
++			getCodeToken();
++			switch (FunctionInfoTable[key].returnType) {
++				case RETURN_TYPE_NONE:
++					return(nullptr);
++				case RETURN_TYPE_INTEGER:
++					return(IntegerTypePtr);
++				case RETURN_TYPE_REAL:
++					return(RealTypePtr);
++				case RETURN_TYPE_BOOLEAN:
++					return(BooleanTypePtr);
++                default:;
++			}
++		}
++	}
++	return(nullptr);
++}
+diff --git a/mclib/camera_input.cpp b/mclib/camera_input.cpp
+index 4c4693593..a4ea0e00c 100644
+--- a/mclib/camera_input.cpp
++++ b/mclib/camera_input.cpp
+@@ -1,5 +1,7 @@
+ // Camera: Camera::setPosition, zoom, tilt, rotate, scroll and the input smoothing.
+ // Declared in the class headers; shared names in camera_internal.h.
++#include <windows.h>
++#include "../code/dtrace_tmp.h"
+ #include "camera_internal.h"
+ 
+ 
+@@ -15,6 +17,9 @@ const float CAM_THRESHOLD = 150.0f;
+ //---------------------------------------------------------------------------
+ void Camera::setPosition(Stuff::Vector3D newPosition, bool swoopy)
+ {
++	if (g_mc2FrameCounter >= 380 && g_mc2FrameCounter < 700 && (fabsf(newPosition.x - position.x) > 0.5f || fabsf(newPosition.y - position.y) > 0.5f)) {
++	  void* bt[5] = {}; const USHORT n = CaptureStackBackTrace(1, 5, bt, nullptr); const char* base = (const char*)GetModuleHandleA(nullptr);
++	  DT("SETPOS new=%g,%g old=%g,%g bt=%llx %llx %llx %llx %llx", (double)newPosition.x,(double)newPosition.y,(double)position.x,(double)position.y,(unsigned long long)(n>0?(const char*)bt[0]-base:0),(unsigned long long)(n>1?(const char*)bt[1]-base:0),(unsigned long long)(n>2?(const char*)bt[2]-base:0),(unsigned long long)(n>3?(const char*)bt[3]-base:0),(unsigned long long)(n>4?(const char*)bt[4]-base:0)); }
+ 	position = newPosition;
+ 
+ 	if (land)
+@@ -675,6 +680,8 @@ void Camera::moveDown(float amount)
+ // chases an out-of-bounds target (no rubber-banding at the map edge).
+ void Camera::applyScrollDelta(float dx, float dy)
+ {
++	{ void* bt[5] = {}; const USHORT n = CaptureStackBackTrace(1, 5, bt, nullptr); const char* base = (const char*)GetModuleHandleA(nullptr);
++	  DT("SCROLL dx=%g dy=%g bt=%llx %llx %llx %llx %llx", (double)dx,(double)dy,(unsigned long long)(n>0?(const char*)bt[0]-base:0),(unsigned long long)(n>1?(const char*)bt[1]-base:0),(unsigned long long)(n>2?(const char*)bt[2]-base:0),(unsigned long long)(n>3?(const char*)bt[3]-base:0),(unsigned long long)(n>4?(const char*)bt[4]-base:0)); }
+ 	if (camSmoothTau() <= 0.0f)
+ 	{
+ 		Stuff::Vector3D newPosition = position;
+diff --git a/mclib/soundsys.cpp b/mclib/soundsys.cpp
+index 27194099a..26b92fe37 100644
+--- a/mclib/soundsys.cpp
++++ b/mclib/soundsys.cpp
+@@ -8,6 +8,7 @@
+ //---------------------------------------------------------------------------
+ // Include files
+ #ifndef SOUNDSYS_H
++#include "../code/dtrace_tmp.h"
+ #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+ #include"soundsys.h"
+ #endif
+@@ -519,6 +520,7 @@ void SoundSystem::update (void)
+ 		sampleStatus = gosAudio_GetChannelPlayMode(STREAM3CHANNEL);
+ 		if (stream3Active && sampleStatus != gosAudio_PlayOnce)
+ 		{
++			DT("VO stream3 ended");
+ 			gosAudio_DestroyResource(&stream3Handle);
+ 			stream3Handle = nullptr;
+ 			stream3Active = false;
+@@ -849,6 +851,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
+ 					stream3Handle = nullptr;
+ 				}
+ 						
++				DT("VO stream3 start %s", (const char*)digitalStream);
+ 				gosAudio_CreateResource(&stream3Handle, gosAudio_StreamedFile, (const char *) digitalStream);
+ 				
+ 				stream3Active = false;
+@@ -1028,6 +1031,7 @@ bool SoundSystem::isChannelPlaying (long channelId)
+ //---------------------------------------------------------------------------
+ bool SoundSystem::isPlayingVoiceOver (void)
+ {
++	{ static int last=-1; int now = stream3Handle?1:0; if (now!=last) { DT("VO isPlaying=%d", now); last=now; } }
+ 	if (stream3Handle)
+ 		return true;
+ 

@@ -1,0 +1,54 @@
+diff --git a/GameOS/gameos/gameos.cpp b/GameOS/gameos/gameos.cpp
+index 0167d8274..188cc879d 100644
+--- a/GameOS/gameos/gameos.cpp
++++ b/GameOS/gameos/gameos.cpp
+@@ -288,6 +288,9 @@ void __stdcall gos_Free(void* ptr)
+ // gated by MC2_DETERMINISTIC_RNG (default-OFF). When the gate is OFF every line
+ // below is the original CRT srand/rand path => byte-identical to stock.
+ static uint32_t s_lcg_state     = 0u;
++static unsigned s_dtCalls = 0;
++extern "C" unsigned dtRngState() { return s_lcg_state; }
++extern "C" unsigned dtRngCalls() { return s_dtCalls; }
+ 
+ // MC2_DETERMINISTIC_RNG=1, read once on first use. A function-local static is initialised under the language's own lock,
+ // so a gos_rand call on a worker thread cannot see the "checked" latch before the value (the old two-flag latch could).
+@@ -309,6 +312,19 @@ void __stdcall gos_srand(unsigned int seed)
+ int __stdcall gos_rand()
+ {
+     if (gos_detRngEnabled()) {
++        s_dtCalls++;
++        {
++            extern uint32_t g_mc2FrameCounter;
++            static const bool dt = mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">();
++            if (dt) {
++                void* bt[12] = {};
++                const USHORT n = CaptureStackBackTrace(1, 12, bt, nullptr);
++                const char* base = (const char*)GetModuleHandleA(nullptr);
++                std::printf("[DT] f=%u RNGCALL", (unsigned)g_mc2FrameCounter);
++                for (USHORT k = 0; k < n; ++k) std::printf(" %llx", (unsigned long long)((const char*)bt[k] - base));
++                std::printf("%c", 10);
++            }
++        }
+         const int result = (int)mc2_det_rng::next15(s_lcg_state);
+         // Trace is gated twice: compile-time MC2_RNG_TRACE define AND the
+         // runtime "RNG" tag whitelist. Default builds pay nothing.
+diff --git a/code/sim_identity.cpp b/code/sim_identity.cpp
+index 115538eb7..abe16a592 100644
+--- a/code/sim_identity.cpp
++++ b/code/sim_identity.cpp
+@@ -38,6 +38,7 @@
+ //   hundred getter calls once per capture; the per-FRAME path is opt-in.
+ //---------------------------------------------------------------------------
+ 
++#include "dtrace_tmp.h"
+ #include "objmgr.h"
+ #include "mover.h"
+ #include "warrior.h"
+@@ -250,6 +251,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame)
+ 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs));
+ 
+ 	if (simIdentityTraceDetail()) {
++		DT("RNGF state=%08x calls=%u", dtRngState(), dtRngCalls());
+ 		for (size_t i = 0; i < recs.size(); ++i) {
+ 			const MoverRecord& r = recs[i];
+ 			char hm[17];
