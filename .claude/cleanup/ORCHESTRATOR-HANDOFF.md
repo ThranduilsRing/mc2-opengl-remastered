@@ -9,7 +9,7 @@ RESUME HERE: read this file, then `lane1-state.md` / `lane2-state.md`, then the 
 ## Ground rules (owner-set, non-negotiable)
 - Work ONLY in `A:/Games/mc2-main`, branch `claude/nifty-mendeleev` (lane 2: worktree `A:/Games/mc2-lane2`, branch `claude/lane2-s3`). Local commits only — **never push**.
 - **One agent edits C++/shaders/builds per lane.** Read-only scouts and Python/doc-only agents may run in parallel (they must not touch C++ or build).
-- Concurrency (owner 2026-10-09): **max 5 subagents; one Opus at a time**. Two builder lanes, file-disjoint (lane 2: own `build64-ninja`, install `mc2-win64-lane2`); the orchestrator merges lane 2 into nifty with `lane_merge.py`.
+- Concurrency (owner 2026-10-09): **max 5 subagents; one Opus at a time**. **Lane cap (owner 2026-10-11): a lane session lives at most 6 hours** — long sessions relax proofs and take shortcuts; rotate from the lane state file at 6 h or at the program boundary, whichever first. A lane never changes a proof standard or default on its own; it reports the failure and the orchestrator rules. Capture/smoke A/B sets run with animations frozen once that mode exists (owner ruling: sim determinism is a requirement). Two builder lanes, file-disjoint (lane 2: own `build64-ninja`, install `mc2-win64-lane2`); the orchestrator merges lane 2 into nifty with `lane_merge.py`.
 - Model tiers: **Haiku** mechanical/doc/memory edits (<100k context, exact file:line + replacement); **Sonnet** code and design; **Opus** adversarial reviews only. Co-Authored-By trailer: Fable 5.1 on orchestrator commits (lane files say Sonnet 5.5; see Q7).
 - Every C++ commit in any lane: build + harnesses+doctest (`py -3 tools/build_contract_harnesses.py --run --unit`) + check-contracts + smoke-lite. Doctest is NOT optional (7cc80c5e3 broke the `mc2_tests` link unseen).
 - **Ratchets:** never contort code to satisfy a ratchet; rewrite the baseline with the reason. Counts only go down by intent.
@@ -30,7 +30,7 @@ RESUME HERE: read this file, then `lane1-state.md` / `lane2-state.md`, then the 
 
 ## Lanes now
 - Lanes (2026-10-11 08:55): lane 1 (mc2-main) = C++23 STEP 3 logging→`mc2::fmt` tidy batches (batches 15–17 at HEAD) + Opus step-3 review fixes F6/F3/F4; next per `lane1-state.md`: `logging.h` + `logparse.py:36` paired commit, then the ledger remainder. Lane 2 (`mc2-lane2`) = C++23 STEP 2 (`#define` → `inline constexpr`, enums; 31 LG13 commits, objhash-proved) — its branch has 42 commits not in nifty (nifty has 112 not in lane 2; merge via `lane_merge.py`). Opus reviews in flight: none known at this snapshot.
-- State files: `lane1-state.md` (mc2-main); `lane2-state.md` — **the authoritative copy lives in the lane worktree** (`A:/Games/mc2-lane2/.claude/cleanup/lane2-state.md`); the mc2-main copy is a mirror refreshed at each rotation/merge. As of 2026-10-11 both copies are byte-identical and STALE (they describe the 1000–1500 splits, 16 done; lane 2 is on step 2): lane 2 refreshes it at its next report, then the orchestrator re-mirrors. The lane 2 worktree's `ORCHESTRATOR-HANDOFF.md` is an old copy until it merges nifty.
+- State files: `lane1-state.md` (mc2-main) and `lane2-state.md` (authoritative copy in `A:/Games/mc2-lane2/.claude/cleanup/`, mirrored here at each rotation/merge); each lane refreshes its file at every report.
 - Status snapshot (ratchet baselines at 830b29c6e, meta-review §H; re-run before claiming green): LG01 693, LG02 691, LG03 2397, LG12a 493, LG12b 624, LG13 2817, LG14 321, LG19 3, LG20 136, LG09 6685; files >1500 = 50; board 166/166 (lane 1); doctest 2,626 `TEST_CASE(`.
 
 ## Ordered queue (one line per item; history in the log archive)
@@ -54,16 +54,16 @@ RESUME HERE: read this file, then `lane1-state.md` / `lane2-state.md`, then the 
 - Step 4 lens (owner): not "wrap today's pointer flows in unique_ptr" — per subsystem state (a) the ownership model we would choose, (b) the path there, (c) what legacy shape must stay and why. Hard constraints are only on-disk/binary formats, gameplay determinism and mod CONTENT; in-repo tools (mc2fx, asset_viewer, mech_import, tg_import_dump, launcher, data_tools) are rebuilt in the batch that changes the API (`tools/build_all_targets.py` is the proof); breaking an EXTERNAL tool we do not build is a decision point, not a design input.
 - 2026-10-09 gate rulings: `project-gate-deletion-decisions-2026-10-09` (memory); VK umbrella canonical for sub-gates. Delete superseded test infra and dead code after audit, tag first.
 
-## Open owner questions (inline, numbered; answer in chat, do not use popups)
-1. Is run-to-run sim determinism (fixed step + seeded RNG) a REQUIREMENT of the engine, or only a proof tool? (Decides whether a non-deterministic HEAD is a bug to fix before step 4 or a harness to loosen.)
-2. Save-game compatibility across builds: must a save from v0.4 load after step 4 B7 / LG14, or is "same build only" acceptable?
-3. Multiplayer: delete the stubbed transport now (recoverable by sha) or freeze it out of steps 2–4?
-4. Linux: state "Windows-only until further notice" in the plans, or keep paying for an arm nobody compiles?
-5. Mods: may steps 4/5 change `.fx`/`.fit` READER behaviour on malformed content (repairs already did: inifile, memorystream)?
-6. Comment pass codebase-wide: gate on agent-read frequency, or run everywhere as planned?
-7. Which single engine (Fable/Sonnet) signs commits — the trailer differs between lane files and the meta-review.
-8. Gate amnesty target "<30 gates" (reset ruling 2026-10-05) vs 195 Feature rows today: still the number?
-Step 4 decision points (plan §9, needed before B1): 9. Is the C++ surface of mclib/Stuff (EString, File, MemoryStream, UserHeap) a supported API for external modder tools (compat header for one release, or in-repo rebuild only)? 10. Do external tools read `.fx` through our `MemoryStream` ABI or their own parser? 11. MLR gets no ownership work — confirm. 12. May `MC2_ALLOC_STATS` (relaxed atomics on every allocation) ship compiled in, or only in proof builds?
+## Owner rulings 2026-10-11 (the former open questions, answered)
+1. Sim determinism is a REQUIREMENT; also freeze mech/building animations in capture/smoke mode.
+2. Saves load within a release line; across the ownership step only once the round-trip test exists.
+3. Multiplayer (`code/multplyr*`) FROZEN out of steps 2–4; revisit later.
+4. Windows-only is TEMPORARY: Linux and macOS playable later — keep portability seams, do not delete the Linux arm, stop claiming it is proven (rename the `LINUX_BUILD` misnomer later).
+5. Readers may reject/clamp malformed mod content with a log line; never crash.
+6. Codebase-wide comment pass = later, cheap OpenRouter agents, outside the main program.
+7. Commit trailer model name: no preference.
+8. Gate amnesty target stays < 30.
+Step 4 decision points (ownership plan) remain open until the plan is reviewed.
 
 ## Pointers
 - Log: `.claude/cleanup/HANDOFF-LOG.md`. Reviews: `meta-review-2026-10-11.md` (ordering, proof gaps, step 4/5 bar), `opus-modernization-review.md` + `opus-consistency-review.md` (roadmap S1–S5, D1–D11), `cxx23-step3-review.md`, `legacy-deletions-review.md`, `legacy-subsystem-audit.md`, `split-batch-review-2026-10-10.md`, `typed-gate-registry-g*-review.md`, `tier1-flake-log.md`.
