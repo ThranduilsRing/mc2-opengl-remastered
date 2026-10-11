@@ -11,12 +11,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(REPO, "tools"))
+sys.path.insert(0, os.path.join(REPO, "scripts"))
+import console_child      # noqa: E402
 import cpp_units          # noqa: E402
 import file_size_ratchet  # noqa: E402
 
 
 def tracked():
-    out = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True).stdout.splitlines()
+    out = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.splitlines()
     pats = file_size_ratchet.BUILTIN_EXCLUDES
     return [r for r in out if file_size_ratchet.wanted(r, file_size_ratchet.DEFAULT_DIRS, pats)]
 
