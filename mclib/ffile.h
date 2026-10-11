@@ -27,11 +27,11 @@
 //---------------------------------------------------------------------------
 #define MAX_FILENAME_SIZE		250
 
-#define FASTFILE_VERSION_BYTESIZE   4 //sebi
+inline constexpr int FASTFILE_VERSION_BYTESIZE = 4; //sebi
 #define FASTFILE_VERSION		0xCADDECAF
 #define FASTFILE_VERSION_LZ		0xFADDECAF
 
-#define FASTFILE_ENTRY_TABLE_START 8 //sebi
+inline constexpr int FASTFILE_ENTRY_TABLE_START = 8; //sebi
 
 
 #pragma pack(1)

@@ -28,10 +28,10 @@
 #include<gameos.hpp>
 
 //---------------------------------------------------------------------------
-#define MC2_MOUSE_UP		0
-#define MC2_MOUSE_DOWN		1
+inline constexpr int MC2_MOUSE_UP = 0;
+inline constexpr int MC2_MOUSE_DOWN = 1;
 
-#define MOUSE_WIDTH			32
+inline constexpr int MOUSE_WIDTH = 32;
 
 // sebi 2026-04-21: was 256. Wolfman MC2X `cursors.fit` declares 262.
 // Fixed-size arrays `mouseHS`/`numFrames`/`frameLengths` in MouseCursorData
@@ -40,71 +40,71 @@
 // userinput.cpp:91 is print-and-continue in release, so it never halted.
 // `mState_NUMMOUSESTATES` (243) is the code-addressable state ceiling;
 // this just gives the load-time arrays headroom for modded content.
-#define MAX_MOUSE_STATES			512
+inline constexpr int MAX_MOUSE_STATES = 512;
 
-#define mState_MOVE					0
-#define mState_MOVE_LOS				1
-#define mState_RUN					2
-#define mState_RUN_LOS				3
-#define mState_JUMP					4
-#define mState_JUMP_LOS				5
-#define mState_WALKWAYPT			6
-#define mState_WALKWAYPT_LOS		7
-#define mState_RUNWAYPT				8
-#define mState_RUNWAYPT_LOS			9
-#define mState_JUMPWAYPT			10
-#define mState_JUMPWAYPT_LOS		11
-#define mState_LINK					12
-#define mState_GENERIC_ATTACK		13
-#define mState_ATTACK_LOS			14
-#define mState_CURPOS_ATTACK		15
-#define mState_CURPOS_ATTACK_LOS	16
-#define mState_ENERGY_WEAPONS		17
-#define mState_ENERGY_WEAPONS_LOS	18
-#define mState_AIMED_ATTACK			19
-#define mState_AIMED_ATTACK_LOS		20
-#define mState_NORMAL				21
-#define mState_INFO					22
-#define mState_LAYMINES				23
-#define mState_ROTATE_CAMERA		24
-#define mState_UNCERTAIN_AIRSTRIKE	25
-#define mState_AIRSTRIKE			26
-#define mState_SENSORSTRIKE			27
-#define mState_VEHICLE				28
-#define mState_CANTVEHICLE			29
-#define mState_DONT					30
-#define mState_REPAIR				31
-#define mState_XREPAIR				32
-#define mState_EJECT				33
-#define mState_XEJECT				34
-#define mState_CAPTURE				35
-#define mState_XCAPTURE				36
-#define mState_SALVAGE				37
-#define mState_XSALVAGE				38
-#define mState_GUARD				39
-#define mState_GUARD_LOS			39
-#define mState_GUARDTOWER			40
-#define mState_GUARDTOWER_LOS		41
-#define mState_XMINES				42
-#define mState_LOGISTICS			43
-#define mState_TUTORIALS			44
-#define mState_LONGRNG_ATTACK		45
-#define mState_SHRTRNG_ATTACK		46
-#define mState_MEDRNG_ATTACK		47
-#define mState_WALK1				48
-#define mState_WALKLOS1				80
-#define mState_RUN1					112
-#define mState_RUNLOS1				144
-#define mState_JUMP1				176
-#define mState_JUMPLOS1				208
-#define mState_LONGRNG_LOS			240
-#define mState_MEDRNG_LOS			241
-#define mState_SHRTRNG_LOS			242
+inline constexpr int mState_MOVE = 0;
+inline constexpr int mState_MOVE_LOS = 1;
+inline constexpr int mState_RUN = 2;
+inline constexpr int mState_RUN_LOS = 3;
+inline constexpr int mState_JUMP = 4;
+inline constexpr int mState_JUMP_LOS = 5;
+inline constexpr int mState_WALKWAYPT = 6;
+inline constexpr int mState_WALKWAYPT_LOS = 7;
+inline constexpr int mState_RUNWAYPT = 8;
+inline constexpr int mState_RUNWAYPT_LOS = 9;
+inline constexpr int mState_JUMPWAYPT = 10;
+inline constexpr int mState_JUMPWAYPT_LOS = 11;
+inline constexpr int mState_LINK = 12;
+inline constexpr int mState_GENERIC_ATTACK = 13;
+inline constexpr int mState_ATTACK_LOS = 14;
+inline constexpr int mState_CURPOS_ATTACK = 15;
+inline constexpr int mState_CURPOS_ATTACK_LOS = 16;
+inline constexpr int mState_ENERGY_WEAPONS = 17;
+inline constexpr int mState_ENERGY_WEAPONS_LOS = 18;
+inline constexpr int mState_AIMED_ATTACK = 19;
+inline constexpr int mState_AIMED_ATTACK_LOS = 20;
+inline constexpr int mState_NORMAL = 21;
+inline constexpr int mState_INFO = 22;
+inline constexpr int mState_LAYMINES = 23;
+inline constexpr int mState_ROTATE_CAMERA = 24;
+inline constexpr int mState_UNCERTAIN_AIRSTRIKE = 25;
+inline constexpr int mState_AIRSTRIKE = 26;
+inline constexpr int mState_SENSORSTRIKE = 27;
+inline constexpr int mState_VEHICLE = 28;
+inline constexpr int mState_CANTVEHICLE = 29;
+inline constexpr int mState_DONT = 30;
+inline constexpr int mState_REPAIR = 31;
+inline constexpr int mState_XREPAIR = 32;
+inline constexpr int mState_EJECT = 33;
+inline constexpr int mState_XEJECT = 34;
+inline constexpr int mState_CAPTURE = 35;
+inline constexpr int mState_XCAPTURE = 36;
+inline constexpr int mState_SALVAGE = 37;
+inline constexpr int mState_XSALVAGE = 38;
+inline constexpr int mState_GUARD = 39;
+inline constexpr int mState_GUARD_LOS = 39;
+inline constexpr int mState_GUARDTOWER = 40;
+inline constexpr int mState_GUARDTOWER_LOS = 41;
+inline constexpr int mState_XMINES = 42;
+inline constexpr int mState_LOGISTICS = 43;
+inline constexpr int mState_TUTORIALS = 44;
+inline constexpr int mState_LONGRNG_ATTACK = 45;
+inline constexpr int mState_SHRTRNG_ATTACK = 46;
+inline constexpr int mState_MEDRNG_ATTACK = 47;
+inline constexpr int mState_WALK1 = 48;
+inline constexpr int mState_WALKLOS1 = 80;
+inline constexpr int mState_RUN1 = 112;
+inline constexpr int mState_RUNLOS1 = 144;
+inline constexpr int mState_JUMP1 = 176;
+inline constexpr int mState_JUMPLOS1 = 208;
+inline constexpr int mState_LONGRNG_LOS = 240;
+inline constexpr int mState_MEDRNG_LOS = 241;
+inline constexpr int mState_SHRTRNG_LOS = 242;
 
-#define mState_NUMMOUSESTATES		243		//Add states BETWEEN this one and above!!!
+inline constexpr int mState_NUMMOUSESTATES = 243;		//Add states BETWEEN this one and above!!!
 											//Used to keep from setting cursor to STUPID!!
 
-#define mouseFrameRate		0.10
+inline constexpr double mouseFrameRate = 0.10;
 
 extern volatile char mc2MouseHotSpotX;
 extern volatile char mc2MouseHotSpotY;

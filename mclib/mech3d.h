@@ -62,46 +62,46 @@ typedef struct _PaintSchemata
 typedef PaintSchemata *PaintSchemataPtr;
 //-------------------------------------------------------------------------------
 // Macro Definitions
-#define GesturePark						0
-#define GestureStandToPark				1
-#define	GestureStand					2
-#define GestureStandToWalk				3			//OBSOLETE!
-#define GestureWalk						4
-#define GestureParkToStand 				5
-#define GestureWalkToRun				6			//OBSOLETE!
-#define GestureRun						7
-#define GestureRunToWalk 				8			//OBSOLETE!
-#define GestureReverse					9
-#define GestureStandToReverse			10			//OBSOLETE!
-#define GestureLimpLeft					11
-#define GestureLimpRight				12
-#define GestureIdle						13
-#define GestureFallBackward 			14
-#define GestureFallForward 				15
-#define GestureHitFront					16
-#define GestureHitBack					17
-#define GestureHitLeft					18
-#define GestureHitRight					19
-#define GestureJump						20
-#define GestureRollover					21
-#define GestureGetUp					22
-#define GestureFallenForward			23
-#define	GestureFallenBackward			24
+inline constexpr int GesturePark = 0;
+inline constexpr int GestureStandToPark = 1;
+inline constexpr int GestureStand = 2;
+inline constexpr int GestureStandToWalk = 3;			//OBSOLETE!
+inline constexpr int GestureWalk = 4;
+inline constexpr int GestureParkToStand = 5;
+inline constexpr int GestureWalkToRun = 6;			//OBSOLETE!
+inline constexpr int GestureRun = 7;
+inline constexpr int GestureRunToWalk = 8;			//OBSOLETE!
+inline constexpr int GestureReverse = 9;
+inline constexpr int GestureStandToReverse = 10;			//OBSOLETE!
+inline constexpr int GestureLimpLeft = 11;
+inline constexpr int GestureLimpRight = 12;
+inline constexpr int GestureIdle = 13;
+inline constexpr int GestureFallBackward = 14;
+inline constexpr int GestureFallForward = 15;
+inline constexpr int GestureHitFront = 16;
+inline constexpr int GestureHitBack = 17;
+inline constexpr int GestureHitLeft = 18;
+inline constexpr int GestureHitRight = 19;
+inline constexpr int GestureJump = 20;
+inline constexpr int GestureRollover = 21;
+inline constexpr int GestureGetUp = 22;
+inline constexpr int GestureFallenForward = 23;
+inline constexpr int GestureFallenBackward = 24;
 #define MaxGestures						25
 
 #define MAX_MECH_ANIMATIONS				MaxGestures
 
-#define	NUM_MECH_STATES					10
-#define MECH_STATE_PARKED				0
-#define	MECH_STATE_STANDING				1
-#define	MECH_STATE_WALKING				2
-#define	MECH_STATE_RUNNING				3
-#define	MECH_STATE_REVERSE				4
-#define	MECH_STATE_LIMPING_LEFT			5
-#define MECH_STATE_JUMPING				6
-#define MECH_STATE_FALLEN_FORWARD		7
-#define	MECH_STATE_FALLEN_BACKWARD		8
-#define MECH_STATE_LIMPING_RIGHT		9
+inline constexpr int NUM_MECH_STATES = 10;
+inline constexpr int MECH_STATE_PARKED = 0;
+inline constexpr int MECH_STATE_STANDING = 1;
+inline constexpr int MECH_STATE_WALKING = 2;
+inline constexpr int MECH_STATE_RUNNING = 3;
+inline constexpr int MECH_STATE_REVERSE = 4;
+inline constexpr int MECH_STATE_LIMPING_LEFT = 5;
+inline constexpr int MECH_STATE_JUMPING = 6;
+inline constexpr int MECH_STATE_FALLEN_FORWARD = 7;
+inline constexpr int MECH_STATE_FALLEN_BACKWARD = 8;
+inline constexpr int MECH_STATE_LIMPING_RIGHT = 9;
 
 #define BASE_NODE_RECYCLE_TIME		0.25f
 
@@ -264,7 +264,7 @@ class Mech3DAppearanceType: public AppearanceType
 
 typedef Mech3DAppearanceType *Mech3DAppearanceTypePtr;
 
-#define MAX_DUST_POOFS			3
+inline constexpr int MAX_DUST_POOFS = 3;
 //-------------------------------------------------------------------------------
 typedef struct _MechAppearanceData
 {
