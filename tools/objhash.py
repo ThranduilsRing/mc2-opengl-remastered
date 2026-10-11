@@ -39,8 +39,26 @@ _FP_LITERAL = re.compile(rb"MC2FP1\|[ -~]{1,600}?\|FP1END")
 _FP_FIXED = len(b"MC2FP1||FP1END")
 
 
+#: __DATE__ ("Oct 10 2026") and __TIME__ ("19:41:07") string literals: a TU that prints them differs on every compile. Masked, same length.
+_DATE_LITERAL = re.compile(rb"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [ 0-3][0-9] 20[0-9][0-9]\x00")
+_TIME_LITERAL = re.compile(rb"[0-2][0-9]:[0-5][0-9]:[0-5][0-9]\x00")
+
+
+#: The same two literals as COMDAT symbol names: MSVC names a string literal ??_C@_0<len>@<content hash>@<escaped text>@, so a __DATE__ or
+#: __TIME__ literal changes a symbol name even when its bytes are masked. The hash and the escaped text of a date/time-shaped literal are masked.
+_MONTHS = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+_DATE_SYM = re.compile(r"(\?\?_C@_0(?:[0-9A-P]+@|[0-9]))[0-9A-P]{8}(@" + _MONTHS + r"\?5(?:\?5[0-9]|[0-3][0-9])\?520[0-9]{2}(?:\?\$AA)?@)")
+_TIME_SYM = re.compile(r"(\?\?_C@_0(?:[0-9A-P]+@|[0-9]))[0-9A-P]{8}(@[0-2][0-9]\?3[0-5][0-9]\?3[0-5][0-9](?:\?\$AA)?@)")
+
+
+def _mask_symbol(name):
+    return _TIME_SYM.sub(r"\1########@#@", _DATE_SYM.sub(r"\1########@#@", name))
+
+
 def _mask_fingerprint(data):
-    return _FP_LITERAL.sub(lambda m: b"MC2FP1|" + b"#" * (len(m.group(0)) - _FP_FIXED) + b"|FP1END", data)
+    data = _FP_LITERAL.sub(lambda m: b"MC2FP1|" + b"#" * (len(m.group(0)) - _FP_FIXED) + b"|FP1END", data)
+    data = _DATE_LITERAL.sub(lambda m: b"#" * (len(m.group(0)) - 1) + b"\x00", data)
+    return _TIME_LITERAL.sub(lambda m: b"#" * (len(m.group(0)) - 1) + b"\x00", data)
 _SCN_BSS = 0x80
 _SCN_NRELOC_OVFL = 0x01000000
 _SOURCE_EXTS = (".cpp", ".cc", ".cxx", ".c")
@@ -131,7 +149,7 @@ def obj_digest(path):
         if nm.startswith(".rdata"):
             data = _mask_fingerprint(data)
         sec_hashes["%d:%s" % (k, nm)] = _h(nm, str(chars), str(rawsz), data, rel)
-    sym_part = _h(*["%s|%d|%d|%d|%s" % s for s in syms if not s[4].startswith(_DBG_PREFIX)])
+    sym_part = _h(*[_mask_symbol("%s|%d|%d|%d|%s" % s) for s in syms if not s[4].startswith(_DBG_PREFIX)])
     sec_hashes["symbols"] = sym_part
     info.update(format=fmt, sections=sec_hashes,
                 code_sha256=_h(*["%s=%s" % kv for kv in sorted(sec_hashes.items())]))
