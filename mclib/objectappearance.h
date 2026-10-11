@@ -23,13 +23,13 @@ ObjectAppearance.h	: Interface for the ObjectAppearance component, building and 
 //*************************************************************************************************
 
 // WEAPON TYPES
-#define MECH3D_WEAPONTYPE_NONE				-1
-#define MECH3D_WEAPONTYPE_ANY				0
-#define MECH3D_WEAPONTYPE_MISSILE			1
-#define MECH3D_WEAPONTYPE_BALLISTIC			2
-#define MECH3D_WEAPONTYPE_NONENERGY			3
-#define MECH3D_WEAPONTYPE_ENERGY			4
-#define MECH3D_WEAPONTYPE_DIRECT			5
+inline constexpr int MECH3D_WEAPONTYPE_NONE = -1;
+inline constexpr int MECH3D_WEAPONTYPE_ANY = 0;
+inline constexpr int MECH3D_WEAPONTYPE_MISSILE = 1;
+inline constexpr int MECH3D_WEAPONTYPE_BALLISTIC = 2;
+inline constexpr int MECH3D_WEAPONTYPE_NONENERGY = 3;
+inline constexpr int MECH3D_WEAPONTYPE_ENERGY = 4;
+inline constexpr int MECH3D_WEAPONTYPE_DIRECT = 5;
 // NOTES:
 // Each mech MUST have a place for each kind of weapon to fire.
 // I.e. There must be at least one zero OR at least a 3 and 4 OR at least a 1, 2 and 4 or its an ERROR!!!!!!!!

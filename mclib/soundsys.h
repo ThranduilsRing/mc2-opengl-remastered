@@ -52,20 +52,20 @@
 // Channel 15 is Fire Burning SFX
 #define MAX_DIGITAL_SAMPLES			16
 
-#define MAX_SAMPLE_VOLUME			127
+inline constexpr int MAX_SAMPLE_VOLUME = 127;
 
-#define RADIO_CHANNEL				0
+inline constexpr int RADIO_CHANNEL = 0;
 #define FIRE_CHANNEL				(MAX_DIGITAL_SAMPLES-1)
 #define BETTY_CHANNEL				(FIRE_CHANNEL-1)
 #define SUPPORT_CHANNEL				(BETTY_CHANNEL-1)
 
-#define AMBIENT_CHANNEL_START		11
+inline constexpr int AMBIENT_CHANNEL_START = 11;
 
-#define STREAM1CHANNEL				16
-#define STREAM2CHANNEL				17
-#define STREAM3CHANNEL				18		//Used for in-Mission voiceovers
+inline constexpr int STREAM1CHANNEL = 16;
+inline constexpr int STREAM2CHANNEL = 17;
+inline constexpr int STREAM3CHANNEL = 18;		//Used for in-Mission voiceovers
 
-#define MAX_QUEUED_MESSAGES			8
+inline constexpr int MAX_QUEUED_MESSAGES = 8;
 //---------------------------------------------------------------------------
 // Classes
 #pragma pack(1)

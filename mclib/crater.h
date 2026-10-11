@@ -43,9 +43,9 @@ enum craterTypes
 	MAX_CRATER_SHAPES
 };
 
-#define FOOTPRINT_ROTATIONS		16
-#define BIG_CRATER_OFFSET		0
-#define SMALL_CRATER_OFFSET		1
+inline constexpr int FOOTPRINT_ROTATIONS = 16;
+inline constexpr int BIG_CRATER_OFFSET = 0;
+inline constexpr int SMALL_CRATER_OFFSET = 1;
 //---------------------------------------------------------------------
 // struct CraterData
 typedef struct _CraterData
