@@ -31,7 +31,12 @@ void* ablStackMallocCallback (unsigned long memSize) {
 
 	if (!AblSymbolHeap)
 		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
-	return(AblStackHeap->Malloc(memSize));
+	// The eternal and static variable blocks are written verbatim into every save; heap blocks come back holding whatever the last
+	// owner left, so a block is zeroed to keep the save a function of the game state alone.
+	void* block = AblStackHeap->Malloc(memSize);
+	if (block)
+		memset(block, 0, memSize);
+	return block;
 }
 
 void* ablCodeMallocCallback (unsigned long memSize) {
