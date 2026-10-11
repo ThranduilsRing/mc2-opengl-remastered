@@ -146,6 +146,9 @@ mc2_link_gate(mc2_tests)
 # LOGGING-FACADE-P0: mc2log.h needs <format>/consteval (C++20); engine headers already build at 23.
 set_target_properties(mc2_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
+# The generated printf corpus (one TEST_CASE per converted format pair, thousands of them) exceeds the 65279-section limit of a normal object.
+set_source_files_properties(test_printf_corpus.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+
 target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}           # for "RenderCore/RenderPassContract.h" style includes
     ${MC2_WORKTREE_ROOT}/mclib
