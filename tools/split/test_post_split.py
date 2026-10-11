@@ -33,3 +33,52 @@ def test_digest_names_failing_rows_and_marks_known_ones():
     d = ps.digest(board, {"doc_links"})
     assert [n for n, _, _ in d] == ["doc_links", "background_launch"]
     assert d[0][2] and not d[1][2] and d[1][1][0] == "[bg] FAIL"
+
+
+def test_continue_flag_is_accepted_and_documented():
+    import io, contextlib
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        try:
+            ps.main(["--help"])
+        except SystemExit:
+            pass
+    assert "--continue" in out.getvalue()
+
+
+class _R:
+    def __init__(self, rc, out=b""):
+        self.returncode, self.stdout, self.stderr = rc, out, b""
+
+
+def _stub(monkeypatch, tmp_path, ratchet_rc):
+    plan = tmp_path / ".claude" / "cleanup"
+    plan.mkdir(parents=True)
+    (plan / "giant-file-split-plan.md").write_text("| `a.cpp` | 1 | 1 | x | done (1000-1500 tier, verbatim) |\n", encoding="utf-8")
+    monkeypatch.setattr(ps, "REPO", str(tmp_path))
+    monkeypatch.setattr(ps, "before_lines", lambda src: 100)
+    monkeypatch.setattr(ps, "pieces_of", lambda src, stem: (60, [("_b", 40)], True))
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        if "file_size_ratchet.py" in " ".join(map(str, cmd)):
+            return _R(ratchet_rc, b"file_size_ratchet: FAIL")
+        if "check-contracts.sh" in " ".join(map(str, cmd)):
+            return _R(0, b"  164 passed, 1 failed, 0 known-correct-failure\n")
+        return _R(0, b"ok")
+
+    monkeypatch.setattr(ps, "_run", fake_run)
+    return calls
+
+
+def test_ratchet_failure_stops_before_the_board_without_continue(monkeypatch, tmp_path):
+    calls = _stub(monkeypatch, tmp_path, 1)
+    assert ps.main(["--src", "x.cpp", "--stem", "x"]) == 1
+    assert not any("check-contracts.sh" in " ".join(map(str, c)) for c in calls)
+
+
+def test_continue_reports_the_ratchet_failure_and_still_runs_the_board(monkeypatch, tmp_path):
+    calls = _stub(monkeypatch, tmp_path, 1)
+    assert ps.main(["--src", "x.cpp", "--stem", "x", "--continue"]) == 1
+    assert any("check-contracts.sh" in " ".join(map(str, c)) for c in calls)
