@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 930,
+   "LG13": 917,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1242,
+   "LG13": 1226,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -1873,9 +1873,6 @@
    "LG09": 5,
    "LG12b": 3
   },
-  "code/componentlistbox.h": {
-   "LG13": 1
-  },
   "code/contact.cpp": {
    "LG01": 1,
    "LG03": 8,
@@ -2450,9 +2447,6 @@
    "LG05": 1,
    "LG09": 5
   },
-  "code/logisticspilotlistbox.h": {
-   "LG13": 1
-  },
   "code/logisticsvariant.cpp": {
    "LG03": 2,
    "LG05": 4,
@@ -2617,7 +2611,6 @@
   },
   "code/mechcmd2_internal.h": {
    "LG06": 1,
-   "LG13": 3,
    "LG14": 1
   },
   "code/mechicon.cpp": {
@@ -2641,8 +2634,7 @@
    "LG12b": 17
   },
   "code/mechlabscreen.h": {
-   "LG05": 1,
-   "LG13": 1
+   "LG05": 1
   },
   "code/mechlistbox.cpp": {
    "LG03": 2,
@@ -2849,9 +2841,6 @@
    "LG09": 1,
    "LG12b": 2
   },
-  "code/missionselectionscreen.h": {
-   "LG13": 1
-  },
   "code/modder_finding.h": {
    "LG06": 1
   },
@@ -3013,9 +3002,6 @@
   },
   "code/multplyr_handle.cpp": {
    "LG06": 1
-  },
-  "code/multplyr_internal.h": {
-   "LG13": 1
   },
   "code/multplyr_send.cpp": {
    "LG06": 1,
@@ -3394,9 +3380,6 @@
    "LG02": 1,
    "LG09": 7,
    "LG13": 1
-  },
-  "code/weaponbolt_internal.h": {
-   "LG13": 5
   },
   "code/weaponbolt_render.cpp": {
    "LG09": 32,
@@ -4241,7 +4224,7 @@
    "LG12b": 3
   },
   "mclib/gvactor_internal.h": {
-   "LG13": 5
+   "LG13": 3
   },
   "mclib/gvactor_update.cpp": {
    "LG01": 2,
@@ -4977,8 +4960,7 @@
    "LG06": 6
   },
   "mclib/resizeimage.h": {
-   "LG09": 20,
-   "LG13": 10
+   "LG09": 20
   },
   "mclib/routines.cpp": {
    "LG14": 1
@@ -5408,7 +5390,7 @@
    "LG09": 10,
    "LG12a": 7,
    "LG12b": 2,
-   "LG13": 4,
+   "LG13": 2,
    "LG17": 1
   },
   "mclib/terrtxm2_load.cpp": {
@@ -5499,9 +5481,6 @@
    "LG02": 3,
    "LG13": 1
   },
-  "mclib/txmconv.h": {
-   "LG13": 1
-  },
   "mclib/txmmgr.cpp": {
    "LG01": 4,
    "LG03": 29,
@@ -5547,7 +5526,6 @@
    "LG12b": 3
   },
   "mclib/txmmgr_render_internal.h": {
-   "LG13": 1,
    "LG14": 1
   },
   "mclib/txmmgr_render_overlays.cpp": {
@@ -5658,7 +5636,7 @@
    "LG20": 2
   }
  },
- "head": "c2674b26b",
+ "head": "f90d911f2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
