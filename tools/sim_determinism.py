@@ -112,7 +112,9 @@ def run_mission(mission: str, duration: str, out: str) -> list:
                             "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
-        if r.returncode or not arts:
+        if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):
+            print(f"sim_determinism: note: smoke run {tag} returned {r.returncode} (a smoke gate verdict); its SIMID stream is still compared")
+        elif r.returncode or not arts:
             sys.exit(f"sim_determinism: smoke run {tag} failed (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
         dest = os.path.join(out, tag)
         shutil.rmtree(dest, ignore_errors=True)
