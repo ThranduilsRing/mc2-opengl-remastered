@@ -4,7 +4,7 @@ Why: the file-size program moves whole top-level units verbatim (CRLF/LF bytes k
 the externs of the preamble globals and prototypes of shared free functions, so the split compiles with no logic change.
 Usage: py -3 tools/split/split_cpp.py CONFIG.py [--stage-dir DIR]   (writes <stem>_*.cpp, <stem>_internal.h next to the source and <src>.new; the caller moves .new over the source)
        With --stage-dir the pieces, the header and the core (as <src basename>.new) are written under DIR instead and are verified as if installed; the tree is untouched
-       until `split_cpp.py CONFIG.py --stage-dir DIR --install` moves them into place (so staged pieces never reach split_map or the ratchets).
+       until `split_cpp.py CONFIG.py --stage-dir DIR --install` moves them into place (so staged pieces never reach split_map or the ratchets); --install refuses a staging dir whose last run failed split_verify.
        A config reads its allow json as os.path.join(os.environ.get("SPLIT_ALLOW_DIR", "tools/split/allow"), "<stem>.json"); a <stem>.json in DIR is installed to tools/split/allow/.
 Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into the header, PREAMBLE_END (first post-preamble line),
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
@@ -46,8 +46,14 @@ WOUT = STAGE if STAGE else OUT                                   # where files a
 NEW_PATH = os.path.join(STAGE, os.path.basename(C.SRC) + ".new") if STAGE else C.SRC + ".new"
 if STAGE:
     os.makedirs(STAGE, exist_ok=True)
+    if "--install" not in sys.argv and os.path.exists(os.path.join(STAGE, ".verified")):
+        os.remove(os.path.join(STAGE, ".verified"))
+MARKER = os.path.join(STAGE, ".verified") if STAGE else None       # written only by a run whose split_verify had no findings
 if STAGE and "--install" in sys.argv:
     import shutil
+    if not os.path.exists(MARKER):
+        sys.exit("split_cpp: %s holds no verified split (the last staging run failed split_verify or never ran); not installing" % STAGE)
+    os.remove(MARKER)
     for name in sorted(os.listdir(STAGE)):
         dest = C.SRC if name == os.path.basename(C.SRC) + ".new" else os.path.join("tools/split/allow", name) if name.endswith(".json") else os.path.join(OUT, name)
         shutil.move(os.path.join(STAGE, name), dest)
@@ -263,4 +269,7 @@ for g, _ in C.GROUPS:
     if g != "core":
         _name = "%s_%s.cpp" % (C.STEM, g)
         _files[os.path.join(OUT, _name)] = open(os.path.join(WOUT, _name), "rb").read()
-sys.exit(split_verify.report(split_verify.verify(_old, _files, C.STEM, getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"), getattr(C, "ALLOW", {}))))
+_rc = split_verify.report(split_verify.verify(_old, _files, C.STEM, getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"), getattr(C, "ALLOW", {})))
+if STAGE and _rc == 0:
+    open(MARKER, "w").write("verified\n")
+sys.exit(_rc)
