@@ -314,6 +314,18 @@ WORLD: World | None = None
 _SAMPLE_BY_ARG = [(re.compile(r"CsmCount"), 3)]
 
 
+def std_format_as_printf(fmt: str) -> str:
+    """A std::format string as the printf string fmt_sample understands (mc2::fmt::to_buf sites): {:d} -> %d, {:x} -> %x, {:f} -> %f, {} -> %s."""
+    def field(m):
+        spec = m.group(1) or ""
+        kind = spec[-1:] if spec and spec[-1] in "dxXfeEgGc" else "s"
+        body = re.sub(r"[<>^]", "", spec[:-1] if kind != "s" or spec[-1:] == "s" else spec)
+        return "%" + body + {"e": "f", "E": "f", "g": "f", "G": "f", "c": "s"}.get(kind, kind)
+    out = re.sub(r"\{\{|\}\}|%|\{:?([^{}]*)\}",
+                 lambda m: {"{{": "{", "}}": "}", "%": "%%"}.get(m.group(0)) or field(m), fmt)
+    return out
+
+
 def fmt_sample(fmt: str, args: list[str]) -> str:
     out, ai = [], 0
     i = 0
@@ -458,12 +470,15 @@ def _eval(e: str, ctx: Ctx, pos: int) -> Value:
             raise ExtractError(f"unresolved helper call {e}")
         s, o, c = fn
         txt = s.t[o:c]
-        mm = re.search(r"snprintf\s*\(([^;]*)\)\s*;", txt, re.S)
+        mm = re.search(r"(snprintf|mc2::fmt::to_buf_n|mc2::fmt::to_buf)\s*\(([^;]*)\)\s*;", txt, re.S)
         if mm:
-            args = split_top(mm.group(1), ",")
-            fmt = parse_string_literals(args[2])
+            args = split_top(mm.group(2), ",")
+            fmt_at = 1 if mm.group(1) == "mc2::fmt::to_buf" else 2
+            fmt = parse_string_literals(args[fmt_at])
             if fmt is not None:
-                return [[(fmt_sample(fmt, [a.strip() for a in args[3:]]), "call:" + m.group(1) + "()")]]
+                if mm.group(1) != "snprintf":
+                    fmt = std_format_as_printf(fmt)
+                return [[(fmt_sample(fmt, [a.strip() for a in args[fmt_at + 1:]]), "call:" + m.group(1) + "()")]]
         lits = re.findall(r'"#define[^"]*"', txt)
         if lits:
             return [[(parse_string_literals(lits[0]), "call:" + m.group(1) + "()")]]
@@ -537,7 +552,7 @@ def _eval_var(name: str, ctx: Ctx, pos: int) -> Value:
                       r"\s*(?:\[[^\]]*\])?\s*=\s*", re.S)
     asg = re.compile(r"(?<![\w.>])" + n + r"\s*(\+=|=)(?!=)\s*", re.S)
     app = re.compile(r"(?<![\w.>])" + n + r"\s*\.append\s*\(", re.S)
-    snp = re.compile(r"\bsnprintf\s*\(\s*" + n + r"\s*,")
+    snp = re.compile(r"(?:\bsnprintf|\bmc2::fmt::to_buf_n|\bmc2::fmt::to_buf)\s*\(\s*" + n + r"\s*,")
     seen = set()
     body = src.t
     for m in decl.finditer(body, bo, pos):
@@ -559,10 +574,14 @@ def _eval_var(name: str, ctx: Ctx, pos: int) -> Value:
         stmts.append((m.start(), "+=", a[0]))
     for m in snp.finditer(body, bo, pos):
         a, _ = call_args(body, body.index("(", m.start()))
-        fmt = parse_string_literals(a[2]) if len(a) > 2 else None
+        callee = m.group(0).split("(")[0].strip()
+        fmt_at = {"snprintf": 2, "mc2::fmt::to_buf_n": 2, "mc2::fmt::to_buf": 1}[callee]
+        fmt = parse_string_literals(a[fmt_at]) if len(a) > fmt_at else None
         if fmt is None:
             raise ExtractError(f"snprintf fmt not literal for {name}")
-        stmts.append((m.start(), "=snprintf", fmt_sample(fmt, a[3:])))
+        if callee != "snprintf":
+            fmt = std_format_as_printf(fmt)
+        stmts.append((m.start(), "=snprintf", fmt_sample(fmt, a[fmt_at + 1:])))
     stmts.sort()
     if not stmts:
         raise ExtractError(f"no definition of '{name}' found in {src.rel} before offset")
