@@ -71,7 +71,7 @@ def target_to_source(tree_abs):
 HEADER_SITE = pick_batch.SITE
 
 
-def candidate_headers(dirs, includers, dirty):
+def candidate_headers(dirs, includers, dirty, rewrite=None):
     """Tracked headers under `dirs` with a rewritable site, not excluded or dirty, that some object includes."""
     out = subprocess.run(["git", "-C", ROOT, "ls-files"] + [d.rstrip("/") + "/" for d in dirs], capture_output=True, text=True,
                          **console_child.child_kwargs(redirected=True)).stdout.split()
@@ -80,7 +80,8 @@ def candidate_headers(dirs, includers, dirty):
         if not rel.lower().endswith((".h", ".hpp", ".inl")) or rts.is_excluded(rel) or rel in dirty or rel not in includers:
             continue
         with open(os.path.join(ROOT, rel), encoding="utf-8", errors="replace") as fh:
-            if pick_batch.has_site(fh.read()):
+            text = fh.read()
+            if pick_batch._rewrite_site(text) if rewrite else pick_batch.has_site(text):
                 cands.append((len(includers[rel]), os.path.getsize(os.path.join(ROOT, rel)), rel))
     cands.sort()
     return cands
@@ -204,6 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--stop-after-batch", action="store_true",
                     help="do not run a batch: ask the tool that holds this tree's lock to exit after its current batch (the stop "
                          "request is the file <tree>/.tidy.stop)")
+    ap.add_argument("--rewrite", choices=rts.REWRITERS, help="apply this text transform to each header instead of running clang-tidy")
     rts.add_lane_args(ap)
     return ap
 
@@ -223,7 +225,7 @@ def run_batch(args):
         headers = [h.replace("\\", "/") for h in args.headers]
     else:
         headers, union = [], set()
-        for n, _sz, rel in candidate_headers(args.dir, includers, dirty):
+        for n, _sz, rel in candidate_headers(args.dir, includers, dirty, args.rewrite):
             if rel in done or len(includers[rel]) > args.max_header_includers:
                 continue
             new_union = union | includers[rel]
@@ -258,6 +260,14 @@ def run_batch(args):
     for h in headers:
         # clang-tidy applies no fix-its from a TU it cannot parse (MSVC-only constructs), so try the including TUs smallest first until
         # one rewrites the header (or none does).
+        if args.rewrite:
+            rts.rewrite_hook(args.rewrite)(["rewrite", h])
+            if read_bytes(h) != orig[h]:
+                edited[h] = read_bytes(h)
+                with open(os.path.join(ROOT, h), "wb") as fh:
+                    fh.write(orig[h])
+                os.utime(os.path.join(ROOT, h), ns=(mtimes[h], mtimes[h]))
+            continue
         checks = checks_for(orig[h].decode("utf-8", errors="replace"))
         tus = sorted((os.path.getsize(os.path.join(ROOT, t2s[o])), t2s[o]) for o in includers.get(h, ()) if o in t2s
                      and not rts.is_excluded(t2s[o]) and t2s[o].lower().endswith((".cpp", ".cc", ".cxx")))

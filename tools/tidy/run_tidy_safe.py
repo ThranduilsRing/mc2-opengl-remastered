@@ -307,6 +307,26 @@ def run(args, tidy=None, build=None) -> int:
     return 1 if reverted else 0
 
 
+REWRITERS = ("typedef-aggregates",)
+
+
+def rewrite_hook(name: str):
+    """A stand-in for the clang-tidy call: apply the named text transform to the file the command line ends with."""
+    import typedef_aggregates
+
+    def hook(cmd):
+        rel = cmd[-1]
+        path = os.path.join(ROOT, rel)
+        with open(path, encoding="utf-8", errors="surrogateescape", newline="") as fh:
+            src = fh.read()
+        new = typedef_aggregates.rewrite(src)
+        if new != src:
+            with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
+                fh.write(new)
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+    return hook
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("files", nargs="*")
@@ -318,6 +338,8 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="show the would-be diff, keep nothing")
     ap.add_argument("--checks", help="comma-separated clang-tidy checks to run instead of the whole safe set "
                                      "(each must be in SAFE_CHECKS), e.g. modernize-use-override")
+    ap.add_argument("--rewrite", choices=REWRITERS,
+                    help="apply this text transform instead of clang-tidy (same objhash proof, same per-TU revert)")
     ap.add_argument("--list-excluded", action="store_true")
     add_lane_args(ap)
     args = ap.parse_args(argv)
@@ -331,7 +353,7 @@ def main(argv=None) -> int:
     tree_abs = os.path.abspath(os.path.join(ROOT, args.tree)) if not os.path.isabs(args.tree) else args.tree
     try:
         with tidy_lock.TidyLock(tree_abs):
-            return run(args)
+            return run(args, tidy=rewrite_hook(args.rewrite) if args.rewrite else None)
     except tidy_lock.TidyBusy as e:
         print(f"run_tidy_safe: {e}", file=sys.stderr)
         return 3
