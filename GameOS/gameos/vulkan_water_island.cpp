@@ -26,7 +26,6 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 // =============================================================================
 
-#ifdef MC2_VULKAN_ISLAND
 
 #ifndef VK_USE_PLATFORM_WIN32_KHR
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -78,7 +77,7 @@ unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
 unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
 unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration();
 
-namespace {
+namespace vk_water_detail {
 
 struct WaterIslandHealth {
     int   vulkanAvailable = 0;
@@ -96,13 +95,6 @@ struct WaterIslandHealth {
     unsigned long recipeCount = 0;   // recipe rows uploaded once
     double copyColorInUs = 0.0, copyDepthInUs = 0.0, drawUs = 0.0, colorOutUs = 0.0, totalUs = 0.0;
 };
-WaterIslandHealth g_health;
-
-void setFallback(const char* reason) {
-    std::strncpy(g_health.fallbackReason, reason ? reason : "",
-                 sizeof(g_health.fallbackReason) - 1);
-    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
-}
 
 // Forbidden COLOR-op counters (blocker #5). Any of these firing on the interop
 // path means a COLOR copy slipped through -> fail the frame. DEPTH-in copies are
@@ -114,77 +106,6 @@ struct InteropForbidden {
     unsigned long glGetTexImage          = 0;  // COLOR pull           (must be 0)
     unsigned long glTexSubImage2D        = 0;  // COLOR writeback      (must be 0)
 };
-InteropForbidden g_forbidden;
-unsigned long g_depthInGetTexImage       = 0;  // EXPECTED (scene depth import)
-unsigned long g_depthInCopyBufferToImage = 0;  // EXPECTED (staging -> depth image)
-
-void vlog(const char* fmt, ...) {
-    va_list ap; va_start(ap, fmt);
-    vk_island_util::vlogv("[VK_WATER_ISLAND] ", fmt, ap);
-    va_end(ap);
-}
-
-// MC2_VK_WATER_TIER1 (rung 6, VK full-ownership ladder): render the armed water
-// BASE layer IN-PLACE into the shared scene GBuffer (color0+normal+depth) like
-// the terrain/prop/mech Tier-1 islands — no offscreen target, no GL composite,
-// no depth readback.
-//
-// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now resolved via mc2vkgate::armed<>
-// so MC2_VK_SHARED_GBUFFER=1 arms it (explicit "1"/"0" still wins). Water is BASE scene
-// content, not an enhancement -- post-VK-RUNG8-ITEM8 the native VK composite is the sole
-// present-image producer and there is no per-layer GL fallback, so an unarmed water layer
-// VANISHES (the field bug). This ALSO reconciles a latent inconsistency: gos_postprocess.cpp
-// and vk_shared_gbuffer_gate.h::postDirectChainUpstreamOn() already read MC2_VK_WATER_TIER1
-// as an umbrella member, while this producer read it as an explicit "1" -- so under the umbrella the
-// post chain believed water was armed while the island declined. Now both agree. The strict
-// proof armed WATER_TIER1=1 and passed its parity check.
-bool waterTier1Requested() {
-    const bool s_on = mc2vkgate::armed<"MC2_VK_WATER_TIER1">();   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
-    return s_on;
-}
-
-// MC2_VK_WATER_PERF — fine-grained per-sub-step microsecond breakdown of the VK
-// water interop path (additive diagnostic; zero cost when OFF). Emits a
-// [VK_WATER_PERF] line per frame with the readback/stage/depth-in/sem/submit/
-// fence-wait/composite split so the ~11ms Tracy zone can be attributed.
-bool waterPerfGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_WATER_PERF">();
-    }
-    return state == 1;
-}
-
-// VK-WATER-FENCE-DEFER-1 (cluster-A pilot, ONE island): defer the island's retire
-// wait to the parity slot's next vkImageResourceBeginFrame instead of waiting the
-// submit fence inline. Default-ON (the per-parity staging pairs make it correct by
-// construction); MC2_VK_WATER_FENCE_DEFER=0 is the killswitch restoring the inline
-// wait — the staging stays per-parity either way (superset-safe).
-bool waterFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_WATER_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
-
-// MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
-// terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
-// render in-place without another GL/VK semaphore round trip.
-// Water co-write is unconditionally direct-chain-native (the GL<->VK
-// semaphore-handoff arm and the shared-scene GL-import half are deleted).
-bool waterDirectChainRequested() {
-    return true;
-}
-
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
-
-VkShaderModule load_spv(VkDevice device, std::string_view path) {
-    return vk_island_util::loadSpv(device, path, vlog);
-}
 
 // std140 UBO mirrors (LOCKSTEP with water_geom.vert/.frag). ------------------
 struct WaterVsParams {
@@ -306,6 +227,92 @@ struct WaterIsland {
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
 };
+
+}  // namespace vk_water_detail
+using namespace vk_water_detail;
+
+namespace vk_water_detail {
+
+WaterIslandHealth g_health;
+
+void setFallback(const char* reason) {
+    std::strncpy(g_health.fallbackReason, reason ? reason : "",
+                 sizeof(g_health.fallbackReason) - 1);
+    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
+}
+
+InteropForbidden g_forbidden;
+unsigned long g_depthInGetTexImage       = 0;  // EXPECTED (scene depth import)
+unsigned long g_depthInCopyBufferToImage = 0;  // EXPECTED (staging -> depth image)
+
+void vlog(const char* fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    vk_island_util::vlogv("[VK_WATER_ISLAND] ", fmt, ap);
+    va_end(ap);
+}
+
+// MC2_VK_WATER_TIER1 (rung 6, VK full-ownership ladder): render the armed water
+// BASE layer IN-PLACE into the shared scene GBuffer (color0+normal+depth) like
+// the terrain/prop/mech Tier-1 islands — no offscreen target, no GL composite,
+// no depth readback.
+//
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now resolved via mc2vkgate::armed<>
+// so MC2_VK_SHARED_GBUFFER=1 arms it (explicit "1"/"0" still wins). Water is BASE scene
+// content, not an enhancement -- post-VK-RUNG8-ITEM8 the native VK composite is the sole
+// present-image producer and there is no per-layer GL fallback, so an unarmed water layer
+// VANISHES (the field bug). This ALSO reconciles a latent inconsistency: gos_postprocess.cpp
+// and vk_shared_gbuffer_gate.h::postDirectChainUpstreamOn() already read MC2_VK_WATER_TIER1
+// as an umbrella member, while this producer read it as an explicit "1" -- so under the umbrella the
+// post chain believed water was armed while the island declined. Now both agree. The strict
+// proof armed WATER_TIER1=1 and passed its parity check.
+bool waterTier1Requested() {
+    const bool s_on = mc2vkgate::armed<"MC2_VK_WATER_TIER1">();   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
+    return s_on;
+}
+
+// MC2_VK_WATER_PERF — fine-grained per-sub-step microsecond breakdown of the VK
+// water interop path (additive diagnostic; zero cost when OFF). Emits a
+// [VK_WATER_PERF] line per frame with the readback/stage/depth-in/sem/submit/
+// fence-wait/composite split so the ~11ms Tracy zone can be attributed.
+bool waterPerfGateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = mc2::gate::get<"MC2_VK_WATER_PERF">();
+    }
+    return state == 1;
+}
+
+// VK-WATER-FENCE-DEFER-1 (cluster-A pilot, ONE island): defer the island's retire
+// wait to the parity slot's next vkImageResourceBeginFrame instead of waiting the
+// submit fence inline. Default-ON (the per-parity staging pairs make it correct by
+// construction); MC2_VK_WATER_FENCE_DEFER=0 is the killswitch restoring the inline
+// wait — the staging stays per-parity either way (superset-safe).
+bool waterFenceDeferEnabled() {
+    static int state = -1;
+    if (state == -1)
+        state = mc2::gate::get<"MC2_VK_WATER_FENCE_DEFER">() ? 1 : 0;
+    return state == 1;
+}
+
+// MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
+// terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
+// render in-place without another GL/VK semaphore round trip.
+// Water co-write is unconditionally direct-chain-native (the GL<->VK
+// semaphore-handoff arm and the shared-scene GL-import half are deleted).
+bool waterDirectChainRequested() {
+    return true;
+}
+
+std::string spv_dir() {
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
+    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
+    return d;
+}
+
+VkShaderModule load_spv(VkDevice device, std::string_view path) {
+    return vk_island_util::loadSpv(device, path, vlog);
+}
+
 
 void destroy_island(WaterIsland* s) {
     if (!s) return;
@@ -455,6 +462,10 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
     vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
     return ok;
 }
+
+}  // namespace vk_water_detail
+
+namespace vk_water_detail {
 
 // RUNG-6.5 WATER-REFLECTION: COPY-ONCE HDRI equirect import (NOT per-frame).
 // Mirrors gos_hdri.cpp's two upload paths:
@@ -772,6 +783,10 @@ bool ensure_shore(WaterIsland* s) {
     return true;
 }
 
+}  // namespace vk_water_detail
+
+namespace vk_water_detail {
+
 // One-time init: borrow the shared device, build the exportable color seam,
 // gbuffer1 + depth images, recipe/thin/UBO buffers, render pass, pipeline.
 bool init_island(WaterIsland* s, int w, int h) {
@@ -1080,7 +1095,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     return true;
 }
 
-} // namespace
+} // namespace vk_water_detail
 
 // ===========================================================================
 // PUBLIC ENTRY POINTS (consumed under #ifdef MC2_VULKAN_ISLAND from
@@ -1411,4 +1426,3 @@ extern "C" void mc2_vk_water_island_destroy() {
     delete g_island; g_island = nullptr;
 }
 
-#endif // MC2_VULKAN_ISLAND
