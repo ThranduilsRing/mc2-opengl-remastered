@@ -11,7 +11,7 @@ TacMap.h			: Interface for the TacMap component.
 #include"mclib.h"
 
 
-#define BUILDING_COLOR 0xffff9f00
+inline constexpr unsigned int BUILDING_COLOR = 0xffff9f00;
 /**************************************************************************************************
 CLASS DESCRIPTION
 TacMap:

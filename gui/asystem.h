@@ -17,30 +17,30 @@ class InterfaceObject;
 #include"afont.h"
 #include "asset_scale.h"
 
-#define MAX_CHILDREN 64
+inline constexpr int MAX_CHILDREN = 64;
 
-#define aMSG_LEFTMOUSEDOWN              1
-#define aMSG_MIDDLEMOUSEDOWN			2
-#define aMSG_RIGHTMOUSEDOWN             3
-#define aMSG_LEFTMOUSEUP                4
-#define aMSG_MIDDLEMOUSEUP              5
-#define aMSG_RIGHTMOUSEUP               6
-#define aMSG_MOUSEMOVE                  7
-#define aMSG_LEFTMOUSEDBLCLICK			16
-#define aMSG_RIGHTMOUSEDBLCLICK			17
-#define aMSG_LEFTMOUSEHELD				18
-#define aMSG_RIGHTMOUSEHELD				19
-#define aMSG_SCROLLUP		101
-#define aMSG_SCROLLDOWN		102
-#define aMSG_PAGEUP			103
-#define aMSG_PAGEDOWN		104
-#define aMSG_TRACKTAB		106
-#define aMSG_SCROLLTO		107	//	sent by parent
-#define aMSG_SCROLLPARENT	108	//	sent to parent
-#define aMSG_SELECTME		109
-#define aMSG_DONE			110
-#define aMSG_BUTTONCLICKED			111
-#define aMSG_SELCHANGED		112
+inline constexpr int aMSG_LEFTMOUSEDOWN = 1;
+inline constexpr int aMSG_MIDDLEMOUSEDOWN = 2;
+inline constexpr int aMSG_RIGHTMOUSEDOWN = 3;
+inline constexpr int aMSG_LEFTMOUSEUP = 4;
+inline constexpr int aMSG_MIDDLEMOUSEUP = 5;
+inline constexpr int aMSG_RIGHTMOUSEUP = 6;
+inline constexpr int aMSG_MOUSEMOVE = 7;
+inline constexpr int aMSG_LEFTMOUSEDBLCLICK = 16;
+inline constexpr int aMSG_RIGHTMOUSEDBLCLICK = 17;
+inline constexpr int aMSG_LEFTMOUSEHELD = 18;
+inline constexpr int aMSG_RIGHTMOUSEHELD = 19;
+inline constexpr int aMSG_SCROLLUP = 101;
+inline constexpr int aMSG_SCROLLDOWN = 102;
+inline constexpr int aMSG_PAGEUP = 103;
+inline constexpr int aMSG_PAGEDOWN = 104;
+inline constexpr int aMSG_TRACKTAB = 106;
+inline constexpr int aMSG_SCROLLTO = 107;	//	sent by parent
+inline constexpr int aMSG_SCROLLPARENT = 108;	//	sent to parent
+inline constexpr int aMSG_SELECTME = 109;
+inline constexpr int aMSG_DONE = 110;
+inline constexpr int aMSG_BUTTONCLICKED = 111;
+inline constexpr int aMSG_SELCHANGED = 112;
 
 typedef enum
 {
@@ -57,16 +57,16 @@ typedef enum
 
 
 // Error codes, local to this file...
-#define	DUPLICATE_INSTANCE			-1
-#define	FAILED_TO_CREATE_WINDOW		-2
-#define	DISPLAY_MISMATCH			-3
-#define INIT_FAILED					-4
-#define	FAILED_TO_CREATE_SYSTEM		-5
-#define	LOCK_FAILURE				-6
-#define	UNLOCK_FAILURE				-7
-#define	BLT_FAILURE					-8
-#define FAILED_TO_ALLOCATE_PORT		-9
-#define	USER_INIT_FAILED			-10
+inline constexpr int DUPLICATE_INSTANCE = -1;
+inline constexpr int FAILED_TO_CREATE_WINDOW = -2;
+inline constexpr int DISPLAY_MISMATCH = -3;
+inline constexpr int INIT_FAILED = -4;
+inline constexpr int FAILED_TO_CREATE_SYSTEM = -5;
+inline constexpr int LOCK_FAILURE = -6;
+inline constexpr int UNLOCK_FAILURE = -7;
+inline constexpr int BLT_FAILURE = -8;
+inline constexpr int FAILED_TO_ALLOCATE_PORT = -9;
+inline constexpr int USER_INIT_FAILED = -10;
 
 #include"utilities.h"
 

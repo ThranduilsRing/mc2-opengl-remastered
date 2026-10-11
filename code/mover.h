@@ -85,44 +85,44 @@ extern float metersPerWorldUnit;
 
 #define	DEBUG_CHUNKS
 
-#define YIELD_WAITING		0
-#define YIELDED				1
-#define COLLIDER_YIELDED	2
-#define COLLIDER_BEHIND		3
-#define NO_ACTION			4
-#define ON_THE_MOVE			5
+inline constexpr int YIELD_WAITING = 0;
+inline constexpr int YIELDED = 1;
+inline constexpr int COLLIDER_YIELDED = 2;
+inline constexpr int COLLIDER_BEHIND = 3;
+inline constexpr int NO_ACTION = 4;
+inline constexpr int ON_THE_MOVE = 5;
 
-#define	MAX_LOCK_RANGE		10
+inline constexpr int MAX_LOCK_RANGE = 10;
 
-#define	MAX_WEAPONFIRE_CHUNKS			128
-#define	MAX_CRITICALHIT_CHUNKS			128
-#define	MAX_RADIO_CHUNKS				7
+inline constexpr int MAX_WEAPONFIRE_CHUNKS = 128;
+inline constexpr int MAX_CRITICALHIT_CHUNKS = 128;
+inline constexpr int MAX_RADIO_CHUNKS = 7;
 
-#define	CHUNK_SEND						0
-#define	CHUNK_RECEIVE					1
+inline constexpr int CHUNK_SEND = 0;
+inline constexpr int CHUNK_RECEIVE = 1;
 
-#define	NUM_WEAPONFIRE_MODIFIERS		30
+inline constexpr int NUM_WEAPONFIRE_MODIFIERS = 30;
 
-#define	MAX_ANTI_MISSILE_SYSTEMS		16			// Way more than we should need!
+inline constexpr int MAX_ANTI_MISSILE_SYSTEMS = 16;			// Way more than we should need!
 
-#define	ARMOR_TYPE_STANDARD				0
-#define	ARMOR_TYPE_FERROFIBROUS			1
+inline constexpr int ARMOR_TYPE_STANDARD = 0;
+inline constexpr int ARMOR_TYPE_FERROFIBROUS = 1;
 
-#define	CHASSIS_TYPE_STANDARD			0
-#define	CHASSIS_TYPE_ENDOSTEEL			1
+inline constexpr int CHASSIS_TYPE_STANDARD = 0;
+inline constexpr int CHASSIS_TYPE_ENDOSTEEL = 1;
 
-#define	ENGINE_TYPE_COMBUSTION			0
-#define	ENGINE_TYPE_FUSION_STANDARD		1
-#define	ENGINE_TYPE_FUSION_XL			2
+inline constexpr int ENGINE_TYPE_COMBUSTION = 0;
+inline constexpr int ENGINE_TYPE_FUSION_STANDARD = 1;
+inline constexpr int ENGINE_TYPE_FUSION_XL = 2;
 
-#define	HEATSINK_TYPE_SINGLE			1
-#define	HEATSINK_TYPE_DOUBLE			2
+inline constexpr int HEATSINK_TYPE_SINGLE = 1;
+inline constexpr int HEATSINK_TYPE_DOUBLE = 2;
 
-#define	IS_DAMAGE_NONE					0
-#define	IS_DAMAGE_PARTIAL				1
-#define	IS_DAMAGE_DESTROYED				2
+inline constexpr int IS_DAMAGE_NONE = 0;
+inline constexpr int IS_DAMAGE_PARTIAL = 1;
+inline constexpr int IS_DAMAGE_DESTROYED = 2;
 
-#define	UNLIMITED_SHOTS					9999
+inline constexpr int UNLIMITED_SHOTS = 9999;
 
 #define NO_APPEARANCE_FOR_MECH			0xFFFA0001
 #define	NO_RAM_FOR_DYNAMICS_TYPE		0xFFFA0002
@@ -219,7 +219,7 @@ class MoveChunk {
 };
 
 //---------------------------------------------------------------------------
-#define MAX_YAW		64
+inline constexpr int MAX_YAW = 64;
 
 typedef enum {
 	DYNAMICS_BASE,
@@ -398,7 +398,7 @@ class MoverControl {
 
 //---------------------------------------------------------------------------
 
-#define	MAX_RANGE_RATINGS		51
+inline constexpr int MAX_RANGE_RATINGS = 51;
 
 typedef struct _InventoryItem* InventoryItemPtr;
 
@@ -441,7 +441,7 @@ typedef struct _InventoryItem {
 
 //------------------------------------------------------------------------------------------
 
-#define	MAX_AMMO_TYPES			10
+inline constexpr int MAX_AMMO_TYPES = 10;
 
 typedef struct _AmmoTally {
 	long				masterId;		// ammo type's Master Component Id
@@ -469,7 +469,7 @@ typedef struct _CriticalSpace {
 
 //------------------------------------------------------------------------------------------
 
-#define	MAX_CRITSPACES_PER_BODYLOCATION		12
+inline constexpr int MAX_CRITSPACES_PER_BODYLOCATION = 12;
 
 class BodyLocation {
 
@@ -513,31 +513,31 @@ typedef ArmorLocation* ArmorLocationPtr;
 
 //---------------------------------------------------------------------------
 
-#define	STATUSCHUNK_BODYSTATE_BITS		3
-#define	STATUSCHUNK_TARGETTYPE_BITS		3
-#define	STATUSCHUNK_MOVERINDEX_BITS		7
-#define	STATUSCHUNK_TERRAINPARTID_BITS	20
-#define	STATUSCHUNK_TERRAINBLOCK_BITS	8
-#define	STATUSCHUNK_TERRAINVERTEX_BITS	9
-#define	STATUSCHUNK_TERRAINITEM_BITS	3
-#define	STATUSCHUNK_TRAIN_BITS			8
-#define	STATUSCHUNK_TRAINCAR_BITS		8
-#define	STATUSCHUNK_CELLPOS_BITS		10
-#define	STATUSCHUNK_EJECTORDER_BITS		1
-#define	STATUSCHUNK_JUMPORDER_BITS		1
+inline constexpr int STATUSCHUNK_BODYSTATE_BITS = 3;
+inline constexpr int STATUSCHUNK_TARGETTYPE_BITS = 3;
+inline constexpr int STATUSCHUNK_MOVERINDEX_BITS = 7;
+inline constexpr int STATUSCHUNK_TERRAINPARTID_BITS = 20;
+inline constexpr int STATUSCHUNK_TERRAINBLOCK_BITS = 8;
+inline constexpr int STATUSCHUNK_TERRAINVERTEX_BITS = 9;
+inline constexpr int STATUSCHUNK_TERRAINITEM_BITS = 3;
+inline constexpr int STATUSCHUNK_TRAIN_BITS = 8;
+inline constexpr int STATUSCHUNK_TRAINCAR_BITS = 8;
+inline constexpr int STATUSCHUNK_CELLPOS_BITS = 10;
+inline constexpr int STATUSCHUNK_EJECTORDER_BITS = 1;
+inline constexpr int STATUSCHUNK_JUMPORDER_BITS = 1;
 
-#define	STATUSCHUNK_BODYSTATE_MASK		0x00000007
-#define	STATUSCHUNK_TARGETTYPE_MASK		0x00000007
-#define	STATUSCHUNK_MOVERINDEX_MASK		0x0000007F
-#define	STATUSCHUNK_TERRAINPARTID_MASK	0x000FFFFF
-#define	STATUSCHUNK_TERRAINBLOCK_MASK	0x000000FF
-#define	STATUSCHUNK_TERRAINVERTEX_MASK	0x000001FF
-#define	STATUSCHUNK_TERRAINITEM_MASK	0x00000007
-#define	STATUSCHUNK_TRAIN_MASK			0x000000FF
-#define	STATUSCHUNK_TRAINCAR_MASK		0x000000FF
-#define	STATUSCHUNK_CELLPOS_MASK		0x000003FF
-#define	STATUSCHUNK_EJECTORDER_MASK		0x00000001
-#define	STATUSCHUNK_JUMPORDER_MASK		0x00000001
+inline constexpr int STATUSCHUNK_BODYSTATE_MASK = 0x00000007;
+inline constexpr int STATUSCHUNK_TARGETTYPE_MASK = 0x00000007;
+inline constexpr int STATUSCHUNK_MOVERINDEX_MASK = 0x0000007F;
+inline constexpr int STATUSCHUNK_TERRAINPARTID_MASK = 0x000FFFFF;
+inline constexpr int STATUSCHUNK_TERRAINBLOCK_MASK = 0x000000FF;
+inline constexpr int STATUSCHUNK_TERRAINVERTEX_MASK = 0x000001FF;
+inline constexpr int STATUSCHUNK_TERRAINITEM_MASK = 0x00000007;
+inline constexpr int STATUSCHUNK_TRAIN_MASK = 0x000000FF;
+inline constexpr int STATUSCHUNK_TRAINCAR_MASK = 0x000000FF;
+inline constexpr int STATUSCHUNK_CELLPOS_MASK = 0x000003FF;
+inline constexpr int STATUSCHUNK_EJECTORDER_MASK = 0x00000001;
+inline constexpr int STATUSCHUNK_JUMPORDER_MASK = 0x00000001;
 
 typedef enum {
 	STATUSCHUNK_TARGET_NONE,
@@ -610,15 +610,15 @@ class StatusChunk {
 
 //---------------------------------------------------------------------------
 
-#define	MAXLEN_MOVER_NAME			65
-#define	MAX_MOVER_BODY_LOCATIONS	8
-#define	MAX_MOVER_ARMOR_LOCATIONS	11
-#define	MAX_MOVER_INVENTORY_ITEMS	72
-#define	MAXLEN_NET_PLAYER_NAME		256
-#define	MAXLEN_MECH_LONGNAME	35
+inline constexpr int MAXLEN_MOVER_NAME = 65;
+inline constexpr int MAX_MOVER_BODY_LOCATIONS = 8;
+inline constexpr int MAX_MOVER_ARMOR_LOCATIONS = 11;
+inline constexpr int MAX_MOVER_INVENTORY_ITEMS = 72;
+inline constexpr int MAXLEN_NET_PLAYER_NAME = 256;
+inline constexpr int MAXLEN_MECH_LONGNAME = 35;
 
 #define	MAX_ATTACK_CELLRANGE		30
-#define	MAX_ATTACK_INCREMENTS		32
+inline constexpr int MAX_ATTACK_INCREMENTS = 32;
 #define	RANGED_CELLS_DIM			(MAX_ATTACK_CELLRANGE * 2 + 1) * (MAX_ATTACK_CELLRANGE * 2 + 1)
 
 typedef struct _MoverData : public GameObjectData

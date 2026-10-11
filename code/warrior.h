@@ -90,40 +90,40 @@ class BldgAppearance;
 
 //***************************************************************************
 
-#define	MAX_WARRIORS				120
+inline constexpr int MAX_WARRIORS = 120;
 
-#define	MOVEGOAL_NONE				0xFFFFFFFF
-#define	MOVEGOAL_LOCATION			0x00000000
+inline constexpr unsigned int MOVEGOAL_NONE = 0xFFFFFFFF;
+inline constexpr int MOVEGOAL_LOCATION = 0x00000000;
 
 #define CLAN_SEEN_FLAG				2
 #define IS_SEEN_FLAG				1
 
-#define	NUM_WEAPON_TYPE_AFFINITIES	2
+inline constexpr int NUM_WEAPON_TYPE_AFFINITIES = 2;
 
-#define	NUM_OFFSET_RANGES			5
+inline constexpr int NUM_OFFSET_RANGES = 5;
 
 #define	WARRIOR_DEBUGGING_ENABLED	TRUE
-#define	WARRIOR_DEBUG_FLAG_NONE		0
-#define	WARRIOR_DEBUG_FLAG_COMBAT	1
+inline constexpr int WARRIOR_DEBUG_FLAG_NONE = 0;
+inline constexpr int WARRIOR_DEBUG_FLAG_COMBAT = 1;
 
-#define	MOVEPATH_ERR_NONE				0
-#define	MOVEPATH_ERR_NO_GOAL			-1
-#define	MOVEPATH_ERR_GOALOBJ_DEAD		-2
-#define	MOVEPATH_ERR_NO_VALID_GOAL		-3
-#define	MOVEPATH_ERR_ALREADY_THERE		-4
-#define	MOVEPATH_ERR_LR_NOT_ENABLED		-5
-#define	MOVEPATH_ERR_LR_START_BLOCKED	-6
-#define	MOVEPATH_ERR_LR_NO_PATH			-7
-#define	MOVEPATH_ERR_LR_NO_SR_PATH		-8
-#define	MOVEPATH_ERR_EARLY_STOP			-9
-#define	MOVEPATH_ERR_TIME_OUT			-10
-#define	MOVEPATH_ERR_LR_DOOR_CLOSED		-11
-#define	MOVEPATH_ERR_LR_DOOR_BLOCKED	-12
-#define	MOVEPATH_ERR_ESCAPING_TILE		-13
-#define	MOVEPATH_ERR_TACORDER_CLEARED	-14
+inline constexpr int MOVEPATH_ERR_NONE = 0;
+inline constexpr int MOVEPATH_ERR_NO_GOAL = -1;
+inline constexpr int MOVEPATH_ERR_GOALOBJ_DEAD = -2;
+inline constexpr int MOVEPATH_ERR_NO_VALID_GOAL = -3;
+inline constexpr int MOVEPATH_ERR_ALREADY_THERE = -4;
+inline constexpr int MOVEPATH_ERR_LR_NOT_ENABLED = -5;
+inline constexpr int MOVEPATH_ERR_LR_START_BLOCKED = -6;
+inline constexpr int MOVEPATH_ERR_LR_NO_PATH = -7;
+inline constexpr int MOVEPATH_ERR_LR_NO_SR_PATH = -8;
+inline constexpr int MOVEPATH_ERR_EARLY_STOP = -9;
+inline constexpr int MOVEPATH_ERR_TIME_OUT = -10;
+inline constexpr int MOVEPATH_ERR_LR_DOOR_CLOSED = -11;
+inline constexpr int MOVEPATH_ERR_LR_DOOR_BLOCKED = -12;
+inline constexpr int MOVEPATH_ERR_ESCAPING_TILE = -13;
+inline constexpr int MOVEPATH_ERR_TACORDER_CLEARED = -14;
 
-#define	MAX_QUEUED_TACORDERS				2000
-#define	MAX_QUEUED_TACORDERS_PER_WARRIOR	16
+inline constexpr int MAX_QUEUED_TACORDERS = 2000;
+inline constexpr int MAX_QUEUED_TACORDERS_PER_WARRIOR = 16;
 
 typedef enum {
 	ORDER_CURRENT,
@@ -244,10 +244,10 @@ enum SpecialtySkillType
 
 };
 
-#define FIRST_REGULAR_SPECIALTY	0
-#define FIRST_VETERAN_SPECIALTY	8
-#define FIRST_ELITE_SPECIALTY 14
-#define FIRST_ACE_SPECIALTY	20
+inline constexpr int FIRST_REGULAR_SPECIALTY = 0;
+inline constexpr int FIRST_VETERAN_SPECIALTY = 8;
+inline constexpr int FIRST_ELITE_SPECIALTY = 14;
+inline constexpr int FIRST_ACE_SPECIALTY = 20;
 
 typedef enum {
 	CV_CURRENT,
@@ -286,7 +286,7 @@ typedef enum {
 
 //---------------------------------------------------------------------------
 
-#define	MAX_ALARM_TRIGGERS		15
+inline constexpr int MAX_ALARM_TRIGGERS = 15;
 
 typedef enum {
 	PILOT_ALARM_TARGET_OF_WEAPONFIRE,
@@ -332,7 +332,7 @@ typedef struct {
 
 //---------------------------------------------------------------------------
 
-#define	MAX_TARGET_PRIORITIES	20
+inline constexpr int MAX_TARGET_PRIORITIES = 20;
 
 typedef enum {
 	TARGET_PRIORITY_NONE,
@@ -629,7 +629,7 @@ typedef struct _RoleOrders {
 
 //------------------------------------------------------------------------------------------
 
-#define	NUM_MEMORY_CELLS		60
+inline constexpr int NUM_MEMORY_CELLS = 60;
 
 typedef union _MemoryCell {
 	float						real;
@@ -638,7 +638,7 @@ typedef union _MemoryCell {
 
 //------------------------------------------------------------------------------------------
 
-#define MAX_ATTACKERS			50
+inline constexpr int MAX_ATTACKERS = 50;
 
 //------------------------------------------------------------------------------------------
 
@@ -656,14 +656,14 @@ typedef QueuedTacOrder* QueuedTacOrderPtr;
 
 //------------------------------------------------------------------------------------------
 
-#define	NUM_PILOT_DEBUG_STRINGS		5
-#define	MAXLEN_PILOT_DEBUG_STRING	80
-#define	MAXLEN_PILOT_NAME			80
-#define	MAXLEN_PILOT_CALLSIGN		20
-#define	MAXLEN_PILOT_PHOTO			20
-#define	MAXLEN_PILOT_VIDEO			20
-#define	MAXLEN_PILOT_AUDIO			20
-#define	MAXLEN_PILOT_BRAIN			40
+inline constexpr int NUM_PILOT_DEBUG_STRINGS = 5;
+inline constexpr int MAXLEN_PILOT_DEBUG_STRING = 80;
+inline constexpr int MAXLEN_PILOT_NAME = 80;
+inline constexpr int MAXLEN_PILOT_CALLSIGN = 20;
+inline constexpr int MAXLEN_PILOT_PHOTO = 20;
+inline constexpr int MAXLEN_PILOT_VIDEO = 20;
+inline constexpr int MAXLEN_PILOT_AUDIO = 20;
+inline constexpr int MAXLEN_PILOT_BRAIN = 40;
 
 typedef enum {
 	GOAL_ACTION_NONE,

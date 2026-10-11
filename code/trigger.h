@@ -23,7 +23,7 @@
 
 //---------------------------------------------------------------------------
 
-#define	MAX_TRIGGER_AREAS			16
+inline constexpr int MAX_TRIGGER_AREAS = 16;
 
 typedef enum {
 	TRIGGER_AREA_NONE,
