@@ -11,6 +11,7 @@
 #include <map>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // Renderer setter/getter forward declarations (definitions in gameos_graphics.cpp).
 extern void  gos_SetTerrainMatTiling(float rock, float grass, float dirt, float concrete, float snow);
@@ -167,7 +168,7 @@ static void applyControlAlbedoStrength(const std::map<std::string,float>& v, boo
     if (mc2::gate::isNonEmpty<"MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH">())
         strength = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH">();  // env wins over JSON
     gos_SetTerrainControlAlbedoStrength(strength);
-    fprintf(stderr, "[TerrainControlAlbedo] gate ON -- strength=%.3f\n", strength);
+    mc2::fmt::print_err("[TerrainControlAlbedo] gate ON -- strength={:.3f}\n", strength);
 }
 
 // TERRAIN-MATERIAL-TEXTURES-1: independent gate (own killswitch, per the
@@ -209,9 +210,7 @@ static void applyMatAlbedoTextures(const std::map<std::string,float>& v,
             ++pathOverrides;
         }
     }
-    fprintf(stderr, "[TerrainMatTextures] gate ON -- json=%d strength=%.3f (<0 = binder default 0.7) "
-                    "textureRoot='%s' layerPathOverrides=%d\n",
-            jsonLoaded ? 1 : 0, strength, root, pathOverrides);
+    mc2::fmt::print_err("[TerrainMatTextures] gate ON -- json={:d} strength={:.3f} (<0 = binder default 0.7) textureRoot='{}' layerPathOverrides={:d}\n", mc2::fmt::as_i32(jsonLoaded ? 1 : 0), strength, mc2::fmt::safe(root), mc2::fmt::as_i32(pathOverrides));
 }
 
 void terrainMaterials_apply(const char* /*missionName*/) {
@@ -227,7 +226,7 @@ void terrainMaterials_apply(const char* /*missionName*/) {
     FILE* f = fopen(path, "r");
     if (!f) {
         if (materialLibGateOn)
-            fprintf(stderr, "[TerrainMaterialLib] gate ON but no file at '%s' -- no-op\n", path);
+            mc2::fmt::print_err("[TerrainMaterialLib] gate ON but no file at '{}' -- no-op\n", mc2::fmt::safe(path));
         applyControlAlbedoStrength({}, /*jsonLoaded=*/false);  // shipped-default strength
         applyMatAlbedoTextures({}, {}, {}, /*jsonLoaded=*/false);  // shipped-default paths/strength
         return;  // missing file = silent no-op (matches visual_tuning.json convention)
@@ -348,5 +347,5 @@ void terrainMaterials_apply(const char* /*missionName*/) {
         getf(v, "classify_dirt_rBrightLo",  0.22f),
         getf(v, "classify_dirt_rBrightHi",  0.45f));
 
-    fprintf(stderr, "[TerrainMaterialLib] applied %d keys from '%s'\n", (int)v.size(), path);
+    mc2::fmt::print_err("[TerrainMaterialLib] applied {:d} keys from '{}'\n", mc2::fmt::as_i32((int)v.size()), mc2::fmt::safe(path));
 }

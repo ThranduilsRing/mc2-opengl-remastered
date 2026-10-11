@@ -289,13 +289,13 @@ void gosPostProcess::init(int w, int h)
     );
 
     if (!compositeProg_ || !compositeProg_->is_valid()) {
-        fprintf(stderr, "gosPostProcess: failed to compile postprocess shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile postprocess shader\n");
     }
 
     skyboxProg_ = glsl_program::makeProgram("skybox",
         "shaders/skybox.vert", "shaders/skybox.frag", kShaderPrefix);
     if (!skyboxProg_ || !skyboxProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile skybox shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile skybox shader\n");
 
     // HDRI-SKY-1 init. Gate read once; default enabled unless env var == "0".
     {
@@ -343,7 +343,7 @@ void gosPostProcess::init(int w, int h)
     shadowDebugProg_ = glsl_program::makeProgram("shadow_debug",
         "shaders/postprocess.vert", "shaders/shadow_debug.frag", shadowDebugPrefix.c_str());
     if (!shadowDebugProg_ || !shadowDebugProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile shadow_debug shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_debug shader\n");
 
     // Item 1: shadow_screen.frag #includes shadow.hglsl -> inject MC2_SHADOW_CSM
     // when ON so it compiles the array-sampler dynamic-shadow variant.
@@ -363,39 +363,39 @@ void gosPostProcess::init(int w, int h)
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",
         "shaders/postprocess.vert", "shaders/shadow_screen.frag", screenShadowPrefix.c_str());
     if (!screenShadowProg_ || !screenShadowProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile shadow_screen shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_screen shader\n");
 
     cloudProg_ = glsl_program::makeProgram("cloud",
         "shaders/postprocess.vert", "shaders/cloud.frag", kShaderPrefix);
     if (!cloudProg_ || !cloudProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile cloud shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile cloud shader\n");
 
     shorelineProg_ = glsl_program::makeProgram("shoreline",
         "shaders/postprocess.vert", "shaders/shoreline.frag", kShaderPrefix);
     if (!shorelineProg_ || !shorelineProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile shoreline shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile shoreline shader\n");
 
     // SSAO-GTAO-LITE-MVP-1 (Track V) shaders.
     ssaoProg_ = glsl_program::makeProgram("ssao",
         "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
     if (!ssaoProg_ || !ssaoProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile ssao shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile ssao shader\n");
     ssaoApplyProg_ = glsl_program::makeProgram("ssao_apply",
         "shaders/postprocess.vert", "shaders/ssao_apply.frag", kShaderPrefix);
     if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile ssao_apply shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile ssao_apply shader\n");
     // SSAO-BLUR-1: depth-aware bilateral blur (run separably H then V).
     ssaoBlurProg_ = glsl_program::makeProgram("ssao_blur",
         "shaders/postprocess.vert", "shaders/ssao_blur.frag", kShaderPrefix);
     if (!ssaoBlurProg_ || !ssaoBlurProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile ssao_blur shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile ssao_blur shader\n");
 
     // BT2018-BOX-DECAL-1: screen-space box-decal program. Its OWN vert (cube volume),
     // not postprocess.vert. Default-OFF gate resolved once from env (SSAO style).
     boxDecalProg_ = glsl_program::makeProgram("box_decal",
         "shaders/box_decal.vert", "shaders/box_decal.frag", kShaderPrefix);
     if (!boxDecalProg_ || !boxDecalProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile box_decal shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile box_decal shader\n");
     {
         const char* e = mc2::gate::raw<"MC2_BOX_DECAL">();   // echoed as typed
         boxDecalEnabled_ = mc2::gate::get<"MC2_BOX_DECAL">();
@@ -535,7 +535,7 @@ void gosPostProcess::init(int w, int h)
         fogOobProg_ = glsl_program::makeProgram("fog_oob",
             "shaders/postprocess.vert", "shaders/fog_oob.frag", kShaderPrefix);
         if (!fogOobProg_ || !fogOobProg_->is_valid())
-            std::fprintf(stderr, "gosPostProcess: failed to compile fog_oob shader\n");
+            mc2::fmt::print_err("gosPostProcess: failed to compile fog_oob shader\n");
         fogOobEnabled_ = mc2::gate::get<"MC2_OOB_FOG">()
                       && fogOobProg_ && fogOobProg_->is_valid();
         if (mc2::gate::isSet<"MC2_OOB_FOG_COLOR">()) {
@@ -554,7 +554,7 @@ void gosPostProcess::init(int w, int h)
         edgeFogProg_ = glsl_program::makeProgram("edge_fog",
             "shaders/postprocess.vert", "shaders/edge_fog.frag", kShaderPrefix);
         if (!edgeFogProg_ || !edgeFogProg_->is_valid())
-            std::fprintf(stderr, "gosPostProcess: failed to compile edge_fog shader\n");
+            mc2::fmt::print_err("gosPostProcess: failed to compile edge_fog shader\n");
         edgeFogEnabled_ = mc2::gate::get<"MC2_EDGE_FOG">()
                        && edgeFogProg_ && edgeFogProg_->is_valid();
         if (mc2::gate::isSet<"MC2_EDGE_FOG_START">())  edgeFogStart_  = mc2::gate::get<"MC2_EDGE_FOG_START">();
@@ -613,7 +613,7 @@ void gosPostProcess::init(int w, int h)
     hzbReduceProg_ = glsl_program::makeProgram("hzb_reduce",
         "shaders/postprocess.vert", "shaders/hzb_reduce.frag", kShaderPrefix);
     if (!hzbReduceProg_ || !hzbReduceProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile hzb_reduce shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile hzb_reduce shader\n");
     {
         // HZB-OCCLUSION-PROBE-1 gate (diagnostic only; requires the build gate).
         const char* probeEnv = mc2::gate::raw<"MC2_HZB_PROBE">();   // echoed as typed

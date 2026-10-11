@@ -20,6 +20,7 @@
 
 #include "../../RenderCore/RenderResourceRegistry.h"
 #include "utils/gpu_debug_labels.h"  // VULKAN-DEBUG-NAMES-1 (gated, default-OFF)
+#include "mc2fmt.h"
 
 namespace {
 
@@ -52,8 +53,7 @@ bool GpuBuffer::create() {
     glGenBuffers(1, &name);
     rec_.backendHandle = static_cast<uint32_t>(name);
     if (rec_.backendHandle == 0) {
-        fprintf(stderr, "[GpuBuffer] glGenBuffers failed (%s)\n",
-                rec_.debugName ? rec_.debugName : "?");
+        mc2::fmt::print_err("[GpuBuffer] glGenBuffers failed ({})\n", mc2::fmt::safe(rec_.debugName ? rec_.debugName : "?"));
         fflush(stderr);
         return false;
     }

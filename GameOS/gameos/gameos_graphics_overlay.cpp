@@ -1,6 +1,7 @@
 // gameos_graphics: overlay texture trace, overlay and decal batches, uniform upload and the executor apply-state hooks.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 
 // `armed` is the canary gate's value (MC2_VK_*_GL_CANARY), read by the caller.
@@ -44,8 +45,7 @@ static gosTexture* lookupBatchTextureOrWarn(const std::vector<gosTexture*>& text
     if (textureId >= textureList.size() || textureList[textureId] == nullptr) {
         static unsigned int warnCount = 0;
         if (warnCount < 16) {
-            printf("%s: dropping invalid texture handle %u (texture count=%zu)\n",
-                   batchName, textureId, textureList.size());
+            mc2::fmt::print_out("{}: dropping invalid texture handle {:d} (texture count={:d})\n", mc2::fmt::safe(batchName), mc2::fmt::as_u32(textureId), mc2::fmt::as_size(textureList.size()));
             ++warnCount;
         }
         return nullptr;

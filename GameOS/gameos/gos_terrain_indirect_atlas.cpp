@@ -731,12 +731,9 @@ void BuildCementCatalogAtlas() {
             }
             mc2::fmt::to_buf(pathBuf, "{}.csv", mc2::fmt::safe(dumpPfx));
             if (FILE* f = fopen(pathBuf, "w")) {
-                fprintf(f, "cell,slot,is_alpha,grid_side,tile_px,atlas_px\n");
+                mc2::fmt::print(f, "cell,slot,is_alpha,grid_side,tile_px,atlas_px\n");
                 for (int k = 0; k < N; ++k) {
-                    fprintf(f, "%d,%d,%d,%d,%d,%d\n", k,
-                            (k < (int)cementSlots.size()) ? cementSlots[k] : -1,
-                            (k < (int)cementSlotIsAlpha.size()) ? (int)cementSlotIsAlpha[k] : -1,
-                            gridSide, txmSize, atlasPixelSide);
+                    mc2::fmt::print(f, "{:d},{:d},{:d},{:d},{:d},{:d}\n", mc2::fmt::as_i32(k), mc2::fmt::as_i32((k < (int)cementSlots.size()) ? cementSlots[k] : -1), mc2::fmt::as_i32((k < (int)cementSlotIsAlpha.size()) ? (int)cementSlotIsAlpha[k] : -1), mc2::fmt::as_i32(gridSide), mc2::fmt::as_i32(txmSize), mc2::fmt::as_i32(atlasPixelSide));
                 }
                 fclose(f);
             }

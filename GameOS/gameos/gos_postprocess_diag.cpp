@@ -457,7 +457,7 @@ void gosPostProcess::runHzbProbe()
         n += mc2::fmt::to_buf_n(hist + n, sizeof(hist) - n, "[HZB_PROBE_LOD v1] selectedLod");
         for (int L = 0; L < hzbMipCount_ && L < kHzbMaxLevels && n < (int)sizeof(hist) - 16; ++L)
             if (lodHist[L]) n += mc2::fmt::to_buf_n(hist + n, sizeof(hist) - n, " L{:d}={:d}", mc2::fmt::as_i32(L), mc2::fmt::as_u32(lodHist[L]));
-        fprintf(stderr, "%s\n", hist);
+        mc2::fmt::print_err("{}\n", mc2::fmt::safe(hist));
     }
     // Depth-gap margin sweep (safe-frame guarded candidates). guard@0.00000
     // equals wouldCullGuarded by gap<0; higher margins show how many survive a

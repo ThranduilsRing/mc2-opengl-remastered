@@ -1,6 +1,7 @@
 // gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 static bool mc2VkSharedSceneStrictEnabled()
@@ -405,7 +406,7 @@ void gosPostProcess::createFBOs(int w, int h)
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "gosPostProcess: scene FBO incomplete (0x%x)\n", status);
+        mc2::fmt::print_err("gosPostProcess: scene FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(status));
     }
 
     // REGISTER-MAIN-DEPTH-RESOURCE: publish the full-res scene depth as the
@@ -494,7 +495,7 @@ void gosPostProcess::createFBOs(int w, int h)
 
         GLenum aoStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (aoStatus != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: SSAO FBO incomplete (0x%x)\n", aoStatus);
+            mc2::fmt::print_err("gosPostProcess: SSAO FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(aoStatus));
 
         // REGISTRY-POSTPROCESS-FBO-1: publish the half-res AO target (observe-only).
         RenderCore::RenderResourceDesc d;
@@ -528,7 +529,7 @@ void gosPostProcess::createFBOs(int w, int h)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTex_, 0);
         GLenum aoBlurStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (aoBlurStatus != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: SSAO blur FBO incomplete (0x%x)\n", aoBlurStatus);
+            mc2::fmt::print_err("gosPostProcess: SSAO blur FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(aoBlurStatus));
     }
 
     // --- WATER-REFLECTION-RESOURCE-1: quarter-res reflection target ---
@@ -567,7 +568,7 @@ void gosPostProcess::createFBOs(int w, int h)
 
         GLenum wrStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (wrStatus != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: water reflection FBO incomplete (0x%x)\n", wrStatus);
+            mc2::fmt::print_err("gosPostProcess: water reflection FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(wrStatus));
 
         // Register descriptors (descriptive; this owner keeps the GL lifetime).
         RenderCore::RenderResourceDesc cdesc;

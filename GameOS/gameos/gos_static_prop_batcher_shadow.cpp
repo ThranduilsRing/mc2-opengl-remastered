@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: prop shadow helpers, flushShadow, static-building and dynamic-prop shadow draws and the VK shadow-island geometry feed.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // SHADOW-PROP-ALPHA-1 -------------------------------------------------------
@@ -853,8 +854,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.
     if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("prop")) {
         if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
-            std::fprintf(f, "{\"island\":\"prop\",\"count\":%u,\"objectDepthBias\":%.6f,"
-                "\"instances\":[", out->count, out->objectDepthBias);
+            mc2::fmt::print(f, "{{\"island\":\"prop\",\"count\":{:d},\"objectDepthBias\":{:.6f},\"instances\":[", mc2::fmt::as_u32(out->count), out->objectDepthBias);
             const GpuStaticPropInstance* insts =
                 reinterpret_cast<const GpuStaticPropInstance*>(out->instances112);
             for (uint32_t i = 0; i < out->count; ++i) {
@@ -868,7 +868,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                     gi.modelMatrix[12], gi.modelMatrix[13], gi.modelMatrix[14],
                     gi.flags);
             }
-            std::fprintf(f, "]}\n");
+            mc2::fmt::print(f, "]}}\n");
             std::fclose(f);
         }
         mc2vkfeeddump::latch("prop") = true;

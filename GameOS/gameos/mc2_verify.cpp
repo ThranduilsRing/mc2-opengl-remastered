@@ -83,7 +83,7 @@ const char* basename_of(const char* file)
 
 void emit_line(const char* line)
 {
-    std::fprintf(stderr, "%s\n", line);
+    mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
     std::fflush(stderr);
 #ifdef _WIN32
     OutputDebugStringA(line);

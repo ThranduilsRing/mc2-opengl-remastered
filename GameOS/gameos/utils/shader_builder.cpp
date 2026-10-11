@@ -116,12 +116,12 @@ bool get_shader_error_status(GLuint shader, GLenum status_type, std::string* out
         glGetShaderInfoLog(shader, len, &len2, buf);
         if(len2!=0) {
             log_error("CompileShader: %s\n", buf);
-            printf("[SHADER ERROR] CompileShader: %s\n", buf);
+            mc2::fmt::print_out("[SHADER ERROR] CompileShader: {}\n", mc2::fmt::safe(buf));
             fflush(stdout);
             validateRecordShaderError(buf);
             if (out_log) *out_log = buf;
         } else {
-            printf("[SHADER ERROR] CompileShader: driver reported FAIL with empty info log (GL id=%u)\n", shader);
+            mc2::fmt::print_out("[SHADER ERROR] CompileShader: driver reported FAIL with empty info log (GL id={:d})\n", mc2::fmt::as_u32(shader));
             fflush(stdout);
         }
 		delete[] buf;
@@ -147,7 +147,7 @@ bool get_program_error_status(GLuint program, GLenum status_type, std::string* o
         glGetProgramInfoLog(program, len, &len2, buf);
         if(len2!=0) {
             log_error("LinkProgram: %s\n", buf);
-            printf("[SHADER ERROR] LinkProgram: %s\n", buf);
+            mc2::fmt::print_out("[SHADER ERROR] LinkProgram: {}\n", mc2::fmt::safe(buf));
             fflush(stdout);
             validateRecordShaderError(buf);
             if (out_log) *out_log = buf;
@@ -219,7 +219,7 @@ const char* glsl_load(const char* fname, size_t* out_size = nullptr)
         static_cast<unsigned char>(pdata[2]) == 0xBF) {
         memmove(pdata, pdata + 3, size - 3 + 1); // +1 = null terminator
         size -= 3;
-        fprintf(stderr, "[shader_builder] WARN: stripped UTF-8 BOM from %s\n", fname);
+        mc2::fmt::print_err("[shader_builder] WARN: stripped UTF-8 BOM from {}\n", mc2::fmt::safe(fname));
         char evJson[512];
         mc2::fmt::to_buf(evJson, "{{\"event\":\"bom_stripped\",\"path\":\"{}\"}}", mc2::fmt::safe(fname));
         mc2_diag::writeEvent("SHADER_COMPILE", 1, 0, evJson);
@@ -718,7 +718,7 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
             GLsizei actualLen = 0;
             glGetShaderInfoLog(shader, warnLen, &actualLen, warnBuf);
             if (actualLen > 0) {
-                printf("[SHADER WARN] compile %s:\n%s\n", fname, warnBuf);
+                mc2::fmt::print_out("[SHADER WARN] compile {}:\n{}\n", mc2::fmt::safe(fname), mc2::fmt::safe(warnBuf));
                 fflush(stdout);
             }
             delete[] warnBuf;
@@ -1112,7 +1112,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
             GLsizei actualLen = 0;
             glGetProgramInfoLog(shp, warnLen, &actualLen, warnBuf);
             if (actualLen > 0) {
-                printf("[SHADER WARN] link '%s':\n%s\n", name, warnBuf);
+                mc2::fmt::print_out("[SHADER WARN] link '{}':\n{}\n", mc2::fmt::safe(name), mc2::fmt::safe(warnBuf));
                 fflush(stdout);
             }
             delete[] warnBuf;

@@ -49,8 +49,7 @@ void validateParseArgs(int argc, char** argv) {
     }
 
     if (s_config.enabled) {
-        fprintf(stderr, "VALIDATE: mode enabled, %d frames, log=%s\n",
-                s_config.maxFrames, s_config.logPath);
+        mc2::fmt::print_err("VALIDATE: mode enabled, {:d} frames, log={}\n", mc2::fmt::as_i32(s_config.maxFrames), mc2::fmt::safe(s_config.logPath));
     }
 }
 
@@ -76,10 +75,10 @@ bool validateShouldExit() {
 static void writeJsonString(FILE* f, const char* s) {
     fputc('"', f);
     for (; *s; s++) {
-        if (*s == '"') fprintf(f, "\\\"");
-        else if (*s == '\\') fprintf(f, "\\\\");
-        else if (*s == '\n') fprintf(f, "\\n");
-        else if (*s == '\r') fprintf(f, "\\r");
+        if (*s == '"') mc2::fmt::print(f, "\\\"");
+        else if (*s == '\\') mc2::fmt::print(f, "\\\\");
+        else if (*s == '\n') mc2::fmt::print(f, "\\n");
+        else if (*s == '\r') mc2::fmt::print(f, "\\r");
         else fputc(*s, f);
     }
     fputc('"', f);
@@ -108,41 +107,40 @@ void validateWriteResults(int viewportW, int viewportH) {
 
     FILE* f = fopen(s_config.logPath, "w");
     if (!f) {
-        fprintf(stderr, "VALIDATE: Failed to write log to %s\n", s_config.logPath);
+        mc2::fmt::print_err("VALIDATE: Failed to write log to {}\n", mc2::fmt::safe(s_config.logPath));
         return;
     }
 
-    fprintf(f, "{\n");
-    fprintf(f, "  \"frames\": %d,\n", s_telemetry.framesRendered);
-    fprintf(f, "  \"avg_frame_ms\": %.1f,\n", avgMs);
-    fprintf(f, "  \"max_frame_ms\": %.1f,\n", s_telemetry.maxFrameMs);
+    mc2::fmt::print(f, "{{\n");
+    mc2::fmt::print(f, "  \"frames\": {:d},\n", mc2::fmt::as_i32(s_telemetry.framesRendered));
+    mc2::fmt::print(f, "  \"avg_frame_ms\": {:.1f},\n", avgMs);
+    mc2::fmt::print(f, "  \"max_frame_ms\": {:.1f},\n", s_telemetry.maxFrameMs);
 
-    fprintf(f, "  \"gl_errors\": [");
+    mc2::fmt::print(f, "  \"gl_errors\": [");
     for (size_t i = 0; i < s_telemetry.glErrors.size(); i++) {
-        if (i > 0) fprintf(f, ", ");
+        if (i > 0) mc2::fmt::print(f, ", ");
         writeJsonString(f, s_telemetry.glErrors[i].c_str());
     }
-    fprintf(f, "],\n");
+    mc2::fmt::print(f, "],\n");
 
-    fprintf(f, "  \"shader_errors\": [");
+    mc2::fmt::print(f, "  \"shader_errors\": [");
     for (size_t i = 0; i < s_telemetry.shaderErrors.size(); i++) {
-        if (i > 0) fprintf(f, ", ");
+        if (i > 0) mc2::fmt::print(f, ", ");
         writeJsonString(f, s_telemetry.shaderErrors[i].c_str());
     }
-    fprintf(f, "],\n");
+    mc2::fmt::print(f, "],\n");
 
     if (s_config.screenshotPath[0]) {
-        fprintf(f, "  \"screenshot\": ");
+        mc2::fmt::print(f, "  \"screenshot\": ");
         writeJsonString(f, s_config.screenshotPath);
-        fprintf(f, ",\n");
+        mc2::fmt::print(f, ",\n");
     }
 
-    fprintf(f, "  \"exit_code\": %d\n", s_telemetry.exitCode);
-    fprintf(f, "}\n");
+    mc2::fmt::print(f, "  \"exit_code\": {:d}\n", mc2::fmt::as_i32(s_telemetry.exitCode));
+    mc2::fmt::print(f, "}}\n");
     fclose(f);
 
-    fprintf(stderr, "VALIDATE: Results written to %s (exit_code=%d, %d frames, %.1fms avg)\n",
-            s_config.logPath, s_telemetry.exitCode, s_telemetry.framesRendered, avgMs);
+    mc2::fmt::print_err("VALIDATE: Results written to {} (exit_code={:d}, {:d} frames, {:.1f}ms avg)\n", mc2::fmt::safe(s_config.logPath), mc2::fmt::as_i32(s_telemetry.exitCode), mc2::fmt::as_i32(s_telemetry.framesRendered), avgMs);
 }
 
 // -- Tier-1 instrumentation: GL error drain (stability spec §4) -------------

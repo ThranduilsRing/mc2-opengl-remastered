@@ -1,6 +1,7 @@
 // gameos_graphics: the gos_* C API: renderer lifecycle, fonts, textures, screen mode, buffers, materials and the camera preview.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -778,12 +779,7 @@ void __stdcall gos_PrepareForPostImGuiRender() {
             GLboolean depthMask = GL_FALSE; glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
             GLboolean cm[4] = {}; glGetBooleanv(GL_COLOR_WRITEMASK, cm);
             GLint vp[4] = {}; glGetIntegerv(GL_VIEWPORT, vp);
-            fprintf(stderr,
-                "[3DVIEW_DIAG v1] post-imgui: fbo=%d depthTest=%d depthFunc=0x%x "
-                "depthMask=%d scissor=%d colorMask=%d%d%d%d vp=[%d,%d,%d,%d]\n",
-                fbo, (int)depthTest, depthFunc, (int)depthMask, (int)scissor,
-                (int)cm[0], (int)cm[1], (int)cm[2], (int)cm[3],
-                vp[0], vp[1], vp[2], vp[3]);
+            mc2::fmt::print_err("[3DVIEW_DIAG v1] post-imgui: fbo={:d} depthTest={:d} depthFunc=0x{:x} depthMask={:d} scissor={:d} colorMask={:d}{:d}{:d}{:d} vp=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32((int)depthTest), mc2::fmt::as_u32(depthFunc), mc2::fmt::as_i32((int)depthMask), mc2::fmt::as_i32((int)scissor), mc2::fmt::as_i32((int)cm[0]), mc2::fmt::as_i32((int)cm[1]), mc2::fmt::as_i32((int)cm[2]), mc2::fmt::as_i32((int)cm[3]), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]));
             fflush(stderr);
         }
     }
@@ -898,8 +894,7 @@ void __stdcall gos_BeginCameraPreviewRender()
             glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewFbo);
             status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         }
-        fprintf(stderr, "[3DVIEW_DIAG v2] BeginCameraPreviewRender: fbo=%u 800x600 status=0x%x\n",
-                s_camPreviewFbo, status);
+        mc2::fmt::print_err("[3DVIEW_DIAG v2] BeginCameraPreviewRender: fbo={:d} 800x600 status=0x{:x}\n", mc2::fmt::as_u32(s_camPreviewFbo), mc2::fmt::as_u32(status));
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewFbo);

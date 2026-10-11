@@ -106,7 +106,7 @@ static void mc2_log_exit_caller(const char* fn)
         if (SymGetLineFromAddr64(proc, (DWORD64)frames[i], &dispL, &line)) {
             fileName = line.FileName; lineNum = line.LineNumber;
         }
-        fprintf(stderr, "  #%02d  %s  (%s:%u)\n", i, symName, fileName, lineNum);
+        mc2::fmt::print_err("  #{:02d}  {}  ({}:{:d})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(symName), mc2::fmt::safe(fileName), mc2::fmt::as_u32(lineNum));
     }
     fflush(stderr);
 }

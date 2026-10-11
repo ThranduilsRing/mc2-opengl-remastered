@@ -16,6 +16,7 @@
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
+#include "mc2fmt.h"
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -60,7 +61,7 @@ void plog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     std::vfprintf(stderr, fmt, ap);
     va_end(ap);
-    std::fprintf(stderr, "\n");
+    mc2::fmt::print_err("\n");
     std::fflush(stderr);
 }
 
@@ -2587,7 +2588,7 @@ void EnginePresentVk::verifyReadbackContent() {
         if (ppmPath) {
             FILE* pf = fopen(ppmPath, "wb");
             if (pf) {
-                fprintf(pf, "P6\n%u %u\n255\n", rw, rh);
+                mc2::fmt::print(pf, "P6\n{:d} {:d}\n255\n", mc2::fmt::as_u32(rw), mc2::fmt::as_u32(rh));
                 std::vector<unsigned char> rgb((size_t)rw * rh * 3u);
                 for (size_t i = 0, o = 0; i < (size_t)rw * rh; ++i) {
                     rgb[o++] = px[i * 4 + 0];

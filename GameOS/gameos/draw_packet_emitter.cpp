@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 // <climits> not needed: UINT32_MAX comes from <cstdint> already included via draw_packet_emitter.h
 
 // Global debug snapshot — written each frame by gameosmain, read by ImGui panel.
@@ -294,24 +295,15 @@ DrawPacketCompareResult comparePacketsToLegacy(
                     ++r.geomMismatch;
                     if (s_verboseEnabled) {
                         if (c.firstIndex != bFirstIdx)
-                            std::fprintf(stderr,
-                                "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                                " check=firstIndex cand=%u batcher=%u\n",
-                                c.typeId, c.globalPacketIdx, c.firstIndex, bFirstIdx);
+                            mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=firstIndex cand={:d} batcher={:d}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(c.firstIndex), mc2::fmt::as_u32(bFirstIdx));
                         if (c.indexCount != bIdxCount)
-                            std::fprintf(stderr,
-                                "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                                " check=indexCount cand=%u batcher=%u\n",
-                                c.typeId, c.globalPacketIdx, c.indexCount, bIdxCount);
+                            mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=indexCount cand={:d} batcher={:d}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(c.indexCount), mc2::fmt::as_u32(bIdxCount));
                     }
                 }
                 if (c.typeId != bOwnType) {
                     ++r.typeMismatch;
                     if (s_verboseEnabled)
-                        std::fprintf(stderr,
-                            "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                            " check=owningType cand=%u batcher=%u\n",
-                            c.typeId, c.globalPacketIdx, c.typeId, bOwnType);
+                        mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=owningType cand={:d} batcher={:d}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(bOwnType));
                 }
             }
             // if batcher_getPacketDrawInfo returns false: globalPacketIdx was valid at
@@ -329,11 +321,7 @@ DrawPacketCompareResult comparePacketsToLegacy(
             if (pipelineIsAlpha != flagsIsAlpha) {
                 ++r.alphaMismatch;
                 if (s_verboseEnabled)
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                        " check=alpha pipelineId=%u flags=0x%08x\n",
-                        c.typeId, c.globalPacketIdx,
-                        static_cast<uint32_t>(id), c.cachedMaterialFlags);
+                    mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=alpha pipelineId={:d} flags=0x{:08x}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(static_cast<uint32_t>(id)), mc2::fmt::as_u32(c.cachedMaterialFlags));
             }
         }
     }

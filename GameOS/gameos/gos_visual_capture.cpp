@@ -574,10 +574,7 @@ void parse_replay_cfg() {
     // (default 120). Both runs trigger the freeze+sweep at the same frame so
     // scenarioTime is frozen at an identical value across runs.
     if (mc2::gate::isSet<"MC2_VISUAL_CAPTURE_FRAME">()) { long t = captureFrameEnv(); if (t >= 0) g_replay.triggerFrame = t; }
-    fprintf(stderr, "[VISUAL_CAPTURE v1.5] bookmark-replay init path=%s settle=%d "
-            "triggerFrame=%ld dir=%s\n",
-            g_replay.path, g_replay.settleFrames, g_replay.triggerFrame,
-            g_replay.dir.c_str());
+    mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark-replay init path={} settle={:d} triggerFrame={:d} dir={}\n", mc2::fmt::safe(g_replay.path), mc2::fmt::as_i32(g_replay.settleFrames), mc2::fmt::as_i32(g_replay.triggerFrame), g_replay.dir.c_str());
 }
 
 void apply_bookmark(const Bookmark& b) {
@@ -745,15 +742,12 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             g_replay.loaded = true;
             std::string fileMission;
             if (!load_bookmarks(g_replay.path, fileMission, g_replay.marks)) {
-                fprintf(stderr,
-                        "[VISUAL_CAPTURE v1.5] bookmark load FAILED path=%s\n",
-                        g_replay.path);
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark load FAILED path={}\n", mc2::fmt::safe(g_replay.path));
                 g_replay.finished = true;
                 return;
             }
             g_replay.mission = fileMission.empty() ? mission : fileMission;
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] loaded %zu bookmarks (mission=%s)\n",
-                    g_replay.marks.size(), g_replay.mission.c_str());
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] loaded {:d} bookmarks (mission={})\n", mc2::fmt::as_size(g_replay.marks.size()), g_replay.mission.c_str());
         }
 
         // Wait for the deterministic trigger frame. Determinism does NOT come
@@ -789,9 +783,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                         g_replay.savePos.x, g_replay.savePos.y, g_replay.savePos.z,
                         g_replay.saveRot.x, g_replay.saveRot.y, g_replay.saveAlt);
             }
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep triggered frame=%u "
-                    "(triggerFrame=%ld) sim frozen, pauseState=%d\n",
-                    frame, g_replay.triggerFrame, g_replay.savePauseState);
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] sweep triggered frame={:d} (triggerFrame={:d}) sim frozen, pauseState={:d}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_i32(g_replay.triggerFrame), mc2::fmt::as_i32(g_replay.savePauseState));
         }
 
         if (g_replay.idx >= g_replay.marks.size()) {
@@ -801,8 +793,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             if (g_replay.pauseStateSaved)
                 mc2VisualCaptureRestorePauseState(g_replay.savePauseState);
             g_replay.finished = true;
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep complete, camera + "
-                    "pause-state restored\n");
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] sweep complete, camera + pause-state restored\n");
             // VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the
             // VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT]
             // logHealth are emitted to the capture log. Without this the harness kills
@@ -813,8 +804,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             // teardown (gameosmain.cpp mc2_vk_*_island_destroy). Off by default.
             if (mc2::gate::get<"MC2_VISUAL_CAPTURE_EXIT_AFTER">()) {
                 ::quitGame = true;
-                fprintf(stderr, "[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 "
-                        "-> requesting clean shutdown (quitGame=true)\n");
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 -> requesting clean shutdown (quitGame=true)\n");
             }
             return;
         }
@@ -855,16 +845,12 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
         // (bounded) so the re-applied+frozen pose gets a fresh render first.
         if (!renderedOk && g_replay.extendCount < kMaxPoseExtend) {
             if (g_replay.extendCount == 0)
-                fprintf(stderr, "[VISUAL_CAPTURE v1.5] bookmark '%s' rendered pose "
-                        "off-bookmark; extending settle (pose-verify guard)\n",
-                        g_replay.marks[g_replay.idx].name.c_str());
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark '{}' rendered pose off-bookmark; extending settle (pose-verify guard)\n", g_replay.marks[g_replay.idx].name.c_str());
             ++g_replay.extendCount;
             return;
         }
         if (!renderedOk)
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] WARN bookmark '%s' still off-pose "
-                    "after %d extend frames -- capturing anyway\n",
-                    g_replay.marks[g_replay.idx].name.c_str(), kMaxPoseExtend);
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] WARN bookmark '{}' still off-pose after {:d} extend frames -- capturing anyway\n", g_replay.marks[g_replay.idx].name.c_str(), mc2::fmt::as_i32(kMaxPoseExtend));
         // Settled: capture this bookmark. The capture is byte-stable ONLY when
         // the deterministic clock (S9D sim + S9E shader, MC2_SMOKE_FIXED_TIMESTEP)
         // is engaged; without it the sweep freeze holds scenarioTime constant

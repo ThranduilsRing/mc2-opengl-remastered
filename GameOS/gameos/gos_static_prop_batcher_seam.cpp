@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -929,21 +930,14 @@ void batcher_buildCandidateLog() {
             const uint32_t pktIdx = desc.firstPacket + p;
             if (pktIdx >= static_cast<uint32_t>(s_packets.size())) {
                 if (doDetail) {
-                    std::fprintf(stderr,
-                        "[DRAW_CAND v0 detail] typeId=%u pkt=%u BOUNDS_OVERFLOW\n",
-                        desc.typeId, p);
+                    mc2::fmt::print_err("[DRAW_CAND v0 detail] typeId={:d} pkt={:d} BOUNDS_OVERFLOW\n", mc2::fmt::as_u32(desc.typeId), mc2::fmt::as_u32(p));
                 }
                 ++boundsErrors;
                 continue;
             }
             if (doDetail) {
                 const GpuStaticPropPacket& pkt = s_packets[pktIdx];
-                std::fprintf(stderr,
-                    "[DRAW_CAND v0 detail] typeId=%u pkt=%u firstIndex=%u"
-                    " indexCount=%u baseVertex=%d alphaClass=%u\n",
-                    desc.typeId, p,
-                    pkt.firstIndex, pkt.indexCount, pkt.baseVertex,
-                    desc.alphaClass);
+                mc2::fmt::print_err("[DRAW_CAND v0 detail] typeId={:d} pkt={:d} firstIndex={:d} indexCount={:d} baseVertex={:d} alphaClass={:d}\n", mc2::fmt::as_u32(desc.typeId), mc2::fmt::as_u32(p), mc2::fmt::as_u32(pkt.firstIndex), mc2::fmt::as_u32(pkt.indexCount), mc2::fmt::as_i32(pkt.baseVertex), mc2::fmt::as_u32(desc.alphaClass));
             }
             ++emitted;
         }

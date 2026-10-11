@@ -1,6 +1,7 @@
 // gosPostProcess: shadow debug overlay, static and cascaded shadow maps and their light matrices.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 void gosPostProcess::drawShadowDebugOverlay()
@@ -132,7 +133,7 @@ void gosPostProcess::initShadows()
     glReadBuffer(GL_NONE);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        fprintf(stderr, "gosPostProcess: shadow FBO incomplete\n");
+        mc2::fmt::print_err("gosPostProcess: shadow FBO incomplete\n");
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -413,7 +414,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
         RenderCore::registerOrUpdateView(sv);
     }
 
-    fprintf(stderr, "gosPostProcess: rendering static shadows (map half-extent=%.0f)\n", mapHalfExtent);
+    mc2::fmt::print_err("gosPostProcess: rendering static shadows (map half-extent={:.0f})\n", mapHalfExtent);
 
     // [SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is
     // correct (user suspected light/clipper; render-expert grep says it's
@@ -501,7 +502,7 @@ void gosPostProcess::initDynamicShadows()
     glReadBuffer(GL_NONE);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        fprintf(stderr, "gosPostProcess: dynamic shadow FBO incomplete\n");
+        mc2::fmt::print_err("gosPostProcess: dynamic shadow FBO incomplete\n");
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -584,7 +585,7 @@ void gosPostProcess::initDynamicShadows()
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         glReadBuffer(GL_NONE);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: CSM dynamic shadow array FBO incomplete\n");
+            mc2::fmt::print_err("gosPostProcess: CSM dynamic shadow array FBO incomplete\n");
 
         // Forward-Z clear all layers to 1.0 (fully lit). Reverse-Z partition:
         // dynamic shadow stays forward-Z; restore scene clear-depth after.
@@ -660,7 +661,7 @@ void gosPostProcess::initDynamicShadows()
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         glReadBuffer(GL_NONE);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: CSM dynamic full-map FBO incomplete\n");
+            mc2::fmt::print_err("gosPostProcess: CSM dynamic full-map FBO incomplete\n");
 
         // Forward-Z clear to 1.0 (fully lit), restore scene reverse-Z default.
         glDepthMask(GL_TRUE);
@@ -1032,8 +1033,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
         // [CSM focus] diag: gated on the CSM frustum-diag env.
         static const bool s_focusDiag = mc2::gate::get<"MC2_SHADOW_FRUSTUM_DIAG">();
         if (s_focusDiag) {
-            printf("[CSM focus] src=%s fx=%.1f fy=%.1f fz=%.1f t=%.3f d=%.1f cap=%.1f\n",
-                   focusSrc, focusWorld[0], focusWorld[1], focusWorld[2], t, d, cap);
+            mc2::fmt::print_out("[CSM focus] src={} fx={:.1f} fy={:.1f} fz={:.1f} t={:.3f} d={:.1f} cap={:.1f}\n", mc2::fmt::safe(focusSrc), focusWorld[0], focusWorld[1], focusWorld[2], t, d, cap);
         }
         (void)nearBase2; (void)farBase2;  // near/far identified via nearC/farC
     }

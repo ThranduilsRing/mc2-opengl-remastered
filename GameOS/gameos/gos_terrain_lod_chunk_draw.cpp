@@ -1,6 +1,7 @@
 // gos_terrain_lod_chunk: gos_TerrainLodChunk_SubmitDrawCommands, the uniform mirroring it uses and the eager draw tuning caches.
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
+#include "mc2fmt.h"
 
 // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: per-LOD-band displaced-chunk counters, reset
 // and logged once per submit alongside [TerrainLOD v1] so acceptance has hard
@@ -946,7 +947,7 @@ static void noteFirstSubmit(int count) {
         static bool s_firstSubmit = true;
         s_submitZeroStreak = 0;  // reset on any non-zero submit
         if (s_firstSubmit && count > 0) {
-            printf("[TerrainLOD v1] FIRST SUBMIT: %d draw commands queued\n", count);
+            mc2::fmt::print_out("[TerrainLOD v1] FIRST SUBMIT: {:d} draw commands queued\n", mc2::fmt::as_i32(count));
             fflush(stdout);
             s_firstSubmit = false;
         }
@@ -957,7 +958,7 @@ static void noteFirstSubmit(int count) {
 void TerrainLodSubmitFrame::countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount) {
     ++s_submitCount;
     if (s_submitCount % 600 == 0) {
-        printf("[TerrainLOD submit] count=%d cmds=%d\n", s_submitCount, count);
+        mc2::fmt::print_out("[TerrainLOD submit] count={:d} cmds={:d}\n", mc2::fmt::as_i32(s_submitCount), mc2::fmt::as_i32(count));
         fflush(stdout);
     }
 
@@ -1258,9 +1259,7 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
         static unsigned long s_visFrame = 0;
         ++s_visFrame;
         if (s_visFrame <= 60 || (s_visFrame % 180) == 0) {
-            printf("[TerrainLOD] visualDisplace band-counts LOD0=%d LOD1=%d LOD2=%d LOD3=%d LOD4=%d LOD5=%d\n",
-                   s_visualDisplacedCounts[0], s_visualDisplacedCounts[1], s_visualDisplacedCounts[2],
-                   s_visualDisplacedCounts[3], s_visualDisplacedCounts[4], s_visualDisplacedCounts[5]);
+            mc2::fmt::print_out("[TerrainLOD] visualDisplace band-counts LOD0={:d} LOD1={:d} LOD2={:d} LOD3={:d} LOD4={:d} LOD5={:d}\n", mc2::fmt::as_i32(s_visualDisplacedCounts[0]), mc2::fmt::as_i32(s_visualDisplacedCounts[1]), mc2::fmt::as_i32(s_visualDisplacedCounts[2]), mc2::fmt::as_i32(s_visualDisplacedCounts[3]), mc2::fmt::as_i32(s_visualDisplacedCounts[4]), mc2::fmt::as_i32(s_visualDisplacedCounts[5]));
             fflush(stdout);
         }
     }
@@ -1472,8 +1471,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (!mvp) {
             ++s_mvpNullCount;
             if (s_mvpNullCount <= 5 || s_mvpNullCount % 300 == 0)
-                printf("[TerrainLOD submit] mvp=NULL bail count=%d (count=%d)\n",
-                    s_mvpNullCount, count);
+                mc2::fmt::print_out("[TerrainLOD submit] mvp=NULL bail count={:d} (count={:d})\n", mc2::fmt::as_i32(s_mvpNullCount), mc2::fmt::as_i32(count));
             return;
         }
     }

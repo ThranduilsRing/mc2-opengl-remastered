@@ -51,6 +51,7 @@ extern int mc2WaterBiasLegacy();
 
 #include "../../RenderCore/GpuBufferOwner.h"  // WATER-REGISTRY-0: MDI water buffer owner records (L7.4 prep)
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // [WATER_DEPTHPROBE v1] cross-TU Probe-8 fingerprint accessors (terrain-solid
 // side). Paired per-frame against the water-upload MVP fingerprint to
@@ -2339,10 +2340,7 @@ void EndThinRingFrameFence() {
     }
     g_thinFences[g_thinSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     if (ThinRingTraceOn()) {
-        fprintf(stderr,
-            "WATER_THINRING: frame=%llu slot=%u bytes=%u waited=%d wait_result=0x%x fence_created=1\n",
-            (unsigned long long)g_thinTraceFrame, g_thinTraceSlot, g_thinTraceBytes,
-            g_thinTraceWaited, g_thinTraceWaitResult);
+        mc2::fmt::print_err("WATER_THINRING: frame={:d} slot={:d} bytes={:d} waited={:d} wait_result=0x{:x} fence_created=1\n", mc2::fmt::as_u64((unsigned long long)g_thinTraceFrame), mc2::fmt::as_u32(g_thinTraceSlot), mc2::fmt::as_u32(g_thinTraceBytes), mc2::fmt::as_i32(g_thinTraceWaited), mc2::fmt::as_u32(g_thinTraceWaitResult));
         fflush(stderr);
         ++g_thinTraceFrame;
     }

@@ -120,7 +120,7 @@ namespace
 #endif
         if (fp)
         {
-            std::fprintf(fp, "%s\n", line);
+            mc2::fmt::print(fp, "{}\n", mc2::fmt::safe(line));
             std::fclose(fp);
         }
     }
@@ -809,7 +809,7 @@ namespace
 #endif
         if ( mc2::gate::get<"MC2_LOG_STRINGS">() )
         {
-            printf("[strings] missing prefix='%s' id=%ld\n", prefix ? prefix : "null", value);
+            mc2::fmt::print_out("[strings] missing prefix='{}' id={:d}\n", mc2::fmt::safe(prefix ? prefix : "null"), mc2::fmt::as_i32(value));
             fflush(stdout);
         }
         return MissingMarker(prefix, number);
@@ -834,7 +834,7 @@ namespace MC2Strings
 #endif
         if (fp)
         {
-            std::fprintf(fp, "MC2 data/defs string trace start\n");
+            mc2::fmt::print(fp, "MC2 data/defs string trace start\n");
             std::fclose(fp);
         }
 
@@ -1066,10 +1066,7 @@ namespace MC2Strings
         State().loaded = !State().byKey.empty();
 
         if (mc2::gate::get<"MC2_LOG_STRINGS">()) {
-            printf("[strings] LoadModFits prefix=%s keys=%u legacyAliases=%u\n",
-                   prefix.c_str(),
-                   (unsigned)State().byKey.size(),
-                   (unsigned)State().keyByLegacyAlias.size());
+            mc2::fmt::print_out("[strings] LoadModFits prefix={} keys={:d} legacyAliases={:d}\n", prefix.c_str(), mc2::fmt::as_u32((unsigned)State().byKey.size()), mc2::fmt::as_u32((unsigned)State().keyByLegacyAlias.size()));
             fflush(stdout);
         }
     }

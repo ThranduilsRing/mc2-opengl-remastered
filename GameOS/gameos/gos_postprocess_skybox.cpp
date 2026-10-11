@@ -1,6 +1,7 @@
 // gosPostProcess: skybox and HDRI skybox rendering.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 void gosPostProcess::renderSkybox(float sunDirX, float sunDirY, float sunDirZ)
@@ -413,11 +414,7 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
             float wd[3] = { camFwd[0], camFwd[1], camFwd[2] };
             float len = std::sqrt(wd[0]*wd[0] + wd[1]*wd[1] + wd[2]*wd[2]);
             if (len > 0.0f) { wd[0]/=len; wd[1]/=len; wd[2]/=len; }
-            std::fprintf(stderr,
-                "[HDRI_SKY framefix] uv_debug center_worldDir=(%.3f,%.3f,%.3f) "
-                "tHX=%.4f tHY=%.4f bakedSunValid=%d bakedSunAz=%.4f skyYaw=%.4f\n",
-                wd[0], wd[1], wd[2], tHX, tHY, hdriBakedSunValid_ ? 1 : 0,
-                hdriBakedSunAz_, skyYaw);
+            mc2::fmt::print_err("[HDRI_SKY framefix] uv_debug center_worldDir=({:.3f},{:.3f},{:.3f}) tHX={:.4f} tHY={:.4f} bakedSunValid={:d} bakedSunAz={:.4f} skyYaw={:.4f}\n", wd[0], wd[1], wd[2], tHX, tHY, mc2::fmt::as_i32(hdriBakedSunValid_ ? 1 : 0), hdriBakedSunAz_, skyYaw);
             std::fflush(stderr);
         }
     }
@@ -592,11 +589,7 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
             float wd[3] = { wf[0]-wn[0], wf[1]-wn[1], wf[2]-wn[2] };
             float len = std::sqrt(wd[0]*wd[0] + wd[1]*wd[1] + wd[2]*wd[2]);
             if (len > 0.0f) { wd[0]/=len; wd[1]/=len; wd[2]/=len; }
-            std::fprintf(stderr,
-                "[HDRI_SKY invVP] uv_debug center_worldDir=(%.3f,%.3f,%.3f) "
-                "(Z-up: z=elevation) bakedSunValid=%d bakedSunAz=%.4f skyYaw=%.4f\n",
-                wd[0], wd[1], wd[2], hdriBakedSunValid_ ? 1 : 0,
-                hdriBakedSunAz_, skyYaw);
+            mc2::fmt::print_err("[HDRI_SKY invVP] uv_debug center_worldDir=({:.3f},{:.3f},{:.3f}) (Z-up: z=elevation) bakedSunValid={:d} bakedSunAz={:.4f} skyYaw={:.4f}\n", wd[0], wd[1], wd[2], mc2::fmt::as_i32(hdriBakedSunValid_ ? 1 : 0), hdriBakedSunAz_, skyYaw);
             std::fflush(stderr);
         }
     }

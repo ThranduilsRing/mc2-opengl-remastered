@@ -139,7 +139,7 @@ void emitWindow()
         }
         if (s_dropped)
             off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " dropped={:d}", mc2::fmt::as_u32(s_dropped));
-        std::printf("%s\n", line);
+        mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
         std::fflush(stdout);
     }
 

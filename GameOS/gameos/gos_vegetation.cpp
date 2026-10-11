@@ -26,6 +26,7 @@
 #include <cstring>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // File-local state
@@ -509,10 +510,6 @@ void GosVegetation::emitSummary() {
     if (!isEnabled()) return;
     if (s_summaryEmitted) return;     // guard: emit exactly once per process
     s_summaryEmitted = true;
-    fprintf(stderr,
-        "VEG_SUMMARY instance_count=%u draw_calls=%d flush_reason=%s\n",
-        s_peakInstanceCount,
-        s_sessionDrawCalls,
-        s_flushReason);
+    mc2::fmt::print_err("VEG_SUMMARY instance_count={:d} draw_calls={:d} flush_reason={}\n", mc2::fmt::as_u32(s_peakInstanceCount), mc2::fmt::as_i32(s_sessionDrawCalls), mc2::fmt::safe(s_flushReason));
     fflush(stderr);
 }

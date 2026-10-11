@@ -66,7 +66,7 @@ void emitLine(unsigned long frameNo)
         off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}{{fbo={:d} vp={:d}x{:d} dt={:d} dm={:d} bl={:d} cull={:d} draws={:d} inst={:d}}}", mc2::fmt::safe(kPassKey[p]), mc2::fmt::as_u32(r.fbo), mc2::fmt::as_i32(r.viewport[2]), mc2::fmt::as_i32(r.viewport[3]), mc2::fmt::as_i32(r.depthTest ? 1 : 0), mc2::fmt::as_i32(r.depthMask ? 1 : 0), mc2::fmt::as_i32(r.blend ? 1 : 0), mc2::fmt::as_i32(r.cull ? 1 : 0), mc2::fmt::as_u32(r.drawCount), mc2::fmt::as_u32(r.instanceCount));
         if (off >= (int)sizeof(line) - 96) break;   // guard truncation
     }
-    std::printf("%s\n", line);
+    mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
     std::fflush(stdout);
 }
 

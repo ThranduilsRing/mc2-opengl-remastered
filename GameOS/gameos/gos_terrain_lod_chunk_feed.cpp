@@ -1,6 +1,7 @@
 // gos_terrain_lod_chunk: VK tier-1 terrain frame feed (mc2_terrain_tier1_get_frame_feed) and its version counters.
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
+#include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
 // ---------------------------------------------------------------------------
@@ -389,26 +390,12 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             unsigned displacedPatches = 0;
             for (uint32_t i = 0; i < out->patchCount; ++i)
                 if (out->patches[i].visualMode == 2) ++displacedPatches;
-            std::fprintf(f, "{\"island\":\"terrain\",\"patchCount\":%u,\"mapSide\":%d,"
-                "\"halfMap\":%.6f,\"heightVersion\":%llu,\"cementVersion\":%llu,"
-                "\"useCement\":%d,\"lightingEnabled\":%d,\"shadowsEnabled\":%d,"
-                "\"dynShadowsEnabled\":%d,\"detailEnabled\":%d,\"lodFadeEnabled\":%d,"
-                "\"visualSide\":%d,\"visualDisplaceFar\":%.6f,\"displacedPatches\":%u,"
-                "\"patches\":[",
-                out->patchCount, out->mapSide, out->halfMap,
-                (unsigned long long)out->heightVersion, (unsigned long long)out->cementVersion,
-                out->useCement, out->lightingEnabled, out->shadowsEnabled,
-                out->dynShadowsEnabled, out->detailEnabled, out->lodFadeEnabled,
-                out->visualSide, out->visualDisplaceFar, displacedPatches);
+            mc2::fmt::print(f, "{{\"island\":\"terrain\",\"patchCount\":{:d},\"mapSide\":{:d},\"halfMap\":{:.6f},\"heightVersion\":{:d},\"cementVersion\":{:d},\"useCement\":{:d},\"lightingEnabled\":{:d},\"shadowsEnabled\":{:d},\"dynShadowsEnabled\":{:d},\"detailEnabled\":{:d},\"lodFadeEnabled\":{:d},\"visualSide\":{:d},\"visualDisplaceFar\":{:.6f},\"displacedPatches\":{:d},\"patches\":[", mc2::fmt::as_u32(out->patchCount), mc2::fmt::as_i32(out->mapSide), out->halfMap, mc2::fmt::as_u64((unsigned long long)out->heightVersion), mc2::fmt::as_u64((unsigned long long)out->cementVersion), mc2::fmt::as_i32(out->useCement), mc2::fmt::as_i32(out->lightingEnabled), mc2::fmt::as_i32(out->shadowsEnabled), mc2::fmt::as_i32(out->dynShadowsEnabled), mc2::fmt::as_i32(out->detailEnabled), mc2::fmt::as_i32(out->lodFadeEnabled), mc2::fmt::as_i32(out->visualSide), out->visualDisplaceFar, mc2::fmt::as_u32(displacedPatches));
             for (uint32_t i = 0; i < out->patchCount; ++i) {
                 const Mc2TerrainTier1Patch& p = out->patches[i];
-                std::fprintf(f, "%s{\"qcX\":%d,\"qcY\":%d,\"blockOriginX\":%d,"
-                    "\"blockOriginY\":%d,\"lodStep\":%d,\"skirtDepth\":%.6f,"
-                    "\"skirtEdgeMask\":%u}",
-                    i ? "," : "", p.quadCountX, p.quadCountY, p.blockOriginX,
-                    p.blockOriginY, p.lodStep, p.skirtDepth, p.skirtEdgeMask);
+                mc2::fmt::print(f, "{}{{\"qcX\":{:d},\"qcY\":{:d},\"blockOriginX\":{:d},\"blockOriginY\":{:d},\"lodStep\":{:d},\"skirtDepth\":{:.6f},\"skirtEdgeMask\":{:d}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_i32(p.quadCountX), mc2::fmt::as_i32(p.quadCountY), mc2::fmt::as_i32(p.blockOriginX), mc2::fmt::as_i32(p.blockOriginY), mc2::fmt::as_i32(p.lodStep), p.skirtDepth, mc2::fmt::as_u32(p.skirtEdgeMask));
             }
-            std::fprintf(f, "]}\n");
+            mc2::fmt::print(f, "]}}\n");
             std::fclose(f);
         }
         mc2vkfeeddump::latch("terrain") = true;

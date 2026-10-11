@@ -217,8 +217,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
         // column-major mat4, no row_major qualifier; raw memcpy of the GL arrays).
         auto pm = [](const char* tag, const float* m, int n) {
             std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] %s = [", tag);
-            for (int i = 0; i < n; ++i) std::fprintf(stderr, "%s%.6g", i ? "," : "", m[i]);
-            std::fprintf(stderr, "]\n");
+            for (int i = 0; i < n; ++i) mc2::fmt::print_err("{}{:.6g}", mc2::fmt::safe(i ? "," : ""), m[i]);
+            mc2::fmt::print_err("]\n");
         };
         std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled=%d csmCount=%d enableDynShadows=%d csmDepthSpan=%.6g csmFullMapTexelWorld=%.6g csmCascadeTexelWorld=%.6g,%.6g,%.6g feed.csmArraySize=%d feed.csmFullMapSize=%d feed.dynShadowSize=%d\n",
                      (int)u.csmEnabled, (int)u.csmCount, (int)u.enableDynShadows, u.csmDepthSpan,

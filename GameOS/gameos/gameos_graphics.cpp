@@ -654,9 +654,9 @@ void gosRenderer::init() {
     }
 
     if (!overlayProg_)
-        fprintf(stderr, "[OverlayBatch] Failed to compile terrain_overlay shader\n");
+        mc2::fmt::print_err("[OverlayBatch] Failed to compile terrain_overlay shader\n");
     if (!decalProg_)
-        fprintf(stderr, "[OverlayBatch] Failed to compile decal shader\n");
+        mc2::fmt::print_err("[OverlayBatch] Failed to compile decal shader\n");
 
     // Cache uniform locations for both shaders
     auto cacheOverlayLocs = [](glsl_program* prog, OverlayUniformLocs_& locs) {

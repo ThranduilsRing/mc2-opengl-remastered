@@ -1,6 +1,7 @@
 // gos_terrain_lod_chunk: heightfield, visual-damp, control-map, overlay/shoreline sidecar and cement-word uploads, and the terrain light/ambient accessors.
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -12,7 +13,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 {
     if (!s_heightSsbo.created())
     {
-        fprintf(stderr, "[TerrainLodChunk] UploadHeightFull called before Init\n");
+        mc2::fmt::print_err("[TerrainLodChunk] UploadHeightFull called before Init\n");
         fflush(stderr);
         return;
     }
@@ -50,9 +51,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     s_heightSsbo.unbind();
     if (firstSample != elevations[0])
     {
-        fprintf(stderr,
-            "[TerrainLodChunk] readback mismatch: wrote %.6f, got %.6f\n",
-            elevations[0], firstSample);
+        mc2::fmt::print_err("[TerrainLodChunk] readback mismatch: wrote {:.6f}, got {:.6f}\n", elevations[0], firstSample);
         fflush(stderr);
     }
 #endif

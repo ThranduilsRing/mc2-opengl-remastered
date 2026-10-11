@@ -1,6 +1,7 @@
 // GpuMechBatcher: the VK island feed accessors, the render-snapshot compare and the extern C tuning / debug setters and getters.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 #ifdef MC2_VULKAN_ISLAND
@@ -117,9 +118,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.
     if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("mech")) {
         if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
-            std::fprintf(f, "{\"island\":\"mech\",\"instanceCount\":%u,\"boneCount\":%u,"
-                "\"runCount\":%u,\"objectDepthBias\":%.6f,\"instances\":[",
-                out->instanceCount, out->boneCount, out->runCount, out->objectDepthBias);
+            mc2::fmt::print(f, "{{\"island\":\"mech\",\"instanceCount\":{:d},\"boneCount\":{:d},\"runCount\":{:d},\"objectDepthBias\":{:.6f},\"instances\":[", mc2::fmt::as_u32(out->instanceCount), mc2::fmt::as_u32(out->boneCount), mc2::fmt::as_u32(out->runCount), out->objectDepthBias);
             const GpuMechInstance* insts =
                 reinterpret_cast<const GpuMechInstance*>(out->instances64);
             const GpuMechBone* bones =
@@ -131,13 +130,9 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
                     const GpuMechBone& b0 = bones[mi.baseBoneOffset];
                     rootX = b0.row0[3]; rootY = b0.row1[3]; rootZ = b0.row2[3];
                 }
-                std::fprintf(f, "%s{\"typeLodRecordIndex\":%u,\"baseBoneOffset\":%u,"
-                    "\"objectIdRaw\":%u,\"materialIdx\":%u,\"rootBoneX\":%.4f,"
-                    "\"rootBoneY\":%.4f,\"rootBoneZ\":%.4f}",
-                    i ? "," : "", mi.typeLodRecordIndex, mi.baseBoneOffset,
-                    mi.objectIdRaw, mi.materialIdx, rootX, rootY, rootZ);
+                mc2::fmt::print(f, "{}{{\"typeLodRecordIndex\":{:d},\"baseBoneOffset\":{:d},\"objectIdRaw\":{:d},\"materialIdx\":{:d},\"rootBoneX\":{:.4f},\"rootBoneY\":{:.4f},\"rootBoneZ\":{:.4f}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_u32(mi.typeLodRecordIndex), mc2::fmt::as_u32(mi.baseBoneOffset), mc2::fmt::as_u32(mi.objectIdRaw), mc2::fmt::as_u32(mi.materialIdx), rootX, rootY, rootZ);
             }
-            std::fprintf(f, "]}\n");
+            mc2::fmt::print(f, "]}}\n");
             std::fclose(f);
         }
         mc2vkfeeddump::latch("mech") = true;

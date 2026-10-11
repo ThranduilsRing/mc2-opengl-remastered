@@ -9,12 +9,11 @@ namespace gos_static_prop_batcher_detail {
 
 void loadProgramsIfNeeded() {
     if (s_programLoadTried) return;
-    std::fprintf(stderr, "[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER\n");
+    mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER\n");
     const char* glv   = (const char*)glGetString(GL_VERSION);
     const char* glslv = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
-    std::fprintf(stderr, "[GPUPROPS-DIAG] GL_VERSION=%s\n", glv ? glv : "(null)");
-    std::fprintf(stderr, "[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION=%s\n",
-                 glslv ? glslv : "(null)");
+    mc2::fmt::print_err("[GPUPROPS-DIAG] GL_VERSION={}\n", mc2::fmt::safe(glv ? glv : "(null)"));
+    mc2::fmt::print_err("[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION={}\n", mc2::fmt::safe(glslv ? glslv : "(null)"));
     s_programLoadTried = true;
 
     // Plan v3.8 Step 7.2 — env decision + extension probe MUST land between
@@ -32,10 +31,7 @@ void loadProgramsIfNeeded() {
     if (s_coalesceForceDisarm == CoalesceForceDisarm::NoExtension) {
         s_hasShaderDrawParams = false;
     }
-    std::fprintf(stderr, "[GPUPROPS-DIAG] coalesceEnvDisabled=%d hasShaderDrawParams=%d "
-                 "forceDisarm=%d\n",
-                 (int)s_coalesceEnvDisabled, (int)s_hasShaderDrawParams,
-                 (int)s_coalesceForceDisarm);
+    mc2::fmt::print_err("[GPUPROPS-DIAG] coalesceEnvDisabled={:d} hasShaderDrawParams={:d} forceDisarm={:d}\n", mc2::fmt::as_i32((int)s_coalesceEnvDisabled), mc2::fmt::as_i32((int)s_hasShaderDrawParams), mc2::fmt::as_i32((int)s_coalesceForceDisarm));
 
     // makeProgram() is the project's shader loader (see gos_postprocess.cpp
     // for existing usage). Pass the "#version 430\n" prefix explicitly — the
@@ -125,11 +121,7 @@ void loadProgramsIfNeeded() {
     s_loc_u_parityWrite        = glGetUniformLocation(s_staticPropProgram, "u_parityWrite");
     s_loc_u_parityVertsPerType = glGetUniformLocation(s_staticPropProgram, "u_parityVertsPerType");
     s_loc_u_parityBaseVertex   = glGetUniformLocation(s_staticPropProgram, "u_parityBaseVertex");
-    std::fprintf(stderr, "[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog=%u "
-                 "loc_parityWrite=%d loc_parityVertsPerType=%d loc_parityBaseVertex=%d\n",
-                 s_staticPropProgram,
-                 s_loc_u_parityWrite, s_loc_u_parityVertsPerType,
-                 s_loc_u_parityBaseVertex);
+    mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog={:d} loc_parityWrite={:d} loc_parityVertsPerType={:d} loc_parityBaseVertex={:d}\n", mc2::fmt::as_u32(s_staticPropProgram), mc2::fmt::as_i32(s_loc_u_parityWrite), mc2::fmt::as_i32(s_loc_u_parityVertsPerType), mc2::fmt::as_i32(s_loc_u_parityBaseVertex));
 
     // Plan v3.8 Step 7.4 — populate s_locsLegacy. GLSL string literals are
     // mixed-prefix (terrainMVP has NO u_ prefix; the rest do); reproduce
@@ -288,10 +280,7 @@ void loadProgramsIfNeeded() {
                 glUniform1i(s_locsCoalesce.ormTexArr, static_cast<GLint>(kOrmTexUnit));
                 glUseProgram(0);
             }
-            std::fprintf(stderr, "[GPUPROPS-DIAG] static_prop_coalesce program=%u "
-                         "loc_drawIDBase=%d loc_texArr=%d\n",
-                         s_staticPropProgramCoalesce,
-                         s_locsCoalesce.drawIDBase, s_locsCoalesce.texArr);
+            mc2::fmt::print_err("[GPUPROPS-DIAG] static_prop_coalesce program={:d} loc_drawIDBase={:d} loc_texArr={:d}\n", mc2::fmt::as_u32(s_staticPropProgramCoalesce), mc2::fmt::as_i32(s_locsCoalesce.drawIDBase), mc2::fmt::as_i32(s_locsCoalesce.texArr));
 
             // v1: coalesce path is active — overwrite PipelineRegistry with
             // the coalesce program so applyPipeline() binds the right handle.
@@ -384,14 +373,7 @@ void loadProgramsIfNeeded() {
                     glUseProgram(0);
                 }
             }
-            std::fprintf(stderr, "[GPUPROPS-DIAG] static_prop_depth program=%u "
-                         "variant=%s loc_drawIDBase=%d loc_materialGpuSample=%d "
-                         "loc_debugAddrMode=%d\n",
-                         s_staticPropDepthProgram,
-                         depthUsesCoalesce ? "coalesce" : "legacy",
-                         s_locsDepthCoalesce.drawIDBase,
-                         s_locsDepthCoalesce.materialGpuSample,
-                         s_locsDepthCoalesce.debugAddrMode);
+            mc2::fmt::print_err("[GPUPROPS-DIAG] static_prop_depth program={:d} variant={} loc_drawIDBase={:d} loc_materialGpuSample={:d} loc_debugAddrMode={:d}\n", mc2::fmt::as_u32(s_staticPropDepthProgram), mc2::fmt::safe(depthUsesCoalesce ? "coalesce" : "legacy"), mc2::fmt::as_i32(s_locsDepthCoalesce.drawIDBase), mc2::fmt::as_i32(s_locsDepthCoalesce.materialGpuSample), mc2::fmt::as_i32(s_locsDepthCoalesce.debugAddrMode));
         } else {
             std::fprintf(stderr,
                 "[GPUPROPS] static_prop_depth program failed to compile/link — "
