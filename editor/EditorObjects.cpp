@@ -42,6 +42,17 @@
 
 #include "PilotProfilePreserve.h"
 
+
+#include "../ARM/Microsoft.Xna.Arm.h"
+
+#include "EditorResourceFallback.h"
+#include "Gates/gate.h"
+using namespace Microsoft::Xna::Arm;
+extern IProviderEngine* armProvider;
+
+
+extern HSTRRES gameResourceHandle;
+
 // PILOT-PROFILE-PRESERVE-1: loud, unconditional data-loss warning (rare;
 // fires only when a save would blank a [WarriorN] Profile). Same log file
 // as the MC2_EDITOR_TRACE probes, but NOT gated -- data loss must be seen.
@@ -59,8 +70,6 @@ static void PilotDataLossWarn( const char* msg )
 	}
 }
 
-#include "../ARM/Microsoft.Xna.Arm.h"
-
 // EDITOR-STATIC-DEDRAW: free an editor object's appearance, invalidating its static-prop
 // RENDER recipe FIRST. Appearance::destroy() is virtual -> Bldg/TreeAppearance::destroy()
 // call invalidateStaticRegistration() (clears the GpuStaticPropRegistry RecipeRange). A
@@ -77,13 +86,7 @@ static void EditorFreeObjectAppearance( ObjectAppearance*& app )
 		app = nullptr;
 	}
 }
-#include "EditorResourceFallback.h"
-#include "Gates/gate.h"
-using namespace Microsoft::Xna::Arm;
-extern IProviderEngine* armProvider;
 
-
-extern HSTRRES gameResourceHandle;
 
 Pilot::PilotInfo Pilot::s_BadPilots[MAX_PILOT] = { nullptr };
 Pilot::PilotInfo Pilot::s_GoodPilots[MAX_PILOT] = { nullptr };
