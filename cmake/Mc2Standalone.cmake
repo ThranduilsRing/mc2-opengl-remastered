@@ -27,6 +27,43 @@ if(MSVC AND MC2_CXX_STANDARD EQUAL 23)
     set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++23preview")
 endif()
 
+# MC2_ASAN: build the standalone project under MSVC AddressSanitizer (the doctest tier is the one that matters: the ownership step
+# runs it natively and under ASan for every batch). Mirrors the root project's option: /fsanitize=address, no /RTC, no incremental
+# link; the runtime DLL is copied next to an executable by mc2_asan_runtime(target). ASAN_OPTIONS=detect_leaks=0 is the usual run
+# setting (the probe in mclib/alloc_probe.h is the leak oracle, ASan the bounds and lifetime oracle).
+option(MC2_ASAN "Build with MSVC AddressSanitizer" OFF)
+if(MC2_ASAN)
+    if(NOT MSVC)
+        message(FATAL_ERROR "MC2_ASAN is only wired for MSVC here; pass -fsanitize=address on other toolchains")
+    endif()
+    message(STATUS "MC2_ASAN=ON: /fsanitize=address")
+    add_compile_definitions(MC2_ASAN=1)
+    add_compile_options(/fsanitize=address)
+    foreach(_cfg CXX_FLAGS_DEBUG C_FLAGS_DEBUG CXX_FLAGS_RELWITHDEBINFO C_FLAGS_RELWITHDEBINFO)
+        string(REGEX REPLACE "/RTC[1csu]+" "" CMAKE_${_cfg} "${CMAKE_${_cfg}}")
+    endforeach()
+    foreach(_cfg "" "_DEBUG" "_RELWITHDEBINFO" "_RELEASE" "_MINSIZEREL")
+        string(REPLACE "/INCREMENTAL" "/INCREMENTAL:NO" CMAKE_EXE_LINKER_FLAGS${_cfg} "${CMAKE_EXE_LINKER_FLAGS${_cfg}}")
+    endforeach()
+    add_link_options(/INCREMENTAL:NO)
+endif()
+
+# Copies clang_rt.asan_dynamic-x86_64.dll next to `target` after it links, when MC2_ASAN is ON (a no-op otherwise), so the executable
+# runs from its build directory without PATH surgery. The DLL ships beside cl.exe in current toolsets.
+function(mc2_asan_runtime target)
+    if(NOT MC2_ASAN)
+        return()
+    endif()
+    get_filename_component(_msvc_bindir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    set(_dll "${_msvc_bindir}/clang_rt.asan_dynamic-x86_64.dll")
+    if(NOT EXISTS "${_dll}")
+        message(FATAL_ERROR "MC2_ASAN=ON but ${_dll} is missing")
+    endif()
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_dll}" "$<TARGET_FILE_DIR:${target}>"
+        COMMENT "MC2_ASAN: ASan runtime beside ${target}")
+endfunction()
+
 # mc2fmt.h (GameOS/include, header-only) is what the printf-to-format conversions of mclib/ and code/ sources include; every standalone project that
 # compiles an engine source needs it on its include path, not only the ones that already pull in gameos.hpp.
 get_filename_component(_mc2_standalone_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)

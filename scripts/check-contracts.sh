@@ -1343,6 +1343,12 @@ run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest
 # The save/load round trip (tools/saveload_roundtrip.py run) launches the game; this row proves its analysis. Live result at 2026-10-11: FAILS (see lane1-state).
 run_check "saveload_roundtrip"          "py -3 tools/saveload_roundtrip.py selftest"
 run_check "save_inspect"                "py -3 tools/save_inspect.py selftest"
+# STEP-4 B0 (2026-10-11): the ownership ledger (type -> allocation sites, typed free sites, owner) and the pointer-order hazard list, both
+# ratchets over HEAD; a batch that migrates a type rewrites the baseline with its code (tests/unit/*_baseline.json).
+run_check "own_inventory"               "py -3 tools/own_inventory.py --check"
+run_check "own_inventory_selftest"      "py -3 tools/own_inventory.py --selftest"
+run_check "pointer_order_scan"          "py -3 tools/pointer_order_scan.py --check"
+run_check "pointer_order_scan_selftest" "py -3 tools/pointer_order_scan.py --selftest"
 run_check "savegame_backup"             "py -3 tools/savegame_backup.py selftest"
 
 # CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it

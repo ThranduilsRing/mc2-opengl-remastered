@@ -25,6 +25,7 @@ set(SOURCES ${SOURCES}
     routines.cpp
     appearance_rng.cpp
     sim_trace.cpp
+    alloc_probe.cpp
     scale.cpp
     sortlist.cpp
     tgainfo.cpp

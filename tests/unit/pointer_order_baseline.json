@@ -1,0 +1,53 @@
+{
+ "about": "tools/pointer_order_scan.py --write-baseline; per file: sites that order or hash by pointer value",
+ "dirs": [
+  "code",
+  "mclib",
+  "gui",
+  "GameOS",
+  "RenderCore",
+  "RenderWorld",
+  "GameAdapters",
+  "GuiRuntime",
+  "editor",
+  "Gates"
+ ],
+ "files": {
+  "GameOS/gameos/gos_mech_batcher.cpp": {
+   "pointer_key": 1
+  },
+  "GameOS/gameos/gos_mech_batcher_internal.h": {
+   "pointer_key": 2
+  },
+  "GameOS/gameos/gos_static_prop_batcher_internal.h": {
+   "pointer_key": 2
+  },
+  "GameOS/gameos/gos_static_prop_batcher_program.cpp": {
+   "pointer_key": 1
+  },
+  "GameOS/gameos/gos_static_prop_batcher_state.cpp": {
+   "pointer_key": 1
+  },
+  "GameOS/gameos/gos_static_prop_batcher_submit.cpp": {
+   "pointer_key": 1
+  },
+  "GameOS/gameos/gos_terrain_lighting.cpp": {
+   "pointer_key": 1
+  },
+  "mclib/assimp_importer.cpp": {
+   "pointer_key": 1
+  },
+  "mclib/bdactor_diag.cpp": {
+   "pointer_key": 1
+  },
+  "mclib/mech3d_render.cpp": {
+   "pointer_key": 1
+  },
+  "mclib/mech3d_update.cpp": {
+   "pointer_key": 1
+  },
+  "mclib/mlr/mlrlightmap.cpp": {
+   "pointer_to_int": 1
+  }
+ }
+}

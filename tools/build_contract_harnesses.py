@@ -18,6 +18,7 @@ Usage:
   py -3 tools/build_contract_harnesses.py --config RelWithDebInfo
   py -3 tools/build_contract_harnesses.py --unit-only --run   # doctest unit tier only
   py -3 tools/build_contract_harnesses.py --run --unit        # both tiers
+  py -3 tools/build_contract_harnesses.py --unit-only --run --asan   # the doctest tier under MSVC AddressSanitizer (build64-tests-asan)
 
 Exit 0 iff every selected harness built (and, with --run, the suite passed).
 CLI-only by design (writes build dirs / runs slow builds) — never wired into MCP.
@@ -75,11 +76,15 @@ def build_one(name, config):
 # never pollutes REGISTERED_HARNESSES (which would report MISSING/FAIL for it by
 # construction). Exit code is authoritative: doctest returns non-zero on any
 # failed assertion.
-def build_and_run_unit_tests(config, run):
+def build_and_run_unit_tests(config, run, asan=False):
+    """`asan` builds and runs the tier in build64-tests-asan under MSVC AddressSanitizer (cmake/Mc2Standalone.cmake MC2_ASAN); the
+    result line carries the wall time of build and run so the cost stays visible."""
+    import time
+    t0 = time.time()
     src = os.path.join(REPO_ROOT, "tests", "unit")
-    bdir = os.path.join(REPO_ROOT, "build64-tests")
+    bdir = os.path.join(REPO_ROOT, "build64-tests-asan" if asan else "build64-tests")
     cm = cmake_exe()
-    cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64"],
+    cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64", "-DMC2_ASAN=" + ("ON" if asan else "OFF")],
                          capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
     if cfg.returncode != 0:
         return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
@@ -90,12 +95,17 @@ def build_and_run_unit_tests(config, run):
         tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
         return False, "build failed:\n" + "\n".join(tail)
     if not run:
-        return True, "built (not run; pass --run to execute)"
+        return True, f"built (not run; pass --run to execute) in {time.time() - t0:.0f}s"
     exe = os.path.join(bdir, config, "mc2_tests" + (".exe" if os.name == "nt" else ""))
     if not os.path.isfile(exe):
         exe = os.path.join(bdir, "mc2_tests" + (".exe" if os.name == "nt" else ""))
-    rc = subprocess.run([exe], cwd=REPO_ROOT, **console_child.child_kwargs()).returncode
-    return (rc == 0), ("doctest passed" if rc == 0 else f"doctest failed (rc={rc})")
+    env = dict(os.environ)
+    if asan:
+        # Leak detection is the probe's job (mclib/alloc_probe.h); ASan reports bounds and lifetime errors and keeps going.
+        env.setdefault("ASAN_OPTIONS", "detect_leaks=0:halt_on_error=0:print_stacktrace=1")
+    rc = subprocess.run([exe], cwd=REPO_ROOT, env=env, **console_child.child_kwargs()).returncode
+    tag = "asan " if asan else ""
+    return (rc == 0), (f"{tag}doctest passed" if rc == 0 else f"{tag}doctest failed (rc={rc})") + f" in {time.time() - t0:.0f}s"
 
 
 def main():
@@ -109,11 +119,13 @@ def main():
                          "with --run, execute it too")
     ap.add_argument("--unit-only", action="store_true",
                     help="build/run ONLY the doctest unit tier, skip the C++ harnesses")
+    ap.add_argument("--asan", action="store_true",
+                    help="the doctest tier under MSVC AddressSanitizer (build64-tests-asan); implies --unit-only")
     args = ap.parse_args()
 
     # --unit-only: the cheap doctest tier by itself (MINIMAL-VIABLE-HARNESS-*).
-    if args.unit_only:
-        ok, info = build_and_run_unit_tests(args.config, args.run)
+    if args.unit_only or args.asan:
+        ok, info = build_and_run_unit_tests(args.config, args.run, args.asan)
         print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests (doctest unit tier): {info}")
         return 0 if ok else 1
 
