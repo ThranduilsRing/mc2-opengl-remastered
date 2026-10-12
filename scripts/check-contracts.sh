@@ -20,7 +20,7 @@
 #   * Idempotent and read-only
 #
 # Excluded (too heavy for this aggregator):
-#   check-debug-state-json.py -- requires a live engine JSON snapshot
+#   (none since 2026-10-12; the live-engine JSON checks moved to the mc2-render-state MCP)
 #
 # RED-ROWS-CLOSE-2 (2026-07-31): check-shader-schema.sh USED to be excluded here,
 # by this comment, on the stated grounds that it "requires glslangValidator +

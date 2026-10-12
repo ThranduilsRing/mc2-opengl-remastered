@@ -4,7 +4,6 @@
  "stem": "vulkan_terrain_island",
  "scripts": [
   "scripts/check-render-contract-gbuffer1.allowlist",
-  "scripts/check_vk_nointerop_log.py",
   "scripts/tests/test_gate_codemod.py",
   "tools/gate_codemod.py"
  ],

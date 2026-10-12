@@ -12,7 +12,6 @@
  "scripts": [
   "scripts/check-gate-default-agreement.py",
   "scripts/check-mover-registry-coherence.sh",
-  "scripts/check-order-liveness.py",
   "scripts/check-tgl-load-callers.sh",
   "scripts/gate_default_classifier.py",
   "scripts/run_smoke.py",

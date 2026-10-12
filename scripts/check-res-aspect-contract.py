@@ -43,7 +43,7 @@ Usage:
   py -3 scripts/check-res-aspect-contract.py --self-test
   py -3 scripts/check-res-aspect-contract.py --update-baseline
 
-Exit: 0 pass, 1 violation, 2 harness error (check-combat-soak.py convention).
+Exit: 0 pass, 1 violation, 2 harness error (house convention).
 """
 
 from __future__ import annotations

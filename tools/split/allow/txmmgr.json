@@ -3,7 +3,6 @@
  "src": "mclib/txmmgr.cpp",
  "stem": "txmmgr",
  "scripts": [
-  "scripts/check-icon-atlases.py",
   "scripts/check-light-loop-numlights-bound.py",
   "scripts/check-light-row-freshness.py",
   "scripts/check-lighting-divergence.py",

@@ -9,7 +9,6 @@
   "scripts/check-res-aspect-contract.py",
   "scripts/check-terrain-daylight-constants.py",
   "scripts/counter-honesty-allowlist.txt",
-  "scripts/predict_cement_adopt.py",
   "tests/unit/test_projection.cpp",
   "tests/unit/test_xform_convention.cpp",
   "tests/visual/bookmarks/mc2_05_building_faces.json",

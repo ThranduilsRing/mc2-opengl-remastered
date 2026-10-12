@@ -1,7 +1,7 @@
 """scripts/shader_common.py — shared shader source construction.
 
-Extracted from validate_shaders.py. Both validate_shaders.py and
-tools/shader_reflect/reflect.py import from here so both gates see
+Shared by tools/check_vk_shaders.py and tools/shader_reflect/reflect.py
+(validate_shaders.py, the original owner, was retired 2026-10-12, cull wave 1) so both gates see
 the exact same source string the engine compiles.
 
 Do NOT import from this module outside scripts/ and tools/shader_reflect/.

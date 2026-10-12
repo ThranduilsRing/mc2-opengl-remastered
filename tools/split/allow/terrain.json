@@ -6,7 +6,6 @@
   "scripts/check-beauty-sidecars.py",
   "scripts/counter-honesty-allowlist.txt",
   "scripts/mcp/mc2_render_state_server.py",
-  "scripts/terrain_height_audit.py",
   "scripts/tests/test_fingerprint.py",
   "scripts/tests/test_gate_codemod.py",
   "tests/telemetry/tag-registry.json",

@@ -22,16 +22,16 @@ Assertions:
 
 KNOWN_UNCOVERED today: GroundVehicle::fireWeapon (code/gvehicl_weapons.cpp) — zero
 fireGateTrace instrumentation at landing; MP fire dead-ends there surface
-only via docs/ai-order-triage.md until an instrumentation slice lands.
+only by hand until an instrumentation slice lands.
 
 Runtime siblings: MC2_FIRE_DECISION_TRACE events, MC2_FIXTURE_ORDER_LIVENESS
-fixture, scripts/check-order-liveness.py.
+fixture (its nightly consumer check-order-liveness.py was retired 2026-10-12, cull wave 1).
 
 Usage:
   py -3 scripts/check-order-gate-coverage.py [--quiet]
   py -3 scripts/check-order-gate-coverage.py --self-test
 
-Exit: 0 pass, 1 violation, 2 harness error (check-combat-soak.py convention).
+Exit: 0 pass, 1 violation, 2 harness error (house convention).
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ KNOWN_UNCOVERED = [
         r"long\s+GroundVehicle\s*::\s*fireWeapon\s*\(",
         "GroundVehicle::fireWeapon — zero instrumentation at META-FIX-BATCH-2 "
         "landing; MPlayer/vehicle fire dead-ends declared-not-closed "
-        "(docs/ai-order-triage.md range_mp row)",
+        "(range_mp: gate coverage, no instrumentation)",
     ),
 ]
 

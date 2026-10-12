@@ -8,7 +8,7 @@ Default output: `debug_state/latest_render_state.json` (override: `MC2_DEBUG_STA
 Cadence: frame 1, then every 300 frames.
 Optional rolling history: `history_0.json`..`history_7.json` when `MC2_DEBUG_STATE_DUMP_HISTORY=1`.
 
-Validated by `scripts/check-debug-state-json.py`.
+Validated by the `validate_state` tool of the `mc2-render-state` MCP server (the standalone check-debug-state-json.py was retired 2026-10-12, cull wave 1).
 
 ---
 
@@ -159,7 +159,7 @@ One entry per mech instance submitted to the GPU batcher this frame (capped at 3
 - `MC2_DEBUG_STATE_V2` added V2 top-level fields (2026-06-17).
 - `MC2_DEBUG_STATE_V1` was the original schema. Both V1 and V2 are recognized by MCP.
 - Additive change (new field added) → keep current `schema` string; consumers must handle unknown fields gracefully.
-- `check-debug-state-json.py` validates required fields for V1. New fields are optional and ignored by the validator until V2.
+- `validate_state` (mc2-render-state MCP) validates required fields for V1. New fields are optional and ignored by the validator until V2.
 
 ## Out of scope for V1
 

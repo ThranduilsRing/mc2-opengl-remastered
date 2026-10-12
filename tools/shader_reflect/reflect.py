@@ -308,7 +308,7 @@ def compile_to_spv(
 
     spv_path is a temp file the caller must delete. On failure, spv_path is None.
     reflect.py invokes glslangValidator only to obtain SPIR-V for spirv-cross.
-    validate_shaders.py (Tier 1.1) remains the authoritative compile gate.
+    tools/check_vk_shaders.py (row vk_shaders_compile) remains the authoritative compile gate.
     """
     stage = shader_common.STAGE_BY_EXT[shader.suffix]
     try:
