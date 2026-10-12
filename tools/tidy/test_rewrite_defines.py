@@ -105,3 +105,18 @@ def test_a_constant_in_the_arguments_of_a_wrapper_of_a_stringizing_macro_is_refu
     assert s["MAXC"].reasons == ["stringized-by-wrapper-macro"]      # through the wrapper, over two lines
     assert s["MAXD"].reasons == [] and s["MAXE"].reasons == []        # a direct stringizer keeps the raw name; a plain use is a value
     assert rd.stringizing_wrappers({"v.h": rd.cr.strip(files["v.h"]) + (None,)}) == {"VERIFY_BOUNDS"}
+
+
+def test_a_constant_named_in_a_doctest_assertion_is_refused_but_other_uses_stay_eligible():
+    hdr = "#define GADGET_OK 0\n#define GADGET_MISSING 7\n#define GADGET_PLAIN 3\n"
+    tests = {"tests/unit/t.cpp": 'TEST_CASE("t") {\n  REQUIRE(f() == GADGET_OK);\n  CHECK_EQ(g(), GADGET_MISSING);\n  int n = GADGET_PLAIN;\n}\n'}
+    sites, _ = rd.analyse({"a.h": hdr}, test_files=tests)
+    by = {s.name: s.reasons for s in sites}
+    assert by["GADGET_OK"] == ["odr-used-by-doctest"] and by["GADGET_MISSING"] == ["odr-used-by-doctest"] and by["GADGET_PLAIN"] == []
+    sites, _ = rd.analyse({"a.h": hdr})
+    assert all(not s.reasons for s in sites)                    # without test files nothing is known about assertions
+
+
+def test_a_name_in_a_comment_or_string_of_a_test_does_not_count():
+    sites, _ = rd.analyse({"a.h": "#define GADGET_OK 0\n"}, test_files={"t.cpp": 'CHECK(f() == 1); // GADGET_OK\nCHECK(s == "GADGET_OK");\n'})
+    assert not sites[0].reasons
