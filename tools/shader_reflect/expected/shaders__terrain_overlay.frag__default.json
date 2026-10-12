@@ -30,7 +30,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1143"
+          "type": "_1088"
         }
       ],
       "name": "TerrainLightPoolOverlay"
@@ -149,50 +149,43 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_overlayArtFlatExempt",
-          "offset": 284,
-          "type": "float"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
           "name": "u_numPoolLights",
-          "offset": 288,
+          "offset": 284,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_lightPoolSoft",
-          "offset": 292,
+          "offset": 288,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_lightPoolMoverDim",
-          "offset": 296,
+          "offset": 292,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_lightPoolCompress",
-          "offset": 300,
+          "offset": 296,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_lightPoolMoverScale",
-          "offset": 304,
+          "offset": 300,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_lightPoolMoverMax",
-          "offset": 308,
+          "offset": 304,
           "type": "int"
         },
         {
@@ -226,36 +219,29 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_overlayCementShadowMatch",
+          "name": "u_overlayCementAdopt",
           "offset": 344,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_overlayCementAdopt",
+          "name": "u_cementGridSideOv",
           "offset": 348,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_cementGridSideOv",
-          "offset": 352,
-          "type": "int"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
           "name": "u_cementWUPTOv",
-          "offset": 356,
+          "offset": 352,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_cementSeamFixOv",
-          "offset": 360,
+          "offset": 356,
           "type": "int"
         }
       ],

@@ -20,7 +20,7 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
 
 layout(push_constant) uniform OverlayPC {
     vec4  fogColor;        // off 0:  gosRenderer fog_color_ (decal fog mix)
-    float artFlatExempt;   // off 16: u_overlayArtFlatExempt
+    float artFlatExempt;   // off 16: always 0 (stock flat-pad multiply); slot kept for the layout
     float mapHalfExtent;   // off 20
     int   biasLegacy;      // off 24: MC2_OVERLAY_BIAS_LEGACY
     int   cementAdopt;     // off 28: MC2_OVERLAY_CEMENT_ADOPT (default 1)

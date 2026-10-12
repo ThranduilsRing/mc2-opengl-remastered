@@ -1242,9 +1242,6 @@ class gosRenderer {
             // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
             // decal.frag does not declare it -> stays -1 -> skipped).
             GLint missionFlatLight                   = -1;  // vec3
-            // RUNWAY-CLOSE-1: MC2_OVERLAY_ART_FLATLIGHT=0 exempts authored art
-            // from the flat-pad light (A/B arm; default 0.0 = stock multiply).
-            GLint overlayArtFlatExempt               = -1;  // float
             // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (terrain_overlay.vert,
             // declared on BOTH overlayProg_ and decalProg_ — shared VS).
             GLint overlayBiasLegacy                  = -1;  // int
@@ -1261,7 +1258,6 @@ class gosRenderer {
             GLint padGlow                            = -1;  // vec3 (premultiplied)
             GLint padGlowSpill                       = -1;  // float (wu)
             GLint padGlowMapSide                     = -1;  // int (0 = grid absent)
-            GLint overlayCementShadowMatch           = -1;  // OVERLAY-CEMENT-SHADOW-MATCH-1
             GLint overlayCementAdopt                 = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint cementAtlasOv                      = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint cementGridSideOv                   = -1;  // OVERLAY-CEMENT-ADOPT-1

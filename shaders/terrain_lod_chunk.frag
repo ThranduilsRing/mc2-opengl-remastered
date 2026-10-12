@@ -296,29 +296,6 @@ uniform float u_moverContactShadow;
 uniform vec3  u_padGlow;
 uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 128
 
-// RUNWAY-APRON-TONE-2 (MC2_CEMENT_LIT, default 0.0 == stock): how much of the
-// terrain's own lighting cement participates in. Stock forces cement fully
-// flat-lit (normalLight = 1.0), so a flat-lit apron sampled from the cement
-// atlas and a LIT runway drawn from the baked colormap diverge by the whole
-// lighting term -- measured 145..171 vs 65 luminance on mc2_10 @ 204937, which
-// is the "runway is grey here and black there" the user reports. 1.0 = cement
-// obeys the same light as the terrain it sits on.
-uniform float u_cementLit;
-// CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD, default 0 = stock/bit-identical).
-// The MEASURED cure for the dark ring around concrete pads. The one-tile
-// terrainType ramp band has no cement word, so `base` stays the dark baked
-// colormap while the pad interior draws the cement atlas -- an ALBEDO-source
-// discontinuity of 30-58 luma, which no lighting curve can close. When 1, the
-// band borrows the adjacent pad's atlas cell into `base` weighted by sqrt(ramp).
-// sqrt is deliberate: the albedo mix below already multiplies by
-// concreteColorBlend = sqrt(pureConcrete), so sqrt(ramp)*sqrt(ramp) = ramp makes
-// the effective cement fraction EXACTLY LINEAR in the ramp -- the same weight the
-// lighting exemption uses. Albedo and lighting finally agree across the band.
-// Unlike the RUNWAY-EDGE-DILATE-1 block it never sets cementHit, so it adds no
-// new 0.5-contour and therefore no hard step (that snap is what makes
-// MC2_RUNWAY_EDGE_BLEND measure 0.6-10.8% hard-step pixels).
-uniform int u_cementRampWord;
-
 // Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
 // u_padGlowSpill wu of world distance to the nearest cement tile rect (3x3
 // tile neighborhood — spill is clamped < 128 wu = one tile, so ring-1 is
@@ -1119,69 +1096,6 @@ void main() {
         }
     }
 
-    // CEMENT-WORD-RAMP-1: give the terrainType ramp band an ALBEDO source.
-    // Runs on the BARE-TERRAIN tile (no cement word, so `base` is the dark baked
-    // colormap) wherever the vertex-interpolated terrainType is ramping toward
-    // cement. Borrows the cement atlas cell of an orthogonal neighbour that
-    // flagged this side open (cementWord bits 19:16; with MC2_CEMENT_RAMP_WORD
-    // the CPU marks TRANSITION donors too, which is where nearly all pad
-    // perimeter actually lives). Weight is sqrt(ramp) so that, after the
-    // concreteColorBlend = sqrt(pureConcrete) mix downstream, the net cement
-    // fraction is exactly `ramp` -- matching the lighting exemption weight.
-    // Gate OFF => block skipped entirely => byte-identical stock.
-    if (u_cementRampWord != 0 && u_useCement != 0 && !cementBypassDiag && !cementHit) {
-        float wRamp = clamp(smoothstep(2.0, 3.0, v_terrainType), 0.0, 1.0);
-        if (wRamp > 0.001) {
-            vec2 wTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
-            int  wGridSide = u_cementGridSide;
-            if (wGridSide < 1) wGridSide = 1;
-            // Pick the donor whose shared edge is NEAREST -- the pad this band
-            // is ramping toward. Same mirrored bit convention as the dilate block.
-            float wBestProx = -1.0;
-            uint  wBestLayer = 0u;
-            bool  wFound = false;
-            // Donor = nearest orthogonal neighbour carrying ANY valid cement word.
-            // NOTE: deliberately does NOT require the bits 19:16 "open border"
-            // mask that RUNWAY-EDGE-DILATE-1 uses. That mask is only set where a
-            // cement tile abuts BARE terrain, but a TRANSITION tile is itself
-            // cement, so a pad never flags the side facing one as open -- and that
-            // is precisely where most band pixels live. Requiring it left the ring
-            // ~80% intact (measured). wRamp is already the correct spatial
-            // limiter: one tile out it is ~0, so a far donor contributes nothing.
-            for (int s = 0; s < 4; ++s) {
-                int  wnX = ctX, wnY = ctY;
-                float wDist = 1.0;
-                if (s == 0)      { wnX = ctX + 1; wDist = 1.0 - wTileUV.x; }
-                else if (s == 1) { wnX = ctX - 1; wDist = wTileUV.x; }
-                else if (s == 2) { wnY = ctY - 1; wDist = wTileUV.y; }
-                else             { wnY = ctY + 1; wDist = 1.0 - wTileUV.y; }
-                if (wnX < 0 || wnX >= u_mapSide || wnY < 0 || wnY >= u_mapSide) continue;
-                uint wnw = cementWordsF[wnX + wnY * u_mapSide];
-                if ((wnw & 0x80000000u) == 0u) continue;              // not cement
-                float wProx = 1.0 - clamp(wDist, 0.0, 1.0);
-                if (wProx > wBestProx) { wBestProx = wProx; wBestLayer = wnw & 0xFFFFu; wFound = true; }
-            }
-            if (wFound) {
-                int  wCol = int(wBestLayer) % wGridSide;
-                int  wRow = int(wBestLayer) / wGridSide;
-                vec2 wSampleUV = wTileUV;
-                if (u_cementAtlasSeamFix != 0) {
-                    float wCellPx = float(textureSize(u_cementAtlas, 0).x) / float(wGridSide);
-                    float wInset  = 0.5 / max(wCellPx, 1.0);
-                    wSampleUV = clamp(wTileUV, vec2(wInset), vec2(1.0 - wInset));
-                }
-                vec2 wAtlasUV = (vec2(float(wCol), float(wRow)) + wSampleUV) / float(wGridSide);
-                // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light,
-                // same as every other cement sample site.
-                vec3 wCement = texture(u_cementAtlas, wAtlasUV).rgb * u_missionFlatLight;
-                base = mix(base, wCement, sqrt(wRamp));
-                // Deliberately NOT setting cementHit: no new hard contour, and
-                // pureConcrete keeps its smooth ramp so lighting stays continuous.
-                if (cementDbgClass == 0) cementDbgClass = 4;
-            }
-        }
-    }
-
     // RUNWAY-EDGE-DILATE-1 (MASTER-FAIL #6, revision 2): grow the apron/runway
     // concrete OUTWARD by up to half a tile with a soft outer margin, instead of
     // eroding the concrete inward (revision 1, rejected by the user: "gate on is
@@ -1841,40 +1755,13 @@ void main() {
     float NdotL       = dot(N, terrainLightDir.xyz);
     float diffuse     = clamp(NdotL, 0.02, 1.0);
     float normalLight = ((u_diag & 4) != 0) ? 1.0 : mix(0.35, 1.20, diffuse);
-    // Cement lighting. Stock (u_cementLit == 0.0) forces the fully flat-lit slab
-    // and is bit-identical to the historical `mix(normalLight, 1.0, pureConcrete)`.
-    // RUNWAY-APRON-TONE-2: at u_cementLit == 1.0 cement keeps the terrain's own
-    // normalLight instead of the flat 1.0.
-    //
-    // WHAT MC2_CEMENT_LIT CAN AND CANNOT DO -- corrected 2026-07-30
-    // (LIGHTING-INCAPABLE-BATCH-3), because this comment used to claim it makes
-    // "apron and runway share one lighting term", and it does not:
-    //   (a) IT CANNOT REACH THE RUNWAY AT STOCK. The blend below is
-    //       `pureConcrete`, which is 0 on unclassified runway/road tiles by
-    //       construction (58% of mc2_10's paved-overlay tiles, 81% of mc2_03's,
-    //       and 100% of the runway at the user's mc2_10 @204937 pose). The
-    //       originating lane captured that runway BIT-IDENTICAL across all four
-    //       strengths (66.51 L at t = 0, 0.35, 0.6, 1.0). The one branch that
-    //       does reach those tiles is the `pavedOverlayFlat` branch below, and
-    //       that requires MC2_PAVED_OVERLAY_CLASS=1 -- default 0, see the
-    //       correction at the flatLitShare block.
-    //   (b) ON THE CEMENT IT DOES REACH, IT IS MONOTONICALLY DARKENING. It can
-    //       only move the multiplier between `normalLight` and 1.0, and pads and
-    //       aprons are FLAT (N = +Z), so normalLight = mix(0.35, 1.20, L.z).
-    //       mclib/camera.cpp builds lightDirection with UNIT-LENGTH xy and
-    //       normalizes AFTER (the default arm; MC2_SUN_ELEVATION_FIX is
-    //       default-OFF), which caps L.z at 1/sqrt(2), so flat-ground
-    //       normalLight <= 0.35 + 0.85/sqrt(2) = 0.95104 < 1.0 for EVERY
-    //       possible authored sun pitch. Raising u_cementLit can therefore only
-    //       lower a flat cement fragment. The lane's advertised "24% gap
-    //       closure" on mc2_10 was achieved entirely by DIMMING the apron
-    //       (90.43 -> 84.63) while the runway did not move at all.
-    // Keep it default 0.0. It is a legitimate knob for "cement obeys terrain
-    // light" once classification coverage is fixed; it is not a brightener and
-    // it is not a runway fix.
-    float cementLight = mix(1.0, normalLight, u_cementLit);
+    // Cement lighting: concrete is fully flat-lit (the historical
+    // `mix(normalLight, 1.0, pureConcrete)`). The RUNWAY-APRON-TONE-2 knob that
+    // let cement obey the terrain light was deleted in gate amnesty wave 1: it
+    // could not reach unclassified runway tiles (pureConcrete is 0 there) and on
+    // flat pads it could only darken (normalLight <= 0.951 for any authored sun).
     float cementLightBlend = clamp(pureConcrete, 0.0, 1.0);
-    normalLight = mix(normalLight, cementLight, cementLightBlend);
+    normalLight = mix(normalLight, 1.0, cementLightBlend);
     // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting
     // exemption cement receives, while leaving its baked colormap albedo alone.
     // pureConcrete is 0 on these tiles by construction (no cement word, no
@@ -1883,7 +1770,7 @@ void main() {
     // untouched: swapping the source texture is what got the two tone-match
     // gates rejected, and a residual albedo gap is expected and measured.
     if (pavedOverlayFlat) {
-        normalLight = mix(1.0, normalLight, u_cementLit);
+        normalLight = 1.0;
     }
 
     // TERRAIN-AMBIENT-FLOOR-2: capture the FLAT-LIT SHARE of this fragment,
@@ -1913,29 +1800,16 @@ void main() {
     //     sets MC2_PAVED_OVERLAY_CLASS=1 -- which is still the right design, and
     //     is why the branch stays;
     //   * there is NO pixel difference either way at stock (both arms of the
-    //     `if` reduce to flatLitShare == cementLightBlend * (1 - u_cementLit)),
-    //     so this is a rationale correction, not a behaviour change.
+    //     `if` reduce to flatLitShare == cementLightBlend), so this is a
+    //     rationale correction, not a behaviour change.
     //
-    // Two refinements over a plain max(pureConcrete, pavedOverlayFlat):
-    //   * cementLightBlend, not a separately-computed ramp, so the mask is the
-    //     SAME expression the lighting exemption used one block above and cannot
-    //     drift from it. A mask on a different ramp would disagree with the
-    //     lighting ramp inside the one-tile transition band and paint a new soft
-    //     ring exactly where this project's longest-running complaint (dark
-    //     outlines around concrete pads) already lives. (Until 2026-07-30 that
-    //     shared expression carried the CEMENT-EDGE-CURVE-1 exponent; deleting
-    //     the exponent kept the sharing, which was the only load-bearing part.)
-    //   * (1 - u_cementLit), because MC2_CEMENT_LIT is the knob that GIVES
-    //     cement and pavement the terrain's own normalLight back. At
-    //     MC2_CEMENT_LIT=1 nothing is flat-lit, so nothing is exempt -- exempting
-    //     it anyway would leave concrete as the only terrain-lit surface with no
-    //     ambient and make it DARKER than the ground around it.
-    // At stock (u_cementLit 0) this is numerically identical to
-    // max(pureConcrete, pavedOverlayFlat ? 1 : 0).
-    // u_cementLit unset defaults to GL's 0.0 => share 1.0 => masks MORE, the
-    // safe direction.
-    float flatLitShare = clamp(cementLightBlend * (1.0 - u_cementLit), 0.0, 1.0);
-    if (pavedOverlayFlat) flatLitShare = max(flatLitShare, clamp(1.0 - u_cementLit, 0.0, 1.0));
+    // cementLightBlend, not a separately-computed ramp, so the mask is the SAME
+    // expression the lighting exemption used one block above and cannot drift
+    // from it: a mask on a different ramp would paint a new soft ring exactly
+    // where the dark outlines around concrete pads already live.
+    // Numerically identical to max(pureConcrete, pavedOverlayFlat ? 1 : 0).
+    float flatLitShare = clamp(cementLightBlend, 0.0, 1.0);
+    if (pavedOverlayFlat) flatLitShare = 1.0;
 
     float shadow = 1.0;
     if ((u_diag & 8) == 0) {

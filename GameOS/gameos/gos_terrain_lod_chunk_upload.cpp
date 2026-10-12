@@ -693,27 +693,6 @@ void gos_TerrainLightPoolKnobs(int* soft, float* moverDim, float* moverScale,
     if (contactShadow) *contactShadow = kTglcMoverContactShadow;
 }
 
-// RUNWAY-APRON-TONE-2 (MC2_CEMENT_LIT): 0..1 share of the terrain lighting term
-// that cement fragments obey. Default 0.0 == stock fully flat-lit cement slab.
-float gos_TerrainCementLit()
-{
-    static const float s_v = mc2::gate::get<"MC2_CEMENT_LIT">();
-    return s_v;
-}
-
-// CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD): default OFF. When ON, the
-// terrainType ramp band (0 < pureConcrete < 1, one tile wide, NO cement word of
-// its own) borrows the adjacent pad's cement atlas cell as its albedo instead of
-// keeping the dark baked colormap. MEASURED root cause of the user's "atrocious
-// outlines": the band is an ALBEDO-source discontinuity, not a lighting one --
-// every prior lighting-side lever (MC2_CEMENT_LIT, the tone-match gates)
-// could not close it because base never became cement.
-int gos_TerrainCementRampWord()
-{
-    static const int s_v = mc2::gate::get<"MC2_CEMENT_RAMP_WORD">();
-    return s_v;
-}
-
 float gos_TerrainPadGlowSpillWu()
 {
     static const float s_v = mc2::gate::get<"MC2_PAD_AREA_GLOW_SPILL">();

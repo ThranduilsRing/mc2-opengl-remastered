@@ -145,32 +145,16 @@ G("MC2_CAMERA_PARK", String, "", "gameos", "", "CAMERA-PARK-1 (ported from vk br
 P("MC2_CAMERA_SMOOTH", Float, 100.0, "code", "", "", passthrough | clampRange(0.0, 2000.0) | verified),
 L(Lead1, "MC2_CAMERA_SMOOTH_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Lead1, "MC2_CAM_SMOOTH_TEST", Bool, false, "code", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_CEMENT_ALPHA_ATLAS
-L(Lead0Kill, "MC2_CEMENT_ALPHA_ATLAS", Bool, true, "terrain", "", "DEFAULT ON since RUNWAY-CLOSE-1 (2026-08-02), measured at the user's mc2_10 saved_204907 bookmark, exe 30c18df1: rescued swath pixels 15 -> 6506, rescued...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_ALPHA_ATLAS", -1, true) | verified),
 // history: docs/gate-history.md#MC2_CEMENT_ATLAS_DUMP
 G("MC2_CEMENT_ATLAS_DUMP", String, "", "terrain", "", "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so cell art can be inspected directly -- which cells actually carry painted markings is an...", passthrough | registry(Trace, "MC2_TRACE_CEMENT_ATLAS_DUMP", -1, false) | verified),
-// history: docs/gate-history.md#MC2_CEMENT_ATLAS_MAGENTA_KEY
-L(Lead0, "MC2_CEMENT_ATLAS_MAGENTA_KEY", Bool, false, "terrain", "", "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid)...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY", -1, false) | verified),
 L(Lead0Kill, "MC2_CEMENT_ATLAS_SEAM_FIX", Bool, true, "terrain", "", "", verified),
-// history: docs/gate-history.md#MC2_CEMENT_CONCRETE_CANON
-L(Lead0, "MC2_CEMENT_CONCRETE_CANON", Bool, false, "terrain", "", "CEMENT-ATLAS-CELL-2 ARM B: point every plain-concrete tile at ONE canonical concrete cell, so an apron cannot change colour tile to tile at all.", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_CONCRETE_CANON", -1, false) | verified),
 // CEMENT-ATLAS-CELL-2: the two arms of the "concrete shouldn't magically
 // become a different color" fix, scoped to ACTUAL concrete only.
-// history: docs/gate-history.md#MC2_CEMENT_CONCRETE_TONE
-L(Lead0, "MC2_CEMENT_CONCRETE_TONE", Bool, false, "terrain", "", "CEMENT-ATLAS-CELL-2 ARM A: tone-normalise ONLY the actual-concrete atlas cells.", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_CONCRETE_TONE", -1, false) | verified),
 // RUNWAY-APRON-TONE-2: cross-map absolute runway/apron tone normalisation.
-// history: docs/gate-history.md#MC2_CEMENT_LIT
-P("MC2_CEMENT_LIT", Float, 0.0, "terrain", "", "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully...", passthrough | clampRange(0.0, 1.0) | registry(Feature, "MC2_FEATURE_CEMENT_LIT", -1, false) | verified),
 L(Lead0Kill, "MC2_CEMENT_MISSION_LIGHT", Bool, true, "gameos", "", "", verified),
-// history: docs/gate-history.md#MC2_CEMENT_RAMP_WORD
-L(Lead0, "MC2_CEMENT_RAMP_WORD", Bool, false, "terrain", "", "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_RAMP_WORD", -1, false) | verified),
 // MC2-03-CEMENT-PINK-1: cement catalog atlas post-processing (build-time, CPU).
 // CEMENT-INTRACELL-1 (ARM C): make the concrete arms obey the user's own
 // scope ruling by detecting the BAKED ROAD ART inside solid cement cells.
-// history: docs/gate-history.md#MC2_CEMENT_ROAD_ART_DETECT
-L(Lead0, "MC2_CEMENT_ROAD_ART_DETECT", Bool, false, "terrain", "", "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_ROAD_ART_DETECT", -1, false) | verified),
-// history: docs/gate-history.md#MC2_CEMENT_TRANSITION_FALLBACK
-L(Lead0, "MC2_CEMENT_TRANSITION_FALLBACK", Bool, false, "terrain", "", "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24).", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK", -1, false) | verified),
 L(Presence, "MC2_CHEAT_INFINITE_MONEY", Bool, false, "mech", "", "Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)", verified),
 L(Presence, "MC2_CHEAT_SALVAGE_ALL", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough | verified),
@@ -720,8 +704,6 @@ G("MC2_OOB_FOG_COLOR", String, "", "post", "", "", verified),
 L(Lead0Kill, "MC2_OOB_LETTERBOX", Bool, true, "post", "", "", verified),
 L(Presence, "MC2_OS_CURSOR", Bool, false, "unclassified", "", "Hide the OS cursor.", verified),
 // RUNWAY-CLOSE-1: overlay-art flat-light exemption A/B arm (enum 63, LAST).
-// history: docs/gate-history.md#MC2_OVERLAY_ART_FLATLIGHT
-L(Lead0Kill, "MC2_OVERLAY_ART_FLATLIGHT", Bool, true, "gameos", "", "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me').", passthrough | registry(Feature, "MC2_FEATURE_OVERLAY_ART_FLATLIGHT", 52, true) | verified),
 L(Lead0, "MC2_OVERLAY_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
 // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): the DELIVERED cure for the
 // concrete patchwork. Default ON. Supersedes MC2_OVERLAY_CEMENT_SHADOW_MATCH.
@@ -729,8 +711,6 @@ L(Lead0, "MC2_OVERLAY_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_OVERLAY_CEMENT_ADOPT", Bool, true, "terrain", "", "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay...", passthrough | registry(Feature, "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", 44, true) | verified),
 // CEMENT-PATCHY-CAUSE-1: the concrete patchwork is a TWO-SHADER SEAM, not
 // an atlas-tone problem. Attribution receipt in .claude/CEMENT-PATCHY-CAUSE-1-STATUS.md.
-// history: docs/gate-history.md#MC2_OVERLAY_CEMENT_SHADOW_MATCH
-L(Lead0, "MC2_OVERLAY_CEMENT_SHADOW_MATCH", Bool, false, "gameos", "", "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal...", passthrough | registry(Feature, "MC2_FEATURE_OVERLAY_CEMENT_SHADOW_MATCH", -1, false) | verified),
 L(Presence, "MC2_OVERLAY_MAGENTA_TRACE", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_OVERLAY_TEXTURE_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 // OVERLAY-TILE-HIRES-1: high-resolution terrain overlay tiles.
@@ -855,8 +835,6 @@ L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare d
 G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed.", passthrough | verified),
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
-// history: docs/gate-history.md#MC2_RUNWAY_EDGE_BLEND
-L(Lead0, "MC2_RUNWAY_EDGE_BLEND", Bool, false, "terrain", "", "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 = DILATION: cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain...", passthrough | registry(Feature, "MC2_FEATURE_RUNWAY_EDGE_BLEND", -1, false) | verified),
 L(Presence, "MC2_SCENE_LIGHTING_ASSERT", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_SCENE_LIGHTING_TRACE", Bool, false, "code", "", "", verified),
 P("MC2_SCREENSHOT_AT_FRAME", Int, -1, "gameos", "", "", passthrough | verified),

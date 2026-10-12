@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1075,
+ "count": 1064,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -2717,34 +2717,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_CEMENT_ALPHA_ATLAS",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "DEFAULT ON since RUNWAY-CLOSE-1 (2026-08-02), measured at the user's mc2_10 saved_204907 bookmark, exe 30c18df1: rescued swath pixels 15 -> 6506, rescued luma 32.4 (bare dirt) -> 54.7, matching the historical ON-CONCRETE runway value 65.0-65.7 at runway_wide -- the user criterion is 'paved art should ALWAYS be the color that they are on top of concrete', and on-concrete runway is DARK, so runway==apron-brightness graders are measuring the wrong target.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:917",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_ALPHA_ATLAS",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_CEMENT_ATLAS_DUMP",
    "kind": "Bool",
    "default": false,
@@ -2768,32 +2740,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TRACE_CEMENT_ATLAS_DUMP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CEMENT_ATLAS_MAGENTA_KEY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid), which -- unlike the keyed transition path (textureFromMemoryAlpha / TERRAIN-ROAD-COLORKEY-TRANSPARENCY-1) -- never honours MC2's legacy 0xFF00FF colourkey.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:857",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY",
    "retireVerdict": ""
   },
   {
@@ -2831,88 +2777,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_CEMENT_CONCRETE_CANON",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CEMENT-ATLAS-CELL-2 ARM B: point every plain-concrete tile at ONE canonical concrete cell, so an apron cannot change colour tile to tile at all.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:1231",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_CONCRETE_CANON",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CEMENT_CONCRETE_TONE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CEMENT-ATLAS-CELL-2 ARM A: tone-normalise ONLY the actual-concrete atlas cells.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:1220",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_CONCRETE_TONE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CEMENT_LIT",
-   "kind": "Float",
-   "default": 0.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully flat-lit slab (terrain_lod_chunk.frag historically forced normalLight = mix(normalLight, 1.0, pureConcrete)).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4171",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_LIT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_CEMENT_MISSION_LIGHT",
    "kind": "Bool",
    "default": true,
@@ -2936,84 +2800,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CEMENT_RAMP_WORD",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway (\"concrete shouldn't magically become a different color\").",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4191",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_RAMP_WORD",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CEMENT_ROAD_ART_DETECT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete treatment (ARM A tone, ARM B canon, and the canonical-cell choice).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:1206",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_ROAD_ART_DETECT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CEMENT_TRANSITION_FALLBACK",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:877",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK",
    "retireVerdict": ""
   },
   {
@@ -14532,38 +14318,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_OVERLAY_ART_FLATLIGHT",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me').",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10837",
-     "idiom": "Lead0Kill(inv)"
-    },
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11033",
-     "idiom": "Lead0Kill(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_OVERLAY_ART_FLATLIGHT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_OVERLAY_BIAS_LEGACY",
    "kind": "Bool",
    "default": false,
@@ -14624,32 +14378,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_OVERLAY_CEMENT_ADOPT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_OVERLAY_CEMENT_SHADOW_MATCH",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal layer and the cement terrain stop disagreeing across the seam where a single paved surface is split between them.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10879",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_OVERLAY_CEMENT_SHADOW_MATCH",
    "retireVerdict": ""
   },
   {
@@ -17348,32 +17076,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_RUNWAY_EDGE_BLEND",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 = DILATION: cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain with no authored transition art.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_indirect.cpp:1413",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_RUNWAY_EDGE_BLEND",
    "retireVerdict": ""
   },
   {

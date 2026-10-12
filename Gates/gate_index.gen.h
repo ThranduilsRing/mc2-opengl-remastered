@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1078;
+inline constexpr std::size_t kGateCount = 1067;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -108,17 +108,9 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CAMERA_SMOOTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_CAMERA_SMOOTH_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_CAM_SMOOTH_TEST", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_CEMENT_ALPHA_ATLAS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_CEMENT_ATLAS_DUMP", Kind::String, Rule::Std, {}},
-    {"MC2_CEMENT_ATLAS_MAGENTA_KEY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_CEMENT_ATLAS_SEAM_FIX", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_CEMENT_CONCRETE_CANON", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_CEMENT_CONCRETE_TONE", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_CEMENT_LIT", Kind::Float, Rule::Prefix, {}},
     {"MC2_CEMENT_MISSION_LIGHT", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_CEMENT_RAMP_WORD", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_CEMENT_ROAD_ART_DETECT", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_CEMENT_TRANSITION_FALLBACK", Kind::Bool, Rule::Lead0, {}},
     {"MC2_CHEAT_INFINITE_MONEY", Kind::Bool, Rule::Presence, {}},
     {"MC2_CHEAT_SALVAGE_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_CLOUD_SHADOW", Kind::Bool, Rule::Lead0, {}},
@@ -523,10 +515,8 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OOB_FOG_COLOR", Kind::String, Rule::Std, {}},
     {"MC2_OOB_LETTERBOX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OS_CURSOR", Kind::Bool, Rule::Presence, {}},
-    {"MC2_OVERLAY_ART_FLATLIGHT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OVERLAY_BIAS_LEGACY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OVERLAY_CEMENT_ADOPT", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_OVERLAY_CEMENT_SHADOW_MATCH", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OVERLAY_MAGENTA_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_OVERLAY_TEXTURE_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_OVERLAY_TILE_HIRES", Kind::String, Rule::Std, {}},
@@ -626,7 +616,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RING_FORCE_FINISH", Kind::Bool, Rule::Presence, {}},
     {"MC2_RING_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_RNG_SEED", Kind::String, Rule::Std, {}},
-    {"MC2_RUNWAY_EDGE_BLEND", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SCENE_LIGHTING_ASSERT", Kind::Bool, Rule::Presence, {}},
     {"MC2_SCENE_LIGHTING_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SCREENSHOT_AT_FRAME", Kind::Int, Rule::Prefix, {}},

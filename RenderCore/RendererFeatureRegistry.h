@@ -292,11 +292,7 @@ enum class RendererFeature : int {
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
     MechLightFreshness       = 51,  // MC2_MECH_LIGHT_FRESHNESS
-    // RUNWAY-CLOSE-1: A/B arm — MC2_OVERLAY_ART_FLATLIGHT=0 exempts the
-    // terrain_overlay.frag authored-art else-branch from u_missionFlatLight.
-    // Default-ON (=stock multiply); appended LAST to match kFeatureTable.
-    OverlayArtFlatlight      = 52,  // MC2_OVERLAY_ART_FLATLIGHT
-    COUNT                    = 53,
+    COUNT                    = 52,
 };
 
 // ---------------------------------------------------------------------------
@@ -724,14 +720,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON."
     },
-    // [52] OverlayArtFlatlight
-    {
-        "MC2_FEATURE_OVERLAY_ART_FLATLIGHT",
-        "MC2_OVERLAY_ART_FLATLIGHT",
-        EnvVarKind::Feature,
-        true,
-        "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me')."
-    },
 };
 
 static_assert(
@@ -909,67 +897,11 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it...",
     },
     {
-        "MC2_FEATURE_CEMENT_ALPHA_ATLAS",
-        "MC2_CEMENT_ALPHA_ATLAS",
-        EnvVarKind::Feature,
-        true,
-        "DEFAULT ON since RUNWAY-CLOSE-1 (2026-08-02), measured at the user's mc2_10 saved_204907 bookmark, exe 30c18df1: rescued swath pixels 15 -> 6506, rescued...",
-    },
-    {
         "MC2_TRACE_CEMENT_ATLAS_DUMP",
         "MC2_CEMENT_ATLAS_DUMP",
         EnvVarKind::Trace,
         false,
         "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so cell art can be inspected directly -- which cells actually carry painted markings is an...",
-    },
-    {
-        "MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY",
-        "MC2_CEMENT_ATLAS_MAGENTA_KEY",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid)...",
-    },
-    {
-        "MC2_FEATURE_CEMENT_CONCRETE_CANON",
-        "MC2_CEMENT_CONCRETE_CANON",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-ATLAS-CELL-2 ARM B: point every plain-concrete tile at ONE canonical concrete cell, so an apron cannot change colour tile to tile at all.",
-    },
-    {
-        "MC2_FEATURE_CEMENT_CONCRETE_TONE",
-        "MC2_CEMENT_CONCRETE_TONE",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-ATLAS-CELL-2 ARM A: tone-normalise ONLY the actual-concrete atlas cells.",
-    },
-    {
-        "MC2_FEATURE_CEMENT_LIT",
-        "MC2_CEMENT_LIT",
-        EnvVarKind::Feature,
-        false,
-        "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully...",
-    },
-    {
-        "MC2_FEATURE_CEMENT_RAMP_WORD",
-        "MC2_CEMENT_RAMP_WORD",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway...",
-    },
-    {
-        "MC2_FEATURE_CEMENT_ROAD_ART_DETECT",
-        "MC2_CEMENT_ROAD_ART_DETECT",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete...",
-    },
-    {
-        "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK",
-        "MC2_CEMENT_TRANSITION_FALLBACK",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24).",
     },
     {
         "MC2_TRACE_COLORMAP_DISPLACE_PROBE",
@@ -1462,13 +1394,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window...",
     },
     {
-        "MC2_FEATURE_OVERLAY_CEMENT_SHADOW_MATCH",
-        "MC2_OVERLAY_CEMENT_SHADOW_MATCH",
-        EnvVarKind::Feature,
-        false,
-        "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal...",
-    },
-    {
         "MC2_OVERLAY_TILE_HIRES",
         "MC2_OVERLAY_TILE_HIRES",
         EnvVarKind::Feature,
@@ -1565,13 +1490,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): audit mode, unset/0 = off, fatal = abort, anything else = log.",
-    },
-    {
-        "MC2_FEATURE_RUNWAY_EDGE_BLEND",
-        "MC2_RUNWAY_EDGE_BLEND",
-        EnvVarKind::Feature,
-        false,
-        "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 = DILATION: cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain...",
     },
     {
         "MC2_SHADER_SPIRV",

@@ -4010,7 +4010,7 @@
    "key": "terrain_lod_chunk",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:515",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4029,7 +4029,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:659",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4053,7 +4053,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:659",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4073,7 +4073,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:659",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4104,7 +4104,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:659",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4124,7 +4124,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:659",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4141,7 +4141,7 @@
    "key": "terrain_lod_chunk_tess{TERRAIN_TESS}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:659",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4161,7 +4161,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:515",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4182,7 +4182,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:515",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4199,7 +4199,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:515",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4227,7 +4227,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:515",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4244,7 +4244,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:515",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"

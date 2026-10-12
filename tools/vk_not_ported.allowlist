@@ -54,8 +54,6 @@ MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE | shaders/terrain_lod_chunk.vert | uniform u
 MC2_WATER_SHORE_MEANDER_FREQ | shaders/gos_terrain_water_mdi.frag | Companion of MC2_WATER_SHORE_MEANDER (u_shoreMeanderFreq): the VK water FS has no meander block, so the frequency knob has nothing to drive there. Inert in GL while the amplitude gate is 0.
 
 # --- Default-OFF gates: flipping one ON changes GL only
-MC2_CEMENT_LIT | shaders/terrain_lod_chunk.frag | uniform u_cementLit: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
-MC2_CEMENT_RAMP_WORD | shaders/terrain_lod_chunk.frag | uniform u_cementRampWord: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_MECH_BACK_FILL | shaders/mech.frag | uniform u_mechBackFillStrength: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_MECH_SURFACE_MATERIAL | shaders/mech.frag | uniform u_pbrMetallicInfluence, uniform u_pbrRoughnessMax, uniform u_pbrRoughnessMin, uniform u_pbrTileScale, uniform u_pbrWearStrength: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_PBR_METALLIC_INFLUENCE | shaders/mech.frag | uniform u_pbrMetallicInfluence: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi

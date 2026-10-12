@@ -286,12 +286,6 @@ static void bindAtlasAndShadowMaps() {
             if (s_locPadGlowSpill >= 0)
                 glUniform1f(s_locPadGlowSpill, gos_TerrainPadGlowSpillWu());
         }
-        // RUNWAY-APRON-TONE-2: cement lighting participation. 0.0 == stock
-        // flat-lit slab, so the default upload is a no-op by value.
-        if (s_locCementLit >= 0)
-            glUniform1f(s_locCementLit, gos_TerrainCementLit());
-        if (s_locCementRampWord >= 0)
-            glUniform1i(s_locCementRampWord, gos_TerrainCementRampWord());   // CEMENT-WORD-RAMP-1
         // NIGHT-LIGHT-POOLS-1: bind
         // the per-frame terrain light pool SSBO (packed+uploaded every frame by
         // gos_terrain_lighting::PackAndDispatch — the SAME buffer the legacy

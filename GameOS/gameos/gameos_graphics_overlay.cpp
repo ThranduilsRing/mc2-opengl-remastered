@@ -280,14 +280,6 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         const vec4& fl = terrain_mission_flat_light_;
         glUniform3f(L.missionFlatLight, fl.x, fl.y, fl.z);
     }
-    // RUNWAY-CLOSE-1: MC2_OVERLAY_ART_FLATLIGHT — 1/unset (default) = stock
-    // (upload 0.0 => the frag's mix() collapses to the plain u_missionFlatLight
-    // multiply); 0 = exempt authored art from the flat-pad light (upload 1.0).
-    // Boot-cached (Debug Instrumentation Rule).
-    if (L.overlayArtFlatExempt >= 0) {
-        static const float s_artFlatExempt = !mc2::gate::get<"MC2_OVERLAY_ART_FLATLIGHT">();
-        glUniform1f(L.overlayArtFlatExempt, s_artFlatExempt);
-    }
     // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
     if (L.overlayBiasLegacy >= 0)
         glUniform1i(L.overlayBiasLegacy, mc2OverlayBiasLegacy());
@@ -315,16 +307,6 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
             glUniform1i(L.padGlowMapSide, pgSide);
         if (L.padGlowHalfMap >= 0)
             glUniform1f(L.padGlowHalfMap, pgHalf);
-    }
-
-    // OVERLAY-CEMENT-SHADOW-MATCH-1 (CEMENT-PATCHY-CAUSE-1): give the overlay
-    // layer the same concrete static-shadow exemption terrain_lod_chunk.frag
-    // applies, so the two shaders stop disagreeing across the seam where a
-    // paved surface is split between them. Default OFF => uploads 0 => the
-    // frag's first compare short-circuits => byte-identical.
-    if (L.overlayCementShadowMatch >= 0) {
-        static const int s_overlayCementShadowMatch = mc2::gate::get<"MC2_OVERLAY_CEMENT_SHADOW_MATCH">();
-        glUniform1i(L.overlayCementShadowMatch, s_overlayCementShadowMatch);
     }
 
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1). This helper is the SINGLE
@@ -443,8 +425,7 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
         const vec4& fc = g_gos_renderer->getFogColor();
         out->fogColor[0] = fc.x; out->fogColor[1] = fc.y; out->fogColor[2] = fc.z; out->fogColor[3] = fc.w;
     }
-    static const float s_artFlatExempt = !mc2::gate::get<"MC2_OVERLAY_ART_FLATLIGHT">();
-    out->artFlatExempt = s_artFlatExempt;
+    out->artFlatExempt = 0.0f;   // stock flat-pad multiply (the RUNWAY-CLOSE-1 exemption arm is gone; the push-constant slot stays)
     gosPostProcess* pp = getGosPostProcess();
     out->mapHalfExtent = pp ? pp->getMapHalfExtent() : 0.0f;
     out->biasLegacy = mc2OverlayBiasLegacy();

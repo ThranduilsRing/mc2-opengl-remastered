@@ -8209,16 +8209,6 @@
    "count": 1
   },
   {
-   "tag": "RUNWAY_EDGE_BLEND",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "feathered_solid_tiles"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SALVAGE",
    "ver": -1,
    "stream": "stdout",

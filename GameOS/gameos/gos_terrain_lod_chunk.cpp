@@ -331,8 +331,6 @@ GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMove
 GLint    s_locMoverContactShadow  = -1;  // MOVER-CONTACT-SHADOW-1: u_moverContactShadow
 GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
 GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
-GLint    s_locCementLit           = -1;  // RUNWAY-APRON-TONE-2: u_cementLit (0..1)
-GLint    s_locCementRampWord      = -1;  // CEMENT-WORD-RAMP-1: u_cementRampWord (0/1)
 GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -553,8 +551,6 @@ void gos_TerrainLodChunk_Init()
             s_locMoverContactShadow  = glGetUniformLocation(s_terrainProgram, "u_moverContactShadow");   // MOVER-CONTACT-SHADOW-1
             s_locPadGlow      = glGetUniformLocation(s_terrainProgram, "u_padGlow");       // PAD-AREA-GLOW-1
             s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
-            s_locCementLit    = glGetUniformLocation(s_terrainProgram, "u_cementLit");     // RUNWAY-APRON-TONE-2
-            s_locCementRampWord  = glGetUniformLocation(s_terrainProgram, "u_cementRampWord");  // CEMENT-WORD-RAMP-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
