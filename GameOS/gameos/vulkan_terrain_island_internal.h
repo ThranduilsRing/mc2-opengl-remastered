@@ -150,8 +150,6 @@ struct TerrainIsland {
     VkBuffer      heightBuf = VK_NULL_HANDLE; VmaAllocation heightAlloc = VK_NULL_HANDLE;
     VkDeviceSize  heightCapBytes = 0;
     uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
-    uint64_t      heightChecksum = 0;               // FNV-1a of the snapshot bytes (height-audit)
-    bool          heightChecksumValid = false;      // a real snapshot has been checksummed
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): VK-owned snapshot of the GL 4x visual
     // heightfield bake (GL binding 26 -> here binding 10). Version-gated mission-load
@@ -395,7 +393,6 @@ bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSi
 void destroy_island(TerrainIsland* s);
 bool init_island(TerrainIsland* s, int w, int h);
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool audit_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 VkCommandBuffer begin_oneshot(TerrainIsland* s);
 void end_oneshot(TerrainIsland* s, VkCommandBuffer cb);
 bool create_colormap_sampler(TerrainIsland* s);

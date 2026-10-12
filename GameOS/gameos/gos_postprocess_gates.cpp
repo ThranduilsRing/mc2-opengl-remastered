@@ -91,14 +91,10 @@ bool mc2VkSharedSceneColorNeeded()
 
 bool mc2VkSharedSceneDirectResourceEnabled()
 {
-    // VK-RUNG8-ITEM10: the two present-tail conditions
-    // (MC2_VK_PRESENT_NO_GL_IMPORT==1 && MC2_VK_PRESENT_SKIP_GL_HANDOFF==1) were
-    // REMOVED. Item 8 deleted the present interop tail, so the present image is now
-    // UNCONDITIONALLY a VK-only allocation with no GL->VK handoff (those two gates are
-    // retired no-ops). Requiring them here was dead resolver code that would wrongly
-    // decline the whole shared scene to pure GL under the umbrella unless a user set two
-    // retired gates. The shared scene now arms on the post/composite direct-chain stack
-    // alone (default-ON under MC2_VK_SHARED_GBUFFER).
+    // VK-RUNG8-ITEM10: the two present-tail conditions were REMOVED. Item 8 deleted
+    // the present interop tail, so the present image is UNCONDITIONALLY a VK-only
+    // allocation with no GL->VK handoff. The shared scene arms on the post/composite
+    // direct-chain stack alone (default-ON under MC2_VK_SHARED_GBUFFER).
     static const bool s_on = mc2vkgate::compositeDirectChainOn();
     return s_on;
 }
@@ -131,20 +127,6 @@ GLuint createSceneDepthPlaceholderTex(int w, int h)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     return tex;
-}
-
-// VK-RUNG8 item-6: MC2_VK_STATIC_SHADOW_MAP is RETIRED. The VK-backed static-shadow
-// import substrate (exportable D32_SFLOAT image imported into GL) is deleted; the static
-// shadow map is now always the plain-GL GL_DEPTH_COMPONENT24 allocation. Setting the env
-// prints a one-shot deprecation note (item-9 pattern) and changes nothing.
-void mc2VkStaticShadowMapDeprecationNote()
-{
-    static const bool s_once = [] {
-        if (mc2::gate::get<"MC2_VK_STATIC_SHADOW_MAP">())
-            mc2::fmt::print_err("[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-shadow import substrate was deleted; static shadow uses the plain GL GL_DEPTH_COMPONENT24 path.\n");
-        return true;
-    }();
-    (void)s_once;
 }
 
 int mc2ShadowCsmCount()

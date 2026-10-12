@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1117
-registry_entry_count: 331
-verified_count: 1110
+gate_count: 1111
+registry_entry_count: 325
+verified_count: 1104
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -8066,15 +8066,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_VK_PRESENT_NATIVE_STRICT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VK_PRESENT_NO_GL_IMPORT
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: vk
-    doc: "VK present-tail ownership gate."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PRESENT_SKIP_GL_HANDOFF
     kind: Bool
     default: false
@@ -8253,15 +8244,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_VK_SHARED_SCENE_STRICT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VK_STATIC_SHADOW_MAP
-    kind: Bool
-    default: false
-    rule: Is01
-    owner: post
-    doc: "DEPRECATED no-op (VK-RUNG8-ITEM6)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_STATIC_SHADOW_MAP, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_ALL_LODS
     kind: Tri
     default: null
@@ -8339,32 +8321,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_TERRAIN_GL_FALLBACK_AUDIT
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: terrain
-    doc: "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to..."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VK_TERRAIN_HEIGHT_AUDIT
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: vk
-    doc: "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: vk
-    doc: "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_LIGHTING
     kind: Tri
     default: null
@@ -8437,15 +8393,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_VFX, kind: Feature, order: -1, default_on: false}
-  - name: MC2_VK_VFX_COALESCE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_VFX_COALESCE, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_VFX_TRACE
     kind: Bool
     default: false

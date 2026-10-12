@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1117;
+inline constexpr std::size_t kGateCount = 1111;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -1035,7 +1035,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PRESENT_DUMP_ON_FIRE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PRESENT_DUMP_PPM", Kind::String, Rule::Std, {}},
     {"MC2_VK_PRESENT_NATIVE_STRICT", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_PRESENT_NO_GL_IMPORT", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_PRESENT_SKIP_GL_HANDOFF", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_PRESENT_TAIL_HOOK", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_PRESENT_VERIFY", Kind::Bool, Rule::Presence, {}},
@@ -1057,7 +1056,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_SHARED_SCENE_DEPTH", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_SHARED_SCENE_STRICT", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_VK_STATIC_SHADOW_MAP", Kind::Bool, Rule::Is01, {}},
     {"MC2_VK_TERRAIN_ALL_LODS", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_TERRAIN_CSM", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
@@ -1067,9 +1065,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_TERRAIN_DETAIL", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_TERRAIN_DYNSHADOW", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_TERRAIN_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_VK_TERRAIN_GL_FALLBACK_AUDIT", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_VK_TERRAIN_HEIGHT_AUDIT", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_TERRAIN_LIGHTING", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_TERRAIN_LODFADE", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_TERRAIN_OVERLAY_GL_CANARY", Kind::Bool, Rule::Lead1, {}},
@@ -1078,7 +1073,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_TERRAIN_TIER1", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_VFX", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
-    {"MC2_VK_VFX_COALESCE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_VFX_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_WATER_DIRECT_CHAIN", Kind::Tri, Rule::Std, {}, "MC2_VK_SHARED_GBUFFER"},
     {"MC2_VK_WATER_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},

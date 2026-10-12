@@ -157,8 +157,8 @@ bool mechLightingRequested() {
 // CPU geometry + LightsData feed is unconditional under the VK mech island.
 // The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
 
-// VK-MECH-FEED-AUDIT-1: verification-only (default-OFF, safety-gate class like
-// MC2_VK_TERRAIN_HEIGHT_AUDIT). With the native feed armed, ALSO read the GL
+// VK-MECH-FEED-AUDIT-1: verification-only (default-OFF safety gate). With the
+// native feed armed, ALSO read the GL
 // buffers back and byte-compare against the CPU sources -- proves the native
 // feed carries the exact bytes GL rendered with.
 bool mechFeedAuditRequested() {

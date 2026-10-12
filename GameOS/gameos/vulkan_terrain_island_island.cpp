@@ -293,7 +293,6 @@ bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
         return false;
     s->heightCapBytes = cap;
     s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
-    s->heightChecksumValid = false;      // stale checksum until the re-snapshot runs
     write_descriptors(s);
     return true;
 }

@@ -11986,13 +11986,6 @@
    "count": 1
   },
   {
-   "tag": "VK_SHARED_STATIC_SHADOW",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "VK_TERRAIN_ALL_LODS",
    "ver": -1,
    "stream": "stdout",
@@ -12023,25 +12016,6 @@
     "csmArrayDirect",
     "csmFullMapReady",
     "csmFullMapDirect"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_TERRAIN_GL_FALLBACK_AUDIT",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "total",
-    "captured",
-    "gl_fallback",
-    "inactive",
-    "band",
-    "displace",
-    "edge_stitch",
-    "captured_stitch",
-    "other",
-    "skirt_edges"
    ],
    "count": 1
   },

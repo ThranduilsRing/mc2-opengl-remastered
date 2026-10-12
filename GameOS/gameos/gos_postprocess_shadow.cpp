@@ -99,9 +99,6 @@ void gosPostProcess::initShadows()
 
     // TEX-CLASS: render-target -- STATIC shadow map depth (FBO attach)
     // The static shadow map is always the plain-GL GL_DEPTH_COMPONENT24 allocation.
-#ifdef MC2_VULKAN_ISLAND
-    mc2VkStaticShadowMapDeprecationNote();
-#endif
     if (!shadowDepthTex_) {
         glGenTextures(1, &shadowDepthTex_);
     }

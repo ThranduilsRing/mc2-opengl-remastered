@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1114,
+ "count": 1108,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -28884,34 +28884,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_PRESENT_NO_GL_IMPORT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK present-tail ownership gate.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:327",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
    "kind": "Bool",
    "default": false,
@@ -29508,34 +29480,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_STATIC_SHADOW_MAP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Is01",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "DEPRECATED no-op (VK-RUNG8-ITEM6).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:221",
-     "idiom": "Is01"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_STATIC_SHADOW_MAP",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_TERRAIN_ALL_LODS",
    "kind": "Tri",
    "default": "inherit",
@@ -29781,84 +29725,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to GL, bucketed by inactive, uncaptured LOD band, visual-displace mode, edge-stitch, and other.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:436",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_HEIGHT_AUDIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:1388",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:1400",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
    "retireVerdict": ""
   },
   {
@@ -30111,32 +29977,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_VK_VFX",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_VFX_COALESCE",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_ entry instead of one entry PER TRIANGLE.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:6391",
-     "idiom": "Lead0Kill(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_VFX_COALESCE",
    "retireVerdict": ""
   },
   {

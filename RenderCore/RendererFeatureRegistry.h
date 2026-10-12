@@ -2442,13 +2442,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK present-tail deletion-readiness canary.",
     },
     {
-        "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT",
-        "MC2_VK_PRESENT_NO_GL_IMPORT",
-        EnvVarKind::Feature,
-        false,
-        "VK present-tail ownership gate.",
-    },
-    {
         "MC2_FEATURE_VK_PRESENT_TAIL_HOOK",
         "MC2_VK_PRESENT_TAIL_HOOK",
         EnvVarKind::Feature,
@@ -2533,13 +2526,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK shared-scene deletion-readiness canary.",
     },
     {
-        "MC2_FEATURE_VK_STATIC_SHADOW_MAP",
-        "MC2_VK_STATIC_SHADOW_MAP",
-        EnvVarKind::Feature,
-        false,
-        "DEPRECATED no-op (VK-RUNG8-ITEM6).",
-    },
-    {
         "MC2_FEATURE_VK_TERRAIN_CSM",
         "MC2_VK_TERRAIN_CSM",
         EnvVarKind::Feature,
@@ -2566,27 +2552,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).",
-    },
-    {
-        "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT",
-        "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT",
-        EnvVarKind::Trace,
-        false,
-        "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to...",
-    },
-    {
-        "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
-        "MC2_VK_TERRAIN_HEIGHT_AUDIT",
-        EnvVarKind::Feature,
-        false,
-        "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).",
-    },
-    {
-        "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
-        "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
-        EnvVarKind::Feature,
-        false,
-        "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).",
     },
     {
         "MC2_FEATURE_VK_TERRAIN_LIGHTING",
@@ -2622,13 +2587,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).",
-    },
-    {
-        "MC2_FEATURE_VK_VFX_COALESCE",
-        "MC2_VK_VFX_COALESCE",
-        EnvVarKind::Feature,
-        true,
-        "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_...",
     },
     {
         "MC2_TRACE_VK_VFX_TRACE",

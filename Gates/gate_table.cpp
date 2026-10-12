@@ -1526,8 +1526,6 @@ L(Presence, "MC2_VK_PRESENT_DUMP_ON_FIRE", Bool, false, "vk", "", "VK-FIELD-VFX-
 G("MC2_VK_PRESENT_DUMP_PPM", String, "", "vk", "", "VK-FIELD-ORACLE-1: headless present-pixel oracle.", registry(Trace, "MC2_TRACE_VK_PRESENT_DUMP_PPM", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_PRESENT_NATIVE_STRICT
 L(Lead1, "MC2_VK_PRESENT_NATIVE_STRICT", Bool, false, "vk", "", "VK present-tail deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_PRESENT_NATIVE_STRICT", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VK_PRESENT_NO_GL_IMPORT
-L(Lead1, "MC2_VK_PRESENT_NO_GL_IMPORT", Bool, false, "vk", "", "VK present-tail ownership gate.", passthrough | registry(Feature, "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT", -1, false) | verified),
 L(Lead1, "MC2_VK_PRESENT_SKIP_GL_HANDOFF", Bool, false, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VK_PRESENT_TAIL_HOOK
 G("MC2_VK_PRESENT_TAIL_HOOK", Tri, false, "vk", "", "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering.", passthrough | registry(Feature, "MC2_FEATURE_VK_PRESENT_TAIL_HOOK", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
@@ -1566,8 +1564,6 @@ L(Exact1, "MC2_VK_SHARED_GBUFFER", Bool, false, "vk", "", "VK-P14 GATE-CONSOLIDA
 G("MC2_VK_SHARED_SCENE_DEPTH", Tri, false, "vk", "", "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_SCENE_DEPTH", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VK_STATIC_SHADOW_MAP
-L(Is01, "MC2_VK_STATIC_SHADOW_MAP", Bool, false, "post", "", "DEPRECATED no-op (VK-RUNG8-ITEM6).", passthrough | registry(Feature, "MC2_FEATURE_VK_STATIC_SHADOW_MAP", -1, false) | verified),
 G("MC2_VK_TERRAIN_ALL_LODS", Tri, false, "vk", "", "", inherits("MC2_VK_SHARED_GBUFFER") | verified | passthrough),
 L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_CSM
@@ -1581,12 +1577,6 @@ G("MC2_VK_TERRAIN_DETAIL", Tri, false, "terrain", "", "VK-TERRAIN-DETAIL: presen
 // history: docs/gate-history.md#MC2_VK_TERRAIN_DYNSHADOW
 G("MC2_VK_TERRAIN_DYNSHADOW", Tri, false, "terrain", "", "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_DYNSHADOW", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
-// history: docs/gate-history.md#MC2_VK_TERRAIN_GL_FALLBACK_AUDIT
-L(Exact1, "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT", Bool, false, "terrain", "", "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to...", registry(Trace, "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VK_TERRAIN_HEIGHT_AUDIT
-L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT
-L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", -1, false) | verified),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LIGHTING
 G("MC2_VK_TERRAIN_LIGHTING", Tri, false, "terrain", "", "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LIGHTING", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
@@ -1602,8 +1592,6 @@ G("MC2_VK_TERRAIN_TIER1", Tri, false, "vk", "", "VK-P10 TERRAIN TIER-1: presence
 L(Exact1, "MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Bool, false, "vk", "", "", verified | passthrough),
 // history: docs/gate-history.md#MC2_VK_VFX
 G("MC2_VK_VFX", Tri, false, "vk", "", "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).", passthrough | registry(Feature, "MC2_FEATURE_VK_VFX", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
-// history: docs/gate-history.md#MC2_VK_VFX_COALESCE
-L(Lead0Kill, "MC2_VK_VFX_COALESCE", Bool, true, "gameos", "", "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_...", passthrough | registry(Feature, "MC2_FEATURE_VK_VFX_COALESCE", -1, true) | verified),
 // history: docs/gate-history.md#MC2_VK_VFX_TRACE
 L(Lead0, "MC2_VK_VFX_TRACE", Bool, false, "vk", "", "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.", registry(Trace, "MC2_TRACE_VK_VFX_TRACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_WATER_DIRECT_CHAIN

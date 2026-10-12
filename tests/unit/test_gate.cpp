@@ -1020,7 +1020,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
     const char* exact1[] = {"MC2_VK_MECH_FEED_AUDIT", "MC2_VK_POST_HZB", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SSAO",
-                            "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT", "MC2_VK_TERRAIN_LODFADE",
+                            "MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX_CLOUD",
                                 "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE",
@@ -1043,8 +1043,8 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
             CHECK(rowValue(row, v) == (edge ? false : oldOn));
         }
     }
-    // MC2_VK_STATIC_SHADOW_MAP / MC2_VK_MECH_FEED_NATIVE: "was it set to exactly 0 or 1".
-    for (const char* name : {"MC2_VK_STATIC_SHADOW_MAP", "MC2_VK_MECH_FEED_NATIVE"}) {
+    // MC2_VK_MECH_FEED_NATIVE: "was it set to exactly 0 or 1".
+    for (const char* name : {"MC2_VK_MECH_FEED_NATIVE"}) {
         const gate::Row& row = g1b::rowNamed(name);
         for (const char* v : kProbe) {
             INFO(name << " = " << (v != nullptr ? v : "<unset>"));

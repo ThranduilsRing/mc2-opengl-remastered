@@ -86,7 +86,6 @@ bool mc2VkSharedSceneColorNeeded();
 bool mc2VkSharedSceneDirectResourceEnabled();
 GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat, GLenum format, GLenum type, GLint minMagFilter);
 GLuint createSceneDepthPlaceholderTex(int w, int h);
-void mc2VkStaticShadowMapDeprecationNote();
 int mc2ShadowCsmCount();
 int mc2ShadowMapSize();
 bool mc2ShadowFullMapSeparate();

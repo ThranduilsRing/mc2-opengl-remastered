@@ -7,14 +7,6 @@
 
 namespace vk_terrain_detail {
 
-// FNV-1a 64 over a byte range (height-audit checksum; cheap, order-sensitive).
-static uint64_t fnv1a64(const void* data, size_t n) {
-    const uint8_t* p = reinterpret_cast<const uint8_t*>(data);
-    uint64_t h = 1469598103934665603ull;
-    for (size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 1099511628211ull; }
-    return h;
-}
-
 // Snapshot the GL height SSBO into the VK-owned buffer when the feed version changes.
 // Map-load copy (glGetBufferSubData -> vmaMap), NOT a per-frame handoff readback.
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
@@ -35,90 +27,7 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     std::memcpy(p, scratch.data(), (size_t)feed.heightBytes);
     vmaUnmapMemory(s->allocator, s->heightAlloc);
     s->heightVersionCopied = feed.heightVersion;
-    // HEIGHT-AUDIT: store the checksum of exactly the bytes we copied into the VK
-    // snapshot. The audit gate below re-reads GL live heights each frame and compares
-    // this checksum — a mismatch means GL heights changed WITHOUT a heightVersion bump
-    // (the g_terrainHeightVersion-only-in-UploadHeightFull staleness hazard) so the VK
-    // snapshot silently diverged from the terrain GL draws against.
-    s->heightChecksum = fnv1a64(scratch.data(), (size_t)feed.heightBytes);
-    s->heightChecksumValid = true;
     ++g_health.heightSnapshots;
-    return true;
-}
-
-// HEIGHT-AUDIT gate (MC2_VK_TERRAIN_HEIGHT_AUDIT, default-OFF presence gate). When on,
-// EVERY frame re-reads the GL height SSBO and re-checksums it, comparing against the
-// snapshot checksum stored at the last version-gated copy. Detects height-staleness:
-// GL heights mutated (crater/deform) without a heightVersion bump -> VK snapshot stale
-// -> macro-slope normal (mv_smoothTerrainNormal reads heightsFS) diverges from GL.
-// This is a VERIFICATION gate (read-only): it never mutates render output, only logs.
-static bool heightAuditRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_TERRAIN_HEIGHT_AUDIT">();
-    }
-    return state == 1;
-}
-
-// NEGATIVE-CONTROL hook: MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT=1 deliberately corrupts the
-// stored snapshot checksum right after a snapshot so the audit MUST fire on the next
-// frame — proves the audit has teeth (can actually detect divergence). Never on in prod.
-static bool heightAuditCorruptRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT">();
-    }
-    return state == 1;
-}
-
-// Runs each frame when the audit gate is on. Returns true if heights are consistent
-// (or audit inapplicable), false + LOUD log on a detected mismatch.
-bool audit_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!heightAuditRequested()) return true;
-    if (!s->heightChecksumValid) return true;           // no snapshot yet -> nothing to audit
-    if (feed.glHeightSsbo == 0 || feed.heightBytes == 0) return true;
-    // NEGATIVE CONTROL: poison the stored checksum so the compare below is guaranteed
-    // to mismatch on this frame's live GL heights. One-shot per process (latches).
-    static bool s_corrupted = false;
-    if (heightAuditCorruptRequested() && !s_corrupted) {
-        s->heightChecksum ^= 0xA5A5A5A5A5A5A5A5ull;
-        s_corrupted = true;
-        vlog("[HEIGHT_AUDIT] NEGATIVE CONTROL armed: snapshot checksum deliberately corrupted "
-             "-> next compare MUST report a mismatch.");
-    }
-    std::vector<uint8_t> live((size_t)feed.heightBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, live.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    const uint64_t liveSum = fnv1a64(live.data(), (size_t)feed.heightBytes);
-    if (liveSum != s->heightChecksum) {
-        static unsigned long s_reported = 0;
-        if (s_reported < 8 || (s_reported % 300) == 0) {  // loud but rate-limited
-            vlog("[HEIGHT_AUDIT] ★MISMATCH: VK height snapshot DIVERGED from GL live heights "
-                 "(snapshot_fnv=0x%016llx live_fnv=0x%016llx bytes=%llu ver=%llu). GL terrain "
-                 "heights mutated without a heightVersion bump -> VK macro-slope normal is stale.",
-                 (unsigned long long)s->heightChecksum, (unsigned long long)liveSum,
-                 (unsigned long long)feed.heightBytes, (unsigned long long)s->heightVersionCopied);
-        }
-        ++s_reported;
-        return false;
-    }
-    // POSITIVE WITNESS (rate-limited): prove the audit actually EXECUTED and matched
-    // against LIVE re-read GL heights this frame — not merely absent. Emits the live
-    // checksum so a soak/deform run can show the audit is reading live data (the value
-    // tracks g_terrainHeightVersion: it changes iff the GL heightfield is re-uploaded).
-    {
-        static unsigned long s_ok = 0;
-        static uint64_t s_lastLive = 0;
-        if (s_ok == 0 || liveSum != s_lastLive || (s_ok % 600) == 0) {
-            vlog("[HEIGHT_AUDIT] OK: live GL heights match VK snapshot "
-                 "(live_fnv=0x%016llx bytes=%llu ver=%llu).",
-                 (unsigned long long)liveSum, (unsigned long long)feed.heightBytes,
-                 (unsigned long long)s->heightVersionCopied);
-            s_lastLive = liveSum;
-        }
-        ++s_ok;
-    }
     return true;
 }
 

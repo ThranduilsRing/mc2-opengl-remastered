@@ -7,13 +7,6 @@
 // and logged once per submit alongside [TerrainLOD v1] so acceptance has hard
 // per-band numbers. Index = LOD level (0..5), same mapping as [TerrainLOD v1].
 static int s_visualDisplacedCounts[6] = {0, 0, 0, 0, 0, 0};
-#ifdef MC2_VULKAN_ISLAND
-static bool terrainGlFallbackAuditEnabled()
-{
-    static const bool on = mc2::gate::get<"MC2_VK_TERRAIN_GL_FALLBACK_AUDIT">();
-    return on;
-}
-#endif
 static int      s_submitZeroStreak  = 0;  // Phase 7.5: consecutive frames with count==0
 // Mirror gameos_graphics.cpp's file-static terrain shadow texture units (9/10).
 static constexpr GLint kChunkTexUnitStaticShadow  = 9;
@@ -61,18 +54,12 @@ struct TerrainLodSubmitFrame {
 #ifdef MC2_VULKAN_ISLAND
     bool s_vkTerrainActive;
 #endif
-#ifdef MC2_VULKAN_ISLAND
-    TerrainGlFallbackAudit s_vkTerrainGlAudit;
-#endif
-#ifdef MC2_VULKAN_ISLAND
-    bool s_vkTerrainGlAuditOn;
-#endif
 
     void saveGlStateAndGuards();
     void bindProgramAndVisualHeight(const float* mvp);
     void countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount);
     void drawChunks(int count, const TerrainDrawCommand* cmds, const float* skirtDepths, const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, const int* shadowTiers, const float* morphFactors);
-    void auditAndMarkDrawn(const unsigned int* edgeStitch);
+    void markDrawn();
     void restoreGlState();
     void submitVkIsland(int& s_submitCount);
 };
@@ -992,7 +979,6 @@ void TerrainLodSubmitFrame::countSubmitAndPrepVk(int count, const float* mvp, in
     if (s_vkTerrainActive) {
         std::memcpy(s_vkTerrainMvp, mvp, sizeof(s_vkTerrainMvp)); // same MVP the GL draw uses
     }
-    s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();
 #endif
 }
 
@@ -1007,9 +993,6 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
         if (qcX <= 0 || qcY <= 0) continue;
 
 #ifdef MC2_VULKAN_ISLAND
-        if (s_vkTerrainGlAuditOn) {
-            ++s_vkTerrainGlAudit.total;
-        }
         // VK-P10 TERRAIN TIER-1 (+ rung-3 VK-TERRAIN-ALL-LODS): hand main patches to
         // the VK island and skip their GL main+skirt draws. LOD0 (lodStep==1) is the
         // original probe scope; MC2_VK_TERRAIN_ALL_LODS extends capture to coarse bands
@@ -1060,12 +1043,6 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
             p.edgeStitch    = edgeStitch ? edgeStitch[i] : 0u;
             s_vkTerrainPatches.push_back(p);
             s_vkTerrainFeedValid = true;
-            if (s_vkTerrainGlAuditOn) {
-                ++s_vkTerrainGlAudit.captured;
-                if (!s_vkNoEdgeStitch) {
-                    ++s_vkTerrainGlAudit.capturedStitched;
-                }
-            }
             continue;   // GL skips this patch's main + skirt draws unconditionally (this
                         // was already true pre-rung-4: VK-owned patches never got a GL
                         // skirt draw, since `continue` fires before the skirt-draw code
@@ -1077,26 +1054,6 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
                         // populated and the VK island draws the skirt itself; when the
                         // sub-gate is off, behavior is UNCHANGED from rung-3 (0/0 ->
                         // island draws no skirt for this patch).
-        }
-        if (s_vkTerrainGlAuditOn) {
-            ++s_vkTerrainGlAudit.glFallback;
-            if (!s_vkTerrainActive) {
-                ++s_vkTerrainGlAudit.inactive;
-            } else if (!s_vkCaptureThisBand) {
-                ++s_vkTerrainGlAudit.band;
-            } else if (!s_vkOwnsDisplace) {
-                ++s_vkTerrainGlAudit.displace;
-            } else if (!s_vkNoEdgeStitch) {
-                ++s_vkTerrainGlAudit.edgeStitch;
-            } else {
-                ++s_vkTerrainGlAudit.other;
-            }
-            if (skirtDepths && skirtEdgeMasks && skirtDepths[i] > 0.0f) {
-                unsigned int mask = skirtEdgeMasks[i];
-                s_vkTerrainGlAudit.skirtEdges +=
-                    ((mask & 1u) ? 1 : 0) + ((mask & 2u) ? 1 : 0) +
-                    ((mask & 4u) ? 1 : 0) + ((mask & 8u) ? 1 : 0);
-            }
         }
 #endif
 
@@ -1255,19 +1212,8 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
     }
 }
 
-// Report the patches the VK island left to GL and mark terrain drawn for the post-process passes.
-void TerrainLodSubmitFrame::auditAndMarkDrawn(const unsigned int* edgeStitch) {
-#ifdef MC2_VULKAN_ISLAND
-    if (s_vkTerrainGlAuditOn) {
-        static unsigned long s_auditFrame = 0;
-        ++s_auditFrame;
-        if (s_auditFrame <= 60 || (s_auditFrame % 180) == 0) {
-            mc2::fmt::print_err("[VK_TERRAIN_GL_FALLBACK_AUDIT v1] frame={:d} total={:d} captured={:d} gl_fallback={:d} inactive={:d} band={:d} displace={:d} edge_stitch={:d} captured_stitch={:d} other={:d} skirt_edges={:d}\n", mc2::fmt::as_u32(s_auditFrame), mc2::fmt::as_i32(s_vkTerrainGlAudit.total), mc2::fmt::as_i32(s_vkTerrainGlAudit.captured), mc2::fmt::as_i32(s_vkTerrainGlAudit.glFallback), mc2::fmt::as_i32(s_vkTerrainGlAudit.inactive), mc2::fmt::as_i32(s_vkTerrainGlAudit.band), mc2::fmt::as_i32(s_vkTerrainGlAudit.displace), mc2::fmt::as_i32(s_vkTerrainGlAudit.edgeStitch), mc2::fmt::as_i32(s_vkTerrainGlAudit.capturedStitched), mc2::fmt::as_i32(s_vkTerrainGlAudit.other), mc2::fmt::as_i32(s_vkTerrainGlAudit.skirtEdges));
-            fflush(stderr);
-        }
-    }
-#endif
-
+// Mark terrain drawn for the post-process passes.
+void TerrainLodSubmitFrame::markDrawn() {
     // Terrain pixels are now on screen. Mark terrain drawn so the terrain-gated
     // post-process passes (runScreenShadow / runCloudShadow / runShoreline /
     // runGodRays) actually run. The chunk path is the default-on production
@@ -1461,7 +1407,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     static int s_submitCount = 0;
     f.countSubmitAndPrepVk(count, mvp, s_submitCount);
     f.drawChunks(count, cmds, skirtDepths, skirtEdgeMasks, edgeStitch, shadowTiers, morphFactors);
-    f.auditAndMarkDrawn(edgeStitch);
+    f.markDrawn();
     f.restoreGlState();
     f.submitVkIsland(s_submitCount);
 }

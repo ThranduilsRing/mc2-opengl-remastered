@@ -301,14 +301,12 @@ bool objectIdDirectChainGateEnabled() {
     return on;
 }
 
-// VK-RUNG8-ITEM8: the present interop tail is deleted. Present gates that only
-// ever SELECTED a now-deleted branch are retired to parseable no-ops (item-9
+// VK-RUNG8-ITEM8: the present interop tail is deleted. A present gate that only
+// ever SELECTED a now-deleted branch is retired to a parseable no-op (item-9
 // pattern). MC2_VK_PRESENT_SKIP_GL_HANDOFF selected the VK-owned skip of the
-// GL->VK handoff (the handoff itself is gone -> the skip is unconditional), and
-// MC2_VK_PRESENT_NO_GL_IMPORT selected the VK-only present-image allocation (now
-// the ONLY allocation -- the exportable half is deleted). MC2_VK_PRESENT_TAIL_HOOK
-// is NOT retired -- it still gates the native HUD/ImGui tail recording. Emitted
-// once from init().
+// GL->VK handoff (the handoff itself is gone -> the skip is unconditional).
+// MC2_VK_PRESENT_TAIL_HOOK is NOT retired -- it still gates the native HUD/ImGui
+// tail recording. Emitted once from init().
 void emitDeprecatedPresentGateNotes() {
     static bool done = false;
     if (done) return;
@@ -316,9 +314,6 @@ void emitDeprecatedPresentGateNotes() {
     if (mc2::gate::get<"MC2_VK_PRESENT_SKIP_GL_HANDOFF">())
         plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF is deprecated (item-8): the GL->VK "
              "present handoff is deleted; the skip is now unconditional. No-op.");
-    if (mc2::gate::get<"MC2_VK_PRESENT_NO_GL_IMPORT">())
-        plog("MC2_VK_PRESENT_NO_GL_IMPORT is deprecated (item-8): the present "
-             "image is always a VK-only allocation. No-op.");
 }
 
 bool presentNativeStrictEnabled() {

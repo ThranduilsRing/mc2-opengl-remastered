@@ -307,11 +307,6 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     { ZoneScopedN("VK-terrain-interop-height");   // VK-FLIP-FIELD-REPORT-1: GL->VK height copy
     if (!snapshot_height(s, feed)) { setFallback("height_snapshot_failed"); return 0; } }
 
-    // HEIGHT-AUDIT (default-OFF gate): compare the VK snapshot checksum against GL live
-    // heights each frame. Detected mismatch is logged LOUDLY but does NOT fail the frame
-    // (verification-only) so the audit can run alongside a normal render for diagnosis.
-    audit_height(s, feed);
-
     // VK-FLIP-FIELD-REPORT-1: atlas + per-frame shadow-map interop copies grouped in
     // one coarse zone (colormap/cement copy-once; static copy-once-per-generation since
     // VK-SHADOW-COPY-ONCE-1; dyn shadow copy-per-frame).
