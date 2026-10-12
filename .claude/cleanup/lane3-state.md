@@ -22,7 +22,19 @@ Read with `.claude/cleanup/lane3-diag/mdinfo.py` (pure-Python minidump reader + 
   process-heap block by 18..47+ bytes. The previous lane's page guard on gos_Malloc blocks <=512 did not fire -> the buffer is not
   from gos_Malloc/operator new (direct malloc/strdup/HeapAlloc, a DLL, or >512 bytes).
 
-## Diagnostic in flight: `.claude/cleanup/lane3-diag/sandwich_patch.py` (apply|revert; NEVER commit)
+## Session 2026-10-12 (resumed after the weekly-limit cut; merged nifty d68203bf9 -> 386925beb)
+- The sandwich run (2026-10-11T20-30-39, 120 s) PASSED with no hit (one of the ~30 % clean runs); its stderr was not kept.
+- Every victim string in the 10 quarantine dumps (scan: scratch `scan_dumps.py`) is the SAME 31 bytes at the victim block's start:
+  `553810841,-199839715553810841)` NUL. The two numbers are v and -v with v = 0x02C5F92999999999 = 46528809 * 2^32 + 0x99999999
+  (hi:lo = 0x02C5F929 : 0x99999999), an int64 rendering (not a double: v is odd and > 2^53). The overflow always enters the victim at
+  the same character, so the writer's buffer has a FIXED size and the string a fixed prefix (buffer user size + 8 header bytes, ~49..64
+  chars) that no dump preserved (the writer's block was freed and 0xDD-filled by the quarantine before the dump). The 19:53 dump is
+  stack-only (no heap). No `%lld,%lld)` / `{},{})` / to_string shape in the sources matches (grep over GameOS code mclib gui).
+- Diagnostic in flight: `lane3-diag/strhunt_patch.py` (apply|revert; NEVER commit): a scan thread finds the digit string in any
+  committed RW region 4x/s, logs 512 bytes before it (the prefix = the format) to `<install>/crashes/strhunt.log`, arms a DR0 write
+  watchpoint on the string's tail so the next rewrite yields a crash bundle with the writer's stack.
+
+## Diagnostic (previous): `.claude/cleanup/lane3-diag/sandwich_patch.py` (apply|revert; NEVER commit)
 Interleaved canary/hole malloc blocks in classes 32..128 (3 waves, frames 2/400/1200), verified every frame from draw_screen; a hit
 prints `[SANDWICH] HIT` + hex/ASCII of the neighbourhood (the previous block = the writer's buffer = the string's start) to stderr
 (captured in `tests/smoke/artifacts/<ts>/mc2_15.log`) and arms a DR0 write watchpoint on every thread so the next write of the same
@@ -31,7 +43,10 @@ address produces a crash bundle with the writer's stack.
 ## Runs this session (mc2_15 tier2, lane3 install)
 | # | exe | result | fps | frame | note |
 |---|-----|--------|-----|-------|------|
-| 1 | sandwich diag | (running) | | | |
+| 1 | sandwich diag (2026-10-11 20:30) | PASS | ~110 | 120 s | no [SANDWICH] hit; stderr not kept |
+| 2 | strhunt v1 (08:58) | FAIL timeout | 109 -> 60 | ~100 s | 73 s load (host loaded) + 120 s > 180 s cap; no crash, no hit |
+| 3 | strhunt v1 (09:02) | FAIL heartbeat_freeze_play | 30 avg, p1 6 | 3637 | scanner too heavy (fps 10-30 after 20 s); no crash, no hit |
+| 4 | strhunt v1 (09:05) | PASS | 41 avg | 4948 | no crash, no hit |
 
 ## Hygiene
 - build64-ninja configured + built in A:/Games/mc2-lane3 (untracked). Install holds crashes/ bundles (keep: evidence).
