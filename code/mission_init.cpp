@@ -9,6 +9,7 @@
 // tab uses. Registered from Mission::init; inert unless MC2_DEV_SHELL=1.
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include "mc2fmt.h"
+#include "appearance_rng.h"
 static bool devShellSimSpeed(const char* paramsJson,
                              std::string& dataJsonOut, std::string& errorOut)
 {
@@ -66,16 +67,16 @@ void Mission::initPrologue(MissionInitFrame& f) {
 	GameAdapters::StaticProp::beginMissionLate(missionName); // M1 Task 13
 	GameAdapters::Mech::beginMission();              // M2: mech lifecycle
 
-	// DETERMINISTIC-RNG-1: per-mission reseed hook. ONLY under MC2_DETERMINISTIC_RNG.
-	// Seed = hash(missionName), overridable with MC2_RNG_SEED for manual pinning.
-	// Gate OFF: this block is a no-op (no gos_srand call) => OFF byte-identical.
+	// The mission seed: hash(missionName), overridable with MC2_RNG_SEED. The appearance stream always restarts from it
+	// (a mission's decals and fall directions replay); the simulation stream only under MC2_DETERMINISTIC_RNG, so with the
+	// gate OFF the game keeps the stock wall-clock srand (byte-identical to stock).
 	{
-		const bool detRng = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
-		if (detRng) {
-			uint32_t seed = mc2_det_rng::hashMissionName(missionName);
-			const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
-			if (!seedText.empty())
-				seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
+		uint32_t seed = mc2_det_rng::hashMissionName(missionName);
+		const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
+		if (!seedText.empty())
+			seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
+		mc2_appearance_rng::reseed(seed);
+		if (mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) {
 			gos_srand(seed);
 			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));
 		}
