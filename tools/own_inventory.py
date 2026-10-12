@@ -35,8 +35,8 @@ import cxx17_ratchet as cr  # noqa: E402  (git_blobs and the comment/string blan
 BASELINE = os.path.join(ROOT, "tests", "unit", "own_inventory_baseline.json")
 DEFAULT_DIRS = ["code", "mclib", "gui", "GameOS", "RenderCore", "RenderWorld", "GameAdapters", "GuiRuntime", "editor", "Gates"]
 
-_NEW = re.compile(r"\bnew\s*(?:\([^()]*\)\s*)?(?:\(\s*)?(?:const\s+)?([A-Za-z_][\w:]*(?:\s*<[^;{}()]*?>)?)\s*(\[)?")
-_DELETE = re.compile(r"\bdelete\s*(\[\s*\])?\s*\(?\s*([A-Za-z_][\w\.\->\[\]]*)")
+_NEW = re.compile(r"\bnew\b\s*(?:\([^()]*\)\s*)?(?:\(\s*)?(?:const\s+)?([A-Za-z_][\w:]*(?:\s*<[^;{}()]*?>)?)\s*(\[)?")
+_DELETE = re.compile(r"\bdelete\b\s*(\[\s*\])?\s*\(?\s*([A-Za-z_][\w\.\->\[\]]*)")
 #: `operator new` / `operator delete` tokens are allocator definitions or calls to the global ones, never a typed site.
 _OPERATOR = re.compile(r"operator\s*$")
 _ASSIGN_NEW = re.compile(r"([A-Za-z_][\w\.\->\[\]]*)\s*=\s*new\b")
@@ -181,6 +181,8 @@ Foo::~Foo() {
 void Foo::reset() { Baz* tmp = new Baz; delete tmp; }
 void helper() { Qux* q = new Qux[4]; delete[] q; }
 void* Foo::operator new (size_t ourSize) { return ::operator new(ourSize); }
+void Foo::seek(long newPosition) { logicalPosition = newPosition; }
+void Foo::prune() { deleteNode(bar); }
 void Foo::operator delete (void* us) { ::operator delete(us); }
 """
     fails = []
@@ -190,6 +192,10 @@ void Foo::operator delete (void* us) { ::operator delete(us); }
         fails.append(f"Bar should be allocated twice and freed twice by Foo: {t['Bar']}")
     if "char" in t:
         fails.append("builtin element types are not tracked")
+    if inv["untyped_frees"].get("code/foo.cpp", 0) != 1:
+        fails.append(f"deleteNode(bar) is a call, not a free: {inv['untyped_frees']}")
+    if "Position" in t:
+        fails.append("an identifier that starts with new (newPosition) is not an allocation")
     if "ourSize" in t or "size_t" in t:
         fails.append("operator new definitions and calls are not allocation sites")
     if not (t["Baz"]["new"] == 1 and t["Baz"]["delete"] == 1 and t["Baz"]["owners"] == ["Foo"]):

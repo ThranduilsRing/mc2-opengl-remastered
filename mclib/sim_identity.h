@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
+#include <span>
 
 // SIM-IDENTITY-HASH-1 -- GL-free, engine-free, header-only world-state hash.
 //
@@ -149,8 +150,8 @@ inline int32_t quantize(float v, float q) {
 // Orders two float lists by quantized bucket then raw bits: total, NaN-safe,
 // and never relies on `<` over NaN (which is false in both directions and
 // would make a comparator non-transitive). <0 / 0 / >0.
-inline int compareQuantized(const float* qa, const float* qb, const float* qq, int n) {
-    for (int i = 0; i < n; ++i) {
+inline int compareQuantized(std::span<const float> qa, std::span<const float> qb, std::span<const float> qq) {
+    for (size_t i = 0; i < qa.size(); ++i) {
         const int32_t ia = quantize(qa[i], qq[i]);
         const int32_t ib = quantize(qb[i], qq[i]);
         if (ia != ib) return ia < ib ? -1 : 1;
@@ -169,8 +170,8 @@ inline int compareQuantized(const float* qa, const float* qb, const float* qq, i
 // records); the point is determinism, not asymptotics -- std::sort is unstable
 // and would be free to permute records that compare equal.
 template <class Record, class Compare>
-inline void sortTotal(Record* recs, size_t n, Compare compare) {
-    for (size_t i = 1; i < n; ++i) {
+inline void sortTotal(std::span<Record> recs, Compare compare) {
+    for (size_t i = 1; i < recs.size(); ++i) {
         Record key = recs[i];
         size_t j = i;
         while (j > 0 && compare(recs[j - 1], key) > 0) {
@@ -193,7 +194,7 @@ inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
     const float qb[5] = {b.px, b.py, b.pz, b.rot, b.hp};
     const float qq[5] = {kPosQuantum, kPosQuantum, kPosQuantum,
                          kAngQuantum, kFracQuantum};
-    if (const int c = compareQuantized(qa, qb, qq, 5)) return c;
+    if (const int c = compareQuantized(qa, qb, qq)) return c;
     const int32_t ra[8] = {a.gesture, a.animFrame, a.status, a.target,
                            a.brainState, a.moveState, a.pathStep, a.pathSteps};
     const int32_t rb[8] = {b.gesture, b.animFrame, b.status, b.target,
@@ -204,7 +205,7 @@ inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
 }
 
 inline void sortRecords(MoverRecord* recs, size_t n) {
-    sortTotal(recs, n, compareRecords);
+    sortTotal(std::span<MoverRecord>(recs, n), compareRecords);
 }
 
 // --- digests ---------------------------------------------------------------
@@ -323,13 +324,13 @@ inline int compareObjects(const ObjectRecord& a, const ObjectRecord& b) {
     const float qa[2] = {a.damage, a.rot};
     const float qb[2] = {b.damage, b.rot};
     const float qq[2] = {kPosQuantum, kAngQuantum};
-    if (const int c = compareQuantized(qa, qb, qq, 2)) return c;
+    if (const int c = compareQuantized(qa, qb, qq)) return c;
     if (a.target != b.target) return a.target < b.target ? -1 : 1;
     return 0;
 }
 
 inline void sortObjects(ObjectRecord* recs, size_t n) {
-    sortTotal(recs, n, compareObjects);
+    sortTotal(std::span<ObjectRecord>(recs, n), compareObjects);
 }
 
 // Graded (quantized) digest over buildings and turrets. SORTS `recs` in place.

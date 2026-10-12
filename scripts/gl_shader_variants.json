@@ -494,7 +494,7 @@
    "key": "edge_fog",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:543",
+   "source": "GameOS/gameos/gos_postprocess.cpp:495",
    "stages": {
     "frag": "shaders/edge_fog.frag",
     "vert": "shaders/postprocess.vert"
@@ -507,7 +507,7 @@
    "key": "fog_oob",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:524",
+   "source": "GameOS/gameos/gos_postprocess.cpp:476",
    "stages": {
     "frag": "shaders/fog_oob.frag",
     "vert": "shaders/postprocess.vert"
@@ -2850,7 +2850,7 @@
    "key": "hzb_reduce",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:601",
+   "source": "GameOS/gameos/gos_postprocess.cpp:553",
    "stages": {
     "frag": "shaders/hzb_reduce.frag",
     "vert": "shaders/postprocess.vert"

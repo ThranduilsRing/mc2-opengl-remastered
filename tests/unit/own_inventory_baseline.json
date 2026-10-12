@@ -13,18 +13,6 @@
   "Gates"
  ],
  "types": {
-  "A": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "ABLFile": {
    "delete": 6,
    "delete_array": 0,
@@ -156,69 +144,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Age": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/dynamic_decal_ring.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Alpha": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechicon.cpp": {
-     "new": 2
-    },
-    "mclib/utilities.cpp": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "Altitude": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/simplecamera.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Ammo": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticscomponent.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "AmmoType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover_combat.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
   "AppearanceInfo": {
    "delete": 3,
    "delete_array": 0,
@@ -261,27 +186,12 @@
     "Mission"
    ]
   },
-  "Armor": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechlabscreen.cpp": {
-     "new": 1
-    },
-    "code/mechlabscreen.h": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "Artillery": {
    "delete": 1,
    "delete_array": 0,
    "files": {
     "code/artlry.cpp": {
-     "new": 5
+     "new": 1
     },
     "code/objmgr.cpp": {
      "delete": 1,
@@ -291,7 +201,7 @@
      "new": 1
     }
    },
-   "new": 7,
+   "new": 3,
    "new_array": 0,
    "owners": [
     "GameObjectManager"
@@ -333,66 +243,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "AvailableCount": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_availability.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Avg": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticspilot.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "BRValue": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_state.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Base": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorPlaytest.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "BaseFile": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorInterface.cpp": {
-     "new": 22
-    }
-   },
-   "new": 22,
    "new_array": 0,
    "owners": []
   },
@@ -603,33 +453,6 @@
     "AppearanceTypeList"
    ]
   },
-  "Block": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/heap.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Blue": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechicon.cpp": {
-     "new": 2
-    },
-    "mclib/utilities.cpp": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "BrainTaskQueue": {
    "delete": 1,
    "delete_array": 0,
@@ -659,21 +482,6 @@
    "owners": [
     "ABLModule"
    ]
-  },
-  "Brush": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorInterface.cpp": {
-     "new": 2
-    },
-    "editor/EditorInterface.h": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
   },
   "Building": {
    "delete": 1,
@@ -783,21 +591,6 @@
     "ControlGui",
     "PauseWindow"
    ]
-  },
-  "CBills": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mpparameterscreen.cpp": {
-     "new": 4
-    },
-    "editor/EditorData.h": {
-     "new": 2
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
   },
   "CBooleanFlagIsSet": {
    "delete": 0,
@@ -1289,18 +1082,6 @@
     "Unit"
    ]
   },
-  "CV": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "C_RemoveStructure": {
    "delete": 1,
    "delete_array": 0,
@@ -1315,54 +1096,6 @@
    "owners": [
     ""
    ]
-  },
-  "CamAngle": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera_input.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "CamWorld": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera_input.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "Cap": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gameos_graphics_light_ssbo.cpp": {
-     "new": 4
-    },
-    "GameOS/gameos/gos_cardcloud_sim.cpp": {
-     "new": 3
-    },
-    "GameOS/gameos/gos_particle_bridge.cpp": {
-     "new": 3
-    },
-    "GameOS/gameos/gos_particle_bridge_tube.cpp": {
-     "new": 3
-    },
-    "mclib/txmmgr_lights.cpp": {
-     "new": 5
-    }
-   },
-   "new": 18,
-   "new_array": 0,
-   "owners": []
   },
   "Carnage": {
    "delete": 1,
@@ -1384,72 +1117,6 @@
    "owners": [
     "GameObjectManager"
    ]
-  },
-  "CaseItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablstmt.cpp": {
-     "new": 10
-    }
-   },
-   "new": 10,
-   "new_array": 0,
-   "owners": []
-  },
-  "CellCol": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.cpp": {
-     "new": 3
-    },
-    "code/gvehicl_update.cpp": {
-     "new": 2
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "CellI": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/SelectionBrush.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "CellJ": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/SelectionBrush.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "CellRow": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.cpp": {
-     "new": 3
-    },
-    "code/gvehicl_update.cpp": {
-     "new": 2
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
   },
   "ChainIteratorOf<T>": {
    "delete": 0,
@@ -1501,30 +1168,6 @@
    "owners": [
     "ChatWindow"
    ]
-  },
-  "Check": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Class": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
   },
   "ClassData": {
    "delete": 0,
@@ -1770,98 +1413,11 @@
     "GameObjectManager"
    ]
   },
-  "Color": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/attributemeter.h": {
-     "new": 8
-    },
-    "code/chatwindow.cpp": {
-     "new": 7
-    },
-    "code/controlgui.cpp": {
-     "new": 2
-    },
-    "code/controlgui.h": {
-     "new": 1
-    },
-    "code/logisticspilotlistbox.cpp": {
-     "new": 3
-    },
-    "code/mechicon.cpp": {
-     "new": 2
-    },
-    "code/mpparameterscreen.cpp": {
-     "new": 4
-    },
-    "code/mpsetuparea.cpp": {
-     "new": 3
-    },
-    "editor/Objective.h": {
-     "new": 6
-    },
-    "gui/asystem.cpp": {
-     "new": 3
-    },
-    "mclib/gvactor_geometry.cpp": {
-     "new": 3
-    },
-    "mclib/mech3d_init.cpp": {
-     "new": 3
-    },
-    "mclib/utilities.cpp": {
-     "new": 2
-    },
-    "mclib/utilities.h": {
-     "new": 1
-    }
-   },
-   "new": 48,
-   "new_array": 0,
-   "owners": []
-  },
   "ColorPropIsland": {
    "delete": 0,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/vulkan_color_prop_island.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Colors": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechicon.cpp": {
-     "new_array": 6
-    }
-   },
-   "new": 0,
-   "new_array": 6,
-   "owners": []
-  },
-  "Column": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/Action.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Column<land->": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/Action.cpp": {
      "new": 1
     }
    },
@@ -1878,48 +1434,6 @@
     },
     "code/mission_init.cpp": {
      "new": 2
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "CommanderID": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission.h": {
-     "new": 1
-    },
-    "code/mission_movers.cpp": {
-     "new": 7
-    },
-    "code/multplyr.cpp": {
-     "new": 1
-    },
-    "code/multplyr.h": {
-     "new": 2
-    },
-    "code/multplyr_send.cpp": {
-     "new": 2
-    },
-    "code/objmgr.cpp": {
-     "new": 2
-    },
-    "code/objmgr.h": {
-     "new": 1
-    }
-   },
-   "new": 16,
-   "new_array": 0,
-   "owners": []
-  },
-  "CommittedSize": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/heap.cpp": {
-     "new": 3
     }
    },
    "new": 3,
@@ -1955,18 +1469,6 @@
     "Mover"
    ]
   },
-  "ContactStatus": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/contact.cpp": {
-     "new": 11
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
-  },
   "ControlButton": {
    "delete": 0,
    "delete_array": 4,
@@ -1988,33 +1490,6 @@
     "ControlGui",
     "PauseWindow"
    ]
-  },
-  "Cost": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechlabscreen.cpp": {
-     "new": 6
-    },
-    "mclib/move.h": {
-     "new": 3
-    }
-   },
-   "new": 9,
-   "new_array": 0,
-   "owners": []
-  },
-  "Count": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_mech_batcher_geometry.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
   },
   "CounterTables": {
    "delete": 0,
@@ -2085,49 +1560,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Damage": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/bldng.cpp": {
-     "new": 2
-    },
-    "code/bldng.h": {
-     "new": 1
-    },
-    "code/gameobj.h": {
-     "new": 1
-    },
-    "code/gate.cpp": {
-     "new": 2
-    },
-    "code/gate.h": {
-     "new": 1
-    },
-    "code/mechicon.cpp": {
-     "new": 4,
-     "new_array": 47
-    },
-    "code/mechicon.h": {
-     "new": 1
-    },
-    "code/terrobj.cpp": {
-     "new": 2
-    },
-    "code/terrobj.h": {
-     "new": 1
-    },
-    "code/turret.cpp": {
-     "new": 2
-    },
-    "code/turret.h": {
-     "new": 1
-    }
-   },
-   "new": 18,
-   "new_array": 47,
-   "owners": []
-  },
   "DamageBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -2137,30 +1569,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "DamageState": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover_attack.cpp": {
-     "new": 8
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": []
-  },
-  "DataType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover.h": {
-     "new": 4
-    }
-   },
-   "new": 4,
    "new_array": 0,
    "owners": []
   },
@@ -2191,30 +1599,6 @@
     ""
    ]
   },
-  "Depth": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Dir": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorPlaytest.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
   "DirectoryEntry": {
    "delete": 0,
    "delete_array": 0,
@@ -2236,42 +1620,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Distance": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objmgr_io.cpp": {
-     "new": 12
-    }
-   },
-   "new": 12,
-   "new_array": 0,
-   "owners": []
-  },
-  "Dmg": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Door": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/move_globalmap_build.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -2683,33 +2031,6 @@
     "EffectClipPolygon"
    ]
   },
-  "Element": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl_update.cpp": {
-     "new": 2
-    },
-    "code/mech_update.cpp": {
-     "new": 2
-    },
-    "code/missiongui.cpp": {
-     "new": 4
-    },
-    "mclib/appear.cpp": {
-     "new": 43
-    },
-    "mclib/genactor_frame.cpp": {
-     "new": 24
-    },
-    "mclib/quad_lines.cpp": {
-     "new": 56
-    }
-   },
-   "new": 131,
-   "new_array": 0,
-   "owners": []
-  },
   "Elemental": {
    "delete": 0,
    "delete_array": 0,
@@ -2719,18 +2040,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Entry": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorTaskRunner.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -2773,30 +2082,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Expanded": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/UiDefs.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "Explosion": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/carnage.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "ExplosionType": {
    "delete": 0,
    "delete_array": 0,
@@ -2806,45 +2091,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "FX": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/abutton.h": {
-     "new": 6
-    },
-    "gui/alistbox.h": {
-     "new": 6
-    }
-   },
-   "new": 12,
-   "new_array": 0,
-   "owners": []
-  },
-  "Facing": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/cliff_decal_tuning.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "Faction": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mpparameterscreen.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -2883,9 +2129,6 @@
      "delete": 2,
      "new": 1
     },
-    "editor/EditorData_terrain.cpp": {
-     "new": 4
-    },
     "mclib/alphapalette.cpp": {
      "delete": 1,
      "new": 1
@@ -2896,9 +2139,6 @@
     "mclib/gamelog.cpp": {
      "delete": 1,
      "new": 1
-    },
-    "mclib/mapdata.cpp": {
-     "new": 3
     },
     "mclib/mech3d.cpp": {
      "delete": 1
@@ -2932,7 +2172,7 @@
      "new": 1
     }
    },
-   "new": 36,
+   "new": 29,
    "new_array": 0,
    "owners": [
     "",
@@ -2986,18 +2226,6 @@
     ""
    ]
   },
-  "Fire": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/carnage.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "FireType": {
    "delete": 0,
    "delete_array": 0,
@@ -3007,33 +2235,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Fit": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorData_save.cpp": {
-     "new": 5
-    },
-    "editor/EditorPlaytest.cpp": {
-     "new": 2
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "FitBytes": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorPlaytest.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
    "new_array": 0,
    "owners": []
   },
@@ -3121,51 +2322,6 @@
     ""
    ]
   },
-  "Font": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.cpp": {
-     "new": 2
-    },
-    "gui/alistbox.h": {
-     "new": 6
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": []
-  },
-  "FontName": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/afont.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "FontResID": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
-     "new": 2
-    },
-    "code/logisticsdialog.h": {
-     "new": 1
-    },
-    "gui/alistbox.cpp": {
-     "new": 4
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
   "Forest": {
    "delete": 0,
    "delete_array": 0,
@@ -3193,18 +2349,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "FromTex": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/OverlayBrush.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -3437,36 +2581,6 @@
    "new_array": 0,
    "owners": []
   },
-  "GestureId": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mech3d_update.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "GestureStateGoal": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech.h": {
-     "new": 4
-    },
-    "code/mech_move.cpp": {
-     "new": 23
-    },
-    "code/mech_move_net.cpp": {
-     "new": 14
-    }
-   },
-   "new": 41,
-   "new_array": 0,
-   "owners": []
-  },
   "GlobalCollisionAlert": {
    "delete": 1,
    "delete_array": 0,
@@ -3497,27 +2611,6 @@
     ""
    ]
   },
-  "Goal": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover.h": {
-     "new": 1
-    },
-    "code/mover_path.cpp": {
-     "new": 8
-    },
-    "code/warrior.cpp": {
-     "new": 1
-    },
-    "code/warrior.h": {
-     "new": 8
-    }
-   },
-   "new": 18,
-   "new_array": 0,
-   "owners": []
-  },
   "GoalManager": {
    "delete": 0,
    "delete_array": 0,
@@ -3527,21 +2620,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "GoalObject": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/goal.cpp": {
-     "new": 3
-    },
-    "code/goal.h": {
-     "new": 1
-    }
-   },
-   "new": 4,
    "new_array": 0,
    "owners": []
   },
@@ -3559,21 +2637,6 @@
    "owners": [
     ""
    ]
-  },
-  "Green": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechicon.cpp": {
-     "new": 2
-    },
-    "mclib/utilities.cpp": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
   },
   "GroundVehicle": {
    "delete": 1,
@@ -3608,42 +2671,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Gunnery": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticspilot.cpp": {
-     "new": 7
-    },
-    "code/logisticspilot.h": {
-     "new": 3
-    }
-   },
-   "new": 10,
-   "new_array": 0,
-   "owners": []
-  },
-  "Handle": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.h": {
-     "new": 2
-    },
-    "gui/asystem.cpp": {
-     "new": 7
-    },
-    "gui/asystem.h": {
-     "new": 1
-    },
-    "mclib/mlr/mlrtexturepool.cpp": {
-     "new": 18
-    }
-   },
-   "new": 28,
-   "new_array": 0,
-   "owners": []
-  },
   "HashIterator": {
    "delete": 0,
    "delete_array": 0,
@@ -3665,21 +2692,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Heap": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/heap.cpp": {
-     "new": 3
-    },
-    "mclib/heap.h": {
-     "new": 1
-    }
-   },
-   "new": 4,
    "new_array": 0,
    "owners": []
   },
@@ -3725,24 +2737,6 @@
     "CraterManager"
    ]
   },
-  "Height": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/SelectionBrush.cpp": {
-     "new": 3
-    },
-    "gui/alistbox.cpp": {
-     "new": 10
-    },
-    "gui/asystem.h": {
-     "new": 2
-    }
-   },
-   "new": 15,
-   "new_array": 0,
-   "owners": []
-  },
   "HeightBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -3767,45 +2761,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ID": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsmechicon.h": {
-     "new": 2
-    },
-    "code/pilotreviewarea.cpp": {
-     "new": 4
-    },
-    "editor/Action.cpp": {
-     "new": 2
-    },
-    "editor/EditorObjects.h": {
-     "new": 2
-    },
-    "editor/Forest.h": {
-     "new": 1
-    },
-    "editor/Objective.h": {
-     "new": 2
-    },
-    "editor/forest.cpp": {
-     "new": 3
-    },
-    "gui/abutton.cpp": {
-     "new": 2
-    },
-    "gui/abutton.h": {
-     "new": 2
-    },
-    "gui/asystem.h": {
-     "new": 4
-    }
-   },
-   "new": 24,
-   "new_array": 0,
-   "owners": []
-  },
   "INDEX_TYPE": {
    "delete": 0,
    "delete_array": 0,
@@ -3818,36 +2773,6 @@
    "new_array": 1,
    "owners": []
   },
-  "Id": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/include/gameos.hpp": {
-     "new": 3
-    },
-    "code/tacordr.h": {
-     "new": 2
-    },
-    "code/warrior.h": {
-     "new": 4
-    }
-   },
-   "new": 9,
-   "new_array": 0,
-   "owners": []
-  },
-  "Idx": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
   "Image": {
    "delete": 1,
    "delete_array": 0,
@@ -3855,15 +2780,9 @@
     "GameOS/gameos/utils/gl_utils.cpp": {
      "delete": 1,
      "new": 1
-    },
-    "editor/EditorData_terrain.cpp": {
-     "new": 3
-    },
-    "mclib/resizeimage.h": {
-     "new": 2
     }
    },
-   "new": 6,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -3890,49 +2809,6 @@
     "EnginePresentVk"
    ]
   },
-  "Includes": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "new_array": 3
-    }
-   },
-   "new": 0,
-   "new_array": 3,
-   "owners": []
-  },
-  "Index": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/brain_special_dispatch.cpp": {
-     "new": 12
-    },
-    "code/mechicon.h": {
-     "new": 2
-    },
-    "code/pilotreadyscreen.cpp": {
-     "new": 3
-    }
-   },
-   "new": 17,
-   "new_array": 0,
-   "owners": []
-  },
-  "Indicies": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrsorter.cpp": {
-     "new": 1,
-     "new_array": 4
-    }
-   },
-   "new": 1,
-   "new_array": 4,
-   "owners": []
-  },
   "InfoWindow": {
    "delete": 1,
    "delete_array": 0,
@@ -3948,36 +2824,6 @@
     "ControlGui"
    ]
   },
-  "Init": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mapdata.cpp": {
-     "new": 3
-    },
-    "mclib/mapdata.h": {
-     "new": 2
-    },
-    "mclib/terrain_init.cpp": {
-     "new": 2
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "IsMC2Res": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/MC2Strings.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
   "Island": {
    "delete": 0,
    "delete_array": 0,
@@ -3990,36 +2836,6 @@
     }
    },
    "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Items": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech_loadout.cpp": {
-     "new": 14
-    }
-   },
-   "new": 14,
-   "new_array": 0,
-   "owners": []
-  },
-  "Key": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missiongui.h": {
-     "new": 1
-    },
-    "code/missiongui_debugkeys.cpp": {
-     "new": 4
-    },
-    "code/optionsarea.cpp": {
-     "new": 2
-    }
-   },
-   "new": 7,
    "new_array": 0,
    "owners": []
   },
@@ -4038,150 +2854,15 @@
     "MissionInterfaceManager"
    ]
   },
-  "L": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/engine_present_vk.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_post_fog_native.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_post_hzb_native.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
-     "new": 6
-    },
-    "GameOS/gameos/vulkan_post_ssao_native.cpp": {
-     "new": 4
-    },
-    "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-     "new": 2
-    }
-   },
-   "new": 18,
-   "new_array": 0,
-   "owners": []
-  },
-  "Lance": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorObjects.h": {
-     "new": 4
-    },
-    "editor/Objective_conditions.cpp": {
-     "new": 3
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "Layout": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/engine_present_vk.cpp": {
-     "new": 1
-    },
-    "GameOS/gameos/vulkan_color_prop_island.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_mech_island.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_post_fog_native.cpp": {
-     "new": 1
-    },
-    "GameOS/gameos/vulkan_post_hzb_native.cpp": {
-     "new": 1
-    },
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
-     "new": 3
-    },
-    "GameOS/gameos/vulkan_post_ssao_native.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_sky_island.cpp": {
-     "new": 2
-    },
-    "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-     "new": 8
-    },
-    "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-     "new": 1
-    },
-    "GameOS/gameos/vulkan_water_island_images.cpp": {
-     "new": 4
-    }
-   },
-   "new": 31,
-   "new_array": 0,
-   "owners": []
-  },
-  "Left": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/aanimobject.cpp": {
-     "new": 2
-    },
-    "gui/abutton.cpp": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "LeftArmRotation": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech_move_net.cpp": {
-     "new": 11
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
-  },
-  "Level": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablexec.cpp": {
-     "new": 4
-    },
-    "mclib/ablexec.h": {
-     "new": 1
-    },
-    "mclib/ablxstmt.cpp": {
-     "new": 3
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": []
-  },
   "Light": {
    "delete": 0,
    "delete_array": 0,
    "files": {
     "code/light.cpp": {
-     "new": 5
+     "new": 1
     }
    },
-   "new": 5,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -4194,18 +2875,6 @@
     }
    },
    "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "Link": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/goal.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -4236,40 +2905,6 @@
    "new_array": 0,
    "owners": []
   },
-  "List": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata.h": {
-     "new": 2
-    },
-    "code/logisticsdata_inventory.cpp": {
-     "new": 4
-    },
-    "editor/BuildingSettingsDlg.cpp": {
-     "new": 2
-    },
-    "editor/UnitSettingsDlg.cpp": {
-     "new": 2
-    }
-   },
-   "new": 10,
-   "new_array": 0,
-   "owners": []
-  },
-  "ListOfShapes": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/msl_shape.cpp": {
-     "new": 4,
-     "new_array": 1
-    }
-   },
-   "new": 4,
-   "new_array": 1,
-   "owners": []
-  },
   "LoadScreen": {
    "delete": 4,
    "delete_array": 0,
@@ -4295,19 +2930,6 @@
    },
    "new": 2,
    "new_array": 0,
-   "owners": []
-  },
-  "Location": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/cellip.cpp": {
-     "new": 1,
-     "new_array": 18
-    }
-   },
-   "new": 1,
-   "new_array": 18,
    "owners": []
   },
   "Logistics": {
@@ -5220,45 +3842,6 @@
     "Terrain"
    ]
   },
-  "Master": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/contact.cpp": {
-     "new": 2
-    },
-    "code/contact.h": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Max": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 3
-    },
-    "code/optionsarea.h": {
-     "new": 1
-    },
-    "editor/HeightDlg.h": {
-     "new": 2
-    },
-    "gui/ascroll.cpp": {
-     "new": 3
-    },
-    "gui/ascroll.h": {
-     "new": 1
-    }
-   },
-   "new": 10,
-   "new_array": 0,
-   "owners": []
-  },
   "Mc2SharedSceneColor": {
    "delete": 1,
    "delete_array": 0,
@@ -5288,27 +3871,6 @@
    "owners": [
     ""
    ]
-  },
-  "Mech": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech_type.cpp": {
-     "new": 4
-    },
-    "code/mission_movers.cpp": {
-     "new": 1
-    },
-    "code/objmgr.cpp": {
-     "new": 1
-    },
-    "code/objmgr.h": {
-     "new": 1
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
   },
   "Mech3DAppearance": {
    "delete": 2,
@@ -5343,18 +3905,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "MechAvailableCount": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_availability.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
    "new_array": 0,
    "owners": []
   },
@@ -5553,21 +4103,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MechsAvailable": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata.h": {
-     "new": 1
-    },
-    "code/mechpurchasescreen.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "MemoryBlock": {
    "delete": 0,
    "delete_array": 0,
@@ -5750,18 +4285,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Min": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/HeightDlg.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "MineAction": {
    "delete": 1,
    "delete_array": 0,
@@ -5934,18 +4457,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Mode": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/multplyr.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "ModifyBuildingAction": {
    "delete": 9,
    "delete_array": 0,
@@ -6010,33 +4521,6 @@
    "owners": [
     "UserInput"
    ]
-  },
-  "MoveChunk": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl_update.cpp": {
-     "new": 2
-    },
-    "code/gvehicl_weapons.cpp": {
-     "new": 1
-    },
-    "code/mech_damage.cpp": {
-     "new": 1
-    },
-    "code/mech_update.cpp": {
-     "new": 2
-    },
-    "code/mover.h": {
-     "new": 1
-    },
-    "code/mover_init.cpp": {
-     "new": 1
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": []
   },
   "MoveInfo": {
    "delete": 0,
@@ -6106,42 +4590,6 @@
     "Mission"
    ]
   },
-  "MoveState": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl.h": {
-     "new": 2
-    },
-    "code/gvehicl_move.cpp": {
-     "new": 30
-    },
-    "code/mech.h": {
-     "new": 2
-    },
-    "code/mech_move.cpp": {
-     "new": 15
-    },
-    "code/mech_move_net.cpp": {
-     "new": 15
-    }
-   },
-   "new": 64,
-   "new_array": 0,
-   "owners": []
-  },
-  "Mover": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missiongui_support.cpp": {
-     "new": 7
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
   "MoverGroup": {
    "delete": 1,
    "delete_array": 0,
@@ -6171,62 +4619,6 @@
    "owners": [
     "LogisticsData"
    ]
-  },
-  "Name": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_state.cpp": {
-     "new": 1
-    },
-    "editor/EditorObjects_pilot.cpp": {
-     "new": 3
-    },
-    "editor/EditorTaskRunner.cpp": {
-     "new": 6,
-     "new_array": 1
-    },
-    "editor/Forest.h": {
-     "new": 4
-    },
-    "mclib/genactor.cpp": {
-     "new": 8,
-     "new_array": 1
-    },
-    "mclib/genactor.h": {
-     "new": 1
-    },
-    "mclib/terrtxm2_bake.cpp": {
-     "new": 8,
-     "new_array": 4
-    },
-    "mclib/terrtxm2_internal.h": {
-     "new": 2,
-     "new_array": 1
-    },
-    "mclib/terrtxm2_load.cpp": {
-     "new": 5,
-     "new_array": 2
-    }
-   },
-   "new": 38,
-   "new_array": 9,
-   "owners": []
-  },
-  "NameBytes": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/genactor.cpp": {
-     "new": 2
-    },
-    "mclib/genactor.h": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
   },
   "NavMarker": {
    "delete": 0,
@@ -6258,39 +4650,6 @@
     ""
    ]
   },
-  "Node": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablsymt.cpp": {
-     "new": 27
-    },
-    "mclib/ablsymt.h": {
-     "new": 1
-    },
-    "mclib/stuff/tree.cpp": {
-     "delete": 1,
-     "new": 9
-    }
-   },
-   "new": 37,
-   "new_array": 0,
-   "owners": [
-    "Tree"
-   ]
-  },
-  "Noise": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/fractaldialog.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "Note": {
    "delete": 2,
    "delete_array": 0,
@@ -6318,18 +4677,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Number": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "OTMap": {
    "delete": 0,
    "delete_array": 0,
@@ -6339,33 +4686,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Object": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_queries.cpp": {
-     "new": 3
-    },
-    "code/goal.cpp": {
-     "new": 5
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": []
-  },
-  "ObjectSide": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_objects.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -6467,33 +4787,6 @@
     "OptionsScreenWrapper"
    ]
   },
-  "Origin": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/collsn.cpp": {
-     "new": 2
-    },
-    "code/collsn.h": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "OriginalFit": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorData_save.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
   "OverlayBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -6515,21 +4808,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Owner": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/contact.cpp": {
-     "new": 2
-    },
-    "code/contact.h": {
-     "new": 1
-    }
-   },
-   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -6608,54 +4886,6 @@
    "new_array": 0,
    "owners": []
   },
-  "PaintScheme": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/warrior.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "PartId": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.h": {
-     "new": 2
-    },
-    "code/mover.cpp": {
-     "new": 2
-    },
-    "code/mover.h": {
-     "new": 1
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "Path": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_postprocess.cpp": {
-     "new": 6
-    },
-    "code/mpstats.cpp": {
-     "new": 3
-    },
-    "mclib/move_globalmap_doors.cpp": {
-     "new": 9
-    }
-   },
-   "new": 18,
-   "new_array": 0,
-   "owners": []
-  },
   "PauseWindow": {
    "delete": 1,
    "delete_array": 0,
@@ -6670,18 +4900,6 @@
    "owners": [
     "ControlGui"
    ]
-  },
-  "PilotAvailableCount": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_availability.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
   },
   "PilotIcon": {
    "delete": 3,
@@ -6698,24 +4916,6 @@
     "ActivePilotListItem",
     "DeadPilotListItem"
    ]
-  },
-  "PilotName": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission_update.cpp": {
-     "new": 4
-    },
-    "code/missiongui_style.cpp": {
-     "new": 4
-    },
-    "code/missiongui_support.cpp": {
-     "new": 2
-    }
-   },
-   "new": 10,
-   "new_array": 0,
-   "owners": []
   },
   "PilotPromotionArea": {
    "delete": 1,
@@ -6757,63 +4957,6 @@
    "new_array": 0,
    "owners": [
     "MissionResults"
-   ]
-  },
-  "Piloting": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticspilot.cpp": {
-     "new": 7
-    },
-    "code/logisticspilot.h": {
-     "new": 2
-    }
-   },
-   "new": 9,
-   "new_array": 0,
-   "owners": []
-  },
-  "PilotsAvailable": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata.h": {
-     "new": 1
-    },
-    "code/pilotreadyscreen.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Pitch": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera_matrix.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Pixels": {
-   "delete": 0,
-   "delete_array": 5,
-   "files": {
-    "GameOS/gameos/utils/Image.cpp": {
-     "delete_array": 5,
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "Image"
    ]
   },
   "PlugIteratorOf<T>": {
@@ -6948,117 +5091,6 @@
     ""
    ]
   },
-  "Pos": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_misc.cpp": {
-     "new": 10
-    },
-    "code/gametacmap.cpp": {
-     "new": 5
-    },
-    "code/gametacmap.h": {
-     "new": 1
-    },
-    "code/mechcmd2_debugwins.cpp": {
-     "new": 2
-    },
-    "code/missiongui_input.cpp": {
-     "new": 2
-    },
-    "code/missiongui_orders.cpp": {
-     "new": 2
-    },
-    "code/missiongui_support.cpp": {
-     "new": 5
-    },
-    "code/mover.h": {
-     "new": 1
-    },
-    "code/mover_combat.cpp": {
-     "new": 2
-    },
-    "code/optionsarea.cpp": {
-     "new": 6
-    },
-    "code/optionsarea.h": {
-     "new": 1
-    },
-    "editor/EditorInterface_objects.cpp": {
-     "new": 8
-    },
-    "editor/SelectionBrush.cpp": {
-     "new": 7
-    },
-    "gui/alistbox.cpp": {
-     "new": 8
-    },
-    "gui/ascroll.cpp": {
-     "new": 6
-    },
-    "gui/ascroll.h": {
-     "new": 1
-    }
-   },
-   "new": 67,
-   "new_array": 0,
-   "owners": []
-  },
-  "Position": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gamecam.cpp": {
-     "new": 2
-    },
-    "code/gameobj.cpp": {
-     "new": 2
-    },
-    "code/gameobj.h": {
-     "new": 1
-    },
-    "code/gvehicl_move.cpp": {
-     "new": 3
-    },
-    "code/gvehicl_update.cpp": {
-     "new": 15
-    },
-    "code/mech_move_net.cpp": {
-     "new": 3
-    },
-    "code/mech_update.cpp": {
-     "new": 21
-    },
-    "code/mover.cpp": {
-     "new": 14
-    },
-    "code/mover.h": {
-     "new": 1
-    },
-    "code/mover_path.cpp": {
-     "new": 3
-    },
-    "mclib/camera.h": {
-     "new": 2
-    },
-    "mclib/camera_input.cpp": {
-     "new": 24
-    },
-    "mclib/camera_update.cpp": {
-     "new": 8
-    },
-    "mclib/ffile.cpp": {
-     "new": 7
-    },
-    "mclib/file.cpp": {
-     "new": 18
-    }
-   },
-   "new": 124,
-   "new_array": 0,
-   "owners": []
-  },
   "PostcompVertex": {
    "delete": 1,
    "delete_array": 0,
@@ -7073,21 +5105,6 @@
    "owners": [
     "MapData"
    ]
-  },
-  "Prefs": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 29
-    },
-    "code/optionsarea.h": {
-     "new": 3
-    }
-   },
-   "new": 32,
-   "new_array": 0,
-   "owners": []
   },
   "PriorityQueue": {
    "delete": 0,
@@ -7107,18 +5124,6 @@
     }
    },
    "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "Prog": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "new": 7
-    }
-   },
-   "new": 7,
    "new_array": 0,
    "owners": []
   },
@@ -7192,18 +5197,6 @@
     "MLR_I_L_TMesh"
    ]
   },
-  "Rad": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "Radio": {
    "delete": 2,
    "delete_array": 0,
@@ -7223,39 +5216,6 @@
     "MechWarrior"
    ]
   },
-  "Radius": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.cpp": {
-     "new": 2
-    },
-    "code/gameobj.h": {
-     "new": 1
-    },
-    "code/objtype.h": {
-     "new": 2
-    },
-    "editor/SelectionBrush.cpp": {
-     "new": 2
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "RainDrops": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/weather.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
   "Random": {
    "delete": 0,
    "delete_array": 0,
@@ -7265,39 +5225,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Range": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/contact.cpp": {
-     "new": 2
-    },
-    "code/contact.h": {
-     "new": 1
-    },
-    "code/warrior.cpp": {
-     "new": 2
-    },
-    "code/warrior.h": {
-     "new": 1
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "Rank": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticspilot.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
    "new_array": 0,
    "owners": []
   },
@@ -7318,33 +5245,6 @@
    "owners": [
     "ControlGui"
    ]
-  },
-  "Red": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechicon.cpp": {
-     "new": 2
-    },
-    "mclib/utilities.cpp": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "Region": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/goal.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
   },
   "RenderContext": {
    "delete": 2,
@@ -7384,21 +5284,6 @@
     ""
    ]
   },
-  "Res": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorInterface_editor.cpp": {
-     "new": 5
-    },
-    "mclib/camera.h": {
-     "new": 4
-    }
-   },
-   "new": 9,
-   "new_array": 0,
-   "owners": []
-  },
   "ResModes": {
    "delete": 0,
    "delete_array": 1,
@@ -7413,156 +5298,6 @@
    "owners": [
     "OptionsGraphics"
    ]
-  },
-  "ResX": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "ResY": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "ResolutionX": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/controlgui.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "RightArmRotation": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech_move_net.cpp": {
-     "new": 11
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
-  },
-  "RightSel": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreadyscreen.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "Rotate": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl.h": {
-     "new": 4
-    },
-    "code/gvehicl_move.cpp": {
-     "new": 41
-    },
-    "code/mech.h": {
-     "new": 4
-    },
-    "code/mech_move.cpp": {
-     "new": 24
-    },
-    "code/mech_move_net.cpp": {
-     "new": 18
-    }
-   },
-   "new": 91,
-   "new_array": 0,
-   "owners": []
-  },
-  "RotatePerSec": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl_move.cpp": {
-     "new": 3
-    },
-    "code/mech_move.cpp": {
-     "new": 4
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "RotateTurret": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl_move.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "Row": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/Action.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Row<land->": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/Action.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Salvage": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_state.cpp": {
-     "new": 6
-    },
-    "code/gameobj.h": {
-     "new": 3
-    }
-   },
-   "new": 9,
-   "new_array": 0,
-   "owners": []
   },
   "SalvageItem": {
    "delete": 0,
@@ -7603,48 +5338,6 @@
     "MissionResults"
    ]
   },
-  "Scale": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsvariant.h": {
-     "new": 2
-    },
-    "code/simplecamera.h": {
-     "new": 1
-    },
-    "editor/EditorObjects.h": {
-     "new": 2
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "ScaleFactor": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera.cpp": {
-     "new": 3
-    },
-    "mclib/camera.h": {
-     "new": 5
-    },
-    "mclib/camera_input.cpp": {
-     "new": 26
-    },
-    "mclib/camera_matrix.cpp": {
-     "new": 1
-    },
-    "mclib/camera_update.cpp": {
-     "new": 4
-    }
-   },
-   "new": 39,
-   "new_array": 0,
-   "owners": []
-  },
   "ScatterBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -7654,75 +5347,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Scroll": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "new": 10
-    },
-    "code/pilotreviewarea.h": {
-     "new": 1
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
-  },
-  "ScrollPos": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/infowindow.cpp": {
-     "new": 8
-    },
-    "code/optionsarea.cpp": {
-     "new": 24
-    },
-    "code/optionsarea.h": {
-     "new": 1
-    },
-    "gui/ascroll.cpp": {
-     "new": 22
-    },
-    "gui/ascroll.h": {
-     "new": 1
-    }
-   },
-   "new": 56,
-   "new_array": 0,
-   "owners": []
-  },
-  "Sel": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechbayscreen_update.cpp": {
-     "new": 8
-    },
-    "code/mechlabscreen.cpp": {
-     "new": 3
-    },
-    "code/mechlopedia.cpp": {
-     "new": 5
-    },
-    "code/mploadmap.cpp": {
-     "new": 2
-    },
-    "code/mpparameterscreen.cpp": {
-     "new": 5
-    },
-    "code/mpprefs.cpp": {
-     "new": 4
-    },
-    "code/pilotreadyscreen.cpp": {
-     "new": 9
-    }
-   },
-   "new": 36,
    "new_array": 0,
    "owners": []
   },
@@ -7746,66 +5370,6 @@
    "owners": [
     "EditorInterface"
    ]
-  },
-  "SelectionIndex": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Sell": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechpurchasescreen.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "Sensor": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/artlry.cpp": {
-     "new": 2
-    },
-    "code/bldng.cpp": {
-     "new": 1
-    },
-    "code/contact.cpp": {
-     "new": 1
-    },
-    "code/contact.h": {
-     "new": 1
-    },
-    "code/gvehicl.cpp": {
-     "new": 1
-    },
-    "code/gvehicl_update.cpp": {
-     "new": 1
-    },
-    "code/mech.cpp": {
-     "new": 1
-    },
-    "code/mech_init.cpp": {
-     "new": 2
-    },
-    "code/mech_loadout.cpp": {
-     "new": 1
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
   },
   "SensorSystem": {
    "delete": 1,
@@ -7837,30 +5401,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Settings": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorObjectMgr.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Shaders": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "new_array": 10
-    }
-   },
-   "new": 0,
-   "new_array": 10,
-   "owners": []
-  },
   "ShadowIsland": {
    "delete": 0,
    "delete_array": 0,
@@ -7870,57 +5410,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Shape": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/msl.cpp": {
-     "new": 26
-    },
-    "mclib/tgl_types.cpp": {
-     "new": 70
-    }
-   },
-   "new": 96,
-   "new_array": 0,
-   "owners": []
-  },
-  "ShapeIndex": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/msl_shape.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "ShapeStruct": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/vfxtile.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "ShotInfo": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech_damage.cpp": {
-     "new": 12
-    }
-   },
-   "new": 12,
    "new_array": 0,
    "owners": []
   },
@@ -7938,45 +5427,6 @@
    "owners": [
     "MechBayScreen"
    ]
-  },
-  "Size": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/aedit.h": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Skill": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/contact.cpp": {
-     "new": 2
-    },
-    "code/contact.h": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Skip": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
   },
   "SortAlpha": {
    "delete": 1,
@@ -8136,18 +5586,6 @@
     ""
    ]
   },
-  "Space": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "SpecLibrary": {
    "delete": 1,
    "delete_array": 0,
@@ -8178,126 +5616,11 @@
     "PilotPromotionArea"
    ]
   },
-  "Squad": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorObjects.h": {
-     "new": 1
-    },
-    "editor/EditorObjects_unit.cpp": {
-     "new": 3
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "SquadId": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "StackFrameBasePtr": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablxstmt.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Stage": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/tacordr.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "StampBrush": {
    "delete": 0,
    "delete_array": 0,
    "files": {
     "editor/EditorInterface_mouse.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "State": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_state.cpp": {
-     "new": 1
-    },
-    "code/brain_special_apply.cpp": {
-     "new": 1,
-     "new_array": 3
-    },
-    "code/warrior.h": {
-     "new": 1
-    },
-    "code/warrior_core_orders.cpp": {
-     "new": 2
-    },
-    "gui/aanim.cpp": {
-     "new": 4
-    },
-    "gui/alistbox.h": {
-     "new": 2
-    },
-    "mclib/abl.h": {
-     "new": 1
-    },
-    "mclib/ablrtn.cpp": {
-     "new": 4
-    },
-    "mclib/ablxstmt.cpp": {
-     "new": 1
-    }
-   },
-   "new": 17,
-   "new_array": 3,
-   "owners": []
-  },
-  "StateHandle": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_misc.cpp": {
-     "new": 3
-    },
-    "mclib/ablrtn.cpp": {
-     "new": 3
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "StateHandle<ModuleRegistry[CurFSM->": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablrtn.cpp": {
      "new": 1
     }
    },
@@ -8340,60 +5663,6 @@
     "MouseCursorData",
     "PauseWindow"
    ]
-  },
-  "Status": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.cpp": {
-     "new": 2
-    },
-    "code/gameobj.h": {
-     "new": 8
-    },
-    "code/objective.cpp": {
-     "new": 3
-    },
-    "code/objective.h": {
-     "new": 1
-    }
-   },
-   "new": 14,
-   "new_array": 0,
-   "owners": []
-  },
-  "Str": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objective.cpp": {
-     "new": 5
-    },
-    "editor/EditorInterface_editor.cpp": {
-     "new": 2
-    },
-    "editor/SelectTerrainTypeDlg.cpp": {
-     "new": 4
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
-  },
-  "String": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.h": {
-     "new": 1
-    },
-    "mclib/estring.h": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
   },
   "Stuff::MemoryStream": {
    "delete": 4,
@@ -8438,42 +5707,6 @@
    "owners": [
     "WeaponBolt"
    ]
-  },
-  "SubState": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_state.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "SunAz": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_postprocess.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "SunValid": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_postprocess.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
   },
   "T": {
    "delete": 0,
@@ -8594,18 +5827,22 @@
   },
   "TG_HWLightsData": {
    "delete": 0,
-   "delete_array": 0,
+   "delete_array": 3,
    "files": {
     "mclib/txmmgr.cpp": {
+     "delete_array": 1,
      "new_array": 1
     },
     "mclib/txmmgr_lights.cpp": {
+     "delete_array": 2,
      "new_array": 2
     }
    },
    "new": 0,
    "new_array": 3,
-   "owners": []
+   "owners": [
+    "MC_TextureManager"
+   ]
   },
   "TG_HWSceneData": {
    "delete": 1,
@@ -8806,109 +6043,18 @@
    "new_array": 0,
    "owners": []
   },
-  "TacOrder": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/warrior.cpp": {
-     "new": 18
-    },
-    "code/warrior_alarms.cpp": {
-     "new": 21
-    },
-    "code/warrior_state.cpp": {
-     "new": 116
-    }
-   },
-   "new": 155,
-   "new_array": 0,
-   "owners": []
-  },
-  "TacOrderReceived": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/warrior.cpp": {
-     "new_array": 19
-    },
-    "code/warrior.h": {
-     "new_array": 2
-    },
-    "code/warrior_alarms.cpp": {
-     "new_array": 9
-    },
-    "code/warrior_queue.cpp": {
-     "new_array": 1
-    },
-    "code/warrior_state.cpp": {
-     "new": 4,
-     "new_array": 2
-    }
-   },
-   "new": 4,
-   "new_array": 33,
-   "owners": []
-  },
   "Team": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/contact.cpp": {
-     "new": 2
-    },
-    "code/contact.h": {
-     "new": 1
-    },
     "code/mission_init.cpp": {
      "new": 2
     },
     "code/team.cpp": {
      "new": 1
-    },
-    "editor/EditorInterface.h": {
-     "new": 1
-    },
-    "editor/EditorInterface_objects.cpp": {
-     "new": 3
-    },
-    "editor/InspectorPanel.cpp": {
-     "new": 2
     }
    },
-   "new": 12,
-   "new_array": 0,
-   "owners": []
-  },
-  "Team<-1||newTeam>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorInterface_objects.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "TeamID": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission.h": {
-     "new": 1
-    },
-    "code/mission_movers.cpp": {
-     "new": 2
-    },
-    "code/objmgr.cpp": {
-     "new": 6
-    },
-    "code/objmgr.h": {
-     "new": 1
-    }
-   },
-   "new": 10,
+   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -9066,105 +6212,6 @@
     "Terrain"
    ]
   },
-  "Tex": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_postprocess.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Text": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "ThreatMultiplier": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mover.cpp": {
-     "new": 1
-    },
-    "code/mover.h": {
-     "new": 1
-    },
-    "code/mover_combat.cpp": {
-     "new": 1
-    },
-    "code/mover_init.cpp": {
-     "new": 2
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "Threshold": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missiongui.cpp": {
-     "new": 2
-    },
-    "editor/fractaldialog.h": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "ThrottleSetting": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl.h": {
-     "new": 4
-    },
-    "code/gvehicl_move.cpp": {
-     "new": 37
-    },
-    "code/mech.h": {
-     "new": 4
-    },
-    "code/mech_move.cpp": {
-     "new": 22
-    },
-    "code/mech_move_net.cpp": {
-     "new": 11
-    }
-   },
-   "new": 78,
-   "new_array": 0,
-   "owners": []
-  },
-  "Time": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/abutton.h": {
-     "new": 2
-    },
-    "mclib/timing.h": {
-     "new": 4
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
   "TimerManager": {
    "delete": 2,
    "delete_array": 0,
@@ -9185,45 +6232,6 @@
    "owners": [
     ""
    ]
-  },
-  "ToTex": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/OverlayBrush.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Top": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/aanimobject.cpp": {
-     "new": 2
-    },
-    "gui/abutton.cpp": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "TorsoRotation": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mech_move_net.cpp": {
-     "new": 11
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
   },
   "TraceManager": {
    "delete": 1,
@@ -9347,26 +6355,14 @@
      "new": 1
     },
     "code/turret.cpp": {
-     "new": 5
+     "new": 1
     }
    },
-   "new": 7,
+   "new": 3,
    "new_array": 0,
    "owners": [
     "GameObjectManager"
    ]
-  },
-  "TurretRotation": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl_control.cpp": {
-     "new": 11
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
   },
   "TurretType": {
    "delete": 0,
@@ -9384,59 +6380,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/componentlistbox.cpp": {
-     "new": 3
-    },
-    "code/mover.h": {
-     "new": 7
-    },
-    "code/mover_chunks.cpp": {
-     "new": 4
-    },
     "code/save_struct_zero.h": {
      "new": 1
-    },
-    "mclib/ablsymt.cpp": {
-     "new": 7
     }
    },
-   "new": 22,
-   "new_array": 0,
-   "owners": []
-  },
-  "TypeID": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_static_prop_batcher_mapload.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "U": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/userinput.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "U2": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/userinput.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -9472,18 +6420,6 @@
     }
    },
    "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "Up": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/cliff_decal_tuning.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
    "new_array": 0,
    "owners": []
   },
@@ -9599,30 +6535,6 @@
     ""
    ]
   },
-  "V": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/userinput.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "V2": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/userinput.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "VERTEX": {
    "delete": 0,
    "delete_array": 0,
@@ -9644,48 +6556,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "Val": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/SingleValueDlg.cpp": {
-     "new": 2
-    },
-    "editor/SingleValueDlg.h": {
-     "new": 2
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "Value": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/pqueue.cpp": {
-     "new": 5
-    },
-    "mclib/pqueue.h": {
-     "new": 1
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "Var": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorObjects.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -9834,27 +6704,6 @@
     "MLR_I_L_TMesh"
    ]
   },
-  "Vehicle": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gvehicl.cpp": {
-     "new": 4
-    },
-    "code/mission_movers.cpp": {
-     "new": 1
-    },
-    "code/objmgr.cpp": {
-     "new": 1
-    },
-    "code/objmgr.h": {
-     "new": 1
-    }
-   },
-   "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
   "VehicleIcon": {
    "delete": 0,
    "delete_array": 0,
@@ -9867,21 +6716,6 @@
     },
     "code/logisticspilot.cpp": {
      "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "Velocity": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.h": {
-     "new": 1
-    },
-    "code/mover.h": {
-     "new": 2
     }
    },
    "new": 3,
@@ -10000,30 +6834,6 @@
     "ByteFlag"
    ]
   },
-  "Warrior": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission_init_load.cpp": {
-     "new": 1
-    },
-    "code/mission_movers.cpp": {
-     "new": 1
-    },
-    "code/mover_combat.cpp": {
-     "new": 1
-    },
-    "code/warrior.cpp": {
-     "new": 1
-    },
-    "code/warrior.h": {
-     "new": 1
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
   "WatchManager": {
    "delete": 1,
    "delete_array": 0,
@@ -10136,21 +6946,6 @@
     "Mission"
    ]
   },
-  "WeaponsAvailable": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata.h": {
-     "new": 1
-    },
-    "code/mechlabscreen.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "Weather": {
    "delete": 1,
    "delete_array": 0,
@@ -10170,479 +6965,6 @@
    "owners": [
     "Mission"
    ]
-  },
-  "Width": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorData_terrain.cpp": {
-     "new": 13
-    },
-    "gui/asystem.h": {
-     "new": 2
-    }
-   },
-   "new": 15,
-   "new_array": 0,
-   "owners": []
-  },
-  "World": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/SelectionBrush.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "X": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera_input.cpp": {
-     "new": 12
-    },
-    "mclib/utilities.cpp": {
-     "new": 3
-    },
-    "mclib/utilities.h": {
-     "new": 1
-    }
-   },
-   "new": 16,
-   "new_array": 0,
-   "owners": []
-  },
-  "Y": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/camera_input.cpp": {
-     "new": 8
-    },
-    "mclib/utilities.cpp": {
-     "new": 3
-    },
-    "mclib/utilities.h": {
-     "new": 1
-    }
-   },
-   "new": 12,
-   "new_array": 0,
-   "owners": []
-  },
-  "_CObjectiveAction": {
-   "delete": 10,
-   "delete_array": 0,
-   "files": {
-    "code/objective.cpp": {
-     "delete": 5,
-     "new": 6
-    },
-    "code/objective.h": {
-     "new": 1
-    },
-    "editor/Objective.cpp": {
-     "delete": 5,
-     "new": 5
-    },
-    "editor/Objective.h": {
-     "new": 1
-    },
-    "editor/ObjectiveDlg.cpp": {
-     "new": 2
-    },
-    "editor/ObjectivesDlg.cpp": {
-     "new": 1
-    }
-   },
-   "new": 16,
-   "new_array": 0,
-   "owners": [
-    "CObjective"
-   ]
-  },
-  "_CObjectiveCondition": {
-   "delete": 10,
-   "delete_array": 0,
-   "files": {
-    "code/objective.cpp": {
-     "delete": 5,
-     "new": 6
-    },
-    "code/objective.h": {
-     "new": 1
-    },
-    "editor/Objective.cpp": {
-     "delete": 5,
-     "new": 5
-    },
-    "editor/Objective.h": {
-     "new": 1
-    },
-    "editor/ObjectiveDlg.cpp": {
-     "new": 2
-    },
-    "editor/ObjectivesDlg.cpp": {
-     "new": 3
-    }
-   },
-   "new": 18,
-   "new_array": 0,
-   "owners": [
-    "CObjective"
-   ]
-  },
-  "_block": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/memoryblock.cpp": {
-     "new": 12
-    }
-   },
-   "new": 12,
-   "new_array": 0,
-   "owners": []
-  },
-  "_buf": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/notationfile.cpp": {
-     "new": 10,
-     "new_array": 1
-    },
-    "mclib/stuff/notationfile.hpp": {
-     "new": 1
-    }
-   },
-   "new": 11,
-   "new_array": 1,
-   "owners": []
-  },
-  "_buf_size": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/notationfile.cpp": {
-     "new": 7
-    },
-    "mclib/stuff/notationfile.hpp": {
-     "new": 1
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": []
-  },
-  "_data": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/marray.hpp": {
-     "new": 3,
-     "new_array": 1
-    }
-   },
-   "new": 3,
-   "new_array": 1,
-   "owners": []
-  },
-  "_directory_string": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestream.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "_event": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/effect.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "_events": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/effect.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "_file": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestreammanager.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "_frame": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mathfunc.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "_i": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mathfunc.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "_id": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/cident.h": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "_ids": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/cident.h": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "_info": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/effect.cpp": {
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "_j": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mathfunc.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "_k": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mathfunc.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "_len": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestreammanager.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "_life": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/particlecloud.cpp": {
-     "new": 3
-    },
-    "mclib/gosfx/tube.cpp": {
-     "new": 3
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
-  },
-  "_lights_data": {
-   "delete": 0,
-   "delete_array": 3,
-   "files": {
-    "mclib/txmmgr.cpp": {
-     "delete_array": 1
-    },
-    "mclib/txmmgr_lights.cpp": {
-     "delete_array": 2,
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "MC_TextureManager"
-   ]
-  },
-  "_link": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/chain.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "_name": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestreammanager.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "_pointer": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/memorystream.hpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "_source": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/memorystream.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "_state": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrlightmap.hpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "_stream_size": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/memorystream.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "_stream_start": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "mclib/stuff/memorystream.cpp": {
-     "delete_array": 2,
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": [
-    "DynamicMemoryStream"
-   ]
-  },
-  "_string": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestream.cpp": {
-     "new": 12,
-     "new_array": 1
-    }
-   },
-   "new": 12,
-   "new_array": 1,
-   "owners": []
-  },
-  "_world_to_local": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/particlecloud.cpp": {
-     "new": 3
-    },
-    "mclib/gosfx/tube.cpp": {
-     "new": 3
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": []
   },
   "aAnimButton": {
    "delete": 0,
@@ -10841,18 +7163,6 @@
     "aPlayerParams"
    ]
   },
-  "aRGB": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/tgl.h": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "aRect": {
    "delete": 9,
    "delete_array": 7,
@@ -10964,18 +7274,6 @@
    "new_array": 0,
    "owners": []
   },
-  "bies": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/particlecloud.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
   "building_ptr_type": {
    "delete": 2,
    "delete_array": 0,
@@ -11005,45 +7303,6 @@
    "owners": [
     ""
    ]
-  },
-  "er": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrsorter.cpp": {
-     "new": 17
-    },
-    "mclib/mlr/mlrsorter.hpp": {
-     "new": 1
-    }
-   },
-   "new": 18,
-   "new_array": 0,
-   "owners": []
-  },
-  "estFile": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mploadmap.cpp": {
-     "new": 5
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
-  "estTacOrder": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/warrior_state.cpp": {
-     "new": 42
-    }
-   },
-   "new": 42,
-   "new_array": 0,
-   "owners": []
   },
   "file_stream": {
    "delete": 0,
@@ -11714,18 +7973,6 @@
     "MC_TextureManager"
    ]
   },
-  "lyPinnedThisBuild": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
-     "new": 11
-    }
-   },
-   "new": 11,
-   "new_array": 0,
-   "owners": []
-  },
   "mc2gpu::GpuMeshRing": {
    "delete": 1,
    "delete_array": 0,
@@ -11788,33 +8035,28 @@
   "GameOS/gameos/gameos.cpp": 4,
   "GameOS/gameos/gameos_fileio.cpp": 1,
   "GameOS/gameos/gameos_graphics.cpp": 1,
-  "GameOS/gameos/gameos_graphics_capi.cpp": 6,
+  "GameOS/gameos/gameos_graphics_capi.cpp": 1,
   "GameOS/gameos/gameos_graphics_font.cpp": 18,
   "GameOS/gameos/gameos_graphics_internal.h": 4,
-  "GameOS/gameos/gameos_graphics_material_internal.h": 9,
-  "GameOS/gameos/gameos_graphics_renderer_internal.h": 5,
+  "GameOS/gameos/gameos_graphics_material_internal.h": 8,
+  "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
   "GameOS/gameos/gameos_graphics_texture.cpp": 1,
-  "GameOS/gameos/gameos_sound.cpp": 8,
+  "GameOS/gameos/gameos_sound.cpp": 6,
   "GameOS/gameos/gameosmain.cpp": 1,
   "GameOS/gameos/gos_cardcloud_sim.cpp": 3,
   "GameOS/gameos/gos_cluster_depth_pyramid.cpp": 2,
   "GameOS/gameos/gos_font.cpp": 6,
   "GameOS/gameos/gos_lightgrid_build.cpp": 2,
   "GameOS/gameos/gos_postprocess_blur.cpp": 2,
-  "GameOS/gameos/gos_postprocess_fbo.cpp": 13,
-  "GameOS/gameos/gos_postprocess_shadow.cpp": 1,
   "GameOS/gameos/gos_screenshot.cpp": 2,
   "GameOS/gameos/gos_terrain_lighting.cpp": 5,
-  "GameOS/gameos/gos_terrain_lod_chunk.cpp": 2,
-  "GameOS/gameos/gos_vegetation.cpp": 1,
   "GameOS/gameos/gpu_cull_compute.cpp": 8,
   "GameOS/gameos/gpu_cull_readback.cpp": 1,
   "GameOS/gameos/gpu_cull_substrate.cpp": 1,
   "GameOS/gameos/gpu_driven_common.cpp": 2,
-  "GameOS/gameos/utils/Image.cpp": 8,
+  "GameOS/gameos/utils/Image.cpp": 13,
   "GameOS/gameos/utils/gl_utils.h": 4,
-  "GameOS/gameos/utils/shader_builder.cpp": 16,
-  "GameOS/gameos/utils/shader_builder.h": 2,
+  "GameOS/gameos/utils/shader_builder.cpp": 12,
   "GameOS/gameos/utils/stream.cpp": 1,
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": 1,
   "code/ablmc2.cpp": 1,
@@ -11840,7 +8082,6 @@
   "code/mechcmd2_frame.cpp": 4,
   "code/mechicon.cpp": 5,
   "code/mechlistbox.cpp": 1,
-  "code/mechlistbox.h": 1,
   "code/mission.cpp": 13,
   "code/mission2.cpp": 1,
   "code/mission_init.cpp": 1,
@@ -11851,12 +8092,12 @@
   "code/mover.cpp": 1,
   "code/mpparameterscreen.cpp": 1,
   "code/mpprefs.cpp": 1,
+  "code/objective.cpp": 10,
   "code/objmgr.cpp": 1,
   "code/objmgr_io.cpp": 2,
   "code/objtype.cpp": 1,
   "code/optionsarea.cpp": 3,
-  "code/pilotreviewarea.cpp": 4,
-  "code/pilotreviewarea.h": 1,
+  "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
   "code/saveload.cpp": 1,
   "code/simplecamera.cpp": 3,
@@ -11865,25 +8106,20 @@
   "code/weaponbolt.cpp": 10,
   "code/weaponbolt_update.cpp": 36,
   "editor/Action.cpp": 2,
-  "editor/BuildingBrush.cpp": 2,
+  "editor/BuildingBrush.cpp": 1,
   "editor/BuildingSettingsDlg.cpp": 1,
   "editor/DlgFileOpen.cpp": 1,
   "editor/Editor.cpp": 3,
   "editor/EditorData_tacmap.cpp": 1,
   "editor/EditorInterface_editor.cpp": 1,
-  "editor/EditorInterface_imgui.cpp": 1,
   "editor/EditorMFC.cpp": 1,
-  "editor/EditorObjectMgr.cpp": 4,
-  "editor/EditorObjectMgr.h": 5,
-  "editor/EditorObjectMgr_io.cpp": 2,
-  "editor/EditorObjectMgr_select.cpp": 1,
+  "editor/EditorObjectMgr.cpp": 1,
   "editor/EditorObjects.cpp": 1,
-  "editor/LinkBrush.cpp": 2,
   "editor/ObjectSelectionBrush.cpp": 1,
+  "editor/Objective.cpp": 10,
   "editor/ObjectiveDlg.cpp": 9,
   "editor/ScatterBrush.cpp": 1,
   "editor/UnitSettingsDlg.cpp": 4,
-  "editor/eraser.cpp": 4,
   "editor/tgawnd.cpp": 1,
   "gui/UiDefs.cpp": 1,
   "gui/alistbox.cpp": 2,
@@ -11900,8 +8136,6 @@
   "mclib/crater.cpp": 2,
   "mclib/fastfile.cpp": 1,
   "mclib/ffile.cpp": 3,
-  "mclib/file.cpp": 1,
-  "mclib/file.h": 1,
   "mclib/genactor.cpp": 1,
   "mclib/genactor_frame.cpp": 1,
   "mclib/gosfx/card.cpp": 1,
@@ -11976,9 +8210,8 @@
   "mclib/stuff/chain.cpp": 3,
   "mclib/stuff/filestream.cpp": 2,
   "mclib/stuff/hash.cpp": 1,
-  "mclib/stuff/memoryblock.cpp": 17,
-  "mclib/stuff/memoryblock.hpp": 1,
-  "mclib/stuff/memorystream.cpp": 3,
+  "mclib/stuff/memoryblock.cpp": 5,
+  "mclib/stuff/memorystream.cpp": 5,
   "mclib/stuff/mstring.cpp": 5,
   "mclib/stuff/mstring.hpp": 1,
   "mclib/stuff/node.cpp": 1,
@@ -11990,10 +8223,9 @@
   "mclib/stuff/sortedchain.hpp": 2,
   "mclib/stuff/stuff.cpp": 1,
   "mclib/stuff/trace.cpp": 3,
-  "mclib/stuff/tree.cpp": 1,
+  "mclib/stuff/tree.cpp": 2,
   "mclib/stuff/tree.hpp": 1,
   "mclib/terrain.cpp": 4,
-  "mclib/terrtxm2.cpp": 1,
   "mclib/tgl_types.cpp": 1,
   "mclib/txmmgr.cpp": 6,
   "mclib/userinput.h": 1
