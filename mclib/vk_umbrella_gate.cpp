@@ -6,17 +6,12 @@ namespace mc2vkgate {
 
 bool umbrellaOn()
 {
-    return gate::get<"MC2_VK_SHARED_GBUFFER">() && !g_mc2VkSessionForcedGL;
-}
-
-bool vfxArmed()
-{
-    return armed<"MC2_VK_VFX">();
+    return mc2::gate::get<"MC2_VK_SHARED_GBUFFER">() && !g_mc2VkSessionForcedGL;
 }
 
 bool vfxTraceOn()
 {
-    return gate::get<"MC2_VK_VFX_TRACE">();
+    return mc2::gate::get<"MC2_VK_VFX_TRACE">();
 }
 
 } // namespace mc2vkgate

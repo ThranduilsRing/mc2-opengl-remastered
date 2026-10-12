@@ -40,9 +40,8 @@ int mc2ShaderPathTint()
 // (or island not compiled) = byte-identical to today.
 bool mc2VkSharedSceneDepthEnabled()
 {
-    // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
-    // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
-    const bool s_on = mc2vkgate::armed<"MC2_VK_SHARED_SCENE_DEPTH">();   // per-call: VK-FAILSOFT-DISARM-1
+    // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it. Default OFF (pure GL).
+    const bool s_on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1
     return s_on;
 }
 
@@ -57,7 +56,7 @@ bool mc2VkSharedSceneDepthEnabled()
 // or island not compiled) = byte-identical to today.
 static bool mc2VkPropColorTier1Enabled()
 {
-    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_PROP_COLOR_TIER1">();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
@@ -70,14 +69,14 @@ static bool mc2VkPropColorTier1Enabled()
 // Gate OFF / require missing / island not compiled = byte-identical.
 static bool mc2VkTerrainTier1Enabled()
 {
-    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_TERRAIN_TIER1">();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
 // VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
 static bool mc2VkMechTier1Enabled()
 {
-    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
@@ -95,7 +94,7 @@ bool mc2VkSharedSceneDirectResourceEnabled()
     // the present interop tail, so the present image is UNCONDITIONALLY a VK-only
     // allocation with no GL->VK handoff. The shared scene arms on the post/composite
     // direct-chain stack alone (default-ON under MC2_VK_SHARED_GBUFFER).
-    static const bool s_on = mc2vkgate::compositeDirectChainOn();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 

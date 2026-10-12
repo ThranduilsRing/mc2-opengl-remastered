@@ -53,7 +53,7 @@ void vlog(const char* fmt, ...) {
 
 bool gateRequested() {
     static int state = -1;
-    if (state == -1) state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;
+    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
     return state == 1;
 }
 

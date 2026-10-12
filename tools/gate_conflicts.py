@@ -94,8 +94,6 @@ DESIGN_S4 = [
     ("MC2_DISABLE_GOSFX", [("mclib/mlr/mlr_gate.cpp", 37),
                            ("GameOS/gameos/gameosmain.cpp", 1340),
                            ("GuiRuntime/GraphicsOptionsWindow.cpp", 1477)]),
-    ("MC2_VK_TERRAIN_CSM", [("GameOS/gameos/gos_terrain_lod_chunk.cpp", 1858),
-                            ("GameOS/gameos/gos_terrain_lod_chunk.cpp", 1900)]),
     ("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", [("GameOS/gameos/gos_terrain_height_tex.cpp", 51)]),
     ("MC2_LIGHT_GRID_DIM", [("GameOS/gameos/gos_terrain_lighting.cpp", 276)]),
     ("MC2_LIGHT_POOL_MAX", [("GameOS/gameos/gos_terrain_lighting.cpp", 859)]),

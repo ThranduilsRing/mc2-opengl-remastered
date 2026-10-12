@@ -108,9 +108,8 @@ void vlog(const char* fmt, ...) {
 bool mechGateRequested() {
     static int state = -1;
     if (state == -1) {
-        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
-        // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        state = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">() ? 1 : 0;   // require shared depth
+        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
+        state = mc2vkgate::umbrellaOn() ? 1 : 0;   // require shared depth
     }
     return state == 1;
 }
@@ -137,9 +136,9 @@ bool mechPerfGateRequested() {
 // stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor
 // cache. Default-OFF -> flat color.
 bool mechMaterialRequested() {
-    // Umbrella member; explicit MC2_VK_MECH_MATERIAL=0/1 overrides.
+    // Umbrella member.
     static int state = -1;
-    if (state == -1) state = mc2vkgate::armed<"MC2_VK_MECH_MATERIAL">() ? 1 : 0;
+    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
     return state == 1;
 }
 
@@ -147,9 +146,9 @@ bool mechMaterialRequested() {
 // default mech path). Default-OFF -> flat-white lit (v_litColor = 1). Independent of
 // MC2_VK_MECH_MATERIAL, but only visible when material is on (albedo * litColor).
 bool mechLightingRequested() {
-    // Umbrella member; explicit MC2_VK_MECH_LIGHTING=0/1 overrides.
+    // Umbrella member.
     static int state = -1;
-    if (state == -1) state = mc2vkgate::armed<"MC2_VK_MECH_LIGHTING">() ? 1 : 0;
+    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
     return state == 1;
 }
 

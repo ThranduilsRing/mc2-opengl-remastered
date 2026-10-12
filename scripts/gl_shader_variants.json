@@ -2897,7 +2897,7 @@
    "key": "mech{IMPORTED_MECH_MATERIAL}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:522",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2915,7 +2915,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:522",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2935,7 +2935,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:522",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2953,7 +2953,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:522",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"

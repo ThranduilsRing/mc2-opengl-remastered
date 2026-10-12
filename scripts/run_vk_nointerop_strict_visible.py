@@ -27,30 +27,17 @@ STRICT_ENV = {
     "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE",
     "MC2_VK_SHARED_GBUFFER": "1",
     "MC2_VK_SHARED_SCENE_STRICT": "1",
-    "MC2_VK_POST_COMPOSITE": "1",
-    "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN": "1",
-    "MC2_VK_PRESENT_DIRECT_FBO": "1",
-    "MC2_VK_PRESENT_TAIL_HOOK": "1",
     "MC2_VK_PRESENT_SKIP_GL_HANDOFF": "1",
     "MC2_VK_PRESENT_NATIVE_STRICT": "1",
-    "MC2_VK_HUD": "1",
-    "MC2_VK_HUD_COLOR_PROOF": "1",
-    "MC2_VK_HUD_SKIP_GL": "1",
     "MC2_VK_IMGUI": "1",
-    "MC2_VK_TERRAIN_ALL_LODS": "1",
-    "MC2_VK_TERRAIN_SKIRTS": "1",
     "MC2_VK_TERRAIN_VISUALDISPLACE_FAR": "1",
-    "MC2_VK_PROP_DIRECT_CHAIN": "1",
     "MC2_VK_MECH_FEED_NATIVE": "1",
-    "MC2_VK_WATER_TIER1": "1",
-    "MC2_VK_WATER_DIRECT_CHAIN": "1",
     "MC2_VK_OBJECTID_DIRECT_CHAIN": "1",
     "MC2_SHADOW_ENABLE": "1",
     "MC2_SHADOW_CSM": "1",
     "MC2_VK_SHADOW_INTEROP": "1",
     "MC2_VK_CSM_ARRAY_INTEROP": "1",
     "MC2_VK_CSM_FULLMAP_INTEROP": "1",
-    "MC2_VK_POST_FOG_NATIVE": "1",
     "MC2_SSAO": "1",
     "MC2_VK_POST_SSAO": "1",
     "MC2_VK_POST_SCREENFX": "1",
@@ -67,20 +54,11 @@ STRICT_ENV = {
     "MC2_VK_SCREENSHADOW_GL_CANARY": "1",
 }
 
-# --minimal-promotion drops every umbrella member from the explicit env, so the proof shows the
-# MC2_VK_SHARED_GBUFFER umbrella alone arming the whole family (every island still reports direct_chain=1
-# used_interop=0). The members are the Tri rows of Gates/gate_table.cpp that declare
-# inherits("MC2_VK_SHARED_GBUFFER"), read from the committed gate table JSON, so a new member is promoted
-# (and proven) without editing this list. The opt-ins (MC2_VK_POST_SSAO, _SCREENFX, _HZB, the *_INTEROP
-# shadow gates, MC2_VK_OBJECTID_DIRECT_CHAIN, ...) are not members and stay explicit. The hardened checker's
-# H5 reconciles the MC2_VK_*_INTEROP producer names via the umbrella (MC2_VK_SHARED_GBUFFER=1).
-
-
-def umbrella_members() -> tuple:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import gate_table_reader
-    rows = gate_table_reader.gates(Path(__file__).resolve().parents[1])
-    return tuple(sorted(n for n, g in rows.items() if g.get("inherits")))
+# MC2_VK_SHARED_GBUFFER alone arms the whole family (gate amnesty wave 1 folded the former per-member
+# rows into it), so every island reports direct_chain=1 used_interop=0 from the umbrella. The opt-ins
+# (MC2_VK_POST_SSAO, _SCREENFX, _HZB, the *_INTEROP shadow gates, MC2_VK_OBJECTID_DIRECT_CHAIN, ...) are not
+# members and stay explicit. The hardened checker's H5 reconciles the MC2_VK_*_INTEROP producer names via
+# the umbrella (MC2_VK_SHARED_GBUFFER=1).
 
 
 
@@ -101,9 +79,6 @@ def main() -> int:
     ap.add_argument("--view-mode", help="Set MC2_VIEWMODE_FRAMEWORK=1 and MC2_VIEW_MODE to this value.")
     ap.add_argument("--resource-strict", action="store_true",
                     help="Also abort on exportable Win32 resource creation / GL memory import.")
-    ap.add_argument("--minimal-promotion", action="store_true",
-                    help="Drop every umbrella member (the gate table's inherits rows) from the explicit env so "
-                         "the run proves the MC2_VK_SHARED_GBUFFER umbrella alone arms the family.")
     ap.add_argument("--env", action="append", default=[],
                     help="Additional KEY=VALUE environment override. May be passed multiple times.")
     ap.add_argument("--headless", action="store_true")
@@ -113,17 +88,10 @@ def main() -> int:
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     out_dir = Path(args.out_dir) if args.out_dir else root / ".claude" / f"vk-nointerop-strict-visible-{stamp}"
 
-    members = umbrella_members() if args.minimal_promotion else ()   # reads the gate table only when asked to
     strict_env = dict(STRICT_ENV)
-    for key in members:
-        strict_env.pop(key, None)
 
     env = os.environ.copy()
     env.update(strict_env)
-    # Ensure a stale outer-shell direct-chain gate can't leak into a minimal-promotion
-    # proof (would defeat the point). Explicitly remove them from the child env.
-    for key in members:
-        env.pop(key, None)
     # Clean shutdown after the bookmark sweep so the VK island destroy lines
     # (forbidden_* counters) + final [VK_PRESENT] logHealth reach the capture log --
     # the hardened checker REQUIRES them. Without this the game is killed on timeout

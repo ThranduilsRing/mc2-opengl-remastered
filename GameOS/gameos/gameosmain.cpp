@@ -9,7 +9,7 @@
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
 #include "build_fingerprint.h"          // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
 #include "../../RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
-#include "vk_shared_gbuffer_gate.h"        // mc2vkgate::terrainNativeFirstOwnerOn (the VK umbrella adapter)
+#include "vk_shared_gbuffer_gate.h"        // mc2vkgate::umbrellaOn (the VK umbrella adapter)
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -20,14 +20,14 @@
 
 // Terrain native first-owner (the island CLEARs shared color0/normal/depth; GL
 // frame-entry clears + clearGBuffer1 must be skipped) is a structural property of the
-// armed terrain Tier-1 island: mc2vkgate::terrainNativeFirstOwnerOn(). An explicit
+// armed terrain Tier-1 island: mc2vkgate::umbrellaOn(). An explicit
 // MC2_VK_TERRAIN_TIER1=0 (island off, GL owns terrain) restores the GL clears.
 static bool mc2_vk_terrain_native_prefix_clear_requested()
 {
 #ifdef MC2_VULKAN_ISLAND
     static int state = -1;
     if (state == -1) {
-        state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;
+        state = mc2vkgate::umbrellaOn() ? 1 : 0;
     }
     return state == 1;
 #else

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """check-vk-umbrella-readers.py -- the two rules that keep the VK umbrella reader model honest.
 
-The 25 VK umbrella members are Tri rows with inherits("MC2_VK_SHARED_GBUFFER"). Their only reader is
-mc2vkgate::armed<> (GameOS/gameos/vk_shared_gbuffer_gate.h), which wraps gate::effective<> and adds the
-session fail-soft veto the static Gates library cannot see. The umbrella itself is read by one function,
-mc2vkgate::umbrellaOn() in mclib/vk_umbrella_gate.cpp.
+MC2_VK_SHARED_GBUFFER is the one VK family gate (gate amnesty wave 1 folded the former per-member Tri rows
+into it). It is read by one function, mc2vkgate::umbrellaOn() in mclib/vk_umbrella_gate.cpp, which adds the
+session fail-soft veto the static Gates library cannot see.
 
   R1  NO BYPASS. Any `effective<"MC2_VK_...">` outside the adapter header, or any direct read of
       MC2_VK_SHARED_GBUFFER outside mclib/vk_umbrella_gate.cpp, skips the veto, so a mid-session fail-soft
       would arm an island the GL present can never show.
-  R2  PER-CALL READERS STAY UNCACHED. The sites in PER_CALL re-read armed<> (or vfxArmed()/umbrellaOn()) on
-      every call so that a mid-session fail-soft disarms them (VK-FAILSOFT-DISARM-1, HUD-GATE-HOIST-1). The
-      answer must not be frozen by
+  R2  PER-CALL READERS STAY UNCACHED. The sites in PER_CALL re-read umbrellaOn() on every call so that a
+      mid-session fail-soft disarms them (VK-FAILSOFT-DISARM-1, HUD-GATE-HOIST-1). A key of the form
+      "umbrellaOn@function" checks only the reads inside that function, for files where per-call present
+      gates sit beside region gates that cache once per process by design. The answer must not be frozen by
         - a `static` declaration initialized from the read (also through a static lambda),
         - an assignment to a name declared `static` in an enclosing function, or declared at file or
           namespace scope (the `static int state = -1; if (state == -1) state = armed<>();` idiom),
@@ -37,32 +37,28 @@ SCAN_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld
              "HostServices", "editor", "gui")
 EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 
-# (file, key). key is a gate name (every `armed<"gate">` in the file is a per-call read), "vfxArmed" or
-# "umbrellaOn" (every call of that function is), or "nostatic" (the file must contain no `static` at all).
+# (file, key). key is "umbrellaOn" (every call of that function in the file is a per-call read),
+# "umbrellaOn@function" (only the calls inside that function are), a gate name (every `armed<"gate">`;
+# kept for the selftest fixtures), or "nostatic" (the file must contain no `static` at all).
 PER_CALL = (
-    ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_PRESENT_DIRECT_FBO"),
-    ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_PRESENT_TAIL_HOOK"),
-    ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_HUD_COLOR_PROOF"),
-    ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_POST_COMPOSITE"),
-    ("GameOS/gameos/gos_postprocess_gates.cpp", "MC2_VK_SHARED_SCENE_DEPTH"),
-    ("GameOS/gameos/vulkan_vfx_island.cpp", "MC2_VK_VFX"),
-    ("GameOS/gameos/vulkan_water_island.cpp", "MC2_VK_WATER_TIER1"),
-    ("GameOS/gameos/gameos_graphics_draw.cpp", "MC2_VK_VFX"),
-    ("GameOS/gameos/gameos_graphics_hud.cpp", "MC2_VK_VFX"),
-    ("GameOS/gameos/gameos_graphics_hud.cpp", "MC2_VK_HUD"),
-    ("GameOS/gameos/gameos_graphics_hud.cpp", "MC2_VK_HUD_SKIP_GL"),
+    # the present tail: per-call present gates beside the once-per-process composite region gate
+    ("GameOS/gameos/engine_present_vk.cpp", "umbrellaOn@directFboGateEnabled"),
+    ("GameOS/gameos/engine_present_vk.cpp", "umbrellaOn@presentTailHookEnabled"),
+    ("GameOS/gameos/engine_present_vk.cpp", "umbrellaOn@nativeHudColorProofEnabled"),
+    ("GameOS/gameos/engine_present_vk.cpp", "umbrellaOn@nativeCompositeGateEnabled"),
+    ("GameOS/gameos/gos_postprocess_gates.cpp", "umbrellaOn@mc2VkSharedSceneDepthEnabled"),
+    ("GameOS/gameos/vulkan_vfx_island.cpp", "umbrellaOn"),
+    ("GameOS/gameos/vulkan_water_island.cpp", "umbrellaOn"),
+    ("GameOS/gameos/gameos_graphics_draw.cpp", "umbrellaOn"),
+    ("GameOS/gameos/gameos_graphics_hud.cpp", "umbrellaOn"),
     # the terrain submit path fills the island's per-frame parameter block
-    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_LIGHTING"),
-    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_DYNSHADOW"),
-    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_CSM"),
-    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_DETAIL"),
-    # the translation units outside the VK islands call the out-of-line functions (vk_umbrella_light.h)
-    ("code/gamecam.cpp", "vfxArmed"),
-    ("code/objmgr.cpp", "vfxArmed"),
-    ("code/weaponbolt_render.cpp", "vfxArmed"),
+    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "umbrellaOn"),
+    # the translation units outside the VK islands call the out-of-line function (vk_umbrella_light.h)
+    ("code/gamecam.cpp", "umbrellaOn"),
+    ("code/objmgr.cpp", "umbrellaOn"),
+    ("code/weaponbolt_render.cpp", "umbrellaOn"),
     ("mclib/appear.cpp", "umbrellaOn"),
     # the out-of-line functions themselves hold no state
-    (UMBRELLA_READER, "MC2_VK_VFX"),
     (UMBRELLA_READER, "nostatic"),
 )
 
@@ -236,9 +232,21 @@ def check_direct_effective(texts: dict[str, str]) -> list[str]:
 def _pattern_for(key: str):
     if key == "vfxArmed":
         return re.compile(r'\bvfxArmed\s*\(')
-    if key == "umbrellaOn":
+    if key == "umbrellaOn" or key.startswith("umbrellaOn@"):
         return re.compile(r'\bumbrellaOn\s*\(')
     return re.compile(r'\barmed\s*<\s*"%s"\s*>' % re.escape(key))
+
+
+def function_span(bcode: str, blocks: list, fname: str):
+    """(open, close) of the body of the function definition `fname(...) {` in bcode, or None."""
+    m = re.search(r'\b%s\s*\([^;{}]*\)\s*(?:const\s*)?\{' % re.escape(fname), bcode)
+    if not m:
+        return None
+    open_idx = m.end() - 1
+    for o, c in blocks:
+        if o == open_idx:
+            return (o, c)
+    return None
 
 
 def check_per_call(texts: dict[str, str]) -> list[str]:
@@ -255,11 +263,17 @@ def check_per_call(texts: dict[str, str]) -> list[str]:
                             "survive a fail-soft)" % (rel, line_of(code, m.start())))
             continue
         found = list(_pattern_for(key).finditer(code))
+        bcode = blank_strings(code)
+        blocks = blocks_of(bcode)
+        if "@" in key:
+            span = function_span(bcode, blocks, key.split("@", 1)[1])
+            if span is None:
+                errs.append("R2 %s has no function %s: update PER_CALL" % (rel, key.split("@", 1)[1]))
+                continue
+            found = [m for m in found if span[0] < m.start() < span[1]]
         if not found:
             errs.append("R2 %s no longer reads %s: update PER_CALL (or this reader went blind)" % (rel, key))
             continue
-        bcode = blank_strings(code)
-        blocks = blocks_of(bcode)
         for m in found:
             stmt = code[statement_start(code, m.start()):m.start()]
             if is_static_cached(stmt):
@@ -319,37 +333,37 @@ def selftest() -> int:
         ("R1 the umbrella reader may read it",
          {UMBRELLA_READER: 'bool umbrellaOn() { return gate::get<"MC2_VK_SHARED_GBUFFER">(); }'}, check_direct_effective, False),
         ("R2 a static cache is caught",
-         {gc: 'bool f() { static const bool s = mc2vkgate::vfxArmed(); return s; }'}, cached, True),
+         {gc: 'bool f() { static const bool s = mc2vkgate::umbrellaOn(); return s; }'}, cached, True),
         ("R2 a static lambda is caught",
-         {gc: 'bool f() { static const bool s = []() { return mc2vkgate::vfxArmed(); }(); return s; }'}, cached, True),
+         {gc: 'bool f() { static const bool s = []() { return mc2vkgate::umbrellaOn(); }(); return s; }'}, cached, True),
         ("R2 the static state idiom is caught",
-         {gc: 'bool f() { static int state = -1; if (state == -1) state = mc2vkgate::vfxArmed() ? 1 : 0; '
+         {gc: 'bool f() { static int state = -1; if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0; '
               'return state == 1; }'}, cached, True),
         ("R2 the static state idiom inside a block is caught",
-         {gc: 'bool f() { static int state = -1; if (state == -1) { state = mc2vkgate::vfxArmed() ? 1 : 0; } '
+         {gc: 'bool f() { static int state = -1; if (state == -1) { state = mc2vkgate::umbrellaOn() ? 1 : 0; } '
               'return state == 1; }'}, cached, True),
         ("R2 a namespace-scope static is caught",
-         {gc: 'static bool g_on = false; void init() { g_on = mc2vkgate::vfxArmed(); }'}, cached, True),
+         {gc: 'static bool g_on = false; void init() { g_on = mc2vkgate::umbrellaOn(); }'}, cached, True),
         ("R2 an anonymous-namespace variable is caught",
-         {gc: 'namespace { bool g_on; } void init() { g_on = mc2vkgate::vfxArmed(); }'}, cached, True),
+         {gc: 'namespace { bool g_on; } void init() { g_on = mc2vkgate::umbrellaOn(); }'}, cached, True),
         ("R2 a member cache is caught",
-         {gc: 'void C::f() { m_on = mc2vkgate::vfxArmed(); }'}, cached, True),
+         {gc: 'void C::f() { m_on = mc2vkgate::umbrellaOn(); }'}, cached, True),
         ("R2 a this-> member cache is caught",
-         {gc: 'void C::f() { this->on = mc2vkgate::vfxArmed(); }'}, cached, True),
+         {gc: 'void C::f() { this->on = mc2vkgate::umbrellaOn(); }'}, cached, True),
         ("R2 an object member cache is caught",
-         {gc: 'void f(S& s) { s.on = mc2vkgate::vfxArmed(); }'}, cached, True),
+         {gc: 'void f(S& s) { s.on = mc2vkgate::umbrellaOn(); }'}, cached, True),
         ("R2 a per-call read passes",
-         {gc: 'void g() {} bool f() { const bool s = mc2vkgate::vfxArmed(); return s; }'}, cached, False),
+         {gc: 'void g() {} bool f() { const bool s = mc2vkgate::umbrellaOn(); return s; }'}, cached, False),
         ("R2 a local assigned from the read passes",
-         {gc: 'bool f() { bool on = false; on = mc2vkgate::vfxArmed(); return on; }'}, cached, False),
+         {gc: 'bool f() { bool on = false; on = mc2vkgate::umbrellaOn(); return on; }'}, cached, False),
         ("R2 a local that shadows a file-scope static passes",
-         {gc: 'static const bool s_on = true; bool f() { const bool s_on = mc2vkgate::vfxArmed(); return s_on; }'},
+         {gc: 'static const bool s_on = true; bool f() { const bool s_on = mc2vkgate::umbrellaOn(); return s_on; }'},
          cached, False),
         ("R2 an unrelated static in the function passes",
-         {gc: 'bool f() { static int calls = 0; ++calls; const bool x = mc2vkgate::vfxArmed(); return x; }'},
+         {gc: 'bool f() { static int calls = 0; ++calls; const bool x = mc2vkgate::umbrellaOn(); return x; }'},
          cached, False),
         ("R2 a file that must hold no state is caught",
-         {UMBRELLA_READER: 'bool vfxArmed() { static bool s = armed<"MC2_VK_VFX">(); return s; }'},
+         {UMBRELLA_READER: 'bool umbrellaOn() { static bool s = gate::get<"MC2_VK_SHARED_GBUFFER">(); return s; }'},
          lambda t: [e for e in check_per_call(t) if "must hold no state" in e], True),
     ]
     for name, texts, fn, expect in cases:

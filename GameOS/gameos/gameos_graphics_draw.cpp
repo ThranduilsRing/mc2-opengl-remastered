@@ -1016,7 +1016,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // (scene.gosfx_clipper lost-draw samples). Expand to a plain triangle list and
     // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
     // Only when IsHUD is set AND the VFX sub-gate is armed (VK) -> GL byte-identical.
-    const bool vkVfxArmed = mc2vkgate::armed<"MC2_VK_VFX">();
+    const bool vkVfxArmed = mc2vkgate::umbrellaOn();
     if (renderStates_[gos_State_IsHUD] && num_indices > 0 && vkVfxArmed) {
         std::vector<gos_VERTEX> expanded;
         expanded.reserve((size_t)num_indices);

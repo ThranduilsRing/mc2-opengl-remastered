@@ -118,9 +118,8 @@ bool terrainPerfGateRequested() {
 bool terrainTier1Requested() {
     static int state = -1;
     if (state == -1) {
-        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
-        // MC2_VK_TERRAIN_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;   // tier-1 island AND shared scene depth
+        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
+        state = mc2vkgate::umbrellaOn() ? 1 : 0;   // tier-1 island AND shared scene depth
     }
     return state == 1;
 }
@@ -142,13 +141,13 @@ float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 // present-image producer under the umbrella and there is NO per-layer GL fallback: an
 // unarmed content layer VANISHES (the field bug -- only LOD0/1 terrain rendered, coarse
 // bands GL-drawn into the discarded GL backbuffer). So ALL_LODS is now an umbrella FAMILY
-// member (armed<>): MC2_VK_SHARED_GBUFFER=1 arms it; explicit "1"/"0" still wins for the
-// oracle. The strict proof armed ALL_LODS=1 and passed its parity check, so this is the
+// member: MC2_VK_SHARED_GBUFFER=1 arms it. The strict proof armed ALL_LODS=1 and passed
+// its parity check, so this is the
 // proven-complete scene config. Still gated on TIER1 (no coarse bands without LOD0).
 bool terrainAllLodsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainTier1Requested() && mc2vkgate::armed<"MC2_VK_TERRAIN_ALL_LODS">()) ? 1 : 0;
+        state = terrainTier1Requested() ? 1 : 0;
     }
     return state == 1;
 }
@@ -161,13 +160,13 @@ bool terrainAllLodsRequested() {
 // ALL_LODS) so the oracle can isolate "VK bands, GL skirts" (today's shipped state)
 // from "VK bands, VK skirts" (this rung) -- if skirts crack, flip this OFF alone and
 // keep the rung-3 band win. VK-FIELD-ENV-CONTENT-STACK-ARM-1: now an umbrella FAMILY
-// member (armed<>) like ALL_LODS -- without VK skirts the coarse-band LOD seams crack
+// member like ALL_LODS -- without VK skirts the coarse-band LOD seams crack
 // open (visible gaps), and there is no per-layer GL fallback post-item-8. The strict
-// proof armed SKIRTS=1 and passed. Explicit "1"/"0" still wins; still gated on ALL_LODS.
+// proof armed SKIRTS=1 and passed. Still gated on ALL_LODS.
 bool terrainSkirtsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::armed<"MC2_VK_TERRAIN_SKIRTS">()) ? 1 : 0;
+        state = terrainAllLodsRequested() ? 1 : 0;
     }
     return state == 1;
 }

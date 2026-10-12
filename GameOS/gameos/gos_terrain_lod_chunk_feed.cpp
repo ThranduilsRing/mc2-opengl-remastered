@@ -96,9 +96,8 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // NdotL relief band + baked static PCF shadow (terrain_lod_chunk.frag:889-928). Gate
     // MC2_VK_TERRAIN_LIGHTING (default-off -> lightingEnabled=0 -> VK stays flat, byte-safe).
     {
-        // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
-        // MC2_VK_TERRAIN_LIGHTING=0/1 overrides.
-        int lightingOn = mc2vkgate::armed<"MC2_VK_TERRAIN_LIGHTING">() ? 1 : 0;
+        // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it.
+        int lightingOn = mc2vkgate::umbrellaOn() ? 1 : 0;
         out->lightingEnabled = lightingOn;
         float lx = 0.f, ly = 0.f, lz = 1.f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
@@ -132,10 +131,10 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->glDynamicShadowTex = 0;
         out->dynamicShadowSize = 0;
         std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
-        // Umbrella member (mc2vkgate::armed<>); requires lighting (its own precondition).
+        // Umbrella member; requires lighting (its own precondition).
         int dynShadowGate = 0;
         if (out->lightingEnabled)
-            dynShadowGate = mc2vkgate::armed<"MC2_VK_TERRAIN_DYNSHADOW">() ? 1 : 0;
+            dynShadowGate = mc2vkgate::umbrellaOn() ? 1 : 0;
         if (dynShadowGate && pp && pp->shadowsEnabled_ && pp->getDynamicShadowFBO()
             && !mc2ShadowCsmEnabled()) {
             const GLuint dTex = pp->getDynamicShadowTextureRaw();
@@ -177,7 +176,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // NO dynamic object shadow under CSM (matches the clean CSM-OFF capture), which is
         // strictly better than the wash until the near-cascade port lands.
         auto csmSubsetOn = []() {
-            const bool csmSub = mc2vkgate::armed<"MC2_VK_TERRAIN_CSM">();
+            const bool csmSub = mc2vkgate::umbrellaOn();
             return csmSub && mc2::gate::get<"MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL">();
         };
         if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
@@ -205,7 +204,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // THIS implementation. GL must actually have CSM active+built this frame.
         //
         // FAR-BAND-BLACK-1 FIX: this block was gated on dynShadowGate alone, NOT on
-        // mc2vkgate::armed<"MC2_VK_TERRAIN_CSM">() as the comment above claims -- so
+        // the CSM sub-gate as the comment above claims -- so
         // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (MC2_SHADOW_CSM=1,
         // default ON) fed CSM cascade data to the VK terrain frag even with
         // MC2_VK_TERRAIN_CSM=0 (or unset with the umbrella off). The field launcher bat
@@ -218,7 +217,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // DYNSHADOW alone reproduces, and disabling GL CSM instead of the VK gate also
         // clears it, confirming the CSM feed itself is the trigger, not depth/format).
         // Now requires the CSM sub-gate explicitly, matching the documented contract.
-        const bool csmNearGate = mc2vkgate::armed<"MC2_VK_TERRAIN_CSM">();
+        const bool csmNearGate = mc2vkgate::umbrellaOn();
         out->csmEnabled = 0;
         out->glCsmArrayTex = 0;
         out->csmArraySize = 0;
@@ -260,7 +259,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // Umbrella member; requires lighting (its own precondition) + subGate.
         int detailOn = 0;
         if (out->lightingEnabled)
-            detailOn = mc2vkgate::armed<"MC2_VK_TERRAIN_DETAIL">() ? 1 : 0;
+            detailOn = mc2vkgate::umbrellaOn() ? 1 : 0;
         out->detailEnabled       = detailOn;
         out->glMatNormalArrayTex = detailOn ? (uint32_t)gos_GetTerrainNormalArrayTex() : 0u;
         // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag

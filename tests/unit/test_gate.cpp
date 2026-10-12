@@ -295,7 +295,6 @@ TEST_CASE("parseBool is the Std rule and reports badvalue") {
 TEST_CASE("Tri is an enum class with no bool conversion") {
     static_assert(!std::is_convertible_v<Tri, bool>);
     static_assert(std::is_enum_v<Tri> && !std::is_convertible_v<Tri, int>);
-    static_assert(std::is_same_v<decltype(gate::get<"MC2_VK_HUD">()), Tri>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_ABL_VM_FACTS">()), bool>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_BOOT_INFO">()), std::int32_t>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_CONFIG_DUMP">()), gate::Token>);
@@ -366,20 +365,7 @@ TEST_CASE("isSet, state and the Rule override read the same cached flags") {
     gate::invalidate("MC2_ABL_VM_FACTS");
 }
 
-TEST_CASE("Tri and Enum rows through the live table") {
-    EnvVar tri("MC2_VK_HUD");
-    tri.set("1");
-    gate::invalidate("MC2_VK_HUD");
-    CHECK(gate::get<"MC2_VK_HUD">() == Tri::On);
-    tri.set("0");
-    gate::invalidate("MC2_VK_HUD");
-    CHECK(gate::get<"MC2_VK_HUD">() == Tri::Off);
-    tri.set("maybe");
-    gate::invalidate("MC2_VK_HUD");
-    CHECK(gate::get<"MC2_VK_HUD">() == Tri::Unset);
-    tri.set(nullptr);
-    gate::invalidate("MC2_VK_HUD");
-
+TEST_CASE("Enum rows through the live table") {
     EnvVar en("MC2_CONFIG_DUMP");
     en.set("ALL");
     gate::invalidate("MC2_CONFIG_DUMP");
@@ -558,18 +544,18 @@ TEST_CASE("invalidateAll keeps pre-main values and the dump flags the ones that 
 }
 
 TEST_CASE("a VK gate read before main is reported even when its value did not change") {
-    constexpr std::size_t vk = gate::detail::indexOf("MC2_VK_MECH_TIER1");
+    constexpr std::size_t vk = gate::detail::indexOf("MC2_VK_FORCE_FAIL");
     constexpr std::size_t other = gate::detail::indexOf("MC2_BOOT_INFO");
-    EnvVar vkEnv("MC2_VK_MECH_TIER1");
+    EnvVar vkEnv("MC2_VK_FORCE_FAIL");
     EnvVar otherEnv("MC2_BOOT_INFO");
     vkEnv.set(nullptr);
     otherEnv.set("5");
-    gate::detail::g_slot[vk].store(gate::detail::kResolvedBit | gate::detail::kPreMainBit);  // Tri unset
+    gate::detail::g_slot[vk].store(gate::detail::kResolvedBit | gate::detail::kPreMainBit);  // Bool off, unset env
     gate::detail::g_slot[other].store(gate::detail::kResolvedBit | gate::detail::kPreMainBit | 5u);
     gate::invalidateAll();
     const std::string out = capture({});
-    CHECK(hasLine(out, "[CONFIG v1] warn=premain_read name=MC2_VK_MECH_TIER1 premain_value=unset"));
-    CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=premain name=MC2_VK_MECH_TIER1"));  // the value did not change
+    CHECK(hasLine(out, "[CONFIG v1] warn=premain_read name=MC2_VK_FORCE_FAIL premain_value=0"));
+    CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=premain name=MC2_VK_FORCE_FAIL"));  // the value did not change
     CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=premain_read name=MC2_BOOT_INFO"));  // only VK gates are flagged
 }
 
@@ -890,103 +876,6 @@ TEST_CASE("MC2_WATER_SHORE_MODE tokens 0..3 resolve, anything else is the first 
     }
     env.set(nullptr);
     gate::invalidate("MC2_WATER_SHORE_MODE");
-}
-
-// ---------------------------------------------------------------------------
-// G4: Tri rows that inherit the VK umbrella (gate::effective<>)
-// ---------------------------------------------------------------------------
-
-namespace inherit_oracle {
-// The helper bodies effective<> replaces, verbatim (GameOS/gameos/vk_shared_gbuffer_gate.h before G4).
-int envTriState(const char* name) {
-    const char* v = std::getenv(name);
-    if (!v || v[0] == '\0' || v[1] != '\0') return -1;
-    if (v[0] == '1') return 1;
-    if (v[0] == '0') return 0;
-    return -1;
-}
-bool umbrellaOn(bool forcedGL) { return envTriState("MC2_VK_SHARED_GBUFFER") == 1 && !forcedGL; }
-bool subGate(const char* name, bool forcedGL) {
-    const int t = envTriState(name);
-    if (t == 1) return true;
-    if (t == 0) return false;
-    return umbrellaOn(forcedGL);
-}
-constexpr const char* kVals[] = {nullptr, "", "0", "1", "yes", "10", "true"};
-}  // namespace inherit_oracle
-
-template <gate::Name N>
-static void checkInheritRow() {
-    static_assert(gate::hasParent<N>());
-    static_assert(std::is_same_v<decltype(gate::get<N>()), Tri>);
-    {
-        EnvVar sub(N.v);
-        EnvVar umb("MC2_VK_SHARED_GBUFFER");
-        for (const char* sv : inherit_oracle::kVals) {
-            for (const char* uv : inherit_oracle::kVals) {
-                sub.set(sv);
-                umb.set(uv);
-                gate::invalidate(N.v);
-                gate::invalidate("MC2_VK_SHARED_GBUFFER");
-                for (const bool forced : {false, true}) {
-                    INFO(N.v << " sub=" << (sv != nullptr ? sv : "<unset>") << " umbrella=" << (uv != nullptr ? uv : "<unset>")
-                                  << " forcedGL=" << forced);
-                    CHECK(gate::effective<N>(forced) == inherit_oracle::subGate(N.v, forced));
-                }
-            }
-        }
-    }
-    gate::invalidate(N.v);
-    gate::invalidate("MC2_VK_SHARED_GBUFFER");
-}
-
-TEST_CASE("effective<> equals the old subGate over every sub x umbrella x fail-soft combination") {
-    checkInheritRow<"MC2_VK_HUD">();
-    checkInheritRow<"MC2_VK_HUD_COLOR_PROOF">();
-    checkInheritRow<"MC2_VK_HUD_SKIP_GL">();
-    checkInheritRow<"MC2_VK_MECH_LIGHTING">();
-    checkInheritRow<"MC2_VK_MECH_MATERIAL">();
-    checkInheritRow<"MC2_VK_MECH_TIER1">();
-    checkInheritRow<"MC2_VK_POST_COMPOSITE">();
-    checkInheritRow<"MC2_VK_POST_COMPOSITE_DIRECT_CHAIN">();
-    checkInheritRow<"MC2_VK_POST_FOG_NATIVE">();
-    checkInheritRow<"MC2_VK_PRESENT_DIRECT_FBO">();
-    checkInheritRow<"MC2_VK_PRESENT_TAIL_HOOK">();
-    checkInheritRow<"MC2_VK_PROP_COLOR_TIER1">();
-    checkInheritRow<"MC2_VK_PROP_DIRECT_CHAIN">();
-    checkInheritRow<"MC2_VK_PROP_MATERIAL">();
-    checkInheritRow<"MC2_VK_SHARED_SCENE_DEPTH">();
-    checkInheritRow<"MC2_VK_TERRAIN_ALL_LODS">();
-    checkInheritRow<"MC2_VK_TERRAIN_CSM">();
-    checkInheritRow<"MC2_VK_TERRAIN_DETAIL">();
-    checkInheritRow<"MC2_VK_TERRAIN_DYNSHADOW">();
-    checkInheritRow<"MC2_VK_TERRAIN_LIGHTING">();
-    checkInheritRow<"MC2_VK_TERRAIN_SKIRTS">();
-    checkInheritRow<"MC2_VK_TERRAIN_TIER1">();
-    checkInheritRow<"MC2_VK_VFX">();
-    checkInheritRow<"MC2_VK_WATER_DIRECT_CHAIN">();
-    checkInheritRow<"MC2_VK_WATER_TIER1">();
-}
-
-TEST_CASE("every Tri row inherits, no other row does, and the parent is a Bool Exact1 root") {
-    std::size_t tri = 0;
-    for (const auto& e : gate::detail::kIndex) {
-        CHECK((e.kind == Kind::Tri) == !e.parent.empty());
-        if (e.parent.empty()) continue;
-        ++tri;
-        bool found = false;
-        for (const auto& p : gate::detail::kIndex) {
-            if (p.name != e.parent) continue;
-            found = true;
-            CHECK(p.kind == Kind::Bool);
-            CHECK(p.rule == Rule::Exact1);
-            CHECK(p.parent.empty());
-        }
-        CHECK(found);
-    }
-    CHECK(tri == 25);
-    static_assert(!gate::hasParent<"MC2_VK_SHARED_GBUFFER">());
-    static_assert(!gate::hasParent<"MC2_ABL_VM_FACTS">());
 }
 
 TEST_CASE("the table rules reject a Tri row without a parent, an inherits on a non-Tri row, and a bad parent") {

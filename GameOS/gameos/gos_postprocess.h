@@ -518,7 +518,7 @@ public:
     // the SHARED scene depth and blending into the SHARED scene color0 IN PLACE —
     // zero copies, zero CPU readbacks, no private device (supersedes the subgraph
     // when its gate is on; highest precedence at the fog site). Gate
-    // MC2_VK_POST_FOG_NATIVE (an umbrella member: mc2vkgate::armed<>). runVkPostFogNative()
+    // umbrella-armed (mc2vkgate::umbrellaOn()). runVkPostFogNative()
     // returns true only when BOTH fogs rendered via VK (caller skips BOTH GL sites);
     // any not-ready condition returns false -> unchanged subgraph/island/GL chain.
     // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
