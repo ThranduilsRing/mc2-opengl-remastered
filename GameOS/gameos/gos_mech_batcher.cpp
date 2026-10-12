@@ -105,30 +105,14 @@ int g_mechPreviewRenderDepth = 0;
 // MECH-KILLSWITCH-LIGHTING-RETIRE-1: u_lightingMode is fed constant 1
 // (VS-side lighting always on; default-ON). See gos_mech_killswitch.h.
 
-// Slice C1: render-only mech GPU cull. Requires g_useGpuMechs=true.
-// Opt-out: MC2_GPU_MECH_CULL=0
-bool g_useGpuMechCull = mc2::gate::get<"MC2_GPU_MECH_CULL">();
-
 // MECH-KILLSWITCH-SKIN-RETIRE-1: MC2_GPU_MECH_SKIN retired to constant
 // (default-ON, proven no-op — stock + all imports single-bone). u_skinningMode
 // fed constant 1; weighted branch kept as forward capacity. See gos_mech_killswitch.h.
-
-// Slice C3-revised: see gos_mech_killswitch.h. Body-only fast transform.
-// Opt-out: MC2_GPU_MECH_FAST_TRANSFORM=0
-bool g_useGpuMechFastTransform = mc2::gate::get<"MC2_GPU_MECH_FAST_TRANSFORM">();
-
-// Slice C3-shadow: see gos_mech_killswitch.h. Shadow callsite fast transform.
-// Opt-out: MC2_GPU_MECH_SHADOW_FAST_TRANSFORM=0
-bool g_useGpuMechShadowFastTransform = mc2::gate::get<"MC2_GPU_MECH_SHADOW_FAST_TRANSFORM">();
 
 // MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: MC2_GPU_MECH_SHADOW_SKIP and
 // MC2_GPU_MECH_SHADOW_STATE_STRIP retired to constants (both default-ON,
 // strict no-ops on the tessellated GPU-mech path). Logic now inline in
 // Mech3DAppearance::updateGeometry. See gos_mech_killswitch.h.
-
-// Slice D-leaf-skip-v2: see gos_mech_killswitch.h.
-// Opt-out: MC2_GPU_MECH_LEAF_SKIP=0
-bool g_useGpuMechLeafSkip = mc2::gate::get<"MC2_GPU_MECH_LEAF_SKIP">();
 
 // MECH-KILLSWITCH-SENSORSKIP-RETIRE-1: MC2_GPU_MECH_SENSOR_SKIP retired to a
 // constant (was default-ON, strict no-op). Skip logic is now inline in

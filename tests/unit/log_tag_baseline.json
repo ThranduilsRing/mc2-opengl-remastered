@@ -7122,20 +7122,6 @@
    "count": 1
   },
   {
-   "tag": "PICK_FALLBACK",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "parity",
-    "coarse",
-    "brute",
-    "coarse_dsq",
-    "brute_dsq",
-    "cursor"
-   ],
-   "count": 1
-  },
-  {
    "tag": "PICK_PARITY",
    "ver": -1,
    "stream": "stdout",
@@ -12355,7 +12341,6 @@
     "streamReady",
     "recipes",
     "tex2",
-    "introLegacy",
     "sig"
    ],
    "count": 1

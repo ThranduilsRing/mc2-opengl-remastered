@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1060,
+ "count": 1052,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -420,32 +420,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_ANIM_CADENCE_FIX",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "ANIM-CADENCE-FIX: advance mech gait at most once per render frame; prevents a visible double-step when Mover::getLOSPosition() re-invokes appearance->update() the same frame.",
-   "readers": [
-    {
-     "at": "mclib/mech3d.cpp:5596",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_ANIM_CADENCE_FIX",
    "retireVerdict": ""
   },
   {
@@ -7763,110 +7737,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_GPU_MECH_CULL",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU fallback/AI/updateGeometry still run).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:200",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_GPU_MECH_CULL",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_GPU_MECH_FAST_TRANSFORM",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:208",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_GPU_MECH_FAST_TRANSFORM",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_GPU_MECH_LEAF_SKIP",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:221",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_GPU_MECH_LEAF_SKIP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_GPU_MECH_SHADOW_FAST_TRANSFORM",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:212",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_GPU_OBJECTS",
    "kind": "Bool",
    "default": false,
@@ -12326,32 +12196,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_MECH_LIGHT_FRESHNESS",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON.",
-   "readers": [
-    {
-     "at": "mclib/mech3d.cpp:98",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_MECH_LIGHT_FRESHNESS",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_MECH_LIGHT_TRACE",
    "kind": "Bool",
    "default": false,
@@ -13142,32 +12986,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_MISSION_INTRO_LEGACY_RENDER",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch.",
-   "readers": [
-    {
-     "at": "mclib/terrain.cpp:3448",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_MISSION_INTRO_LEGACY_RENDER",
    "retireVerdict": ""
   },
   {
@@ -15061,32 +14879,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_PICK_FALLBACK_COARSE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "MISSION-INTERFACE-PERF-1: coarse-to-fine closest-vertex fallback in Camera::inverseProject (mclib/camera.cpp).",
-   "readers": [
-    {
-     "at": "mclib/camera.cpp:1520",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_PICK_FALLBACK_COARSE",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_PICK_RECON",

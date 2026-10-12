@@ -272,7 +272,7 @@ long Mech3DAppearance::update (bool animate)
 			{
 				if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
 				{
-					// ANIM-CADENCE-FIX (gate MC2_ANIM_CADENCE_FIX): advance the gait at MOST
+					// ANIM-CADENCE-FIX: advance the gait at MOST
 					// once per render frame. Mover::getLOSPosition() (mover.cpp) calls a
 					// second appearance->update() in combat to refresh weapon-node geometry,
 					// which otherwise ticks the animation a 2nd time the same frame => visible
@@ -281,11 +281,8 @@ long Mech3DAppearance::update (bool animate)
 					// g_mc2FrameCounter, skip the increment; downstream geometry still
 					// recomputes at the current frame, so the LOS refresh gets valid nodes
 					// without an extra gait step.
-					// DEFAULT-ON killswitch (user-confirmed fix, mc2_17 Catapult/Bushwacker):
-					// disable with MC2_ANIM_CADENCE_FIX=0 to A/B the double-step.
-					static const bool s_animCadenceFix = mc2::gate::get<"MC2_ANIM_CADENCE_FIX">();
-					const bool _alreadyAdvanced = (s_animCadenceFix &&
-						lastAnimAdvanceFrame == g_mc2FrameCounter);
+					// User-confirmed fix (mc2_17 Catapult/Bushwacker).
+					const bool _alreadyAdvanced = (lastAnimAdvanceFrame == g_mc2FrameCounter);
 					// VK-MECH-CAPTURE-DETERMINISM-1: during a frozen visual-capture
 					// sweep (sim paused) the render path still ticks this gait via the
 					// wall-clock frameLength, so a mech's pose drifted run-to-run and

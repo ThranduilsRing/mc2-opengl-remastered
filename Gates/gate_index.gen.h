@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1063;
+inline constexpr std::size_t kGateCount = 1055;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -28,7 +28,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_AIMED_FIRE_FIXTURE", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_ALPHA_TEST_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_AMBIENT_ASSERT_FATAL", Kind::Bool, Rule::Presence, {}},
-    {"MC2_ANIM_CADENCE_FIX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_ANIM_CADENCE_GUARD", Kind::Bool, Rule::Presence, {}},
     {"MC2_APPEAR_AUDIT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_ASSET_SCALE_SELFTEST", Kind::Bool, Rule::Lead1, {}},
@@ -287,10 +286,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_GROUND_PICK_PARITY_TAG", Kind::String, Rule::Std, {}},
     {"MC2_GPU_GV_SHADOW_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_MECHS", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_GPU_MECH_CULL", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_GPU_MECH_FAST_TRANSFORM", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_GPU_MECH_LEAF_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_GPU_MECH_SHADOW_FAST_TRANSFORM", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_OBJECTS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_PARTICLES", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GPU_PARTICLES_LOG", Kind::Bool, Rule::Lead1, {}},
@@ -446,7 +441,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MECH_IMPORT_GPU_AXIS", Kind::Int, Rule::Prefix, {}},
     {"MC2_MECH_IMPORT_GPU_LIFT", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_IMPORT_GPU_LIFT_AXIS", Kind::Int, Rule::Prefix, {}},
-    {"MC2_MECH_LIGHT_FRESHNESS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_LIGHT_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_LOD_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_METAL_ROUGHNESS", Kind::Float, Rule::Prefix, {}},
@@ -474,7 +468,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MIF_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_MISSING_RUNWAY_FIX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MISSION_CYCLE_TEST", Kind::Bool, Rule::Presence, {}},
-    {"MC2_MISSION_INTRO_LEGACY_RENDER", Kind::Bool, Rule::Presence, {}},
     {"MC2_MISSION_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_MODERN_TERRAIN_PATCHES", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MODERN_TERRAIN_SURFACE", Kind::Bool, Rule::Lead0Kill, {}},
@@ -544,7 +537,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PBR_WEAR_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_PICK_BEHIND_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_CAP_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_PICK_FALLBACK_COARSE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_PIPELINE_BIND_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_PIPELINE_COLORMASK", Kind::Bool, Rule::Lead0, {}},

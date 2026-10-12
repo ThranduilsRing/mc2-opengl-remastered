@@ -25,15 +25,6 @@ extern "C" uint64_t consumeAndResetMlrMechDraws() {
 // MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.
 static const bool s_mechLodTrace = mc2::gate::get<"MC2_MECH_LOD_TRACE">();
 
-// MECH-LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch.
-// MC2_MECH_LIGHT_FRESHNESS=0 restores the pre-slice read at the GPU-mech submit
-// site (sentinel-only test, slot-0 substitution, no range check) bit-for-bit,
-// which is the only way to grade a suspected regression against it.
-static bool mechLightFreshnessEnabled() {
-    static const bool s_on = mc2::gate::get<"MC2_MECH_LIGHT_FRESHNESS">();
-    return s_on;
-}
-
 // MECH-LIGHTROW-FRESHNESS-1 counters. These are the UNCAPPED truth; the stderr
 // lines below are capped/one-shot, so nobody should ever count log lines.
 // s_mechStaleLightRowStale is the instrument that decides whether this gate
@@ -506,8 +497,8 @@ long Mech3DAppearance::render (long depthFixup)
 			// accurate even when the actor opts out for unrelated reasons.
 			GpuMechBatcher::instance().recordEligibleActor();
 
-			// Slice C1: render-only mech GPU cull. If MC2_GPU_MECH_CULL is on
-			// AND the GPU lagged-readback says this actor was invisible last
+			// Slice C1: render-only mech GPU cull. If
+			// the GPU lagged-readback says this actor was invisible last
 			// frame, skip the GPU mech submit. We DO NOT bypass mechShape->Render
 			// (CPU fallback) because the actor still ran updateGeometry/AI/etc;
 			// we just skip writing its geometry into the GPU mech bucket. update()
@@ -519,7 +510,7 @@ long Mech3DAppearance::render (long depthFixup)
 			// uncertainty. One frame of stale "invisible" → one frame of
 			// missing render, recovered next frame at 60Hz.
 			bool mechGpuCullSkip = false;
-			if (g_useGpuMechs && g_useGpuMechCull) {
+			if (g_useGpuMechs) {
 				// CONSERVATIVE-OR (mirrors terrobj.cpp / static-prop fix):
 				// the lagged GPU readback may CONFIRM invisibility but must
 				// NOT DENY visibility. Only skip the GPU submit when BOTH the
@@ -604,10 +595,9 @@ long Mech3DAppearance::render (long depthFixup)
 				//: previewContext forces the full TransformMultiShape,
 				// and !g_useGpuMechs falls to the full transform in the else arm.
 				// So whenever we are inside this block, mechShape was transformed
-				// by _HierarchyOnly (the default: MC2_GPU_MECHS and
-				// MC2_GPU_MECH_LEAF_SKIP are both envFlagDefaultOn,
-				// gos_mech_batcher.cpp, and the modern shadow path is
-				// active) or by _PositionsOnly. _HierarchyOnly delegates to
+				// by _HierarchyOnly (the default: MC2_GPU_MECHS is on and
+				// the modern shadow path is active) or by _PositionsOnly.
+				// _HierarchyOnly delegates to
 				// TransformMultiShape_BuildRecipe (msl.cpp), which sets
 				// s_buildRecipeOnly, and msl.cpp then does `continue` BEFORE
 				// the per-leaf dispatch -- so TG_Shape::MultiTransformShape never
@@ -656,10 +646,7 @@ long Mech3DAppearance::render (long depthFixup)
 				// invisible mech is a worse outcome than a mistinted one for the
 				// actors the player aims at and is shot by.
 				const uint32_t cachedLI = mechShape->getCachedGpuLightIndex();
-				if (!mechLightFreshnessEnabled()) {
-					// Pre-slice behaviour, bit-for-bit.
-					desc.lightDataIndex = (cachedLI == 0xFFFFFFFFu) ? 0u : cachedLI;
-				} else {
+				{
 					const uint32_t cachedFR = mechShape->getCachedFrame();
 					const bool cacheSet   = (cachedLI != 0xFFFFFFFFu);
 					const bool cacheFresh = (cachedFR == g_mc2FrameCounter);

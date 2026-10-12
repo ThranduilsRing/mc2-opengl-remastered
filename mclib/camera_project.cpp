@@ -713,16 +713,6 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		// projectForSelectionPicking each) = ~890us/frame on mc2_24, 85-95% of
 		// the GameLogic.Mission.Interface zone ([IFACE_PERF v1] 2026-07-01).
 		//
-		// MC2_PICK_FALLBACK_COARSE=1 (default OFF): coarse-to-fine argmin over
-		// the same screen-distance field -- stride-8 coarse pass, then full-res
-		// refine in a +/-9 window around the coarse winner. Same
-		// nearest-projected-vertex result in practice (the screen-distance
-		// basin spans many vertices at any playable zoom); the fallback is
-		// already vertex-resolution approximate (return 1 below). With
-		// MC2_PICK_CAP_TRACE=1 also set, every 32nd walk re-runs the full
-		// brute force and logs a [PICK_FALLBACK] parity line.
-		static const bool s_fallbackCoarse = mc2::gate::get<"MC2_PICK_FALLBACK_COARSE">();
-
 		const long side = land->realVerticesMapSide;
 		auto sampleVertex = [&](long row, long col, float& bestDis,
 		                        int& bestRow, int& bestCol) {
@@ -743,50 +733,6 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 			}
 		};
 
-		if (s_fallbackCoarse)
-		{
-			// Coarse pass: stride 8, plus the last row/col so map edges are
-			// always sampled regardless of side % 8.
-			const long stride = 8;
-			for ( long column = 0; column < side; column += stride )
-				for ( long row = 0; row < side; row += stride )
-					sampleVertex(row, column, dis, closeRow, closeCol);
-			if ((side - 1) % stride != 0)
-			{
-				for ( long row = 0; row < side; row += stride )
-					sampleVertex(row, side - 1, dis, closeRow, closeCol);
-				for ( long column = 0; column < side; column += stride )
-					sampleVertex(side - 1, column, dis, closeRow, closeCol);
-				sampleVertex(side - 1, side - 1, dis, closeRow, closeCol);
-			}
-			// Full-res refine around the coarse winner.
-			const long r0 = (closeRow - 9 > 0) ? (closeRow - 9) : 0;
-			const long r1 = (closeRow + 9 < side - 1) ? (closeRow + 9) : (side - 1);
-			const long c0 = (closeCol - 9 > 0) ? (closeCol - 9) : 0;
-			const long c1 = (closeCol + 9 < side - 1) ? (closeCol + 9) : (side - 1);
-			for ( long column = c0; column <= c1; column++ )
-				for ( long row = r0; row <= r1; row++ )
-					sampleVertex(row, column, dis, closeRow, closeCol);
-
-			// Sampled parity vs the legacy brute force (every 32nd walk,
-			// only when the pre-existing pick trace is also enabled).
-			if (s_capTrace)
-			{
-				static unsigned long s_fbWalk = 0;
-				if ((++s_fbWalk & 31) == 0)
-				{
-					float bfDis = 999999999.f;
-					int bfRow = 0, bfCol = 0;
-					for ( long column = 0; column < side; column++ )
-						for ( long row = 0; row < side; row++ )
-							sampleVertex(row, column, bfDis, bfRow, bfCol);
-					mc2::fmt::print_err("[PICK_FALLBACK] parity={} coarse=({:d},{:d}) brute=({:d},{:d}) coarse_dsq={:.1f} brute_dsq={:.1f} cursor=({:d},{:d})\n", mc2::fmt::safe((bfRow == closeRow && bfCol == closeCol) ? "ok" : "DIFF"), mc2::fmt::as_i32(closeRow), mc2::fmt::as_i32(closeCol), mc2::fmt::as_i32(bfRow), mc2::fmt::as_i32(bfCol), dis, bfDis, mc2::fmt::as_i32((long)screenPos.x), mc2::fmt::as_i32((long)screenPos.y));
-					// Keep the brute-force answer on divergence (trace mode only).
-					if (bfDis < dis) { dis = bfDis; closeRow = bfRow; closeCol = bfCol; }
-				}
-			}
-		}
-		else
 		{
 			for ( long column = 0; column < side; column ++ )
 			{

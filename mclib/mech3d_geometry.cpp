@@ -580,9 +580,8 @@ void Mech3DAppearance::updateGeometry (void)
 			// Tessellation gate is belt-and-suspenders: if a user disables
 			// tessellation, the legacy RenderShadows path becomes reachable
 			// and would need TransformMultiShape outputs.
-			// Slice C3-shadow (FAST_TRANSFORM): when SKIP is off but
-			// FAST_TRANSFORM is on, use _PositionsOnly to skip the per-
-			// vertex CPU lighting kernel only. RenderShadows (tgl.cpp)
+			// Slice C3-shadow: on the GPU mech path use _PositionsOnly to skip
+			// the per-vertex CPU lighting kernel only. RenderShadows (tgl.cpp)
 			// hardcodes gVertex.argb to 0x3f000000 and reads
 			// listOfShadowTVertices populated by MultiTransformShadows
 			// (which still dispatches at msl.cpp in that branch).
@@ -591,7 +590,7 @@ void Mech3DAppearance::updateGeometry (void)
 			// the renderShadows early-return that makes the consumer unreachable.
 			if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
 				// Skip — modern engine has no consumer.
-			} else if (g_useGpuMechs && g_useGpuMechShadowFastTransform) {
+			} else if (g_useGpuMechs) {
 				mechShadowShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
 			} else {
 				mechShadowShape->TransformMultiShape(&xlatPosition, &qRotation);
@@ -604,17 +603,17 @@ void Mech3DAppearance::updateGeometry (void)
 		// further broken down by zones inside TransformMultiShape itself.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.BodyXform");
 		mechShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-		// Slice C3-revised: when GPU mech path is on AND fast-transform
-		// killswitch is on, use _PositionsOnly to skip the per-vertex
-		// CPU lighting kernel. Output of that kernel (listOfVertices[j].argb)
+		// Slice C3-revised: when the GPU mech path is on, use _PositionsOnly
+		// to skip the per-vertex CPU lighting kernel. Output of that kernel
+		// (listOfVertices[j].argb)
 		// is only consumed by mechShape->Render(true) which Slice A
 		// bypasses; GPU shader does its own lighting via calc_light().
 		// BODY ONLY — arms (4459, 4543) and shadow (3377) explicitly
 		// stay full TransformMultiShape; their Render(true) callers
 		// still depend on the lighting bake.
-		// Slice D-leaf-skip-v2: when GPU mech path is on AND leaf-skip
-		// killswitch is on AND tessellation is active, use HierarchyOnly
-		// to additionally skip per-leaf dispatch + MultiTransformShadows.
+		// Slice D-leaf-skip-v2: when the GPU mech path is on AND the modern
+		// shadow path is active, use HierarchyOnly to additionally skip
+		// per-leaf dispatch + MultiTransformShadows.
 		// Recon proved zero practical consumer in this configuration
 		// (mechShape->Render(true) bypassed by Slice A; RenderShadows
 		// unreachable on tessellation; findMoverByMouse rect-only — see
@@ -631,9 +630,9 @@ void Mech3DAppearance::updateGeometry (void)
 		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
 		// its unreachability proof (RenderShadows early-return, Slice A
 		// Render(true) bypass, rect-only selection) holds on that predicate.
-		} else if (g_useGpuMechs && g_useGpuMechLeafSkip && gos_IsModernShadowPathActive()) {
+		} else if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
 			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
-		} else if (g_useGpuMechs && g_useGpuMechFastTransform) {
+		} else if (g_useGpuMechs) {
 			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
 		} else {
 			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
