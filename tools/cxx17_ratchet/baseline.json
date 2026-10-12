@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 212,
    "LG12b": 245,
-   "LG13": 497,
+   "LG13": 483,
    "LG14": 120,
    "LG15": 0,
    "LG16": 156,
@@ -3893,7 +3893,7 @@
   "mclib/inifile.h": {
    "LG01": 1,
    "LG06": 64,
-   "LG13": 16,
+   "LG13": 2,
    "LG17": 4
   },
   "mclib/inifile_arrays.cpp": {
@@ -5171,7 +5171,7 @@
    "LG20": 2
   }
  },
- "head": "f0bfefa40",
+ "head": "7e3e47c42",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
