@@ -1,8 +1,0 @@
-void finalizePrologue();
-void createSharedBuffers();
-void uploadPerTypeAndPublish();
-bool layoutCoalesce(StaticPropFinalizeFrame& f);
-bool buildTextureArrays(StaticPropFinalizeFrame& f);
-void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
-bool reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f);
-void armCoalesce(StaticPropFinalizeFrame& f);

@@ -2,7 +2,7 @@
 # into the helper body and require the result to equal the original function body statement for statement
 # (modulo the spec's listed declaration lifts / edits and the scaffolding), and require everything outside
 # the function and the added helper block to be byte-identical.
-# usage: py -3 tools/phase/ph_verify.py tools/phase/proofs/ph_spec_<name>.py
+# usage: py -3 tools/phase/ph_verify.py <ph_spec_name.py>   (finished splits' specs/proofs are archived on E:, not in-tree)
 import collections
 import importlib.util
 import re
