@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1025,
+ "count": 1024,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -21995,38 +21995,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
-   "kind": "Int",
-   "default": 1,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-RESAMPLE-1: CPU bilinear resample factor for the per-mission terrain height texture used by TERRAIN-NORMALS-FROM-HEIGHT-1.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_height_tex.cpp:51",
-     "idiom": "Num(atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "2",
-     "4"
-    ],
-    "style": "compare"
-   },
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
    "retireVerdict": ""
   },
   {

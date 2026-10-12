@@ -360,8 +360,7 @@ void drawTerrainTuningSection() {
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("CPU bilinear resample factor for the height tex.\n"
-                          "1x = source grid only; 4x = 4× sub-grid (finer slope normals).\n"
-                          "env MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR sets startup default.");
+                          "1x = source grid only; 4x = 4× sub-grid (finer slope normals).");
 
     float nfh = ::gos_GetTerrainNormalsFromHeightStrength();
     if (ImGui::SliderFloat("NfH strength##tnfh", &nfh, 0.0f, 1.5f, "%.2f")) {

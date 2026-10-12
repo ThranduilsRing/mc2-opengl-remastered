@@ -1723,13 +1723,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up - corrects the outward-facing direction.",
     },
     {
-        "MC2_TUNE_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
-        "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
-        EnvVarKind::Trace,
-        false,
-        "TERRAIN-RESAMPLE-1: CPU bilinear resample factor for the per-mission terrain height texture used by TERRAIN-NORMALS-FROM-HEIGHT-1.",
-    },
-    {
         "MC2_FEATURE_TERRAIN_LOD_CHUNK",
         "MC2_TERRAIN_LOD_CHUNK",
         EnvVarKind::Feature,

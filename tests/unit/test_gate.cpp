@@ -820,18 +820,6 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
     CHECK(asFloat(gate::detail::parseRow(reject, "0.5")) == 0.5f);
 }
 
-TEST_CASE("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR is an Enum of 1, 2, 4 that reads 1 for anything else") {
-    const gate::Row& r = g1b::rowNamed("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR");
-    CHECK(r.kind == Kind::Enum);
-    CHECK(std::string(r.tokens) == "1|2|4");
-    CHECK(g1b::intOf(r, "2") == 1);
-    CHECK(g1b::intOf(r, "4") == 2);
-    for (const char* t : {static_cast<const char*>(nullptr), "", "1", "3", "8", "abc", "0"}) {
-        INFO((t ? t : "(unset)"));
-        CHECK(g1b::intOf(r, t) == 0);
-    }
-}
-
 TEST_CASE("isNonEmpty is the old v && v[0] test, whatever the row kind") {
     EnvVar env("MC2_TERRAIN_AMBIENT_FLOOR");
     gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");

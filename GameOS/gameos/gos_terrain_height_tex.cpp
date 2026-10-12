@@ -40,21 +40,9 @@ int    g_cachedSourceSide        = 0;
 float  g_cachedSourceWuPerVertex = 128.0f;
 float  g_cachedMapTopLeftX       = 0.0f;
 float  g_cachedMapTopLeftY       = 0.0f;
-// -1 sentinel = no override (env var still authoritative).
-// >0 = ImGui setter has overridden; env is ignored on subsequent uploads.
+// -1 sentinel = no override (factor 1).
+// >0 = the ImGui setter has selected a factor.
 int    g_overrideFactor      = -1;
-
-// TERRAIN-RESAMPLE-1: read the resample-factor env var. Accepted values:
-// 1, 2, 4. Anything else (unset / non-numeric / out-of-set) clamps to 1
-// so the default path is byte-equivalent to pre-slice TERRAIN-NORMALS-
-// FROM-HEIGHT-1. Re-evaluated per upload — toggling the env var across
-// missions takes effect on next mission load.
-int read_resample_factor_env() {
-    // Row: Enum 1|2|4, default 1; any other text reads as 1 (and is flagged badvalue in [CONFIG v1]).
-    if (mc2::gate::is<"MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", "2">()) return 2;
-    if (mc2::gate::is<"MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", "4">()) return 4;
-    return 1;
-}
 
 // Corner-aligned CPU bilinear resample. Source samples at (i, j) land at
 // (i*factor, j*factor) in the render grid with zero error — bilinear
@@ -138,10 +126,9 @@ void __stdcall gos_uploadTerrainHeightTex(
 
     // TERRAIN-RESAMPLE-1: optional CPU bilinear resample to a finer render
     // grid. factor=1 short-circuits (no copy beyond what already happened
-    // above) so the default path is byte-equivalent to pre-slice. ImGui
-    // setter override (sticky) takes precedence over the env var.
-    const int factor = (g_overrideFactor > 0) ? g_overrideFactor
-                                              : read_resample_factor_env();
+    // above) so the default path is byte-equivalent to pre-slice. The ImGui
+    // setter override (sticky) selects 2 or 4.
+    const int factor = (g_overrideFactor > 0) ? g_overrideFactor : 1;
     std::vector<float> resampled;  // only used when factor > 1
     int  uploadSide      = side;
     const float* uploadPtr = srcElev.data();

@@ -46,7 +46,7 @@ void __stdcall gos_resetTerrainHeightTex(void);
 // Accessors used by gameos_graphics.cpp terrain uniform-upload paths.
 // `Handle` returns 0 when no texture is uploaded.
 //
-// TERRAIN-RESAMPLE-1: when MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR > 1, the
+// TERRAIN-RESAMPLE-1: when the resample factor is > 1, the
 // uploaded texture is a CPU-bilinear-resampled grid of
 //   renderSide = (sourceSide - 1) * factor + 1
 // with the original source heights preserved exactly at corner positions
@@ -65,10 +65,8 @@ int      __stdcall gos_terrainHeightResampleFactor(void);
 // TERRAIN-RESAMPLE-1 live override (ImGui Terrain Pass combo).
 // Caches the source elevation array on first gos_uploadTerrainHeightTex
 // call; this setter clamps factor to {1,2,4} and immediately re-runs the
-// resample + GL upload using the cached source. Sticky: once called, the
-// MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR env var is ignored on subsequent
-// re-uploads (env still sets startup default). No-op when no source has
-// been cached yet (no mission loaded).
+// resample + GL upload using the cached source. Sticky across re-uploads.
+// No-op when no source has been cached yet (no mission loaded).
 void __stdcall gos_setTerrainHeightResampleFactor(int factor);
 
 #ifdef __cplusplus

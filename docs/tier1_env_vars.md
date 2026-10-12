@@ -693,7 +693,6 @@ lights should remain visible at every angle instead of blinking out.
 ## Terrain debug / visual
 
 - `MC2_TERRAIN_DEBUG_MODE=N` — terrain frag debug-mode (0=off, 1=DepthCmp, 2=RawColormap, 3=BlurredColormap, 4=MatWeights R=rock/G=grass/B=dirt, 5=NormalLighting, 6=ShadowFactor, 7=CloudShadow, 8=CementDiag, 9=ThinRecordDiag, 10=HeightNormal, -1=TessAliveProbe).
-- `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR=N` — CPU bilinear resample (1/2/4). Default 1.
 - `MC2_TERRAIN_CLIFF_SHADOW_FLOOR=<float>` — CLIFF SHADOW FLOOR: lifts shadow-side steep terrain cliff faces off near-black by applying `shadow = max(shadow, floor * smoothstep(0.85,0.55,|normal.z|))` in `terrain_lod_chunk.frag` (LodChunk path, mc2_01) and `gos_terrain.frag` (legacy). ImGui-tunable 0..0.6 (Graphics Options → "Cliff Shadow Floor"). Default/unset/`0` = **byte-identical** (no-op). Only steep faces affected; flat terrain untouched.
 - `MC2_TERRAIN_AMBIENT_FLOOR=<float>` — **TERRAIN-AMBIENT-FLOOR-2**, **default `0.35` = ON**. Terrain-only, albedo-scaled ambient floor in `terrain_lod_chunk.frag`.
   - **Full revert is this ONE gate**: `MC2_TERRAIN_AMBIENT_FLOOR=0` uploads `0.0`, the frag block is skipped, output is **byte-identical**. There is no second gate. (The predecessor slice shipped two — an ambient floor *and* a diffuse wrap — and documented a one-gate revert that left the primary change running.)

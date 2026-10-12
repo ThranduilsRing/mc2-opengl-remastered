@@ -1139,8 +1139,6 @@ P("MC2_TERRAIN_DETAIL_LOD1_STRENGTH", Float, 0.4, "terrain", "", "", verified),
 P("MC2_TERRAIN_DETAIL_MACRO_STRENGTH", Float, 0.0, "terrain", "", "", divergent | verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_TERRAIN_EDGE_FEATHER", Bool, true, "terrain", "", "", verified),
 P("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR
-G("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", Enum, "1", "terrain", "", "TERRAIN-RESAMPLE-1: CPU bilinear resample factor for the per-mission terrain height texture used by TERRAIN-NORMALS-FROM-HEIGHT-1.", registry(Trace, "MC2_TUNE_TERRAIN_HEIGHT_RESAMPLE_FACTOR", -1, false) | tokens("1|2|4") | verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT", Bool, true, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_TERRAIN_INDIRECT_CPU_FALLBACK", Bool, false, "terrain", "", "VPL retirement step 1 (2026-05-14): CPU thin-record pack demoted behind MC2_TERRAIN_INDIRECT_CPU_FALLBACK.", verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT_MINE", Bool, true, "terrain", "", "", passthrough | verified),

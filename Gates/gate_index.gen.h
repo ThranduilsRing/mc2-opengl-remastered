@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1028;
+inline constexpr std::size_t kGateCount = 1027;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -788,7 +788,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_DETAIL_MACRO_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_EDGE_FEATHER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_EDGE_FEATHER_STRENGTH", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", Kind::Enum, Rule::Std, "1|2|4"},
     {"MC2_TERRAIN_INDIRECT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_INDIRECT_CPU_FALLBACK", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_INDIRECT_MINE", Kind::Bool, Rule::Lead0Kill, {}},
