@@ -1130,10 +1130,6 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_TERRAIN_DECAL_FILL", nullptr) == 0.2f);
-    CHECK(fl("MC2_TERRAIN_DECAL_FILL", "5") == 1.0f);
-    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", "-1") == 0.0f);
-    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", nullptr) == 0.35f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);

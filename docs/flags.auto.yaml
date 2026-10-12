@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1027
-registry_entry_count: 250
-verified_count: 1020
+gate_count: 1024
+registry_entry_count: 247
+verified_count: 1017
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1392,7 +1392,7 @@ flags:
     doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 36, default_on: false}
+    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 35, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_FAR
     kind: Float
     default: 960
@@ -2485,7 +2485,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 38, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 37, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2840,7 +2840,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 39, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 38, default_on: true}
   - name: MC2_LIGHT_PREFIX_GPU_COPY
     kind: Bool
     default: false
@@ -2929,7 +2929,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 43, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 42, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -3632,7 +3632,7 @@ flags:
     doc: "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 37, default_on: false}
+    registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 36, default_on: false}
   - name: MC2_NIGHT_FOG_DIM_SCALE
     kind: Float
     default: 0
@@ -3808,7 +3808,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 41, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 40, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -4966,7 +4966,7 @@ flags:
     doc: "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 44, default_on: true}
+    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 43, default_on: true}
   - name: MC2_SHOT_RESULTS
     kind: Bool
     default: false
@@ -5517,7 +5517,7 @@ flags:
     doc: "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 47, default_on: true}
+    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 46, default_on: true}
   - name: MC2_STATIC_PROP_LIVE_BUILDER
     kind: Bool
     default: false
@@ -5699,7 +5699,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 45, default_on: false}
+    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 44, default_on: false}
   - name: MC2_SUN_ELEVATION_FIX
     kind: Bool
     default: false
@@ -5708,7 +5708,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 46, default_on: false}
+    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 45, default_on: false}
   - name: MC2_TACMAP_FORMATION_LINE
     kind: Bool
     default: false
@@ -5899,35 +5899,6 @@ flags:
     doc: "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x)."
     verified: true
     registry: {feature_id: MC2_DIAG_TERRAIN_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: props
-    doc: "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL, kind: Feature, order: 35, default_on: false}
-  - name: MC2_TERRAIN_DECAL_COLORBLEND
-    kind: Float
-    default: 0.349999994
-    rule: Prefix
-    owner: props
-    doc: "TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-colormap blend (float 0..1, default 0.35) for the CLIFF_WALL mesh-decal."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_COLORBLEND, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_FILL
-    kind: Float
-    default: 0.200000003
-    rule: Prefix
-    owner: props
-    doc: "TERRAIN-DECAL-FILL-1: ambient/fill floor (float 0..1, default 0.20) for the CLIFF_WALL mesh-decal's shadow side."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_FILL, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_LATERAL
     kind: Float
     default: 0
@@ -6904,7 +6875,7 @@ flags:
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 42, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 41, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -6913,7 +6884,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 40, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 39, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""

@@ -266,51 +266,21 @@ int gos_lightBillboardFacingMode() {
 // kFlagDecalFill bit (bit 3), set on the MarbleCliff decal instances at
 // registration (bdactor.cpp). All other static props (mechs/buildings/trees)
 // never carry that bit, so they are byte-identical regardless of this value.
-// MC2_TERRAIN_DECAL_FILL overrides (clamped 0..1). External linkage so
-// GuiRuntime.cpp can drive a slider.
+// Startup value 0.2; external linkage so GuiRuntime.cpp can drive a slider.
 //
-// ★ TWO CORRECTIONS (INCAPABLE-BATCH-1, 2026-07-31). The text removed from
-// here claimed "static_prop lighting is max(N·L,0) with no ambient floor, so a
-// face pointing away from the sun goes to ~0 (black void)". THAT PREMISE IS
-// FALSE AT HEAD, and it is why the v1 implementation of this feature shipped
-// dead:
-//   1. There IS an ambient floor, and it is large. static_prop.vert sums
-//      base_light + object-light ambientTerm + the DEFAULT-ON SH-IBL probe
-//      before the sun term. The probe alone returns irradiance 0.232..4.896
-//      over the sphere and is multiplied by staticPropIblStrength (0.55-0.65
-//      from data/visual_tuning.json), so an away-facing normal lands around
-//      0.13 at the absolute worst and typically far higher -- never a black
-//      void. Because litRgb therefore essentially never fell below 0.20, the
-//      v1 form `max(litRgb, u_terrainDecalFill)` returned litRgb every time
-//      and was a visual no-op (LIGHTING-HEADROOM-AUDIT.md section 3 #4).
-//      7de56d52 fixed it by moving to a post-texture ADDITIVE weighted by
-//      (1 - litMax); that form is arithmetically live because litMax < 1 on
-//      any fragment the clamp has not already saturated. See the note at
-//      shaders/static_prop.frag next to the c.rgb block.
-//   2. "Default 0.20" reads as default-ON and is NOT. Bit 3 is only ever set
-//      inside `if (useCliffWallFrame)` (mclib/bdactor.cpp), which requires
-//      s_terrainDecal == true -- and that gate is an opt-in:
-//      MC2_TERRAIN_DECAL is default OFF (reader mclib/bdactor.cpp:4827).
-//      On a default launch ZERO fragments carry the flag, so this 0.20
-//      reaches nothing; it is the fill strength for the opted-in case.
-//      (Phrasing note, 2026-07-31: this sentence used to end "...not a
-//      shipped default-on value", which check-gate-default-agreement.py
-//      read as an ASSERTION that the gate defaults ON and reported as a
-//      contradiction -- the opposite of what the line said. The checker's
-//      negation blind spot is fixed there (_NEG_RE); the line is also
-//      restated positively here so the claim is machine-CHECKED and agrees,
-//      rather than merely skipped.)
-float g_terrainDecalFill = mc2::gate::get<"MC2_TERRAIN_DECAL_FILL">();
+// static_prop.vert sums base_light + the object-light ambient + the SH-IBL probe before the sun term, so an
+// away-facing normal never falls near black. The fill is therefore an ADDITIVE post-texture term weighted by
+// (1 - litMax) (see the c.rgb block in static_prop.frag): arithmetically live on every fragment the clamp has
+// not already saturated.
+float g_terrainDecalFill = 0.2f;
 
 // TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-color match for the cliff mesh
 // decal. Blends the flagged decal's albedo toward the terrain COLORMAP sampled
 // at the decal's world-XY (same atlas + world->UV transform the terrain chunk
-// shader uses). Applied ONLY to kFlagDecalFill (bit 3) fragments in the shader;
-// 0.0 (default when MC2_TERRAIN_DECAL_COLORBLEND unset) OR flag-unset OR
-// blend==0 -> byte-identical for every other static prop AND the decal itself.
-// Default 0.35 (subtle base-color pull toward terrain). Env override clamped
-// 0..1. External linkage so GuiRuntime.cpp can drive the "Color blend" slider.
-float g_terrainDecalColorBlend = mc2::gate::get<"MC2_TERRAIN_DECAL_COLORBLEND">();
+// shader uses). Applied ONLY to kFlagDecalFill (bit 3) fragments in the shader.
+// Startup value 0.35 (subtle base-color pull toward terrain). External linkage
+// so GuiRuntime.cpp can drive the "Color blend" slider.
+float g_terrainDecalColorBlend = 0.35f;
 
 // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel specular slider value
 // (interactive; EditorInspector.cpp drives it, range 0..3). Full-strength

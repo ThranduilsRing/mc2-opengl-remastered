@@ -180,18 +180,12 @@ enum class RendererFeature : int {
     // TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.
     // Default-OFF = new/optimized setupTextures path active; ON = legacy path forced.
     SetupTexturesLegacyForce = 34,  // MC2_SETUPTEXTURES_LEGACY_FORCE
-    // TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system. When ON, cliff-wall
-    // decoration types (e.g. "MarbleCliff") are submitted to the static-prop
-    // batcher with an explicit CLIFF_WALL face-frame mat4 (up=world vertical,
-    // facing=outward cliff normal, tangent=contour) + small outward offset,
-    // instead of the yaw-only building recipe. Default-OFF -> byte-identical.
-    TerrainDecal             = 35,  // MC2_TERRAIN_DECAL
     // FAR-BACKDROP-LIT: night-shade substitution for far/impostor static-prop
     // LODs (static_prop.vert). Far LODs skip the per-vertex night bake so their
     // base_light is a frozen day/black value -> fullbright/black at night; when
     // ON the shader fades the stale seed toward the mission night object-light
     // ambient across the LOD impostor distance. Default-OFF -> byte-identical.
-    FarBackdropLit           = 36,  // MC2_FAR_BACKDROP_LIT
+    FarBackdropLit           = 35,  // MC2_FAR_BACKDROP_LIT
     // NIGHT-FOG-DIM: the edge-fog "cloud bank" (edge_fog.frag) + OOB fog paint a
     // hardcoded bright-grey u_fogColor ({0.80,0.81,0.83}) at the map horizon,
     // never dimmed for the mission's night lighting. On a night map (mc2_10) the
@@ -199,33 +193,33 @@ enum class RendererFeature : int {
     // ON, runEdgeFog/executor scale the fog color toward the measured night sky
     // shade before upload so the horizon band matches the dark HDRI sky it sits
     // against. Default-OFF -> uploads the unscaled constant -> byte-identical.
-    NightFogDim              = 37,  // MC2_NIGHT_FOG_DIM
+    NightFogDim              = 36,  // MC2_NIGHT_FOG_DIM
     // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
     // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
     // It fed calc_light Stuff-frame position + normal while the ObjectLights
     // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
-    LegacyLitMc2Frame        = 38,  // MC2_LEGACY_LIT_MC2_FRAME
-    LightPosColumnFix        = 39,  // MC2_LIGHT_POS_COLUMN_FIX
+    LegacyLitMc2Frame        = 37,  // MC2_LEGACY_LIT_MC2_FRAME
+    LightPosColumnFix        = 38,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
     // submitMultiShape, so its lightData_ stayed all-zero and calc_light
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
-    VehicleLitPath           = 40,  // MC2_VEHICLE_LIT_PATH
+    VehicleLitPath           = 39,  // MC2_VEHICLE_LIT_PATH
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
     // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
     // lighting model, closing the two-shader seam that made concrete a
     // patchwork -- including the in-shader distance fog the overlay applies
     // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 41,  // MC2_OVERLAY_CEMENT_ADOPT
+    OverlayCementAdopt       = 40,  // MC2_OVERLAY_CEMENT_ADOPT
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 42,  // MC2_VEHICLE_AMBIENT_FLOOR
+    VehicleAmbientFloor      = 41,  // MC2_VEHICLE_AMBIENT_FLOOR
     // LIGHT-ROW-PURE-1 (ARCH-LIGHTING slice 1): object light-ROW PRODUCTION
     // delegated to the pure object_light_row::BuildObjectLightRow, driven by an
     // explicit query + declared per-class policy instead of the shared-light-
@@ -235,7 +229,7 @@ enum class RendererFeature : int {
     // Its companion diagnostic MC2_LIGHT_ROW_PURE_VERIFY is a Trace var and
     // lives in kAuxEnvVars, which is deliberately NOT indexed by
     // RendererFeature.
-    LightRowPure             = 43,  // MC2_LIGHT_ROW_PURE
+    LightRowPure             = 42,  // MC2_LIGHT_ROW_PURE
     // SHORELINE-GLOW-1: opt in to letting the active V3 terrain shoreline band
     // actually SUPPRESS the legacy screen-space runShoreline() post pass. The
     // suppression has existed since TERRAIN-SHORELINE-MASK-1 but was
@@ -246,7 +240,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    ShorelineLegacySuppress  = 44,  // MC2_SHORELINE_LEGACY_SUPPRESS
+    ShorelineLegacySuppress  = 43,  // MC2_SHORELINE_LEGACY_SUPPRESS
     // SUN-AXIS-FIX-1: ObjectLights.light_dir is a STUFF-frame vector, but the
     // DIFFUSE consumers of calc_light dot it against MC2-frame normals. The one
     // consumer that swaps first (mech.vert:279, specular) is the correct one.
@@ -255,7 +249,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunAxisFix               = 45,  // MC2_SUN_AXIS_FIX
+    SunAxisFix               = 44,  // MC2_SUN_AXIS_FIX
     // SUN-ELEVATION-FIX-1: Camera::lightDirection normalizes a unit-horizontal
     // plus sin(pitch), so its elevation is atan(sin(pitch)) rather than the
     // authored pitch. Large blast radius (terrain, props, SHADOW direction, and
@@ -264,7 +258,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunElevationFix          = 46,  // MC2_SUN_ELEVATION_FIX
+    SunElevationFix          = 45,  // MC2_SUN_ELEVATION_FIX
     // LIGHTROW-FRESHNESS-1: the DYNAMIC static-prop submit path checks the
     // per-frame stamp on TG_MultiShape::cachedFrame_ before trusting
     // cachedGpuLightIndex_, and re-gathers instead of reusing a prior-frame
@@ -274,8 +268,8 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    StaticPropLightFreshness = 47,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
-    COUNT                    = 48,
+    StaticPropLightFreshness = 46,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
+    COUNT                    = 47,
 };
 
 // ---------------------------------------------------------------------------
@@ -567,15 +561,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     },
-    // [35] TerrainDecal
-    {
-        "MC2_TERRAIN_DECAL",
-        "MC2_TERRAIN_DECAL",
-        EnvVarKind::Feature,
-        false,
-        "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system."
-    },
-    // [36] FarBackdropLit
+    // [35] FarBackdropLit
     {
         "MC2_FAR_BACKDROP_LIT",
         "MC2_FAR_BACKDROP_LIT",
@@ -583,7 +569,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     },
-    // [37] NightFogDim
+    // [36] NightFogDim
     {
         "MC2_NIGHT_FOG_DIM",
         "MC2_NIGHT_FOG_DIM",
@@ -591,7 +577,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG..."
     },
-    // [38] LegacyLitMc2Frame
+    // [37] LegacyLitMc2Frame
     {
         "MC2_LEGACY_LIT_MC2_FRAME",
         "MC2_LEGACY_LIT_MC2_FRAME",
@@ -599,7 +585,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     },
-    // [39] LightPosColumnFix
+    // [38] LightPosColumnFix
     {
         "MC2_LIGHT_POS_COLUMN_FIX",
         "MC2_LIGHT_POS_COLUMN_FIX",
@@ -607,7 +593,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     },
-    // [40] VehicleLitPath
+    // [39] VehicleLitPath
     {
         "MC2_VEHICLE_LIT_PATH",
         "MC2_VEHICLE_LIT_PATH",
@@ -615,7 +601,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     },
-    // [41] OverlayCementAdopt
+    // [40] OverlayCementAdopt
     {
         "MC2_FEATURE_OVERLAY_CEMENT_ADOPT",
         "MC2_OVERLAY_CEMENT_ADOPT",
@@ -623,7 +609,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     },
-    // [42] VehicleAmbientFloor
+    // [41] VehicleAmbientFloor
     {
         "MC2_VEHICLE_AMBIENT_FLOOR",
         "MC2_VEHICLE_AMBIENT_FLOOR",
@@ -631,7 +617,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     },
-    // [43] LightRowPure
+    // [42] LightRowPure
     {
         "MC2_LIGHT_ROW_PURE",
         "MC2_LIGHT_ROW_PURE",
@@ -639,7 +625,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     },
-    // [44] ShorelineLegacySuppress
+    // [43] ShorelineLegacySuppress
     {
         "MC2_SHORELINE_LEGACY_SUPPRESS",
         "MC2_SHORELINE_LEGACY_SUPPRESS",
@@ -647,7 +633,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     },
-    // [45] SunAxisFix
+    // [44] SunAxisFix
     {
         "MC2_SUN_AXIS_FIX",
         "MC2_SUN_AXIS_FIX",
@@ -655,7 +641,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     },
-    // [46] SunElevationFix
+    // [45] SunElevationFix
     {
         "MC2_SUN_ELEVATION_FIX",
         "MC2_SUN_ELEVATION_FIX",
@@ -663,7 +649,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     },
-    // [47] StaticPropLightFreshness
+    // [46] StaticPropLightFreshness
     {
         "MC2_STATIC_PROP_LIGHT_FRESHNESS",
         "MC2_STATIC_PROP_LIGHT_FRESHNESS",
@@ -1665,20 +1651,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x).",
-    },
-    {
-        "MC2_TERRAIN_DECAL_COLORBLEND",
-        "MC2_TERRAIN_DECAL_COLORBLEND",
-        EnvVarKind::Trace,
-        false,
-        "TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-colormap blend (float 0..1, default 0.35) for the CLIFF_WALL mesh-decal.",
-    },
-    {
-        "MC2_TERRAIN_DECAL_FILL",
-        "MC2_TERRAIN_DECAL_FILL",
-        EnvVarKind::Trace,
-        false,
-        "TERRAIN-DECAL-FILL-1: ambient/fill floor (float 0..1, default 0.20) for the CLIFF_WALL mesh-decal's shadow side.",
     },
     {
         "MC2_TERRAIN_DECAL_LATERAL",

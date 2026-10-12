@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1024,
+ "count": 1021,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -21537,92 +21537,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_DIAG_TERRAIN_DEBUG_MODE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_DECAL",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0P",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system.",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:4854",
-     "idiom": "Lead0P"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_TERRAIN_DECAL",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_DECAL_COLORBLEND",
-   "kind": "Float",
-   "default": 0.35,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-colormap blend (float 0..1, default 0.35) for the CLIFF_WALL mesh-decal.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:485",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.35,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TERRAIN_DECAL_COLORBLEND",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_DECAL_FILL",
-   "kind": "Float",
-   "default": 0.2,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "TERRAIN-DECAL-FILL-1: ambient/fill floor (float 0..1, default 0.20) for the CLIFF_WALL mesh-decal's shadow side. static_prop lighting is max(N-L,0) with no ambient floor, so faces pointing away from the sun render black; this raises the per-fragment floor so they read as dark rock.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:468",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.2,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TERRAIN_DECAL_FILL",
    "retireVerdict": ""
   },
   {

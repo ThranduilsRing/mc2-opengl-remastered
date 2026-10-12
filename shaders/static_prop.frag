@@ -423,10 +423,8 @@ void main() {
     //     probe's 4.896 maximum is 0.673, under the clamp: the probe saturates
     //     0.0% of the sphere and the "unsaturated remainder" is the WHOLE
     //     surface. See the ★★ block in static_prop.vert for the full table.
-    //   - the kFlagDecalFill producer sits behind the DEFAULT-OFF opt-in
-    //     MC2_TERRAIN_DECAL (mclib/bdactor.cpp useCliffWallFrame), so on a
-    //     default launch this whole block runs for zero fragments. The v1
-    //     no-op was never visible to the user for that reason either.
+    //   - the kFlagDecalFill producer is mclib/bdactor.cpp useCliffWallFrame
+    //     (the MarbleCliff mesh decals); the block runs only for those fragments.
 
     // TERRAIN-DECAL-COLORBLEND-1: mix the cliff-decal albedo toward the terrain
     // colormap sampled at this fragment's world-XY (same atlas-UV reconstruction

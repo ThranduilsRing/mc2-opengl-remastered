@@ -178,7 +178,7 @@ void BldgAppearance::registerStatic() {
 	bldgShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
 
 	// TERRAIN-DECAL-SLICE-0A — CLIFF_WALL face frame (mesh-decal system).
-	// Default-OFF gate MC2_TERRAIN_DECAL. When ON and this appearance is the
+	// When this appearance is the
 	// cliff-wall decal type ("MarbleCliff"), build an EXPLICIT face-frame mat4
 	// for the placed instance INSTEAD of the yaw-only recipe transform. This is
 	// the CLIFF_WALL conform mode from docs/superpowers/specs/
@@ -192,15 +192,13 @@ void BldgAppearance::registerStatic() {
 	//   Shape-world axes (from xlatPosition remap): Xsw = -worldX, Ysw = up,
 	//   Zsw = worldY. Terrain normal (nx,ny,nz){world, nz up} maps to shape-world
 	//   (-nx, nz, ny); its horizontal projection (-nx,0,ny) is the outward facing.
-	static const bool s_terrainDecal = mc2::gate::get<"MC2_TERRAIN_DECAL">();
 	// TERRAIN-DECAL-SLICE-0B/0C — placement knobs live in CliffDecalTuning (mutable,
-	// seeded from the MC2_TERRAIN_DECAL_* env defaults so unset == byte-identical to
-	// Slice-0A). The face-frame math is factored into CliffDecalTuning::buildCliffWall
+	// seeded from the MC2_TERRAIN_DECAL_* env defaults). The face-frame math is factored into CliffDecalTuning::buildCliffWall
 	// Matrix(), shared by this registration path and the live ImGui tuning panel.
 	bool useCliffWallFrame = false;
 	Stuff::Matrix4D cliffWallXform;
 	Stuff::Vector3D decalNAcc;  // captured for the live-update panel
-	if (s_terrainDecal && appearType && appearType->name &&
+	if (appearType && appearType->name &&
 	    _stricmp(appearType->name, "MarbleCliff") == 0) {
 		// Sample the terrain normal at the placement site (average the 4
 		// enclosing corners via small offsets for stability — the raw normal is

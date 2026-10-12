@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1027;
+inline constexpr std::size_t kGateCount = 1024;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -771,9 +771,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_CULL_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_CULL_WIDE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_DEBUG_MODE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_TERRAIN_DECAL_COLORBLEND", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_FILL", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_DECAL_LATERAL", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_DECAL_LIFT", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_DECAL_OFFSET", Kind::Float, Rule::Prefix, {}},

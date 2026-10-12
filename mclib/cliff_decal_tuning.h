@@ -56,8 +56,8 @@ void clearDecalContext();
 
 // ---- Plain GUI-facing API (forward-declarable without Stuff/batcher headers) ----
 
-// True iff a CLIFF_WALL decal was captured this mission (i.e. MC2_TERRAIN_DECAL=1
-// and a MarbleCliff was placed). The ImGui panel renders nothing when false.
+// True iff a CLIFF_WALL decal was captured this mission (a MarbleCliff was
+// placed). The ImGui panel renders nothing when false.
 bool cliffDecal_hasDecal();
 
 // Copy current knob values out (any pointer may be null).
