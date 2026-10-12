@@ -22,6 +22,7 @@ non-archived docs.
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -91,8 +92,19 @@ def is_archived(relpath):
     return relpath.endswith(".original.md")
 
 
+def ignored_docs():
+    """Paths git ignores under docs/ (local scratch such as docs/beta): not part of the repo, so not part of its link contract."""
+    try:
+        out = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--", "docs"],
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False).stdout
+    except OSError:
+        return set()
+    return {os.path.normpath(p) for p in out.split("\0") if p}
+
+
 def collect_md_files():
     out = []
+    ignored = ignored_docs()
     for name in os.listdir(REPO_ROOT):
         if name.endswith(".md"):
             out.append(name)
@@ -101,7 +113,9 @@ def collect_md_files():
         for name in filenames:
             if name.endswith(".md"):
                 full = os.path.join(dirpath, name)
-                out.append(os.path.relpath(full, REPO_ROOT))
+                rel = os.path.relpath(full, REPO_ROOT)
+                if os.path.normpath(rel) not in ignored:
+                    out.append(rel)
     return sorted(out)
 
 
