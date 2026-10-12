@@ -615,12 +615,6 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
                     ? g_pbrV1RoughnessOverrideValue : -1.0f;
             glUniform1f(s_locsCoalesce.pbrV1RoughnessOverride, pbrRough);
         }
-        // V-MATERIAL-PBR-2-DIAG: diagnostic visualizer upload. Default 0
-        // (off) -> shader runs existing PBR math unchanged.
-        if (s_locsCoalesce.pbrV1DiagSunFound >= 0) {
-            glUniform1i(s_locsCoalesce.pbrV1DiagSunFound,
-                        s_pbrV1DiagSunFound ? 1 : 0);
-        }
 
         // 11.7.e — slot 1 is NOT bound (per v2r18 §3.X.1: colors_.c[]
         // unread in any live shader path; coalesce branch does not bind

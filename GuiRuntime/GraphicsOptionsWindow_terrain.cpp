@@ -529,8 +529,7 @@ void drawStaticPropTuningSection() {
             ImGui::SetTooltip("V-MATERIAL-PBR-3 per-fragment Schlick-Fresnel +\n"
                               "power-lobe specular in static_prop.frag.\n"
                               "Default 0.5 (was 1.0 — full strength was too blunt\n"
-                              "on flat-roofed legacy assets without material masks).\n"
-                              "Env MC2_STATIC_PROP_PBR_V1_STRENGTH overrides startup.");
+                              "on flat-roofed legacy assets without material masks).");
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##pbr_v1")) g_pbrV1Strength = 0.5f;
         ImGui::EndDisabled();

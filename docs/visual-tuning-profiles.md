@@ -55,7 +55,7 @@ Invalid values: clamped to safe range where applicable.
 |-----|------|-------|---------------------|-------|
 | `exposure` | float | ≥0 | — | HDR composite exposure multiplier |
 | `shadowSoftness` | float | 0–1 | — | Shadow PCF softness |
-| `staticPropIblStrength` | float | 0–3 | `MC2_STATIC_PROP_IBL_SH_STRENGTH` | IBL SH contribution |
+| `staticPropIblStrength` | float | 0–3 | — | IBL SH contribution |
 | `waterSkyTintStrength` | float | ≥0 | `MC2_WATER_SKYTINT` | Sky horizon tint on water |
 | `vfxBrightness` | float | 0–8 | — | Particle overall brightness |
 | `vfxAdditiveBrightness` | float | 0–8 | — | Additive blend brightness |

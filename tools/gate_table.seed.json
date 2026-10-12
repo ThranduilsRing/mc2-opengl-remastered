@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1052,
+ "count": 1044,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -5482,32 +5482,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_FORCE_LOD",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD.",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:7698",
-     "idiom": "Num(atof+atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_FORCE_LOD",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_FORCE_TXM_REGEN",
    "kind": "Bool",
    "default": false,
@@ -8987,32 +8961,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_IMPOSTOR_DIST",
-   "kind": "Float",
-   "default": 800.0,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD).",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:7703",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 800,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_IMPOSTOR_DIST",
    "retireVerdict": ""
   },
   {
@@ -20027,36 +19975,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_PROP_DEBUG_MATERIAL",
-   "kind": "Int",
-   "default": 0,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-MATERIAL-DEBUG-1 / V-MATERIAL-PBR-1: per-fragment material debug view on StaticPropOpaque lane (static_prop.frag).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1481",
-     "idiom": "Num(atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0,
-    "hi": 6,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_DEBUG_MATERIAL",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_DEPTH_PREPASS",
    "kind": "Bool",
    "default": false,
@@ -20285,36 +20203,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_PROP_IBL_NIGHT_SCALE",
-   "kind": "Float",
-   "default": 0.25,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "IBL-NIGHT-SCALE-1: night-scales the SH-IBL ambient probe on static props.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1127",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.25,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_IBL_NIGHT_SCALE",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_IBL_SH",
    "kind": "Bool",
    "default": true,
@@ -20353,66 +20241,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_STATIC_PROP_IBL_SH",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_IBL_SH_SET",
-   "kind": "String",
-   "default": "",
-   "rule": "Std",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-IBL-STATIC-2: override the active SH coefficient set by name (e.g. 'default').",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1216",
-     "idiom": "Str[null,null]"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": "",
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_STATIC_PROP_IBL_SH_SET",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_IBL_SH_STRENGTH",
-   "kind": "Float",
-   "default": 0.5,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-IBL-STATIC-1: optional default-strength override for SH-L2 ambient (clamped 0..3).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:365",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:170",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 3.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.5,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_STATIC_PROP_IBL_SH_STRENGTH",
    "retireVerdict": ""
   },
   {
@@ -20707,62 +20535,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_STATIC_PROP_PBR_V1",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_PBR_V1_DIAG_SUNFOUND",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-MATERIAL-PBR-3-DIAG: diagnostic visualizer for the forwarded sunFound state.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1195",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_DIAG_STATIC_PROP_PBR_V1_SUNFOUND",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_PBR_V1_STRENGTH",
-   "kind": "Float",
-   "default": 0.5,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-MATERIAL-PBR-3: optional default-strength override for per-fragment Schlick-Fresnel specular (clamped 0..3).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:500",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 3.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.5,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_STATIC_PROP_PBR_V1_STRENGTH",
    "retireVerdict": ""
   },
   {

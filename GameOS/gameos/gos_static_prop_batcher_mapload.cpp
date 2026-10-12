@@ -104,16 +104,8 @@ void GpuStaticPropBatcher::onMapLoad() {
 
 // V-IBL-STATIC-2: select per-mission SH coefficient set. Called from
 // Mission::init right after onMapLoad(); safe to call with nullptr/empty
-// (resolves to "default"). Env override MC2_STATIC_PROP_IBL_SH_SET wins
-// when set + names an existing set, else registry, else default.
+// (resolves to "default"); the registry names the set, else default.
 void GpuStaticPropBatcher::setMissionForIbl(const char* missionName) {
-    if (s_iblShSetEnvOverride) {
-        if (const RenderCore::IblShSet* s =
-                RenderCore::findShSetByName(s_iblShSetEnvOverride)) {
-            s_currentShSet = s;
-            return;
-        }
-    }
     s_currentShSet = &RenderCore::lookupShSet(missionName);
 }
 

@@ -25,8 +25,7 @@ extern float g_iblShStrength;
 // s_pbrV1Enabled inside the batcher TU) is the AUTHORITATIVE GATE; the
 // slider only modulates strength when the env-gate is on. Per-frame upload
 // computes `(s_pbrV1Enabled && !s_viewUniformsDisabled) ? g_pbrV1Strength
-// : 0.0f`. Default 1.0f at process start (or
-// MC2_STATIC_PROP_PBR_V1_STRENGTH override, clamped 0..3).
+// : 0.0f`. Default 0.5f at process start (slider range 0..3).
 extern float g_pbrV1Strength;
 
 // V-MATERIAL-PBR-3-TUNE-UI: ImGui-driven runtime roughness override.

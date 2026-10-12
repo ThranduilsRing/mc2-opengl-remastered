@@ -154,8 +154,7 @@ public:
 
     // V-IBL-STATIC-2: select the SH coefficient set for the loaded mission.
     // Called from Mission::init right after onMapLoad(). Safe to call with
-    // nullptr/empty (-> "default"). Env override MC2_STATIC_PROP_IBL_SH_SET
-    // wins when set + matches an existing set. Per-mission registry lives
+    // nullptr/empty (-> "default"). Per-mission registry lives
     // in RenderCore/IblShRegistry.h (kMissionShMap).
     static void setMissionForIbl(const char* missionName);
 
@@ -746,7 +745,7 @@ void batcher_buildCandidateLog();
 // DEBUG-VIEW-REGISTRY-1: runtime getter/setter for the static-prop fragment debug mode.
 // shaderMode maps directly to s_staticPropDebugMaterialMode (shader branch 0..6).
 // 0=Final (off), 1=Albedo, 2=MaterialIdx, 3=Normal, 4=TexArrayLayer, 5=Roughness, 6=Metallic.
-// Setter clamps input to 0..6. Initial value comes from MC2_STATIC_PROP_DEBUG_MATERIAL env var.
+// Setter clamps input to 0..6. The initial value is 0 (Final).
 // ImGui can override at runtime via these functions without restarting the process.
 // Canonical label/description strings are in RenderCore/RenderDebugView.h.
 void batcher_setDebugMaterialMode(int shaderMode);

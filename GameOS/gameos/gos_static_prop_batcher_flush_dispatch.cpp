@@ -922,11 +922,6 @@ void GpuStaticPropBatcher::legacyPrepare() {
                         ? g_pbrV1RoughnessOverrideValue : -1.0f;
                 glUniform1f(s_locsLegacy.pbrV1RoughnessOverride, pbrRough);
             }
-            // V-MATERIAL-PBR-2-DIAG: legacy program diag visualizer upload.
-            if (s_locsLegacy.pbrV1DiagSunFound >= 0) {
-                glUniform1i(s_locsLegacy.pbrV1DiagSunFound,
-                            s_pbrV1DiagSunFound ? 1 : 0);
-            }
         }
 }
 

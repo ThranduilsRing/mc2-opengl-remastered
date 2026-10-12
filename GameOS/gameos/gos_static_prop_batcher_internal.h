@@ -316,7 +316,6 @@ struct ProgramLocs {
     GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
     GLint pbrV1Strength       = -1;   // V-MATERIAL-PBR-2: u_pbrV1Strength
     GLint pbrV1RoughnessOverride = -1; // V-MATERIAL-PBR-2-TUNE-UI: u_pbrV1RoughnessOverride
-    GLint pbrV1DiagSunFound   = -1;   // V-MATERIAL-PBR-2-DIAG: u_pbrV1DiagSunFound
     GLint ormTexArr           = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormTexArr (sampler2DArray)
     GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
     GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
@@ -545,9 +544,7 @@ float iblShStrengthNightScaled();
 bool pbrV1Enabled();
 extern const bool s_ormSlotsEnabled;
 extern const bool s_viewUniformsDisabled;
-extern const bool s_pbrV1DiagSunFound;
 extern const RenderCore::IblShSet* s_currentShSet;
-extern const char* s_iblShSetEnvOverride;
 const float* iblShCoeffsForUpload();
 extern int s_staticPropDebugMaterialMode;
 extern bool s_materialKtxEnabled;

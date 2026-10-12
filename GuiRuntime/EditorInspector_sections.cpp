@@ -289,8 +289,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                     }
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("V-MATERIAL-DEBUG-1 debug view for StaticPropOpaque.\n"
-                                          "Initial value from MC2_STATIC_PROP_DEBUG_MATERIAL env var.\n"
-                                          "ImGui selection overrides at runtime.");
+                                          "Runtime selection only; starts at Final.");
                 }
 
                 // V-IBL-STATIC-1 + V-IBL-DEFAULT-FLIP (2026-05-27):
@@ -355,7 +354,6 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 { "material sample",     "MC2_MATERIAL_GPU_SAMPLE",         true  },
                 { "object-ID buffer",    "MC2_OBJECT_ID_BUFFER",            true  },
                 { "ambient v1",          "MC2_STATIC_PROP_AMBIENT_V1",      false },
-                { "debug material",      "MC2_STATIC_PROP_DEBUG_MATERIAL",  false },
                 { "ibl sh",              "MC2_STATIC_PROP_IBL_SH",          true  },
                 { "pbr v1",              "MC2_STATIC_PROP_PBR_V1",          false },
             };

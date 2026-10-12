@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1055;
+inline constexpr std::size_t kGateCount = 1047;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -206,7 +206,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FORCE_ALL_VISIBLE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_FORCE_DYNAMIC_BUILDINGS", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_FORCE_DYNAMIC_TREES", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_FORCE_LOD", Kind::Int, Rule::Prefix, {}},
     {"MC2_FORCE_TXM_REGEN", Kind::Bool, Rule::Presence, {}},
     {"MC2_FPS_CAP", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAMECAP_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -330,7 +329,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_IMGUI_DEMO", Kind::Bool, Rule::Lead1, {}},
     {"MC2_IMGUI_INSPECTOR", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_IMPORTER_DIR", Kind::String, Rule::Std, {}},
-    {"MC2_IMPOSTOR_DIST", Kind::Float, Rule::Prefix, {}},
     {"MC2_INVIEW_CONFLATION_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_JUMPJETS_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHED", Kind::Bool, Rule::Presence, {}},
@@ -716,7 +714,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Kind::Enum, Rule::Std, "1|0|2"},
     {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_COLORS_FILL", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_STATIC_PROP_DEBUG_MATERIAL", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_DEPTH_PREPASS", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_PROP_FIXTURE_GLOW", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_FIXTURE_LIGHTS", Kind::Float, Rule::Prefix, {}},
@@ -725,10 +722,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_FLUSH_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_STATIC_PROP_GLOBAL_CAP", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_GLOBAL_POOL_LEGACY", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_STATIC_PROP_IBL_NIGHT_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_IBL_SH", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_STATIC_PROP_IBL_SH_SET", Kind::String, Rule::Std, {}},
-    {"MC2_STATIC_PROP_IBL_SH_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_IBL_SUN_ROTATE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_LATE_SPAWN_REG", Kind::Bool, Rule::Std, {}},
@@ -739,8 +733,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_NIGHT_TAGS", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_NIGHT_TAGS_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_PBR_V1", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATIC_PROP_PBR_V1_DIAG_SUNFOUND", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATIC_PROP_PBR_V1_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_PERSISTENT_BUCKETS", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_PICK", Kind::Bool, Rule::Lead0, {}},

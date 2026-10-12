@@ -735,11 +735,8 @@ void TreeAppearance::selectActiveLOD()
 	for (int _l = MAX_LODS - 1; _l > 0; --_l)
 		if (staticReg[_l].registered) { _maxAvailLOD = _l; break; }
 	int _wantLOD = activeLOD;   // default: STAY (deadband) — anti-thrash
-	static const bool s_forceLod = mc2::gate::isSet<"MC2_FORCE_LOD">();
-	if (s_forceLod) {
-		_wantLOD = mc2::gate::get<"MC2_FORCE_LOD">();            // debug override
-	} else if (_maxAvailLOD >= 1 && eye) {
-		static const float s_impostorDist = mc2::gate::get<"MC2_IMPOSTOR_DIST">();
+	if (_maxAvailLOD >= 1 && eye) {
+		constexpr float s_impostorDist = 800.0f;   // world units: the impostor switch distance
 		// HYSTERESIS: separate near/far thresholds so a tree sitting near the
 		// boundary does NOT oscillate activeLOD every frame. Oscillation forced a
 		// full update()+submitMultiShape+re-register churn each frame, backing up

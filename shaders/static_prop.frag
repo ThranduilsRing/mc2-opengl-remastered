@@ -74,13 +74,11 @@ flat in  int  v_pbrV1SunFound;
 // is required. Default behavior preserved:
 //   u_pbrV1Strength             = 0.0  (PBR block short-circuits)
 //   u_pbrV1RoughnessOverride    = -1.0 (sentinel; use material/literal)
-//   u_pbrV1DiagSunFound         = 0    (DIAG off)
 // Runtime safety interlock (s_viewUniformsDisabled flag in the batcher)
 // force-uploads strength=0 when MC2_VIEW_UNIFORMS=0, complementing this
 // compile-guard.
 uniform float u_pbrV1Strength;
 uniform float u_pbrV1RoughnessOverride;
-uniform int   u_pbrV1DiagSunFound;
 #endif
 
 #ifdef MC2_COALESCE
@@ -494,10 +492,7 @@ void main() {
     const uint kFlagIsWindow = (1u << 1);
     if (u_pbrV1Strength > 0.0 && (v_flags & kFlagIsWindow) == 0u) {
         if (v_pbrV1SunFound != 0) {
-            if (u_pbrV1DiagSunFound != 0) {
-                // DIAG cyan: sun found at this fragment's provoking vertex.
-                c.rgb = vec3(0.0, 1.0, 1.0);
-            } else {
+            {
                 // Material scalars: prefer MaterialGpu when sampling is on;
                 // fall back to the literal defaults otherwise (metallic=0,
                 // roughness=1.0) so gate-ON behavior degrades gracefully when
@@ -564,10 +559,6 @@ void main() {
 
                 c.rgb += specular * u_pbrV1Strength;
             }
-        } else if (u_pbrV1DiagSunFound != 0) {
-            // DIAG magenta: PBR gate ON, DIAG ON, but no INFINITE light
-            // found in this fragment's ObjectLights entry.
-            c.rgb = vec3(1.0, 0.0, 1.0);
         }
     }
 #endif  // MC2_USE_VIEW_UNIFORMS

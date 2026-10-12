@@ -172,7 +172,6 @@ void loadProgramsIfNeeded() {
     // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular (default strength 0.0 = OFF).
     s_locsLegacy.pbrV1Strength     = glGetUniformLocation(s_staticPropProgram, "u_pbrV1Strength");
     s_locsLegacy.pbrV1RoughnessOverride = glGetUniformLocation(s_staticPropProgram, "u_pbrV1RoughnessOverride");
-    s_locsLegacy.pbrV1DiagSunFound = glGetUniformLocation(s_staticPropProgram, "u_pbrV1DiagSunFound");
     // s_locsLegacy.drawIDBase / texArr stay -1 (coalesce-only; legacy
     // shader has no such uniforms).
 
@@ -238,7 +237,6 @@ void loadProgramsIfNeeded() {
             // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular (default strength 0.0 = OFF).
             s_locsCoalesce.pbrV1Strength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1Strength");
             s_locsCoalesce.pbrV1RoughnessOverride = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1RoughnessOverride");
-            s_locsCoalesce.pbrV1DiagSunFound = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1DiagSunFound");
             // STATICPROP-MATERIAL-ORM-1: ORM sampler + sample-enable. The shader
             // does not declare these yet (separate later task) so both resolve to
             // -1 here; the ProgramLocs default-init keeps them -1 and every upload

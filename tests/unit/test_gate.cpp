@@ -1028,15 +1028,6 @@ TEST_CASE("G6 String rows keep path and text values verbatim") {
     CHECK(std::string(g1b::rowNamed("MC2_MECH_IMPORT_FORCE_BONE").defStr) == "j_LThigh");
 }
 
-TEST_CASE("G6 MC2_FORCE_LOD is an integer level (the reader was atoi)") {
-    const gate::Row& row = g1b::rowNamed("MC2_FORCE_LOD");
-    CHECK(row.kind == Kind::Int);
-    CHECK(g1b::intOf(row, nullptr) == 0);
-    CHECK(g1b::intOf(row, "2") == 2);
-    CHECK(g1b::intOf(row, "2.9") == 2);   // atoi stops at the dot
-    CHECK(g1b::intOf(row, "abc") == 0);
-}
-
 TEST_CASE("G6 the mod-cache refresh flag is re-read after an in-process putenv") {
     const gate::Row& row = g1b::rowNamed("MC2_REBUILD_MOD_CACHE");
     CHECK(row.reread);
@@ -1156,13 +1147,10 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", nullptr) == 0.5f);
-    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", "9") == 3.0f);
     CHECK(fl("MC2_TERRAIN_DECAL_FILL", nullptr) == 0.2f);
     CHECK(fl("MC2_TERRAIN_DECAL_FILL", "5") == 1.0f);
     CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", "-1") == 0.0f);
     CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", nullptr) == 0.35f);
-    CHECK(fl("MC2_STATIC_PROP_PBR_V1_STRENGTH", "10") == 3.0f);
     CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "2") == 1.0f);
     CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "") == 0.0f);
     CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "7") == 2);
@@ -1171,13 +1159,10 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", nullptr) == 1.0f);
     CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", "100") == 16.0f);
     CHECK(fl("MC2_STATIC_PROP_FIXTURE_GLOW", "100") == 8.0f);
-    CHECK(fl("MC2_STATIC_PROP_IBL_NIGHT_SCALE", "3") == 1.0f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "abc") == 0.0f);
-    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "9") == 6);
-    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "") == 0);
     CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
     CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
     CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);

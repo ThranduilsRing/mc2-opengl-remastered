@@ -240,8 +240,8 @@ extern const float s_propBaseLightDirStrength = mc2::gate::get<"MC2_PROP_BASE_LI
 // u_farBackdropLit=0 so the shader's `if (u_farBackdropLit != 0)` branch is
 // skipped entirely -> seed==base_light -> byte-identical to the pre-change
 // render (stronger than a multiply-by-zero: the substitution code never runs).
-// Distance band defaults bracket the LOD impostor distance (MC2_IMPOSTOR_DIST,
-// default 800 world units; bdactor.cpp selectActiveLOD) so the fade completes as
+// Distance band defaults bracket the LOD impostor distance (800
+// world units; bdactor.cpp selectActiveLOD) so the fade completes as
 // the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
 // EDGE-LIGHT-EMISSION-1 (master-FAIL #8, re-framed). User verdict that opened
 // this lane: "edge light is just doing the wrong thing entirely. the actual
@@ -456,14 +456,12 @@ bool iblShEnabled() {
 // is exactly 0.0f, so the multiplier is exactly 1.0f and `strength * 1.0f`
 // returns the identical float. No epsilon, no rounding.
 //
-// Value semantics: float 0..1 = the night floor. "1.0" -> multiplier is exactly
-// 1.0 at every nightFactor -> byte-identical to the pre-slice build (this is
-// the killswitch). "0.0" -> hard (1 - nightFactor). Unset -> 0.25.
-static const float s_iblNightFloor = mc2::gate::get<"MC2_STATIC_PROP_IBL_NIGHT_SCALE">();
+// The night floor is the knee of the sweep above.
+static constexpr float s_iblNightFloor = 0.25f;
 
 // Effective SH-IBL strength for this frame: the configured strength (ImGui
-// slider / MC2_STATIC_PROP_IBL_SH_STRENGTH env / per-mission
-// data/visual_tuning.json "staticPropIblStrength") scaled by the night curve.
+// slider / per-mission data/visual_tuning.json "staticPropIblStrength") scaled
+// by the night curve.
 //
 // NOTE ON SOURCING NIGHT STATE. This deliberately calls gos_GetNightState()
 // directly instead of reusing the nFactor computed in the uniform-upload
@@ -475,7 +473,6 @@ static const float s_iblNightFloor = mc2::gate::get<"MC2_STATIC_PROP_IBL_NIGHT_S
 // depend on an unrelated gate's default.
 float iblShStrengthNightScaled() {
     if (!iblShEnabled()) return 0.0f;
-    if (s_iblNightFloor >= 1.0f) return g_iblShStrength;   // killswitch: exact
     bool  isNight = false;
     float nFactor = 0.0f;
     ::gos_GetNightState(&isNight, &nFactor);
@@ -509,12 +506,6 @@ extern const bool s_ormSlotsEnabled = mc2::gate::get<"MC2_STATICPROP_MATERIAL_PB
 // at process start; mirrors the IBL env-gate idiom.
 extern const bool s_viewUniformsDisabled = !mc2::gate::get<"MC2_VIEW_UNIFORMS">();
 
-// V-MATERIAL-PBR-2-DIAG: diagnostic visualizer gate. Default-OFF; "=1" / any
-// non-"0" value enables. Mirrors s_pbrV1Enabled parse pattern. When ON AND
-// PBR gate is also ON, shader replaces lit with cyan (sunFound=true) /
-// magenta (false) instead of running Schlick math. Diagnostic-only; never
-// commits a behavior change to the default path.
-extern const bool s_pbrV1DiagSunFound = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_DIAG_SUNFOUND">();
 // Note: definition of `g_iblShStrength` lives at file scope above the
 // anonymous namespace (line ~191) so it has external linkage. The lambda-
 // initialized s_iblShEnabled stays local here; the slider value is global.
@@ -528,12 +519,7 @@ extern const bool s_pbrV1DiagSunFound = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_D
 //   - setMissionForIbl(name) is called from Mission::init right after
 //     onMapLoad(); it consults the compile-time registry (kMissionShMap
 //     in IblShRegistry.h) and falls back to "default" for unknown names.
-//   - Optional env override MC2_STATIC_PROP_IBL_SH_SET=<name> wins over
-//     the registry when set + matches an existing set; unset/empty/typo
-//     -> registry. Resolved once at process start.
 extern const RenderCore::IblShSet* s_currentShSet = &RenderCore::kIblShSets[0];
-static const std::string s_iblShSetEnvOverrideText = mc2::gate::str<"MC2_STATIC_PROP_IBL_SH_SET">();   // "" when unset or empty
-extern const char* s_iblShSetEnvOverride = s_iblShSetEnvOverrideText.empty() ? nullptr : s_iblShSetEnvOverrideText.c_str();
 
 // ── IBL-SUN-ROTATE-1 ────────────────────────────────────────────────────────
 // Rotate the SH-IBL ambient probe about world-up so its bright lobe lands on
@@ -782,9 +768,8 @@ const float* iblShCoeffsForUpload() {
 }
 
 // V-MATERIAL-DEBUG-1: per-fragment material debug view mode for the
-// StaticPropOpaque lane. Default 0 = OFF (byte-identical to legacy output —
-// shader short-circuits via `if (u_debugMaterialMode != 0) { ...; return; }`).
-// Env var MC2_STATIC_PROP_DEBUG_MATERIAL accepts integer 0..N:
+// StaticPropOpaque lane. 0 = OFF; the inspector selector sets it at runtime.
+// Modes:
 //   0 = off (default)
 //   1 = albedo (raw texture)
 //   2 = materialIdx (hashed palette)
@@ -793,8 +778,7 @@ const float* iblShCoeffsForUpload() {
 //   5 = roughnessFactor as grayscale (V-MATERIAL-PBR-1)
 //   6 = metallicFactor as grayscale  (V-MATERIAL-PBR-1)
 // Values outside the implemented range render as hot-pink in the shader.
-// Resolved once at process start (atoi semantics: invalid -> 0).
-int s_staticPropDebugMaterialMode = mc2::gate::get<"MC2_STATIC_PROP_DEBUG_MATERIAL">();
+int s_staticPropDebugMaterialMode = 0;
 bool s_materialKtxEnabled = mc2::gate::get<"MC2_MATERIAL_KTX">();   // MC2_MATERIAL_KTX=1
 // MC2_STATICPROP_TEX_TIER: 128 | 256 | 512 (default) | 1024
 // Selects which cooked tier directory (data/tgl/<tier>/<name>.ktx2) is loaded

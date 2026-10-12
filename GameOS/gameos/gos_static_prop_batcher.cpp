@@ -200,47 +200,11 @@ int g_lightProbeSetupPath = 0;
 // Defined at file scope (NOT in anonymous namespace) for external linkage
 // so GuiRuntime/EditorInspector.cpp can drive the slider.
 //
-// V-IBL-STATIC-1-SOAK: optional MC2_STATIC_PROP_IBL_SH_STRENGTH env override
-// for the default. ImGui slider remains the interactive tuning surface; the
-// env exists so headless capture harnesses can drive strength deterministically
-// from a parent process. Parsed once at process start, clamped 0.0..3.0.
-// Env unset/empty -> 0.5f.
-//
-// ★ 0.5f IS A PRE-MISSION FALLBACK ONLY. NO SHIPPED MISSION EVER RENDERS AT
-// IT. (Correction landed by INCAPABLE-BATCH-1, 2026-07-31; the text here used
-// to read "default 0.5f (V-IBL-STATIC-1-TUNE: user eyeball pass at e061e44c
-// selected 0.5 as 'looks good')", which is a live falsehood in every sense
-// that matters.) data/visual_tuning.json OVERWRITES this global on EVERY
-// mission load -- visual_tuning_profile.cpp applyKey("staticPropIblStrength")
-// -> visualTuning_applyProfile(), called unconditionally from
-// code/mission.cpp:3874, and the file ships (scripts/deploy_payload.py:118,
-// verified present in the 2026-07-30 install). The values that actually
-// render are:
-//     defaults           0.55
-//     mc2_01/10/24       0.60
-//     mc2_03             0.55 (explicit)
-//     gaea_peaks_01      0.65
-// The ONLY way 0.5f survives into a frame is (a) frames drawn before the
-// first mission load (shell/mechbay -- gos_mech_batcher.cpp shares this same
-// global), or (b) data/visual_tuning.json missing/unreadable.
-//
-// CONSEQUENCES, both of which have already cost real work:
-//   - Any eyeball tuning pass recorded "at 0.5" was graded on a value the
-//     game does not use. If you tune this feature, edit the JSON.
-//   - Setting MC2_STATIC_PROP_IBL_SH_STRENGTH does not merely override this
-//     line, it DISABLES the whole per-mission JSON override
-//     (visual_tuning_profile.cpp guards the apply with envIsSet()), so an
-//     env-driven A/B is measuring a different mission profile than a default
-//     launch. docs/tier1_env_vars.md carries this warning too.
-// Left at 0.5f on purpose: changing it would move shell/mechbay frames (a
-// user-visible default-launch delta) while changing nothing in-mission.
-// If you change it, change data/visual_tuning.json "defaults" in the same
-// commit so the two cannot disagree again.
-// KNOWN STILL-DIVERGENT (not fixed here -- the file is held by another lane):
-// tools/class_light_band_harness/class_light_band_harness.cpp hardcodes
-// kIblStrengthDefault = 0.5 and asserts it, so every band the harness models
-// is computed at a strength no mission uses.
-float g_iblShStrength = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH_STRENGTH">();
+// This 0.5 is the pre-mission fallback only (shell and mech-bay frames, or a
+// missing data/visual_tuning.json). data/visual_tuning.json overwrites it on
+// every mission load (visual_tuning_profile.cpp "staticPropIblStrength"), so
+// the per-mission strength is tuned there.
+float g_iblShStrength = 0.5f;
 
 // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): beacon/runway light fixtures
 // (TG_Shape::isLightBillboard, node-name substring "beaconlight") pop in and
@@ -349,17 +313,10 @@ float g_terrainDecalFill = mc2::gate::get<"MC2_TERRAIN_DECAL_FILL">();
 float g_terrainDecalColorBlend = mc2::gate::get<"MC2_TERRAIN_DECAL_COLORBLEND">();
 
 // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel specular slider value
-// (interactive). Default 1.0f. Only contributes when the env-gate
-// s_pbrV1Enabled is ON (and MC2_VIEW_UNIFORMS is not disabled). Optional env
-// override MC2_STATIC_PROP_PBR_V1_STRENGTH wins over the default; clamped
-// 0..3 to match the slider range. External linkage so EditorInspector.cpp
-// can drive the slider (same pattern as g_iblShStrength).
-// 2026-05-28: default dialled back from 1.0 → 0.5 per user direction.
-// Full-strength Schlick specular was too blunt on flat-roofed legacy
-// assets without material specular masking; 0.5 is the new "looks
-// sensible without bespoke per-material tuning" baseline. Env override
-// still wins (clamped 0..3).
-float g_pbrV1Strength = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_STRENGTH">();
+// (interactive; EditorInspector.cpp drives it, range 0..3). Full-strength
+// specular was too blunt on flat-roofed legacy assets without material
+// specular masking, so the startup value is 0.5.
+float g_pbrV1Strength = 0.5f;
 
 // V-MATERIAL-PBR-2-TUNE-UI: ImGui-driven runtime roughness override layer
 // on top of the static_prop.vert 0.6 literal baseline. Default DISABLED;
