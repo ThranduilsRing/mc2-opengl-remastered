@@ -1404,14 +1404,6 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				isSupportedBlend && (vc >= 2) && (isRibbonKind || isPolygonKind);
 			const int blendMode = isAdditive ? 1 : 0;
 
-			static unsigned long long s_tubeCalls = 0,
-			                          s_subAlphaRibbon   = 0,  // alpha ribbon (vc==2)
-			                          s_subAddRibbon     = 0,  // additive ribbon (vc==2)
-			                          s_subPolygon       = 0,  // polygon profile (vc>=3)
-			                          s_fallbackTotal    = 0,  // supported kind, no index buf
-			                          s_unsupTotal       = 0;  // unsupported kind/blend
-			const bool tubeLog = mc2::particles::Batcher::is_oracle_tube_log_enabled();
-
 			if (supported && m_P_indices)
 			{
 				// Live, compacted mesh: profiles 0..m_activeProfileCount are
@@ -1464,43 +1456,6 @@ void gosFX::Tube::Draw(DrawInfo *info)
 					ribbonSubmitted = true;
 				}
 				// gosHandle==0: ribbonSubmitted stays false → DrawEffect below.
-				// Only count oracle submissions that actually enqueued.
-				if (ribbonSubmitted) {
-					if (isPolygonKind)    ++s_subPolygon;
-					else if (isAdditive)  ++s_subAddRibbon;
-					else                  ++s_subAlphaRibbon;
-				}
-			}
-			else
-			{
-				if (supported) ++s_fallbackTotal;  // supported but no indices
-				else           ++s_unsupTotal;     // unsupported kind/blend
-			}
-
-			if (tubeLog)
-			{
-				static bool s_first = false;
-				if (!s_first && ribbonSubmitted) {
-					s_first = true;
-					MC2_DIAGFE(stderr,
-						"[VFX_ORACLE_TUBE v2] class=Tube FIRST_HARVEST spec=\"%s\" "
-						"profileType=%d vc=%u blend=%s activeProfiles=%d verts=%u indices=%u\n",
-						static_cast<const char*>(spec->m_name),
-						(int)spec->m_profileType, vertex_count,
-						isAdditive ? "additive" : "alpha",
-						m_activeProfileCount,
-						m_activeProfileCount * vertex_count,
-						(unsigned)m_triangleCount * 3u);
-					std::fflush(stderr);
-				}
-				if ((++s_tubeCalls % 240ull) == 0ull) {
-					MC2_DIAGFE(stderr,
-						"[VFX_ORACLE_TUBE v2] calls=%llu alphaRibbon=%llu "
-						"addRibbon=%llu polygon=%llu fallback=%llu unsupported=%llu\n",
-						s_tubeCalls, s_subAlphaRibbon, s_subAddRibbon,
-						s_subPolygon, s_fallbackTotal, s_unsupTotal);
-					std::fflush(stderr);
-				}
 			}
 		}
 

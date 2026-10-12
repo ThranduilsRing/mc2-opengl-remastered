@@ -366,3 +366,9 @@ Per commit: `py -3 tools/gate_gen.py --write` (index, registry header rows, docs
 | `MC2_SSAO_RADIUS` | GameOS/gameos/gos_postprocess.cpp:455 | DELETE override: launch-time radius override; ImGui slider live; no setter | F-SSAOKNOB next |
 | `MC2_VIEWMODE_LOWLIGHT_GAIN` | GameOS/gameos/gos_postprocess.cpp:669 | DELETE knob: night-vision gain seed; the matrix entry low_light_high_gain (gain 5.0) was its one setter and goes with it, the ImGui setter stays | F-VIEWMODEKNOB next |
 | `MC2_VIEWMODE_LOWLIGHT_TINT` | GameOS/gameos/gos_postprocess.cpp:670 | DELETE knob: night-vision tint seed; no setter | F-VIEWMODEKNOB next |
+| `MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS` | GameOS/gameos/gos_particle_bridge.cpp:94 | DELETE knob: data/visual_tuning.json vfxAdditiveBrightness + slider are the live inputs; the profile guard that let the env win goes with it | F-VFXKNOB next |
+| `MC2_TUNE_VFX_AGE_FADE` | GameOS/gameos/gos_particle_bridge.cpp:96 | DELETE knob: age-fade seed default 0; the ImGui slider stays | F-VFXKNOB next |
+| `MC2_TUNE_VFX_ALPHA_SCALE` | GameOS/gameos/gos_particle_bridge.cpp:95 | DELETE knob: slider live; no setter | F-VFXKNOB next |
+| `MC2_TUNE_VFX_BRIGHTNESS` | GameOS/gameos/gos_particle_bridge.cpp:93 | DELETE knob: data/visual_tuning.json vfxBrightness + slider are the live inputs | F-VFXKNOB next |
+| `MC2_TUNE_VFX_LIT_STRENGTH` | GameOS/gameos/gos_particle_bridge.cpp:143 | DELETE knob: tuning profile + slider live | F-VFXKNOB next |
+| `MC2_VFX_ORACLE_TUBE_LOG` | mclib/particles/batcher.cpp:199 | DELETE on: per-tube submit counters and the [VFX_ORACLE_TUBE v2] lines deleted with the gate | F-VFXKNOB next |

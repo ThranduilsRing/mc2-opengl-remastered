@@ -74,28 +74,17 @@ int  vfxDebugMode() {
 }
 
 // VFX-TUNING-UI-1: user intensity scales. All default 1.0 (= byte-identical
-// no-op). Seeded once from MC2_TUNE_VFX_* (clamped 0..8); the Graphics Options
-// "VFX Tuning" sliders override at runtime via the setters below. These tune
-// LOOK only — no emission/lifetime/sorting/timing change.
-// VFX-SHADER-AGE-FADE-PARITY-1: s_vfxAgeFade added (default 0.0 = gate OFF,
-// byte-identical). 1.0 = full soft-death fade for oracle particles in final 30%
-// of life. Env: MC2_TUNE_VFX_AGE_FADE (clamped 0..1).
-bool  s_vfxTune_initialized   = false;
+// no-op); the per-mission visual tuning profile and the Graphics Options
+// "VFX Tuning" sliders set them at runtime through the setters below. These
+// tune LOOK only — no emission/lifetime/sorting/timing change.
+// VFX-SHADER-AGE-FADE-PARITY-1: s_vfxAgeFade (default 0.0 = off, byte-identical;
+// 1.0 = full soft-death fade for oracle particles in the final 30% of life).
 float s_vfxBrightness         = 1.0f;
 float s_vfxAdditiveBrightness = 1.0f;
 float s_vfxAlphaScale         = 1.0f;
 float s_vfxAgeFade            = 0.0f;
 static float clampVfxScale(float v) { return v < 0.0f ? 0.0f : (v > 8.0f ? 8.0f : v); }   // the runtime setters
 static float clampAgeFade(float v)  { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
-void vfxTuneInitIfNeeded() {
-    if (s_vfxTune_initialized) return;
-    // The rows carry the defaults (1, 1, 1, 0) and the clamps ([0, 8] scales, [0, 1] age fade).
-    s_vfxBrightness         = mc2::gate::get<"MC2_TUNE_VFX_BRIGHTNESS">();
-    s_vfxAdditiveBrightness = mc2::gate::get<"MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS">();
-    s_vfxAlphaScale         = mc2::gate::get<"MC2_TUNE_VFX_ALPHA_SCALE">();
-    s_vfxAgeFade            = mc2::gate::get<"MC2_TUNE_VFX_AGE_FADE">();
-    s_vfxTune_initialized   = true;
-}
 
 // VFX-SOFT-PARTICLES-MVP-1: depth-fade enable + world-unit fade band. Gate
 // MC2_VFX_SOFT_PARTICLES (default OFF -> byte-identical). When ON, the flush
@@ -129,9 +118,9 @@ void vfxSceneColorGrabInitIfNeeded() {
 }
 
 // VFX-LIT-PARTICLES-MVP-1: scene-lit alpha smoke/dust. Gate MC2_VFX_LIT_PARTICLES
-// (default OFF -> byte-identical). Strength = startup default MC2_TUNE_VFX_LIT_
-// STRENGTH (clamped 0..1) / per-mission "vfxLitStrength" profile key / ImGui
-// slider. When OFF the bridge uploads strength 0 so the FS lit branch is inert.
+// (default OFF -> byte-identical). Strength = the 0.7 default / per-mission
+// "vfxLitStrength" profile key / ImGui slider (clamped 0..1). When OFF the
+// bridge uploads strength 0 so the FS lit branch is inert.
 // Alpha groups only; additive flashes stay emissive.
 bool  s_lit_initialized = false;
 bool  s_lit_enabled     = false;
@@ -140,7 +129,6 @@ static float clampLit(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
 void vfxLitInitIfNeeded() {
     if (s_lit_initialized) return;
     s_lit_enabled = mc2::gate::get<"MC2_VFX_LIT_PARTICLES">();
-    s_litStrength = mc2::gate::get<"MC2_TUNE_VFX_LIT_STRENGTH">();   // row: default 0.7, clamps to [0, 1]
     s_lit_initialized = true;
 }
 
@@ -288,7 +276,7 @@ void ensureInitialized() {
         s_loc_time         = glGetUniformLocation(s_prog->shp_, "u_time");
         s_loc_distortAmp   = glGetUniformLocation(s_prog->shp_, "u_distortAmp");
         // VFX-SHADER-AGE-FADE-PARITY-1: age fade (VS uniform; may be -1 if
-        // dead-code elim strips it when MC2_TUNE_VFX_AGE_FADE is not set).
+        // dead-code elimination strips it).
         s_loc_vfxAgeFade            = glGetUniformLocation(s_prog->shp_, "u_vfxAgeFade");
         // VFX-SOFT-PARTICLES-MVP-1: soft-particle depth-fade uniforms (may be
         // -1 when MC2_VFX_SOFT_PARTICLES is OFF and dead-code elim strips them).
@@ -508,7 +496,6 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
     if (s_loc_debugMode   >= 0) glUniform1i(s_loc_debugMode, vfxDebugMode());
     // VFX-TUNING-UI-1: per-flush intensity scales (defaults 1.0 = no-op).
     // VFX-SHADER-AGE-FADE-PARITY-1: age fade (default 0.0 = no-op).
-    vfxTuneInitIfNeeded();
     if (s_loc_vfxBrightness         >= 0) glUniform1f(s_loc_vfxBrightness,         s_vfxBrightness);
     if (s_loc_vfxAdditiveBrightness >= 0) glUniform1f(s_loc_vfxAdditiveBrightness, s_vfxAdditiveBrightness);
     if (s_loc_vfxAlphaScale         >= 0) glUniform1f(s_loc_vfxAlphaScale,         s_vfxAlphaScale);
@@ -834,12 +821,12 @@ extern "C" void gos_vfx_setDebugMode(int m)
 
 // VFX-TUNING-UI-1: runtime intensity-scale get/set (Graphics Options sliders).
 // Clamped 0..8; default 1.0 = byte-identical no-op. Look-only.
-extern "C" float gos_vfx_getBrightness()         { vfxTuneInitIfNeeded(); return s_vfxBrightness; }
-extern "C" float gos_vfx_getAdditiveBrightness() { vfxTuneInitIfNeeded(); return s_vfxAdditiveBrightness; }
-extern "C" float gos_vfx_getAlphaScale()         { vfxTuneInitIfNeeded(); return s_vfxAlphaScale; }
-extern "C" void  gos_vfx_setBrightness(float v)         { vfxTuneInitIfNeeded(); s_vfxBrightness = clampVfxScale(v); }
-extern "C" void  gos_vfx_setAdditiveBrightness(float v) { vfxTuneInitIfNeeded(); s_vfxAdditiveBrightness = clampVfxScale(v); }
-extern "C" void  gos_vfx_setAlphaScale(float v)         { vfxTuneInitIfNeeded(); s_vfxAlphaScale = clampVfxScale(v); }
+extern "C" float gos_vfx_getBrightness()         { return s_vfxBrightness; }
+extern "C" float gos_vfx_getAdditiveBrightness() { return s_vfxAdditiveBrightness; }
+extern "C" float gos_vfx_getAlphaScale()         { return s_vfxAlphaScale; }
+extern "C" void  gos_vfx_setBrightness(float v)         { s_vfxBrightness = clampVfxScale(v); }
+extern "C" void  gos_vfx_setAdditiveBrightness(float v) { s_vfxAdditiveBrightness = clampVfxScale(v); }
+extern "C" void  gos_vfx_setAlphaScale(float v)         { s_vfxAlphaScale = clampVfxScale(v); }
 
 // VFX-SOFT-PARTICLES-MVP-1: enable + fade-band accessors (ImGui + inspector).
 extern "C" int   gos_vfx_getSoftEnabled()         { vfxSoftInitIfNeeded(); return s_soft_enabled ? 1 : 0; }
@@ -855,6 +842,6 @@ extern "C" void  gos_vfx_setLitStrength(float v) { vfxLitInitIfNeeded(); s_litSt
 
 // VFX-SHADER-AGE-FADE-PARITY-1: age-driven soft death fade (0.0=OFF / 1.0=full).
 // 0.0 default = byte-identical. Oracle particles only (p.lifetime sentinel).
-// Env: MC2_TUNE_VFX_AGE_FADE (clamped 0..1). ImGui VFX Tuning slider.
-extern "C" float gos_vfx_getAgeFade()        { vfxTuneInitIfNeeded(); return s_vfxAgeFade; }
-extern "C" void  gos_vfx_setAgeFade(float v) { vfxTuneInitIfNeeded(); s_vfxAgeFade = clampAgeFade(v); }
+// ImGui VFX Tuning slider (clamped 0..1).
+extern "C" float gos_vfx_getAgeFade()        { return s_vfxAgeFade; }
+extern "C" void  gos_vfx_setAgeFade(float v) { s_vfxAgeFade = clampAgeFade(v); }

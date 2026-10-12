@@ -192,16 +192,6 @@ bool Batcher::is_oracle_shape_enabled() {
     return s_val;
 }
 
-bool Batcher::is_oracle_tube_log_enabled() {
-    static bool s_init = false;
-    static bool s_val  = false;
-    if (!s_init) {
-        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE_LOG">();
-        s_init = true;
-    }
-    return s_val;
-}
-
 bool Batcher::is_oracle_shape_log_enabled() {
     static bool s_init = false;
     static bool s_val  = false;

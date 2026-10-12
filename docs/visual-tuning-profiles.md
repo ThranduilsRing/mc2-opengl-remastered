@@ -57,8 +57,8 @@ Invalid values: clamped to safe range where applicable.
 | `shadowSoftness` | float | 0–1 | — | Shadow PCF softness |
 | `staticPropIblStrength` | float | 0–3 | `MC2_STATIC_PROP_IBL_SH_STRENGTH` | IBL SH contribution |
 | `waterSkyTintStrength` | float | ≥0 | `MC2_WATER_SKYTINT` | Sky horizon tint on water |
-| `vfxBrightness` | float | 0–8 | `MC2_TUNE_VFX_BRIGHTNESS` | Particle overall brightness |
-| `vfxAdditiveBrightness` | float | 0–8 | `MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS` | Additive blend brightness |
+| `vfxBrightness` | float | 0–8 | — | Particle overall brightness |
+| `vfxAdditiveBrightness` | float | 0–8 | — | Additive blend brightness |
 | ~~`bloomThreshold`~~ | — | — | — | REMOVED 2026-06-22 (DEAD-POST-FX-CLEANUP-1): bloom deleted as wrong-for-RTS; key now ignored on load |
 | ~~`bloomIntensity`~~ | — | — | — | REMOVED 2026-06-22 (DEAD-POST-FX-CLEANUP-1): key now ignored on load |
 | `aoRadius` | float | ≥0 | — | SSAO sample radius (visible only with `MC2_SSAO`) |
@@ -66,7 +66,7 @@ Invalid values: clamped to safe range where applicable.
 | `aoBias` | float | ≥0 | — | SSAO depth bias (same gating) |
 | `mechAmbientStrength` | float | 0–2 | `MC2_MECH_AMBIENT_V1_STRENGTH` | Mech hemisphere ambient fill (gate `MC2_MECH_AMBIENT_V1`, default-ON) |
 | `mechSpecularStrength` | float | 0–4 | `MC2_MECH_SPECULAR_STRENGTH` | Mech Blinn specular strength (gate `MC2_MECH_SPECULAR_V1`, default-ON) |
-| `vfxLitStrength` | float | 0–1 | `MC2_TUNE_VFX_LIT_STRENGTH` | Per-mission lit-smoke strength (gate `MC2_VFX_LIT_PARTICLES` still controls whether lighting is applied at all) |
+| `vfxLitStrength` | float | 0–1 | — | Per-mission lit-smoke strength (gate `MC2_VFX_LIT_PARTICLES` still controls whether lighting is applied at all) |
 | `terrainClassGrassGmRLo` | float | — | — | Terrain grass classifier: green-minus-red lower threshold |
 | `terrainClassGrassGmRHi` | float | — | — | Terrain grass classifier: green-minus-red upper threshold |
 | `terrainClassGrassBrLo` | float | — | — | Terrain grass classifier: brightness lower threshold |

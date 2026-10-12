@@ -1399,16 +1399,6 @@ L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_TREE_DIAG_TRACE", Bool, false, "props", "", "[DEFAULT-OFF, but the OFF token is UNSET, not '0'.]", passthrough | registry(Trace, "MC2_TREE_DIAG_TRACE", -1, false) | verified),
 L(Presence, "MC2_TREE_REG_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_TUBE_PROFILE_LOG", Bool, false, "code", "", "", verified),
-// history: docs/gate-history.md#MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS
-P("MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to...", passthrough | clampRange(0.0, 8.0) | registry(Trace, "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TUNE_VFX_AGE_FADE
-P("MC2_TUNE_VFX_AGE_FADE", Float, 0.0, "gameos", "", "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age.", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_VFX_AGE_FADE", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TUNE_VFX_ALPHA_SCALE
-P("MC2_TUNE_VFX_ALPHA_SCALE", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles).", passthrough | clampRange(0.0, 8.0) | registry(Trace, "MC2_TUNE_VFX_ALPHA_SCALE", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TUNE_VFX_BRIGHTNESS
-P("MC2_TUNE_VFX_BRIGHTNESS", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles).", passthrough | clampRange(0.0, 8.0) | registry(Trace, "MC2_TUNE_VFX_BRIGHTNESS", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TUNE_VFX_LIT_STRENGTH
-P("MC2_TUNE_VFX_LIT_STRENGTH", Float, 0.7, "gameos", "", "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups...", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_VFX_LIT_STRENGTH", -1, false) | verified),
 L(Lead1, "MC2_TXMMGR_BOUNDS_TRACE", Bool, false, "code", "", "[TXMMGR_BOUNDS v1] - TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.", verified),
 L(Lead1, "MC2_TXM_LEAK_TRACE", Bool, false, "code", "", "[TXMMGR_TEXTURE_AUDIT v1] - texture-node-slot leak instrumentation.", verified),
 L(Presence, "MC2_TYPE_TABLE_CAND_LOG", Bool, false, "props", "", "", passthrough | verified),
@@ -1473,8 +1463,6 @@ L(Lead1, "MC2_VFX_ORACLE_SHAPE_LOG", Bool, false, "unclassified", "", "", verifi
 L(Lead1, "MC2_VFX_ORACLE_TUBE", Bool, false, "code", "", "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...", registry(Feature, "MC2_VFX_ORACLE_TUBE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE_COVERAGE
 L(Lead1, "MC2_VFX_ORACLE_TUBE_COVERAGE", Bool, false, "gameos", "", "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs...", registry(Trace, "MC2_VFX_ORACLE_TUBE_COVERAGE", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE_LOG
-L(Lead1, "MC2_VFX_ORACLE_TUBE_LOG", Bool, false, "code", "", "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks).", registry(Trace, "MC2_VFX_ORACLE_TUBE_LOG", -1, false) | verified),
 L(Lead1, "MC2_VFX_SCENECOLOR_GRAB", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VFX_SOFT_PARTICLES
 L(Lead1, "MC2_VFX_SOFT_PARTICLES", Bool, false, "gameos", "", "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections.", passthrough | registry(Feature, "MC2_FEATURE_VFX_SOFT_PARTICLES", 27, false) | verified),

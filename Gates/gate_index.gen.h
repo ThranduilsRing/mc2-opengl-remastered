@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1135;
+inline constexpr std::size_t kGateCount = 1129;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -943,11 +943,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TREE_DIAG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TREE_REG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TUBE_PROFILE_LOG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TUNE_VFX_AGE_FADE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TUNE_VFX_ALPHA_SCALE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TUNE_VFX_BRIGHTNESS", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TUNE_VFX_LIT_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_TXMMGR_BOUNDS_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_TXM_LEAK_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_TYPE_TABLE_CAND_LOG", Kind::Bool, Rule::Presence, {}},
@@ -992,7 +987,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VFX_ORACLE_SHAPE_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_TUBE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_TUBE_COVERAGE", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VFX_ORACLE_TUBE_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_SCENECOLOR_GRAB", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_SOFT_PARTICLES", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_TUBE_UPLOAD_STATS", Kind::Bool, Rule::Lead0, {}},

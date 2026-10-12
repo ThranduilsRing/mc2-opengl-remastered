@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1135
-registry_entry_count: 349
-verified_count: 1128
+gate_count: 1129
+registry_entry_count: 343
+verified_count: 1122
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7334,56 +7334,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: gameos
-    doc: "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to..."
-    range: {lo: 0, hi: 8, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TUNE_VFX_AGE_FADE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: gameos
-    doc: "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VFX_AGE_FADE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TUNE_VFX_ALPHA_SCALE
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: gameos
-    doc: "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles)."
-    range: {lo: 0, hi: 8, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VFX_ALPHA_SCALE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TUNE_VFX_BRIGHTNESS
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: gameos
-    doc: "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles)."
-    range: {lo: 0, hi: 8, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VFX_BRIGHTNESS, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TUNE_VFX_LIT_STRENGTH
-    kind: Float
-    default: 0.699999988
-    rule: Prefix
-    owner: gameos
-    doc: "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups..."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VFX_LIT_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_TXMMGR_BOUNDS_TRACE
     kind: Bool
     default: false
@@ -7728,14 +7678,6 @@ flags:
     doc: "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs..."
     verified: true
     registry: {feature_id: MC2_VFX_ORACLE_TUBE_COVERAGE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VFX_ORACLE_TUBE_LOG
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks)."
-    verified: true
-    registry: {feature_id: MC2_VFX_ORACLE_TUBE_LOG, kind: Trace, order: -1, default_on: false}
   - name: MC2_VFX_SCENECOLOR_GRAB
     kind: Bool
     default: false

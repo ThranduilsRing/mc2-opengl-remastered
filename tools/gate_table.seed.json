@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1132,
+ "count": 1126,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -26382,148 +26382,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to additive draw groups via per-group u_vfxIsAdditive).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:151",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:186",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_AGE_FADE",
-   "kind": "Float",
-   "default": 0.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:154",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_AGE_FADE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_ALPHA_SCALE",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:152",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_ALPHA_SCALE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_BRIGHTNESS",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:150",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:181",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_BRIGHTNESS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_LIT_STRENGTH",
-   "kind": "Float",
-   "default": 0.7,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups (u_vfxIsAdditive==0) and ONLY when the MC2_VFX_LIT_PARTICLES gate is ON.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:206",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:194",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.7,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_LIT_STRENGTH",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_TXMMGR_BOUNDS_TRACE",
    "kind": "Bool",
    "default": false,
@@ -27725,32 +27583,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_VFX_ORACLE_TUBE_COVERAGE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VFX_ORACLE_TUBE_LOG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks).",
-   "readers": [
-    {
-     "at": "mclib/particles/batcher.cpp:226",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_VFX_ORACLE_TUBE_LOG",
    "retireVerdict": ""
   },
   {
