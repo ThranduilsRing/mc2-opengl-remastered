@@ -5,17 +5,19 @@ WHAT: reads the `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` li
 (MC2_SIM_IDENTITY_TRACE) and compares two runs of one mission frame by frame over the frames both reached. It names the first divergent
 sim frame and prints both lines. `run` launches the mission twice through scripts/run_smoke.py under MC2_SMOKE_FIXED_TIMESTEP=1,
 MC2_DETERMINISTIC_RNG=1 and MC2_SIM_IDENTITY_TRACE=1 (the three gates that remove wall-clock and RNG-seed variation). `--baseline`
-additionally compares the chain digest of the first N frames with a committed one, which is the "SIMID unchanged" proof for a refactor
-(ownership, enum, math steps) across commits.
+additionally compares the chain digest of the first N frames with a committed one (tests/smoke/sim_determinism/<mission>.json), which is
+the "SIMID unchanged" proof for a refactor (ownership, enum, math steps) across commits. A baseline pins the install data fingerprint, the
+mission seed and the extra env it was recorded under, so a check against other data or another seed fails instead of lying.
 WHY: a step whose proof is "same behaviour" needs a behaviour oracle that is itself stable. Two runs of the same exe must agree before a
 difference between two exes means anything. The runs end at different frames (the smoke duration is wall clock), so only the common
 prefix is compared.
 
-  py -3 tools/sim_determinism.py run mc2_03 --duration 20 [--baseline tests/smoke/sim_determinism_baseline.json]
+  py -3 tools/sim_determinism.py run mc2_03 --duration 20 [--baseline [path]]      # --baseline alone = tests/smoke/sim_determinism/mc2_03.json
+  py -3 tools/sim_determinism.py check mc2_16 --env MC2_FIXTURE_ORDER_LIVENESS=1   # two runs + the committed baseline (env comes from the file too)
   py -3 tools/sim_determinism.py run mc2_10 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
   py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 8 --duration 30 --out <dir>   # stops at the first diverging pair
   py -3 tools/sim_determinism.py compare run_a/mc2_03.log run_b/mc2_03.log
-  py -3 tools/sim_determinism.py write-baseline run_a/mc2_03.log --frames 1500 --out tests/smoke/sim_determinism_baseline.json
+  py -3 tools/sim_determinism.py write-baseline run_a/mc2_03.log --frames 1200 --mission mc2_03 [--env NAME=VALUE]
   py -3 tools/sim_determinism.py selftest          # offline; the `sim_determinism` board row
 """
 from __future__ import annotations
@@ -41,7 +43,45 @@ _STRICT = re.compile(r" strict=\w+")
 GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_DETERMINISTIC_RNG": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
-DEFAULT_BASELINE = os.path.join(ROOT, "tests", "smoke", "sim_determinism_baseline.json")
+#: One baseline file per mission.
+BASELINE_DIR = os.path.join(ROOT, "tests", "smoke", "sim_determinism")
+#: The install the runs launch (`run_smoke --deploy 0.4`); its data is what a baseline pins.
+INSTALL_DIR = "A:/Games/mc2-opengl/mc2-win64-v0.4"
+#: What the data fingerprint covers: the archives the simulation reads whole (content) and the loose data trees (path and size; data/tgl
+#: alone is 4 GB, and a changed model is a changed size or name in practice).
+FINGERPRINT_ARCHIVES = ("mission.fst", "tgl.fst", "effect.fst", "misc.fst", "camera.fst")
+FINGERPRINT_TREES = ("data/tgl", "data/objects", "data/effects", "data/missions", "data/warriors")
+
+
+def baseline_path(mission: str) -> str:
+    return os.path.join(BASELINE_DIR, mission + ".json")
+
+
+def data_fingerprint(install: str = INSTALL_DIR) -> dict:
+    """-> {"digest", "inputs"}: a digest of the install data the simulation reads. Archives by content, loose trees by relative path and size."""
+    h = hashlib.sha256()
+    inputs = []
+    for name in FINGERPRINT_ARCHIVES:
+        p = os.path.join(install, name)
+        if os.path.exists(p):
+            with open(p, "rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(block)
+            inputs.append(name)
+    for tree in FINGERPRINT_TREES:
+        base = os.path.join(install, tree)
+        if not os.path.isdir(base):
+            continue
+        entries = []
+        for dp, _dn, fns in os.walk(base):
+            for fn in fns:
+                full = os.path.join(dp, fn)
+                entries.append(f"{os.path.relpath(full, install).replace(os.sep, '/')} {os.path.getsize(full)}")
+        for e in sorted(entries):
+            h.update(e.encode("utf-8", "replace"))
+            h.update(b"\n")
+        inputs.append(tree + "/")
+    return {"digest": h.hexdigest()[:16], "inputs": inputs}
 
 
 def load_simid(path: str) -> list:
@@ -80,9 +120,16 @@ def compare(a, b, min_frames: int = MIN_FRAMES):
     return True, f"identical over {common} sim frames (chain {chain(a, common)}; runs had {len(a)} and {len(b)})"
 
 
-def check_baseline(lines, baseline_path: str):
+def check_baseline(lines, baseline_path: str, seed: str = "", fingerprint: dict | None = None):
+    """-> (ok, message). `seed` is this run's [DET_RNG] seed and `fingerprint` the install data digest; when the baseline recorded them
+    they must agree, or the comparison is between different missions in all but name."""
     with open(baseline_path, encoding="utf-8") as fh:
         base = json.load(fh)
+    if base.get("seed") and seed and base["seed"] != seed:
+        return False, f"this run's mission seed {seed} is not the baseline's {base['seed']} (MC2_RNG_SEED set, or another mission name?)"
+    if base.get("data_fingerprint") and fingerprint and base["data_fingerprint"]["digest"] != fingerprint["digest"]:
+        return False, (f"the install data fingerprint {fingerprint['digest']} is not the baseline's {base['data_fingerprint']['digest']}: "
+                       "the baseline pins other data (re-record it after a data change, with the reason in the commit)")
     n = int(base["frames"])
     if len(lines) < n:
         return False, f"the run has {len(lines)} sim frames, the baseline needs {n}"
@@ -106,6 +153,27 @@ def _build_sha(log: str) -> str:
     return ""
 
 
+_SEED = re.compile(r"^\[DET_RNG\] mission=\S+ reseed=(0x[0-9A-Fa-f]+)")
+
+
+def _seed(log: str) -> str:
+    """The mission seed the run printed ([DET_RNG] reseed=0x...), "" when the deterministic RNG gate was off."""
+    with open(log, encoding="utf-8", errors="replace") as fh:
+        for ln in fh:
+            m = _SEED.match(ln)
+            if m:
+                return m.group(1).upper().replace("0X", "0x")
+    return ""
+
+
+def _load_env(base_path: str) -> dict:
+    """The extra env a baseline was recorded under (MC2_FIXTURE_ORDER_LIVENESS for mc2_16), to apply to a check run."""
+    if not os.path.exists(base_path):
+        return {}
+    with open(base_path, encoding="utf-8") as fh:
+        return dict(json.load(fh).get("env") or {})
+
+
 def _git_sha() -> str:
     r = subprocess.run(["git", "-C", ROOT, "rev-parse", "--short=12", "HEAD"], stdout=subprocess.PIPE, text=True,
                        **console_child.child_kwargs(redirected=True))
@@ -124,10 +192,10 @@ def build_and_deploy() -> None:
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None) -> list:
     """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
     `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
-    (the camera pose, an effects option) really does not."""
+    (the camera pose, an effects option) really does not; its "both" entry applies to the two runs (a mission fixture)."""
     logs = []
     for tag in ("a", "b"):
-        env = dict(os.environ, **GATES, **(extra_env or {}).get(tag, {}))
+        env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
@@ -159,34 +227,55 @@ def host_load() -> dict:
     return {"cpu": psutil.cpu_percent(interval=0.5), "procs": counts}
 
 
-def format_pair_line(index: int, ok: bool, msg: str, before: dict, after: dict, seconds: float) -> str:
-    """One ledger line per pair: verdict, load at start and end, wall time. A failure's message is reduced to its first line."""
+def format_pair_line(index: int, ok: bool, msg: str, before: dict, after: dict, seconds: float, starved: bool = False) -> str:
+    """One ledger line per pair: verdict (PASS, FAIL, or STARVED when the runs did not reach enough frames to say), load at start and
+    end, wall time. A failure's message is reduced to its first line."""
     def load(d):
         procs = ",".join(f"{k.removesuffix('.exe')}={v}" for k, v in sorted(d["procs"].items())) or "none"
         return f"cpu={d['cpu']:.0f}% procs={procs}"
-    return f"pair {index}: {'PASS' if ok else 'FAIL'} {seconds:.0f}s | start {load(before)} | end {load(after)} | {msg.splitlines()[0]}"
+    verdict = "STARVED" if starved else ("PASS" if ok else "FAIL")
+    return f"pair {index}: {verdict} {seconds:.0f}s | start {load(before)} | end {load(after)} | {msg.splitlines()[0]}"
+
+
+#: Consecutive starved pairs (a build or another game on the host kept both runs under MIN_FRAMES) after which the loop gives up.
+MAX_STARVED_IN_A_ROW = 3
 
 
 def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_frames: int, extra_env: dict | None = None) -> int:
-    """Run pairs until one diverges or `max_pairs` have passed. A failing pair's artifacts stay in `<out>/fail_<n>`; every pair appends a line to
-    `<out>/pairs.log`. -> 0 when all passed, 1 at the first failure."""
+    """Run pairs until one diverges or `max_pairs` have passed. A pair whose runs did not both reach `min_frames` is STARVED: it proves
+    nothing either way, is not counted, and is retried (the host was busy); MAX_STARVED_IN_A_ROW of them end the loop with exit 2. A
+    failing pair's artifacts stay in `<out>/pair_<n>`; every pair appends a line to `<out>/pairs.log`. -> 0 when all passed, 1 at the
+    first divergence."""
     import time
     os.makedirs(out, exist_ok=True)
     ledger = os.path.join(out, "pairs.log")
-    for i in range(1, max_pairs + 1):
+    passed, starved_run, i = 0, 0, 0
+    while passed < max_pairs:
+        i += 1
         before, t0 = host_load(), time.time()
         pair_dir = os.path.join(out, f"pair_{i}")
         la, lb = run_mission(mission, duration, pair_dir, extra_env)
-        ok, msg = compare(load_simid(la), load_simid(lb), min_frames)
-        line = format_pair_line(i, ok, msg, before, host_load(), time.time() - t0)
+        a, b = load_simid(la), load_simid(lb)
+        starved = min(len(a), len(b)) < min_frames
+        ok, msg = compare(a, b, min_frames)
+        line = format_pair_line(i, ok, msg, before, host_load(), time.time() - t0, starved)
         print("sim_determinism: " + line, flush=True)
         with open(ledger, "a", encoding="utf-8") as fh:
             fh.write(line + "\n")
-            if not ok:
+            if not ok and not starved:
                 fh.write(msg + "\n")
+        if starved:
+            starved_run += 1
+            shutil.rmtree(pair_dir, ignore_errors=True)
+            if starved_run >= MAX_STARVED_IN_A_ROW:
+                print(f"sim_determinism: {starved_run} starved pairs in a row: the host is too busy to prove anything (ledger {ledger})", flush=True)
+                return 2
+            continue
+        starved_run = 0
         if not ok:
             print("sim_determinism: " + msg + f"\nartifacts: {pair_dir}", flush=True)
             return 1
+        passed += 1
         shutil.rmtree(pair_dir, ignore_errors=True)
     print(f"sim_determinism: {max_pairs} pair(s) of {mission} identical (ledger {ledger})")
     return 0
@@ -232,12 +321,35 @@ def selftest() -> int:
         strict_moved = [_STRICT.sub(" strict=ffff", ln) if i == 2 else ln for i, ln in enumerate(mk(9))]
         ok, msg = check_baseline(strict_moved, b)
         expect(ok and "strict" in msg, "a change in the strict digest alone passes with a note")
+        with open(b, "w") as fh:
+            json.dump({"frames": 5, "chain": chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s", "seed": "0x1",
+                       "data_fingerprint": {"digest": "d1", "inputs": []}}, fh)
+        expect(check_baseline(mk(9), b, "0x1", {"digest": "d1"})[0], "matching seed and data fingerprint pass")
+        expect(not check_baseline(mk(9), b, "0x2", {"digest": "d1"})[0], "another seed fails before any frame is compared")
+        expect(not check_baseline(mk(9), b, "0x1", {"digest": "d2"})[0], "other install data fails before any frame is compared")
+        expect(check_baseline(mk(9), b, "", None)[0], "a run without seed or fingerprint still compares the frames")
+        with open(p, "a") as fh:
+            fh.write("[DET_RNG] mission=m reseed=0x00AB12CD (MC2_DETERMINISTIC_RNG=1)\n")
+        expect(_seed(p) == "0x00AB12CD", "the seed is read from the [DET_RNG] line")
+        inst = os.path.join(td, "inst")
+        os.makedirs(os.path.join(inst, "data", "tgl"))
+        with open(os.path.join(inst, "mission.fst"), "wb") as fh:
+            fh.write(b"abc")
+        with open(os.path.join(inst, "data", "tgl", "x.ini"), "wb") as fh:
+            fh.write(b"1234")
+        f1 = data_fingerprint(inst)
+        with open(os.path.join(inst, "data", "tgl", "x.ini"), "wb") as fh:
+            fh.write(b"12345")
+        expect(f1["digest"] != data_fingerprint(inst)["digest"] and f1["inputs"] == ["mission.fst", "data/tgl/"],
+               "the data fingerprint sees a changed loose file size and names its inputs")
     quiet = {"cpu": 3.0, "procs": {}}
     busy = {"cpu": 71.4, "procs": {"cl.exe": 4, "mc2.exe": 1}}
     line = format_pair_line(2, False, "DIVERGED at sim frame index 9\n  run a: x", quiet, busy, 61.2)
     expect(line.startswith("pair 2: FAIL 61s") and "procs=none" in line and "procs=cl=4,mc2=1" in line and "cpu=71%" in line and "\n" not in line,
            "a pair line carries verdict, load at start and end, and only the first message line")
     expect(format_pair_line(1, True, "identical over 5 sim frames", quiet, quiet, 1).startswith("pair 1: PASS"), "a passing pair line says PASS")
+    expect(format_pair_line(3, False, "only 20 common sim frame(s)", quiet, busy, 9, starved=True).startswith("pair 3: STARVED"),
+           "a pair that reached too few frames says STARVED, not FAIL")
     for f in fails:
         print("sim_determinism selftest FAIL: " + f)
     print("sim_determinism selftest: " + ("FAIL" if fails else "ok"))
@@ -251,28 +363,40 @@ def main(argv=None) -> int:
     c.add_argument("log_a")
     c.add_argument("log_b")
     c.add_argument("--min-frames", type=int, default=MIN_FRAMES)
+    def env_args(p):
+        p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="set for both runs (a mission fixture; repeatable)")
+        p.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
+        p.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
+
     r = sub.add_parser("run")
     r.add_argument("mission")
     r.add_argument("--duration", default="20")
     r.add_argument("--min-frames", type=int, default=MIN_FRAMES)
-    r.add_argument("--baseline", nargs="?", const=DEFAULT_BASELINE, help="also compare with a committed chain (default file: %s)" % os.path.relpath(DEFAULT_BASELINE, ROOT))
+    r.add_argument("--baseline", nargs="?", const="", help="also compare with the committed baseline (default: tests/smoke/sim_determinism/<mission>.json)")
     r.add_argument("--deploy", action="store_true", help="build and deploy HEAD to the 0.4 install first")
     r.add_argument("--out", help="keep both runs' artifacts here (default: a temporary directory)")
-    r.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
-    r.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
+    env_args(r)
+    k = sub.add_parser("check", help="run twice and compare with the committed baseline (its recorded env is applied)")
+    k.add_argument("mission")
+    k.add_argument("--duration", default="30")
+    k.add_argument("--min-frames", type=int, default=MIN_FRAMES)
+    k.add_argument("--deploy", action="store_true")
+    k.add_argument("--out")
+    env_args(k)
     u = sub.add_parser("pairs-until-fail", help="run pairs until one diverges (or --max pass); records host load per pair")
     u.add_argument("--mission", required=True)
     u.add_argument("--max", type=int, required=True, help="stop after this many passing pairs")
     u.add_argument("--duration", default="30")
     u.add_argument("--min-frames", type=int, default=MIN_FRAMES)
     u.add_argument("--out", help="ledger and failing-pair artifacts go here (default: a temporary directory)")
-    u.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
-    u.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
+    env_args(u)
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
     w.add_argument("--mission", required=True)
-    w.add_argument("--out", default=DEFAULT_BASELINE)
+    w.add_argument("--out", help="default: tests/smoke/sim_determinism/<mission>.json")
+    w.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="the fixture env the run had, recorded for `check`")
+    w.add_argument("--install", default=INSTALL_DIR, help="the install whose data the run used (fingerprinted)")
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
@@ -281,29 +405,41 @@ def main(argv=None) -> int:
         lines = load_simid(args.log)
         if len(lines) < args.frames:
             sys.exit(f"the log has {len(lines)} sim frames, fewer than --frames {args.frames}")
-        with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump({"mission": args.mission, "frames": args.frames, "chain": chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames), "sha": _build_sha(args.log) or _git_sha(),
-                       "gates": GATES, "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py run --baseline"}, fh, indent=1)
+        out = args.out or baseline_path(args.mission)
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with open(out, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump({"mission": args.mission, "frames": args.frames, "chain": chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames),
+                       "sha": _build_sha(args.log) or _git_sha(), "seed": _seed(args.log), "data_fingerprint": data_fingerprint(args.install),
+                       "gates": GATES, "env": dict(kv.split("=", 1) for kv in args.env),
+                       "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"}, fh, indent=1)
             fh.write("\n")
-        print(f"sim_determinism: wrote {args.out}")
+        print(f"sim_determinism: wrote {os.path.relpath(out, ROOT)}")
         return 0
     if args.cmd == "compare":
         ok, msg = compare(load_simid(args.log_a), load_simid(args.log_b), args.min_frames)
         print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
         return 0 if ok else 1
     out = args.out or tempfile.mkdtemp(prefix="simdet_")
+    base = None
+    if args.cmd == "check":
+        base = baseline_path(args.mission)
+    elif getattr(args, "baseline", None) is not None:
+        base = args.baseline or baseline_path(args.mission)
+    both = dict(_load_env(base) if base else {}, **dict(kv.split("=", 1) for kv in args.env))
+    extra = {"both": both, "a": dict(kv.split("=", 1) for kv in args.env_a), "b": dict(kv.split("=", 1) for kv in args.env_b)}
     if args.cmd == "pairs-until-fail":
-        extra = {tag: dict(kv.split("=", 1) for kv in kvs) for tag, kvs in (("a", args.env_a), ("b", args.env_b))}
         return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra)
     if args.deploy:
         build_and_deploy()
-    extra = {tag: dict(kv.split("=", 1) for kv in kvs) for tag, kvs in (("a", args.env_a), ("b", args.env_b))}
     la, lb = run_mission(args.mission, args.duration, out, extra)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
-    if ok and args.baseline:
-        ok2, msg2 = check_baseline(a, args.baseline)
+    if ok and base:
+        if not os.path.exists(base):
+            print(f"sim_determinism: baseline FAIL no baseline at {os.path.relpath(base, ROOT)} (record one with write-baseline)")
+            return 1
+        ok2, msg2 = check_baseline(a, base, _seed(la), data_fingerprint())
         print(("sim_determinism: baseline PASS " if ok2 else "sim_determinism: baseline FAIL ") + msg2)
         ok = ok and ok2
     return 0 if ok else 1
