@@ -361,3 +361,6 @@ Per commit: `py -3 tools/gate_gen.py --write` (index, registry header rows, docs
 
 | gate | last reader | reason | commit |
 |---|---|---|---|
+| `MC2_SSAO_BLUR` | GameOS/gameos/gos_postprocess.cpp:419 | DELETE off: default-on; =0 has no user | F-SSAOKNOB next |
+| `MC2_SSAO_BLUR_SIGMA` | GameOS/gameos/gos_postprocess.cpp:459 | DELETE knob: blur sigma knob; no setter | F-SSAOKNOB next |
+| `MC2_SSAO_RADIUS` | GameOS/gameos/gos_postprocess.cpp:455 | DELETE override: launch-time radius override; ImGui slider live; no setter | F-SSAOKNOB next |

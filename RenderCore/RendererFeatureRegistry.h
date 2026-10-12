@@ -1832,32 +1832,11 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass).",
     },
     {
-        "MC2_FEATURE_SSAO_BLUR",
-        "MC2_SSAO_BLUR",
-        EnvVarKind::Feature,
-        true,
-        "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass...",
-    },
-    {
-        "MC2_FEATURE_SSAO_BLUR_SIGMA",
-        "MC2_SSAO_BLUR_SIGMA",
-        EnvVarKind::Feature,
-        false,
-        "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight.",
-    },
-    {
         "MC2_DIAG_SSAO_DEBUG",
         "MC2_SSAO_DEBUG",
         EnvVarKind::Trace,
         false,
         "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead...",
-    },
-    {
-        "MC2_FEATURE_SSAO_RADIUS",
-        "MC2_SSAO_RADIUS",
-        EnvVarKind::Feature,
-        false,
-        "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius.",
     },
     {
         "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS",
