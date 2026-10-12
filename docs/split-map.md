@@ -154,6 +154,7 @@ Split commit: `101de6cec`.
 | `ablmc2_misc.cpp` | ABL native bindings: unit status, repair, messaging, path queries, pilot state and debug bindings. |
 | `ablmc2_objects.cpp` | ABL native bindings: object damage/distance/status, timers, objectives, music/speech/video and mission-status bindings. |
 | `ablmc2_orders.cpp` | ABL native bindings: movement/attack orders and the core* tactical order bindings. |
+| `ablmc2_position.cpp` | ABL native bindings: a position relative to a point or to an object. |
 | `ablmc2_queries.cpp` | ABL native bindings: warrior/contact/weapon queries and setters. |
 | `ablmc2_repro.cpp` | ABL native bindings: the arg-guard repro hooks (test-only, gated by MC2_ABL_ARG_GUARD_REPRO). |
 | `ablmc2_roster.cpp` | ABL native bindings: text messages, teleport, roster/pilot operations, campaign globals, strike toggles, radius counts, omni stubs, trigger areas and off-map queries. |
