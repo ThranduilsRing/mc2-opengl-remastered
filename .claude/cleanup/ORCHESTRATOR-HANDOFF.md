@@ -20,6 +20,7 @@ RESUME HERE: read this file, then `lane1-state.md` / `lane2-state.md`, then the 
 - **Look at captures yourself** before accepting any visual/render change (`tools/visual_verify/ab.py`; day AND night: `mc2_01_saved_205644`, `mc2_10_saved_204523`). MAD is NOT a pass signal.
 - Adversarial audit (read-only agent) before deleting features/data; mechanical modernization needs none. "Does X exist" path checks: a **script**, not an agent. Text edits to code/shaders: exact, line-anchored, re-read after editing.
 - Comments say WHAT and WHY, never HOW; every edited region loses `file:NNN` refs and "how" narration; no separate comment-only sweeps (see Q6).
+- **Budget mode (owner 2026-10-11 evening): spawn ONLY Fable subagents from now on, far fewer and much larger tasks (whole arcs with their own proofs, 4-10 h), no Sonnet/Haiku/Opus; per-step Opus reviews are replaced per the week plan `program-plan-2026-10-12.md` (Fable planner writes it; the owner kicks off from it after the morning reset).**
 - **Questions to the owner go inline, numbered, at the end of the reply. Never use popup (AskUserQuestion) questions.**
 - Parked by owner: `MC2_NO_LAUNCHER` pre-main launcher_env gap; G0 `MC2_SHADOW_ENABLE` (unify toward VK direct-CSM default ON, VK capture viewed).
 
