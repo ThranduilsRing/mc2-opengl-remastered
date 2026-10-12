@@ -64,10 +64,9 @@ its branch); it merges AFTER this session, so expect a merge of mclib/abl* next,
 - tier1 proofs at the final exe (2a83a80fb7d6, fingerprint OK): mc2_01 PASS twice, reports 2026-10-12T13-24-49 (from mc2-main,
   8192 frames, 148 fps) and 2026-10-12T13-27-01 (from the clone, 8192 frames, 148 fps): the two concurrent invocations of the lease
   proof, run one after the other by the lease.
-- Full tier1 (`run_smoke.py --tier tier1 --deploy 0.4 --continue --wait-timeout 3600`): RUNNING at the cap, report id
-  **2026-10-12T13-37-55**, started 13:37:55 right after the pairs; 3 of 5 missions had launched with `[DEPLOY_FINGERPRINT] OK` when
-  this file was written. The next owner reads `tests/smoke/artifacts/2026-10-12T13-37-55/report.md` (its log is in the session
-  scratchpad `tier1_final.log`) before claiming the checkpoint; nothing else of mine runs after it.
+- Full tier1 (`run_smoke.py --tier tier1 --deploy 0.4 --continue --wait-timeout 3600`), exe 2a83a80fb7d6, fingerprint OK: report
+  **2026-10-12T13-37-55 = 5/5 PASS** (mc2_01 8192 frames 148 fps, mc2_03 8192/84, mc2_10 8192/107, mc2_17 8192/134, mc2_24 8192/126,
+  +0 heartbeat misses): the first clean 5-of-5 of the day, with the host lease serialising the lanes.
 
 ## NEXT for the next owner, in order
 1. `sim_determinism.py check` on mc2_03 / mc2_10 / mc2_24 at the new exe: the music semantics changed what every stock script sees, so
