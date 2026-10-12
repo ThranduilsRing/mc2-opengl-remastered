@@ -24,6 +24,7 @@
 
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_atomic.h>
+#include <algorithm>
 #include <vector>
 
 //---------------------------------------------------------------------------
@@ -1156,6 +1157,8 @@ void SoundSystem::stopDigitalMusic (void)
 
 		currentMusicId = -1;
 	}
+
+	scriptMusic.stop();		// a stop is an explicit call from mission code, so the script's view follows it with audio on or off
 }	
 
 //---------------------------------------------------------------------------
@@ -1316,8 +1319,39 @@ void SoundSystem::playABLSFX (long sfxId)
 //---------------------------------------------------------------------------
 void SoundSystem::playABLDigitalMusic (long musicId)
 {
-//	PAUSE(("Switching to Tune %d.  Playing Tune %d.",musicId,currentMusicId));
 	playDigitalMusic(musicId);
+
+	// The script's view of its request is armed from the file's length on the scenario clock, with audio on or off: what a
+	// script sees must never depend on the device (script_music.h). A request the stock code ignores is ignored here too.
+	if ((musicId < 0) || (musicId >= numDMS) || (strncmp(digitalMusicIds[musicId], "NONE", 4) == 0))
+		return;
+
+	FullPathFileName digitalStream;
+	digitalStream.init(soundPath, digitalMusicIds[musicId], ".wav");
+	if (!fileExists(digitalStream))
+		return;
+
+	scriptMusic.request(musicId, scenarioTime, musicSeconds(digitalStream), digitalMusicLoopFlags[musicId]);
+}
+
+//---------------------------------------------------------------------------
+long SoundSystem::getCurrentMusicId (void)
+{
+	return scriptMusic.currentId(scenarioTime);
+}
+
+//---------------------------------------------------------------------------
+// Seconds of audio in a music file from its RIFF header: the fmt and data chunk headers sit in the first few KB.
+double SoundSystem::musicSeconds (const char *wavPath)
+{
+	unsigned char header[4096];
+	File wav;
+	if (wav.open(wavPath) != NO_ERR)
+		return 0.0;
+	const long want = std::min<long>(static_cast<long>(wav.getLength()), static_cast<long>(sizeof(header)));
+	const long got = (want > 0) ? wav.read(header, want) : 0;
+	wav.close();
+	return (got > 0) ? wavDurationSeconds(header, static_cast<std::size_t>(got)) : 0.0;
 }
 
 //---------------------------------------------------------------------------

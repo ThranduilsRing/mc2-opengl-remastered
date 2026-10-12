@@ -47,6 +47,7 @@ add_executable(mc2_tests
     test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
     test_appearance_rng.cpp # the appearance-side random stream: replayable, in range, apart from the simulation's
+    test_script_music.cpp   # the music state an ABL script sees: its own request on the scenario clock, never the device
     alloc_probe.cpp         # the allocation probe + ScopedLeakCheck, proven on itself and on EString (step 4 leak oracle)
     alloc_probe_new.cpp     # this binary's global operator new/delete, routed through the probe
     test_saved_objects_check.cpp  # SAVE-REJECT-1: object-packet run check of an in-mission save (offline)

@@ -37,6 +37,7 @@
 
 #ifndef TIMING_H
 #include"timing.h"
+#include"script_music.h"
 #endif
 
 #include<math.h>
@@ -117,6 +118,7 @@ class SoundSystem
 		unsigned long		digitalStreamBitDepth;
 		unsigned long		digitalStreamChannels;
 		long				currentMusicId;
+		ScriptMusic			scriptMusic;		// what an ABL script sees: its last request, ended by the scenario clock, never by the device
 		
 		HGOSAUDIO			stream1Handle;
 		bool				stream1Active;
@@ -274,10 +276,8 @@ class SoundSystem
 		
 		void playABLDigitalMusic (long musicId);
 		void stopABLMusic (void);
-		long getCurrentMusicId (void)
-		{
-			return currentMusicId;
-		}
+		long getCurrentMusicId (void);
+		static double musicSeconds (const char *wavPath);
 		
 		void playABLSFX (long sfxId);
 		void playABLVideo (long videoId);
