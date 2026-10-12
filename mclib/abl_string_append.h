@@ -25,20 +25,6 @@ inline std::span<char> charBufOf(char* address, bool isArray, bool elementIsChar
 	return {};
 }
 
-// Appends item to the NUL-terminated text in dest, whose size is the variable's capacity including the NUL, never writing
-// past it. An unterminated dest counts as full. An empty dest (size unknown) takes nothing. Returns the number of
-// characters that did not fit (0 = appended whole).
-inline size_t appendBounded(std::span<char> dest, std::string_view item) noexcept {
-	if (dest.empty()) return item.size();
-	size_t len = static_cast<size_t>(std::ranges::find(dest, '\0') - dest.begin());
-	if (len >= dest.size()) { len = dest.size() - 1; dest[len] = '\0'; }
-	const size_t room = dest.size() - 1 - len;
-	const size_t n = std::min(item.size(), room);
-	std::copy_n(item.data(), n, dest.data() + len);
-	dest[len + n] = '\0';
-	return item.size() - n;
-}
-
 // Replaces the text in dest with src, cut to fit (capacity including the NUL). An empty dest takes nothing. Returns the
 // number of characters that did not fit.
 inline size_t copyBounded(std::span<char> dest, std::string_view src) noexcept {
@@ -47,6 +33,15 @@ inline size_t copyBounded(std::span<char> dest, std::string_view src) noexcept {
 	std::copy_n(src.data(), n, dest.data());
 	dest[n] = '\0';
 	return src.size() - n;
+}
+
+// Appends item to the NUL-terminated text in dest, whose size is the variable's capacity including the NUL, never writing
+// past it. An unterminated dest counts as full. An empty dest (size unknown) takes nothing. Returns the number of
+// characters that did not fit (0 = appended whole).
+inline size_t appendBounded(std::span<char> dest, std::string_view item) noexcept {
+	if (dest.empty()) return item.size();
+	const size_t len = std::min<size_t>(std::ranges::find(dest, '\0') - dest.begin(), dest.size() - 1);
+	return copyBounded(dest.subspan(len), item);
 }
 
 }  // namespace abl

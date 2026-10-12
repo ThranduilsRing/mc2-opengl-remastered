@@ -2,7 +2,6 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp. A TU of its own so the unit tier can run the real
 // bindings against a scripted ABL stack (tests/unit/test_abl_position.cpp).
 #include "ablmc2_internal.h"
-#include "abl_out_params.h"
 #include "abl_script_events.h"
 
 
@@ -70,14 +69,16 @@ void execGetRelativePositionToObject (void) {
 		return;
 	}
 
-	// Only a mover has a position relative to itself: any other object (or an unknown id) answers the zero vector, so the
-	// script's real[3] never keeps a stale or uninitialised value.
+	// Any object that is not a mover (or an unknown id) answers the zero vector, a chosen answer ((0,0,0) is also a valid position) that
+	// keeps the script's real[3] from holding a stale or uninitialised value.
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
 		Stuff::Vector3D newPos;
 		newPos = ((MoverPtr)object)->relativePosition(angle, distance, flags);
-		abl::writeVec3(std::span<float, 3>(relPos, 3), newPos.x, newPos.y, newPos.z);
+		relPos[0] = newPos.x;
+		relPos[1] = newPos.y;
+		relPos[2] = newPos.z;
 	} else {
-		abl::writeZeroVec3(std::span<float, 3>(relPos, 3));
+		relPos[0] = relPos[1] = relPos[2] = 0.0f;
 	}
 }
