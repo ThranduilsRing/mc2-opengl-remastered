@@ -214,9 +214,9 @@ void MovePathManager::calcPath (void) {
 		if (!mover)
 			return;
 
-		MC2_SIM_TRACE_LINE("CALC pilot=%ld src=%ld", (long)mover->getPartId(), (long)curQRec->num);
+		MC2_SIM_TRACE_LINE("CALC pilot=%ld src=%ld", static_cast<long>(mover->getPartId()), static_cast<long>(curQRec->num));
 		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
-		MC2_SIM_TRACE_LINE("CALCDONE pilot=%ld p0=%ld/%ld p1=%ld/%ld", (long)mover->getPartId(), (long)pilot->getMovePath(0)->curStep, (long)pilot->getMovePath(0)->numStepsWhenNotPaused, (long)pilot->getMovePath(1)->curStep, (long)pilot->getMovePath(1)->numStepsWhenNotPaused);
+		MC2_SIM_TRACE_LINE("CALCDONE pilot=%ld p0=%ld/%ld p1=%ld/%ld", static_cast<long>(mover->getPartId()), static_cast<long>(pilot->getMovePath(0)->curStep), static_cast<long>(pilot->getMovePath(0)->numStepsWhenNotPaused), static_cast<long>(pilot->getMovePath(1)->curStep), static_cast<long>(pilot->getMovePath(1)->numStepsWhenNotPaused));
 	}
 }
 

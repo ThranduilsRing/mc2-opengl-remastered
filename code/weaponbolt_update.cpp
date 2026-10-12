@@ -274,7 +274,7 @@ long WeaponBolt::update (void)
 #if MC2_SIM_TRACE
 			if (target && target->isMech()) {
 				const Stuff::Vector3D tp = target->getPosition();
-				MC2_SIM_TRACE_LINE("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", (long)getPartId(), (long)target->getPartId(), (double)distance, (double)lastDistanceMoved,
+				MC2_SIM_TRACE_LINE("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", static_cast<long>(getPartId()), static_cast<long>(target->getPartId()), static_cast<double>(distance), static_cast<double>(lastDistanceMoved),
 				                   (double)targetPos.x, (double)targetPos.y, (double)targetPos.z, (double)tp.x, (double)tp.y, (double)tp.z);
 			}
 #endif

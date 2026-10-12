@@ -282,7 +282,7 @@ void Weather::update (void)
    		Stuff::Vector3D startPos = eye->getPosition();
 		startPos.z += BASE_RAIN_HEIGHT;
    		float currentElevation = land->getTerrainElevation(startPos);
-		MC2_SIM_TRACE_LINE("WX pos=%.9g,%.9g,%.9g elev=%.9g fl=%.9g rl=%.9g", (double)startPos.x, (double)startPos.y, (double)startPos.z, (double)currentElevation, (double)frameLength, (double)rainLevel);
+		MC2_SIM_TRACE_LINE("WX pos=%.9g,%.9g,%.9g elev=%.9g fl=%.9g rl=%.9g", static_cast<double>(startPos.x), static_cast<double>(startPos.y), static_cast<double>(startPos.z), static_cast<double>(currentElevation), static_cast<double>(frameLength), static_cast<double>(rainLevel));
 		
 		//----------------------------
 		// Update the light level
