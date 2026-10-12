@@ -1117,7 +1117,7 @@ TEST_CASE("G5 postprocess text rows and the backend selector") {
     CHECK(be.kind == Kind::Enum);
     CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
     CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
-    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
+    for (const char* name : {"MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }
 

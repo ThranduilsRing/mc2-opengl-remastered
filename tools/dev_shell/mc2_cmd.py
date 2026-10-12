@@ -10,7 +10,7 @@ Usage:
   py -3 tools/dev_shell/mc2_cmd.py reload_shaders [--force] [--name PROG]
   py -3 tools/dev_shell/mc2_cmd.py screenshot [--name myshot]
   py -3 tools/dev_shell/mc2_cmd.py last_screenshot
-  py -3 tools/dev_shell/mc2_cmd.py get_gate --name MC2_TONEMAP_V2
+  py -3 tools/dev_shell/mc2_cmd.py get_gate --name MC2_SHADOW_ENABLE
   py -3 tools/dev_shell/mc2_cmd.py set_gate --name MC2_X --value 1
   py -3 tools/dev_shell/mc2_cmd.py quit
 """

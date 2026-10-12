@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1002,
+ "count": 999,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -15051,62 +15051,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_POST_CAS",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1197",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_POST_CAS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_POST_CAS_SHARPNESS",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1200",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_POST_CAS_SHARPNESS",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_PRESWAP_FINISH",
    "kind": "Bool",
    "default": false,
@@ -23642,36 +23586,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TONEMAP_V2",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1216",
-     "idiom": "Lead1"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1222",
-     "idiom": "NonReader"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_TONEMAP_V2",
    "retireVerdict": ""
   },
   {

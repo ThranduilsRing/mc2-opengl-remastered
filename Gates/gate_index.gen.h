@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1005;
+inline constexpr std::size_t kGateCount = 1002;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -543,8 +543,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_POST_CAS", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_POST_CAS_SHARPNESS", Kind::Float, Rule::Prefix, {}},
     {"MC2_PRESWAP_FINISH", Kind::Bool, Rule::Presence, {}},
     {"MC2_PREVIEW_FBO_SCALE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PREVIEW_NOCULL", Kind::Bool, Rule::Presence, {}},
@@ -847,7 +845,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_THIN_DEBUG", Kind::Bool, Rule::Presence, {}},
     {"MC2_TOBJ_COST_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_TOBJ_PARITY", Kind::Bool, Rule::Presence, {}},
-    {"MC2_TONEMAP_V2", Kind::String, Rule::Std, {}},
     {"MC2_TRACE_EXIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_TREE_DIAG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TREE_REG_TRACE", Kind::Bool, Rule::Presence, {}},

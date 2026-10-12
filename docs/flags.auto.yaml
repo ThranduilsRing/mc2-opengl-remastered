@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1005
-registry_entry_count: 229
-verified_count: 998
+gate_count: 1002
+registry_entry_count: 226
+verified_count: 995
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -4091,23 +4091,6 @@ flags:
     owner: post
     doc: ""
     verified: true
-  - name: MC2_POST_CAS
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: post
-    doc: "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI)."
-    verified: true
-    registry: {feature_id: MC2_POST_CAS, kind: Feature, order: -1, default_on: false}
-  - name: MC2_POST_CAS_SHARPNESS
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5)."
-    range: {lo: 0, hi: 1, style: clamp}
-    verified: true
-    registry: {feature_id: MC2_POST_CAS_SHARPNESS, kind: Feature, order: -1, default_on: false}
   - name: MC2_PRESWAP_FINISH
     kind: Bool
     default: false
@@ -6469,15 +6452,6 @@ flags:
     doc: "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument."
     smoke_passthrough: true
     verified: true
-  - name: MC2_TONEMAP_V2
-    kind: String
-    default: ""
-    rule: Std
-    owner: post
-    doc: "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TONEMAP_V2, kind: Feature, order: -1, default_on: false}
   - name: MC2_TRACE_EXIT
     kind: Bool
     default: false

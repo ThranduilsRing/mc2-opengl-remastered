@@ -1218,20 +1218,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "DEFAULT 0 (OFF).",
     },
     {
-        "MC2_POST_CAS",
-        "MC2_POST_CAS",
-        EnvVarKind::Feature,
-        false,
-        "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI).",
-    },
-    {
-        "MC2_POST_CAS_SHARPNESS",
-        "MC2_POST_CAS_SHARPNESS",
-        EnvVarKind::Feature,
-        false,
-        "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5).",
-    },
-    {
         "MC2_PROJECTILE_SPEED_MULT",
         "MC2_PROJECTILE_SPEED_MULT",
         EnvVarKind::Feature,
@@ -1622,13 +1608,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "TRACKV: gates Probe-6 thin-record canary readback (per-frame ~80KB glGetBufferSubData x2 + CPU recipeIdx/flags compare, diagnostic for the corrupt-recipeIdx...",
-    },
-    {
-        "MC2_TONEMAP_V2",
-        "MC2_TONEMAP_V2",
-        EnvVarKind::Feature,
-        false,
-        "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag).",
     },
     {
         "MC2_TREE_DIAG_TRACE",

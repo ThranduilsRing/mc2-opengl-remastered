@@ -68,6 +68,11 @@ public:
 	float	scrollSpeedMult;  // camera pan speed multiplier (edge scroll + arrow keys)
 	float	zoomSpeedMult;    // zoom in/out speed multiplier (scroll wheel + +/-)
 
+	// Post-process look (options.cfg PostCAS / PostCASSharpness / TonemapMode); pushed to the renderer by applyPrefs().
+	bool	postCas;          // AMD FidelityFX contrast-adaptive sharpening on the final image
+	float	postCasSharpness; // 0..1
+	long	tonemapMode;      // 0 off, 1 AgX, 2 Hable, 3 Reinhard
+
 #if 0
 	long FilterState;
 	long TERRAIN_TXM_SIZE;

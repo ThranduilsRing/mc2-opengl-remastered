@@ -143,6 +143,22 @@ int gos_GetSkyNumber()
     return s_postProcess ? s_postProcess->getSkyNumber() : -1;
 }
 
+// Player post-FX options (options.cfg): kept here so they survive until the post-processor is created.
+static struct PostFxOptions {
+    bool  casEnabled   = false;
+    float casSharpness = 0.5f;
+    int   tonemapMode  = 0;
+} s_postFxOptions;
+
+void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode)
+{
+    s_postFxOptions.casEnabled   = (casEnabled != 0);
+    s_postFxOptions.casSharpness = casSharpness < 0.0f ? 0.0f : (casSharpness > 1.0f ? 1.0f : casSharpness);
+    s_postFxOptions.tonemapMode  = (tonemapMode < 0 || tonemapMode > 3) ? 0 : tonemapMode;
+    if (s_postProcess)
+        s_postProcess->setPostFxOptions(s_postFxOptions.casEnabled, s_postFxOptions.casSharpness, s_postFxOptions.tonemapMode);
+}
+
 // Fullscreen quad vertices: 2 triangles covering NDC [-1,1]
 // Each vertex: pos.x, pos.y, uv.x, uv.y
 static const float kQuadVerts[] = {
@@ -438,37 +454,22 @@ void gosPostProcess::init(int w, int h)
                      fxEnv ? fxEnv : "(unset)");
     }
 
-    // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening gate + sharpness,
-    // resolved once from env. Default OFF -> composite uploads u_casEnabled=0 ->
-    // CAS skipped in the shader (byte-identical). Sharpness clamped 0..1, default
-    // 0.5. Applied to the final graded LDR color, after FXAA/grade, before UI.
+    // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening, from options.cfg
+    // (PostCAS, PostCASSharpness). Off by default; sharpness 0..1, default 0.5. Applied
+    // to the final graded LDR color, after FXAA/grade, before UI.
     {
-        const char* casEnv = mc2::gate::raw<"MC2_POST_CAS">();   // echoed as typed
-        casEnabled_   = mc2::gate::get<"MC2_POST_CAS">();
-        casSharpness_ = 0.5f;
-        if (mc2::gate::isSet<"MC2_POST_CAS_SHARPNESS">())
-            casSharpness_ = mc2::gate::get<"MC2_POST_CAS_SHARPNESS">();   // row clamps to [0, 1]
-        MC2_DIAGFE(stderr, "[CAS v1] enabled=%d sharpness=%.3f (MC2_POST_CAS=%s)\n",
-                     casEnabled_ ? 1 : 0, casSharpness_,
-                     casEnv ? casEnv : "(unset)");
+        casEnabled_   = s_postFxOptions.casEnabled;
+        casSharpness_ = s_postFxOptions.casSharpness;
+        MC2_DIAGFE(stderr, "[CAS v1] enabled=%d sharpness=%.3f (options.cfg)\n",
+                     casEnabled_ ? 1 : 0, casSharpness_);
     }
 
     // POST-FX-TONEMAP-V2 (SCOUR-1 #3): optional filmic tonemap curve on the final
-    // composited colour. Resolved once from env. Default OFF (mode 0) -> composite
-    // uploads u_tonemapMode=0 -> shader no-op branch -> byte-identical.
-    // MC2_TONEMAP_V2 = 0/unset off, 1=AgX, 2=Hable, 3=Reinhard (also accepts the
-    // names agx/hable/reinhard). Visual-only; no geometry/depth/object-id effect.
+    // composited colour, from options.cfg (TonemapMode): 0 off (default), 1 AgX,
+    // 2 Hable, 3 Reinhard. Visual-only; no geometry/depth/object-id effect.
     {
-        tonemapMode_ = 0;
-        if (mc2::gate::isSet<"MC2_TONEMAP_V2">()) {
-            const std::string text = mc2::gate::str<"MC2_TONEMAP_V2">();   // "" when empty: no mode matches
-            const char* v = text.c_str();
-            if      (v[0]=='1' || !strcmp(v,"agx"))      tonemapMode_ = 1;
-            else if (v[0]=='2' || !strcmp(v,"hable"))    tonemapMode_ = 2;
-            else if (v[0]=='3' || !strcmp(v,"reinhard")) tonemapMode_ = 3;
-        }
-        MC2_DIAGFE(stderr, "[TONEMAP v2] mode=%d (MC2_TONEMAP_V2=%s)\n",
-                     tonemapMode_, mc2::gate::raw<"MC2_TONEMAP_V2">() ? mc2::gate::raw<"MC2_TONEMAP_V2">() : "(unset)");
+        tonemapMode_ = s_postFxOptions.tonemapMode;
+        MC2_DIAGFE(stderr, "[TONEMAP v2] mode=%d (options.cfg)\n", tonemapMode_);
     }
 
     // OOB-FOG-1: far-plane fog over the out-of-bounds region. Default ON.

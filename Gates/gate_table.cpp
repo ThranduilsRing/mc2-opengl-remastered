@@ -729,10 +729,6 @@ L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", "", verified)
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Bool, false, "post", "", "", verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Bool, false, "post", "", "", verified),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
-// history: docs/gate-history.md#MC2_POST_CAS
-L(Lead0, "MC2_POST_CAS", Bool, false, "post", "", "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI).", registry(Feature, "MC2_POST_CAS", -1, false) | verified),
-// history: docs/gate-history.md#MC2_POST_CAS_SHARPNESS
-P("MC2_POST_CAS_SHARPNESS", Float, 0.0, "post", "", "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5).", clampRange(0.0, 1.0) | registry(Feature, "MC2_POST_CAS_SHARPNESS", -1, false) | verified),  // default not derivable from the tree
 L(Presence, "MC2_PRESWAP_FINISH", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 L(Presence, "MC2_PREVIEW_NOCULL", Bool, false, "code", "", "EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero pixels anywhere in the FBO despite shouldRender=1.", verified),
@@ -1207,8 +1203,6 @@ L(Presence, "MC2_THIN_DEBUG", Bool, false, "terrain", "", "", passthrough | veri
 L(Presence, "MC2_TOBJ_COST_SPLIT", Bool, false, "unclassified", "", "[TOBJSPLIT v1] env-gated RDTSC cost split for the recalcBounds slice.", passthrough | verified),
 L(Presence, "MC2_TOBJ_PARITY", Bool, false, "terrain", "", "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument.", passthrough | verified),
 // POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap on the composite.
-// history: docs/gate-history.md#MC2_TONEMAP_V2
-G("MC2_TONEMAP_V2", String, "", "post", "", "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag).", passthrough | registry(Feature, "MC2_TONEMAP_V2", -1, false) | verified),
 L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
 // ── TREE-DIAG-REGISTER-1 (closed by GATE-PARITY-CLOSE-1) ───────────────
 // Lives in kAuxEnvVars and NOT in kFeatureTable: kFeatureTable is indexed
