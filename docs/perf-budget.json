@@ -1,8 +1,0 @@
-{
-  "_comment": "Per-mission perf budget seeded from Baseline A (82add3ca, post-8z, mc2-win64-0.4c). Floors/ceilings carry margin because headless idle fly-throughs are noisy: avg_fps_floor ~=0.85x baseline, p99_ms_ceil ~=1.5x baseline (tail noisy), p1low_fps_floor ~=0.7x baseline (very noisy). p99_ms is the STEADY-STATE tail; peak_ms is intentionally NOT budgeted (it captures the one-time load/first-frame hitch). Update only with a new committed baseline + rationale. See docs/perf-budget.md.",
-  "mc2_01": { "avg_fps_floor": 93,  "p99_ms_ceil": 95, "p1low_fps_floor": 11 },
-  "mc2_03": { "avg_fps_floor": 108, "p99_ms_ceil": 45, "p1low_fps_floor": 25 },
-  "mc2_10": { "avg_fps_floor": 111, "p99_ms_ceil": 42, "p1low_fps_floor": 26 },
-  "mc2_17": { "avg_fps_floor": 112, "p99_ms_ceil": 32, "p1low_fps_floor": 34 },
-  "mc2_24": { "avg_fps_floor": 112, "p99_ms_ceil": 32, "p1low_fps_floor": 35 }
-}

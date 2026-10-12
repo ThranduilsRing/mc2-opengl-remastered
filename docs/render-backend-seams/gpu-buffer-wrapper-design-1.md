@@ -3,7 +3,7 @@
 
 Design for a GpuBuffer / GpuRingBuffer RAII abstraction + a compile-time
 binding-slot registry, scoped from the buffer census in
-[gpu-buffer-owner-recon-1.md](gpu-buffer-owner-recon-1.md).
+gpu-buffer-owner-recon-1.md.
 
 **Status:** DESIGN ONLY. No wrapper code, no engine edits in this slice. Every
 "current code" claim is file:line against worktree nifty-mendeleev.
