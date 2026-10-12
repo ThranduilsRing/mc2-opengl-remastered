@@ -72,9 +72,8 @@ bool g_useGpuMechs = mc2::gate::get<"MC2_GPU_MECHS">();
 bool vkMechGateOn() {
     static int state = -1;
     if (state == -1) {
-        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
-        // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        state = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">() ? 1 : 0;   // the co-write depth-tests against the shared depth
+        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
+        state = mc2vkgate::umbrellaOn() ? 1 : 0;   // the co-write depth-tests against the shared depth
         // VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE is DEPRECATED / a no-op (the native CPU feed is unconditional
         // under the VK mech island; the GL readback fallback is deleted). The name is still parsed so old
         // command lines do not hit unknown-variable behavior; setting it prints a one-line note.

@@ -654,12 +654,9 @@ float gos_TerrainAmbientDayGate()
 
 // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1 pool count actually consumed by the
 // terrain frag this frame (GL u_numPoolLights / VK uT.numPoolLights). Moved verbatim
-// out of the GL upload: gate MC2_TERRAIN_LIGHT_POOLS (default ON; =0 -> 0), pool
-// SSBO must exist, capped at 256.
+// out of the GL upload: the pool SSBO must exist, capped at 256.
 int gos_TerrainLightPoolCount()
 {
-    static const bool s_lightPoolsGate = mc2::gate::get<"MC2_TERRAIN_LIGHT_POOLS">();
-    if (!s_lightPoolsGate) return 0;
     const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
     const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
     if (poolSsbo == 0 || n == 0) return 0;

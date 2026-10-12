@@ -16,14 +16,13 @@
 //                  unknown nodeType / bad tgl version). Logged ALWAYS,
 //                  rate-limited per unique (event,path) via mc2AuditOnce
 //                  (cap 64 keys — INFRA-1 helper; reviewed cap was 32).
-//   file_missing — no file at all. Logged ONLY under MC2_ASSET_TRACE, because
-//                  missing OPTIONAL files (arms/shadows/damage/anims) are
-//                  NORMAL stock degradation and an always-on line would
-//                  red-bucket healthy tier1 runs. REQUIRED slots get their
-//                  own always-on `required_missing` from tgl_load_guard.
+//   file_missing — no file at all. Never logged, because missing OPTIONAL
+//                  files (arms/shadows/damage/anims) are NORMAL stock
+//                  degradation and an always-on line would red-bucket
+//                  healthy tier1 runs. REQUIRED slots get their own
+//                  always-on `required_missing` from tgl_load_guard.
 // Smoke: the `asset_load_fail` red bucket counts parse_fail (+
 // required_missing + appr_type_fail) — deliberately NOT bare file_missing.
-static const bool s_assetTrace_msl = mc2::gate::get<"MC2_ASSET_TRACE">();
 
 static unsigned long long mslAssetKey(const char* event, const char* path)
 {
@@ -35,11 +34,8 @@ static unsigned long long mslAssetKey(const char* event, const char* path)
 }
 
 static void mslAssetLoadEvent(const char* event, const char* loader,
-                              const char* reason, const char* path,
-                              bool always)
+                              const char* reason, const char* path)
 {
-	if (!always && !s_assetTrace_msl)
-		return;
 	if (!mc2AuditOnce("ASSET_LOAD", mslAssetKey(event, path)))
 		return;
 	mc2AuditLinef("[ASSET_LOAD v1] event=%s loader=%s reason=%s path=%s",
@@ -52,9 +48,8 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 	long result = binFile.open(fileName);
 	if (result != NO_ERR)
 	{
-		// Missing/unopenable .tgl — optional-slot degradation is normal;
-		// trace-gated (see PART 0 header above).
-		mslAssetLoadEvent("file_missing", "binary", "open_fail", fileName, false);
+		// Missing/unopenable .tgl — optional-slot degradation is normal
+		// (see PART 0 header above).
 		return -1;
 	}
 	
@@ -137,7 +132,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			}
 			numTG_TypeShapes = 0;
 			// META-FIX design B PART 0: file existed, content bad -> always-on.
-			mslAssetLoadEvent("parse_fail", "binary", "unknown_node_type", fileName, true);
+			mslAssetLoadEvent("parse_fail", "binary", "unknown_node_type", fileName);
 			return -1;
 		}
 
@@ -199,7 +194,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 	{
 		// META-FIX design B PART 0: .tgl present but wrong shape version —
 		// content bad, always-on parse_fail.
-		mslAssetLoadEvent("parse_fail", "binary", "bad_version", fileName, true);
+		mslAssetLoadEvent("parse_fail", "binary", "bad_version", fileName);
 		return -1;
 	}
 
@@ -291,25 +286,14 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 #include "assimp_importer.h"
 #endif
 
-// Track D — env-gated diagnostic trace. Set MC2_ASSIMP_TRACE=1 in the env to
-// emit per-load probe + import-result lines on stderr. Default off; matches
-// the [TGL_POOL v1] / [DESTROY v1] convention (memory:debug_instrumentation_rule).
-static const bool s_assimpTrace_msl = mc2::gate::get<"MC2_ASSIMP_TRACE">();
-#define ASSIMP_TRACE_MSL(fmt, ...) \
-    do { if (s_assimpTrace_msl) { \
-        fprintf(stderr, "[ASSIMP_TRACE] " fmt "\n", ##__VA_ARGS__); \
-        fflush(stderr); } } while (0)
-
 long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 {
 	if (!baseName || !*baseName)
 	{
-		// META-FIX design B PART 0: degenerate caller input — trace-gated.
-		mslAssetLoadEvent("file_missing", "import", "empty_base", baseName, false);
+		// META-FIX design B PART 0: degenerate caller input.
 		return -1;
 	}
 
-	ASSIMP_TRACE_MSL("LoadFromFile baseName='%s'", baseName);
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 	// Runtime killswitch: MC2_ASSIMP_IMPORT=0 forces legacy ASE for all asset
@@ -327,26 +311,19 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 				FullPathFileName probePath;
 				probePath.init(tglPath, baseName, kImportExts[e]);
 				const bool exists = fileExists(probePath, FILE_ON_DISK);
-				ASSIMP_TRACE_MSL("  probe '%s' exists=%d",
-				                  (const char*)probePath, (int)exists);
 				if (exists)
 				{
-					ASSIMP_TRACE_MSL("  calling ImportGeometryFromFile...");
 					long r = ImportGeometryFromFile(probePath, this);
-					ASSIMP_TRACE_MSL("  ImportGeometryFromFile returned %ld", r);
 					if (r == 0)
 						return NO_ERR;
 					// META-FIX design B PART 0: probed file EXISTED but the
 					// importer rejected it — content bad, always-on.
 					mslAssetLoadEvent("parse_fail", "import", "import_fail",
-						(const char*)probePath, true);
+						(const char*)probePath);
 					// Importer logged the reason via STOP/PAUSE; fall through.
 					break;
 				}
 			}
-			ASSIMP_TRACE_MSL("  no modern source found, falling through to ASE");
-		} else {
-			ASSIMP_TRACE_MSL("  MC2_ASSIMP_IMPORT=0, skipping modern probe");
 		}
 	}
 #endif // ENABLE_ASSIMP_IMPORTER
@@ -540,8 +517,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		{
 			// META-FIX design B PART 0: no ASE and no fresh .tgl — optional
 			// slots (arms/shadow/damage) hit this on healthy stock installs,
-			// so trace-gated only (required slots log via tgl_load_guard).
-			mslAssetLoadEvent("file_missing", "ase", "no_ase", fileName, false);
+			// so nothing is logged (required slots log via tgl_load_guard).
 			return(-1);
 		}
 
@@ -572,7 +548,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		if (S_strnicmp(ASE_HEADER,(char *)aseContents,strlen(ASE_HEADER)) != 0)
 		{
 			// META-FIX design B PART 0: file existed, content bad -> always-on.
-			mslAssetLoadEvent("parse_fail", "ase", "bad_header", fileName, true);
+			mslAssetLoadEvent("parse_fail", "ase", "bad_header", fileName);
 			return(-1);
 		}
 
@@ -589,7 +565,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		if (!textureData)
 		{
 			// META-FIX design B PART 0: parse_fail (missing material block).
-			mslAssetLoadEvent("parse_fail", "ase", "no_material_count", fileName, true);
+			mslAssetLoadEvent("parse_fail", "ase", "no_material_count", fileName);
 			return(-1);
 		}
 
@@ -606,7 +582,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			if (!textureData)
 			{
 				// META-FIX design B PART 0: parse_fail (missing material class).
-				mslAssetLoadEvent("parse_fail", "ase", "no_material_class", fileName, true);
+				mslAssetLoadEvent("parse_fail", "ase", "no_material_class", fileName);
 				return(-1);
 			}
 	

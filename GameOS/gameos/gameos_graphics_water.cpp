@@ -227,8 +227,7 @@ static float mc2WaterShoreFeatherWu()
 // Shore mode 3 depth-only lift K (fraction of clip.z). Shared by GL uniform + VK UBO.
 static float mc2WaterShore3DepthK()
 {
-    static const float s_k = mc2::gate::get<"MC2_WATER_SHORE3_DEPTH_K">();
-    return s_k;
+    return 0.03f;
 }
 
 // WATER-HDRI-REFL-PERF-1 LOD default, shared by the GL MDI bind block and the

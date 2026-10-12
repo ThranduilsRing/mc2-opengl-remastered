@@ -643,7 +643,6 @@ bool GetLightGridCpu(LightGridCpu& out) {
 // VK-PARITY-MECH-1: shared object-pool producer (GL upload + VK mech island).
 void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     if (!out) return;
-    static const bool s_umbrella = mc2::gate::get<"MC2_TERRAIN_LIGHT_POOLS">();
     static const bool s_objects = mc2::gate::get<"MC2_LIGHT_POOL_OBJECTS">();   // default ON
     // Knob values lockstep with the terrain-chunk consumer defaults
     // (gos_terrain_lod_chunk.cpp / gameos_graphics.cpp overlay path).
@@ -668,7 +667,7 @@ void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     out->moverMax   = s_poolMoverMax ? 1 : 0;
     out->compress   = s_poolCompress ? 1 : 0;
     out->objScale   = s_objScale;
-    if (s_umbrella && s_objects && s_objScale > 0.0f) {
+    if (s_objects && s_objScale > 0.0f) {
         const GLuint   ssbo = GetLightPoolSsbo();
         const uint32_t n    = GetLightPoolLightCount();
         if (ssbo != 0 && n > 0) {

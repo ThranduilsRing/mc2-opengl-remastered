@@ -1,0 +1,295 @@
+diff --git a/GameOS/gameos/gos_postprocess.cpp b/GameOS/gameos/gos_postprocess.cpp
+index d114c6dc9..1500f8c6b 100644
+--- a/GameOS/gameos/gos_postprocess.cpp
++++ b/GameOS/gameos/gos_postprocess.cpp
+@@ -613,15 +613,8 @@ void gosPostProcess::init(int w, int h)
+                      s_viewmodeFrameworkEnabled ? 1 : 0, s_selectedViewMode,
+                      vmEnv ? vmEnv : "(unset)", modeEnvRaw ? modeEnvRaw : "(unset)");
+ 
+-        // LOWLIGHT-NIGHTVISION-MVP-1: seed night-vision tunables from env.
+-        // Inert unless the selected ViewMode is LowLight (5). Direct member
+-        // writes — s_postProcess is not yet assigned during init(), so the
+-        // gos_SetLowLight* setters would no-op here.
+-        if (mc2::gate::isNonEmpty<"MC2_VIEWMODE_LOWLIGHT_GAIN">())
+-            lowLightGain_ = mc2::gate::get<"MC2_VIEWMODE_LOWLIGHT_GAIN">();   // row clamps to [0.1, 16]
+-        const std::string tintEnv = mc2::gate::str<"MC2_VIEWMODE_LOWLIGHT_TINT">();   // "" when unset or empty
+-        if (!tintEnv.empty())
+-            sscanf(tintEnv.c_str(), "%f,%f,%f", &lowLightTint_[0], &lowLightTint_[1], &lowLightTint_[2]);
++        // LOWLIGHT-NIGHTVISION-MVP-1: the night-vision gain and tint keep their
++        // member defaults; the ImGui setters change them at runtime.
+         MC2_DIAGFE(stderr, "[VIEWMODE_LOWLIGHT v1] gain=%.2f tint=(%.2f,%.2f,%.2f)\n",
+                      lowLightGain_, lowLightTint_[0], lowLightTint_[1], lowLightTint_[2]);
+     }
+diff --git a/GameOS/gameos/gos_postprocess.h b/GameOS/gameos/gos_postprocess.h
+index 45ae0fcd6..3ee501db5 100644
+--- a/GameOS/gameos/gos_postprocess.h
++++ b/GameOS/gameos/gos_postprocess.h
+@@ -655,8 +655,8 @@ public:
+ 
+     // LOWLIGHT-NIGHTVISION-MVP-1: pure-postprocess night-vision tunables.
+     // Active only when the selected ViewMode is LowLight (5); the composite
+-    // branch is otherwise skipped (Visual byte-identical). Seeded from
+-    // MC2_VIEWMODE_LOWLIGHT_GAIN / _TINT at init; ImGui- and profile-adjustable.
++    // branch is otherwise skipped (Visual byte-identical). ImGui- and
++    // profile-adjustable.
+     float lowLightGain_    = 2.5f;                 // luminance amplification
+     float lowLightTint_[3] = { 0.7f, 1.0f, 0.6f }; // green-phosphor NV tint
+ 
+diff --git a/Gates/gate_index.gen.h b/Gates/gate_index.gen.h
+index dc61b94a2..1eac0f73a 100644
+--- a/Gates/gate_index.gen.h
++++ b/Gates/gate_index.gen.h
+@@ -10,7 +10,7 @@
+ 
+ namespace mc2::gate::detail {
+ 
+-inline constexpr std::size_t kGateCount = 1137;
++inline constexpr std::size_t kGateCount = 1135;
+ 
+ inline constexpr IndexEntry kIndex[kGateCount] = {
+     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
+@@ -997,8 +997,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
+     {"MC2_VFX_SOFT_PARTICLES", Kind::Bool, Rule::Lead1, {}},
+     {"MC2_VFX_TUBE_UPLOAD_STATS", Kind::Bool, Rule::Lead0, {}},
+     {"MC2_VIEWMODE_FRAMEWORK", Kind::Bool, Rule::Lead0, {}},
+-    {"MC2_VIEWMODE_LOWLIGHT_GAIN", Kind::Float, Rule::Prefix, {}},
+-    {"MC2_VIEWMODE_LOWLIGHT_TINT", Kind::String, Rule::Std, {}},
+     {"MC2_VIEW_MODE", Kind::String, Rule::Std, {}},
+     {"MC2_VIEW_UNIFORMS", Kind::Bool, Rule::Lead0Kill, {}},
+     {"MC2_VISUAL_BOOKMARK_CAPTURE", Kind::String, Rule::Std, {}},
+diff --git a/Gates/gate_table.cpp b/Gates/gate_table.cpp
+index f95734fc6..29b2e359e 100644
+--- a/Gates/gate_table.cpp
++++ b/Gates/gate_table.cpp
+@@ -1481,10 +1481,6 @@ L(Lead1, "MC2_VFX_SOFT_PARTICLES", Bool, false, "gameos", "", "VFX-SOFT-PARTICLE
+ L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", "", verified),
+ // history: docs/gate-history.md#MC2_VIEWMODE_FRAMEWORK
+ L(Lead0, "MC2_VIEWMODE_FRAMEWORK", Bool, false, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", passthrough | registry(Feature, "MC2_FEATURE_VIEWMODE_FRAMEWORK", 29, false) | verified),
+-// history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_GAIN
+-P("MC2_VIEWMODE_LOWLIGHT_GAIN", Float, 0.0, "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).", passthrough | clampRange(static_cast<double>(0.1f), 16.0) | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN", -1, false) | verified),  // default not derivable from the tree
+-// history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_TINT
+-G("MC2_VIEWMODE_LOWLIGHT_TINT", String, "", "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).", passthrough | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT", -1, false) | verified),
+ // TRACKV-TACTICAL-PRESENTATION: ViewMode seed + LowLight tunables + tactical
+ // overlay. All default-OFF/inert; Visual path byte-identical when unset.
+ // (MC2_VIEWMODE_FRAMEWORK itself is the RendererFeature::ViewmodeFramework
+diff --git a/Gates/gate_table.json b/Gates/gate_table.json
+index f72a11427..5fdd2b236 100644
+--- a/Gates/gate_table.json
++++ b/Gates/gate_table.json
+@@ -1,6 +1,6 @@
+ {
+  "version": 1,
+- "count": 1137,
++ "count": 1135,
+  "gates": [
+   {"name": "MC2_3DVIEW_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
+   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
+@@ -986,8 +986,6 @@
+   {"name": "MC2_VFX_SOFT_PARTICLES", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "gameos", "retireBy": "", "doc": "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_FEATURE_VFX_SOFT_PARTICLES", "kind": "Feature", "order": 27, "defaultOn": false}, "logTopic": ""},
+   {"name": "MC2_VFX_TUBE_UPLOAD_STATS", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
+   {"name": "MC2_VIEWMODE_FRAMEWORK", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "post", "retireBy": "", "doc": "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_FEATURE_VIEWMODE_FRAMEWORK", "kind": "Feature", "order": 29, "defaultOn": false}, "logTopic": ""},
+-  {"name": "MC2_VIEWMODE_LOWLIGHT_GAIN", "kind": "Float", "rule": "Prefix", "default": 0, "owner": "post", "retireBy": "", "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).", "tokens": "", "range": {"lo": 0.10000000149011612, "hi": 16, "clamp": true}, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""},
+-  {"name": "MC2_VIEWMODE_LOWLIGHT_TINT", "kind": "String", "rule": "Std", "default": "", "owner": "post", "retireBy": "", "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""},
+   {"name": "MC2_VIEW_MODE", "kind": "String", "rule": "Std", "default": "", "owner": "post", "retireBy": "", "doc": "VIEWMODE-POSTPROCESS-PRESENTATION-1: seeds the startup presentation mode (matches RenderCore::ViewMode).", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_TUNE_VIEW_MODE", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""},
+   {"name": "MC2_VIEW_UNIFORMS", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "props", "retireBy": "", "doc": "ViewUniforms UBO at binding=3.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_FEATURE_VIEW_UNIFORMS", "kind": "Feature", "order": 16, "defaultOn": true}, "logTopic": ""},
+   {"name": "MC2_VISUAL_BOOKMARK_CAPTURE", "kind": "String", "rule": "Std", "default": "", "owner": "vk", "retireBy": "", "doc": "Path of the bookmarks.json the capture replay drives; any set value (even empty) arms the replay.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
+diff --git a/RenderCore/RendererFeatureRegistry.h b/RenderCore/RendererFeatureRegistry.h
+index 25f929e54..81b7c2c2d 100644
+--- a/RenderCore/RendererFeatureRegistry.h
++++ b/RenderCore/RendererFeatureRegistry.h
+@@ -2447,20 +2447,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
+         false,
+         "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks).",
+     },
+-    {
+-        "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN",
+-        "MC2_VIEWMODE_LOWLIGHT_GAIN",
+-        EnvVarKind::Trace,
+-        false,
+-        "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).",
+-    },
+-    {
+-        "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT",
+-        "MC2_VIEWMODE_LOWLIGHT_TINT",
+-        EnvVarKind::Trace,
+-        false,
+-        "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).",
+-    },
+     {
+         "MC2_TUNE_VIEW_MODE",
+         "MC2_VIEW_MODE",
+diff --git a/docs/flags.auto.yaml b/docs/flags.auto.yaml
+index 50c20f427..8948c9086 100644
+--- a/docs/flags.auto.yaml
++++ b/docs/flags.auto.yaml
+@@ -3,9 +3,9 @@
+ # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
+ # tools/repo_intel (env_var, gate_status), which scan the sources.
+ generator_version: "3.0.0"
+-gate_count: 1137
+-registry_entry_count: 351
+-verified_count: 1130
++gate_count: 1135
++registry_entry_count: 349
++verified_count: 1128
+ flags:
+   - name: MC2_3DVIEW_DIAG
+     kind: Bool
+@@ -7768,25 +7768,6 @@ flags:
+     smoke_passthrough: true
+     verified: true
+     registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 29, default_on: false}
+-  - name: MC2_VIEWMODE_LOWLIGHT_GAIN
+-    kind: Float
+-    default: 0
+-    rule: Prefix
+-    owner: post
+-    doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5)."
+-    range: {lo: 0.10000000149011612, hi: 16, style: clamp}
+-    smoke_passthrough: true
+-    verified: true
+-    registry: {feature_id: MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN, kind: Trace, order: -1, default_on: false}
+-  - name: MC2_VIEWMODE_LOWLIGHT_TINT
+-    kind: String
+-    default: ""
+-    rule: Std
+-    owner: post
+-    doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor)."
+-    smoke_passthrough: true
+-    verified: true
+-    registry: {feature_id: MC2_TUNE_VIEWMODE_LOWLIGHT_TINT, kind: Trace, order: -1, default_on: false}
+   - name: MC2_VIEW_MODE
+     kind: String
+     default: ""
+diff --git a/scripts/gl_shader_variants.json b/scripts/gl_shader_variants.json
+index d377de6f1..e9c53ae95 100644
+--- a/scripts/gl_shader_variants.json
++++ b/scripts/gl_shader_variants.json
+@@ -494,7 +494,7 @@
+    "key": "edge_fog",
+    "optional_groups_on": [],
+    "prefix": "#version 430\n",
+-   "source": "GameOS/gameos/gos_postprocess.cpp:543",
++   "source": "GameOS/gameos/gos_postprocess.cpp:495",
+    "stages": {
+     "frag": "shaders/edge_fog.frag",
+     "vert": "shaders/postprocess.vert"
+@@ -507,7 +507,7 @@
+    "key": "fog_oob",
+    "optional_groups_on": [],
+    "prefix": "#version 430\n",
+-   "source": "GameOS/gameos/gos_postprocess.cpp:524",
++   "source": "GameOS/gameos/gos_postprocess.cpp:476",
+    "stages": {
+     "frag": "shaders/fog_oob.frag",
+     "vert": "shaders/postprocess.vert"
+@@ -2850,7 +2850,7 @@
+    "key": "hzb_reduce",
+    "optional_groups_on": [],
+    "prefix": "#version 430\n",
+-   "source": "GameOS/gameos/gos_postprocess.cpp:601",
++   "source": "GameOS/gameos/gos_postprocess.cpp:553",
+    "stages": {
+     "frag": "shaders/hzb_reduce.frag",
+     "vert": "shaders/postprocess.vert"
+diff --git a/tests/unit/test_gate.cpp b/tests/unit/test_gate.cpp
+index 9e44d0afc..c0189291f 100644
+--- a/tests/unit/test_gate.cpp
++++ b/tests/unit/test_gate.cpp
+@@ -1248,8 +1248,6 @@ TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replace
+     CHECK(fl("MC2_SHADOW_DIST_FADE_MAX", "2") == 1.0f);
+     CHECK(fl("MC2_SHADOW_OBJ_NORMAL_BIAS", "30") == 16.0f);
+     CHECK(fl("MC2_SHADOW_MECH_SOFT", "-3") == 0.0f);
+-    CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "0") == 0.1f);
+-    CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "99") == 16.0f);
+     // the reader fell back to 2500 for <= 0
+     CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "0") == 2500.0f);
+     CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "-5") == 2500.0f);
+@@ -1265,8 +1263,7 @@ TEST_CASE("G5 postprocess text rows and the backend selector") {
+     CHECK(be.kind == Kind::Enum);
+     CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
+     CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
+-    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_VIEWMODE_LOWLIGHT_TINT",
+-                             "MC2_OOB_FOG_COLOR"})
++    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
+         CHECK(g1b::rowNamed(name).kind == Kind::String);
+ }
+ 
+diff --git a/tools/gate_table.seed.json b/tools/gate_table.seed.json
+index 2b8de2dcd..bcc49f59a 100644
+--- a/tools/gate_table.seed.json
++++ b/tools/gate_table.seed.json
+@@ -1,7 +1,7 @@
+ {
+  "version": 1,
+  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
+- "count": 1134,
++ "count": 1132,
+  "gates": [
+   {
+    "name": "MC2_3DVIEW_DIAG",
+@@ -27861,64 +27861,6 @@
+    "featureId": "MC2_FEATURE_VIEWMODE_FRAMEWORK",
+    "retireVerdict": ""
+   },
+-  {
+-   "name": "MC2_VIEWMODE_LOWLIGHT_GAIN",
+-   "kind": "Float",
+-   "default": null,
+-   "rule": "Prefix",
+-   "owner": "post",
+-   "retireBy": "",
+-   "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).",
+-   "readers": [
+-    {
+-     "at": "GameOS/gameos/gos_postprocess.cpp:1373",
+-     "idiom": "Num(atof,guarded)"
+-    }
+-   ],
+-   "conflict": false,
+-   "registered": true,
+-   "registryDefault": false,
+-   "seedDefaultSource": "unknown",
+-   "harnessValues": [
+-    "5.0"
+-   ],
+-   "numericRange": {
+-    "lo": 0.1,
+-    "hi": 16.0,
+-    "style": "compare-reject"
+-   },
+-   "readerDefault": null,
+-   "defaultDisagreement": "",
+-   "registryKind": "Trace",
+-   "featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN",
+-   "retireVerdict": ""
+-  },
+-  {
+-   "name": "MC2_VIEWMODE_LOWLIGHT_TINT",
+-   "kind": "Bool",
+-   "default": false,
+-   "rule": "NonEmpty",
+-   "owner": "post",
+-   "retireBy": "",
+-   "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).",
+-   "readers": [
+-    {
+-     "at": "GameOS/gameos/gos_postprocess.cpp:1378",
+-     "idiom": "NonEmpty"
+-    }
+-   ],
+-   "conflict": false,
+-   "registered": true,
+-   "registryDefault": false,
+-   "seedDefaultSource": "registry",
+-   "harnessValues": [],
+-   "numericRange": null,
+-   "readerDefault": false,
+-   "defaultDisagreement": "",
+-   "registryKind": "Trace",
+-   "featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT",
+-   "retireVerdict": ""
+-  },
+   {
+    "name": "MC2_VIEW_MODE",
+    "kind": "Int",

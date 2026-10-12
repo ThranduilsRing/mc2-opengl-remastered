@@ -87,7 +87,7 @@ Remove-Item Env:\MC2_DEBUG_RENDERER,Env:\MC2_TACTICAL_ARC_OVERLAY
    line in the log, no GL error, no crash.
 4. `thermal_placeholder` vs `low_light` (mc2_03): thermal = iron palette keyed
    on brightness; low-light = green-tinted luminance boost.
-5. `low_light_high_gain` (gain 5.0): no blown-white frame (soft-knee holds).
+5. (retired with gate amnesty wave 1: the gain-5.0 entry went with the `MC2_VIEWMODE_LOWLIGHT_GAIN` seed; raise the gain through the ImGui setter to check the soft-knee clamp.)
 
 ## Env-selectable vs interactive
 
@@ -113,8 +113,9 @@ Remove-Item Env:\MC2_VIEWMODE_FRAMEWORK,Env:\MC2_VIEW_MODE,Env:\MC2_OBJECT_ID_BU
 
 ## Tooling notes
 
-- `MC2_VIEWMODE_FRAMEWORK`, `MC2_VIEW_MODE`, `MC2_VIEWMODE_LOWLIGHT_GAIN`,
-  `MC2_VIEWMODE_LOWLIGHT_TINT`, and `MC2_TACTICAL_ARC_OVERLAY` must be in the
-  `run_smoke.py` subprocess env passthrough for matrix runs to propagate them.
+- `MC2_VIEWMODE_FRAMEWORK`, `MC2_VIEW_MODE` and `MC2_TACTICAL_ARC_OVERLAY` must be
+  in the `run_smoke.py` subprocess env passthrough for matrix runs to propagate
+  them (the low-light gain and tint env seeds were deleted in gate amnesty wave 1;
+  the ImGui setters are the live inputs).
 - `run_smoke_matrix.py` historically injects `--kill-existing`; prefer the
   direct `run_smoke.py --mission` flow above for ViewMode captures.

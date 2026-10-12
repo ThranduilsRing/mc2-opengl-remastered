@@ -173,8 +173,8 @@ bool GetLightGridCpu(LightGridCpu& out);
 // `program` (must be the CURRENTLY BOUND program). Object consumers
 // (static-prop batcher, mech batcher) call this per draw-batch setup.
 // Uploads u_numPoolLights=0 (loop never entered, byte-identical) when the
-// umbrella (MC2_TERRAIN_LIGHT_POOLS) or the object sub-gate
-// (MC2_LIGHT_POOL_OBJECTS) is off, or no lights are packed this frame.
+// object sub-gate (MC2_LIGHT_POOL_OBJECTS) is off, or no lights are packed
+// this frame.
 void UploadObjectLightPoolUniforms(unsigned int program);
 
 // VK-PARITY-MECH-1: the ONE producer of the object-side pool count + knobs that

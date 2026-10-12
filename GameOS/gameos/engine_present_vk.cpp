@@ -249,8 +249,8 @@ bool directFboGateEnabled() {
     // (MC2_VK_SHARED_GBUFFER) exactly like the other direct-chain members — else
     // umbrella-ON steals the scene draws into the VK islands but never composites
     // them, giving the catastrophic "terrain invisible / sky over everything"
-    // field image. Explicit env "1"/"0" still wins for debugging.
-    const bool on = mc2vkgate::armed<"MC2_VK_PRESENT_DIRECT_FBO">();   // per-call: VK-FAILSOFT-DISARM-1
+    // field image.
+    const bool on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1
     return on;
 }
 
@@ -261,8 +261,8 @@ bool presentTailHookEnabled() {
     // VK-FIELD-ENV-COMPOSITE-ARM-1: the native HUD/ImGui tail seam is part of the
     // VK-owned present path, so it arms from the umbrella too (keeps the field env
     // == the proof env: one flip name arms the whole present chain). Behaviour-
-    // neutral when the native HUD/ImGui draws are absent. Explicit "1"/"0" wins.
-    const bool on = mc2vkgate::armed<"MC2_VK_PRESENT_TAIL_HOOK">();    // per-call: VK-FAILSOFT-DISARM-1
+    // neutral when the native HUD/ImGui draws are absent.
+    const bool on = mc2vkgate::umbrellaOn();    // per-call: VK-FAILSOFT-DISARM-1
     return on;
 }
 
@@ -276,21 +276,21 @@ bool nativeHudColorProofEnabled() {
     // queued the draws but nothing rendered them). It is a member of the VK-owned present
     // tail, so it arms from the umbrella exactly like presentTailHookEnabled /
     // directFboGateEnabled / nativeCompositeGateEnabled. The strict proof armed
-    // MC2_VK_HUD_COLOR_PROOF=1 and passed. Explicit "1"/"0" still wins for debugging.
-    const bool on = mc2vkgate::armed<"MC2_VK_HUD_COLOR_PROOF">();      // per-call: VK-FAILSOFT-DISARM-1
+    // MC2_VK_HUD_COLOR_PROOF=1 and passed.
+    const bool on = mc2vkgate::umbrellaOn();      // per-call: VK-FAILSOFT-DISARM-1
     return on;
 }
 
 bool nativeCompositeGateEnabled() {
     // VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).
     // The native composite is the sole present-image producer post item-8, so the
-    // umbrella flip must arm it by default; explicit "1"/"0" still wins for debug.
-    const bool on = mc2vkgate::armed<"MC2_VK_POST_COMPOSITE">();       // per-call: VK-FAILSOFT-DISARM-1
+    // umbrella flip must arm it by default.
+    const bool on = mc2vkgate::umbrellaOn();       // per-call: VK-FAILSOFT-DISARM-1
     return on;
 }
 
 bool compositeDirectChainGateEnabled() {
-    static const bool on = mc2vkgate::compositeDirectChainOn();
+    static const bool on = mc2vkgate::umbrellaOn();
     return on;
 }
 
@@ -301,14 +301,12 @@ bool objectIdDirectChainGateEnabled() {
     return on;
 }
 
-// VK-RUNG8-ITEM8: the present interop tail is deleted. Present gates that only
-// ever SELECTED a now-deleted branch are retired to parseable no-ops (item-9
+// VK-RUNG8-ITEM8: the present interop tail is deleted. A present gate that only
+// ever SELECTED a now-deleted branch is retired to a parseable no-op (item-9
 // pattern). MC2_VK_PRESENT_SKIP_GL_HANDOFF selected the VK-owned skip of the
-// GL->VK handoff (the handoff itself is gone -> the skip is unconditional), and
-// MC2_VK_PRESENT_NO_GL_IMPORT selected the VK-only present-image allocation (now
-// the ONLY allocation -- the exportable half is deleted). MC2_VK_PRESENT_TAIL_HOOK
-// is NOT retired -- it still gates the native HUD/ImGui tail recording. Emitted
-// once from init().
+// GL->VK handoff (the handoff itself is gone -> the skip is unconditional).
+// MC2_VK_PRESENT_TAIL_HOOK is NOT retired -- it still gates the native HUD/ImGui
+// tail recording. Emitted once from init().
 void emitDeprecatedPresentGateNotes() {
     static bool done = false;
     if (done) return;
@@ -316,9 +314,6 @@ void emitDeprecatedPresentGateNotes() {
     if (mc2::gate::get<"MC2_VK_PRESENT_SKIP_GL_HANDOFF">())
         plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF is deprecated (item-8): the GL->VK "
              "present handoff is deleted; the skip is now unconditional. No-op.");
-    if (mc2::gate::get<"MC2_VK_PRESENT_NO_GL_IMPORT">())
-        plog("MC2_VK_PRESENT_NO_GL_IMPORT is deprecated (item-8): the present "
-             "image is always a VK-only allocation. No-op.");
 }
 
 bool presentNativeStrictEnabled() {

@@ -129,7 +129,6 @@ extern bool useHighObjectDetail;
 extern bool MLRVertexLimitReached;
 
 // Eager gate caches defined in bdactor.cpp (shared by the static-registry pieces).
-extern const bool s_propFoliageAlphaFlag;
 extern const bool s_proxyReconEnabled;
 extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
 extern TouchEntryDiag s_touchEntryDiag;
@@ -165,7 +164,6 @@ namespace mc2_lightslot_trace {
     void recordLodBakeSlot(uint32_t lightDataIndex);
 }
 
-inline bool propFoliageAlphaFlag() { return s_propFoliageAlphaFlag; }
 // GPU-VENDOR-DETECT-1: defined in GameOS/gameos/gos_render.cpp. True only on
 // NVIDIA GPUs. The GPU-driven static-prop stack (compute cull -> indirect
 // multidraw -> persistent-mapped readback) was only validated on AMD RDNA3; on

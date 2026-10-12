@@ -70,10 +70,9 @@ What it owns:
     that touches `gos_static_prop_batcher.h` for static props (M1 spec
     section 12). New slices SHOULD prefer extending RenderWorld's API to
     adding a second engine-TU that reaches into a legacy batcher.
--   **The per-frame banner.** `frameBannerTick()` called from
+-   **The frame banner.** `frameBannerTick()` called from
     `gamecam.cpp` frame-end. Emits `[RENDER_WORLD v1] frame=N objects=T
-    static_props=S mechs=M` under `MC2_RENDER_WORLD_TRACE=1`; emits the
-    monotonic 600-frame summary always-on.
+    static_props=S mechs=M` as a monotonic 600-frame summary, always-on.
 
 What it does NOT own:
 
@@ -453,8 +452,8 @@ End-to-end walk for a Shift+click on a mech (M2.6 path):
 
 If the log is silent on what you expect to be a hit:
 
--   `MC2_RENDER_WORLD_TRACE=1` and look for `[RENDER_WORLD v1] frame=N
-    objects=T mechs=M`. If `M=0`, you have a registration leak.
+-   Look for the 600-frame `[RENDER_WORLD v1] frame=N objects=T mechs=M`
+    summary. If `M=0`, you have a registration leak.
 -   Run with `MC2_OBJECT_ID_BUFFER=1` and the per-mission counter
     `[MECHBATCHER v1] event=mech_id_summary gpu_mech_id_writes=N`. If
     `N=0`, the substrate is dark -- check the GLSL `#ifdef` prefix

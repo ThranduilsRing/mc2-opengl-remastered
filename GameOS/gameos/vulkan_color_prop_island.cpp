@@ -114,9 +114,8 @@ void vlog(const char* fmt, ...) {
 bool propColorTier1Requested() {
     static int state = -1;
     if (state == -1) {
-        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
-        // MC2_VK_PROP_COLOR_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        state = mc2vkgate::regionTier1Armed<"MC2_VK_PROP_COLOR_TIER1">() ? 1 : 0;  // require shared depth
+        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
+        state = mc2vkgate::umbrellaOn() ? 1 : 0;  // require shared depth
     }
     return state == 1;
 }
@@ -153,11 +152,10 @@ bool propDirectChainRequested() {
 // VK-P11 STATIC-PROP MATERIAL: real lit textured props (albedo 2D_ARRAY sample +
 // shared computePBR). Requires the Tier-1 gate (shared-GBuffer co-write). Default-OFF.
 bool propMaterialRequested() {
-    // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
-    // MC2_VK_PROP_MATERIAL=0/1 overrides. (Precondition = propColorTier1Requested,
-    // enforced at the call site.)
+    // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it (precondition =
+    // propColorTier1Requested, enforced at the call site).
     static int state = -1;
-    if (state == -1) state = mc2vkgate::armed<"MC2_VK_PROP_MATERIAL">() ? 1 : 0;
+    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
     return state == 1;
 }
 

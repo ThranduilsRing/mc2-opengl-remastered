@@ -154,13 +154,6 @@ RenderCore::RenderObjectHandle syncStaticProp(
             h.isValid() ? static_cast<int32_t>(h.index()) : -1;
     }
 
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=adapter_sync_static "
-            "shape=%p batch=%zu handle.valid=%d legacy=%d\n",
-            (void*)shape, batchCount, (int)h.isValid(),
-            legacyRecipeIndexOut ? *legacyRecipeIndexOut : -2);
-    }
     return h;
 }
 
@@ -183,12 +176,6 @@ RenderCore::RenderObjectHandle syncStaticPropLateSpawn(
         *legacyRecipeIndexOut = recipe;
     }
 
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=adapter_sync_late "
-            "app=%p recipe=%d handle.valid=%d\n",
-            (void*)app, recipe, (int)h.isValid());
-    }
     return h;
 }
 

@@ -301,7 +301,7 @@ void BldgAppearance::registerStatic() {
 		uint32_t flags = 0;
 		if (child->GetLightsOut())   flags |= (1u << 0);
 		if (child->GetIsWindow())    flags |= (1u << 1);
-		if (propFoliageAlphaFlag() && child->GetIsAlphaTest()) flags |= (1u << 2);
+		if (child->GetIsAlphaTest())   flags |= (1u << 2);   // FOLIAGE-ALPHAFLAG-1: kFlagIsAlphaTest, as submitMultiShape sets it
 		// rec->shapeToWorld is LinearMatrix4D; convert to Matrix4D for buildRecipeFromShape().
 		Stuff::Matrix4D xform(rec->shapeToWorld);
 		// TERRAIN-DECAL-SLICE-0A: replace the yaw-only leaf transform with the

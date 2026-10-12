@@ -70,7 +70,7 @@ via aligned 4-byte ClassID scan.
 - `MC2_VFX_ORACLE_RENDER` — **default-OFF** (reverted from the VFX-WEAPON-FX-RESTORE-OPUS-1 default-ON). Opt-in: `MC2_VFX_ORACLE_RENDER=1`. Enables oracle render for all migrated classes (inside `MC2_GPU_PARTICLES=1` check). Logs `[VFX_ROUTE v1] oracle_render=off reason=default_off` on startup (`reason=opt_in` when `=1`).
 - `MC2_GPU_PARTICLES_LOG=1` enables `[VFX_ORACLE v1]` per-class stderr output.
 - `MC2_VFX_DEBUG_MODE=5` enables age heatmap (blue=newborn, green=mid-life, red=dying) — VFX-SHADER-AGE-FADE-PARITY-1.
-- `MC2_TUNE_VFX_AGE_FADE=<0..1>` enables soft death fade for oracle particles in final 30% of life — VFX-SHADER-AGE-FADE-PARITY-1.
+- The ImGui VFX Tuning age-fade slider (0..1) enables soft death fade for oracle particles in final 30% of life — VFX-SHADER-AGE-FADE-PARITY-1 (the `MC2_TUNE_VFX_AGE_FADE` env seed was deleted in gate amnesty wave 1).
 - Gate-OFF (`MC2_VFX_ORACLE_RENDER=0`) is byte-identical — oracle path skipped, placeholder Spawn path runs.
 
 ## What fires in automated smoke (30s, no combat, camera pan only)

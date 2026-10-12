@@ -22,7 +22,7 @@ cmake --build build64-tgdump --config RelWithDebInfo --target tg_import_dump
 build64-tgdump/RelWithDebInfo/tg_import_dump.exe <model.glb|.fbx> [--no-ground]
 ```
 
-JSON → stdout; importer traces (`MC2_ASSIMP_TRACE`, `MC2_MECH_SKEL_TRACE`) → stderr,
+JSON → stdout; importer traces (`MC2_MECH_SKEL_TRACE`) → stderr,
 so stdout stays pure JSON. The skinned-mech bake respects `MC2_MECH_SKEL_HEIGHT`.
 
 ## Reports

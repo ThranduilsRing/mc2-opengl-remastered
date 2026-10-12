@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1134,
+ "count": 1075,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -503,32 +503,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_ASSET_FAILLOUD",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape — unset=ON, =0 exact legacy fail-soft).",
-   "readers": [
-    {
-     "at": "mclib/tgl_load_guard.cpp:22",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_ASSET_FAILLOUD",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_ASSET_SCALE_SELFTEST",
    "kind": "Bool",
    "default": false,
@@ -581,32 +555,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_ASSET_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the three shape-load entry points (LoadTGMultiShapeFromASE / LoadBinaryCopy / LoadFromFile).",
-   "readers": [
-    {
-     "at": "mclib/msl.cpp:219",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_ASSET_TRACE",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_ASSIMP_IMPORT",
@@ -686,38 +634,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_ASSIMP_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: verbose Assimp loader trace.",
-   "readers": [
-    {
-     "at": "mclib/assimp_importer.cpp:49",
-     "idiom": "Presence"
-    },
-    {
-     "at": "mclib/msl.cpp:490",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_ASSIMP_TRACE",
    "retireVerdict": ""
   },
   {
@@ -2690,36 +2606,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CAMERA_MOVE_DIAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: camera movement diagnostic readback probe.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gpu_cull_compute.cpp:899",
-     "idiom": "Presence"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:4309",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_CAMERA_MOVE_DIAG",
    "retireVerdict": ""
   },
   {
@@ -5727,110 +5613,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_FLUSH_PROBE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: GPU pipeline flush probe via glFinish.",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:3567",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_FLUSH_PROBE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_FOG_HORIZON_CLAMP",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Partial",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1283",
-     "idiom": "Partial[D,on,off,on,on,on,on,on]"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FOG_HORIZON_CLAMP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_FOG_HORIZON_FADE_END",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1287",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FOG_HORIZON_FADE_END",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_FOG_HORIZON_FADE_START",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1285",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FOG_HORIZON_FADE_START",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_FORCE_43",
    "kind": "Bool",
    "default": false,
@@ -8583,32 +8365,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_GV_LIGHTSOUT_CLEAR",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or OBJECT_STATUS_DISABLED but has NO else-branch to clear it, unlike the mech path (mech3d.cpp Mech3DAppearance::update sets both arms).",
-   "readers": [
-    {
-     "at": "mclib/gvactor.cpp:3108",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_GV_LIGHTSOUT_CLEAR",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_HAZE_PARITY",
    "kind": "Bool",
    "default": null,
@@ -10107,46 +9863,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_LIGHTING_DEBUG_VIEW",
-   "kind": "Enum",
-   "default": null,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7180",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "0",
-     "albedo",
-     "ambient",
-     "final",
-     "lightcount",
-     "lightindex",
-     "normal",
-     "off",
-     "overbright",
-     "shadow",
-     "sun"
-    ]
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_LIGHTING_DEBUG_VIEW",
    "retireVerdict": ""
   },
   {
@@ -16369,32 +16085,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_PROP_FOLIAGE_ALPHAFLAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic, mclib/bdactor.cpp) carry its actual documented meaning, kFlagIsAlphaTest, sourced from TG_TypeShape::alphaTestOn via the new TG_Shape::GetIsAlphaTest() seam.",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:62",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_PROP_FOLIAGE_ALPHAFLAG",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_PROP_LIGHT_LATCH_DIAG",
    "kind": "Bool",
    "default": false,
@@ -16878,32 +16568,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_RENDERLISTS_COST_SPLIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0P",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TXMMGR-PERF-EASYWINS-1: coarse per-phase CPU cost split of MC_TextureManager::renderLists() (mclib/txmmgr.cpp).",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:341",
-     "idiom": "Lead0P"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_RENDERLISTS_COST_SPLIT",
    "retireVerdict": ""
   },
   {
@@ -17474,82 +17138,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_RENDER_WORLD_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "Per-frame [RENDER_WORLD v1] banner + per-event logs (RenderWorld.cpp).",
-   "readers": [
-    {
-     "at": "GameAdapters/MechRenderAdapter.cpp:63",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/MechRenderAdapter.cpp:115",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/MechRenderAdapter.cpp:138",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/StaticPropRenderAdapter.cpp:161",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/StaticPropRenderAdapter.cpp:190",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:592",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:612",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:644",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:777",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1051",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1082",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1092",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1106",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_RENDER_WORLD",
    "retireVerdict": ""
   },
   {
@@ -19560,32 +19148,6 @@
    "retireVerdict": "tierB:MERGE"
   },
   {
-   "name": "MC2_SKYBOX_FOG_EXCLUDE",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "SKYBOX-FOG-EXCLUDE-1/2.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:577",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SKYBOX_FOG_EXCLUDE",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SMART_LOAD",
    "kind": "Bool",
    "default": true,
@@ -20176,32 +19738,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SPLIT_PATH_PARITY_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at split-path parity checkpoints.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:5284",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_SPLIT_PATH_PARITY",
    "retireVerdict": ""
   },
   {
@@ -22225,40 +21761,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_UPDATE_SKIP",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:1270",
-     "idiom": "Std(def=on)"
-    },
-    {
-     "at": "code/bldng.cpp:815",
-     "idiom": "Std(def=on)"
-    },
-    {
-     "at": "code/terrobj.cpp:96",
-     "idiom": "Std(def=on)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_UPDATE_SKIP",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_UPDATE_TRACE",
    "kind": "Bool",
    "default": false,
@@ -24050,39 +23552,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_LIGHT_POOLS",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10958",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4126",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0",
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_LIGHT_POOLS",
    "retireVerdict": ""
   },
   {
@@ -25937,34 +25406,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_TEXMGR_COMPRESSED_UPLOAD",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TEXMGR-COMPRESSED-UPLOAD-1: teach MC_TextureManager to load a BC7 .ktx2 sidecar (same path/stem as the source data/textures texture, extension -> .ktx2) and upload it via glCompressedTexImage2D in MC_TextureNode::get_gosTextureHandle (mclib/txmmgr.cpp), through the new gos_NewCompressedTexture2D GameOS creator. **DEFAULT ON; opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which read \"Default-OFF; =1 enables\" while mclib/txmmgr.cpp:5356-5359 does `(!v || !v[0]) ? true : (v[0] != '0')` -- and the comment directly above that reader already said \"Default-ON (opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0)\".",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:5881",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TEXMGR_COMPRESSED_UPLOAD",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_TEXMGR_KTX_PRIMARY",
    "kind": "Int",
    "default": 1,
@@ -26379,148 +25820,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to additive draw groups via per-group u_vfxIsAdditive).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:151",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:186",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_AGE_FADE",
-   "kind": "Float",
-   "default": 0.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:154",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_AGE_FADE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_ALPHA_SCALE",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:152",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_ALPHA_SCALE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_BRIGHTNESS",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:150",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:181",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_BRIGHTNESS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TUNE_VFX_LIT_STRENGTH",
-   "kind": "Float",
-   "default": 0.7,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups (u_vfxIsAdditive==0) and ONLY when the MC2_VFX_LIT_PARTICLES gate is ON.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:206",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:194",
-     "idiom": "NonEmpty(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.7,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VFX_LIT_STRENGTH",
    "retireVerdict": ""
   },
   {
@@ -27728,32 +27027,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VFX_ORACLE_TUBE_LOG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks).",
-   "readers": [
-    {
-     "at": "mclib/particles/batcher.cpp:226",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_VFX_ORACLE_TUBE_LOG",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VFX_SCENECOLOR_GRAB",
    "kind": "Bool",
    "default": false,
@@ -27859,64 +27132,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_VIEWMODE_FRAMEWORK",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VIEWMODE_LOWLIGHT_GAIN",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1373",
-     "idiom": "Num(atof,guarded)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [
-    "5.0"
-   ],
-   "numericRange": {
-    "lo": 0.1,
-    "hi": 16.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VIEWMODE_LOWLIGHT_TINT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "NonEmpty",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1378",
-     "idiom": "NonEmpty"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT",
    "retireVerdict": ""
   },
   {
@@ -28650,62 +27865,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_HUD",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image producer -- the GL 2D HUD draws into the DISCARDED GL backbuffer, so under the umbrella an unarmed VK HUD queue means the HUD VANISHES (the field bug; pre-b0b8ae2b the HUD survived only because present fell back to the GL backbuffer).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8068",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_HUD_COLOR_PROOF",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer -- recordPendingHudColorProof() draws NOTHING unless this is on (it clears the queued HUD undrawn otherwise).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:277",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_HUD_DRAW_DUMP",
    "kind": "Bool",
    "default": false,
@@ -28726,34 +27885,6 @@
    "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_HUD_SKIP_GL",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8079",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -28894,58 +28025,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_MECH_LIGHTING",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 (visible only with MC2_VK_MECH_MATERIAL=1).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_mech_island.cpp:155",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_MECH_LIGHTING",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_MECH_MATERIAL",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_mech_island.cpp:145",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_MECH_MATERIAL",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_MECH_PERF",
    "kind": "Bool",
    "default": false,
@@ -28969,44 +28048,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_MECH_TIER1",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:154",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:126",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_legacy_shape_island.cpp:74",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_mech_island.cpp:113",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_MECH_TIER1",
    "retireVerdict": ""
   },
   {
@@ -29112,94 +28153,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_VK_PICK_PROBE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_POST_COMPOSITE",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:285",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:294",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:150",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_POST_FOG_NATIVE",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_post_fog_native.cpp:556",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
    "retireVerdict": ""
   },
   {
@@ -29367,34 +28320,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_PRESENT_DIRECT_FBO",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for a VK-owned scene.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:250",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_PRESENT_DUMP_FRAME",
    "kind": "Int",
    "default": 0,
@@ -29513,34 +28438,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_PRESENT_NO_GL_IMPORT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK present-tail ownership gate.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:327",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
    "kind": "Bool",
    "default": false,
@@ -29569,34 +28466,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_PRESENT_TAIL_HOOK",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:262",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PRESENT_TAIL_HOOK",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_PRESENT_VERIFY",
    "kind": "Bool",
    "default": false,
@@ -29622,68 +28491,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_PROP_COLOR_TIER1",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES MC2_VK_SHARED_SCENE_DEPTH.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:104",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_color_prop_island.cpp:120",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PROP_COLOR_TIER1",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_PROP_DIRECT_CHAIN",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:296",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:146",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PROP_DIRECT_CHAIN",
    "retireVerdict": ""
   },
   {
@@ -29763,32 +28570,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_VK_PROP_MATERIAL",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_color_prop_island.cpp:164",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PROP_MATERIAL",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_VK_PROP_MATERIAL_DEBUG",
@@ -30059,56 +28840,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_SHARED_SCENE_DEPTH",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:155",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:88",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:132",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_color_prop_island.cpp:121",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_legacy_shape_island.cpp:75",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_mech_island.cpp:114",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:189",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_SHARED_SCENE_DEPTH",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_SHARED_SCENE_STRICT",
    "kind": "Bool",
    "default": false,
@@ -30134,62 +28865,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TRACE_VK_SHARED_SCENE_STRICT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_STATIC_SHADOW_MAP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Is01",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "DEPRECATED no-op (VK-RUNG8-ITEM6).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:221",
-     "idiom": "Is01"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_STATIC_SHADOW_MAP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_ALL_LODS",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:218",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
    "retireVerdict": ""
   },
   {
@@ -30220,36 +28895,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_CSM",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_CSM",
    "retireVerdict": ""
   },
   {
@@ -30335,58 +28980,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_TERRAIN_DETAIL",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1807",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_DETAIL",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_DYNSHADOW",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1681",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_DYNSHADOW",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_TERRAIN_FENCE_DEFER",
    "kind": "Bool",
    "default": true,
@@ -30410,110 +29003,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to GL, bucketed by inactive, uncaptured LOD band, visual-displace mode, edge-stitch, and other.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:436",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_HEIGHT_AUDIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:1388",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:1400",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_LIGHTING",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1644",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_LIGHTING",
    "retireVerdict": ""
   },
   {
@@ -30597,68 +29086,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_TERRAIN_SKIRTS",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:237",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_TIER1",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:118",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:132",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:188",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_TERRAIN_TIER1",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_TERRAIN_VISUALDISPLACE_FAR",
    "kind": "Bool",
    "default": false,
@@ -30684,88 +29111,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_VFX",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7591",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8420",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_vfx_island.cpp:434",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "code/gamecam.cpp:732",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "code/gamecam.cpp:843",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "code/gamecam.cpp:967",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "code/objmgr.cpp:2192",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "code/weaponbolt_render.cpp:18",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "0"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_VFX",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_VFX_COALESCE",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_ entry instead of one entry PER TRIANGLE.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:6391",
-     "idiom": "Lead0Kill(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_VFX_COALESCE",
    "retireVerdict": ""
   },
   {
@@ -30804,38 +29149,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TRACE_VK_VFX_TRACE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_WATER_DIRECT_CHAIN",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:298",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:148",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_WATER_DIRECT_CHAIN",
    "retireVerdict": ""
   },
   {
@@ -30889,42 +29202,6 @@
    "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_WATER_TIER1",
-   "kind": "Tri",
-   "default": "inherit",
-   "rule": "Tri",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/engine_present_vk.cpp:297",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:147",
-     "idiom": "Tri(inherit)"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_water_island.cpp:141",
-     "idiom": "Tri(inherit)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -31786,58 +30063,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_WATER_SHINE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_WATER_SHORE3_DEPTH_K",
-   "kind": "Float",
-   "default": 0.03,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve notches; gos_terrain_water_fast_mdi.vert, uploaded in gameos_graphics.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2997",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.03,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_TUNE_WATER_SHORE3_DEPTH_K",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_WATER_SHORE3_EXTRA_WU",
-   "kind": "Float",
-   "default": 60.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the per-pixel discard to carve (gos_terrain_water_stream.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_water_stream.cpp:168",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 60,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_TUNE_WATER_SHORE3_EXTRA_WU",
    "retireVerdict": ""
   },
   {

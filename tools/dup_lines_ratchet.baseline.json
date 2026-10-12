@@ -1,13 +1,13 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 5679,
+  "GameOS": 5683,
   "GuiRuntime": 64,
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 15049,
-  "mclib": 32486,
+  "code": 15034,
+  "mclib": 32471,
   "shaders": 3012
  },
  "dirs": [
@@ -83,7 +83,7 @@
   "GameOS/gameos/utils/shader_builder.cpp": 96,
   "GameOS/gameos/utils/vec.cpp": 22,
   "GameOS/gameos/visual_tuning_profile.cpp": 42,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 233,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 235,
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": 201,
   "GameOS/gameos/vulkan_mech_island.cpp": 269,
@@ -95,7 +95,7 @@
   "GameOS/gameos/vulkan_shadow_island_live.h": 8,
   "GameOS/gameos/vulkan_shared_scene_color.cpp": 8,
   "GameOS/gameos/vulkan_shared_scene_depth.cpp": 8,
-  "GameOS/gameos/vulkan_sky_island.cpp": 59,
+  "GameOS/gameos/vulkan_sky_island.cpp": 61,
   "GameOS/gameos/vulkan_terrain_island.cpp": 11,
   "GameOS/gameos/vulkan_terrain_island.h": 12,
   "GameOS/gameos/vulkan_terrain_island_images.cpp": 110,
@@ -251,7 +251,7 @@
   "code/objmgr_io.cpp": 276,
   "code/objmgr_misc.cpp": 47,
   "code/objmgr_pick.cpp": 138,
-  "code/objmgr_update.cpp": 65,
+  "code/objmgr_update.cpp": 50,
   "code/optionsarea.cpp": 50,
   "code/optionsarea.h": 18,
   "code/pausewindow.cpp": 24,
@@ -567,7 +567,6 @@
   "mclib/tgl_types.cpp": 132,
   "mclib/txmmgr.cpp": 84,
   "mclib/txmmgr.h": 144,
-  "mclib/txmmgr_render.cpp": 15,
   "mclib/txmmgr_render_overlays.cpp": 228,
   "mclib/txmmgr_render_passes.cpp": 18,
   "mclib/txmmgr_render_phases.cpp": 30,
@@ -654,8 +653,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "1802f517e",
+ "head": "a7ddae10b",
  "n": 8,
- "total": 56870,
+ "total": 56844,
  "version": 1
 }

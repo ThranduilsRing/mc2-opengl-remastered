@@ -13,7 +13,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 	// off-screen-caster low-sun shadow is the documented Phase-2 gap).
 	{
 		ZoneScopedN("RenderLists.DynamicShadowPass");
-		rlcost::Span _rl(rlcost::kDynShadow);
+		GosGlLostDrawsScope _rlLost_("dyn_shadow");
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowDyn);
 		extern bool g_useGpuObjects;
 		extern bool g_useGpuMechs;
@@ -376,7 +376,7 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 
 	{
 		ZoneScopedN("Render.TerrainSolid");
-	rlcost::Span _rl(rlcost::kTerrainSolid);
+	GosGlLostDrawsScope _rlLost_("terrain_solid");
 		TracyGpuZone("Render.TerrainSolid");
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_TerrainSolid);
 
@@ -664,7 +664,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		if (g_useGpuStaticProps || g_useGpuObjects) {
 			// [RENDERLISTS_COST v1] prep+cull-dispatch only; the two flush units
 			// below carry their own spans (no double-count vs total).
-			rlcost::Span _rl(rlcost::kGpuSpPrep);
+			GosGlLostDrawsScope _rlLost_("gpusp_prep_cull");
 			// Stage 3.C registry flush MOVED earlier (before flushShadow, see
 			// STATIC-PROP SHADOW-ORDER FIX 2026-05-29) so terrain-object instances
 			// are in s_bucketsByType before the shadow-time SSBO upload locks the
@@ -708,45 +708,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 				gpu_cull::compute_dispatch();
 			}
 
-			// CAMERA-MOVE-DIAG: log substrate record count + cull output before/after
-			// dispatch to distinguish compute early-return vs frustum-all-fail.
-			// Gate: MC2_CAMERA_MOVE_DIAG=1. Causes GL stalls — diagnostic only.
-			{
-				static const bool s_diagEnabled = mc2::gate::get<"MC2_CAMERA_MOVE_DIAG">();
-				if (s_diagEnabled) {
-					static float s_lastMvp[16] = {};
-					static uint32_t s_frameN = 0;
-					extern const float* gos_GetTerrainMVPMat4();
-					const float* mvp = gos_GetTerrainMVPMat4();
-					bool mvpChanged = mvp && (memcmp(mvp, s_lastMvp, 16 * sizeof(float)) != 0);
-					if (mvp && mvpChanged) memcpy(s_lastMvp, mvp, 16 * sizeof(float));
-					++s_frameN;
-					// Log every camera-move frame; stationary every 120 frames
-					bool doLog = mvpChanged || (s_frameN % 120 == 0);
-					if (doLog) {
-						const uint32_t subRec = gpu_cull::substrate_getCurrentRecordCount();
-						const GLintptr  subOff = gpu_cull::substrate_getCurrentSlotOffset();
-						glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
-						const GLuint bktBuf = gpu_cull::compute_getBucketCountsBuf();
-						const GLuint cmdBuf = gpu_cull::compute_getIndirectCmdBuf();
-						uint32_t bkt[4] = {};
-						if (bktBuf) glGetNamedBufferSubData(bktBuf, 0, sizeof(bkt), bkt);
-						uint32_t inst0 = 0;
-						if (cmdBuf) glGetNamedBufferSubData(cmdBuf, 4, sizeof(inst0), &inst0); // struct[0].instanceCount
-						// Sum ALL bucket counts across all 221+ buckets.
-						uint32_t bktTotal = 0;
-						const uint32_t nBkts = gpu_cull::compute_getBucketCount();
-						if (bktBuf && nBkts > 0) {
-							std::vector<uint32_t> allBkt(nBkts + 1u);
-							glGetNamedBufferSubData(bktBuf, 0, (nBkts + 1u) * sizeof(uint32_t), allBkt.data());
-							for (uint32_t b = 0; b < nBkts; ++b) bktTotal += allBkt[b];
-						}
-						mc2::fmt::print_out("[DIAG] {} subRec={:d} | bkt0={:d} bkt1={:d} bkt2={:d} bkt3={:d} bktTOTAL={:d} | inst0={:d} | mvp[0..3]=[{:.3f} {:.3f} {:.3f} {:.3f}]\n", mc2::fmt::safe(mvpChanged ? "MOVE  " : "STATIC"), mc2::fmt::as_u32(subRec), mc2::fmt::as_u32(bkt[0]), mc2::fmt::as_u32(bkt[1]), mc2::fmt::as_u32(bkt[2]), mc2::fmt::as_u32(bkt[3]), mc2::fmt::as_u32(bktTotal), mc2::fmt::as_u32(inst0), mvp ? mvp[0] : 0.f, mvp ? mvp[1] : 0.f, mvp ? mvp[2] : 0.f, mvp ? mvp[3] : 0.f);
-						fflush(stdout);
-					}
-				}
-			}
-
 		}
 
 		// MEASURED-REORDER-SPMECH-1 (tier-C reorder EXPERIMENT, default-OFF):
@@ -769,7 +730,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
-				rlcost::Span _rl(rlcost::kSpBatcherFlush);
+				GosGlLostDrawsScope _rlLost_("sp_batcher_flush");
 #ifdef MC2_VULKAN_ISLAND
 				// VK-P11 STATIC-PROP COLOR Tier-1 (gate MC2_VK_PROP_COLOR_TIER1):
 				// render visible static-prop color instances directly into the shared
@@ -809,7 +770,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		auto runMechFlushUnit = []() {
 			ZoneScopedN("Render.GpuMechs");
 			TracyGpuZone("Render.GpuMechs");
-			rlcost::Span _rl(rlcost::kMechFlush);
+			GosGlLostDrawsScope _rlLost_("mech_flush");
 			gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Mechs);
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
 			// MECHOPAQUE-NOTE-RELOCATE-1: note fires at the real mech GPU draw
@@ -870,9 +831,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// MC2_TERRAIN_MASK_DISPATCH=1 AND MC2_TERRAIN_MASK_DISPATCH_SOLID != "0".
 	// Pass_Overlays = one coarse scope spanning Render.TerrainMask.Solid
 	// through Render.Decals (sub-zones stay Tracy-only).
-	// [RENDERLISTS_COST v1] manual span: the overlay region is a run of sibling
-	// blocks (mask-solid .. decals), not one lexical scope.
-	const unsigned long long _rlOv0 = rlcost::s_enabled ? rlcost::nowNs() : 0ULL;
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Overlays);
 	{
 		ZoneScopedN("Render.TerrainMask.Solid"); GosGlLostDrawsScope _lost_("overlays.mask_solid");
@@ -939,6 +897,5 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	}
 #endif
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Overlays);
-	if (rlcost::s_enabled) rlcost::s_ns[rlcost::kOverlays] += rlcost::nowNs() - _rlOv0;
 	// ── End new world-space overlay batches ───────────────────────────────────
 }

@@ -864,37 +864,14 @@ void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
     afterDrawCall();
 }
 
-// VK-VFX-COALESCE-1: killswitch for the consecutive-same-state HUD tri-batch
-// merge in drawTris() below. MLRSortByOrder emits gosFX geometry (weapon
-// tracers, muzzle flashes, impacts) one triangle at a time via
-// gos_DrawTriangles (mclib/mlr/mlrsortbyorder.cpp:589-609) -- under a weapon
-// volley this pushed one HudDrawCall PER TRIANGLE (measured peak 251
-// hudBatch_ entries/frame vs a 14-entry quiet floor, forced multi-mech fire,
-// VK-ARC-STATE.md 2026-07-16). Default OFF pending this slice's own parity
-// verification pass (arc convention: new perf paths default OFF until proven
-// clean, then flip via this one function -- see VK-ARC-STATE.md for the
-// verdict that decided the value below). Explicit "1"/"0" always override.
-// Registered RenderCore/RendererFeatureRegistry.h, documented
-// docs/tier1_env_vars.md, smoke-allowlisted scripts/run_smoke.py.
-static bool mc2VfxCoalesceEnabled() {
-    static int state = -1;
-    if (state == -1) {
-        // Row: Lead0Kill, so unset (or anything not starting with '0') -> ON; a leading '0' is the opt-out.
-        state = mc2::gate::get<"MC2_VK_VFX_COALESCE">() ? 1 : 0;
-        // DEFAULT-ON as of this slice's own verification pass: draw-count A/B
-        // (mc2_01, forced multi-mech fire, field env) showed peak hudBatch_
-        // entries collapse 349 -> 109 with quiet-floor unaffected (13 vs 14);
-        // [VK_HUD_AUDIT v1] vertices= totals were BIT-IDENTICAL to the legacy
-        // path at every matching sample (e.g. two independent 1106-vertex
-        // states, tris count halved, calls dropped by exactly the tris delta,
-        // quads/lines/text untouched); zero VK_HUD_SKIP_DECLINE, zero
-        // fallback_reason, zero validation_errors across all runs; fire-event
-        // PPM capture visually matches the banked VFX-9 reference
-        // (.claude/vfx-fire/mc2_01/vk_onfire_pair3_flipped.png) at the same
-        // fixture pin. See VK-ARC-STATE.md for the full write-up.
-    }
-    return state == 1;
-}
+// VK-VFX-COALESCE-1: consecutive-same-state HUD tri-batch merge in drawTris()
+// below. MLRSortByOrder emits gosFX geometry (weapon tracers, muzzle flashes,
+// impacts) one triangle at a time via gos_DrawTriangles -- under a weapon
+// volley this pushed one HudDrawCall PER TRIANGLE (measured peak 251 hudBatch_
+// entries/frame vs a 14-entry quiet floor). The merge is unconditional: its
+// A/B (mc2_01, forced multi-mech fire) collapsed peak entries 349 -> 109 with
+// [VK_HUD_AUDIT v1] vertex totals bit-identical to the per-triangle path
+// (VK-ARC-STATE.md 2026-07-16).
 
 void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawTris");
@@ -942,7 +919,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
         // the shrink test can't apply to this draw (out of mission, scale==1,
         // or scaleExempt) there is no per-vertex hazard and same-state adjacent
         // triangles may always merge.
-        if (mc2VfxCoalesceEnabled() && count == 3 && !hudBatch_.empty()) {
+        if (count == 3 && !hudBatch_.empty()) {
             HudDrawCall& back = hudBatch_.back();
             if (back.kind == kHudTriBatch &&
                 !back.vertices.empty() &&
@@ -1039,7 +1016,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // (scene.gosfx_clipper lost-draw samples). Expand to a plain triangle list and
     // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
     // Only when IsHUD is set AND the VFX sub-gate is armed (VK) -> GL byte-identical.
-    const bool vkVfxArmed = mc2vkgate::armed<"MC2_VK_VFX">();
+    const bool vkVfxArmed = mc2vkgate::umbrellaOn();
     if (renderStates_[gos_State_IsHUD] && num_indices > 0 && vkVfxArmed) {
         std::vector<gos_VERTEX> expanded;
         expanded.reserve((size_t)num_indices);

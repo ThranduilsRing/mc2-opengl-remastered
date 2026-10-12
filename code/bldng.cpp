@@ -813,9 +813,8 @@ long Building::update (void)
 			// get the full update; idle registered-static buildings take the cheap
 			// touch() path (was running a full BldgAppearance::update — spotlight
 			// SetPosition loop + hierarchy transform — every frame). updateAnimations()
-			// + recalcBounds already ran above. MC2_STATIC_UPDATE_SKIP=0 opts out.
-			static const bool s_bldgStaticSkip = mc2::gate::get<"MC2_STATIC_UPDATE_SKIP">();
-			if (s_bldgStaticSkip && appearance->IsStaticNow() && !getFlag(OBJECT_FLAG_FALLING))
+			// + recalcBounds already ran above.
+			if (appearance->IsStaticNow() && !getFlag(OBJECT_FLAG_FALLING))
 				appearance->touch();
 			else
 				appearance->update();

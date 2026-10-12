@@ -62,5 +62,5 @@ after the source albedo** so MC2's importer derives the matching on-disk `.tga`.
    (CMake option, default ON). Any extension in `Source` is stripped; the engine
    probes `.glb` then `.fbx`, falling back to `.ase` (`mclib/msl.cpp:438`).
 4. run the game; verify in `mc2_24` (no intro cinematic). Debug/tuning env vars:
-   `MC2_ASSIMP_TRACE=1` (per-probe/import trace), `MC2_GLTF_AXIS` / `MC2_GLTF_YOFF` /
+   `MC2_GLTF_AXIS` / `MC2_GLTF_YOFF` /
    `MC2_GLTF_GROUND` (orientation / lift / grounding).

@@ -1,8 +1,8 @@
 // vk_gpu_timestamps.h — VK-DRAW-PERF-1 GPU timestamp instrumentation (header-only).
 //
 // A tiny, self-contained GPU-timestamp bracket for the island render passes. Gated
-// behind MC2_VK_GPU_TIMESTAMPS (default-OFF, verification-only — same class as
-// MC2_VK_TERRAIN_HEIGHT_AUDIT). Uses vkCmdWriteTimestamp (VK 1.1 core, no device
+// behind MC2_VK_GPU_TIMESTAMPS (default-OFF, verification-only). Uses
+// vkCmdWriteTimestamp (VK 1.1 core, no device
 // feature required — only the queue-family timestampValidBits + limits.timestampPeriod
 // gate it, so it is MoltenVK-clean). No pipeline-statistics query (that WOULD need a
 // device feature the shared engine context does not enable).

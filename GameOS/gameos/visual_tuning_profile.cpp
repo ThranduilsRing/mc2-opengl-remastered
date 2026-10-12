@@ -175,23 +175,16 @@ static void applyKey(const char* key, float val, int& count) {
             count++;
         }
     } else if (strcmp(key, "vfxBrightness") == 0) {
-        if (!mc2::gate::isNonEmpty<"MC2_TUNE_VFX_BRIGHTNESS">()) {
-            gos_vfx_setBrightness(val);
-            count++;
-        }
+        gos_vfx_setBrightness(val);
+        count++;
     } else if (strcmp(key, "vfxAdditiveBrightness") == 0) {
-        if (!mc2::gate::isNonEmpty<"MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS">()) {
-            gos_vfx_setAdditiveBrightness(val);
-            count++;
-        }
+        gos_vfx_setAdditiveBrightness(val);
+        count++;
     } else if (strcmp(key, "vfxLitStrength") == 0) {
-        // VFX-LIT-PARTICLES-MVP-1: per-mission lit-smoke strength (0..1). env
-        // value-var wins over profile (same convention as the mech keys). Gate
+        // VFX-LIT-PARTICLES-MVP-1: per-mission lit-smoke strength (0..1). Gate
         // MC2_VFX_LIT_PARTICLES still controls whether lighting is applied.
-        if (!mc2::gate::isNonEmpty<"MC2_TUNE_VFX_LIT_STRENGTH">()) {
-            gos_vfx_setLitStrength(val);
-            count++;
-        }
+        gos_vfx_setLitStrength(val);
+        count++;
     } else if (strcmp(key, "aoRadius") == 0) {
         // SSAO-GTAO-LITE-MVP-1: per-mission AO tunables. Only visible when
         // MC2_SSAO is on; harmless otherwise (writes member).

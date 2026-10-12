@@ -518,7 +518,7 @@ public:
     // the SHARED scene depth and blending into the SHARED scene color0 IN PLACE —
     // zero copies, zero CPU readbacks, no private device (supersedes the subgraph
     // when its gate is on; highest precedence at the fog site). Gate
-    // MC2_VK_POST_FOG_NATIVE (an umbrella member: mc2vkgate::armed<>). runVkPostFogNative()
+    // umbrella-armed (mc2vkgate::umbrellaOn()). runVkPostFogNative()
     // returns true only when BOTH fogs rendered via VK (caller skips BOTH GL sites);
     // any not-ready condition returns false -> unchanged subgraph/island/GL chain.
     // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
@@ -614,16 +614,13 @@ public:
     // fades to ZERO within a small elevation band just above the horizon, leaving
     // the sky above clear. Supersedes the old worldDir.z 0.22 exclusion band
     // (which let fog survive to ~12deg+ elevation, bleeding up into the sky).
-    //   MC2_FOG_HORIZON_FADE_START -- elevation (deg) where the fade begins; fog
-    //                                 still full at/below this.  Default 0.
-    //   MC2_FOG_HORIZON_FADE_END   -- elevation (deg) where fog reaches zero.
-    //                                 Default 5.  Must be > start.
-    //   MC2_FOG_HORIZON_CLAMP=0    -- kill-switch: restore the previous profile
-    //                                 (no elevation clamp; old worldDir.z band).
+    //   fogHorizonFadeStartDeg_ -- elevation (deg) where the fade begins; fog
+    //                              still full at/below this (0).
+    //   fogHorizonFadeEndDeg_   -- elevation (deg) where fog reaches zero (5).
     // Shader form is cheap: we pass the SINES of the two angles (elevSin =
     // -worldDir.z for a normalized dir), so the frag does a plain smoothstep on
     // -worldDir.z with no per-fragment trig.
-    bool  fogHorizonClampEnabled_ = true;    // default ON (rides existing fog gate)
+    bool  fogHorizonClampEnabled_ = true;    // always on (the uniform the fog shaders read)
     float fogHorizonFadeStartDeg_ = 0.0f;
     float fogHorizonFadeEndDeg_   = 5.0f;
     float fogHorizonFadeStartSin_ = 0.0f;    // sin(0deg)
@@ -655,8 +652,8 @@ public:
 
     // LOWLIGHT-NIGHTVISION-MVP-1: pure-postprocess night-vision tunables.
     // Active only when the selected ViewMode is LowLight (5); the composite
-    // branch is otherwise skipped (Visual byte-identical). Seeded from
-    // MC2_VIEWMODE_LOWLIGHT_GAIN / _TINT at init; ImGui- and profile-adjustable.
+    // branch is otherwise skipped (Visual byte-identical). ImGui- and
+    // profile-adjustable.
     float lowLightGain_    = 2.5f;                 // luminance amplification
     float lowLightTint_[3] = { 0.7f, 1.0f, 0.6f }; // green-phosphor NV tint
 
@@ -684,8 +681,7 @@ private:
     // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage
     // (GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX baked in via glTextureView,
     // so it can be sampled in the same draw as the depth-mode sceneDepthTex_
-    // binding without per-bind mode toggling). Lazily created; 0 when
-    // MC2_SKYBOX_FOG_EXCLUDE=0 (never allocated -> zero cost OFF).
+    // binding without per-bind mode toggling). Lazily created.
     GLuint sceneStencilViewTex_ = 0;
     GLuint sceneNormalTex_;
     GLuint sceneObjectIdTex_ = 0;   // M1.5 R32UI MRT attachment-2 (gated on MC2_OBJECT_ID_BUFFER)
@@ -730,8 +726,7 @@ private:
     bool          hdriReady_       = false;  // true iff tex + program both valid
     GLuint        hdriDummyVao_    = 0;      // fallback when quadVAO_ unavailable
     // SKYBOX-FOG-EXCLUDE-1: stencil-only tag pass program (hdri_skybox_stencil_tag.frag).
-    // Compiled lazily on first use under MC2_SKYBOX_FOG_EXCLUDE=1; null/no-op when
-    // the gate is off (zero cost OFF).
+    // Compiled lazily on first use.
     glsl_program* hdriSkyboxStencilTagProg_ = nullptr;
     // HDRI-SKY Item 2: GL-equirect azimuth (radians) of the baked sun in the
     // EXR, derived at load time by luminance-weighted centroid of the brightest
@@ -904,14 +899,6 @@ float gos_GetSsaoBias();
 // Call at mission load after the mission sky number is known.
 // No-op when HDRI is disabled or skyNumber is out of range (1-21).
 void gos_SetSkyNumber(int skyNumber);
-
-// SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: sole cross-TU accessor for the
-// MC2_SKYBOX_FOG_EXCLUDE gate (default ON; `=0` restores the legacy OFF path).
-// Exists so vulkan_post_fog_native.cpp's parity guard reads the SAME default the
-// GL fog passes do -- it previously kept a private getenv that defaulted OFF, so
-// the guard never fired on an unset environment and VK fogged sky pixels GL
-// excluded. Do not add a second reader; add a call to this.
-bool gos_SkyboxFogExcludeEnabled();
 
 // VK-GL-LOST-DRAWS-1: per-draw-group GL_SAMPLES_PASSED diagnostic (env
 // MC2_VK_SCENE_GL_PRODUCER_QUERY=1 AND MC2_RENDER_BACKEND=vulkan; otherwise the

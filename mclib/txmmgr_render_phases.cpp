@@ -214,7 +214,7 @@ public:
 		// vehicles received zero contribution from building pools, turret
 		// lamps and their own headlights at night. Must come after
 		// gos_ApplyRenderMaterial (needs the active program).
-		// Gated off (MC2_TERRAIN_LIGHT_POOLS / MC2_LIGHT_POOL_OBJECTS) this
+		// Gated off (MC2_LIGHT_POOL_OBJECTS) this
 		// force-uploads u_numPoolLights=0 -> calcLightPools returns +0.0
 		// exactly -> byte-identical.
 		gos_UploadObjectLightPools(mat);
@@ -241,7 +241,7 @@ void MC_TextureManager::renderListsPreamble (void)
 {
 	{
 	ZoneScopedN("RenderLists.Preamble");
-	rlcost::Span _rl(rlcost::kPreamble);
+	GosGlLostDrawsScope _rlLost_("preamble");
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
@@ -295,7 +295,7 @@ void MC_TextureManager::renderListsLightDataUpload (void)
 {
 	{
 	ZoneScopedN("RenderLists.LightDataUpload");
-	rlcost::Span _rl(rlcost::kLightUpload);
+	GosGlLostDrawsScope _rlLost_("light_upload");
     // copy global list of light data into GPU buffer
 
     // [LIGHTSSBO v1] Upload-size FLOOR retained (NOT a removable UBO-window
@@ -339,7 +339,7 @@ void MC_TextureManager::renderListsSceneDataUpload (void)
     Stuff::Vector3D cp = eye->getCameraOrigin();
     {
         ZoneScopedN("Camera.SceneDataUpload");
-        rlcost::Span _rl(rlcost::kSceneData);
+        GosGlLostDrawsScope _rlLost_("scene_data");
         sceneData_->fog_start = eye->fogStart;
         sceneData_->fog_end = eye->fogFull;
         sceneData_->min_haze_dist = Camera::MinHazeDistance;
@@ -372,7 +372,7 @@ void MC_TextureManager::renderListsObjects3D (void)
 	{
 		ZoneScopedN("Render.3DObjects");
 		TracyGpuZone("Render.3DObjects");
-		rlcost::Span _rl(rlcost::kObj3d);
+		GosGlLostDrawsScope _rlLost_("obj3d");
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Obj3d);
 		// SAME-ORDER-EXECUTOR-SLICE-2: validate-only ownership of MechOpaque top-level
 		// pass. Body sets its own state (no apply); this just validates ambient+FBO.
@@ -446,7 +446,7 @@ void MC_TextureManager::renderListsPostObjectsStateRestore (void)
 {
 	{
 	ZoneScopedN("RenderLists.PostObjectsStateRestore");
-	rlcost::Span _rl(rlcost::kStateRestore);
+	GosGlLostDrawsScope _rlLost_("state_restore");
 	// [Moved in Phase 4 debug] flush() was originally here (after
 	// Render.3DObjects). But Render.TerrainSolid runs AFTER us on line
 	// ~1287, so terrain was overwriting our building pixels. Flush is
@@ -484,7 +484,7 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 	    Terrain::mapData) {
 		ZoneScopedN("Shadow.StaticFullMapBuild");
 		TracyGpuZone("Shadow.StaticFullMapBuild");
-		rlcost::Span _rl(rlcost::kStaticShadowBuild);
+		GosGlLostDrawsScope _rlLost_("static_shadow_build");
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowStatic);
 
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
@@ -558,18 +558,10 @@ void MC_TextureManager::renderListsStaticPropRegistryFlush (void)
 	// Render.GpuStaticProps block; runs regardless of tessellation/mech state.
 	{
 		ZoneScopedN("RenderLists.StaticPropRegistryFlush");
-		rlcost::Span _rl(rlcost::kSpRegistryFlush);
+		GosGlLostDrawsScope _rlLost_("sp_registry_flush");
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {
-			// GPU-ORDERING-PROBE-1: glFinish() before static-prop flush to confirm
-			// whether the flash is a pipeline ordering / missing-barrier issue.
-			// If glFinish() here stops the flash → cause is a GPU sync gap introduced
-			// by d65552ab's new GL_SHADER_STORAGE_BARRIER_BIT calls changing AMD
-			// pipeline scheduling for s_indirectCmdBuf visibility on camera-move frames.
-			// Kill this probe once root cause is identified.
-			static const bool s_finishProbe = mc2::gate::get<"MC2_FLUSH_PROBE">();
-			if (s_finishProbe) glFinish();
 			GpuStaticPropRegistry::flush();
 		}
 	} // end RenderLists.StaticPropRegistryFlush

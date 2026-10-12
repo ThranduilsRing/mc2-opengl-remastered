@@ -368,9 +368,7 @@ def test_real_tree_known_gaps_are_not_ported_and_allowlisted():
     # committed allowlist is only promised to match the committed shaders.
     twins, rows = cov.compute(Source(ROOT, ref="HEAD"))
     np_pairs = {(r["gate"], r["gl_shader"]) for r in rows if r["status"] == "NOT_PORTED"}
-    for pair in (("MC2_SKYBOX_FOG_EXCLUDE", "shaders/fog_oob.frag"),
-                 ("MC2_SKYBOX_FOG_EXCLUDE", "shaders/edge_fog.frag"),
-                 ("MC2_WATER_SHORE_MEANDER", "shaders/gos_terrain_water_mdi.frag"),
+    for pair in (("MC2_WATER_SHORE_MEANDER", "shaders/gos_terrain_water_mdi.frag"),
                  ("MC2_SUN_AXIS_FIX", "shaders/mech.vert")):
         assert pair in np_pairs
     allow = cov.load_allowlist(os.path.join(ROOT, cov.ALLOWLIST))

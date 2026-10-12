@@ -44,8 +44,8 @@ exists but the bloom add and tonemap are skipped, so output is unchanged.
 
 | Lever | Where | Default | Effect |
 |---|---|---|---|
-| `MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS` / profile `vfxAdditiveBrightness` / ImGui "Additive brightness" | `gos_particle_bridge` `u_vfxAdditiveBrightness` (clamp 0..8) | 1.0 | RGB scale on **additive** groups only — the highest-value lever for pushing flashes/PPC/explosions over the bloom threshold |
-| `MC2_TUNE_VFX_BRIGHTNESS` / profile `vfxBrightness` | `u_vfxBrightness` (all particles) | 1.0 | global RGB scale |
+| profile `vfxAdditiveBrightness` / ImGui "Additive brightness" | `gos_particle_bridge` `u_vfxAdditiveBrightness` (clamp 0..8) | 1.0 | RGB scale on **additive** groups only — the highest-value lever for pushing flashes/PPC/explosions over the bloom threshold |
+| profile `vfxBrightness` | `u_vfxBrightness` (all particles) | 1.0 | global RGB scale |
 | per-mission `bloomThreshold` | `visual_tuning_profile` -> `gos_SetBloomThreshold` | 1.2 | luminance cut for the bright-pass; lower = more pixels bloom |
 | per-mission `bloomIntensity` | `gos_SetBloomIntensity` | 0.15 | bloom add strength in composite |
 

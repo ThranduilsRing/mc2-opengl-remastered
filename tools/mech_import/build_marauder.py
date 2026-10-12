@@ -126,7 +126,7 @@ def main():
     print(f"  copy {out_tex}/*.tga  ->  <game>/data/tgl/  AND  <game>/data/tgl/<ObjectTextureSize>/")
     print("  ensure madcat.ini has [Import] Source=\"MadCat\"  (REQUIRED opt-in; engine probes .glb/.fbx, falls back .ase)")
     print("  no env var needed (build must have ENABLE_ASSIMP_IMPORTER) ; check in mc2_24 (no intro cinematic)")
-    print("  debug: MC2_ASSIMP_TRACE=1 traces probes ; MC2_GLTF_AXIS/_YOFF/_GROUND tune orientation/lift")
+    print("  debug: MC2_GLTF_AXIS/_YOFF/_GROUND tune orientation/lift")
 
 
 if __name__ == "__main__":

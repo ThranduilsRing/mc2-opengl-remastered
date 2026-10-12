@@ -104,7 +104,6 @@ Flags ending in `_TRACE` write per-event or per-frame messages to stderr. Enable
 | `MC2_STATIC_PROP_TRACE` | Static-prop admission and eviction |
 | `MC2_MECH_LOD_TRACE` | Mech LOD transitions |
 | `MC2_MECH_NODE_TRACE` | Mech node traversal |
-| `MC2_RENDER_WORLD_TRACE` | RenderWorld object lifecycle |
 | `MC2_TEX_LIFECYCLE_TRACE` | Texture load, upload, eviction |
 | `MC2_LIGHTSSBO_TRACE` | Light SSBO upload |
 | `MC2_WATER_DEBUG` | Water fast-path state |

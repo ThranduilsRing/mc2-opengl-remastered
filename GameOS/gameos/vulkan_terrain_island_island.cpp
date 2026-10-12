@@ -293,7 +293,6 @@ bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
         return false;
     s->heightCapBytes = cap;
     s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
-    s->heightChecksumValid = false;      // stale checksum until the re-snapshot runs
     write_descriptors(s);
     return true;
 }
@@ -444,7 +443,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // (color0 = gameplay/menu clear color via mc2_vk_terrain_set_native_prefix_clear_color,
     // normal = clearGBuffer1 sentinel, depth = reverse-Z far). The GL frame-entry clear
     // + clearGBuffer1 are skipped in gameosmain.cpp when this island is armed
-    // (mc2vkgate::terrainNativeFirstOwnerOn()). The old LOAD-preserve hybrid renderpass
+    // (mc2vkgate::umbrellaOn()). The old LOAD-preserve hybrid renderpass
     // (GL clears + GL->VK semaphore handoff) was deleted.
     {
         VkAttachmentDescription att[3]{};

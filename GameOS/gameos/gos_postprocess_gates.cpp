@@ -40,9 +40,8 @@ int mc2ShaderPathTint()
 // (or island not compiled) = byte-identical to today.
 bool mc2VkSharedSceneDepthEnabled()
 {
-    // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
-    // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
-    const bool s_on = mc2vkgate::armed<"MC2_VK_SHARED_SCENE_DEPTH">();   // per-call: VK-FAILSOFT-DISARM-1
+    // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it. Default OFF (pure GL).
+    const bool s_on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1
     return s_on;
 }
 
@@ -57,7 +56,7 @@ bool mc2VkSharedSceneDepthEnabled()
 // or island not compiled) = byte-identical to today.
 static bool mc2VkPropColorTier1Enabled()
 {
-    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_PROP_COLOR_TIER1">();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
@@ -70,14 +69,14 @@ static bool mc2VkPropColorTier1Enabled()
 // Gate OFF / require missing / island not compiled = byte-identical.
 static bool mc2VkTerrainTier1Enabled()
 {
-    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_TERRAIN_TIER1">();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
 // VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
 static bool mc2VkMechTier1Enabled()
 {
-    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">();
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
@@ -91,15 +90,11 @@ bool mc2VkSharedSceneColorNeeded()
 
 bool mc2VkSharedSceneDirectResourceEnabled()
 {
-    // VK-RUNG8-ITEM10: the two present-tail conditions
-    // (MC2_VK_PRESENT_NO_GL_IMPORT==1 && MC2_VK_PRESENT_SKIP_GL_HANDOFF==1) were
-    // REMOVED. Item 8 deleted the present interop tail, so the present image is now
-    // UNCONDITIONALLY a VK-only allocation with no GL->VK handoff (those two gates are
-    // retired no-ops). Requiring them here was dead resolver code that would wrongly
-    // decline the whole shared scene to pure GL under the umbrella unless a user set two
-    // retired gates. The shared scene now arms on the post/composite direct-chain stack
-    // alone (default-ON under MC2_VK_SHARED_GBUFFER).
-    static const bool s_on = mc2vkgate::compositeDirectChainOn();
+    // VK-RUNG8-ITEM10: the two present-tail conditions were REMOVED. Item 8 deleted
+    // the present interop tail, so the present image is UNCONDITIONALLY a VK-only
+    // allocation with no GL->VK handoff. The shared scene arms on the post/composite
+    // direct-chain stack alone (default-ON under MC2_VK_SHARED_GBUFFER).
+    static const bool s_on = mc2vkgate::umbrellaOn();
     return s_on;
 }
 
@@ -131,20 +126,6 @@ GLuint createSceneDepthPlaceholderTex(int w, int h)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     return tex;
-}
-
-// VK-RUNG8 item-6: MC2_VK_STATIC_SHADOW_MAP is RETIRED. The VK-backed static-shadow
-// import substrate (exportable D32_SFLOAT image imported into GL) is deleted; the static
-// shadow map is now always the plain-GL GL_DEPTH_COMPONENT24 allocation. Setting the env
-// prints a one-shot deprecation note (item-9 pattern) and changes nothing.
-void mc2VkStaticShadowMapDeprecationNote()
-{
-    static const bool s_once = [] {
-        if (mc2::gate::get<"MC2_VK_STATIC_SHADOW_MAP">())
-            mc2::fmt::print_err("[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-shadow import substrate was deleted; static shadow uses the plain GL GL_DEPTH_COMPONENT24 path.\n");
-        return true;
-    }();
-    (void)s_once;
 }
 
 int mc2ShadowCsmCount()
@@ -353,32 +334,6 @@ bool mc2CloudShadowEnabled()
     static const bool s_on = mc2::gate::get<"MC2_CLOUD_SHADOW">();
     return s_on;
 }
-
-// SKYBOX-FOG-EXCLUDE-1: gate helper (read once).
-// SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1: flipped default OFF->ON. The gate is inert
-// on non-HDRI missions -- renderHdriSkybox() early-returns before the stencil-
-// tag pass ("black sky baseline"), so no stencil is ever tagged, the fog frags'
-// stencil branch is a no-op, and fog_oob.frag's worldDir.z<-0.22 band fallback
-// is retained (byte-identical to legacy there). On HDRI missions it excludes
-// fog from true-sky pixels so the skybox is visible instead of being painted
-// over by the OOB cloud bank (the user-reported "can't see the skybox").
-// Kill-switch preserved: MC2_SKYBOX_FOG_EXCLUDE=0 restores the legacy OFF path.
-bool skyboxFogExcludeEnabled()
-{
-    static const bool s_on = mc2::gate::get<"MC2_SKYBOX_FOG_EXCLUDE">();
-    return s_on;
-}
-
-// SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: THE one exported authority for this gate.
-//
-// vulkan_post_fog_native.cpp used to carry its OWN `getenv("MC2_SKYBOX_FOG_EXCLUDE")`
-// static, written `v && v[0] == '1'` -- default OFF -- while the helper directly
-// above defaults ON. Both were "the guard that keeps VK from fogging sky pixels GL
-// excludes"; they disagreed about when it fires, so with the env UNSET the guard was
-// inert and the VK-native fog path rendered sky WITHOUT the exclusion GL applies.
-// A second copy of a gate reader is a second default, and defaults drift. There is
-// now exactly one getenv site for this variable in the tree; the VK TU calls this.
-bool gos_SkyboxFogExcludeEnabled() { return skyboxFogExcludeEnabled(); }
 
 bool sceneGlProducerQueryEnabled()
 {

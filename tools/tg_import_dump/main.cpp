@@ -9,8 +9,8 @@
 //
 //   tg_import_dump <model.glb|.fbx> [--no-ground]
 //
-// JSON -> stdout. Importer traces (MC2_ASSIMP_TRACE / MC2_MECH_SKEL_TRACE) ->
-// stderr, so stdout stays pure JSON.
+// JSON -> stdout. Importer traces (MC2_MECH_SKEL_TRACE) -> stderr, so stdout
+// stays pure JSON.
 
 #include <cstdio>
 #include <cstdlib>

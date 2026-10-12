@@ -717,16 +717,12 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 			}
 			else
 			{
-				// TEXMGR-COMPRESSED-UPLOAD-1: gated BC7 .ktx2 sidecar upload.
-				// Default-OFF; when the gate is set AND a same-stem .ktx2 sidecar
-				// exists on disk AND it is a stored BC7 (vkFormat 145/146) image,
-				// upload mip 0 via glCompressedTexImage2D and skip the normal
-				// gos_NewTextureFromMemory call. Any failure (no sidecar, not BC7,
-				// load fail, no BPTC support) falls through unchanged.
-				// Default-ON (opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0): prefer the
-				// BC7 .ktx2 sidecar for GPU upload when present; any failure (no sidecar,
-				// not BC7, no BPTC support) falls through to the .tga unchanged.
-				static const bool s_texmgrCompressedUpload = mc2::gate::get<"MC2_TEXMGR_COMPRESSED_UPLOAD">();
+				// TEXMGR-COMPRESSED-UPLOAD-1: BC7 .ktx2 sidecar upload. When a
+				// same-stem .ktx2 sidecar exists on disk AND it is a stored BC7
+				// (vkFormat 145/146) image, upload mip 0 via glCompressedTexImage2D
+				// and skip the normal gos_NewTextureFromMemory call. Any failure (no
+				// sidecar, not BC7, load fail, no BPTC support) falls through to the
+				// .tga unchanged.
 				bool uploadedCompressed = false;
 
 				// Exclude MODIFIABLE textures (uniqueInstance != 0): the mech/vehicle
@@ -737,7 +733,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				// shared textures (uniqueInstance == 0: terrain, trees, buildings) are
 				// never locked and keep the BC7 upload. See txmmgr.h ("Texture is
 				// modifiable. DO NOT CACHE OUT").
-				if (s_texmgrCompressedUpload && nodeName && *nodeName && uniqueInstance == 0)
+				if (nodeName && *nodeName && uniqueInstance == 0)
 				{
 					if (!GLEW_ARB_texture_compression_bptc)
 					{

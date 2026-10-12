@@ -484,7 +484,7 @@ void GameCamera::renderLetterbox() {
 	// draw letterboxes here.
 	if (inMovieMode && (letterBoxPos != 0.0f) && !gos::visual_capture::cleanFrame())
 	{
-		const bool vkHudQuad = mc2vkgate::vfxArmed();
+		const bool vkHudQuad = mc2vkgate::umbrellaOn();
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
 		//Figure out the two faces we need to draw based on letterBox Pos and Alpha
 		float barTopX = screenResolution.y * letterBoxPos;
@@ -608,7 +608,7 @@ void GameCamera::renderLetterbox() {
 void GameCamera::renderFadeQuad() {
 	if (inMovieMode && (fadeAlpha != 0x0) && !gos::visual_capture::cleanFrame())
 	{
-		const bool vkHudQuad = mc2vkgate::vfxArmed();
+		const bool vkHudQuad = mc2vkgate::umbrellaOn();
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
 		//We are fading to something other then clear screen.
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
@@ -1005,7 +1005,7 @@ void GameCamera::render (void)
 			// so the bottom-band HUD shrink doesn't move scene-projected FX.
 			// Umbrella OFF -> gate false -> byte-identical GL.
 			{
-				const bool vkVfxRoute = mc2vkgate::vfxArmed();
+				const bool vkVfxRoute = mc2vkgate::umbrellaOn();
 				const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
 				if (vkVfxRoute) {
 					gos_SetHudScaleExempt(true);

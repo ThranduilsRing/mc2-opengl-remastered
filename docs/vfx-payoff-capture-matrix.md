@@ -28,7 +28,7 @@ to grab frames safely.
 | `post_stack` | HDR+BLOOM+ACES | post contribution alone (no VFX gates) |
 | `soft_particles` | `MC2_VFX_SOFT_PARTICLES=1` | soft smoke/dust at terrain/mech intersections (no hard billboard edges) |
 | `lit_particles` | `MC2_VFX_LIT_PARTICLES=1` | smoke tinted by mission sun/ambient; additive flashes unchanged |
-| `bloom_vfx` | HDR+BLOOM + `MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS=2.0` | muzzle flashes / PPC / explosions glow |
+| `bloom_vfx` | HDR+BLOOM + profile `vfxAdditiveBrightness` 2.0 (the env seed was deleted in gate amnesty wave 1) | muzzle flashes / PPC / explosions glow |
 | `payoff_full` | soft+lit+HDR+BLOOM+ACES | headline "after" shot |
 | `debug_kind` | `MC2_VFX_DEBUG_MODE=3` | per-kind color (diagnostic) |
 | `debug_overdraw` | `MC2_VFX_DEBUG_MODE=4` | blend buildup (diagnostic) |

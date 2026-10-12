@@ -16,7 +16,7 @@
 // chain), like the water island does.
 //
 // GATE: no env of its own; armed exactly when the VK terrain island is the native
-// first owner (mc2vkgate::terrainNativeFirstOwnerOn). Gate off -> GL unchanged.
+// first owner (mc2vkgate::umbrellaOn). Gate off -> GL unchanged.
 // =============================================================================
 #ifndef MC2_VULKAN_SKY_ISLAND_H
 #define MC2_VULKAN_SKY_ISLAND_H

@@ -45,15 +45,6 @@ static const bool s_mechSkelTrace = mc2::gate::get<"MC2_MECH_SKEL_TRACE">();
         fprintf(stderr, "[MECH_SKEL] " fmt "\n", ##__VA_ARGS__); \
         fflush(stderr); } } while (0)
 
-// Track D — env-gated diagnostic trace (default OFF). Set MC2_ASSIMP_TRACE=1
-// to emit per-import checkpoint lines. Convention matches existing
-// [TGL_POOL v1] / [DESTROY v1] env-gated tracers
-// (memory:debug_instrumentation_rule).
-static const bool s_assimpTrace = mc2::gate::get<"MC2_ASSIMP_TRACE">();
-#define ASSIMP_TRACE(fmt, ...) \
-    do { if (s_assimpTrace) { \
-        fprintf(stderr, "[ASSIMP_TRACE] " fmt "\n", ##__VA_ARGS__); \
-        fflush(stderr); } } while (0)
 
 namespace {
 
@@ -221,11 +212,7 @@ long ValidateScene(const aiScene* scene, const char* path) {
 		// the importer truncates only where the name is written into the fixed-size
 		// nodeId (TG_TypeShape::InitFromImportedMesh, which logs original->truncated).
 		// Node names only drive animation binding (M2); bind-pose/static import does
-		// not bind by name. Warn under trace and continue.
-		if (len >= TG_NODE_ID) {
-			ASSIMP_TRACE("  node name '%s' (%zu chars) > %d; nodeId will be truncated on import",
-			             name, len, TG_NODE_ID - 1);
-		}
+		// not bind by name.
 		if (len > 0) {
 			if (!seen.insert(name).second) {
 				STOP(("[importer] %s: duplicate node name '%s' (breaks node-ID lookup)",
@@ -370,10 +357,8 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 		std::string derived;
 		if (DeriveMC2TextureName(scene, mat, derived)) {
 			names[i] = derived;
-			ASSIMP_TRACE("  material %lu base-color tex -> '%s'", (unsigned long)i, names[i].c_str());
 		} else {
 			names[i] = "NULLTXM";
-			ASSIMP_TRACE("  material %lu has no base-color image -> NULLTXM", (unsigned long)i);
 		}
 		nameCStrs[i] = names[i].c_str();
 	}
@@ -1369,30 +1354,22 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
 long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround) {
 	if (!path || !out) return -1;
 
-	ASSIMP_TRACE("ImportGeometryFromFile path='%s'", path);
 
 	Assimp::Importer imp;
-	ASSIMP_TRACE("  calling Assimp::Importer::ReadFile...");
 	const aiScene* scene = imp.ReadFile(path,
 		aiProcess_Triangulate           |
 		aiProcess_GenSmoothNormals      |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_ValidateDataStructure |
 		aiProcess_SortByPType);
-	ASSIMP_TRACE("  ReadFile returned scene=%p", (const void*)scene);
 
 	if (!scene) {
-		ASSIMP_TRACE("  ERROR: %s", imp.GetErrorString());
 		PAUSE(("[importer] %s: Assimp ReadFile failed: %s",
 		       path, imp.GetErrorString()));
 		return -1;
 	}
 
-	ASSIMP_TRACE("  scene meshes=%u materials=%u animations=%u",
-	             scene->mNumMeshes, scene->mNumMaterials, scene->mNumAnimations);
-
 	if (ValidateScene(scene, path) != 0) {
-		ASSIMP_TRACE("  ValidateScene rejected");
 		return -1;
 	}
 
@@ -1542,19 +1519,16 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// registered for per-frame re-bake (requires a valid forced clip).
 		if (animateImport) bake.recParts = &animParts;
 		long r = PopulateMergedSkinnedShape(scene, out, bake);
-		if (r != 0) { ASSIMP_TRACE("  PopulateMergedSkinnedShape returned %ld", r); return r; }
+		if (r != 0) return r;
 	} else {
 	// Allocate the multi-shape's listOfTypeShapes[] and per-slot TG_TypeShape
 	// instances. One Assimp mesh → one TG_TypeShape (MVP; LODs not embedded).
-	ASSIMP_TRACE("  AllocateImportedShapes(%d)", (int)scene->mNumMeshes);
 	out->AllocateImportedShapes((int)scene->mNumMeshes);
 
 	// Build the multi-shape's TG_Texture[] before populating shapes — the
 	// per-shape TG_TinyTexture wiring (CreateListOfTextures) reads from the
 	// multi-shape table.
-	ASSIMP_TRACE("  BuildTextureList...");
 	BuildTextureList(scene, out);
-	ASSIMP_TRACE("  BuildTextureList done");
 
 	// Vertex-tight box: reset to empty extremes, then each ImportShapeFromMesh
 	// expands min/max over its vertices; ComputeBoundingBox finalizes below.
@@ -1562,16 +1536,12 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 
 	// Populate each shape from its mesh.
 	for (unsigned i = 0; i < scene->mNumMeshes; i++) {
-		ASSIMP_TRACE("  ImportShapeFromMesh i=%u verts=%u faces=%u matIdx=%u",
-		             i, scene->mMeshes[i]->mNumVertices, scene->mMeshes[i]->mNumFaces,
-		             scene->mMeshes[i]->mMaterialIndex);
 		TG_TypeNodePtr slot = out->GetTypeNode((long)i);
 		if (!slot || slot->GetNodeType() != SHAPE_NODE)
 			continue;
 		long r = ImportShapeFromMesh(scene, i, static_cast<TG_TypeShape*>(slot), out,
 		                             bake.active ? &bake : nullptr);
 		if (r != 0) {
-			ASSIMP_TRACE("  ImportShapeFromMesh i=%u returned %ld", i, r);
 			return r;
 		}
 	}
@@ -1584,7 +1554,6 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		                bake.partsSingleBone, bake.partsOffsetBaked, bake.droppedParts);
 	}
 
-	ASSIMP_TRACE("  ComputeBoundingBox...");
 	ComputeBoundingBox(out);
 
 	// AUTO-GROUND: imported override meshes are often centered on their pivot, so
@@ -1612,7 +1581,6 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	if (animateImport && bake.active && !animParts.empty())
 		RegisterImportedAnim(path, out, bake, animParts, groundDyApplied);
 
-	ASSIMP_TRACE("  SUCCESS");
 	SPEW(("ASSIMP", "%s: %u meshes, %u materials imported",
 	      path, scene->mNumMeshes, scene->mNumMaterials));
 	return 0;

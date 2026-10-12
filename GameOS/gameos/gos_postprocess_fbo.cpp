@@ -276,9 +276,8 @@ void gosPostProcess::createFBOs(int w, int h)
     // sceneDepthTex_ already uses. GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX
     // is baked into the view at creation, so runEdgeFog/runFogOob can sample
     // depth (via sceneDepthTex_) and stencil (via this view) in the SAME draw
-    // without per-bind mode toggling on one shared object. Gated on
-    // MC2_SKYBOX_FOG_EXCLUDE=1 -- skipped entirely when OFF (zero cost OFF).
-    if (skyboxFogExcludeEnabled()) {
+    // without per-bind mode toggling on one shared object.
+    {
         // TEX-CLASS: render-target -- stencil texture-view over sceneDepthTex_
         glGenTextures(1, &sceneStencilViewTex_);
         glTextureView(sceneStencilViewTex_, GL_TEXTURE_2D, sceneDepthTex_,

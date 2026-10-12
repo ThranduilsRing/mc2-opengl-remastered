@@ -812,8 +812,7 @@ def cmd_selfcheck(args: argparse.Namespace) -> int:
         res[cap] = _measure_pose(
             Path(args.install), out_dir, f"selfcheck_cap{cap}", args.mission,
             args.pose, args.seconds,
-            [f"MC2_LIGHT_POOL_MAX={cap}", "MC2_LIGHT_GRID=0",
-             "MC2_TERRAIN_LIGHT_POOLS=1"],
+            [f"MC2_LIGHT_POOL_MAX={cap}", "MC2_LIGHT_GRID=0"],
             export_exe, args.zone)
         print(f"  cap={cap:<4} p50={res[cap]['p50_ms']:.3f}ms "
               f"p99={res[cap]['p99_ms']:.3f}ms n={res[cap]['n']}")
@@ -833,8 +832,7 @@ def cmd_selfcheck(args: argparse.Namespace) -> int:
             f"GL is async, so GPU fragment cost never shows up in a CPU zone. This "
             f"is what made the original 34% regression read as 0.2%.\n"
             f"  2. Window minimized/hidden -> 10ms background throttle.\n"
-            f"  3. The pose did not apply (no [CAMERA_PARK] receipt).\n"
-            f"  4. MC2_TERRAIN_LIGHT_POOLS off, so the loop under test never ran.",
+            f"  3. The pose did not apply (no [CAMERA_PARK] receipt).",
             file=sys.stderr)
         return 2
     print("SELFCHECK PASSED: the harness resolves a known fragment-bound cost.")

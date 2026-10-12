@@ -667,12 +667,12 @@ bool gosPostProcess::vkPostSsaoNativeEnabled()
 }
 
 // Native SSAO runs only in direct-chain, engaged when upstream left the shared GBuffer
-// Vulkan-owned (postDirectChainUpstreamOn); otherwise it declines and the GL SSAO pass runs.
+// Vulkan-owned (umbrellaOn); otherwise it declines and the GL SSAO pass runs.
 static bool vkPostSsaoDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = mc2vkgate::postDirectChainUpstreamOn() ? 1 : 0;
+        state = mc2vkgate::umbrellaOn() ? 1 : 0;
         g_ps.directChain = state;
         if (state == 1)
             vlog("native SSAO direct-chain: upstream left the shared GBuffer VK-owned; "

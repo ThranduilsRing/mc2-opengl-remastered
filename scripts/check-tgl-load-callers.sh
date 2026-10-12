@@ -19,7 +19,7 @@
 #      (tag convention new here; grep-exclusion precedent
 #      scripts/check-asset-scale-callers.sh). tools/ and tests/ not scanned.
 #   P2 presence pins — the PART 0-4 mechanisms exist: parse_fail chokepoint
-#      (msl.cpp), required_missing + MC2_ASSET_FAILLOUD (tgl_load_guard),
+#      (msl.cpp), required_missing + the placeholder populate (tgl_load_guard),
 #      appr_type_fail backstop (apprtype.cpp), cellForIndexChecked header +
 #      both UV callers, iconTileChecked x3 blits (mechicon.cpp),
 #      APPEAR-AUDIT sentinels + MC2_APPEAR_AUDIT latch (mission.cpp).
@@ -85,8 +85,8 @@ p2_presence() {
         || echo "  P2: msl.cpp PART-0 parse_fail chokepoint missing"
     grep -q 'event=required_missing' "$guard" \
         || echo "  P2: tgl_load_guard required_missing emit missing"
-    grep -q 'MC2_ASSET_FAILLOUD' "$guard" \
-        || echo "  P2: tgl_load_guard MC2_ASSET_FAILLOUD killswitch missing"
+    grep -q 'populatePlaceholder' "$guard" \
+        || echo "  P2: tgl_load_guard placeholder populate missing"
     grep -q 'event=appr_type_fail' "$apprtype" \
         || echo "  P2: apprtype.cpp appr_type_fail backstop missing"
     grep -q 'cellForIndexChecked' "$icon_hdr" \

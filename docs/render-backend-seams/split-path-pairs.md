@@ -90,11 +90,8 @@ visible-risk shader change and is deliberately NOT part of the freeze slice.
 
 ## Runtime tier
 
-`MC2_SPLIT_PATH_PARITY_TRACE=1` (kAuxEnvVars, default OFF) emits
-`[SPLIT_PATH_PARITY] site=... tess=<0|1> shadow=<0|1> match=<0|1>` at terrain
-material load. `match=0` = the #34 decouple invariant broke (modern shadow
-path inactive). The smoke marker-bucket row `split_path_parity`
-(`scripts/smoke_lib/logparse.py`) makes any `match=0` a red mission verdict.
-Nightly leg: `run_smoke --mission mc2_01 --mission mc2_24` with
-`MC2_TERRAIN_TESS=0` + `MC2_SPLIT_PATH_PARITY_TRACE=1` (Probe-B recipe) —
-THIS is the behavioral guard for the #34 class; RULE 3 only freezes tokens.
+Retired in gate amnesty wave 1: the `MC2_SPLIT_PATH_PARITY_TRACE` emitter and
+its `split_path_parity` smoke bucket never fired because nothing armed the
+trace. The #34 decouple invariant (the modern shadow path stays active
+regardless of the tess material) has no runtime guard today; RULE 3 only
+freezes tokens.

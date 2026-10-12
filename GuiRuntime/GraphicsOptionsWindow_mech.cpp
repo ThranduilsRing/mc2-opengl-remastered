@@ -323,8 +323,8 @@ void drawVfxTuningSection() {
     ImGui::SeparatorText("Intensity");
     {
         float b = gos_vfx_getBrightness();
-        // Slider range matches the backend clamp (0..8) so an env-seeded
-        // MC2_TUNE_VFX_BRIGHTNESS > 4 is not silently reduced on first touch.
+        // Slider range matches the backend clamp (0..8) so a profile value
+        // above 4 is not silently reduced on first touch.
         if (ImGui::SliderFloat("Brightness##vfx", &b, 0.0f, 8.0f, "%.2f"))
             gos_vfx_setBrightness(b);
         if (ImGui::IsItemHovered())

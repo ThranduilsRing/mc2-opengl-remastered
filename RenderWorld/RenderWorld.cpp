@@ -580,10 +580,6 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
     const int32_t r = legacy::registerStaticPropRecipe(std::move(desc));
     if (r < 0) {
         s_upsertFail.fetch_add(1, std::memory_order_relaxed);
-        if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-            MC2_DIAGFE(stderr,
-                "[RENDER_WORLD v1] event=upsert_fail recipe=-1\n");
-        }
         return RenderCore::RenderObjectHandle::invalid();
     }
     s_upsertOk.fetch_add(1, std::memory_order_relaxed);
@@ -600,11 +596,6 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
     populateRecord(h.index(),
                    static_cast<uint16_t>(h.generation()),
                    gameObjectId);
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=upsert_ok recipe=%d handle.index=%u\n",
-            r, (unsigned)h.index());
-    }
     return h;
 }
 
@@ -632,11 +623,6 @@ void destroy(RenderCore::RenderObjectHandle h) {
     s_destroyCalls.fetch_add(1, std::memory_order_relaxed);
     // M1.5: retire the record (clears alive flag, bumps generation).
     retireRecord(h.index());
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=destroy handle.index=%u\n",
-            (unsigned)h.index());
-    }
 }
 
 void markVisible(RenderCore::RenderObjectHandle h,
@@ -765,9 +751,7 @@ void frameBannerTick() {
         runPassiveStableFrameCanary();
     }
 
-    const bool perFrame = mc2::gate::get<"MC2_RENDER_WORLD_TRACE">();
-    const bool summary  = (f % 600u) == 0u;
-    if (!perFrame && !summary) return;
+    if ((f % 600u) != 0u) return;
     // m4 fix: source the active prop count from the registry's own
     // active-recipe accessor, NOT from the adapter-side delta. Adapter
     // delta drifts if the registry tombstones via paths the adapter
@@ -1039,14 +1023,6 @@ RenderCore::RenderObjectHandle registerMech(RenderMechDesc desc) {
 
     s_mechs_alive_rw.fetch_add(1, std::memory_order_relaxed);
 
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=mech_register handle.index=%u mechTypeId=%u "
-            "gameObjectId=%u debugCookie=%llu\n",
-            (unsigned)idx, (unsigned)desc.mechTypeId,
-            (unsigned)desc.gameObjectId,
-            (unsigned long long)desc.debugCookie);
-    }
     return h;
 }
 
@@ -1070,23 +1046,9 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
         // alone means "already retired" — return without decrementing
         // s_mechs_alive_rw (would underflow the uint64_t counter).
         if ((rec.flags & kRenderObjectFlagAlive) == 0u) {
-            if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-                MC2_DIAGFE(stderr,
-                    "[RENDER_WORLD v1] event=mech_destroy_already_dead "
-                    "handle.index=%u handle.gen=%u rec.gen=%u\n",
-                    (unsigned)idx, (unsigned)h.generation(),
-                    (unsigned)rec.generation);
-            }
             return;
         }
         if (h.generation() != static_cast<uint32_t>(rec.generation)) {
-            if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-                MC2_DIAGFE(stderr,
-                    "[RENDER_WORLD v1] event=mech_destroy_stale_generation "
-                    "handle.index=%u handle.gen=%u rec.gen=%u\n",
-                    (unsigned)idx, (unsigned)h.generation(),
-                    (unsigned)rec.generation);
-            }
             return;
         }
         rec.flags &= static_cast<uint16_t>(~kRenderObjectFlagAlive);
@@ -1094,11 +1056,6 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
     }
     s_mechs_alive_rw.fetch_sub(1, std::memory_order_relaxed);
 
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=mech_destroy handle.index=%u\n",
-            (unsigned)idx);
-    }
 }
 
 void clearAllMechRecords() {

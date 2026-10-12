@@ -1181,10 +1181,8 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// OFF -> IsHUD untouched -> byte-identical GL. NOTE: the mechs/vehicles
 		// (VK-owned islands) are in the SEPARATE `if (movers)` block above and are
 		// NOT routed here.
-		// Gated on the MC2_VK_VFX sub-gate (default-ON under MC2_VK_SHARED_GBUFFER;
-		// explicit =0 disables ALL VK VFX handling — this route AND the particle
-		// island — for A/B and safe-off). Umbrella OFF -> false -> byte-identical GL.
-		const bool vkVfxRoute = mc2vkgate::vfxArmed();
+		// Gated on the umbrella (MC2_VK_SHARED_GBUFFER). Umbrella OFF -> false -> byte-identical GL.
+		const bool vkVfxRoute = mc2vkgate::umbrellaOn();
 		const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
 		// VK-FIELD-VFX-2 trace (MC2_VK_VFX_TRACE): confirm the route + live effect counts.
 		static const bool s_vfxRouteTrace = mc2vkgate::vfxTraceOn();

@@ -64,11 +64,8 @@ bool isReady(RenderCore::RenderObjectHandle h);
 
 // Frame banner emission. Called once per frame from gamecam.cpp's
 // frame-end path (Task 14). Emits `[RENDER_WORLD v1]` with the current
-// active prop count read from the underlying registry counters.
-//
-// Env-gated:
-//   MC2_RENDER_WORLD_TRACE=1 -> per-frame banner
-//   default                  -> monotonic 600-frame summary
+// active prop count read from the underlying registry counters as a
+// monotonic 600-frame summary.
 void frameBannerTick();
 
 // M1.5: object-ID buffer env-flag accessor. Reads
@@ -376,8 +373,8 @@ GameplaySelectionDebugState getLastGameplayPick();
 //   object-ID correlation in M2.5.
 //
 // debugCookie: opaque uintptr_t; never dereferenced by engine. Carries
-//   the raw Mech3DAppearance* echo for log output in MC2_RENDER_WORLD_TRACE
-//   builds. RenderWorld stores it in the record but never casts or follows it.
+//   the raw Mech3DAppearance* echo for log output. RenderWorld stores it in
+//   the record but never casts or follows it.
 struct RenderMechDesc {
     uint32_t  mechTypeId;    // 0 in M2; real value deferred to M2.5
     uint32_t  gameObjectId;
@@ -433,8 +430,7 @@ uint64_t getMechsAliveCount();
 // req.viewId / req.kindMask / req.layerMask are stored but not
 // acted upon in v0 -- present for API stability going into v1.
 //
-// Env-gated log: MC2_RENDER_WORLD_TRACE=1 -> per-frame [VISIBILITY v1];
-// default -> 600-frame monotonic summary (same gate as frameBannerTick).
+// Log: [VISIBILITY v1] as a 600-frame monotonic summary (with frameBannerTick).
 VisibilityResult queryVisibility(VisibilityRequest req);
 
 // --- Extraction v1: read-only enumeration (render_snapshot.cpp consumer) ---

@@ -63,23 +63,6 @@ extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 
 #ifdef MC2_VULKAN_ISLAND
 
-struct TerrainGlFallbackAudit {
-    int total = 0;
-    int captured = 0;
-    int glFallback = 0;
-    int inactive = 0;
-    int band = 0;
-    int displace = 0;
-    int edgeStitch = 0;   // patches that FELL to GL because of edge-stitch (now 0 by
-                          // construction:
-                          // stitched patches are VK-captured, not GL-fallback).
-    int capturedStitched = 0; // of `captured`, how many carried a nonzero edgeStitch mask
-                              // -- direct proof stitched patches are VK-owned (>0 expected
-                              // on any map with LOD-band boundaries; the edgeStitch counter
-                              // above is the excluded twin and must stay 0).
-    int other = 0;
-    int skirtEdges = 0;
-};
 #endif
 
 extern unsigned int gos_GetTerrainNormalArrayTex();
