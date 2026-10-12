@@ -1230,16 +1230,6 @@ L(Presence, "MC2_TERRAIN_PICK_PARITY", Bool, false, "code", "", "PARITY DIAGNOST
 // terrain_lod_chunk.frag chunkParallaxView). Gate OFF preserves the legacy
 // faux-view-vector chunkParallax output VERBATIM (supervisor ruling:
 // byte-identity INCLUDES the faux shear — pomParams is NOT zeroed when OFF).
-// history: docs/gate-history.md#MC2_TERRAIN_POM
-L(Lead0, "MC2_TERRAIN_POM", Bool, false, "terrain", "", "TERRAIN-CHUNK-POM-1: real per-fragment tangent-space view-vector POM on the LOD-chunk terrain (rock/grass detail layers).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_POM", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_POM_FAR
-P("MC2_TERRAIN_POM_FAR", Float, 3500.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_FAR", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_POM_NEAR
-P("MC2_TERRAIN_POM_NEAR", Float, 1500.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band start in world units (default 1500; 1 tile = 384 wu).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_NEAR", -1, false) | range(0.0, 3.4028234663852886e38) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_POM_SCALE
-P("MC2_TERRAIN_POM_SCALE", Float, -1.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM march scale override (float > 0).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_SCALE", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_POM_STEPS
-P("MC2_TERRAIN_POM_STEPS", Float, 16.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: max POM march layers, accepted 4..16 (else default 16; hard compile-constant cap 16).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_STEPS", -1, false) | range(4.0, 16.0) | verified),
 L(Presence, "MC2_TERRAIN_PROBE", Bool, false, "editor", "", "", verified),
 L(Presence, "MC2_TERRAIN_RAYCAST_PICK", Bool, false, "code", "", "Phase 7B: heightfield raycast picker - replaces the quadList AABB/ screen-triangle scan when MC2_TERRAIN_LOD_CHUNK=1.", verified),
 L(Exact1, "MC2_TERRAIN_RUNTIME_DECALS", Bool, false, "terrain", "", "", verified),

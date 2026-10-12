@@ -872,37 +872,18 @@ static void uploadTerrainTuning() {
             if (s_locEdgeFeather >= 0) glUniform1i(s_locEdgeFeather, kTglcEdgeFeather ? 1 : 0);
             if (s_locEdgeFeatherStr >= 0) glUniform1f(s_locEdgeFeatherStr, kTglcEdgeFeatherStr);
         }
-        // TERRAIN-CHUNK-POM-1: gate MC2_TERRAIN_POM (default OFF). Gate OFF ->
-        // u_pomView.x=0 -> the frag takes the legacy faux-view-vector
-        // chunkParallax() path VERBATIM, and pomParams keeps the stock upload
-        // below unchanged (supervisor ruling: gate-OFF byte-identity INCLUDES
-        // the faux shear — do NOT zero pomParams when OFF). Gate ON swaps in
-        // the REAL per-fragment view vector with a world-distance fade. Knobs:
-        //   MC2_TERRAIN_POM_SCALE  float march scale (default gos_GetTerrainPOMScale()=0.02)
-        //   MC2_TERRAIN_POM_STEPS  int   max march layers, clamp 4..16 (default 16)
-        //   MC2_TERRAIN_POM_NEAR / MC2_TERRAIN_POM_FAR  fade band in world units
-        //                          (default 1500..3500; 1 tile = 384 wu)
+        // Chunk POM: the march uses the real per-fragment view vector, faded
+        // over a world-distance band (1 tile = 384 wu) so the cost is bounded.
         {
-            static const bool s_pomGate = mc2::gate::get<"MC2_TERRAIN_POM">();
-            static const float s_pomScale = mc2::gate::get<"MC2_TERRAIN_POM_SCALE">();
-            static const float s_pomSteps = mc2::gate::get<"MC2_TERRAIN_POM_STEPS">();
-            static const float s_pomNear = mc2::gate::get<"MC2_TERRAIN_POM_NEAR">();
-            static const float s_pomFar = mc2::gate::get<"MC2_TERRAIN_POM_FAR">();
-            if (s_locPomParams >= 0) {
-                if (s_pomGate) {
-                    const float scale    = (s_pomScale > 0.0f) ? s_pomScale : gos_GetTerrainPOMScale();
-                    const float minSteps = (s_pomSteps < 8.0f) ? s_pomSteps : 8.0f;
-                    glUniform4f(s_locPomParams, scale, minSteps, s_pomSteps, 0.0f);
-                } else {
-                    // Stock upload — byte-for-byte the pre-slice line.
-                    glUniform4f(s_locPomParams, gos_GetTerrainPOMScale(), 8.0f, 32.0f, 0.0f);
-                }
-            }
+            constexpr float kPomMaxSteps = 16.0f;
+            constexpr float kPomMinSteps = 8.0f;
+            constexpr float kPomFadeNear = 1500.0f;
+            constexpr float kPomFadeFar  = 3500.0f;
+            if (s_locPomParams >= 0)
+                glUniform4f(s_locPomParams, gos_GetTerrainPOMScale(), kPomMinSteps, kPomMaxSteps, 0.0f);
             if (s_locPomView >= 0)
-                glUniform4f(s_locPomView, s_pomGate ? 1.0f : 0.0f,
-                            s_pomNear, (s_pomFar > s_pomNear) ? s_pomFar : s_pomNear + 1.0f, 0.0f);
-            // cameraPos uploads every submit regardless of the gate (the frag
-            // only reads it on the gate-ON branch and the 8192 oracle viz).
+                glUniform4f(s_locPomView, 1.0f, kPomFadeNear, kPomFadeFar, 0.0f);
+            // cameraPos is read by the POM view vector and the 8192 oracle viz.
             if (s_locCameraPos >= 0) {
                 float cx = 0.0f, cy = 0.0f, cz = 0.0f;
                 gos_GetTerrainCameraPos(&cx, &cy, &cz);

@@ -1243,8 +1243,7 @@ down — do not re-derive them by hand:
 
 - **121 of 297** registry-table gates are undocumented here. This file is a
   *Tier-1 subset* by design, so that is not all debt, but the feature-grade
-  omissions are (`MC2_TERRAIN_CLIFF_*` ×9, `MC2_TERRAIN_POM*` ×5,
-  `MC2_TERRAIN_DECAL_*` ×8, `MC2_GPU_MECH_*` ×4, `MC2_POST_CAS*`,
+  omissions are (`MC2_TERRAIN_CLIFF_*` ×9, `MC2_TERRAIN_DECAL_*` ×8, `MC2_GPU_MECH_*` ×4, `MC2_POST_CAS*`,
   `MC2_SHADER_SPIRV*`, `MC2_FOG_HORIZON_*` ×3). `docs/flags.auto.yaml` is the
   generated full inventory (1154 names) and is the right reconciliation target
   for the long tail.

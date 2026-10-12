@@ -2690,42 +2690,6 @@
   },
   {
    "confidence": "MEDIUM",
-   "feature": "pomParams",
-   "gate": "MC2_TERRAIN_POM",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
-   "gl_shader": "shaders/gos_terrain.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "pomParams",
-   "gate": "MC2_TERRAIN_POM",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "u_pomView",
-   "gate": "MC2_TERRAIN_POM",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "MEDIUM",
    "feature": "u_waterElevation",
    "gate": "MC2_TERRAIN_SHORELINE",
    "gate_default_on": true,

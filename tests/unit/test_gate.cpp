@@ -792,8 +792,6 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
         {"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", false, static_cast<double>(0.05f), kFltMax},
         {"MC2_TERRAIN_LOD_MORPH_START", true, 0.0, 0.95},
         {"MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", true, 0.0, 1.0},
-        {"MC2_TERRAIN_POM_FAR", false, 0.0, kFltMax},
-        {"MC2_TERRAIN_POM_STEPS", false, 4.0, 16.0},
         {"MC2_TERRAIN_SHORELINE_EDGE_JITTER", true, 0.0, 32.0},
         {"MC2_TERRAIN_SHORELINE_STRENGTH", true, 0.0, 2.0},
         {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", true, 0.0, 1.0},
@@ -816,10 +814,10 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
     CHECK(asFloat(gate::detail::parseRow(dist, "0.050001")) == 0.050001f);
     // A clamp row clamps; a reject row falls back to its default.
     const gate::Row& clamp = g1b::rowNamed("MC2_TERRAIN_SHORELINE_STRENGTH");
-    const gate::Row& reject = g1b::rowNamed("MC2_TERRAIN_POM_STEPS");
+    const gate::Row& reject = g1b::rowNamed("MC2_MOVER_CONTACT_SHADOW");
     CHECK(asFloat(gate::detail::parseRow(clamp, "9")) == 2.0f);
-    CHECK(asFloat(gate::detail::parseRow(reject, "99")) == 16.0f);
-    CHECK(asFloat(gate::detail::parseRow(reject, "8")) == 8.0f);
+    CHECK(asFloat(gate::detail::parseRow(reject, "99")) == 0.0f);
+    CHECK(asFloat(gate::detail::parseRow(reject, "0.5")) == 0.5f);
 }
 
 TEST_CASE("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR is an Enum of 1, 2, 4 that reads 1 for anything else") {

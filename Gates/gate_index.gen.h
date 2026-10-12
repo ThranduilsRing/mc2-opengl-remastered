@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1047;
+inline constexpr std::size_t kGateCount = 1042;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -844,11 +844,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_OVERLAY_V2_FILE", Kind::String, Rule::Std, {}},
     {"MC2_TERRAIN_PICK_PARITY", Kind::Bool, Rule::Presence, {}},
-    {"MC2_TERRAIN_POM", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_POM_FAR", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_POM_NEAR", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_POM_SCALE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_POM_STEPS", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_RAYCAST_PICK", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_RUNTIME_DECALS", Kind::Bool, Rule::Exact1, {}},

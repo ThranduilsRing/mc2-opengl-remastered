@@ -304,7 +304,7 @@ void terrainMaterials_apply(const char* /*missionName*/) {
 
     // POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
     // (NEW; neutral 1.0 defaults). Only consumed by the LOD-chunk frag when
-    // BOTH MC2_TERRAIN_MATERIAL_LIB and MC2_TERRAIN_POM are on; neutral
+    // MC2_TERRAIN_MATERIAL_LIB is on; neutral
     // (1,1,1,1) preserves the pre-slice march depth per layer. NOTE: the
     // legacy pomScaleMat literal vec4(1,1,2.5,1) in terrain_lod_chunk.frag
     // is deliberately NOT ported to these keys -- it stays verbatim as the

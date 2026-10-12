@@ -437,8 +437,8 @@ class gosRenderer {
         }
         // POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
         // (rock/grass/dirt/concrete). Neutral 1.0 defaults; consumed by the
-        // LOD-chunk frag only when BOTH MC2_TERRAIN_MATERIAL_LIB and
-        // MC2_TERRAIN_POM are on (chunkSampleDisplacement branch).
+        // LOD-chunk frag only when MC2_TERRAIN_MATERIAL_LIB is on
+        // (chunkSampleDisplacement branch).
         void setTerrainMatHeight(float rock, float grass, float dirt, float concrete) {
             terrain_mat_height_[0]=rock; terrain_mat_height_[1]=grass;
             terrain_mat_height_[2]=dirt; terrain_mat_height_[3]=concrete;

@@ -394,9 +394,8 @@ uniform vec4  matRoughness;
 uniform vec4  matAO;
 // POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
 // (rock,grass,dirt,concrete). Neutral (1,1,1,1) default. Consumed by
-// chunkSampleDisplacement ONLY when u_useMaterialLib != 0 AND the real-view
-// POM gate is on (u_pomView.x > 0.5) -- gate OFF on EITHER reproduces the
-// legacy 3-layer sum verbatim (byte-identical).
+// chunkSampleDisplacement ONLY when u_useMaterialLib != 0; with the material
+// lib off the legacy 3-layer sum runs.
 uniform vec4  matHeight;
 uniform int   u_useMaterialLib;
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array (BC7 sRGB KTX2s from
@@ -451,17 +450,14 @@ uniform int   u_cliffDebug;
 // no march -> the triplanar block behaves exactly as TRIPLANAR-1 (byte-identical).
 uniform vec4  u_cliffPom;                        // .x=gate, .y=depth(wu), .z=maxSteps, .w=unused
 uniform vec4  pomParams;                        // .x=scale(0=off), .y=minLayers, .z=maxLayers
-// TERRAIN-CHUNK-POM-1: real view-vector POM (gate MC2_TERRAIN_POM, default OFF).
-// u_pomView.x=1 -> the POM march in chunkDetailNormal uses the REAL per-fragment
-// tangent-space view vector (distance-faded over .y=NEAR .. .z=FAR world units)
-// instead of the legacy faux constant vec3(0.15,0.85,0.15). x=0 -> the legacy
-// faux path runs VERBATIM (supervisor ruling: gate-OFF byte-identity INCLUDES
-// the faux shear; pomParams is NOT zeroed when the gate is off).
+// TERRAIN-CHUNK-POM-1: real view-vector POM. The march in chunkDetailNormal uses
+// the REAL per-fragment tangent-space view vector, distance-faded over
+// .y=NEAR .. .z=FAR world units.
 // cameraPos: SAME uniform name + frame as legacy gos_terrain.frag — the
 // Stuff/MLR eye (.x=left, .y=elevation, .z=forward). MC2 world = (-x, z, y);
 // second live witness: the water reflection frame fix in gameos_graphics.cpp.
 uniform vec4  cameraPos;
-uniform vec4  u_pomView;                        // .x=gate(0/1), .y=fadeNear(wu), .z=fadeFar(wu), .w=unused
+uniform vec4  u_pomView;                        // .y=fadeNear(wu), .z=fadeFar(wu); .x and .w unused
 uniform int   g_terrainMaterialProfile;         // 0=legacy, 1=sand(mc2_24 dirt-gate widen)
 uniform float macroVariationStrength;           // TERRAIN-MACRO-VARIATION-1: 0=off (byte-identical)
 uniform int   u_edgeFeather;                    // TERRAIN-EDGE-FEATHER-1: 0=off (byte-identical)
@@ -527,19 +523,18 @@ vec4 sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 ddx, vec2 ddy) {
 }
 float chunkSampleDisplacement(vec2 uv, vec4 w) {
     float d = 0.0;
-    // UB2-01: POM displacement is sampled inside a data-dependent loop (chunkParallax)
+    // UB2-01: POM displacement is sampled inside a data-dependent loop (chunkParallaxView)
     // with per-fragment weight branches → implicit LOD is undefined here. Use
     // textureLod(...,0.0): the displacement heightfield is read at base level
     // (standard for POM), valid in any control flow.
     //
-    // POM-PERLAYER-HEIGHT-1 (gate-ON-BOTH only): per-layer height multipliers
+    // POM-PERLAYER-HEIGHT-1 (material lib on): per-layer height multipliers
     // from the material lib (matHeight, JSON rock/grass/dirt/concrete_height)
     // + the DIRT layer newly wired into the sum (was never summed -> dirt/sand
     // dominant missions got ZERO displacement contribution). Uniform-flow
-    // branch: both operands are uniforms, so this stays UB2-01-safe. Gate OFF
-    // on EITHER (material lib or real-view POM) takes the legacy 3-layer sum
-    // VERBATIM -- byte-identical by construction.
-    if (u_useMaterialLib != 0 && u_pomView.x > 0.5) {
+    // branch: the operand is a uniform, so this stays UB2-01-safe. With the
+    // material lib off the legacy 3-layer sum runs.
+    if (u_useMaterialLib != 0) {
         if (w.x > 0.01) d += w.x * matHeight.x * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
         if (w.y > 0.01) d += w.y * matHeight.y * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
         if (w.z > 0.01) d += w.z * matHeight.z * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_DIRT)),     0.0).a;
@@ -551,36 +546,9 @@ float chunkSampleDisplacement(vec2 uv, vec4 w) {
     if (w.w > 0.01) d += w.w * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
     return 1.0 - d;
 }
-// Parallax occlusion (fixed faux view dir, like legacy). Bounded 16 layers.
-vec2 chunkParallax(vec2 uv, float scale, vec4 w) {
-    const vec3 viewDirTS = vec3(0.15, 0.85, 0.15);
-    float numLayers = mix(pomParams.y, pomParams.z, max(viewDirTS.y, 0.0));
-    numLayers = clamp(numLayers, 4.0, 16.0);
-    float layerDepth = 1.0 / numLayers;
-    float curLayer = 0.0;
-    vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.001) * scale;
-    vec2 dUV = P / numLayers;
-    vec2 curUV = uv;
-    float curD = chunkSampleDisplacement(curUV, w);
-    for (int i = 0; i < 16; ++i) {
-        if (curLayer >= curD) break;
-        curUV -= dUV;
-        curD = chunkSampleDisplacement(curUV, w);
-        curLayer += layerDepth;
-    }
-    vec2 prevUV = curUV + dUV;
-    float after  = curD - curLayer;
-    float before = chunkSampleDisplacement(prevUV, w) - curLayer + layerDepth;
-    return mix(curUV, prevUV, after / (after - before));
-}
-
-// TERRAIN-CHUNK-POM-1: POM march with a REAL view vector (gate-ON path only).
-// Deliberately a SEPARATE function from chunkParallax() above: the gate-OFF
-// path must stay byte-identical INCLUDING the compiler's const-folding of the
-// faux vector, so the legacy body is left untouched. Two gate-ON improvements,
-// both matching the dead-frag oracle (gos_terrain.frag parallaxMapping):
-//   - numLayers orientation: MORE layers at grazing view — mix(max,min,up) —
-//     the legacy chunk mix is inverted (moot under the faux up=0.85 constant).
+// TERRAIN-CHUNK-POM-1: POM march with a REAL view vector. Matches the dead-frag
+// oracle (gos_terrain.frag parallaxMapping):
+//   - numLayers orientation: MORE layers at grazing view, mix(max,min,up).
 //   - epsilon denominator guard (AMD yields inf/nan silently, NVIDIA may trap).
 // UB2-01: chunkSampleDisplacement uses textureLod(...,0) — valid in the
 // data-dependent loop below and in the non-uniform caller branch.
@@ -653,16 +621,14 @@ vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz) {
 
     // POM: parallax-offset the material UVs (legacy pomParams.x>0). fwidth-gated
     // (near only) -> bounded cost on a default-on renderer. Off when scale<=0.
-    // TERRAIN-CHUNK-POM-1: u_pomView.x>0.5 (MC2_TERRAIN_POM) switches the march
-    // to the REAL per-fragment tangent-space view vector with a world-distance
-    // fade + slope/cement exclusions. Gate OFF keeps the legacy chunkParallax()
-    // call VERBATIM (supervisor ruling: byte-identity includes the faux shear).
+    // TERRAIN-CHUNK-POM-1: the march uses the REAL per-fragment tangent-space
+    // view vector with a world-distance fade + slope/cement exclusions.
     if (pomParams.x > 0.0 && fwRock > 0.4) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
         float pomScale = pomParams.x * dot(pomScaleMat, w) * fwRock;
         vec2  pomUV    = uv * dot(matTiling, w);
         vec2  pomOff   = vec2(0.0);
-        if (u_pomView.x > 0.5) {
+        {
             // cameraPos is the Stuff/MLR eye; MC2 world = (-x, z, y). Same
             // conversion as the live water reflection fix (gameos_graphics.cpp)
             // and the dead-frag oracle comment (gos_terrain.frag:319-325).
@@ -691,8 +657,6 @@ vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz) {
                 pomOff = (chunkParallaxView(pomUV, pomScale, w, viewDirTS) - pomUV)
                        * fwRock * pomStrength;
             }
-        } else {
-            pomOff = (chunkParallax(pomUV, pomScale, w) - pomUV) * fwRock;
         }
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
         g_pomOffDbg = pomOff;
