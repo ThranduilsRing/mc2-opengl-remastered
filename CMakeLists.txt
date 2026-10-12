@@ -143,6 +143,9 @@ option(MC2_RNG_TRACE "Compile the gos_rand RNG diagnostic trace (DETERMINISTIC-R
 # The [DT] determinism trace (mclib/sim_trace.h, docs/sim-trace.md): per-frame RNG draw counts, per-draw call stacks, hit/path/target/
 # contact/camera events. Compile-time only, no runtime gate; a hunt build turns it ON, a default build has none of it.
 option(MC2_SIM_TRACE "Compile the [DT] determinism trace into mclib and mc2" OFF)
+# The ABL tag (one line per standard-routine call, thousands per frame) is its own switch: a hunt that is not about scripts leaves it
+# off so the log stays diffable and the game stays fast enough to reach the frame in question.
+option(MC2_SIM_TRACE_ABL "With MC2_SIM_TRACE: also trace every ABL standard-routine call" OFF)
 # Multiplayer: the network session layer (code/multplyr*.cpp over netlib) is frozen out of the modernization by owner ruling
 # (2026-10-11) and compiled out by default. OFF: code/multplyr_null.cpp defines MPlayer as a pointer that stays null and no-op
 # bodies for the members the rest of the game names, so the lobby screens still compile and every `if (MPlayer)` path is the
@@ -345,6 +348,9 @@ if(MC2_RNG_TRACE)
 endif()
 if(MC2_SIM_TRACE)
     target_compile_definitions(mclib PRIVATE MC2_SIM_TRACE=1)
+    if(MC2_SIM_TRACE_ABL)
+        target_compile_definitions(mclib PRIVATE MC2_SIM_TRACE_ABL=1)
+    endif()
 endif()
 
 add_subdirectory("./GameOS/src" "./out/windows")
