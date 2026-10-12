@@ -5,8 +5,8 @@ The annotated C++ struct is the source. This tool computes the std430/std140
 layout independently of the compiler and emits, byte-deterministically (LF, no
 timestamps):
   * <name>.layout.gen.h   C++ static_asserts (sizeof, alignof, per-field offsetof)
-  * a GLSL struct in shaders/include/ (FLAT file: the shader_deploy hook and the
-    CMake DEPENDS glob are non-recursive)
+  * a GLSL struct in shaders/include/ (FLAT file: the CMake DEPENDS glob is
+    non-recursive)
 
 Usage:
     py -3 tools/gpu_abi_gen.py --write   regenerate the committed files

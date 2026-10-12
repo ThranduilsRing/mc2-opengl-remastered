@@ -5,7 +5,7 @@ WHAT: scans the tracked C++ sources for calls that write a `[TAG vN] key=...` (o
 macros, sprintf-style buffers (snprintf, mc2::fmt::to_buf*), and the facade's MC2_EVENT* / mc2::log::event<> -- reads the format literal across
 continuation lines and adjacent literals, and records (tag, version, stream, key order) with a count. tests/unit/log_tag_baseline.json holds
 the frozen census plus the tags the Python parsers consume.
-WHY: the smoke harness greps these lines (logparse.py, oracleparse.py, run_smoke.py, ...). Converting printf to std::format must not change a
+WHY: the smoke harness greps these lines (logparse.py, run_smoke.py, ...). Converting printf to std::format must not change a
 tag, a version, the key order or the stream; a line-by-line grep misses calls whose format string sits on a continuation line, so this reads
 calls. A converted site must produce the same record as the printf it replaced.
 

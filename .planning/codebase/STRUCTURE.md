@@ -310,7 +310,7 @@ mc2-opengl-src/                  # repo root
 
 ### `cmake/` / `cmake_overrides/`
 
-- CMake helper modules; `cmake/sdl2/FindSDL2.cmake` resolves SDL2.
+- CMake helper modules (FFmpeg finder, build fingerprint, narrowing errors, standalone target, PCH). SDL2 comes from vcpkg; the vendored `cmake/sdl2` module tree was removed 2026-10-12.
 
 ### `build64/`
 

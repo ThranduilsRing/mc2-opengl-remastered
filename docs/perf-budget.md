@@ -10,14 +10,14 @@ structural lane (GlStateGuard, Tube, HZB, IBL/PBR, service-lane) runs its before
 
 | File | Role |
 |---|---|
-| `scripts/smoke_lib/oracleparse.py` | Render-oracle parser + `judge_oracles` (hard correctness asserts). Separate from `logparse.py` so adding an oracle can't destabilize the tier1 fault gate. |
+| oracleparse.py (smoke_lib; retired 2026-10-12, cull wave 1) | Was the render-oracle parser + `judge_oracles`; no gate or runner imported it after `oracle_report.py` went. Recover from git history if an oracle gate is ever built. |
 | `oracle_report.py` (retired 2026-10-09) | Was the CLI: logs dir → per-mission oracle + `[PERF v1]` table, judged vs this budget. No gate or runner called it; recover it from git history if needed. |
 | docs/perf-budget.json (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) | Per-mission floors/ceilings. |
 | this doc | Vocabulary, thresholds, classification rules. |
 
 ## Usage
 
-> Retired 2026-10-09: `oracle_report.py` (and `render_pass_report.py`) are deleted; the usage below is historical. `smoke_lib/oracleparse.py` remains.
+> Retired 2026-10-09: `oracle_report.py` (and `render_pass_report.py`) are deleted; the usage below is historical. `smoke_lib/oracleparse.py` followed on 2026-10-12 (cull wave 1, batch 1).
 
 ```bat
 py -3 oracle_report.py --logs <artifact_or_log_dir> ^
