@@ -1,177 +1,167 @@
 <!-- doc-status: current | reviewed:2026-10-12 -->
-# C++23 step 4, batch B1 (EString -> std::string): batch notes for the Opus before-review
+# C++23 step 4, batch B1 (EString -> std::string): batch notes, revised after the Opus before-review
 
-STATUS: notes only, NO B1 code. B1 code starts after the Opus review of this document and the three prerequisites of
-`cxx23-step4-ownership-plan.md` section 11 (determinism: done; save/load guard: open, see 6; B0 harness: done).
-INPUTS: `cxx23-step4-ownership-plan.md` section 5 (proof list) and the EString row of the table, `cxx23-step4-review.md` finding 10,
-`program-review-2026-10-12.md` section 8, owner rulings in `ORCHESTRATOR-HANDOFF.md` (EString migrates with the gui widgets; in-repo
-tools are rebuilt in the batch that changes the API; readers reject malformed content with a log line, never crash).
-Every number below was taken from `git grep` at 642019a64 (counts are grep-grade, the compiler finds the rest); corrected 2026-10-12 evening after the
-cleanup review (`reviews/lane1-2026-10-12-cleanup.md` F6): batch counts, the 68-vs-67 file, H11, the objective.h occurrence and includer counts.
+STATUS: design notes with the before-review (`cxx23-step4-b1-review.md`, dbb25604a, APPROVE-WITH-CHANGES) applied as its changes R1-R12. B1.0 (harness) and the first code
+batches follow in the order of section 4. The review is the checklist; where this file and the review disagree, the review wins and this file is wrong.
+INPUTS: `cxx23-step4-ownership-plan.md` sections 5 and 10, `cxx23-step4-review.md` finding 10, `program-review-2026-10-12.md` section 8, the owner rulings in
+`ORCHESTRATOR-HANDOFF.md`. Owner rulings that bind B1: saves may break before the final release but every writer stays a defined format; readers reject malformed content
+with a log line and never crash; the bar is "how we would do it today" (redesign, never a wrapper around a quirk); comments say WHAT and WHY, never HOW; no static-duration
+owners. Owner answers (2026-10-12, defaults until he says otherwise): the 11 multiplayer front-end screens are KEPT and convert in B6 with their widgets; an objective with
+no `Description` key keeps showing its Title, written explicitly in the reader.
+Numbers come from `git grep` at 642019a64 (grep-grade; the compiler finds the rest, and B1.0 replaces the grep set by a compiler list, section 3).
 
 ## 1. What is being replaced, and what it really does (read from mclib/estring.{h,cpp})
 
-`EString` is a 1990s reference-counted copy-on-write string (`m_pBuffer` -> `EBuffer{refcount,len,alloc}` + chars), implicitly convertible
-to `const char*` (`operator ECHARPTR`), printf-style `Format`, MFC-CString lookalike. It differs from `std::string` in ways that a
-mechanical rename gets WRONG. These were verified by reading the implementation, and H1, H2, H3, H12 and the case-insensitive ordering
-were CONFIRMED by a throwaway doctest run on 2026-10-12 against the real class (empty `Data()` is null; `EString("Abc") == "abc"`, `== EString("aBC")` and
-`"abc" == EString` are all true; `Compare("abc", 0)` is 0; `EString("Zeta") < EString("alpha")` is false; `MakeUpper` turns byte 0xE9 into 0xC9 under the
-Windows ANSI code page; `Find` of a missing character is -1); the throwaway test was reverted, not committed. The batch B1.0 pins each with a characterization
-test (see 3, B1.0) so the conversion is judged against the old behaviour, not against this prose.
+`EString` is a 1990s reference-counted copy-on-write string (`m_pBuffer` -> `EBuffer{refcount,len,alloc}` + chars), implicitly convertible to `const char*`
+(`operator ECHARPTR`), printf-style `Format`, MFC-CString lookalike. A mechanical rename gets the rows below WRONG. They were verified by reading the implementation and by a
+throwaway doctest on 2026-10-12 (reverted); B1.0 pins each one with a committed characterization test so a conversion is judged against the old behaviour, not this prose.
 
 | # | EString behaviour | std::string | Consequence for conversion |
 |---|---|---|---|
-| H1 | `Data()` of an EMPTY string returns `nullptr` (`EBuffer::Data()` returns 0 when `m_Alloc_Length == 0`, and `s_Empty_Buffer` has none), so `const char* p = es;` is null for a default-constructed string | `c_str()` is always valid `""` | callers that test `Data()` as "has text" change meaning. Seen: `code/objective.cpp:2549` `if (m_modelName.Data())`, `mclib/tgainfo.cpp:223,332` `if (g_textureCache_...->Data() && strcmp(...))`. Callers that pass the null on (`seekBlock(es.Data())`, `Title(x.Data())`) now pass `""`: reads of a null become reads of an empty name. Rule: each `Data()` site is classified null-test / pass-through / use, and null-tests become `!s.empty()` |
-| H2 | equality is CASE-INSENSITIVE in practice: `Compare(s, true)` does `memcmp` over the ARGUMENT length and, when it differs, FALLS THROUGH to `lstrcmpi` (a locale collation compare), so `"Abc" == EString("abc")` is true; `Compare(x)` / `Compare(x, 0)` is case-insensitive by design (35 call sites, mech/variant/pilot names); `operator<` falls to the same `lstrcmpi` | byte-exact, case-sensitive | EVERY `==`, `!=`, `<`, `Compare` on an EString keeps its case-insensitive meaning: one shared helper (`mc2::str::iequals` / `icompare`, locale-independent ASCII fold, tested against `lstrcmpi` on the corpus of names in `data/`) and no bare `==` on a converted string unless the site is shown case-exact. Sorting by `operator<` (listboxes, map keys) changes order between "Zeta" and "alpha" otherwise |
-| H3 | `operator==(const EChar*, const EString&)` calls `Compare(p)` WITHOUT the case flag, `EString == const char*` calls it WITH: same answer today only because of H2 | n/a | do not "simplify" the asymmetry before H2 is pinned |
-| H4 | COW: copies share the buffer; `Title()`/`Description()` return copies (`objective.h:713-720`) and the returned EString's buffer is the member's buffer | a copy owns new storage | `const char* t = obj.Title();` is valid today while `obj` lives and DANGLES after (finding 10). Same for `getCurrentMission()` style `const EString&` returns once they become by-value |
-| H5 | `operator[]` non-const unshares (`ChecEBufferDoRealloc`); const `operator[]` asserts `Index < len` | UB past size | benign |
-| H6 | index conventions: `SubString(start, END)` and `Remove(start, END)` take an INCLUSIVE end index, `Left(n)`/`Right(n)` are counts, `Find` returns `INVALID_INDEX` (-1), `Replace(start, s)` OVERWRITES in place | `substr(pos, COUNT)`, `npos` (size_t max), `replace(pos, n, s)` | off-by-one and `== -1` vs `== npos` traps; every Find/SubString/Remove/Replace site (about 30) converted by hand with a unit test of the exact old call, never by pattern |
-| H7 | `Length()` is `lstrlen` (stops at an embedded NUL), `Size()` is `m_Data_Length` | `size()` counts NULs | only matters if a buffer with embedded NULs reached an EString (record fields read from files): pin with one test |
-| H8 | `Compare` with a case-sensitive flag reads `Length` bytes of the ARGUMENT from the receiver even when the receiver is shorter (`memcmp(Data(), p, Length)` before the length check) | n/a | an existing over-read for short receivers; disappears with the conversion (note it in the commit, it is a latent ASan finding the doctest tier may show on the characterization test) |
-| H9 | `Format` is printf-style (`%d %ld %s %c`, 103 call sites in the non-gui set, two with a RUNTIME template: `editor/forest.cpp:48`, and any `cLoadString` template) and unannotated, so the compiler never checks its arguments (C4477 does not apply) | `std::format` / `mc2::fmt::to_buf` use `{}` | a literal template converts to `mc2::fmt` by hand; a runtime template (string-table text, mod content) CANNOT be rewritten to `{}`: keep a printf-template formatter (`mc2::fmt::printf_to_string`, size-probing vsnprintf like the current implementation) for those and list them |
-| H10 | `operator ECHARPTR` lets an EString pass wherever `const char*` is wanted, including into `...` (the casts `(char*)(const char*)purchaseFileName` in `logisticsdata_availability.cpp:60` exist because of it) | needs `.c_str()`; a std::string passed through `...` COMPILES (MSVC warns C4840, not an error today) and prints garbage | add C4840 to the `/we` set of the batch's targets before B1.1; every `Format`/printf call is read, not only compiled |
-| H12 | `MakeUpper`/`MakeLower` call `CharUpper`/`CharLower` (ANSI code page, locale-aware; about 28 grep hits in code/ and editor/, 9 in `mechlopedia.cpp`; some of the editor ones act on MFC `CString`) | `std::toupper` per byte is C-locale ASCII | bytes above 0x7F (accented mech or pilot names in mod data) upper-case differently; use the same helper family as H2 so both fold the same way |
-| H11 | `CreateMBCS`/`CreateUNICODE` allocate for the caller; the only call site outside estring.cpp is `tests/unit/alloc_probe.cpp:89` (`d.CreateMBCS()`, migrated in B1.8) | n/a | delete with the class |
+| H1 | `Data()` returns null only for a string that was NEVER ASSIGNED or was `Empty()`'d (`EBuffer::Data()` returns 0 when `m_Alloc_Length == 0`, which is `s_Empty_Buffer` alone, also reached by `Assign(nullptr)`). `es = ""` and `Format("")` allocate, so they give a non-null `""`. A `Data()` null-test therefore means "never assigned or emptied", not "length 0" | `c_str()` is always a valid `""` | every `Data()` / implicit-conversion site is classified null-test, pass-through or use. A null-test decides absent-vs-empty AT THE SITE: `std::optional<std::string>` where "absent" is a real state (`bigVideoName`: an operation without a `PreVideo` key), `empty()` otherwise. A pass-through goes to `c_str()` only after reading what the callee does with `""` versus null. Seen: `objective.cpp:2549` (`m_modelName.Data()`, assigned-but-empty changes meaning), `logistics.cpp:346` (`if (videoName) playFullScreenVideo(videoName)`: after a naive conversion it plays `""`), `missionselectionscreen.cpp:252,444-447`, `editor/ObjectivesDlg.cpp:152,160`, `tgainfo.cpp:223,332` (deleted with the cache, B1.2). `saveload.cpp:97,113` would `strlen(nullptr)` today on an empty campaign name: it becomes a defined one-byte packet (an improvement, listed in B1.4) |
+| H2 | equality is CASE-INSENSITIVE in practice: `Compare(s, true)` does `memcmp` over the ARGUMENT length and, when bytes differ, FALLS THROUGH to `lstrcmpi`; `Compare(x)` / `Compare(x, 0)` is case-insensitive by design (35 call sites: variant, pilot, mech, purchase-file names); `operator<` falls to the same call. `lstrcmpi` is `CompareString(LOCALE_USER_DEFAULT, NORM_IGNORECASE)`: a word sort, locale-dependent (a tr-TR user does not match `FILE`/`file`) and Windows-only | byte-exact, case-sensitive | the identity is kept case-insensitive (names come from data; making them case-exact is a content change) but as an **ASCII fold**, locale-free: `mc2::str::iequals`; orders use a total order `mc2::str::ci_less` (ASCII-folded lexicographic, byte compare as tiebreak). Sites that depend on the fold: the 35 `Compare(x, 0)` lookups, `missionselectionscreen.cpp:325`, `logisticsmissioninfo_query.cpp:121,163`, `logisticsdialog.cpp:831-1778` (save-file names vs list text), objective flag IDs (`CBooleanArray`, gameplay), `getAllPurchaseFiles`. Sort sites (visible UI order, no save or sim effect): `logisticspilotlistbox.cpp:330`, `mechlistbox.cpp:597-610`, `mechlopedia.cpp:1329`. The comment at `logisticsdata_save.cpp:577` ("Compare is case-sensitive") is false and is fixed. The probe (section 3, B1.0d) says which sites actually fold on stock data |
+| H3 | `operator==(const EChar*, const EString&)` calls `Compare(p)` WITHOUT the case flag, `EString == const char*` WITH it: same answer only because of H2. `operator<=(const EChar*, const EString&)` returns strict `<` | n/a | vanishes once every comparison is a named helper; the compiler-driven site list (section 3) finds out whether anything calls the odd `<=` |
+| H4 | COW: copies share the buffer. By-value accessors (`Title`, `Description`, `ActivateFlagID`, `ResetStatusFlagID`, `ModelName`, objective.h:713-755; `MissionName/Author/Blurb/VideoFilename/DownloadURL`, EditorData.h:209-272) keep a caller's `const char*` valid TODAY only because the returned copy shares the member's buffer. Holders: `editor/ObjectivesDlg.cpp:152,160` (`const char* p = (*it)->ActivateFlagID().Data();`) and `editor/BeautySidecarPreview.cpp:46` (`return ...MissionName().Data();` from a `const char*` function, in a file with NO EString token) | a copy owns new storage | accessors that return a member return `const std::string&` (C6): the whole class disappears by construction. Computed text returns `std::string` by value. The lifetime gate (section 5) is the second net |
+| H5 | non-const `operator[]` unshares; const `operator[]` asserts `Index < len` | UB past size | benign |
+| H6 | `SubString(start, END)` and `Remove(start, END)` take an INCLUSIVE end, `Left(n)`/`Right(n)` are counts, `Find` returns `INVALID_INDEX` (-1), `Replace(start, s)` OVERWRITES in place | `substr(pos, COUNT)`, `npos`, `replace(pos, n, s)` | `find() == -1` happens to work (`-1` converts to `npos`) but `int pos = s.find(...)` truncates. About 30 sites, each converted by hand after a doctest of the old call's exact result |
+| H7 | `Length()` is `lstrlen` (stops at an embedded NUL), `Size()` is `m_Data_Length` | `size()` counts NULs | one pinned test; matters only if a record field with embedded NULs reached an EString |
+| H8 | `Compare` with the case flag reads `Length` bytes of the ARGUMENT from the receiver before the length check (an over-read for a short receiver) | n/a | disappears with the conversion; a latent ASan finding the characterization test may show (noted in the commit) |
+| H9 | `Format` is printf-style, unannotated (the compiler never checks arguments). **Every `EString::Format` in scope has a LITERAL template (grep of 123 sites)**: `editor/forest.cpp:48` and `EditorObjectMgr_io.cpp:114` are MFC `CString::Format` and out of scope | `std::format` | a literal template converts to `std::format` by hand, compile-time checked. There is NO runtime-template site, so **no printf-template formatter is built** (it was in the earlier draft and is dropped) |
+| H10 | `operator ECHARPTR` lets an EString reach a `...` call; the `(char*)(const char*)purchaseFileName` casts in `logisticsdata_availability.cpp:60` exist because of it | `.c_str()`; a `std::string` passed through `...` COMPILES and prints garbage (C4840) | **C4840 as a hard error (`/we4840`) in the targets of the batch**, landed in B1.0; every printf-style call in a touched file is read, not only compiled |
+| H11 | `CreateMBCS`/`CreateUNICODE` allocate for the caller; the only call outside estring.cpp is `tests/unit/alloc_probe.cpp:89` (`d.CreateMBCS()`) | n/a | deleted with the class (B6) |
+| H12 | `MakeUpper`/`MakeLower` call `CharUpper`/`CharLower` (ANSI code page, locale-aware; about 28 hits in code/ and editor/, 9 in `mechlopedia.cpp`). The game-side `MakeLower` sites act on FILE NAMES (`logisticsdata_availability.cpp:32`, `_inventory.cpp:477`, `logisticsvariant.cpp:49`, `pilotreadyscreen.cpp:801`): ASCII fold, the same function as H2. The `MakeUpper` sites act on DISPLAY text from the string table (mechlopedia x9, `logisticspilotlistbox.cpp:89`, `pilotreadyscreen.cpp:842`). The editor `MakeLower` sites are MFC `CString` and out of scope | `std::toupper` per byte is C-locale ASCII | `mc2::str::ascii_lower/ascii_upper`: bytes >= 0x80 pass through unchanged (defined and deterministic; stock English text is ASCII, a localized string resource is the one non-ASCII source), pinned by a test next to the old class's code-page behaviour |
+| H13 | a null `const char*` into `std::string` / `std::string_view` is UB, where `EString(nullptr)` and `es = nullptr` were defined to give empty. Null sources: `aListItem::getText()` over an empty EString member (the gui is converted in B6), the `getCurrent*` getters of H1, `File::getFilename()`, the readers | UB at construction | every legacy `const char*` entering a converted string goes through `mc2::str::from_c(p)` (null gives empty); never `std::string(p)` on a pointer not proven non-null. Tests: `EString(nullptr)` and `es = nullptr` are empty (old behaviour pinned), `from_c(nullptr)` is empty, `from_c("")` is empty |
+| H14 | COW kept buffer identity across copies: a `const char*` taken from one copy stayed valid after the original died. `std::string` (SSO included) ties `c_str()` to the object, so a STORED pointer whose owner is copied, moved or destroyed now dangles | owner-bound | every stored `const char*` from a converted string (members, arrays such as `getAllPurchaseFiles(const char**)`, list items) is listed in the batch commit with its owner-lifetime argument; prefer storing the string or an index (C8). Tests: the old class's pointer outlives its source (pinned as the behaviour being given up), and the seeded lifetime negatives (section 5) |
+| H15 | writer and reader quirks. `sWriteIdString(nullptr)` writes nothing (objective.cpp:283-284) while a direct `writeIdString(name, nullptr)` would crash (`strncpy` from null, inifile.cpp:919), and `Objective` writers omit a key when `Data()` is null: objectives are written into saves (saveload.cpp:181) and mission FIT files. `sReadIdString` leaves its out-param untouched on a missing key and callers reuse one temporary, so a missing `Description` shows the Title text and a missing `ObjectiveModel` takes the previous field (objective.cpp:269-281, 1698-1752; the same in `editor/Objective_internal.h:87`, `editor/Objective.cpp:342-375`). Consistent with the ledgered `ObjectiveModel` re-save difference | n/a | readers return `std::optional<std::string>` (a missing key is an empty optional, never a stale temporary); the Description-falls-back-to-Title behaviour is kept deliberately and WRITTEN in the reader (owner answer); writers ALWAYS write the key (empty is legal) and never call `writeIdString` with null; a key too long for the reader's buffer is malformed and gets a log line, a missing key does not. Tests: the old reader's reuse and `sWriteIdString(null)`-omits-the-key pinned, then the new reader/writer doctests (B1.1) |
 
-Raw-owner facts (own_inventory, `--report --type EString`): one `new EString` (`mclib/tgainfo.cpp:219`, the lazily created
-`g_textureCache_FilenameOfLastLoadedTexture`, comment says gos static-init order forbids a global object) and its one `delete`
-(`code/mechcmd2_frame.cpp:302`). That is the whole B1 ownership content: it becomes a function-local `static std::string` (or a member of
-the texture-cache owner) and the extern in `code/mechcmd2_internal.h:208` goes away. `tests/unit/alloc_probe.cpp` (12) and
-`tests/unit/test_estring.cpp` (5) use the class and migrate in the last batch.
+Raw-owner facts (own_inventory, `--report --type EString`): one `new EString` (`mclib/tgainfo.cpp:219`, the lazily created `g_textureCache_FilenameOfLastLoadedTexture`) and its one
+`delete` (`code/mechcmd2_frame.cpp:302`). A function-local `static std::string` would be a static-duration owner, which ownership plan section 12 forbids. The cache it serves
+(`tgainfo.cpp:208-355`: re-use the pixels of a <= 64x64 TGA after the second consecutive load of the same name) saves one small decode and returns stale pixels if the file changes.
+**It is deleted, not converted** (B1.2): 7 statics, the extern at `mechcmd2_internal.h:208`, the delete at `mechcmd2_frame.cpp:300-304`. EString new/delete goes 1/1 to 0/0 by removal.
+`tests/unit/alloc_probe.cpp` (12) and `tests/unit/test_estring.cpp` (5) use the class and stay as the oracle until B6.
 
-## 2. The caller set (verified; the plan said code 46, editor 16, gui 7, mclib 3)
+## 2. The caller set
 
-`git grep -l EString`: code 48, editor 18, gui 7, mclib 3 (estring.cpp, estring.h, tgainfo.cpp), tests 2. The plan's 46/16 undercounted
-by two files each (code: mpstats.cpp and saveload.cpp; editor: EditorData_internal.h and Objective_internal.h are the two headers, plus the
-dialogs). Outside the gui widgets that is 48 + 18 + 1 (tgainfo) = 67 files (the list, file -> batch, is `cxx23-step4-b1-files.json`, checked against `git grep -lw EString`; three
-Python files under `tools/` - `own_inventory.py`, `tidy/printf_buffers.py` and its test - mention the word in strings and are not consumers), and the true touched set is larger because a header member
-that changes type breaks every includer that uses it. Header fan-out of the headers that carry EString in a signature or member:
-`code/logisticsdata.h` 33 includers, `editor/EditorData.h` 22, `editor/Objective.h` 14, `code/logisticspilot.h` 11, `code/logisticsmech.h` 10,
-`code/logisticsdialog.h` 10, `code/missionbriefingscreen.h` 7, `code/logisticsvariant.h` 7, `code/objective.h` 6, the rest 2-5. Each batch
-below lists the includers it will also touch; the compiler enumerates them and the count is reported in the commit.
+`git grep -l EString`: code 48, editor 18, gui 7, mclib 3 (estring.cpp, estring.h, tgainfo.cpp), tests 2. Outside the gui widgets: 67 files (`cxx23-step4-b1-files.json`, file -> batch,
+asserted equal to `git grep -lw EString 642019a64`). **56 of them convert in B1.1-B1.7; the 11 multiplayer screens (`mp*.cpp/h`) are KEPT (owner) and convert in B6** with their widgets.
+Until then they get only the edits a B1 header forces. The true touched set is larger than the grep set (a header member that changes type breaks every includer, and a file
+with no EString token can hold a dangling pointer: `editor/BeautySidecarPreview.cpp`, `code/mechcmd2_frame.cpp`), so **the site list is the compiler's, not grep's** (section 3, B1.0b).
+Header fan-out: `code/logisticsdata.h` 33 includers, `editor/EditorData.h` 22, `editor/Objective.h` 14, `code/logisticspilot.h` 11, `code/logisticsmech.h` 10, `code/logisticsdialog.h` 10,
+`code/missionbriefingscreen.h` 7, `code/logisticsvariant.h` 7, `code/objective.h` 6, the rest 2-5.
 
-COUPLING TO THE GUI WIDGETS (not in B1, but B1 must not break it): the widget API takes EString today: `aText::setText(const EString&)`
-(`gui/asystem.h:315`), `aEdit::getEntry(EString&)` / `setEntry(const EString&, BYTE)` (`gui/aedit.h:46`), the member `text`/`hiddenText`
-of `aListItem`/`aText`/`aEdit` (`gui/alistbox.h:91,134`, `gui/asystem.h:318`, `gui/aedit.h:130`), plus 3 local uses (`gui/aanim.cpp`,
-`gui/aedit.cpp`, `gui/logisticsscreen.cpp`). The widget batch (B6) converts those. Until then a converted `code/` caller needs a bridge:
-**B1.0 adds `std::string_view` overloads next to each EString one** (`setText(std::string_view)`, `setEntry(std::string_view, BYTE)`,
-`getEntry(std::string&)`) that forward to the EString member, so the 14 screen files that call the widgets convert first and B6 later
-deletes the EString overloads and flips the members. No behaviour change at the bridge; it adds 3 gui headers and 2 .cpp to B1.0.
+COUPLING TO THE GUI WIDGETS (not B1, but B1 must not break it): `aText::setText(const EString&)` (`gui/asystem.h:315`), `aEdit::getEntry(EString&)` / `setEntry(const EString&, BYTE)`
+(`gui/aedit.h:46`), the members `text`/`hiddenText` of `aListItem`/`aText`/`aEdit` (`gui/alistbox.h:91,134`, `gui/asystem.h:318`, `gui/aedit.h:130`), 3 local uses (`gui/aanim.cpp`,
+`gui/aedit.cpp`, `gui/logisticsscreen.cpp`). **B1.0 adds the bridge as `setText(const char*)` plus `setText(const std::string&)` forwarding to the EString member** (and the matching
+`setEntry` overloads, and `aEdit::entry()` returning `std::string`, the final API): there is NO `setText(std::string_view)` (it would make every `setText("literal")` ambiguous
+between two user-defined conversions) and NO `EString::view()` (a view of a temporary EString dangles). `EString::str()` exists and is used only on text coming FROM a widget.
+Each overload carries a WHAT+WHY comment naming B6 as its deletion point; **B6 folds the three into one `setText(std::string_view)` with zero caller edits**, and deletes `str()` and the class.
+A compile test calls `setText("x")`, `setText(std::string{})`, `setText(es)` and `setText(0L)`.
 
-## 3. Batches (<= 25 files each; one subsystem; Opus review of EACH batch before the next, per the plan)
+## 3. B1.0, the harness batch (adds behaviour; everything after depends on it)
 
-Order is leaf-first by header fan-out so a later batch never re-edits a header an earlier one finished. File counts include the headers; the
-"+includers" figure is from the fan-out above and is reported, not budgeted.
+a. **Characterization doctests** in `tests/unit/test_estring.cpp`, run against the old class: H1 (never assigned null, `Empty()` null, `= ""` non-null, `Format("")` non-null),
+   H2/H3 (`==`, `<`, `Compare` fold through `lstrcmpi`, the odd `<=`), H6 (inclusive ends, `Find` -1, overwrite `Replace`), H7, H8, H12 (`MakeUpper` of byte 0xE9 under the code page),
+   H13 (`EString(nullptr)`, `es = nullptr`), H14 (a copy's pointer outlives the source). Then the new helpers (`mc2::str::from_c`, `iequals`, `ci_less`, `ascii_lower/upper`) are
+   tested against the same cases, with a fixture of stock identifiers (extracted once, committed) showing `iequals` agrees with `lstrcmpi` on every equal pair, order disagreements listed.
+b. **The site list is a compiler list, not grep.** In an uncommitted local build the old API is marked `[[deprecated]]` (`operator ECHARPTR`, `Data`, every comparison operator,
+   `Compare`, `Make{Upper,Lower}`, `Find/ReverseFind/SubString/Left/Right/Remove/Replace/Insert`, `Format`). The warning list (file:line:kind, every TU, editor included) is committed as
+   `.claude/cleanup/cxx23-step4-b1-callsites.txt` with counts per file. It also catches `std::string == const char*`, which compiles silently, and files without the token. The
+   deprecation itself is NEVER committed. Each batch commit removes its rows; the count only goes down.
+c. **The lifetime gate** (section 5): `tests/analyze/analyze_dangling.py` with a seeded negative test; `/we4840`; a board row only if the script runs under a minute.
+d. **A one-off probe on the OLD exe** (a diagnostic patch applied by script, NEVER committed): log every `Compare`/`==`/`<` where the fold matched and the bytes did not, by call site; log every
+   `sReadIdString` miss whose caller then used the stale value. Run on stock data: tier2 missions mc2_01, mc2_03, mc2_10, mc2_24 (these boot into missions, so the logistics and campaign
+   screens are NOT covered by them: `MC2_BOOT_TO_MECHLAB`, `MC2_BOOT_TO_BAY` and a campaign start are separate runs when the harness allows). The result (sites and counts on stock data)
+   is recorded in section 8 of this file. It tells which fold sites matter on stock content and which only for mods.
+e. **The gui bridge** (section 2).
 
-| Batch | Subsystem | Files | Content | Why this position |
+## 4. Batches (cap: 25 EDITED files = token files plus the includers the compiler forces; soft, reported in each commit)
+
+A header flip whose extra includers need only mechanical `.c_str()` / `from_c` edits may go to 40 and the commit says so. Order: smallest blast radius first, so the rules (H1, H2, H4,
+H15, the save path) are proven on objectives, then leaf-first by header fan-out.
+
+| Batch | Subsystem | Token files | Content | Proof (on top of section 6's base list) |
 |---|---|---|---|---|
-| B1.0 | bridge and pins (tests + tiny library change, no caller moves) | 6 + tests | `EString::str()` / `view()` (returns `std::string` / `std::string_view`, for the empty buffer the empty text), the three gui overload bridges (3 headers, 2 .cpp), `mc2::str::iequals/icompare`, the printf-template formatter, the characterization tests of H1/H2/H3/H6/H7/H8/H9 in `tests/unit/test_estring.cpp` (the old class stays the oracle: the same cases run against the helper), C4840 into the `/we` list, the `/analyze` lifetime gate recipe (see 5) with its seeded negative test | everything after depends on it; it is the only batch that adds behaviour, so its review is the strictest |
-| B1.1 | texture-cache global and its extern | 3 touched, 2 of them in the 67 (`mclib/tgainfo.cpp`, `code/mechcmd2_internal.h`); `code/mechcmd2_frame.cpp` only holds the `delete` of the pointer and has no EString token | the one `new EString`/`delete` pair becomes a function-local static `std::string`; the H1 null test becomes `!empty()` | the only raw-owner site, tiny, proves the H1 rule once |
-| B1.2 | logistics data model | 19 (`logisticsdata.{h,cpp}` + `_availability,_init,_inventory,_modify,_save`, `logisticsvariant.h` + `_stats.cpp`, `logisticsmech.h`, `logisticsmechdisplay.cpp`, `logisticspilot.h`, `logisticspilotlistbox.cpp`, `logisticsmissioninfo.{h,cpp}` + `_progress,_query`, `logisticsdialog.{h,cpp}`) +33 includers of logisticsdata.h | member and accessor types (`getCurrentMission()` returns `const EString&` into a member: becomes `const std::string&`, still a reference, so no H4 case); the 35 `Compare(name, 0)` name lookups -> `iequals` (H2); variant/pilot file names are save-file fields (`logisticsdata_save.cpp`) | largest fan-out header first; data model has no UI; save/load is touched (3 `Format`/name fields in `_save.cpp`, `saveload.cpp` in B1.4): the save path is the highest-risk file of the batch |
-| B1.3 | mission objectives (runtime) | 2 + 5 includers (`code/objective.{h,cpp}`; the sixth `#include "objective.h"` hit is objective.cpp itself; includers `controlgui_internal.h`, `gametacmap.cpp`, `mission.h`, `missionbriefingscreen.cpp`, `team.h`) | 175 occurrences of the word (179 substring hits: 4 are `CEStringList`, an MFC type): the polymorphic `virtual EString Description()` / `InstanceDescription()` family (31 + 15 overrides in the header), `Title()`/`Description()` by-value accessors (H4), fixed-buffer reads `tmpECStr.Data()` into `Title(...)` | the H4 hazard lives here; `/analyze` is the gate, and every `const char* x = ...Description()`/`Title()` is listed by grep and read |
-| B1.4 | front-end screens (calls into the widget bridge) | 15 (`chatwindow, controlgui_chat, infowindow, mechbayscreen_mechs, mechlabscreen.{h,cpp}, mechlistbox, mechlopedia, missionbriefingscreen.{h,cpp}, missionselectionscreen, pilotreadyscreen, salvagemecharea, saveload, simplecomponentlistbox` .cpp) | 12 `MakeUpper`/`Find`/`Replace` sites in `mechlopedia.cpp` (H6, H12), 2 `Format` with `%ld/%ld  %s` (infowindow), `saveload.cpp` campaign name fields | uses the B1.0 gui bridge; `saveload.cpp` is the second save-path file |
-| B1.5 | multiplayer front-end screens | 11 (`mpconnectiontype, mpgamebrowser, mphostgame, mploadmap.{h,cpp}, mpparameterscreen.{h,cpp}, mpprefs.{h,cpp}, mpsetuparea, mpstats`) | UI screens, compiled in the default build although `MC2_MULTIPLAYER` is OFF (only `multplyr*.cpp` is gated) | named exception (ruling 2026-10-11): converted last and mechanically, no new behaviour; if a file here cannot be proven without a session it is listed as such in its commit; `code/multplyr*` is not touched |
-| B1.6 | editor objectives | 10 (`editor/Objective.{h,cpp}, Objective_actions.cpp, Objective_conditions.cpp, Objective_internal.h, ObjectiveDlg.cpp, ObjectivesDlg.cpp, ObjectivesSummaryPanel.cpp, PointerSelectObjectDlg.cpp, TargetAreaDlg.cpp`) +14 includers | the editor's own objective model (`editor/Objective.h` 68, `Objective_conditions.cpp` 59, `Objective_actions.cpp` 30), mixed with MFC `CString`/`_T` at the dialog boundary; objectives are WRITTEN to mission FIT files, so the byte output of a saved mission is the proof | editor is a priority arc of its own; this is the biggest editor file group |
-| B1.7 | editor data | 8 (`editor/CampaignData.cpp, ChooseBuildingDlg.cpp, ChooseUnitDlg.cpp, EditorData.h, EditorData_internal.h, EditorData_tacmap.cpp, EditorData_terrain.cpp, EditorObjectMgr_io.cpp`) +22 includers of EditorData.h | `EditorData` string members (mission name, author, blurb, video, URL): file-format fields; `EditorData_terrain.cpp:246-387` reads fixed buffers into them | after B1.6 so the Objective header is final |
-| B1.8 | end state | tests (2) + `mclib/estring.{h,cpp}` | `alloc_probe.cpp` and `test_estring.cpp` leave the class; the class is NOT deleted until the gui widgets (B6) drop their overloads and members | deletion is a B6 commit; the owner ruling keeps the class alive for the widgets |
+| B1.0 | harness | tests + 5 gui/mclib files | section 3 | the seeded negatives fire on each claimed shape and the clean twin is silent; corpus test; the bridge compile test |
+| B1.1 | runtime objectives: `code/objective.{h,cpp}` + includers (`controlgui_internal.h`, `gametacmap.cpp`, `mission.h`, `missionbriefingscreen.cpp`, `team.h`) | 2 | 175 word occurrences (179 substring hits: 4 are `CEStringList`, an MFC type). The `virtual EString Description()` / `InstanceDescription()` family (31 + 15 overrides) becomes `std::string_view` of a literal (C6), `Title()`/`Description()` return `const std::string&`, `CBooleanArray` on `iequals`, the readers/writers per C9, the Title fallback explicit | lifetime gate plus clang-cl on the TUs; a `CBooleanArray` doctest with mixed-case keys; a reader doctest (missing Description gives the Title by rule, missing ObjectiveModel gives empty); **save diff (section 6.3)**; `sim_determinism check` mc2_03/10/24 and mc2_16 with liveness; tier1 |
+| B1.2 | texture-cache static string DELETED: `mclib/tgainfo.cpp`, `code/mechcmd2_internal.h`, `code/mechcmd2_frame.cpp` | 2 (+1 with no token) | the cache (7 statics, the extern, the delete) goes; no replacement owner | `own_inventory` EString 1/1 to 0/0 with the baseline rewritten and the reason; tier1 5/5; one day capture of mc2_01 viewed (icons and UI textures load) |
+| B1.3 | logistics model A: `logisticsvariant.h`, `_stats.cpp`, `logisticsmech.h`, `logisticsmechdisplay.cpp`, `logisticspilot.h`, `logisticspilotlistbox.cpp` + includers (10 + 11 + 7 of the headers) | 6 | name lookups to `iequals` (H2), sort sites to `ci_less`, `MakeLower` file names (H12) | lifetime gate; doctests of the converted lookups on a case-variant fixture; `MC2_BOOT_TO_MECHLAB` and `_BAY` captures viewed (lists and order); determinism check |
+| B1.4 | logistics model B: `logisticsmissioninfo{,_progress,_query}`, `logisticsdata{,_availability,_init,_inventory,_modify,_save}`, `saveload.cpp`, `logisticsdialog.{h,cpp}` + includers (33 of `logisticsdata.h`) | 14 | member and accessor types (`getCurrent*` per C7: `std::optional` for the video names), the 35 `Compare(name, 0)` lookups, the save-file name fields, `saveload.cpp` campaign names (H1 improvement). If the edited count passes 40 the batch splits at `logisticsdialog` | **save diff** on mc2_01 and mc2_16; a campaign-start boot whose log shows no `""` playback; lifetime gate; determinism; tier1 |
+| B1.5 | front-end screens (remaining locals: `chatwindow`, `controlgui_chat`, `infowindow`, `mechbayscreen_mechs`, `mechlabscreen.{h,cpp}`, `mechlistbox`, `mechlopedia`, `missionbriefingscreen.{h,cpp}`, `missionselectionscreen`, `pilotreadyscreen`, `salvagemecharea`, `simplecomponentlistbox`) | 14 | mechlopedia H6/H12, two `Format` with `%ld/%ld  %s` in infowindow, briefing and selection screens; uses the bridge | `MC2_BOOT_TO_SCREEN=encyclopedia_*` captures viewed (upper case and substring sites); briefing capture; tier1 |
+| B1.6 | editor model: `editor/Objective*`, the dialogs get compile edits only | 10 | the editor's own objective model (`Objective.h` 68 occurrences, `_conditions` 59, `_actions` 30), mixed with MFC `CString`/`_T` at the dialog boundary; the same helpers and reader/writer rules as B1.1 (C13: the two models are parallel copies, 3,459 and 2,727 lines; unifying them is the editor arc's job) | editor batch proof (section 6.4) |
+| B1.7 | editor data: `CampaignData`, `ChooseBuildingDlg`, `ChooseUnitDlg`, `EditorData{,_internal}.h`, `EditorData_tacmap`, `EditorData_terrain`, `EditorObjectMgr_io` (+ `BeautySidecarPreview.cpp`, no token) | 8 | `EditorData` string members are file-format fields; `EditorData_terrain.cpp:246-387` reads fixed buffers into them | editor batch proof (section 6.4) |
+| B1.8 | end state | tests | census = 0 outside `gui/` and the mp screens; `test_estring.cpp` and the `alloc_probe` EString cases STAY until B6 (the oracle while the class lives) | — |
+| B6 | the 11 mp screens (`mpconnectiontype, mpgamebrowser, mphostgame, mploadmap, mpparameterscreen, mpprefs, mpsetuparea, mpstats`) with the gui widgets | 11 | mechanical, no new behaviour; compile + `build_all_targets` + unit only (no session layer); `code/multplyr*` is not touched | owned by the B6 plan |
 
-Totals outside the gui: the table has nine rows; the 67 EString-token files sit in the seven caller batches B1.1-B1.7 (2 + 19 + 2 + 15 + 11 + 10 + 8; the
-largest is 19), B1.0 and B1.8 move no callers. The number of batches is a consequence of the 25-file cap and the
-header fan-out; B1.2 could split in two (data model 11 + dialog/pilot/mech display 8) if the review wants a tighter cap.
+Reviews (R11): the owner's cadence replaces "an Opus review of each batch". ONE grouped Opus after-review after B1.0-B1.3 (the semantic batches) and one after the editor batches B1.6/B1.7; every
+session ends with a Sonnet read-only cleanup review of the diff, using `cxx23-step4-b1-review.md` as its checklist.
 
-## 4. Conversion rule (per site; the compiler drives, a reader decides)
+## 5. Lifetime gate (`/analyze`, corrected) and the dangling shapes
 
-1. Type: owned text `EString` -> `std::string`; borrowed read-only parameter -> `std::string_view` (or `const std::string&` when it is passed on
-   to a `const char*` API that needs NUL termination: `seekBlock(const char*)`, `AddString`, `playDigitalStream`; a `string_view` is NOT NUL
-   terminated, so a `string_view` parameter that reaches a C API is a bug; the rule is "`const std::string&` or `const char*` at C boundaries").
-2. `Data()` -> `c_str()` at a C boundary; test-for-null `if (s.Data())` -> `if (!s.empty())` (H1); a pass-through of `Data()` stays `c_str()` and the callee
-   already handled null (check, per site, that it did; most do not).
-3. Operators: `==`/`!=`/`<`/`Compare` -> `iequals`/`icompare` (H2). A site is allowed byte-exact only when the comparison is shown (by test or data) never to see
-   differing case; that is a reviewed exception, listed in the commit.
-4. `Format("...%d...")` -> `mc2::fmt::to_buf`/`std::format` with `{}` for LITERAL templates (compile-time checked); a runtime template -> the printf-template
-   formatter (H9). Variadic string arguments are `.c_str()` (H10).
-5. Index API (Find, SubString, Remove, Replace, Left, Right, Insert) -> hand conversion with the old call's expected result written as a test first (H6).
-6. By-value returns that callers keep as pointers (H4): `Title()`, `Description()`, `InstanceDescription()`, `LocalizedTitle()`, `DescriptionOf...Species()`:
-   return type becomes `std::string`; every caller that stores `.c_str()` of the temporary is rewritten to hold the string. The gate is `/analyze`
-   C26815/C26816 ("the pointer is dangling because it points at a temporary instance which was destroyed") over the batch's TUs. Accessors whose
-   result is a reference to a member (`getCurrentMission`) stay `const std::string&`.
-7. `operator ECHARPTR` disappears: each implicit conversion becomes an explicit `.c_str()`; the compiler lists them all.
-8. Headers: change the member/signature type in the header in the same commit as every caller the compiler reports; never leave both forms.
+There is no analyze wiring in the repo today (`build-analysis/` is a stale /W3-only tree). The correction to the earlier draft: MSVC **C26815** is "the pointer is dangling because it points at a
+temporary instance which was destroyed"; **C26816** is "the pointer points to memory allocated on the stack". The lifetime checks are INTRA-procedural. The earlier fallback
+(`bugprone-dangling-handle`) only covers `string_view`; the fallback is **clang-cl `-Wdangling -Wdangling-gsl -Wreturn-stack-address`** over `compile_commands.json` (clang-cl is on the host,
+`docs/host-tools.md`), which sees the `c_str()` of a temporary.
+`tests/analyze/analyze_dangling.py` compiles a seeded negative TU holding three shapes: (a) a local `const char* p = f().c_str(); use(p);`, (b) `return f().c_str();` from a `const char*`
+function, (c) a member that stores the pointer. It runs `cl /analyze` with C26815/C26816 enabled and FAILS if any shape is missed, then tries clang-cl for the missed ones; a clean twin
+must be silent. **The gate is trusted only for the shapes the seeded test proves it catches**; the other shapes are covered by the call-site list (3b) plus the accessor rule C6 (accessors return
+`const std::string&`). The script lives under `tests/` (lane 1's area; `tools/` is lane 2's per program-review section 8). A board row only if it runs under a minute, otherwise a documented manual step.
 
-HOW /analyze CATCHES THE H4 CASE. `const char* p = obj.Title().c_str();` (or `const char* p = obj.Title();` once `Title()` returns std::string) is a pointer
-into a destroyed temporary: the C++ Core Check lifetime rules report C26815 (dangling pointer from a temporary) and C26816 (dangling after the owner is
-destroyed / reassigned). There is NO analyze wiring in the repo today (`build-analysis/` is a stale /W3-only tree; the plan only names the codes), so B1.0
-delivers it: a script (`tools/analyze_lifetime.py`) that compiles a batch's TUs from `compile_commands.json` with `cl /analyze:only /analyze:plugin EspXEngine.dll`
-and the lifetime ruleset, treats C26815/C26816 as failures, and is accepted only after a SEEDED NEGATIVE TEST (a 5-line TU holding the dangling pattern must
-fire both codes; a clean twin must not). Until that test passes the gate is not trusted. The grep list of `.Title()/.Description()/.InstanceDescription()`
-assignments to `const char*` is the second, manual net; /analyze does not see a pointer that crosses a function boundary through a `const char*` parameter
-that the callee stores. The objective setters (`Title(EString)`, `Description(EString)`, `ModelName(...)`) take the string BY VALUE and assign it into the
-member, so they copy (COW share today, a real copy after); the review should confirm that no `const char*` setter in the batch keeps its argument.
+## 6. Proof list (every code batch; the plan's section 5 mapped to commands)
 
-## 5. Proof list (every batch; the plan's section 5 mapped to commands)
+1. `py -3 scripts/ninja_build.py` (game) then `py -3 tools/build_all_targets.py` (game, editor, mc2fx, asset_viewer, mech_import, tg_import_dump, launcher, data_tools, tests): an API
+   change rebuilds every in-repo consumer in the same batch. 0 errors, no new warnings in the touched dirs (C4840 an error).
+2. `py -3 tools/build_contract_harnesses.py --run --unit --asan` (doctest under ASan), `py -3 tools/own_inventory.py --check` with the baseline diff committed, `bash scripts/check-contracts.sh`
+   (cxx17 ratchet moves down only; comment guard; file size; log tag census). Determinism: `py -3 tools/sim_determinism.py check mc2_03 / mc2_10 / mc2_24` (and `mc2_16` with
+   `MC2_FIXTURE_ORDER_LIVENESS=1`). Objective state and the deployed force feed mission logic (flags via `CBooleanArray`, logistics name lookups), and SIMID sees the force only on runs that pass
+   through logistics and objective state only indirectly, so a digest change is an alarm, not the only signal.
+3. **Save proof (batches that touch a save path: B1.1, B1.3, B1.4).** `saveload_roundtrip resave` compares save/quickload/save within ONE exe and is NOT identical (1159 of 20000 packets, log
+   2026-10-11 19:55). The proof is old exe vs new exe at a fixed frame: **two saves from the OLD exe** give the noise set; one from the NEW exe; `py -3 tools/save_inspect.py diff` of
+   old-vs-new must show only noise-set packets, and the string packets (0 version, 1 campaign, the mission-FIT text packet with objectives and flags) must be byte-identical except for listed expected
+   lines (the writer now always writes the objective keys). Every differing packet is named in the commit.
+4. **Editor batch proof (B1.6, B1.7).** `scripts/run_editor_smoke.py` runs 15 cases on `-gen-map` and contains no objectives, so it is not enough: run `-mission=<stock mission with objectives, flags
+   and a blurb> -smoke-save=<out>` with the pre-batch and the post-batch editor and byte-diff the saved `.fit`; the expected differences are listed (C9). The MFC dialogs are not reachable
+   headless, so `ObjectiveDlg`/`ObjectivesDlg` edits are compile-only plus a reader's sign-off, and the commit says so.
+5. `py -3 scripts/run_smoke.py --tier tier1 --deploy 0.4 --continue --wait-timeout 3600` after commit + build + deploy (5/5). tier1 boots straight into missions and does NOT exercise logistics,
+   campaign flow or dialogs: front-end batches add viewed captures (`MC2_BOOT_TO_MECHLAB`, `_BAY`, `MC2_BOOT_TO_SCREEN=...`; sorted lists compared by eye, MAD is not a signal).
 
-1. `py -3 scripts/ninja_build.py` (game) then `py -3 tools/build_all_targets.py` (game, editor, mc2fx, asset_viewer, mech_import, tg_import_dump, launcher,
-   data_tools, tests): an API change must rebuild every in-repo consumer in the same batch. 0 errors, no new warnings in the touched dirs (C4840 now an error).
-2. `py -3 tools/build_contract_harnesses.py --asan --run --unit` (doctest under ASan, 56 s): every batch, with the characterization tests of H1-H10 growing
-   with the batch. Plus `alloc_probe` create/copy/move/destroy cases for the one raw owner (B1.1).
-3. `py -3 tools/own_inventory.py --check` and `--report --type EString`: new/delete rows for EString go 1/1 -> 0/0 in B1.1; the baseline is rewritten in
-   the same commit with the reason.
-4. `/analyze` lifetime gate on the batch's TUs (C26815/C26816 = 0), batches B1.3 (mandatory), B1.2, B1.4, B1.6, B1.7 (touch by-value returns).
-5. Determinism: `py -3 tools/sim_determinism.py check mc2_03` / `mc2_10` / `mc2_24` (and `mc2_16` with `MC2_FIXTURE_ORDER_LIVENESS=1`) against the committed
-   baselines; every batch (EString does not feed the simulation, so a digest change would be an alarm, not a finding). Runs are 20-45 s each; mc2_03 needs
-   `--duration 45` when the host is loaded (a 20 s run reached 377 of the 1000 baseline frames on 2026-10-12).
-6. Save/load: `py -3 tools/saveload_roundtrip.py resave --mission mc2_01` (byte identity of a re-save, old vs new exe) for B1.2 and B1.4 (the two batches that
-   touch `logisticsdata_save.cpp` / `saveload.cpp`). The recorded-baseline form (`--baseline` / `--check`, `tests/saveload/baselines/`) does NOT exist yet:
-   no baseline is committed because MechWarriorData/CommanderData/FIT fields differ run to run (`saveload-fidelity-2026-10-11.md`). B1.2/B1.4 therefore
-   depend on the resave byte-identity run (same frame, old exe vs new exe) rather than on a baseline; the owner ruling (saves load within a release line,
-   across the ownership step only once the round-trip test exists) still applies to a campaign-name or file-name field that changes length handling.
-7. `py -3 scripts/run_smoke.py --tier tier1 --deploy 0.4 --continue --wait-timeout 3600` after commit + build + deploy (5/5), plus smoke-lite while iterating.
-8. `py -3 scripts/run_editor_smoke.py` for B1.6 and B1.7 (and B1.0/B1.8 if `editor/` is touched); for B1.6 also: open a mission with objectives, save, re-open,
-   compare the saved `.fit` bytes with the pre-batch save (objective text, condition and action names are written through these strings).
-9. Front-end screens (B1.4): the listbox, mechlopedia and mission-briefing screens are exercised by `tests/smoke` front-end scripts only if they exist; otherwise
-   a viewed menu capture (`tools/visual_verify`, GL) before/after: sorted lists (H2 ordering) are compared by eye, MAD is not a signal.
-10. `bash scripts/check-contracts.sh` (cxx17 ratchet moves down only; log tag census unchanged unless a `Format` line was a tag; comment-guard; file-size).
-11. Opus review of the batch diff before the next batch starts (plan section 6); the review gets the characterization-test list and the H-table above.
+## 7. Conversion rules (paste into the lane brief)
 
-## 6. Risks and open points for the reviewer
+- C1 Types: owned text `std::string`; a read-only parameter `std::string_view`, except where the text reaches a C API (`seekBlock`, `writeIdString`, `AddString`, `playDigitalStream`, printf), where it is
+  `const std::string&` or `const char*`. A `string_view` is never a member, never a return value (except a string literal), never a local bound to a call result.
+- C2 Every legacy `const char*` entering a converted string goes through `mc2::str::from_c(p)` (null gives empty). Never `std::string(p)` on a pointer not proven non-null.
+- C3 Identity comparisons of names that come from data use `mc2::str::iequals` (ASCII fold, locale-free); containers keyed by such names use a transparent `mc2::str::ci_less`. There is no
+  case-insensitive string TYPE. A bare `==` is allowed only when both operands are produced by code, and the commit names the site.
+- C4 `ci_less` is the total order. Each sort site states its order in a comment; expected UI order changes (punctuation such as `-`, `'`, `_`, and case variants that compared equal) are listed
+  in the commit with the stock pairs that move.
+- C5 `MakeLower`/`MakeUpper` become `mc2::str::ascii_lower/ascii_upper`; bytes >= 0x80 pass through, a test pins that.
+- C6 Accessors that return a member return `const std::string&`; computed text returns `std::string`; constant species names become `std::string_view` of a literal; setters take `std::string` by value and move it.
+- C7 `Data()` null-test: decide absent vs empty per site (`std::optional<std::string>` where absent is meaningful, else `empty()`); a pass-through goes to `c_str()` only after checking what the callee does with `""`.
+- C8 A stored `const char*` from a converted string is listed with its owner's lifetime; prefer storing the string or an index.
+- C9 Text readers return `std::optional<std::string>`; text writers ALWAYS write the key and never call `writeIdString` with null; a missing key is not malformed (no log line), an over-long key is.
+- C10 `Format` with a literal template becomes `std::format`; a possibly-null `const char*` argument goes through `mc2::fmt::safe`; never pass a class object to `...`.
+- C11 Index API: hand-convert each site with a doctest of the old call's exact result written first (inclusive end, `-1` vs `npos`, overwrite `Replace`).
+- C12 A header changes type in the same commit as every includer the compiler reports. Never a dual form, and no `.str()` outside widget-boundary code.
+- C13 The code and editor objective models use the SAME helpers and rules.
+- C14 Comments are WHAT+WHY; wrong ones (`logisticsdata_save.cpp:577`) are deleted.
 
-R1. **Case-insensitivity (H2)** is the highest-probability silent regression: a bare `==` after a rename keeps compiling and breaks lookups that depend on
-    case folding (mech and pilot file names, variant names, mission names, `Compare(name, 0)`). Mitigation: no bare `==`; the helper; the corpus test.
-    Question: ASCII fold or `lstrcmpi`/locale fold? The data is ASCII (stock) but mods can carry accented names; `lstrcmpi` is the status quo.
-R2. **Null-as-empty (H1)** changes what C APIs see: `Data()` null becomes `""`. Some callees might treat null as "not given" and `""` as a name to
-    look up (`seekBlock`, `playDigitalStream`, `AddString`). Each pass-through site is classified; unknown callee behaviour is tested, not assumed.
-R3. **Dangling by-value returns (H4)** are invisible to the compiler and to ASan unless the freed block is reused; `/analyze` gate plus the manual
-    grep net; the 10 setters' copy behaviour confirmed. Question: should `Title()`/`Description()` return `const std::string&` to the member instead of by value
-    (keeps every existing `const char*` holder valid, removes the whole class of finding) at the price of exposing the member? Preferred here: yes for
-    accessors that return a member, by value only for the computed ones (`LocalizedTitle`, `DescriptionOf...Species`).
-R4. **printf templates from data (H9)**: string-table entries used as `Format` templates cannot move to `{}`; the printf formatter stays. A mod that
-    ships a `%`-template keeps working; a `{}`-template in mod text must not be interpreted. Question: is a permanent printf-template helper acceptable, or
-    should string-table templates move to a `{}` dialect with a one-time data pass? (Mods are content; a dialect change breaks them: recommended no.)
-R5. **Save and mission-file strings**: `logisticsdata_save.cpp`, `saveload.cpp` (campaign names), editor objective writers. The strings are written
-    through `fprintf`-style/`FitIni` writers: length handling (H7) and null-as-empty (H1) are the two ways bytes could change. Proof is the re-save byte
-    identity run and the editor re-save compare; both exist or are defined above, the recorded-baseline form does not (6).
-R6. **Gui bridge** adds overloads to three gui headers while lane 2 may be editing neighbouring gui/GameOS files: the bridge commit is small, and the
-    file sets are disjoint from lane 2's claim (GameOS/, RenderCore/, shaders/, Gates/, test_gate.cpp); confirm at the start of B1.0.
-R7. **Multiplayer screens (B1.5)** compile but cannot be exercised (no session layer): proof there is compile + build_all_targets + unit tests only; the commit
-    says so. Ruling needed only if a mp* file turns out to depend on a `multplyr*` type that is OFF.
-R8. **`/analyze` is unproven here** (no wiring, no seeded test): if the lifetime ruleset cannot be made to fire on the seeded negative within one hour of B1.0,
-    the fallback is clang-tidy `bugprone-dangling-handle` + `bugprone-use-after-move` + `clang-analyzer-cplusplus.*` on the same TUs (clang-tidy is installed,
-    `docs/host-tools.md`) and the manual grep net, and the review is told so.
-R9. Header fan-out: `logisticsdata.h` is included by 33 files; a member change there recompiles most of `code/`: expected build cost about 2-3 min incremental in
-    `build64-ninja`, 15 min for `build_all_targets` cold.
-R10. The batch cap counts files in the grep set; the real touched set per batch is reported in each commit message (grep set + compiler-found includers) so
-    the reviewer sees the number the cap is meant to bound.
+## 8. Results recorded by B1.0 (filled in as the items land)
 
-## 7. Questions for the Opus reviewer (answer before B1.0 starts)
+(empty until B1.0b-d have run: call-site count per file, the probe's list of fold-only and stale-reader sites on stock data, the lifetime gate's per-shape verdict.)
 
-1. Is the bridge-first order (B1.0 bridge + pins, then callers leaf-first, class kept alive for the widgets) right, versus converting the widgets first
-   (B6 before B1) so the class dies with its last user? The owner ruling says EString migrates with the widgets; the notes keep non-gui callers separate so the
-   front-end and data-model batches (B1.2-B1.7) can proceed while B6 is still unscheduled.
-2. H2: preserve case-insensitive equality everywhere (recommended) or take the opportunity to make names case-exact where the data allows (a content
-   change; not recommended in a "same behaviour" step).
-3. R3 accessor shape (reference to member versus by value).
-4. R4 printf-template formatter kept permanently.
-5. Is the batch order acceptable given that B1.2 and B1.4 touch the save path before the saveload baseline exists (6), or should the saveload baseline be a
-   prerequisite of B1.2? (The notes use resave byte identity as the interim proof.)
-6. B1.2 at 19 files: split in two?
+## 9. What the gates cannot see, and what a wrong conversion looks like
+
+SIMID digests movers, buildings, turrets, ABL instances and RNG counts. It cannot see UI text, list order, file names opened (a failed open falls back silently), save string packets, editor output,
+logistics state (inventory, pilots, campaign progress) or the objective flag table.
+- A bare `==` on a data name: a mech, pilot or variant is missing from the mechbay/purchase lists, a quickload drops a deployed mech, or an objective flag is never found and the objective never
+  completes. Caught by the probe (which sites matter), the doctests, the BAY/MECHLAB captures and the save diff.
+- null to `""`: `playFullScreenVideo("")` after an operation without `PreVideo`; `.fit` files gain `= ""` lines. Caught by the campaign-start boot log, the save diff and the editor `.fit` diff.
+- A dangling `c_str()`: garbage text, or a heap-use-after-free under ASan only if a test runs it. Caught by C6 (by construction), the lifetime gate and clang-cl.
+- `std::string` from null (H13): an access violation at construction, in a tier1 crash bucket on mission paths and only when the screen is used elsewhere. Caught by C2 and the call-site review.
+- Index off-by-one (H6): a truncated or extra character in mechlopedia and briefing text. Caught by doctests first, then viewed captures.
+
+## 10. Risks that remain
+
+- Header fan-out: `logisticsdata.h` is included by 33 files; a member change there recompiles most of `code/` (about 2-3 min incremental in `build64-ninja`, 15 min for `build_all_targets` cold).
+- The mp screens compile in the default build although `MC2_MULTIPLAYER` is OFF; until B6 they are touched only where a B1 header forces it.
+- Gui bridge overloads add to three gui headers; lane 2's claim is GameOS/, RenderCore/, shaders/, Gates/, `test_gate.cpp`, so the file sets are disjoint (confirmed at the start of B1.0).
+- Zero-vector ABL host-interface question and the saveload baselines are outside B1.
