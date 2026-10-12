@@ -167,17 +167,17 @@ void collectObjects(std::vector<ObjectRecord>& out) {
 		return;
 	const long nb = ObjectManager->getNumBuildings();
 	const long nt = ObjectManager->getNumTurrets();
-	out.reserve((size_t)((nb > 0 ? nb : 0) + (nt > 0 ? nt : 0)));
+	out.reserve(static_cast<size_t>((nb > 0 ? nb : 0) + (nt > 0 ? nt : 0)));
 	for (long i = 0; i < nb; ++i) {
 		BuildingPtr b = ObjectManager->getBuilding(i);
 		if (!b)
 			continue;
 		ObjectRecord r;
-		r.id        = (int32_t)b->getPartId();
+		r.id        = static_cast<int32_t>(b->getPartId());
 		r.kind      = 1;
-		r.team      = (int32_t)b->getTeamId();
-		r.commander = (int32_t)b->getCommanderId();
-		r.status    = (int32_t)b->getStatus();
+		r.team      = static_cast<int32_t>(b->getTeamId());
+		r.commander = static_cast<int32_t>(b->getCommanderId());
+		r.status    = static_cast<int32_t>(b->getStatus());
 		r.damage    = b->getDamage();
 		out.push_back(r);
 	}
@@ -186,13 +186,13 @@ void collectObjects(std::vector<ObjectRecord>& out) {
 		if (!t)
 			continue;
 		ObjectRecord r;
-		r.id     = (int32_t)t->getPartId();
+		r.id     = static_cast<int32_t>(t->getPartId());
 		r.kind   = 2;
-		r.team   = (int32_t)t->getTeamId();
-		r.status = (int32_t)t->getStatus();
+		r.team   = static_cast<int32_t>(t->getTeamId());
+		r.status = static_cast<int32_t>(t->getStatus());
 		r.damage = t->getDamage();
 		r.rot    = t->turretRotation;
-		r.target = (int32_t)t->targetWID;
+		r.target = static_cast<int32_t>(t->targetWID);
 		out.push_back(r);
 	}
 }
@@ -204,16 +204,16 @@ void collectAbl(std::vector<AblRecord>& out) {
 	const long n = ABLi_getNumModuleInstances();
 	if (n <= 0)
 		return;
-	out.reserve((size_t)n);
+	out.reserve(static_cast<size_t>(n));
 	for (long i = 0; i < n; ++i) {
 		ABLModulePtr m = ABLi_getModuleInstance(i);
 		if (!m)
 			continue;
 		AblRecord r;
-		r.id         = (int32_t)m->getId();
-		r.handle     = (int32_t)m->getHandle();
-		r.state      = (int32_t)m->getStateHandle();
-		r.prevState  = (int32_t)m->getPrevStateHandle();
+		r.id         = static_cast<int32_t>(m->getId());
+		r.handle     = static_cast<int32_t>(m->getHandle());
+		r.state      = static_cast<int32_t>(m->getStateHandle());
+		r.prevState  = static_cast<int32_t>(m->getPrevStateHandle());
 		r.initCalled = m->getInitCalled() ? 1 : 0;
 		r.statics    = m->digestStatics(mc2_sim_identity::kFnvOffset);
 		out.push_back(r);
@@ -341,8 +341,8 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	// differing line IS the first divergent sim frame.
 	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d}\n",
 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
-	       mc2::fmt::as_i32((int)objs.size()), mc2::fmt::safe(ho), mc2::fmt::as_i32((int)abl.size()), mc2::fmt::safe(ha),
-	       mc2::fmt::as_u32((uint32_t)SimRandomDraws()), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
+	       mc2::fmt::as_i32(static_cast<int>(objs.size())), mc2::fmt::safe(ho), mc2::fmt::as_i32(static_cast<int>(abl.size())), mc2::fmt::safe(ha),
+	       mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
 
 #if MC2_SIM_TRACE
 	mc2_sim_trace::setTime(scenarioTimeNow);

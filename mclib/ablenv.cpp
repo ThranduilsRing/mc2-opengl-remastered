@@ -480,7 +480,7 @@ unsigned long long ABLModule::digestStatics (unsigned long long h) {
 	for (long i = 0; i < numStatics; i++) {
 		if (sizeList[i] > 0) {
 			if (staticData[i].address)
-				h = mc2_sim_identity::fnvBytes(h, staticData[i].address, (size_t)sizeList[i]);
+				h = mc2_sim_identity::fnvBytes(h, staticData[i].address, static_cast<size_t>(sizeList[i]));
 		} else
 			h = mc2_sim_identity::fnvI32(h, staticData[i].integer);
 	}

@@ -388,14 +388,14 @@ inline uint64_t digestAbl(const AblRecord* recs, size_t n) {
         h = fnvI32(h, r.prevState);
         h = fnvI32(h, r.initCalled);
         for (int b = 0; b < 8; ++b)
-            h = fnvByte(h, (uint8_t)((r.statics >> (b * 8)) & 0xFFu));
+            h = fnvByte(h, static_cast<uint8_t>((r.statics >> (b * 8)) & 0xFFu));
     }
     return h;
 }
 
 // FNV-1a over raw bytes, for the static-variable digest.
 inline uint64_t fnvBytes(uint64_t h, const void* bytes, size_t n) {
-    const uint8_t* p = (const uint8_t*)bytes;
+    const uint8_t* p = static_cast<const uint8_t*>(bytes);
     for (size_t i = 0; i < n; ++i)
         h = fnvByte(h, p[i]);
     return h;
