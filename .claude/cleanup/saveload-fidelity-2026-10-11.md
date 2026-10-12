@@ -97,3 +97,17 @@ Load-then-re-save in the same frame was not measured (QS=QL=1000 run starved bef
 - A `tools/save_inspect.py` (packet map + per-class byte diff) and a recorded fixture mission/frame for lane 1's "0..1905" claim.
 - A fixture that saves in the SAME frame right after a load (QS==QL ordering is undefined today) and a `saveload_roundtrip --load-at`.
 - SIMID mover lines that carry the object class (mech/vehicle) and an RNG call counter; the host was contended (35 fps, 1 timeout).
+
+## Run-to-run stability of the round-trip save (2026-10-12, lane 1, exe 6eef8e2b2 on the 0.4 install)
+`saveload_roundtrip.py baseline` then `check` on mc2_01 and mc2_16 (both at the tool's default save-at 1000 / load-at 1250, the
+determinism gates, MC2_SMOKE_FREEZE_ANIM=1, liveness fixture): the baseline writes (mc2_01 digest 41c85ecc769a0927, mc2_16
+e7732b406a66ec67, 20000 packets each, re-save identical: False as before) but the check FAILS on both: the round-trip save is not
+the same from one run to the next, so NO baseline is committed (tests/saveload/baselines/ stays unrecorded). `save_inspect.py diff`
+of the two save1.ims: mc2_01 48 of 20000 packets differ (MechWarriorData 38 packets / 24405 bytes, MechData 6 / 96, CommanderData
+2 / 400, TeamData 1 / 31, and the mission FIT text packet 2: 34166 vs 34238 bytes); mc2_16 123 packets (TerrainObjectData 77 / 77
+bytes, MechWarriorData 36 / 26362, MechData 8 / 97, CommanderData 2 / 277). The SIMID streams of the same missions ARE identical
+run to run over the frames before the save (mc2_03/10/24 baselines recorded at 6eef8e2b2; mc2_16 under liveness diverges one sim
+draw apart at a later frame, see lane1-state.md), so what differs is in what Save writes, not in the simulation it observes:
+MechWarriorData and CommanderData carry wall-clock or allocation-order fields (per-offset tallies, the method of the resave work
+above, are the next step), and the FIT text packet differs in length (a timestamp or path). Until those fields are named and
+masked by the digest, `saveload_roundtrip --check` cannot be a board row; the diagnostic itself (packet classes) is reproducible.
