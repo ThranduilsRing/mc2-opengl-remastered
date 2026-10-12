@@ -230,7 +230,27 @@ def names_in_wrapper_calls(parsed, wrappers, cand):
     return out
 
 
-def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), tracked_cxx=(), allow_strings=False):
+DOCTEST_ASSERT = re.compile(r"\b(?:DOCTEST_)?(?:CHECK|REQUIRE|WARN)\w*\s*\(")
+
+
+def names_in_doctest_assertions(test_files, cand):
+    """The candidate constant names that sit inside the argument list of a doctest assertion (CHECK / REQUIRE / WARN and their _EQ / _FALSE / _THROWS ... forms) in `test_files` {path: text}.
+    WHAT: doctest takes the operands of `a == b` by const reference and stringizes the macro-expanded expression.
+    WHY: a literal macro there becomes an ODR-used inline variable and its text changes from the value to the name, so the test object differs (mclib/inifile.h, NO_ERR)."""
+    out = set()
+    for _path, text in test_files.items():
+        nc, bl = cr.strip(text)
+        code = "\n".join(bl)
+        for m in DOCTEST_ASSERT.finditer(code):
+            depth, k = 1, m.end()
+            while k < len(code) and depth:
+                depth += (code[k] == "(") - (code[k] == ")")
+                k += 1
+            out.update(t for t in TOKEN.findall(code[m.end():k]) if t in cand)
+    return out
+
+
+def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), tracked_cxx=(), allow_strings=False, test_files=None):
     """files: {path: text} of the C++ files in scope. -> (sites, {name: [(path, line, ctx)]}). A site's `reasons` list is empty when it is eligible."""
     sites, uses, defs, undefs = [], collections.defaultdict(list), collections.defaultdict(int), set()
     parsed = {}
@@ -258,6 +278,7 @@ def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), t
             cont = l.rstrip().endswith("\\") and bool(re.match(r"\s*#", l) or cont)
     cand = {s.name for s in sites}
     stringized = names_in_wrapper_calls(parsed, stringizing_wrappers(parsed), cand)
+    in_doctest = names_in_doctest_assertions(test_files or {}, cand)
     for path, (nc, bl, raw) in parsed.items():
         has_asm = any("__asm" in l for l in bl)
         in_macro = False
@@ -298,6 +319,8 @@ def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), t
             r.append("named-outside-c++")
         if s.name in stringized:
             r.append("stringized-by-wrapper-macro")
+        if s.name in in_doctest:
+            r.append("odr-used-by-doctest")
         if s.name.startswith("_"):
             r.append("reserved-name")
         if os.path.basename(s.path) in c_side_headers:
@@ -387,7 +410,8 @@ def load_world():
     paths = tracked()
     cxx = [p for p in paths if p.lower().endswith(CXX_EXT) and p.split("/", 1)[0] in DIRS and ".gen." not in p]
     files = {p: read(p) for p in cxx}
-    sites, uses = analyse(files, c_side_header_names(paths), outside_identifiers(paths), cxx)
+    tests = {p: read(p) for p in paths if p.startswith("tests/") and p.lower().endswith(CXX_EXT)}
+    sites, uses = analyse(files, c_side_header_names(paths), outside_identifiers(paths), cxx, test_files=tests)
     return paths, files, sites, uses
 
 

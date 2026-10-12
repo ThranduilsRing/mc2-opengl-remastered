@@ -32,20 +32,20 @@
 #endif
 
 #define BLOCK_NOT_FOUND						0xFADA0000
-#define ID_NOT_FOUND							0xFADA0001
-#define DATA_NOT_CORRECT_TYPE				0xFADA0002
-#define BUFFER_TOO_SMALL					0xFADA0003
-#define NOT_A_FITINIFILE					0xFADA0004
-#define NO_RAM_FOR_INI_BLOCKS				0xFADA0005
-#define NO_MORE_BLOCKS						0xFADA0006
-#define TOO_MANY_BLOCKS						0xFADA0007
-#define NOT_ENOUGH_BLOCKS					0xFADA0008
-#define VARIABLE_NOT_FOUND					0xFADA0009
-#define SYNTAX_ERROR							0xFADA000A
-#define NOT_ENOUGH_ELEMENTS_FOR_ARRAY	0xFADA000B
-#define GET_NEXT_LINE						0xFADA000C
-#define USER_ARRAY_TOO_SMALL				0xFADA000D
-#define TOO_MANY_ELEMENTS					0xFADA000E
+inline constexpr unsigned int ID_NOT_FOUND = 0xFADA0001;
+inline constexpr unsigned int DATA_NOT_CORRECT_TYPE = 0xFADA0002;
+inline constexpr unsigned int BUFFER_TOO_SMALL = 0xFADA0003;
+inline constexpr unsigned int NOT_A_FITINIFILE = 0xFADA0004;
+inline constexpr unsigned int NO_RAM_FOR_INI_BLOCKS = 0xFADA0005;
+inline constexpr unsigned int NO_MORE_BLOCKS = 0xFADA0006;
+inline constexpr unsigned int TOO_MANY_BLOCKS = 0xFADA0007;
+inline constexpr unsigned int NOT_ENOUGH_BLOCKS = 0xFADA0008;
+inline constexpr unsigned int VARIABLE_NOT_FOUND = 0xFADA0009;
+inline constexpr unsigned int SYNTAX_ERROR = 0xFADA000A;
+inline constexpr unsigned int NOT_ENOUGH_ELEMENTS_FOR_ARRAY = 0xFADA000B;
+inline constexpr unsigned int GET_NEXT_LINE = 0xFADA000C;
+inline constexpr unsigned int USER_ARRAY_TOO_SMALL = 0xFADA000D;
+inline constexpr unsigned int TOO_MANY_ELEMENTS = 0xFADA000E;
 
 //---------------------------------------------------------------------------
 // Enums
