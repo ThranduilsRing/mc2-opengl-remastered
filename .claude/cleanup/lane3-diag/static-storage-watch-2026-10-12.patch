@@ -1,0 +1,141 @@
+diff --git a/GameOS/gameos/gameosmain.cpp b/GameOS/gameos/gameosmain.cpp
+index b12311b84..6a1d8eec2 100644
+--- a/GameOS/gameos/gameosmain.cpp
++++ b/GameOS/gameos/gameosmain.cpp
+@@ -609,6 +609,7 @@ static void mc2resFrameAudit(int viewport_w, int viewport_h)
+ 
+ static void draw_screen( void )
+ {
++    { extern void diag_sandwich_tick(); diag_sandwich_tick(); }  // [DIAG_SANDWICH]
+     g_disable_quads = false;
+ 
+     gosPostProcess* pp = getGosPostProcess();
+diff --git a/GameOS/gameos/gos_crashbundle.cpp b/GameOS/gameos/gos_crashbundle.cpp
+index f639e4f44..8b190fd2d 100644
+--- a/GameOS/gameos/gos_crashbundle.cpp
++++ b/GameOS/gameos/gos_crashbundle.cpp
+@@ -735,3 +735,124 @@ extern "C" void crashbundle_trigger_test_crash(void)
+ }
+ 
+ #endif // _WIN32
++
++
++// [DIAG_SANDWICH] diagnostic patch (sandwich_patch.py) -- never commit
++#include <tlhelp32.h>
++#include <vector>
++namespace diagsw {
++struct Slot { unsigned char* p; uint32_t cls; uint32_t idx; uint8_t kept; };
++static std::vector<Slot> g_slots;
++static const uint32_t kClasses[] = {32u, 48u, 64u, 80u, 96u, 112u, 128u};
++static const uint32_t kPerClass = 1200u;
++static uint32_t g_frame = 0;
++static int g_reports = 0;
++static bool g_armed = false;
++static uint32_t g_lastReportFrame[64] = {0};
++
++static uint64_t pat(uint32_t idx, uint32_t q) { return 0xC5A7C5A700000000ull ^ ((uint64_t)idx << 8) ^ q; }
++
++static void wave() {
++    for (uint32_t ci = 0; ci < sizeof(kClasses) / sizeof(kClasses[0]); ++ci) {
++        const uint32_t cls = kClasses[ci];
++        const uint32_t base = (uint32_t)g_slots.size();
++        for (uint32_t i = 0; i < kPerClass; ++i) {
++            unsigned char* p = (unsigned char*)malloc(cls);
++            if (!p) break;
++            const uint32_t idx = base + i;
++            for (uint32_t q = 0; q < cls / 8; ++q) { uint64_t v = pat(idx, q); memcpy(p + q * 8, &v, 8); }
++            g_slots.push_back(Slot{p, cls, idx, 1});
++        }
++        for (uint32_t i = 1; i < kPerClass; i += 2) {
++            Slot& s = g_slots[base + i];
++            if (s.p) { free(s.p); s.kept = 0; }   // hole: stays in the vector for neighbour dumps and digit scans
++        }
++    }
++    fprintf(stderr, "[SANDWICH] frame=%u wave slots=%zu\n", g_frame, g_slots.size()); fflush(stderr);
++}
++
++static void dump(const unsigned char* a, size_t n, const char* tag) {
++    for (size_t o = 0; o < n; o += 32) {
++        char hex[32 * 3 + 1]; char asc[33]; size_t m = (n - o < 32) ? n - o : 32;
++        for (size_t k = 0; k < m; ++k) { snprintf(hex + k * 3, 4, "%02X ", a[o + k]); asc[k] = (a[o + k] >= 32 && a[o + k] < 127) ? (char)a[o + k] : '.'; }
++        asc[m] = 0;
++        fprintf(stderr, "[SANDWICH] %s %p: %-96s |%s|\n", tag, (const void*)(a + o), hex, asc);
++    }
++}
++
++static bool digitRun(const unsigned char* p, uint32_t n, uint32_t minRun) {
++    uint32_t run = 0;
++    for (uint32_t i = 0; i < n; ++i) { if (p[i] >= '0' && p[i] <= '9') { if (++run >= minRun) return true; } else run = 0; }
++    return false;
++}
++
++static void armWatch(void* addr) {
++    if (g_armed) return;
++    g_armed = true;
++    const DWORD me = GetCurrentThreadId();
++    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
++    if (snap == INVALID_HANDLE_VALUE) { fprintf(stderr, "[SANDWICH] snapshot failed\n"); return; }
++    THREADENTRY32 te; te.dwSize = sizeof(te);
++    int n = 0;
++    if (Thread32First(snap, &te)) do {
++        if (te.th32OwnerProcessID != GetCurrentProcessId() || te.th32ThreadID == me) continue;
++        HANDLE h = OpenThread(THREAD_ALL_ACCESS, FALSE, te.th32ThreadID);
++        if (!h) continue;
++        if (SuspendThread(h) != (DWORD)-1) {
++            CONTEXT c; memset(&c, 0, sizeof(c)); c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
++            if (GetThreadContext(h, &c)) {
++                c.Dr0 = (DWORD64)addr; c.Dr7 = (c.Dr7 & ~0xF0003ull) | 0x1ull | (0x1ull << 16) | (0x3ull << 18);  // L0, write, 8 bytes
++                if (SetThreadContext(h, &c)) ++n;
++            }
++            ResumeThread(h);
++        }
++        CloseHandle(h);
++    } while (Thread32Next(snap, &te));
++    CloseHandle(snap);
++    // the calling thread: a helper thread sets its context
++    struct Arg { DWORD tid; void* addr; } arg{me, addr};
++    HANDLE t = CreateThread(nullptr, 0, [](LPVOID a) -> DWORD {
++        Arg* x = (Arg*)a; HANDLE h = OpenThread(THREAD_ALL_ACCESS, FALSE, x->tid); if (!h) return 1;
++        if (SuspendThread(h) == (DWORD)-1) { CloseHandle(h); return 2; }
++        CONTEXT c; memset(&c, 0, sizeof(c)); c.ContextFlags = CONTEXT_DEBUG_REGISTERS; DWORD rc = 3;
++        if (GetThreadContext(h, &c)) { c.Dr0 = (DWORD64)x->addr; c.Dr7 = (c.Dr7 & ~0xF0003ull) | 0x1ull | (0x1ull << 16) | (0x3ull << 18); if (SetThreadContext(h, &c)) rc = 0; }
++        ResumeThread(h); CloseHandle(h); return rc; }, &arg, 0, nullptr);
++    DWORD rc = 99;
++    if (t) { WaitForSingleObject(t, 5000); GetExitCodeThread(t, &rc); CloseHandle(t); }
++    fprintf(stderr, "[SANDWICH] watchpoint armed at %p on %d other threads, self rc=%lu\n", addr, n, rc); fflush(stderr);
++}
++
++static void report(const Slot& s, uint32_t slotNo, const char* kind, uint32_t firstBad) {
++    if (g_reports >= 24) return;
++    const uint32_t key = slotNo & 63u;
++    if (g_lastReportFrame[key] && g_frame - g_lastReportFrame[key] < 120u) return;
++    g_lastReportFrame[key] = g_frame;
++    ++g_reports;
++    fprintf(stderr, "[SANDWICH] HIT frame=%u kind=%s slot=%u cls=%u p=%p firstBad=%u\n", g_frame, kind, slotNo, s.cls, (void*)s.p, firstBad);
++    dump(s.p - 0x120, 0x120, "before");
++    dump(s.p, s.cls, "block ");
++    dump(s.p + s.cls, 0x60, "after ");
++    if (slotNo > 0) { const Slot& q = g_slots[slotNo - 1]; fprintf(stderr, "[SANDWICH] prev slot %u cls=%u p=%p kept=%u\n", slotNo - 1, q.cls, (void*)q.p, q.kept); }
++    if (slotNo + 1 < g_slots.size()) { const Slot& q = g_slots[slotNo + 1]; fprintf(stderr, "[SANDWICH] next slot %u cls=%u p=%p kept=%u\n", slotNo + 1, q.cls, (void*)q.p, q.kept); }
++    fflush(stderr);
++    if (s.kept) armWatch(s.p + (firstBad & ~7u));
++}
++
++void tick() {
++    ++g_frame;
++    if (g_frame == 2u || g_frame == 400u || g_frame == 1200u) wave();
++    for (uint32_t i = 0; i < g_slots.size(); ++i) {
++        const Slot& s = g_slots[i];
++        if (!s.p) continue;
++        if (s.kept) {
++            for (uint32_t q = 0; q < s.cls / 8; ++q) {
++                uint64_t v; memcpy(&v, s.p + q * 8, 8);
++                if (v != pat(s.idx, q)) { report(s, i, "canary", q * 8); break; }
++            }
++        } else if (digitRun(s.p, s.cls, 12u)) {
++            report(s, i, "hole-digits", 0);
++        }
++    }
++}
++}  // namespace diagsw
++void diag_sandwich_tick() { diagsw::tick(); }
