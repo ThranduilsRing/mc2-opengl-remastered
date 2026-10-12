@@ -10,7 +10,6 @@
  "_add_reason": "The shared state lives in the detail namespace and is declared once in the internal header inside a namespace block; check-mdi-submission-ownership needs the flush piece to include mdi_submit.h itself.",
  "scripts": [
   "scripts/check-apply-pass-bumped.py",
-  "scripts/check-gate-default-agreement.py",
   "scripts/check-light-row-freshness.py",
   "scripts/check-raw-gl-colormask.py",
   "scripts/check-raw-gl-depthfunc.py",
@@ -19,7 +18,6 @@
   "scripts/check-toolchain-bom.py",
   "scripts/check-vulkan-bindings.allowlist.json",
   "scripts/counter-honesty-allowlist.txt",
-  "scripts/gate-defaults-allowlist.txt",
   "scripts/gl_shader_variants.json",
   "tests/shader_variants/static_prop.frag.splice-regression",
   "tests/telemetry/tag-registry.json",
@@ -29,9 +27,6 @@
   "tools/asset_viewer/engine_stubs.cpp",
   "tools/blender_pipeline/tex_hd.py",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gate_codemod.py",
-  "tools/gate_conflicts.py",
-  "tools/gate_g0_ledger.json",
   "tools/mc2_launcher/mc2_launcher.cpp",
   "tools/mc2texcook/mc2texcook.py",
   "tools/tg_import_dump/stubs.cpp"

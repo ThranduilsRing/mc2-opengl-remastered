@@ -163,7 +163,7 @@ tools/terrain_gen/__pycache__/
 # build-time generated cmake scripts are real sources
 !cmake/*.cmake
 
-# S9 visual-capture scratch (blessed sets live in tests/visual/baselines/)
+# S9 visual-capture scratch (blessed goldens live in tests/visual/goldens/)
 tests/visual/captures/
 tests/visual/compare/
 tests/visual/abtest/
@@ -189,7 +189,6 @@ data/hdr/*_16k.ktx2
 /graphify-out/
 imgui.ini
 /.claude/archive-2026-07-05/
-tests/visual/baselines/
 tests/visual/bookmarks/
 tests/visual/macro_on/
 tests/visual/macro_off/

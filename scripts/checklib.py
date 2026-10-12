@@ -20,7 +20,7 @@ Provides:
     violation and assert the checker fails (house pattern:
     check-contracts.sh vulkan_bindings_selftest).
 
-Exit convention (check-combat-soak.py:20-22):
+Exit convention (house pattern):
   0 = pass, 1 = a contract violated, 2 = harness error.
 """
 

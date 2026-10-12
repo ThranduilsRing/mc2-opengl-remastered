@@ -14,9 +14,10 @@ verb is one `else if` plus a `RendererFeatureRegistry.h` entry.
 ## Quick start
 
 ```bash
-py -3 tools/scenario_runner.py tools/scenarios/day_night_ab.json \
-    --install A:/Games/mc2-opengl/mc2-win64-v0.3 \
-    --out .claude/captures/gameplay-driver/day_night_ab
+py -3 scripts/game_auto.py --help
+# game_auto.py is the driver client. tools/scenario_runner.py and its
+# tools/scenarios/*.json were retired 2026-10-12, cull wave 1 (archived on
+# E:/mc2-archive-2026-10/docs/cull-wave1-2-2026-10-12.tar.gz).
 ```
 
 The runner boots the engine headless, waits for mission-live, feeds the
@@ -199,7 +200,7 @@ would likewise keep mutating `drawFlags` and issuing orders between two arms
 that are supposed to be identical.
 
 **Unlocks — the mover-frozen vehicle-vs-mech lighting comparison**
-(`tools/scenarios/lighting_pair.json`). This is the comparison that previously
+(the retired tools/scenarios/lighting_pair.json). This is the comparison that previously
 produced a **retracted** "+14.8 luma brighter" result: the two arms differed by
 a turret barrel resting at a different aim angle, not by lighting. Frozen movers
 still draw, but `updateAppearancesOnly` never calls `setMoverParameters`, so
@@ -299,7 +300,7 @@ would call `ClearAnimation()` and leave the object on the static path, which
 looks exactly like success.
 
 **Unlocks — the animated-building black-quad reproduction**
-(`tools/scenarios/animated_building.json`). `code/terrobj.cpp`'s own comment
+(the retired tools/scenarios/animated_building.json). `code/terrobj.cpp`'s own comment
 says its `animStartInvalidated` counter "may be zero in smoke missions if no
 registered-static building animates" — an admission that the render path the
 user's black quads *and* sunk turrets both live on had never been exercised,
@@ -373,7 +374,7 @@ MC2_SMOKE_FIXED_TIMESTEP=1        for any cross-build claim
 `MC2_UI_COMMAND_FILE`. A second gate in front of a read-only verb inside an
 already-gated channel buys nothing and adds one more documented-vs-actual
 default to drift out of truth. Nothing to add to the `run_smoke.py` passthrough
-list; `check-gate-default-agreement.py` is unaffected (verified: `DISAGREE 0`,
+list; check-gate-default-agreement.py (retired 2026-10-12, cull wave 1) was unaffected (verified: `DISAGREE 0`,
 `CONTRADICT 0`).
 
 ### Reading a `-1`

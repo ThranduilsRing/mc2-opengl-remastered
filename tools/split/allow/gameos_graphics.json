@@ -40,13 +40,10 @@
   "scripts/run_vk_field_check.py",
   "scripts/smoke_lib/logparse.py",
   "scripts/smoke_lib/nofocus.py",
-  "scripts/validate_shaders.py",
   "tests/unit/test_argb_pack.cpp",
   "tests/unit/test_depth_hzb.cpp",
   "tests/unit/test_gate.cpp",
   "tests/unit/test_xform_convention.cpp",
-  "tools/gate_codemod.py",
-  "tools/gate_g0_ledger.json",
   "tools/glstate_guard_harness/glstate_guard_harness.cpp",
   "tools/mc2_launcher/mc2_launcher.cpp"
  ],

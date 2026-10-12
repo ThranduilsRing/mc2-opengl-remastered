@@ -25,7 +25,7 @@ That gap was not theoretical. On 2026-07-31 this lane measured the tests/ tier:
 
 This file does NOT run the tests; running them needs a compiler and so belongs
 to the execution tier (scripts/run-unit-tests.sh), per the reason recorded for
-check-frame-graph.py in manual-checks.allowlist. What it does is make the
+check-frame-graph.py (since deleted) in manual-checks.allowlist. What it does is make the
 DARKNESS itself detectable by cheap static means, so the specific ways a test
 silently stops counting all become loud:
 

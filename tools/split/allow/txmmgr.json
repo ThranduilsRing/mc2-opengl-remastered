@@ -3,7 +3,6 @@
  "src": "mclib/txmmgr.cpp",
  "stem": "txmmgr",
  "scripts": [
-  "scripts/check-icon-atlases.py",
   "scripts/check-light-loop-numlights-bound.py",
   "scripts/check-light-row-freshness.py",
   "scripts/check-lighting-divergence.py",
@@ -14,8 +13,6 @@
   "tools/asset_viewer/asset_viewer_game_stubs.cpp",
   "tools/blender_pipeline/tex_hd.py",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gate_codemod.py",
-  "tools/gate_g0_ledger.json",
   "tools/object_light_row_harness/object_light_row_harness.cpp"
  ],
  "_scripts_reason": "Reviewed: check-lighting-divergence pins the MC2_VEHICLE_AMBIENT_FLOOR reader and check-no-raw-gl-from-game allows the renderLists GL calls in txmmgr_render.cpp; counter-honesty keys follow their limiters to txmmgr_render/lights.cpp; the env-registry comments name the typed reads; delivery-fixes code_evidence is read at the historical fix commit; the rest cite txmmgr.cpp in comments, and the viewer stubs re-define exported functions by name.",

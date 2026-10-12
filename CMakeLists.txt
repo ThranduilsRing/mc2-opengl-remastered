@@ -53,7 +53,6 @@ endforeach()
 
 list(APPEND CMAKE_MODULE_PATH
     "${MC2_SOURCE_DIR_CMAKE}/3rdparty/cmake"
-    "${MC2_SOURCE_DIR_CMAKE}/cmake/sdl2"
 )
 # may have to help find_package bydetting path to FindSDL2.cmake
 #set(SDL2_DIR "${CMAKE_PREFIX_PATH}/cmake")

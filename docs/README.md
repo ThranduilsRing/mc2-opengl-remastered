@@ -81,7 +81,6 @@
 - [render-contract-audit-2026-05-14.md](render-contract-audit-2026-05-14.md) - Render Contract Audit - 2026-05-14
 - [shadow-soak-1.md](shadow-soak-1.md) - SHADOW-SOAK-1: First Debug/Tuning Soak
 - [static-prop-v3-soak-state.md](static-prop-v3-soak-state.md) - Static-Prop Extraction v3 - Soak State (pre-authority-flip)
-- [terrain-height-audit.md](terrain-height-audit.md) - Terrain Height Audit (TERRAIN-HEIGHT-AUDIT-0)
 - [thermal-ir-design.md](thermal-ir-design.md) - Thermal / IR view - design (THERMAL-IR-DESIGN-1)
 - [thermal-view-mech-heat-mvp-defer.md](thermal-view-mech-heat-mvp-defer.md) - Thermal ViewMode - engine-bearing units read hot (THERMAL-VIEW-MECH-HOT-1)
 - [trackv-post-grounding-soak-1.md](trackv-post-grounding-soak-1.md) - VISUAL-CAPTURE-MATRIX-SOAK-1: Track V Post + Grounding MVP
@@ -103,7 +102,6 @@ Core references:
 - [docs/visual-verify.md](visual-verify.md) — `tools/visual_verify/` region-level visual verification: capture every saved camera pose from a build, crop the known artifact regions, diff vs a blessed golden, emit a verdict report + contact sheets (automates the manual verification-fleet loop)
 - [docs/renderdoc-automation.md](renderdoc-automation.md) — `tools/renderdoc/` draw-call attribution: capture a posed frame under RenderDoc, then walk pixel-history to report which draws wrote a screen region (shaders/blend/depth/marker) and dump full pipeline state for one draw — the automation the manual black-band tint-hunt needed (complements the Tier-5 parity hook)
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — branch/PR flow, mandatory build config, the tier-1 smoke gate
-- [ai-order-triage.md](ai-order-triage.md) - AI order triage playbook (META-FIX design F)
 - [asan-follow-ups.md](asan-follow-ups.md) - ASan MVP - Follow-up Findings
 - [asan-triage.md](asan-triage.md) - ASan Findings Triage - 2026-04-24
 - [asset-viewer-backend-a-shader-contract.md](asset-viewer-backend-a-shader-contract.md) - Backend-A Shader Contract - static_prop.{vert,frag}
@@ -119,7 +117,6 @@ Core references:
 - [verify-primitive.md](verify-primitive.md) - MC2_VERIFY - the live data-contract guard primitive
 - [vfx-payoff-capture-matrix.md](vfx-payoff-capture-matrix.md) - VFX payoff capture matrix (VFX-PAYOFF-CAPTURE-MATRIX-1)
 - [viewmode-capture-matrix.md](viewmode-capture-matrix.md) - ViewMode capture matrix (TACTICAL-PRESENTATION-CAPTURE-MATRIX-1)
-- [visual-baseline-howto.md](visual-baseline-howto.md) - Visual Baseline How-To (V-BASELINE-0)
 - [visual-tuning-profiles.md](visual-tuning-profiles.md) - Visual Tuning Profiles - MISSION-VISUAL-TUNING-1
 
 Fixtures shipped in the v0.5 cycle (all in-tree; one-liners — see

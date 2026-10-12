@@ -102,8 +102,4 @@ get_latest_artifact_paths            # locate log files if result != PASS
 
 Full field reference: `docs/debug_state_schema.md`
 
-Validator script: `scripts/check-debug-state-json.py`
-
-```
-py -3 scripts/check-debug-state-json.py path\to\latest_render_state.json
-```
+Validator: the `validate_state` MCP tool (the standalone check-debug-state-json.py script was retired 2026-10-12, cull wave 1).

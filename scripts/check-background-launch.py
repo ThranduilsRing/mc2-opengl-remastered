@@ -198,7 +198,7 @@ WINDOWING_VARS = ("MC2_WINDOWED", "MC2_WIDTH", "MC2_HEIGHT", "MC2_NO_CURSOR_GRAB
 #:     MC2_VISUAL_DIFF_CAPTURE, MC2_SCREENSHOT_SOURCE=backbuffer): reads the GL
 #:     drawable, which keeps its full size wherever the window sits. Offscreen
 #:     is free and correct. run_visual_capture.py, mech_shot.py,
-#:     mechbay_preview_harness.py, debug_view_sweep.py, renderdoc/capture.py.
+#:     mechbay_preview_harness.py, renderdoc/capture.py.
 #:   * DESKTOP COMPOSITE (pyautogui / mss / PIL.ImageGrab): reads the input
 #:     desktop. An offscreen window contributes NOTHING, so the grab succeeds
 #:     and returns the user's wallpaper, which then gets graded as the game.
@@ -211,14 +211,9 @@ COMPOSITE_CAPTURE_FILES = {
         "pyautogui.screenshot() of the whole desktop after a scripted arrow-key "
         "camera sweep; the sweep drives the engine through synthetic keys, so it "
         "needs a real on-screen window.",
-    "scripts/capture_baseline.py":
-        "V-BASELINE-0 golden capture via pyautogui.screenshot(). The highest-risk "
-        "entry: a wallpaper frame here becomes a checked-in visual BASELINE.",
     "scripts/game_auto.py":
         "the interactive synthetic-input driver (keybd_event/mouse_event); its "
         "`screenshot` verb is pyautogui and its clicks target screen coordinates.",
-    "scripts/smoke_with_screenshots.py":
-        "per-mission pyautogui.screenshot() desktop grabs alongside a smoke run.",
     "tools/menu_oracle.py":
         "PIL.ImageGrab.grab(bbox=<window client rect>) -- it reads the DESKTOP "
         "pixels under the window rect, so the window must be on the desktop. "
@@ -297,7 +292,7 @@ ENGINE_ARGV = re.compile(
 #: Looser names for the exe variable. Only counted in a file that also names an
 #: engine exe literally (ENGINE_FILE_MARK): `[exe, "--version"]` in a shader-tool
 #: wrapper is not a game launch, but `[exe, "--profile", ...]` next to
-#: "mc2.exe" is. This is what finally sees scenario_runner.py's `[exe, ...]`.
+#: "mc2.exe" is. This is what finally sees a runner's `[exe, ...]` list.
 ENGINE_ARGV_LOOSE = re.compile(
     r"\bexe\b|\bMC2_EXE\b|\bEXE\b|\bgame_?exe\b|\bdeploy_exe\b",
     re.IGNORECASE)

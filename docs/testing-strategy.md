@@ -36,7 +36,7 @@ type conversions, missing `layout(location=)`, non-uniform control flow in
 sampler use, or `texture2D()`-style legacy calls. All of them show up
 immediately under `glslangValidator -V`.
 
-Skeleton: `scripts/validate_shaders.py` (sister to `run_smoke.py`).
+Skeleton: `tools/check_vk_shaders.py` (board row `vk_shaders_compile`; the earlier validate_shaders.py was retired 2026-10-12, cull wave 1).
 
 ### 1.2  KHR_debug callback as fail-on
 
@@ -372,7 +372,7 @@ sanitizer-augmented runtime.
 
 | Tier | File(s) | Purpose |
 | --- | --- | --- |
-| 1.1 | `scripts/validate_shaders.py` | Shader compile + SPIR-V emit gate |
+| 1.1 | `tools/check_vk_shaders.py` | Shader compile + SPIR-V emit gate (replaced validate_shaders.py, retired 2026-10-12, cull wave 1) |
 | 1.2 | `docs/testing-strategy-engine-hooks.md` (Sketch A) | KHR_debug fatal env-gate |
 | 1.3 | (already wired in tree) | clang-tidy via `export_clang_paths.sh` |
 | 2   | `tests/unit/CMakeLists.txt`, `tests/unit/test_main.cpp`, `tests/unit/test_hashing.cpp`, `tests/unit/test_projection.cpp`, `tests/unit/test_argb_pack.cpp` | doctest harness + three example tests |

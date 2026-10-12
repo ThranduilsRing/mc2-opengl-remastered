@@ -3,10 +3,8 @@
  "src": "mclib/terrtxm2.cpp",
  "stem": "terrtxm2",
  "scripts": [
-  "scripts/check-texture-resolution.py",
   "scripts/deploy_payload.py",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gate_codemod.py",
   "tools/mc2_launcher/mc2_launcher.cpp",
   "tools/mc2texcook/burnin_jpeg.py",
   "tools/mc2texcook/burnin_zcompress.py",

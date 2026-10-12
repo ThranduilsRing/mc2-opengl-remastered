@@ -116,9 +116,9 @@ concurrent pipeline. Sharing either axis forces serialization.
 
 ## 4. New verification tooling
 
-### `scripts/verify_executor_slice.py`
+### verify_executor_slice.py (retired 2026-10-12, cull wave 1)
 
-Canonical OFF/ON/dryrun gauntlet for frame-graph executor slices. Runs three
+Was the OFF/ON/dryrun gauntlet for frame-graph executor slices. Runs three
 smoke passes in sequence: gate OFF (baseline parity), gate ON (executor active),
 and dryrun mode. Also checks for stale-deploy (the exe's build timestamp must
 match a recent `deploy_payload.py` run). Use after any executor or
@@ -167,7 +167,7 @@ island count. Faster than parsing raw diagnostic JSONL manually.
 agent claims alone.** Stale `.obj` files (incremental build missed a header
 change) and silently-dropped env gates both produce exe output that looks
 correct to an agent reviewing its own prior output. After any build+deploy,
-check the dump or smoke artifact directly. `verify_executor_slice.py`
+check the dump or smoke artifact directly. verify_executor_slice.py (retired)
 automates this for executor slices.
 
 **(b) A default-OFF env gate is only verified if the smoke harness passes the

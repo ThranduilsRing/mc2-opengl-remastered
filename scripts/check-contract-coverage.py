@@ -11,7 +11,7 @@ nobody had done: it ran them. SIX WERE FAILING, and had been for weeks, with
 nobody watching. Among them:
 
   * check-memory-size.py       -- a live ratchet, red on 3 bloated files
-  * check-frame-graph.py       -- exit 127 on EVERY invocation since it was
+  * check-frame-graph.py (since deleted) -- exit 127 on EVERY invocation since it was
                                   added; it could not execute at all
   * check-claude-md-pointer.sh -- red for 14 days; the commit that broke it
                                   asserts in its own message that it did not
@@ -533,7 +533,7 @@ def _py_spawns(text, name):
     Matches STRING CONSTANTS in the AST, never raw source text. Using
     ast.get_source_segment here would be wrong in a way that is easy to miss:
     a segment is a raw slice, so a COMMENT sitting inside a multi-line call is
-    part of it. That alone re-credited check-file-resolve-miss.py, whose only
+    part of it. That alone re-credited check-file-resolve-miss.py (since deleted), whose only
     mention in run_smoke.py is a comment inside a long env-allowlist literal.
 
     So: docstrings and comments never count -- that is the whole point --

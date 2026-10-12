@@ -9,7 +9,7 @@ to grab frames safely.
 ## Missions
 
 - **mc2_10** — primary VFX combat (urban, gosFX-heavy). Preset `vfx_combat_10`
-  in `tests/visual/baselines/presets.json`. Best for missile smoke + weapon fire.
+  in the retired tests/visual/baselines/presets.json (retired 2026-10-12, cull wave 1). Best for missile smoke + weapon fire.
 - **mc2_24** — mech-heavy / dense urban baseline (final campaign mission).
   Preset `vfx_combat_24`. PPC/energy + explosions; also the canonical mech
   baseline shared with the mech lane.
@@ -56,11 +56,11 @@ Individual payoff gates: set just the one entry's env from the table above.
 
 ### Screenshots
 
-- `scripts/smoke_with_screenshots.py --mission mc2_10 --mission mc2_24 --duration 30 --screenshot-at 28`
+- smoke_with_screenshots.py (retired 2026-10-12, cull wave 1; use `tools/visual_verify/capture.py` over the bookmarks)
   -> `tests/smoke/artifacts/screenshots-<ts>/<mission>.{png,log,result}` + `summary.md`.
   Parks the cursor at screen center to defeat RTS edge-scroll.
-- `scripts/capture_baseline.py --preset vfx_combat_10 --vfx-debug-mode 3`
-  -> `tests/visual/baselines/vfx_combat_10_<sha>_vdm3.png` + JSON sidecar.
+- capture_baseline.py --preset vfx_combat_10 --vfx-debug-mode 3 (retired 2026-10-12, cull wave 1)
+  -> wrote tests/visual/baselines/vfx_combat_10_<sha>_vdm3.png + JSON sidecar.
 
 Read back with the `mc2-render-state` MCP server (engine running with
 `MC2_DEBUG_STATE_DUMP=1`): `get_feature_gates` to confirm the gate env took

@@ -197,7 +197,7 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 - RC→nifty reconcile `d69611f1`/`7d087f16`/`77beb69c`/`4855fcf9`/`745a8a5b` (5 fixes incl. dark-water uninit-VRAM); merged engine set + importer `d821018c`/`eca37ed3`
 - MC2_LOG hitch gate `47ef382f` (stdout→NUL default kills the 400ms printf hitch; harness sets MC2_LOG=1)
 
-**LEFT:** S16 modder round-trip (`verify_mod_roundtrip.py`), S17 editor authoring depth, S18 asset-browser thumbnails, S13+ HTML gallery + advisory smoke-gate auto-wire, S15+ cook.json provenance + texture-res validator, #5 Tube/render merge (unblocked). Full: MEMORY.md 2026-06-14 handoff.
+**LEFT:** S16 modder round-trip (its helper verify_mod_roundtrip.py was retired 2026-10-12, cull wave 1), S17 editor authoring depth, S18 asset-browser thumbnails, S13+ HTML gallery + advisory smoke-gate auto-wire, S15+ cook.json provenance + texture-res validator, #5 Tube/render merge (unblocked). Full: MEMORY.md 2026-06-14 handoff.
 
 ## State snapshot (2026-06-01 — historical; some inline corrections dated later. For current state, read the newest dated sections above and MEMORY.md handoffs.)
 

@@ -100,7 +100,7 @@ the AMD hash.
 All 8 render-seam checkers PASS at `f432e99e`: `colormask_ownership`, `pass_attachment`,
 `frame_feedback`, `drawbuffer_ownership`, `static_prop_family`, `mdi_submission`,
 `buffer_lifetime`, `shader_variant`. Re-run `scripts/check-contracts.sh` (or
-`tools/run_nvidia_readiness_smoke.py --checkers-only`) on the NVIDIA checkout before the
+`bash scripts/check-contracts.sh --rows 'vulkan_bindings|vk_pipeline_layout|vk_shaders_compile'`; the run_nvidia_readiness_smoke.py wrapper was retired 2026-10-12, cull wave 1) on the NVIDIA checkout before the
 first run — the checkers are vendor-independent and must stay green.
 
 ## Do NOT (readiness boundary)

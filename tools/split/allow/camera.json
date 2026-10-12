@@ -9,13 +9,11 @@
   "scripts/check-res-aspect-contract.py",
   "scripts/check-terrain-daylight-constants.py",
   "scripts/counter-honesty-allowlist.txt",
-  "scripts/predict_cement_adopt.py",
   "tests/unit/test_projection.cpp",
   "tests/unit/test_xform_convention.cpp",
   "tests/visual/bookmarks/mc2_05_building_faces.json",
   "tests/visual/bookmarks/mc2_10_building_faces.json",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gate_codemod.py",
   "tools/object_light_row_harness/object_light_row_harness.cpp",
   "tools/terrain_daylight_harness/terrain_daylight_harness.cpp"
  ],

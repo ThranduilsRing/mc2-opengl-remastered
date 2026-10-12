@@ -196,7 +196,7 @@ py -3 A:\Games\mc2-opengl-src\.claude\worktrees\shadow-lane\scripts\run_smoke.py
   values. Requires re-running this soak matrix with candidates before commit.
 - **SHADOW-CAPTURE-PRESET-1** (deferred): Add shadow-specific presets to presets.json
   (e.g., `shadow_static_mc2_03`, `shadow_dynamic_mc2_24`) for repeatable baseline
-  captures via `capture_baseline.py`.
+  captures via capture_baseline.py (retired 2026-10-12, cull wave 1; use tools/visual_verify/capture.py).
 - **Dynamic shadow polygon offset** (deferred): `beginDynamicShadowPass` has no
   `glPolygonOffset` call; may cause mech contact acne. Evaluate from soak Row 6 + Row 3.
 

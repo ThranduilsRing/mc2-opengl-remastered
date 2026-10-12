@@ -5,7 +5,6 @@
  "scripts": [
   "scripts/checklib.py",
   "tests/unit/test_csvfile.cpp",
-  "tools/gate_codemod.py",
   "tools/mc2_modlint/modlint_variant_csv.h"
  ],
  "_scripts_reason": "Reviewed: checklib.py, test_csvfile.cpp and modlint_variant_csv.h cite logisticsdata.cpp in comments only; tools/gate_codemod.py (lane 1 gate tooling) lists the file and is not edited here.",

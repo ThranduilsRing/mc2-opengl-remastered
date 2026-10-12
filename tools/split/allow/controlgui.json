@@ -4,8 +4,7 @@
  "stem": "controlgui",
  "scripts": [
   "scripts/check-mover-registry-coherence.sh",
-  "tests/unit/test_hud_tab_registry.cpp",
-  "tools/gate_codemod.py"
+  "tests/unit/test_hud_tab_registry.cpp"
  ],
  "_scripts_reason": "Reviewed: check-mover-registry-coherence pins ControlGui::initMechs, which stays in controlgui.cpp (self-test and check pass unchanged); test_hud_tab_registry.cpp cites controlgui.cpp in a comment; tools/gate_codemod.py (lane 1 gate tooling) lists the file for its codemod and is not edited here.",
  "split_commit": "217255c68"

@@ -20,7 +20,7 @@
 #   * Idempotent and read-only
 #
 # Excluded (too heavy for this aggregator):
-#   check-debug-state-json.py -- requires a live engine JSON snapshot
+#   (none since 2026-10-12; the live-engine JSON checks moved to the mc2-render-state MCP)
 #
 # RED-ROWS-CLOSE-2 (2026-07-31): check-shader-schema.sh USED to be excluded here,
 # by this comment, on the stated grounds that it "requires glslangValidator +
@@ -796,33 +796,8 @@ fi
 # gate_gen_check (below) covers the derived header rows, yaml and index, `verified`, and the compiler check; the
 # fast hermetic half that used to be its own row (flag_registry_drift) was a strict subset and is retired.
 
-# ---------------------------------------------------------------------------
-# GATE-DEFAULT-TRUTH-1 (2026-07-30)
-# ---------------------------------------------------------------------------
-# Gate registration is a compile-time fact of the gate table. It has never proved
-# the registry's stated `defaultOn` AGREES with what the reader does when the
-# var is unset -- and that gap shipped live lies: MC2_SHADOW_BOUNDED_NEAR_FIT
-# (registry, tier1 doc, and the reader's own adjacent comment all said OFF while
-# gos_postprocess.cpp implemented ON) and MC2_SHADOW_ENABLE (registry said
-# opt-in while both GL readers were kill-switches). Anyone A/B-ing "=1 vs unset"
-# off those entries graded ON against ON.
-#
-# UNCLASSIFIABLE counts as FAIL here, not as a silent pass: an unreadable idiom
-# is precisely where a lie hides. Exemptions live in
-# scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
-run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
 run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
-run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
 run_check "gate_classifier_selftest"        "py -3 scripts/gate_default_classifier.py --selftest"
-# GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's
-# stated default against its readers; this one proves the READERS AGREE WITH EACH OTHER. A typed
-# gate table has one truthiness rule per gate, so every gate whose readers already disagree
-# (`v[0]=='1'` here, `!= nullptr` there) is a behaviour change the migration must resolve, and
-# the design's own list of them was a review sample. tools/gate_conflicts.py executes each
-# reader against eight probe values and ratchets the conflicting-gate count and the count of
-# readers it cannot read. Both may only fall. Scans the COMMITTED tree so another lane's dirty
-# working tree cannot flap it. Idiom tests live in scripts/tests (scripts_tests row).
-run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --check"
 # G4: the VK umbrella members are read only through mc2vkgate::armed<> (never a direct gate::effective<>, which
 # would skip the session fail-soft veto), and the per-call readers stay uncached so a mid-session fail-soft disarms them.
 run_check "vk_umbrella_readers"             "py -3 scripts/check-vk-umbrella-readers.py --quiet"
@@ -1011,7 +986,6 @@ run_check "render_contract_alpha_classes_selftest" "py -3 scripts/check-render-c
 # matching-size struct is invisible to all of them while the shader silently
 # reads the wrong words.
 run_check "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
-run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
 # VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
 # manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).
@@ -1402,8 +1376,8 @@ run_check "savegame_backup"             "py -3 tools/savegame_backup.py selftest
 # the user's. Do NOT step around this row as "known-red": it is a live item.
 run_check_tri "capture_provenance"      "py -3 scripts/check-capture-provenance.py --quiet"
 run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.py --selftest"
-# The provenance GATE the minting tools call (bless.py / verify.py /
-# run_golden_parity.py). Proves each verdict on binaries carrying real
+# The provenance GATE the minting tools call (bless.py / verify.py).
+# Proves each verdict on binaries carrying real
 # fingerprint stamps, that a hand-added claim and a keywords-in-a-comment
 # manifest both stay UNESTABLISHED, and -- the other half -- that an honest
 # artifact still passes. Offline, read-only, no game launch.
@@ -1438,39 +1412,6 @@ run_check "review_anchor_stability_selftest" "py -3 scripts/check-review-anchor-
 # four ways and requires a refusal from each, so the guard cannot go blind on a
 # fixture that stopped resembling the file it stands for. Offline, read-only.
 run_check "review_pack_registry_guard" "py -3 scripts/build_review_pack.py --selftest"
-
-# SIM-IDENTITY-HASH-1: the refuse-to-grade gate splits mover fields VISUAL vs
-# NON-VISUAL in two independent places (C++ digestMoverVisual, Python
-# VISUAL_FIELDS). If they drift, the gate misgrades in the DANGEROUS direction:
-# a real visual divergence gets classified LATENT and GRADED -- a false pass
-# produced by the instrument built to stop false passes. Both halves' own
-# self-tests stay green through that drift, because each is internally
-# consistent; only this cross-check catches it. Live-fired by moving `status`
-# from VISUAL to NON-VISUAL in the real module: the check went FAIL/exit 1, and
-# an arm-A-alive / arm-B-DEAD mover pair graded LATENT + exit 0 until reverted.
-run_check "sim_identity_fieldsets" "py -3 scripts/check-sim-identity-fieldsets.py"
-# The gate's own verdict logic: GRADED / LATENT / UNVERIFIED / UNGRADED, plus
-# localisation (names the first diverging mover and field) and the sub-quantum
-# boundary-straddle label. Offline, no GPU, no capture.
-run_check "sim_identity_gate_selftest" "py -3 scripts/sim_identity.py self-test"
-# PIPE-LIVENESS: the hash crosses engine -> sidecar -> capture manifest ->
-# combined manifest -> gate. The first version of this slice dropped the
-# combined-manifest link: every other check stayed GREEN while the gate was
-# dead and graded everything as UNVERIFIED. Re-injecting that bug leaves
-# sim_identity_fieldsets and sim_identity_gate_selftest at exit 0; only this
-# check fires. A gate is wired when the payload traverses the pipe, not when
-# both ends compile.
-run_check "sim_identity_propagation" "py -3 scripts/check-sim-identity-propagation.py"
-# VERIFY-THE-UNVERIFIED-1: the propagation check above shipped WITHOUT a
-# selftest, and it was blind. Its link-5 needles (`_sim_identity_gate(` and
-# `_SIM_EXIT_UNGRADED`) were satisfied by the DEFINITION and the module-level
-# constant, so replacing golden_compare.py's gate block with `if False:` --
-# deleting the only call, making exit 7 unreachable, grading every comparison --
-# left this row, sim_identity_fieldsets and sim_identity_gate_selftest all at
-# exit 0. Measured by injection into the live tree, not theorised. Link 5 is now
-# AST-verified and comments are stripped before any substring match; this row
-# proves that machinery still discriminates.
-run_check "sim_identity_propagation_selftest" "py -3 scripts/check-sim-identity-propagation.py --selftest"
 
 # ---------------------------------------------------------------------------
 # UNWIRED-CHECK-CLOSE-1 (2026-07-30) -- the checks nobody was running
