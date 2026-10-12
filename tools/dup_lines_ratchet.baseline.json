@@ -1,13 +1,13 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 5683,
+  "GameOS": 5667,
   "GuiRuntime": 64,
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 15034,
-  "mclib": 32471,
+  "code": 15016,
+  "mclib": 32432,
   "shaders": 3012
  },
  "dirs": [
@@ -50,7 +50,7 @@
   "GameOS/gameos/gos_postprocess_blur.cpp": 33,
   "GameOS/gameos/gos_postprocess_effects.cpp": 54,
   "GameOS/gameos/gos_postprocess_executor.cpp": 52,
-  "GameOS/gameos/gos_postprocess_region.cpp": 40,
+  "GameOS/gameos/gos_postprocess_region.cpp": 24,
   "GameOS/gameos/gos_postprocess_shadow.cpp": 66,
   "GameOS/gameos/gos_postprocess_skybox.cpp": 177,
   "GameOS/gameos/gos_render_pass_timer.cpp": 25,
@@ -162,7 +162,7 @@
   "code/gvehicl_control.cpp": 59,
   "code/gvehicl_move.cpp": 392,
   "code/gvehicl_update.cpp": 184,
-  "code/gvehicl_weapons.cpp": 501,
+  "code/gvehicl_weapons.cpp": 492,
   "code/hardpoint.h": 8,
   "code/infowindow.cpp": 16,
   "code/keyboardref.cpp": 17,
@@ -186,7 +186,7 @@
   "code/mainmenu.cpp": 62,
   "code/mech.cpp": 8,
   "code/mech.h": 111,
-  "code/mech_damage.cpp": 257,
+  "code/mech_damage.cpp": 248,
   "code/mech_init.cpp": 53,
   "code/mech_loadout.cpp": 585,
   "code/mech_move.cpp": 282,
@@ -507,7 +507,6 @@
   "mclib/quad_water.cpp": 334,
   "mclib/render_contract.cpp": 71,
   "mclib/resizeimage.h": 96,
-  "mclib/sim_identity.h": 39,
   "mclib/soundsys.cpp": 16,
   "mclib/stuff/affinematrix.cpp": 100,
   "mclib/stuff/affinematrix.hpp": 213,
@@ -653,8 +652,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "a7ddae10b",
+ "head": "1e4cb7b13",
  "n": 8,
- "total": 56844,
+ "total": 56771,
  "version": 1
 }
