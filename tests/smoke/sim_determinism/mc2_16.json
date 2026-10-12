@@ -1,0 +1,32 @@
+{
+ "mission": "mc2_16",
+ "frames": 1000,
+ "chain": "381fe40d96777ed3",
+ "visible_chain": "02f9113236f05492",
+ "sha": "2a83a80fb7d6",
+ "seed": "0x1B7EBC0D",
+ "data_fingerprint": {
+  "digest": "17051a2e90619f97",
+  "inputs": [
+   "mission.fst",
+   "tgl.fst",
+   "effect.fst",
+   "misc.fst",
+   "camera.fst",
+   "data/tgl/",
+   "data/objects/",
+   "data/effects/",
+   "data/missions/",
+   "data/warriors/"
+  ]
+ },
+ "gates": {
+  "MC2_SMOKE_FIXED_TIMESTEP": "1",
+  "MC2_DETERMINISTIC_RNG": "1",
+  "MC2_SIM_IDENTITY_TRACE": "1"
+ },
+ "env": {
+  "MC2_FIXTURE_ORDER_LIVENESS": "1"
+ },
+ "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"
+}
