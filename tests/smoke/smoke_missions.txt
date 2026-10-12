@@ -12,16 +12,7 @@ tier1 mc2_01 reason="baseline grass/desert combat"
 tier1 mc2_03 reason="salvage + heavier combat"
 tier1 mc2_10 reason="urban/complex objects"
 tier1 mc2_17 reason="late-campaign combined-arms stress"
-# mc2_24 carries allow_asset_load_fail: KNOWN STOCK-DATA GAP found live by
-# META-FIX-BATCH-3 — jaegermech.tgl is absent from tgl.fst (jaegermech.ini is
-# an orphan; jaegermech3.tgl exists) while mc2_24 spawns a jaegermech
-# (part=896). Pre-batch it rendered INVISIBLE (msl.cpp fail-soft class);
-# with MC2_ASSET_FAILLOUD default-ON it now renders the magenta placeholder.
-# The required_missing/appr_type_fail lines are TRUE POSITIVES — downgraded
-# to advisory here (still printed every run) so stock tier1 stays green.
-# REMOVE this override when the data gap is fixed (follow-up in
-# .claude/ISSUE-FIXES-STATUS.md § META-FIX-BATCH-3).
-tier1 mc2_24 allow_asset_load_fail=1 reason="final campaign mission smoke"
+tier1 mc2_24 reason="final campaign mission smoke"
 
 tier2 mc2_01 reason="campaign"
 tier2 mc2_02 reason="campaign"
