@@ -15,6 +15,7 @@ WHAT: a compile-time facility (`cmake -DMC2_SIM_TRACE=ON`, default OFF, no runti
 | `SADD`, `SREM` | `code/contact.cpp` | sensor contact added / removed |
 | `WX` | `code/weather.cpp` | the weather update's inputs (camera position, elevation, frame length) |
 | `ABL` | `mclib/ablxstd.cpp` (only with `MC2_SIM_TRACE_ABL=ON` as well: thousands of lines per frame) | every standard-routine call: module, line, routine |
+| `ABLRAND` | `mclib/ablxstd_std.cpp` | every script `random()` call: brain module, script line, range |
 | `SETPOS`, `SCROLL` | `mclib/camera_input.cpp` | camera moves with the caller's stack |
 
 WHY: when two runs of one mission diverge (`tools/sim_determinism.py` names the first differing sim frame), the `[DT]` streams of the two

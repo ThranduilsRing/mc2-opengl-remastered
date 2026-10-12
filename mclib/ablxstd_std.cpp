@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablxstd_internal.h"
 #include "mc2fmt.h"
+#include "sim_trace.h"
 
 
 //***************************************************************************
@@ -454,6 +455,9 @@ void execStdRandom (void) {
 	// Once we know which pseudo-random number algorithm we want to use, we
 	// should plug it in here. The range for the random number (r), given a
 	// param of (n), should be: 0 <= r <= (n-1).
+	// A script's random() draws from the simulation stream; the trace names the brain and script line so an extra draw in one
+	// run points at the condition that reached it.
+	MC2_SIM_TRACE_LINE("ABLRAND mod=%s ln=%d n=%d", CurModule ? CurModule->getName() : "?", static_cast<int>(execLineNumber), n);
 	ABLi_pokeInteger(ABLRandomCallback(n));
 }
 
