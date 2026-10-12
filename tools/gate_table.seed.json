@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1037,
+ "count": 1032,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -15437,36 +15437,6 @@
    "retireVerdict": "tierB:MERGE"
   },
   {
-   "name": "MC2_PROP_BASE_LIGHT_DIR",
-   "kind": "Float",
-   "default": 0.0,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "PROP-BASE-LIGHT-DIR-1: give the static-prop baked per-vertex base_light seed a directional (hemispherical-wrap) orientation term, so faces pointing away from the mission key light are darker than faces pointing toward it.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:858",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_PROP_BASE_LIGHT_DIR",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_PROP_FIXB_MVP",
    "kind": "Bool",
    "default": null,
@@ -19917,66 +19887,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_PROP_FIXTURE_GLOW",
-   "kind": "Float",
-   "default": 0.0,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "FIXTURE-GLOW-1: DEFAULT-OFF on measured evidence.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:989",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 8.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_STATIC_PROP_FIXTURE_GLOW",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_FIXTURE_LIGHTS",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "BEACON-FIXTURE-ID-1: DEFAULT-ON.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:946",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 16.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_STATIC_PROP_FIXTURE_LIGHTS",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_FLUSH_CACHED_BLOB",
    "kind": "Bool",
    "default": false,
@@ -20347,66 +20257,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_NIGHT_TAGS",
-   "kind": "Int",
-   "default": 0,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "EDGE-LIGHT-EMISSION-1: restores the stock hot-colour NIGHT vertex tags on the GPU static-prop path.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:910",
-     "idiom": "Num(atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0,
-    "hi": 2,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_STATIC_PROP_NIGHT_TAGS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_NIGHT_TAGS_SCALE",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "EDGE-LIGHT-EMISSION-1: scales the NIGHT EMISSION DELTA only (night base_light minus day base_light), never the underlying lighting maths, so 0.0 is exactly the pre-fix render and 1.0 is exact stock.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:916",
-     "idiom": "Num(atof,guarded)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 16.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_STATIC_PROP_NIGHT_TAGS_SCALE",
    "retireVerdict": ""
   },
   {

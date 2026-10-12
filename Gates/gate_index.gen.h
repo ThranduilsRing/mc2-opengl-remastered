@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1040;
+inline constexpr std::size_t kGateCount = 1035;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -557,7 +557,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PROJECTZ_HEATMAP", Kind::Bool, Rule::Presence, {}},
     {"MC2_PROJECTZ_SUMMARY", Kind::Bool, Rule::Presence, {}},
     {"MC2_PROJECTZ_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_PROP_BASE_LIGHT_DIR", Kind::Float, Rule::Prefix, {}},
     {"MC2_PROP_FIXB_MVP", Kind::Bool, Rule::DefOnAtoiNZ, {}},
     {"MC2_PROP_SHADOW_RECEIVE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PURCHASE_ALL", Kind::Bool, Rule::Presence, {}},
@@ -713,8 +712,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_COLORS_FILL", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATIC_PROP_DEPTH_PREPASS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_STATIC_PROP_FIXTURE_GLOW", Kind::Float, Rule::Prefix, {}},
-    {"MC2_STATIC_PROP_FIXTURE_LIGHTS", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_FLUSH_CACHED_BLOB", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_FLUSH_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
@@ -728,8 +725,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_LIGHT_FRESHNESS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATIC_PROP_LIVE_BUILDER", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATIC_PROP_MISSION_LOAD_REG", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATIC_PROP_NIGHT_TAGS", Kind::Int, Rule::Prefix, {}},
-    {"MC2_STATIC_PROP_NIGHT_TAGS_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_PBR_V1", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_PERSISTENT_BUCKETS", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", Kind::Bool, Rule::Std, {}},

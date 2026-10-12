@@ -857,26 +857,16 @@ void GpuStaticPropBatcher::legacyPrepare() {
             if (s_locsLegacy.isNight >= 0 || s_locsLegacy.nightFactor >= 0) {
                 bool  nIsNight = false;
                 float nFactor  = 0.0f;
-                // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
-                // Safe for non-fixtures: their scale stays 0.0, so get_base_light
-                // keeps its daytime result (delta * 0 == 0).
-                if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f ||
-                    s_fixtureGlowStrength > 0.0f) {
-                    extern void gos_GetNightState(bool*, float*);
-                    gos_GetNightState(&nIsNight, &nFactor);
-                }
+                extern void gos_GetNightState(bool*, float*);
+                gos_GetNightState(&nIsNight, &nFactor);
                 if (s_locsLegacy.isNight >= 0)
                     glUniform1i(s_locsLegacy.isNight, nIsNight ? 1 : 0);
                 if (s_locsLegacy.nightFactor >= 0)
                     glUniform1f(s_locsLegacy.nightFactor, nFactor);
                 if (s_locsLegacy.nightEmissiveScale >= 0)
-                    glUniform1f(s_locsLegacy.nightEmissiveScale,
-                                (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
+                    glUniform1f(s_locsLegacy.nightEmissiveScale, kNightEmissiveScale);
                 if (s_locsLegacy.fixtureEmissiveScale >= 0)
-                    glUniform1f(s_locsLegacy.fixtureEmissiveScale, s_fixtureLightsScale);
-                // FIXTURE-GLOW-1: 0.0 -> v_fixtureGlow is vec3(0.0) -> byte-identical.
-                if (s_locsLegacy.fixtureGlowStrength >= 0)
-                    glUniform1f(s_locsLegacy.fixtureGlowStrength, s_fixtureGlowStrength);
+                    glUniform1f(s_locsLegacy.fixtureEmissiveScale, kFixtureEmissiveScale);
             }
             // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy).
             // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 ->

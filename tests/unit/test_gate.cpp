@@ -1146,14 +1146,6 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     CHECK(fl("MC2_TERRAIN_DECAL_FILL", "5") == 1.0f);
     CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", "-1") == 0.0f);
     CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", nullptr) == 0.35f);
-    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "2") == 1.0f);
-    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "") == 0.0f);
-    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "7") == 2);
-    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "-1") == 0);
-    CHECK(fl("MC2_STATIC_PROP_NIGHT_TAGS_SCALE", "99") == 16.0f);
-    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", nullptr) == 1.0f);
-    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", "100") == 16.0f);
-    CHECK(fl("MC2_STATIC_PROP_FIXTURE_GLOW", "100") == 8.0f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);

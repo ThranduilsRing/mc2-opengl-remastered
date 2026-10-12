@@ -533,32 +533,21 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
             gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
             glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz);
         }
-        // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state. Gate OFF ->
-        // 0/0/0 uploaded -> get_base_light takes its daytime arms -> render is
-        // byte-identical to the pre-fix build.
+        // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state for get_base_light
+        // (lit windows, building base lights, runway/beacon fixtures).
         if (s_locsCoalesce.isNight >= 0 || s_locsCoalesce.nightFactor >= 0) {
             bool  nIsNight = false;
             float nFactor  = 0.0f;
-            // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
-            // Safe for non-fixtures: their scale stays 0.0, so get_base_light
-            // keeps its daytime result (delta * 0 == 0).
-            if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f ||
-                    s_fixtureGlowStrength > 0.0f) {
-                extern void gos_GetNightState(bool*, float*);
-                gos_GetNightState(&nIsNight, &nFactor);
-            }
+            extern void gos_GetNightState(bool*, float*);
+            gos_GetNightState(&nIsNight, &nFactor);
             if (s_locsCoalesce.isNight >= 0)
                 glUniform1i(s_locsCoalesce.isNight, nIsNight ? 1 : 0);
             if (s_locsCoalesce.nightFactor >= 0)
                 glUniform1f(s_locsCoalesce.nightFactor, nFactor);
             if (s_locsCoalesce.nightEmissiveScale >= 0)
-                glUniform1f(s_locsCoalesce.nightEmissiveScale,
-                            (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
+                glUniform1f(s_locsCoalesce.nightEmissiveScale, kNightEmissiveScale);
             if (s_locsCoalesce.fixtureEmissiveScale >= 0)
-                glUniform1f(s_locsCoalesce.fixtureEmissiveScale, s_fixtureLightsScale);
-            // FIXTURE-GLOW-1: 0.0 -> v_fixtureGlow is vec3(0.0) -> byte-identical.
-            if (s_locsCoalesce.fixtureGlowStrength >= 0)
-                glUniform1f(s_locsCoalesce.fixtureGlowStrength, s_fixtureGlowStrength);
+                glUniform1f(s_locsCoalesce.fixtureEmissiveScale, kFixtureEmissiveScale);
         }
         // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
         // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->

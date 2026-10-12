@@ -124,7 +124,7 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
             }
         }
         mc2::fmt::print_err("[GPUPROPS] fixture-lights: {:d} of {:d} types classified as emissive fixtures (scale={:.2f})\n",
-                     mc2::fmt::as_u32(s_fixtureTypeCount), mc2::fmt::as_size(s_types.size()), s_fixtureLightsScale);
+                     mc2::fmt::as_u32(s_fixtureTypeCount), mc2::fmt::as_size(s_types.size()), kFixtureEmissiveScale);
 
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);

@@ -150,7 +150,6 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.nightFactor        = glGetUniformLocation(s_staticPropProgram, "u_nightFactor");
     s_locsLegacy.nightEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_nightEmissiveScale");
     s_locsLegacy.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_fixtureEmissiveScale");
-    s_locsLegacy.fixtureGlowStrength  = glGetUniformLocation(s_staticPropProgram, "u_fixtureGlowStrength");
     // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
     s_locsLegacy.terrainDecalFill  = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalFill");
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -215,7 +214,6 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.nightFactor        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightFactor");
             s_locsCoalesce.nightEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightEmissiveScale");
             s_locsCoalesce.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureEmissiveScale");
-            s_locsCoalesce.fixtureGlowStrength  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureGlowStrength");
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
             s_locsCoalesce.terrainDecalFill  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalFill");
             // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).

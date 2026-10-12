@@ -325,7 +325,6 @@ struct ProgramLocs {
     GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
     GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
     GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
-    GLint fixtureGlowStrength  = -1; // u_fixtureGlowStrength  (FIXTURE-GLOW-1)
     GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
     GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
@@ -528,10 +527,10 @@ extern const bool s_materialGpuEnabled;
 extern const bool s_materialGpuSampleEnabled;
 bool staticPropAmbientV1Enabled();
 extern const float s_propBaseLightDirStrength;
-extern const int s_nightTagMode;
-extern const float s_nightTagScale;
-extern const float s_fixtureLightsScale;
-extern const float s_fixtureGlowStrength;
+// Night emission scales. get_base_light()'s night-minus-day emission delta is applied at full stock
+// strength to every tagged prop and to the classified light fixtures.
+inline constexpr float kNightEmissiveScale = 1.0f;
+inline constexpr float kFixtureEmissiveScale = 1.0f;
 bool isEmissiveFixtureType(DWORD pink, DWORD yellow, DWORD green);
 extern unsigned s_fixtureTypeCount;
 extern const bool s_farBackdropLitEnabled;

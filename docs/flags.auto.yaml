@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1040
-registry_entry_count: 263
-verified_count: 1033
+gate_count: 1035
+registry_entry_count: 258
+verified_count: 1028
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -2840,7 +2840,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 40, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 39, default_on: true}
   - name: MC2_LIGHT_PREFIX_GPU_COPY
     kind: Bool
     default: false
@@ -2929,7 +2929,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 44, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 43, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -3808,7 +3808,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 42, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 41, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -4203,16 +4203,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_PROP_BASE_LIGHT_DIR
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: props
-    doc: "PROP-BASE-LIGHT-DIR-1: give the static-prop baked per-vertex base_light seed a directional (hemispherical-wrap) orientation term, so faces pointing away..."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_PROP_BASE_LIGHT_DIR, kind: Feature, order: 39, default_on: false}
   - name: MC2_PROP_FIXB_MVP
     kind: Bool
     default: true
@@ -4976,7 +4966,7 @@ flags:
     doc: "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 45, default_on: true}
+    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 44, default_on: true}
   - name: MC2_SHOT_RESULTS
     kind: Bool
     default: false
@@ -5434,26 +5424,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_STATIC_PROP_FIXTURE_GLOW
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: props
-    doc: "FIXTURE-GLOW-1: DEFAULT-OFF on measured evidence."
-    range: {lo: 0, hi: 8, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_STATIC_PROP_FIXTURE_GLOW, kind: Trace, order: -1, default_on: false}
-  - name: MC2_STATIC_PROP_FIXTURE_LIGHTS
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: props
-    doc: "BEACON-FIXTURE-ID-1: DEFAULT-ON."
-    range: {lo: 0, hi: 16, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_STATIC_PROP_FIXTURE_LIGHTS, kind: Trace, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_FLUSH_CACHED_BLOB
     kind: Bool
     default: false
@@ -5547,7 +5517,7 @@ flags:
     doc: "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 48, default_on: true}
+    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 47, default_on: true}
   - name: MC2_STATIC_PROP_LIVE_BUILDER
     kind: Bool
     default: false
@@ -5564,26 +5534,6 @@ flags:
     owner: props
     doc: "Task 9 (Track B): mission-load + late-spawn registration ON by default."
     verified: true
-  - name: MC2_STATIC_PROP_NIGHT_TAGS
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: props
-    doc: "EDGE-LIGHT-EMISSION-1: restores the stock hot-colour NIGHT vertex tags on the GPU static-prop path."
-    range: {lo: 0, hi: 2, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_STATIC_PROP_NIGHT_TAGS, kind: Trace, order: -1, default_on: false}
-  - name: MC2_STATIC_PROP_NIGHT_TAGS_SCALE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: props
-    doc: "EDGE-LIGHT-EMISSION-1: scales the NIGHT EMISSION DELTA only (night base_light minus day base_light), never the underlying lighting maths, so 0.0 is exactly..."
-    range: {lo: 0, hi: 16, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_STATIC_PROP_NIGHT_TAGS_SCALE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_PBR_V1
     kind: Bool
     default: false
@@ -5749,7 +5699,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 46, default_on: false}
+    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 45, default_on: false}
   - name: MC2_SUN_ELEVATION_FIX
     kind: Bool
     default: false
@@ -5758,7 +5708,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 47, default_on: false}
+    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 46, default_on: false}
   - name: MC2_TACMAP_FORMATION_LINE
     kind: Bool
     default: false
@@ -7030,7 +6980,7 @@ flags:
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 43, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 42, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -7039,7 +6989,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 41, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 40, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""

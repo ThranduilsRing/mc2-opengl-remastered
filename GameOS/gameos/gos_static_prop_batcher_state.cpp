@@ -220,18 +220,9 @@ bool staticPropAmbientV1Enabled() {
 // of pixels day, 0.000% night for MC2_PROP_SHADOW_RECEIVE). This gate gives
 // that baked seed the missing orientation term.
 //
-// VALUE = float strength 0..1, NOT a bool. This is deliberately one knob
-// rather than an enable-bool plus a separate strength var: the strength IS the
-// enable (0.0 == off), which makes an ENV_DROP failure impossible to confuse
-// with a weak setting, and lets the default be tuned without a code change.
-//   unset / "0" -> 0.0 -> shader's `> 0.0` guard skips the whole block ->
-//                  seed == base_light -> BYTE-IDENTICAL to pre-slice output.
-//   "0.45"      -> back-faces scaled to 55% of their baked seed; faces
-//                  pointing at the sun are multiplied by exactly 1.0.
-// Clamped to [0,1] because >1 would drive the back-face factor negative and
-// produce black-clamped walls -- the exact failure mode of the blunt IBL
-// killswitch the user rejected.
-extern const float s_propBaseLightDirStrength = mc2::gate::get<"MC2_PROP_BASE_LIGHT_DIR">();
+// The strength is the directional wrap term's weight: back-faces scale to (1 - 0.45) of their baked seed, faces
+// toward the sun are multiplied by exactly 1.0. Below 1.0 so the back-face factor never goes negative (black walls).
+extern const float s_propBaseLightDirStrength = 0.45f;
 
 // FAR-BACKDROP-LIT: gate + tunables for the night-shade substitution applied to
 // far/impostor static-prop LODs (see static_prop.vert). Default-OFF; "=1" / any
@@ -242,103 +233,12 @@ extern const float s_propBaseLightDirStrength = mc2::gate::get<"MC2_PROP_BASE_LI
 // Distance band defaults bracket the LOD impostor distance (800
 // world units; bdactor.cpp selectActiveLOD) so the fade completes as
 // the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
-// EDGE-LIGHT-EMISSION-1 (master-FAIL #8, re-framed). User verdict that opened
-// this lane: "edge light is just doing the wrong thing entirely. the actual
-// lights are not on at ALL." Two predecessor lanes chased whether the light
-// FIXTURES are visible (backface culling, then camera-facing billboards + a
-// screen-size clamp). That framing is superseded: visibility was never the
-// problem. The fixtures were being drawn -- they were drawn UNLIT.
-//
-// Stock MC2 lights them through authored hot-colour vertex tags. All four
-// fixture meshes (data/tgl/{runway,red,green,blue}beaconlight.ase) paint their
-// post base pure green = 0xff00ff00 = "Hot Green -- Building Base Lights --
-// ONLY at NIGHT", and each fixture's .ini declares the colour to emit in a
-// `//Night Lights` block (runwaylight + redbeaconlight 0x00ff0000 red,
-// greenbeaconlight 0x0000ff00, bluebeaconlight 0x000000ff -- so per-fixture
-// colour is stock data and needs no new authoring). The legacy CPU path reads
-// eye->getIsNight()/getNightFactor() (mclib/tgl.cpp:1901) and honours them.
-// THIS path passed `false, 0.0` hardcoded into get_base_light(), so all three
-// night-only branches (lit windows, outside building lights, base lights) took
-// their daytime arm and emitted nothing.
-//
-// Gate MC2_STATIC_PROP_NIGHT_TAGS: 0 = OFF (isNight/factor uploaded as 0/0 ->
-// byte-identical to the pre-fix render), 1 = ON (stock emission restored),
-// 2 = verify-by-exaggeration (emission delta scaled by
-// MC2_STATIC_PROP_NIGHT_TAGS_SCALE, default 4x under mode 2).
-//
-// BLAST RADIUS, stated plainly: this is not scoped to runway lights. It
-// restores the night tags for EVERY static prop that carries one, so building
-// windows and building base lights relight at night too. That is equally
-// stock-correct and equally currently-wrong, but it is a broad visual change
-// and is the reason this ships default-OFF pending user click-through.
-//
-// NOTE ON DISTANCE BEHAVIOUR: the emission rides real fixture geometry, so it
-// shrinks and fades with distance on its own. It deliberately does NOT
-// resurrect any screen-size clamp -- the unbounded clamp is what produced the
-// "atrociously hideous" overview streaks (RUNWAY-MARKER-LIGHTS-1).
-extern const int s_nightTagMode = mc2::gate::get<"MC2_STATIC_PROP_NIGHT_TAGS">();
-extern const float s_nightTagScale = []() {
-    if (mc2::gate::isNonEmpty<"MC2_STATIC_PROP_NIGHT_TAGS_SCALE">())
-        return mc2::gate::get<"MC2_STATIC_PROP_NIGHT_TAGS_SCALE">();   // row clamps to [0, 16]
-    return (s_nightTagMode == 2) ? 4.0f : 1.0f;
-}();
-
-// BEACON-FIXTURE-ID-1: fixture-scoped night emission.
-//
-// MC2_STATIC_PROP_NIGHT_TAGS (above) restores the stock night vertex tags for
-// EVERY tagged prop, which is why it ships default-OFF: 738 of 2947 stock .ase
-// carry the Hot Green tag and only 8 of them are runway/beacon fixtures -- the
-// other ~730 are buildings. The tag's stock name is literally "Building Base
-// Lights" (shaders/include/lighting.hglsl:118); the fixtures BORROW it. So
-// vertex colour cannot separate fixtures from buildings, and scoping by colour
-// would relight 730 buildings to buy 8 fixtures -- straight into the user's
-// separate over-lit-buildings complaint.
-//
-// This gate scopes by FIXTURE IDENTITY instead, via a discriminator on the
-// per-shape .ini emission colours (see isEmissiveFixtureType below). It relights
-// ONLY the runway/taxiway/beacon fixtures and leaves every building byte-
-// identical, so it is safe to default ON.
-//
-// Unset/"1" -> stock fixture emission (default ON). "0" -> off, byte-identical
-// to the pre-fix render. Numeric > 1 -> verify-by-exaggeration. Resolved once at
-// process start.
-extern const float s_fixtureLightsScale = mc2::gate::get<"MC2_STATIC_PROP_FIXTURE_LIGHTS">();
-
-// FIXTURE-GLOW-1: strength of the bounded, distance-attenuated ADDITIVE glow
-// applied to the fixture types isEmissiveFixtureType() classifies.
-//
-// This is the successor mechanism to MC2_STATIC_PROP_FIXTURE_LIGHTS above, and
-// it exists because that gate provably CANNOT fix the defect: get_base_light()
-// clamps at 1.0 (scales 1/4/8 render byte-identical frames), and whatever
-// survives the clamp is then multiplied by the fixture's dark lens albedo in
-// static_prop.frag. A light source is not expressible as a multiplier on a dark
-// texture. This gate adds a separate term after both, in the fragment shader.
-//
-// The two properties that keep it out of the RUNWAY-MARKER-LIGHTS-1 failure
-// mode (constant-screen-size dashes at overview altitude) are enforced in the
-// shader, not here: no geometry/screen-size term of any kind, and an attenuation
-// that is arithmetically zero beyond a compile-time far plane well inside
-// overview altitude. The near/far window is deliberately NOT env-tunable so the
-// bound cannot be configured away.
-//
-// DEFAULT-OFF on measured evidence. The mechanism is verified and bounded
-// (see .claude/FIXTURE-GLOW-1-STATUS.md), but at strength 1.0 the visible
-// result on the only fixtures that could be observed on screen -- the green
-// beacons of mc2_10 -- is a modest pale-ing of an already-green cone, not the
-// "a light came on" the user asked for. Two facts drive the OFF default:
-//   * the fixture lens already renders at channel max, so the ONLY headroom
-//     left in an LDR target is the OTHER channels -- i.e. any additional glow
-//     necessarily desaturates toward white. That is physically what a hot light
-//     core does, but it is an aesthetic call, and this user has already
-//     rejected one fixture-lighting attempt as "atrociously hideous";
-//   * the red and blue fixture types were never observed glowing on screen (see
-//     the status doc) -- only green was, for the fifth lane running.
-// Shipping this ON would repeat the predecessor's outcome: a safe default-ON
-// change that does not close the complaint. It needs a strength picked by eye.
-//
-// "0"/unset -> off, byte-identical. Numeric -> strength; 1.0 is the calibrated
-// baseline, 3-4 is the "clearly a light" range. Resolved once at process start.
-extern const float s_fixtureGlowStrength = mc2::gate::get<"MC2_STATIC_PROP_FIXTURE_GLOW">();
+// EDGE-LIGHT-EMISSION-1: stock MC2 lights windows, building base lights and the runway/beacon fixtures through authored
+// hot-colour vertex tags ("Hot Green -- Building Base Lights -- ONLY at NIGHT"). This path used to pass a daytime state to
+// get_base_light(), so every night-only arm took its daytime result and the lights never came on. The night state is now
+// uploaded and the emission delta is applied at full stock strength (kNightEmissiveScale in the batcher internals);
+// light fixtures get the same scale through the fixture discriminator below (kFixtureEmissiveScale), so they come on
+// at night without a screen-size clamp: the emission rides real fixture geometry and shrinks and fades with distance.
 
 // BEACON-FIXTURE-ID-1: the fixture discriminator, validated against all 773
 // stock data/tgl .ini.
@@ -464,12 +364,8 @@ static constexpr float s_iblNightFloor = 0.25f;
 //
 // NOTE ON SOURCING NIGHT STATE. This deliberately calls gos_GetNightState()
 // directly instead of reusing the nFactor computed in the uniform-upload
-// blocks below. Those blocks only fetch real night state when one of
-// MC2_STATIC_PROP_NIGHT_TAGS / _FIXTURE_LIGHTS / _FIXTURE_GLOW is active and
-// otherwise leave nFactor at 0.0. _FIXTURE_LIGHTS happens to default ON today,
-// so piggy-backing would work by luck -- and would silently degrade to a no-op
-// the moment a user set MC2_STATIC_PROP_FIXTURE_LIGHTS=0. This fix must not
-// depend on an unrelated gate's default.
+// blocks below, so the probe's night scale does not depend on how those blocks
+// source their state.
 float iblShStrengthNightScaled() {
     if (!iblShEnabled()) return 0.0f;
     bool  isNight = false;
