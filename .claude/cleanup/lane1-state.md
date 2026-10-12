@@ -1,54 +1,122 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-12 -->
 # Lane 1 state (builder on A:/Games/mc2-main, branch claude/nifty-mendeleev). Hand-over file for the next agent; keep current at every report.
 
-HEAD: `git log -1`. Session 2026-10-11 third lane-1 agent (17:09-19:45, stopped early by the owner's budget change): mc2_24 hunt, step 4 prerequisite 2 (save-format guard), tool fixes. Never pushed. The 0.4 install holds a CLEAN build of dce5a1f1a (code identical to HEAD at the time; relink and redeploy after any later code commit: the smoke fingerprint accepts doc-only commits since the exe, not code ones). Owner ruling: the quicksave slot `~/.mechcommander2/savegame/testgame.ims` is DISPOSABLE (fixture runs may overwrite it); `tools/savegame_backup.py` is still wanted and used by the roundtrip tool.
+HEAD: `git log -1`. Session 2026-10-12 (lane-1 Fable, 08:35 start, cap 14:35): T1 + T3 of `program-review-2026-10-12.md` section 8 from the
+saved WIP patch (`lane1-wip-after-limit-2026-10-12.patch`, now fully landed or superseded; the patch file can go). Never pushed. Lane 4's
+cull wave 1 was merged into this worktree by the orchestrator mid-session (e07759326 + 6c2e2e2fe); nothing of it touched C++ or tests/unit.
+Task 7 (hierarchical-brain / modder ABL status audit) was DROPPED from this lane by the coordinator: an external worker owns it.
 
-## Done this session (commits, oldest first)
-- b41ff5384 `sim_determinism.py pairs-until-fail --mission M --max N` (stops at the first diverging pair, keeps its artifacts, one ledger line per pair with cpu% and build/game process counts at start and end).
-- 7ac9866ec savegame_backup.py + save_inspect.py (packet map / diff / digest; fixed `save_craft_stale.write` header word); a6d65b127 `saveload_roundtrip.py resave|--baseline|--check` + the engine fixture (with both MC2_BOOT_QUICKSAVE_AT and QUICKLOAD_AT armed the game saves again right after the load to testgame_resave.ims); 46bb61448 `code/save_layout_guard.h` (static_assert on 19 save struct sizes); a838c1b39 smoke/deploy waits (`smoke_lib/bounded_wait.py`: `run_smoke --deploy` waits for a busy folder lease, `deploy_payload.py --wait`, countdown lines); 2946a1f59 the mc2_24 fix; 5e6b0ee85 save_inspect text-vs-binary; c70531cbb `XData{}` (insufficient alone), 1b7cbefe6 ABL blocks zeroed, d67116019 MC2_SAVE_STRUCT + by-reference pilot init, 66cdc9ec3 objects/pilots allocated zeroed, 7cdec794a quickload waypoint-marker fix; b438966df mc2_24 drops allow_asset_load_fail (owner ruling; NOT yet proven by a tier1, see NEXT 1).
-- Task 3a was already done before this session (e328077bf, 7b1394e47: `scripts/build_inputs.txt`; the fingerprint accepts an ancestor exe when no build input changed since).
+## Commits this session (oldest first; every C++ commit built + doctest 2743)
+- 38abacf37 sim_determinism.py: per-mission baselines under `tests/smoke/sim_determinism/<m>.json` pin the install data fingerprint + mission
+  seed; `check <m>` applies the recorded fixture env; STARVED pairs (host too busy) are retried, not counted; old single baseline file removed.
+- e81d237bf `MC2_MULTIPLAYER` CMake option default OFF: multplyr*.cpp off the target; `code/multplyr_null.cpp` = null MPlayer + statics +
+  42 generated no-op members (`tools/dev/gen_multplyr_null.py --from-link-log`); `LogisticsData::startMultiPlayer` compiled out (per-source
+  define, so toggling recompiles 4 TUs). ON and OFF both link; default build.ninja carries only multplyr_null.cpp.obj.
+- 5e0341d37 SIMID line gains `nobj= objects= nabl= abl= rng=sim/app/wx`: buildings + turrets digest (sorted by partId), ABL instances in
+  registry order (handle, FSM state/prev, init flag, FNV of static vars), per-stream draw counts (`SimRandomDraws()` in mclib/routines.cpp,
+  reset at the mission seed; `Weather::drawCount()`); `ABLi_getNumModuleInstances/ABLi_getModuleInstance` added. Radio style/callsign rolls
+  and the terrain texture fractal noise moved to the appearance stream. The four `projectForScreenXY` sites the review named are in
+  `BattleMech::render` / `GroundVehicle::render` already (not update): nothing to move.
+- fd47cde46 `MC2_SIM_TRACE` compile-time option (default OFF): mclib/sim_trace.{h,cpp}, docs/sim-trace.md, trace points (RNGF, RNGCALL with
+  std::stacktrace, HIT/INJURE/DESTROYLOC/CTBRANCH, BOLT, REQ/CALC/CALCDONE, SETTGT, SADD/SREM, WX, ABL, SETPOS/SCROLL); determinism-hunt/
+  deleted. 8713e228e: ABL tag behind `MC2_SIM_TRACE_ABL` (thousands of lines per frame). 8cf860cc6: ABLRAND tag (module + script line
+  of every script `random()`).
+- 62a605c43 B0 harness: `MC2_ASAN` in cmake/Mc2Standalone.cmake + `build_contract_harnesses.py --asan` (doctest under ASan: 56 s build+run
+  beside three other lanes, native 10 s); mclib/alloc_probe.{h,cpp} (portable size seam, in mclib, nothing calls it in a default build) +
+  tests/unit/alloc_probe_new.cpp (mc2_tests' global new/delete through the probe) + `ScopedLeakCheck` + 7 doctest cases (self, std owners,
+  EString); `tools/own_inventory.py` (691 types) + `tools/pointer_order_scan.py` (14 sites / 12 files) with baselines under tests/unit and
+  four check-contracts rows (check + selftest each).
+- 1209d66cb / 27ba3cd99 static_cast in the new code; 0a082e1fb + 604a75a28 cxx17 ratchet baseline rewritten (reasons in the messages:
+  multiplayer stubs mirror the frozen header LG05/06/17; digests share digestWorld's (records, n) shape LG17; alloc_probe size header LG18)
+  then tightened; tier1 flake-log row.
+- 6eef8e2b2 dup_lines back under baseline (compareQuantized, sortTotal<>, foldMoverVisual/Intent shared) + split-map row (coordinator's two
+  reds at the merged HEAD). 81d82022b SIMID baselines mc2_03 / mc2_10 / mc2_24. d821a03c4 saveload ledger.
 
-## mc2_24 determinism (finding 1 of the old file, now decided)
-- ROOT CAUSE FOUND AND FIXED (2946a1f59): `MasterComponent::disableLevel` is never assigned (the CSV "disable" column is unread) and the component table came from an uncleared heap block, so `hitInventoryItem` disabled a component after one hit in one run and not in the next (cockpit master 6, masters 1/22/33); the first differing state is at frame 3166 (mech 898), the first differing digest at 3193. `loadMasterList` now clears the table (zero = disabled by the first hit, the value a fresh page gives). NOT data-driven disable levels: that would be a gameplay change needing a ruling.
-- The wound-table overread (6876d17fd) was NOT the cause: the build containing it failed 4 of 23 pairs (3 of 4 clean-trace pairs passed first, then 1 fail; trace builds 1/1, 1/5, 1/13).
-- After the fix at a clean exe (7cdec794a): 14 of 14 pairs identical (13 reached frame 3193; pair 10 only 387 frames under 100% host load). Camera-park pair (`--env-a/--env-b MC2_CAMERA_PARK=-1500,2500,0,60,800@300 / -2000,2900,90,50,600@300`) at ff729f36f: identical over 3747 sim frames.
-- STILL OPEN: at ff729f36f (after the lane-2 merge, and after the owner removed the orphan jaegermech.ini so stock Jagermech is used) pair 6 of 6 DIVERGED at sim frame 2487 (t 82.9; last agreed 2486; graded be3cb2ee8909abe3 vs 83bdc7ae600bd375), a DIFFERENT frame from the old race. The same code with the trace patch then passed 4 of 4 (3207..3803 frames), so the new rate is about 1 in 10 and unexplained. NEXT COMMAND: `cp .claude/cleanup/determinism-hunt/dtrace_tmp.h code/; git apply .claude/cleanup/determinism-hunt/dt_mc24_sig.patch` (HIT/INJURE/DESTROYLOC/CTBRANCH + per-item inventory dump `INV`/`SIG` lines + RNGF), `py -3 scripts/ninja_build.py`, deploy, `MC2_SIM_IDENTITY_TRACE_DETAIL=1 py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 30 --duration 30 --out <dir>`, then diff the `[DT]` lines of the two logs with `sed -E 's/ raw=[0-9a-f]+//'` (the `raw=` hash covers unused crit-space slots, always noisy) around render frame 2486; `git checkout -- .` and `rm code/dtrace_tmp.h` after. The method that found the cause: diff RNGF first, then the first differing SIG line, then dump the state that line hashes. Failures appeared mostly with other processes loading the host (lane builds); cpu 20-60% beside a compile, not 100% (at 100% the runs never reach frame 3000).
-- Candidate for its own stream (not changed): `Mech3DAppearance::update` takes the fall direction with `RollDice(50)` (mclib/mech3d_update.cpp:167) from the SHARED random stream, and whether/when that update runs depends on the view, so it is a latent camera-to-simulation leak like Weather was (give it its own LCG stream); other uninitialised-heap hazards of the same class (a table malloc'd and only partly filled) are the likely kind of the frame-2487 cause: look for `Malloc` without clear in table loaders.
+## mc2_24 verdict (task 2)
+- `pairs-until-fail --mission mc2_24 --max 12 --duration 30` on exe 0a082e1fb (C++ identical to the merged HEAD): **12 of 12 counted pairs
+  identical**, 15 run, 3 STARVED (host at 100 % from other lanes' builds and up to three games at once: the lease is NOT serializing the
+  other lanes' runs, `procs=mc2=3` in pairs.log). Frames per pair 310..3471. Camera-park pair (`--env-a/--env-b MC2_CAMERA_PARK=...`) on
+  6eef8e2b2: identical over 3285 sim frames (first attempt starved at 284). mc2_24 is CLOSED structurally (b6c154f59 + 5e0341d37).
+- Baselines committed: mc2_03 (pair 2580 frames), mc2_10 (1620; the plan listed it as diverging near frame 1085, it is identical now),
+  mc2_24 (3444), 1000 frames each, sha 6eef8e2b2, seed + data fingerprint `17051a2e90619f97` of the 0.4 install.
+- mc2_16 under `MC2_FIXTURE_ORDER_LIVENESS=1`: NOT recorded. 3 of 5 pairs DIVERGED (sim frames 2025, 1393, 1327, 1302): at the first
+  differing frame every digest (movers, objects, ABL) is still equal and ONLY the simulation-stream draw count is one apart (`rng=903/325/0`
+  vs `902/325/0`), the new counter naming the consumer class before any state moved. The [DT] trace (MC2_SIM_TRACE exe) caught the extra
+  draw in run b at frame 1302: stack `RandomNumber <- execStdRandom <- execStandardRoutineCall <- execFactor .. execIfStatement`: a brain
+  script's `random()` inside an `if` that only one run reached, with identical ABL static state at that frame, so the condition reads a
+  builtin whose answer is not simulation state. ABLRAND (8cf860cc6) named it: `mod=Miss ln=422 n=100` = the mission script
+  `missions/mc2_16.abl` line 422 `if (random(100) < 1)`, inside line 421 `if (getSensorsActive and ((getCurrentMusicId == -1) or
+  (playingCombatTune and not getPlayerInCombat) or (playingAmbientTune)))`. `getCurrentMusicId` returns `soundSystem->currentMusicId`,
+  which mclib/soundsys.cpp:676 sets to -1 when both music streams report `gosAudio_Stop`: the audio device's playback position, wall
+  clock, not simulation state. ROOT CAUSE: audio playback state reaches the simulation through an ABL builtin and the script then draws
+  from the simulation stream. (`getSensorsActive` = `SensorSystemManager::enemyInLOS`, sim; `getPlayerInCombat` = sim.) Every stock
+  mission script has this music block, so the leak class is in all 24 missions; it fires when a tune ends during the run.
+  FIX NEEDS A RULING (not patched here, two designs change what scripts see): (a) the sound system reports end-of-track on the
+  scenario clock (track duration from the stream, deterministic, music semantics unchanged) or (b) `getCurrentMusicId` returns the
+  last id a script requested until a script changes it (auto-advance moves to the audio side; the "nothing playing" branches of
+  every mission script change behaviour). A per-script RNG stream does NOT fix it (gameplay random() after the branch would shift).
+  Symbolizing a stack: `llvm-pdbutil dump --publics build-simtrace/mc2.pdb` for RandomNumber's RVA (section 1 + 0x1000), base = leaf
+  return address - RVA rounded to 64 K, then `llvm-symbolizer --obj=build-simtrace/mc2.exe --relative-address` on addr - base (TRACEBASE
+  prints an ILT thunk, not the function, so it does not give the base directly: fix = print `&line` through a volatile function pointer
+  or print GetModuleHandle(nullptr)).
 
-## Step 4 prerequisite 2 (save-format guard) status
-- DONE and proven: (b) `code/save_layout_guard.h` (19 sizes, build fails on a layout change; doctest-free, the build is the test); the stale-save reject (earlier); tool `savegame_backup.py`, `save_inspect.py` (selftests on the board).
-- (a) zero-init: `XData data{}` is NOT enough on MSVC (padding stays stack garbage). `code/save_struct_zero.h` `MC2_SAVE_STRUCT(Type, var)` (zeroed storage, then construct) is used at the 17 Save-side locals; doctest test_save_struct_zero.cpp. Also: `MechWarrior::init(MechWarriorData&)` by reference (the by-value copy brought stack garbage), `GameObject::operator new` / `MechWarrior::operator new` zero the block, `ablStackMallocCallback` zeroes ABL blocks, and the Load bug it exposed (7cdec794a: every pilot got 16 waypoint markers at the origin after a load).
-- (c) re-save identity, measured on mc2_01 (`py -3 tools/saveload_roundtrip.py resave --mission mc2_01 --save-at 1000 --load-at 1100`): packets that differ between the save and the save made right after the load: BEFORE any zero-init 1687 of 20000; after the pieces 1407, 1279, 1159. Pilot records (MechWarriorData) now 0 differing; ABL packet identical. NOT yet byte-identical. Remaining 1159, all explained by Load not restoring or recomputing a field, not by garbage: (1) GameObjectData bytes 340/341 = `blipFrame`/`numAttackers` of every object class are 0 after the load although `GameObject::Load` assigns them (something resets them; 956 terrain objects, 44 buildings, 23 vehicles, 4 mechs) and BuildingData 721/752/753; (2) ArtilleryData bytes 396-399 (a float 33.3 after load, 0 before), 130 packets; (3) the mission FIT packet 2: the camera position differs, `[PartN]` records after Part2 come back with ObjectWID 0 (the parts table is not rebuilt after a load), an `ObjectiveModel = ""` line appears; (4) MOVE data packet 6: 29 bytes where a map-cell flag (bit 0x40 of a 4-byte cell word) is cleared after the load. `save_inspect.py diff A B` and `/scratchpad` style per-offset tallies find these in seconds; a fixed-point test (save, load, save, load, save: the last two equal) would separate "not restored" from "restored differently".
-- (d) `saveload_roundtrip.py --baseline/--check` is implemented and selftested; the FIRST live `--baseline --mission mc2_01` ran (20000 packets, digest d05e4b177ffecf40, 're-save identical: False') but the `--check` run (needed to prove run-to-run stability) was stopped by the budget change, so NO baseline file is committed and the second mission was not run. Next: `--baseline` then `--check` twice on mc2_01 and once on another mission (mc2_03), commit `tests/saveload/baselines/*.json` only when `--check` passes; if the digest differs run to run, diff the two `save1.ims` with `save_inspect.py diff` (expect the FIT packet's wall-clock fields or watch ids).
-- Doctest at 7cdec794a: 2730 passed, 0 failed (unit tier). check-contracts board and tier1 NOT run this session (budget).
+## Save round trip (task 5)
+- `saveload_roundtrip.py baseline` wrote mc2_01 (digest 41c85ecc769a0927) and mc2_16 (e7732b406a66ec67), but `check` FAILS on both: the
+  round-trip save is not stable run to run, so NO baseline is committed (tests/saveload/ left untracked and removed). Packet classes that
+  differ (save_inspect diff): mc2_01 48 packets (MechWarriorData 38 / 24405 bytes, MechData 6, CommanderData 2, TeamData 1, FIT text
+  packet 2 length 34166 vs 34238); mc2_16 123 (TerrainObjectData 77 / 77 bytes, MechWarriorData 36, MechData 8, CommanderData 2). Ledgered
+  in `saveload-fidelity-2026-10-11.md` (new section). The 1159 not-restored packets of the earlier resave work stay ledgered there; no Load
+  patches (one-schema design).
+
+## B0 rows added (task 6)
+own_inventory, own_inventory_selftest, pointer_order_scan, pointer_order_scan_selftest (scripts/check-contracts.sh); ASan tier via
+`py -3 tools/build_contract_harnesses.py --asan --run` (not a board row: 56 s). Reload-delta size seam = mclib/alloc_probe (opt-in, no game
+wiring yet). SIMID digest extended; baselines re-recorded once (81d82022b).
+
+## Checkpoint (task 8), HEAD 1daa78a43 (+ this state commit)
+- `tools/build_all_targets.py` (MC2_MULTIPLAYER OFF, the default): every stage built, 16/16 harnesses. `build_contract_harnesses.py --run
+  --unit`: 20 harnesses PASS, doctest 2743 passed (native 2-10 s; ASan 56 s). cxx17 ratchet OK at HEAD (LG19 3 / LG20 136 unchanged,
+  totals only down: dedupe + span + static_cast); dup_lines 57 under baseline; own_inventory 455 types; pointer_order 14 sites / 12 files;
+  log_tag_census re-frozen; gl_shader_variants regenerated; split_map OK; tools_tests rc=0 after the two manifest re-freezes.
+- Full board (10:51, at 1c4f5f1d1): reds were cxx17_ratchet, own_inventory, log_tag_census, gl_shader_variants, tools_tests (all fixed in
+  1daa78a43, rows re-run green) and doc_links: `docs/beta/stable_surfaces.md:50 -> docs/load_bearing_pointers.md` broken by lane 4's cull
+  (not mine, still red). The test-tier-coverage lines in the board log are that row's own selftest arms (expected failures), not findings.
+- tier1 on the 0.4 install, exe 1daa78a43 (fingerprint OK): run 2026-10-12T11-13-42 = 3/5 (mc2_03, mc2_17, mc2_24 PASS; mc2_01 and
+  mc2_10 heartbeat_freeze_play at the END of the run, last heartbeat 127.8 / 127.4 s wallclock after the 120 s duration, mc2_10 at the
+  8192-frame cap), then mc2_01 alone PASS (8192 frames, 100 fps) and mc2_10 alone PASS (6848, 57 fps). Earlier at 1c4f5f1d1: 4/5 with
+  mc2_24 load-timeout (71.9 s load), mc2_24 alone PASS (8094, 68 fps); at d68203bf9 (first proof of b6c154f59): 4/5, mc2_24 PASS with no
+  `[ASSET_LOAD v1]` line, mc2_01 timeout then heartbeat under load. Every mission passed on every exe of the day; no single 5-mission run
+  was 5/5 because three other lanes ran builds and up to three games at once (flake-log rows). NOT a code regression: all three
+  failure buckets are load timeouts or the end-of-run heartbeat with a normal shutdown in the log.
+- Install state: 0.4 = 1daa78a43 default (multiplayer OFF, trace OFF). The SIM_TRACE hunt exe is in `build-simtrace/` (deploy with
+  `--build-dir A:/Games/mc2-main/build-simtrace --build64-root A:/Games/mc2-main/build-simtrace`, redeploy the default after).
 
 ## NEXT for the next owner, in order
-1. Prove b438966df (mc2_24 without allow_asset_load_fail): `py -3 scripts/run_smoke.py --tier tier1 --deploy 0.4 --continue` on a clean build of HEAD; mc2_24 must pass with no asset_load_fail downgrade and no required_missing line for jaegermech; if it still fails on an asset report the exact `[ASSET_LOAD v1]` lines and put the flag back.
-2. The frame-2487 mc2_24 divergence (command above), then re-run >= 8 pairs and the camera-park pair.
-3. Finish prerequisite 2 (d) as above; decide with the owner whether the remaining resave differences (1)-(4) are fixed or listed as known lossy items before B7.
-4. Run `bash scripts/check-contracts.sh` (new rows: save_inspect, savegame_backup) and the full tier1 at the final code commit.
-5. Tier3 (9 mod missions) is BLOCKED: the 0.4 install has no mods. Install the mod set (tools/mod_install, `project-mod-compat-targets`), then `py -3 scripts/run_smoke.py --tier tier3 --deploy <name> --continue` before step 4 B3.
-6. Lane-2 files after its next merge: `MC2_PRINTF_LOG_TAG=FASTPATH_DROP` and `QUADSETUP_SKIP` through `--rewrite printf-log-parsed` on mclib; mclib SPEW (98) and `SPEWALWAYS` (3) wait for mc2log to be a library the standalone tools link (plan section 9.4). Remaining LG12a: puts/fputs, mclib SPEW, `%t`/`%*d`/runtime formats; LG12b ledger items in `step3-lg12b-ledger.md`.
+1. mc2_16 liveness: owner ruling on the music-end clock (above), implement, 6 pairs, then `write-baseline` for mc2_16
+   (`--env MC2_FIXTURE_ORDER_LIVENESS=1`) and `check` on all four. The hunt exe + logs: build-simtrace/, scratchpad chain3/pairs2_mc2_16.
+2. Save round trip: name the MechWarriorData / CommanderData / FIT fields that differ run to run (per-offset tallies over the two
+   save1.ims kept under the scratchpad chain2/rt_base_* and rt_check_*; `save_inspect.py diff` gives packet classes only), mask or fix
+   them, then commit `tests/saveload/baselines/{mc2_01,mc2_16}.json` once `check` passes twice.
+3. B0 remainder: wire mclib/alloc_probe into a proof build's gos_Malloc for the mission-reload delta; mc2_15 once under ASan; the B1 batch
+   notes for RB1 (file lists, own_inventory rows, free sites, Description()/COW sites) in this file.
+4. Lease discipline: three lanes' games ran at once on the host this morning (`procs=mc2=3`); ask the orchestrator whether the other lanes
+   pass `--no-lease` or use another lease name. Pairs under that load starve (STARVED is retried, but a FAIL under load is still a FAIL).
+5. `.claude/cleanup/lane1-wip-after-limit-2026-10-12.patch` is fully landed: delete it.
 
 ## Tool notes from this session
-- Windows: killing by command-line match from PowerShell or `py -c` kills your own shell (the pattern is in your own command line): write a small script file (scratchpad `stop_pairs.py`) that skips its own pid and parent.
-- The shell `date` can lag the real clock; trust `powershell Get-Date`. A foreground Bash call over 120 s with no output is moved to the background; poll with a python sleep loop (<= 590 s per call).
-- Host load: lane 2 builds (cl x6) run beside; pairs under it are still comparable but the game then reaches fewer sim frames; `pairs.log` records cpu% and process counts.
-- `msys sed -i` rewrites CRLF files to LF (whole-file diffs): edit source with python bytes or the Edit tool.
-- Hunt trace patch: `.claude/cleanup/determinism-hunt/dt_mc24_sig.patch` (applies on top of 7cdec794a-era source with dtrace_tmp.h).
+- Heredocs mangle backslashes (`\\n` arrives as a newline): write edit scripts with the Write tool and run them; `sed -i` rewrites CRLF files.
+- `deploy_payload.py --build-dir <tree>` needs `--build64-root <tree>` too for a non-standard Ninja tree (the launcher lookup), and the tree
+  must have built `mc2_launcher` (`scripts/ninja_build.py` with no target builds both).
+- A code commit after the deployed exe makes every later smoke a fingerprint verdict (the SIMID streams are still compared, but tier1 fails);
+  commit, then build, then deploy, then run; doc-only commits are fine.
+- The smoke fingerprint accepted the merge: the cull changed CMakeLists.txt (a build input), so the chain was split and the merged tree
+  rebuilt + redeployed between the pairs and the baselines.
+- `own_inventory.py` skips `operator new`/`operator delete` tokens (allocator definitions and calls to the global ones).
+- `lane_merge.py <sha> --dry-run` reports "already contained" when the orchestrator merged first; check `git log -3` before merging.
 
-## The printf pipeline (tools/tidy/tidy_batch.py)
-`py -3 tools/tidy/tidy_batch.py --dir <d> [--dir ...] --count 50 --batches N --first-number K --rewrite printf-buffers|printf-log|printf-log-tagged|printf-log-parsed --corpus --log-identity --done <ledger file>`
-- `MC2_PRINTF_LOG_TAG=A,B` limits printf-log-parsed to those tags. `--log-identity` builds+deploys HEAD and compares mc2_03/mc2_24 logs by line SHAPE (numbers masked; the corpus proves numbers). A failed batch leaves edits: `git checkout -- .`, drop its files from the ledger.
-- Census/consumers: `tools/log_tag_census.py` (`consumed_tags()` reads the syntax tree; `plain_tags` for VEG_SUMMARY etc.). The MC2_LOG family is in the census as stream `log`.
-
-## Rules
-- Commit by explicit pathspec; message ends `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. The Bash hook blocks any command line containing `git commit` followed LATER by a token like `--duration` or `-nan` (it reads it as `-a`): keep `git commit` in its own call and keep option-like words out of messages (use `-F file`).
-- Commit BEFORE build+deploy (fingerprint). Launches only `scripts/run_smoke.py ... --deploy 0.4` or the tools above; run_smoke caps `--duration` at 30 (tier2 uses 120). Never kill cl/ninja by name (`tools/kill_build_tree.py`). Never touch lane 2 or `code/multplyr*`.
-- Never contort code for a ratchet: rewrite the baseline with the reason.
-- The source-text board checkers read the COMMITTED tree: after a code commit run the full board; `scripts/extract_gl_shader_variants.py` regenerates `gl_shader_variants.json` when line numbers move.
-
-## Tool quirks
-- Heredocs and `python -` mangle backslashes (`\\n` arrives as `\n`, a real newline): write scripts and JSON with the Write tool, or use `tools/dev/apply_edit.py` with a JSON file written by Write. `/tmp` differs between bash and python; use the scratchpad.
-- `git add` of a path ignored by `.gitignore` (`*.cmake`) needs `-f`. A pathspec commit cannot name a staged deletion; commit with an exact index instead.
-- Adding a gate: edit `Gates/gate_table.cpp` (doc <= 160 chars), `py -3 tools/gate_gen.py --sync-verified`.
+## Rules (unchanged)
+- Commit by explicit pathspec after `git diff --cached --name-only`; `git commit -F <file>` for messages; trailer `Co-Authored-By: Claude
+  Fable 5.1 <noreply@anthropic.com>`. Commit BEFORE build + deploy. Launches only through `scripts/run_smoke.py --deploy 0.4` /
+  `tools/sim_determinism.py` / `tools/saveload_roundtrip.py`, background-only, never `--no-lease`. Never kill cl/ninja by name. Never
+  contort code for a ratchet (rewrite the baseline with the reason). Never touch GameOS/, RenderCore/, shaders/, Gates/ beyond a task's
+  need, nor tests/unit/test_gate.cpp, nor gos_static_prop*.
