@@ -7,17 +7,17 @@ Method (all verifiable from the repo): line counts via `git ls-files` (binary ex
 
 ## 1. Totals
 
-| Tree | Files | Text lines | Cull now (lines) | After step-3 close | Note |
-|---|---:|---:|---:|---:|---|
-| `scripts/` | 295 | 86,054 | ≈ 18,900 | — | 170-row board; 49 rows are selftests |
-| `tools/` | 805 | 194,897 | ≈ 53,300 | — | 31.9k of it is `gate_table.seed.json` shrunk to a name list |
-| `tests/` | 414 | 88,086 (+146,715 `.r32` floats) | ≈ 2,800 | 38,000 (`tests/unit/printf_corpus*`) | doctest tier KEEP |
-| `.claude/hooks` | 3 | 120 | 24 | — | one hook never fires |
-| `.claude/cleanup` | 92 | 11,973 | ≈ 6,000 | — | 36 stale docs (4,326) + one-off probes/patches |
-| `.claude/` root status docs + user-feedback | 49 | 34,713 | ≈ 33,500 | — | June–July arc evidence; tarball to E: |
-| `docs/` | 298 | 84,847 (56.0k md) | ≈ 14,200 | — | 46 stale (11,011) + 17 zero-inbound + orphan data |
-| `cmake/`, `.mcp.json`, root | 15 | ~870 | 311 | — | `cmake/sdl2` unreferenced since 2020 |
-| **Total** | **1,971** | **≈ 501k** | **≈ 129k (26%)** | **+38k** | plus ~50 board rows and 1,080 lines of per-harness CMake |
+| Tree | Files | Text lines | Cull now (lines) | After step-3 close | Note | Done (wave 1, 2026-10-12; `lane4-state.md`) |
+|---|---:|---:|---:|---:|---|---|
+| `scripts/` | 295 | 86,054 | ≈ 18,900 | — | 170-row board; 49 rows are selftests | 13,533 lines (batches 1-4); kept: gate_default_classifier+gate_idioms (check-delivery imports), verify_campaign_assets, run_brain_apply_ab.ps1, bt2018_retarget_clips |
+| `tools/` | 805 | 194,897 | ≈ 53,300 | — | 31.9k of it is `gate_table.seed.json` shrunk to a name list | 18,131 lines (phase/proofs, scenario_runner, comment_tidy, gate_codemod/conflicts, misc); seed NOT shrunk (both readers use fields); mc2mod, examples, dev/, cook tools kept |
+| `tests/` | 414 | 88,086 (+146,715 `.r32` floats) | ≈ 2,800 | 38,000 (`tests/unit/printf_corpus*`) | doctest tier KEEP | 412 lines (4 dead tests, visual/baselines, mc2mod kept); printf_corpus waits for step 3 |
+| `.claude/hooks` | 3 | 120 | 24 | — | one hook never fires | 22 lines (shader_deploy.py deleted; owner removes the settings.local.json entry) |
+| `.claude/cleanup` | 92 | 11,973 | ≈ 6,000 | — | 36 stale docs (4,326) + one-off probes/patches | 5,979 lines (batch 0a) |
+| `.claude/` root status docs + user-feedback | 49 | 34,713 | ≈ 33,500 | — | June–July arc evidence; tarball to E: | 26,780 lines (batch 0b, incl. user-feedback + maintenance-rules.json) |
+| `docs/` | 298 | 84,847 (56.0k md) | ≈ 14,200 | — | 46 stale (11,011) + 17 zero-inbound + orphan data | 26,928 lines (batch 0c + orphaned tool docs + 14 generated gate-codemod plans + gate-reader-conflicts) |
+| `cmake/`, `.mcp.json`, root | 15 | ~870 | 311 | — | `cmake/sdl2` unreferenced since 2020 | 311 (cmake/sdl2) + CMakeLists line + golden_floors 822; .mcp.json untouched |
+| **Total** | **1,971** | **≈ 501k** | **≈ 129k (26%)** | **+38k** | plus ~50 board rows and 1,080 lines of per-harness CMake | **92,922 lines, 404 files, 8 commits; board 170 -> 162; batches 5-7 = wave 2** |
 
 ## 2. `scripts/` (295 files, 86k lines)
 
