@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "mc2fmt.h"
+#include "sim_trace.h"
 
 
 bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
@@ -163,6 +164,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 }
 
 void BattleMech::destroyBodyLocation (long bodyLocation) {
+	MC2_SIM_TRACE_LINE("DESTROYLOC mech=%ld loc=%ld", (long)getPartId(), (long)bodyLocation);
 
 	if (body[bodyLocation].damageState == IS_DAMAGE_DESTROYED)
 		return;
@@ -189,6 +191,7 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 	if (bodyLocation == MECH_BODY_LOCATION_CTORSO) {
 		// Mech essentially destroyed. Does it explode or simply shutdown?
 		// For now, it's always exploding...
+		MC2_SIM_TRACE_LINE("CTBRANCH mech=%ld ctbt=%.6f ebt=%.6f status=%d", (long)getPartId(), (double)centerTorsoBlowTime, (double)engineBlowTime, (int)getStatus());
 		if ((scenarioTime <= centerTorsoBlowTime) || ((engineBlowTime > -1.0) && (scenarioTime <= engineBlowTime))) {
 			pilot->handleAlarm(PILOT_ALARM_VEHICLE_INCAPACITATED, 0);
 			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);
@@ -463,6 +466,7 @@ long BattleMech::handleMoveChunk (unsigned long chunk) {
 #pragma optimize("",on)
 
 bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
+	MC2_SIM_TRACE_LINE("INJURE mech=%ld loc=%ld dmg=%.3f cur=%.3f", (long)getPartId(), (long)bodyLocation, (double)damage, (double)body[bodyLocation].curInternalStructure);
 
 	BodyLocationPtr location = &body[bodyLocation];
 
@@ -506,6 +510,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (!shotInfo)
 		return(NO_ERR);
 
+	MC2_SIM_TRACE_LINE("HIT mech=%ld dmg=%.3f loc=%ld master=%ld atk=%ld", (long)getPartId(), (double)shotInfo->damage, (long)shotInfo->hitLocation, (long)shotInfo->masterId, (long)shotInfo->attackerWID);
 	printHandleWeaponHitDebugInfo(shotInfo);
 
 	// COMBAT-TRACE-1: weapon HIT resolution is the universal combat chokepoint — scripted ABL

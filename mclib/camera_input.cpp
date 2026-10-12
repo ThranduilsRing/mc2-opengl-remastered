@@ -1,6 +1,7 @@
 // Camera: Camera::setPosition, zoom, tilt, rotate, scroll and the input smoothing.
 // Declared in the class headers; shared names in camera_internal.h.
 #include "camera_internal.h"
+#include "sim_trace.h"
 
 
 static inline float camWrap180 (float a)
@@ -15,6 +16,10 @@ const float CAM_THRESHOLD = 150.0f;
 //---------------------------------------------------------------------------
 void Camera::setPosition(Stuff::Vector3D newPosition, bool swoopy)
 {
+#if MC2_SIM_TRACE
+	MC2_SIM_TRACE_LINE("SETPOS new=%g,%g old=%g,%g", (double)newPosition.x, (double)newPosition.y, (double)position.x, (double)position.y);
+	MC2_SIM_TRACE_STACK("SETPOS");
+#endif
 	position = newPosition;
 
 	if (land)
@@ -675,6 +680,10 @@ void Camera::moveDown(float amount)
 // chases an out-of-bounds target (no rubber-banding at the map edge).
 void Camera::applyScrollDelta(float dx, float dy)
 {
+#if MC2_SIM_TRACE
+	MC2_SIM_TRACE_LINE("SCROLL dx=%g dy=%g", (double)dx, (double)dy);
+	MC2_SIM_TRACE_STACK("SCROLL");
+#endif
 	if (camSmoothTau() <= 0.0f)
 	{
 		Stuff::Vector3D newPosition = position;

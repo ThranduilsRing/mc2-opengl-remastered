@@ -23,6 +23,10 @@
 #include"gameos.hpp"
 #include"gos_profiler.h"
 #include"path_trace.h"  // PATHFINDING-FACTS-1 gated PATH telemetry
+#include "sim_trace.h"
+#if MC2_SIM_TRACE
+#include "mover.h"   // the trace names the mover behind a path request; the file otherwise knows only the forward declaration
+#endif
 
 
 long MovePathManager::numPaths = 0;
@@ -210,7 +214,9 @@ void MovePathManager::calcPath (void) {
 		if (!mover)
 			return;
 
+		MC2_SIM_TRACE_LINE("CALC pilot=%ld src=%ld", (long)mover->getPartId(), (long)curQRec->num);
 		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
+		MC2_SIM_TRACE_LINE("CALCDONE pilot=%ld p0=%ld/%ld p1=%ld/%ld", (long)mover->getPartId(), (long)pilot->getMovePath(0)->curStep, (long)pilot->getMovePath(0)->numStepsWhenNotPaused, (long)pilot->getMovePath(1)->curStep, (long)pilot->getMovePath(1)->numStepsWhenNotPaused);
 	}
 }
 

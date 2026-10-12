@@ -9,6 +9,7 @@
 
 #include "ablxstd_internal.h"
 #include "mc2fmt.h"
+#include "sim_trace.h"
 
 
 inline signed int double2long(double _in)
@@ -212,6 +213,7 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 						default: break;
 					}
 				} else if (cb) {
+					MC2_SIM_TRACE_LINE("ABL mod=%s ln=%d fn=%s", CurModule ? CurModule->getName() : "?", (int)execLineNumber, routineIdPtr->name);
 					(*cb)();
 				} else {
 					char err[255];

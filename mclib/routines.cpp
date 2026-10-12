@@ -12,6 +12,7 @@
 //sebi
 #include "platform_windows.h"
 #include "Gates/gate.h"
+#include "sim_trace.h"
 
 void memclear(void *Dest,int Length);
 void memfill(void *Dest,int Length);
@@ -65,6 +66,7 @@ void ResetSimRandomDraws (void)
 long RandomNumber (long range)
 {
 	++s_simDraws;
+	MC2_SIM_TRACE_STACK("RNGCALL");
     //sebi
 	//gosASSERT(RAND_MAX==(1<<15)-1 );		// This is always TRUE in VC
 	//return( (gos_rand()*range)>>15 );			// Used to used mod (%) - which costs 40+ cycles (AG)
@@ -76,6 +78,7 @@ long RandomNumber (long range)
 bool RollDice (long percent)
 {
 	++s_simDraws;
+	MC2_SIM_TRACE_STACK("RNGCALL");
 	// DETERMINISTIC-RNG-1 (RISK#2): stock RollDice calls CRT rand() DIRECTLY,
 	// bypassing gos_rand. Under MC2_DETERMINISTIC_RNG it must share the single
 	// LCG stream, so route through gos_rand() (same 15-bit [0,32767] range as

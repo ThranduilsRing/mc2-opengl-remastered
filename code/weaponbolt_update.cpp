@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "weaponbolt_internal.h"
 #include "appearance_rng.h"
+#include "sim_trace.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
 
@@ -270,6 +271,13 @@ long WeaponBolt::update (void)
 		if (!((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
 			float lastDistanceMoved = distanceToTarget - distance;
+#if MC2_SIM_TRACE
+			if (target && target->isMech()) {
+				const Stuff::Vector3D tp = target->getPosition();
+				MC2_SIM_TRACE_LINE("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", (long)getPartId(), (long)target->getPartId(), (double)distance, (double)lastDistanceMoved,
+				                   (double)targetPos.x, (double)targetPos.y, (double)targetPos.z, (double)tp.x, (double)tp.y, (double)tp.z);
+			}
+#endif
 			distanceToTarget = distance;
 			
 			if (lastDistanceMoved >= distance)

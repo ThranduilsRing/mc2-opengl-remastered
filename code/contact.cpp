@@ -43,6 +43,7 @@
 #include<gameos.hpp>
 
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
+#include "sim_trace.h"
 
 //***************************************************************************
 
@@ -403,6 +404,7 @@ bool SensorSystem::isContact (MoverPtr mover) {
 //---------------------------------------------------------------------------
 
 void SensorSystem::addContact (MoverPtr mover, bool visual) {
+	MC2_SIM_TRACE_LINE("SADD owner=%ld mv=%ld vis=%d", (long)owner->getPartId(), (long)mover->getPartId(), (int)visual);
 
 	Assert(!isContact(mover), 0, " SensorSystem.addContact: already contact ");
 	if (numContacts < MAX_CONTACTS_PER_SENSOR) {
@@ -441,6 +443,7 @@ void SensorSystem::removeContact (long contactIndex) {
 
 	MoverPtr contact = (MoverPtr)ObjectManager->get(contacts[contactIndex] & 0x7FFF);
 	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
+	MC2_SIM_TRACE_LINE("SREM owner=%ld mv=%ld", (long)owner->getPartId(), (long)contact->getPartId());
 	
 	numContacts--;
 	if ((numContacts > 0) && (contactIndex != numContacts)) {

@@ -24,6 +24,7 @@ set(SOURCES ${SOURCES}
     pqueue.cpp
     routines.cpp
     appearance_rng.cpp
+    sim_trace.cpp
     scale.cpp
     sortlist.cpp
     tgainfo.cpp

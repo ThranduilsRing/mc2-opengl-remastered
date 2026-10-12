@@ -48,6 +48,7 @@
 #include "../mclib/mathfunc.h"
 #include "../mclib/appear.h"
 #include "../mclib/sim_identity.h"
+#include "../mclib/sim_trace.h"
 #include "../mclib/appearance_rng.h"
 #include "Gates/gate.h"
 
@@ -343,6 +344,10 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	       mc2::fmt::as_i32((int)objs.size()), mc2::fmt::safe(ho), mc2::fmt::as_i32((int)abl.size()), mc2::fmt::safe(ha),
 	       mc2::fmt::as_u32((uint32_t)SimRandomDraws()), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
 
+#if MC2_SIM_TRACE
+	mc2_sim_trace::setTime(scenarioTimeNow);
+	MC2_SIM_TRACE_LINE("RNGF sim=%lu app=%u wx=%u", SimRandomDraws(), (unsigned)mc2_appearance_rng::drawCount(), weather ? weather->drawCount() : 0u);
+#endif
 	if (simIdentityTraceDetail()) {
 		for (size_t i = 0; i < recs.size(); ++i) {
 			const MoverRecord& r = recs[i];

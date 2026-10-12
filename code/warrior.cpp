@@ -8,6 +8,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "sim_trace.h"
 
 
 // ABL-VM-FACTS-1: TU-local definitions for the abl_trace externs.
@@ -1800,6 +1801,7 @@ void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams
 		}
 	}
 
+	MC2_SIM_TRACE_LINE("REQ pilot=%ld src=%ld params=%lu sel=%ld", (long)(getVehicle() ? getVehicle()->getPartId() : -1), (long)source, (unsigned long)moveParams, (long)selectionIndex);
 	PathManager->request(this, selectionIndex, moveParams, source);
 }
 

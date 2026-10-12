@@ -141,6 +141,9 @@ option(MC2_EDITOR_IN_ALL "Include EditRel in the default all build (it recompile
 # so stock builds pay nothing; runtime still requires MC2_DETERMINISTIC_RNG=1 +
 # MC2_DIAG_TAGS=RNG. Turn ON only for determinism-proof builds.
 option(MC2_RNG_TRACE "Compile the gos_rand RNG diagnostic trace (DETERMINISTIC-RNG-1)" OFF)
+# The [DT] determinism trace (mclib/sim_trace.h, docs/sim-trace.md): per-frame RNG draw counts, per-draw call stacks, hit/path/target/
+# contact/camera events. Compile-time only, no runtime gate; a hunt build turns it ON, a default build has none of it.
+option(MC2_SIM_TRACE "Compile the [DT] determinism trace into mclib and mc2" OFF)
 # Multiplayer: the network session layer (code/multplyr*.cpp over netlib) is frozen out of the modernization by owner ruling
 # (2026-10-11) and compiled out by default. OFF: code/multplyr_null.cpp defines MPlayer as a pointer that stays null and no-op
 # bodies for the members the rest of the game names, so the lobby screens still compile and every `if (MPlayer)` path is the
@@ -340,6 +343,9 @@ add_subdirectory("./gui" "./out/gui")
 add_subdirectory("./GameOS/gameos" "./out/GameOS/gameos")
 if(MC2_RNG_TRACE)
     target_compile_definitions(gameos PRIVATE MC2_RNG_TRACE=1)
+endif()
+if(MC2_SIM_TRACE)
+    target_compile_definitions(mclib PRIVATE MC2_SIM_TRACE=1)
 endif()
 
 add_subdirectory("./GameOS/src" "./out/windows")
@@ -610,6 +616,9 @@ add_custom_target(build_fingerprint
     VERBATIM)
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
+if(MC2_SIM_TRACE)
+    target_compile_definitions(mc2 PRIVATE MC2_SIM_TRACE=1)
+endif()
 if(MC2_MULTIPLAYER)
     # Only the one TU that creates the session layer reads the define, so toggling the option recompiles four files, not mc2.
     set_source_files_properties("code/logisticsdata.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_MULTIPLAYER=1)

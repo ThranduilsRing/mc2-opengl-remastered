@@ -27,6 +27,7 @@
 
 #include <cstdlib>
 #include <vector>   // MC2_RAIN_BATCH staging buffer
+#include "sim_trace.h"
 #include "Gates/gate.h"
 #include "det_rng.h"
 
@@ -281,6 +282,7 @@ void Weather::update (void)
    		Stuff::Vector3D startPos = eye->getPosition();
 		startPos.z += BASE_RAIN_HEIGHT;
    		float currentElevation = land->getTerrainElevation(startPos);
+		MC2_SIM_TRACE_LINE("WX pos=%.9g,%.9g,%.9g elev=%.9g fl=%.9g rl=%.9g", (double)startPos.x, (double)startPos.y, (double)startPos.z, (double)currentElevation, (double)frameLength, (double)rainLevel);
 		
 		//----------------------------
 		// Update the light level

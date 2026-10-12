@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in warrior_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "warrior_internal.h"
+#include "sim_trace.h"
 
 
 
@@ -521,6 +522,7 @@ void MechWarrior::setLastTarget (GameObjectPtr target, bool obliterate, bool con
 			target->incrementAttackers();
 	}
 
+	MC2_SIM_TRACE_LINE("SETTGT pilot=%ld tgt=%ld", (long)getVehicle()->getPartId(), (long)(target ? target->getPartId() : -1));
 	if (target) {
 		lastTargetWID = target->getWatchID();
 		lastTargetFriendly = target->isFriendly(getVehicle());
