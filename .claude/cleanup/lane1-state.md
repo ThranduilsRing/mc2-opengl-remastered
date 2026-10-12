@@ -43,7 +43,7 @@ Previous session (host lease fix, mc2_16 music ruling, board doc_links): `git sh
    at the end of the notes.
 5. Checkpoint (exe `7dbcb45f0c49`, fingerprint OK, deployed to 0.4): ninja build rc 0; `build_contract_harnesses.py --run --unit` 20 harnesses PASS, doctest
    2750 passed / 1 skipped; board `check-contracts.sh` at f4ab40f30: 167 passed / 2 failed (both the strhunt spawn, fixed by 7dbcb45f0; re-run of
-   `check-background-launch.py` and `test_check_background_launch.py` green; FULL BOARD RE-RUN RESULT: see the last line of this section); tier1
+   `check-background-launch.py` and `test_check_background_launch.py` green; full board re-run at 7dbcb45f0: 168 passed / 1 failed = `script_callers` (stale `tests/callers.json` after the strhunt edit), fixed by regenerating it in 2a1007f56; `callers.py --check` and the coverage selftest green after; no full board run after that last data commit); tier1
    `2026-10-12T17-05-34` = 4/5 (mc2_01 149 fps, mc2_03 68, mc2_17 134, mc2_24 81 PASS; mc2_10 heartbeat_freeze_play, p1 2 fps with the host saturated) and
    mc2_10 alone `2026-10-12T17-30-29` PASS (108 fps) = 5/5 with the single host-freeze rerun (same pattern as lane 3's mc2_03 rerun). Host note: from about
    16:30 the host sat at 100 % CPU with no build of mine running (other lanes), so mc2_07 / mc2_10 freezes are load, not code: mc2_07 passed tier2 at 138 fps
