@@ -1,5 +1,12 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## T2 gate amnesty wave 1 (fourth session, started 2026-10-11 19:38 CDT, cap 01:38) -- PHASE 1 DONE, STOPPED FOR THE VETO PASS
+- Merged nifty (fast-forward to 30e674917), ratchet `--check --tighten` OK. Lane registered as LANE2-T2-GATE-AMNESTY-W1 (GameOS/, RenderCore/, RenderWorld/, shaders/, Gates/, docs/flags.auto.yaml, the mclib render files).
+- Audit: `.claude/cleanup/gate-amnesty-wave1.md` (no code edited). In scope 166 Feature + 105 Trace + 2 Retired rows (82 registry rows read only in code/gui/editor are listed as out of scope).
+  Verdicts: Feature DELETE 107 + FOLD 16 (114 removed this wave, 9 W2) -> registry 195 -> 81 (target <= 130); Trace DELETE 75 -> 156 -> 81 (target <= 100); KEEP-RULING 12, KEEP-LIVE 63 (21 of them launcher rows = SETTINGS).
+  29 phase-2 families in section 4; VETO-* flags name the alternative the orchestrator may prefer (promote a default-off fix, keep an arc seam, cooked sidecar content). Facts/verdict scripts live in the lane scratchpad (regenerable, not committed).
+- Phase 2 waits for the orchestrator's vetoes. First families when resumed: F-VKFOLD, F-VKDEAD, F-DIAG, the knob families; the VETO-SIZE families (SPDISPATCH, SPREG, MECH) last.
+
 2026-10-11 third session (16:50-20:00; the second ran 09:24-); C++23 STEP 2 (LG13 `#define` -> `inline constexpr`, LG14 `enum class`) is COMPLETE. Lane 1 keeps step 3. Plan: .claude/cleanup/cxx23-step2-define-enum-plan.md.
 Proof ledger (per commit, per object, rulings applied): .claude/cleanup/step2-never-touch-audit.md. LG14 note and results: .claude/cleanup/cxx23-step2-enums-note.md.
 

@@ -1248,10 +1248,6 @@ TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replace
     CHECK(fl("MC2_SHADOW_DIST_FADE_MAX", "2") == 1.0f);
     CHECK(fl("MC2_SHADOW_OBJ_NORMAL_BIAS", "30") == 16.0f);
     CHECK(fl("MC2_SHADOW_MECH_SOFT", "-3") == 0.0f);
-    CHECK(fl("MC2_SSAO_RADIUS", "0.01") == 0.1f);
-    CHECK(fl("MC2_SSAO_RADIUS", "1000") == 64.0f);
-    CHECK(fl("MC2_SSAO_BLUR_SIGMA", "0") == 0.001f);
-    CHECK(fl("MC2_SSAO_BLUR_SIGMA", "5") == 1.0f);
     CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "0") == 0.1f);
     CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "99") == 16.0f);
     // the reader fell back to 2500 for <= 0

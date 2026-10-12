@@ -5,12 +5,12 @@
   "DefOnLead0": 1,
   "Exact1": 44,
   "Is01": 2,
-  "Lead0": 190,
+  "Lead0": 191,
   "Lead0Def(def=off)": 1,
-  "Lead0Kill": 200,
+  "Lead0Kill": 199,
   "Lead0P": 39,
   "Lead1": 127,
-  "Presence": 521,
+  "Presence": 522,
   "Std(def=off)": 16,
   "Std(def=on)": 11
  },
@@ -18,7 +18,7 @@
  "design_s4": [
   {
    "all_readers": [
-    "GameOS/gameos/gos_mech_batcher.cpp:1061 (Lead0Kill)",
+    "GameOS/gameos/gos_mech_batcher.cpp:944 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher_shadow.cpp:174 (Lead0Kill)",
     "GameOS/gameos/vulkan_post_screenfx_native.cpp:723 (Lead0Kill)"
    ],
@@ -27,7 +27,7 @@
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_mech_batcher.cpp:1061",
+     "actual": "GameOS/gameos/gos_mech_batcher.cpp:944",
      "claim": "GameOS/gameos/gos_mech_batcher.cpp:1167",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -48,18 +48,18 @@
   },
   {
    "all_readers": [
-    "GuiRuntime/GraphicsOptionsWindow_passes.cpp:444 (Lead1)",
-    "mclib/mlr/mlr_gate.cpp:40 (Lead1)"
+    "GuiRuntime/GraphicsOptionsWindow_passes.cpp:417 (Lead1)",
+    "mclib/mlr/mlr_gate.cpp:38 (Lead1)"
    ],
    "gate": "MC2_DISABLE_GOSFX",
    "in_conflict": false,
    "note": "",
    "sites": [
     {
-     "actual": "mclib/mlr/mlr_gate.cpp:40",
+     "actual": "mclib/mlr/mlr_gate.cpp:38",
      "claim": "mclib/mlr/mlr_gate.cpp:37",
      "class": "Lead1",
-     "verdict": "corrected"
+     "verdict": "confirmed"
     },
     {
      "actual": "",
@@ -97,15 +97,15 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_height_tex.cpp:53 (Typed(is))",
-    "GameOS/gameos/gos_terrain_height_tex.cpp:54 (Typed(is))"
+    "GameOS/gameos/gos_terrain_height_tex.cpp:54 (Typed(is))",
+    "GameOS/gameos/gos_terrain_height_tex.cpp:55 (Typed(is))"
    ],
    "gate": "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
    "in_conflict": false,
    "note": "one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_height_tex.cpp:53",
+     "actual": "GameOS/gameos/gos_terrain_height_tex.cpp:54",
      "claim": "GameOS/gameos/gos_terrain_height_tex.cpp:51",
      "class": "Typed(is)",
      "verdict": "corrected"
@@ -146,7 +146,7 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/debug_state_dump.cpp:472 (Lead0Kill)",
+    "GameOS/gameos/debug_state_dump.cpp:473 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:136 (Lead0Kill)"
    ],
    "gate": "MC2_SNAPSHOT_STATIC_PROP_BUILD",
@@ -169,10 +169,10 @@
   },
   {
    "all_readers": [
-    "mclib/anim_override_registry.cpp:163 (Typed(str))",
+    "mclib/anim_override_registry.cpp:164 (Typed(str))",
     "mclib/file.cpp:734 (Typed(str))",
     "mclib/fx_def_registry.cpp:357 (Typed(str))",
-    "mclib/model_override_registry.cpp:205 (Typed(str))"
+    "mclib/model_override_registry.cpp:206 (Typed(str))"
    ],
    "gate": "MC2_ACTIVE_MOD",
    "in_conflict": false,
@@ -185,7 +185,7 @@
      "verdict": "corrected"
     },
     {
-     "actual": "mclib/anim_override_registry.cpp:163",
+     "actual": "mclib/anim_override_registry.cpp:164",
      "claim": "mclib/anim_override_registry.cpp:161",
      "class": "Typed(str)",
      "verdict": "corrected"
@@ -197,7 +197,7 @@
      "verdict": "corrected"
     },
     {
-     "actual": "mclib/model_override_registry.cpp:205",
+     "actual": "mclib/model_override_registry.cpp:206",
      "claim": "mclib/model_override_registry.cpp:203",
      "class": "Typed(str)",
      "verdict": "corrected"
@@ -212,10 +212,10 @@
    "gate": "MC2_ACTIVE_MOD",
    "in_conflict": false,
    "readers": [
-    "mclib/anim_override_registry.cpp:163 Typed(str)",
+    "mclib/anim_override_registry.cpp:164 Typed(str)",
     "mclib/file.cpp:734 Typed(str)",
     "mclib/fx_def_registry.cpp:357 Typed(str)",
-    "mclib/model_override_registry.cpp:205 Typed(str)"
+    "mclib/model_override_registry.cpp:206 Typed(str)"
    ],
    "rule": "NonEmpty everywhere; must be re-read, never cached",
    "status": "note"
@@ -250,8 +250,8 @@
    "gate": "MC2_DEBUG_RENDERER",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/debug_renderer.cpp:32 Lead0",
-    "GuiRuntime/EditorInspector.cpp:1267 Lead0"
+    "GameOS/gameos/debug_renderer.cpp:33 Lead0",
+    "GuiRuntime/EditorInspector_sections.cpp:849 Lead0"
    ],
    "rule": "Lead0 (set, non-empty, not \"0\")",
    "status": "resolved"
@@ -262,9 +262,9 @@
    "gate": "MC2_DEBUG_STATE_DUMP",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/debug_state_dump.cpp:1170 Lead0",
-    "GameOS/gameos/debug_state_dump.cpp:1201 Lead0",
-    "GameOS/gameos/gameosmain.cpp:1048 Lead0"
+    "GameOS/gameos/debug_state_dump.cpp:1171 Lead0",
+    "GameOS/gameos/debug_state_dump.cpp:1202 Lead0",
+    "GameOS/gameos/gameosmain_init.cpp:45 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -275,8 +275,8 @@
    "gate": "MC2_DEV_SHELL",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_dev_shell.cpp:59 Lead1",
-    "code/missiongui_uicmd.cpp:290 Lead1"
+    "GameOS/gameos/gos_dev_shell.cpp:60 Lead1",
+    "code/missiongui_uicmd.cpp:289 Lead1"
    ],
    "rule": "Lead1 (=1)",
    "status": "resolved"
@@ -287,8 +287,8 @@
    "gate": "MC2_DISABLE_GOSFX",
    "in_conflict": false,
    "readers": [
-    "GuiRuntime/GraphicsOptionsWindow_passes.cpp:444 Lead1",
-    "mclib/mlr/mlr_gate.cpp:40 Lead1"
+    "GuiRuntime/GraphicsOptionsWindow_passes.cpp:417 Lead1",
+    "mclib/mlr/mlr_gate.cpp:38 Lead1"
    ],
    "rule": "Lead1 (=1 disables; unset = enabled)",
    "status": "resolved"
@@ -299,17 +299,17 @@
    "gate": "MC2_FX_FORCE_SPAWN",
    "in_conflict": false,
    "readers": [
-    "code/warrior.cpp:2118 Presence",
-    "code/warrior.cpp:2118 Typed(is)",
-    "code/warrior.cpp:2124 Typed(is)",
-    "code/warrior.cpp:2124 Typed(is)",
-    "code/warrior.cpp:2125 Typed(is)",
-    "code/warrior.cpp:2125 Typed(is)",
-    "code/warrior.cpp:2126 Typed(is)",
-    "code/warrior.cpp:2126 Typed(is)",
-    "code/warrior.cpp:2127 Typed(is)",
-    "code/warrior.cpp:2127 Typed(is)",
-    "code/warrior.cpp:2128 Typed(is)"
+    "code/warrior.cpp:2101 Presence",
+    "code/warrior.cpp:2101 Typed(is)",
+    "code/warrior.cpp:2107 Typed(is)",
+    "code/warrior.cpp:2107 Typed(is)",
+    "code/warrior.cpp:2108 Typed(is)",
+    "code/warrior.cpp:2108 Typed(is)",
+    "code/warrior.cpp:2109 Typed(is)",
+    "code/warrior.cpp:2109 Typed(is)",
+    "code/warrior.cpp:2110 Typed(is)",
+    "code/warrior.cpp:2110 Typed(is)",
+    "code/warrior.cpp:2111 Typed(is)"
    ],
    "rule": "levels: 0 off, 1 fire once, loop/2-9 continuous",
    "status": "enum"
@@ -320,8 +320,8 @@
    "gate": "MC2_GPU_PARTICLES",
    "in_conflict": false,
    "readers": [
-    "mclib/gosfx/effect.cpp:46 Lead1",
-    "mclib/particles/batcher.cpp:84 Lead1"
+    "mclib/gosfx/effect.cpp:44 Lead1",
+    "mclib/particles/batcher.cpp:78 Lead1"
    ],
    "rule": "Lead1 (=1 enables)",
    "status": "resolved"
@@ -354,11 +354,11 @@
    "gate": "MC2_MATERIAL_GPU",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/debug_state_dump.cpp:473 Lead0Kill",
-    "GameOS/gameos/gameosmain.cpp:1315 Lead0Kill",
-    "GameOS/gameos/gos_materials.cpp:47 Lead0Kill",
-    "GameOS/gameos/gos_mech_batcher.cpp:579 Lead0Kill",
-    "GameOS/gameos/gos_static_prop_batcher_state.cpp:198 Lead0Kill"
+    "GameOS/gameos/debug_state_dump.cpp:474 Lead0Kill",
+    "GameOS/gameos/gameosmain_init.cpp:224 Lead0Kill",
+    "GameOS/gameos/gos_materials.cpp:48 Lead0Kill",
+    "GameOS/gameos/gos_mech_batcher.cpp:469 Lead0Kill",
+    "GameOS/gameos/gos_static_prop_batcher_state.cpp:194 Lead0Kill"
    ],
    "rule": "Lead0Kill (default ON, =0 disables)",
    "status": "resolved"
@@ -381,8 +381,8 @@
    "gate": "MC2_RENDER_CONTRACT_ASSERT",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_gpu_sync.cpp:17 Lead0",
-    "mclib/render_contract.cpp:570 Lead0"
+    "GameOS/gameos/gos_gpu_sync.cpp:18 Lead0",
+    "mclib/render_contract.cpp:569 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -393,9 +393,9 @@
    "gate": "MC2_SHADER_HOT_RELOAD",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics_draw.cpp:573 Lead1",
-    "GameOS/gameos/gameosmain.cpp:1256 Lead1",
-    "GameOS/gameos/utils/shader_builder.cpp:422 Lead1"
+    "GameOS/gameos/gameos_graphics_draw.cpp:563 Lead1",
+    "GameOS/gameos/gameosmain_init.cpp:190 Lead1",
+    "GameOS/gameos/utils/shader_builder.cpp:426 Lead1"
    ],
    "rule": "Lead1 (=1)",
    "status": "resolved"
@@ -406,8 +406,8 @@
    "gate": "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_static_prop_batcher_shadow.cpp:689 Typed(is)",
-    "mclib/txmmgr_render.cpp:861 Typed(is)"
+    "GameOS/gameos/gos_static_prop_batcher_shadow.cpp:672 Typed(is)",
+    "mclib/txmmgr_render_passes.cpp:108 Typed(is)"
    ],
    "rule": "=0 kill-switch (default ON); =2 adds a trace line",
    "status": "enum"
@@ -418,7 +418,7 @@
    "gate": "MC2_SHADOW_ENABLE",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_mech_batcher.cpp:1061 Lead0Kill",
+    "GameOS/gameos/gos_mech_batcher.cpp:944 Lead0Kill",
     "GameOS/gameos/gos_static_prop_batcher_shadow.cpp:174 Lead0Kill",
     "GameOS/gameos/vulkan_post_screenfx_native.cpp:723 Lead0Kill"
    ],
@@ -431,9 +431,9 @@
    "gate": "MC2_SNAPSHOT_MECH_EXTRACT",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/debug_state_dump.cpp:583 Lead0",
-    "GameOS/gameos/gos_mech_batcher.cpp:2845 Lead0",
-    "GameOS/gameos/render_snapshot.cpp:239 Lead0"
+    "GameOS/gameos/debug_state_dump.cpp:584 Lead0",
+    "GameOS/gameos/gos_mech_batcher_flush.cpp:1172 Lead0",
+    "GameOS/gameos/render_snapshot.cpp:232 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -444,7 +444,7 @@
    "gate": "MC2_SNAPSHOT_STATIC_PROP_BUILD",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/debug_state_dump.cpp:472 Lead0Kill",
+    "GameOS/gameos/debug_state_dump.cpp:473 Lead0Kill",
     "GameOS/gameos/gos_static_prop_batcher.cpp:136 Lead0Kill"
    ],
    "rule": "Lead0Kill (default ON, =0 disables)",
@@ -456,9 +456,9 @@
    "gate": "MC2_SPOTLIGHT_DIRECTION_FIX",
    "in_conflict": false,
    "readers": [
-    "mclib/cone_glow.cpp:206 Typed(is)",
     "mclib/cone_glow.cpp:207 Typed(is)",
-    "mclib/cone_glow.cpp:224 Typed(is)"
+    "mclib/cone_glow.cpp:208 Typed(is)",
+    "mclib/cone_glow.cpp:225 Typed(is)"
    ],
    "rule": "levels: 1 fix, 2 fix plus trace",
    "status": "enum"
@@ -469,11 +469,11 @@
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_static_prop_batcher_shadow.cpp:482 Typed(is)",
-    "mclib/bdactor_static.cpp:901 Typed(is)",
-    "mclib/txmmgr_render.cpp:701 Typed(is)",
-    "mclib/txmmgr_render.cpp:703 Typed(is)",
-    "mclib/txmmgr_render.cpp:847 Typed(is)"
+    "GameOS/gameos/gos_static_prop_batcher_shadow.cpp:468 Typed(is)",
+    "mclib/bdactor_static.cpp:869 Typed(is)",
+    "mclib/txmmgr_render_passes.cpp:94 Typed(is)",
+    "mclib/txmmgr_render_phases.cpp:520 Typed(is)",
+    "mclib/txmmgr_render_phases.cpp:522 Typed(is)"
    ],
    "rule": "levels: 0 off, 1 on, 2 on plus trace",
    "status": "enum"
@@ -484,8 +484,8 @@
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
    "in_conflict": false,
    "readers": [
-    "mclib/bdactor_static.cpp:903 Typed(is)",
-    "mclib/bdactor_static.cpp:911 Typed(is)"
+    "mclib/bdactor_static.cpp:871 Typed(is)",
+    "mclib/bdactor_static.cpp:879 Typed(is)"
    ],
    "rule": "levels: =0 kill-switch (default ON), 2 adds a trace line",
    "status": "enum"
@@ -496,8 +496,8 @@
    "gate": "MC2_STATIC_PROP_TRACE",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_static_prop_batcher_submit.cpp:449 Lead0",
-    "GameOS/gameos/gos_static_prop_registry.cpp:127 Lead0"
+    "GameOS/gameos/gos_static_prop_batcher_submit.cpp:436 Lead0",
+    "GameOS/gameos/gos_static_prop_registry.cpp:75 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -508,8 +508,8 @@
    "gate": "MC2_STATIC_UPDATE_SKIP",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameosmain.cpp:1252 Std(def=on)",
-    "code/bldng.cpp:815 Std(def=on)",
+    "GameOS/gameos/gameosmain_init.cpp:186 Std(def=on)",
+    "code/bldng.cpp:817 Std(def=on)",
     "code/terrobj.cpp:89 Std(def=on)"
    ],
    "rule": "ParseEnvBool, default ON (0/false/off/no disable)",
@@ -517,12 +517,12 @@
   },
   {
    "delta": "unifying would change one path's default-config result",
-   "evidence": "gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live)",
+   "evidence": "gameos_graphics_tparams.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live)",
    "gate": "MC2_TERRAIN_DETAIL_MACRO_STRENGTH",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics_tparams.cpp:152 Typed(get)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:458 Typed(get)"
+    "GameOS/gameos/gameos_graphics_tparams.cpp:151 Typed(get)",
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:457 Typed(get)"
    ],
    "rule": "owner decision: legacy path defaults 0.35, chunk path defaults 0.0",
    "status": "divergent"
@@ -533,8 +533,8 @@
    "gate": "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_height_tex.cpp:53 Typed(is)",
-    "GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)"
+    "GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)",
+    "GameOS/gameos/gos_terrain_height_tex.cpp:55 Typed(is)"
    ],
    "rule": "Enum {1,2,4}; other values rejected",
    "status": "note"
@@ -545,8 +545,8 @@
    "gate": "MC2_TERRAIN_MATERIAL_LIB",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics_tparams.cpp:9 Lead0",
-    "GameOS/gameos/terrain_material_lib.cpp:220 Lead0"
+    "GameOS/gameos/gameos_graphics_tparams.cpp:10 Lead0",
+    "GameOS/gameos/terrain_material_lib.cpp:219 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -558,8 +558,8 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_terrain_lod_chunk_gates.cpp:97 Lead0",
-    "GameOS/gameos/terrain_material_lib.cpp:185 Lead0",
-    "GameOS/gameos/terrain_material_lib.cpp:222 Lead0"
+    "GameOS/gameos/terrain_material_lib.cpp:186 Lead0",
+    "GameOS/gameos/terrain_material_lib.cpp:221 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -570,10 +570,10 @@
    "gate": "MC2_TEXMGR_KTX_PRIMARY",
    "in_conflict": false,
    "readers": [
-    "mclib/bdactor.cpp:92 Typed(get)",
-    "mclib/gvactor.cpp:38 Typed(get)",
-    "mclib/mech3d_init.cpp:12 Typed(get)",
-    "mclib/txmmgr_texture.cpp:269 Typed(get)"
+    "mclib/bdactor.cpp:94 Typed(get)",
+    "mclib/gvactor.cpp:40 Typed(get)",
+    "mclib/mech3d_init.cpp:13 Typed(get)",
+    "mclib/txmmgr_texture.cpp:261 Typed(get)"
    ],
    "rule": "numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first)",
    "status": "resolved"
@@ -584,7 +584,7 @@
    "gate": "MC2_UI_DEFS_TRACE",
    "in_conflict": false,
    "readers": [
-    "GuiRuntime/GuiRuntime.cpp:104 Lead0",
+    "GuiRuntime/GuiRuntime.cpp:55 Lead0",
     "gui/UiDefs_parse.cpp:28 Lead0"
    ],
    "rule": "Lead0",
@@ -618,7 +618,7 @@
    "gate": "MC2_VK_IMGUI",
    "in_conflict": false,
    "readers": [
-    "GuiRuntime/GuiRuntime.cpp:97 Lead1"
+    "GuiRuntime/GuiRuntime.cpp:48 Lead1"
    ],
    "rule": "Lead1 explicit opt-in",
    "status": "intentional-optin"
@@ -691,7 +691,7 @@
    "gate": "MC2_VK_TERRAIN_LODFADE",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk_feed.cpp:359 Exact1"
+    "GameOS/gameos/gos_terrain_lod_chunk_feed.cpp:360 Exact1"
    ],
    "rule": "Exact1 explicit opt-in",
    "status": "intentional-optin"
@@ -702,7 +702,7 @@
    "gate": "MC2_VK_TERRAIN_VISUALDISPLACE_FAR",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/vulkan_terrain_island.cpp:249 Exact1"
+    "GameOS/gameos/vulkan_terrain_island.cpp:189 Exact1"
    ],
    "rule": "Exact1 explicit opt-in",
    "status": "intentional-optin"
@@ -731,9 +731,9 @@
    "gate": "MC2_WATER_SKYTINT",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics_water.cpp:80 Lead0",
-    "GameOS/gameos/visual_tuning_profile.cpp:172 Lead0",
-    "GuiRuntime/GraphicsOptionsWindow_terrain.cpp:672 Lead0"
+    "GameOS/gameos/gameos_graphics_water.cpp:81 Lead0",
+    "GameOS/gameos/visual_tuning_profile.cpp:173 Lead0",
+    "GuiRuntime/GraphicsOptionsWindow_terrain.cpp:652 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -766,14 +766,14 @@
  "source": "working tree",
  "totals": {
   "conflict_gates": 0,
-  "gates_with_literal": 1131,
-  "gates_with_reader": 1104,
-  "literal_occurrences": 1749,
-  "non_call_literals": 140,
+  "gates_with_literal": 1129,
+  "gates_with_reader": 1102,
+  "literal_occurrences": 1744,
+  "non_call_literals": 136,
   "nonreader_sites": 0,
-  "read_sites": 1609,
-  "reader_sites": 1201,
-  "token_sites": 408,
+  "read_sites": 1608,
+  "reader_sites": 1202,
+  "token_sites": 406,
   "umbrella_members": 25,
   "umbrella_typed_sites": 36,
   "umbrella_violations": 0,

@@ -295,8 +295,8 @@ void gosPostProcess::runSSAO()
     // SsaoOcclusion resource id read it. Both draws stay at half res.
     //
     // Depth stays bound on unit 0 from the gen pass; the AO source goes on
-    // unit 1. Skipped entirely when MC2_SSAO_BLUR=0 or the program failed to
-    // compile, which reproduces the pre-SSAO-BLUR-1 chain exactly.
+    // unit 1. Skipped when the blur is unticked in the options window or the
+    // program failed to compile, which reproduces the pre-SSAO-BLUR-1 chain exactly.
     if (ssaoBlurEnabled_ && ssaoBlurProg_ && ssaoBlurProg_->is_valid() &&
         ssaoBlurFBO_ && ssaoBlurTex_)
     {

@@ -56,8 +56,8 @@ void draw() {
                 // SSAO-BLUR-1 denoise controls.
                 ImGui::Checkbox("Bilateral blur##ssao", &pp->ssaoBlurEnabled_);
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("MC2_SSAO_BLUR. OFF reproduces the pre-SSAO-BLUR-1\n"
-                                      "chain, which had NO denoise at all.");
+                    ImGui::SetTooltip("OFF reproduces the pre-SSAO-BLUR-1 chain,\n"
+                                      "which had NO denoise at all.");
                 ImGui::SliderFloat("Blur depth sigma##ssao", &pp->aoBlurDepthSigma_,
                                    0.002f, 0.10f, "%.4f");
                 if (ImGui::IsItemHovered())

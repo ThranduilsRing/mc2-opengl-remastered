@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1137,
+ "count": 1134,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -36,7 +36,7 @@
    "rule": "Lead1",
    "owner": "code",
    "retireBy": "",
-   "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 \u2014 enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 \u2014 log-and-continue instead of ABL_Fatal (requires ARG_GUARD) Both default OFF: behaviour is byte-identical to pre-harden when gates are off.",
+   "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 — enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 — log-and-continue instead of ABL_Fatal (requires ARG_GUARD) Both default OFF: behaviour is byte-identical to pre-harden when gates are off.",
    "readers": [
     {
      "at": "mclib/ablxstd.cpp:60",
@@ -349,7 +349,7 @@
    "rule": "Lead0P",
    "owner": "code",
    "retireBy": "",
-   "doc": "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (orderAttackObject, COMMANDER origin \u2014 the only origin that installs the tac order and thus the aim) at the nearest live enemy mech, re-issued as targets die (2 s global throttle).",
+   "doc": "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (orderAttackObject, COMMANDER origin — the only origin that installs the tac order and thus the aim) at the nearest live enemy mech, re-issued as targets die (2 s global throttle).",
    "readers": [
     {
      "at": "code/warrior.cpp:2230",
@@ -509,7 +509,7 @@
    "rule": "Lead0Kill",
    "owner": "code",
    "retireBy": "",
-   "doc": "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape \u2014 unset=ON, =0 exact legacy fail-soft).",
+   "doc": "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape — unset=ON, =0 exact legacy fail-soft).",
    "readers": [
     {
      "at": "mclib/tgl_load_guard.cpp:22",
@@ -973,7 +973,7 @@
    "rule": "Lead0",
    "owner": "code",
    "retireBy": "",
-   "doc": "INFO-IMGUI-SLICE-4 capture assist: =1 (with MC2_BOOT_INFO=N driving) pins the info-panel loadout list scrolled to bottom from frame N+3000 on BOTH paths \u2014 the ImGui child (SetScrollY max) and the legacy panel (setScrollPos clamp) \u2014 so the pilot/skill section is pixel-capturable headless gate-on AND as a legacy reference.",
+   "doc": "INFO-IMGUI-SLICE-4 capture assist: =1 (with MC2_BOOT_INFO=N driving) pins the info-panel loadout list scrolled to bottom from frame N+3000 on BOTH paths — the ImGui child (SetScrollY max) and the legacy panel (setScrollPos clamp) — so the pilot/skill section is pixel-capturable headless gate-on AND as a legacy reference.",
    "readers": [
     {
      "at": "code/infowindow.cpp:811",
@@ -1897,7 +1897,7 @@
    "rule": "AtoiNZ",
    "owner": "code",
    "retireBy": "",
-   "doc": "FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave ScenarioScript empty \u2014 the per-warrior brains move to inline Brain{} blocks and mission logic to *_specials.fit \u2014 but preserve the original scenario name as LegacyScenarioScript.",
+   "doc": "FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave ScenarioScript empty — the per-warrior brains move to inline Brain{} blocks and mission logic to *_specials.fit — but preserve the original scenario name as LegacyScenarioScript.",
    "readers": [
     {
      "at": "code/mission.cpp:3803",
@@ -2729,7 +2729,7 @@
    "rule": "Presence",
    "owner": "gameos",
    "retireBy": "",
-   "doc": "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it against scripted writers (freezeScriptedCameraForCapture) WITHOUT freezing the sim \u2014 deterministic worst-case views for perf captures and debug-view sweeps while gameplay keeps running.",
+   "doc": "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it against scripted writers (freezeScriptedCameraForCapture) WITHOUT freezing the sim — deterministic worst-case views for perf captures and debug-view sweeps while gameplay keeps running.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_visual_capture.cpp:895",
@@ -3313,7 +3313,7 @@
    "rule": "Std",
    "owner": "props",
    "retireBy": "",
-   "doc": "Step 12B.1 \u2014 exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None.",
+   "doc": "Step 12B.1 — exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1836",
@@ -4068,7 +4068,7 @@
    "rule": "Lead1",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "[TEMP DECAL_GLPROBE] eager-drain probe \u2014 env MC2_DECAL_GLPROBE=1.",
+   "doc": "[TEMP DECAL_GLPROBE] eager-drain probe — env MC2_DECAL_GLPROBE=1.",
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:11211",
@@ -5218,7 +5218,7 @@
    "rule": "Presence",
    "owner": "props",
    "retireBy": "",
-   "doc": "MC2_EDITOR_STATIC_PRIME_DIAG=1 \u2014 compact aggregate DrawCmd census at finalize.",
+   "doc": "MC2_EDITOR_STATIC_PRIME_DIAG=1 — compact aggregate DrawCmd census at finalize.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5174",
@@ -5700,7 +5700,7 @@
    "rule": "Lead0P",
    "owner": "code",
    "retireBy": "",
-   "doc": "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a COMMANDER-origin unaimed ATTACK_TO_DESTROY on the nearest live enemy (PLAYER origin never installs the tac order \u2014 the trap that burned the first aimed-fire fixture run); at 50% every home mech is issued a COMMANDER-origin move order (300 m toward map center \u2014 replaces the attack order, giving a clean 0.4*win displacement window; attack-first ordering is deliberate: the reverse self-sabotages the move bound when targets spawn in range); at 90% one self-asserting 'ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL' line (moved = net displacement >= 25 m from move-issue; refused = classified LastMoveCalcErr; dead units exempt).",
+   "doc": "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a COMMANDER-origin unaimed ATTACK_TO_DESTROY on the nearest live enemy (PLAYER origin never installs the tac order — the trap that burned the first aimed-fire fixture run); at 50% every home mech is issued a COMMANDER-origin move order (300 m toward map center — replaces the attack order, giving a clean 0.4*win displacement window; attack-first ordering is deliberate: the reverse self-sabotages the move bound when targets spawn in range); at 90% one self-asserting 'ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL' line (moved = net displacement >= 25 m from move-issue; refused = classified LastMoveCalcErr; dead units exempt).",
    "readers": [
     {
      "at": "code/mission.cpp:739",
@@ -6200,7 +6200,7 @@
    "rule": "Presence",
    "owner": "code",
    "retireBy": "",
-   "doc": "MEASURED-REORDER-SPMECH-1 (tier-C reorder EXPERIMENT, default-OFF): The two opaque flush UNITS below \u2014 StaticProp BatcherFlush (+Pass_SpColor timer) and the Mech block (+Pass_Mechs timer) \u2014 are the one legal adjacent swap the legal-reorder oracle proved.",
+   "doc": "MEASURED-REORDER-SPMECH-1 (tier-C reorder EXPERIMENT, default-OFF): The two opaque flush UNITS below — StaticProp BatcherFlush (+Pass_SpColor timer) and the Mech block (+Pass_Mechs timer) — are the one legal adjacent swap the legal-reorder oracle proved.",
    "readers": [
     {
      "at": "mclib/txmmgr.cpp:4361",
@@ -6888,7 +6888,7 @@
    "rule": "Prefix",
    "owner": "props",
    "retireBy": "",
-   "doc": "Coordinate transforms (spec \u00a76). glTF is Y-up, right-handed (X-right, Y-up, Z-toward-viewer).",
+   "doc": "Coordinate transforms (spec §6). glTF is Y-up, right-handed (X-right, Y-up, Z-toward-viewer).",
    "readers": [
     {
      "at": "mclib/assimp_importer.cpp:72",
@@ -7852,7 +7852,7 @@
    "rule": "Presence",
    "owner": "gameos",
    "retireBy": "",
-   "doc": "MC2_GPU_CULL_SUBSTRATE_TRACE=1 \u2014 verbose per-frame lifecycle prints.",
+   "doc": "MC2_GPU_CULL_SUBSTRATE_TRACE=1 — verbose per-frame lifecycle prints.",
    "readers": [
     {
      "at": "GameOS/gameos/gpu_cull_substrate.cpp:13",
@@ -8615,7 +8615,7 @@
    "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "Step 7 (VPL retirement): MC2_HAZE_PARITY probe \u2014 env-gated default-off.",
+   "doc": "Step 7 (VPL retirement): MC2_HAZE_PARITY probe — env-gated default-off.",
    "readers": [],
    "conflict": false,
    "registered": false,
@@ -9447,7 +9447,7 @@
    "rule": "Lead0",
    "owner": "mech",
    "retireBy": "",
-   "doc": "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon index resolves outside the source atlas (last-pixel arithmetic identical to the per-pixel bounds guards \u2014 never flags an in-bounds tile).",
+   "doc": "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon index resolves outside the source atlas (last-pixel arithmetic identical to the per-pixel bounds guards — never flags an in-bounds tile).",
    "readers": [
     {
      "at": "code/mechicon.cpp:45",
@@ -9636,7 +9636,7 @@
    "rule": "Presence",
    "owner": "code",
    "retireBy": "",
-   "doc": "alpha-Stage 1 \u00a75 Stage 0: candidate-predicate disagreement probe.",
+   "doc": "alpha-Stage 1 §5 Stage 0: candidate-predicate disagreement probe.",
    "readers": [
     {
      "at": "code/objmgr.cpp:311",
@@ -10320,7 +10320,7 @@
    "rule": "Exact1",
    "owner": "code",
    "retireBy": "",
-   "doc": "MC2_LIGHT_CLAMP_FIXTURE (default OFF) \u2014 synthetic injector of deterministic extra point lights into slots [populated..32) to prove slots >16 ever render.",
+   "doc": "MC2_LIGHT_CLAMP_FIXTURE (default OFF) — synthetic injector of deterministic extra point lights into slots [populated..32) to prove slots >16 ever render.",
    "readers": [
     {
      "at": "mclib/txmmgr.cpp:177",
@@ -10346,7 +10346,7 @@
    "rule": "Exact1",
    "owner": "code",
    "retireBy": "",
-   "doc": "MC2_LIGHT_CLAMP_PROBE (default OFF) \u2014 pure observation.",
+   "doc": "MC2_LIGHT_CLAMP_PROBE (default OFF) — pure observation.",
    "readers": [
     {
      "at": "mclib/txmmgr.cpp:169",
@@ -10994,7 +10994,7 @@
    "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "LIGHT-POOL-VIS-GATE-1 (2026-07-21, fog-of-war leak): the legacy CPU consumer honors TG_Light::active (tgl.cpp:2123) but this pack loop did not \u2014 INACTIVE lights (mover appearances set active=false for enemy movers without visual contact; camera sets it false for off-screen point/spot lights) were packed anyway, so night light pools rendered at red sensor-blip positions of UNSEEN enemies (positional intel leak) and off-screen lights burned pool budget.",
+   "doc": "LIGHT-POOL-VIS-GATE-1 (2026-07-21, fog-of-war leak): the legacy CPU consumer honors TG_Light::active (tgl.cpp:2123) but this pack loop did not — INACTIVE lights (mover appearances set active=false for enemy movers without visual contact; camera sets it false for off-screen point/spot lights) were packed anyway, so night light pools rendered at red sensor-blip positions of UNSEEN enemies (positional intel leak) and off-screen lights burned pool budget.",
    "readers": [],
    "conflict": false,
    "registered": false,
@@ -11255,7 +11255,7 @@
    "rule": "Exact1",
    "owner": "code",
    "retireBy": "",
-   "doc": "MC2_LIGHT_ROW_CENSUS (default OFF) \u2014 LIGHT-POS-COMBAT-1.",
+   "doc": "MC2_LIGHT_ROW_CENSUS (default OFF) — LIGHT-POS-COMBAT-1.",
    "readers": [
     {
      "at": "mclib/txmmgr.cpp:256",
@@ -11359,7 +11359,7 @@
    "rule": "Presence",
    "owner": "mech",
    "retireBy": "",
-   "doc": "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires \u2014 makes the link-up latch (hidden reinforcement mech never appearing) observable in the field.",
+   "doc": "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires — makes the link-up latch (hidden reinforcement mech never appearing) observable in the field.",
    "readers": [
     {
      "at": "code/mech_update.cpp:101",
@@ -11588,7 +11588,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics. =1: level-1 stdout tags ([mod]/[mod-miss]) plus a shutdown summary line '[file-resolve] opens=N misses=M'. =2: level 1 plus a JSONL resolve trace (one record per resolved open: layer in {mod:<id>, base-loose, base-strip, fastfile, cd, MISS}) written to MC2_RESOLVE_TRACE_FILE; fileExists() full-ladder misses also emit MISS records (probe API \u2014 the benign-probe baseline of scripts/check-file-resolve-miss.py absorbs them).",
+   "doc": "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics. =1: level-1 stdout tags ([mod]/[mod-miss]) plus a shutdown summary line '[file-resolve] opens=N misses=M'. =2: level 1 plus a JSONL resolve trace (one record per resolved open: layer in {mod:<id>, base-loose, base-strip, fastfile, cd, MISS}) written to MC2_RESOLVE_TRACE_FILE; fileExists() full-ladder misses also emit MISS records (probe API — the benign-probe baseline of scripts/check-file-resolve-miss.py absorbs them).",
    "readers": [
     {
      "at": "mclib/file.cpp:685",
@@ -12040,7 +12040,7 @@
    "rule": "Lead0Kill",
    "owner": "code",
    "retireBy": "",
-   "doc": "[LOW-CAMERA-PICK-RAY-1 v2] Two root causes make the legacy picker mis-land at LOW/grazing pitch (greybeard + adversarial recon, both in the EXISTING forward-projection picker \u2014 NOT a raycast): (A) the 100-tile cap (closestTiles[100]) fills in MAP ORDER, so at low pitch the frustum admits >>100 tiles and the true tile under the cursor is dropped before it is ever projected; and (B) the Stage-2 tiebreak is DEPTH-BLIND (corners[].z=0; picks the tile whose nearest projected corner is closest in SCREEN space), so among the many tiles a grazing ray pierces it readily picks a FAR one.",
+   "doc": "[LOW-CAMERA-PICK-RAY-1 v2] Two root causes make the legacy picker mis-land at LOW/grazing pitch (greybeard + adversarial recon, both in the EXISTING forward-projection picker — NOT a raycast): (A) the 100-tile cap (closestTiles[100]) fills in MAP ORDER, so at low pitch the frustum admits >>100 tiles and the true tile under the cursor is dropped before it is ever projected; and (B) the Stage-2 tiebreak is DEPTH-BLIND (corners[].z=0; picks the tile whose nearest projected corner is closest in SCREEN space), so among the many tiles a grazing ray pierces it readily picks a FAR one.",
    "readers": [
     {
      "at": "mclib/camera.cpp:1250",
@@ -12066,7 +12066,7 @@
    "rule": "Prefix",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "[LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this loop) is the SECOND terrain visibility gate \u2014 independent of the frustum inFrustum set we relaxed via MC2_LOWCAM_TERRAIN_NEAR.",
+   "doc": "[LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this loop) is the SECOND terrain visibility gate — independent of the frustum inFrustum set we relaxed via MC2_LOWCAM_TERRAIN_NEAR.",
    "readers": [
     {
      "at": "mclib/terrain.cpp:4070",
@@ -13370,7 +13370,7 @@
    "rule": "Presence",
    "owner": "code",
    "retireBy": "",
-   "doc": "BT2018-SKEL-ENGINE-1A \u2014 bind-pose bake trace (default OFF).",
+   "doc": "BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF).",
    "readers": [
     {
      "at": "mclib/assimp_importer.cpp:39",
@@ -13513,7 +13513,7 @@
    "rule": "Presence",
    "owner": "mech",
    "retireBy": "",
-   "doc": "Pixel-readback diagnostic \u2014 gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf measurement.",
+   "doc": "Pixel-readback diagnostic — gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf measurement.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_mech_batcher.cpp:2771",
@@ -14413,7 +14413,7 @@
    "rule": "Exact1",
    "owner": "gameos",
    "retireBy": "",
-   "doc": "Optional startup selftest \u2014 hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression.",
+   "doc": "Optional startup selftest — hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression.",
    "readers": [
     {
      "at": "GameOS/gameos/gameosmain.cpp:1210",
@@ -15295,7 +15295,7 @@
    "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "Step 4 bailout \u2014 env-gated forced init failure for testing the fallback path without driver stress.",
+   "doc": "Step 4 bailout — env-gated forced init failure for testing the fallback path without driver stress.",
    "readers": [],
    "conflict": false,
    "registered": false,
@@ -17195,7 +17195,7 @@
    "rule": "Lead1",
    "owner": "code",
    "retireBy": "",
-   "doc": "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) \u2014 checks each pass's reads[] are satisfied by a prior write before beginPass.",
+   "doc": "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) — checks each pass's reads[] are satisfied by a prior write before beginPass.",
    "readers": [
     {
      "at": "mclib/render_contract.cpp:916",
@@ -17679,7 +17679,7 @@
    "rule": "Presence",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "\u2500\u2500 Probe 7 (MC2_RING_FORCE_FINISH) \u2014 directed barrier-hypothesis test \u2500\u2500 Forces full GPU pipeline drain after the compute dispatches.",
+   "doc": "── Probe 7 (MC2_RING_FORCE_FINISH) — directed barrier-hypothesis test ── Forces full GPU pipeline drain after the compute dispatches.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_terrain_indirect.cpp:5012",
@@ -17705,7 +17705,7 @@
    "rule": "Presence",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "\u2500\u2500 Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.",
+   "doc": "── Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.",
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:4425",
@@ -18154,7 +18154,7 @@
    "rule": "Lead1",
    "owner": "gameos",
    "retireBy": "",
-   "doc": "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate. =1 makes a bad .spv (glShaderBinary reject / specialize failure) assert/abort instead of falling back to GLSL \u2014 used to surface artifact corruption in testing.",
+   "doc": "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate. =1 makes a bad .spv (glShaderBinary reject / specialize failure) assert/abort instead of falling back to GLSL — used to surface artifact corruption in testing.",
    "readers": [
     {
      "at": "GameOS/gameos/utils/shader_builder.cpp:431",
@@ -19192,7 +19192,7 @@
    "rule": "Lead0Kill",
    "owner": "gameos",
    "retireBy": "",
-   "doc": "SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the banding persists in the shipped default config (\"this was never fixed\") \u2014 the fix existed but was left opt-in.",
+   "doc": "SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the banding persists in the shipped default config (\"this was never fixed\") — the fix existed but was left opt-in.",
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:236",
@@ -20271,7 +20271,7 @@
    "rule": "Presence",
    "owner": "mech",
    "retireBy": "",
-   "doc": "T1.15 SpotLight_ illumination diagnostic \u2014 registration probe (bldg class).",
+   "doc": "T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).",
    "readers": [
     {
      "at": "mclib/bdactor.cpp:126",
@@ -20395,64 +20395,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_SSAO_BLUR",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass (shaders/ssao_blur.frag; H into a scratch half-res target then V back into ssaoColorTex_, so the SsaoOcclusion resource id and the UNCHANGED ssao_apply pass always read the final AO).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1104",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SSAO_BLUR",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SSAO_BLUR_SIGMA",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1147",
-     "idiom": "Num(atof,guarded)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.001,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SSAO_BLUR_SIGMA",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SSAO_DEBUG",
    "kind": "Bool",
    "default": false,
@@ -20478,36 +20420,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_DIAG_SSAO_DEBUG",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SSAO_RADIUS",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1138",
-     "idiom": "Num(atof,guarded)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.1,
-    "hi": 64.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SSAO_RADIUS",
    "retireVerdict": ""
   },
   {
@@ -20802,7 +20714,7 @@
    "rule": "Presence",
    "owner": "props",
    "retireBy": "",
-   "doc": "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record producers \u2014 otherwise dynamic-path leaves (GenericAppearance buildings post-b2fb1cc) stay subject to cull even when FORCE_ADMIT is on, masking the diagnostic signal.",
+   "doc": "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record producers — otherwise dynamic-path leaves (GenericAppearance buildings post-b2fb1cc) stay subject to cull even when FORCE_ADMIT is on, masking the diagnostic signal.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5615",
@@ -20922,7 +20834,7 @@
    "rule": "Std",
    "owner": "props",
    "retireBy": "",
-   "doc": "2026-05-11 per-instance light-idx capture. flush() consumes the value stored in RecipeRange.lightDataIndex by markVisible() when this is on; otherwise flush() reads the multi's shared cachedGpuLightIndex_ (the historical last-writer-wins behavior \u2014 buggy under MC2_STATIC_UPDATE_SKIP=1 because multiple actors of the same multi-type write to the same per-multi scratch slot).",
+   "doc": "2026-05-11 per-instance light-idx capture. flush() consumes the value stored in RecipeRange.lightDataIndex by markVisible() when this is on; otherwise flush() reads the multi's shared cachedGpuLightIndex_ (the historical last-writer-wins behavior — buggy under MC2_STATIC_UPDATE_SKIP=1 because multiple actors of the same multi-type write to the same per-multi scratch slot).",
    "readers": [
     {
      "at": "GameOS/gameos/gos_static_prop_registry.cpp:181",
@@ -22159,7 +22071,7 @@
    "rule": "Presence",
    "owner": "props",
    "retireBy": "",
-   "doc": "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) \u2014 counts touchSerialCommit calls for building/tree appearances ahead of the per-frame static-prop-walk meta-fix.",
+   "doc": "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) — counts touchSerialCommit calls for building/tree appearances ahead of the per-frame static-prop-walk meta-fix.",
    "readers": [
     {
      "at": "mclib/bdactor.cpp:89",
@@ -22463,7 +22375,7 @@
    "rule": "Presence",
    "owner": "props",
    "retireBy": "",
-   "doc": "Step 12.1 \u2014 trace gate for noisy non-lifecycle COALESCE diagnostics.",
+   "doc": "Step 12.1 — trace gate for noisy non-lifecycle COALESCE diagnostics.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1689",
@@ -22625,7 +22537,7 @@
    "rule": "Presence",
    "owner": "code",
    "retireBy": "",
-   "doc": "Tactical Overview diagnostic HUD \u2014 only under MC2_TACTICAL_OVERVIEW_DEBUG.",
+   "doc": "Tactical Overview diagnostic HUD — only under MC2_TACTICAL_OVERVIEW_DEBUG.",
    "readers": [
     {
      "at": "code/gamecam.cpp:1373",
@@ -23477,7 +23389,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "TERRAIN-DECAL-SLICE-0B: lateral nudge (float world units, default 0.0) along the wall 'tangent' (contour) axis \u2014 side-to-side placement.",
+   "doc": "TERRAIN-DECAL-SLICE-0B: lateral nudge (float world units, default 0.0) along the wall 'tangent' (contour) axis — side-to-side placement.",
    "readers": [
     {
      "at": "mclib/cliff_decal_tuning.cpp:36",
@@ -23503,7 +23415,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "TERRAIN-DECAL-SLICE-0B: vertical nudge (float world units, default 0.0) along world-up \u2014 lifts/lowers the CLIFF_WALL mesh-decal.",
+   "doc": "TERRAIN-DECAL-SLICE-0B: vertical nudge (float world units, default 0.0) along world-up — lifts/lowers the CLIFF_WALL mesh-decal.",
    "readers": [
     {
      "at": "mclib/cliff_decal_tuning.cpp:37",
@@ -23529,7 +23441,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "TERRAIN-DECAL-SLICE-0B: outward offset distance (float world units, default 8.0) along the wall 'facing' axis \u2014 replaces the hardcoded 8.0 Slice-0A z-fight offset.",
+   "doc": "TERRAIN-DECAL-SLICE-0B: outward offset distance (float world units, default 8.0) along the wall 'facing' axis — replaces the hardcoded 8.0 Slice-0A z-fight offset.",
    "readers": [
     {
      "at": "mclib/cliff_decal_tuning.cpp:35",
@@ -23555,7 +23467,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "TERRAIN-DECAL-PITCH: pitch/lean (float degrees, default 0.0) of the wall about the horizontal tangent (contour) axis \u2014 positive leans the wall TOP backward toward the hill (recline against the slope).",
+   "doc": "TERRAIN-DECAL-PITCH: pitch/lean (float degrees, default 0.0) of the wall about the horizontal tangent (contour) axis — positive leans the wall TOP backward toward the hill (recline against the slope).",
    "readers": [
     {
      "at": "mclib/cliff_decal_tuning.cpp:39",
@@ -23581,7 +23493,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "TERRAIN-DECAL-SLICE-0B: uniform scale (float, default 1.0) of the CLIFF_WALL mesh-decal \u2014 multiplies the face-frame's 3 basis rows before translation.",
+   "doc": "TERRAIN-DECAL-SLICE-0B: uniform scale (float, default 1.0) of the CLIFF_WALL mesh-decal — multiplies the face-frame's 3 basis rows before translation.",
    "readers": [
     {
      "at": "mclib/cliff_decal_tuning.cpp:34",
@@ -23633,7 +23545,7 @@
    "rule": "Prefix",
    "owner": "code",
    "retireBy": "",
-   "doc": "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up \u2014 corrects the outward-facing direction.",
+   "doc": "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up — corrects the outward-facing direction.",
    "readers": [
     {
      "at": "mclib/cliff_decal_tuning.cpp:38",
@@ -24045,7 +23957,7 @@
    "rule": "Presence",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "Step 1b-1 (cpu-pack-retirement plan \u00a72 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) \u2014 the GPU compute shader gpu_driven_terrain_solid.comp re-derives the thin record + the pzTri flag bits for every quad it admits and overwrites the CPU-written record.",
+   "doc": "Step 1b-1 (cpu-pack-retirement plan §2 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) — the GPU compute shader gpu_driven_terrain_solid.comp re-derives the thin record + the pzTri flag bits for every quad it admits and overwrites the CPU-written record.",
    "readers": [
     {
      "at": "mclib/quad.cpp:269",
@@ -25198,7 +25110,7 @@
    "rule": "Presence",
    "owner": "code",
    "retireBy": "",
-   "doc": "Phase 7B: heightfield raycast picker \u2014 replaces the quadList AABB/ screen-triangle scan when MC2_TERRAIN_LOD_CHUNK=1.",
+   "doc": "Phase 7B: heightfield raycast picker — replaces the quadList AABB/ screen-triangle scan when MC2_TERRAIN_LOD_CHUNK=1.",
    "readers": [
     {
      "at": "mclib/camera.cpp:1066",
@@ -26132,7 +26044,7 @@
    "rule": "Presence",
    "owner": "props",
    "retireBy": "",
-   "doc": "MC2_TEX_LIFECYCLE_TRACE=1 \u2014 same env flag used by mclib/txmmgr.cpp, mclib/msl.cpp, GameOS/gameos/gos_static_prop_batcher.cpp so all [TEX_LIFECYCLE v1] events stream together under one invocation.",
+   "doc": "MC2_TEX_LIFECYCLE_TRACE=1 — same env flag used by mclib/txmmgr.cpp, mclib/msl.cpp, GameOS/gameos/gos_static_prop_batcher.cpp so all [TEX_LIFECYCLE v1] events stream together under one invocation.",
    "readers": [
     {
      "at": "GameOS/gameos/gos_static_prop_registry.cpp:239",
@@ -26618,7 +26530,7 @@
    "rule": "Lead1",
    "owner": "code",
    "retireBy": "",
-   "doc": "[TXMMGR_BOUNDS v1] \u2014 TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.",
+   "doc": "[TXMMGR_BOUNDS v1] — TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.",
    "readers": [
     {
      "at": "mclib/txmmgr.cpp:417",
@@ -26644,7 +26556,7 @@
    "rule": "Lead1",
    "owner": "code",
    "retireBy": "",
-   "doc": "[TXMMGR_TEXTURE_AUDIT v1] \u2014 texture-node-slot leak instrumentation.",
+   "doc": "[TXMMGR_TEXTURE_AUDIT v1] — texture-node-slot leak instrumentation.",
    "readers": [
     {
      "at": "mclib/txmmgr.cpp:458",
@@ -26990,7 +26902,7 @@
    "rule": "Lead0",
    "owner": "code",
    "retireBy": "",
-   "doc": "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel as ImGui \u2014 VideoStatic chrome tiles + the decoder's frame texture at the same aspect-fit quad/letterbox video_render computes (MC2Movie::getLayout), inside gos_ComputeHudCanvasBox.",
+   "doc": "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel as ImGui — VideoStatic chrome tiles + the decoder's frame texture at the same aspect-fit quad/letterbox video_render computes (MC2Movie::getLayout), inside gos_ComputeHudCanvasBox.",
    "readers": [
     {
      "at": "code/controlgui.cpp:1865",
