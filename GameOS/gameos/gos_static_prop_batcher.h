@@ -640,23 +640,6 @@ uint32_t batcher_getDrawSlotCount();
 // materialIdx: 0xFFFFFFFFu if MC2_MATERIAL_GPU sidecar was not valid at finalizeGeometry().
 bool batcher_getDrawSlotEntry(uint32_t slot, ExtractedStaticPropPacket* out);
 
-// ---------------------------------------------------------------------------
-// [SPFLUSH_COST_SPLIT v1] -- cross-TU RDTSC cycle adders.
-// Defined in gos_static_prop_batcher.cpp; declared here (file scope) so
-// gos_static_prop_registry.cpp and mclib/txmmgr.cpp can call them without
-// any extern-inside-function declarations. All functions are no-ops when
-// MC2_STATIC_PROP_FLUSH_COST_SPLIT is not set (gate is checked in the .cpp).
-// ---------------------------------------------------------------------------
-namespace spflush_cost_split {
-void AddSubmitMapLookupCycles(unsigned long long c);
-void AddColorZeroFillCycles(unsigned long long c);
-// Called from GpuStaticPropRegistry::flush() summary emit to read + reset the
-// batcher-side window accumulators. Returns raw cycle counts accumulated since
-// the last call (or since process start).
-unsigned long long ConsumeSubmitMapLookupCycles();
-unsigned long long ConsumeColorZeroFillCycles();
-}  // namespace spflush_cost_split
-
 // v2.2 extraction: dispatch-fact compare (extraction-time facts only; baseInstance deferred).
 // Compares snap->staticPropPackets[] against live batcher state (sortedPacketOrder,
 // pipelineId via RenderCore::PipelineId, materialIdx sidecar, texArrayLayer vs albedoTex).

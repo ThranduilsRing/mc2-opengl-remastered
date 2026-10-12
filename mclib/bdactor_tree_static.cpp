@@ -92,12 +92,6 @@ void TreeAppearance::touchSerialCommit()
 	}
 
 	if (!treeShape) {
-		if (s_proxyReconEnabled) {
-			g_spr_phase2Calls.fetch_add(1, std::memory_order_relaxed);
-			g_spr_treeCalls.fetch_add(1, std::memory_order_relaxed);
-			g_spr_rejNoShape.fetch_add(1, std::memory_order_relaxed);
-			g_spr_callCounter.fetch_add(1, std::memory_order_relaxed);
-		}
 		return;
 	}
 
@@ -107,32 +101,6 @@ void TreeAppearance::touchSerialCommit()
 	// split path (IsStaticNow() returns false), but add explicit guard for safety.
 	// When true, fall through to full commit (do not apply stable-skip).
 	const bool forceFullCommit = needsFullBakeNextFrame;
-
-	// STATIC-SCENE-PROXY-RECON-1: classify tree as proxy candidate or not.
-	// Must run BEFORE the LBSS early return below (most trees skip via LBSS).
-	// Trees don't track lastLightEnvGen (mission lighting is static for trees),
-	// so the criteria are: registered + valid recipeIndex + valid lightDataIndex
-	// + !needsFullBakeNextFrame. Mirrors the tree stable-skip check exactly.
-	if (s_proxyReconEnabled) {
-		g_spr_phase2Calls.fetch_add(1, std::memory_order_relaxed);
-		g_spr_treeCalls.fetch_add(1, std::memory_order_relaxed);
-
-		const bool treeRegistered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
-		const bool treeIdxValid   = (staticReg[activeLOD].lightDataIndex != 0xFFFFFFFFu);
-		const bool isProxy = treeRegistered && treeIdxValid && !forceFullCommit;
-		if (!isProxy) {
-			if (!treeRegistered)
-				g_spr_rejNoStaticReg.fetch_add(1, std::memory_order_relaxed);
-			else if (!treeIdxValid)
-				g_spr_rejBadLightIdx.fetch_add(1, std::memory_order_relaxed);
-			else if (forceFullCommit)
-				g_spr_rejNeedsFullBake.fetch_add(1, std::memory_order_relaxed);
-		}
-		if (isProxy) g_spr_proxyCandidate.fetch_add(1, std::memory_order_relaxed);
-		// Tree path also bumps the shared call counter so the print trigger fires
-		// on tree-heavy missions where bldg count alone wouldn't reach the modulo.
-		g_spr_callCounter.fetch_add(1, std::memory_order_relaxed);
-	}
 
 	// [LIGHTBRIDGE-STABLE-SKIP-WIRE-1] Tree path: if MC2_LIGHTBRIDGE_STABLE_SKIP=1 and
 	// the active LOD's baked light slot is valid, skip EmitBakedGpuLightData entirely.
@@ -179,14 +147,13 @@ void TreeAppearance::registerStatic() {
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)
-		mc2::fmt::print_err("[SEAMPROBE] tree registerStatic ENTER name={} registered={:d} hasShape={:d} enabled={:d} renderShape={:016X}\n",
+		mc2::fmt::print_err("[SEAMPROBE] tree registerStatic ENTER name={} registered={:d} hasShape={:d} renderShape={:016X}\n",
 			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg[0].registered), mc2::fmt::as_i32((int)(treeShape!=nullptr)),
-			mc2::fmt::as_i32((int)GpuStaticPropRegistry::isEnabled()), mc2::fmt::as_ptr((void*)appearType->treeRenderShape[0])), fflush(stderr);
+			mc2::fmt::as_ptr((void*)appearType->treeRenderShape[0])), fflush(stderr);
 	// TREE-OVERRIDE-LOD-MVP Task 2: registered-state is now per-LOD. LOD0 is
 	// the canonical "already done" gate (it always exists — override or stock).
 	if (staticReg[0].registered) return;
 	if (!treeShape)              return;
-	if (!GpuStaticPropRegistry::isEnabled()) return;
 
 	// MODEL-OVERRIDE: register render-shape geometry before finalizeGeometry
 	// (see BldgAppearance::registerStatic for full rationale — late init() reg

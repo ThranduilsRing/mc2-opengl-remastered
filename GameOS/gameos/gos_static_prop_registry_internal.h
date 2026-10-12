@@ -57,12 +57,6 @@ extern bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights
 extern bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName,
                                       int* outAlphaClass);
 
-// [SPFLUSH_COST_SPLIT v1] txmmgr-side consume fns. Declared at FILE scope
-// (same reason as above — inside the namespace they mangle incorrectly).
-extern unsigned long long spflush_ConsumeBaseInstanceUploadCycles();
-extern unsigned long long spflush_ConsumeRecipeRebuildsDelta();
-extern unsigned long long spflush_GetRecipeRebuildTotal();
-
 #define SP_TRACE(fmt, ...) \
     do { if (s_trace) { printf("[STATIC_PROP] " fmt "\n", ##__VA_ARGS__); \
          fflush(stdout); } } while (0)
@@ -105,37 +99,9 @@ struct RecipeRange {
     bool               noShadow;
 };
 
-// The SPFLUSH cost-split window accumulators and TSC calibration (gos_static_prop_registry.cpp).
-extern const bool s_spflushEnabled;
-extern double s_spflushCyclesPerNs;
-extern bool s_spflushCalibrated;
-void spflushCalibrate();
-extern unsigned long long s_w_submit_loop_total_cyc;
-extern unsigned long long s_w_inst_build_cyc;
-extern unsigned long long s_w_actor_record_build_cyc;
-extern unsigned long long s_w_world_to_block_idx_cyc;
-extern unsigned long long s_w_substrate_append_cyc;
-extern unsigned long long s_total_invalidates;
-extern unsigned long long s_total_registrations;
-extern unsigned long long s_win_invalidates;
-extern unsigned long long s_win_registrations;
-extern int s_spflushWindowFrames;
-extern unsigned long long s_win_leaves_appended;
-extern unsigned long long s_win_ranges_drawn;
-extern unsigned long long s_w_cached_total_cyc;
-extern unsigned long long s_w_cached_submit_cyc;
-extern unsigned long long s_w_cached_records_cyc;
-extern unsigned long long s_win_cache_builds;
-extern unsigned long long s_win_cache_hits;
-
 // Registry gates (read once at program start).
-extern const bool s_enabled;
 extern const bool s_trace;
 extern const bool s_perInstanceLight;
-extern const bool s_flushCachedBlob;
-extern const bool s_flushCachedBlobCompare;
-extern const bool s_persistentBuckets;
-extern const bool s_persistentBucketsCompare;
 extern const bool s_staticFrozenReg;
 
 // Registry state the flush phases read and write.
@@ -157,18 +123,17 @@ extern uint64_t s_firstFrameSkipCount;
 void buildCachedActorRecord(const RecipeRange& rng, uint32_t recipeIdx, gpu_cull::GpuActorRecord& out);
 
 // Phases of flush() (gos_static_prop_registry_flush_range.cpp, gos_static_prop_registry_flush_tail.cpp).
-void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty, uint64_t& s_pbExpectStaticCount);
+void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty);
 bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ranges_tombstone, uint32_t regIdx, RecipeRange& rng);
 bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_frame, uint64_t& s_diag_ranges_stale_after_drawn, uint64_t& s_diag_ranges_drawn, uint64_t& s_diag_persistent_vanish, bool s_guard2, uint32_t kVanishFrames, std::unordered_map<int, uint64_t>& s_staleByType, std::unordered_map<uint32_t, uint32_t>& s_staleStreak, uint32_t regIdx, RecipeRange& rng);
 void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx);
 void flushSeamProbe(uint32_t regIdx, RecipeRange& rng, const float (&actorWorldCenter)[3]);
 void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bool useCachedBlob);
 void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, const float (&actorWorldCenter)[3]);
-void flushCachedRange(uint32_t currentFrame, GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t& s_pbExpectStaticCount, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx);
-void flushReinjectPersistentStore(GpuStaticPropBatcher& batcher_pb, uint64_t s_currentGen, bool s_storeDirty, uint64_t& s_pbExpectStaticCount, uint64_t s_diag_flush_calls);
+void flushCachedRange(GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng);
+void flushReinjectPersistentStore(GpuStaticPropBatcher& batcher_pb, uint64_t s_currentGen, bool s_storeDirty);
 void flushZeroLightProbe(uint64_t s_diag_flush_calls);
 void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total, uint64_t& s_diag_ranges_tombstone, uint64_t& s_diag_ranges_stale_frame, uint64_t& s_diag_ranges_stale_after_drawn, uint64_t& s_diag_ranges_drawn, uint64_t& s_diag_leaves_appended, uint64_t& s_diag_persistent_vanish, uint64_t s_diag_total_ns, bool s_guard2, std::unordered_map<int, uint64_t>& s_staleByType, std::unordered_map<uint32_t, uint32_t>& s_staleStreak);
-void flushSpflushWindow();
 void flushCullRecordVersion();
 
 }  // namespace GpuStaticPropRegistry

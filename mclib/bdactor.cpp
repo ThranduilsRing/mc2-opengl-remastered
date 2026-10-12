@@ -27,24 +27,6 @@ std::atomic<uint32_t> s_animTypeIdleNowStatic{0};
 uint32_t s_animStartInvalidated    = 0;
 uint32_t s_animStateToStateGesture = 0;
 
-// STATIC-SCENE-PROXY-RECON-1: per-window classification counters.
-// Gated by MC2_STATIC_PROXY_RECON env var. No behavior change — read-only.
-// "proxy candidate" = object that is fully stable and could be baked at mission
-// load rather than evaluated every frame in Phase 2 (touchSerialCommit).
-// Rejection categories mirror the stableLightSkipEligible criteria exactly.
-const bool s_proxyReconEnabled = mc2::gate::get<"MC2_STATIC_PROXY_RECON">();
-std::atomic<int64_t> g_spr_phase2Calls{0};    // total touchSerialCommit calls (bldg+tree)
-std::atomic<int64_t> g_spr_bldgCalls{0};      // BldgAppearance::touchSerialCommit calls
-std::atomic<int64_t> g_spr_treeCalls{0};      // TreeAppearance::touchSerialCommit calls
-std::atomic<int64_t> g_spr_proxyCandidate{0}; // fully stable — all criteria met
-std::atomic<int64_t> g_spr_rejNoShape{0};     // bldgShape/treeShape is null (returned early)
-std::atomic<int64_t> g_spr_rejNoStaticReg{0}; // !staticReg.registered || recipeIndex < 0
-std::atomic<int64_t> g_spr_rejBadLightIdx{0}; // lightDataIndex == 0xFFFFFFFFu
-std::atomic<int64_t> g_spr_rejNoValidLight{0};// !hasValidStaticLight (bldg only)
-std::atomic<int64_t> g_spr_rejLightGenMismatch{0}; // lastLightEnvGen != currentLightEnvGen (bldg only)
-std::atomic<int64_t> g_spr_rejNeedsFullBake{0};    // needsFullBakeNextFrame
-std::atomic<int64_t> g_spr_callCounter{0};    // monotonic call count for print trigger
-
 // Slim-deploy texture gate (LOAD_TGA_THEN_GPU_KTX). The static-prop / building /
 // tree appearance loaders below gate loadTexture() behind fileExists(<name>.tga).
 // fileExists is .ktx2-blind, so when a slim deploy drops the redundant .tga the

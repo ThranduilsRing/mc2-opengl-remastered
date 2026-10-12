@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1024;
+inline constexpr std::size_t kGateCount = 1014;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -96,7 +96,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BRIDGE_MOVER_STATE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BUCKET_CENSUS", Kind::Bool, Rule::Presence, {}},
     {"MC2_BUCKET_HEADER_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_BUCKET_ORDER_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BUILDING_FOOTPRINT_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_BUILDING_PBR", Kind::Bool, Rule::Exact1, {}},
     {"MC2_BUILDING_PBR_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -696,7 +695,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STANDARD_LIT_V1", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATICPROP_BC7", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATICPROP_MATERIAL_PBR_SLOTS", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATICPROP_ORM_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATICPROP_TEX_TIER", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_C1B_DRAW", Kind::Bool, Rule::Presence, {}},
@@ -712,9 +710,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_COLORS_FILL", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATIC_PROP_DEPTH_PREPASS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_STATIC_PROP_FLUSH_CACHED_BLOB", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATIC_PROP_FLUSH_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_STATIC_PROP_GLOBAL_CAP", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_GLOBAL_POOL_LEGACY", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATIC_PROP_IBL_SH", Kind::Bool, Rule::Lead0Kill, {}},
@@ -726,17 +721,12 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_LIVE_BUILDER", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATIC_PROP_MISSION_LOAD_REG", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_PBR_V1", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATIC_PROP_PERSISTENT_BUCKETS", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_PICK", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_PICK_DEBUG", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATIC_PROP_REGISTRY", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATIC_PROP_TRACE", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATIC_PROXY_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_RECIPE_RECYCLE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_STATIC_REG_COVERAGE", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_REG_PREWARM", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_REG_PREWARM_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_STALE_DROP_FATAL", Kind::Bool, Rule::Presence, {}},

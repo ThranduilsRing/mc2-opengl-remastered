@@ -13,10 +13,6 @@ namespace GpuStaticPropRegistry {
 void init();
 void destroy();
 
-// Returns true iff MC2_STATIC_PROP_REGISTRY=1 was set at startup.
-// Valid before init() because flags are parsed at file scope.
-bool isEnabled();
-
 // Returns true iff MC2_STATIC_PROP_MISSION_LOAD_REG=1 was set at startup.
 // Gates the mission-load bulk registration walk in GameObjectManager.
 bool isMissionLoadRegEnabled();

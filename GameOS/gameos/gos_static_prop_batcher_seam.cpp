@@ -89,11 +89,8 @@ const std::vector<GpuStaticPropInstance>& GpuStaticPropBatcher::getLastBuiltBatc
 
 void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& inst) {
     if (inst.typeID >= s_types.size()) return;
-    // [SPFLUSH_COST_SPLIT v1] submit_map_lookup span.
-    const unsigned long long _t_lookup0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
     const GpuStaticPropType& type = s_types[inst.typeID];
     PerTypeBucket& bucket = s_bucketsByType[inst.typeID];
-    if (s_spflushCostSplitEnabled) spflush_cost_split::AddSubmitMapLookupCycles(__rdtsc() - _t_lookup0);
 
     // firstColorOffset must be updated to the current bucket color position
     // so the GPU shader indexes colors correctly for this frame's layout.
@@ -132,15 +129,12 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
                 bucket.instances.size());
         }
     }
-    if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; ++bucket.dbgStatic; }
     bucket.instances.push_back(updated);
     // STATICPROP-COLORS-FILL-DEBUGONLY-1: default-SKIP the colors zero-fill (no
     // production shader reads colors_; addr-mode 4 reads v_argb). MC2_STATIC_PROP_COLORS_FILL=1
-    // restores it. [SPFLUSH_COST_SPLIT v1] color_zero_fill span (now ~0 by default).
-    const unsigned long long _t_color0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
+    // restores it.
     if (s_staticPropColorsFill)
         bucket.colors.insert(bucket.colors.end(), type.vertexCount, 0u);
-    if (s_spflushCostSplitEnabled) spflush_cost_split::AddColorZeroFillCycles(__rdtsc() - _t_color0);
 }
 
 void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance* arr,
@@ -153,9 +147,7 @@ void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance
         const uint32_t typeID = arr[i].typeID;
         if (typeID >= s_types.size()) { ++i; continue; }
         const GpuStaticPropType& type = s_types[typeID];
-        const unsigned long long _t_lk0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
         PerTypeBucket& bucket = s_bucketsByType[typeID];          // one lookup per run
-        if (s_spflushCostSplitEnabled) spflush_cost_split::AddSubmitMapLookupCycles(__rdtsc() - _t_lk0);
         uint32_t j = i;
         while (j < count && arr[j].typeID == typeID) ++j;
         const uint32_t n = j - i;
@@ -166,11 +158,9 @@ void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance
         // Plain push_back (like legacy submitCachedInstance) grows geometrically.
         // STATICPROP-COLORS-FILL-DEBUGONLY-1: default-SKIP the colors zero-fill
         // (no production shader reads colors_). MC2_STATIC_PROP_COLORS_FILL=1 restores it.
-        const unsigned long long _t_cf0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
         const size_t colOldSize = bucket.colors.size();
         if (s_staticPropColorsFill)
             bucket.colors.resize(colOldSize + (size_t)n * type.vertexCount, 0u);
-        if (s_spflushCostSplitEnabled) spflush_cost_split::AddColorZeroFillCycles(__rdtsc() - _t_cf0);
         for (uint32_t local = 0u; local < n; ++local) {
             GpuStaticPropInstance updated = arr[i + local];
             // firstColorOffset is unused by any production shader; keep it accurate
@@ -178,7 +168,6 @@ void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance
             updated.firstColorOffset = s_staticPropColorsFill
                 ? static_cast<uint32_t>(colOldSize + (size_t)local * type.vertexCount)
                 : 0u;
-            if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; ++bucket.dbgStatic; }
             bucket.instances.push_back(updated);
         }
         i = j;
@@ -264,7 +253,6 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
         bucket.reinjPos   = (uint32_t)bucket.instances.size();
         bucket.reinjCount = (uint32_t)block.size();
         bucket.instances.insert(bucket.instances.end(), block.begin(), block.end());  // bulk
-        if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; bucket.dbgStatic += (uint32_t)block.size(); }
     }
 }
 

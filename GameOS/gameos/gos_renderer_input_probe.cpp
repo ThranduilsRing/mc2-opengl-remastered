@@ -151,8 +151,6 @@ void queryShadowFeed(int32_t recipeIndex, ShadowFeedReport& out)
     gos_GetStaticBuildingShadowCounts(out.bldgDrawTypes, out.bldgDrawInst,
                                       out.bldgDrawCalls);
 
-    if (!GpuStaticPropRegistry::isEnabled())
-        return;   // registryQueried stays false -- totals would be a lie
     out.registryQueried = true;
 
     uint32_t recipeTypeId = 0xFFFFFFFFu;

@@ -2281,66 +2281,6 @@
    "vk_twin": ""
   },
   {
-   "confidence": "HIGH",
-   "feature": "MC2_OBJECT_ID_BUFFER",
-   "gate": "MC2_STATIC_PROP_REGISTRY",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp group 'if (RenderWorld::IsObjectIdBufferEnabled())' (2 hops)",
-   "gl_shader": "shaders/mech.frag",
-   "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/mech_tier1.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "MC2_OBJECT_ID_BUFFER",
-   "gate": "MC2_STATIC_PROP_REGISTRY",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp group 'if (RenderWorld::IsObjectIdBufferEnabled())' (2 hops)",
-   "gl_shader": "shaders/mech.vert",
-   "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/mech_tier1.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "MC2_OBJECT_ID_BUFFER",
-   "gate": "MC2_STATIC_PROP_REGISTRY",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp group 'if (RenderWorld::IsObjectIdBufferEnabled())' (2 hops)",
-   "gl_shader": "shaders/static_prop.frag",
-   "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "MC2_COALESCE",
-   "gate": "MC2_STATIC_PROP_REGISTRY",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp group 'if (RenderWorld::IsObjectIdBufferEnabled())' (2 hops)",
-   "gl_shader": "shaders/static_prop.vert",
-   "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "MC2_COALESCE",
-   "gate": "MC2_STATIC_PROP_REGISTRY",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp group 'if (RenderWorld::IsObjectIdBufferEnabled())' (2 hops)",
-   "gl_shader": "shaders/static_prop_depth.frag",
-   "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
-  },
-  {
    "confidence": "MEDIUM",
    "feature": "u_sunAxisMc2Fix",
    "gate": "MC2_SUN_AXIS_FIX",

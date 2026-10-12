@@ -114,7 +114,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                 bucket.instances.size());
         }
     }
-    if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 2; ++bucket.dbgDynamic; }
     bucket.instances.push_back(inst);
     s_lastBuiltBatch.push_back(inst);  // Stage 3.C: batch accumulator
 
@@ -856,24 +855,6 @@ bool uploadAllBucketsIfNeeded() {
         instCursor += r.instanceByteSize;
         colCursor  += r.colorByteSize;
         s_typeRanges[typeID] = r;
-    }
-
-    if (s_bucketOrderTrace) {
-        static uint64_t s_botCall = 0, s_botEmitted = 0;
-        ++s_botCall;
-        if ((s_botCall % 60u) == 0u && s_botEmitted < 16) {
-            ++s_botEmitted;
-            uint32_t sOnly = 0, dOnly = 0, mixed = 0, mixSF = 0, mixDF = 0;
-            for (auto& kv : s_bucketsByType) {
-                const PerTypeBucket& b = kv.second;
-                const bool hs = b.dbgStatic > 0, hd = b.dbgDynamic > 0;
-                if (hs && hd) { ++mixed; if (b.dbgFirst == 1) ++mixSF; else ++mixDF; }
-                else if (hs)  ++sOnly;
-                else if (hd)  ++dOnly;
-            }
-            mc2::fmt::print_err("[BUCKET_ORDER v1] sample=first16_every60calls uploadCall={:d} types={:d} static_only={:d} dynamic_only={:d} mixed={:d} mixed_static_first={:d} mixed_dynamic_first={:d}\n", mc2::fmt::as_u64((unsigned long long)s_botCall), mc2::fmt::as_size(s_bucketsByType.size()), mc2::fmt::as_u32(sOnly), mc2::fmt::as_u32(dOnly), mc2::fmt::as_u32(mixed), mc2::fmt::as_u32(mixSF), mc2::fmt::as_u32(mixDF));
-            std::fflush(stderr);
-        }
     }
 
     s_lastUploadedSlot = s_frameSlot;

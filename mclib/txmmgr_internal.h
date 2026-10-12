@@ -99,9 +99,6 @@ extern uint32_t g_mc2FrameCounter;
 extern long s_txmAllocThisMission;
 
 // Eager gate caches and counters defined in txmmgr.cpp / txmmgr_diag.cpp and read by several pieces.
-extern const bool s_spflushTxmEnabled;
-extern unsigned long long s_spflush_baseinstance_upload_cyc;
-extern unsigned long long s_spflush_recipe_rebuilds_txm;
 extern const bool s_txmLeakTrace;
 
 // Bump on every fresh node-slot creation (the three creation paths).

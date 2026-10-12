@@ -9,26 +9,6 @@
 // 0       = legacy: bldgTypeHasAnimations disqualifies entire type.
 static bool s_bldgTypeAnimStaticEligible = mc2::gate::get<"MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE">();
 
-// STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.
-// Gated by MC2_STATIC_REG_COVERAGE env var. No behavior change — read-only.
-// Answers why mc2_24 has ~72% rej_no_static_reg vs mc2_10 99% proxy_candidate.
-// Sub-conditions (first-fail priority, same as stableLightSkipEligible order):
-//   never_registered  — !staticReg.registered (registerStatic never completed)
-//   no_recipe         — registered but recipeIndex<0 (shouldn't normally occur)
-//   bake_not_enabled  — mc2LightBakeEnabled()=false blocks EmitBakedGpuLightData
-//   not_in_bake_table — bake on but recipeIndex not yet in s_bakedStaticLight
-// Also tracks: isStaticEligible() for the unregistered set, top shape names.
-static const bool s_regCovEnabled = mc2::gate::get<"MC2_STATIC_REG_COVERAGE">();
-static std::atomic<int64_t> g_rc_neverRegistered{0};   // !staticReg.registered
-static std::atomic<int64_t> g_rc_noRecipe{0};          // registered && recipeIndex<0
-static std::atomic<int64_t> g_rc_bakeNotEnabled{0};    // bake gate off (within rej_no_static_reg)
-static std::atomic<int64_t> g_rc_notInBakeTable{0};    // bake on but recipe not in table
-static std::atomic<int64_t> g_rc_isStaticEligibleYes{0}; // unregistered but would be eligible
-static std::atomic<int64_t> g_rc_isStaticEligibleNo{0};  // unregistered and not eligible
-// Top shape names for the never_registered bucket (guarded by mutex, main-thread only).
-static std::mutex            g_rc_shapeMu;
-static std::map<std::string, int> g_rc_shapeNames;
-
 // Stage 3.D: BldgAppearance static-registry path. Mirror of TreeAppearance's
 // IsStaticNow / touch / invalidateStaticRegistration / isStaticEligible.
 // Registry-replay eligibility for buildings is stricter than for trees because
@@ -120,17 +100,14 @@ void BldgAppearance::registerStatic() {
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->bldgRenderShape;
 	if (seamProbe)
-		mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ENTER name={} registered={:d} hasShape={:d} enabled={:d} eligible={:d} renderShape={:016X}\n",
+		mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ENTER name={} registered={:d} hasShape={:d} eligible={:d} renderShape={:016X}\n",
 			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg.registered), mc2::fmt::as_i32((int)(bldgShape!=nullptr)),
-			mc2::fmt::as_i32((int)GpuStaticPropRegistry::isEnabled()), mc2::fmt::as_i32((int)isStaticEligible()),
+			mc2::fmt::as_i32((int)isStaticEligible()),
 			mc2::fmt::as_ptr((void*)appearType->bldgRenderShape)), fflush(stderr);
 	if (staticReg.registered) {
 		return;
 	}
 	if (!bldgShape) {
-		return;
-	}
-	if (!GpuStaticPropRegistry::isEnabled()) {
 		return;
 	}
 	if (!isStaticEligible()) {
@@ -646,12 +623,6 @@ void BldgAppearance::touchSerialCommit()
 	}
 
 	if (!bldgShape) {
-		if (s_proxyReconEnabled) {
-			g_spr_phase2Calls.fetch_add(1, std::memory_order_relaxed);
-			g_spr_bldgCalls.fetch_add(1, std::memory_order_relaxed);
-			g_spr_rejNoShape.fetch_add(1, std::memory_order_relaxed);
-			g_spr_callCounter.fetch_add(1, std::memory_order_relaxed);
-		}
 		return;
 	}
 	const bool stableLightSkipArmed = mc2StableLightSkipEnabled();
@@ -671,121 +642,6 @@ void BldgAppearance::touchSerialCommit()
 		staticReg.hasValidStaticLight && (staticReg.lastLightEnvGen != currentLightEnvGen),
 		needsFullBakeNextFrame,
 		staticReg.lightDataIndex == 0xFFFFFFFFu);
-
-	// STATIC-SCENE-PROXY-RECON-1: classify this object as proxy candidate or not.
-	// Must run BEFORE the LBSS early return below (most objects skip via LBSS on mc2_24).
-	// Mirrors stableLightSkipEligible criteria exactly (stableLightSkipEligible is already
-	// computed above). No behavior change.
-	// Note: falling state (OBJECT_FLAG_FALLING) lives on the Building game object,
-	// not BldgAppearance — not accessible here without an owner pointer. Omitted;
-	// falling buildings will be counted as rej_no_static_reg (IsStaticNow calls
-	// invalidateStaticRegistration on fall, clearing staticReg.registered).
-	if (s_proxyReconEnabled) {
-		g_spr_phase2Calls.fetch_add(1, std::memory_order_relaxed);
-		g_spr_bldgCalls.fetch_add(1, std::memory_order_relaxed);
-
-		// Mirror stableLightSkipEligible exactly:
-		bool isProxy = stableLightSkipEligible;
-		if (!isProxy) {
-			// Attribute the first failing condition (same priority as stableLightSkipEligible)
-			if (!staticReg.registered || staticReg.recipeIndex < 0) {
-				g_spr_rejNoStaticReg.fetch_add(1, std::memory_order_relaxed);
-
-				// STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg bucket.
-				// Runs only when MC2_STATIC_REG_COVERAGE=1 to avoid overhead on normal runs.
-				if (s_regCovEnabled) {
-					extern bool mc2LightBakeEnabled();
-					extern bool mc2IsBakedStaticLightPresent(int32_t);
-					if (!staticReg.registered) {
-						g_rc_neverRegistered.fetch_add(1, std::memory_order_relaxed);
-						// isStaticEligible() for the never-registered set: tells us whether
-						// the building COULD have been registered but wasn't (eligible=true),
-						// or is inherently ineligible (animated, spinning, etc.).
-						if (isStaticEligible())
-							g_rc_isStaticEligibleYes.fetch_add(1, std::memory_order_relaxed);
-						else
-							g_rc_isStaticEligibleNo.fetch_add(1, std::memory_order_relaxed);
-						// Track shape name for the top-N breakdown.
-						if (appearType && appearType->name) {
-							std::lock_guard<std::mutex> lk(g_rc_shapeMu);
-							g_rc_shapeNames[appearType->name]++;
-						}
-					} else {
-						// registered=true but recipeIndex<0 — should not normally occur
-						// (registration sets registered = (recipeIndex >= 0)).
-						g_rc_noRecipe.fetch_add(1, std::memory_order_relaxed);
-					}
-					// Also probe the bake gate and bake-table presence, independent of
-					// registered flag, to reveal whether bake infrastructure is live at all.
-					if (!mc2LightBakeEnabled()) {
-						g_rc_bakeNotEnabled.fetch_add(1, std::memory_order_relaxed);
-					} else if (staticReg.registered && staticReg.recipeIndex >= 0
-					           && !mc2IsBakedStaticLightPresent(staticReg.recipeIndex)) {
-						g_rc_notInBakeTable.fetch_add(1, std::memory_order_relaxed);
-					}
-				}
-			} else if (!staticReg.hasValidStaticLight)
-				g_spr_rejNoValidLight.fetch_add(1, std::memory_order_relaxed);
-			else if (staticReg.lightDataIndex == 0xFFFFFFFFu)
-				g_spr_rejBadLightIdx.fetch_add(1, std::memory_order_relaxed);
-			else if (staticReg.lastLightEnvGen != currentLightEnvGen)
-				g_spr_rejLightGenMismatch.fetch_add(1, std::memory_order_relaxed);
-			else if (needsFullBakeNextFrame)
-				g_spr_rejNeedsFullBake.fetch_add(1, std::memory_order_relaxed);
-		}
-		if (isProxy) g_spr_proxyCandidate.fetch_add(1, std::memory_order_relaxed);
-
-		const int64_t n = g_spr_callCounter.fetch_add(1, std::memory_order_relaxed);
-		if (n > 0 && (n % 15000) == 0) {
-			const int64_t ph2   = g_spr_phase2Calls.exchange(0, std::memory_order_relaxed);
-			const int64_t bldg  = g_spr_bldgCalls.exchange(0, std::memory_order_relaxed);
-			const int64_t tree  = g_spr_treeCalls.exchange(0, std::memory_order_relaxed);
-			const int64_t proxy = g_spr_proxyCandidate.exchange(0, std::memory_order_relaxed);
-			const int64_t rNS   = g_spr_rejNoStaticReg.exchange(0, std::memory_order_relaxed);
-			const int64_t rBL   = g_spr_rejBadLightIdx.exchange(0, std::memory_order_relaxed);
-			const int64_t rNVL  = g_spr_rejNoValidLight.exchange(0, std::memory_order_relaxed);
-			const int64_t rLG   = g_spr_rejLightGenMismatch.exchange(0, std::memory_order_relaxed);
-			const int64_t rNFB  = g_spr_rejNeedsFullBake.exchange(0, std::memory_order_relaxed);
-			const int64_t rNSh  = g_spr_rejNoShape.exchange(0, std::memory_order_relaxed);
-			mc2::fmt::print_out("STATIC_PROXY_RECON: ph2_calls={:d} bldg={:d} tree={:d} proxy_candidate={:d}({:.1f}%) rej_no_static_reg={:d} rej_bad_light_idx={:d} rej_no_valid_light={:d} rej_light_gen_mismatch={:d} rej_needs_full_bake={:d} rej_no_shape={:d}\n", mc2::fmt::as_i64((long long)ph2), mc2::fmt::as_i64((long long)bldg), mc2::fmt::as_i64((long long)tree), mc2::fmt::as_i64((long long)proxy), ph2 > 0 ? (proxy * 100.0 / ph2) : 0.0, mc2::fmt::as_i64((long long)rNS), mc2::fmt::as_i64((long long)rBL), mc2::fmt::as_i64((long long)rNVL), mc2::fmt::as_i64((long long)rLG), mc2::fmt::as_i64((long long)rNFB), mc2::fmt::as_i64((long long)rNSh));
-
-			// STATIC-REGISTRY-COVERAGE-RECON-1: print sub-breakdown when gate is on.
-			if (s_regCovEnabled) {
-				const int64_t rcNR  = g_rc_neverRegistered.exchange(0, std::memory_order_relaxed);
-				const int64_t rcNRp = g_rc_noRecipe.exchange(0, std::memory_order_relaxed);
-				const int64_t rcBN  = g_rc_bakeNotEnabled.exchange(0, std::memory_order_relaxed);
-				const int64_t rcNBT = g_rc_notInBakeTable.exchange(0, std::memory_order_relaxed);
-				const int64_t rcEY  = g_rc_isStaticEligibleYes.exchange(0, std::memory_order_relaxed);
-				const int64_t rcEN  = g_rc_isStaticEligibleNo.exchange(0, std::memory_order_relaxed);
-				mc2::fmt::print_out("STATIC_REG_COVERAGE: total_rej_no_static_reg={:d} sub: never_registered={:d} no_recipe={:d} bake_not_enabled={:d} not_in_bake_table={:d} is_static_eligible_yes={:d} is_static_eligible_no={:d}\n", mc2::fmt::as_i64((long long)rNS), mc2::fmt::as_i64((long long)rcNR), mc2::fmt::as_i64((long long)rcNRp), mc2::fmt::as_i64((long long)rcBN), mc2::fmt::as_i64((long long)rcNBT), mc2::fmt::as_i64((long long)rcEY), mc2::fmt::as_i64((long long)rcEN));
-				// Top-20 shape names from never_registered bucket.
-				{
-					std::lock_guard<std::mutex> lk(g_rc_shapeMu);
-					if (!g_rc_shapeNames.empty()) {
-						// Copy to a vector for top-N sort.
-						std::vector<std::pair<int,std::string>> sorted;
-						sorted.reserve(g_rc_shapeNames.size());
-						for (auto& kv : g_rc_shapeNames)
-							sorted.push_back({kv.second, kv.first});
-						std::sort(sorted.begin(), sorted.end(),
-						          [](const std::pair<int,std::string>& a, const std::pair<int,std::string>& b){
-						              return a.first > b.first;
-						          });
-						mc2::fmt::print_out("STATIC_REG_COVERAGE: top_shapes(name:count):");
-						int shown = 0;
-						for (auto& p : sorted) {
-							if (shown >= 20) break;
-							mc2::fmt::print_out(" {}:{:d}", p.second.c_str(), mc2::fmt::as_i32(p.first));
-							++shown;
-						}
-						mc2::fmt::print_out("\n");
-						g_rc_shapeNames.clear();
-					}
-				}
-			}
-			fflush(stdout);
-		}
-	}
 
 	// [LIGHTBRIDGE-STABLE-SKIP-WIRE-1]: skip Section C (EmitBakedGpuLightData +
 	// getCachedGpuLightIndex + staticReg writes) when MC2_LIGHTBRIDGE_STABLE_SKIP=1

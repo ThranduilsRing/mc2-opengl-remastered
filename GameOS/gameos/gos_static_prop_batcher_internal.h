@@ -89,13 +89,6 @@ extern uint32_t g_mc2FrameCounter;
 #include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
 
 
-// ---------------------------------------------------------------------------
-// [SPFLUSH_COST_SPLIT v1] — batcher-side RDTSC cycle accumulators.
-// Implemented here (submitCachedInstance is in this TU).
-// Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
-// Adder functions are declared in gos_static_prop_batcher.h (file scope);
-// the registry + txmmgr TUs call them after measuring spans with __rdtsc().
-// ---------------------------------------------------------------------------
 #include <intrin.h>  // __rdtsc (MSVC intrinsic)
 
 #include "mc2_hitch_trace.h"
@@ -180,12 +173,6 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries);
 struct PerTypeBucket {
     std::vector<GpuStaticPropInstance> instances;
     std::vector<uint32_t>              colors;  // concatenated per-instance color blocks
-    // 2b Stage 2 Task-0 diagnostic (MC2_BUCKET_ORDER_TRACE): per-frame static-vs-
-    // dynamic add counts + which path touched this bucket first. Decides Mechanism
-    // A (static-front persist) vs B (separate persistent store). Throwaway.
-    uint32_t dbgStatic  = 0;
-    uint32_t dbgDynamic = 0;
-    uint8_t  dbgFirst   = 0;   // 0=none, 1=static-first, 2=dynamic-first
     // VK color feed: range of `instances` that reinjectPersistentStatic() bulk-copied
     // from the persistent store this frame. The VK feed already flattens the store,
     // so it skips this range and appends only the per-frame dynamic remainder.
@@ -412,7 +399,6 @@ const float* gos_GetObjectFixBMVPMat4();
 extern const bool s_treeDiagTrace;
 extern const bool s_spotlightRealTrace;
 extern std::atomic<uint64_t> g_staticPropAlphaGeneration;
-extern const bool s_spflushCostSplitEnabled;
 extern const bool s_globalPoolLegacy;
 extern const bool s_legacyInstancePools;
 extern const bool s_v5Enabled;
@@ -497,7 +483,6 @@ extern size_t   s_parityBytesUsedPerSlot[RING_FRAMES];
 extern std::vector<uint8_t> s_parityReadbackScratch;
 extern std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 extern const bool s_staticPropColorsFill;
-extern const bool s_bucketOrderTrace;
 extern std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
 extern uint64_t s_persistentStaticGen;
 extern std::vector<GpuStaticPropInstance> s_lastBuiltBatch;

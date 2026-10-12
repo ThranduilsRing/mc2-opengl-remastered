@@ -105,8 +105,6 @@ std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 // is untouched.
 extern const bool s_staticPropColorsFill = mc2::gate::get<"MC2_STATIC_PROP_COLORS_FILL">();
 
-extern const bool s_bucketOrderTrace = mc2::gate::get<"MC2_BUCKET_ORDER_TRACE">();
-
 // 2b Stage 2 (Mechanism B-reinject): persistent per-type static instance store,
 // rebuilt only when the registry generation changes. Each frame the registry
 // flush BULK-injects these blocks into s_bucketsByType (one memcpy per type)

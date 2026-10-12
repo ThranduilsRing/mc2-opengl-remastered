@@ -28,11 +28,6 @@ MC2_SHADOW_CSM | shaders/shadow_screen.frag | define MC2_SHADOW_CSM: no such nam
 MC2_SHADOW_STATIC_BANDFIX | shaders/gos_terrain.frag | define MC2_SHADOW_STATIC_BANDFIX: no such name in the VK twin (shaders/vulkan/terrain_tier1.*) shader, island C++ or gpu_abi
 MC2_SHADOW_STATIC_BANDFIX_V2 | shaders/gos_terrain.frag | define MC2_SHADOW_STATIC_BANDFIX_V2: no such name in the VK twin (shaders/vulkan/terrain_tier1.*) shader, island C++ or gpu_abi
 MC2_SHADOW_STATIC_BANDFIX_V2 | shaders/terrain_lod_chunk.frag | define MC2_SHADOW_STATIC_BANDFIX_V2: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
-MC2_STATIC_PROP_REGISTRY | shaders/mech.frag | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
-MC2_STATIC_PROP_REGISTRY | shaders/mech.vert | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
-MC2_STATIC_PROP_REGISTRY | shaders/static_prop.frag | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_STATIC_PROP_REGISTRY | shaders/static_prop.vert | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_STATIC_PROP_REGISTRY | shaders/static_prop_depth.frag | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_DETAIL_LOD1_STRENGTH | shaders/terrain_lod_chunk.frag | uniform detailNormalStrength: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_EDGE_FEATHER | shaders/terrain_lod_chunk.frag | uniform u_edgeFeather: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_EDGE_FEATHER_STRENGTH | shaders/terrain_lod_chunk.frag | uniform u_edgeFeatherStrength: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi

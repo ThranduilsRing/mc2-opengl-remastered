@@ -65,32 +65,6 @@ extern const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRAC
 // gen 0) always runs its first pass regardless of any early destruction events.
 std::atomic<uint64_t> g_staticPropAlphaGeneration{1};
 
-extern const bool s_spflushCostSplitEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
-
-namespace gos_static_prop_batcher_detail {
-unsigned long long s_spflush_submit_map_lookup_cyc = 0;
-unsigned long long s_spflush_color_zero_fill_cyc   = 0;
-}  // namespace gos_static_prop_batcher_detail
-
-namespace spflush_cost_split {
-void AddSubmitMapLookupCycles(unsigned long long c) {
-    if (s_spflushCostSplitEnabled) s_spflush_submit_map_lookup_cyc += c;
-}
-void AddColorZeroFillCycles(unsigned long long c) {
-    if (s_spflushCostSplitEnabled) s_spflush_color_zero_fill_cyc += c;
-}
-unsigned long long ConsumeSubmitMapLookupCycles() {
-    const unsigned long long v = s_spflush_submit_map_lookup_cyc;
-    s_spflush_submit_map_lookup_cyc = 0;
-    return v;
-}
-unsigned long long ConsumeColorZeroFillCycles() {
-    const unsigned long long v = s_spflush_color_zero_fill_cyc;
-    s_spflush_color_zero_fill_cyc = 0;
-    return v;
-}
-}  // namespace spflush_cost_split
-
 // MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1 — forces the legacy per-type-cap
 // coalesce layout (keeps existing path; new global-pool path is disabled).
 // Env-read once at process start; survives until soak completes.

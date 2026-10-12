@@ -726,9 +726,6 @@ void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLigh
     // persist was wrong for multi-leaf ranges (compare-oracle caught it) and is
     // removed. The light-table SLOT content here is unchanged.
     if (ri + 1 > s_staticLightHighWater) s_staticLightHighWater = ri + 1;
-    // [SPFLUSH_COST_SPLIT v1] recipe_rebuild counter. light_index_writes == recipe_rebuilds
-    // (both happen at this bakeStaticLightSlot call — same site, same count; only one counter kept).
-    if (s_spflushTxmEnabled) ++s_spflush_recipe_rebuilds_txm;
     // CRITICAL: the frame a recipe FIRST bakes, this-frame's count was
     // set to the OLD (smaller) S at frame-start resetLightData. Without
     // this bump, a later dynamic addLightDataStructure append THIS frame

@@ -8,7 +8,7 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
 | PORTED | 11 | 123 | 0 |
-| NOT_PORTED | 86 | 47 | 0 |
+| NOT_PORTED | 81 | 47 | 0 |
 | NO_TWIN | 26 | 64 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
@@ -83,11 +83,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_STATICPROP_MATERIAL_PBR_SLOTS` | OFF | `shaders/static_prop.vert` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_STATICPROP_MATERIAL_PBR_SLOTS` | OFF | `shaders/static_prop_depth.frag` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_STATICPROP_MATERIAL_PBR_SLOTS` | OFF | `shaders/static_prop_depth.frag` | `MC2_STATICPROP_PBR_SLOTS` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
-| `MC2_STATIC_PROP_REGISTRY` | **ON (live drift)** | `shaders/mech.frag` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/mech_tier1.* | HIGH | yes |
-| `MC2_STATIC_PROP_REGISTRY` | **ON (live drift)** | `shaders/mech.vert` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/mech_tier1.* | HIGH | yes |
-| `MC2_STATIC_PROP_REGISTRY` | **ON (live drift)** | `shaders/static_prop.frag` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
-| `MC2_STATIC_PROP_REGISTRY` | **ON (live drift)** | `shaders/static_prop.vert` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
-| `MC2_STATIC_PROP_REGISTRY` | **ON (live drift)** | `shaders/static_prop_depth.frag` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_SUN_AXIS_FIX` | OFF | `shaders/gos_tex_vertex_lighted.vert` | `u_sunAxisMc2Fix` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
 | `MC2_SUN_AXIS_FIX` | OFF | `shaders/mech.vert` | `u_sunAxisMc2Fix` (uniform) | shaders/vulkan/mech_tier1.* | HIGH | yes |
 | `MC2_TERRAIN_CLIFF_DISPLACE` | OFF | `shaders/terrain_lod_chunk.tesc` | `u_cliffTessLevel` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | no |
@@ -151,7 +146,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 
-- NOT_PORTED pairs: 111, of which already default ON: 51
+- NOT_PORTED pairs: 106, of which already default ON: 46
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED

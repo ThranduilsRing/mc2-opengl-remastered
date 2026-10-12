@@ -676,13 +676,10 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			// Step 4.6 (global-pool slice 1): compute per-cmd baseInstance prefix-sum
 			// and advance the coalesce ring slot BEFORE compute_dispatch() so the
 			// patch shader can read baseInstanceByCmd[] in the same dispatch.
-			// [SPFLUSH_COST_SPLIT v1] baseinstance_upload span (nifty) wrapped in
-			// the GpuSP.PrepBaseInstance Tracy zone (override branch).
+			// The GpuSP.PrepBaseInstance Tracy zone (override branch).
 			{
 				ZoneScopedN("GpuSP.PrepBaseInstance"); GosGlLostDrawsScope _lost_("gpusp.prep_base_instance");
-				const unsigned long long _t_bi0 = s_spflushTxmEnabled ? __rdtsc() : 0ULL;
 				batcher_prepareBaseInstanceTable();
-				if (s_spflushTxmEnabled) s_spflush_baseinstance_upload_cyc += __rdtsc() - _t_bi0;
 			}
 
 			// C1b GPU authority flip: compute_dispatch() is now called HERE
