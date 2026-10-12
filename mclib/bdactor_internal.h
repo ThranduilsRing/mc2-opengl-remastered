@@ -113,8 +113,6 @@ struct TouchEntryDiag {
 extern bool s_tobjSplitBdOn;
 extern uint32_t s_animStartInvalidated;
 extern uint32_t s_animStateToStateGesture;
-extern unsigned long g_fbDiagPtSpotConsumed;
-extern unsigned long g_fbDiagPtSpotZeroDir;
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
 extern bool		useFog;
@@ -145,7 +143,6 @@ extern std::atomic<int64_t> g_spr_rejNoValidLight;
 extern std::atomic<int64_t> g_spr_rejLightGenMismatch;
 extern std::atomic<int64_t> g_spr_rejNeedsFullBake;
 extern std::atomic<int64_t> g_spr_callCounter;
-extern void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* gatheredLeaf, float wx, float wy, float wz, const char* appearance);
 void recordStableLightSkipDiag(bool armed, bool eligible, bool notRegistered, bool noValidLight, bool envGenMiss, bool needsFullBake, bool invalidLightIdx);
 void lbssRecordBldg(bool eligible, bool taken, bool blk_idx, bool blk_gen, bool blk_noelig);
 
@@ -195,8 +192,6 @@ bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
 bool mc2ConeGroundHit (const Stuff::Vector3D& apex, const Stuff::Vector3D& aim, float beamLen, Stuff::Vector3D& hitOut);
-bool mc2PropLightLatchDiag (void);
-uint32_t mc2PropLightLatchDiagInterval (void);
 bool bldgStaticShadowRebakeGatesActive();
 void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex, const char* reason);
 

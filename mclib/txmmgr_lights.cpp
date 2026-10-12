@@ -782,39 +782,3 @@ uint64_t MC_TextureManager::getLightDataBytes() const
     return (uint64_t)lightDataStructuresCount * sizeof(TG_HWLightsData);
 }
 
-// [LIGHTBAKE-PROOF v1] Slot-write INTEGRITY check (NOT an independent A/B parity —
-// M1 honesty fix, adversarial review 2026-06-03). Hashes the freshly-gathered leaf
-// (the CacheGpuLightData MISS-path result == the legacy transient gather) against
-// the permanent slot lightData_[recipeIndex] it was just memcpy'd into by
-// mc2WriteStaticLightSlot. So match=1 proves the permanent slot FAITHFULLY STORES
-// the legacy-gathered record (no corruption/truncation in the store) — combined
-// with the stability trace (slot never changes), that gives "every frame the GPU
-// sees the legacy-gathered value." It does NOT independently re-derive the legacy
-// value (that would be tautological here — the leaf IS the gather source). The true
-// baked-vs-transient A/B is the cross-run MC2_LIGHTBAKE=0 vs =1 comparison (validated
-// when the bake shipped, 2db2a04). Env-gated (MC2_LIGHTBAKE_PARITY), capped at 32
-// lines (+ always logs any mismatch). No behavior change.
-static const bool s_lbParityTrace = mc2::gate::get<"MC2_LIGHTBAKE_PARITY">();
-static uint64_t s_lbParityChecks   = 0;
-static uint64_t s_lbParityMismatch = 0;
-
-void mc2LightBakeParityCheck(int32_t recipeIndex,
-                             const TG_HWLightsData* gatheredLeaf,
-                             float wx, float wy, float wz,
-                             const char* appearance)
-{
-    if (!s_lbParityTrace || recipeIndex < 0 || !gatheredLeaf || !mcTextureManager)
-        return;
-    const uint64_t leafHash = fnv1a_64_struct(gatheredLeaf, sizeof(TG_HWLightsData));
-    TG_HWLightsData slot{};
-    if (!mcTextureManager->copyLightSlot(static_cast<uint32_t>(recipeIndex), slot))
-        return;  // slot not yet addressable; skip
-    const uint64_t slotHash = fnv1a_64_struct(&slot, sizeof(TG_HWLightsData));
-    ++s_lbParityChecks;
-    const bool match = (leafHash == slotHash);
-    if (!match) ++s_lbParityMismatch;
-    if (s_lbParityChecks <= 32 || !match) {
-        mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=slot_write_integrity recipe={:d} leafHash={:016x} slotHash={:016x} match={:d} pos=({:.1f},{:.1f},{:.1f}) appr={}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u64((unsigned long long)leafHash), mc2::fmt::as_u64((unsigned long long)slotHash), mc2::fmt::as_i32(match ? 1 : 0), wx, wy, wz, mc2::fmt::safe(appearance ? appearance : "?"));
-        std::fflush(stderr);
-    }
-}

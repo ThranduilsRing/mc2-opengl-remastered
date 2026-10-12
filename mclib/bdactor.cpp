@@ -44,9 +44,6 @@ std::atomic<int64_t> g_spr_rejNoValidLight{0};// !hasValidStaticLight (bldg only
 std::atomic<int64_t> g_spr_rejLightGenMismatch{0}; // lastLightEnvGen != currentLightEnvGen (bldg only)
 std::atomic<int64_t> g_spr_rejNeedsFullBake{0};    // needsFullBakeNextFrame
 std::atomic<int64_t> g_spr_callCounter{0};    // monotonic call count for print trigger
-// Defined here, incremented in mclib/msl.cpp at the TG_LIGHT_POINT/SPOT consumer.
-unsigned long g_fbDiagPtSpotConsumed = 0;  // active POINT/SPOT lights baked
-unsigned long g_fbDiagPtSpotZeroDir  = 0;  // ...of those, direction still (0,0,0)
 
 // Slim-deploy texture gate (LOAD_TGA_THEN_GPU_KTX). The static-prop / building /
 // tree appearance loaders below gate loadTexture() behind fileExists(<name>.tga).

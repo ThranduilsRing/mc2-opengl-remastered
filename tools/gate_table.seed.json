@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1064,
+ "count": 1060,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -6040,32 +6040,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_FULLBAKE_DIAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "SPOTLIGHT-DIRECTION-1 measurement instrument.",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:146",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_FULLBAKE_DIAG",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_FXAA",
    "kind": "Bool",
    "default": false,
@@ -9415,32 +9389,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_LIGHTBAKE_PARITY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: baked permanent light record == gathered transient record byte/hash parity.",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:2253",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_LIGHTBAKE_PARITY",
    "retireVerdict": ""
   },
   {
@@ -15810,63 +15758,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PROP_LIGHT_LATCH_DIAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs the light the same actor at the same position would sample now (MATCH/STALE).",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:3607",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_PROP_LIGHT_LATCH_DIAG",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
-   "kind": "Int",
-   "default": 120,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:3616",
-     "idiom": "Num(atol,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "0"
-    ],
-    "style": "compare"
-   },
-   "readerDefault": 120,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
    "retireVerdict": ""
   },
   {

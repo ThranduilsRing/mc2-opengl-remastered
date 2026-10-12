@@ -3,12 +3,6 @@
 #include "bdactor_internal.h"
 #include "mc2fmt.h"
 
-// [LIGHTBAKE-PROOF v1] A/B parity trace (defined in mclib/txmmgr.cpp). File-scope
-// declaration — never declared inside a function body. Proves the baked permanent
-// slot == the gathered transient record byte/hash.
-extern void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* gatheredLeaf,
-                                    float wx, float wy, float wz, const char* appearance);
-
 // [LIGHTBAKE v1] Static-actor lighting mission-load bake gate. Replaces
 // the raw shape->CacheGpuLightData() at the 4 static (bldg/tree) call
 // sites. The trailing staticReg.lightDataIndex =
@@ -352,28 +346,3 @@ namespace mc2_lightslot_trace {
     }
 }
 
-// FOGLIGHT-LATCH-1 (diagnostic): `fogLightSet` makes `lightRGB` a ONE-SHOT
-// per-actor latch -- sampled from land->getTerrainLight(position) at whatever
-// moment this actor first ran update(), then fed to eye->setLightColor(0,...)
-// (the SUN slot for BldgAppearance) every frame forever. This probe dumps, per
-// actor: appearance name, latch frame, the latched lightRGB, and the light that
-// the SAME actor at the SAME position would sample RIGHT NOW. If a dark truck's
-// latched value differs from its current value while a correctly-lit building's
-// agree, the latch is the defect.
-// MC2_PROP_LIGHT_LATCH_DIAG=1 enables. MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL sets
-// the per-frame re-sample throttle (default 120 frames). Default OFF: zero cost
-// (one boot-cached bool test on the per-frame path).
-bool mc2PropLightLatchDiag (void)
-{
-	static const bool s_on = mc2::gate::get<"MC2_PROP_LIGHT_LATCH_DIAG">();
-	return s_on;
-}
-
-uint32_t mc2PropLightLatchDiagInterval (void)
-{
-	static const uint32_t s_iv = [] {
-		const uint32_t iv = static_cast<uint32_t>(mc2::gate::get<"MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL">());
-		return iv ? iv : 120u;
-	}();
-	return s_iv;
-}

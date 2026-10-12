@@ -3431,21 +3431,6 @@
    "count": 1
   },
   {
-   "tag": "FULLBAKE_DIAG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "calls",
-    "gpuEligible",
-    "else_hier",
-    "else_FULLBAKE",
-    "dualemit_full",
-    "ptspot_consumed",
-    "ptspot_zerodir"
-   ],
-   "count": 1
-  },
-  {
    "tag": "FXDEF",
    "ver": -1,
    "stream": "stderr",

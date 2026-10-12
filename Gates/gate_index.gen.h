@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1067;
+inline constexpr std::size_t kGateCount = 1063;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -226,7 +226,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FRAME_PASS_STATS", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FRAME_PASS_STATS_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_FREEZE_MOVERS_AT", Kind::Int, Rule::Prefix, {}},
-    {"MC2_FULLBAKE_DIAG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_FXAA", Kind::Bool, Rule::Lead0, {}},
     {"MC2_FXAA_EDGE_THRESHOLD", Kind::Float, Rule::Prefix, {}},
     {"MC2_FXAA_EDGE_THRESHOLD_MIN", Kind::Float, Rule::Prefix, {}},
@@ -346,7 +345,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_LEGACY_LOAD_BANNER", Kind::Bool, Rule::Presence, {}},
     {"MC2_LETTERBOX_OPAQUE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_LIGHTBAKE_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_LIGHTBAKE_REBAKE_ON_READY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE_STABILITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_LIGHTBRIDGE", Kind::Bool, Rule::Lead0Kill, {}},
@@ -571,8 +569,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PROJECTZ_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PROP_BASE_LIGHT_DIR", Kind::Float, Rule::Prefix, {}},
     {"MC2_PROP_FIXB_MVP", Kind::Bool, Rule::DefOnAtoiNZ, {}},
-    {"MC2_PROP_LIGHT_LATCH_DIAG", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", Kind::Int, Rule::Prefix, {}},
     {"MC2_PROP_SHADOW_RECEIVE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PURCHASE_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_QUADSETUP_ARMED_SKIP", Kind::Bool, Rule::Lead0Kill, {}},

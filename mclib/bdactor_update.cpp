@@ -15,28 +15,6 @@ static unsigned long s_spotDiagBldgOverflows  = 0;   // pool-overflow count
 static unsigned long s_spotDiagBldgActors     = 0;   // actor first-hits
 static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
-// [FULLBAKE_DIAG v1] SPOTLIGHT-DIRECTION-1 measurement instrument, gated on
-// MC2_FULLBAKE_DIAG=1 (default OFF = one static bool test, no output).
-// Question being answered: does any stock building actually reach the full
-// TransformMultiShape() bake? That is the ONLY path which runs the msl.cpp
-// TG_LIGHT_POINT lighting block, i.e. the only consumer of TG_Light::direction.
-// If these counts are zero in real missions, the unset-direction defect is
-// latent-only. MEASURED 2026-07-29: NOT latent — mc2_10 (night) baked 4,310,486
-// active POINT/SPOT lights in 15 s, 3,995,686 of them with direction still
-// (0,0,0); mc2_01/03/24 (day) measured 0. Kept (not deleted) because this is
-// the only instrument that separates latent-from-live for this defect class and
-// the A/B capture arms need it to prove the ON arm reached the consumer.
-bool mc2FullBakeDiagEnabled()
-{
-    static const bool s = mc2::gate::get<"MC2_FULLBAKE_DIAG">();
-    return s;
-}
-static unsigned long s_fbDiagBranchCalls   = 0;  // times the update() branch ran
-static unsigned long s_fbDiagGpuEligible   = 0;  // gpuEligible == true
-static unsigned long s_fbDiagElseHierOnly  = 0;  // !gpuEligible, hierarchy-only
-static unsigned long s_fbDiagElseFullBake  = 0;  // !gpuEligible, FULL bake  <== key
-static unsigned long s_fbDiagDualEmitFull  = 0;  // gpuEligible parity dual-emit full bake
-
 long BldgAppearance::update (bool animate)
 {
 	::mc2_object_recon::Scope _recon_bldg_(
@@ -502,42 +480,6 @@ long BldgAppearance::update (bool animate)
 
 			fogLightSet = true;
 
-			// FOGLIGHT-LATCH-1: record the moment of latch.
-			if (mc2PropLightLatchDiag())
-			{
-				MC2_DIAGF("[PROPLATCH v1] event=latch name=%s frame=%u intensity=%.4f "
-				          "latchRGB=%02X%02X%02X nightFactor=%.3f pos=(%.1f,%.1f,%.1f)\n",
-				          (appearType && appearType->name) ? appearType->name : "?",
-				          (unsigned)g_mc2FrameCounter, lightIntensity,
-				          (unsigned)lightr, (unsigned)lightg, (unsigned)lightb,
-				          eye ? eye->nightFactor : -1.0f,
-				          position.x, position.y, position.z);
-			}
-		}
-
-		// FOGLIGHT-LATCH-1: throttled latched-vs-current comparison. Re-samples
-		// exactly what the latch block would sample today, WITHOUT mutating
-		// lightRGB -- pure observation, so gate-ON output still reflects the
-		// shipping (latched) behaviour.
-		if (mc2PropLightLatchDiag() &&
-		    (g_mc2FrameCounter % mc2PropLightLatchDiagInterval()) == 0)
-		{
-			float curIntensity = 1.0f;
-			if (land)
-				curIntensity = land->getTerrainLight(position);
-			unsigned char cr = eye->getLightRed(curIntensity);
-			unsigned char cg = eye->getLightGreen(curIntensity);
-			unsigned char cb = eye->getLightBlue(curIntensity);
-			DWORD curRGB = (cr<<16) + (cg<<8) + cb;
-			MC2_DIAGF("[PROPLATCH v1] event=compare name=%s frame=%u "
-			          "latchRGB=%06X curRGB=%06X %s curIntensity=%.4f "
-			          "nightFactor=%.3f pos=(%.1f,%.1f,%.1f)\n",
-			          (appearType && appearType->name) ? appearType->name : "?",
-			          (unsigned)g_mc2FrameCounter,
-			          (unsigned)(lightRGB & 0xFFFFFF), (unsigned)(curRGB & 0xFFFFFF),
-			          ((lightRGB & 0xFFFFFF) == (curRGB & 0xFFFFFF)) ? "MATCH" : "STALE",
-			          curIntensity, eye ? eye->nightFactor : -1.0f,
-			          position.x, position.y, position.z);
 		}
 
 		eye->setLightColor(0,lightRGB);
@@ -661,18 +603,6 @@ long BldgAppearance::update (bool animate)
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}
 
-		// [FULLBAKE_DIAG v1] see decl block. Emits a running tally so the "is the
-		// direction-consumer path ever reached?" question is answered from a real
-		// mission rather than from static reading. MC2_FULLBAKE_DIAG=1 only.
-		if (mc2FullBakeDiagEnabled()) {
-		++s_fbDiagBranchCalls;
-		if (gpuEligible) ++s_fbDiagGpuEligible;
-		if ((s_fbDiagBranchCalls % 600) == 0) {
-			mc2::fmt::print_err("[FULLBAKE_DIAG v1] calls={:d} gpuEligible={:d} else_hier={:d} else_FULLBAKE={:d} dualemit_full={:d} ptspot_consumed={:d} ptspot_zerodir={:d}\n", mc2::fmt::as_u32(s_fbDiagBranchCalls), mc2::fmt::as_u32(s_fbDiagGpuEligible), mc2::fmt::as_u32(s_fbDiagElseHierOnly), mc2::fmt::as_u32(s_fbDiagElseFullBake), mc2::fmt::as_u32(s_fbDiagDualEmitFull), mc2::fmt::as_u32(g_fbDiagPtSpotConsumed), mc2::fmt::as_u32(g_fbDiagPtSpotZeroDir));
-			std::fflush(stderr);
-		}
-		}
-
 		if (gpuEligible)
 		{
 			// Stage 2.D.2 fix: cache GPU light data NOW, while worldLights[0]->aRGB
@@ -713,7 +643,6 @@ long BldgAppearance::update (bool animate)
 			// Stage 2.D.3: per-actor gate. Bootstrap arm returns true for
 			// every shape; sample arm returns true only for the picked actor.
 			if (gos_object_parity::IsDualEmitArmedForActor(bldgShape)) {
-				++s_fbDiagDualEmitFull;   // [FULLBAKE_DIAG] temporary
 				bldgShape->TransformMultiShape (&xlatPosition,&rot);
 			}
 		}
@@ -733,14 +662,10 @@ long BldgAppearance::update (bool animate)
 			    (g_mechPreviewRenderDepth == 0) &&
 			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
 			{
-				++s_fbDiagElseHierOnly;   // [FULLBAKE_DIAG] temporary
 				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			}
 			else
 			{
-				++s_fbDiagElseFullBake;   // [FULLBAKE_DIAG] temporary — THE path
-				                          // that runs msl.cpp TG_LIGHT_POINT
-				                          // lighting and reads TG_Light::direction
 				bldgShape->TransformMultiShape (&xlatPosition,&rot);
 			}
 			// 2026-05-10: also seed cachedGpuLightIndex_ in the full-bake

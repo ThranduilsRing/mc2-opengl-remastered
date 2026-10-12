@@ -1072,13 +1072,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on...",
     },
     {
-        "MC2_FULLBAKE_DIAG",
-        "MC2_FULLBAKE_DIAG",
-        EnvVarKind::Trace,
-        false,
-        "SPOTLIGHT-DIRECTION-1 measurement instrument.",
-    },
-    {
         "MC2_FX_COST_SPLIT",
         "MC2_FX_COST_SPLIT",
         EnvVarKind::Feature,
@@ -1238,13 +1231,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         true,
         "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates.",
-    },
-    {
-        "MC2_TRACE_LIGHTBAKE_PARITY",
-        "MC2_LIGHTBAKE_PARITY",
-        EnvVarKind::Trace,
-        false,
-        "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: baked permanent light record == gathered transient record byte/hash parity.",
     },
     {
         "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY",
@@ -1434,20 +1420,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).",
-    },
-    {
-        "MC2_PROP_LIGHT_LATCH_DIAG",
-        "MC2_PROP_LIGHT_LATCH_DIAG",
-        EnvVarKind::Trace,
-        false,
-        "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs...",
-    },
-    {
-        "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
-        "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
-        EnvVarKind::Trace,
-        false,
-        "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).",
     },
     {
         "MC2_FEATURE_PROP_SHADOW_RECEIVE",
