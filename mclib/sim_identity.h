@@ -146,22 +146,11 @@ inline int32_t quantize(float v, float q) {
     return (int32_t)r;
 }
 
-// --- total order -----------------------------------------------------------
-// Returns <0 / 0 / >0. Orders by id first, then by every remaining field, so
-// two records are ordered identically on every machine even if ids collide.
-// (An id collision should not happen; relying on it not happening is how an
-// unstable sort silently permutes and the digest goes nondeterministic.)
-inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
-    if (a.id != b.id) return a.id < b.id ? -1 : 1;
-    if (a.team != b.team) return a.team < b.team ? -1 : 1;
-    // Compare floats by quantized bucket then raw bits: total, NaN-safe, and
-    // never relies on `<` over NaN (which is false in both directions and would
-    // make the comparator non-transitive).
-    const float qa[5] = {a.px, a.py, a.pz, a.rot, a.hp};
-    const float qb[5] = {b.px, b.py, b.pz, b.rot, b.hp};
-    const float qq[5] = {kPosQuantum, kPosQuantum, kPosQuantum,
-                         kAngQuantum, kFracQuantum};
-    for (int i = 0; i < 5; ++i) {
+// Orders two float lists by quantized bucket then raw bits: total, NaN-safe,
+// and never relies on `<` over NaN (which is false in both directions and
+// would make a comparator non-transitive). <0 / 0 / >0.
+inline int compareQuantized(const float* qa, const float* qb, const float* qq, int n) {
+    for (int i = 0; i < n; ++i) {
         const int32_t ia = quantize(qa[i], qq[i]);
         const int32_t ib = quantize(qb[i], qq[i]);
         if (ia != ib) return ia < ib ? -1 : 1;
@@ -173,6 +162,38 @@ inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
         std::memcpy(&bb, &fb, sizeof(bb));
         if (ba != bb) return ba < bb ? -1 : 1;
     }
+    return 0;
+}
+
+// Insertion sort into a total order. n is small (tens to low hundreds of
+// records); the point is determinism, not asymptotics -- std::sort is unstable
+// and would be free to permute records that compare equal.
+template <class Record, class Compare>
+inline void sortTotal(Record* recs, size_t n, Compare compare) {
+    for (size_t i = 1; i < n; ++i) {
+        Record key = recs[i];
+        size_t j = i;
+        while (j > 0 && compare(recs[j - 1], key) > 0) {
+            recs[j] = recs[j - 1];
+            --j;
+        }
+        recs[j] = key;
+    }
+}
+
+// --- total order -----------------------------------------------------------
+// Returns <0 / 0 / >0. Orders by id first, then by every remaining field, so
+// two records are ordered identically on every machine even if ids collide.
+// (An id collision should not happen; relying on it not happening is how an
+// unstable sort silently permutes and the digest goes nondeterministic.)
+inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
+    if (a.id != b.id) return a.id < b.id ? -1 : 1;
+    if (a.team != b.team) return a.team < b.team ? -1 : 1;
+    const float qa[5] = {a.px, a.py, a.pz, a.rot, a.hp};
+    const float qb[5] = {b.px, b.py, b.pz, b.rot, b.hp};
+    const float qq[5] = {kPosQuantum, kPosQuantum, kPosQuantum,
+                         kAngQuantum, kFracQuantum};
+    if (const int c = compareQuantized(qa, qb, qq, 5)) return c;
     const int32_t ra[8] = {a.gesture, a.animFrame, a.status, a.target,
                            a.brainState, a.moveState, a.pathStep, a.pathSteps};
     const int32_t rb[8] = {b.gesture, b.animFrame, b.status, b.target,
@@ -182,26 +203,14 @@ inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
     return 0;
 }
 
-// Insertion sort into the total order above. n is small (tens to low hundreds
-// of movers); the point here is determinism, not asymptotics -- std::sort is
-// unstable and would be free to permute records that compare equal.
 inline void sortRecords(MoverRecord* recs, size_t n) {
-    for (size_t i = 1; i < n; ++i) {
-        MoverRecord key = recs[i];
-        size_t j = i;
-        while (j > 0 && compareRecords(recs[j - 1], key) > 0) {
-            recs[j] = recs[j - 1];
-            --j;
-        }
-        recs[j] = key;
-    }
+    sortTotal(recs, n, compareRecords);
 }
 
 // --- digests ---------------------------------------------------------------
 
-// Per-mover GRADED digest: quantized VISUAL + exact NON-VISUAL fields.
-inline uint64_t digestMoverGraded(const MoverRecord& r) {
-    uint64_t h = kFnvOffset;
+// The VISUAL fields, quantized (identity, pose, damage, gesture, status).
+inline uint64_t foldMoverVisual(uint64_t h, const MoverRecord& r) {
     h = fnvI32(h, r.id);
     h = fnvI32(h, r.team);
     h = fnvI32(h, quantize(r.px,  kPosQuantum));
@@ -212,6 +221,11 @@ inline uint64_t digestMoverGraded(const MoverRecord& r) {
     h = fnvI32(h, r.gesture);
     h = fnvI32(h, r.animFrame);
     h = fnvI32(h, r.status);
+    return h;
+}
+
+// The NON-VISUAL fields: what steers future motion.
+inline uint64_t foldMoverIntent(uint64_t h, const MoverRecord& r) {
     h = fnvI32(h, r.target);
     h = fnvI32(h, r.brainState);
     h = fnvI32(h, r.moveState);
@@ -220,22 +234,16 @@ inline uint64_t digestMoverGraded(const MoverRecord& r) {
     return h;
 }
 
+// Per-mover GRADED digest: quantized VISUAL + exact NON-VISUAL fields.
+inline uint64_t digestMoverGraded(const MoverRecord& r) {
+    return foldMoverIntent(foldMoverVisual(kFnvOffset, r), r);
+}
+
 // Per-mover GRADED digest over VISUAL fields ONLY. The refuse-to-grade gate's
 // load-bearing digest: if these agree, the two arms' movers are drawn the same
 // way this frame, whatever their intentions differ about.
 inline uint64_t digestMoverVisual(const MoverRecord& r) {
-    uint64_t h = kFnvOffset;
-    h = fnvI32(h, r.id);
-    h = fnvI32(h, r.team);
-    h = fnvI32(h, quantize(r.px,  kPosQuantum));
-    h = fnvI32(h, quantize(r.py,  kPosQuantum));
-    h = fnvI32(h, quantize(r.pz,  kPosQuantum));
-    h = fnvI32(h, quantize(r.rot, kAngQuantum));
-    h = fnvI32(h, quantize(r.hp,  kFracQuantum));
-    h = fnvI32(h, r.gesture);
-    h = fnvI32(h, r.animFrame);
-    h = fnvI32(h, r.status);
-    return h;
+    return foldMoverVisual(kFnvOffset, r);
 }
 
 // Per-mover STRICT digest: raw float bits, nothing quantized.
@@ -251,12 +259,7 @@ inline uint64_t digestMoverStrict(const MoverRecord& r) {
     h = fnvI32(h, r.gesture);
     h = fnvI32(h, r.animFrame);
     h = fnvI32(h, r.status);
-    h = fnvI32(h, r.target);
-    h = fnvI32(h, r.brainState);
-    h = fnvI32(h, r.moveState);
-    h = fnvI32(h, r.pathStep);
-    h = fnvI32(h, r.pathSteps);
-    return h;
+    return foldMoverIntent(h, r);
 }
 
 // Header folded into every world digest: schema + quanta + population count.
@@ -320,32 +323,13 @@ inline int compareObjects(const ObjectRecord& a, const ObjectRecord& b) {
     const float qa[2] = {a.damage, a.rot};
     const float qb[2] = {b.damage, b.rot};
     const float qq[2] = {kPosQuantum, kAngQuantum};
-    for (int i = 0; i < 2; ++i) {
-        const int32_t ia = quantize(qa[i], qq[i]);
-        const int32_t ib = quantize(qb[i], qq[i]);
-        if (ia != ib) return ia < ib ? -1 : 1;
-        uint32_t ba = 0, bb = 0;
-        float fa = qa[i], fb = qb[i];
-        if (fa == 0.0f) fa = 0.0f;
-        if (fb == 0.0f) fb = 0.0f;
-        std::memcpy(&ba, &fa, sizeof(ba));
-        std::memcpy(&bb, &fb, sizeof(bb));
-        if (ba != bb) return ba < bb ? -1 : 1;
-    }
+    if (const int c = compareQuantized(qa, qb, qq, 2)) return c;
     if (a.target != b.target) return a.target < b.target ? -1 : 1;
     return 0;
 }
 
 inline void sortObjects(ObjectRecord* recs, size_t n) {
-    for (size_t i = 1; i < n; ++i) {
-        ObjectRecord key = recs[i];
-        size_t j = i;
-        while (j > 0 && compareObjects(recs[j - 1], key) > 0) {
-            recs[j] = recs[j - 1];
-            --j;
-        }
-        recs[j] = key;
-    }
+    sortTotal(recs, n, compareObjects);
 }
 
 // Graded (quantized) digest over buildings and turrets. SORTS `recs` in place.

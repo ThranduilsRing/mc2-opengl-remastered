@@ -307,6 +307,7 @@ Split commit: `78da1679d`.
 |---|---|
 | `multplyr.cpp` | keeps the networking entry points, the message packet types and the session / colour setup |
 | `multplyr_handle.cpp` | MultiPlayer: the handle* message handlers, message processing and the mission status / rank calculation. |
+| `multplyr_null.cpp` | Multiplayer compiled out (CMake MC2_MULTIPLAYER=OFF, the default). |
 | `multplyr_send.cpp` | MultiPlayer: the player list, mover / turret rosters, world and weapon-hit chunk adders and the send* methods. |
 | `multplyr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
