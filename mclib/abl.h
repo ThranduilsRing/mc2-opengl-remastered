@@ -101,6 +101,11 @@ long ABLi_deleteModule (SymTableNodePtr moduleIdPtr);
 
 ABLModulePtr ABLi_getModule (long id);
 
+// The live module instances in registry order (the order a save records); for the SIMID digest.
+long ABLi_getNumModuleInstances (void);
+
+ABLModulePtr ABLi_getModuleInstance (long index);
+
 DebuggerPtr ABLi_getDebugger (void);
 
 void ABLi_saveEnvironment (ABLFile* ablFile);

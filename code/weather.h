@@ -87,11 +87,15 @@ class Weather
 
 		static constexpr uint32_t kWeatherSeed = 0x57454154u;
 		uint32_t		rngState = kWeatherSeed;	// The weather's own random stream (see randomNumber).
+		uint32_t		rngDraws = 0;
 		long			randomNumber (long range);
 		bool			rollDice (long percent);
 		
 	public:
 	
+		// Draws from the weather stream since this object was made; printed per sim frame by the SIMID digest.
+		uint32_t drawCount (void) const { return rngDraws; }
+
 		Weather (void)
 		{
 			init();

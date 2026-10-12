@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
+#include "appearance_rng.h"
 
 
 //---------------------------------------------------------------------------
@@ -17,9 +18,11 @@ inline void fractalPass (float *heightMap, long edgeSize, long THRESHOLD, long N
 	{
 		for (long x=THRESHOLD;x<(edgeSize-THRESHOLD);x++)
 		{
-			if (RandomNumber(THRESHOLD) == 0)
+			// Texture noise is render-only: it draws from the appearance stream so the bake, which a texture cache may skip,
+			// never moves the stream the simulation rolls on.
+			if (mc2_appearance_rng::randomNumber(THRESHOLD) == 0)
 			{
-				float noise = (NOISE * 0.5f) - RandomNumber(NOISE);
+				float noise = (NOISE * 0.5f) - mc2_appearance_rng::randomNumber(NOISE);
 				noiseMap[x + (y * edgeSize)] = noise;
 			}
 			else

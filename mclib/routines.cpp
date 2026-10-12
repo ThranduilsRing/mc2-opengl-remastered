@@ -50,8 +50,21 @@ void memfill(void *Dest,int Len)
 
 //---------------------------------------------------------------------------
 // Random Number Functions
+static unsigned long s_simDraws = 0;
+
+unsigned long SimRandomDraws (void)
+{
+	return s_simDraws;
+}
+
+void ResetSimRandomDraws (void)
+{
+	s_simDraws = 0;
+}
+
 long RandomNumber (long range)
 {
+	++s_simDraws;
     //sebi
 	//gosASSERT(RAND_MAX==(1<<15)-1 );		// This is always TRUE in VC
 	//return( (gos_rand()*range)>>15 );			// Used to used mod (%) - which costs 40+ cycles (AG)
@@ -62,6 +75,7 @@ long RandomNumber (long range)
 //---------------------------------------------------------------------------
 bool RollDice (long percent)
 {
+	++s_simDraws;
 	// DETERMINISTIC-RNG-1 (RISK#2): stock RollDice calls CRT rand() DIRECTLY,
 	// bypassing gos_rand. Under MC2_DETERMINISTIC_RNG it must share the single
 	// LCG stream, so route through gos_rand() (same 15-bit [0,32767] range as

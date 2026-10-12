@@ -24,6 +24,7 @@
 
 #ifndef MOVER_H
 #include"mover.h"
+#include"appearance_rng.h"
 #endif
 
 //------------------------------------------------------------------------------------------
@@ -138,7 +139,7 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 	
 	if (messageInfo[msgType].styleCount > 1)
 	{
-		roll = RandomNumber(100);	// choose which style of message to play
+		roll = mc2_appearance_rng::randomNumber(100);	// which style of message to play: presentation, so the appearance stream
 		for (i=0; i<messageInfo[msgType].styleCount; i++)
 		{
 			dropOut += messageInfo[msgType].styleChance[i];
@@ -185,7 +186,7 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 	{
 		if (messageInfo[RADIO_CALLSIGN].styleCount > 1)
 		{
-			roll = RandomNumber(100);	// choose which style of message to play
+			roll = mc2_appearance_rng::randomNumber(100);	// which callsign style: presentation, so the appearance stream
 			for (i=0; i<messageInfo[RADIO_CALLSIGN].styleCount; i++)
 			{
 				dropOut += messageInfo[RADIO_CALLSIGN].styleChance[i];

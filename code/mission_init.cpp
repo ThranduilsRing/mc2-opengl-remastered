@@ -76,6 +76,7 @@ void Mission::initPrologue(MissionInitFrame& f) {
 		if (!seedText.empty())
 			seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
 		mc2_appearance_rng::reseed(seed);
+		ResetSimRandomDraws();
 		if (mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) {
 			gos_srand(seed);
 			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));

@@ -291,6 +291,116 @@ inline uint64_t digestWorld(MoverRecord* recs, size_t n, DigestKind kind) {
     return h;
 }
 
+// --- buildings, turrets, ABL state, RNG draw counts (schema 2) --------------
+// The mover digests above are the movers-only oracle the comparator grades on.
+// These extend the per-frame line with the rest of the state the simulation
+// steps, each as its own digest so a divergence names the population that
+// moved first (a captured building, a turret's target, a brain's static
+// variables, or a stream that drew a different number of times).
+
+// One building (kind 1) or turret (kind 2). `damage` is the object's damage
+// points, `rot` the turret's rotation, `target` the turret's target watch id.
+struct ObjectRecord {
+    int32_t id        = 0;   // partId -- sort key, allocation-independent
+    int32_t kind      = 0;
+    int32_t team      = 0;
+    int32_t commander = -1;  // who last captured a building
+    int32_t status    = 0;
+    float   damage    = 0.0f;
+    float   rot       = 0.0f;
+    int32_t target    = 0;
+};
+
+inline int compareObjects(const ObjectRecord& a, const ObjectRecord& b) {
+    if (a.id != b.id) return a.id < b.id ? -1 : 1;
+    if (a.kind != b.kind) return a.kind < b.kind ? -1 : 1;
+    if (a.team != b.team) return a.team < b.team ? -1 : 1;
+    if (a.commander != b.commander) return a.commander < b.commander ? -1 : 1;
+    if (a.status != b.status) return a.status < b.status ? -1 : 1;
+    const float qa[2] = {a.damage, a.rot};
+    const float qb[2] = {b.damage, b.rot};
+    const float qq[2] = {kPosQuantum, kAngQuantum};
+    for (int i = 0; i < 2; ++i) {
+        const int32_t ia = quantize(qa[i], qq[i]);
+        const int32_t ib = quantize(qb[i], qq[i]);
+        if (ia != ib) return ia < ib ? -1 : 1;
+        uint32_t ba = 0, bb = 0;
+        float fa = qa[i], fb = qb[i];
+        if (fa == 0.0f) fa = 0.0f;
+        if (fb == 0.0f) fb = 0.0f;
+        std::memcpy(&ba, &fa, sizeof(ba));
+        std::memcpy(&bb, &fb, sizeof(bb));
+        if (ba != bb) return ba < bb ? -1 : 1;
+    }
+    if (a.target != b.target) return a.target < b.target ? -1 : 1;
+    return 0;
+}
+
+inline void sortObjects(ObjectRecord* recs, size_t n) {
+    for (size_t i = 1; i < n; ++i) {
+        ObjectRecord key = recs[i];
+        size_t j = i;
+        while (j > 0 && compareObjects(recs[j - 1], key) > 0) {
+            recs[j] = recs[j - 1];
+            --j;
+        }
+        recs[j] = key;
+    }
+}
+
+// Graded (quantized) digest over buildings and turrets. SORTS `recs` in place.
+inline uint64_t digestObjects(ObjectRecord* recs, size_t n) {
+    sortObjects(recs, n);
+    uint64_t h = foldHeader(kFnvOffset, n);
+    for (size_t i = 0; i < n; ++i) {
+        const ObjectRecord& r = recs[i];
+        h = fnvI32(h, r.id);
+        h = fnvI32(h, r.kind);
+        h = fnvI32(h, r.team);
+        h = fnvI32(h, r.commander);
+        h = fnvI32(h, r.status);
+        h = fnvI32(h, quantize(r.damage, kPosQuantum));
+        h = fnvI32(h, quantize(r.rot, kAngQuantum));
+        h = fnvI32(h, r.target);
+    }
+    return h;
+}
+
+// One ABL module instance, in registry order: that order is part of the save
+// format (a brain's saved id is its registry position), so it is NOT sorted
+// away -- two runs whose brains sit in different slots have diverged.
+struct AblRecord {
+    int32_t  id         = 0;
+    int32_t  handle     = 0;   // which compiled module
+    int32_t  state      = 0;   // FSM state handle, -1 when not an FSM
+    int32_t  prevState  = 0;
+    int32_t  initCalled = 0;
+    uint64_t statics    = 0;   // FNV over the instance's static variable bytes
+};
+
+inline uint64_t digestAbl(const AblRecord* recs, size_t n) {
+    uint64_t h = foldHeader(kFnvOffset, n);
+    for (size_t i = 0; i < n; ++i) {
+        const AblRecord& r = recs[i];
+        h = fnvI32(h, r.id);
+        h = fnvI32(h, r.handle);
+        h = fnvI32(h, r.state);
+        h = fnvI32(h, r.prevState);
+        h = fnvI32(h, r.initCalled);
+        for (int b = 0; b < 8; ++b)
+            h = fnvByte(h, (uint8_t)((r.statics >> (b * 8)) & 0xFFu));
+    }
+    return h;
+}
+
+// FNV-1a over raw bytes, for the static-variable digest.
+inline uint64_t fnvBytes(uint64_t h, const void* bytes, size_t n) {
+    const uint8_t* p = (const uint8_t*)bytes;
+    for (size_t i = 0; i < n; ++i)
+        h = fnvByte(h, p[i]);
+    return h;
+}
+
 // 16-char lowercase hex, zero-padded. Fixed width so log lines column-align and
 // a truncated write is obvious.
 inline void toHex16(uint64_t v, char out[17]) {

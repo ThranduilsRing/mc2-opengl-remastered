@@ -112,6 +112,12 @@ long SignedRandomNumber (long range);
 
 bool RollDice (long percent);
 
+// Draws from the simulation stream (RandomNumber, RollDice, SignedRandomNumber) since the mission seed; the SIMID digest
+// prints it per sim frame so two runs that drew a different number of times are named before any state differs.
+unsigned long SimRandomDraws (void);
+
+void ResetSimRandomDraws (void);
+
 inline long float2long (float val)
 {
 	//_ftol TRUNCS not rounds.  Processor wants to round.  Surely there is some flag to not have this happen?

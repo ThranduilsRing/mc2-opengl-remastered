@@ -33,6 +33,7 @@
 
 #ifndef ABLENV_H
 #include"ablenv.h"
+#include"sim_identity.h"
 #endif
 
 #ifndef ABLDBUG_H
@@ -458,6 +459,34 @@ void ABLModule::operator delete (void* us) {
 }
 
 //---------------------------------------------------------------------------
+long ABLi_getNumModuleInstances (void) {
+
+	return(NumModuleInstances);
+}
+
+ABLModulePtr ABLi_getModuleInstance (long index) {
+
+	if ((index >= 0) && (index < NumModuleInstances))
+		return(ModuleInstanceRegistry[index]);
+	return(nullptr);
+}
+
+unsigned long long ABLModule::digestStatics (unsigned long long h) {
+
+	if (!staticData || (handle < 0))
+		return(h);
+	long numStatics = ModuleRegistry[handle].numStaticVars;
+	long* sizeList = ModuleRegistry[handle].sizeStaticVars;
+	for (long i = 0; i < numStatics; i++) {
+		if (sizeList[i] > 0) {
+			if (staticData[i].address)
+				h = mc2_sim_identity::fnvBytes(h, staticData[i].address, (size_t)sizeList[i]);
+		} else
+			h = mc2_sim_identity::fnvI32(h, staticData[i].integer);
+	}
+	return(h);
+}
+
 long ABLModule::getRealId (void)
 {
 	//Scan through the ModuleInstanceRegistry and find the pointer that matches

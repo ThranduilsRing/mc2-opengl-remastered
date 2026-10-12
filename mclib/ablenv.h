@@ -231,6 +231,9 @@ class ABLModule {
 			return(initCalled);
 		}
 
+		// FNV-1a of this instance's static variables (array statics by their bytes, scalars by their value), folded onto h.
+		unsigned long long digestStatics (unsigned long long h);
+
 		char* getFileName (void);
 
 		char* getName (void) {

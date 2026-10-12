@@ -41,8 +41,14 @@
 #include "objmgr.h"
 #include "mover.h"
 #include "warrior.h"
+#include "bldng.h"
+#include "turret.h"
+#include "weather.h"
+#include "../mclib/abl.h"
+#include "../mclib/mathfunc.h"
 #include "../mclib/appear.h"
 #include "../mclib/sim_identity.h"
+#include "../mclib/appearance_rng.h"
 #include "Gates/gate.h"
 
 #include <cstdio>
@@ -148,6 +154,81 @@ std::vector<MoverRecord>& scratch() {
 	return s;
 }
 
+using mc2_sim_identity::ObjectRecord;
+using mc2_sim_identity::AblRecord;
+
+// Every building and turret: the state the simulation steps outside the mover
+// list (capture, damage, a turret's aim and target). Same discipline as the
+// movers: partId keys, no pointer values, read-only accessors.
+void collectObjects(std::vector<ObjectRecord>& out) {
+	out.clear();
+	if (!ObjectManager)
+		return;
+	const long nb = ObjectManager->getNumBuildings();
+	const long nt = ObjectManager->getNumTurrets();
+	out.reserve((size_t)((nb > 0 ? nb : 0) + (nt > 0 ? nt : 0)));
+	for (long i = 0; i < nb; ++i) {
+		BuildingPtr b = ObjectManager->getBuilding(i);
+		if (!b)
+			continue;
+		ObjectRecord r;
+		r.id        = (int32_t)b->getPartId();
+		r.kind      = 1;
+		r.team      = (int32_t)b->getTeamId();
+		r.commander = (int32_t)b->getCommanderId();
+		r.status    = (int32_t)b->getStatus();
+		r.damage    = b->getDamage();
+		out.push_back(r);
+	}
+	for (long i = 0; i < nt; ++i) {
+		TurretPtr t = ObjectManager->getTurret(i);
+		if (!t)
+			continue;
+		ObjectRecord r;
+		r.id     = (int32_t)t->getPartId();
+		r.kind   = 2;
+		r.team   = (int32_t)t->getTeamId();
+		r.status = (int32_t)t->getStatus();
+		r.damage = t->getDamage();
+		r.rot    = t->turretRotation;
+		r.target = (int32_t)t->targetWID;
+		out.push_back(r);
+	}
+}
+
+// Every ABL module instance in registry order: FSM state, init flag and the
+// static variables a brain keeps between calls.
+void collectAbl(std::vector<AblRecord>& out) {
+	out.clear();
+	const long n = ABLi_getNumModuleInstances();
+	if (n <= 0)
+		return;
+	out.reserve((size_t)n);
+	for (long i = 0; i < n; ++i) {
+		ABLModulePtr m = ABLi_getModuleInstance(i);
+		if (!m)
+			continue;
+		AblRecord r;
+		r.id         = (int32_t)m->getId();
+		r.handle     = (int32_t)m->getHandle();
+		r.state      = (int32_t)m->getStateHandle();
+		r.prevState  = (int32_t)m->getPrevStateHandle();
+		r.initCalled = m->getInitCalled() ? 1 : 0;
+		r.statics    = m->digestStatics(mc2_sim_identity::kFnvOffset);
+		out.push_back(r);
+	}
+}
+
+std::vector<ObjectRecord>& objectScratch() {
+	static std::vector<ObjectRecord> s;
+	return s;
+}
+
+std::vector<AblRecord>& ablScratch() {
+	static std::vector<AblRecord> s;
+	return s;
+}
+
 } // namespace
 
 //---------------------------------------------------------------------------
@@ -244,10 +325,23 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	mc2_sim_identity::toHex16(visual, hv);
 	mc2_sim_identity::toHex16(strict, hs);
 
+	// Buildings, turrets, ABL state and the per-stream draw counts ride on the
+	// same line as their own fields, so the first differing line still IS the
+	// first divergent sim frame and the field that moved names the population.
+	std::vector<ObjectRecord>& objs = objectScratch();
+	collectObjects(objs);
+	std::vector<AblRecord>& abl = ablScratch();
+	collectAbl(abl);
+	char ho[17], ha[17];
+	mc2_sim_identity::toHex16(mc2_sim_identity::digestObjects(objs.data(), objs.size()), ho);
+	mc2_sim_identity::toHex16(mc2_sim_identity::digestAbl(abl.data(), abl.size()), ha);
+
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
-	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={}\n",
-	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs));
+	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d}\n",
+	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
+	       mc2::fmt::as_i32((int)objs.size()), mc2::fmt::safe(ho), mc2::fmt::as_i32((int)abl.size()), mc2::fmt::safe(ha),
+	       mc2::fmt::as_u32((uint32_t)SimRandomDraws()), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
 
 	if (simIdentityTraceDetail()) {
 		for (size_t i = 0; i < recs.size(); ++i) {

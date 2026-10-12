@@ -199,3 +199,52 @@ TEST_CASE("sim_identity: toHex16 is fixed-width lowercase hex") {
     CHECK(std::string(h) == "deadbeefcafef00d");
     CHECK(std::strlen(h) == 16);
 }
+
+// Schema 2: buildings/turrets and ABL instances carry their own digests on the
+// same line, so a divergence names the population that moved first.
+TEST_CASE("sim_identity: object digest is order-independent and count/field sensitive") {
+    using mc2_sim_identity::ObjectRecord;
+    using mc2_sim_identity::digestObjects;
+    auto obj = [](int id, int kind, float dmg, int team) {
+        ObjectRecord r; r.id = id; r.kind = kind; r.damage = dmg; r.team = team; return r;
+    };
+    std::vector<ObjectRecord> a{obj(1, 1, 0.0f, 0), obj(2, 2, 5.0f, 1), obj(3, 1, 1.0f, 2)};
+    std::vector<ObjectRecord> b{a[2], a[0], a[1]};
+    CHECK(digestObjects(a.data(), a.size()) == digestObjects(b.data(), b.size()));
+    std::vector<ObjectRecord> fewer{a[0], a[1]};
+    CHECK(digestObjects(a.data(), a.size()) != digestObjects(fewer.data(), fewer.size()));
+    std::vector<ObjectRecord> captured = a;
+    captured[0].commander = 1;
+    CHECK(digestObjects(a.data(), a.size()) != digestObjects(captured.data(), captured.size()));
+    std::vector<ObjectRecord> aimed = a;
+    aimed[1].target = 77;
+    CHECK(digestObjects(a.data(), a.size()) != digestObjects(aimed.data(), aimed.size()));
+    std::vector<ObjectRecord> noise = a;
+    noise[2].damage += 1.0f / 4096.0f;   // under the quantum: graded alike
+    CHECK(digestObjects(a.data(), a.size()) == digestObjects(noise.data(), noise.size()));
+    std::vector<ObjectRecord> none;
+    CHECK(digestObjects(none.data(), 0) != digestObjects(fewer.data(), fewer.size()));
+}
+
+TEST_CASE("sim_identity: ABL digest keeps registry order and sees state, init and statics") {
+    using mc2_sim_identity::AblRecord;
+    using mc2_sim_identity::digestAbl;
+    using mc2_sim_identity::fnvBytes;
+    using mc2_sim_identity::kFnvOffset;
+    AblRecord x; x.id = 0; x.handle = 3; x.state = 1; x.statics = fnvBytes(kFnvOffset, "abc", 3);
+    AblRecord y; y.id = 1; y.handle = 3; y.state = 2; y.statics = fnvBytes(kFnvOffset, "abd", 3);
+    std::vector<AblRecord> a{x, y};
+    std::vector<AblRecord> swapped{y, x};
+    CHECK(digestAbl(a.data(), a.size()) != digestAbl(swapped.data(), swapped.size()));
+    std::vector<AblRecord> moved = a;
+    moved[0].state = 4;
+    CHECK(digestAbl(a.data(), a.size()) != digestAbl(moved.data(), moved.size()));
+    std::vector<AblRecord> inited = a;
+    inited[1].initCalled = 1;
+    CHECK(digestAbl(a.data(), a.size()) != digestAbl(inited.data(), inited.size()));
+    std::vector<AblRecord> other = a;
+    other[1].statics = x.statics;
+    CHECK(digestAbl(a.data(), a.size()) != digestAbl(other.data(), other.size()));
+    CHECK(fnvBytes(kFnvOffset, "abc", 3) == fnvBytes(kFnvOffset, "abc", 3));
+    CHECK(fnvBytes(kFnvOffset, "abc", 3) != fnvBytes(kFnvOffset, "abc", 2));
+}
