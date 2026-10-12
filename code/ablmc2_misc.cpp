@@ -1,7 +1,6 @@
 // ABL native bindings: unit status, repair, messaging, path queries, pilot state and debug bindings.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
-#include "abl_out_params.h"
 
 
 void execIsGateOpen (void) {
@@ -18,85 +17,6 @@ void execIsGateOpen (void) {
 	if (obj && (obj->getObjectClass() == GATE))	{
 		ABLi_pokeBoolean(((GatePtr)object)->opened);
 #endif
-}
-
-void execGetRelativePositionToPoint (void) {
-
-	//	Get Relative Position To Point function:
-	//		Calcs a position relative to the given point
-	//		PARAMS:	real[3]				point
-	//				real				angle (-180 <= angle <= 180.0, + is left, - is right)
-	//				real				distance (in meters)
-	//				integer				flags
-	//				real[3]				new point
-	//		RETURN: NONE
-
-	float* pos = ABLi_popRealPtr();
-	float angle = ABLi_popReal();
-	float distance = ABLi_popReal();
-	long flags = ABLi_popInteger();
-	float* relPos = ABLi_popRealPtr();
-
-	// H2: guard sibling of execGetRelativePositionToObject.
-	// pos is READ (curPos.x = pos[0..2]); relPos is WRITE (relPos[0..2] = newPos).
-	// Both crash on null. Guard both independently so each gets a distinct log line.
-	if (s_ablArgGuard && !pos) {
-		abl_arg_guard_log("execGetRelativePositionToPoint", "pos");
-		return;
-	}
-	if (s_ablArgGuard && !relPos) {
-		abl_arg_guard_log("execGetRelativePositionToPoint", "relPos");
-		return;
-	}
-
-	Stuff::Vector3D curPos;
-	curPos.x = pos[0];
-	curPos.y = pos[1];
-	curPos.z = 0;
-	Stuff::Vector3D newPos;
-	newPos = relativePositionToPoint(curPos, angle, distance, flags);
-	relPos[0] = newPos.x;
-	relPos[1] = newPos.y;
-	relPos[2] = newPos.z;
-}
-
-void execGetRelativePositionToObject (void) {
-
-	//	Get Relative Position To Object function:
-	//		Calcs a position relative to the given object
-	//		PARAMS:	integer				object id
-	//				real				angle (-180 <= angle <= 180.0, + is left, - is right)
-	//				real				distance (in meters)
-	//				integer				flags
-	//				real[3]				new point
-	//		RETURN: NONE
-
-	long objectId = ABLi_popInteger();
-	float angle = ABLi_popReal();
-	float distance = ABLi_popReal();
-	long flags = ABLi_popInteger();
-	float* relPos = ABLi_popRealPtr();
-
-	// H1: guard the proven crash site (ablmc2.cpp ~4397 null-write).
-	// relPos is NULL when the calling ABL script passes a wrong-type or missing
-	// argument. The write below faults without this check.
-	// Gate MC2_ABL_ARG_GUARD=1 enables the guard; gate OFF = byte-identical
-	// to previous behaviour (crash on bad script — same as before this patch).
-	if (s_ablArgGuard && !relPos) {
-		abl_arg_guard_log("execGetRelativePositionToObject", "relPos");
-		return;
-	}
-
-	// Only a mover has a position relative to itself: any other object (or an unknown id) answers the zero vector, so the
-	// script's real[3] never keeps a stale or uninitialised value.
-	GameObjectPtr object = getObject(objectId);
-	if (object && object->isMover()) {
-		Stuff::Vector3D newPos;
-		newPos = ((MoverPtr)object)->relativePosition(angle, distance, flags);
-		abl::writeVec3(std::span<float, 3>(relPos, 3), newPos.x, newPos.y, newPos.z);
-	} else {
-		abl::writeZeroVec3(std::span<float, 3>(relPos, 3));
-	}
 }
 
 void execGetUnitStatus (void) {

@@ -17,6 +17,19 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "builtin",
+    "argument",
+    "module",
+    "line"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "module",
     "line",
     "capacity",

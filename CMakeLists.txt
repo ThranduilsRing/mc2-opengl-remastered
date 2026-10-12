@@ -473,6 +473,7 @@ set(SOURCES
     "code/ablmc2_misc.cpp"
     "code/ablmc2_objects.cpp"
     "code/ablmc2_orders.cpp"
+    "code/ablmc2_position.cpp"
     "code/ablmc2_queries.cpp"
     "code/ablmc2_roster.cpp"
     "code/ablmc2_repro.cpp"
