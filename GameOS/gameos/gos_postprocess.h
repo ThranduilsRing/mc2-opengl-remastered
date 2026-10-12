@@ -359,8 +359,8 @@ public:
     // cannot resolve a 16-sample stochastic kernel with per-pixel hash rotation.
     // That is why SSAO-RETUNE-1 found that any aoRadius large enough to produce
     // visible occlusion also produced visible speckle on flat, unoccluded faces.
-    // Default ON whenever SSAO itself is on; MC2_SSAO_BLUR=0 restores the old
-    // no-denoise chain so the two can be A/B'd against one exe.
+    // Default ON whenever SSAO itself is on; the options window checkbox restores
+    // the old no-denoise chain so the two can be A/B'd against one exe.
     bool  ssaoBlurEnabled_;
     float aoBlurDepthSigma_;   // relative depth tolerance for edge-stopping
     void runSSAO();

@@ -10,6 +10,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "genactor_internal.h"
+#include "appearance_rng.h"
 #include "mc2fmt.h"
 
 
@@ -422,7 +423,7 @@ void GenericAppearance::setGesture (unsigned long gestureId)
 	
 	if (appearType->isRandom(genAnimationState))
 	{
-		currentFrame = RandomNumber(appearType->getNumFrames(genAnimationState)-1);
+		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(genAnimationState)-1);
 	}
 	
 	isLooping = appearType->isLooped(genAnimationState);
