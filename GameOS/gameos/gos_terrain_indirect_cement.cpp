@@ -365,6 +365,14 @@ static const float kConcreteLumHi      = 1.32f;
 static const float kConcreteMarkDelta  = 60.f;   // L - bandL beyond this = bright paint
 static const float kConcreteMarkFrac   = 0.02f;  // >2% such texels = cell carries markings
 
+// CEMENT-INTRACELL-1 road-art thresholds. MEASURED (mc2_24/23/05/03/01/10 atlas
+// dumps 2026-07-28): a solid cement cell carries a BAKED ASPHALT ROAD TILESET
+// as dark texels 65 luma below its concrete background (background L 144.7..149.5,
+// road art L 66.2..86.2, hard-edged), so a cell is classified against its own
+// [P60,P95] background, not the band mean the road drags down.
+static const float kRoadArtDarkDelta = 40.f;   // bgL - L beyond this = asphalt
+static const float kRoadArtFrac      = 0.05f;  // >5% such texels = cell carries road art
+
 // ---------------------------------------------------------------------------
 // CEMENT-ATLAS-CELL-2: the CONCRETE-FAMILY classifier, shared by both arms.
 //
