@@ -2413,30 +2413,6 @@
    "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
   },
   {
-   "confidence": "HIGH",
-   "feature": "u_cliffPom",
-   "gate": "MC2_TERRAIN_CLIFF_POM",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "useTriplanarCliff",
-   "gate": "MC2_TERRAIN_CLIFF_TRIPLANAR",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
    "confidence": "MEDIUM",
    "feature": "detailNormalStrength",
    "gate": "MC2_TERRAIN_DETAIL_ANTITILE",

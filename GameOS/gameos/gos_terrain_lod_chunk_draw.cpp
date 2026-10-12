@@ -834,26 +834,6 @@ static void uploadTerrainTuning() {
             if (s_locUseRockSlopeBias >= 0) glUniform1i(s_locUseRockSlopeBias, kTglcSlopeBias ? 1 : 0);
             if (s_locRockSlopeBiasStr >= 0) glUniform1f(s_locRockSlopeBiasStr, kTglcSlopeBiasStr);
         }
-        // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: env gate MC2_TERRAIN_CLIFF_TRIPLANAR,
-        // default OFF -> uploads 0 -> frag block no-op (byte-identical). Strength via
-        // MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH (default 1.0).
-        // REDUNDANT-PASS-HUNT-1: env resolved once (kTglcCliffTriplanar/Str).
-        {
-            if (s_locUseTriplanarCliff >= 0) glUniform1i(s_locUseTriplanarCliff, kTglcCliffTriplanar ? 1 : 0);
-            if (s_locCliffTriplanarStr >= 0) glUniform1f(s_locCliffTriplanarStr, kTglcCliffTriplanarStr);
-            // TERRAIN-CLIFF-HEIGHT-NORMAL-1: shading normal from cliff displacement
-            // height gradient (default 2.0). Only consumed inside the frag cliff
-            // block (useTriplanarCliff!=0); gate-OFF stays byte-identical.
-            if (s_locCliffHeightNormalStr >= 0) glUniform1f(s_locCliffHeightNormalStr, kTglcCliffHeightNormalStr);
-            // TERRAIN-CLIFF-POM-1: gate MC2_TERRAIN_CLIFF_POM (default OFF -> .x=0
-            // -> frag POM march skipped, triplanar block == TRIPLANAR-1 exactly ->
-            // byte-identical). Depth/steps knobs resolved once (kTglcCliffPom*).
-            if (s_locCliffPom >= 0)
-                glUniform4f(s_locCliffPom, kTglcCliffPom ? 1.0f : 0.0f,
-                            kTglcCliffPomDepth, kTglcCliffPomSteps, 0.0f);
-            // TERRAIN-CLIFF-DEBUG: bounded debug-viz (default 0 -> byte-identical).
-            if (s_locCliffDebug >= 0) glUniform1i(s_locCliffDebug, kTglcCliffDebug);
-        }
         // TERRAIN-MACRO-VARIATION-1: env gate MC2_TERRAIN_MACRO_VARIATION, default
         // OFF -> uploads 0 -> frag block skipped (byte-identical). Strength via
         // MC2_TERRAIN_MACRO_VARIATION_STRENGTH (default 1.0).

@@ -1081,20 +1081,10 @@ P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_TRACE
 L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false) | verified),
 L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DEBUG
-P("MC2_TERRAIN_CLIFF_DEBUG", Int, 0, "terrain", "", "TERRAIN-CLIFF-DEBUG: bounded debug-viz for the LOD-chunk terrain cliff material path (u_cliffDebug in terrain_lod_chunk.frag).", passthrough | registry(Trace, "MC2_DIAG_TERRAIN_CLIFF_DEBUG", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
 L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
 P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH
-P("MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", Float, 2.0, "terrain", "", "TERRAIN-CLIFF-HEIGHT-NORMAL-1 knob (float, default 2.0): derives the cliff SHADING normal from the HEIGHT GRADIENT of the cooked cliff displacement...", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_POM
-L(Lead0, "MC2_TERRAIN_CLIFF_POM", Bool, false, "terrain", "", "TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_POM", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_POM_DEPTH
-P("MC2_TERRAIN_CLIFF_POM_DEPTH", Float, 12.0, "terrain", "", "TERRAIN-CLIFF-POM-1 knob: parallax depth = world-unit rock height scale relative to the CLIFF tiling (ts=256 wu/repeat).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_POM_DEPTH", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_POM_STEPS
-P("MC2_TERRAIN_CLIFF_POM_STEPS", Float, 24.0, "terrain", "", "TERRAIN-CLIFF-POM-1 knob: max POM march layers per plane, clamped 8..32 (default 24; compile-constant loop cap 32).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_POM_STEPS", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,
@@ -1106,10 +1096,6 @@ L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verif
 // array is the always-loaded legacy terrain normal array, so this needs no
 // albedo path. Default OFF -> uploads useTriplanarCliff=0 -> frag block no-op
 // (byte-identical).
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_TRIPLANAR
-L(Lead0, "MC2_TERRAIN_CLIFF_TRIPLANAR", Bool, false, "terrain", "", "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: on steep terrain cells (macro slope, cliffBlend=smoothstep(0.85,0.55,|macroNz|)), project the MAT_LAYER_MARBLE_CLIFF...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_TRIPLANAR", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH
-P("MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", Float, 1.0, "terrain", "", "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 knob: triplanar rock-normal tilt strength (float, default 1.0).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // GATE-REGISTRATION-BACKFILL-1 (terrain-V2 catch-up): register terrain-V2
 // arc gates flagged UNREGISTERED by check-new-gates / check-env-registry.
 // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA control-map override replacing

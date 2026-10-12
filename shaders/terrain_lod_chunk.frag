@@ -420,35 +420,20 @@ uniform float u_terrainAmbientDayGate; // TERRAIN-AMBIENT-FLOOR-2: daylight leve
 uniform float terrainNormalsFromHeightStrength;// macro-slope strength scalar (default 1.0)
 uniform int   useRockSlopeBias;                 // TERRAIN-SLOPE-BIAS-VISUAL-1: 0=off (byte-identical)
 uniform float rockSlopeBiasStrength;            // rock-weight bias on steep slopes (default 1.0)
-uniform int   useTriplanarCliff;                // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: 0=off (byte-identical)
-uniform float cliffTriplanarStrength;           // triplanar rock normal/relief strength (default 1.0)
-// TERRAIN-CLIFF-HEIGHT-NORMAL-1 (gate MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH,
-// EnvVarKind::Trace, default 2.0): the marble_cliff RGB normal (mat5 .rgb) is a
-// smooth marble microsurface — it barely tilts N, so the RICH cooked cliff
-// DISPLACEMENT (mat5 layer-5 ALPHA, high-contrast rock relief) never catches
-// light and the lit cliff reads FLAT. This derives a SHADING normal from the
-// HEIGHT GRADIENT of that displacement (triplanar, forward-difference), and
-// mixes triTilt strongly toward it so the real rock structure lights up. Only
-// consumed inside the useTriplanarCliff block; strength 0.0 -> pure rgb-normal
-// behaviour == TRIPLANAR-1 (the gate-OFF byte-identical path is useTriplanarCliff==0).
-uniform float cliffHeightNormalStrength;         // 0=rgb-normal only; default 2.0
-// TERRAIN-CLIFF-DEBUG (gate MC2_TERRAIN_CLIFF_DEBUG, EnvVarKind::Trace): bounded
-// debug-viz to confirm the triplanar/POM cliff material path executes+contributes
-// on a given cliff. 0 = OFF (default, byte-identical). Non-zero writes directly to
-// the final color and returns early:
-//   1 = cliffBlend grayscale (steep-face test firing? black=0 .. white=1)
-//   2 = branch-taken coverage (green = useTriplanarCliff block entered, else red)
-//   3 = POM UV-offset magnitude as color (parallax march producing non-zero offset?)
-//   4 = sampled mat5 (MAT_LAYER_MARBLE_CLIFF) normal-array ALPHA grayscale (cooked
-//       displacement actually bound/sampled? black/uniform = blank/default)
-uniform int   u_cliffDebug;
-// TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces
-// (gate MC2_TERRAIN_CLIFF_POM). .x=gate(0/1), .y=depth (world-unit height scale
-// relative to the CLIFF tiling ts=256), .z=max march steps. Reuses `cameraPos`
-// for the world-space view vector (same MC2 world swizzle as the legacy POM).
-// Gated on useTriplanarCliff too (shares the triplanar sample setup); .x=0 ->
-// no march -> the triplanar block behaves exactly as TRIPLANAR-1 (byte-identical).
-uniform vec4  u_cliffPom;                        // .x=gate, .y=depth(wu), .z=maxSteps, .w=unused
+// TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: triplanar rock normal/relief strength on steep cells.
+const float cliffTriplanarStrength = 1.0;
+// TERRAIN-CLIFF-HEIGHT-NORMAL-1: the marble_cliff RGB normal (mat5 .rgb) is a
+// smooth marble microsurface that barely tilts N, so the rich cooked cliff
+// DISPLACEMENT (mat5 layer-5 ALPHA) never catches light and the lit cliff reads
+// flat. A shading normal is derived from the height gradient of that
+// displacement (triplanar, forward difference) and triTilt is mixed strongly
+// toward it so the real rock structure lights up.
+const float cliffHeightNormalStrength = 2.0;
+// TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces. Depth is a world-unit height scale
+// relative to the CLIFF tiling ts=256; the march reuses `cameraPos` for the world-space view vector (same MC2 world
+// swizzle as the chunk POM) and shares the triplanar sample setup.
+const float kCliffPomDepth = 12.0;
+const float kCliffPomSteps = 24.0;
 uniform vec4  pomParams;                        // .x=scale(0=off), .y=minLayers, .z=maxLayers
 // TERRAIN-CHUNK-POM-1: real view-vector POM. The march in chunkDetailNormal uses
 // the REAL per-fragment tangent-space view vector, distance-faded over
@@ -576,14 +561,6 @@ vec2 chunkParallaxView(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
 // TERRAIN-CHUNK-POM-1 debug: |pomOff| of this fragment, written by
 // chunkDetailNormal, consumed by the u_diag&4096 heat viz in main().
 vec2 g_pomOffDbg = vec2(0.0);
-
-// TERRAIN-CLIFF-DEBUG: set inside the useTriplanarCliff cliff block when it is
-// actually entered/executed (branch-taken), and captures the cliff POM UV-offset
-// magnitude + the sampled mat5 (MARBLE_CLIFF) displacement alpha for the debug
-// early-return in main(). All default-inert (u_cliffDebug!=0 gated).
-float g_cliffBranchTaken = 0.0;   // 1.0 iff the cliff triplanar block ran
-float g_cliffPomOffMag   = 0.0;   // max per-plane |POM UV offset| this fragment
-float g_cliffMat5Alpha   = 0.0;   // triplanar-blended MARBLE_CLIFF disp alpha
 
 // Material weights + snow from the colormap colour (computed once, shared by the
 // detail normal AND the colour tint). w = rock/grass/dirt/concrete (sums to 1).
@@ -1515,12 +1492,10 @@ void main() {
     // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: on steep cells, project the ROCK normal
     // map from WORLD axes (triplanar) instead of the top-down per-tile UV — kills
     // the vertical UV stretch on cliff faces and gives the wall real rock relief.
-    // Uses MAT_LAYER_MARBLE_CLIFF (mat5_normal.tga, marble_cliff_01). Default OFF
-    // (useTriplanarCliff==0) -> byte-identical.
-    if (useTriplanarCliff != 0) {
+    // Uses MAT_LAYER_MARBLE_CLIFF (mat5_normal.tga, marble_cliff_01).
+    {
         float cb = smoothstep(0.85, 0.55, abs(macroNz));
         if (cb > 0.01) {
-            g_cliffBranchTaken = 1.0;   // TERRAIN-CLIFF-DEBUG: block entered
             const float ts = 256.0;                 // world units per rock repeat
             vec3 wp = v_worldPos;
             // recompute the macro normal here (baseN is scoped to the normal block).
@@ -1537,14 +1512,14 @@ void main() {
             // eye; MC2 world = (-x, z, y) -- SAME swizzle the legacy chunk POM and
             // water-reflection fix use (this file, ~L473/L991). Project Vw onto each
             // plane's 2D basis and march that plane's heightfield for a UV offset.
-            if (u_cliffPom.x > 0.5) {
+            {
                 vec3  camW = mc2ToRender(cameraPos.xyz);
                 vec3  Vw   = normalize(camW - wp);          // frag -> eye, world
                 // depth is a world-unit height expressed relative to the CLIFF
                 // tiling (ts); the plane view offset is divided by the out-of-plane
                 // view component so grazing angles sweep farther (true parallax).
-                float depth = u_cliffPom.y / ts;
-                float steps = u_cliffPom.z;
+                float depth = kCliffPomDepth / ts;
+                float steps = kCliffPomSteps;
                 // per-plane: 2D view = the two in-plane components; divide by the
                 // out-of-plane component magnitude (clamped) for angle scaling.
                 vec2 vpX = Vw.yz / max(abs(Vw.x), 0.30);
@@ -1553,13 +1528,9 @@ void main() {
                 // weight the march by this plane's contribution so we don't pay for
                 // near-zero planes (also keeps offsets small where the plane barely
                 // shows). Blend offset toward base UV by wn.
-                vec2 uvX0 = uvX, uvY0 = uvY, uvZ0 = uvZ;
                 uvX = mix(uvX, cliffParallaxPlane(uvX, vpX, depth, steps), clamp(wn.x * 1.5, 0.0, 1.0));
                 uvY = mix(uvY, cliffParallaxPlane(uvY, vpY, depth, steps), clamp(wn.y * 1.5, 0.0, 1.0));
                 uvZ = mix(uvZ, cliffParallaxPlane(uvZ, vpZ, depth, steps), clamp(wn.z * 1.5, 0.0, 1.0));
-                // TERRAIN-CLIFF-DEBUG: max per-plane |POM UV offset| (post-blend).
-                g_cliffPomOffMag = max(max(length(uvX - uvX0), length(uvY - uvY0)),
-                                       length(uvZ - uvZ0));
             }
 
             // tangent-space rock normals sampled in each world plane (at the
@@ -1583,8 +1554,8 @@ void main() {
             // tangent-space normal n=normalize(vec3(-dHdu*s,-dHdv*s,1)); reorient into
             // world space with the SAME per-plane axis remap used for triTilt, weight
             // by wn. textureLod(...,0): explicit LOD, valid in this non-uniform branch
-            // (UB2 — no implicit derivatives). Skipped when strength<=0 (== TRIPLANAR-1).
-            if (cliffHeightNormalStrength > 0.0) {
+            // (UB2 — no implicit derivatives).
+            {
                 // step ~one texel of the layer-5 alpha (mat5 disp is 4k over ts wu);
                 // constant in world/UV so the gradient is scale-consistent per plane.
                 const float hEps = 1.0 / 2048.0;    // UV-space finite-difference step
@@ -1629,13 +1600,12 @@ void main() {
             float dispY = textureLod(matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
             float dispZ = textureLod(matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
             float disp  = dispX * wn.x + dispY * wn.y + dispZ * wn.z;
-            g_cliffMat5Alpha = disp;   // TERRAIN-CLIFF-DEBUG: cooked mat5 disp alpha
             baseColor *= mix(1.0, 0.62 + 0.38 * disp, cb);
 
             // With POM on, also re-project the cliff ALBEDO at the parallax UVs so
             // the rock colour occludes with depth (the albedo block above sampled
             // at un-parallaxed UVs). Only when the material-albedo path is live.
-            if (u_cliffPom.x > 0.5 && u_useMatAlbedo != 0) {
+            if (u_useMatAlbedo != 0) {
                 vec3 cliffAlbP =
                       textureLod(u_matAlbedoArray, vec3(uvX * (ts / 256.0), float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * wn.x
                     + textureLod(u_matAlbedoArray, vec3(uvY * (ts / 256.0), float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * wn.y
@@ -1644,43 +1614,6 @@ void main() {
                                 cb * clamp(u_matAlbedoStrength, 0.0, 1.0));
             }
         }
-    }
-
-    // TERRAIN-CLIFF-DEBUG (gate MC2_TERRAIN_CLIFF_DEBUG): bounded debug-viz that
-    // writes DIRECTLY to the final color and returns early so nothing below can
-    // overwrite it. Placed AFTER the useTriplanarCliff block so the branch-taken
-    // flag + POM offset + mat5 disp are already captured. u_cliffDebug==0 (default)
-    // -> this whole block is skipped -> byte-identical.
-    if (u_cliffDebug != 0) {
-        vec3 dbg;
-        if (u_cliffDebug == 1) {
-            // cliffBlend grayscale (steep-face test). Recompute from the MACRO
-            // slope exactly as the cliff blocks do (smoothstep(0.85,0.55,|macroNz|)).
-            float cbDbg = smoothstep(0.85, 0.55, abs(macroNz));
-            dbg = vec3(cbDbg);
-        } else if (u_cliffDebug == 2) {
-            // Branch-taken coverage: green where the cliff triplanar block ran,
-            // red otherwise.
-            dbg = (g_cliffBranchTaken > 0.5) ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-        } else if (u_cliffDebug == 3) {
-            // POM UV-offset magnitude as color (blue=0 .. red=large). Offset is a
-            // UV-space distance (mat UVs are worldXY/ts); scale for visibility.
-            float m = clamp(g_cliffPomOffMag * 8.0, 0.0, 1.0);
-            dbg = vec3(m, m * 0.25, 1.0 - m);
-        } else { // u_cliffDebug == 4
-            // Sampled mat5 (MARBLE_CLIFF) displacement alpha (grayscale). Use the
-            // triplanar-blended value captured in the block; if the block did not
-            // run for this fragment, sample the XY plane directly so the texture
-            // binding is still proven.
-            float a = (g_cliffBranchTaken > 0.5)
-                    ? g_cliffMat5Alpha
-                    : textureLod(matNormalArray,
-                                 vec3(v_worldPos.xy / 256.0, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
-            dbg = vec3(a);
-        }
-        fragColor = vec4(dbg, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
-        return;
     }
 
     // World-space two-octave break-up noise (non-snow).

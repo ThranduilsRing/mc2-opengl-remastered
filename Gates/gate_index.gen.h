@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1035;
+inline constexpr std::size_t kGateCount = 1028;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -760,16 +760,9 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_CEMENT_DIAG_CONNECT", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_CLIFF_DEBUG", Kind::Int, Rule::Prefix, {}},
     {"MC2_TERRAIN_CLIFF_DISPLACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_CLIFF_POM", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_CLIFF_POM_DEPTH", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_CLIFF_POM_STEPS", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_CLIFF_TRIPLANAR", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_CONTROLMAP", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CONTROLMAP_ALBEDO", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH", Kind::Float, Rule::Prefix, {}},

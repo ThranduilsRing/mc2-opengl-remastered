@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1032,
+ "count": 1025,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -21236,32 +21236,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_TERRAIN_CLIFF_DEBUG",
-   "kind": "Int",
-   "default": 0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-DEBUG: bounded debug-viz for the LOD-chunk terrain cliff material path (u_cliffDebug in terrain_lod_chunk.frag).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:151",
-     "idiom": "Num(atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_DIAG_TERRAIN_CLIFF_DEBUG",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_TERRAIN_CLIFF_DISPLACE",
    "kind": "Bool",
    "default": false,
@@ -21314,110 +21288,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH",
-   "kind": "Float",
-   "default": 2.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-HEIGHT-NORMAL-1 knob (float, default 2.0): derives the cliff SHADING normal from the HEIGHT GRADIENT of the cooked cliff displacement (MAT_LAYER_MARBLE_CLIFF layer-5 normal-array ALPHA), triplanar forward-difference, and mixes triTilt strongly toward it so the rich rock relief catches light (the smooth marble RGB normal left lit cliffs flat).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:136",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 2,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_CLIFF_POM",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:142",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_CLIFF_POM",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_CLIFF_POM_DEPTH",
-   "kind": "Float",
-   "default": 12.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-POM-1 knob: parallax depth = world-unit rock height scale relative to the CLIFF tiling (ts=256 wu/repeat).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:143",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 12,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_TERRAIN_CLIFF_POM_DEPTH",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_CLIFF_POM_STEPS",
-   "kind": "Float",
-   "default": 24.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-POM-1 knob: max POM march layers per plane, clamped 8..32 (default 24; compile-constant loop cap 32).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:145",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 24,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_TERRAIN_CLIFF_POM_STEPS",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_TERRAIN_CLIFF_SHADOW_FLOOR",
    "kind": "Bool",
    "default": false,
@@ -21449,58 +21319,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_CLIFF_TRIPLANAR",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: on steep terrain cells (macro slope, cliffBlend=smoothstep(0.85,0.55,|macroNz|)), project the MAT_LAYER_MARBLE_CLIFF (layer 5) ROCK NORMAL from WORLD axes (triplanar, ts=256 wu/repeat) into N and darken by its displacement relief (matNormalArray layer5 .a), instead of leaving the near-vertical face shaded by the stretched top-down terrain splat -- so cliff faces read as real rock.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:129",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_CLIFF_TRIPLANAR",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 knob: triplanar rock-normal tilt strength (float, default 1.0).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:130",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_TERRAIN_CLIFF_TRIPLANAR_STRENGTH",
    "retireVerdict": ""
   },
   {

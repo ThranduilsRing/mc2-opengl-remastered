@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1035
-registry_entry_count: 258
-verified_count: 1028
+gate_count: 1028
+registry_entry_count: 251
+verified_count: 1021
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5810,15 +5810,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_CLIFF_DEBUG
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-CLIFF-DEBUG: bounded debug-viz for the LOD-chunk terrain cliff material path (u_cliffDebug in terrain_lod_chunk.frag)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_DIAG_TERRAIN_CLIFF_DEBUG, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CLIFF_DISPLACE
     kind: Bool
     default: false
@@ -5837,45 +5828,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_MAXTESS, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH
-    kind: Float
-    default: 2
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-CLIFF-HEIGHT-NORMAL-1 knob (float, default 2.0): derives the cliff SHADING normal from the HEIGHT GRADIENT of the cooked cliff displacement..."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_CLIFF_POM
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_CLIFF_POM, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_CLIFF_POM_DEPTH
-    kind: Float
-    default: 12
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-CLIFF-POM-1 knob: parallax depth = world-unit rock height scale relative to the CLIFF tiling (ts=256 wu/repeat)."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_POM_DEPTH, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_CLIFF_POM_STEPS
-    kind: Float
-    default: 24
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-CLIFF-POM-1 knob: max POM march layers per plane, clamped 8..32 (default 24; compile-constant loop cap 32)."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_POM_STEPS, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CLIFF_SHADOW_FLOOR
     kind: Bool
     default: false
@@ -5883,25 +5835,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_CLIFF_TRIPLANAR
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: on steep terrain cells (macro slope, cliffBlend=smoothstep(0.85,0.55,|macroNz|)), project the MAT_LAYER_MARBLE_CLIFF..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_CLIFF_TRIPLANAR, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 knob: triplanar rock-normal tilt strength (float, default 1.0)."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_TRIPLANAR_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CONTROLMAP
     kind: Bool
     default: false
