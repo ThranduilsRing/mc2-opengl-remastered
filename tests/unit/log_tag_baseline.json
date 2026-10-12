@@ -8739,28 +8739,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOW_STATIC_BLDG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "recipes_in",
-    "types",
-    "inst",
-    "draws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_BLDG_REBAKE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "recipeIndex"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_STATIC_BLDG_REBAKE_TEST",
    "ver": 1,
    "stream": "stderr",
@@ -8768,25 +8746,6 @@
     "event",
     "frame",
     "buildingIndex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_BLDG_TXM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "prepass"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_BLDG_TXM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "prepass",
-    "instances"
    ],
    "count": 1
   },
