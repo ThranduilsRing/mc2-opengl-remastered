@@ -470,7 +470,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "  \"features\": {\n";
     s << "    \"MC2_DEBUG_STATE_DUMP\": true,\n";
     s << "    \"MC2_VIEW_UNIFORMS\": "; b(s, mc2::gate::get<"MC2_VIEW_UNIFORMS">()); s << ",\n";
-    s << "    \"MC2_SNAPSHOT_STATIC_PROP_BUILD\": "; b(s, mc2::gate::get<"MC2_SNAPSHOT_STATIC_PROP_BUILD">()); s << ",\n";
+    s << "    \"MC2_SNAPSHOT_STATIC_PROP_BUILD\": "; s << "true,\n";
     s << "    \"MC2_MATERIAL_GPU\": "; b(s, mc2::gate::get<"MC2_MATERIAL_GPU">()); s << ",\n";
     s << "    \"MC2_MATERIAL_GPU_SAMPLE\": "; b(s, mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">()); s << ",\n";
     s << "    \"MC2_STATIC_PROP_IBL_SH\": "; b(s, mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">()); s << ",\n";

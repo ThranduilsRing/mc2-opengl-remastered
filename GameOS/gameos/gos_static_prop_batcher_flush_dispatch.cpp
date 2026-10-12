@@ -42,7 +42,7 @@ void GpuStaticPropBatcher::armV5() {
 // Run the one-time DrawPacket v6 gate-arm checks.
 void GpuStaticPropBatcher::armV6() {
         // DrawPacket v6: gate-arm checks (run once per process on first gate-ON flush).
-        if (s_v6Enabled && !s_v6Armed && !s_v6Disarmed) {
+        if (!s_v6Armed && !s_v6Disarmed) {
             s_v6Armed = true;
             bool disarm = false;
             const char* disarmReason = nullptr;
@@ -92,21 +92,18 @@ void GpuStaticPropBatcher::armV6() {
 void GpuStaticPropBatcher::decideV6(StaticPropFlushFrame& f) {
     auto& runV6 = f.runV6;
         // DrawPacket v6: build packet+meta arrays then validate before dispatch.
-        runV6 = s_v6Enabled && !s_v6Disarmed;
+        runV6 = !s_v6Disarmed;
 }
 
-// Reset the v6 lock-step and live-builder state.
+// Reset the v6 lock-step state.
 void GpuStaticPropBatcher::initV6State(StaticPropFlushFrame& f) {
-    auto& v6LockstepViolations = f.v6LockstepViolations; auto& retireLiveBuilder = f.retireLiveBuilder;
+    auto& v6LockstepViolations = f.v6LockstepViolations;
         v6LockstepViolations = 0u;
-        // v8: snapshot-sole-owner decision. Set in the runV6 preamble, read again in
-        // the dispatch block (a separate scope) to select dispatch + structural fallback.
-        retireLiveBuilder = false;
 }
 
-// Build and validate the DrawPacket v6 arrays.
-void GpuStaticPropBatcher::buildV6Packets(std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f) {
-    auto& runV6 = f.runV6; auto& v6LockstepViolations = f.v6LockstepViolations; auto& retireLiveBuilder = f.retireLiveBuilder;
+// Reset the per-flush DrawPacket v6 counters. The packet arrays are built from the render snapshot in dispatchV6.
+void GpuStaticPropBatcher::buildV6Packets(StaticPropFlushFrame& f) {
+    auto& runV6 = f.runV6;
         if (runV6) {
             s_v6FrameDrawsIssued        = 0u;
             s_v6FrameZeroInstSkips      = 0u;
@@ -117,60 +114,18 @@ void GpuStaticPropBatcher::buildV6Packets(std::vector<RenderCore::DrawPacket>& v
             s_v6FrameGlErrors           = 0u;
             ++s_v6TotalFrameCount;
 
-            // v8: retirement predicate. Consumed just below to gate the live builder,
-            // set s_spBuildRetired, and emit the one-shot arm log.
-            //
-            // Why !s_snapCullEnabled is a condition: the snap-cull path (MC2_SNAP_CULL,
-            // opt-in, default OFF) still relies on the live<->snapshot compare for slot
-            // ownership in v8; it has not been ported to sole-owner packet build. Keep
-            // the live builder whenever snap-cull is active until that port lands.
-            const bool retireLiveBuilderPlanned =
-                !s_keepLiveBuilder && s_snapshotBuildEnabled && !s_snapCullEnabled;
-
-            // v8: snapshot is now the SOLE owner when retired. Consume the planned
-            // predicate, set telemetry, emit the one-shot arm log.
-            retireLiveBuilder = retireLiveBuilderPlanned;
-            if (!s_v8ArmLogged) {
-                s_v8ArmLogged = true;
-                const char* reason =
-                    retireLiveBuilder       ? "snapshot_sole_owner" :
-                    s_keepLiveBuilder       ? "live_builder_forced" :
-                    !s_snapshotBuildEnabled ? "snapshot_packet_build_disabled_keep_live" :
-                                              "snap_cull_collision_keep_live";
-                MC2_DIAGFE(stderr,
-                    "[STATIC_PROP_PACKET_DISPATCH v8] event=arm live_builder_retired=%d"
-                    " snapshot_packet_build=%d live_builder_forced=%d reason=%s\n",
-                    retireLiveBuilder ? 1 : 0, s_snapshotBuildEnabled ? 1 : 0,
-                    s_keepLiveBuilder ? 1 : 0, reason);
-                std::fflush(stderr);
-            }
-
             // v3: reset per-flush build counters so stale stats never persist.
             s_spBuildAttempted = s_spBuildCountMismatch = s_spBuildPacketMismatch =
             s_spBuildMetaMismatch = s_spBuildFallback = s_spBuildRetired = 0u;
 
-            // v8: set retirement telemetry AFTER the unconditional reset above so it
-            // is not clobbered. 1 = live builder skipped this frame (snapshot sole owner).
-            s_spBuildRetired = retireLiveBuilder ? 1u : 0u;
+            // v8: the snapshot is the sole packet owner (1 = no live build ran this frame).
+            s_spBuildRetired = 1u;
 
             const uint32_t totalCmds = s_alphaOffCmdCount + s_alphaOnCmdCount;
 
             if (g_mc2HitchEnabled) {
                 g_mc2HitchAccum.staticRecords  = static_cast<uint32_t>(s_bucketsByType.size());
                 g_mc2HitchAccum.staticDrawCmds = totalCmds;
-            }
-
-            const size_t fr_off_bi_v6 =
-                static_cast<size_t>(s_coalesceFrameSlot) * s_baseInstanceByCmdBytesPerFrame;
-            const uint32_t* baseInstanceMap = reinterpret_cast<const uint32_t*>(
-                static_cast<const uint8_t*>(s_baseInstanceByCmdMap) + fr_off_bi_v6);
-
-            // When retired and the snapshot builds clean, s_v6FrameLockstepViolations
-            // stays 0 from the unconditional per-flush reset above (no live build runs).
-            if (!retireLiveBuilder) {
-                ZoneScopedN("StaticProp.LiveBuild");
-                v6LockstepViolations = buildLiveV6Arrays(totalCmds, baseInstanceMap, v6Packets, v6Meta);
-                s_v6FrameLockstepViolations = v6LockstepViolations;
             }
         }
 }
@@ -186,7 +141,7 @@ void GpuStaticPropBatcher::decideV5(StaticPropFlushFrame& f) {
 
 // DrawPacket v6 dispatch.
 void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f) {
-    auto& fr_off_bytes_d = f.fr_off_bytes_d; auto& v6LockstepViolations = f.v6LockstepViolations; auto& retireLiveBuilder = f.retireLiveBuilder;
+    auto& fr_off_bytes_d = f.fr_off_bytes_d; auto& v6LockstepViolations = f.v6LockstepViolations;
             const uint32_t totalCmds = s_alphaOffCmdCount + s_alphaOnCmdCount;
 
             // v8: re-home the ring-slot base-instance map for this dispatch. The snapshot
@@ -214,47 +169,12 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
             if (!bc7Buckets) glBindTexture(GL_TEXTURE_2D_ARRAY, s_texArrayOff);
             bool enteredOnGroup = false;
 
-            // v2.3 snap-cull: determine whether to use prev-frame snapshot for slot skipping.
-            // Activation requires:
-            //   - MC2_SNAP_CULL=1 and snap non-null
-            //   - snap->ok == 1u (snapshot was structurally valid — v2.2 gates passed)
-            //   - count matches totalCmds (snapshot covers exactly the live draw slots)
-            // Warmup guard: even when all conditions above hold, if ALL instanceCounts are zero
-            // (frame 1 or all-invisible scene) don't cull — avoids frame-1 blank screen.
-            bool snapCullActive = false;
-            uint32_t snapN      = 0u;
-            if (s_snapCullEnabled &&
-                snap != nullptr &&
-                snap->ok == 1u &&
-                snap->staticPropPackets.data != nullptr &&
-                snap->staticPropPackets.count == totalCmds &&
-                snap->staticPropPackets.count > 0u) {
-                bool allZero = true;
-                for (size_t scj = 0; scj < snap->staticPropPackets.count; ++scj) {
-                    if (snap->staticPropPackets.data[scj].instanceCount != 0u) {
-                        allZero = false;
-                        break;
-                    }
-                }
-                snapCullActive = !allZero;
-                snapN          = static_cast<uint32_t>(snap->staticPropPackets.count);
-            }
-
             bool snapBuilt = false;
-            s_spBuildAttempted = s_snapshotBuildEnabled ? 1u : 0u;
+            s_spBuildAttempted = 1u;
 
-            if (s_snapshotBuildEnabled) {
-                // Stage 1: snap-cull collision — both gates active → disable v3.
-                if (s_snapCullEnabled) {
-                    if (!s_spBuildCollisionLoggedOnce) {
-                        s_spBuildCollisionLoggedOnce = true;
-                        mc2::fmt::print_err("[RENDER_SNAPSHOT v3] frame={:d} disabled — MC2_SNAP_CULL collision\n",
-                            mc2::fmt::as_u32(s_v6TotalFrameCount));
-                    }
-                    ++s_spBuildFallback;
-                }
-                // Stage 2: structural guards — snap unusable (no counter).
-                else if (snap == nullptr || snap->ok != 1u ||
+            {
+                // Stage 1: structural guards — snap unusable (no counter).
+                if (snap == nullptr || snap->ok != 1u ||
                          snap->staticPropPackets.data == nullptr) {
                     /* no counter — snap is unusable, not a v3 failure */
                 }
@@ -338,53 +258,28 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
 
                     }  // end StaticProp.SnapshotBuild
 
-                    // Compare snapshot-built vs live-built, field-by-field per slot.
-                    // v8: skip when the live builder is retired — v6Meta/v6Packets are
-                    // STALE (not rebuilt this frame), so the compare is meaningless and
-                    // would set spurious mismatches. Snapshot is sole owner in that mode.
-                    if (!retireLiveBuilder) {
-                    ZoneScopedN("StaticProp.BuildCompare");
-                    for (uint32_t ci = 0u; ci < totalCmds; ++ci) {
-                        const StaticPropDispatchMeta& sm = s_snapV6Meta[ci];
-                        const StaticPropDispatchMeta& lm = v6Meta[ci];
-                        const RenderCore::DrawPacket&  sp = s_snapV6Packets[ci];
-                        const RenderCore::DrawPacket&  lp = v6Packets[ci];
-
-                        if (sm.globalPacketIdx != lm.globalPacketIdx) ++s_spBuildMetaMismatch;
-                        if (sm.typeId          != lm.typeId)          ++s_spBuildMetaMismatch;
-                        if (sm.group           != lm.group)           ++s_spBuildMetaMismatch;
-                        if (sm.sortedSlot      != lm.sortedSlot)      ++s_spBuildMetaMismatch;
-                        if (sm.baseVertex      != lm.baseVertex)      ++s_spBuildMetaMismatch;
-                        if (sm.drawIDBase      != lm.drawIDBase)      ++s_spBuildMetaMismatch;
-
-                        if (sp.pipelineId != lp.pipelineId) ++s_spBuildPacketMismatch;
-                        if (sp.firstIndex  != lp.firstIndex)  ++s_spBuildPacketMismatch;
-                        if (sp.indexCount  != lp.indexCount)  ++s_spBuildPacketMismatch;
-                    }
-                    }  // end StaticProp.BuildCompare
-
                     snapBuilt = true;
                 }
             }
 
             bool useSnapshot;
             bool skipDispatch = false;
-            if (retireLiveBuilder) {
+            {
                 // Snapshot is sole owner. Dispatch unless STRUCTURALLY invalid.
                 // snapshotInvalid == NOT built (guards failed: snap nullptr / ok!=1 /
                 // count mismatch / malformed metadata). An empty-but-valid snapshot
-                // (snapBuilt with totalCmds==0) is VALID → dispatch zero, NEVER fallback.
+                // (snapBuilt with totalCmds==0) is VALID -> dispatch zero, NEVER fallback.
                 //
                 // A per-row guard failure during the snapshot build increments these
                 // (and zeroes the bad slot) but still leaves snapBuilt=true. Treat any
                 // such divergence as structurally invalid so we fall back to the live
-                // build for the whole frame — matching the dual path's mismatch->fallback
-                // safety. This also makes the spBuildFallback==0 merge gate cover it.
+                // build for the whole frame. This also makes the spBuildFallback==0
+                // merge gate cover it.
                 const bool snapshotInvalid = !snapBuilt
                     || s_spBuildMetaMismatch   != 0u
                     || s_spBuildPacketMismatch != 0u;
                 if (snapshotInvalid) {
-                    // Stage 4 (count mismatch) already counted a fallback for this frame;
+                    // Stage 3 (count mismatch) already counted a fallback for this frame;
                     // avoid double-counting so spBuildFallback reflects frames, not events.
                     if (s_spBuildCountMismatch == 0u) ++s_spBuildFallback;
                     ZoneScopedN("StaticProp.LiveBuild.Fallback");  // rare fallback build, counted
@@ -393,29 +288,12 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                     s_v6FrameLockstepViolations = v6LockstepViolations;
                     useSnapshot = false;
                     if (v6LockstepViolations != 0u) {
-                        // Fallback build itself is inconsistent — do not issue draws from a
-                        // broken array this frame (matches dual-mode lockstep gating).
+                        // Fallback build itself is inconsistent: do not issue draws from a
+                        // broken array this frame.
                         skipDispatch = true;
                     }
                 } else {
                     useSnapshot = true;
-                }
-            } else {
-                // Legacy dual path: use snapshot arrays only when compare clean.
-                useSnapshot = snapBuilt
-                    && s_spBuildPacketMismatch == 0
-                    && s_spBuildMetaMismatch   == 0;
-
-                if (snapBuilt && !useSnapshot) {
-                    ++s_spBuildFallback;
-                    if (!s_spBuildFirstFallbackLogged) {
-                        s_spBuildFirstFallbackLogged = true;
-                        mc2::fmt::print_err("[RENDER_SNAPSHOT v3] frame={:d} first-fallback attempted=1 count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback=1\n",
-                            mc2::fmt::as_u32(s_v6TotalFrameCount),
-                            mc2::fmt::as_u32(s_spBuildCountMismatch),
-                            mc2::fmt::as_u32(s_spBuildPacketMismatch),
-                            mc2::fmt::as_u32(s_spBuildMetaMismatch));
-                    }
                 }
             }
 
@@ -467,23 +345,6 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
             for (uint32_t i = 0u; i < totalCmds; ++i) {
                 const StaticPropDispatchMeta& m  = (*pDispatchMeta)[i];
                 const RenderCore::DrawPacket&  dp = (*pDispatchPackets)[i];
-
-                // v2.3 snap-cull: skip slots whose prev-frame instanceCount was zero.
-                // Per-row slot identity check guards against any snapshot/live ordering drift.
-                // On identity mismatch: don't skip — count it and fall through to current-frame logic.
-                if (snapCullActive && i < snapN) {
-                    const ExtractedStaticPropPacket& scRow = snap->staticPropPackets.data[i];
-                    if (scRow.sortedSlot != i) {
-                        // Slot identity mismatch — snapshot and live order diverged.
-                        ++s_snapCullSlotMismatch;
-                    } else if (scRow.instanceCount == 0u) {
-                        // Prev-frame zero — safe to skip.
-                        ++s_snapCullSkipped;
-                        continue;
-                    } else {
-                        ++s_snapCullActive;
-                    }
-                }
 
                 if (m.instanceCount == 0u) {
                     ++s_v6FrameZeroInstSkips;
@@ -556,7 +417,7 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                                 (s_v6FrameDrawsIssued + s_v6FrameZeroInstSkips) == slotsConsidered)
                                ? 1 : 0;
                 mc2::fmt::print_err("[DRAW_PACKET_V6] frame={:d} event=dispatch_summary slots_considered={:d} draws_issued={:d} zero_instance_skips={:d} sorted_oob={:d} packet_oob={:d} type_oob={:d} lockstep_violations={:d} gl_errors={:d} ok={:d}\n", mc2::fmt::as_u32(s_v6TotalFrameCount), mc2::fmt::as_u32(slotsConsidered), mc2::fmt::as_u32(s_v6FrameDrawsIssued), mc2::fmt::as_u32(s_v6FrameZeroInstSkips), mc2::fmt::as_u32(s_v6FrameSortedOob), mc2::fmt::as_u32(s_v6FramePacketOob), mc2::fmt::as_u32(s_v6FrameTypeOob), mc2::fmt::as_u32(s_v6FrameLockstepViolations), mc2::fmt::as_u32(s_v6FrameGlErrors), mc2::fmt::as_i32(ok));
-                if (s_snapshotBuildEnabled) {
+                {
                     mc2::fmt::print_err("[RENDER_SNAPSHOT v3] frame={:d} attempted={:d} count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback={:d} using_snapshot={:d}\n",
                         mc2::fmt::as_u32(s_v6TotalFrameCount),
                         mc2::fmt::as_u32(s_spBuildAttempted),
@@ -810,7 +671,7 @@ void GpuStaticPropBatcher::legacyPrepare() {
             // BUILDING-GLASS-1: dither-glass translucency toggle (legacy program).
             if (s_locsLegacy.glassDither >= 0)
                 glUniform1f(s_locsLegacy.glassDither,
-                            s_glassDitherEnabled ? 1.0f : 0.0f);
+                            1.0f);
             if (g_terrainDecalColorBlend > 0.0f) {
                 extern GLuint gos_terrain_indirect_getAtlasGLTex();
                 extern float  gos_terrain_indirect_getAtlasMapTopLeftX();

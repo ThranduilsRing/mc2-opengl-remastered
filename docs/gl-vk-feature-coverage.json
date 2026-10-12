@@ -2149,66 +2149,6 @@
    "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
   },
   {
-   "confidence": "MEDIUM",
-   "feature": "u_materialFlags",
-   "gate": "MC2_SP_ALPHASCAN_GATE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/mech.frag",
-   "kind": "uniform",
-   "status": "PORTED",
-   "vk_evidence": "stem:materialFlags",
-   "vk_twin": "shaders/vulkan/mech_tier1.frag"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_materialFlags",
-   "gate": "MC2_SP_ALPHASCAN_GATE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/mech.vert",
-   "kind": "uniform",
-   "status": "PORTED",
-   "vk_evidence": "stem:materialFlags",
-   "vk_twin": "shaders/vulkan/mech_tier1.frag"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_materialFlags",
-   "gate": "MC2_SP_ALPHASCAN_GATE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/shadow_static_prop.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/shadow_prop.*"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_materialFlags",
-   "gate": "MC2_SP_ALPHASCAN_GATE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/static_prop.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_materialFlags",
-   "gate": "MC2_SP_ALPHASCAN_GATE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/static_prop_depth.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
-  },
-  {
    "confidence": "HIGH",
    "feature": "u_standardLitEnabled",
    "gate": "MC2_STANDARD_LIT_V1",

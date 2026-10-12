@@ -192,7 +192,7 @@ uniform float     u_terrainDecalColorBlend;  // 0 = off (byte-identical)
 // a 4x4 Bayer threshold instead of the fixed 0.5: binary-alpha texels behave
 // exactly as before (a<=1/32 always discards, a>=31/32 never), partial-alpha
 // texels become depth-correct stippled translucency.
-// 0.0 (default / MC2_SP_GLASS_DITHER=0 killswitch) = legacy a<0.5 discard.
+// 0.0 = legacy a<0.5 discard (the engine uploads 1.0).
 uniform float u_glassDither;
 
 layout(location = 0) out vec4 FragColor;

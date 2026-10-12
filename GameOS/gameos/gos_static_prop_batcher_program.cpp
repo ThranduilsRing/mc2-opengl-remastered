@@ -506,13 +506,6 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
 }
 ObjBatcherCounters s_counters;
 
-// LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch; MC2_STATIC_PROP_LIGHT_FRESHNESS=0
-// restores the pre-slice behaviour (trust cachedGpuLightIndex_ with no frame check)
-// bit-for-bit, which is the only way to grade a suspected regression against it.
-bool staticPropLightFreshnessEnabled() {
-    static const bool s_on = mc2::gate::get<"MC2_STATIC_PROP_LIGHT_FRESHNESS">();
-    return s_on;
-}
 bool s_objbatcherTrace     = false;
 bool s_objbatcherTraceInit = false;
 bool s_atexitRegistered    = false;

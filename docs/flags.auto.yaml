@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1014
-registry_entry_count: 238
-verified_count: 1007
+gate_count: 1005
+registry_entry_count: 229
+verified_count: 998
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -820,7 +820,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 31, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 28, default_on: true}
   - name: MC2_COLORMAP_DISPLACE_PROBE
     kind: Bool
     default: false
@@ -836,7 +836,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 32, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 29, default_on: true}
   - name: MC2_CONE_LEAF_DUMP
     kind: Bool
     default: false
@@ -1383,7 +1383,7 @@ flags:
     doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 34, default_on: false}
+    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 31, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_FAR
     kind: Float
     default: 960
@@ -2312,7 +2312,7 @@ flags:
     doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: build a reverse-Z Hi-Z depth pyramid from MainDepth each frame via a custom fragment MIN-reduction pass (hzb_reduce.frag)..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 28, default_on: false}
+    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 25, default_on: false}
   - name: MC2_HZB_FORCE_HORIZON
     kind: Bool
     default: false
@@ -2370,7 +2370,7 @@ flags:
     doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_HZB_PROBE, kind: Feature, order: 29, default_on: false}
+    registry: {feature_id: MC2_FEATURE_HZB_PROBE, kind: Feature, order: 26, default_on: false}
   - name: MC2_HZB_VIEW_FILE
     kind: String
     default: ""
@@ -2476,7 +2476,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 36, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 33, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2831,7 +2831,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 37, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 34, default_on: true}
   - name: MC2_LIGHT_PREFIX_GPU_COPY
     kind: Bool
     default: false
@@ -2920,7 +2920,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 41, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 38, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -3623,7 +3623,7 @@ flags:
     doc: "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 35, default_on: false}
+    registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 32, default_on: false}
   - name: MC2_NIGHT_FOG_DIM_SCALE
     kind: Float
     default: 0
@@ -3799,7 +3799,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 39, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 36, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -4602,7 +4602,7 @@ flags:
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     verified: true
-    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 33, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 30, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
     default: false
@@ -4957,7 +4957,7 @@ flags:
     doc: "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 42, default_on: true}
+    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 39, default_on: true}
   - name: MC2_SHOT_RESULTS
     kind: Bool
     default: false
@@ -5100,25 +5100,7 @@ flags:
     doc: "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Feature, order: 16, default_on: false}
-  - name: MC2_SNAPSHOT_STATIC_PROP_BUILD
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: props
-    doc: "Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state (gos_static_prop_batcher.cpp)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_RENDER_SNAPSHOT_BUILD, kind: Feature, order: 13, default_on: true}
-  - name: MC2_SNAP_CULL
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
-    doc: "Extraction v2.3: skip prev-frame zero-instance slots during snapshot-based dispatch (snap-cull opt-in)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SNAP_CULL, kind: Feature, order: 14, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Feature, order: 13, default_on: false}
   - name: MC2_SOAK_AUTOWIN
     kind: Bool
     default: false
@@ -5209,24 +5191,6 @@ flags:
     owner: mech
     doc: "T1.15 SpotLight_ illumination diagnostic - registration probe (bldg class)."
     verified: true
-  - name: MC2_SP_ALPHASCAN_GATE
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: props
-    doc: "SP-BATCHER-ALPHASCAN-GATE-1: skip the frame-constant per-static-prop alpha re-resolve scan in the batcher when nothing that affects it changed..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_SP_ALPHASCAN_GATE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_SP_GLASS_DITHER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: unclassified
-    doc: "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_SP_GLASS_DITHER, kind: Feature, order: -1, default_on: true}
   - name: MC2_SSAO
     kind: Bool
     default: false
@@ -5235,7 +5199,7 @@ flags:
     doc: "SSAO-GTAO-LITE-MVP-1 (Track V): lightweight half-res screen-space ambient-occlusion grounding pass (gosPostProcess::runSSAO) reusing the scene depth +..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_SSAO, kind: Feature, order: 24, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SSAO, kind: Feature, order: 21, default_on: false}
   - name: MC2_SSAO_DEBUG
     kind: Bool
     default: false
@@ -5283,7 +5247,7 @@ flags:
     owner: props
     doc: "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)..."
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 30, default_on: false}
+    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 27, default_on: false}
   - name: MC2_STATICPROP_MATERIAL_PBR_SLOTS
     kind: Bool
     default: false
@@ -5374,7 +5338,7 @@ flags:
     doc: "V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_AMBIENT_V1, kind: Feature, order: 17, default_on: false}
+    registry: {feature_id: MC2_FEATURE_STATIC_PROP_AMBIENT_V1, kind: Feature, order: 14, default_on: false}
   - name: MC2_STATIC_PROP_BAKE_SELFTEST
     kind: Bool
     default: false
@@ -5391,15 +5355,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME, kind: Trace, order: -1, default_on: false}
-  - name: MC2_STATIC_PROP_COLORS_FILL
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: props
-    doc: "STATICPROP-COLORS-FILL-DEBUGONLY-1: per-static-instance Colors SSBO (binding 1) zero-fill."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_COLORS_FILL, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_DEPTH_PREPASS
     kind: Bool
     default: false
@@ -5429,7 +5384,7 @@ flags:
     doc: "V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_IBL_SH, kind: Feature, order: 18, default_on: true}
+    registry: {feature_id: MC2_FEATURE_STATIC_PROP_IBL_SH, kind: Feature, order: 15, default_on: true}
   - name: MC2_STATIC_PROP_IBL_SUN_ROTATE
     kind: Bool
     default: false
@@ -5456,33 +5411,6 @@ flags:
     owner: props
     doc: "Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20)."
     verified: true
-  - name: MC2_STATIC_PROP_LEGACY_DISPATCH
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
-    doc: "v6 DrawPacket+Meta dispatch (default-ON as of v7)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_PACKET_DISPATCH, kind: Feature, order: 12, default_on: true}
-  - name: MC2_STATIC_PROP_LIGHT_FRESHNESS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: props
-    doc: "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 45, default_on: true}
-  - name: MC2_STATIC_PROP_LIVE_BUILDER
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
-    doc: "v8 kill-switch: =1 restores live build + snapshot compare"
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_LIVE_BUILDER, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_MISSION_LOAD_REG
     kind: Bool
     default: true
@@ -5498,7 +5426,7 @@ flags:
     doc: "V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular on StaticPropOpaque lane (static_prop.frag, inside `#if defined(MC2_USE_VIEW_UNIFORMS)`)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_PBR_V1, kind: Feature, order: 19, default_on: false}
+    registry: {feature_id: MC2_FEATURE_STATIC_PROP_PBR_V1, kind: Feature, order: 16, default_on: false}
   - name: MC2_STATIC_PROP_PICK
     kind: Bool
     default: false
@@ -5513,15 +5441,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: "STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1 gate: default OFF. =1 builds s_spRowCache from registry each frame and compares field-by-field with legacy propBuf."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TRACE_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY
     kind: Bool
     default: true
@@ -5612,7 +5531,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 43, default_on: false}
+    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 40, default_on: false}
   - name: MC2_SUN_ELEVATION_FIX
     kind: Bool
     default: false
@@ -5621,7 +5540,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 44, default_on: false}
+    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 41, default_on: false}
   - name: MC2_TACMAP_FORMATION_LINE
     kind: Bool
     default: false
@@ -6788,7 +6707,7 @@ flags:
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 40, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 37, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -6797,7 +6716,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 38, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 35, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""
@@ -6829,7 +6748,7 @@ flags:
     owner: code
     doc: "VFX-AGE-SAMPLE-1: sample GPU-particle spec curves (color/alpha/size/UV) at the routed effect's real CPU-advanced normalized age (gosFX Effect::m_age..."
     verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Feature, order: 20, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Feature, order: 17, default_on: false}
   - name: MC2_VFX_BLACKBODY
     kind: Bool
     default: false
@@ -6876,7 +6795,7 @@ flags:
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md)."
     verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD, kind: Feature, order: 22, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD, kind: Feature, order: 19, default_on: false}
   - name: MC2_VFX_GPU_SIM_COMPARE
     kind: Bool
     default: false
@@ -6884,7 +6803,7 @@ flags:
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO..."
     verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_COMPARE, kind: Feature, order: 23, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_COMPARE, kind: Feature, order: 20, default_on: false}
   - name: MC2_VFX_LIT_PARTICLES
     kind: Bool
     default: false
@@ -6893,7 +6812,7 @@ flags:
     doc: "VFX-LIT-PARTICLES-MVP-1 (Track V): simple directional+ambient lighting for alpha-blended smoke/dust particles."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_LIT_PARTICLES, kind: Feature, order: 26, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VFX_LIT_PARTICLES, kind: Feature, order: 23, default_on: false}
   - name: MC2_VFX_ORACLE_RENDER
     kind: Bool
     default: false
@@ -6902,7 +6821,7 @@ flags:
     doc: "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Feature, order: 21, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Feature, order: 18, default_on: false}
   - name: MC2_VFX_ORACLE_SHAPE
     kind: Bool
     default: false
@@ -6948,7 +6867,7 @@ flags:
     doc: "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_SOFT_PARTICLES, kind: Feature, order: 25, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VFX_SOFT_PARTICLES, kind: Feature, order: 22, default_on: false}
   - name: MC2_VFX_TUBE_UPLOAD_STATS
     kind: Bool
     default: false
@@ -6964,7 +6883,7 @@ flags:
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 27, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 24, default_on: false}
   - name: MC2_VIEW_MODE
     kind: String
     default: ""
@@ -6982,7 +6901,7 @@ flags:
     doc: "ViewUniforms UBO at binding=3."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VIEW_UNIFORMS, kind: Feature, order: 15, default_on: true}
+    registry: {feature_id: MC2_FEATURE_VIEW_UNIFORMS, kind: Feature, order: 12, default_on: true}
   - name: MC2_VISUAL_BOOKMARK_CAPTURE
     kind: String
     default: ""

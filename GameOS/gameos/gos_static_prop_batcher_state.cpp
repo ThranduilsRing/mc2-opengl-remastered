@@ -95,15 +95,9 @@ size_t   s_parityBytesUsedPerSlot[RING_FRAMES] = {0};
 std::vector<uint8_t> s_parityReadbackScratch;
 std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 
-// STATICPROP-COLORS-FILL-DEBUGONLY-1: the per-instance Colors SSBO (binding 1) is
-// read by NO production shader — static_prop.vert declares colors_ but never uses
-// it, firstColorOffset is unused, and the coalesce multidraw never binds binding 1
-// (only the legacy non-coalesce draw does, gos_static_prop_batcher.cpp ~:6256).
-// So the per-static-instance colors zero-fill (~80ns/leaf at wolfman) is pure
-// waste. DEFAULT-SKIP for static-registry instances; MC2_STATIC_PROP_COLORS_FILL=1
-// restores the legacy fill (kill-switch). Dynamic submit()/submitMultiShape path
-// is untouched.
-extern const bool s_staticPropColorsFill = mc2::gate::get<"MC2_STATIC_PROP_COLORS_FILL">();
+// The per-instance Colors SSBO (binding 1) is read by NO production shader (static_prop.vert declares colors_ but
+// never uses it, firstColorOffset is unused, and the coalesce multidraw never binds binding 1), so the
+// per-static-instance colors zero-fill is skipped; the dynamic submit()/submitMultiShape path is untouched.
 
 // 2b Stage 2 (Mechanism B-reinject): persistent per-type static instance store,
 // rebuilt only when the registry generation changes. Each frame the registry
@@ -865,10 +859,6 @@ size_t   s_offGroupBytesThisFrame  = 0;
 size_t   s_onGroupBytesThisFrame   = 0;
 size_t   s_totalUsedBytesThisFrame = 0;
 
-// BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass)
-// texels on ALPHA_TEST packets. Default ON; MC2_SP_GLASS_DITHER=0 kills it
-// (shader falls back to the legacy binary a<0.5 discard, byte-identical).
-extern const bool s_glassDitherEnabled = mc2::gate::get<"MC2_SP_GLASS_DITHER">();
 ProgramLocs s_locsLegacy;
 ProgramLocs s_locsCoalesce;
 

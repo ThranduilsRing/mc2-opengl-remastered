@@ -245,9 +245,8 @@ public:
     bool isMultiShapeEligibleForGpuObjects(const TG_MultiShape* multi) const;
 
     // Per-frame dispatch.
-    // Main color pass. snap: optional prior-frame RenderSnapshot for snap-cull
-    // (MC2_SNAP_CULL=1). nullptr = no snap-cull (default OFF).
-    // snap pointer is not stored; read only during this call.
+    // Main color pass. snap: optional prior-frame RenderSnapshot the DrawPacket v6 dispatch builds its
+    // packet+meta arrays from. snap pointer is not stored; read only during this call.
     void flush(const RenderSnapshot* snap = nullptr);
 
 private:
@@ -268,7 +267,7 @@ private:
     void drawStaticPopulation();
     void decideV6(StaticPropFlushFrame& f);
     void initV6State(StaticPropFlushFrame& f);
-    void buildV6Packets(std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
+    void buildV6Packets(StaticPropFlushFrame& f);
     void decideV5(StaticPropFlushFrame& f);
     void dispatchV6(const RenderSnapshot* snap, std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
     void dispatchV5(StaticPropFlushFrame& f);
@@ -649,14 +648,6 @@ bool batcher_getDrawSlotEntry(uint32_t slot, ExtractedStaticPropPacket* out);
 // RenderSnapshot full definition is in render_snapshot.h; batcher.cpp includes it directly.
 struct RenderSnapshot;
 void batcher_compareSnapshotPackets(RenderSnapshot* snap);
-
-// v2.3 snap-cull: read counters written by the most recent flush().
-// All three output pointers may be nullptr (individual fields skipped).
-// skipped:      slots skipped via prev-frame zero-instance check.
-// active:       slots drawn when snap-cull enabled (prev-frame instanceCount > 0).
-// slotMismatch: sortedSlot identity failures — row.sortedSlot != i.
-//   slotMismatch is included in the RenderSnapshot ok gate; the others are informational.
-void batcher_getSnapCullStats(uint32_t* skipped, uint32_t* active, uint32_t* slotMismatch);
 
 // v3 snapshot build: read counters written by the most recent flush().
 // All output pointers may be nullptr (individual fields skipped).

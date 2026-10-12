@@ -350,7 +350,6 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
             // Key kill-switches / feature gates relevant to the static-prop path.
             struct FallbackRow { const char* label; const char* envVar; bool defaultOn; };
             static const FallbackRow kFallbacks[] = {
-                { "legacy kill-switch",  "MC2_STATIC_PROP_LEGACY_DISPATCH", false },
                 { "material sample",     "MC2_MATERIAL_GPU_SAMPLE",         true  },
                 { "object-ID buffer",    "MC2_OBJECT_ID_BUFFER",            true  },
                 { "ambient v1",          "MC2_STATIC_PROP_AMBIENT_V1",      false },

@@ -201,10 +201,9 @@ struct RenderSnapshot {
     // v2.3 gate: staticPropValidationFail==0, staticPropPacketRangesFail==0,
     //   staticPropPacketInvalid==0, !arenaOverflow,
     //   spCountMismatch==0, spSortedSlotMismatch==0, spGlobalPacketMismatch==0,
-    //   spPipelineMismatch==0, spMaterialIdxMismatch==0, spTexLayerMismatch==0,
-    //   spSnapCullSlotMismatch==0.
-    // Informational (excluded from ok): spInstanceCountMismatch, spSnapCullSkipped,
-    //   spSnapCullActive, spBuildAttempted, spBuildFallback, spBuildRetired,
+    //   spPipelineMismatch==0, spMaterialIdxMismatch==0, spTexLayerMismatch==0.
+    // Informational (excluded from ok): spInstanceCountMismatch,
+    //   spBuildAttempted, spBuildFallback, spBuildRetired,
     //   mechSnapshotCount, mechMatValid, mechMatSentinel.
     // v8: when spBuildRetired==1 there is no per-flush compare; spBuild*Mismatch are 0 by construction
     //     and the gate must not treat spBuildAttempted==0 as a failure.
@@ -224,16 +223,7 @@ struct RenderSnapshot {
     uint32_t spInstanceCountMismatch = 0u;  // rows where prev-frame count != current-frame count
     uint32_t spTexLayerMismatch      = 0u;  // rows where MaterialGpu.albedoTex != texArrayLayer
 
-    // --- v2.3: snap-cull counters (populated by flush() of the PREVIOUS frame) ---
-    // spSnapCullSkipped:      draw slots skipped because prev-frame instanceCount==0.
-    // spSnapCullActive:       draw slots drawn with snap-cull enabled (prev-frame count > 0).
-    // spSnapCullSlotMismatch: sortedSlot identity failures (row.sortedSlot != i); included in ok gate.
-    // spSnapCullSkipped and spSnapCullActive are informational — excluded from ok gate.
-    uint32_t spSnapCullSkipped      = 0u;
-    uint32_t spSnapCullActive       = 0u;
-    uint32_t spSnapCullSlotMismatch = 0u;
-
-    // --- v3: snapshot build stats (previous-flush; gate: MC2_SNAPSHOT_STATIC_PROP_BUILD=1) ---
+    // --- v3: snapshot build stats (previous-flush) ---
     // Written by batcher_getSnapshotBuildStats(); read by ExtractRenderSnapshot().
     // spBuildAttempted and spBuildFallback are informational — excluded from ok gate.
     // spBuildCountMismatch, spBuildPacketMismatch, spBuildMetaMismatch participate in ok gate.

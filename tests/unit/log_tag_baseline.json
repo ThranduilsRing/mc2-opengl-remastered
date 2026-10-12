@@ -7914,29 +7914,6 @@
    "ver": 3,
    "stream": "stderr",
    "keys": [
-    "frame"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDER_SNAPSHOT",
-   "ver": 3,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "attempted",
-    "count_mismatch",
-    "pkt_mismatch",
-    "meta_mismatch",
-    "fallback"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDER_SNAPSHOT",
-   "ver": 3,
-   "stream": "stderr",
-   "keys": [
     "frame",
     "attempted",
     "count_mismatch",
@@ -8849,23 +8826,6 @@
    "keys": [
     "dt_ms",
     "fps"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SNAPSHOT_BRIDGE_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "path",
-    "frame",
-    "regGen",
-    "cullVer",
-    "rowCount",
-    "oracleCount",
-    "rowCountMismatch",
-    "immutableMismatch",
-    "hasCullMismatch"
    ],
    "count": 1
   },

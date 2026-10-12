@@ -622,7 +622,8 @@ GATE_TABLE_JSON = os.path.join(WORKTREE, "Gates", "gate_table.json")
 
 #: Gates whose env var expresses the OPPOSITE of the registry feature, read only as `!get<>()`. Explicit on
 #: purpose: a syntactic "every read is negated" rule would bless any future row/registry disagreement.
-INVERTED_KILL_VARS = frozenset({"MC2_STATIC_PROP_LEGACY_DISPATCH"})
+#: None today (the last one, MC2_STATIC_PROP_LEGACY_DISPATCH, was deleted with the v6 dispatch switch).
+INVERTED_KILL_VARS = frozenset()
 
 
 def load_typed_rows(path=GATE_TABLE_JSON):

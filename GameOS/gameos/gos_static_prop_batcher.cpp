@@ -91,10 +91,8 @@ bool s_baseInstanceSupported = false;  // set on first gate-ON flush
 bool s_v5Armed      = false;  // true once gate-arm checks have run
 bool s_v5Disarmed   = false;  // true if gate-arm check failed for session
 
-// DrawPacket v7: canonical packet+meta array dispatch — DEFAULT ON.
-// Kill-switch: MC2_STATIC_PROP_LEGACY_DISPATCH=1 reverts to legacy multidraw.
-// Requires: ARB_base_instance (checked independently of v5 arm block).
-extern const bool s_v6Enabled = !mc2::gate::get<"MC2_STATIC_PROP_LEGACY_DISPATCH">();
+// DrawPacket v7: canonical packet+meta array dispatch. The legacy multidraw only runs when v6 disarms
+// (a context without ARB_base_instance, a missing drawID uniform).
 extern const bool s_v6TraceEnabled = mc2::gate::get<"MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE">();
 bool s_v6Armed    = false;
 bool s_v6Disarmed = false;
@@ -104,16 +102,8 @@ bool s_v6Disarmed = false;
 std::vector<RenderCore::DrawPacket> s_snapV6Packets;
 std::vector<StaticPropDispatchMeta> s_snapV6Meta;
 
-// v3 env gate. File-local — not exported in header. Cached at process start.
-// DEFAULT ON (STATIC-PROP-V3-FLIP, 2026-05-27). Kill-switch: MC2_SNAPSHOT_STATIC_PROP_BUILD=0.
-// Unset or any value other than literal '0' = ON. Live builder + compare authority retained as fallback.
-extern const bool s_snapshotBuildEnabled = mc2::gate::get<"MC2_SNAPSHOT_STATIC_PROP_BUILD">();
-// STATIC-PROP-SNAPSHOT-FINISH (v8): snapshot is the sole draw-packet owner.
-// DEBUG/LEGACY kill-switch — default OFF (retired). =1 restores the v3-flip dual
-// build (live + snapshot_packet_build) + compare path for regression bisect / A-B.
-extern const bool s_keepLiveBuilder = mc2::gate::get<"MC2_STATIC_PROP_LIVE_BUILDER">();
-// One-shot arm log latch (the arm log itself is emitted in a LATER task, when retirement is real).
-bool s_v8ArmLogged = false;
+// STATIC-PROP-SNAPSHOT-FINISH (v8): the snapshot is the sole draw-packet owner; the live builder only runs as the
+// structural fallback for a frame whose snapshot is unusable.
 
 // v3 per-flush counters. Reset each flush by the runV6 block.
 // Read by batcher_getSnapshotBuildStats() for render_snapshot.cpp ok gate.
@@ -122,11 +112,7 @@ uint32_t s_spBuildCountMismatch  = 0u;
 uint32_t s_spBuildPacketMismatch = 0u;
 uint32_t s_spBuildMetaMismatch   = 0u;
 uint32_t s_spBuildFallback       = 0u;
-uint32_t s_spBuildRetired        = 0u;  // v8: 1 when live builder + compare retired this flush
-// Latched on first fallback; never reset. Guards the first-occurrence log line.
-bool s_spBuildFirstFallbackLogged = false;
-// Latched on first snap-cull collision; never reset. Guards the one-shot collision log line.
-bool s_spBuildCollisionLoggedOnce = false;
+uint32_t s_spBuildRetired        = 0u;  // v8: 1 when the snapshot is the sole owner this flush
 
 // Returns 0 (opaque) or 1 (alpha-test). Returns 0xFFFFFFFFu for unknown pipelineId.
 // Used by snapshot builder to derive group from the snapshot row's stored pipelineId.
@@ -145,12 +131,6 @@ uint32_t s_v6FramePacketOob          = 0u;
 uint32_t s_v6FrameTypeOob            = 0u;
 uint32_t s_v6FrameLockstepViolations = 0u;
 
-// v2.3 snap-cull: per-frame counters. Reset at top of flush(); read via batcher_getSnapCullStats().
-uint32_t s_snapCullSkipped      = 0u;
-uint32_t s_snapCullActive       = 0u;
-uint32_t s_snapCullSlotMismatch = 0u;
-// Env-var gate: strictly MC2_SNAP_CULL=1. Unset and MC2_SNAP_CULL=0 both leave snap-cull OFF.
-extern const bool s_snapCullEnabled = mc2::gate::get<"MC2_SNAP_CULL">();
 uint32_t s_v6FrameGlErrors           = 0u;
 uint32_t s_v6TotalFrameCount         = 0u;
 

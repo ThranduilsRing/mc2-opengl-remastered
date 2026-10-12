@@ -89,7 +89,6 @@ const std::vector<GpuStaticPropInstance>& GpuStaticPropBatcher::getLastBuiltBatc
 
 void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& inst) {
     if (inst.typeID >= s_types.size()) return;
-    const GpuStaticPropType& type = s_types[inst.typeID];
     PerTypeBucket& bucket = s_bucketsByType[inst.typeID];
 
     // firstColorOffset must be updated to the current bucket color position
@@ -97,10 +96,8 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
     // Diagnostic counters (submitted_instances_by_pop etc.) are NOT incremented
     // for registry-injected instances — they measure the dynamic compute path.
     GpuStaticPropInstance updated = inst;
-    // firstColorOffset is unused by any production shader; only meaningful when the
-    // (default-skipped) colors fill runs. Keep it accurate when filling, else 0.
-    updated.firstColorOffset = s_staticPropColorsFill
-        ? static_cast<uint32_t>(bucket.colors.size()) : 0u;
+    // firstColorOffset is unused by any production shader (the colors fill is skipped).
+    updated.firstColorOffset = 0u;
     {
         // MC2_TREE_DIAG_TRACE diagnostic. Same format as submit() so a grep
         // diff (`grep "[TREE_DIAG]" log | sort`) lines up dyn-vs-static fields.
@@ -130,11 +127,7 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
         }
     }
     bucket.instances.push_back(updated);
-    // STATICPROP-COLORS-FILL-DEBUGONLY-1: default-SKIP the colors zero-fill (no
-    // production shader reads colors_; addr-mode 4 reads v_argb). MC2_STATIC_PROP_COLORS_FILL=1
-    // restores it.
-    if (s_staticPropColorsFill)
-        bucket.colors.insert(bucket.colors.end(), type.vertexCount, 0u);
+    // The per-instance Colors SSBO zero-fill is skipped: no production shader reads colors_ (addr-mode 4 reads v_argb).
 }
 
 void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance* arr,
@@ -146,7 +139,6 @@ void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance
     while (i < count) {
         const uint32_t typeID = arr[i].typeID;
         if (typeID >= s_types.size()) { ++i; continue; }
-        const GpuStaticPropType& type = s_types[typeID];
         PerTypeBucket& bucket = s_bucketsByType[typeID];          // one lookup per run
         uint32_t j = i;
         while (j < count && arr[j].typeID == typeID) ++j;
@@ -156,18 +148,11 @@ void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance
         // (n==1, the common case) that sets capacity to EXACTLY size+1 each call,
         // defeating std::vector geometric growth → a reallocation per leaf (O(N^2)).
         // Plain push_back (like legacy submitCachedInstance) grows geometrically.
-        // STATICPROP-COLORS-FILL-DEBUGONLY-1: default-SKIP the colors zero-fill
-        // (no production shader reads colors_). MC2_STATIC_PROP_COLORS_FILL=1 restores it.
-        const size_t colOldSize = bucket.colors.size();
-        if (s_staticPropColorsFill)
-            bucket.colors.resize(colOldSize + (size_t)n * type.vertexCount, 0u);
+        // The colors zero-fill is skipped (no production shader reads colors_).
         for (uint32_t local = 0u; local < n; ++local) {
             GpuStaticPropInstance updated = arr[i + local];
-            // firstColorOffset is unused by any production shader; keep it accurate
-            // when filling, else 0 (running bucket offset only meaningful with fill).
-            updated.firstColorOffset = s_staticPropColorsFill
-                ? static_cast<uint32_t>(colOldSize + (size_t)local * type.vertexCount)
-                : 0u;
+            // firstColorOffset is unused by any production shader.
+            updated.firstColorOffset = 0u;
             bucket.instances.push_back(updated);
         }
         i = j;
@@ -824,12 +809,6 @@ void batcher_compareSnapshotPackets(RenderSnapshot* snap) {
     }
 }
 
-void batcher_getSnapCullStats(uint32_t* skipped, uint32_t* active, uint32_t* slotMismatch) {
-    if (skipped)      *skipped      = s_snapCullSkipped;
-    if (active)       *active       = s_snapCullActive;
-    if (slotMismatch) *slotMismatch = s_snapCullSlotMismatch;
-}
-
 void batcher_getSnapshotBuildStats(uint32_t* attempted, uint32_t* countMismatch,
                                    uint32_t* packetMismatch, uint32_t* metaMismatch,
                                    uint32_t* fallback, uint32_t* retired)
@@ -852,8 +831,8 @@ uint32_t batcher_getCoalesceFrameSlot() { return s_coalesceFrameSlot; }  // diag
 
 void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     if (!out) return;
-    out->snapshotDispatchDefault     = s_v6Enabled;
-    out->legacyDispatch              = !s_v6Enabled;
+    out->snapshotDispatchDefault     = !s_v6Disarmed;
+    out->legacyDispatch              = s_v6Disarmed;
     out->materialGpuEnabled          = s_materialGpuEnabled;
     out->materialGpuSample           = s_materialGpuSampleEnabled;
     out->iblShEnabled                = iblShEnabled();

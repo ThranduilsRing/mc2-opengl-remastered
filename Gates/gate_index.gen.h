@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1014;
+inline constexpr std::size_t kGateCount = 1005;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -671,8 +671,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SMOKE_PERF_SAMPLES", Kind::Int, Rule::Prefix, {}},
     {"MC2_SMOKE_SEED", Kind::String, Rule::Std, {}},
     {"MC2_SNAPSHOT_MECH_EXTRACT", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_SNAPSHOT_STATIC_PROP_BUILD", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_SNAP_CULL", Kind::Bool, Rule::Lead1, {}},
     {"MC2_SOAK_AUTOWIN", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_AUTO_PURCHASE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_CHECK_SCREENS", Kind::Bool, Rule::Presence, {}},
@@ -685,8 +683,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SPOTLIGHT_DIRECTION_FIX", Kind::Enum, Rule::Std, "0|1|2"},
     {"MC2_SPOTLIGHT_REAL_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SPOT_DIAG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_SP_ALPHASCAN_GATE", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_SP_GLASS_DITHER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SSAO", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SSAO_DEBUG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STABLE_LIGHT_SKIP", Kind::Bool, Rule::Std, {}},
@@ -708,7 +704,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_AMBIENT_V1", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_BAKE_SELFTEST", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Kind::Int, Rule::Prefix, {}},
-    {"MC2_STATIC_PROP_COLORS_FILL", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATIC_PROP_DEPTH_PREPASS", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_PROP_GLOBAL_CAP", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_GLOBAL_POOL_LEGACY", Kind::Bool, Rule::Lead0P, {}},
@@ -716,14 +711,10 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_PROP_IBL_SUN_ROTATE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", Kind::Float, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_LATE_SPAWN_REG", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATIC_PROP_LEGACY_DISPATCH", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_STATIC_PROP_LIGHT_FRESHNESS", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_STATIC_PROP_LIVE_BUILDER", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATIC_PROP_MISSION_LOAD_REG", Kind::Bool, Rule::Std, {}},
     {"MC2_STATIC_PROP_PBR_V1", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_PICK", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_PICK_DEBUG", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATIC_PROP_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_RECIPE_RECYCLE", Kind::Bool, Rule::Lead0Kill, {}},

@@ -29,7 +29,6 @@ struct StaticPropFlushFrame {
     std::optional<mc2gl::GlScopedTextureUnit> guardTex2DArray;
     bool runV6;
     uint32_t v6LockstepViolations;
-    bool retireLiveBuilder;
     bool runV5;
 };
 

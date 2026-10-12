@@ -328,24 +328,8 @@ void GpuStaticPropBatcher::refreshAlphaFlags() {
             if (s_lastSeenMaterialFlags.size() != pktCount) {
                 s_lastSeenMaterialFlags.assign(pktCount, -1);
             }
-            // SP-BATCHER-ALPHASCAN-GATE-1: the per-packet OR-reduce scan below is
-            // frame-constant except immediately after a destruction/damage event
-            // (which flips a type's texture alpha via TG_TypeMultiShape::SetTextureAlpha
-            // and bumps g_staticPropAlphaGeneration). When the gate is armed and the
-            // generation is unchanged since the last scan AND the packet count is
-            // unchanged (buffer layout stable), skip the whole scan — the SSBO already
-            // holds the correct flags from the last event. Default OFF => scan always
-            // runs (byte-identical). First scan always runs (cached gen 0 != live >=1).
-            static const bool s_alphaScanGate = mc2::gate::get<"MC2_SP_ALPHASCAN_GATE">();
-            static uint64_t s_lastScannedAlphaGen = 0;
-            static size_t   s_lastScannedPktCount = (size_t)-1;
-            const uint64_t liveAlphaGen = g_staticPropAlphaGeneration.load(std::memory_order_relaxed);
-            const bool alphaScanSkip = s_alphaScanGate &&
-                s_lastScannedAlphaGen == liveAlphaGen &&
-                s_lastScannedPktCount == pktCount;
-            if (!alphaScanSkip) {
-                s_lastScannedAlphaGen = liveAlphaGen;
-                s_lastScannedPktCount = pktCount;
+            // The per-packet OR-reduce scan runs every frame.
+            {
                 bool anyChanged = false;
                 for (size_t i = 0; i < pktCount; ++i) {
                     const uint32_t globalPktIdx = s_sortedPacketOrder[i];
@@ -486,11 +470,9 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
         // prop stays byte-identical.
         if (s_locsCoalesce.terrainDecalColorBlend >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend);
-        // BUILDING-GLASS-1: dither-glass translucency toggle (default ON,
-        // MC2_SP_GLASS_DITHER=0 -> 0.0 -> legacy binary discard in frag).
+        // BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass) texels.
         if (s_locsCoalesce.glassDither >= 0)
-            glUniform1f       (s_locsCoalesce.glassDither,
-                               s_glassDitherEnabled ? 1.0f : 0.0f);
+            glUniform1f       (s_locsCoalesce.glassDither, 1.0f);
         if (g_terrainDecalColorBlend > 0.0f) {
             extern GLuint gos_terrain_indirect_getAtlasGLTex();
             extern float  gos_terrain_indirect_getAtlasMapTopLeftX();

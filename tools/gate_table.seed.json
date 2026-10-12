@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1011,
+ "count": 1002,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -18680,66 +18680,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_SNAPSHOT_STATIC_PROP_BUILD",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state (gos_static_prop_batcher.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/debug_state_dump.cpp:482",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:239",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_RENDER_SNAPSHOT_BUILD",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SNAP_CULL",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "Extraction v2.3: skip prev-frame zero-instance slots during snapshot-based dispatch (snap-cull opt-in).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:288",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SNAP_CULL",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SOAK_AUTOWIN",
    "kind": "Bool",
    "default": false,
@@ -19121,62 +19061,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SP_ALPHASCAN_GATE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0P",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "SP-BATCHER-ALPHASCAN-GATE-1: skip the frame-constant per-static-prop alpha re-resolve scan in the batcher when nothing that affects it changed (gos_static_prop_batcher).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7232",
-     "idiom": "Lead0P"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_SP_ALPHASCAN_GATE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SP_GLASS_DITHER",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1809",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_color_prop_island.cpp:1550",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_SP_GLASS_DITHER",
    "retireVerdict": ""
   },
   {
@@ -19779,36 +19663,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_PROP_COLORS_FILL",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0P",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "STATICPROP-COLORS-FILL-DEBUGONLY-1: per-static-instance Colors SSBO (binding 1) zero-fill.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:700",
-     "idiom": "Lead0P"
-    },
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:701",
-     "idiom": "Lead0P"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_COLORS_FILL",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_DEPTH_PREPASS",
    "kind": "Bool",
    "default": false,
@@ -20014,86 +19868,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_PROP_LEGACY_DISPATCH",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "v6 DrawPacket+Meta dispatch (default-ON as of v7).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:220",
-     "idiom": "Lead1(inv)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "registry defaultOn=true but readers say unset=off",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_PACKET_DISPATCH",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_LIGHT_FRESHNESS",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "LIGHTROW-FRESHNESS-1: DEFAULT-ON.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2554",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_STATIC_PROP_LIGHT_FRESHNESS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_LIVE_BUILDER",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "v8 kill-switch: =1 restores live build + snapshot compare",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:246",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_LIVE_BUILDER",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_MISSION_LOAD_REG",
    "kind": "Bool",
    "default": true,
@@ -20216,32 +19990,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1 gate: default OFF. =1 builds s_spRowCache from registry each frame and compares field-by-field with legacy propBuf.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/render_snapshot.cpp:37",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY",

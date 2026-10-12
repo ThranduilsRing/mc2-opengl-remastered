@@ -32,10 +32,6 @@
 // FrameArena instances are non-owning wrappers; actual buffers are s_arenaBuffers.
 // ---------------------------------------------------------------------------
 
-// STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: persistent cache for compare-only validation.
-// Built each frame from registry sources independently of the legacy propBuf path.
-// Gate: MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE (default-off).
-static const bool s_bridgeCompareEnabled = mc2::gate::get<"MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE">();
 // STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1: on clean registry/cull generations, skip
 // fillStaticPropSlots + the per-prop WriteLoop and memcpy the cached rows into the
 // frame arena instead. Gate: MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY (default-ON
@@ -59,8 +55,6 @@ struct CachedSnapshotCounters {
              packetRangeFail;
 };
 static CachedSnapshotCounters s_cachedCounters = {};
-// BRIDGE-COMPARE / DIRTYONLY-1 oracle scratch (validation only; independent rebuild).
-static std::vector<ExtractedStaticProp> s_oracleScratch;
 static constexpr size_t kArenaBytes = 1024u * 1024u;
 alignas(16) static uint8_t s_arenaBuffers[2][kArenaBytes];
 static RenderCore::FrameArena s_frameArenas[2];
@@ -80,116 +74,6 @@ static bool           s_hasLastSnapshot = false;
 
 const RenderSnapshot* getLastRenderSnapshot() {
     return s_hasLastSnapshot ? &s_lastSnapshot : nullptr;
-}
-
-// ---------------------------------------------------------------------------
-// BRIDGE-COMPARE / DIRTYONLY-1 oracle helpers.
-//
-// BuildOracleRows() rebuilds the static-prop rows straight from the registry with
-// its OWN independent fillStaticPropSlots() pass — never copying the legacy propBuf.
-// It is the validation oracle for the bridge compare in both the dirty and clean
-// snapshot paths. Returns the number of rows written into 'out'.
-// ---------------------------------------------------------------------------
-static uint32_t BuildOracleRows(std::vector<ExtractedStaticProp>& out)
-{
-    const uint32_t slotCount = RenderWorld::getStaticPropSlotCount();
-    std::vector<RenderWorld::StaticPropRecordView> views;
-    views.resize(slotCount);
-    const uint32_t total = RenderWorld::fillStaticPropSlots(views.data(), slotCount);
-    if (total > slotCount) {
-        views.resize(total);
-        RenderWorld::fillStaticPropSlots(views.data(), total);
-    }
-
-    out.clear();
-    out.reserve(views.size());
-    for (uint32_t i = 0u; i < static_cast<uint32_t>(views.size()); ++i) {
-        const RenderWorld::StaticPropRecordView& v = views[i];
-        if (!v.alive || !v.generationValid) continue;
-
-        float mtx[16];
-        if (!GpuStaticPropRegistry::staticPropGetModelMatrix(v.recipeIndex, mtx)) continue;
-        uint32_t typeId = 0u;
-        if (!GpuStaticPropRegistry::staticPropGetTypeId(v.recipeIndex, &typeId)) continue;
-        uint32_t instanceFlags = 0u;
-        if (!GpuStaticPropRegistry::staticPropGetInstanceFlags(v.recipeIndex, &instanceFlags)) continue;
-
-        ExtractedStaticProp& cp = out.emplace_back();
-        cp.rwHandle      = v.handle;
-        cp.recipeIndex   = v.recipeIndex;
-        cp.typeId        = typeId;
-        cp.instanceFlags = instanceFlags;
-        std::memcpy(cp.worldMatrix, mtx, sizeof(float) * 16);
-        cp.worldCenterX = -mtx[3];    // MC2 east
-        cp.worldCenterY =  mtx[11];   // MC2 north
-        cp.worldCenterZ =  mtx[7];    // MC2 elevation
-        cp.boundingRadius = 0.0f;
-        GpuStaticPropRegistry::staticPropGetExtentRadius(v.recipeIndex, &cp.boundingRadius);
-        cp.lightDataIndex = 0xFFFFFFFFu;
-        GpuStaticPropRegistry::staticPropGetLightDataIndex(v.recipeIndex, &cp.lightDataIndex);
-        cp.hasCullRecord = false;
-        {
-            bool cr = false;
-            GpuStaticPropRegistry::staticPropGetHasCullRecord(v.recipeIndex, &cr);
-            cp.hasCullRecord = cr;
-        }
-        cp.texArrayLayer = -1;
-        cp.materialIdx   = 0xFFFFFFFFu;
-        cp.alphaClass    = 0u;
-        cp.packetCount   = 0u;
-        cp.firstPacket   = 0xFFFFFFFFu;
-        GpuStaticPropRegistry::StaticPropTypeMaterialCache matInfo{};
-        if (GpuStaticPropRegistry::staticPropGetMaterialCacheInfo(v.recipeIndex, &matInfo)) {
-            cp.texArrayLayer = matInfo.texArrayLayer;
-            cp.materialIdx   = matInfo.materialIdx;
-            cp.alphaClass    = matInfo.alphaClass;
-            cp.packetCount   = matInfo.packetCount;
-            cp.firstPacket   = matInfo.firstPacket;
-        }
-        cp.shapeName[0] = '\0';
-        {
-            const char* sn = GpuStaticPropRegistry::getRecipeShapeName(v.recipeIndex);
-            if (sn) mc2::fmt::to_buf_n(cp.shapeName, sizeof(cp.shapeName), "{}", mc2::fmt::safe(sn));
-        }
-    }
-    return static_cast<uint32_t>(out.size());
-}
-
-// Compare the produced rows 'out[0..outCount)' (legacy propBuf on a dirty frame, or the
-// memcpy'd arena span on a clean frame) against the independent oracle, and emit the
-// per-frame [SNAPSHOT_BRIDGE_COMPARE v1] line. immutableMismatch must stay 0; hasCull
-// may differ only during cull-version warmup. 'tag' is "DIRTY" or "CLEAN".
-static void CompareOracleAndLog(const ExtractedStaticProp* out, uint32_t outCount,
-                                const std::vector<ExtractedStaticProp>& oracle,
-                                uint32_t oracleCount,
-                                uint64_t regGen, uint64_t cullGen,
-                                uint64_t frameIndex, const char* tag)
-{
-    const uint32_t rowCountMismatch = (outCount != oracleCount) ? 1u : 0u;
-    uint32_t immutableMismatch = 0u;
-    uint32_t hasCullMismatch   = 0u;
-    const uint32_t compareCount = (outCount < oracleCount) ? outCount : oracleCount;
-    for (uint32_t ci = 0u; ci < compareCount; ++ci) {
-        const ExtractedStaticProp& L = out[ci];      // produced (legacy or clean copy)
-        const ExtractedStaticProp& C = oracle[ci];   // independent oracle
-        if (L.recipeIndex    != C.recipeIndex    ||
-            L.typeId         != C.typeId         ||
-            L.instanceFlags  != C.instanceFlags  ||
-            L.boundingRadius != C.boundingRadius ||
-            L.lightDataIndex != C.lightDataIndex ||
-            L.materialIdx    != C.materialIdx    ||
-            L.texArrayLayer  != C.texArrayLayer  ||
-            L.alphaClass     != C.alphaClass     ||
-            L.packetCount    != C.packetCount    ||
-            L.firstPacket    != C.firstPacket    ||
-            std::memcmp(L.worldMatrix, C.worldMatrix, sizeof(float) * 16) != 0 ||
-            std::memcmp(L.shapeName,   C.shapeName,   sizeof(L.shapeName)) != 0) {
-            ++immutableMismatch;
-        }
-        if (L.hasCullRecord != C.hasCullRecord) ++hasCullMismatch;
-    }
-    mc2::fmt::print_err("[SNAPSHOT_BRIDGE_COMPARE v1] path={} frame={:d} regGen={:d} cullVer={:d} rowCount={:d} oracleCount={:d} rowCountMismatch={:d} immutableMismatch={:d} hasCullMismatch={:d}\n", mc2::fmt::safe(tag), mc2::fmt::as_u64(static_cast<unsigned long long>(frameIndex)), mc2::fmt::as_u64(static_cast<unsigned long long>(regGen)), mc2::fmt::as_u64(static_cast<unsigned long long>(cullGen)), mc2::fmt::as_u32(outCount), mc2::fmt::as_u32(oracleCount), mc2::fmt::as_u32(rowCountMismatch), mc2::fmt::as_u32(immutableMismatch), mc2::fmt::as_u32(hasCullMismatch));
-    std::fflush(stderr);
 }
 
 // ---------------------------------------------------------------------------
@@ -302,14 +186,6 @@ RenderSnapshot ExtractRenderSnapshot()
                 snap.staticPropHasShapeName     = s_cachedCounters.hasShapeName;
                 snap.staticPropPacketRangesOk   = s_cachedCounters.packetRangesOk;
                 snap.staticPropPacketRangesFail = s_cachedCounters.packetRangeFail;
-
-                // Compare still available under dirty-only: prove the cached rows match a
-                // fresh independent registry rebuild. Runs its own Fill (validation only).
-                if (s_bridgeCompareEnabled) {
-                    const uint32_t oracleCount = BuildOracleRows(s_oracleScratch);
-                    CompareOracleAndLog(propSpan.data, n, s_oracleScratch, oracleCount,
-                                        curRegGen, curCullGen, snap.frameIndex, "CLEAN");
-                }
             }
         } else {
         // ---- DIRTY / LEGACY PATH: full Fill + WriteLoop rebuild (also refreshes cache). ----
@@ -492,15 +368,6 @@ RenderSnapshot ExtractRenderSnapshot()
             }
             }  // end Extract.SP.WriteLoop scope
 
-            // STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1 / DIRTYONLY-1: build an independent
-            // registry oracle and compare field-by-field against the legacy propBuf this
-            // dirty frame. Gate: MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE.
-            if (s_bridgeCompareEnabled) {
-                const uint32_t oracleCount = BuildOracleRows(s_oracleScratch);
-                CompareOracleAndLog(propBuf, writeIdx, s_oracleScratch, oracleCount,
-                                    curRegGen, curCullGen, snap.frameIndex, "DIRTY");
-            }
-
             snap.staticProps              = Span<ExtractedStaticProp>(propBuf, writeIdx);
             snap.staticPropValidationFail = validationFail;
             snap.staticPropSentinelMat    = sentinelMat;
@@ -589,15 +456,6 @@ RenderSnapshot ExtractRenderSnapshot()
     // silently leaving both zero. batcher_compareSnapshotPackets handles null data internally.
     batcher_compareSnapshotPackets(&snap);
 
-    // v2.3: read prev-frame snap-cull stats from batcher (written by previous flush()).
-    {
-        uint32_t scSkipped = 0u, scActive = 0u, scMismatch = 0u;
-        batcher_getSnapCullStats(&scSkipped, &scActive, &scMismatch);
-        snap.spSnapCullSkipped      = scSkipped;
-        snap.spSnapCullActive       = scActive;
-        snap.spSnapCullSlotMismatch = scMismatch;
-    }
-
     // v3: read snapshot build stats from the most recent flush().
     {
         uint32_t attempted = 0u, countMis = 0u, pktMis = 0u, metaMis = 0u, fallback = 0u, retired = 0u;
@@ -628,7 +486,6 @@ RenderSnapshot ExtractRenderSnapshot()
                snap.spPipelineMismatch         == 0u &&
                snap.spMaterialIdxMismatch      == 0u &&
                snap.spTexLayerMismatch         == 0u &&
-               snap.spSnapCullSlotMismatch     == 0u &&
                // v8: spBuild*Mismatch are 0 when spBuildRetired==1 (no compare) — gate stays valid.
                snap.spBuildCountMismatch       == 0u &&
                snap.spBuildPacketMismatch      == 0u &&
@@ -655,8 +512,8 @@ RenderSnapshot ExtractRenderSnapshot()
     // -----------------------------------------------------------------------
     static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
     if (s_logEnabled) {
-        mc2::fmt::print_err("[RENDER_SNAPSHOT v3+mech-extract] frame={:d} mechs={:d} static_props={:d} lights={:d} bytes={:d} overflow={:d} ok={:d}\n  sp_fail={:d} sp_sentinel_mat={:d} sp_sentinel_cull={:d} sizeof_static_prop={:d}\n  sp_tex_wired={:d} sp_tex_sentinel={:d} sp_mat_wired={:d} sp_mat_sentinel={:d}\n  sp_primary_alpha_on={:d} sp_multi_packet={:d}\n  sp_cull_submitted={:d} sp_cull_missing={:d} sp_has_bounds={:d}\n  sp_alpha_on={:d} sp_has_shape_name={:d}\n  sp_packet_ranges_ok={:d} sp_packet_ranges_invalid={:d}\n  sp_packets={:d} sp_packet_invalid={:d}\n  visibility_static_props={:d} sp_vis_delta={:d}\n  [v2.3 compare] snapshot_count={:d} live_count={:d} count_mismatch={:d}\n  sorted_slot_mismatch={:d} global_packet_mismatch={:d} pipeline_mismatch={:d}\n  material_idx_mismatch={:d} instance_count_mismatch={:d} tex_layer_mismatch={:d}\n  [v2.3 snap_cull] skipped={:d} active={:d} slot_mismatch={:d}\n  [v3 build] attempted={:d} count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback={:d}\n  [v3 arena] used={:d} high_water={:d} allocs={:d} overflow={:d} mechArenaBytes={:d} mechRows={:d}\n  [mech-extract] gate={:d} snapshot={:d} mat_valid={:d} mat_sentinel={:d} count_mismatch={:d} handle_mismatch={:d} objectid_mismatch={:d} tex_mismatch={:d} mat_mismatch={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(static_cast<uint32_t>(snap.mechs.size())), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(static_cast<uint32_t>(snap.lights.size())), mc2::fmt::as_size(snap.frameArena.stats().usedBytes), mc2::fmt::as_i32(snap.arenaOverflow ? 1 : 0), mc2::fmt::as_u32(snap.ok), mc2::fmt::as_u32(snap.staticPropValidationFail), mc2::fmt::as_u32(snap.staticPropSentinelMat), mc2::fmt::as_u32(snap.staticPropSentinelCull), mc2::fmt::as_size(sizeof(ExtractedStaticProp)), mc2::fmt::as_u32(snap.staticPropTexWired), mc2::fmt::as_u32(snap.staticPropTexSentinel), mc2::fmt::as_u32(snap.staticPropMatWired), mc2::fmt::as_u32(snap.staticPropMatSentinel), mc2::fmt::as_u32(snap.staticPropPrimaryAlphaOn), mc2::fmt::as_u32(snap.staticPropMultiPacket), mc2::fmt::as_u32(snap.staticPropCullSubmitted), mc2::fmt::as_u32(snap.staticPropCullMissing), mc2::fmt::as_u32(snap.staticPropHasBounds), mc2::fmt::as_u32(snap.staticPropAlphaOn), mc2::fmt::as_u32(snap.staticPropHasShapeName), mc2::fmt::as_u32(snap.staticPropPacketRangesOk), mc2::fmt::as_u32(snap.staticPropPacketRangesFail), mc2::fmt::as_u32(snap.staticPropPacketCount), mc2::fmt::as_u32(snap.staticPropPacketInvalid), mc2::fmt::as_u32(visibilityStaticPropsCount), mc2::fmt::as_i32(static_cast<int32_t>(snap.staticProps.size()) -
-                static_cast<int32_t>(visibilityStaticPropsCount)), mc2::fmt::as_u32(snap.spCompareSnapshotCount), mc2::fmt::as_u32(snap.spCompareLiveCount), mc2::fmt::as_u32(snap.spCountMismatch), mc2::fmt::as_u32(snap.spSortedSlotMismatch), mc2::fmt::as_u32(snap.spGlobalPacketMismatch), mc2::fmt::as_u32(snap.spPipelineMismatch), mc2::fmt::as_u32(snap.spMaterialIdxMismatch), mc2::fmt::as_u32(snap.spInstanceCountMismatch), mc2::fmt::as_u32(snap.spTexLayerMismatch), mc2::fmt::as_u32(snap.spSnapCullSkipped), mc2::fmt::as_u32(snap.spSnapCullActive), mc2::fmt::as_u32(snap.spSnapCullSlotMismatch), mc2::fmt::as_u32(snap.spBuildAttempted), mc2::fmt::as_u32(snap.spBuildCountMismatch), mc2::fmt::as_u32(snap.spBuildPacketMismatch), mc2::fmt::as_u32(snap.spBuildMetaMismatch), mc2::fmt::as_u32(snap.spBuildFallback), mc2::fmt::as_size(snap.frameArena.stats().usedBytes), mc2::fmt::as_size(snap.frameArena.stats().highWaterBytes), mc2::fmt::as_u32(snap.frameArena.stats().allocCount), mc2::fmt::as_u32(snap.frameArena.stats().overflowCount), mc2::fmt::as_size(snap.mechPackets.count * sizeof(ExtractedMechPacket)), mc2::fmt::as_u32(static_cast<uint32_t>(snap.mechPackets.count)), mc2::fmt::as_i32(s_mechExtractEnabled ? 1 : 0), mc2::fmt::as_u32(snap.mechSnapshotCount), mc2::fmt::as_u32(snap.mechMatValid), mc2::fmt::as_u32(snap.mechMatSentinel), mc2::fmt::as_u32(snap.mechCountMismatch), mc2::fmt::as_u32(snap.mechHandleMismatch), mc2::fmt::as_u32(snap.mechObjectIdMismatch), mc2::fmt::as_u32(snap.mechTexHandleMismatch), mc2::fmt::as_u32(snap.mechMaterialIdxMismatch));
+        mc2::fmt::print_err("[RENDER_SNAPSHOT v3+mech-extract] frame={:d} mechs={:d} static_props={:d} lights={:d} bytes={:d} overflow={:d} ok={:d}\n  sp_fail={:d} sp_sentinel_mat={:d} sp_sentinel_cull={:d} sizeof_static_prop={:d}\n  sp_tex_wired={:d} sp_tex_sentinel={:d} sp_mat_wired={:d} sp_mat_sentinel={:d}\n  sp_primary_alpha_on={:d} sp_multi_packet={:d}\n  sp_cull_submitted={:d} sp_cull_missing={:d} sp_has_bounds={:d}\n  sp_alpha_on={:d} sp_has_shape_name={:d}\n  sp_packet_ranges_ok={:d} sp_packet_ranges_invalid={:d}\n  sp_packets={:d} sp_packet_invalid={:d}\n  visibility_static_props={:d} sp_vis_delta={:d}\n  [v2.3 compare] snapshot_count={:d} live_count={:d} count_mismatch={:d}\n  sorted_slot_mismatch={:d} global_packet_mismatch={:d} pipeline_mismatch={:d}\n  material_idx_mismatch={:d} instance_count_mismatch={:d} tex_layer_mismatch={:d}\n  [v3 build] attempted={:d} count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback={:d}\n  [v3 arena] used={:d} high_water={:d} allocs={:d} overflow={:d} mechArenaBytes={:d} mechRows={:d}\n  [mech-extract] gate={:d} snapshot={:d} mat_valid={:d} mat_sentinel={:d} count_mismatch={:d} handle_mismatch={:d} objectid_mismatch={:d} tex_mismatch={:d} mat_mismatch={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(static_cast<uint32_t>(snap.mechs.size())), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(static_cast<uint32_t>(snap.lights.size())), mc2::fmt::as_size(snap.frameArena.stats().usedBytes), mc2::fmt::as_i32(snap.arenaOverflow ? 1 : 0), mc2::fmt::as_u32(snap.ok), mc2::fmt::as_u32(snap.staticPropValidationFail), mc2::fmt::as_u32(snap.staticPropSentinelMat), mc2::fmt::as_u32(snap.staticPropSentinelCull), mc2::fmt::as_size(sizeof(ExtractedStaticProp)), mc2::fmt::as_u32(snap.staticPropTexWired), mc2::fmt::as_u32(snap.staticPropTexSentinel), mc2::fmt::as_u32(snap.staticPropMatWired), mc2::fmt::as_u32(snap.staticPropMatSentinel), mc2::fmt::as_u32(snap.staticPropPrimaryAlphaOn), mc2::fmt::as_u32(snap.staticPropMultiPacket), mc2::fmt::as_u32(snap.staticPropCullSubmitted), mc2::fmt::as_u32(snap.staticPropCullMissing), mc2::fmt::as_u32(snap.staticPropHasBounds), mc2::fmt::as_u32(snap.staticPropAlphaOn), mc2::fmt::as_u32(snap.staticPropHasShapeName), mc2::fmt::as_u32(snap.staticPropPacketRangesOk), mc2::fmt::as_u32(snap.staticPropPacketRangesFail), mc2::fmt::as_u32(snap.staticPropPacketCount), mc2::fmt::as_u32(snap.staticPropPacketInvalid), mc2::fmt::as_u32(visibilityStaticPropsCount), mc2::fmt::as_i32(static_cast<int32_t>(snap.staticProps.size()) -
+                static_cast<int32_t>(visibilityStaticPropsCount)), mc2::fmt::as_u32(snap.spCompareSnapshotCount), mc2::fmt::as_u32(snap.spCompareLiveCount), mc2::fmt::as_u32(snap.spCountMismatch), mc2::fmt::as_u32(snap.spSortedSlotMismatch), mc2::fmt::as_u32(snap.spGlobalPacketMismatch), mc2::fmt::as_u32(snap.spPipelineMismatch), mc2::fmt::as_u32(snap.spMaterialIdxMismatch), mc2::fmt::as_u32(snap.spInstanceCountMismatch), mc2::fmt::as_u32(snap.spTexLayerMismatch), mc2::fmt::as_u32(snap.spBuildAttempted), mc2::fmt::as_u32(snap.spBuildCountMismatch), mc2::fmt::as_u32(snap.spBuildPacketMismatch), mc2::fmt::as_u32(snap.spBuildMetaMismatch), mc2::fmt::as_u32(snap.spBuildFallback), mc2::fmt::as_size(snap.frameArena.stats().usedBytes), mc2::fmt::as_size(snap.frameArena.stats().highWaterBytes), mc2::fmt::as_u32(snap.frameArena.stats().allocCount), mc2::fmt::as_u32(snap.frameArena.stats().overflowCount), mc2::fmt::as_size(snap.mechPackets.count * sizeof(ExtractedMechPacket)), mc2::fmt::as_u32(static_cast<uint32_t>(snap.mechPackets.count)), mc2::fmt::as_i32(s_mechExtractEnabled ? 1 : 0), mc2::fmt::as_u32(snap.mechSnapshotCount), mc2::fmt::as_u32(snap.mechMatValid), mc2::fmt::as_u32(snap.mechMatSentinel), mc2::fmt::as_u32(snap.mechCountMismatch), mc2::fmt::as_u32(snap.mechHandleMismatch), mc2::fmt::as_u32(snap.mechObjectIdMismatch), mc2::fmt::as_u32(snap.mechTexHandleMismatch), mc2::fmt::as_u32(snap.mechMaterialIdxMismatch));
     }
 
     // v2.3: store for getLastRenderSnapshot() before returning.
