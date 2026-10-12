@@ -13,3 +13,4 @@ point of the file; add a line each time. Host-load figures are what the runner a
 Notes
 - Both 2026-10-10 15:5x/16:3x occurrences followed a deploy + first launch of a freshly written exe (cold shader/texture caches after a rebuild);
   the very next run of the same exe passed in every case. Worth checking against lane 2's build activity from the lease/process log if the pattern continues.
+| 2026-10-12 11:29 | tier1 at `ec0e983ec` (F-MECH, lane 2 install) | mc2_17 | heartbeat_freeze_play (last play heartbeat 130.4 s, exit 0, p1% 14; every mission 40-60% below its usual fps) | lane 3 tier2 run + ~35 python children on the host; no build of mine | no | mc2_17 alone passed (11:42:24, 94 fps, 8192 frames) |
