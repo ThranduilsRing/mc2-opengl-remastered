@@ -1,40 +1,92 @@
-# ABL and hierarchical brain status
+# ABL and hierarchical-brain status — reconciled closure audit
 
-Audit basis: source at `HEAD e9d18b8a7`; Task 1 review commit `e9d18b8a7` is a docs-only commit. File/line references below identify the current evidence. Commit IDs identify landed slices.
+Source snapshot: `97949f0f5`, 2026-10-12. Landing SHAs below are ancestors of this
+snapshot. Historical closure evidence is `git show b80c96dc6:.claude/TECHSCRIPT-GAP-CLOSURE-1.md`;
+its percentages are historical estimates, not an acceptance metric. This pass
+reads source/history only; no engine build, harness or live mission proof was run.
 
-## Status
+**The runtime foundation landed; complete hierarchical behavior and owned brain
+authoring did not. ABL must not be declared frozen on the basis of this foundation.**
+Legacy ABL remains present at the snapshot SHA (`mclib/abl.h:37,88,95`,
+`code/ablmc2.cpp:300,338-385,597`, `code/mission_init.cpp:911`). Enhanced behavior is
+a parallel path with explicit arbitration, not automatic conversion of arbitrary
+ABL (`18f20fb69`; `code/warrior.cpp:1358-1363,1445-1476`). The owner requested this
+audit before the host-table design (`.claude/cleanup/HANDOFF-LOG.md:17`).
 
-**The hierarchical runtime is a real, partially landed parallel path; it is not a replacement for ABL and is not ready to freeze as complete modder-brain support.** The original ABL API still exposes initialization, library loading, and execution (`mclib/abl.h:37,88,95`); the MC2 adapter owns its ordered native-function registrations (`code/ablmc2_internal.h:3-4`, `code/ablmc2.cpp:300,338-385`), and mission initialization still loads ABL libraries (`code/mission_init.cpp:911`). The hierarchical work parses declarative Brain/OPORD records (`code/brain_missionfit_oporbd.cpp:154,297`) and runs its own per-warrior path (`code/warrior.cpp:1636-1648`).
+## Settled authority and conversion ruling
 
-The latest owner handoff says ABL is not frozen and specifically calls for the `brain_dispatch_harness`, `BRAIN_ENGAGE`, and `BRAIN_PATROL` status audit before designing the ABL host table (`.claude/cleanup/HANDOFF-LOG.md:17`). The implementation roadmap is the linked arc plan and records its remaining conversion/runtime decisions (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:25-75,97-99`).
+Roadmap Addendum #3 (`ce45ebfd9`; `docs/render-backend-seams/brain-arc-implementation-roadmap.md:165-197`)
+makes the engine-owned normalized BrainSpecialBody DSL authoritative. Carver-shaped
+content is a compatibility/stress corpus. The later closure ledger (`b80c96dc6`,
+feature #23) explicitly declines an **in-engine** ABL→AST→IR→FIT converter: external
+tools emit the engine spec. This audit preserves that ruling. External migration
+tooling can be incomplete without becoming an engine/freeze requirement; editable
+engine authoring, persistence and behavioral contracts are separate engine gaps.
+The ledger also records GOTO/LABEL as a resolved spec delta: structured FSM, call
+and latched flow over a deterministic queue, not an instruction-pointer VM.
 
-## What has landed
+Content boundary at `97949f0f5`: `git ls-files data` filtered for `.abl`/`.abx`
+returns zero tracked files. Legacy interpreter sources (`mclib/abl*`) and the
+host adapters (`code/ablmc2*`) were audited; canonical authored Brain fixtures
+are under `tests/fixtures/brain_runtime/`. This is not mod-campaign execution
+coverage or a claim that the external archives contain no ABL scripts.
 
-- Full declarative Brain block parsing and runtime consumption, including archetype resolution and OPORD types: `BRAIN-FULL-PARSE-1` `60aff369e`; `BRAIN-FULL-CONSUMER-1` `76246bc78`. Current parser entry points are `code/brain_missionfit_oporbd.cpp:154,297`; the parser recognizes Primary, Secondary, and Tertiary OPORD blocks and archetype fields at `:377-402`.
-- Primary → Secondary → Tertiary OPORD slot progression: `BRAIN-OPORD-PROGRESS-1` `6f39b1f27`.
-- Multi-waypoint patrol dispatch and tick advancement: `BRAIN-OPORD-COREPATROL-1` `4c0bd5ba2`; current application/advance entry points are `code/brain_special_apply.cpp:299-392`, `code/brain_special_dispatch.cpp:1616-1729`, and `code/warrior.cpp:1636-1648`.
-- Nearest visible-enemy engagement for Patrol/Guard and subsequent range/LOS constraints: `BRAIN-ENGAGE-1` `d3a799c7b`, `ENGAGE-DETECT-1` `ffe170088`, and `BRAIN-ENGAGE-RADIUS-LOCALIZE-1` `c1542ae0d`; current acquisition code is `code/brain_special_dispatch.cpp:1419-1547` and its warrior tick call is `code/warrior.cpp:1645`.
-- Unit-scoped Var storage plus guarded mission-scope Var writes: `TECHSCRIPT-DISPATCH-1D-VARS-1` `e0f4723e1`, `TECHSCRIPT-DISPATCH-1D-M` `0ed32225d`; current Var handling is in `code/brain_special_dispatch.cpp:1102-1124,2469-2490,2565-2620`. The roadmap's older claim that 1D was wholly planned is superseded by those commits (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:31,128`).
-- Per-warrior FSM state and conditional transition slices: `BRAIN-FSM-1K-A` `50f3662f7` and `BRAIN-FSM-1K-B` `1e02fdd64`; current dispatch recognizes `Unit.SetStateIf` at `code/brain_special_dispatch.cpp:1255-1278`, and fixture expectations cover the transition sequence at `tests/fixtures/brain_runtime/manifest.json:462-478`.
-- Offline apply/intent-commit A/B harness: `BRAIN-DISPATCH-HARNESS-V2` `35d466387`; the current harness README says it proves six effect verbs against a fake TacOrderSink (`tools/brain_dispatch_harness/README-v2.md:4-17`).
-- `TechSpecial.Call` lookup, recursion guard, and trace recursion only: `TECHSCRIPT-CALL-CHAIN-1A` `018e9d7de`. The gate is default-OFF (`Gates/gate_table.cpp:105`), and current apply dispatch recurses through `executeSpecialBody_TraceOnlyChained` (`code/brain_special_dispatch.cpp:1058-1097`).
+## Landed mechanisms and current evidence
 
-## Exact unfinished gaps
+Each row identifies landed code, not a claim that its old test result is current.
+The closure ledger's post-arc list supersedes the older roadmap's planned rows.
 
-1. **Called-body effects are not applied.** `TechSpecial.Call` in the Apply path recurses into `executeSpecialBody_TraceOnlyChained` (`code/brain_special_dispatch.cpp:1058-1097`); after that branch, the effect loop explicitly handles the root body only (`:1129`). The public header says chained effects are deferred to CALL-CHAIN-1B (`code/brain_special_dispatch.h:227-228`), and the harness lists them as still needing implementation (`tools/brain_dispatch_harness/README-v2.md:20-23`). This blocks split init/update bodies from executing their effect verbs through the dispatcher.
-2. **No demonstrated migration path covers legacy ABL brain edits.** The roadmap records that only `carver_v_enhanced` was supplied in BrainSpecial format, while other mod campaigns use raw ABL (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:97-99`); it separately leaves ABL-to-TechScript conversion as later work (`:69,74`). Current ABL remains loadable via the legacy mission path (`code/mission_init.cpp:911`; `code/ablmc2.cpp:597`). The tracked-data audit `git ls-files data | rg -i '\.(abl|abx)$' | Measure-Object` returned **0**, so this checkout has no tracked `.abl`/`.abx` under `data/` to prove that the dispatcher accepts modder-authored ABL. This is an input/authoring gap, not proof that legacy ABL execution is missing.
-3. **The harness is not proof of real engine integration.** Its own README lists real `Mover::handleTacticalOrder`, live ObjectManager lookup, and engine once-guards as smoke-only (`tools/brain_dispatch_harness/README-v2.md:20-23`). Its mover stub says engagement is never enabled and returns null (`tools/brain_dispatch_harness/stubs/include/mover.h:7,21`); its warrior stub returns null for runtime and vehicle (`tools/brain_dispatch_harness/stubs/include/warrior.h:34-41`). The `MC2_BRAIN_ENGAGE` and `MC2_BRAIN_PATROL` gates both default false (`Gates/gate_table.cpp:108,121`); their production routines are connected to the tick at `code/warrior.cpp:1636-1648`.
-4. **FSM authoring still has a manual-conversion seam.** The roadmap explicitly keeps ABL `state`/`trans` conversion tooling as later work (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:69`); the current code includes a TODO-comment scanner (`code/brain_special_dispatch.cpp:2660-2683`) rather than an ABL-to-FSM converter. The old roadmap rows that list 1K FSM as unimplemented (`:46`) are stale for runtime support because commits `50f3662f7` and `1e02fdd64` landed the basic FSM slices; the converter/input gap remains.
-5. **The roadmap still lists larger runtime extensions as planned.** Hybrid ABL/brain arbitration and REQUEST_ORDERS/commander-chain handling remain described as planned slices (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:50-52`). These are beyond the already-landed declarative parser and patrol/engage slices, and need a code/content decision before calling the broader hierarchical-brain scope complete.
+| Mechanism | Landing SHA(s) | Current source / proof surface |
+|---|---|---|
+| Brain runtime lifecycle and Enhanced ABL short-circuit | `7f11b6f40`, `89f95e876` / merge `18f20fb69` | `code/mech_brain_runtime.h:120-139`; `code/warrior.cpp:1358-1363,1445-1476`. Hybrid is still not applied arbitration. |
+| Declarative Brain/archetype/OPORD parser and consumer | `60aff369e`, `76246bc78` | `code/brain_missionfit_oporbd.cpp:154,297,377-402`; per-warrior runtime consumed in `code/warrior.cpp:1636-1648`. |
+| Root specials raw DSL loader / mission cache | `01f3c7575`, `9a9faa5fa` | `code/brain_special_dispatch.cpp:1781-2090,2312-2444`; quotes no longer depend on FitIni's bracket string shape. |
+| Patrol routes, initial kick and finite slot progression | `4c0bd5ba2`, `a7a8699cc`, `6f39b1f27` | `code/brain_special_apply.cpp:299-392`; `code/brain_special_dispatch.cpp:1596-1729`; `code/warrior.cpp:1648`. Successor activation is limited (gap below). |
+| Patrol/Guard enemy engagement, detection/range/LOS | `d3a799c7b`, `ffe170088`, `c1542ae0d` | `code/brain_special_dispatch.cpp:1419-1547`; `code/warrior.cpp:1645`. |
+| Six root-body order effects; clear-move and target-policy intents | `ee985ba62`, `d55eefcbc`, `88a0c9011`, `79d01e757`, `3f4bab7ff`, `13289413a`; `cb5596b0a`, `6948f4bbd`; A/B harness `35d466387` | `tools/brain_dispatch_harness/README-v2.md:4-17`; recognized verbs `code/brain_special_dispatch.cpp:228-255`; symbol constants `code/brain_symbol_resolve.cpp:14-43`. |
+| Deterministic task queue, emit/commit separation, WID-ordered deferred commit, snapshot and fixed cadence | `0c07f8810`, `254c3c029`, `e40598531`, `67f954ccd`, `b04fb6cdb` | `code/brain_special_dispatch.h:234-243`; `code/warrior.cpp:1467-1476,2320-2335`; these are gated mechanisms, not proof of whole-simulation determinism. |
+| Unit variables and guarded shared mission variables | `e0f4723e1`, `0ed32225d` | `code/mech_brain_runtime.h:23-85`; `code/brain_special_dispatch.cpp:1102-1124,2469-2490,2565-2620`. |
+| FSM current/previous state and conditional transition | `50f3662f7`, `1e02fdd64` | `code/mech_brain_runtime.h:138-147`; `code/brain_special_apply.cpp:445-534`; fixtures `tests/fixtures/brain_runtime/manifest.json:462-478`. |
+| Call lookup/recursion guards; called-body trace only | `018e9d7de` | `code/brain_special_dispatch.cpp:1058-1097`; `code/brain_special_dispatch.h:227-228`. |
+| Data aliases and stable canonical first-token rewrite | `9bd8ad174` | `code/brain_special_dispatch.cpp:104-135`; `code/brain_special_dispatch.h:33-35`; closure fixture `alias-registry` at `b80c96dc6`. |
+| Global reusable specials with mission-local collision precedence | `a5147373b` | `code/brain_special_dispatch.cpp:2153-2193`; `code/brain_special_dispatch.h:37-39`. Library Call/parent targets, not a second entry body. |
+| variantOf inheritance, whole-Body override and cycle/depth guard | `089f10994` | `code/brain_special_dispatch.cpp:2195-2270`; `code/brain_special_dispatch.h:41-45`. |
+| WAIT / WAIT_UNTIL / STOP | `f9a3a67f4` | `code/brain_special_dispatch.cpp:787-855,1129-1216`; `code/mech_brain_runtime.h:88-104`. Sim-time/Var latched sequence gates; STOP ends this tick; root bodies only; no saved IP. |
+| Deterministic raw brace-block writer | `364fbbcce` | `code/fitblockwriter.h:35-73`, `code/fitblockwriter.cpp:21-89`; recorded `--fitwriter-selftest` 13/13 at `b80c96dc6`. Writer round-trip is not an editable-panel implementation. |
+| Read-only declarative Brain viewer and existing order editing | `cf892cbd4` (viewer); current presence at `97949f0f5` | `editor/UnitBrainPanel.cpp:294-317,401-413`; waypoint/undo mutation at `:67-77,191-207`. |
 
-## Smallest path to a defensible freeze decision
+## Remaining engine gaps, evidence and acceptance
 
-1. Treat legacy ABL as the supported existing runtime contract; state explicitly that BrainSpecial is a separate declarative format and that arbitrary ABL edits are not converted. The source split is visible in `mclib/abl.h:37,88,95`, `code/mission_init.cpp:911`, and `code/brain_special_dispatch.h:245-262`.
-2. Finish CALL-CHAIN-1B by applying supported effects from called bodies under the same gate, once-guard, and intent-queue rules as root-body effects; the exact current trace-only boundary is `code/brain_special_dispatch.cpp:1058-1129`.
-3. Before freezing that runtime slice, prove one authored mission body through the real parser, live object/order path, and called-body effect; offline-only harness limitations are documented at `tools/brain_dispatch_harness/README-v2.md:20-23` and `tools/brain_dispatch_harness/stubs/include/warrior.h:34-41`.
-4. Put ABL conversion, Hybrid arbitration, REQUEST_ORDERS/commander-chain, and the ImGui brain editor in an explicit later scope if they are not required for this freeze. The roadmap already treats conversion and those runtime extensions as separate slices (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:50-52,69`).
+| Gap | Exact boundary | What proves closure |
+|---|---|---|
+| Called-body apply and composition | Apply calls the trace-only recursive dispatcher (`code/brain_special_dispatch.cpp:1058-1097`); effect processing remains root-only (`:1129`); explicit CALL-CHAIN-1B deferral (`code/brain_special_dispatch.h:227-228`). | Canonical nested effects/vars/FSM/flow, recursion/depth/cycle guards, stable intent ordering and once semantics; same engine slot writes through live integration. |
+| Brain save/load | Runtime and task queue are mission-ephemeral (`code/mech_brain_runtime.h:2-11`, `code/warrior.h:870-871`); WAIT latches explicitly unpersisted (`code/mech_brain_runtime.h:88-104`). Scope includes FSM, unit/mission vars, wait latches, patrol/OPORD cursor, effect guards and queued/pending work; no IP exists. | Uninterrupted vs save/reload continuation has identical state, order and sim traces; malformed content safely rejected. Required before final-release save support can cover Enhanced brains. |
+| Generic conditions, IF/ELSE/ENDIF and selectors | Recognition catalog contains FSM/Var/WAIT primitives but no generic IF/selector grammar (`code/brain_special_dispatch.cpp:228-270`); WAIT_UNTIL evaluator is Var equality (`:823-855`), SetStateIf unit-Var equality (`code/brain_special_apply.cpp:475-534`). Historical ledger `b80c96dc6` #3/#5/#6 agrees. | Owned vocabulary, deterministic evaluation and unit/target selection fixtures, malformed-expression rejection and real behavior. CONTACT_CRITERIA symbols alone are not selectors. |
+| Hybrid slot arbitration | Only Enhanced selects the apply branch; otherwise legacy ABL executes (`code/warrior.cpp:1358-1363,1445-1476`). Hybrid ownership is computed/described, not applied (`code/mech_brain_runtime.h:106-115`; roadmap `:50`). | ABL GENERAL plus brain PLAYER/ALARM coexist with explicit priority/write order; collision fixture and sim trace. |
+| Commander requests and full successor/fallback behavior | Current advance only increments a slot and sets hold/engage, with no successor route storage or commander/final fallback (`code/brain_special_dispatch.cpp:1596-1616`). REQUEST_ORDERS is absent from the recognized catalog (`:228-270`); roadmap contracts `:52-54`. | Null/self commander guards, deterministic request→response ordering, each finite successor route and final hold/withdraw/loop/request policy. Basic slot advancement is already landed above. |
+| Remaining verb/domain families and reusable content | Audio/Video/Camera/TriggerArea/Debug/String and Social/Help/logistics/formation/air domains are outside the recognized catalog (`code/brain_special_dispatch.cpp:228-270`); roadmap split `:48,127`; closure #16/#18 at `b80c96dc6`. | One canonical fixture and live behavior per accepted family; core-special pack authored against that implemented vocabulary. No claim that 40+ reusable Specials ship today. |
+| Owned editor authoring | Raw ABL and declarative Brain remain read-only (`editor/UnitBrainPanel.cpp:294-317`); live changes cover orders/stance (`:401-413`) rather than tactics/archetypes/switches/three OPORDs/special bodies. Writer exists (`code/fitblockwriter.h:35-73`), but `rg -n 'FitBlockWriter' editor` has zero consumers at the snapshot. | Owned document values and undo, editable Brain fields/slot routes, BrainSpecial line editor, diagnostics and writer-backed save→reopen→runtime round-trip; preserve current order editing. Distinct UnitBrainSpecial block and CampaignSpecial entry authoring remain limited to parser's current entry rules (`code/brain_special_dispatch.h:129-145`; closure #11/#13). |
+| Test coverage and shipping defaults | Harness is a fake TacOrderSink (`tools/brain_dispatch_harness/README-v2.md:4-23`); engage/patrol remain default false (`Gates/gate_table.cpp:108,121`), and runtime tick is gated (`code/warrior.cpp:1636-1648`). Recorded 36-fixture/13-writer results at `b80c96dc6` were not rerun here. | Fresh offline fixture/writer proof, real parser/order/lookup/once-guard integration and patrol+engage outcomes, release defaults selected and verified under the current default-ON ruling. Historical default-OFF discipline is not today's shipping rule. |
 
-## Owner questions that change the design
+## Smallest completion or explicit parking path
 
-1. Does “ABL freeze” mean preserving the legacy ABL interpreter/bindings, or does it require automatic migration of legacy ABL brain edits into BrainSpecial? The first is already a separate live path; the second needs a converter/content ownership decision (`code/mission_init.cpp:911`; `docs/render-backend-seams/brain-arc-implementation-roadmap.md:97-99`).
-2. Is CALL-CHAIN-1B plus one real mission the minimum acceptance for this hierarchical-brain slice, or must Hybrid arbitration and REQUEST_ORDERS/commander-chain ship in the same freeze (`docs/render-backend-seams/brain-arc-implementation-roadmap.md:50-52`; `code/brain_special_dispatch.cpp:1058-1129`)?
+1. Keep the external-converter ruling fixed. Reconcile canonical fixtures and the
+   supported vocabulary first; the gaps above define engine acceptance independent
+   of legacy source syntax. Re-run the existing harness/writer checks before design.
+2. Finish root/called-body behavioral composition and persistence, then resolve Hybrid
+   and commander/OPORD completion contracts. Extend offline proofs with nested effects,
+   continued WAIT/Var/FSM state and live order delivery at the boundaries cited above.
+3. Complete owned Brain and BrainSpecial authoring using the landed writer; save/reopen
+   the authored document and prove runtime consumption. All editor workflows remain
+   must-have; a read-only viewer is not closure.
+4. Any deferred family, Campaign scope or leaf ServiceJob/infantry feature needs a
+   named scope/status in the owner ledger rather than a claim of full spec completion.
+   Preserve resolved DSL deltas and external conversion; do not reopen them as blockers.
+   A parked broader arc must say ABL remains unfrozen, with the narrower runtime contract
+   and proof boundaries above. No new default-OFF shipping gates are proposed.
+
+## Owner question that changes the design
+
+1. Should Hybrid remain a shipped mode with ABL GENERAL and Brain PLAYER/ALARM, or
+   should mission content explicitly choose Legacy or Enhanced? This determines the
+   arbitration work at `code/warrior.cpp:1358-1476`; conversion authority is already settled.
