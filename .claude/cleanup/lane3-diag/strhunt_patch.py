@@ -334,7 +334,10 @@ def apply():
 
 def revert():
     import subprocess
-    r = subprocess.run(["git", "-C", ROOT, "checkout", "--", "GameOS/gameos/gos_crashbundle.cpp", "GameOS/gameos/gameosmain.cpp", "GameOS/gameos/gameos.cpp"])
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import console_child
+    r = subprocess.run(["git", "-C", ROOT, "checkout", "--", "GameOS/gameos/gos_crashbundle.cpp", "GameOS/gameos/gameosmain.cpp", "GameOS/gameos/gameos.cpp"],
+                       **console_child.child_kwargs())
     print("reverted rc", r.returncode); return r.returncode
 
 
