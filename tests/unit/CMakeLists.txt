@@ -90,6 +90,7 @@ add_executable(mc2_tests
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
     abl_exec_shim.cpp       # the interpreter stack / object table the position bindings read, answered from the scripted queue
+    ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp  # the ABL reject/clamp log lines (leaf: reads CurModule / execLineNumber, answered by abl_exec_shim.cpp)
     ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp  # the ABL position builtins under test (a TU of their own so they link without ablmc2_misc.cpp)
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
@@ -156,7 +157,7 @@ add_executable(mc2_tests
 mc2_link_gate(mc2_tests)
 
 # The ABL native-binding headers (ablmc2_internal.h) pull the gui/ and netlib/ headers; only the TUs that include them get those directories.
-set_source_files_properties(test_abl_position.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp PROPERTIES
+set_source_files_properties(test_abl_position.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 
 # LOGGING-FACADE-P0: mc2log.h needs <format>/consteval (C++20); engine headers already build at 23.

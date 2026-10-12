@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in ablxstd_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablxstd_internal.h"
+#include "abl_script_events.h"
 #include "abl_string_append.h"
 #include "mc2fmt.h"
 #include "sim_trace.h"
@@ -197,17 +198,6 @@ void execStdPrint (void) {
 
 //***************************************************************************
 
-// A script string that outgrows its char[N] is cut at the capacity and logged as event=<routine>_truncated (malformed content
-// is clamped with a log line, never a crash); each routine's log stops after a few lines so a looping script cannot flood it.
-static void reportTruncated (std::string_view event, int& lines, size_t capacity, size_t dropped) {
-	if (lines >= 16)
-		return;
-	++lines;
-	mc2::fmt::print_err("[ABL v1] event={}_truncated module={} line={:d} capacity={:d} dropped={:d}\n", event,
-	                    mc2::fmt::safe(CurModule ? CurModule->getName() : nullptr), mc2::fmt::as_i32(execLineNumber),
-	                    mc2::fmt::as_size(capacity), mc2::fmt::as_size(dropped));
-}
-
 TypePtr execStdConcat (void) {
 
 	//-------------------
@@ -244,10 +234,8 @@ TypePtr execStdConcat (void) {
 		item = (char*)tos->address;
 
 	if (item) {
-		static int s_lines = 0;
-		const size_t dropped = abl::appendBounded(dest, item);
-		if (dropped)
-			reportTruncated("concat", s_lines, dest.size(), dropped);
+		if (const size_t dropped = abl::appendBounded(dest, item))
+			abl::reportTruncated("concat_truncated", dest.size(), dropped);
 	}
 
 	tos->integer = 0;
@@ -349,11 +337,10 @@ void execStdGetModule (void) {
 	// The names go into the script's char[N] variables, bounded by their declared sizes.
 	const std::span<char> curBuffer = ABLi_popCharBuf();
 	const std::span<char> fsmBuffer = ABLi_popCharBuf();
-	static int s_lines = 0;
 	if (const size_t dropped = abl::copyBounded(curBuffer, abl::textOf(CurModule->getFileName())))
-		reportTruncated("getmodule", s_lines, curBuffer.size(), dropped);
-	if (const size_t dropped = abl::copyBounded(fsmBuffer, CurFSM ? abl::textOf(CurFSM->getFileName()) : std::string_view{"none"}))
-		reportTruncated("getmodule", s_lines, fsmBuffer.size(), dropped);
+		abl::reportTruncated("getmodule_truncated", curBuffer.size(), dropped);
+	if (const size_t dropped = abl::copyBounded(fsmBuffer, abl::textOf(CurFSM ? CurFSM->getFileName() : "none")))
+		abl::reportTruncated("getmodule_truncated", fsmBuffer.size(), dropped);
 	ABLi_pushInteger(CurModuleHandle);
 }
 

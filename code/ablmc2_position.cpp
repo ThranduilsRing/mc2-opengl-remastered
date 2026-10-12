@@ -3,20 +3,8 @@
 // bindings against a scripted ABL stack (tests/unit/test_abl_position.cpp).
 #include "ablmc2_internal.h"
 #include "abl_out_params.h"
-#include "mc2fmt.h"
+#include "abl_script_events.h"
 
-
-// A script that passes a wrong-type or missing output argument is rejected with a log line (malformed content never crashes the engine);
-// the log stops after a few lines so a looping script cannot flood it.
-static void reportBadArgument (const char* builtin, const char* argument) {
-	static int s_lines = 0;
-	if (s_lines >= 16)
-		return;
-	++s_lines;
-	mc2::fmt::print_err("[ABL v1] event=bad_argument builtin={} argument={} module={} line={:d}\n", mc2::fmt::safe(builtin),
-	                    mc2::fmt::safe(argument), mc2::fmt::safe(CurModule ? CurModule->getName() : nullptr),
-	                    mc2::fmt::as_i32(execLineNumber));
-}
 
 void execGetRelativePositionToPoint (void) {
 
@@ -78,7 +66,7 @@ void execGetRelativePositionToObject (void) {
 	// relPos is NULL when the calling script passes a wrong-type or missing argument. Both branches below write it, so the test is
 	// unconditional here (not behind MC2_ABL_ARG_GUARD): a bad script is rejected with a log line, never faults the engine.
 	if (!relPos) {
-		reportBadArgument("getRelativePositionToObject", "relPos");
+		abl::reportBadArgument("getRelativePositionToObject", "relPos");
 		return;
 	}
 

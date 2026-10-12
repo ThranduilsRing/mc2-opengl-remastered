@@ -6,27 +6,51 @@ variables (runtime and static). WHY: the mc2_15 heap corruption (76204ae18) was 
 script variable is a heap block of exactly N bytes, so any unbounded write is a heap overwrite. Readers reject or clamp malformed content with a
 log line, never crash (owner ruling 2026-10-11 #5).
 
-## 1. Builtins that write script arrays
+## 1. Writers into script variables
 
-| Builtin | Writes | Bound before | Bound now |
+The claim of this audit is the census `tools/abl_writer_census.py` (baseline `tools/abl_writer_census.baseline.json`, board row `abl_writer_census`): every
+call that copies or formats bytes (`strcpy`, `strncpy`, `strcat`, `memcpy`, `memset`, `sprintf`, `to_buf`, `abl::copyBounded` / `appendBounded`) and every
+call that hands a script variable's address to C++ (`ABLi_popCharPtr` / `ABLi_popCharBuf` / `ABLi_popIntegerPtr` / `ABLi_popRealPtr`) in `mclib/ablx*.cpp`,
+`mclib/ablrtn*.cpp` and `code/ablmc2*.cpp`, one row per (file, function, callee) with a reviewed verdict. At 2026-10-12 evening: **114 rows, 178 sites**:
+bounded 13, fixed 26, open 16, read 37, engine 83, frame 3. A new writer or pointer fetch fails `--check` until a human writes its verdict and reason.
+(The earlier version of this section said "the only writes were the two above" from a grep that covered `ablxstd*.cpp` and `ablmc2*.cpp` only; the executor
+writers in `ablxstmt.cpp` and `ablrtn.cpp` and the typed out-arrays were outside it.)
+
+Verdicts: **bounded** the write is limited by the variable's declared size; **fixed** the builtin writes a constant count (3, 4, 2, 9 ...) into a variable the
+compiler only checks to be an array of the right element type, so the declared size is trusted; **open** the count depends on engine state or on a script
+argument and the declared size is trusted; **read** the address is only read; **engine** the destination is a C++ buffer, not a script variable; **frame**
+the executor's copy of its own stack cells.
+
+### Text writers (bounded)
+
+| Writer | Writes | Bound before | Bound now |
 |---|---|---|---|
 | `concat(dest, item)` (`execStdConcat`) | text, append | unbounded `strcat` (76204ae18 bounded it by the declared element count) | `abl::appendBounded(std::span<char>, std::string_view)`, `ABLi_popCharBuf` supplies the span, `[ABL v1] event=concat_truncated` |
-| `getModule(curBuf, fsmBuf)` (`execStdGetModule`) | module and FSM file names | two unbounded `strcpy` (no size known at the call) | `ABLi_popCharBuf` (declared element count) + `abl::copyBounded`, `[ABL v1] event=getmodule_truncated module= line= capacity= dropped=`, 16 lines max per routine |
-| `getRelativePositionToObject(..., real[3])` | 3 reals | wrote nothing for a non-mover or unknown id: the script kept its stale value | writes the zero vector (documented at the site; `abl_out_params.h`) |
+| `getModule(curBuf, fsmBuf)` (`execStdGetModule`) | module and FSM file names | two unbounded `strcpy` (no size known at the call) | `ABLi_popCharBuf` (declared element count) + `abl::copyBounded`, `event=getmodule_truncated`, 16 lines max per event |
+| `dest = "text"` (`execAssignmentStatement`, `ablxstmt.cpp`) | char-array assignment | `memcpy` of `min(strlen+1, size)`: bounded, but a source longer than the variable left it UNTERMINATED, and `print` / `fileopen` / `DEBUGWINS_print` read it with `strlen` | `abl::copyBounded` over the declared size: cut and terminated, `event=assign_truncated`. Non-char array assignment keeps the bounded `memcpy` |
+| by-value array parameter (`execActualParams`, `ablxstmt.cpp`) | the formal's own block | `memcpy` of the FORMAL size: the compile check lets a smaller char array be the actual (`isAssignTypeCompatible`: formal count >= actual count), so the copy read past the actual's block | copies `min(formal, actual)` declared bytes and zeroes the rest; an actual larger than the formal (not accepted by the compiler) is cut, terminated and logged as `event=array_param_truncated` |
+| array parameter of the entry module (`ABLi_execute`, `ablrtn.cpp`) | the formal's own block | `memcpy` from the stack top, which holds a frame cell (the entry parameter list carries only integers and reals): a read through a null or integer-valued address | the block starts zeroed, the cell pushed is the block's address, one `event=bad_argument builtin=ABLi_execute argument=array_parameter` line |
+| `getRelativePositionToObject(..., real[3])` (`ablmc2_position.cpp`) | 3 reals | wrote nothing for a non-mover or unknown id: the script kept its stale value | writes the zero vector (a chosen "no position" answer, not a documented one); a null output is rejected with `event=bad_argument` whatever `MC2_ABL_ARG_GUARD` says |
 
-Every other `ABLi_popCharPtr` user only READS the array: `print`, `fatal`, `assert`, `fileopen`, `filewrite`, `getstatehandle`, `getfunctionhandle`, `setDebugString`
-(copies with `strncpy` into a 64-byte pilot member, terminated by the member's own size), `playVideo`, the roster loaders (`ablmc2_roster.cpp`).
-`grep` for `strcpy|strcat|sprintf|strncpy|memcpy` in `mclib/ablxstd*.cpp`, `code/ablmc2*.cpp`: the only writes into script memory were the two above;
-`code/ablmc2_state.cpp:198-200` fills a C++ struct (`moverData.pilotFileName`), not a script array. The rest of the hits in `mclib/abl*.cpp`
-(`abldbug*`, `ablenv`, `ablexec`, `abldecl`, `ablrtn`) are the compiler/debugger/loader and write their own buffers, not script variables.
+Every other `ABLi_popCharPtr` user only READS the array: `print`, `fatal`, `assert`, `fileopen`, `filewrite`, `getfunctionhandle`, `setDebugString`
+(copies with `strncpy` into a 64-byte pilot member, terminated by the member's own size), `playVideo`, the roster loaders (`ablmc2_roster.cpp`); `getstatehandle`
+lowercases the text in place (length never grows). `code/ablmc2_state.cpp` `execCreateInfantry` fills a C++ struct (`moverData.pilotFileName`), not a script array.
+The rest of `mclib/abl*.cpp` (`abldbug*`, `ablenv`, `ablexec`, `abldecl`, `ablscan`) is the compiler / debugger / loader and outside the census scope: it writes its own buffers.
+
+Two engine-side findings the census surfaced (neither writes a script variable): `routine()` in `ablrtn.cpp` copied a state name into the 128-byte
+`StateHandleInfo::name` with no length test, so a mod `.abl` source with a state name over 127 characters overflowed at compile time (now an `ABL_Fatal`
+"state name too long", like the neighbouring "too many states" test); `execDeclaredRoutineCall` appends to a 512-byte local with `strcat` for the profile log
+(profiling only, 11 bytes + call depth + routine name; left as is).
 
 ### Open class (not fixed here): integer / real script arrays written by queries
-`ABLi_popIntegerPtr` / `ABLi_popRealPtr` return a bare pointer; the builtin writes however many elements it has. Fixed-size outputs match the documented
-sizes (`getObjectPosition` real[3], `getFireRanges` real[4], `getWeaponRanges` real[3], `statusCount` int[9]); the VARIABLE-length ones depend on engine
-state and trust the script's declaration: `getContacts` (`ablmc2_queries.cpp:116`, up to the number of contacts), `getWeaponsReady/Locked/InRange`
-(`:336,354,372`), `getAttackers` (`:548`), `getAlarmTriggers` (`:476`, `getEventHistory`); `getContactStatus` (`:243`) and `getContactRelativePosition` (`:261`) write single values through int/real pointers. The same cure applies
-(`ABLi_popIntBuf` / `ABLi_popRealBuf` returning a span, the builtin clamps its count to `span.size()` and logs `event=<name>_truncated`); it was not done
-in this pass because every site needs its own count rule and a stock-script check of the declared sizes. Queue it as its own slice.
+`ABLi_popIntegerPtr` / `ABLi_popRealPtr` return a bare pointer; the builtin writes however many elements it has. The **fixed** rows (26 sites) write a constant
+count that the documented sizes match (`getObjectPosition` real[3], `getFireRanges` real[4], `getWeaponRanges` real[3], `statusCount` int[9],
+`getTacOrder` int[19] ...), but nothing enforces the declared size. The **open** rows (16 sites, the census lists them) write a count that depends on engine
+state or on a script argument: `getContacts`, `getWeaponsReady/Locked/InRange` and `sortWeapons` (the `listSize` argument, not the declared size, bounds them),
+`getAttackers`, `getAlarmTriggers` / `getNextPilotEvent` (event history), `getUnitMates`, `getObjects`, `getWeapons`, `getWeaponsStatus`, `getSalvage`
+(`itemCount` argument), and the array copy in `execStdReturn` (read side only). The same cure applies (`ABLi_popIntBuf` / `ABLi_popRealBuf` returning a span,
+the builtin clamps its count to `span.size()` and logs `event=<name>_truncated`); it was not done because every site needs its own count rule and a stock-script
+check of the declared sizes. Queue it as its own slice; the census row for each builtin turns `open` into `bounded` when it lands.
 
 ## 2. Runtime audit: `concat_truncated` / `getmodule_truncated` lines at HEAD 180f6f4f9
 

@@ -1,0 +1,580 @@
+{
+ "about": "Frozen by tools/abl_writer_census.py --write. One row per (file, function, callee) with a reviewed verdict; see the tool's docstring.",
+ "scope": [
+  "^mclib/ablx[^/]*\\.cpp$",
+  "^mclib/ablrtn[^/]*\\.cpp$",
+  "^code/ablmc2[^/]*\\.cpp$"
+ ],
+ "sites": {
+  "code/ablmc2.cpp::ablEndlessStateCallback::to_buf": {
+   "count": 12,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2.cpp::ablFileCreateCB::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2.cpp::ablStackMallocCallback::memset": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "zeroes exactly the block it has just allocated for a script variable or frame"
+  },
+  "code/ablmc2.cpp::logAblFunctionTableCapacity::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_camera.cpp::execGetCameraGoalPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_camera.cpp::execGetCameraGoalRotation::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_camera.cpp::execGetCameraGoalVelocity::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_camera.cpp::execGetCameraPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_camera.cpp::execGetCameraRotation::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_camera.cpp::execGetCameraVelocity::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_camera.cpp::execRequestHelp::ABLi_popRealPtr": {
+   "count": 2,
+   "verdict": "read",
+   "why": "reads the centre point (x, y) of the script's real array"
+  },
+  "code/ablmc2_camera.cpp::execRequestTarget::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the centre point (x, y) of the script's real array"
+  },
+  "code/ablmc2_camera.cpp::execSetCameraGoalPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the 3 components of the script's real[3]"
+  },
+  "code/ablmc2_camera.cpp::execSetCameraGoalRotation::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the 3 components of the script's real[3]"
+  },
+  "code/ablmc2_camera.cpp::execSetCameraGoalVelocity::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the 3 components of the script's real[3]"
+  },
+  "code/ablmc2_camera.cpp::execSetCameraPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the 3 components of the script's real[3]"
+  },
+  "code/ablmc2_camera.cpp::execSetCameraRotation::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the 3 components of the script's real[3]"
+  },
+  "code/ablmc2_camera.cpp::execSetCameraVelocity::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the 3 components of the script's real[3]"
+  },
+  "code/ablmc2_misc.cpp::execConvertCoords::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "reads or writes the 2 cell coordinates of the script's int[2]; constant count"
+  },
+  "code/ablmc2_misc.cpp::execConvertCoords::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "reads the world point, or writes its 3 components for a cell-to-world conversion; constant count"
+  },
+  "code/ablmc2_misc.cpp::execGetNextPilotEvent::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "getNextEventHistory fills the event parameters of the script's int array; the count comes from the event, the declared size is trusted"
+  },
+  "code/ablmc2_misc.cpp::execSetDebugString::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is copied with strncpy into a 64-byte pilot member, terminated by the member's own size"
+  },
+  "code/ablmc2_objects.cpp::execDistanceToPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads x and y of the script's real array"
+  },
+  "code/ablmc2_objects.cpp::execObjectStatusCount::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "statusCount writes the 9 status tallies of the script's int[9]; constant count"
+  },
+  "code/ablmc2_objects.cpp::execPlayVideo::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the file name is only read"
+  },
+  "code/ablmc2_orders.cpp::execCoreMoveTo::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads x and y of the script's real array"
+  },
+  "code/ablmc2_orders.cpp::execGetObjects::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "writes one id per object found into the script's int array; the count is the number of objects, the declared size is trusted"
+  },
+  "code/ablmc2_orders.cpp::execOrderMoveTo::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads x and y of the script's real array"
+  },
+  "code/ablmc2_position.cpp::execGetRelativePositionToObject::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3] (the zero vector for a non-mover); a null output is rejected with a bad_argument line"
+  },
+  "code/ablmc2_position.cpp::execGetRelativePositionToPoint::ABLi_popRealPtr": {
+   "count": 2,
+   "verdict": "fixed",
+   "why": "reads the point (x, y) and writes the 3 components of the script's real[3]; null outputs are skipped only behind MC2_ABL_ARG_GUARD"
+  },
+  "code/ablmc2_queries.cpp::execGetAlarmTriggers::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "getEventHistory fills the script's int array with one entry per recorded event; the declared size is trusted"
+  },
+  "code/ablmc2_queries.cpp::execGetAttackers::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "one id per attacker is written into the script's int array; the declared size is trusted"
+  },
+  "code/ablmc2_queries.cpp::execGetContactRelativePosition::ABLi_popRealPtr": {
+   "count": 2,
+   "verdict": "fixed",
+   "why": "writes one real through each of two pointers (range and angle); constant count"
+  },
+  "code/ablmc2_queries.cpp::execGetContactStatus::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes one integer through the pointer; constant count"
+  },
+  "code/ablmc2_queries.cpp::execGetContacts::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "getContacts fills the script's int array with one id per contact; the declared size is trusted"
+  },
+  "code/ablmc2_queries.cpp::execGetFireRanges::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 4 fire ranges of the script's real[4]; constant count"
+  },
+  "code/ablmc2_queries.cpp::execGetLastTacOrder::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "getParamData writes the fixed set of order parameters into the script's int array (the longest write is paramList[18] in getTacOrder)"
+  },
+  "code/ablmc2_queries.cpp::execGetLastTacOrder::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes one real (the order time) through the pointer; constant count"
+  },
+  "code/ablmc2_queries.cpp::execGetObjectPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_queries.cpp::execGetTacOrder::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "getParamData and the main-goal fields write paramList[0..18] of the script's int array; constant count"
+  },
+  "code/ablmc2_queries.cpp::execGetTacOrder::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes one real (the order time) through the pointer; constant count"
+  },
+  "code/ablmc2_queries.cpp::execGetUnitMates::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "one part id per unit member is written into the script's int array; the declared size is trusted"
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponRanges::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsInRange::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "the list size comes from the script's own listSize argument, not from the array's declared size"
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsLocked::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "the list size comes from the script's own listSize argument, not from the array's declared size"
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsReady::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "the list size comes from the script's own listSize argument, not from the array's declared size"
+  },
+  "code/ablmc2_queries.cpp::execSortWeapons::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "sorts listSize entries of the script's int array; listSize is a script argument, the declared size is trusted"
+  },
+  "code/ablmc2_roster.cpp::execAblPrint::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execAblPrint::to_buf": {
+   "count": 6,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_roster.cpp::execAddNewPilot::ABLi_popCharPtr": {
+   "count": 2,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execAddNewPilotToPlayer::ABLi_popCharPtr": {
+   "count": 2,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execGetMapInfo::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the map height and width into the script's int[2]; constant count"
+  },
+  "code/ablmc2_roster.cpp::execGetRelativePositionToTarget::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "fixed",
+   "why": "writes the 3 components of the script's real[3] after a null test; constant count"
+  },
+  "code/ablmc2_roster.cpp::execGetTargetRelativePosition::ABLi_popRealPtr": {
+   "count": 2,
+   "verdict": "fixed",
+   "why": "writes element 0 of each of two real arrays after null tests; constant count"
+  },
+  "code/ablmc2_roster.cpp::execGetWeapons::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "one master id per functional weapon is written into the script's int array; the declared size is trusted"
+  },
+  "code/ablmc2_roster.cpp::execGetWeapons::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_roster.cpp::execGetWeaponsStatus::ABLi_popIntegerPtr": {
+   "count": 1,
+   "verdict": "open",
+   "why": "getWeaponsStatus writes one status per weapon into the script's int array; the declared size is trusted"
+  },
+  "code/ablmc2_roster.cpp::execHirePilot::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execIsOffMap::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the point of the script's real array"
+  },
+  "code/ablmc2_roster.cpp::execMCPrint::to_buf": {
+   "count": 8,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_roster.cpp::execNewDistanceToPosition::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the point of the script's real array"
+  },
+  "code/ablmc2_roster.cpp::execPlayWave::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execSetBrainFixed::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execSetBrainNew::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execSetLargeMsg::to_buf": {
+   "count": 3,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_roster.cpp::execSetMoveArea::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the point of the script's real array"
+  },
+  "code/ablmc2_roster.cpp::execSetTextMsg::to_buf": {
+   "count": 3,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_roster.cpp::execSetTxtBuildingName::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execTDebugString::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
+  },
+  "code/ablmc2_roster.cpp::execTeleportToPoint::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the point of the script's real array"
+  },
+  "code/ablmc2_roster.cpp::omniTrace::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "code/ablmc2_state.cpp::execCreateInfantry::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the spawn position"
+  },
+  "code/ablmc2_state.cpp::execCreateInfantry::memset": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "fills a local MoverInitData with constant short names"
+  },
+  "code/ablmc2_state.cpp::execCreateInfantry::strcpy": {
+   "count": 3,
+   "verdict": "engine",
+   "why": "fills a local MoverInitData with constant short names"
+  },
+  "code/ablmc2_state.cpp::execGetSalvage::ABLi_popIntegerPtr": {
+   "count": 2,
+   "verdict": "open",
+   "why": "writes itemCount entries into each of two int arrays; itemCount is a script argument, the declared sizes are trusted"
+  },
+  "code/ablmc2_state.cpp::execInArea::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the point of the script's real array"
+  },
+  "code/ablmc2_state.cpp::execSetRevealed::ABLi_popRealPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "reads the point of the script's real array"
+  },
+  "mclib/ablrtn.cpp::ABLi_createParamList::memset": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "zeroes the entry parameter list it has just allocated"
+  },
+  "mclib/ablrtn.cpp::ABLi_execute::memcpy": {
+   "count": 1,
+   "verdict": "frame",
+   "why": "copies the module's StackItem return value into the caller's struct"
+  },
+  "mclib/ablrtn.cpp::ABLi_execute::memset": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "zeroes the formal array's own block, whose size is the declared size"
+  },
+  "mclib/ablrtn.cpp::ABLi_preProcess::memcpy": {
+   "count": 2,
+   "verdict": "engine",
+   "why": "copies compile-time tables into module-registry blocks allocated for exactly their size"
+  },
+  "mclib/ablrtn.cpp::ABLi_preProcess::strcpy": {
+   "count": 2,
+   "verdict": "engine",
+   "why": "copies compile-time tables into module-registry blocks allocated for exactly their size"
+  },
+  "mclib/ablrtn.cpp::ABLi_preProcess::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablrtn.cpp::ABLi_registerInteger::strcpy": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "copies the registered variable's name into the token buffer after a length check against MAXLEN_TOKENSTRING"
+  },
+  "mclib/ablrtn.cpp::ABLi_registerReal::strcpy": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "copies the registered variable's name into the token buffer after a length check against MAXLEN_TOKENSTRING"
+  },
+  "mclib/ablrtn.cpp::routine::strcpy": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "copies a state name into a 128-byte registry field after the length check added with the writer census"
+  },
+  "mclib/ablrtn.cpp::transState::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd.cpp::double2long::memcpy": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "bit-copies a double into an integer"
+  },
+  "mclib/ablxstd.cpp::execStandardRoutineCall::to_buf": {
+   "count": 4,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd.cpp::execStdGetFunctionHandle::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the function name is only read"
+  },
+  "mclib/ablxstd.cpp::execStdSetState::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd_std.cpp::execOrderReturn::memcpy": {
+   "count": 1,
+   "verdict": "frame",
+   "why": "copies the stack-frame result cell (a StackItem) into returnValue"
+  },
+  "mclib/ablxstd_std.cpp::execStdAssert::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read"
+  },
+  "mclib/ablxstd_std.cpp::execStdAssert::to_buf": {
+   "count": 5,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd_std.cpp::execStdConcat::ABLi_popCharBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "returns the span of the variable's declared element count; the append is cut to it"
+  },
+  "mclib/ablxstd_std.cpp::execStdConcat::appendBounded": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "abl::appendBounded keeps the NUL inside the span and reports the dropped count; logged as concat_truncated"
+  },
+  "mclib/ablxstd_std.cpp::execStdConcat::to_buf": {
+   "count": 4,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd_std.cpp::execStdFatal::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read"
+  },
+  "mclib/ablxstd_std.cpp::execStdFatal::to_buf": {
+   "count": 5,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd_std.cpp::execStdFileOpen::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read"
+  },
+  "mclib/ablxstd_std.cpp::execStdFileWrite::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "read",
+   "why": "the text is only read"
+  },
+  "mclib/ablxstd_std.cpp::execStdGetModule::ABLi_popCharBuf": {
+   "count": 2,
+   "verdict": "bounded",
+   "why": "returns the span of the variable's declared element count"
+  },
+  "mclib/ablxstd_std.cpp::execStdGetModule::copyBounded": {
+   "count": 2,
+   "verdict": "bounded",
+   "why": "abl::copyBounded cuts the name to the span and terminates it; logged as getmodule_truncated"
+  },
+  "mclib/ablxstd_std.cpp::execStdGetStateHandle::ABLi_popCharPtr": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "S_strlwr rewrites the characters of the existing text in place: the length never grows"
+  },
+  "mclib/ablxstd_std.cpp::execStdPrint::to_buf": {
+   "count": 8,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstd_std.cpp::execStdReturn::memcpy": {
+   "count": 2,
+   "verdict": "open",
+   "why": "two copies: a returned array is copied by the declared result size without checking the returned expression's size (a smaller array would be read past its block; read side only), and the result StackItem is copied into returnValue"
+  },
+  "mclib/ablxstd_std.cpp::execStdReturn::memset": {
+   "count": 1,
+   "verdict": "frame",
+   "why": "clears the engine's returnValue StackItem"
+  },
+  "mclib/ablxstmt.cpp::execActualParams::memcpy": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "by-value array parameter: copies the smaller of the formal and the actual's declared size"
+  },
+  "mclib/ablxstmt.cpp::execActualParams::memset": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "zeroes the part of the formal's own block the actual does not cover"
+  },
+  "mclib/ablxstmt.cpp::execActualParams::to_buf": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablxstmt.cpp::execAssignmentStatement::copyBounded": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "a char-array assignment goes through abl::copyBounded sized by the target's declared size; logged as assign_truncated"
+  },
+  "mclib/ablxstmt.cpp::execAssignmentStatement::memcpy": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "non-char array assignment: the copy count is the smaller of strlen(source)+1 and the target's declared size, so the write never exceeds the target"
+  },
+  "mclib/ablxstmt.cpp::execDeclaredRoutineCall::strcat": {
+   "count": 2,
+   "verdict": "engine",
+   "why": "appends to a 512-byte local profile-log line (profiling only): 11 bytes of prefix + call depth + routine name, not a script variable"
+  },
+  "mclib/ablxstmt.cpp::execDeclaredRoutineCall::to_buf": {
+   "count": 2,
+   "verdict": "engine",
+   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  }
+ }
+}

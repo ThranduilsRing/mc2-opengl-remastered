@@ -12,6 +12,8 @@
 #include<string.h>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "abl_script_events.h"
+#include "abl_string_append.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -270,15 +272,16 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 		// Copy the array/record...
 		char* dest = (char*)targetPtr;
 		char* src = tos->address;
-        // sebi: ORIG BUG FIX
-        // in arr[25];
-        // ...
-        // arr = "aaa";
-        // this will copy size bytes (25) from "aaa", which is effectively only 4 bytes!
-        // so this fixes it
-        const int srclen = static_cast<int>(strlen(src) + 1);
+		// Copy no more than the source holds: a literal shorter than the variable must not be read past its end.
+		const int srclen = static_cast<int>(strlen(src) + 1);
 		long size = targetTypePtr->size;
-		memcpy(dest, src, /*size*/srclen<size?srclen:size);
+		if (targetTypePtr->info.array.elementTypePtr == CharTypePtr) {
+			// A string longer than the variable is cut and stays terminated: the text is read later with strlen.
+			if (const size_t dropped = abl::copyBounded(std::span<char>(dest, static_cast<size_t>(size)), std::string_view(src)))
+				abl::reportTruncated("assign_truncated", static_cast<size_t>(size), dropped);
+			}
+		else
+			memcpy(dest, src, /*size*/srclen<size?srclen:size);
 		}
 	else if ((targetTypePtr == IntegerTypePtr) || (targetTypePtr->form == FRM_ENUM)) {
 		//------------------------------------------------------
@@ -456,10 +459,6 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 			//----------------------------------------------------------
 			// Formal parameter is an array or record, so make a copy...
 			if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
-				//------------------------------------------------------------------------------
-				// The following is a little inefficient, but is kept this way to keep it clear.
-				// Once it's verified to work, optimize...
-
 				long size = formalTypePtr->size;
 				char* src = tos->address;
 				char* dest = (char*)ABLStackMallocCallback((size_t)size);
@@ -468,8 +467,17 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 					mc2::fmt::to_buf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module {})", mc2::fmt::safe(CurModule->getName()));
 					ABL_Fatal(0, err);
 				}
+				// The compile check accepts any char array no larger than the formal as the actual, so copy what the actual declares and zero the
+				// rest: the formal must not read past the actual's block. An actual larger than the formal is cut and terminated.
+				const long actualSize = (actualTypePtr && actualTypePtr->form == FRM_ARRAY) ? actualTypePtr->size : 0;
+				const long copySize = (actualSize < size) ? actualSize : size;
+				memcpy(dest, src, static_cast<size_t>(copySize));
+				memset(dest + copySize, 0, static_cast<size_t>(size - copySize));
+				if (size > 0 && actualSize > size) {
+					dest[size - 1] = '\0';
+					abl::reportTruncated("array_param_truncated", static_cast<size_t>(size), static_cast<size_t>(actualSize - size));
+				}
 				char* savePtr = dest;
-				memcpy(dest, src, size);
 				tos->address = savePtr;
 			}
 			}

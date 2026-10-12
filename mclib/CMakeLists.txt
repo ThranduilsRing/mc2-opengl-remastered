@@ -77,6 +77,7 @@ set(SOURCES ${SOURCES}
     vfxtile.cpp
     vfxtile_line.cpp
     vfxtile_pixel.cpp
+    abl_script_events.cpp
     abldbug.cpp
     abldbug_print.cpp
     abldecl.cpp

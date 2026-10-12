@@ -14,6 +14,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
+#include "abl_script_events.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -932,19 +933,17 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 				}
 
 				//----------------------------------------------------------
-				// Formal parameter is an array or record, so make a copy...
+				// Formal parameter is an array or record, so it gets a block of its own...
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
-					//------------------------------------------------------------------------------
-					// The following is a little inefficient, but is kept this way to keep it clear.
-					// Once it's verified to work, optimize...
 					long size = formalTypePtr->size;
 					char* dest = (char*)ABLStackMallocCallback((size_t)size);
 					if (!dest)
 						ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module formal array param ");
-					char* src = tos->address;
-					char* savePtr = dest;
-					memcpy(dest, src, size);
-					tos->address = savePtr;
+					// The entry parameter list holds only integers and reals, so there is no actual array to copy from (the stack top is another
+					// frame cell): the formal starts zeroed and the script is told, instead of reading through that cell.
+					memset(dest, 0, static_cast<size_t>(size));
+					abl::reportBadArgument("ABLi_execute", "array_parameter");
+					pushAddress(dest);
 				}
 				}
 			else {
@@ -1403,6 +1402,8 @@ void routine (void) {
 		// Add it to the state handle list...
 		if (NumStateHandles == MAX_STATE_HANDLES_PER_MODULE)
 			ABL_Fatal(0, "ABL: too many states in fsm [19 max]");
+		if (strlen(routineIdPtr->name) >= sizeof(StateHandleList[0].name))
+			ABL_Fatal(0, "ABL: state name too long [127 max]");
 		strcpy(StateHandleList[NumStateHandles].name, routineIdPtr->name);
 		StateHandleList[NumStateHandles].state = routineIdPtr;
 		NumStateHandles++;
