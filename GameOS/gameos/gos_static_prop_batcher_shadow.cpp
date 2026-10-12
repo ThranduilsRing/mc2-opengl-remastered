@@ -902,29 +902,6 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->terrainSunMC2[1] = tsy;
     out->terrainSunMC2[2] = tsz;
 
-    // VK-P11 MATERIAL DEBUG (temporary): one-shot INSTANCE-WEIGHTED layer histogram so
-    // we can SEE whether the VISIBLE prop types (high instance count) actually get a
-    // real albedo layer or fall to teal. Type-count alone hid that the big buildings
-    // were the no_primary bucket. Env-gated + one-shot (no hot-loop spam). REMOVE once
-    // the teal bug is confirmed fixed in-engine.
-    if (mc2::gate::get<"MC2_VK_PROP_MATERIAL_DEBUG">()) {
-        static bool s_histLogged = false;
-        if (!s_histLogged) {
-            s_histLogged = true;
-            uint64_t instTextured = 0, instAlphaOn = 0, instNoPrimary = 0, instTotal = 0;
-            uint32_t tyTextured = 0, tyAlphaOn = 0, tyNoPrimary = 0;
-            for (size_t t = 0; t < s_typeAlbedoLayer.size(); ++t) {
-                const auto icIt = s_typeInstanceCountPrevFrame.find((uint32_t)t);
-                const uint64_t ic = (icIt != s_typeInstanceCountPrevFrame.end()) ? icIt->second : 0u;
-                instTotal += ic;
-                if (s_typeAlphaClass[t] == 1) { ++tyAlphaOn; instAlphaOn += ic; }
-                else if (s_typeAlbedoLayer[t] < 0) { ++tyNoPrimary; instNoPrimary += ic; }
-                else { ++tyTextured; instTextured += ic; }
-            }
-            mc2::fmt::print_err("[GPUPROPS_HIST v2] types: textured={:d} alpha_on={:d} no_primary={:d} | instances: textured={:d} alpha_on={:d} no_primary={:d} total={:d}\n", mc2::fmt::as_u32(tyTextured), mc2::fmt::as_u32(tyAlphaOn), mc2::fmt::as_u32(tyNoPrimary), mc2::fmt::as_u64((unsigned long long)instTextured), mc2::fmt::as_u64((unsigned long long)instAlphaOn), mc2::fmt::as_u64((unsigned long long)instNoPrimary), mc2::fmt::as_u64((unsigned long long)instTotal));
-            std::fflush(stderr);
-        }
-    }
     return 1;
 }
 

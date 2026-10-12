@@ -114,7 +114,6 @@ uint32_t mc2StaticLightHighWater();
 void mc2MarkStaticLightPrefixDirty();
 bool mc2ConsumeStaticLightPrefixDirty();
 bool mc2StaticLightUploadSplitEnabled();
-void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex);
 bool mc2IsBakedStaticLightPresent(int32_t recipeIndex);
 void mc2SetBakedStaticLight(int32_t recipeIndex, const TG_HWLightsData& in);
 void mc2EraseBakedStaticLight(int32_t recipeIndex);

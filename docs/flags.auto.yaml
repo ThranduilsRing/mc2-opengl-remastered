@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1002
-registry_entry_count: 226
-verified_count: 995
+gate_count: 1000
+registry_entry_count: 224
+verified_count: 993
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -2509,14 +2509,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY, kind: Feature, order: -1, default_on: true}
-  - name: MC2_LIGHTBAKE_STABILITY
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof."
-    verified: true
-    registry: {feature_id: MC2_TRACE_LIGHTBAKE_STABILITY, kind: Trace, order: -1, default_on: false}
   - name: MC2_LIGHTBRIDGE
     kind: Bool
     default: true
@@ -7263,15 +7255,6 @@ flags:
     owner: vk
     doc: ""
     verified: true
-  - name: MC2_VK_PROP_MATERIAL_DEBUG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_PROP_MATERIAL_DEBUG, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_MIP_PROBE
     kind: Bool
     default: false

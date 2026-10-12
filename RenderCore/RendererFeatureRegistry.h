@@ -1064,13 +1064,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load...",
     },
     {
-        "MC2_TRACE_LIGHTBAKE_STABILITY",
-        "MC2_LIGHTBAKE_STABILITY",
-        EnvVarKind::Trace,
-        false,
-        "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof.",
-    },
-    {
         "MC2_LIGHT_CONE_NODES",
         "MC2_LIGHT_CONE_NODES",
         EnvVarKind::Trace,
@@ -1783,13 +1776,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "VK present-tail deletion-readiness canary.",
-    },
-    {
-        "MC2_FEATURE_VK_PROP_MATERIAL_DEBUG",
-        "MC2_VK_PROP_MATERIAL_DEBUG",
-        EnvVarKind::Feature,
-        false,
-        "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF.",
     },
     {
         "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",

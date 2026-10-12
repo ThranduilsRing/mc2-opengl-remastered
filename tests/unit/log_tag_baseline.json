@@ -3960,21 +3960,6 @@
    "count": 1
   },
   {
-   "tag": "GPUPROPS_HIST",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "textured",
-    "alpha_on",
-    "no_primary",
-    "textured",
-    "alpha_on",
-    "no_primary",
-    "total"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GPUPROPS_REG",
    "ver": -1,
    "stream": "stderr",

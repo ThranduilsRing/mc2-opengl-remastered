@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 999,
+ "count": 997,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -9207,32 +9207,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_LIGHTBAKE_STABILITY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof.",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:1792",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_LIGHTBAKE_STABILITY",
    "retireVerdict": ""
   },
   {
@@ -26442,32 +26416,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_VK_PROP_MATERIAL_DEBUG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10024",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_PROP_MATERIAL_DEBUG",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_VK_PROP_MIP_PROBE",

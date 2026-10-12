@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1002;
+inline constexpr std::size_t kGateCount = 1000;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -338,7 +338,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_LETTERBOX_OPAQUE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE_REBAKE_ON_READY", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_LIGHTBAKE_STABILITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_LIGHTBRIDGE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBRIDGE_STABLE_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
@@ -948,7 +947,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PROP_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_PROP_LIGHT_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_LIGHT_VERTEX_PROBE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_VK_PROP_MATERIAL_DEBUG", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_MIP_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_PACKET_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_PROP_PERF", Kind::Bool, Rule::Lead1, {}},

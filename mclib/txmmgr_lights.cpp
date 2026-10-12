@@ -346,62 +346,6 @@ bool mc2StaticLightUploadSplitEnabled()
     return s_split;
 }
 
-// [LIGHTBAKE-PROOF v1] Stability trace: record each recipe's permanent slot
-// index the first time it is observed, then verify it never changes across
-// frames and stays < S (inPrefix). Env-gated (MC2_LIGHTBAKE_STABILITY),
-// demote-not-delete. No behavior change. Per-recipe first/UNSTABLE lines are
-// capped at 32 to bound log volume, but DETECTION runs for ALL recipes and an
-// aggregate coverage line (recipes_tracked / max_index / out-of-prefix count)
-// is emitted every 256 new recipes — so coverage is never silently 32-capped
-// (M2 fix, adversarial review 2026-06-03).
-static const bool s_lbStabilityTrace = mc2::gate::get<"MC2_LIGHTBAKE_STABILITY">();
-static std::unordered_map<int32_t, uint32_t> s_lbFirstSeenIndex;   // recipeIndex -> first index
-static uint64_t s_lbStabilityViolations = 0;   // cross-frame index changes
-static uint64_t s_lbOutOfPrefix        = 0;    // first-seen index >= S (should stay 0)
-static uint32_t s_lbMaxIndex           = 0;    // max permanent index observed
-
-void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
-{
-    if (!s_lbStabilityTrace || recipeIndex < 0) return;
-    const uint32_t S = mc2StaticLightHighWater();
-    auto it = s_lbFirstSeenIndex.find(recipeIndex);
-    if (it == s_lbFirstSeenIndex.end()) {
-        s_lbFirstSeenIndex.emplace(recipeIndex, lightDataIndex);
-        if (lightDataIndex > s_lbMaxIndex) s_lbMaxIndex = lightDataIndex;
-        if (lightDataIndex >= S)           ++s_lbOutOfPrefix;   // counted for ALL recipes
-        if (s_lbFirstSeenIndex.size() <= 32) {
-            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=first recipe={:d} index={:d} S={:d} inPrefix={:d}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S), mc2::fmt::as_i32((lightDataIndex < S) ? 1 : 0));
-            std::fflush(stderr);
-            if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
-                char diag_buf[128];
-                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"first\",\"recipe\":{:d},\"index\":{:d},\"S\":{:d},\"inPrefix\":{:d}}}", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S), mc2::fmt::as_i32((lightDataIndex < S) ? 1 : 0));
-                mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
-            }
-        }
-        // Aggregate coverage so recipes beyond the 32 log-cap are accounted for.
-        if ((s_lbFirstSeenIndex.size() % 256u) == 0u) {
-            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked={:d} max_index={:d} S={:d} out_of_prefix={:d}\n", mc2::fmt::as_size(s_lbFirstSeenIndex.size()), mc2::fmt::as_u32(s_lbMaxIndex), mc2::fmt::as_u32(S), mc2::fmt::as_u64((unsigned long long)s_lbOutOfPrefix));
-            std::fflush(stderr);
-            if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
-                char diag_buf[192];
-                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"coverage\",\"recipes_tracked\":{:d},\"max_index\":{:d},\"S\":{:d},\"out_of_prefix\":{:d}}}", mc2::fmt::as_size(s_lbFirstSeenIndex.size()), mc2::fmt::as_u32(s_lbMaxIndex), mc2::fmt::as_u32(S), mc2::fmt::as_u64((unsigned long long)s_lbOutOfPrefix));
-                mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
-            }
-        }
-    } else if (it->second != lightDataIndex) {
-        ++s_lbStabilityViolations;   // detection runs for ALL recipes (uncapped)
-        if (s_lbStabilityViolations <= 32) {
-            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=UNSTABLE recipe={:d} was={:d} now={:d} S={:d}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(it->second), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S));
-            std::fflush(stderr);
-            if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
-                char diag_buf[128];
-                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"UNSTABLE\",\"recipe\":{:d},\"was\":{:d},\"now\":{:d},\"S\":{:d}}}", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(it->second), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S));
-                mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
-            }
-        }
-    }
-}
-
 #ifdef MC2_VULKAN_ISLAND
 // VK-MECH-MATERIAL-LIGHTING-1: global fog-color snapshot (RGB, GL scene-UBO order),
 // set once per frame at the scene-UBO upload site. Read by the VK mech island feed.

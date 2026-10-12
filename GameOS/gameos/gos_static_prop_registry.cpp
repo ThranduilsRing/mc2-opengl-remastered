@@ -781,10 +781,6 @@ void flush() {
             static_light_row::resolve(s_perInstanceLight,
                                       rng.lightDataIndex,
                                       rng.multi->getCachedGpuLightIndex());
-        // [LIGHTBAKE-PROOF v1] prove the resolved per-instance index is permanent
-        // (stable across frames) + in the static prefix [0..S). No-op unless
-        // MC2_LIGHTBAKE_STABILITY is set.
-        mc2LightBakeStabilityObserve(static_cast<int32_t>(regIdx), freshLightIdx);
         flushLightRowDiag(s_diag_flush_calls, regIdx, rng, freshLightIdx);
 
         // 2026-05-10 actor-center fix: every leaf of one multishape must share

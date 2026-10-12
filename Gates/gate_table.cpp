@@ -456,8 +456,6 @@ L(Lead0Kill, "MC2_LIGHTBAKE", Bool, true, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_LIGHTBAKE_REBAKE_ON_READY
 L(Lead0Kill, "MC2_LIGHTBAKE_REBAKE_ON_READY", Bool, true, "props", "", "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load...", passthrough | registry(Feature, "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY", -1, true) | verified),
 // STATICPROP-PERMANENT-INSTANCE-LIGHTS-1 (Slice 1)
-// history: docs/gate-history.md#MC2_LIGHTBAKE_STABILITY
-L(Presence, "MC2_LIGHTBAKE_STABILITY", Bool, false, "code", "", "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof.", registry(Trace, "MC2_TRACE_LIGHTBAKE_STABILITY", -1, false) | verified),
 L(Lead0Kill, "MC2_LIGHTBRIDGE", Bool, true, "code", "", "", verified),
 G("MC2_LIGHTBRIDGE_STABLE_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified),
@@ -1357,8 +1355,6 @@ L(Presence, "MC2_VK_PRESENT_VERIFY", Bool, false, "gameos", "", "", passthrough 
 L(Lead0Kill, "MC2_VK_PROP_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
 L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", "", verified),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", "", verified),
-// history: docs/gate-history.md#MC2_VK_PROP_MATERIAL_DEBUG
-L(Presence, "MC2_VK_PROP_MATERIAL_DEBUG", Bool, false, "props", "", "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_MATERIAL_DEBUG", -1, false) | verified),
 L(Presence, "MC2_VK_PROP_MIP_PROBE", Bool, false, "vk", "", "ADJUDICATION-1 FENCE-RECON: one-shot mip-count-parity verdict.", verified),
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),

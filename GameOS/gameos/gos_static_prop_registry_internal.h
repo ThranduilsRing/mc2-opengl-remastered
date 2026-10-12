@@ -36,11 +36,6 @@ extern MC_TextureManager* mcTextureManager;
 // detect this and skip emitting a draw for that recipe.
 extern uint32_t g_mc2FrameCounter;
 
-// [LIGHTBAKE-PROOF v1] stability trace observer (defined in mclib/txmmgr.cpp).
-// File-scope declaration — never declared inside flush(). Verifies the per-instance
-// permanent lightDataIndex is stable across frames + stays in the static prefix [0..S).
-extern void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex);
-
 // [G1-STATIC-EAGER-LIGHT v1] Zero-slot probe helper (defined in mclib/txmmgr.cpp).
 // Returns true when lightData_[recipeIndex] has numLights_ > 0 (baked at least once).
 // File-scope so the declaration lands outside the GpuStaticPropRegistry namespace.
