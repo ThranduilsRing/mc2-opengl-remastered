@@ -81,6 +81,58 @@ def process_create_time(pid: int) -> Optional[int]:
         k32.CloseHandle(h)
 
 
+#: Image names of the engines the host lease serialises (the game, its ASan twin, the mission editor); lower case.
+ENGINE_IMAGES = frozenset({"mc2.exe", "mc2-asan.exe", "editrel.exe", "mission editor.exe"})
+
+
+class _PROCESSENTRY32W:
+    """Built lazily: ctypes structures are only needed on Windows."""
+    _cls = None
+
+    @classmethod
+    def get(cls):
+        if cls._cls is None:
+            import ctypes
+
+            class PROCESSENTRY32W(ctypes.Structure):
+                _fields_ = [("dwSize", ctypes.c_ulong), ("cntUsage", ctypes.c_ulong), ("th32ProcessID", ctypes.c_ulong),
+                            ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)), ("th32ModuleID", ctypes.c_ulong),
+                            ("cntThreads", ctypes.c_ulong), ("th32ParentProcessID", ctypes.c_ulong),
+                            ("pcPriClassBase", ctypes.c_long), ("dwFlags", ctypes.c_ulong), ("szExeFile", ctypes.c_wchar * 260)]
+            cls._cls = PROCESSENTRY32W
+        return cls._cls
+
+
+def engine_processes(images=ENGINE_IMAGES, exclude: Optional[set] = None) -> List[tuple]:
+    """Running engine processes as (pid, image name), read from a Toolhelp snapshot: no subprocess, no desktop call, never kills.
+    WHY here and not behind the cursor-guard switch: whether another lane's engine is running is a fact the lease needs in every
+    environment, including one that has the test switch set."""
+    if os.name != "nt":
+        return []
+    import ctypes
+    exclude = exclude or set()
+    out: List[tuple] = []
+    try:
+        k32 = ctypes.windll.kernel32
+        snap = k32.CreateToolhelp32Snapshot(0x00000002, 0)            # TH32CS_SNAPPROCESS
+        if not snap or snap == ctypes.c_void_p(-1).value:
+            return []
+        try:
+            entry = _PROCESSENTRY32W.get()()
+            entry.dwSize = ctypes.sizeof(entry)
+            ok = k32.Process32FirstW(snap, ctypes.byref(entry))
+            while ok:
+                name = entry.szExeFile
+                if name.lower() in images and entry.th32ProcessID not in exclude:
+                    out.append((int(entry.th32ProcessID), name))
+                ok = k32.Process32NextW(snap, ctypes.byref(entry))
+        finally:
+            k32.CloseHandle(snap)
+    except Exception:
+        return out
+    return out
+
+
 def image_path(pid: int) -> Optional[str]:
     """Full path of the process image, lower-cased with forward slashes; None if unknown."""
     if os.name != "nt" or pid <= 0:

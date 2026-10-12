@@ -757,6 +757,19 @@ def main():
                 print(_exe_verdict.refusal(), file=sys.stderr, flush=True)
                 sys.exit(7)
 
+    # Host-wide engine lease (scripts/smoke_lib/host_lease.py) FIRST: one lane's harness at a time may have an engine running on this
+    # host, whatever install it uses and whatever test switches its shell carries. Nothing else (no deploy folder) is held while a run
+    # waits here, and a second run on the same install queues on this lease. Waits by default; --no-wait fails at once. Taken once;
+    # nofocus.spawn re-enters it for every engine launch. Runs that launch nothing (--verify-only, --resolve-only) skip it.
+    if not (args.verify_only or args.resolve_only):
+        from scripts.smoke_lib import host_lease as _host_lease
+        try:
+            _host_lease.acquire(f"run_smoke {args.deploy or args.exe or 'auto'}", wait=not args.no_wait, timeout_s=args.wait_timeout,
+                                kill_orphans=args.kill_existing)
+        except _host_lease.HostLeaseBusy as _busy:
+            print(f"[runner] ERROR: {_busy}", file=sys.stderr)
+            sys.exit(4)
+
     if not _lease_available or args.no_lease:
         # No-lease path: --exe is REQUIRED here (no default fallback anymore).
         if args.exe is None:
@@ -1141,17 +1154,6 @@ def main():
             print(f"[runner] ERROR: mc2.exe already running (PIDs {block_pids}); "
                   f"--kill-existing ends only orphans of a dead smoke run.", file=sys.stderr)
             sys.exit(4)
-
-    # Host-wide game lease (scripts/smoke_lib/host_lease.py): one lane's harness at a time may have an engine running on this host,
-    # whatever install it uses. Waits by default; --no-wait fails at once.
-    from scripts.smoke_lib import host_lease as _host_lease
-    try:
-        if not _host_lease.disabled():
-            _host_lease.acquire(f"run_smoke {_lane_token}", wait=not args.no_wait, timeout_s=args.wait_timeout,
-                                kill_orphans=args.kill_existing)
-    except _host_lease.HostLeaseBusy as _busy:
-        print(f"[runner] ERROR: {_busy}", file=sys.stderr)
-        sys.exit(4)
 
     if args.menu_canary or args.with_menu_canary:
         _why = _menu_canary_refusal()

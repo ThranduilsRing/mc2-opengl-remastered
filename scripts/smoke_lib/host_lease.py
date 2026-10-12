@@ -1,20 +1,29 @@
 # scripts/smoke_lib/host_lease.py
-"""Host-wide game lease: one lane's harness at a time may have an engine (mc2.exe / EditRel.exe) running on this host.
+"""Host-wide engine lease: one lane's harness at a time may have an engine (mc2.exe / EditRel.exe) running on this host.
 
 WHAT: a process that is about to launch the game holds this lease for the rest of its life. Taking it waits until (1) no other live
 process holds the lease and (2) no game or editor process is running that this process did not start, whatever install it came from.
+The lease file lives at ONE fixed host-global path, outside every worktree and independent of every other harness setting: four lanes
+running the harness from four worktree copies contend for the same file.
 WHY: the deploy-folder lease only serialises two harnesses on the SAME install. Two lanes on different installs (or a lane next to a
-game the owner started) still ran two engines at once, and the runner used to log "ignoring foreign mc2.exe" and carry on; the second
-engine's window handling and cursor guard then fought the first (2026-10-10). A captured frame or a timing taken while another engine
-renders is also not a measurement. The lease is the single place that says so.
+game the owner started) still ran two engines at once, and the second engine's window handling and cursor guard fought the first
+(2026-10-10). A captured frame, a timing or a determinism pair taken while another engine renders is not a measurement.
+WHY the lease never follows the cursor-guard switch: until 2026-10-12 `MC2_CURSOR_GUARD_OFF=1` (the test-tree isolation switch that the
+conftests and check-contracts set, and that lanes export for their smoke shells) also switched this lease off, so three lanes ran three
+engines at once with every runner call passing `--wait-timeout`. Test isolation is a private lease file (`MC2_HOST_LEASE_PATH`), never
+"no lease".
 
-  * default is to WAIT (agents never poll); `wait=False` / `--no-wait` raises HostLeaseBusy at once, naming the holder.
+  * default is to WAIT with a countdown line; `wait=False` / `--no-wait` raises HostLeaseBusy at once, naming the holder.
   * a process that already holds the lease re-enters freely, so a runner that launches several games takes it once.
-  * a lease whose holder pid is dead is taken over; a live game with no live lease holder is never killed here (only
-    `kill_orphans`, which child_registry restricts to provable orphans of a dead run).
+  * a lease whose holder pid is dead is taken over (`clear-dead` does the same by hand); a live engine with no live lease holder is
+    never killed here (only `kill_orphans`, which child_registry restricts to provable orphans of a dead run).
+  * off only for the owner: `MC2_HOST_LEASE=off` together with `MC2_OWNER_NO_LEASE=1`; the first without the second is ignored aloud.
+
+CLI: `py -3 -m scripts.smoke_lib.host_lease status | clear-dead` (status exits 0 free, 1 held, 2 held by a dead process).
 """
 from __future__ import annotations
 
+import argparse
 import atexit
 import json
 import os
@@ -24,12 +33,17 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 try:
-    from . import child_registry, win_input
+    from . import bounded_wait, child_registry
 except ImportError:                       # imported as a top-level module from scripts/
+    import bounded_wait                   # type: ignore
     import child_registry                 # type: ignore
-    import win_input                   # type: ignore
 
-OFF_ENV = "MC2_HOST_LEASE"                # "off" -> never lease (tests, owner debugging)
+#: The one lease file every lane on this host contends for. Fixed on purpose: not under a worktree, not derived from the child
+#: registry directory or any other overridable setting.
+LEASE_PATH = Path("A:/Games/mc2-opengl/.host_game_lease.json")
+PATH_ENV = "MC2_HOST_LEASE_PATH"          # tests only: a private lease file (the conftests set one per pytest process)
+OFF_ENV = "MC2_HOST_LEASE"                # "off" switches leasing off, owner only (see OWNER_ENV)
+OWNER_ENV = "MC2_OWNER_NO_LEASE"          # "1" authorises OFF_ENV; the same owner switch run_smoke --no-lease needs
 TIMEOUT_ENV = "MC2_HOST_LEASE_TIMEOUT"    # seconds, default 3600
 DEFAULT_TIMEOUT_S = 3600.0
 POLL_S = 2.0
@@ -40,9 +54,38 @@ class HostLeaseBusy(RuntimeError):
     """Another lane holds the host lease, or a game this process did not start is still running."""
 
 
+def _log_default(m: str) -> None:
+    print(m, file=sys.stderr, flush=True)
+
+
+def redirected() -> bool:
+    """True when a private lease file is in use (a test): the host's real engines are then not this process's business."""
+    return bool(os.environ.get(PATH_ENV))
+
+
 def lease_path() -> Path:
-    override = os.environ.get("MC2_HOST_LEASE_PATH")
-    return Path(override) if override else child_registry.REGISTRY_DIR.parent / ".host_game_lease.json"
+    override = os.environ.get(PATH_ENV)
+    if override:
+        return Path(override)
+    if "pytest" in sys.modules:
+        raise RuntimeError(f"a test reached the real host lease {LEASE_PATH}; the conftest.py files set {PATH_ENV} to a private file")
+    return LEASE_PATH
+
+
+_off_logged = False
+
+
+def disabled(log: Callable[[str], None] = _log_default) -> bool:
+    """True only for the owner: MC2_HOST_LEASE=off with MC2_OWNER_NO_LEASE=1. Never follows the cursor-guard test switch."""
+    global _off_logged
+    if os.environ.get(OFF_ENV, "").lower() != "off":
+        return False
+    if os.environ.get(OWNER_ENV) == "1":
+        return True
+    if not _off_logged:
+        _off_logged = True
+        log(f"[host-lease] {OFF_ENV}=off ignored: it needs {OWNER_ENV}=1 (owner only); leasing as usual")
+    return False
 
 
 def _read(path: Path) -> Optional[dict]:
@@ -109,16 +152,27 @@ def holds() -> bool:
 def _describe(rec: Optional[dict]) -> str:
     if not rec:
         return "unknown holder"
-    return f"{rec.get('label', '?')} (pid {rec.get('pid')}, {' '.join(map(str, rec.get('argv', [])))})"
+    return (f"{rec.get('label', '?')} (pid {rec.get('pid')}, {' '.join(map(str, rec.get('argv', [])))}"
+            f"{', in ' + str(rec['cwd']) if rec.get('cwd') else ''})")
+
+
+def foreign_engines() -> List[Tuple[int, str]]:
+    """Engines running on the host as (pid, image). Empty under a private lease file: a test never looks at the real host."""
+    if redirected():
+        return []
+    return child_registry.engine_processes()
 
 
 def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None, kill_orphans: bool = False,
-            log: Callable[[str], None] = lambda m: print(m, file=sys.stderr, flush=True),
+            log: Callable[[str], None] = _log_default,
             sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic,
             scan: Optional[Callable[..., List[Tuple[int, str]]]] = None) -> None:
     """Hold the host lease, or raise HostLeaseBusy. See the module docstring for the rules."""
     global _registered
-    scan = scan or win_input.find_foreign_game_pids
+    if disabled(log):
+        log(f"[host-lease] OFF ({OFF_ENV}=off, owner): {label} launches without the host lease")
+        return
+    scan = scan or foreign_engines
     if timeout_s is None:
         timeout_s = float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S)
     path = lease_path()
@@ -153,19 +207,76 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
             raise HostLeaseBusy(f"gave up after {timeout_s:.0f} s: {why}")
         if clock() - last_report >= REPORT_EVERY_S:
             last_report = clock()
-            log(f"[host-lease] waiting: {why}; giving up in {max(0, int(deadline - clock()))} s")
+            log(bounded_wait.countdown_line("host game lease", why, deadline - clock(), timeout_s))
         sleep(POLL_S)
 
 
-def disabled() -> bool:
-    """True when leasing is switched off (MC2_HOST_LEASE=off) or the test cursor guard is off (no real engine is ever started)."""
-    return os.environ.get(OFF_ENV, "").lower() == "off" or win_input.guard_off()
-
-
 def ensure_held(label: str) -> None:
-    """Hold the lease before an engine launch (re-entrant). No-op when disabled."""
-    if disabled():
-        return
+    """Hold the lease before an engine launch (re-entrant)."""
     if holds():
         return              # our own earlier launches are running; they are not foreign
     acquire(label)
+
+
+# ---------------------------------------------------------------- status / clear-dead
+
+def status() -> dict:
+    """What the lease looks like right now: the file, its holder (and whether that process is alive), the engines running."""
+    path = lease_path()
+    rec = _read(path)
+    engines = [{"pid": pid, "image": img, "path": child_registry.image_path(pid)} for pid, img in foreign_engines()]
+    return {"path": str(path), "holder": rec, "holder_alive": _holder_alive(rec) if rec else False,
+            "engines": engines, "off": disabled(lambda m: None), "private": redirected()}
+
+
+def clear_dead() -> Tuple[bool, Optional[dict]]:
+    """Remove a lease whose holder process is gone. -> (removed, the record). A live holder is left alone: that lane is running."""
+    path = lease_path()
+    rec = _read(path)
+    if rec is None or _holder_alive(rec):
+        return False, rec
+    try:
+        path.unlink()
+    except OSError:
+        return False, rec
+    return True, rec
+
+
+def _print_status(st: dict) -> int:
+    print(f"host lease file: {st['path']}" + (" (private, test)" if st["private"] else "") + (" [OFF: owner]" if st["off"] else ""))
+    rec = st["holder"]
+    if rec is None:
+        print("holder: none (free)")
+        code = 0
+    else:
+        since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(rec.get("since", 0))))
+        print(f"holder: {_describe(rec)} since {since}, process {'ALIVE' if st['holder_alive'] else 'DEAD (clear-dead removes it)'}")
+        code = 1 if st["holder_alive"] else 2
+    for e in st["engines"]:
+        print(f"engine: {e['image']} pid {e['pid']} {e['path'] or ''}")
+    if not st["engines"]:
+        print("engines running: none")
+    return code
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    ap = argparse.ArgumentParser(prog="host_lease", description="the host-wide engine lease")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("status", help="holder, whether it is alive, engines running (exit 0 free / 1 held / 2 held by a dead process)")
+    sub.add_parser("clear-dead", help="remove the lease when its holder process is dead; a live holder is left alone")
+    argv = ["clear-dead" if a == "--clear-dead" else a for a in (sys.argv[1:] if argv is None else argv)]   # deploy_lease spelling
+    args = ap.parse_args(argv)
+    if args.cmd == "status":
+        return _print_status(status())
+    removed, rec = clear_dead()
+    if removed:
+        print(f"[host-lease] cleared the lease left by {_describe(rec)}")
+    elif rec is None:
+        print("[host-lease] no lease to clear")
+    else:
+        print(f"[host-lease] NOT cleared: {_describe(rec)} is alive; wait for that run")
+    return 0 if removed or rec is None else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

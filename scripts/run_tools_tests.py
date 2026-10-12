@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import os
+import tempfile
 import re
 import subprocess
 import sys
@@ -49,6 +50,9 @@ import console_child  # noqa: E402
 
 # Every module below runs in a child that inherits this: no test may touch a person's pointer.
 os.environ["MC2_CURSOR_GUARD_OFF"] = "1"
+# A private host lease file per test process: tests that spawn a fake engine contend with each other, never with the lanes
+# (scripts/smoke_lib/host_lease.py raises when a test reaches the real lease without this).
+os.environ.setdefault("MC2_HOST_LEASE_PATH", os.path.join(tempfile.gettempdir(), f"mc2-host-lease-test-{os.getpid()}.json"))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LEDGER = os.path.join(ROOT, "scripts", "tools_tests.known-failures")

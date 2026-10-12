@@ -26,20 +26,6 @@ class _POINT(ctypes.Structure):
 
 
 
-class _PROCESSENTRY32W(ctypes.Structure):
-    """Subset of PROCESSENTRY32W sufficient to read pid + image name."""
-    _fields_ = [("dwSize", ctypes.c_ulong),
-                ("cntUsage", ctypes.c_ulong),
-                ("th32ProcessID", ctypes.c_ulong),
-                ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
-                ("th32ModuleID", ctypes.c_ulong),
-                ("cntThreads", ctypes.c_ulong),
-                ("th32ParentProcessID", ctypes.c_ulong),
-                ("pcPriClassBase", ctypes.c_long),
-                ("dwFlags", ctypes.c_ulong),
-                ("szExeFile", ctypes.c_wchar * 260)]
-
-
 #: MC2_CURSOR_GUARD_OFF=1 makes every function here inert: no user32 or kernel32 call of any kind
 
 
@@ -144,29 +130,11 @@ def find_foreign_game_pids(exclude_pids: Optional[Set[int]] = None) -> List[Tupl
     if sys.platform != "win32" or guard_off():
         return []
     pytest_tripwire("find_foreign_game_pids")
-    exclude = exclude_pids or set()
-    out: List[Tuple[int, str]] = []
     try:
-        k32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-        TH32CS_SNAPPROCESS = 0x00000002
-        INVALID = ctypes.c_void_p(-1).value
-        snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-        if snap == INVALID or not snap:
-            return []
-        try:
-            entry = _PROCESSENTRY32W()
-            entry.dwSize = ctypes.sizeof(_PROCESSENTRY32W)
-            ok = k32.Process32FirstW(snap, ctypes.byref(entry))
-            while ok:
-                name = entry.szExeFile
-                if name.lower() in _GAME_IMAGES and entry.th32ProcessID not in exclude:
-                    out.append((int(entry.th32ProcessID), name))
-                ok = k32.Process32NextW(snap, ctypes.byref(entry))
-        finally:
-            k32.CloseHandle(snap)
-    except Exception:
-        return out
-    return out
+        from . import child_registry
+    except ImportError:
+        import child_registry  # type: ignore
+    return child_registry.engine_processes(_GAME_IMAGES, exclude_pids or set())
 
 
 

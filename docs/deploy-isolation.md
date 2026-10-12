@@ -48,6 +48,7 @@ correctly:
 | `DEPLOY_ALLOWLIST` | is this a canonical folder? | yes — `v0.4d-rc1` is on the list |
 | `.mc2_deploy_lane.json` | does another lane hold THIS PATH? | no |
 | `.smoke_leases.json` | is another lane smoking THIS PATH? | no |
+| `A:/Games/mc2-opengl/.host_game_lease.json` | is another lane's ENGINE running anywhere on the host? (host-wide, not path-keyed; `py -3 -m scripts.smoke_lib.host_lease status`) | no |
 | `deploy_status()` | is the exe at THIS PATH stale? | no |
 | `register_lane()` `deploy_lane_clash` | did another lane name THIS STRING? | no |
 
