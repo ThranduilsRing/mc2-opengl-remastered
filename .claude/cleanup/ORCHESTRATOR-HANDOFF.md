@@ -5,6 +5,7 @@ Owner intent: **pay down most/all tech debt before building features**. No time 
 WHAT this is: the rules, the lanes, the ordered queue and the open owner rulings — nothing else, kept ≤ 120 lines. The milestone record (every "state at
 handoff" bullet, newest first, plus the pre-restructure queue and rule narratives) is `.claude/cleanup/HANDOFF-LOG.md`; append with `handoff_append.py --bullet`.
 RESUME HERE: read this file, then `lane1-state.md` / `lane2-state.md`, then the newest 5 entries of the log. Verify any "green" claim with `git log` and a fresh run.
+PLANNING DOCS (2026-10-12 week, Fable-only mode): `program-plan-2026-10-12.md` (week plan, 7 tasks + 2 reviewers + meta-review, briefs for T1/T2, 7 owner questions), `target-architecture-2026-10-12.md` (from-scratch-today design, gap table, highest-payoff attacks), `program-review-2026-10-12.md` (adversarial review of both; the implementer starts from its verdict).
 
 ## Ground rules (owner-set, non-negotiable)
 - Work ONLY in `A:/Games/mc2-main`, branch `claude/nifty-mendeleev` (lane 2: worktree `A:/Games/mc2-lane2`, branch `claude/lane2-s3`). Local commits only — **never push**.
