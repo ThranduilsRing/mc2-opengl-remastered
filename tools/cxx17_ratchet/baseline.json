@@ -143,11 +143,11 @@
    "LG02": 212,
    "LG03": 957,
    "LG04": 21,
-   "LG05": 204,
-   "LG06": 445,
+   "LG05": 206,
+   "LG06": 446,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2353,
+   "LG09": 2366,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -156,7 +156,7 @@
    "LG14": 123,
    "LG15": 0,
    "LG16": 7,
-   "LG17": 47,
+   "LG17": 48,
    "LG18": 4,
    "LG19": 0,
    "LG20": 1
@@ -190,10 +190,10 @@
    "LG03": 1139,
    "LG04": 16,
    "LG05": 136,
-   "LG06": 667,
+   "LG06": 671,
    "LG07": 0,
    "LG08": 74,
-   "LG09": 2195,
+   "LG09": 2200,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 212,
@@ -202,8 +202,8 @@
    "LG14": 120,
    "LG15": 0,
    "LG16": 156,
-   "LG17": 91,
-   "LG18": 6,
+   "LG17": 94,
+   "LG18": 8,
    "LG19": 0,
    "LG20": 10
   },
@@ -1744,7 +1744,7 @@
   "code/contact.cpp": {
    "LG01": 1,
    "LG03": 8,
-   "LG09": 17,
+   "LG09": 19,
    "LG12a": 1,
    "LG12b": 2
   },
@@ -2316,7 +2316,7 @@
   },
   "code/mech_damage.cpp": {
    "LG04": 1,
-   "LG09": 6
+   "LG09": 10
   },
   "code/mech_init.cpp": {
    "LG03": 2,
@@ -2600,6 +2600,9 @@
   "code/modder_finding.h": {
    "LG06": 1
   },
+  "code/movemgr.cpp": {
+   "LG09": 2
+  },
   "code/movemgr.h": {
    "LG02": 2
   },
@@ -2747,6 +2750,11 @@
   },
   "code/multplyr_handle.cpp": {
    "LG06": 1
+  },
+  "code/multplyr_null.cpp": {
+   "LG05": 2,
+   "LG06": 1,
+   "LG17": 1
   },
   "code/multplyr_send.cpp": {
    "LG06": 1,
@@ -3018,7 +3026,7 @@
   "code/warrior.cpp": {
    "LG03": 17,
    "LG06": 1,
-   "LG09": 24
+   "LG09": 25
   },
   "code/warrior.h": {
    "LG02": 34,
@@ -3060,7 +3068,7 @@
   },
   "code/warrior_target.cpp": {
    "LG04": 1,
-   "LG09": 7,
+   "LG09": 8,
    "LG12b": 5
   },
   "code/weapon_definition.h": {
@@ -3089,10 +3097,10 @@
   },
   "code/weaponbolt_update.cpp": {
    "LG03": 36,
-   "LG09": 65
+   "LG09": 67
   },
   "code/weather.cpp": {
-   "LG09": 2
+   "LG09": 3
   },
   "editor/EditorGosRender.cpp": {
    "LG20": 2
@@ -3233,7 +3241,7 @@
   },
   "mclib/ablxstd.cpp": {
    "LG04": 2,
-   "LG09": 5
+   "LG09": 6
   },
   "mclib/ablxstd_stack.cpp": {
    "LG09": 13
@@ -3244,6 +3252,9 @@
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
    "LG12a": 1
+  },
+  "mclib/alloc_probe.cpp": {
+   "LG18": 2
   },
   "mclib/alphapalette.cpp": {
    "LG03": 2,
@@ -3381,6 +3392,7 @@
    "LG09": 3
   },
   "mclib/camera_input.cpp": {
+   "LG09": 2,
    "LG10": 4,
    "LG13": 1
   },
@@ -4573,7 +4585,14 @@
   },
   "mclib/sim_identity.h": {
    "LG09": 13,
-   "LG17": 2
+   "LG17": 5
+  },
+  "mclib/sim_trace.cpp": {
+   "LG06": 2,
+   "LG09": 2
+  },
+  "mclib/sim_trace.h": {
+   "LG06": 2
   },
   "mclib/sortlist.cpp": {
    "LG09": 7
@@ -5171,7 +5190,7 @@
    "LG20": 2
   }
  },
- "head": "70df87253",
+ "head": "1209d66cb",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
