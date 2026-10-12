@@ -37,11 +37,11 @@
 
 #ifndef TIMING_H
 #include"timing.h"
-#include"script_music.h"
 #endif
 
 #include<math.h>
 #include<cstdint>
+#include"script_music.h"
 #include<gameos.hpp>
 #include<stuff/stuff.hpp>
 //---------------------------------------------------------------------------
