@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 struct ScriptMusic
 {
@@ -35,35 +36,39 @@ struct ScriptMusic
 };
 
 // Seconds of audio described by a RIFF/WAVE header: the data chunk length over the fmt chunk's average byte rate.
-// 0 when the bytes are not a WAVE header whose fmt and data chunks both lie within `n` (the data payload need not).
-inline double wavDurationSeconds(const unsigned char* bytes, std::size_t n)
+// 0 when the bytes are not a WAVE header whose fmt and data chunk headers both lie within `bytes` (the payload need not).
+inline double wavDurationSeconds(std::span<const unsigned char> bytes)
 {
+	const std::size_t n = bytes.size();
 	auto u32 = [bytes](std::size_t at) -> std::uint32_t {
-		return std::uint32_t(bytes[at]) | (std::uint32_t(bytes[at + 1]) << 8) | (std::uint32_t(bytes[at + 2]) << 16)
-			| (std::uint32_t(bytes[at + 3]) << 24);
+		return std::uint32_t{bytes[at]} | (std::uint32_t{bytes[at + 1]} << 8) | (std::uint32_t{bytes[at + 2]} << 16)
+			| (std::uint32_t{bytes[at + 3]} << 24);
 	};
-	auto tag = [bytes](std::size_t at, const char* four) {
-		return bytes[at] == (unsigned char)four[0] && bytes[at + 1] == (unsigned char)four[1]
-			&& bytes[at + 2] == (unsigned char)four[2] && bytes[at + 3] == (unsigned char)four[3];
+	auto tag = [bytes](std::size_t at, std::span<const char, 4> four) {
+		for (std::size_t i = 0; i < 4; ++i)
+			if (bytes[at + i] != static_cast<unsigned char>(four[i]))
+				return false;
+		return true;
 	};
-	if (!bytes || n < 12 || !tag(0, "RIFF") || !tag(8, "WAVE"))
+	using Tag = std::span<const char, 4>;
+	if (n < 12 || !tag(0, Tag{"RIFF", 4}) || !tag(8, Tag{"WAVE", 4}))
 		return 0.0;
 	std::uint32_t byteRate = 0;
 	std::size_t at = 12;
 	while (at + 8 <= n)
 	{
 		const std::uint32_t length = u32(at + 4);
-		if (tag(at, "fmt "))
+		if (tag(at, Tag{"fmt ", 4}))
 		{
 			if (length < 16 || at + 8 + 16 > n)
 				return 0.0;
 			byteRate = u32(at + 8 + 8);		// MC2_WAVEFORMATEX::nAvgBytesPerSec
 		}
-		else if (tag(at, "data"))
+		else if (tag(at, Tag{"data", 4}))
 		{
-			return byteRate ? double(length) / double(byteRate) : 0.0;
+			return byteRate ? static_cast<double>(length) / static_cast<double>(byteRate) : 0.0;
 		}
-		at += 8 + std::size_t(length) + (length & 1u);	// RIFF chunks are word aligned
+		at += 8 + std::size_t{length} + (length & 1u);	// RIFF chunks are word aligned
 	}
 	return 0.0;
 }

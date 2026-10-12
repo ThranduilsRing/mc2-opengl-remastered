@@ -26,6 +26,8 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
+import console_child  # noqa: E402
 
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 TICK_RE = re.compile(r"`([A-Za-z0-9_][A-Za-z0-9_./\\-]*)`")
@@ -96,7 +98,7 @@ def ignored_docs():
     """Paths git ignores under docs/ (local scratch such as docs/beta): not part of the repo, so not part of its link contract."""
     try:
         out = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--", "docs"],
-                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False).stdout
+                             text=True, check=False, **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)).stdout
     except OSError:
         return set()
     return {os.path.normpath(p) for p in out.split("\0") if p}

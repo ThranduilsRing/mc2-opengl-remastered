@@ -41,6 +41,7 @@
 
 #include<math.h>
 #include<cstdint>
+#include<string_view>
 #include"script_music.h"
 #include<gameos.hpp>
 #include<stuff/stuff.hpp>
@@ -277,7 +278,7 @@ class SoundSystem
 		void playABLDigitalMusic (long musicId);
 		void stopABLMusic (void);
 		long getCurrentMusicId (void);
-		static double musicSeconds (const char *wavPath);
+		static double musicSeconds (std::string_view wavPath);
 		
 		void playABLSFX (long sfxId);
 		void playABLVideo (long videoId);

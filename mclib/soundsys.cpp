@@ -25,6 +25,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_atomic.h>
 #include <algorithm>
+#include <string>
 #include <vector>
 
 //---------------------------------------------------------------------------
@@ -1331,7 +1332,7 @@ void SoundSystem::playABLDigitalMusic (long musicId)
 	if (!fileExists(digitalStream))
 		return;
 
-	scriptMusic.request(musicId, scenarioTime, musicSeconds(digitalStream), digitalMusicLoopFlags[musicId]);
+	scriptMusic.request(musicId, scenarioTime, musicSeconds(static_cast<const char *>(digitalStream)), digitalMusicLoopFlags[musicId]);
 }
 
 //---------------------------------------------------------------------------
@@ -1342,16 +1343,16 @@ long SoundSystem::getCurrentMusicId (void)
 
 //---------------------------------------------------------------------------
 // Seconds of audio in a music file from its RIFF header: the fmt and data chunk headers sit in the first few KB.
-double SoundSystem::musicSeconds (const char *wavPath)
+double SoundSystem::musicSeconds (std::string_view wavPath)
 {
 	unsigned char header[4096];
 	File wav;
-	if (wav.open(wavPath) != NO_ERR)
+	if (wav.open(std::string(wavPath).c_str()) != NO_ERR)
 		return 0.0;
 	const long want = std::min<long>(static_cast<long>(wav.getLength()), static_cast<long>(sizeof(header)));
 	const long got = (want > 0) ? wav.read(header, want) : 0;
 	wav.close();
-	return (got > 0) ? wavDurationSeconds(header, static_cast<std::size_t>(got)) : 0.0;
+	return (got > 0) ? wavDurationSeconds(std::span<const unsigned char>(header, static_cast<std::size_t>(got))) : 0.0;
 }
 
 //---------------------------------------------------------------------------

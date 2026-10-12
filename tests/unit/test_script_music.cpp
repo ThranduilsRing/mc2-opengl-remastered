@@ -4,6 +4,7 @@
 #include "mclib/script_music.h"
 
 #include <cstring>
+#include <span>
 #include <vector>
 
 namespace {
@@ -55,22 +56,23 @@ TEST_CASE("ScriptMusic: a looping tune ends only by stop or by another request")
 TEST_CASE("wavDurationSeconds: data length over the fmt byte rate, chunks before data are skipped")
 {
 	const auto plain = wavHeader(176400, 1764000);
-	CHECK(wavDurationSeconds(plain.data(), plain.size()) == doctest::Approx(10.0));
+	CHECK(wavDurationSeconds(plain) == doctest::Approx(10.0));
 	const auto list = wavHeader(176400, 882000, 33);			// odd-length chunk: word aligned
-	CHECK(wavDurationSeconds(list.data(), list.size()) == doctest::Approx(5.0));
+	CHECK(wavDurationSeconds(list) == doctest::Approx(5.0));
 	// The payload need not be present; only the headers are read.
-	CHECK(wavDurationSeconds(plain.data(), plain.size()) == wavDurationSeconds(plain.data(), 44));
+	CHECK(wavDurationSeconds(plain) == wavDurationSeconds(std::span<const unsigned char>(plain).first(44)));
 }
 
 TEST_CASE("wavDurationSeconds: anything that is not a readable WAVE header is 0")
 {
 	const auto plain = wavHeader(176400, 1764000);
-	CHECK(wavDurationSeconds(nullptr, 0) == 0.0);
-	CHECK(wavDurationSeconds(plain.data(), 11) == 0.0);
-	CHECK(wavDurationSeconds(plain.data(), 30) == 0.0);		// fmt present, data chunk header cut off
+	const std::span<const unsigned char> all(plain);
+	CHECK(wavDurationSeconds({}) == 0.0);
+	CHECK(wavDurationSeconds(all.first(11)) == 0.0);
+	CHECK(wavDurationSeconds(all.first(30)) == 0.0);		// fmt present, data chunk header cut off
 	std::vector<unsigned char> notRiff(plain);
 	std::memcpy(notRiff.data(), "RIFX", 4);
-	CHECK(wavDurationSeconds(notRiff.data(), notRiff.size()) == 0.0);
+	CHECK(wavDurationSeconds(notRiff) == 0.0);
 	const auto zeroRate = wavHeader(0, 1764000);
-	CHECK(wavDurationSeconds(zeroRate.data(), zeroRate.size()) == 0.0);
+	CHECK(wavDurationSeconds(zeroRate) == 0.0);
 }
