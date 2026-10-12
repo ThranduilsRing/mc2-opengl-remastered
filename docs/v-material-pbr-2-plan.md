@@ -33,7 +33,7 @@ limited until per-material values are authored.
 
 ## §2. Current lighting model (audit)
 
-Per `docs/static-prop-lighting-audit.md` (`af314d22`) and direct re-read
+Per docs/static-prop-lighting-audit.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) (`af314d22`) and direct re-read
 of `shaders/static_prop.vert` and `shaders/static_prop.frag`:
 
 - **Lighting is per-vertex (Gouraud).** The vertex shader builds `lit`
@@ -287,11 +287,11 @@ slice (V-MATERIAL-PBR-2-IMPL) with all six §6 probes green.
   consumer)
 - V-IBL-STATIC-2 ship — `5bfd15d8` (per-mission SH set selection;
   HEAD this plan branches from)
-- `docs/static-prop-lighting-audit.md` `af314d22` — audit of the
+- docs/static-prop-lighting-audit.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) `af314d22` — audit of the
   per-vertex lighting flow this slice composes onto
-- `docs/ibl-plan.md` `cfad795c` — broader IBL roadmap (V-MATERIAL-PBR-3
+- docs/ibl-plan.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) `cfad795c` — broader IBL roadmap (V-MATERIAL-PBR-3
   belongs to the cubemap track tracked there)
-- `docs/v-ibl-static-1-plan.md` `4c2bd769` — direct precedent doc for
+- docs/v-ibl-static-1-plan.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) `4c2bd769` — direct precedent doc for
   this plan's structure
 - HANDOFF `cf5f67bc` — ViewUniforms default-on flip (cameraWorldPos
   availability proof)

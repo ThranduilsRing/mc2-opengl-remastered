@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1140
-registry_entry_count: 354
-verified_count: 1133
+gate_count: 1137
+registry_entry_count: 351
+verified_count: 1130
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5605,25 +5605,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_SSAO, kind: Feature, order: 26, default_on: false}
-  - name: MC2_SSAO_BLUR
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SSAO_BLUR, kind: Feature, order: -1, default_on: true}
-  - name: MC2_SSAO_BLUR_SIGMA
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight."
-    range: {lo: 0.0010000000474974513, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SSAO_BLUR_SIGMA, kind: Feature, order: -1, default_on: false}
   - name: MC2_SSAO_DEBUG
     kind: Bool
     default: false
@@ -5633,15 +5614,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_DIAG_SSAO_DEBUG, kind: Trace, order: -1, default_on: false}
-  - name: MC2_SSAO_RADIUS
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius."
-    range: {lo: 0.10000000149011612, hi: 64, style: clamp}
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SSAO_RADIUS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STABLE_LIGHT_SKIP
     kind: Bool
     default: false

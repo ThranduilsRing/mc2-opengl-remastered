@@ -1034,14 +1034,8 @@ L(Lead0Kill, "MC2_SP_GLASS_DITHER", Bool, true, "unclassified", "", "BUILDING-GL
 L(Lead0, "MC2_SSAO", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1 (Track V): lightweight half-res screen-space ambient-occlusion grounding pass (gosPostProcess::runSSAO) reusing the scene depth +...", passthrough | registry(Feature, "MC2_FEATURE_SSAO", 26, false) | verified),
 // SSAO-BLUR-1: the missing denoise. Killswitch, NOT an opt-in -- default ON
 // whenever SSAO runs, because the un-blurred chain is not a shippable config.
-// history: docs/gate-history.md#MC2_SSAO_BLUR
-L(Lead0Kill, "MC2_SSAO_BLUR", Bool, true, "post", "", "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass...", passthrough | registry(Feature, "MC2_FEATURE_SSAO_BLUR", -1, true) | verified),
-// history: docs/gate-history.md#MC2_SSAO_BLUR_SIGMA
-P("MC2_SSAO_BLUR_SIGMA", Float, 0.0, "post", "", "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight.", passthrough | clampRange(static_cast<double>(0.001f), 1.0) | registry(Feature, "MC2_FEATURE_SSAO_BLUR_SIGMA", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_SSAO_DEBUG
 L(Lead0, "MC2_SSAO_DEBUG", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead...", passthrough | registry(Trace, "MC2_DIAG_SSAO_DEBUG", -1, false) | verified),
-// history: docs/gate-history.md#MC2_SSAO_RADIUS
-P("MC2_SSAO_RADIUS", Float, 0.0, "post", "", "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius.", clampRange(static_cast<double>(0.1f), 64.0) | registry(Feature, "MC2_FEATURE_SSAO_RADIUS", -1, false) | verified),  // default not derivable from the tree
 G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", passthrough | verified),
 G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),

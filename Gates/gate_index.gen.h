@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1140;
+inline constexpr std::size_t kGateCount = 1137;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -730,10 +730,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SP_ALPHASCAN_GATE", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_SP_GLASS_DITHER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SSAO", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_SSAO_BLUR", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_SSAO_BLUR_SIGMA", Kind::Float, Rule::Prefix, {}},
     {"MC2_SSAO_DEBUG", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_SSAO_RADIUS", Kind::Float, Rule::Prefix, {}},
     {"MC2_STABLE_LIGHT_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},

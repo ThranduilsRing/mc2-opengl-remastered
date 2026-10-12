@@ -1,7 +1,7 @@
 # Phase-helper split of one oversized function: moves each lexical phase of the body, verbatim, into a
 # helper that takes the small shared-state struct(s) holding the locals that cross phases; the original
 # function keeps only the glue (calls, early-outs, scoping).
-# usage: py -3 tools/phase/ph_split.py tools/phase/proofs/ph_spec_<name>.py
+# usage: py -3 tools/phase/ph_split.py <ph_spec_name.py>   (finished splits' specs/proofs are archived on E:, not in-tree)
 # Reads the text at the spec's BASE commit (default HEAD) so it is re-runnable; writes the working file.
 #
 # Spec fields:

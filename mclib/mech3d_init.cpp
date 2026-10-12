@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
+#include "appearance_rng.h"
 
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.
 // Used to gate TGL texture loading so sensor shapes work when .tga is absent
@@ -70,7 +71,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	rightShoulderPos.x = rightShoulderPos.y = rightShoulderPos.z = -99999.9f;
 	leftShoulderPos.x = leftShoulderPos.y = leftShoulderPos.z = -99999.9f;
 
-	idleTime = RandomNumber(idleMAX);
+	idleTime = mc2_appearance_rng::randomNumber(idleMAX);
 	
 	hazeFactor = 0.0f;
 

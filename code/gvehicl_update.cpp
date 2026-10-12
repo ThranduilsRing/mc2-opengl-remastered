@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
+#include "appearance_rng.h"
 #include "Gates/gate.h"
 
 
@@ -191,7 +192,7 @@ long GroundVehicle::update (void)
 				}
 				else
 				{
-					if (RollDice(25))
+					if (mc2_appearance_rng::rollDice(25))
 					{
 						ObjectManager->createExplosion(INFANTRY_BLOOD_EFFECT,nullptr,position, 0.0f,0.0f);
 					}
@@ -201,7 +202,7 @@ long GroundVehicle::update (void)
 					}
 				}
 					
-				craterManager->addCrater(CRATER_4,position,RandomNumber(180));
+				craterManager->addCrater(CRATER_4,position,mc2_appearance_rng::randomNumber(180));
 			}
 
 			exploding = true;

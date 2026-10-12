@@ -5,7 +5,7 @@
 features, no terrain-splat behavior change. Branch `claude/sp-material-m0-1`.
 
 This is the "done" record for milestone **M0** in
-`docs/material-abi-unification-recon.md` (the spec; that doc lives in the
+docs/material-abi-unification-recon.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) (the spec; that doc lives in the
 `nifty-mendeleev` worktree). M0 pins identity so the GPU material contract
 cannot be misread. It is the only behavior delta and it is minimal.
 
@@ -64,6 +64,6 @@ classifier, with palette-wide loose uniforms). It shares field *vocabulary*
 (roughness/normal/tint) with `MaterialGpu` but is a **distinct ABI**: there is
 no per-draw `materialIdx` to index a record, identity is computed per-pixel.
 Forcing terrain into the per-surface record buys nothing. See
-`docs/material-abi-unification-recon.md` §(d).1 and `mclib/terrain.h`.
+docs/material-abi-unification-recon.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) §(d).1 and `mclib/terrain.h`.
 
 A short note to this effect is also in the `MaterialGpu.h` record comment.

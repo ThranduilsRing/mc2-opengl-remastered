@@ -9433,18 +9433,6 @@
    "count": 1
   },
   {
-   "tag": "SSAO",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_SSAO_BLUR",
-    "aoRadius",
-    "aoRadius",
-    "MC2_SSAO_RADIUS"
-   ],
-   "count": 1
-  },
-  {
    "tag": "STABLE_LIGHT_SKIP",
    "ver": -1,
    "stream": "stderr",
@@ -12801,6 +12789,7 @@
   "BUILD_FINGERPRINT",
   "CAMERA_PARK",
   "CONFIG",
+  "CRASH",
   "CRASHBUNDLE",
   "DEPLOY_COHERENCE",
   "DEPLOY_GUARD",

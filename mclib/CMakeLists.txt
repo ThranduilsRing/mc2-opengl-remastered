@@ -23,6 +23,7 @@ set(SOURCES ${SOURCES}
     paths.cpp
     pqueue.cpp
     routines.cpp
+    appearance_rng.cpp
     scale.cpp
     sortlist.cpp
     tgainfo.cpp

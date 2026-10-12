@@ -4,7 +4,7 @@
 Read-only recon. Defines the **per-pass attachment I/O contract** for the 14 major
 named passes: what each pass binds, writes, samples, clears, and how it can form a
 feedback loop. This is the Vulkan-prep seam after PipelineDesc state ownership +
-colorMask ownership + the [frame-resource-ledger](frame-resource-ledger.md): the
+colorMask ownership + the frame-resource-ledger: the
 "pass A writes X, pass B reads X, here is the copy/target contract" middle.
 
 Source-verified against nifty `0aab5e87` (worktree `render-pass-attachment-recon-1`).
@@ -42,7 +42,7 @@ Hazards`.
 
 1. **Draw-buffer ownership is split.** Scene-geometry + VFX **inherit** the MRT draw
    set from the terrain bind (via the `setSceneDrawBuffers` chokepoint, see
-   [frame-resource-ledger](frame-resource-ledger.md)); only terrain explicitly
+   frame-resource-ledger); only terrain explicitly
    sets it. Post-fx + decals + tube-ribbon explicitly switch to `SingleColor {0}`.
    No pass restores MRT except tube-ribbon (`:877`) and the per-frame `beginScene`
    re-bind. → A pass that writes GBuffer1/objectId must run while the MRT set is
