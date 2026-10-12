@@ -147,7 +147,7 @@
    "LG06": 446,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2366,
+   "LG09": 2354,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -193,7 +193,7 @@
    "LG06": 671,
    "LG07": 0,
    "LG08": 74,
-   "LG09": 2200,
+   "LG09": 2197,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 212,
@@ -1744,7 +1744,7 @@
   "code/contact.cpp": {
    "LG01": 1,
    "LG03": 8,
-   "LG09": 19,
+   "LG09": 17,
    "LG12a": 1,
    "LG12b": 2
   },
@@ -2316,7 +2316,7 @@
   },
   "code/mech_damage.cpp": {
    "LG04": 1,
-   "LG09": 10
+   "LG09": 6
   },
   "code/mech_init.cpp": {
    "LG03": 2,
@@ -2599,9 +2599,6 @@
   },
   "code/modder_finding.h": {
    "LG06": 1
-  },
-  "code/movemgr.cpp": {
-   "LG09": 2
   },
   "code/movemgr.h": {
    "LG02": 2
@@ -3026,7 +3023,7 @@
   "code/warrior.cpp": {
    "LG03": 17,
    "LG06": 1,
-   "LG09": 25
+   "LG09": 24
   },
   "code/warrior.h": {
    "LG02": 34,
@@ -3068,7 +3065,7 @@
   },
   "code/warrior_target.cpp": {
    "LG04": 1,
-   "LG09": 8,
+   "LG09": 7,
    "LG12b": 5
   },
   "code/weapon_definition.h": {
@@ -3097,10 +3094,10 @@
   },
   "code/weaponbolt_update.cpp": {
    "LG03": 36,
-   "LG09": 67
+   "LG09": 66
   },
   "code/weather.cpp": {
-   "LG09": 3
+   "LG09": 2
   },
   "editor/EditorGosRender.cpp": {
    "LG20": 2
@@ -3241,7 +3238,7 @@
   },
   "mclib/ablxstd.cpp": {
    "LG04": 2,
-   "LG09": 6
+   "LG09": 5
   },
   "mclib/ablxstd_stack.cpp": {
    "LG09": 13
@@ -3392,7 +3389,6 @@
    "LG09": 3
   },
   "mclib/camera_input.cpp": {
-   "LG09": 2,
    "LG10": 4,
    "LG13": 1
   },
@@ -5190,7 +5186,7 @@
    "LG20": 2
   }
  },
- "head": "e07759326",
+ "head": "27ba3cd99",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
