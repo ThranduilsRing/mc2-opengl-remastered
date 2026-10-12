@@ -1248,8 +1248,6 @@ TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replace
     CHECK(fl("MC2_SHADOW_DIST_FADE_MAX", "2") == 1.0f);
     CHECK(fl("MC2_SHADOW_OBJ_NORMAL_BIAS", "30") == 16.0f);
     CHECK(fl("MC2_SHADOW_MECH_SOFT", "-3") == 0.0f);
-    CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "0") == 0.1f);
-    CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "99") == 16.0f);
     // the reader fell back to 2500 for <= 0
     CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "0") == 2500.0f);
     CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "-5") == 2500.0f);
@@ -1265,8 +1263,7 @@ TEST_CASE("G5 postprocess text rows and the backend selector") {
     CHECK(be.kind == Kind::Enum);
     CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
     CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
-    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_VIEWMODE_LOWLIGHT_TINT",
-                             "MC2_OOB_FOG_COLOR"})
+    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }
 

@@ -2448,20 +2448,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks).",
     },
     {
-        "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN",
-        "MC2_VIEWMODE_LOWLIGHT_GAIN",
-        EnvVarKind::Trace,
-        false,
-        "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).",
-    },
-    {
-        "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT",
-        "MC2_VIEWMODE_LOWLIGHT_TINT",
-        EnvVarKind::Trace,
-        false,
-        "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).",
-    },
-    {
         "MC2_TUNE_VIEW_MODE",
         "MC2_VIEW_MODE",
         EnvVarKind::Trace,

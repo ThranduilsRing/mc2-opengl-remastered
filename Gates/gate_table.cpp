@@ -1481,10 +1481,6 @@ L(Lead1, "MC2_VFX_SOFT_PARTICLES", Bool, false, "gameos", "", "VFX-SOFT-PARTICLE
 L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VIEWMODE_FRAMEWORK
 L(Lead0, "MC2_VIEWMODE_FRAMEWORK", Bool, false, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", passthrough | registry(Feature, "MC2_FEATURE_VIEWMODE_FRAMEWORK", 29, false) | verified),
-// history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_GAIN
-P("MC2_VIEWMODE_LOWLIGHT_GAIN", Float, 0.0, "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).", passthrough | clampRange(static_cast<double>(0.1f), 16.0) | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN", -1, false) | verified),  // default not derivable from the tree
-// history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_TINT
-G("MC2_VIEWMODE_LOWLIGHT_TINT", String, "", "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).", passthrough | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT", -1, false) | verified),
 // TRACKV-TACTICAL-PRESENTATION: ViewMode seed + LowLight tunables + tactical
 // overlay. All default-OFF/inert; Visual path byte-identical when unset.
 // (MC2_VIEWMODE_FRAMEWORK itself is the RendererFeature::ViewmodeFramework

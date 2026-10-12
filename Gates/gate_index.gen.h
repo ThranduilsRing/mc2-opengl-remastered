@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1137;
+inline constexpr std::size_t kGateCount = 1135;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -997,8 +997,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VFX_SOFT_PARTICLES", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_TUBE_UPLOAD_STATS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VIEWMODE_FRAMEWORK", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_VIEWMODE_LOWLIGHT_GAIN", Kind::Float, Rule::Prefix, {}},
-    {"MC2_VIEWMODE_LOWLIGHT_TINT", Kind::String, Rule::Std, {}},
     {"MC2_VIEW_MODE", Kind::String, Rule::Std, {}},
     {"MC2_VIEW_UNIFORMS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VISUAL_BOOKMARK_CAPTURE", Kind::String, Rule::Std, {}},

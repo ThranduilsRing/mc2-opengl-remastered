@@ -613,15 +613,8 @@ void gosPostProcess::init(int w, int h)
                      s_viewmodeFrameworkEnabled ? 1 : 0, s_selectedViewMode,
                      vmEnv ? vmEnv : "(unset)", modeEnvRaw ? modeEnvRaw : "(unset)");
 
-        // LOWLIGHT-NIGHTVISION-MVP-1: seed night-vision tunables from env.
-        // Inert unless the selected ViewMode is LowLight (5). Direct member
-        // writes — s_postProcess is not yet assigned during init(), so the
-        // gos_SetLowLight* setters would no-op here.
-        if (mc2::gate::isNonEmpty<"MC2_VIEWMODE_LOWLIGHT_GAIN">())
-            lowLightGain_ = mc2::gate::get<"MC2_VIEWMODE_LOWLIGHT_GAIN">();   // row clamps to [0.1, 16]
-        const std::string tintEnv = mc2::gate::str<"MC2_VIEWMODE_LOWLIGHT_TINT">();   // "" when unset or empty
-        if (!tintEnv.empty())
-            sscanf(tintEnv.c_str(), "%f,%f,%f", &lowLightTint_[0], &lowLightTint_[1], &lowLightTint_[2]);
+        // LOWLIGHT-NIGHTVISION-MVP-1: the night-vision gain and tint keep their
+        // member defaults; the ImGui setters change them at runtime.
         MC2_DIAGFE(stderr, "[VIEWMODE_LOWLIGHT v1] gain=%.2f tint=(%.2f,%.2f,%.2f)\n",
                      lowLightGain_, lowLightTint_[0], lowLightTint_[1], lowLightTint_[2]);
     }

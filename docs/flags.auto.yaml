@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1137
-registry_entry_count: 351
-verified_count: 1130
+gate_count: 1135
+registry_entry_count: 349
+verified_count: 1128
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7768,25 +7768,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 29, default_on: false}
-  - name: MC2_VIEWMODE_LOWLIGHT_GAIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5)."
-    range: {lo: 0.10000000149011612, hi: 16, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VIEWMODE_LOWLIGHT_TINT
-    kind: String
-    default: ""
-    rule: Std
-    owner: post
-    doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_VIEWMODE_LOWLIGHT_TINT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VIEW_MODE
     kind: String
     default: ""

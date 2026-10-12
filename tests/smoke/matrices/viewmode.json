@@ -45,19 +45,10 @@
     },
     {
       "id": "low_light",
-      "description": "LOWLIGHT-NIGHTVISION-MVP-1: luminance gain + green-phosphor tint + NV vignette (mode 5). Dark regions brighten; classic night-vision look. Tunable via MC2_VIEWMODE_LOWLIGHT_GAIN / _TINT.",
+      "description": "LOWLIGHT-NIGHTVISION-MVP-1: luminance gain + green-phosphor tint + NV vignette (mode 5). Dark regions brighten; classic night-vision look.",
       "env": {
         "MC2_VIEWMODE_FRAMEWORK": "1",
         "MC2_VIEW_MODE": "5"
-      }
-    },
-    {
-      "id": "low_light_high_gain",
-      "description": "LowLight with boosted gain (5.0) to verify the soft-knee highlight clamp holds (no blown-white frame).",
-      "env": {
-        "MC2_VIEWMODE_FRAMEWORK": "1",
-        "MC2_VIEW_MODE": "5",
-        "MC2_VIEWMODE_LOWLIGHT_GAIN": "5.0"
       }
     },
     {

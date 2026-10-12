@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1134,
+ "count": 1132,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -27859,64 +27859,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_VIEWMODE_FRAMEWORK",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VIEWMODE_LOWLIGHT_GAIN",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1373",
-     "idiom": "Num(atof,guarded)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [
-    "5.0"
-   ],
-   "numericRange": {
-    "lo": 0.1,
-    "hi": 16.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VIEWMODE_LOWLIGHT_TINT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "NonEmpty",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1378",
-     "idiom": "NonEmpty"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT",
    "retireVerdict": ""
   },
   {

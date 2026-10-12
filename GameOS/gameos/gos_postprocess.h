@@ -655,8 +655,8 @@ public:
 
     // LOWLIGHT-NIGHTVISION-MVP-1: pure-postprocess night-vision tunables.
     // Active only when the selected ViewMode is LowLight (5); the composite
-    // branch is otherwise skipped (Visual byte-identical). Seeded from
-    // MC2_VIEWMODE_LOWLIGHT_GAIN / _TINT at init; ImGui- and profile-adjustable.
+    // branch is otherwise skipped (Visual byte-identical). ImGui- and
+    // profile-adjustable.
     float lowLightGain_    = 2.5f;                 // luminance amplification
     float lowLightTint_[3] = { 0.7f, 1.0f, 0.6f }; // green-phosphor NV tint
 
