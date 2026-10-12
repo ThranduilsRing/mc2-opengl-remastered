@@ -1324,6 +1324,8 @@ run_check "own_inventory"               "py -3 tools/own_inventory.py --check"
 run_check "own_inventory_selftest"      "py -3 tools/own_inventory.py --selftest"
 run_check "pointer_order_scan"          "py -3 tools/pointer_order_scan.py --check"
 run_check "pointer_order_scan_selftest" "py -3 tools/pointer_order_scan.py --selftest"
+run_check "verified_ledger"             "py -3 tools/verified.py check"
+run_check "script_callers"              "py -3 tools/callers.py --check"
 run_check "savegame_backup"             "py -3 tools/savegame_backup.py selftest"
 
 # CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it
