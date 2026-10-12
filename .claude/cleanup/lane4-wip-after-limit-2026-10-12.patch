@@ -1,0 +1,1290 @@
+diff --git a/.claude/hooks/shader_deploy.py b/.claude/hooks/shader_deploy.py
+deleted file mode 100644
+index 54c46a319..000000000
+--- a/.claude/hooks/shader_deploy.py
++++ /dev/null
+@@ -1,22 +0,0 @@
+-import sys, json, os, shutil
+-
+-d = json.load(sys.stdin)
+-f = d.get('tool_input', {}).get('file_path', '').replace(chr(92), '/')
+-ext = f.rsplit('.', 1)[-1] if '.' in f else ''
+-
+-if 'nifty-mendeleev/shaders/' not in f:
+-    sys.exit(0)
+-# Include .hglsl: shader includes (e.g. view_uniforms.hglsl) are loaded at
+-# runtime and MUST be deployed too — missing them caused the MECH-VIEWUNIFORMS
+-# deploy-gap (see docs/mech-viewuniforms-source-dump.md).
+-if ext not in ('frag', 'vert', 'tesc', 'tese', 'geom', 'hglsl', 'glsl', 'comp'):
+-    sys.exit(0)
+-
+-# Deploy target MUST match the live runtime dir (currently v0.4). v0.1.1 was
+-# stale — deploying there silently did nothing for the running game.
+-dst_base = 'A:/Games/mc2-opengl/mc2-win64-v0.4/shaders'
+-dst_dir = dst_base + '/include' if '/shaders/include/' in f else dst_base
+-dst = dst_dir + '/' + os.path.basename(f)
+-
+-shutil.copy2(f, dst)
+-print('[shader-hook] deployed ' + os.path.basename(f) + ' -> ' + dst_dir)
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 678293ec6..e3e8c6c8f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -53,7 +53,6 @@ endforeach()
+ 
+ list(APPEND CMAKE_MODULE_PATH
+     "${MC2_SOURCE_DIR_CMAKE}/3rdparty/cmake"
+-    "${MC2_SOURCE_DIR_CMAKE}/cmake/sdl2"
+ )
+ # may have to help find_package bydetting path to FindSDL2.cmake
+ #set(SDL2_DIR "${CMAKE_PREFIX_PATH}/cmake")
+diff --git a/cmake/sdl2/Copyright.txt b/cmake/sdl2/Copyright.txt
+deleted file mode 100644
+index d17e35d9e..000000000
+--- a/cmake/sdl2/Copyright.txt
++++ /dev/null
+@@ -1,132 +0,0 @@
+-CMake - Cross Platform Makefile Generator
+-Copyright 2000-2019 Kitware, Inc. and Contributors
+-All rights reserved.
+-
+-Redistribution and use in source and binary forms, with or without
+-modification, are permitted provided that the following conditions
+-are met:
+-
+-* Redistributions of source code must retain the above copyright
+-  notice, this list of conditions and the following disclaimer.
+-
+-* Redistributions in binary form must reproduce the above copyright
+-  notice, this list of conditions and the following disclaimer in the
+-  documentation and/or other materials provided with the distribution.
+-
+-* Neither the name of Kitware, Inc. nor the names of Contributors
+-  may be used to endorse or promote products derived from this
+-  software without specific prior written permission.
+-
+-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+-HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-
+-------------------------------------------------------------------------------
+-
+-The following individuals and institutions are among the Contributors:
+-
+-* Aaron C. Meadows <cmake@shadowguarddev.com>
+-* Adriaan de Groot <groot@kde.org>
+-* Aleksey Avdeev <solo@altlinux.ru>
+-* Alexander Neundorf <neundorf@kde.org>
+-* Alexander Smorkalov <alexander.smorkalov@itseez.com>
+-* Alexey Sokolov <sokolov@google.com>
+-* Alex Merry <alex.merry@kde.org>
+-* Alex Turbov <i.zaufi@gmail.com>
+-* Amine Ben Hassouna <amine.benhassouna@gmail.com>
+-* Andreas Pakulat <apaku@gmx.de>
+-* Andreas Schneider <asn@cryptomilk.org>
+-* André Rigland Brodtkorb <Andre.Brodtkorb@ifi.uio.no>
+-* Axel Huebl, Helmholtz-Zentrum Dresden - Rossendorf
+-* Benjamin Eikel
+-* Bjoern Ricks <bjoern.ricks@gmail.com>
+-* Brad Hards <bradh@kde.org>
+-* Christopher Harvey
+-* Christoph Grüninger <foss@grueninger.de>
+-* Clement Creusot <creusot@cs.york.ac.uk>
+-* Daniel Blezek <blezek@gmail.com>
+-* Daniel Pfeifer <daniel@pfeifer-mail.de>
+-* Enrico Scholz <enrico.scholz@informatik.tu-chemnitz.de>
+-* Eran Ifrah <eran.ifrah@gmail.com>
+-* Esben Mose Hansen, Ange Optimization ApS
+-* Geoffrey Viola <geoffrey.viola@asirobots.com>
+-* Google Inc
+-* Gregor Jasny
+-* Helio Chissini de Castro <helio@kde.org>
+-* Ilya Lavrenov <ilya.lavrenov@itseez.com>
+-* Insight Software Consortium <insightsoftwareconsortium.org>
+-* Jan Woetzel
+-* Julien Schueller
+-* Kelly Thompson <kgt@lanl.gov>
+-* Laurent Montel <montel@kde.org>
+-* Konstantin Podsvirov <konstantin@podsvirov.pro>
+-* Mario Bensi <mbensi@ipsquad.net>
+-* Martin Gräßlin <mgraesslin@kde.org>
+-* Mathieu Malaterre <mathieu.malaterre@gmail.com>
+-* Matthaeus G. Chajdas
+-* Matthias Kretz <kretz@kde.org>
+-* Matthias Maennich <matthias@maennich.net>
+-* Michael Hirsch, Ph.D. <www.scivision.co>
+-* Michael Stürmer
+-* Miguel A. Figueroa-Villanueva
+-* Mike Jackson
+-* Mike McQuaid <mike@mikemcquaid.com>
+-* Nicolas Bock <nicolasbock@gmail.com>
+-* Nicolas Despres <nicolas.despres@gmail.com>
+-* Nikita Krupen'ko <krnekit@gmail.com>
+-* NVIDIA Corporation <www.nvidia.com>
+-* OpenGamma Ltd. <opengamma.com>
+-* Patrick Stotko <stotko@cs.uni-bonn.de>
+-* Per Øyvind Karlsen <peroyvind@mandriva.org>
+-* Peter Collingbourne <peter@pcc.me.uk>
+-* Petr Gotthard <gotthard@honeywell.com>
+-* Philip Lowman <philip@yhbt.com>
+-* Philippe Proulx <pproulx@efficios.com>
+-* Raffi Enficiaud, Max Planck Society
+-* Raumfeld <raumfeld.com>
+-* Roger Leigh <rleigh@codelibre.net>
+-* Rolf Eike Beer <eike@sf-mail.de>
+-* Roman Donchenko <roman.donchenko@itseez.com>
+-* Roman Kharitonov <roman.kharitonov@itseez.com>
+-* Ruslan Baratov
+-* Sebastian Holtermann <sebholt@xwmw.org>
+-* Stephen Kelly <steveire@gmail.com>
+-* Sylvain Joubert <joubert.sy@gmail.com>
+-* Thomas Sondergaard <ts@medical-insight.com>
+-* Tobias Hunger <tobias.hunger@qt.io>
+-* Todd Gamblin <tgamblin@llnl.gov>
+-* Tristan Carel
+-* University of Dundee
+-* Vadim Zhukov
+-* Will Dicharry <wdicharry@stellarscience.com>
+-
+-See version control history for details of individual contributions.
+-
+-The above copyright and license notice applies to distributions of
+-CMake in source and binary form.  Third-party software packages supplied
+-with CMake under compatible licenses provide their own copyright notices
+-documented in corresponding subdirectories or source files.
+-
+-------------------------------------------------------------------------------
+-
+-CMake was initially developed by Kitware with the following sponsorship:
+-
+- * National Library of Medicine at the National Institutes of Health
+-   as part of the Insight Segmentation and Registration Toolkit (ITK).
+-
+- * US National Labs (Los Alamos, Livermore, Sandia) ASC Parallel
+-   Visualization Initiative.
+-
+- * National Alliance for Medical Image Computing (NAMIC) is funded by the
+-   National Institutes of Health through the NIH Roadmap for Medical Research,
+-   Grant U54 EB005149.
+-
+- * Kitware, Inc.
+diff --git a/cmake/sdl2/README.md b/cmake/sdl2/README.md
+deleted file mode 100644
+index 9c53490e0..000000000
+--- a/cmake/sdl2/README.md
++++ /dev/null
+@@ -1,179 +0,0 @@
+-# SDL2 CMake modules
+-
+-This repository contains [CMake][] modules for finding and using the SDL2
+-library as well as other related libraries:
+-
+-- [SDL2][]
+-- [SDL2_image][]
+-- [SDL2_ttf][]
+-- [SDL2_net][]
+-- [SDL2_mixer][]
+-- [SDL2_gfx][]
+-
+-These modules are based on the SDL (1.2) modules, with the same names,
+-distributed with the CMake project. The SDL2_gfx module is also based
+-on the SDL_image module.
+-
+-## Details and Improvements
+-
+-The improvements made to these modules are as follows:
+-
+-**FindSDL2.cmake**
+-
+-- Adapt `FindSDL.cmake` to `SDL2` (`FindSDL2.cmake`).
+-- Add cache variables for more flexibility:<br>
+-    `SDL2_PATH`, `SDL2_NO_DEFAULT_PATH`
+-- Mark `Threads` as a required dependency for non-OSX systems.
+-- Modernize the `FindSDL2.cmake` module by creating specific targets:
+-  - `SDL2::Core` : Library project should link to `SDL2::Core`
+-  - `SDL2::Main` : Application project should link to `SDL2::Main`
+-
+-*For more details, please see the embedded documentation in `FindSDL2.cmake` file.*
+-
+-**FindSDL2_&lt;COMPONENT&gt;.cmake**
+-
+-- Adapt `FindSDL_<COMPONENT>.cmake` to `SDL2_<COMPONENT>` (`FindSDL2_<COMPONENT>.cmake`).
+-- Add cache variables for more flexibility:<br>
+-    `SDL2_<COMPONENT>_PATH`, `SDL2_<COMPONENT>_NO_DEFAULT_PATH`
+-- Add `SDL2` as a required dependency.
+-- Modernize the `FindSDL2_<COMPONENT>.cmake` modules by creating specific targets:<br>
+-    `SDL2::Image`, `SDL2::TTF`, `SDL2::Net`, `SDL2::Mixer` and `SDL2::GFX`.
+-
+-*For more details, please see the embedded documentation in
+-`FindSDL2_<COMPONENT>.cmake` file.*
+-
+-## Usage
+-
+-In order to use the SDL2 CMake modules, we have to clone this repository in a
+-sud-directory `cmake/sdl2` in our project as follows:
+-
+-```sh
+-cd <PROJECT_DIR>
+-git clone https://gitlab.com/aminosbh/sdl2-cmake-modules.git cmake/sdl2
+-rm -rf cmake/sdl2/.git
+-```
+-
+-Or if we are using git for our project, we can add this repository as a
+-submodule as follows:
+-
+-```sh
+-cd <PROJECT_DIR>
+-git submodule add https://gitlab.com/aminosbh/sdl2-cmake-modules.git cmake/sdl2
+-git commit -m "Add SDL2 CMake modules"
+-```
+-
+-Then we should specify the modules path in the main CMakeLists.txt file like
+-the following:
+-
+-```cmake
+-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/sdl2)
+-```
+-
+-Finally, we can use the SDL2 modules. There is two approaches that can be
+-adopted: A legacy approach and a modern approach. Both of them are supported.
+-
+-### Modern CMake
+-
+-We can link to the SDL2:: targets like the following example:<br>
+-*This example requires the SDL2, SDL2_image and the SDL2_gfx libraries*
+-
+-```cmake
+-# Find SDL2, SDL2_image and SDL2_gfx libraries
+-find_package(SDL2 REQUIRED)
+-find_package(SDL2_image REQUIRED)
+-find_package(SDL2_gfx REQUIRED)
+-
+-# Link SDL2::Main, SDL2::Image and SDL2::GFX to our project
+-target_link_libraries(${PROJECT_NAME} SDL2::Main SDL2::Image SDL2::GFX)
+-```
+-
+-*Use the appropriate packages for you project.*<br>
+-*Please see above, for the whole list of packages*<br>
+-*For more details, please see the embedded documentation in modules files*
+-
+-### Legacy CMake
+-
+-We can also specify manually the include directories and libraries to link to:
+-
+-```cmake
+-# Find and link SDL2
+-find_package(SDL2 REQUIRED)
+-target_include_directories(${PROJECT_NAME} PRIVATE ${SDL2_INCLUDE_DIRS})
+-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
+-
+-# Find and link SDL2_image
+-find_package(SDL2_image REQUIRED)
+-target_include_directories(${PROJECT_NAME} PRIVATE ${SDL2_IMAGE_INCLUDE_DIRS})
+-target_link_libraries(${PROJECT_NAME} ${SDL2_IMAGE_LIBRARIES})
+-
+-# Find and link SDL2_gfx
+-find_package(SDL2_gfx REQUIRED)
+-target_include_directories(${PROJECT_NAME} PRIVATE ${SDL2_GFX_INCLUDE_DIRS})
+-target_link_libraries(${PROJECT_NAME} ${SDL2_GFX_LIBRARIES})
+-
+-```
+-
+-*For more details, please see the embedded documentation in modules files*
+-
+-## Special customization variables
+-
+-Each module have special customization cache variables that can be used to help
+-the modules find the appropriate libraries:
+-
+-- `SDL2_PATH` and `SDL2_<COMPONENT>_PATH`:<br>
+-  Can be specified to set the root search path for the `SDL2` and `SDL2_<COMPONENT>`
+-- `SDL2_NO_DEFAULT_PATH` and `SDL2_<COMPONENT>_NO_DEFAULT_PATH`:<br>
+-  Disable search `SDL2/SDL2_<COMPONENT>` library in default path:<br>
+-    If `SDL2[_<COMPONENT>]_PATH` is set, defaults to ON<br>
+-    Else defaults to OFF
+-- `SDL2_INCLUDE_DIR` and `SDL2_<COMPONENT>_INCLUDE_DIR`:<br>
+-  Set headers path. (Override)
+-- `SDL2_LIBRARY` and `SDL2_<COMPONENT>_LIBRARY`:<br>
+-  Set the library (.dll, .so, .a, etc) path. (Override)
+-- `SDL2MAIN_LIBRAY`:<br>
+-  Set the `SDL2main` library (.a) path. (Override)
+-
+-These variables could be used in case of Windows projects, and when the
+-libraries are not localized in a standard pathes. They can be specified when
+-executing the `cmake` command or when using the [CMake GUI][] (They are marked
+-as advanced).
+-
+-**cmake command example:**
+-
+-```sh
+-mkdir build
+-cd build
+-cmake .. -DSDL2_PATH="/path/to/sdl2"
+-```
+-
+-**CMakeLists.txt example:**
+-
+-If we embed, for example, binaries of the SDL2_ttf in our project, we can
+-specify the cache variables values just before calling the `find_package`
+-command as follows:
+-
+-```cmake
+-set(SDL2_TTF_PATH "/path/to/sdl2_ttf" CACHE BOOL "" FORCE)
+-find_package(SDL2_ttf REQUIRED)
+-```
+-
+-## License
+-
+-Maintainer: Amine B. Hassouna [@aminosbh](https://gitlab.com/aminosbh)
+-
+-The SDL2 CMake modules are based on the SDL (1.2) modules available with the
+-CMake project which is distributed under the OSI-approved BSD 3-Clause License.
+-
+-The SDL2 CMake modules are also distributed under the OSI-approved BSD
+-3-Clause License. See accompanying file [Copyright.txt](Copyright.txt).
+-
+-
+-
+-[CMake]: https://cmake.org
+-[CMake GUI]: https://cmake.org/runningcmake
+-[SDL2]: https://www.libsdl.org
+-[SDL2_image]: https://www.libsdl.org/projects/SDL_image
+-[SDL2_ttf]: https://www.libsdl.org/projects/SDL_ttf
+-[SDL2_net]: https://www.libsdl.org/projects/SDL_net
+-[SDL2_mixer]: https://www.libsdl.org/projects/SDL_mixer
+-[SDL2_gfx]: http://www.ferzkopp.net/wordpress/2016/01/02/sdl_gfx-sdl2_gfx
+diff --git a/scripts/smoke_lib/evidence_classifier.py b/scripts/smoke_lib/evidence_classifier.py
+deleted file mode 100644
+index f944497ce..000000000
+--- a/scripts/smoke_lib/evidence_classifier.py
++++ /dev/null
+@@ -1,195 +0,0 @@
+-"""SMOKE-EVIDENCE-CLASSIFIER-1 — classify crash_evidence/1 into actionable labels.
+-
+-crash_evidence.py (SMOKE-CRASH-SILENT-EVIDENCE-1) CAPTURES evidence for a flaky
+-mission but stops at raw fields — a human still has to decode `exit_code
+-3221225781` into "STATUS_DLL_NOT_FOUND, environment not engine". This module is
+-the missing INTERPRETATION layer: a pure function over the evidence dict that
+-emits a single primary classification + confidence + the signals it fired on +
+-a one-line recommendation.
+-
+-Pure + decoupled by design: it reads an already-written crash_evidence dict (or
+-.json file) and makes NO engine, runner, or smoke-timing change. It never
+-decides a smoke verdict — it only explains a failure after the fact, so it is
+-safe to run over historical artifacts.
+-
+-Labels (primary, mutually exclusive, priority order):
+-  HANG                      — runner walltime cap hit (killed_by_timeout)
+-  DEVICE_LOSS_GPU_TDR       — display-driver reset/TDR in the event log
+-  ENVIRONMENT_MISSING_DLL   — exit 0xC0000135 STATUS_DLL_NOT_FOUND
+-  ENVIRONMENT_BAD_IMAGE     — exit 0xC000007B STATUS_INVALID_IMAGE_FORMAT
+-  ENVIRONMENT_MISSING_EXPORT— exit 0xC0000139 STATUS_ENTRYPOINT_NOT_FOUND
+-  APP_CRASH                 — in-engine fault (handler/minidump/WER/access-viol)
+-  CONTENTION_SUSPECTED      — another mc2.exe live at failure time
+-  UNKNOWN_RARE              — no decisive signal; needs a repro
+-"""
+-
+-from __future__ import annotations
+-
+-import argparse
+-import json
+-import sys
+-from pathlib import Path
+-from typing import Any, Dict, List
+-
+-# Windows NTSTATUS exit codes (unsigned 32-bit) that are unambiguous.
+-_ENVIRONMENT_CODES = {
+-    0xC0000135: ("ENVIRONMENT_MISSING_DLL", "STATUS_DLL_NOT_FOUND"),
+-    0xC000007B: ("ENVIRONMENT_BAD_IMAGE", "STATUS_INVALID_IMAGE_FORMAT"),
+-    0xC0000139: ("ENVIRONMENT_MISSING_EXPORT", "STATUS_ENTRYPOINT_NOT_FOUND"),
+-}
+-# Codes that denote an in-process fault (engine crash), not the environment.
+-_APP_FAULT_CODES = {
+-    0xC0000005: "STATUS_ACCESS_VIOLATION",
+-    0xC00000FD: "STATUS_STACK_OVERFLOW",
+-    0xC0000409: "STATUS_STACK_BUFFER_OVERRUN",
+-    0xC0000374: "STATUS_HEAP_CORRUPTION",
+-    0xC0000417: "STATUS_INVALID_CRT_PARAMETER",
+-}
+-
+-_RECOMMEND = {
+-    "HANG": "Engine hung past the walltime cap — inspect heartbeat_tail for the freeze point.",
+-    "DEVICE_LOSS_GPU_TDR": "GPU driver reset (TDR) — environment/driver, not the build. Retry; check driver.",
+-    "ENVIRONMENT_MISSING_DLL": "A required DLL was absent at launch — fix the deploy target, not the code.",
+-    "ENVIRONMENT_BAD_IMAGE": "Exe/DLL arch or corruption mismatch — re-deploy a matching x64 payload.",
+-    "ENVIRONMENT_MISSING_EXPORT": "DLL present but an export is missing — version-skewed DLL; re-deploy.",
+-    "APP_CRASH": "In-engine fault — symbolicate the minidump / stack; this is a real code bug.",
+-    "CONTENTION_SUSPECTED": "Another mc2.exe was live — likely contention/process-kill, not a true crash. Re-run isolated.",
+-    "UNKNOWN_RARE": "No decisive signal — re-run to reproduce; capture a minidump if it recurs.",
+-}
+-
+-
+-def _u32(code: Any) -> int:
+-    """Normalize an exit code to unsigned 32-bit (subprocess may report signed)."""
+-    try:
+-        return int(code) & 0xFFFFFFFF
+-    except (TypeError, ValueError):
+-        return -1
+-
+-
+-def _event_signals(evidence: Dict[str, Any]) -> Dict[str, bool]:
+-    """Scan the windows_event_log block for TDR vs app-error signatures."""
+-    tdr = app_err = False
+-    elog = evidence.get("windows_event_log") or {}
+-    for ev in (elog.get("events") or []):
+-        if not isinstance(ev, dict):
+-            continue
+-        eid = ev.get("Id")
+-        provider = str(ev.get("ProviderName") or "")
+-        if eid == 4101 or any(p in provider for p in ("nvlddmkm", "amdkmdag", "igfx", "Display")):
+-            tdr = True
+-        if eid in (1000, 1001) or "Application Error" in provider or "Windows Error Reporting" in provider:
+-            app_err = True
+-    return {"tdr": tdr, "app_err": app_err}
+-
+-
+-def classify(evidence: Dict[str, Any]) -> Dict[str, Any]:
+-    """Classify one crash_evidence/1 dict. Pure — no I/O. Returns a dict with
+-    keys: classification, confidence, signals, exit_code_hex, exit_status,
+-    recommendation, mission."""
+-    signals: List[str] = []
+-    code = _u32(evidence.get("exit_code"))
+-    code_hex = f"0x{code:08X}" if code >= 0 else None
+-    events = _event_signals(evidence)
+-    minidumps = evidence.get("minidumps_near_exe") or []
+-    concurrent = evidence.get("concurrent_mc2")
+-    concurrent_n = len(concurrent) if isinstance(concurrent, list) else 0
+-    crash_handler = evidence.get("crash_handler_hit")
+-    exit_status = None
+-
+-    # Priority-ordered decision. First match wins (most specific / decisive).
+-    label = None
+-    conf = "low"
+-
+-    if evidence.get("killed_by_timeout"):
+-        label, conf = "HANG", "high"
+-        signals.append("killed_by_timeout=true")
+-    elif events["tdr"]:
+-        label, conf = "DEVICE_LOSS_GPU_TDR", "high"
+-        signals.append("event_log: display-driver TDR/reset")
+-    elif code in _ENVIRONMENT_CODES:
+-        label, exit_status = _ENVIRONMENT_CODES[code]
+-        conf = "high"
+-        signals.append(f"exit_code {code_hex} = {exit_status}")
+-    elif crash_handler is True or minidumps or events["app_err"] or code in _APP_FAULT_CODES:
+-        label, conf = "APP_CRASH", "high"
+-        if crash_handler is True:
+-            signals.append("crash_handler_hit=true")
+-        if minidumps:
+-            signals.append(f"minidump(s): {', '.join(map(str, minidumps))}")
+-        if events["app_err"]:
+-            signals.append("event_log: Application Error / WER")
+-        if code in _APP_FAULT_CODES:
+-            exit_status = _APP_FAULT_CODES[code]
+-            signals.append(f"exit_code {code_hex} = {exit_status}")
+-        # No minidump/handler but an app-fault exit code = medium (could be masked).
+-        if not (crash_handler is True or minidumps or events["app_err"]):
+-            conf = "medium"
+-    elif concurrent_n > 0:
+-        label, conf = "CONTENTION_SUSPECTED", "medium"
+-        signals.append(f"concurrent_mc2={concurrent_n} live at failure")
+-    else:
+-        label, conf = "UNKNOWN_RARE", "low"
+-        if code_hex:
+-            signals.append(f"exit_code {code_hex} (undecoded)")
+-        if not signals:
+-            signals.append("no decisive signal")
+-
+-    return {
+-        "mission": evidence.get("mission"),
+-        "classification": label,
+-        "confidence": conf,
+-        "exit_code_hex": code_hex,
+-        "exit_status": exit_status,
+-        "signals": signals,
+-        "recommendation": _RECOMMEND[label],
+-        "buckets": evidence.get("buckets"),
+-    }
+-
+-
+-# ---- CLI: classify .json files or an artifact dir --------------------------
+-
+-def _iter_evidence_paths(paths: List[str]):
+-    for p in paths:
+-        pp = Path(p)
+-        if pp.is_dir():
+-            yield from sorted(pp.glob("*.crash_evidence.json"))
+-        elif pp.is_file():
+-            yield pp
+-
+-
+-def main(argv=None) -> int:
+-    ap = argparse.ArgumentParser(
+-        description="Classify smoke crash_evidence/1 JSON into actionable labels.")
+-    ap.add_argument("paths", nargs="+",
+-                    help="crash_evidence.json file(s) or an artifact dir")
+-    ap.add_argument("--json", action="store_true", help="emit JSON array")
+-    args = ap.parse_args(argv)
+-
+-    results = []
+-    for path in _iter_evidence_paths(args.paths):
+-        try:
+-            ev = json.loads(Path(path).read_text(encoding="utf-8"))
+-        except Exception as exc:  # noqa: BLE001
+-            results.append({"file": str(path), "error": str(exc)})
+-            continue
+-        r = classify(ev)
+-        r["file"] = str(path)
+-        results.append(r)
+-
+-    if args.json:
+-        print(json.dumps(results, indent=2))
+-    else:
+-        for r in results:
+-            if "error" in r:
+-                print(f"  [SKIP] {r['file']}: {r['error']}")
+-                continue
+-            print(f"  {r.get('mission') or r['file']}: "
+-                  f"{r['classification']} ({r['confidence']})")
+-            for s in r["signals"]:
+-                print(f"      - {s}")
+-            print(f"      -> {r['recommendation']}")
+-    return 0
+-
+-
+-if __name__ == "__main__":
+-    raise SystemExit(main())
+diff --git a/scripts/smoke_lib/oracleparse.py b/scripts/smoke_lib/oracleparse.py
+deleted file mode 100644
+index 465b36ca8..000000000
+--- a/scripts/smoke_lib/oracleparse.py
++++ /dev/null
+@@ -1,241 +0,0 @@
+-# scripts/smoke_lib/oracleparse.py
+-"""Parse mc2.exe render-oracle + per-pass signals from smoke stdout+stderr.
+-
+-This is the SHARED render-oracle vocabulary used to turn smoke runs into
+-comparable results (Baseline A and forward). It is deliberately SEPARATE from
+-logparse.py: logparse.py feeds the live tier1 fault gate (crash / freeze / perf
+-floor); this module parses the *render correctness oracles* and per-pass proxy
+-timings that gate the modernization backlog. Keeping them apart means adding an
+-oracle here cannot destabilize the tier1 verdict path.
+-
+-Oracle families parsed (the ones hand-grepped for Baseline A 82add3ca):
+-  - FASTPATH_DROP        terrain legacy-fallback events (want 0)
+-  - RENDER_SNAPSHOT v3   static-prop snapshot fallback + mismatches (want 0)
+-  - TEX_RESOLVE v1       texture handle resolve mismatches / oob (want 0)
+-  - MECH_MATERIAL_GPU v1 mech material compare mismatches (want 0)
+-  - OBJBATCHER v1        cpu_fallback + late_register split + submit_legacy
+-  - GPU_CULL v1          indirect_draw overflow + substrate + submit elapsed_us
+-  - TerrainLOD           arm path, parity MATCH/MISMATCH, slimVerts, fullyArmed
+-"""
+-from __future__ import annotations
+-
+-import re
+-from dataclasses import dataclass, field
+-from typing import List, Optional
+-
+-# --- regexes (last-occurrence wins for shutdown/summary; counts accumulate) ---
+-FASTPATH_RE = re.compile(r"\[FASTPATH_DROP\]")
+-RSNAP_RE = re.compile(
+-    r"\[RENDER_SNAPSHOT v3\].*?count_mismatch=(?P<cm>\d+) pkt_mismatch=(?P<pm>\d+) "
+-    r"meta_mismatch=(?P<mm>\d+) fallback=(?P<fb>\d+) using_snapshot=(?P<us>\d+)"
+-)
+-TEXRES_RE = re.compile(
+-    r"\[TEX_RESOLVE v1\] event=shutdown total_frames=(?P<tf>\d+) "
+-    r"total_resolves=(?P<tr>\d+) mismatches=(?P<mis>\d+) oob=(?P<oob>\d+)"
+-)
+-MECHMAT_RE = re.compile(
+-    r"\[MECH_MATERIAL_GPU v1\] event=compare frame=(?P<f>\d+) "
+-    r"mechs=(?P<mechs>\d+) mismatches=(?P<mis>\d+)"
+-)
+-OBJB_RE = re.compile(
+-    r"\[OBJBATCHER v1\] event=summary frames=(?P<f>\d+).*?"
+-    r"cpu_fallback=(?P<cf>\d+).*?fallback_rate=(?P<fr>[\d.]+).*?"
+-    r"submit_legacy=(?P<sl>\d+).*?late_register_recovery_skips=(?P<lr>\d+)"
+-)
+-OBJB_GPU_RE = re.compile(r"gpu_drawn_instances=(?P<g>\d+)")
+-CULL_IND_RE = re.compile(
+-    r"\[GPU_CULL v1\] event=indirect_draw buckets=(?P<b>\d+) overflow=(?P<ov>\d+) "
+-    r"elapsed_us=(?P<us>\d+)"
+-)
+-CULL_SUB_RE = re.compile(
+-    r"\[GPU_CULL v1\] event=substrate_ready records=(?P<rec>\d+) capacity=(?P<cap>\d+)"
+-)
+-TERR_ARM_RE = re.compile(
+-    r"\[TERRAIN_INDIRECT v1\] event=first_arm path=(?P<path>\w+) "
+-    r"nodeIds=(?P<n>\d+) atlasTex=(?P<atlas>\d+)"
+-)
+-TERR_PARITY_RE = re.compile(r"\[TerrainLOD parity\].*?(?P<verdict>MATCH|MISMATCH)\s*$")
+-TERR_PROD_RE = re.compile(
+-    r"\[TerrainLOD prod\] frame=(?P<f>\d+) objBlocks=(?P<ob>\d+) "
+-    r"objVerts=(?P<ov>\d+) solidWindow=(?P<sw>\d+) slimVerts=(?P<sv>\d+)"
+-)
+-QUADSKIP_RE = re.compile(r"\[QUADSETUP_SKIP v1\] fullyArmed=(?P<fa>\d+) skip=(?P<sk>\d+)")
+-
+-
+-@dataclass
+-class OracleRow:
+-    # Terrain arm / fastpath
+-    fastpath_drops: int = 0
+-    terrain_arm_path: Optional[str] = None   # "gpu" expected; None = never armed
+-    terrain_nodeids: int = 0
+-    terrain_atlas: int = 0
+-    terrain_fully_armed: Optional[bool] = None
+-    parity_match: int = 0
+-    parity_mismatch: int = 0
+-    slim_verts_last: Optional[int] = None     # 0 = chunk-only (slimReduce gone)
+-    obj_blocks_last: Optional[int] = None
+-    obj_verts_last: Optional[int] = None
+-    solid_window_last: Optional[int] = None
+-    # Static-prop snapshot
+-    rsnap_fallback: int = 0
+-    rsnap_count_mismatch: int = 0
+-    rsnap_pkt_mismatch: int = 0
+-    rsnap_meta_mismatch: int = 0
+-    rsnap_using_snapshot: Optional[int] = None
+-    # Texture resolve
+-    tex_resolves: int = 0
+-    tex_mismatches: int = 0
+-    tex_oob: int = 0
+-    # Mech material
+-    mech_mismatches: int = 0
+-    mech_compares: int = 0
+-    # ObjBatcher
+-    objb_cpu_fallback: int = 0
+-    objb_late_register_skips: int = 0
+-    objb_submit_legacy: int = 0
+-    objb_gpu_drawn: int = 0
+-    objb_fallback_rate: float = 0.0
+-    # GPU cull
+-    cull_indirect_overflow: int = 0
+-    cull_substrate_records_max: int = 0
+-    cull_substrate_capacity: int = 0
+-    cull_elapsed_us_max: int = 0
+-
+-
+-def parse_oracles(text: str) -> OracleRow:
+-    r = OracleRow()
+-    for line in text.splitlines():
+-        if FASTPATH_RE.search(line):
+-            r.fastpath_drops += 1
+-
+-        m = RSNAP_RE.search(line)
+-        if m:
+-            r.rsnap_count_mismatch = max(r.rsnap_count_mismatch, int(m.group("cm")))
+-            r.rsnap_pkt_mismatch = max(r.rsnap_pkt_mismatch, int(m.group("pm")))
+-            r.rsnap_meta_mismatch = max(r.rsnap_meta_mismatch, int(m.group("mm")))
+-            r.rsnap_fallback = max(r.rsnap_fallback, int(m.group("fb")))
+-            r.rsnap_using_snapshot = int(m.group("us"))
+-
+-        m = TEXRES_RE.search(line)
+-        if m:
+-            r.tex_resolves = int(m.group("tr"))
+-            r.tex_mismatches = int(m.group("mis"))
+-            r.tex_oob = int(m.group("oob"))
+-
+-        m = MECHMAT_RE.search(line)
+-        if m:
+-            r.mech_compares += 1
+-            r.mech_mismatches = max(r.mech_mismatches, int(m.group("mis")))
+-
+-        m = OBJB_RE.search(line)
+-        if m:
+-            # summary lines accumulate; last (largest frames) is authoritative
+-            r.objb_cpu_fallback = int(m.group("cf"))
+-            r.objb_fallback_rate = float(m.group("fr"))
+-            r.objb_submit_legacy = int(m.group("sl"))
+-            r.objb_late_register_skips = int(m.group("lr"))
+-            g = OBJB_GPU_RE.search(line)
+-            if g:
+-                r.objb_gpu_drawn = int(g.group("g"))
+-
+-        m = CULL_IND_RE.search(line)
+-        if m:
+-            r.cull_indirect_overflow = max(r.cull_indirect_overflow, int(m.group("ov")))
+-            r.cull_elapsed_us_max = max(r.cull_elapsed_us_max, int(m.group("us")))
+-
+-        m = CULL_SUB_RE.search(line)
+-        if m:
+-            r.cull_substrate_records_max = max(r.cull_substrate_records_max, int(m.group("rec")))
+-            r.cull_substrate_capacity = int(m.group("cap"))
+-
+-        m = TERR_ARM_RE.search(line)
+-        if m:
+-            r.terrain_arm_path = m.group("path")
+-            r.terrain_nodeids = int(m.group("n"))
+-            r.terrain_atlas = int(m.group("atlas"))
+-
+-        m = TERR_PARITY_RE.search(line)
+-        if m:
+-            if m.group("verdict") == "MATCH":
+-                r.parity_match += 1
+-            else:
+-                r.parity_mismatch += 1
+-
+-        m = TERR_PROD_RE.search(line)
+-        if m:
+-            r.slim_verts_last = int(m.group("sv"))
+-            r.obj_blocks_last = int(m.group("ob"))
+-            r.obj_verts_last = int(m.group("ov"))
+-            r.solid_window_last = int(m.group("sw"))
+-
+-        m = QUADSKIP_RE.search(line)
+-        if m:
+-            r.terrain_fully_armed = (m.group("fa") == "1")
+-
+-    return r
+-
+-
+-# --- budget judgement ----------------------------------------------------------
+-
+-@dataclass
+-class OracleVerdict:
+-    passed: bool
+-    fails: List[str] = field(default_factory=list)
+-    warns: List[str] = field(default_factory=list)
+-
+-
+-def judge_oracles(r: OracleRow, *, allow_late_register: bool = True) -> OracleVerdict:
+-    """Hard correctness asserts. These must stay 0/clean post-8z.
+-
+-    OBJBATCHER cpu_fallback is NOT a hard fail when it equals
+-    late_register_recovery_skips (HUD nodes like `compass` registering after the
+-    batch window) -- that is a classified-benign non-zero (see Baseline A). It is
+-    a hard fail only when cpu_fallback exceeds the late-register skips, i.e. real
+-    geometry fell back to the CPU path.
+-    """
+-    fails: List[str] = []
+-    warns: List[str] = []
+-
+-    if r.fastpath_drops != 0:
+-        fails.append(f"FASTPATH_DROP={r.fastpath_drops} (terrain dropped to legacy)")
+-    if r.terrain_arm_path != "gpu":
+-        fails.append(f"terrain_arm_path={r.terrain_arm_path} (expected gpu)")
+-    if r.parity_mismatch != 0:
+-        fails.append(f"TerrainLOD parity MISMATCH={r.parity_mismatch}")
+-    if r.parity_match == 0:
+-        warns.append("no TerrainLOD parity MATCH observed (probe absent)")
+-    if r.slim_verts_last not in (0, None):
+-        fails.append(f"slimVerts={r.slim_verts_last} (expected 0 -- legacy slimReduce alive?)")
+-    if r.terrain_fully_armed is False:
+-        fails.append("QUADSETUP_SKIP fullyArmed=0")
+-
+-    if r.rsnap_fallback != 0:
+-        fails.append(f"RENDER_SNAPSHOT fallback={r.rsnap_fallback}")
+-    for nm, v in (("count", r.rsnap_count_mismatch), ("pkt", r.rsnap_pkt_mismatch),
+-                  ("meta", r.rsnap_meta_mismatch)):
+-        if v != 0:
+-            fails.append(f"RENDER_SNAPSHOT {nm}_mismatch={v}")
+-
+-    if r.tex_mismatches != 0:
+-        fails.append(f"TEX_RESOLVE mismatches={r.tex_mismatches}")
+-    if r.tex_oob != 0:
+-        fails.append(f"TEX_RESOLVE oob={r.tex_oob}")
+-
+-    if r.mech_mismatches != 0:
+-        fails.append(f"MECH_MATERIAL_GPU mismatches={r.mech_mismatches}")
+-
+-    if r.objb_submit_legacy != 0:
+-        fails.append(f"OBJBATCHER submit_legacy={r.objb_submit_legacy}")
+-    real_cpu_fallback = r.objb_cpu_fallback - r.objb_late_register_skips
+-    if real_cpu_fallback > 0:
+-        fails.append(f"OBJBATCHER real cpu_fallback={real_cpu_fallback} "
+-                     f"(cpu_fallback={r.objb_cpu_fallback} > late_register={r.objb_late_register_skips})")
+-    elif r.objb_cpu_fallback > 0:
+-        msg = (f"OBJBATCHER cpu_fallback={r.objb_cpu_fallback} "
+-               f"== late_register_recovery_skips (classified benign)")
+-        (warns if allow_late_register else fails).append(msg)
+-
+-    if r.cull_indirect_overflow != 0:
+-        fails.append(f"GPU_CULL indirect overflow={r.cull_indirect_overflow}")
+-
+-    return OracleVerdict(passed=not fails, fails=fails, warns=warns)
+diff --git a/tests/contract/default_build_quiet_baseline.json b/tests/contract/default_build_quiet_baseline.json
+index d3aed4f4c..567f89912 100644
+--- a/tests/contract/default_build_quiet_baseline.json
++++ b/tests/contract/default_build_quiet_baseline.json
+@@ -27,11 +27,11 @@
+     },
+     "QUADSETUP_SKIP v1": {
+       "status": "keep",
+-      "reason": "scripts/smoke_lib/oracleparse.py QUADSKIP_RE parses fullyArmed=/skip=."
++      "reason": "Human-readable smoke oracle (fullyArmed=/skip=). Its parser smoke_lib/oracleparse.py was retired 2026-10-11 (owner ruling 2026-10-09 #11) with no replacement; the line stays until a gate owns it."
+     },
+     "RENDER_SNAPSHOT v3": {
+       "status": "keep",
+-      "reason": "scripts/smoke_lib/oracleparse.py parses count_mismatch/pkt_mismatch (want 0) -- the static-prop snapshot oracle."
++      "reason": "The static-prop snapshot oracle (count_mismatch/pkt_mismatch, want 0). Its parser smoke_lib/oracleparse.py was retired 2026-10-11 with no replacement; the line stays until a gate owns it."
+     },
+     "SMOKE v1": {
+       "status": "keep",
+diff --git a/tests/smoke/test_evidence_classifier.py b/tests/smoke/test_evidence_classifier.py
+deleted file mode 100644
+index e2fb5490c..000000000
+--- a/tests/smoke/test_evidence_classifier.py
++++ /dev/null
+@@ -1,127 +0,0 @@
+-# tests/smoke/test_evidence_classifier.py
+-# SMOKE-EVIDENCE-CLASSIFIER-1 — classify crash_evidence/1 into actionable labels.
+-#
+-# Pure-function tests on synthetic evidence dicts (one per classification path),
+-# including the real exit_code seen during GAMEOS-TIMING-MATH gate work
+-# (3221225781 = STATUS_DLL_NOT_FOUND) that motivated this slice.
+-import json
+-
+-from scripts.smoke_lib.evidence_classifier import classify, main
+-
+-
+-def _ev(**over):
+-    base = {
+-        "schema": "crash_evidence/1",
+-        "mission": "mc2_01",
+-        "buckets": ["crash_silent"],
+-        "exit_code": 1,
+-        "killed_by_timeout": False,
+-        "crash_handler_hit": False,
+-        "minidumps_near_exe": [],
+-        "concurrent_mc2": [],
+-        "windows_event_log": {"queried": True, "events": []},
+-    }
+-    base.update(over)
+-    return base
+-
+-
+-def test_hang_from_timeout():
+-    r = classify(_ev(killed_by_timeout=True, buckets=["timeout"]))
+-    assert r["classification"] == "HANG"
+-    assert r["confidence"] == "high"
+-
+-
+-def test_missing_dll_real_session_code():
+-    # 3221225781 == 0xC0000135 == STATUS_DLL_NOT_FOUND (the exact code seen when
+-    # the bare smoke target lacked SDL2/glew DLLs).
+-    r = classify(_ev(exit_code=3221225781))
+-    assert r["classification"] == "ENVIRONMENT_MISSING_DLL"
+-    assert r["confidence"] == "high"
+-    assert r["exit_code_hex"] == "0xC0000135"
+-    assert r["exit_status"] == "STATUS_DLL_NOT_FOUND"
+-
+-
+-def test_bad_image_format():
+-    r = classify(_ev(exit_code=0xC000007B))
+-    assert r["classification"] == "ENVIRONMENT_BAD_IMAGE"
+-
+-
+-def test_missing_export():
+-    r = classify(_ev(exit_code=0xC0000139))
+-    assert r["classification"] == "ENVIRONMENT_MISSING_EXPORT"
+-
+-
+-def test_gpu_tdr_from_event_log_beats_exit_code():
+-    # A display-driver TDR outranks an otherwise-ambiguous exit code.
+-    ev = _ev(exit_code=1, windows_event_log={"queried": True, "events": [
+-        {"Id": 4101, "ProviderName": "nvlddmkm", "Message": "stopped responding"}]})
+-    r = classify(ev)
+-    assert r["classification"] == "DEVICE_LOSS_GPU_TDR"
+-    assert r["confidence"] == "high"
+-
+-
+-def test_app_crash_access_violation():
+-    r = classify(_ev(exit_code=0xC0000005))
+-    assert r["classification"] == "APP_CRASH"
+-    assert r["exit_status"] == "STATUS_ACCESS_VIOLATION"
+-
+-
+-def test_app_crash_from_minidump():
+-    r = classify(_ev(exit_code=1, minidumps_near_exe=["crash_2026.dmp"]))
+-    assert r["classification"] == "APP_CRASH"
+-    assert r["confidence"] == "high"
+-
+-
+-def test_app_crash_from_handler_flag():
+-    r = classify(_ev(exit_code=1, crash_handler_hit=True))
+-    assert r["classification"] == "APP_CRASH"
+-
+-
+-def test_app_crash_from_application_error_event():
+-    ev = _ev(exit_code=1, windows_event_log={"queried": True, "events": [
+-        {"Id": 1000, "ProviderName": "Application Error"}]})
+-    assert classify(ev)["classification"] == "APP_CRASH"
+-
+-
+-def test_contention_when_concurrent_and_no_fault_signal():
+-    r = classify(_ev(exit_code=1, concurrent_mc2=[{"pid": 42, "path": "x"}]))
+-    assert r["classification"] == "CONTENTION_SUSPECTED"
+-    assert r["confidence"] == "medium"
+-
+-
+-def test_unknown_rare_no_signal():
+-    r = classify(_ev(exit_code=1))
+-    assert r["classification"] == "UNKNOWN_RARE"
+-    assert r["confidence"] == "low"
+-
+-
+-def test_priority_timeout_outranks_app_crash():
+-    # killed_by_timeout dominates even if a stale minidump is present.
+-    r = classify(_ev(killed_by_timeout=True, minidumps_near_exe=["old.dmp"]))
+-    assert r["classification"] == "HANG"
+-
+-
+-def test_signed_exit_code_normalized():
+-    # subprocess may surface the signed form of 0xC0000135.
+-    signed = 3221225781 - (1 << 32)
+-    r = classify(_ev(exit_code=signed))
+-    assert r["classification"] == "ENVIRONMENT_MISSING_DLL"
+-
+-
+-def test_every_label_has_recommendation():
+-    for ev in (_ev(killed_by_timeout=True), _ev(exit_code=0xC0000135),
+-               _ev(exit_code=0xC0000005), _ev(exit_code=1)):
+-        r = classify(ev)
+-        assert r["recommendation"] and isinstance(r["recommendation"], str)
+-
+-
+-def test_cli_over_dir(tmp_path, capsys):
+-    (tmp_path / "mc2_01.crash_evidence.json").write_text(
+-        json.dumps(_ev(exit_code=3221225781)), encoding="utf-8")
+-    (tmp_path / "mc2_03.crash_evidence.json").write_text(
+-        json.dumps(_ev(exit_code=0xC0000005, mission="mc2_03")), encoding="utf-8")
+-    rc = main([str(tmp_path)])
+-    assert rc == 0
+-    out = capsys.readouterr().out
+-    assert "ENVIRONMENT_MISSING_DLL" in out
+-    assert "APP_CRASH" in out
+diff --git a/tests/smoke/test_oracleparse.py b/tests/smoke/test_oracleparse.py
+deleted file mode 100644
+index efcfcb902..000000000
+--- a/tests/smoke/test_oracleparse.py
++++ /dev/null
+@@ -1,125 +0,0 @@
+-# SMOKE-ORACLEPARSE-COVERAGE-1: coverage for the oracle verdict layer.
+-# scripts/smoke_lib/oracleparse.py had no tests; judge_oracles is a verdict-layer
+-# classifier (like gates.evaluate) — an untested regression silently mis-judges
+-# every oracle run. Pure functions, synthetic inputs, no game.
+-from scripts.smoke_lib.oracleparse import (
+-    OracleRow, parse_oracles, judge_oracles, OracleVerdict)
+-
+-
+-def _clean_row():
+-    # Minimal row that judge_oracles must PASS: gpu-armed, fully armed, a parity
+-    # MATCH observed, everything else at its clean default.
+-    return OracleRow(terrain_arm_path="gpu", terrain_fully_armed=True,
+-                     parity_match=1)
+-
+-
+-# --- judge_oracles (verdict layer) ---
+-
+-def test_clean_row_passes():
+-    v = judge_oracles(_clean_row())
+-    assert isinstance(v, OracleVerdict)
+-    assert v.passed and v.fails == []
+-
+-
+-def test_fastpath_drop_fails():
+-    r = _clean_row(); r.fastpath_drops = 1
+-    v = judge_oracles(r)
+-    assert not v.passed and any("FASTPATH_DROP" in f for f in v.fails)
+-
+-
+-def test_terrain_arm_path_not_gpu_fails():
+-    r = _clean_row(); r.terrain_arm_path = "legacy"
+-    v = judge_oracles(r)
+-    assert not v.passed and any("terrain_arm_path" in f for f in v.fails)
+-
+-
+-def test_parity_mismatch_fails():
+-    r = _clean_row(); r.parity_mismatch = 2
+-    v = judge_oracles(r)
+-    assert not v.passed and any("parity MISMATCH" in f for f in v.fails)
+-
+-
+-def test_no_parity_match_warns_not_fails():
+-    r = _clean_row(); r.parity_match = 0
+-    v = judge_oracles(r)
+-    assert v.passed and any("parity MATCH" in w for w in v.warns)
+-
+-
+-def test_fully_armed_false_fails():
+-    r = _clean_row(); r.terrain_fully_armed = False
+-    v = judge_oracles(r)
+-    assert not v.passed and any("fullyArmed" in f for f in v.fails)
+-
+-
+-def test_tex_mismatch_and_oob_fail():
+-    r = _clean_row(); r.tex_mismatches = 3; r.tex_oob = 1
+-    v = judge_oracles(r)
+-    assert not v.passed
+-    assert any("TEX_RESOLVE mismatches" in f for f in v.fails)
+-    assert any("TEX_RESOLVE oob" in f for f in v.fails)
+-
+-
+-# --- the allow_late_register knob (the documented benign-vs-real distinction) ---
+-
+-def test_objbatcher_late_register_benign_when_allowed():
+-    # cpu_fallback == late_register_skips => classified benign => WARN, still passes.
+-    r = _clean_row(); r.objb_cpu_fallback = 4; r.objb_late_register_skips = 4
+-    v = judge_oracles(r, allow_late_register=True)
+-    assert v.passed
+-    assert any("classified benign" in w for w in v.warns)
+-    assert not v.fails
+-
+-
+-def test_objbatcher_late_register_fails_when_disallowed():
+-    # Same row, allow_late_register=False => the benign case becomes a hard fail.
+-    r = _clean_row(); r.objb_cpu_fallback = 4; r.objb_late_register_skips = 4
+-    v = judge_oracles(r, allow_late_register=False)
+-    assert not v.passed
+-    assert any("classified benign" in f for f in v.fails)
+-
+-
+-def test_objbatcher_real_cpu_fallback_always_fails():
+-    # cpu_fallback EXCEEDS late_register => real geometry fell back => hard fail
+-    # regardless of the knob.
+-    r = _clean_row(); r.objb_cpu_fallback = 10; r.objb_late_register_skips = 4
+-    for allow in (True, False):
+-        v = judge_oracles(r, allow_late_register=allow)
+-        assert not v.passed
+-        assert any("real cpu_fallback" in f for f in v.fails)
+-
+-
+-def test_objbatcher_submit_legacy_fails():
+-    r = _clean_row(); r.objb_submit_legacy = 1
+-    v = judge_oracles(r)
+-    assert not v.passed and any("submit_legacy" in f for f in v.fails)
+-
+-
+-# --- parse_oracles (light, format-agnostic) ---
+-
+-def test_parse_empty_is_default_row():
+-    r = parse_oracles("")
+-    assert r.fastpath_drops == 0 and r.terrain_arm_path is None
+-    # A default (never-armed) row must NOT pass judgement.
+-    assert not judge_oracles(r).passed
+-
+-
+-def test_parse_fastpath_drop_line():
+-    r = parse_oracles("noise\n[FASTPATH_DROP] terrain fell back\nmore noise\n")
+-    assert r.fastpath_drops >= 1
+-
+-
+-if __name__ == "__main__":
+-    import sys
+-    fns = [(n, f) for n, f in sorted(globals().items())
+-           if n.startswith("test_") and callable(f)]
+-    failed = 0
+-    for name, fn in fns:
+-        try:
+-            fn(); print(f"  [PASS] {name}")
+-        except AssertionError as e:
+-            failed += 1; print(f"  [FAIL] {name}: {e}")
+-        except Exception as e:  # noqa: BLE001
+-            failed += 1; print(f"  [ERROR] {name}: {e!r}")
+-    print(f"test_oracleparse: {'PASS' if not failed else 'FAIL'} "
+-          f"({len(fns)} tests, {failed} failed)")
+-    sys.exit(1 if failed else 0)
+diff --git a/tests/visual/baselines/README.md b/tests/visual/baselines/README.md
+deleted file mode 100644
+index 4ccfae009..000000000
+--- a/tests/visual/baselines/README.md
++++ /dev/null
+@@ -1,77 +0,0 @@
+-<!-- doc-status: current | reviewed:2026-10-11 -->
+-# tests/visual/baselines
+-
+-V-BASELINE-0 controlled visual reference corpus for objective before/after
+-comparison of StaticPropOpaque-lane visual changes.
+-
+-## Layout
+-
+-```
+-tests/visual/baselines/
+-  README.md              this file
+-  presets.json           camera-preset registry (mission + warmup tuples)
+-  <preset>_<sha>.png     captured frame
+-  <preset>_<sha>.json    sidecar metadata
+-  <preset>_<sha>.log     mc2.exe stdout/stderr captured during the run
+-```
+-
+-## Naming
+-
+-`<preset-name>_<commit-short>.{png,json,log}`
+-
+-- `preset-name` — key from `presets.json` (e.g. `staticprop_baseline_01`)
+-- `commit-short` — `git rev-parse --short HEAD` at capture time
+-
+-Both files in a pair share the same stem so the sidecar always travels with
+-its PNG.
+-
+-## Sidecar JSON schema (v1)
+-
+-```json
+-{
+-  "commit": "11f7f089",
+-  "mission": "mc2_24",
+-  "cameraPreset": "staticprop_baseline_01",
+-  "resolution": "1920x1080",
+-  "flags": {
+-    "MC2_VIEW_UNIFORMS": "default",
+-    "MC2_SNAPSHOT_STATIC_PROP_BUILD": "default",
+-    "...": "..."
+-  },
+-  "capture": {
+-    "warmup_s": 28,
+-    "duration_s": 30,
+-    "smoke_seed": "0xC0FFEE",
+-    "captured_at": "2026-05-27T...",
+-    "png_sha256": "...",
+-    "png_bytes": 1234567
+-  },
+-  "preset_description": "..."
+-}
+-```
+-
+-The top-level keys `commit`, `mission`, `cameraPreset`, `resolution`, and
+-`flags` match the V-BASELINE-0 brief verbatim. `capture` and
+-`preset_description` are additive metadata for traceability.
+-
+-## Adding a new preset
+-
+-1. Edit `presets.json`: add a new entry under `presets` with `mission`,
+-   `warmup_s`, `duration_s`, and a human-readable `description`.
+-2. Run `py -3 scripts/capture_baseline.py --preset <new_name>`.
+-3. Commit the resulting `.png` + `.json` (and optionally the `.log`).
+-
+-## Capturing baselines at a new commit
+-
+-```
+-cd A:\Games\mc2-opengl-src\.claude\worktrees\nifty-mendeleev
+-py -3 scripts/capture_baseline.py                # all presets
+-py -3 scripts/capture_baseline.py --preset staticprop_baseline_01
+-```
+-
+-Each invocation reads `git rev-parse --short HEAD` and embeds it in the
+-filename and sidecar so multiple commits' baselines coexist side by side.
+-
+-## Comparing before/after
+-
+-See `docs/visual-baseline-howto.md` for the full workflow.
+diff --git a/tests/visual/baselines/presets.json b/tests/visual/baselines/presets.json
+deleted file mode 100644
+index a40c1337b..000000000
+--- a/tests/visual/baselines/presets.json
++++ /dev/null
+@@ -1,80 +0,0 @@
+-{
+-  "_comment": "V-BASELINE-0 camera preset registry. Each preset names a (mission, warmup_s, description) tuple. The 'camera preset' identity is the deterministic state mc2.exe lands in under MC2_SMOKE_MODE=1 + MC2_SMOKE_SEED=0xC0FFEE after `warmup_s` seconds of passive mission load. No in-engine preset hook exists yet; this is the lightweight contract: same mission + same seed + same warmup = same frame.",
+-  "schema_version": 1,
+-  "default_seed": "0xC0FFEE",
+-  "default_resolution": "1920x1080",
+-  "presets": {
+-    "staticprop_baseline_01": {
+-      "mission": "mc2_24",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "StaticPropOpaque-heavy urban scene. tier1 mc2_24 standard load, post-stabilize frame. Use for static-prop pipeline visual regression."
+-    },
+-    "staticprop_baseline_02": {
+-      "mission": "mc2_10",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "StaticPropOpaque mid-density scene. tier1 mc2_10 standard load, post-stabilize frame. Complements baseline_01 with different terrain + prop distribution."
+-    },
+-    "terrain_grass_01": {
+-      "mission": "mc2_01",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "TERRAIN-BASELINE-0: terrain-heavy grass/desert scene (tier1 mc2_01). Primary preset for terrain visual regression — exercises grass + dirt + rock material classification and POM. Pairs with --terrain-debug-mode for shader-mode captures."
+-    },
+-    "terrain_salvage_03": {
+-      "mission": "mc2_03",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "TERRAIN-BASELINE-0: terrain-heavy salvage scene (tier1 mc2_03). Complements grass_01 with heavier rock + cement-overlay coverage."
+-    },
+-    "terrain_combined_17": {
+-      "mission": "mc2_17",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "TERRAIN-BASELINE-0: terrain-heavy combined-arms scene (tier1 mc2_17). Late-campaign mission with mixed biomes; stresses material-weight blends and shadow PCF across varied slope."
+-    },
+-    "terrain_final_24": {
+-      "mission": "mc2_24",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "TERRAIN-LIGHTING-SOAK-2: terrain-heavy final-campaign scene (tier1 mc2_24). Steepest tier1 terrain (slope p99=51°, max range -100..1400 wu per slice-3 audit); the canonical worst-case for V2 shadow-aware fill validation."
+-    },
+-    "mech_24": {
+-      "mission": "mc2_24",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "MECH-BASELINE-0: active-mech scene (tier1 mc2_24). Primary preset for mech-lane visual regression — mech material inventory confirms a Mad Cat (data/tgl/128/madcatrgb.tga) is submitted at this seed/warmup. Pair with --mech-debug-mode for the registry-backed mech debug views (0 Final, 2 Albedo, 3 LightingOnly, 4 Normal); the sidecar embeds the live mech inventory."
+-    },
+-    "mech_17": {
+-      "mission": "mc2_17",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "MECH-BASELINE-0: active-mech combined-arms scene (tier1 mc2_17). Complements mech_24 with a different mission's mech roster. Use --mech-debug-mode + the embedded sidecar inventory to confirm which mech textures/materialIdx were on screen."
+-    },
+-    "water_final_24": {
+-      "mission": "mc2_24",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "WATER-BASELINE-0: PRIMARY water preset (tier1 mc2_24). Water is armed on the GPU-driven/MDI path immediately on load (no cinematic gate), so the MDI water FS — the one that owns --water-debug-mode (MC2_WATER_DEBUG_MODE) — renders at this seed/warmup. Pair with --water-debug-mode for the FS material-space debug views (1 Tint, 2 Alpha, 3 Normal, 4 Depth, 5 Shore, 6 Lighting); --water-debug-mode also forces MC2_GPU_DRIVEN_WATER=1."
+-    },
+-    "water_heavy_01": {
+-      "mission": "mc2_01",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "WATER-BASELINE-0: large-water-surface scene (tier1 mc2_01). Heaviest visible water of tier1, but the ~20s cinematic intro must finish first — warmup_s=28 clears it. Secondary/complement to water_final_24. Same --water-debug-mode usage."
+-    },
+-    "vfx_combat_10": {
+-      "mission": "mc2_10",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "VFX-BASELINE-0: combat scene with active weapon fire / GPU particle effects (tier1 mc2_10). Primary preset for the VFX/particle lane. NOTE: particles are TRANSIENT — under the passive smoke seed, weapon fire / explosions appear opportunistically as AI engages; the captured frame at warmup_s=28 may or may not contain on-screen particles. Confirm activity via the capture .log (GOSFX_GPU 'enabled=1 sprites=N' / TRAIL_PROBE). Pair with --vfx-debug-mode (1 Albedo, 2 Alpha, 3 ParticleKind, 4 Overdraw); MC2_GPU_PARTICLES stays default-ON. To force a particle-dense frame deterministically, a future scripted-fire hook is needed — gameplay/emission must NOT be altered to stage captures."
+-    },
+-    "vfx_combat_24": {
+-      "mission": "mc2_24",
+-      "warmup_s": 28,
+-      "duration_s": 30,
+-      "description": "VFX-BASELINE-0: dense urban combat scene (tier1 mc2_24). Complements vfx_combat_10 with a different mission's effect roster. Same transience caveat: confirm particle presence via the .log rather than assuming the frame is particle-populated."
+-    }
+-  }
+-}
+diff --git a/tools/gpu_abi_gen.py b/tools/gpu_abi_gen.py
+index 2cba3ec66..0c980ad3e 100644
+--- a/tools/gpu_abi_gen.py
++++ b/tools/gpu_abi_gen.py
+@@ -5,8 +5,8 @@ The annotated C++ struct is the source. This tool computes the std430/std140
+ layout independently of the compiler and emits, byte-deterministically (LF, no
+ timestamps):
+   * <name>.layout.gen.h   C++ static_asserts (sizeof, alignof, per-field offsetof)
+-  * a GLSL struct in shaders/include/ (FLAT file: the shader_deploy hook and the
+-    CMake DEPENDS glob are non-recursive)
++  * a GLSL struct in shaders/include/ (FLAT file: the CMake DEPENDS glob is
++    non-recursive)
+ 
+ Usage:
+     py -3 tools/gpu_abi_gen.py --write   regenerate the committed files
+diff --git a/tools/log_tag_census.py b/tools/log_tag_census.py
+index dffbfb218..4a643f46b 100644
+--- a/tools/log_tag_census.py
++++ b/tools/log_tag_census.py
+@@ -5,7 +5,7 @@ WHAT: scans the tracked C++ sources for calls that write a `[TAG vN] key=...` (o
+ macros, sprintf-style buffers (snprintf, mc2::fmt::to_buf*), and the facade's MC2_EVENT* / mc2::log::event<> -- reads the format literal across
+ continuation lines and adjacent literals, and records (tag, version, stream, key order) with a count. tests/unit/log_tag_baseline.json holds
+ the frozen census plus the tags the Python parsers consume.
+-WHY: the smoke harness greps these lines (logparse.py, oracleparse.py, run_smoke.py, ...). Converting printf to std::format must not change a
++WHY: the smoke harness greps these lines (logparse.py, run_smoke.py, ...). Converting printf to std::format must not change a
+ tag, a version, the key order or the stream; a line-by-line grep misses calls whose format string sits on a continuation line, so this reads
+ calls. A converted site must produce the same record as the printf it replaced.
+ 
