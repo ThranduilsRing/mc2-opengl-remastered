@@ -8,7 +8,6 @@
  ],
  "_reason": "bdactor_internal.h declares the two [LIGHTSLOT v1] entry points the tree pieces call (the state stays private to bdactor_diag.cpp), which needs a namespace block that does not exist in the original.",
  "scripts": [
-  "scripts/check-gate-default-agreement.py",
   "scripts/check-light-row-freshness.py",
   "scripts/check-no-raw-gl-from-game.allowlist",
   "scripts/counter-honesty-allowlist.txt",
@@ -20,7 +19,6 @@
   "tools/asset_viewer/asset_viewer_game_stubs.cpp",
   "tools/blender_pipeline/recipes/decimate_lods.py",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gate_codemod.py",
   "tools/object_light_row_harness/object_light_row_harness.cpp",
   "tools/repo_intel/test_anti_churn.py"
  ],

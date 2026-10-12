@@ -1,7 +1,0 @@
-{
- "version": 1,
- "note": "Ratchet for tools/gate_conflicts.py --check: both numbers may only fall.",
- "conflict_gates": [],
- "unresolved_conflicts": 0,
- "unclassified_sites": 0
-}

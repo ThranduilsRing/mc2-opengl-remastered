@@ -22,9 +22,7 @@
   "scripts/counter-honesty-allowlist.txt",
   "scripts/delivery-fixes.json",
   "scripts/gl_shader_variants.json",
-  "scripts/tests/test_gate_codemod.py",
   "tests/unit/test_terrain_material.cpp",
-  "tools/gate_codemod.py",
   "tools/terrain_beautify/control_map_tool.py",
   "tools/terrain_beautify/overlay_extract.py"
  ],

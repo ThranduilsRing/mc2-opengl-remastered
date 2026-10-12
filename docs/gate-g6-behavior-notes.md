@@ -1,6 +1,6 @@
 # G6 (mclib family) -- behaviour notes and corrections
 
-The generated plan `docs/gate-codemod-g6.md` was written before the rewrite and is not regenerated (the sources it
+The generated plan docs/gate-codemod-g6.md (deleted with its generator tools/gate_codemod.py, retired 2026-10-12, cull wave 1; archived on E:/mc2-archive-2026-10/docs/cull-wave1-4-2026-10-12.tar.gz) was written before the rewrite and was never regenerated (the sources it
 describes are typed now). This file records the input changes the review found that the plan and the commit messages
 do not say, and corrects two statements. No harness (scripts/, tests/, tools/, data/, launcher_env.json, the smoke
 matrices) sets any of these inputs.

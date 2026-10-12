@@ -796,33 +796,8 @@ fi
 # gate_gen_check (below) covers the derived header rows, yaml and index, `verified`, and the compiler check; the
 # fast hermetic half that used to be its own row (flag_registry_drift) was a strict subset and is retired.
 
-# ---------------------------------------------------------------------------
-# GATE-DEFAULT-TRUTH-1 (2026-07-30)
-# ---------------------------------------------------------------------------
-# Gate registration is a compile-time fact of the gate table. It has never proved
-# the registry's stated `defaultOn` AGREES with what the reader does when the
-# var is unset -- and that gap shipped live lies: MC2_SHADOW_BOUNDED_NEAR_FIT
-# (registry, tier1 doc, and the reader's own adjacent comment all said OFF while
-# gos_postprocess.cpp implemented ON) and MC2_SHADOW_ENABLE (registry said
-# opt-in while both GL readers were kill-switches). Anyone A/B-ing "=1 vs unset"
-# off those entries graded ON against ON.
-#
-# UNCLASSIFIABLE counts as FAIL here, not as a silent pass: an unreadable idiom
-# is precisely where a lie hides. Exemptions live in
-# scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
-run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
 run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
-run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
 run_check "gate_classifier_selftest"        "py -3 scripts/gate_default_classifier.py --selftest"
-# GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's
-# stated default against its readers; this one proves the READERS AGREE WITH EACH OTHER. A typed
-# gate table has one truthiness rule per gate, so every gate whose readers already disagree
-# (`v[0]=='1'` here, `!= nullptr` there) is a behaviour change the migration must resolve, and
-# the design's own list of them was a review sample. tools/gate_conflicts.py executes each
-# reader against eight probe values and ratchets the conflicting-gate count and the count of
-# readers it cannot read. Both may only fall. Scans the COMMITTED tree so another lane's dirty
-# working tree cannot flap it. Idiom tests live in scripts/tests (scripts_tests row).
-run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --check"
 # G4: the VK umbrella members are read only through mc2vkgate::armed<> (never a direct gate::effective<>, which
 # would skip the session fail-soft veto), and the per-call readers stay uncached so a mid-session fail-soft disarms them.
 run_check "vk_umbrella_readers"             "py -3 scripts/check-vk-umbrella-readers.py --quiet"

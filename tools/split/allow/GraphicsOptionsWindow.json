@@ -42,7 +42,7 @@
   ]
  ],
  "scripts": [
-  "tools/gate_conflicts.py"
+  
  ],
  "base": "HEAD",
  "src": "GuiRuntime/GraphicsOptionsWindow.cpp",

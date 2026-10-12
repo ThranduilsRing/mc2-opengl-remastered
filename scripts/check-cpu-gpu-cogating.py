@@ -51,7 +51,7 @@ recurring bug.
 RELATIONSHIP TO NEIGHBOURING CHECKS (this is not a fifth copy of them)
 ---------------------------------------------------------------------
   the gate table (Gates/)          every MC2_* read is REGISTERED (a compile error otherwise).
-  check-gate-default-agreement.py  a gate's STATED default equals its READER's.
+  gate_gen --check (gate_gen_check)  a registered gate's table default equals the registry's.
   check-split-path-contracts.py    two shader paths for one draw stay in step.
   check-material-gpu-mirror.sh     one struct's C++ and GLSL field ORDER match.
 None of them can see this class: here BOTH sides were internally consistent and
@@ -77,7 +77,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # --------------------------------------------------------------------------
 # Reader-idiom classifier: what does this gate do when the var is UNSET?
-# Mirrors the idiom set check-gate-default-agreement.py recognises.
+# Mirrors the idiom set scripts/gate_default_classifier.py recognises.
 # --------------------------------------------------------------------------
 DEFAULT_ON_IDIOMS = (
     # !v || v[0] != '0'      /  !(v && v[0] == '0')

@@ -374,7 +374,7 @@ MC2_SMOKE_FIXED_TIMESTEP=1        for any cross-build claim
 `MC2_UI_COMMAND_FILE`. A second gate in front of a read-only verb inside an
 already-gated channel buys nothing and adds one more documented-vs-actual
 default to drift out of truth. Nothing to add to the `run_smoke.py` passthrough
-list; `check-gate-default-agreement.py` is unaffected (verified: `DISAGREE 0`,
+list; check-gate-default-agreement.py (retired 2026-10-12, cull wave 1) was unaffected (verified: `DISAGREE 0`,
 `CONTRADICT 0`).
 
 ### Reading a `-1`

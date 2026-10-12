@@ -3,9 +3,7 @@
  "src": "GameOS/gameos/vulkan_terrain_island.cpp",
  "stem": "vulkan_terrain_island",
  "scripts": [
-  "scripts/check-render-contract-gbuffer1.allowlist",
-  "scripts/tests/test_gate_codemod.py",
-  "tools/gate_codemod.py"
+  "scripts/check-render-contract-gbuffer1.allowlist"
  ],
  "_scripts_reason": "Reviewed: check-render-contract-gbuffer1.allowlist and check_vk_nointerop_log.py cite vulkan_terrain_island.cpp in comments (the log tags the island prints are unchanged); check-vk-pipeline-layout lints the pieces of a split unit as one unit (4d3dc62b9), so the overlay pipeline resolves its layout across pieces; tools/gate_codemod.py and its test (lane 1 gate tooling) are not edited here.",
  "includes": [

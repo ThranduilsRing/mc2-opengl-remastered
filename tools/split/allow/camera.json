@@ -14,7 +14,6 @@
   "tests/visual/bookmarks/mc2_05_building_faces.json",
   "tests/visual/bookmarks/mc2_10_building_faces.json",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gate_codemod.py",
   "tools/object_light_row_harness/object_light_row_harness.cpp",
   "tools/terrain_daylight_harness/terrain_daylight_harness.cpp"
  ],

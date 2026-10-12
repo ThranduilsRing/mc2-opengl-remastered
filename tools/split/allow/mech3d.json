@@ -18,7 +18,6 @@
   "scripts/check-worktree-context.sh",
   "scripts/counter-honesty-allowlist.txt",
   "tools/bt2018_import/extract_textures.py",
-  "tools/gate_codemod.py",
   "tools/unit_converter/__init__.py",
   "tools/unit_converter/emit.py",
   "tools/unit_converter/test_unit_converter.py"

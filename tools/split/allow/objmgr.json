@@ -3,7 +3,6 @@
  "src": "code/objmgr.cpp",
  "stem": "objmgr",
  "scripts": [
-  "scripts/check-gate-default-agreement.py",
   "scripts/check-mover-registry-coherence.sh",
   "scripts/check-vk-umbrella-readers.py",
   "scripts/checklib.py",
@@ -11,7 +10,6 @@
   "scripts/gate_default_classifier.py",
   "scripts/tests/test_fingerprint.py",
   "tests/visual/bookmarks/mc2_10_building_faces.json",
-  "tools/gate_codemod.py",
   "tools/objmgr_contract_harness/objmgr_contract_harness.cpp",
   "tools/terrain_beautify/mission_terrain_analyzer.py",
   "tools/terrain_beautify/scatter_tool.py"
