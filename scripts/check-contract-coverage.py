@@ -586,7 +586,12 @@ def externally_called(checks):
                 # crediting four dead checks, purely because its English
                 # sentences contain the words "bash" and "python" near a script
                 # name. Notes are not runners. Hooks (added below) are.
-                and not p.startswith(".claude/")]
+                and not p.startswith(".claude/")
+                # tests/callers.json is tools/callers.py's generated inventory of who
+                # mentions each script: a listing is not a runner, and crediting it
+                # made every checker look driven elsewhere (the un-wire arms of the
+                # selftest could not fire).
+                and p != "tests/callers.json"]
     hooks = ROOT / ".claude" / "hooks"
     if hooks.is_dir():
         surfaces += [str(p.relative_to(ROOT)) for p in hooks.iterdir() if p.is_file()]
