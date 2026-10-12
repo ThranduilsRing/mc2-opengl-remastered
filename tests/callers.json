@@ -2250,6 +2250,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": ".claude/cleanup/lane3-diag/strhunt_patch.py",
+          "line": 338,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/bake_colormap_ktx2.py",
           "line": 51,
           "evidence": "import",
