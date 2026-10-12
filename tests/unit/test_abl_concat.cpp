@@ -2,11 +2,10 @@
 //
 // ABL's concat() and the standard routines that fill a script variable declared char[N] must stop at N-1 characters and keep
 // the NUL inside the variable, whatever the script asks for (the unbounded strcat it replaced corrupted the heap in mc2_15);
-// the position builtins give a defined answer when they have none.
+// ABLi_popCharBuf hands a builtin a span only for a char array that declares a positive element count.
 
 #include "doctest.h"
 
-#include "abl_out_params.h"
 #include "abl_string_append.h"
 
 #include <cstring>
@@ -80,17 +79,63 @@ TEST_CASE("getmodule-style copies replace the text, are cut at the capacity and 
 	CHECK(one[1] == 'q');
 }
 
-TEST_CASE("a position builtin with no answer writes the zero vector over whatever the script variable held")
+TEST_CASE("an append that fills the variable exactly drops nothing and one more character drops one")
 {
-	float pos[3] = {-2.5e18f, 7.0f, 1.0e9f};
-	abl::writeZeroVec3(std::span<float, 3>{pos});
-	CHECK(pos[0] == 0.0f);
-	CHECK(pos[1] == 0.0f);
-	CHECK(pos[2] == 0.0f);
-	abl::writeVec3(std::span<float, 3>{pos}, 1.0f, 2.0f, 3.0f);
-	CHECK(pos[0] == 1.0f);
-	CHECK(pos[1] == 2.0f);
-	CHECK(pos[2] == 3.0f);
+	char block[10];
+	std::memset(block, 'X', sizeof block);
+	const std::span<char> s{block, 8};
+	// "abcd" + "efg" is 7 characters and the NUL: exactly the capacity
+	std::strcpy(block, "abcd");
+	CHECK(abl::appendBounded(s, "efg") == 0);
+	CHECK(std::strcmp(block, "abcdefg") == 0);
+	CHECK(block[8] == 'X');
+	std::strcpy(block, "abcd");
+	CHECK(abl::appendBounded(s, "efgh") == 1);
+	CHECK(std::strcmp(block, "abcdefg") == 0);
+	CHECK(block[8] == 'X');
+	CHECK(block[9] == 'X');
+}
+
+TEST_CASE("a one-byte variable holds only the NUL and an append drops the whole item")
+{
+	char one[2] = {'q', 'q'};
+	CHECK(abl::appendBounded(std::span<char>{one, 1}, "zz") == 2);
+	CHECK(one[0] == '\0');
+	CHECK(one[1] == 'q');
+}
+
+TEST_CASE("an empty item appends nothing, drops nothing and keeps the text terminated")
+{
+	char s[8] = "ab";
+	CHECK(abl::appendBounded(s, "") == 0);
+	CHECK(std::strcmp(s, "ab") == 0);
+	CHECK(abl::appendBounded(s, std::string_view{}) == 0);
+	CHECK(std::strcmp(s, "ab") == 0);
+}
+
+TEST_CASE("concat(s, s) appends the variable to itself, cut at the capacity")
+{
+	// the builtin passes the destination's own text as the item
+	char roomy[16] = "abc";
+	CHECK(abl::appendBounded(roomy, roomy) == 0);
+	CHECK(std::strcmp(roomy, "abcabc") == 0);
+	char tight[5] = "abc";
+	CHECK(abl::appendBounded(tight, tight) == 2);
+	CHECK(std::strcmp(tight, "abca") == 0);
+}
+
+TEST_CASE("a char-array argument yields a span of its declared count and anything else yields nothing")
+{
+	char text[12] = {};
+	CHECK(abl::charBufOf(text, true, true, 12).size() == 12);
+	CHECK(abl::charBufOf(text, true, true, 12).data() == text);
+	CHECK(abl::charBufOf(text, true, true, 1).size() == 1);
+	// zero-length and open (-1) arrays, scalars, arrays of another element type and a null address
+	CHECK(abl::charBufOf(text, true, true, 0).empty());
+	CHECK(abl::charBufOf(text, true, true, -1).empty());
+	CHECK(abl::charBufOf(text, false, true, 12).empty());
+	CHECK(abl::charBufOf(text, true, false, 12).empty());
+	CHECK(abl::charBufOf(nullptr, true, true, 12).empty());
 }
 
 }

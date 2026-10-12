@@ -1,6 +1,7 @@
 // ABL standard routines: the ABLi_pop / push / peek / poke accessors for the interpreter stack.
 // Declared in the class headers; shared names in ablxstd_internal.h.
 #include "ablxstd_internal.h"
+#include "abl_string_append.h"
 
 
 //***************************************************************************
@@ -89,13 +90,12 @@ std::span<char> ABLi_popCharBuf (void) {
 
 	getCodeToken();
 	const TypePtr typePtr = execExpression();
-	char* charPtr = static_cast<char*>(tos->address);
+	char* const address = tos->address;
 	pop();
 
-	if (charPtr && typePtr && typePtr->form == FRM_ARRAY && typePtr->info.array.elementTypePtr == CharTypePtr
-	    && typePtr->info.array.elementCount > 0)
-		return std::span<char>(charPtr, static_cast<size_t>(typePtr->info.array.elementCount));
-	return {};
+	const bool isArray = typePtr && typePtr->form == FRM_ARRAY;
+	return abl::charBufOf(address, isArray, isArray && typePtr->info.array.elementTypePtr == CharTypePtr,
+	                      isArray ? typePtr->info.array.elementCount : 0);
 }
 
 //---------------------------------------------------------------------------

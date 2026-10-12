@@ -16,6 +16,15 @@ inline std::string_view textOf(const char* s) noexcept {
 	return s ? std::string_view{s} : std::string_view{};
 }
 
+// The writable span of a script variable that a char-array builtin argument names: the declared element count of a char array, and an empty
+// span for anything else (a null address, a variable that is not an array of char, an open or zero-length array), so the builtin takes nothing
+// instead of writing through a pointer whose size it cannot know.
+inline std::span<char> charBufOf(char* address, bool isArray, bool elementIsChar, long elementCount) noexcept {
+	if (address && isArray && elementIsChar && elementCount > 0)
+		return {address, static_cast<size_t>(elementCount)};
+	return {};
+}
+
 // Appends item to the NUL-terminated text in dest, whose size is the variable's capacity including the NUL, never writing
 // past it. An unterminated dest counts as full. An empty dest (size unknown) takes nothing. Returns the number of
 // characters that did not fit (0 = appended whole).
