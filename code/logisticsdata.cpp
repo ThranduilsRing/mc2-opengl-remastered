@@ -158,7 +158,9 @@ void LogisticsData::startMultiPlayer()
 
 	missionInfo->setMultiplayer();
 
-#ifndef VIEWER
+#if !defined(VIEWER) && MC2_MULTIPLAYER
+	// The one site that creates the session layer; without MC2_MULTIPLAYER (CMake, default OFF) MPlayer stays null for the
+	// life of the process and every `if (MPlayer)` path is the single-player one.
 	if ( !MPlayer )
 	{
 		MPlayer = new MultiPlayer;
