@@ -20,7 +20,7 @@ the exception is the modeless tac map (`EditorInterface.cpp:1249-1253`).
 
 | Dialog | Fields / document values | Mode / smoke / SDL+ImGui destination |
 |---|---|---|
-| `TerrainDlg` — `editor/TerrainDlg.h:19`; manual `terrain`, `TerrainDlg.cpp:29-56` | Initial map terrain index; map creation reads this selection (`EditorMFC.cpp:30-41`). | Modal / no / terrain creation panel. |
+| `TerrainDlg` — `editor/TerrainDlg.h:19`; manual `terrain`, `TerrainDlg.cpp:29-56` | Initial map terrain index; map creation reads this selection (`EditorInterface_editor.cpp:100-109`). | Modal / no / terrain creation panel. |
 | `MapSizeDlg` — `editor/mapsizedlg.h:19`; manual `mapSize`, `mapsizedlg.cpp:23-60` | Map dimension selection. | Modal / no / terrain dimensions panel. |
 | `HeightDlg` — `editor/HeightDlg.h:20`; manual `min`, `max`, `HeightDlg.cpp:18-38` | Terrain height range. | Modal / no / terrain height panel. |
 | `FractalDlg` — `editor/fractaldialog.h:18`; `m_threshold`, `m_noise`, `fractaldialog.cpp:22-27` | Terrain fractal threshold/noise inputs. | Modal / no / terrain generation panel. |
@@ -43,7 +43,7 @@ the exception is the modeless tac map (`EditorInterface.cpp:1249-1253`).
 | `BuildingSettingsDlg` — `editor/BuildingSettingsDlg.h:21`; mech, group, alignment, X/Y, part ID, forest, damaged, `.cpp:38-49` | Selected building's position, type/part, group, forest and damage state; `applyChanges`/undo (`BuildingSettingsDlg.cpp:85-209`). | Modal / no / building inspector and placement defaults. |
 | `ChooseUnitDlg` — `editor/ChooseUnitDlg.h:17`; pointer-based selected `Unit*`, no DDX (`ChooseUnitDlg.cpp:25-37,96-169`) | Choose or pointer-pick a unit reference for an objective predicate (`Objective_conditions.cpp:131,186`). | Modal / no / objective entity-reference picker. |
 | `ChooseBuildingDlg` — `editor/ChooseBuildingDlg.h:17`; pointer-based selected `EditorObject*`, no DDX (`ChooseBuildingDlg.cpp:25-35,92-165`) | Choose or pointer-pick a building reference for an objective predicate (`Objective_conditions.cpp:257`). | Modal / no / objective entity-reference picker. |
-| `PointerSelectObjectDlg` — `editor/PointerSelectObjectDlg.h:15`; map-pick state/button, no DDX (`PointerSelectObjectDlg.cpp:25-66`) | Object-under-cursor selection handoff used by unit/building and objective pickers. | Modal interaction / no / shared viewport picker, preferably inline in the owning panel. |
+| `PointerSelectObjectDlg` — `editor/PointerSelectObjectDlg.h:15`; map-pick state/button, no DDX (`PointerSelectObjectDlg.cpp:25-66`) | Uncalled class: `rg -n 'PointerSelectObjectDlg' editor` finds definitions and an include (`ChooseUnitDlg.cpp:18`), no instantiation. Actual chooser handoff toggles selection-only mode and consumes selected objects (`ChooseUnitDlg.cpp:125-159`; `ChooseBuildingDlg.cpp:121-155`). | Uncalled modal class / no / shared viewport picker supplied by the active chooser workflow. |
 | `PlayerSettingsDlg` — `editor/PlayerSettingsDlg.h:17`; `m_defaultTeamComboBox`, `m_playerEdit`, `.cpp:34-39` | Player identity and default team (`EditorInterface_terrain.cpp:629-638`). | Modal / no / teams panel. |
 
 ## Objectives and ABL-facing authoring
