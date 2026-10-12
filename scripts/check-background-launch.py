@@ -211,14 +211,9 @@ COMPOSITE_CAPTURE_FILES = {
         "pyautogui.screenshot() of the whole desktop after a scripted arrow-key "
         "camera sweep; the sweep drives the engine through synthetic keys, so it "
         "needs a real on-screen window.",
-    "scripts/capture_baseline.py":
-        "V-BASELINE-0 golden capture via pyautogui.screenshot(). The highest-risk "
-        "entry: a wallpaper frame here becomes a checked-in visual BASELINE.",
     "scripts/game_auto.py":
         "the interactive synthetic-input driver (keybd_event/mouse_event); its "
         "`screenshot` verb is pyautogui and its clicks target screen coordinates.",
-    "scripts/smoke_with_screenshots.py":
-        "per-mission pyautogui.screenshot() desktop grabs alongside a smoke run.",
     "tools/menu_oracle.py":
         "PIL.ImageGrab.grab(bbox=<window client rect>) -- it reads the DESKTOP "
         "pixels under the window rect, so the window must be on the desktop. "

@@ -113,7 +113,7 @@ HARNESS_CONTROL = frozenset({
 #: Declaration channel for PROGRAMMATIC callers.
 #:
 #: `--env-declare` covers a human at a shell. But in-repo harnesses
-#: (pipeline_visual_gate.py, run_golden_parity.py, ...) drive A/B comparisons by
+#: (tools/visual_verify/capture_ab.py, ...) drive A/B comparisons by
 #: setting gate vars in a child env and invoking run_visual_capture.py as a
 #: subprocess. Without a channel, the scrub would silently drop exactly the gate
 #: those harnesses are testing -- turning an A/B into two identical runs, which
@@ -141,7 +141,7 @@ def declarations_from_channel(
         if name in src:
             out[name] = src[name]
         # A declared-but-absent name is legitimate: "this gate is deliberately
-        # OFF for this arm" (run_golden_parity pops the var for its OFF state).
+        # OFF for this arm" (an A/B driver pops the var for its OFF state).
         # Recording the intent matters; there is no value to carry.
     return out
 

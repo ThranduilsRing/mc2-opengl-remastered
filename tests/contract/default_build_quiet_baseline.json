@@ -23,7 +23,7 @@
     },
     "PERF v1": {
       "status": "keep",
-      "reason": "scripts/smoke_lib/logparse.py + oracle_report.py + smoke_with_screenshots.py parse avg_fps/p50_ms/p99_ms. This is the perf regression signal."
+      "reason": "scripts/smoke_lib/logparse.py parses avg_fps/p50_ms/p99_ms (oracle_report.py and smoke_with_screenshots.py, the other readers, were retired 2026-10-09 and 2026-10-12). This is the perf regression signal."
     },
     "QUADSETUP_SKIP v1": {
       "status": "keep",

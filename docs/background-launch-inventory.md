@@ -10,7 +10,6 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | file | line | call | window |
 | --- | --- | --- | --- |
 | `scripts/camera_sweep_smoke.py` | 101 | `nofocus.spawn` | desktop-composite |
-| `scripts/capture_baseline.py` | 301 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 135 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 86 | `nofocus.spawn` | offscreen |
 | `scripts/mechbay_preview_harness.py` | 99 | `nofocus.spawn` | offscreen |
@@ -24,7 +23,6 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 272 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 279 | `nofocus.spawn` | offscreen |
-| `scripts/smoke_with_screenshots.py` | 158 | `nofocus.spawn` | desktop-composite |
 | `scripts/sweep_campaign.py` | 63 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 165 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 403 | `nofocus.spawn` | offscreen |
@@ -39,7 +37,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 390 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 443 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 29
+Total engine launch sites: 27
 
 ## Shell launchers (RULE 9)
 
@@ -84,9 +82,7 @@ readback path retires its entry. Enforced by RULES 6-7.
 | file | reason |
 | --- | --- |
 | `scripts/camera_sweep_smoke.py` | pyautogui.screenshot() of the whole desktop after a scripted arrow-key camera sweep; the sweep drives the engine through synthetic keys, so it needs a real on-screen window. |
-| `scripts/capture_baseline.py` | V-BASELINE-0 golden capture via pyautogui.screenshot(). The highest-risk entry: a wallpaper frame here becomes a checked-in visual BASELINE. |
 | `scripts/game_auto.py` | the interactive synthetic-input driver (keybd_event/mouse_event); its `screenshot` verb is pyautogui and its clicks target screen coordinates. |
-| `scripts/smoke_with_screenshots.py` | per-mission pyautogui.screenshot() desktop grabs alongside a smoke run. |
 | `tools/menu_oracle.py` | PIL.ImageGrab.grab(bbox=<window client rect>) -- it reads the DESKTOP pixels under the window rect, so the window must be on the desktop. Already launches show_window=True; NOFOCUS-FINISH-1 decoupled show_window from offscreen, so it now has to say offscreen=False too. |
 
-Total desktop-composite exceptions: 5
+Total desktop-composite exceptions: 3

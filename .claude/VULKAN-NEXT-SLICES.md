@@ -407,7 +407,7 @@ reference is REUSABLE as the fixture oracle.
   (known pattern), CPU min-reduce reference (exact — min() of floats IS bit-portable, no
   transcendental caveat: use the BIT-TIGHT oracle, tolerance 0, unlike ssao/fog),
   validate every mip level via per-level readback.
-- `scripts/run_golden_parity.py` — REGION_SPEC entry: `"PostprocessHzb": {"health_block":
+- run_golden_parity.py (retired 2026-10-12, cull wave 1; GL-vs-VK parity now = tools/visual_verify/ab.py) — REGION_SPEC entry: `"PostprocessHzb": {"health_block":
   "render_backend_hzb_region", "extra_env": {"MC2_HZB_BUILD": "1"}}`.
 - `GameOS/gameos/debug_state_dump.cpp` — health block (copy ssao block).
 - `docs/tier1_env_vars.md` — note vk coverage of MC2_HZB_BUILD.

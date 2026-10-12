@@ -117,7 +117,6 @@ Core references:
 - [verify-primitive.md](verify-primitive.md) - MC2_VERIFY - the live data-contract guard primitive
 - [vfx-payoff-capture-matrix.md](vfx-payoff-capture-matrix.md) - VFX payoff capture matrix (VFX-PAYOFF-CAPTURE-MATRIX-1)
 - [viewmode-capture-matrix.md](viewmode-capture-matrix.md) - ViewMode capture matrix (TACTICAL-PRESENTATION-CAPTURE-MATRIX-1)
-- [visual-baseline-howto.md](visual-baseline-howto.md) - Visual Baseline How-To (V-BASELINE-0)
 - [visual-tuning-profiles.md](visual-tuning-profiles.md) - Visual Tuning Profiles - MISSION-VISUAL-TUNING-1
 
 Fixtures shipped in the v0.5 cycle (all in-tree; one-liners — see

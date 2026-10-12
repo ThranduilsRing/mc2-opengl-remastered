@@ -911,8 +911,8 @@ lights should remain visible at every angle instead of blinking out.
   `false`/`no` turns it off. Reader is `code/sim_identity.cpp:80` (`envOnOff`, so unlike
   `MC2_BRIDGE_MOVER_STATE` above it does *not* enable on `=0`). ON emits a `sim_identity`
   block — sorted-by-partId digest over every live mover, no cap — into each visual-capture
-  sidecar; `scripts/sim_identity.py` is the refuse-to-grade gate that reads it
-  (`golden_compare.py compare` exits **7** = arms were not showing the same world). Costs a
+  sidecar; sim_identity.py (retired 2026-10-12, cull wave 1) was the refuse-to-grade gate that read it
+  (the retired golden_compare.py exited **7** = arms were not showing the same world; tools/sim_determinism.py is the sim-identity proof now). Costs a
   few hundred getter calls once per capture; the per-frame path is the opt-in below.
   Default ON on purpose: a refuse-to-grade gate whose input defaults OFF returns UNGRADED
   for everything and becomes wallpaper.

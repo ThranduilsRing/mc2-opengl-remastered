@@ -1011,7 +1011,6 @@ run_check "render_contract_alpha_classes_selftest" "py -3 scripts/check-render-c
 # matching-size struct is invisible to all of them while the shader silently
 # reads the wrong words.
 run_check "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
-run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
 # VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
 # manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).
@@ -1396,8 +1395,8 @@ run_check "savegame_backup"             "py -3 tools/savegame_backup.py selftest
 # the user's. Do NOT step around this row as "known-red": it is a live item.
 run_check_tri "capture_provenance"      "py -3 scripts/check-capture-provenance.py --quiet"
 run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.py --selftest"
-# The provenance GATE the minting tools call (bless.py / verify.py /
-# run_golden_parity.py). Proves each verdict on binaries carrying real
+# The provenance GATE the minting tools call (bless.py / verify.py).
+# Proves each verdict on binaries carrying real
 # fingerprint stamps, that a hand-added claim and a keywords-in-a-comment
 # manifest both stay UNESTABLISHED, and -- the other half -- that an honest
 # artifact still passes. Offline, read-only, no game launch.
@@ -1432,39 +1431,6 @@ run_check "review_anchor_stability_selftest" "py -3 scripts/check-review-anchor-
 # four ways and requires a refusal from each, so the guard cannot go blind on a
 # fixture that stopped resembling the file it stands for. Offline, read-only.
 run_check "review_pack_registry_guard" "py -3 scripts/build_review_pack.py --selftest"
-
-# SIM-IDENTITY-HASH-1: the refuse-to-grade gate splits mover fields VISUAL vs
-# NON-VISUAL in two independent places (C++ digestMoverVisual, Python
-# VISUAL_FIELDS). If they drift, the gate misgrades in the DANGEROUS direction:
-# a real visual divergence gets classified LATENT and GRADED -- a false pass
-# produced by the instrument built to stop false passes. Both halves' own
-# self-tests stay green through that drift, because each is internally
-# consistent; only this cross-check catches it. Live-fired by moving `status`
-# from VISUAL to NON-VISUAL in the real module: the check went FAIL/exit 1, and
-# an arm-A-alive / arm-B-DEAD mover pair graded LATENT + exit 0 until reverted.
-run_check "sim_identity_fieldsets" "py -3 scripts/check-sim-identity-fieldsets.py"
-# The gate's own verdict logic: GRADED / LATENT / UNVERIFIED / UNGRADED, plus
-# localisation (names the first diverging mover and field) and the sub-quantum
-# boundary-straddle label. Offline, no GPU, no capture.
-run_check "sim_identity_gate_selftest" "py -3 scripts/sim_identity.py self-test"
-# PIPE-LIVENESS: the hash crosses engine -> sidecar -> capture manifest ->
-# combined manifest -> gate. The first version of this slice dropped the
-# combined-manifest link: every other check stayed GREEN while the gate was
-# dead and graded everything as UNVERIFIED. Re-injecting that bug leaves
-# sim_identity_fieldsets and sim_identity_gate_selftest at exit 0; only this
-# check fires. A gate is wired when the payload traverses the pipe, not when
-# both ends compile.
-run_check "sim_identity_propagation" "py -3 scripts/check-sim-identity-propagation.py"
-# VERIFY-THE-UNVERIFIED-1: the propagation check above shipped WITHOUT a
-# selftest, and it was blind. Its link-5 needles (`_sim_identity_gate(` and
-# `_SIM_EXIT_UNGRADED`) were satisfied by the DEFINITION and the module-level
-# constant, so replacing golden_compare.py's gate block with `if False:` --
-# deleting the only call, making exit 7 unreachable, grading every comparison --
-# left this row, sim_identity_fieldsets and sim_identity_gate_selftest all at
-# exit 0. Measured by injection into the live tree, not theorised. Link 5 is now
-# AST-verified and comments are stripped before any substring match; this row
-# proves that machinery still discriminates.
-run_check "sim_identity_propagation_selftest" "py -3 scripts/check-sim-identity-propagation.py --selftest"
 
 # ---------------------------------------------------------------------------
 # UNWIRED-CHECK-CLOSE-1 (2026-07-30) -- the checks nobody was running

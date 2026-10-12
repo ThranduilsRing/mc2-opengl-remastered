@@ -14,7 +14,7 @@
 Load-bearing consequences:
 
 1. **Agents are blind — design for it.** Every lab conclusion must be expressible as `exit code + JSON numbers` consumable headlessly (the same contract as `telemetry_compare.py` exit 0/1/2 in the cockpit doc §6). Diff *images* are saved for the human, never interpreted by the agent. An agent's job ends at "bookmark `mc2_01/ridge_water` FAIL: 2.31% changed pixels outside mask, diff at <path> — needs human eyes."
-2. **The engine captures its own pixels.** OS-level grabs (`pyautogui.screenshot` in `scripts/capture_baseline.py:138`, `scripts/camera_sweep_smoke.py:111`) are compositor-poisoned (1–3 LSB drift, DWM scaling — documented in `docs/VISUAL-CAPTURE-MATRIX-1-DESIGN.md` Known Limitations). The lab's capture primitive is in-engine `glReadPixels`/PBO readback at a settled frame, written as PNG by mc2.exe itself. The "glReadPixels deferred" slice from VISUAL-CAPTURE-MATRIX-1 is this lab's Slice 1.
+2. **The engine captures its own pixels.** OS-level grabs (`pyautogui.screenshot` in `scripts/camera_sweep_smoke.py`; the capture_baseline.py one was retired 2026-10-12, cull wave 1) are compositor-poisoned (1–3 LSB drift, DWM scaling — documented in `docs/VISUAL-CAPTURE-MATRIX-1-DESIGN.md` Known Limitations). The lab's capture primitive is in-engine `glReadPixels`/PBO readback at a settled frame, written as PNG by mc2.exe itself. The "glReadPixels deferred" slice from VISUAL-CAPTURE-MATRIX-1 is this lab's Slice 1.
 3. **The capture tuple is sacred.** A capture is the deterministic function `(build, mission, bookmark, preset, gate-env, settle-rules, seed) → pixels + state JSON`. Same tuple, same build → byte-comparable pixels (modulo the declared nondeterminism masks, §5). The seed already exists (`MC2_SMOKE_SEED`, `GameOS/gameos/gos_smoke.cpp:50`).
 4. **Visual verdicts are advisory until promoted.** Per the cockpit doc §8 severity model: the lab produces WARN, never FAIL, until a bookmark+metric pair has proven stable across tier1 5/5 over multiple builds. `smoke_lib/gates.py` remains the sole hard-gate authority; visual gates enter it only by the cockpit promotion rule.
 5. **Cheap checks before expensive ones.** Oracle counters (`[RENDER_SNAPSHOT v3]`, `render_snapshot.h:195-204` ok aggregator) and draw/state counts run *before* any pixel diff (§6). If the oracle says the frame's composition changed, the pixel diff is confirmation, not discovery.
@@ -202,7 +202,7 @@ Baseline A (MEMORY: golden frames / per-pass timings / oracle counters off `mc2-
 
 ## 10. Anti-goals (binding)
 
-- **No OS-compositor screenshots in verdicts.** `pyautogui` paths (`capture_baseline.py`, `camera_sweep_smoke.py`, `game_auto.py`) remain for ad-hoc human use; the lab never grades them.
+- **No OS-compositor screenshots in verdicts.** `pyautogui` paths (`camera_sweep_smoke.py`, `game_auto.py`; capture_baseline.py was retired 2026-10-12, cull wave 1) remain for ad-hoc human use; the lab never grades them.
 - **No perceptual-metric-only gates.** FLIP downgrades, never decides alone — heatmaps are for humans.
 - **No video / scripted-path diffing in v1.** Discrete poses only; spline fly-through diffing is a someday-maybe.
 - **No multi-machine golden portability.** One machine, one GPU, per-machine sets. Cross-GPU is out of scope until there is a second machine.

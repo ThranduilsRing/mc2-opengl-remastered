@@ -51,7 +51,7 @@ py -3 scripts/run_visual_capture.py --mission mc2_01 \
 
 - `--runs 3 --warmup 1`: 3 launches, run 1 discarded, runs 2 & 3 must match.
 - `--candidate-set <id>`: on stability PASS, copy the last run's PNGs+sidecars
-  into `tests/visual/baselines/<id>/`, write `<id>/set.json`, and register the
+  into tests/visual/baselines/<id>/ (purged; goldens live in `tests/visual/goldens/`), write `<id>/set.json`, and register the
   set in `tests/visual/golden-sets.json` as **status=candidate**.
 - `--allow-partial`: materialize the byte-stable subset even if some bookmarks
   drift; drifters are recorded in `set.json.excluded_unstable`. A small-but-
@@ -59,7 +59,7 @@ py -3 scripts/run_visual_capture.py --mission mc2_01 \
 - Determinism requires `MC2_SMOKE_FIXED_TIMESTEP=1` (set ON by the runner, off when unset;
   the engine stamps each sidecar's `deterministic` honestly).
 - Uses the engine glReadPixels FBO readback (NOT pyautogui) — no screen grab,
-  runs minimized. The OS-screenshot `capture_baseline.py` is for eyeballing
+  runs minimized. The OS-screenshot capture_baseline.py (retired 2026-10-12, cull wave 1) was for eyeballing
   only and the lab never grades it (lab §10 anti-goal).
 
 ## Bless criteria (all must hold)
