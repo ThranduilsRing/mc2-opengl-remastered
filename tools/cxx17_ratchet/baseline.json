@@ -190,10 +190,10 @@
    "LG03": 1139,
    "LG04": 16,
    "LG05": 136,
-   "LG06": 669,
+   "LG06": 670,
    "LG07": 0,
    "LG08": 74,
-   "LG09": 2189,
+   "LG09": 2190,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 210,
@@ -3117,6 +3117,9 @@
    "LG06": 9,
    "LG17": 3
   },
+  "mclib/abl_string_append.h": {
+   "LG06": 1
+  },
   "mclib/abldbug.cpp": {
    "LG06": 2,
    "LG09": 13,
@@ -3242,7 +3245,7 @@
    "LG09": 13
   },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 26
+   "LG09": 27
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
@@ -5177,7 +5180,7 @@
    "LG20": 2
   }
  },
- "head": "baf462195",
+ "head": "6d0dcb142",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

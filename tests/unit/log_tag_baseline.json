@@ -12,6 +12,19 @@
    "count": 1
   },
   {
+   "tag": "ABL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "module",
+    "line",
+    "capacity",
+    "dropped"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ABL_ARG_GUARD",
    "ver": -1,
    "stream": "stdout",
