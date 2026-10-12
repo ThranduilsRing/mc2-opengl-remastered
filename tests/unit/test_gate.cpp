@@ -1210,7 +1210,6 @@ TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
     CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "12") == 12.0f);
     CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "0") == 1.0f);
     CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "2.5") == 2.5f);
-    CHECK(fl("MC2_WATER_SHORE3_DEPTH_K", nullptr) == 0.03f);
     CHECK(fl("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", nullptr) == 0.78f);
     CHECK(fl("MC2_TERRAIN_DETAIL_FADE_START", nullptr) == 1000.0f);
     CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", nullptr) == 3000.0f);

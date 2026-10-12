@@ -555,31 +555,10 @@ bool gosPostProcess::runVkPostFogNative()
     if (!sceneHasTerrain_ || !edgeFogEnabled_ || !fogOobEnabled_ ||
         mapHalfExtent_ <= 0.0f)
         return false;
-    // SKYBOX-FOG-EXCLUDE-1 parity guard: the VK fog shaders have NO stencil
-    // sky-exclusion path (usampler2D stencilTex + u_skyExcludeEnabled exist only
-    // in the GL frags). When that gate is ON the GL passes diverge from the VK
-    // port on sky pixels -> fall through to GL (same limitation as the subgraph,
-    // now made explicit).
-    //
-    // SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: this used to be a PRIVATE static reading
-    // `v && v[0] == '1'` (default OFF) while gos_postprocess.cpp's
-    // skyboxFogExcludeEnabled() reads `!(v && v[0] == '0')` (default ON, flipped by
-    // SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1). Same variable, two readers, opposite unset
-    // defaults -- so on an unset environment this guard silently did NOT fire and
-    // the native VK fog painted over the exact sky pixels the GL passes exclude:
-    // the divergence the guard exists to prevent. GL is the authority; there is now
-    // one reader for this gate and both the region-iface guard
-    // (gos_postprocess.cpp runFogRegionVulkanBackend) and this one call it.
-    //
-    // VK-PARITY-F3: this decline made native fog NEVER run under the default gates, and
-    // the GL fallback pass writes the discarded GL scene buffer under the VK umbrella, so
-    // VK had NO distance/horizon/OOB fog at all (VK-PARITY-GAPS #8). The stencil exclusion
-    // only ever tags sky with elevation > 0.22 (hdri_skybox_stencil_tag.frag), and with
-    // FOG-HORIZON-CLAMP-1 (default ON, ported into the VK fog shaders) both fog passes are
-    // already exactly zero above fogHorizonFadeEnd (5 deg), so the exclusion is a no-op and
-    // the stencil path is not needed. Only the clamp-OFF legacy band (fog survives to ~12.7
-    // deg, where stencil exclusion would matter) still declines.
-    if (gos_SkyboxFogExcludeEnabled() && !fogHorizonClampEnabled_) return false;
+    // The GL fog passes' stencil sky-exclusion (SKYBOX-FOG-EXCLUDE-1) has no VK port, but
+    // with the horizon clamp both fog passes are exactly zero above fogHorizonFadeEnd
+    // (5 deg), the only elevations the exclusion would touch, so native fog runs without
+    // it (VK-PARITY-F3).
 
     if (width_ <= 0 || height_ <= 0) return false;
 

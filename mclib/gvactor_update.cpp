@@ -557,24 +557,12 @@ long GVAppearance::update (bool animate)
 	// for DESTROYED/DISABLED but never cleared it, unlike the mech path
 	// (mech3d.cpp Mech3DAppearance::update, which sets BOTH arms). Once a
 	// vehicle latched lightsOut it could never be lit again — including after
-	// an actor slot is recycled for a live vehicle. MC2_GV_LIGHTSOUT_CLEAR=1
-	// adds the missing else-branch so the flag tracks status like the mech
-	// path does. Default-OFF -> legacy latch preserved -> byte-identical.
-	{
-		static int s_gvLightsOutClear = -1;
-		if (s_gvLightsOutClear < 0)
-		{
-			s_gvLightsOutClear = mc2::gate::get<"MC2_GV_LIGHTSOUT_CLEAR">();
-		}
-		if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
-		{
-			gvShape->SetLightsOut(true);
-		}
-		else if (s_gvLightsOutClear)
-		{
-			gvShape->SetLightsOut(false);
-		}
-	}
+	// an actor slot is recycled for a live vehicle. The else-branch makes the
+	// flag track status like the mech path does.
+	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
+		gvShape->SetLightsOut(true);
+	else
+		gvShape->SetLightsOut(false);
 
 	// FREEZE-MOVERS-1: the VEHICLE track/limb animation had NO freeze guard at
 	// all -- not the mech path's ANIM-CADENCE-FIX, not a capture check. Since

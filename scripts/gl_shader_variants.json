@@ -886,7 +886,7 @@
    "key": "gos_terrain_water_mdi",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n",
-   "source": "GameOS/gameos/gameos_graphics_water.cpp:303",
+   "source": "GameOS/gameos/gameos_graphics_water.cpp:302",
    "stages": {
     "frag": "shaders/gos_terrain_water_mdi.frag",
     "vert": "shaders/gos_terrain_water_fast_mdi.vert"
@@ -2788,7 +2788,7 @@
    "key": "gpu_driven_cmd_patch",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1467",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1465",
    "stages": {
     "comp": "shaders/gpu_driven_cmd_patch.comp"
    }
@@ -2812,7 +2812,7 @@
    "key": "gpu_driven_water",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1465",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1463",
    "stages": {
     "comp": "shaders/gpu_driven_water.comp"
    }
@@ -2837,7 +2837,7 @@
    "key": "hdri_skybox_stencil_tag",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess_skybox.cpp:251",
+   "source": "GameOS/gameos/gos_postprocess_skybox.cpp:250",
    "stages": {
     "frag": "shaders/hdri_skybox_stencil_tag.frag",
     "vert": "shaders/hdri_skybox.vert"
@@ -2850,7 +2850,7 @@
    "key": "hzb_reduce",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:553",
+   "source": "GameOS/gameos/gos_postprocess.cpp:548",
    "stages": {
     "frag": "shaders/hzb_reduce.frag",
     "vert": "shaders/postprocess.vert"

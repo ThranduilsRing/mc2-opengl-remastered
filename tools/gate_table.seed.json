@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1083,
+ "count": 1075,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -5613,84 +5613,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_FOG_HORIZON_CLAMP",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Partial",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1283",
-     "idiom": "Partial[D,on,off,on,on,on,on,on]"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FOG_HORIZON_CLAMP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_FOG_HORIZON_FADE_END",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1287",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FOG_HORIZON_FADE_END",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_FOG_HORIZON_FADE_START",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:1285",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FOG_HORIZON_FADE_START",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_FORCE_43",
    "kind": "Bool",
    "default": false,
@@ -8440,32 +8362,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_GV_LIGHTSOUT_CLEAR",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or OBJECT_STATUS_DISABLED but has NO else-branch to clear it, unlike the mech path (mech3d.cpp Mech3DAppearance::update sets both arms).",
-   "readers": [
-    {
-     "at": "mclib/gvactor.cpp:3108",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_GV_LIGHTSOUT_CLEAR",
    "retireVerdict": ""
   },
   {
@@ -16189,32 +16085,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_PROP_FOLIAGE_ALPHAFLAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic, mclib/bdactor.cpp) carry its actual documented meaning, kFlagIsAlphaTest, sourced from TG_TypeShape::alphaTestOn via the new TG_Shape::GetIsAlphaTest() seam.",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:62",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_PROP_FOLIAGE_ALPHAFLAG",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_PROP_LIGHT_LATCH_DIAG",
    "kind": "Bool",
    "default": false,
@@ -19276,32 +19146,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_SKYBOX_FOG_EXCLUDE",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "SKYBOX-FOG-EXCLUDE-1/2.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:577",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SKYBOX_FOG_EXCLUDE",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_SMART_LOAD",
@@ -30219,58 +30063,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_WATER_SHINE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_WATER_SHORE3_DEPTH_K",
-   "kind": "Float",
-   "default": 0.03,
-   "rule": "Prefix",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve notches; gos_terrain_water_fast_mdi.vert, uploaded in gameos_graphics.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2997",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.03,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_TUNE_WATER_SHORE3_DEPTH_K",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_WATER_SHORE3_EXTRA_WU",
-   "kind": "Float",
-   "default": 60.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the per-pixel discard to carve (gos_terrain_water_stream.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_water_stream.cpp:168",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 60,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_TUNE_WATER_SHORE3_EXTRA_WU",
    "retireVerdict": ""
   },
   {

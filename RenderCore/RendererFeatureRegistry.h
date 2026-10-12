@@ -213,31 +213,26 @@ enum class RendererFeature : int {
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
     LegacyLitMc2Frame        = 40,  // MC2_LEGACY_LIT_MC2_FRAME
-    // VEHICLE-NIGHT-LIT-2: restore the missing else-branch that clears a ground
-    // vehicle's lightsOut flag when it is no longer DESTROYED/DISABLED, matching
-    // the mech path. Default-OFF -> legacy one-way latch -> byte-identical.
-    GvLightsOutClear         = 41,  // MC2_GV_LIGHTSOUT_CLEAR
-    PropBaseLightDir         = 42,  // MC2_PROP_BASE_LIGHT_DIR
-    PropFoliageAlphaFlag     = 43,  // MC2_PROP_FOLIAGE_ALPHAFLAG
-    LightPosColumnFix        = 44,  // MC2_LIGHT_POS_COLUMN_FIX
+    PropBaseLightDir         = 41,  // MC2_PROP_BASE_LIGHT_DIR
+    LightPosColumnFix        = 42,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
     // submitMultiShape, so its lightData_ stayed all-zero and calc_light
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
-    VehicleLitPath           = 45,  // MC2_VEHICLE_LIT_PATH
+    VehicleLitPath           = 43,  // MC2_VEHICLE_LIT_PATH
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
     // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
     // lighting model, closing the two-shader seam that made concrete a
     // patchwork -- including the in-shader distance fog the overlay applies
     // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 46,  // MC2_OVERLAY_CEMENT_ADOPT
+    OverlayCementAdopt       = 44,  // MC2_OVERLAY_CEMENT_ADOPT
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 47,  // MC2_VEHICLE_AMBIENT_FLOOR
+    VehicleAmbientFloor      = 45,  // MC2_VEHICLE_AMBIENT_FLOOR
     // LIGHT-ROW-PURE-1 (ARCH-LIGHTING slice 1): object light-ROW PRODUCTION
     // delegated to the pure object_light_row::BuildObjectLightRow, driven by an
     // explicit query + declared per-class policy instead of the shared-light-
@@ -247,7 +242,7 @@ enum class RendererFeature : int {
     // Its companion diagnostic MC2_LIGHT_ROW_PURE_VERIFY is a Trace var and
     // lives in kAuxEnvVars, which is deliberately NOT indexed by
     // RendererFeature.
-    LightRowPure             = 48,  // MC2_LIGHT_ROW_PURE
+    LightRowPure             = 46,  // MC2_LIGHT_ROW_PURE
     // SHORELINE-GLOW-1: opt in to letting the active V3 terrain shoreline band
     // actually SUPPRESS the legacy screen-space runShoreline() post pass. The
     // suppression has existed since TERRAIN-SHORELINE-MASK-1 but was
@@ -258,7 +253,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    ShorelineLegacySuppress  = 49,  // MC2_SHORELINE_LEGACY_SUPPRESS
+    ShorelineLegacySuppress  = 47,  // MC2_SHORELINE_LEGACY_SUPPRESS
     // SUN-AXIS-FIX-1: ObjectLights.light_dir is a STUFF-frame vector, but the
     // DIFFUSE consumers of calc_light dot it against MC2-frame normals. The one
     // consumer that swaps first (mech.vert:279, specular) is the correct one.
@@ -267,7 +262,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunAxisFix               = 50,  // MC2_SUN_AXIS_FIX
+    SunAxisFix               = 48,  // MC2_SUN_AXIS_FIX
     // SUN-ELEVATION-FIX-1: Camera::lightDirection normalizes a unit-horizontal
     // plus sin(pitch), so its elevation is atan(sin(pitch)) rather than the
     // authored pitch. Large blast radius (terrain, props, SHADOW direction, and
@@ -276,7 +271,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunElevationFix          = 51,  // MC2_SUN_ELEVATION_FIX
+    SunElevationFix          = 49,  // MC2_SUN_ELEVATION_FIX
     // LIGHTROW-FRESHNESS-1: the DYNAMIC static-prop submit path checks the
     // per-frame stamp on TG_MultiShape::cachedFrame_ before trusting
     // cachedGpuLightIndex_, and re-gathers instead of reusing a prior-frame
@@ -286,7 +281,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    StaticPropLightFreshness = 52,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
+    StaticPropLightFreshness = 50,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
     // MECH-LIGHTROW-FRESHNESS-1: the GPU-mech submit path checks the per-frame
     // stamp on TG_MultiShape::cachedFrame_ before trusting cachedGpuLightIndex_,
     // and DECLINES the GPU submit (routing the mech to the existing CPU MLR
@@ -296,12 +291,12 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    MechLightFreshness       = 53,  // MC2_MECH_LIGHT_FRESHNESS
+    MechLightFreshness       = 51,  // MC2_MECH_LIGHT_FRESHNESS
     // RUNWAY-CLOSE-1: A/B arm — MC2_OVERLAY_ART_FLATLIGHT=0 exempts the
     // terrain_overlay.frag authored-art else-branch from u_missionFlatLight.
     // Default-ON (=stock multiply); appended LAST to match kFeatureTable.
-    OverlayArtFlatlight      = 54,  // MC2_OVERLAY_ART_FLATLIGHT
-    COUNT                    = 55,
+    OverlayArtFlatlight      = 52,  // MC2_OVERLAY_ART_FLATLIGHT
+    COUNT                    = 53,
 };
 
 // ---------------------------------------------------------------------------
@@ -641,15 +636,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     },
-    // [41] GvLightsOutClear
-    {
-        "MC2_GV_LIGHTSOUT_CLEAR",
-        "MC2_GV_LIGHTSOUT_CLEAR",
-        EnvVarKind::Feature,
-        false,
-        "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or..."
-    },
-    // [42] PropBaseLightDir
+    // [41] PropBaseLightDir
     {
         "MC2_PROP_BASE_LIGHT_DIR",
         "MC2_PROP_BASE_LIGHT_DIR",
@@ -657,15 +644,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "PROP-BASE-LIGHT-DIR-1: give the static-prop baked per-vertex base_light seed a directional (hemispherical-wrap) orientation term, so faces pointing away..."
     },
-    // [43] PropFoliageAlphaFlag
-    {
-        "MC2_PROP_FOLIAGE_ALPHAFLAG",
-        "MC2_PROP_FOLIAGE_ALPHAFLAG",
-        EnvVarKind::Feature,
-        false,
-        "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic..."
-    },
-    // [44] LightPosColumnFix
+    // [42] LightPosColumnFix
     {
         "MC2_LIGHT_POS_COLUMN_FIX",
         "MC2_LIGHT_POS_COLUMN_FIX",
@@ -673,7 +652,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     },
-    // [45] VehicleLitPath
+    // [43] VehicleLitPath
     {
         "MC2_VEHICLE_LIT_PATH",
         "MC2_VEHICLE_LIT_PATH",
@@ -681,7 +660,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     },
-    // [46] OverlayCementAdopt
+    // [44] OverlayCementAdopt
     {
         "MC2_FEATURE_OVERLAY_CEMENT_ADOPT",
         "MC2_OVERLAY_CEMENT_ADOPT",
@@ -689,7 +668,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     },
-    // [47] VehicleAmbientFloor
+    // [45] VehicleAmbientFloor
     {
         "MC2_VEHICLE_AMBIENT_FLOOR",
         "MC2_VEHICLE_AMBIENT_FLOOR",
@@ -697,7 +676,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     },
-    // [48] LightRowPure
+    // [46] LightRowPure
     {
         "MC2_LIGHT_ROW_PURE",
         "MC2_LIGHT_ROW_PURE",
@@ -705,7 +684,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     },
-    // [49] ShorelineLegacySuppress
+    // [47] ShorelineLegacySuppress
     {
         "MC2_SHORELINE_LEGACY_SUPPRESS",
         "MC2_SHORELINE_LEGACY_SUPPRESS",
@@ -713,7 +692,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     },
-    // [50] SunAxisFix
+    // [48] SunAxisFix
     {
         "MC2_SUN_AXIS_FIX",
         "MC2_SUN_AXIS_FIX",
@@ -721,7 +700,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     },
-    // [51] SunElevationFix
+    // [49] SunElevationFix
     {
         "MC2_SUN_ELEVATION_FIX",
         "MC2_SUN_ELEVATION_FIX",
@@ -729,7 +708,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     },
-    // [52] StaticPropLightFreshness
+    // [50] StaticPropLightFreshness
     {
         "MC2_STATIC_PROP_LIGHT_FRESHNESS",
         "MC2_STATIC_PROP_LIGHT_FRESHNESS",
@@ -737,7 +716,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
     },
-    // [53] MechLightFreshness
+    // [51] MechLightFreshness
     {
         "MC2_MECH_LIGHT_FRESHNESS",
         "MC2_MECH_LIGHT_FRESHNESS",
@@ -745,7 +724,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON."
     },
-    // [54] OverlayArtFlatlight
+    // [52] OverlayArtFlatlight
     {
         "MC2_FEATURE_OVERLAY_ART_FLATLIGHT",
         "MC2_OVERLAY_ART_FLATLIGHT",
@@ -1131,27 +1110,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a...",
-    },
-    {
-        "MC2_FOG_HORIZON_CLAMP",
-        "MC2_FOG_HORIZON_CLAMP",
-        EnvVarKind::Feature,
-        true,
-        "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess).",
-    },
-    {
-        "MC2_FOG_HORIZON_FADE_END",
-        "MC2_FOG_HORIZON_FADE_END",
-        EnvVarKind::Feature,
-        false,
-        "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation).",
-    },
-    {
-        "MC2_FOG_HORIZON_FADE_START",
-        "MC2_FOG_HORIZON_FADE_START",
-        EnvVarKind::Feature,
-        false,
-        "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation).",
     },
     {
         "MC2_TRACE_FORCE_ALL_VISIBLE",
@@ -1712,13 +1670,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.",
-    },
-    {
-        "MC2_FEATURE_SKYBOX_FOG_EXCLUDE",
-        "MC2_SKYBOX_FOG_EXCLUDE",
-        EnvVarKind::Feature,
-        true,
-        "SKYBOX-FOG-EXCLUDE-1/2.",
     },
     {
         "MC2_FEATURE_SMART_LOAD",
@@ -2496,20 +2447,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "[DEFAULT-OFF OPT-IN.",
-    },
-    {
-        "MC2_TUNE_WATER_SHORE3_DEPTH_K",
-        "MC2_WATER_SHORE3_DEPTH_K",
-        EnvVarKind::Feature,
-        false,
-        "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve...",
-    },
-    {
-        "MC2_TUNE_WATER_SHORE3_EXTRA_WU",
-        "MC2_WATER_SHORE3_EXTRA_WU",
-        EnvVarKind::Feature,
-        false,
-        "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the...",
     },
     {
         "MC2_FEATURE_WATER_SHORE_MASK",

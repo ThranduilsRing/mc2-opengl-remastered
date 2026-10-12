@@ -150,10 +150,8 @@ float EffShoreExt(float baseAlphaDepth) {
     float ext = base + ShoreMeanderWu();
     // MC2_WATER_SHORE_MODE=3 (GL prototype): widen admission so geometry exists
     // beyond the true sidecar contour for the per-pixel discard to carve.
-    if (gos_WaterShoreMode() == 3) {
-        static const float s_extra = mc2::gate::get<"MC2_WATER_SHORE3_EXTRA_WU">();
-        ext += s_extra;
-    }
+    if (gos_WaterShoreMode() == 3)
+        ext += 60.0f;
     return ext;
 }
 

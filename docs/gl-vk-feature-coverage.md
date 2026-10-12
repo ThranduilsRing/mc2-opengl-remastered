@@ -7,9 +7,9 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
-| PORTED | 11 | 125 | 0 |
-| NOT_PORTED | 94 | 49 | 0 |
-| NO_TWIN | 27 | 66 | 0 |
+| PORTED | 11 | 123 | 0 |
+| NOT_PORTED | 91 | 49 | 0 |
+| NO_TWIN | 26 | 64 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
 
@@ -77,8 +77,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_SHADOW_STATIC_BANDFIX` | **ON (live drift)** | `shaders/gos_terrain.frag` | `MC2_SHADOW_STATIC_BANDFIX` (define) | shaders/vulkan/terrain_tier1.* | HIGH | yes |
 | `MC2_SHADOW_STATIC_BANDFIX_V2` | **ON (live drift)** | `shaders/gos_terrain.frag` | `MC2_SHADOW_STATIC_BANDFIX_V2` (define) | shaders/vulkan/terrain_tier1.* | HIGH | yes |
 | `MC2_SHADOW_STATIC_BANDFIX_V2` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `MC2_SHADOW_STATIC_BANDFIX_V2` (define) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_SKYBOX_FOG_EXCLUDE` | **ON (live drift)** | `shaders/edge_fog.frag` | `u_skyExcludeEnabled` (uniform) | shaders/vulkan/edge_fog.* | HIGH | yes |
-| `MC2_SKYBOX_FOG_EXCLUDE` | **ON (live drift)** | `shaders/fog_oob.frag` | `u_skyExcludeEnabled` (uniform) | shaders/vulkan/fog_oob.* | HIGH | yes |
 | `MC2_SP_ALPHASCAN_GATE` | OFF | `shaders/shadow_static_prop.frag` | `u_materialFlags` (uniform) | shaders/vulkan/shadow_prop.* | MEDIUM | no |
 | `MC2_SP_ALPHASCAN_GATE` | OFF | `shaders/static_prop.frag` | `u_materialFlags` (uniform) | shaders/vulkan/color_prop_tier1.* | MEDIUM | no |
 | `MC2_SP_ALPHASCAN_GATE` | OFF | `shaders/static_prop_depth.frag` | `u_materialFlags` (uniform) | shaders/vulkan/color_prop_tier1.* | MEDIUM | no |
@@ -155,13 +153,12 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_DEBUG_MODE` | OFF | `shaders/gos_terrain_water_mdi.frag` | `u_waterDebugMode` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_REFLECTION_RT` | OFF | `shaders/gos_terrain_water_mdi.frag` | `u_waterRtStrength` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHINE` | OFF | `shaders/gos_terrain_water_mdi.frag` | `u_waterSpecIntensity` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
-| `MC2_WATER_SHORE3_DEPTH_K` | **ON (live drift)** | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MASK` | **ON (live drift)** | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 | `MC2_WATER_SHORE_MEANDER` | OFF | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderWu` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 
-- NOT_PORTED pairs: 120, of which already default ON: 54
+- NOT_PORTED pairs: 117, of which already default ON: 51
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED
@@ -246,8 +243,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_SHADOW_CSM_SOFTNESS` | `shaders/shadow_screen.frag` | `shadowSoftness` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
 | `MC2_SHADOW_MECH_SOFT` | `shaders/shadow_screen.frag` | `mechSoft` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
 | `MC2_SHADOW_OBJ_NORMAL_BIAS` | `shaders/shadow_screen.frag` | `objNormalBiasScale` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
-| `MC2_SKYBOX_FOG_EXCLUDE` | `shaders/hdri_skybox.frag` | `invProj` | `shaders/vulkan/hdri_sky.frag` | MEDIUM |
-| `MC2_SKYBOX_FOG_EXCLUDE` | `shaders/hdri_skybox.frag` | `invViewRot` | `shaders/vulkan/hdri_sky.frag` | MEDIUM |
 | `MC2_SP_ALPHASCAN_GATE` | `shaders/mech.frag` | `u_materialFlags` | `shaders/vulkan/mech_tier1.frag` | MEDIUM |
 | `MC2_SP_ALPHASCAN_GATE` | `shaders/mech.vert` | `u_materialFlags` | `shaders/vulkan/mech_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_AMBIENT_FLOOR` | `shaders/terrain_lod_chunk.frag` | `u_terrainAmbientFloor` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
@@ -321,8 +316,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `shaders/gos_vegetation_card.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gpu_cull_patch.comp` | `MC2_STATIC_PROP_GLOBAL_POOL_LEGACY` |
 | `shaders/gpu_driven_terrain_solid.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
-| `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_TERRAIN_SHORELINE`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL`, `MC2_WATER_SHORE3_EXTRA_WU` |
-| `shaders/hdri_skybox_stencil_tag.frag` | `MC2_SKYBOX_FOG_EXCLUDE` |
+| `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_TERRAIN_SHORELINE`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
 | `shaders/shadow_depth.vert` | `MC2_SHADOW_CSM` |
 | `shaders/shadow_mech.vert` | `MC2_SHADOW_CSM` |
 | `shaders/shadow_object.vert` | `MC2_SHADOW_CSM` |

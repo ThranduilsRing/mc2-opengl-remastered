@@ -335,32 +335,6 @@ bool mc2CloudShadowEnabled()
     return s_on;
 }
 
-// SKYBOX-FOG-EXCLUDE-1: gate helper (read once).
-// SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1: flipped default OFF->ON. The gate is inert
-// on non-HDRI missions -- renderHdriSkybox() early-returns before the stencil-
-// tag pass ("black sky baseline"), so no stencil is ever tagged, the fog frags'
-// stencil branch is a no-op, and fog_oob.frag's worldDir.z<-0.22 band fallback
-// is retained (byte-identical to legacy there). On HDRI missions it excludes
-// fog from true-sky pixels so the skybox is visible instead of being painted
-// over by the OOB cloud bank (the user-reported "can't see the skybox").
-// Kill-switch preserved: MC2_SKYBOX_FOG_EXCLUDE=0 restores the legacy OFF path.
-bool skyboxFogExcludeEnabled()
-{
-    static const bool s_on = mc2::gate::get<"MC2_SKYBOX_FOG_EXCLUDE">();
-    return s_on;
-}
-
-// SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: THE one exported authority for this gate.
-//
-// vulkan_post_fog_native.cpp used to carry its OWN `getenv("MC2_SKYBOX_FOG_EXCLUDE")`
-// static, written `v && v[0] == '1'` -- default OFF -- while the helper directly
-// above defaults ON. Both were "the guard that keeps VK from fogging sky pixels GL
-// excludes"; they disagreed about when it fires, so with the env UNSET the guard was
-// inert and the VK-native fog path rendered sky WITHOUT the exclusion GL applies.
-// A second copy of a gate reader is a second default, and defaults drift. There is
-// now exactly one getenv site for this variable in the tree; the VK TU calls this.
-bool gos_SkyboxFogExcludeEnabled() { return skyboxFogExcludeEnabled(); }
-
 bool sceneGlProducerQueryEnabled()
 {
     static const bool s_on = mc2::gate::get<"MC2_VK_SCENE_GL_PRODUCER_QUERY">();

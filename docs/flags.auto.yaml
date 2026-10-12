@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1086
-registry_entry_count: 309
-verified_count: 1079
+gate_count: 1078
+registry_entry_count: 301
+verified_count: 1071
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1544,30 +1544,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FIXTURE_ORDER_LIVENESS, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FOG_HORIZON_CLAMP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess)."
-    verified: true
-    registry: {feature_id: MC2_FOG_HORIZON_CLAMP, kind: Feature, order: -1, default_on: true}
-  - name: MC2_FOG_HORIZON_FADE_END
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation)."
-    verified: true
-    registry: {feature_id: MC2_FOG_HORIZON_FADE_END, kind: Feature, order: -1, default_on: false}
-  - name: MC2_FOG_HORIZON_FADE_START
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation)."
-    verified: true
-    registry: {feature_id: MC2_FOG_HORIZON_FADE_START, kind: Feature, order: -1, default_on: false}
   - name: MC2_FORCE_43
     kind: Bool
     default: false
@@ -2336,15 +2312,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_GV_LIGHTSOUT_CLEAR
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: mech
-    doc: "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_GV_LIGHTSOUT_CLEAR, kind: Feature, order: 41, default_on: false}
   - name: MC2_HAZE_PARITY
     kind: Bool
     default: false
@@ -3021,7 +2988,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 44, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 42, default_on: true}
   - name: MC2_LIGHT_PREFIX_GPU_COPY
     kind: Bool
     default: false
@@ -3110,7 +3077,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 48, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 46, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -3490,7 +3457,7 @@ flags:
     doc: "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_MECH_LIGHT_FRESHNESS, kind: Feature, order: 53, default_on: true}
+    registry: {feature_id: MC2_MECH_LIGHT_FRESHNESS, kind: Feature, order: 51, default_on: true}
   - name: MC2_MECH_LIGHT_TRACE
     kind: Bool
     default: false
@@ -4000,7 +3967,7 @@ flags:
     doc: "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me')."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_ART_FLATLIGHT, kind: Feature, order: 54, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_ART_FLATLIGHT, kind: Feature, order: 52, default_on: true}
   - name: MC2_OVERLAY_BIAS_LEGACY
     kind: Bool
     default: false
@@ -4016,7 +3983,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 46, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 44, default_on: true}
   - name: MC2_OVERLAY_CEMENT_SHADOW_MATCH
     kind: Bool
     default: false
@@ -4438,7 +4405,7 @@ flags:
     range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_PROP_BASE_LIGHT_DIR, kind: Feature, order: 42, default_on: false}
+    registry: {feature_id: MC2_PROP_BASE_LIGHT_DIR, kind: Feature, order: 41, default_on: false}
   - name: MC2_PROP_FIXB_MVP
     kind: Bool
     default: true
@@ -4446,15 +4413,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_PROP_FOLIAGE_ALPHAFLAG
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: props
-    doc: "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_PROP_FOLIAGE_ALPHAFLAG, kind: Feature, order: 43, default_on: false}
   - name: MC2_PROP_LIGHT_LATCH_DIAG
     kind: Bool
     default: false
@@ -5238,7 +5196,7 @@ flags:
     doc: "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 49, default_on: true}
+    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 47, default_on: true}
   - name: MC2_SHOT_RESULTS
     kind: Bool
     default: false
@@ -5311,15 +5269,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_SKYBOX_FOG_EXCLUDE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: "SKYBOX-FOG-EXCLUDE-1/2."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SKYBOX_FOG_EXCLUDE, kind: Feature, order: -1, default_on: true}
   - name: MC2_SMART_LOAD
     kind: Bool
     default: true
@@ -5877,7 +5826,7 @@ flags:
     doc: "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 52, default_on: true}
+    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 50, default_on: true}
   - name: MC2_STATIC_PROP_LIVE_BUILDER
     kind: Bool
     default: false
@@ -6098,7 +6047,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 50, default_on: false}
+    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 48, default_on: false}
   - name: MC2_SUN_ELEVATION_FIX
     kind: Bool
     default: false
@@ -6107,7 +6056,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 51, default_on: false}
+    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 49, default_on: false}
   - name: MC2_TACMAP_FORMATION_LINE
     kind: Bool
     default: false
@@ -7428,7 +7377,7 @@ flags:
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 47, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 45, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -7437,7 +7386,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 45, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 43, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""
@@ -8414,24 +8363,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_WATER_SHINE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_WATER_SHORE3_DEPTH_K
-    kind: Float
-    default: 0.0299999993
-    rule: Prefix
-    owner: gameos
-    doc: "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_WATER_SHORE3_DEPTH_K, kind: Feature, order: -1, default_on: false}
-  - name: MC2_WATER_SHORE3_EXTRA_WU
-    kind: Float
-    default: 60
-    rule: Prefix
-    owner: terrain
-    doc: "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_WATER_SHORE3_EXTRA_WU, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_FEATHER
     kind: Float
     default: 0

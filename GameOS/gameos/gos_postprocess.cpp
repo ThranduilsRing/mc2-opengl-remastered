@@ -521,16 +521,11 @@ void gosPostProcess::init(int w, int h)
 
     // FOG-HORIZON-CLAMP-1: elevation profile shared by OOB + edge fog. Rides the
     // existing (default-ON) fog gates -- this is a tuning of the fog's SHAPE, not
-    // a new feature. Kill-switch MC2_FOG_HORIZON_CLAMP=0 restores the previous
-    // worldDir.z 0.22 exclusion band. Knobs are in DEGREES of elevation above the
-    // horizon; we precompute their sines here so the frag stays trig-free
-    // (elevSin = -worldDir.z for a normalized view ray).
+    // a new feature. The band is in DEGREES of elevation above the horizon
+    // (members fogHorizonFadeStartDeg_ / fogHorizonFadeEndDeg_); we precompute
+    // their sines here so the frag stays trig-free (elevSin = -worldDir.z for a
+    // normalized view ray).
     {
-        fogHorizonClampEnabled_ = mc2::gate::get<"MC2_FOG_HORIZON_CLAMP">();   // row default ON, like the member
-        if (mc2::gate::isSet<"MC2_FOG_HORIZON_FADE_START">())
-            fogHorizonFadeStartDeg_ = mc2::gate::get<"MC2_FOG_HORIZON_FADE_START">();
-        if (mc2::gate::isSet<"MC2_FOG_HORIZON_FADE_END">())
-            fogHorizonFadeEndDeg_   = mc2::gate::get<"MC2_FOG_HORIZON_FADE_END">();
         // Guard the ordering so smoothstep(edge0<edge1) always holds; a degenerate
         // or inverted band would make the fade a hard step. Clamp to [-90,90].
         auto clampDeg = [](float d) { return d < -90.0f ? -90.0f : (d > 90.0f ? 90.0f : d); };

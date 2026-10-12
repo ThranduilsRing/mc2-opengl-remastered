@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1086;
+inline constexpr std::size_t kGateCount = 1078;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -211,9 +211,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FF_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_FIRE_DECISION_TRACE", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_FIXTURE_ORDER_LIVENESS", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_FOG_HORIZON_CLAMP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_FOG_HORIZON_FADE_END", Kind::Float, Rule::Prefix, {}},
-    {"MC2_FOG_HORIZON_FADE_START", Kind::Float, Rule::Prefix, {}},
     {"MC2_FORCE_43", Kind::Bool, Rule::Lead0, {}},
     {"MC2_FORCE_ALL_VISIBLE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_FORCE_DYNAMIC_BUILDINGS", Kind::Bool, Rule::Lead0P, {}},
@@ -312,7 +309,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_SYNC_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GPU_TRAIL_DISABLE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GROUND_CONTACT_BLOB", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_GV_LIGHTSOUT_CLEAR", Kind::Bool, Rule::Lead0, {}},
     {"MC2_HAZE_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_HDRI_BC6H", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_HDRI_SKY", Kind::Bool, Rule::Lead0Kill, {}},
@@ -585,7 +581,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PROJECTZ_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PROP_BASE_LIGHT_DIR", Kind::Float, Rule::Prefix, {}},
     {"MC2_PROP_FIXB_MVP", Kind::Bool, Rule::DefOnAtoiNZ, {}},
-    {"MC2_PROP_FOLIAGE_ALPHAFLAG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_PROP_LIGHT_LATCH_DIAG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", Kind::Int, Rule::Prefix, {}},
     {"MC2_PROP_SHADOW_RECEIVE", Kind::Int, Rule::Prefix, {}},
@@ -694,7 +689,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SKIP_STATIC_BUILDINGS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SKIP_STATIC_TREES", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SKIP_STATIC_TREES_DIAG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_SKYBOX_FOG_EXCLUDE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SMART_LOAD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SMART_LOAD_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SMOKE_ACTIVE", Kind::Bool, Rule::Lead0, {}},
@@ -1082,8 +1076,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WATER_S6_COST", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_S6_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_SHINE", Kind::String, Rule::Std, {}},
-    {"MC2_WATER_SHORE3_DEPTH_K", Kind::Float, Rule::Prefix, {}},
-    {"MC2_WATER_SHORE3_EXTRA_WU", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_SHORE_FEATHER", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_SHORE_FEATHER_WU", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_SHORE_MASK", Kind::Bool, Rule::Lead0Kill, {}},

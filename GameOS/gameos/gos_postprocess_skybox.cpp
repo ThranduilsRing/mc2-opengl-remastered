@@ -106,16 +106,15 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     GLint     prevVAO        = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
-    // SKYBOX-FOG-EXCLUDE-1: gate ON only. Save stencil state so the write
+    // SKYBOX-FOG-EXCLUDE-1: save stencil state so the write
     // below cannot leak into any pass downstream of the sky draw. sceneFBO_'s
     // depth attachment is GL_DEPTH24_STENCIL8 (real stencil bits available --
     // see createFBOs() sceneDepthTex_ alloc), so no fallback design is needed.
-    const bool skyExclude = skyboxFogExcludeEnabled();
     GLboolean prevStencilTest = GL_FALSE;
     GLint     prevStencilFunc = GL_ALWAYS, prevStencilRef = 0, prevStencilValueMask = 0xFF;
     GLint     prevStencilFail = GL_KEEP, prevStencilZFail = GL_KEEP, prevStencilZPass = GL_KEEP;
     GLint     prevStencilWriteMask = 0xFF;
-    if (skyExclude) {
+    {
         prevStencilTest = glIsEnabled(GL_STENCIL_TEST);
         glGetIntegerv(GL_STENCIL_FUNC,       &prevStencilFunc);
         glGetIntegerv(GL_STENCIL_REF,        &prevStencilRef);
@@ -245,7 +244,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     // consult stencil for pixels where rawDepth is still the clear value
     // (nothing drew there); terrain pixels have rawDepth != 0 and never
     // reach the stencil check regardless of what stencil holds underneath.
-    if (skyExclude) {
+    {
         if (!hdriSkyboxStencilTagProg_) {
             static const char* kStencilTagPrefix = "#version 430\n";
             hdriSkyboxStencilTagProg_ = glsl_program::makeProgram(
@@ -275,7 +274,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
             // away from sky (nothing else in the renderer clears stencil),
             // so fog would incorrectly stay excluded there. Cheap because
             // it's a single clear of the currently-bound sceneFBO_'s stencil
-            // plane, gated behind skyExclude so gate-OFF has zero cost.
+            // plane.
             {
                 const GLint zero = 0;
                 glClearBufferiv(GL_STENCIL, 0, &zero);
@@ -323,7 +322,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
 
     // SKYBOX-FOG-EXCLUDE-1: restore stencil state exactly (mirrors the
     // depth/blend/cull restore pattern above).
-    if (skyExclude) {
+    {
         if (prevStencilTest) glEnable(GL_STENCIL_TEST); else glDisable(GL_STENCIL_TEST);
         glStencilFunc((GLenum)prevStencilFunc, prevStencilRef, (GLuint)prevStencilValueMask);
         glStencilOp((GLenum)prevStencilFail, (GLenum)prevStencilZFail, (GLenum)prevStencilZPass);

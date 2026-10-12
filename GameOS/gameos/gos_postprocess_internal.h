@@ -103,7 +103,6 @@ float mc2ShadowMechSoft();
 int mc2PropShadowReceive();
 bool mc2ShadowGuardClampedSun();
 bool mc2CloudShadowEnabled();
-bool skyboxFogExcludeEnabled();
 bool sceneGlProducerQueryEnabled();
 void lostFrameEnd();
 void lostShutdown();

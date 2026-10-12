@@ -720,10 +720,9 @@ void gosPostProcess::runEdgeFog()
     edgeFogProg_->setFloat("u_horizonFadeStartSin", fogHorizonFadeStartSin_);
     edgeFogProg_->setFloat("u_horizonFadeEndSin",   fogHorizonFadeEndSin_);
 
-    // SKYBOX-FOG-EXCLUDE-1: gate-ON only; default OFF -> u_skyExcludeEnabled=0,
-    // stencilTex left unbound (unit 1 stays whatever it was -- shader never
-    // reads it when the uniform is 0, so this is byte-identical OFF).
-    const bool skyExclude = skyboxFogExcludeEnabled() && sceneStencilViewTex_ != 0;
+    // SKYBOX-FOG-EXCLUDE-1: without the stencil view u_skyExcludeEnabled=0 and
+    // stencilTex stays unbound (the shader never reads it when the uniform is 0).
+    const bool skyExclude = sceneStencilViewTex_ != 0;
     edgeFogProg_->setInt("u_skyExcludeEnabled", skyExclude ? 1 : 0);
     if (skyExclude) {
         edgeFogProg_->setInt("stencilTex", 1);
@@ -835,10 +834,9 @@ void gosPostProcess::runFogOob()
     fogOobProg_->setFloat("u_horizonFadeStartSin", fogHorizonFadeStartSin_);
     fogOobProg_->setFloat("u_horizonFadeEndSin",   fogHorizonFadeEndSin_);
 
-    // SKYBOX-FOG-EXCLUDE-1: gate-ON only; default OFF -> u_skyExcludeEnabled=0,
-    // stencilTex left unbound (shader never reads it when the uniform is 0,
-    // so this is byte-identical OFF).
-    const bool skyExclude = skyboxFogExcludeEnabled() && sceneStencilViewTex_ != 0;
+    // SKYBOX-FOG-EXCLUDE-1: without the stencil view u_skyExcludeEnabled=0 and
+    // stencilTex stays unbound (the shader never reads it when the uniform is 0).
+    const bool skyExclude = sceneStencilViewTex_ != 0;
     fogOobProg_->setInt("u_skyExcludeEnabled", skyExclude ? 1 : 0);
     if (skyExclude) {
         fogOobProg_->setInt("stencilTex", 1);

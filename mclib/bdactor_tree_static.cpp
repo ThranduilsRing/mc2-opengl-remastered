@@ -270,7 +270,7 @@ void TreeAppearance::registerStatic() {
 			uint32_t flags = 0;
 			if (child->GetLightsOut())   flags |= (1u << 0);
 			if (child->GetIsWindow())    flags |= (1u << 1);
-			if (propFoliageAlphaFlag() && child->GetIsAlphaTest()) flags |= (1u << 2);
+			if (child->GetIsAlphaTest())   flags |= (1u << 2);   // FOLIAGE-ALPHAFLAG-1: kFlagIsAlphaTest, as submitMultiShape sets it
 			Stuff::Matrix4D xform(rec->shapeToWorld);
 			GpuStaticPropInstance inst;
 			if (!GpuStaticPropBatcher::instance().buildRecipeFromShape(
