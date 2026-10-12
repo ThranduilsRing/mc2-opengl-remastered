@@ -800,7 +800,10 @@ def selftest_registry_guard(registry_path: str) -> int:
             print("  FAIL  clean table was REFUSED: %s" % exc)
             failures += 1
         else:
-            ok = len(reg) > 300
+            # The floor only guards an empty or torn read; gate amnesty wave 1 (2026-10-12)
+            # took the registry from 351 rows toward the < 30-gate target, so it sits
+            # well below today's count rather than tracking it.
+            ok = len(reg) > 100
             print("  %s  clean table reads: %d registry entries" % ("OK  " if ok else "FAIL", len(reg)))
             failures += 0 if ok else 1
 

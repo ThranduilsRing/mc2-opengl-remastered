@@ -50,7 +50,7 @@
 //  TRUE   terrain mix(0.35,1.20,diffuse)      shaders/terrain_lod_chunk.frag:1872
 //         ...but the FLOOR IS NOT 0.35. diffuse = clamp(NdotL, 0.02, 1.0) on
 //         :1871, so the reachable floor is mix(0.35,1.20,0.02) = 0.367.
-//  TRUE   cement exemption, u_cementLit=0     shaders/terrain_lod_chunk.frag:1878
+//  TRUE   cement exemption (flat-lit)        shaders/terrain_lod_chunk.frag:1878
 //  TRUE   mech clamp(0.35 + A + S*ndl, 0, 1)  shaders/mech.vert:204,218-224
 //  FALSE  vehicle "A + S*ndl, no floor, no clamp".  STALE by two commits.
 //         VEHICLE-AMBIENT-FLOOR-1 (e3310409) is IN HEAD and DEFAULT-ON:
@@ -301,8 +301,7 @@ static double terrainMul(double ndl)
 static const double kTerrainFloor = 0.35 + (1.20 - 0.35) * 0.02;  // 0.367, NOT 0.35
 static const double kTerrainCeil  = 1.20;
 
-// shaders/terrain_lod_chunk.frag:1878  float cementLight = mix(1.0, normalLight, u_cementLit);
-// u_cementLit defaults to 0 (MC2_CEMENT_LIT default-OFF) -> flat 1.0.
+// shaders/terrain_lod_chunk.frag: cement is fully flat-lit (normalLight -> 1.0 on pureConcrete).
 static double cementMul() { return 1.0; }
 
 // shaders/mech.vert:204 (kAmbientFloor = 0.35), :218-222 (base = vec3(0.35)

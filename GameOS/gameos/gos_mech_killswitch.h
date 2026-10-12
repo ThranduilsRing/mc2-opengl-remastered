@@ -58,9 +58,8 @@ struct MechPreviewRenderScope {
 
 // Slice C1: render-side mech cull. Skips submitActor for mechs the
 // GPU frustum/visibility shader marks invisible. RENDER-ONLY — does
-// NOT cascade into update/AI/lifecycle. No effect when g_useGpuMechs
-// is off. Independent of MC2_GPU_CULL_LIFECYCLE.
-extern bool g_useGpuMechCull;
+// NOT cascade into update/AI/lifecycle. Unconditional under g_useGpuMechs
+// since gate amnesty wave 1 (the MC2_GPU_MECH_CULL=0 arm had no user).
 
 // MECH-KILLSWITCH-SKIN-RETIRE-1 (2026-06-23): MC2_GPU_MECH_SKIN (Slice C2,
 // default-ON) RETIRED to constant. u_skinningMode is now always 1 (weighted).
@@ -74,24 +73,18 @@ extern bool g_useGpuMechCull;
 // for the GPU mech body. Skips the per-vertex CPU lighting kernel that
 // consumes ~65µs/mech and whose output (listOfVertices[j].argb) is only
 // consumed by the legacy CPU Render(true) path that Slice A bypasses.
-// Independent of g_useGpuMechs / g_useGpuMechLighting for bisect
-// granularity. Requires g_useGpuMechs=true to take effect (when GPU
+// Unconditional under g_useGpuMechs since gate amnesty wave 1 (when the GPU
 // mech path is off, the legacy path NEEDS the lighting bake's output).
-// BODY-ONLY: arms (mech3d.cpp:4459, :4543) and shadow (mech3d.cpp:3377)
-// stay full TransformMultiShape; their Render(true) callers still need
-// listOfVertices[*].argb populated.
-extern bool g_useGpuMechFastTransform;
+// BODY-ONLY: arms and the shadow shape keep their own transform variants;
+// their Render(true) callers still need listOfVertices[*].argb populated.
 
 // Slice C3-shadow (2026-05-09): wire TransformMultiShape_PositionsOnly
 // for the mech SHADOW shape callsite (mech3d.cpp:3377). Recon proved
 // RenderShadows hardcodes gVertex.argb (tgl.cpp:3636/3645/3654) and uses
 // listOfShadowTVertices populated by MultiTransformShadows (which still
 // dispatches at msl.cpp:1765 in both branches); the per-vertex CPU
-// lighting bake's output is unused by the shadow render path. Independent
-// of g_useGpuMechs / g_useGpuMechFastTransform for bisect granularity.
-// Requires g_useGpuMechs=true to take effect (mirrors C3-revised body
-// slice gating discipline).
-extern bool g_useGpuMechShadowFastTransform;
+// lighting bake's output is unused by the shadow render path. Unconditional
+// under g_useGpuMechs since gate amnesty wave 1.
 
 // MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1 (2026-06-23): the former
 // MC2_GPU_MECH_SHADOW_SKIP and MC2_GPU_MECH_SHADOW_STATE_STRIP killswitches
@@ -103,7 +96,6 @@ extern bool g_useGpuMechShadowFastTransform;
 // always on by default. Behavior now lives inline, still guarded by
 // g_useGpuMechs && gos_IsTerrainTessellationActive() (the real conditions; the
 // CPU / non-tess paths still do the work). Audit: MECH-KILLSWITCH-AUDIT-1.
-// (MC2_GPU_MECH_SHADOW_FAST_TRANSFORM is a DIFFERENT, still-live flag — untouched.)
 
 // Slice D-leaf-skip-v2 (2026-05-09): strip per-leaf body of mechShape->
 // TransformMultiShape* (per-leaf pool alloc + per-vertex screen-space
@@ -117,10 +109,8 @@ extern bool g_useGpuMechShadowFastTransform;
 // submitActor + getNodePosition read only listOfShapes[i].shapeToWorld
 // (hierarchy-level), preserved by leaf-skip.
 //
-// Independent of g_useGpuMechs / fast-transform / shadow-skip / state-strip
-// flags for bisect granularity. Requires g_useGpuMechs=true AND
-// gos_IsTerrainTessellationActive() to take effect.
-extern bool g_useGpuMechLeafSkip;
+// Unconditional under g_useGpuMechs AND the modern shadow path since gate
+// amnesty wave 1 (the MC2_GPU_MECH_LEAF_SKIP=0 arm had no user).
 
 // MECH-KILLSWITCH-SENSORSKIP-RETIRE-1 (2026-06-23): the former
 // MC2_GPU_MECH_SENSOR_SKIP killswitch (Slice D-sensor-skip, default-ON) is

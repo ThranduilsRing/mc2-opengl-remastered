@@ -85,8 +85,8 @@ EXEMPT: dict[str, str] = {
     "mclib/bdactor_tree_static.cpp": _BDACTOR_PRODUCER,
     "mclib/bdactor_update.cpp": _BDACTOR_PRODUCER,
     # mclib/mech3d.cpp was exempt here until MECH-LIGHTROW-FRESHNESS-1 made the
-    # GPU-mech submit path read getCachedFrame() (gate MC2_MECH_LIGHT_FRESHNESS,
-    # default-ON). The exemption is deleted rather than reworded so this file
+    # GPU-mech submit path read getCachedFrame() (unconditional since gate
+    # amnesty wave 1). The exemption is deleted rather than reworded so this file
     # stops advertising an open defect that is closed.
     #
     # MECH-DECLINE-FIX-1 amendment: that slice originally DECLINED the submit on

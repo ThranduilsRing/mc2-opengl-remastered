@@ -294,11 +294,6 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 					          sun[0], sun[1], sun[2]);
 				}
 			}
-			// [LIGHTBAKE-PROOF v1] slot-write integrity check (match=1 = permanent slot
-			// faithfully stores the gathered leaf; NOT an independent A/B — see the
-			// function comment in txmmgr.cpp). pos/appearance are diagnostic labels.
-			// Slot written synchronously just above. No-op unless MC2_LIGHTBAKE_PARITY.
-			mc2LightBakeParityCheck(recipeIndex, leaf, 0.0f, 0.0f, 0.0f, nullptr);
 			shape->EmitBakedGpuLightData(recipeIndex, *leaf);
 		}
 	}

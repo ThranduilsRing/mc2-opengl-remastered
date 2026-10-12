@@ -114,29 +114,7 @@ bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 // TRANSPARENCY-1) -- never honours MC2's legacy 0xFF00FF colourkey. Any magenta
 // left in a solid cement cell is packed into the gutterless atlas and sampled
 // GL_LINEAR, which shows as thin pink lines/patches along road and pad edges.
-// A census is ALWAYS printed (so a map can be judged without a gate); zeroing is
-// gated MC2_CEMENT_ATLAS_MAGENTA_KEY (default OFF).
-bool CementAtlasMagentaKeyEnabled() {
-    static const bool s = mc2::gate::get<"MC2_CEMENT_ATLAS_MAGENTA_KEY">();
-    return s;
-}
-
-// CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1, "missing road swaths"):
-// a TRANSITION (isCement && isAlpha) tile only gets a cement word when at least
-// one of its four corner terrainTypes resolves to a SOLID cement catalog layer
-// (`cementLayerIdx != 0xFFFF`) AND deriveMaskIdFromCorners returns >= 0. A road
-// or apron tile whose corners are all road/terrain types -- common where a road
-// runs across open ground away from a pad -- satisfies neither, so it bakes NO
-// cement word and the fragment falls back to the bare baked colormap. Since the
-// paving/road ART lives in the cement catalog (verifiable with
-// MC2_TERRAIN_LOD_CHUNK_DIAG=262144), those tiles render as bare dirt: the road
-// runs, drops out for a stretch, and resumes. When ON, such a dropped tile
-// inherits the cement layer of an orthogonally adjacent tile that DID bake a
-// word, so the run stays continuous. Default OFF => not one word changes.
-static bool CementTransitionFallbackEnabled() {
-    static const bool s = mc2::gate::get<"MC2_CEMENT_TRANSITION_FALLBACK">();
-    return s;
-}
+// A census is ALWAYS printed so a map can be judged; the texels are left as authored.
 
 // CEMENT-ALPHA-LAND-1 (successor to RUNWAY-APRON-TONE-2; user has now hit
 // "we are missing part of the runway" on three maps):
@@ -163,17 +141,11 @@ static bool CementTransitionFallbackEnabled() {
 // Deliberately NARROW: the new path fires ONLY on tiles the existing logic
 // DROPS. Tiles that already bake a marching-squares word keep it untouched, so
 // the user-approved CEMENT-HARD-EDGE-1 crisp transitions are not disturbed.
-// Default OFF => not one atlas texel and not one cement word changes.
-bool CementAlphaAtlasEnabled() {
-    // RUNWAY-CLOSE-1 (2026-08-02): DEFAULT ON. Measured at the user's mc2_10
-    // saved_204907 bookmark (exe 30c18df1): rescued swath px 15 -> 6506, their
-    // luma 32.4 (bare dirt) -> 54.7 = the historical on-concrete runway value
-    // (65.0-65.7 at runway_wide), i.e. the user criterion "the color they are
-    // on top of concrete". Control pose byte-identical. MC2_CEMENT_ALPHA_ATLAS=0
-    // restores the drop (bare-dirt gaps + pale word==0 runway).
-    static const bool s = mc2::gate::get<"MC2_CEMENT_ALPHA_ATLAS">();
-    return s;
-}
+// RUNWAY-CLOSE-1 (2026-08-02): always on. Measured at the user's mc2_10
+// saved_204907 bookmark (exe 30c18df1): rescued swath px 15 -> 6506, their
+// luma 32.4 (bare dirt) -> 54.7 = the historical on-concrete runway value
+// (65.0-65.7 at runway_wide), i.e. the user criterion "the color they are
+// on top of concrete". Control pose byte-identical.
 
 // Slot -> atlas layer index for ALPHA (transition) cement slots. Kept SEPARATE
 // from g_cementLayerIndexBySlot on purpose: that map is also the "is this
@@ -393,69 +365,13 @@ static const float kConcreteLumHi      = 1.32f;
 static const float kConcreteMarkDelta  = 60.f;   // L - bandL beyond this = bright paint
 static const float kConcreteMarkFrac   = 0.02f;  // >2% such texels = cell carries markings
 
-// ---------------------------------------------------------------------------
-// CEMENT-INTRACELL-1 (ARM C) tunables. MEASURED, mc2_24/23/05/03/01/10 atlas
-// dumps 2026-07-28. The "large dark region" CEMENT-ATLAS-CELL-2 found in 78/110
-// mc2_24 cells and recorded as "authored material (joints, tarmac, shadowed
-// detail)" is NOT material variation: it is a BAKED ASPHALT ROAD TILESET --
-// straights, curves, T-junctions, crossroads with crosswalk stripes, end caps
-// and a multi-lane highway-with-guardrail piece -- authored directly into the
-// SOLID cement catalog cells. Rendering the dumped atlas shows the pieces
-// plainly. The prior lane's marking test could not see them because it looked
-// only at the BRIGHT side (L - bandL > 60), and asphalt is DARK.
-//
-// The classification must be done against the cell's own CONCRETE BACKGROUND
-// (the [P60,P95] upper mode), NOT against the whole-cell band mean, because on
-// a road-heavy cell the road drags the band mean down and hides itself.
-// Measured with that split, across all six maps:
-//   concrete background   L = 144.7 .. 149.5   (mc2_24, spread 4.7, std 0.89)
-//   baked road art        L =  66.2 ..  86.2
-//   step background->road ~ 65 luma, hard-edged at the art boundary
-// i.e. THE CONCRETE IS ALREADY ONE COLOUR. What changes colour inside a
-// concrete cell is a road.
+// CEMENT-INTRACELL-1 road-art thresholds. MEASURED (mc2_24/23/05/03/01/10 atlas
+// dumps 2026-07-28): a solid cement cell carries a BAKED ASPHALT ROAD TILESET
+// as dark texels 65 luma below its concrete background (background L 144.7..149.5,
+// road art L 66.2..86.2, hard-edged), so a cell is classified against its own
+// [P60,P95] background, not the band mean the road drags down.
 static const float kRoadArtDarkDelta = 40.f;   // bgL - L beyond this = asphalt
 static const float kRoadArtFrac      = 0.05f;  // >5% such texels = cell carries road art
-
-// ARM C. Detect the baked road art and EXCLUDE those cells from every concrete
-// treatment (ARM A tone, ARM B canon). Default OFF.
-//
-// WHY THIS IS THE ARM. The user's scope ruling put roads OUT of scope --
-// "obviously runways, roads, other overlays etc. are their own layer and are
-// currently handled by the shader." For the &Overlays class that is true. For
-// THIS class it is not: the road is painted into the terrain texture catalog,
-// so TileIsRoadArt() calls it "solid cement, not road" and every concrete lever
-// treats a road as concrete. Consequence, measured offline on the dumps:
-// ARM B repoints 90-100% of the road-carrying cells at its canonical cell, and
-// on 5 of the 6 maps that canonical cell is ITSELF a road tile -- so ARM B
-// replaces every junction, curve and end cap with one straight segment AND
-// stamps that segment across every plain concrete tile on the map. ARM C is
-// what makes the concrete arms obey the user's own scope ruling.
-//
-// ON, with both other arms OFF, this gate is a pixel no-op: it only changes
-// which cells ARM A / ARM B are allowed to touch.
-bool RoadArtDetectEnabled() {
-    static const bool s = mc2::gate::get<"MC2_CEMENT_ROAD_ART_DETECT">();
-    return s;
-}
-
-// ARM A. Tone-normalise ONLY the concrete family. Default OFF => atlasBuf is
-// left byte-identical. Differs from the user-rejected MC2_CEMENT_TONE_MATCH in
-// the SET it acts on, not the arithmetic: that gate moved every solid cell
-// toward a whole-atlas median with a [0.70,1.40] clamp; this one moves only
-// cells that pass the neutrality+luminance concrete test, toward the family's
-// OWN median, and never touches an asphalt/dirt/coloured cell at all.
-bool ConcreteToneEnabled() {
-    static const bool s = mc2::gate::get<"MC2_CEMENT_CONCRETE_TONE">();
-    return s;
-}
-
-// ARM B. Point every plain-concrete slot at ONE canonical concrete cell, so the
-// apron cannot change colour tile to tile. Cells carrying painted markings are
-// excluded and keep their own art. Default OFF => no remap => byte-identical.
-bool ConcreteCanonEnabled() {
-    static const bool s = mc2::gate::get<"MC2_CEMENT_CONCRETE_CANON">();
-    return s;
-}
 
 // ---------------------------------------------------------------------------
 // CEMENT-ATLAS-CELL-2: the CONCRETE-FAMILY classifier, shared by both arms.
@@ -597,28 +513,12 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
     for (int k = 0; k < NT; ++k) {
         const CementCellStats& c = st[(size_t)k];
         if (!c.family || c.marks) continue;
-        // ARM C: never canonicalise ON a road tile. Without this the canonical
-        // cell is itself a road piece on 5 of the 6 measured maps, so ARM B
-        // stamps a road segment across every plain concrete tile on the map.
-        if (RoadArtDetectEnabled() && c.road) continue;
         const float d = (c.r - refR) * (c.r - refR)
                       + (c.g - refG) * (c.g - refG)
                       + (c.b - refB) * (c.b - refB);
         if (d < bestD - 1e-4f) { bestD = d; canon = k; }
     }
     return canon;
-}
-
-// RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
-// that abut BARE terrain (no authored transition art), curing the hard full-tile
-// stairstep cliff. Default OFF (killswitch). When ON, PopulateRecipeCementWords
-// packs a 4-neighbour "open" mask into cementWord bits 19:16 for solid cement
-// boundary tiles; gos_terrain.frag ramps cement -> terrain over the outer half
-// tile (discrete SDF). OFF => no mask bits => the frag's featherAlpha collapses
-// to 1.0 => byte-identical stock full replacement.
-static bool RunwayEdgeBlendEnabled() {
-    static const bool s = mc2::gate::get<"MC2_RUNWAY_EDGE_BLEND">();
-    return s;
 }
 
 
@@ -835,8 +735,7 @@ void PopulateRecipeCementWords() {
                                    | ((uint32_t)(maskId & (int)kCementMaskIdMask) << kCementMaskIdShift)
                                    | ((uint32_t)cementLayerIdx & 0xFFFFu);
                         ++transitionQuadCount;
-                    } else if (CementAlphaAtlasEnabled()
-                               && g_cementAlphaLayerMapReady
+                    } else if (g_cementAlphaLayerMapReady
                                && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
                         // CEMENT-ALPHA-LAND-1 rescue. This tile is a transition
                         // tile the legacy logic DROPS -- it has no solid-cement
@@ -890,12 +789,9 @@ void PopulateRecipeCementWords() {
     // whole-tile state anyway -- CEMENT-HARD-EDGE-1 -- so the outline shape is
     // unaffected and only the missing paving is restored).
     MC2_DIAGF("[CEMENT_TRANSITION_DROP v1] event=census mission=%s transition_baked=%ld "
-           "dropped_no_layer=%ld dropped_no_mask=%ld fallback=%d "
-           "alpha_atlas=%d alpha_rescued=%ld\n",
+           "dropped_no_layer=%ld dropped_no_mask=%ld alpha_rescued=%ld\n",
            (::missionName[0] ? ::missionName : "unknown"), transitionQuadCount,
-           transitionDroppedNoLayer, transitionDroppedNoMask,
-           CementTransitionFallbackEnabled() ? 1 : 0,
-           CementAlphaAtlasEnabled() ? 1 : 0, transitionAlphaRescued);
+           transitionDroppedNoLayer, transitionDroppedNoMask, transitionAlphaRescued);
     // CEMENT-UNIFORM-2: the denominator [CEMENT_TRANSITION_DROP v1] cannot see.
     // paved_no_cement = pavement that renders as LIT colormap+decal beside a
     // lighting-exempt cement apron -- the tone split the user reports, and the
@@ -1054,87 +950,6 @@ void PopulateRecipeCementWords() {
             g_denseRecipeDirty[vn] = true;
         }
         mc2::fmt::print_out("[PAVED_OVERLAY_CLASS v1] event=applied mission={} mode={:d} flat_baked={:d} albedo_baked={:d} global_layer={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(mode), mc2::fmt::as_i32(pavedFlatBaked), mc2::fmt::as_i32(pavedAlbedoBaked), mc2::fmt::as_i32((globalCementLayer == 0xFFFFu) ? -1 : (int)globalCementLayer));
-        fflush(stdout);
-    }
-
-    if (CementTransitionFallbackEnabled() && blocks && tt) {
-        const std::vector<uint32_t> before = chunkCementWords;
-        auto wordAt = [&](long x, long y) -> uint32_t {
-            if (x < 0 || y < 0 || x >= mapSide || y >= mapSide) return 0u;
-            const size_t ci = (size_t)y * (size_t)mapSide + (size_t)x;
-            return ci < before.size() ? before[ci] : 0u;
-        };
-        long repaired = 0;
-        for (size_t vn = 0; vn < N; ++vn) {
-            const long mx = (long)vn % mapSide;
-            const long my = (long)vn / mapSide;
-            if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
-            if (vn >= chunkCementWords.size()) continue;
-            if ((chunkCementWords[vn] & kCementLayerValidBit) != 0u) continue;  // already paved
-            const DWORD texData = Terrain::mapData->getTexture(my, mx);
-            const DWORD slot    = texData & 0xFFFFu;
-            if (slot >= (DWORD)MC_MAX_TERRAIN_TXMS) continue;
-            if (!(tt->isCement(slot) && tt->isAlpha(slot))) continue;  // only dropped transitions
-            uint32_t donor = 0u;
-            const uint32_t cand[4] = { wordAt(mx + 1, my), wordAt(mx - 1, my),
-                                       wordAt(mx, my - 1), wordAt(mx, my + 1) };
-            for (int i = 0; i < 4; ++i) {
-                if ((cand[i] & kCementLayerValidBit) != 0u) { donor = cand[i]; break; }
-            }
-            if (donor == 0u) continue;
-            const uint32_t word = kCementLayerValidBit
-                                | kCementTransitionBit
-                                | ((uint32_t)((int)kCementMaskIdMask) << kCementMaskIdShift)
-                                | (donor & 0xFFFFu);
-            chunkCementWords[vn] = word;
-            memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
-            g_denseRecipeDirty[vn] = true;
-            ++repaired;
-        }
-        MC2_DIAGF("[CEMENT_TRANSITION_DROP v1] event=fallback_applied mission=%s repaired=%ld\n",
-               (::missionName[0] ? ::missionName : "unknown"), repaired);
-        fflush(stdout);
-    }
-
-    // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): second pass — pack a 4-neighbour
-    // "open border" mask into cementWord bits 19:16 for SOLID cement boundary
-    // tiles (valid && !transition) that abut BARE terrain. gos_terrain.frag reads
-    // it to feather the pad/runway perimeter over the outer half tile. Neighbours
-    // that carry ANY valid cement word (solid OR transition) count as cement, so
-    // authored transition edges are left alone (legacy blend owns them) and only
-    // the hard solid-cement-vs-terrain cliffs get feathered. Gate OFF => no bits
-    // written => frag feather collapses to full replacement (byte-identical stock).
-    if (RunwayEdgeBlendEnabled()) {
-        auto cementPresent = [&](long x, long y) -> bool {
-            if (x < 0 || y < 0 || x >= mapSide || y >= mapSide) return false;
-            const size_t ci = (size_t)y * (size_t)mapSide + (size_t)x;
-            return ci < chunkCementWords.size()
-                   && (chunkCementWords[ci] & kCementLayerValidBit) != 0u;
-        };
-        long runwayFeatheredTiles = 0;
-        for (size_t vn = 0; vn < N; ++vn) {
-            const long mx = (long)vn % mapSide;
-            const long my = (long)vn / mapSide;
-            if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
-            if (vn >= chunkCementWords.size()) continue;
-            const uint32_t cw = chunkCementWords[vn];
-            if ((cw & kCementLayerValidBit) == 0u) continue;   // not cement
-            if ((cw & kCementTransitionBit) != 0u) continue;   // transition: legacy owns edge
-            uint32_t edge = 0u;
-            if (!cementPresent(mx + 1, my))     edge |= (1u << 16);  // E (+x) open
-            if (!cementPresent(mx - 1, my))     edge |= (1u << 17);  // W (-x) open
-            if (!cementPresent(mx,     my - 1)) edge |= (1u << 18);  // N (-y) open
-            if (!cementPresent(mx,     my + 1)) edge |= (1u << 19);  // S (+y) open
-            if (edge == 0u) continue;                                 // interior tile
-            chunkCementWords[vn] |= edge;
-            uint32_t w;
-            memcpy(&w, &g_denseRecipes[vn]._wp3, 4);
-            w |= edge;
-            memcpy(&g_denseRecipes[vn]._wp3, &w, 4);
-            g_denseRecipeDirty[vn] = true;
-            ++runwayFeatheredTiles;
-        }
-        mc2::fmt::print_out("[RUNWAY_EDGE_BLEND] event=edge_mask_baked feathered_solid_tiles={:d}\n", mc2::fmt::as_i32(runwayFeatheredTiles));
         fflush(stdout);
     }
 

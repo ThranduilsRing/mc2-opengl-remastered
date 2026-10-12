@@ -834,15 +834,6 @@ TEST_CASE("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR is an Enum of 1, 2, 4 that reads 1
     }
 }
 
-TEST_CASE("MC2_MISSION_INTRO_LEGACY_RENDER is a presence gate that defaults off") {
-    const gate::Row& r = g1b::rowNamed("MC2_MISSION_INTRO_LEGACY_RENDER");
-    CHECK(r.rule == Rule::Presence);
-    CHECK_FALSE(r.defBool);
-    CHECK_FALSE(rowValue(r, nullptr));
-    CHECK(rowValue(r, ""));
-    CHECK(rowValue(r, "0"));
-}
-
 TEST_CASE("isNonEmpty is the old v && v[0] test, whatever the row kind") {
     EnvVar env("MC2_TERRAIN_AMBIENT_FLOOR");
     gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");

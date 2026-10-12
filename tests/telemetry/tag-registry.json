@@ -306,7 +306,7 @@
       "gate": false,
       "counter_fields": ["event"],
       "doc": "docs/tier1_env_vars.md",
-      "notes": "Light bake / permanent light data event (MC2_LIGHTBAKE_STABILITY, MC2_LIGHTBAKE_PARITY)."
+      "notes": "Light bake / permanent light data event (MC2_LIGHTBAKE_STABILITY)."
     },
     {
       "tag": "LIGHTBRIDGE",

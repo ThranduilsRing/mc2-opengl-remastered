@@ -639,8 +639,6 @@ void gosRenderer::init() {
         locs.terrainCliffShadowFloor = glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
         // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only).
         locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
-        // RUNWAY-CLOSE-1: flat-light exemption A/B arm (overlayProg_ only).
-        locs.overlayArtFlatExempt = glGetUniformLocation(shp, "u_overlayArtFlatExempt");
         // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (shared VS, both programs).
         locs.overlayBiasLegacy = glGetUniformLocation(shp, "u_overlayBiasLegacy");
         // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (overlayProg_ only).
@@ -654,10 +652,6 @@ void gosRenderer::init() {
         locs.padGlow        = glGetUniformLocation(shp, "u_padGlow");
         locs.padGlowSpill   = glGetUniformLocation(shp, "u_padGlowSpill");
         locs.padGlowMapSide = glGetUniformLocation(shp, "u_padGlowMapSide");
-        // OVERLAY-CEMENT-SHADOW-MATCH-1 (overlayProg_ only; decal.frag does not
-        // declare it, so the loc stays -1 there and the upload is skipped).
-        locs.overlayCementShadowMatch =
-            glGetUniformLocation(shp, "u_overlayCementShadowMatch");
         // OVERLAY-CEMENT-ADOPT-1. Absent from decal.frag => resolve to -1 there
         // => every upload below is skipped. Safe by construction.
         locs.overlayCementAdopt = glGetUniformLocation(shp, "u_overlayCementAdopt");

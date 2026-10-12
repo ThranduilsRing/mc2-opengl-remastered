@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1078
-registry_entry_count: 301
-verified_count: 1071
+gate_count: 1055
+registry_entry_count: 278
+verified_count: 1048
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -124,15 +124,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_ANIM_CADENCE_FIX
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: "ANIM-CADENCE-FIX: advance mech gait at most once per render frame; prevents a visible double-step when Mover::getLOSPosition() re-invokes..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_ANIM_CADENCE_FIX, kind: Feature, order: -1, default_on: true}
   - name: MC2_ANIM_CADENCE_GUARD
     kind: Bool
     default: false
@@ -743,15 +734,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_CEMENT_ALPHA_ATLAS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: "DEFAULT ON since RUNWAY-CLOSE-1 (2026-08-02), measured at the user's mc2_10 saved_204907 bookmark, exe 30c18df1: rescued swath pixels 15 -> 6506, rescued..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_ALPHA_ATLAS, kind: Feature, order: -1, default_on: true}
   - name: MC2_CEMENT_ATLAS_DUMP
     kind: String
     default: ""
@@ -761,15 +743,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_CEMENT_ATLAS_DUMP, kind: Trace, order: -1, default_on: false}
-  - name: MC2_CEMENT_ATLAS_MAGENTA_KEY
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid)..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY, kind: Feature, order: -1, default_on: false}
   - name: MC2_CEMENT_ATLAS_SEAM_FIX
     kind: Bool
     default: true
@@ -777,34 +750,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_CEMENT_CONCRETE_CANON
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "CEMENT-ATLAS-CELL-2 ARM B: point every plain-concrete tile at ONE canonical concrete cell, so an apron cannot change colour tile to tile at all."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_CONCRETE_CANON, kind: Feature, order: -1, default_on: false}
-  - name: MC2_CEMENT_CONCRETE_TONE
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "CEMENT-ATLAS-CELL-2 ARM A: tone-normalise ONLY the actual-concrete atlas cells."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_CONCRETE_TONE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_CEMENT_LIT
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully..."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_LIT, kind: Feature, order: -1, default_on: false}
   - name: MC2_CEMENT_MISSION_LIGHT
     kind: Bool
     default: true
@@ -812,33 +757,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_CEMENT_RAMP_WORD
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_RAMP_WORD, kind: Feature, order: -1, default_on: false}
-  - name: MC2_CEMENT_ROAD_ART_DETECT
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_ROAD_ART_DETECT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_CEMENT_TRANSITION_FALLBACK
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_CEMENT_TRANSITION_FALLBACK, kind: Feature, order: -1, default_on: false}
   - name: MC2_CHEAT_INFINITE_MONEY
     kind: Bool
     default: false
@@ -1474,7 +1392,7 @@ flags:
     doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 38, default_on: false}
+    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 37, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_FAR
     kind: Float
     default: 960
@@ -1722,15 +1640,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FULLBAKE_DIAG
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
-    doc: "SPOTLIGHT-DIRECTION-1 measurement instrument."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FULLBAKE_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_FXAA
     kind: Bool
     default: false
@@ -2211,38 +2120,6 @@ flags:
     doc: "[RETIRED] GPU mech batcher (gos_mech_batcher)."
     verified: true
     registry: {feature_id: MC2_FEATURE_GPU_MECHS, kind: Retired, order: 0, default_on: true}
-  - name: MC2_GPU_MECH_CULL
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU..."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_GPU_MECH_CULL, kind: Feature, order: -1, default_on: true}
-  - name: MC2_GPU_MECH_FAST_TRANSFORM
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_GPU_MECH_FAST_TRANSFORM, kind: Feature, order: -1, default_on: true}
-  - name: MC2_GPU_MECH_LEAF_SKIP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_GPU_MECH_LEAF_SKIP, kind: Feature, order: -1, default_on: true}
-  - name: MC2_GPU_MECH_SHADOW_FAST_TRANSFORM
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_OBJECTS
     kind: Bool
     default: true
@@ -2625,7 +2502,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 40, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 39, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2649,14 +2526,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_LIGHTBAKE_PARITY
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: baked permanent light record == gathered transient record byte/hash parity."
-    verified: true
-    registry: {feature_id: MC2_TRACE_LIGHTBAKE_PARITY, kind: Trace, order: -1, default_on: false}
   - name: MC2_LIGHTBAKE_REBAKE_ON_READY
     kind: Bool
     default: true
@@ -2988,7 +2857,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 42, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 41, default_on: true}
   - name: MC2_LIGHT_PREFIX_GPU_COPY
     kind: Bool
     default: false
@@ -3077,7 +2946,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 46, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 45, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -3449,15 +3318,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_MECH_LIGHT_FRESHNESS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_MECH_LIGHT_FRESHNESS, kind: Feature, order: 51, default_on: true}
   - name: MC2_MECH_LIGHT_TRACE
     kind: Bool
     default: false
@@ -3655,15 +3515,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_MISSION_INTRO_LEGACY_RENDER
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_MISSION_INTRO_LEGACY_RENDER, kind: Feature, order: 35, default_on: false}
   - name: MC2_MISSION_SPLIT
     kind: Bool
     default: false
@@ -3798,7 +3649,7 @@ flags:
     doc: "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 39, default_on: false}
+    registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 38, default_on: false}
   - name: MC2_NIGHT_FOG_DIM_SCALE
     kind: Float
     default: 0
@@ -3959,15 +3810,6 @@ flags:
     owner: unclassified
     doc: "Hide the OS cursor."
     verified: true
-  - name: MC2_OVERLAY_ART_FLATLIGHT
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me')."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_ART_FLATLIGHT, kind: Feature, order: 52, default_on: true}
   - name: MC2_OVERLAY_BIAS_LEGACY
     kind: Bool
     default: false
@@ -3983,16 +3825,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 44, default_on: true}
-  - name: MC2_OVERLAY_CEMENT_SHADOW_MATCH
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_SHADOW_MATCH, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 43, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -4217,15 +4050,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_PICK_FALLBACK_COARSE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: "MISSION-INTERFACE-PERF-1: coarse-to-fine closest-vertex fallback in Camera::inverseProject (mclib/camera.cpp)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_PICK_FALLBACK_COARSE, kind: Feature, order: -1, default_on: false}
   - name: MC2_PICK_RECON
     kind: Bool
     default: false
@@ -4405,7 +4229,7 @@ flags:
     range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_PROP_BASE_LIGHT_DIR, kind: Feature, order: 41, default_on: false}
+    registry: {feature_id: MC2_PROP_BASE_LIGHT_DIR, kind: Feature, order: 40, default_on: false}
   - name: MC2_PROP_FIXB_MVP
     kind: Bool
     default: true
@@ -4413,24 +4237,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_PROP_LIGHT_LATCH_DIAG
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: props
-    doc: "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_PROP_LIGHT_LATCH_DIAG, kind: Trace, order: -1, default_on: false}
-  - name: MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL
-    kind: Int
-    default: 120
-    rule: Prefix
-    owner: props
-    doc: "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL, kind: Trace, order: -1, default_on: false}
   - name: MC2_PROP_SHADOW_RECEIVE
     kind: Int
     default: 0
@@ -4764,15 +4570,6 @@ flags:
     doc: "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed."
     smoke_passthrough: true
     verified: true
-  - name: MC2_RUNWAY_EDGE_BLEND
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 = DILATION: cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_RUNWAY_EDGE_BLEND, kind: Feature, order: -1, default_on: false}
   - name: MC2_SCENE_LIGHTING_ASSERT
     kind: Bool
     default: false
@@ -4841,7 +4638,7 @@ flags:
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     verified: true
-    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 36, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 35, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
     default: false
@@ -5196,7 +4993,7 @@ flags:
     doc: "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 47, default_on: true}
+    registry: {feature_id: MC2_SHORELINE_LEGACY_SUPPRESS, kind: Feature, order: 46, default_on: true}
   - name: MC2_SHOT_RESULTS
     kind: Bool
     default: false
@@ -5826,7 +5623,7 @@ flags:
     doc: "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 50, default_on: true}
+    registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 49, default_on: true}
   - name: MC2_STATIC_PROP_LIVE_BUILDER
     kind: Bool
     default: false
@@ -6047,7 +5844,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 48, default_on: false}
+    registry: {feature_id: MC2_SUN_AXIS_FIX, kind: Feature, order: 47, default_on: false}
   - name: MC2_SUN_ELEVATION_FIX
     kind: Bool
     default: false
@@ -6056,7 +5853,7 @@ flags:
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 49, default_on: false}
+    registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 48, default_on: false}
   - name: MC2_TACMAP_FORMATION_LINE
     kind: Bool
     default: false
@@ -6322,7 +6119,7 @@ flags:
     doc: "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL, kind: Feature, order: 37, default_on: false}
+    registry: {feature_id: MC2_TERRAIN_DECAL, kind: Feature, order: 36, default_on: false}
   - name: MC2_TERRAIN_DECAL_COLORBLEND
     kind: Float
     default: 0.349999994
@@ -7377,7 +7174,7 @@ flags:
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 45, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 44, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -7386,7 +7183,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 43, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 42, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""

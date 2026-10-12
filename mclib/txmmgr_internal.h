@@ -130,7 +130,6 @@ uint32_t mc2LightSlotBakedHighWater();
 uint64_t mc2LightSlotDedupHits();
 uint64_t mc2LightSlotActorKeyHits();
 uint32_t mc2LightSlotTableCount();
-void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* gatheredLeaf, float wx, float wy, float wz, const char* appearance);
 void mc2PublishObjectLightPolicy(uint32_t classPolicy, bool sunRecolour, uint32_t sunARGB, bool sunDisabled, bool ambientRecolour, uint32_t ambientARGB, float posX, float posY, float posZ, float terrainSample);
 void mc2ClearObjectLightPolicy(void);
 void GatherLightsParameters(TG_HWLightsData* lights);

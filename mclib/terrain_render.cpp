@@ -310,11 +310,9 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 	// where solid may not yet be armed (e.g. first few frames before LUT resolves).
 	// MVP fallback: gameos_graphics.cpp uses gos_GetTerrainMVPMat4() when
 	// !IsFrameSolidArmed(), already handled (fix #3, water_fastpath_interim_fixes).
-	// Kill-switch: MC2_MISSION_INTRO_LEGACY_RENDER=1 restores solid-arm dependency.
-	static const bool s_introLegacy = mc2::gate::get<"MC2_MISSION_INTRO_LEGACY_RENDER">();
 	const bool g1 = s_fastPath;
-	// g2: solid-arm dependency — removed by default, restored by kill-switch.
-	const bool g2 = s_introLegacy ? gos_terrain_indirect::IsFrameSolidArmed() : true;
+	// g2: the solid-arm dependency is gone.
+	const bool g2 = true;
 	const bool g3 = WaterStream::IsReady();
 	const bool g4 = (WaterStream::GetRecipeCount() > 0);
 	const bool g5 = (Terrain::terrainTextures2 != nullptr);
@@ -328,7 +326,7 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 		static uint32_t s_lastSig = 0xffffffff;
 		if (sig != s_lastSig)
 		{
-			mc2::fmt::print_out("[WATER_GATE] fastPath={:d} armed={:d} streamReady={:d} recipes={:d} tex2={:d} introLegacy={:d} (sig=0x{:x})\n", mc2::fmt::as_i32(g1?1:0), mc2::fmt::as_i32(solidArmed?1:0), mc2::fmt::as_i32(g3?1:0), mc2::fmt::as_u32((unsigned)WaterStream::GetRecipeCount()), mc2::fmt::as_i32(g5?1:0), mc2::fmt::as_i32(s_introLegacy?1:0), mc2::fmt::as_u32(sig));
+			mc2::fmt::print_out("[WATER_GATE] fastPath={:d} armed={:d} streamReady={:d} recipes={:d} tex2={:d} (sig=0x{:x})\n", mc2::fmt::as_i32(g1?1:0), mc2::fmt::as_i32(solidArmed?1:0), mc2::fmt::as_i32(g3?1:0), mc2::fmt::as_u32((unsigned)WaterStream::GetRecipeCount()), mc2::fmt::as_i32(g5?1:0), mc2::fmt::as_u32(sig));
 			fflush(stdout);
 			s_lastSig = sig;
 		}

@@ -52,17 +52,6 @@ uniform int u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (de
 // byte-identical. Killswitch MC2_CEMENT_MISSION_LIGHT=0 force-uploads (1,1,1).
 // Uploaded by uploadOverlayUniforms_ (all binders of this frag route there).
 uniform PREC vec3      u_missionFlatLight;
-// RUNWAY-CLOSE-1 (MC2_OVERLAY_ART_FLATLIGHT, default 1 = stock): 0 uploads
-// u_overlayArtFlatExempt = 1.0, which EXEMPTS the non-adopt (authored road /
-// runway art) else-branch from the CEMENT-NIGHT-LIGHT-1 u_missionFlatLight
-// multiply. A/B arm for the reopened "runway is the wrong color" item.
-// NOTE (measured, do not re-derive): the chunk cement apron ALSO multiplies
-// u_missionFlatLight (terrain_lod_chunk.frag:999), so on mc2_10
-// (flatLight = 192/255 grey, LightDirPitch 180 -> ambient branch) full
-// exemption OVERBRIGHTENS art by ~1.33x relative to the apron. It exists to
-// measure that, not to be presumed correct.
-uniform PREC float     u_overlayArtFlatExempt;
-
 // NIGHT-LIGHT-POOLS-2b (gate MC2_TERRAIN_LIGHT_POOLS, shared with the chunk
 // terrain): road/runway/cement decals take the same additive light-pool term
 // as the terrain around them — without it a decal crossing a lit pool stayed
@@ -108,32 +97,10 @@ uniform PREC float u_padGlowSpill;   // feather distance (wu), < 128
 uniform int        u_padGlowMapSide; // chunk cement grid side (0 = unavailable)
 uniform PREC float u_padGlowHalfMap; // mapSide * 128 / 2 (wu)
 
-// OVERLAY-CEMENT-SHADOW-MATCH-1 (gate MC2_OVERLAY_CEMENT_SHADOW_MATCH, default
-// 0 = OFF = byte-identical). CEMENT-PATCHY-CAUSE-1 attributed the mc2_23 apron
-// "outlines of the concrete" to a SEAM BETWEEN TWO SHADERS, not to the cement
-// atlas: a paved surface is drawn partly by terrain_lod_chunk.frag (the cement
-// terrain) and partly by THIS shader (the overlay/decal layer, eid 3678 in
-// scratch/cpc1/rg_bm.rdc), and the two disagree about the concrete lighting
-// exemption. The chunk frag drops the STATIC (baked) shadow on concrete —
-// `shadow = mix(shadow, dynS, pureConcrete)` — while the overlay multiplies by
-// staticShadow * dynamicShadow unconditionally. Where the two layers abut, the
-// static-shadow term appears on one side of a hard polygon edge and not the
-// other, which reads as a tone outline through flat concrete.
-//
-// When armed, an overlay fragment whose OWN 128wu tile carries a VALID cement
-// word (bit31 — the same word the chunk frag keys `cementHit` off, and the same
-// SSBO already bound at binding 25 for the pad glow) drops staticShadow exactly
-// as the chunk frag does, keeping the dynamic shadow. No new binding, no new
-// texture fetch — one SSBO word. u_padGlowMapSide == 0 (legacy terrain path, no
-// chunk grid) => never armed => the SSBO is not read.
-uniform int u_overlayCementShadowMatch;
-
 // OVERLAY-CEMENT-ADOPT-1 (gate MC2_OVERLAY_CEMENT_ADOPT, default 1 = ON).
 // This is the delivered cure for the long-running "the concrete is a patchwork /
-// the transition tiles are the wrong colour" report, and it SUPERSEDES
-// MC2_OVERLAY_CEMENT_SHADOW_MATCH above (which is retained only as the narrow
-// legacy killswitch; the adopt path applies that same static-shadow exemption
-// and more).
+// the transition tiles are the wrong colour" report (it superseded the narrower
+// OVERLAY-CEMENT-SHADOW-MATCH-1 arm, deleted in gate amnesty wave 1).
 //
 // THE SEAM, from source. One physical concrete surface is drawn partly by
 // terrain_lod_chunk.frag and partly by THIS shader, and the two compute:
@@ -237,13 +204,6 @@ PREC vec3 overlayCementAlbedo(uint cw, PREC vec2 wp) {
     }
     PREC vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
     return texture(u_cementAtlasOv, cAtlasUV).rgb * u_missionFlatLight;
-}
-
-bool overlayOwnTileIsCement(PREC vec2 wp) {
-    if (u_overlayCementShadowMatch == 0 || u_padGlowMapSide <= 0) return false;
-    int cx = clamp(int(floor((wp.x + u_padGlowHalfMap) / 128.0)), 0, u_padGlowMapSide - 1);
-    int cy = clamp(int(floor((u_padGlowHalfMap - wp.y) / 128.0)), 0, u_padGlowMapSide - 1);
-    return (cementWordsPG[cx + cy * u_padGlowMapSide] & 0x80000000u) != 0u;
 }
 
 // Lockstep with terrain_lod_chunk.frag padGlowMask() — see the writeup there.
@@ -373,9 +333,7 @@ void main()
                     : tex_color.rgb * vec3(0.82, 0.80, 0.76);
         // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
         // albedo (cement transition tint — raw/unburned art).
-        // RUNWAY-CLOSE-1: u_overlayArtFlatExempt = 0.0 (default) keeps the
-        // stock multiply; 1.0 lifts the flat-pad light off authored art only.
-        c.rgb *= mix(u_missionFlatLight, vec3(1.0), u_overlayArtFlatExempt);
+        c.rgb *= u_missionFlatLight;
     }
 
     // Discard transparent pixels — cement transitions are binary-alpha tiles.
@@ -413,10 +371,6 @@ void main()
     float staticShadow  = calcShadow(WorldPos, shadowN, lightDir3, 8);
     float dynamicShadow = calcDynamicShadow(WorldPos, shadowN, lightDir3, 4);
     float shadow        = staticShadow * dynamicShadow;
-    // OVERLAY-CEMENT-SHADOW-MATCH-1: on a cement tile, match the chunk frag's
-    // concrete exemption (static shadow dropped, dynamic kept). Gate OFF =>
-    // overlayOwnTileIsCement() returns false on its first compare => unchanged.
-    if (overlayOwnTileIsCement(WorldPos.xy)) shadow = dynamicShadow;
     // OVERLAY-CEMENT-ADOPT-1: same exemption, applied to EVERY cement-classified
     // fragment (concrete transitions AND road/runway art sitting on cement), so
     // the two shaders agree on the shadow term. Matches terrain_lod_chunk.frag

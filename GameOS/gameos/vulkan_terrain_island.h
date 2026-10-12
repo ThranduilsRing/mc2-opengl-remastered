@@ -298,7 +298,7 @@ struct Mc2VkOverlayDraw {          // layout-matches GosDecalStaticDraw / Overla
 };
 struct Mc2VkOverlayFrame {         // GL-side per-frame overlay inputs (gameos_graphics.cpp)
     float   fogColor[4];           // gosRenderer fog_color_ (decal vertex-fog mix)
-    float   artFlatExempt;         // MC2_OVERLAY_ART_FLATLIGHT arm (0 = stock)
+    float   artFlatExempt;         // always 0 (stock flat-pad multiply); kept for the push-constant layout
     float   mapHalfExtent;         // pp->getMapHalfExtent()
     int32_t biasLegacy;            // MC2_OVERLAY_BIAS_LEGACY
     int32_t cementAdopt;           // MC2_OVERLAY_CEMENT_ADOPT (default 1)
