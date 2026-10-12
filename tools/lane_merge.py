@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -230,6 +231,25 @@ def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
     return results
 
 
+def git_bash(which=shutil.which, exists=os.path.exists, environ=None) -> str:
+    """The bash that runs the verify .sh scripts. WHY: CreateProcess searches System32 before PATH, so a bare
+    "bash" from a Python child is the WSL launcher (fails with an HCS error on a host without a distro); the
+    Git for Windows bash next to the git on PATH is the one the scripts are written for. MC2_BASH overrides."""
+    env = os.environ if environ is None else environ
+    if env.get("MC2_BASH"):
+        return env["MC2_BASH"]
+    git = which("git")
+    if git:
+        gitroot = os.path.dirname(os.path.dirname(os.path.normpath(git)))   # <Git>/cmd/git.exe or <Git>/bin/git.exe
+        for cand in (os.path.join(gitroot, "usr", "bin", "bash.exe"), os.path.join(gitroot, "bin", "bash.exe")):
+            if exists(cand):
+                return cand
+    found = which("bash")
+    if found and "system32" not in found.lower() and "windowsapps" not in found.lower():
+        return found
+    return "bash"
+
+
 VERIFY_STEPS = {
     "build": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"])],
     "full": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"]), ("board", ["scripts/check-contracts.sh"])],
@@ -251,7 +271,7 @@ def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str
         path = os.path.join(root, script)
         if not os.path.exists(path):
             return ("SKIPPED" if not results else "OK"), results
-        cmd = ["bash", path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
+        cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
         r = runner(root, cmd, env=verify_env(root))
         tail = "\n".join(r.stdout.splitlines()[-8:])
         results.append((label, r.returncode, tail))

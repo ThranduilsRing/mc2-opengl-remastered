@@ -395,6 +395,20 @@ def test_verify_runs_build_then_doctest_and_stops_at_the_first_failure(tmp_path)
     assert verdict == "OK" and calls == ["ninja_build.py", "run-unit-tests.sh"]
 
 
+def test_git_bash_never_picks_the_wsl_launcher():
+    lm = _load_module()
+    gitexe = "C:\\Program Files\\Git\\cmd\\git.exe"
+    gitbash = "C:\\Program Files\\Git\\usr\\bin\\bash.exe"
+    which = lambda name: {"git": gitexe, "bash": "C:\\Windows\\System32\\bash.exe"}.get(name)
+    assert lm.git_bash(which=which, exists=lambda p: p == gitbash, environ={}) == gitbash
+    # no Git bash on disk: the PATH hit is refused when it is the WSL launcher or the Store alias
+    assert lm.git_bash(which=which, exists=lambda p: False, environ={}) == "bash"
+    assert lm.git_bash(which=lambda n: {"bash": "C:\\Users\\x\\AppData\\Local\\Microsoft\\WindowsApps\\bash.exe"}.get(n),
+                       exists=lambda p: False, environ={}) == "bash"
+    assert lm.git_bash(which=lambda n: {"bash": "/usr/bin/bash"}.get(n), exists=lambda p: False, environ={}) == "/usr/bin/bash"
+    assert lm.git_bash(which=which, exists=lambda p: True, environ={"MC2_BASH": "X:/b.exe"}) == "X:/b.exe"
+
+
 def test_verify_is_skipped_without_the_scripts_or_when_switched_off(tmp_path):
     lm = _load_module()
     assert lm.verify_merged(str(tmp_path), "build")[0] == "SKIPPED"
