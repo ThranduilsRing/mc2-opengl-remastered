@@ -3,7 +3,7 @@
 
 **Arc:** VULKAN-CONTRACT-MANIFEST-ARC · recon only, no code (this doc only) · 2026-06-22
 **Built against:** nifty-mendeleev HEAD `9a602915` — re-grep line numbers before trusting (cheap to drift).
-**Builds on:** `gpu-resource-manager-seam-recon-1.md` (§materials split-brain), `gpu-texture-resource-manager-seam-recon-1.md` (batchers pack via `gos_GetGLTextureId`), `binding-slot-occupancy.md` (slot multiplexing), `docs/material-abi-unification-recon.md` (the M0–M7 ABI plan), `docs/material-m0-contract.md` (M0 pin), `RenderCore/MaterialGpu.h` + `shaders/include/material_gpu.hglsl` + `scripts/check-material-gpu-mirror.sh` (the live mirror gate).
+**Builds on:** `gpu-resource-manager-seam-recon-1.md` (§materials split-brain), `gpu-texture-resource-manager-seam-recon-1.md` (batchers pack via `gos_GetGLTextureId`), `binding-slot-occupancy.md` (slot multiplexing), docs/material-abi-unification-recon.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) (the M0–M7 ABI plan), `docs/material-m0-contract.md` (M0 pin), `RenderCore/MaterialGpu.h` + `shaders/include/material_gpu.hglsl` + `scripts/check-material-gpu-mirror.sh` (the live mirror gate).
 
 > **Foreign-WIP hazard (live this session):** `mclib/mech3d.cpp`, `mclib/txmmgr.h`, `tests/visual/golden-sets.json` are dirty/foreign. This recon reads only — touches none of them — and proposes no code.
 

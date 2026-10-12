@@ -5,6 +5,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "anim_freeze.h"
+#include "appearance_rng.h"
 
 long Mech3DAppearance::update (bool animate) 
 {
@@ -164,7 +165,7 @@ long Mech3DAppearance::update (bool animate)
 		// Just set stateGoal to 7 or 8 if its not.
 		if (currentStateGoal < 7)
 		{
-			if (RollDice(50))
+			if (mc2_appearance_rng::rollDice(50))
 			{
 				setGestureGoal(7);
 			}
@@ -766,13 +767,13 @@ void Mech3DAppearance::blowLeftArm (void)
 	long xlatBase = 12.0f + 50.0 / 2.0f;
 	long upBase = 25.0f + 100.0;
 	long rotBase = 25.0f + 100.0;
-	dVel[1].x = RandomNumber(xlatBase * 2.0) - xlatBase;
-	dVel[1].y = RandomNumber(xlatBase * 2.0) - xlatBase;
-	dVel[1].z = RandomNumber(upBase) + upBase;
+	dVel[1].x = mc2_appearance_rng::randomNumber(xlatBase * 2.0) - xlatBase;
+	dVel[1].y = mc2_appearance_rng::randomNumber(xlatBase * 2.0) - xlatBase;
+	dVel[1].z = mc2_appearance_rng::randomNumber(upBase) + upBase;
 
-	dRVel[1].x = RandomNumber(rotBase * 2.0) - rotBase;
-	dRVel[1].y = RandomNumber(rotBase * 2.0) - rotBase;
-	dRVel[1].z = RandomNumber(rotBase * 2.0) - rotBase;
+	dRVel[1].x = mc2_appearance_rng::randomNumber(rotBase * 2.0) - rotBase;
+	dRVel[1].y = mc2_appearance_rng::randomNumber(rotBase * 2.0) - rotBase;
+	dRVel[1].z = mc2_appearance_rng::randomNumber(rotBase * 2.0) - rotBase;
 
 	dRot[1].Zero();
 
@@ -881,13 +882,13 @@ void Mech3DAppearance::blowRightArm (void)
 	long xlatBase = 12.0f + 50.0 / 2.0f;
 	long upBase = 25.0f + 100.0;
 	long rotBase = 25.0f + 100.0;
-	dVel[0].x = RandomNumber(xlatBase * 2.0) - xlatBase;
-	dVel[0].y = RandomNumber(xlatBase * 2.0) - xlatBase;
-	dVel[0].z = RandomNumber(upBase) + upBase;
+	dVel[0].x = mc2_appearance_rng::randomNumber(xlatBase * 2.0) - xlatBase;
+	dVel[0].y = mc2_appearance_rng::randomNumber(xlatBase * 2.0) - xlatBase;
+	dVel[0].z = mc2_appearance_rng::randomNumber(upBase) + upBase;
 
-	dRVel[0].x = RandomNumber(rotBase * 2.0) - rotBase;
-	dRVel[0].y = RandomNumber(rotBase * 2.0) - rotBase;
-	dRVel[0].z = RandomNumber(rotBase * 2.0) - rotBase;
+	dRVel[0].x = mc2_appearance_rng::randomNumber(rotBase * 2.0) - rotBase;
+	dRVel[0].y = mc2_appearance_rng::randomNumber(rotBase * 2.0) - rotBase;
+	dRVel[0].z = mc2_appearance_rng::randomNumber(rotBase * 2.0) - rotBase;
 
 	dRot[0].Zero();
 

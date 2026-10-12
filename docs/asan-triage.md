@@ -7,7 +7,7 @@ highest impact at top.
 
 Source of truth for the longer write-ups: `docs/asan-follow-ups.md`.
 Source of truth for "what was run where and when":
-`docs/asan-autonomous-run-log.md`.
+docs/asan-autonomous-run-log.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz).
 
 ## Verification status (2026-04-24 after fix pass + pre-contamination discovery)
 

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "weaponbolt_internal.h"
+#include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
 
@@ -478,7 +479,7 @@ long WeaponBolt::update (void)
 						randomCrater = 1;
 						
 					if (missEffect)		//We missed and hit land.  Otherwise, we hit water, do NOT add crater
-						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,RandomNumber(180));
+						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
 		
 					//if (MasterComponentList[weaponShot.masterId].getWeaponAmmoType() != WEAPON_AMMO_NONE)	
 					// energy weapons don't set off mines
@@ -738,7 +739,7 @@ long WeaponBolt::update (void)
 						randomCrater = 1;
 						
  					if (missEffect)
-						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,RandomNumber(180));
+						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
 		
 					//if (MasterComponentList[weaponShot.masterId].getWeaponAmmoType() != WEAPON_AMMO_NONE)	
 					// energy weapons don't set off mines
@@ -962,9 +963,9 @@ long WeaponBolt::update (void)
 
 		float beamWiggle = ((WeaponBoltTypePtr)getObjectType())->beamWiggle;
 		Stuff::Vector3D offset(beamWiggle,beamWiggle,beamWiggle);
-		offset.x = RandomNumber(offset.x * 2) - offset.x;
-		offset.y = RandomNumber(offset.y * 2) - offset.y;
-		offset.z = RandomNumber(offset.z * 2) - offset.z;
+		offset.x = mc2_appearance_rng::randomNumber(offset.x * 2) - offset.x;
+		offset.y = mc2_appearance_rng::randomNumber(offset.y * 2) - offset.y;
+		offset.z = mc2_appearance_rng::randomNumber(offset.z * 2) - offset.z;
 		hsPos += offset;
 
 		laserVertices[2] = hsPos;

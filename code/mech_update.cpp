@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech_internal.h"
+#include "appearance_rng.h"
 #include "Gates/gate.h"
 
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp).
@@ -455,7 +456,7 @@ long BattleMech::update (void)
 				else
 					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 
-				craterManager->addCrater(CRATER_4,position,RandomNumber(180));
+				craterManager->addCrater(CRATER_4,position,mc2_appearance_rng::randomNumber(180));
 				exploding = true;
 			}
 			else if (((timeLeft < -2.5f) && !mechRemoved && (getMoveType() != MOVETYPE_AIR)) ||

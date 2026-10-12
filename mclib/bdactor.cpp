@@ -10,6 +10,7 @@
 #endif
 
 #include "bdactor_internal.h"
+#include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 
@@ -690,7 +691,7 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	
 	if (appearType->isRandom(bdAnimationState))
 	{
-		currentFrame = RandomNumber(appearType->getNumFrames(bdAnimationState)-1);
+		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(bdAnimationState)-1);
 	}
 	
 	isLooping = appearType->isLooped(bdAnimationState);

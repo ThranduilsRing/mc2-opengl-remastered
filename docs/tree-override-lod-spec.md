@@ -3,7 +3,7 @@
 
 **Status:** SPEC (design only — no implementation, no runtime behavior change, no collision/asset mutation). Feeds the plan→review→execute phase.
 **Branch:** `claude/model-override-system-recon-1`.
-**Inputs:** `docs/model-override-lighting-lod-recon.md` (the perf-architecture recon — authoritative), `docs/superpowers/specs/2026-05-07-lod-swap-static-registry-churn.md` (the black-prop root-cause + Fix 3), `docs/model-override-mvp-notes.md` (dual-shape + texture binding), `docs/model-override-gpu-instancing-proposal.md`.
+**Inputs:** docs/model-override-lighting-lod-recon.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) (the perf-architecture recon — authoritative), `docs/superpowers/specs/2026-05-07-lod-swap-static-registry-churn.md` (the black-prop root-cause + Fix 3), docs/model-override-mvp-notes.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) (dual-shape + texture binding), `docs/model-override-gpu-instancing-proposal.md`.
 
 ## Problem (one line)
 A model-override forest renders the full-detail 706k-tri override mesh **at every distance** (trees are pinned to a single LOD) → `Render.GpuStaticProps` GPU raster = 2.29s/frame. The fix is a **safe, per-LOD-pre-registered LOD path** for override static props/trees that (a) draws distance-appropriate geometry and (b) does NOT resurrect the black-tree regression class.

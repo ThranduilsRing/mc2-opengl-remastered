@@ -28,7 +28,7 @@ lifetime/sync**.
 | **Pass GL-state (blend/depth/MRT)** | `mclib/render_contract.h` `PassStateContract` | **COVERED** (separate file, different enum key) | Split from resource-flow half; not joined to DAG |
 | **Shader variants / ABI** | `scripts/check-shader-schema.sh` + `tools/shader_schema/manifest.json` + `check-material-gpu-mirror.sh` | **COVERED** (SSBO struct/std430/offset CI) | Runtime `#define` prefix injection still un-inventoried (separate SHADER-PIPELINE-OFFLINE-ARC, deferred) |
 | **Xform / transform conventions** | `docs/render-contract.md` + `check-unified-projection-retirement.sh` + ViewUniforms ABI (binding=3, 144B) | **PARTIAL** | Per-subsystem transform-ownership (mech bone-fold vs static model-matrix vs terrain global) not in one ledger. → XFORM-CONVENTION-LEDGER-1 |
-| **Resource lifetime / sync** | `docs/render-backend-seams/gpu-buffer-owner-recon-1.md` + `gpu-buffer-wrapper-design-1.md` | **RECON DONE, no instrumentation** | No live per-frame orphan-vs-ring counter. → GPU-UPDATE-BUFFER-COUNTER-1 |
+| **Resource lifetime / sync** | docs/render-backend-seams/gpu-buffer-owner-recon-1.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) + `gpu-buffer-wrapper-design-1.md` | **RECON DONE, no instrumentation** | No live per-frame orphan-vs-ring counter. → GPU-UPDATE-BUFFER-COUNTER-1 |
 
 ## Artifact registry (grouped)
 
@@ -250,7 +250,7 @@ wiring. The capstone then enforces the new gate exists + is wired + is non-stub.
 - `docs/renderpass-contract-spec.md` — 5-lane render-pass registry spec (FULL)
 - `docs/render-binding-registry.md` — hand doc; **superseded** by `binding-slot-occupancy.md`; sampler table (`:104-127`) self-admittedly incomplete
 - `docs/render-backend-seams/binding-slot-occupancy.{md,json}` — current buffer-slot occupancy (authoritative)
-- `docs/render-backend-seams/gpu-buffer-owner-recon-1.md` + `gpu-buffer-wrapper-design-1.md` — buffer-lifetime master inventory + `GpuRingBuffer<N>` design (extend, don't duplicate)
+- docs/render-backend-seams/gpu-buffer-owner-recon-1.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) + `gpu-buffer-wrapper-design-1.md` — buffer-lifetime master inventory + `GpuRingBuffer<N>` design (extend, don't duplicate)
 - `docs/render-backend-seams/vulkan-readiness-audit-1.md` — prior readiness audit (the % baseline this arc moves)
 - `docs/render-backend-seams/opengl-correctness-ledger-1.md` — GLSTATE/texunit correctness ledger
 - `docs/engine-standalone-seams.md` — EngineView/ViewUniforms/PipelineRegistry/RenderResourceRegistry seams

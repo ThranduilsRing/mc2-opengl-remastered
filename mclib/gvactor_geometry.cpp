@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvactor_internal.h"
+#include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 
@@ -239,7 +240,7 @@ void GVAppearance::setGesture (unsigned long gestureId)
 	
 	if (appearType->isRandom(gvAnimationState))
 	{
-		currentFrame = RandomNumber(appearType->getNumFrames(gvAnimationState)-1);
+		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(gvAnimationState)-1);
 	}
 	
 	isLooping = appearType->isLooped(gvAnimationState);

@@ -21,12 +21,12 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "RenderCore/RendererFeatureRegistry.h": 2917,
-  "code/artlry.cpp": 1816,
-  "code/bldng.cpp": 1703,
+  "RenderCore/RendererFeatureRegistry.h": 2896,
+  "code/artlry.cpp": 1818,
+  "code/bldng.cpp": 1705,
   "code/brain_special_dispatch.cpp": 2772,
   "code/gamecam.cpp": 1591,
-  "code/gameobj.cpp": 2366,
+  "code/gameobj.cpp": 2370,
   "code/infowindow.cpp": 1733,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1967,
@@ -40,9 +40,9 @@
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1845,
   "code/tacordr.cpp": 2072,
-  "code/terrobj.cpp": 1740,
-  "code/turret.cpp": 2346,
-  "code/warrior.cpp": 2700,
+  "code/terrobj.cpp": 1741,
+  "code/turret.cpp": 2348,
+  "code/warrior.cpp": 2703,
   "code/warrior.h": 2171,
   "editor/ObjectiveDlg.cpp": 1502,
   "gui/alistbox.cpp": 1513,
@@ -53,7 +53,7 @@
   "mclib/file.cpp": 2685,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1526,
-  "mclib/mapdata.cpp": 2630,
+  "mclib/mapdata.cpp": 2631,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
@@ -64,7 +64,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "8656c128d",
+ "head": "d32093f47",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -88,7 +88,7 @@
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2917
+   "max_lines": 2896
   },
   "RenderWorld": {
    "files": 6,
@@ -97,7 +97,7 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 386,
+   "files": 389,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2772
@@ -115,7 +115,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 603,
+   "files": 605,
    "files_over_1500": 16,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -138,7 +138,7 @@
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 2917
+   "lines": 2896
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -150,7 +150,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2700
+   "lines": 2703
   },
   {
    "file": "mclib/file.cpp",
@@ -162,7 +162,7 @@
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2630
+   "lines": 2631
   },
   {
    "file": "code/mpparameterscreen.cpp",
@@ -174,11 +174,11 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2366
+   "lines": 2370
   },
   {
    "file": "code/turret.cpp",
-   "lines": 2346
+   "lines": 2348
   },
   {
    "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
@@ -238,7 +238,7 @@
   },
   {
    "file": "code/artlry.cpp",
-   "lines": 1816
+   "lines": 1818
   },
   {
    "file": "mclib/camera.h",
@@ -254,7 +254,7 @@
   }
  ],
  "total": {
-  "files": 1820,
+  "files": 1825,
   "files_over_1500": 50,
   "files_over_3000": 1,
   "max_lines": 3753
