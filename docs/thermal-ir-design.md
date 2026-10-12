@@ -63,4 +63,4 @@ Minimum work to make mechs/units carry real heat into the view:
 
 ## Cross-references
 - ViewMode framework + capture: `docs/viewmode-capture-matrix.md`
-- Sensor/contact bridge (same firewall constraint): `docs/sensor-contact-presentation-recon.md`
+- Sensor/contact bridge (same firewall constraint): docs/sensor-contact-presentation-recon.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz)

@@ -6,7 +6,7 @@
 (`FitIniFile::open(buffer,len)`) but the **game-free harness was measured to be
 non-tiny and was stopped**. This recon finds the smallest legitimate way to test
 the new overload without booting the game.
-**Parent:** [gameos-platform-boundary-recon-1.md](gameos-platform-boundary-recon-1.md)
+**Parent:** gameos-platform-boundary-recon-1.md
 (seam #1). Does NOT retire the FIT-PARSE harness deferral — that stays open until
 this lands a working harness.
 

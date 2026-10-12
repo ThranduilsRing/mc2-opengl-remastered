@@ -8,7 +8,7 @@ data lives, WHAT an audit needs to extract, and HOW to extract it,
 without shipping a script that would race the parallel session.
 
 Pairs with [docs/terrain-rv-arc-recon.md](terrain-rv-arc-recon.md)
-(Slice 1) and [docs/terrain-resample-plan.md](terrain-resample-plan.md)
+(Slice 1) and docs/terrain-resample-plan.md
 (Slice 5).
 
 ## 1. What the audit must report

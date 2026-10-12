@@ -240,14 +240,14 @@ stays generic.
    **STATIC-PROP deferred:** classification predicates (stableLightSkipEligible,
    proxy/registration, currentness guards) are methods on the appearance/registry
    classes — same entanglement class as objmgr; extraction-gated. See
-   [lighting-staticprop-harness-recon-1.md](lighting-staticprop-harness-recon-1.md).
+   lighting-staticprop-harness-recon-1.md.
    **Open (separate from this harness):** 7/8 registry HDRIs are not git-tracked
    — see IBL-HDRI-ASSET-PACK-RECON-1 (deploy-only vs gap; the strict test catches
    drift without blocking clean checkouts).
 
 **FIT-PARSE deferred:** parser is `FitIniFile : File`; tested path is I/O-coupled
 (`File::open` needs systemHeap + FST + gosASSERT) → dragging the file subsystem /
-over-stubbing risk. See [fit-parse-harness-1-recon.md](fit-parse-harness-1-recon.md).
+over-stubbing risk. See fit-parse-harness-1-recon.md.
 
 **OBJMGR deferred:** OBJMGR-CONTRACT-HARNESS recon (off current nifty `3da176d4`)
 found the watch-list edge cases already hardened (OBJMGR-WATCHID-BOUNDS-1 +
