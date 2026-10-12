@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1126,
+ "count": 1114,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -503,32 +503,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_ASSET_FAILLOUD",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape — unset=ON, =0 exact legacy fail-soft).",
-   "readers": [
-    {
-     "at": "mclib/tgl_load_guard.cpp:22",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_ASSET_FAILLOUD",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_ASSET_SCALE_SELFTEST",
    "kind": "Bool",
    "default": false,
@@ -581,32 +555,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_ASSET_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the three shape-load entry points (LoadTGMultiShapeFromASE / LoadBinaryCopy / LoadFromFile).",
-   "readers": [
-    {
-     "at": "mclib/msl.cpp:219",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_ASSET_TRACE",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_ASSIMP_IMPORT",
@@ -686,38 +634,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_ASSIMP_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: verbose Assimp loader trace.",
-   "readers": [
-    {
-     "at": "mclib/assimp_importer.cpp:49",
-     "idiom": "Presence"
-    },
-    {
-     "at": "mclib/msl.cpp:490",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_ASSIMP_TRACE",
    "retireVerdict": ""
   },
   {
@@ -2690,36 +2606,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CAMERA_MOVE_DIAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: camera movement diagnostic readback probe.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gpu_cull_compute.cpp:899",
-     "idiom": "Presence"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:4309",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_CAMERA_MOVE_DIAG",
    "retireVerdict": ""
   },
   {
@@ -5724,32 +5610,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TRACE_FIXTURE_ORDER_LIVENESS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_FLUSH_PROBE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TRACKV-CI-GATE-RESTORE-1: GPU pipeline flush probe via glFinish.",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:3567",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_FLUSH_PROBE",
    "retireVerdict": ""
   },
   {
@@ -10107,46 +9967,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_LIGHTING_DEBUG_VIEW",
-   "kind": "Enum",
-   "default": null,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7180",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "0",
-     "albedo",
-     "ambient",
-     "final",
-     "lightcount",
-     "lightindex",
-     "normal",
-     "off",
-     "overbright",
-     "shadow",
-     "sun"
-    ]
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_LIGHTING_DEBUG_VIEW",
    "retireVerdict": ""
   },
   {
@@ -16881,32 +16701,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_RENDERLISTS_COST_SPLIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0P",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TXMMGR-PERF-EASYWINS-1: coarse per-phase CPU cost split of MC_TextureManager::renderLists() (mclib/txmmgr.cpp).",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:341",
-     "idiom": "Lead0P"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_RENDERLISTS_COST_SPLIT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_RENDERSTATES_LEGACY",
    "kind": "Bool",
    "default": false,
@@ -17474,82 +17268,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_RENDER_WORLD_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "Per-frame [RENDER_WORLD v1] banner + per-event logs (RenderWorld.cpp).",
-   "readers": [
-    {
-     "at": "GameAdapters/MechRenderAdapter.cpp:63",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/MechRenderAdapter.cpp:115",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/MechRenderAdapter.cpp:138",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/StaticPropRenderAdapter.cpp:161",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameAdapters/StaticPropRenderAdapter.cpp:190",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:592",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:612",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:644",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:777",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1051",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1082",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1092",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "RenderWorld/RenderWorld.cpp:1106",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_RENDER_WORLD",
    "retireVerdict": ""
   },
   {
@@ -20179,32 +19897,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_SPLIT_PATH_PARITY_TRACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at split-path parity checkpoints.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:5284",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_SPLIT_PATH_PARITY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SPOTLIGHT_DIRECTION_FIX",
    "kind": "Bool",
    "default": false,
@@ -22225,40 +21917,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_UPDATE_SKIP",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:1270",
-     "idiom": "Std(def=on)"
-    },
-    {
-     "at": "code/bldng.cpp:815",
-     "idiom": "Std(def=on)"
-    },
-    {
-     "at": "code/terrobj.cpp:96",
-     "idiom": "Std(def=on)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_UPDATE_SKIP",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_UPDATE_TRACE",
    "kind": "Bool",
    "default": false,
@@ -24050,39 +23708,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_LIGHT_POOLS",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10958",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4126",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0",
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_LIGHT_POOLS",
    "retireVerdict": ""
   },
   {
@@ -25934,34 +25559,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TRACE_TEST_SPAWN",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TEXMGR_COMPRESSED_UPLOAD",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "TEXMGR-COMPRESSED-UPLOAD-1: teach MC_TextureManager to load a BC7 .ktx2 sidecar (same path/stem as the source data/textures texture, extension -> .ktx2) and upload it via glCompressedTexImage2D in MC_TextureNode::get_gosTextureHandle (mclib/txmmgr.cpp), through the new gos_NewCompressedTexture2D GameOS creator. **DEFAULT ON; opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which read \"Default-OFF; =1 enables\" while mclib/txmmgr.cpp:5356-5359 does `(!v || !v[0]) ? true : (v[0] != '0')` -- and the comment directly above that reader already said \"Default-ON (opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0)\".",
-   "readers": [
-    {
-     "at": "mclib/txmmgr.cpp:5881",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TEXMGR_COMPRESSED_UPLOAD",
    "retireVerdict": ""
   },
   {

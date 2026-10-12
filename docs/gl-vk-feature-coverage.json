@@ -38,18 +38,6 @@
   },
   {
    "confidence": "HIGH",
-   "feature": "u_bucketHeaderTrace",
-   "gate": "MC2_BUCKET_HEADER_TRACE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_indirect.cpp (1 hop)",
-   "gl_shader": "shaders/gpu_driven_terrain_solid.comp",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
-   "confidence": "HIGH",
    "feature": "u_cementAtlasSeamFix",
    "gate": "MC2_CEMENT_ATLAS_SEAM_FIX",
    "gate_default_on": true,
@@ -191,30 +179,6 @@
    "status": "NOT_PORTED",
    "vk_evidence": "absent",
    "vk_twin": "shaders/vulkan/legacy_shape_tier1.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "u_lightingDebugView",
-   "gate": "MC2_LIGHTING_DEBUG_VIEW",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_static_prop_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/static_prop.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "u_lightingDebugView",
-   "gate": "MC2_LIGHTING_DEBUG_VIEW",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (2 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
   },
   {
    "confidence": "MEDIUM",
@@ -2663,66 +2627,6 @@
    "status": "NOT_PORTED",
    "vk_evidence": "absent",
    "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_lightGridDim",
-   "gate": "MC2_TERRAIN_LIGHT_POOLS",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (3 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "PORTED",
-   "vk_evidence": "stem:lightGridDim",
-   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_lightGridInvCell",
-   "gate": "MC2_TERRAIN_LIGHT_POOLS",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (3 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "PORTED",
-   "vk_evidence": "stem:gridInvCell",
-   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_lightGridMin",
-   "gate": "MC2_TERRAIN_LIGHT_POOLS",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (3 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_numPoolLights",
-   "gate": "MC2_TERRAIN_LIGHT_POOLS",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (2 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "PORTED",
-   "vk_evidence": "stem:numPoolLights",
-   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_numPoolLights",
-   "gate": "MC2_TERRAIN_LIGHT_POOLS",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (2 hops)",
-   "gl_shader": "shaders/terrain_overlay.frag",
-   "kind": "uniform",
-   "status": "PORTED",
-   "vk_evidence": "stem:numPoolLights",
-   "vk_twin": "shaders/vulkan/terrain_decal_tier1.frag"
   },
   {
    "confidence": "MEDIUM",

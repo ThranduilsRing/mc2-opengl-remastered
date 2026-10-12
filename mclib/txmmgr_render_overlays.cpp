@@ -8,7 +8,7 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
 	{
 	ZoneScopedN("RenderLists.TerrainAlphaWaterLoops");
-	rlcost::Span _rl(rlcost::kWaterLoops);
+	GosGlLostDrawsScope _rlLost_("water_loops");
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Water);
     for(int states = 0; states < 2; ++states)
     {
@@ -85,7 +85,7 @@ void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
 	  TracyGpuZone("Render.NoUnderlayer");
-	  rlcost::Span _rl(rlcost::kNoUnderlayer);
+	  GosGlLostDrawsScope _rlLost_("no_underlayer");
 	if (Environment.Renderer != 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -156,7 +156,7 @@ void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const R
 
 	{
 	ZoneScopedN("RenderLists.ShadowBlobs");
-	rlcost::Span _rl(rlcost::kShadowBlobs);
+	GosGlLostDrawsScope _rlLost_("shadow_blobs");
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Blobs);
 	if (Environment.Renderer == 3)
 	{
@@ -241,7 +241,7 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] con
 #endif
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
-	rlcost::Span _rl(rlcost::kAlphaLoops);
+	GosGlLostDrawsScope _rlLost_("alpha_loops");
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_AlphaVfx);
 	gos_SetRenderState( gos_State_ZCompare, 1);
 	if (Environment.Renderer != 3)
@@ -325,7 +325,7 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 #endif
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
-	rlcost::Span _rl(rlcost::kVfxHud);
+	GosGlLostDrawsScope _rlLost_("vfx_hud");
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Hud);
 	if (Environment.Renderer == 3)
 	{

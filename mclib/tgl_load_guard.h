@@ -5,9 +5,8 @@
 //
 // Contract (.claude/META-FIX-DESIGNS-2026-07-16.json CLASS B): every
 // REQUIRED base-shape load either succeeds, or is classified + logged
-// ("[ASSET_LOAD v1] event=required_missing ..." — always-on) and, under the
-// MC2_ASSET_FAILLOUD default-ON killswitch, populates a VISIBLE magenta
-// placeholder box that renders on BOTH the legacy CPU path and the GPU
+// ("[ASSET_LOAD v1] event=required_missing ..." — always-on) and populates a
+// VISIBLE magenta placeholder box that renders on BOTH the legacy CPU path and the GPU
 // static-prop/mech batchers. The placeholder registers a REAL 4x4 magenta
 // texture through mcTextureManager and sets valid handles — NOT
 // numTextures=0 — because the batchers cull packets with layerForPacket=-1
@@ -15,8 +14,8 @@
 // itself be invisible on the modern path, defeating the contract.
 //
 // OPTIONAL slots (arms, shadows, damage shapes, anims) take NO code change:
-// missing-file logging for them is trace-gated inside the loader (msl.cpp
-// PART 0, MC2_ASSET_TRACE) and their delete/NULL fallbacks stay
+// a missing optional file is normal stock degradation, is not logged, and
+// their delete/NULL fallbacks stay
 // byte-identical. Stock installs never fail a REQUIRED base shape, so every
 // branch below is cold on stock — byte-identical behavior.
 //
@@ -26,11 +25,6 @@
 //===========================================================================//
 
 class TG_TypeMultiShape;
-
-// MC2_ASSET_FAILLOUD default-ON killswitch (terrain-tess-style shape):
-// unset => ON; "0" => OFF (exact legacy fail-soft, no placeholder); any
-// other value => ON. Resolved once (static latch).
-bool tglAssetFailLoudEnabled();
 
 // Post-check form (for the opt-in import branches whose load call cannot be
 // wrapped): classify `rc` + GetNumShapes()==0 as a REQUIRED-slot failure.

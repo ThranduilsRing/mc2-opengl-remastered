@@ -64,44 +64,23 @@ static void uploadDynamicShadowUniforms(const Locs& tl, gosPostProcess* pp, GLin
     }
 }
 
-// LIGHTING-DEBUG-VIEWS: named, render-family-shared lighting debug enum. Maps
-// MC2_LIGHTING_DEBUG_VIEW=<name> onto a shared surfaceDebugMode integer space.
-// The 40-series is reserved for the unified lighting channels so the SAME name
-// means the SAME channel across terrain (1A), static_prop (1B) and mech (1C).
-// Returns -1 when the env var is unset OR the name is unknown, so callers keep
-// their existing debug mode (default 0 = off = byte-identical legacy render).
-// Takes precedence over MC2_TERRAIN_DEBUG_MODE when both are set.
+// LIGHTING-DEBUG-VIEWS: render-family-shared lighting debug channel on the
+// shared surfaceDebugMode integer space. The 40-series is reserved for the
+// unified lighting channels so the SAME id means the SAME channel across
+// terrain (1A), static_prop (1B) and mech (1C): 40 albedo, 41 normal, 42 sun,
+// 43 ambient, 44 shadow, 45 final, 46 overbright, 47 lightcount, 48 lightindex.
+// Returns -1 when no channel is selected, so callers keep their existing debug
+// mode (default 0 = off = byte-identical render).
 // NON-static: also consumed by gos_static_prop_batcher.cpp (extern decl there).
-// Note: not every channel applies to every family — a family ignores ids it
-// does not implement (falls through to its normal render), which is safe.
+// Not every channel applies to every family — a family ignores ids it does
+// not implement (falls through to its normal render), which is safe.
 //
-// DEBUG-VIEW-SWEEP-1: runtime override slot. The env resolve stays once-only,
-// but gos_SetGlobalDebugView() can now retarget the shared channel at runtime
-// (command-channel `debugview N`). -1 = no override (env value, default off).
+// DEBUG-VIEW-SWEEP-1: gos_SetGlobalDebugView() retargets the shared channel at
+// runtime (command-channel `debugview N`); -1 = no channel.
 static int g_mc2LightingDebugOverride = -1;
 int mc2LightingDebugMode()
 {
-    // REDUNDANT-PASS-HUNT-1 (re-compute class): called per frame from 5 hot draw
-    // sites (terrain chunk, static-prop batcher x2, this TU x2), each hit doing a
-    // getenv() + up to 11 strcmp on a value that cannot change mid-process (no
-    // setenv/putenv/ImGui setter exists for MC2_LIGHTING_DEBUG_VIEW). Resolve once.
-    static const int s_mode = []() -> int {
-        using mc2::gate::is;
-        // Enum row: unset, empty and an unknown name all read the (empty) default token -> -1.
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "off">() || is<"MC2_LIGHTING_DEBUG_VIEW", "0">()) return 0;   // explicit no-op render
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "albedo">())     return 40;
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "normal">())     return 41;   // final per-fragment N as RGB
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "sun">())        return 42;   // sun N·L diffuse term
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "ambient">())    return 43;   // hemisphere/ambient/SH fill only
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "shadow">())     return 44;   // shadow factor (terrain) / no-shadow marker (props)
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "final">())      return 45;   // == default lit render (falls through)
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "overbright">()) return 46;   // over/under-bright heatmap
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "lightcount">()) return 47;   // dynamic light-count heatmap (props/mech)
-        if (is<"MC2_LIGHTING_DEBUG_VIEW", "lightindex">()) return 48;   // baked-static-light-index palette (props/mech)
-        return -1;                                                      // unset / unknown -> safe fallback (keep existing)
-    }();
-    // DEBUG-VIEW-SWEEP-1: runtime override wins over the env-resolved value.
-    return (g_mc2LightingDebugOverride >= 0) ? g_mc2LightingDebugOverride : s_mode;
+    return g_mc2LightingDebugOverride;
 }
 static int g_mc2GlobalDebugView = 0;
 extern "C" void gos_SetGlobalDebugView(int view)

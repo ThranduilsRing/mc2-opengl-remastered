@@ -388,12 +388,11 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     }
 
     // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as
-    // the chunk terrain (gate MC2_TERRAIN_LIGHT_POOLS, shared). Bind the pool
+    // the chunk terrain. Bind the pool
     // SSBO ourselves — the chunk terrain draw also binds slot 28 but may be
     // disabled (legacy terrain path), and context binding state is not
     // guaranteed here. poolCount 0 -> frag loop skipped -> byte-identical.
     if (L.numPoolLights >= 0) {
-        static const bool s_lightPoolsGate = mc2::gate::get<"MC2_TERRAIN_LIGHT_POOLS">();
         static const bool s_poolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
         // NIGHT-LIGHT-POOLS-4: default 0.5 -> 0.25 (lockstep with the chunk
         // terrain consts in gos_terrain_lod_chunk.cpp).
@@ -401,7 +400,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         static const float s_poolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
         static const bool s_poolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
         int poolCount = 0;
-        if (s_lightPoolsGate) {
+        {
             const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
             const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
             if (poolSsbo != 0 && n > 0) {

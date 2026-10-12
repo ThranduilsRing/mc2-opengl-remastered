@@ -305,7 +305,7 @@ static void bindAtlasAndShadowMaps() {
             glUniform1f(s_locCementLit, gos_TerrainCementLit());
         if (s_locCementRampWord >= 0)
             glUniform1i(s_locCementRampWord, gos_TerrainCementRampWord());   // CEMENT-WORD-RAMP-1
-        // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
+        // NIGHT-LIGHT-POOLS-1: bind
         // the per-frame terrain light pool SSBO (packed+uploaded every frame by
         // gos_terrain_lighting::PackAndDispatch — the SAME buffer the legacy
         // vertex-lighting compute reads) at binding 28 and tell the frag how

@@ -2223,26 +2223,6 @@
    "count": 1
   },
   {
-   "tag": "CULL_DIAG",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "CULL_DIAG",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "world",
-    "r",
-    "clip",
-    "norm",
-    "frustum"
-   ],
-   "count": 1
-  },
-  {
    "tag": "CURSOR",
    "ver": -1,
    "stream": "file",
@@ -2493,21 +2473,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "DIAG",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "subRec",
-    "bkt0",
-    "bkt1",
-    "bkt2",
-    "bkt3",
-    "bktTOTAL",
-    "inst0"
-   ],
    "count": 1
   },
   {
@@ -4872,7 +4837,6 @@
     "gpu_objects",
     "obj_recon_tracy",
     "static_update_trace",
-    "static_update_skip",
     "static_prop_registry",
     "gpu_cull_substrate",
     "gpu_cull_aabb_parity",
@@ -7823,18 +7787,6 @@
     "max_color_attach",
     "max_ssbo_bind",
     "max_tess_level"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDERLISTS_COST",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "frames",
-    "nodes",
-    "hw_nodes"
    ],
    "count": 1
   },
@@ -12823,7 +12775,6 @@
   "SIMID",
   "SMOKE",
   "SOAK",
-  "SPLIT_PATH_PARITY",
   "TERRAIN_INDIRECT",
   "TEXLOAD",
   "TEX_RESOLVE",

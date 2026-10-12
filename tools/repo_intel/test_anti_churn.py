@@ -257,7 +257,7 @@ def test_runner_env_policy_live_repo():
 def test_gate_status_no_false_env_drop_while_inheriting():
     """THE REGRESSION THIS LOCKS OUT.
 
-    MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE and MC2_STATIC_UPDATE_SKIP are read by
+    MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE and MC2_STATIC_UPDATE_TRACE are read by
     the engine and absent from the run_smoke.py tuple. The old tool called that
     ENV_DROP_RISK and a lane wrote off a correctly-declared A/B as "void" on its
     word. While the runner inherits os.environ the ambient value reaches the
@@ -265,7 +265,7 @@ def test_gate_status_no_false_env_drop_while_inheriting():
     convention gap in plain words, not left as a bare boolean for the next
     reader to re-derive "voided A/B" from.
     """
-    for var in ("MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", "MC2_STATIC_UPDATE_SKIP"):
+    for var in ("MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", "MC2_STATIC_UPDATE_TRACE"):
         r = gs.gate_status(REPO_ROOT, var)
         assert r["reader_count"] > 0, var
         assert r["smoke_env_inherited"] is True, var

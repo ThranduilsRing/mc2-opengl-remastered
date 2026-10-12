@@ -57,9 +57,6 @@ void beginMission() {
     s_mechs_alive        = 0;
     s_mechs_destroyed    = 0;
     s_mech_register_fail = 0;
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr, "[RENDER_WORLD v1] event=mech_begin_mission\n");
-    }
 }
 
 void endMission() {
@@ -109,12 +106,6 @@ RenderCore::RenderObjectHandle syncSpawn(Mech3DAppearance& mech,
         mech.setRenderWorldHandleForAdapter(h);
         ++s_mechs_registered;
         ++s_mechs_alive;
-        if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-            MC2_DIAGFE(stderr,
-                "[RENDER_WORLD v1] event=mech_register mech=%p handle.index=%u "
-                "gameObjectId=%u\n",
-                (void*)&mech, (unsigned)h.index(), (unsigned)gameObjectId);
-        }
     } else {
         ++s_mech_register_fail;
         MC2_DIAGFE(stderr,
@@ -132,11 +123,6 @@ void destroyMech(Mech3DAppearance& mech) {
         return;
     }
 
-    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] event=mech_destroy handle.index=%u\n",
-            (unsigned)h.index());
-    }
 
     RenderWorld::destroyMech(h);
     mech.clearRenderWorldHandleForAdapter();

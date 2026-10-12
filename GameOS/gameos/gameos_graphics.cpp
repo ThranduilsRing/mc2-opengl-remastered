@@ -79,7 +79,7 @@ bool mc2ShadowStaticBandFixV2Enabled() {
     // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
     // and around mech shadows on terrain) verified A/B in-engine: default
     // config shows diagonal contour striping across terrain
-    // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
+    // (debugview 1 = shadow factor, mc2_01 f1800: high-pass stripe
     // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
     // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
     static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX_V2">();
@@ -343,26 +343,6 @@ void gosRenderer::init() {
         shadow_terrain_material_ = gosRenderMaterial::load("shadow_terrain", mvar);
         if (shadow_terrain_material_) {
             materialList_.push_back(shadow_terrain_material_);
-        }
-    }
-
-    // META-FIX design C runtime tier: MC2_SPLIT_PATH_PARITY_TRACE=1 emits one
-    // machine-parseable [SPLIT_PATH_PARITY] event at material-load time. The
-    // #34 decouple invariant is that the modern shadow path stays ACTIVE
-    // regardless of the tess material (kill-switch OR TCS/TES compile
-    // failure) — match=0 here means the paths re-coupled/diverged, and the
-    // smoke marker-bucket row `split_path_parity` turns it into a red run
-    // (scripts/smoke_lib/logparse.py MARKER_BUCKETS). Default OFF, static
-    // getenv latch — gate-off is one bool test, byte-identical unset.
-    {
-        static bool splitPathParityTrace = mc2::gate::get<"MC2_SPLIT_PATH_PARITY_TRACE">();
-        if (splitPathParityTrace) {
-            const int tessOn   = (terrain_material_ != nullptr) ? 1 : 0;
-            const int shadowOn = (shadow_terrain_material_ != nullptr) ? 1 : 0;
-            mc2AuditLinef(
-                "[SPLIT_PATH_PARITY] site=terrain_material_load pair=tess_vs_modern_shadow "
-                "tess=%d shadow=%d match=%d",
-                tessOn, shadowOn, shadowOn /* invariant: shadow path always on */);
         }
     }
 

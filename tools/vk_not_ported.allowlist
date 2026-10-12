@@ -97,8 +97,6 @@ MC2_DEBUG_RENDERER | shaders/static_prop.vert | define MC2_COALESCE: no such nam
 MC2_DEBUG_RENDERER | shaders/static_prop_depth.frag | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_HDRI_SKY_FRAME_FIX | shaders/hdri_skybox.frag | uniform frameFix: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_HDRI_SKY_UV_DEBUG | shaders/hdri_skybox.frag | uniform uvDebug: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
-MC2_LIGHTING_DEBUG_VIEW | shaders/static_prop.frag | uniform u_lightingDebugView: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_LIGHTING_DEBUG_VIEW | shaders/terrain_lod_chunk.frag | uniform u_lightingDebugView: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_MECH_FRAG_DEBUG | shaders/mech.frag | uniform u_debugMode: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_SHADER_PATH_TINT | shaders/terrain_lod_chunk.frag | uniform u_pathTint: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_SHADOW_CSM | shaders/shadow_debug.frag | define MC2_SHADOW_CSM, uniform shadowDebugLayer, uniform shadowDebugUseArray: no such name in the VK twin (shaders/vulkan/shadow_debug_overlay.*) shader, island C++ or gpu_abi

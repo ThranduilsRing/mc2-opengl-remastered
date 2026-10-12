@@ -7,12 +7,10 @@
 # Calls: glGetIntegerv:437, glGetBooleanv:493, glGetBooleanv:502 (per M6 recon)
 mclib/render_contract.cpp
 
-# MC2_CAMERA_MOVE_DIAG / MC2_FLUSH_PROBE diagnostic readback probe, default-OFF (TRACKV-CI-GATE-RESTORE-1)
-# Calls: glFinish (static-prop registry flush, gated by s_finishProbe/MC2_FLUSH_PROBE; phases piece),
-#        glMemoryBarrier / glGetNamedBufferSubData / glIsEnabled / glGetIntegerv (GPU static prop
-#        cull probe, gated by MC2_CAMERA_MOVE_DIAG; passes piece), glBindBufferBase (building PBR
-#        override in ShapeRenderer::render; phases piece)
-#        (all diagnostic-only or opt-in, default-OFF)
+# Raw GL in the renderLists phase pieces (TRACKV-CI-GATE-RESTORE-1):
+# Calls: glBindBufferBase (building PBR override in ShapeRenderer::render; phases piece);
+#        the MC2_CAMERA_MOVE_DIAG / MC2_FLUSH_PROBE readback probes were deleted in gate
+#        amnesty wave 1.
 mclib/txmmgr_render_phases.cpp
 mclib/txmmgr_render_passes.cpp
 

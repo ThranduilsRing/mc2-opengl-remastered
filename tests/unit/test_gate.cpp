@@ -1329,10 +1329,6 @@ TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
     // out of range -> default (the old `f >= 0 && f <= 1 ? f : 0.25f`)
     CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "2") == 0.25f);
     CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "0.5") == 0.5f);
-    const gate::Row& dv = g1b::rowNamed("MC2_LIGHTING_DEBUG_VIEW");
-    CHECK(dv.kind == Kind::Enum);
-    for (const char* t : {"off", "0", "albedo", "normal", "sun", "ambient", "shadow", "final", "overbright", "lightcount", "lightindex"})
-        CHECK(gate::rows::tokenListHas(dv.tokens, t));
     CHECK(g1b::rowNamed("MC2_WATER_SHINE").kind == Kind::String);
 }
 
@@ -1349,7 +1345,6 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK(in("MC2_FPS_CAP", nullptr) == 90);
     CHECK(in("MC2_FPS_CAP", "0") == 0);
     CHECK(in("MC2_WIDTH", nullptr) == 0);
-    CHECK(g1b::rowNamed("MC2_STATIC_UPDATE_SKIP").defBool);
     CHECK_FALSE(g1b::rowNamed("MC2_STATIC_UPDATE_TRACE").defBool);
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);

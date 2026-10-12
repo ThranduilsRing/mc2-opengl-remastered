@@ -62,7 +62,7 @@ class AppearanceType
 
 		// META-FIX design B PART 1/2: set by tglVerifyShapeLoaded when a
 		// REQUIRED base-shape load for this type failed (placeholder may be
-		// standing in under MC2_ASSET_FAILLOUD). Read by the
+		// standing in). Read by the
 		// AppearanceTypeList::getAppearance backstop (one appr_type_fail
 		// line per type) and by Mech3DAppearance::resetPaintScheme (keeps
 		// the placeholder's texture handle from being clobbered by the

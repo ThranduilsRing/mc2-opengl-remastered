@@ -88,11 +88,6 @@ MARKER_BUCKETS: tuple = (
     # warn=premain_read (whether or not its value changed; warn=premain is the changed-value case).
     MarkerBucket(re.compile(r"\[CONFIG v1\] warn=premain_read name=MC2_VK_"),
                  "config_premain_vk", "red", None),
-    # Design C runtime tier (META-FIX-BATCH-1): any [SPLIT_PATH_PARITY] event
-    # with match=0 is a silent split-path divergence -> red. Emitter:
-    # gameos_graphics.cpp gosRenderer::init under MC2_SPLIT_PATH_PARITY_TRACE.
-    MarkerBucket(re.compile(r"\[SPLIT_PATH_PARITY\].*\bmatch=0\b"),
-                 "split_path_parity", "red", None),
     # Design A runtime tier (META-FIX-BATCH-3): mover-registry coherence.
     # Emitter: code/mission.cpp auditMoverCoherence under
     # MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
@@ -106,7 +101,7 @@ MARKER_BUCKETS: tuple = (
     # Design B (META-FIX-BATCH-3): fail-loud asset-load policy.
     # asset_load_fail counts parse_fail + required_missing + appr_type_fail
     # ONLY — deliberately NOT bare file_missing (missing optional slots are
-    # normal stock degradation; see MC2_ASSET_TRACE). These lines are
+    # normal stock degradation and are not logged). These lines are
     # always-on and load-time-only, so every tier1 run goes red the moment
     # a stock base shape stops loading.
     MarkerBucket(re.compile(

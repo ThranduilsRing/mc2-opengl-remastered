@@ -78,15 +78,9 @@
 //---------------------------------------------------------------------------
 extern uint32_t g_mc2FrameCounter;  // defined in mclib/tgl.cpp:3718
 
-// Both rows are Std: unset reads the row default, "0"/"false"/"off"/"no" disable, anything else enables.
-// Do NOT regress to a presence test -- that would treat MC2_STATIC_UPDATE_SKIP=0 as ENABLED (the GPU_OBJECTS
-// class of bug).
+// Std row: unset reads the row default, "0"/"false"/"off"/"no" disable, anything else enables.
+// Do NOT regress to a presence test -- that would treat =0 as ENABLED (the GPU_OBJECTS class of bug).
 static const bool s_staticUpdateTrace = mc2::gate::get<"MC2_STATIC_UPDATE_TRACE">();
-// 2026-05-11: default-on after the per-instance lightDataIndex fix
-// (commit e568985) retired the wrong-RGB-during-motion residual under
-// UPDATE_SKIP=1. Set MC2_STATIC_UPDATE_SKIP=0 to opt back into the
-// historical full-update path.
-static const bool s_staticUpdateSkip  = mc2::gate::get<"MC2_STATIC_UPDATE_SKIP">();
 
 namespace {
 struct StaticUpdateCounters {
@@ -909,7 +903,7 @@ long TerrainObject::update (void) {
 					if (_aType) _apprClass = _aType->getAppearanceClass() & 0xFF;
 				}
 
-				if (s_staticUpdateSkip && gpuPath && appearanceClaimsStatic && !ownerForcesDynamic) {
+				if (gpuPath && appearanceClaimsStatic && !ownerForcesDynamic) {
 					++g_staticUpdateCounters.updates_skipped;
 					++g_routeTouchByClass[_apprClass];
 					if (s_staticUpdateTrace) {

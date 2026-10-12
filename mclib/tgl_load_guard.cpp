@@ -15,15 +15,6 @@
 #include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
-bool tglAssetFailLoudEnabled()
-{
-	// Default-ON killswitch (terrain-tess-style shape / envFlagDefaultOn
-	// convention): unset => ON; "0" => OFF; anything else => ON.
-	static const bool s_on = mc2::gate::get<"MC2_ASSET_FAILLOUD">();
-	return s_on;
-}
-
-//---------------------------------------------------------------------------
 namespace {
 
 unsigned long long guardKey(const char* ctx, const char* path)
@@ -188,8 +179,8 @@ bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
 	if (failFlag)
 		*failFlag = true;
 
-	// (4) fail-loud placeholder under the default-ON killswitch.
-	if (shape && tglAssetFailLoudEnabled())
+	// (4) fail-loud placeholder.
+	if (shape)
 	{
 		populatePlaceholder(shape);
 		return shape->GetNumShapes() > 0;

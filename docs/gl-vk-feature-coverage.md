@@ -7,9 +7,9 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
-| PORTED | 11 | 129 | 0 |
-| NOT_PORTED | 96 | 50 | 0 |
-| NO_TWIN | 28 | 66 | 0 |
+| PORTED | 11 | 125 | 0 |
+| NOT_PORTED | 94 | 49 | 0 |
+| NO_TWIN | 27 | 66 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
 
@@ -28,8 +28,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_HDRI_SKY_FRAME_FIX` | OFF | `shaders/hdri_skybox.frag` | `frameFix` (uniform) | shaders/vulkan/hdri_sky.* | HIGH | yes |
 | `MC2_HDRI_SKY_UV_DEBUG` | OFF | `shaders/hdri_skybox.frag` | `uvDebug` (uniform) | shaders/vulkan/hdri_sky.* | HIGH | yes |
 | `MC2_LEGACY_LIT_MC2_FRAME` | **ON (live drift)** | `shaders/gos_tex_vertex_lighted.vert` | `u_legacyLitMc2Frame` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
-| `MC2_LIGHTING_DEBUG_VIEW` | OFF | `shaders/static_prop.frag` | `u_lightingDebugView` (uniform) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
-| `MC2_LIGHTING_DEBUG_VIEW` | OFF | `shaders/terrain_lod_chunk.frag` | `u_lightingDebugView` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_MECH_BACK_FILL` | OFF | `shaders/mech.frag` | `u_mechBackFillStrength` (uniform) | shaders/vulkan/mech_tier1.* | HIGH | yes |
 | `MC2_MECH_FRAG_DEBUG` | OFF | `shaders/mech.frag` | `u_debugMode` (uniform) | shaders/vulkan/mech_tier1.* | HIGH | yes |
 | `MC2_MECH_FRAG_DEBUG` | OFF | `shaders/particle_billboard.frag` | `u_debugMode` (uniform) | shaders/vulkan/vfx_particle.* | MEDIUM | no |
@@ -107,7 +105,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | OFF | `shaders/terrain_lod_chunk.frag` | `detailNormalStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_EDGE_FEATHER` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_edgeFeather` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_EDGE_FEATHER_STRENGTH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_edgeFeatherStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_LIGHT_POOLS` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_lightGridMin` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | no |
 | `MC2_TERRAIN_LOD_CHUNK_DIAG` | OFF | `shaders/terrain_lod_chunk.frag` | `u_diag` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR` | OFF | `shaders/terrain_lod_chunk.frag` | `u_forceColor` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_LOD_GEOMORPH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_morphFactor` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
@@ -164,7 +161,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 
-- NOT_PORTED pairs: 123, of which already default ON: 55
+- NOT_PORTED pairs: 120, of which already default ON: 54
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED
@@ -256,10 +253,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_TERRAIN_AMBIENT_FLOOR` | `shaders/terrain_lod_chunk.frag` | `u_terrainAmbientFloor` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_AMBIENT_FLOOR_NIGHT` | `shaders/terrain_lod_chunk.frag` | `u_terrainAmbientDayGate` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_CEMENT_DIAG_CONNECT` | `shaders/terrain_lod_chunk.frag` | `u_cementDiagConnect` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_TERRAIN_LIGHT_POOLS` | `shaders/terrain_lod_chunk.frag` | `u_lightGridDim` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_TERRAIN_LIGHT_POOLS` | `shaders/terrain_lod_chunk.frag` | `u_lightGridInvCell` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_TERRAIN_LIGHT_POOLS` | `shaders/terrain_lod_chunk.frag` | `u_numPoolLights` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_TERRAIN_LIGHT_POOLS` | `shaders/terrain_overlay.frag` | `u_numPoolLights` | `shaders/vulkan/terrain_decal_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_LOD_CHECKER_DIAG` | `shaders/terrain_lod_chunk.frag` | `u_skirtDepth` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_LOD_CHECKER_DIAG` | `shaders/terrain_lod_chunk.vert` | `u_skirtDepth` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_SHORELINE` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
@@ -327,7 +320,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `shaders/gos_vegetation_card.frag` | `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gos_vegetation_card.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gpu_cull_patch.comp` | `MC2_STATIC_PROP_GLOBAL_POOL_LEGACY` |
-| `shaders/gpu_driven_terrain_solid.comp` | `MC2_BUCKET_HEADER_TRACE`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
+| `shaders/gpu_driven_terrain_solid.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
 | `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_TERRAIN_SHORELINE`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL`, `MC2_WATER_SHORE3_EXTRA_WU` |
 | `shaders/hdri_skybox_stencil_tag.frag` | `MC2_SKYBOX_FOG_EXCLUDE` |
 | `shaders/shadow_depth.vert` | `MC2_SHADOW_CSM` |

@@ -889,8 +889,6 @@ void compute_dispatch() {
     COMPUTE_TRACE("mvp row3=(%.4f,%.4f,%.4f,%.4f)",
                   mvp[3],mvp[7],mvp[11],mvp[15]);
 
-    static const bool s_camMoveDiag = mc2::gate::get<"MC2_CAMERA_MOVE_DIAG">();
-
     // Copy active ring slot to staging SSBO (offset 0).
     GLuint substrateSsbo = substrate_getInstanceSsboName();
     if (!substrateSsbo || !s_stagingSsbo) {
@@ -938,36 +936,6 @@ void compute_dispatch() {
     if (recordCount == 0) {
         COMPUTE_TRACE("event=dispatch_skip reason=record_count_zero");
         return;
-    }
-
-    // CAMERA-MOVE-DIAG: log full MVP + first actor worldCenter (no GPU stall).
-    if (s_camMoveDiag) {
-        static float s_lastMvpCull[16] = {};
-        bool changed = (memcmp(mvp, s_lastMvpCull, 64) != 0);
-        if (changed) {
-            memcpy(s_lastMvpCull, mvp, 64);
-            mc2::fmt::print_out("[CULL_DIAG] MVP rows: [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}]\n", mvp[0], mvp[1], mvp[2], mvp[3], mvp[4], mvp[5], mvp[6], mvp[7], mvp[8], mvp[9], mvp[10], mvp[11], mvp[12], mvp[13], mvp[14], mvp[15]);
-            // Derive current slot index from byte offset/size.
-            const uint32_t currSlot = (slotBytes > 0)
-                ? static_cast<uint32_t>(slotOffset / slotBytes) : 0u;
-            uint32_t cnt = 0;
-            const GpuActorRecord* recs = substrate_getSlotRecords(currSlot, &cnt);
-            if (recs && cnt > 0) {
-                const float wx=recs[0].worldCenter[0], wy=recs[0].worldCenter[1], wz=recs[0].worldCenter[2];
-                float cx=mvp[0]*wx+mvp[1]*wy+mvp[2]*wz+mvp[3];
-                float cy=mvp[4]*wx+mvp[5]*wy+mvp[6]*wz+mvp[7];
-                float cz=mvp[8]*wx+mvp[9]*wy+mvp[10]*wz+mvp[11];
-                float cw=mvp[12]*wx+mvp[13]*wy+mvp[14]*wz+mvp[15];
-                // Frustum test: visible if |cx|<=|cw| && |cy|<=|cw| && 0<=cz<=cw (D3D conv, cw>0)
-                float s = (cw<0.f)?-1.f:1.f; cx*=s; cy*=s; cz*=s; cw*=s;
-                const float d = compute_getFrustumDilation();
-                const float bound = cw*(1.f+d);
-                bool pass = (cw>=1e-5f) && (cx>=-bound&&cx<=bound) && (cy>=-bound&&cy<=bound)
-                         && (cz>=-d*cw&&cz<=bound);
-                mc2::fmt::print_out("[CULL_DIAG] rec[0] world=({:.1f},{:.1f},{:.1f}) r={:.1f} clip=({:.2f},{:.2f},{:.2f},{:.2f}) norm=({:.2f},{:.2f},{:.2f},{:.2f}) frustum={}\n", wx, wy, wz, recs[0].boundingRadius, cx/s, cy/s, cz/s, cw/s, cx, cy, cz, cw, mc2::fmt::safe(pass?"PASS":"FAIL"));
-            }
-            fflush(stdout);
-        }
     }
 
     // Bind staging SSBO at binding 8.
