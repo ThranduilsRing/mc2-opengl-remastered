@@ -127,6 +127,21 @@ def acceptance_note(accepted, gate_accepted=()):
     return "\n\nObjects accepted without being IDENTICAL (%d; every other including object is identical):\n%s" % (len(lines), "\n".join(lines))
 
 
+def noise_note(noisy):
+    """The commit-message block that names every object left out of the comparison because it compiles to different bytes from identical input (empty when none)."""
+    if not noisy:
+        return ""
+    return ("\n\nObjects ignored as build noise (recompiled twice from identical input, the bytes differ: an embedded timestamp), %d:\n" % len(noisy)
+            + "\n".join("  " + o for o in sorted(noisy)))
+
+
+def failure_reason(objects, fail_text):
+    """The ledger reason for a header the harness / test gate rejected: the failing objects AND what the build or the comparison said about them (the first two, 500 characters)."""
+    names = ", ".join(objects[:3])
+    said = " || ".join("%s: %s" % (o, fail_text[o]) for o in objects[:2] if fail_text.get(o))
+    return "harness/test objects differ or fail to build: %s%s" % (names, " -- " + said[:500] if said else "")
+
+
 class Gate:
     """The harness / test trees as a second proof set. snapshot() before any edit, settle() after the Ninja proof chose its kept files."""
 
@@ -162,11 +177,12 @@ class Gate:
                 print("  vs gate: %d object(s) checked, %d accepted without being identical" % (len(lines), len(accepted)), flush=True)
                 return kept, rejected
             failing = {ln.split()[1] for ln in lines if ln.startswith("FAIL")}
+            fail_text = {ln.split()[1]: ln.split(None, 2)[2] if len(ln.split(None, 2)) > 2 else "" for ln in lines if ln.startswith("FAIL")}
             culprits = [h for h in kept if self.by_header.get(h, set()) & failing] or list(kept)
             for h in culprits:
                 with open(os.path.join(rts.ROOT, h), "wb") as fh:
                     fh.write(orig[h])
                 rts.restore_file(h, mtimes[h])
-                rejected.append((h, "harness/test objects differ or fail to build: %s" % ", ".join(sorted(self.by_header.get(h, set()) & failing)[:3])))
+                rejected.append((h, failure_reason(sorted(self.by_header.get(h, set()) & failing), fail_text)))
             kept = [h for h in kept if h not in culprits]
         return kept, rejected

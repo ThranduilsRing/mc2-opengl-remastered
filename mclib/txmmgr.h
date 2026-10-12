@@ -59,28 +59,28 @@ enum MC_TextureKey
 //----------------------------------------------------------------------
 //Can store up to 1024 8x8 textures in 1 256x256.
 #define MC_MAXTEXTURES				4096
-#define CACHED_OUT_HANDLE			0xFFFFFACE		//If this value is in gosTextureHandle, texture is cached out and must be cached in.
-#define MAX_MC2_GOS_TEXTURES		3000
+inline constexpr unsigned int CACHED_OUT_HANDLE = 0xFFFFFACE;		//If this value is in gosTextureHandle, texture is cached out and must be cached in.
+inline constexpr int MAX_MC2_GOS_TEXTURES = 3000;
 #define TEXTURE_CACHE_SIZE			(128*1024*1024)	//Extra space here to facilitate editting (was 40MB; bumped for 2048^2 imported-mech TGAs)
 #define MAX_CACHE_SIZE				(128*1024*1024)	//Actual amount map must run in! (was 40MB)
-#define MC_MAXFACES					16000000		// MODEL-OVERRIDE: sized for override forests (was 200000, CPU-era cap)
+inline constexpr int MC_MAXFACES = 16000000;		// MODEL-OVERRIDE: sized for override forests (was 200000, CPU-era cap)
 // Holds one whole uncompressed TGA in flight. 2048x2048 RGBA = 16MB, so 8MB
 // overran on imported-mech textures (loadTexture memcpy READ violation). 32MB
 // covers 2048^2 with headroom; stock textures (<=512^2) unaffected.
 #define MAX_LZ_BUFFER_SIZE			((1024*1024*32) + 1024)
 
-#define MC2_ISTERRAIN				1
-#define MC2_DRAWSOLID				2
+inline constexpr int MC2_ISTERRAIN = 1;
+inline constexpr int MC2_DRAWSOLID = 2;
 #define MC2_DRAWALPHA				4
-#define MC2_ISSHADOWS				8
-#define MC2_ISEFFECTS				16
-#define MC2_DRAWONEIN				32
-#define MC2_ISCOMPASS				128
-#define MC2_ISSPOTLGT				256
-#define MC2_ISHUDLMNT				512
-#define MC2_ALPHATEST				1024
-#define MC2_ISWATER					2048
-#define MC2_ISWATERDETAIL			4096
+inline constexpr int MC2_ISSHADOWS = 8;
+inline constexpr int MC2_ISEFFECTS = 16;
+inline constexpr int MC2_DRAWONEIN = 32;
+inline constexpr int MC2_ISCOMPASS = 128;
+inline constexpr int MC2_ISSPOTLGT = 256;
+inline constexpr int MC2_ISHUDLMNT = 512;
+inline constexpr int MC2_ALPHATEST = 1024;
+inline constexpr int MC2_ISWATER = 2048;
+inline constexpr int MC2_ISWATERDETAIL = 4096;
 #define MC2_GPUOVERLAY				8192
 
 //----------------------------------------------------------------------

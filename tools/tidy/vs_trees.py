@@ -101,6 +101,44 @@ def _error_files(text):
     return out
 
 
+ERROR_LINE = re.compile(r"\b(?:fatal\s+)?error\s+(?:[A-Z]{1,4}\d{2,5}|:)|\bLNK\d{3,5}\b|\bMSB\d{4}\b|\bFAILED:|\bundefined reference\b|\bunresolved external\b", re.I)
+LOG_DIR = os.path.join(ROOT, ".claude", "l2cfg", "vs_gate_logs")
+
+
+def extract_errors(log, max_lines=8, max_chars=1200):
+    """The lines of a build log that say why it failed: compiler / linker / MSBuild error lines, deduplicated in order. When the log holds none (a tool crash, a
+    missing generator, a signal) the last non-empty lines stand in, marked as a log tail, so a failure never carries an empty reason."""
+    seen, out = set(), []
+    for raw in log.splitlines():
+        line = re.sub(r"^\s*\d+>", "", raw).strip()
+        if line and ERROR_LINE.search(line) and line not in seen:
+            seen.add(line)
+            out.append(line)
+    if out:
+        text = "\n".join(out[:max_lines])
+        if len(out) > max_lines:
+            text += "\n(+%d more error line(s))" % (len(out) - max_lines)
+    else:
+        tail = [l.strip() for l in log.splitlines() if l.strip()][-max_lines:]
+        text = "(no error line in the build log; log tail)\n" + "\n".join(tail) if tail else "(the build printed nothing)"
+    return text[:max_chars]
+
+
+def save_log(tree, target, log, directory=LOG_DIR):
+    """Keep the full build log of a failed target; -> the path (repo-relative, forward slashes), or '' when it cannot be written."""
+    try:
+        os.makedirs(directory, exist_ok=True)
+        path = os.path.join(directory, "%s__%s.log" % (tree, re.sub(r"[^\w.-]", "_", target)))
+        with open(path, "w", encoding="utf-8", errors="replace") as fh:
+            fh.write(log)
+        try:
+            return os.path.relpath(path, ROOT).replace("\\", "/")
+        except ValueError:                                     # another drive: the absolute path
+            return path.replace("\\", "/")
+    except OSError:
+        return ""
+
+
 def build_trees(keys, by_header=None):
     """Build every target holding one of the 'tree::object' keys. -> {key: error text} for the objects that failed.
     A failed target blames only the objects its errors name: the source file itself, or a header the object includes (`by_header`: header -> keys). When no error can be
@@ -117,7 +155,10 @@ def build_trees(keys, by_header=None):
         if not r.returncode:
             continue
         log = r.stdout + r.stderr
-        msg = "\n".join(l for l in log.splitlines() if "error" in l)[:600]
+        msg = extract_errors(log)
+        kept_at = save_log(tree, target, log)
+        if kept_at:
+            msg += "\n(full log: %s)" % kept_at
         efiles = _error_files(log)
         stems = {os.path.splitext(os.path.basename(f))[0] for f in efiles if f.endswith((".cpp", ".cc", ".cxx", ".c"))}
         blamed = {k for k in ks if os.path.splitext(os.path.basename(k.split("::", 1)[1]))[0].lower() in stems}
@@ -152,7 +193,7 @@ def verify(path, layout_only_ok=False, order_only_ok=False):
     lines, bad, layout = [], 0, []
     for k, before in sorted(doc["objects"].items()):
         if k in failed and k not in doc["failed_before"]:
-            lines.append("FAIL  %s  does not build: %s" % (k, failed[k].replace("\n", " | ")[:200]))
+            lines.append("FAIL  %s  does not build: %s" % (k, failed[k].replace("\n", " | ")[:700]))
             bad += 1
             continue
         tree, obj = k.split("::", 1)
