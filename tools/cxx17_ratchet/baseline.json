@@ -193,7 +193,7 @@
    "LG06": 670,
    "LG07": 0,
    "LG08": 74,
-   "LG09": 2190,
+   "LG09": 2188,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 210,
@@ -3245,7 +3245,7 @@
    "LG09": 13
   },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 27
+   "LG09": 25
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
@@ -5180,7 +5180,7 @@
    "LG20": 2
   }
  },
- "head": "6d0dcb142",
+ "head": "c8f6fa3df",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

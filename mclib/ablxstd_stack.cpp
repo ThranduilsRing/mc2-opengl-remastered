@@ -85,6 +85,21 @@ char* ABLi_popCharPtr (void) {
 
 //---------------------------------------------------------------------------
 
+std::span<char> ABLi_popCharBuf (void) {
+
+	getCodeToken();
+	const TypePtr typePtr = execExpression();
+	char* charPtr = static_cast<char*>(tos->address);
+	pop();
+
+	if (charPtr && typePtr && typePtr->form == FRM_ARRAY && typePtr->info.array.elementTypePtr == CharTypePtr
+	    && typePtr->info.array.elementCount > 0)
+		return std::span<char>(charPtr, static_cast<size_t>(typePtr->info.array.elementCount));
+	return {};
+}
+
+//---------------------------------------------------------------------------
+
 int* ABLi_popIntegerPtr (void) {
 
 	getCodeToken();

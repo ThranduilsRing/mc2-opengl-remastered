@@ -197,14 +197,13 @@ void execStdPrint (void) {
 
 //***************************************************************************
 
-// A script string that outgrows its char[N] is cut at the capacity and logged (malformed content is clamped with a log
-// line, never a crash); the log stops after a few lines so a looping script cannot flood it.
-static void reportConcatTruncated (size_t capacity, size_t dropped) {
-	static int s_lines = 0;
-	if (s_lines >= 16)
+// A script string that outgrows its char[N] is cut at the capacity and logged as event=<routine>_truncated (malformed content
+// is clamped with a log line, never a crash); each routine's log stops after a few lines so a looping script cannot flood it.
+static void reportTruncated (std::string_view event, int& lines, size_t capacity, size_t dropped) {
+	if (lines >= 16)
 		return;
-	++s_lines;
-	mc2::fmt::print_err("[ABL v1] event=concat_truncated module={} line={:d} capacity={:d} dropped={:d}\n",
+	++lines;
+	mc2::fmt::print_err("[ABL v1] event={}_truncated module={} line={:d} capacity={:d} dropped={:d}\n", event,
 	                    mc2::fmt::safe(CurModule ? CurModule->getName() : nullptr), mc2::fmt::as_i32(execLineNumber),
 	                    mc2::fmt::as_size(capacity), mc2::fmt::as_size(dropped));
 }
@@ -216,14 +215,8 @@ TypePtr execStdConcat (void) {
 	getCodeToken();
 
 	//--------------------------
-	// Get destination string: a char[N] variable, whose declared size bounds the append (the variable is a heap
-	// block of exactly N bytes).
-	getCodeToken();
-	TypePtr destTypePtr = execExpression();
-	char* dest = (char*)tos->address;
-	pop();
-	const size_t destCap = (destTypePtr && destTypePtr->form == FRM_ARRAY && destTypePtr->info.array.elementCount > 0)
-	                           ? (size_t)destTypePtr->info.array.elementCount : 0u;
+	// Get destination string: a char[N] variable, whose declared size bounds the append.
+	const std::span<char> dest = ABLi_popCharBuf();
 
 	//----------------------
 	// Get item to append...
@@ -251,9 +244,10 @@ TypePtr execStdConcat (void) {
 		item = (char*)tos->address;
 
 	if (item) {
-		const size_t dropped = abl::appendBounded(dest, destCap, item);
+		static int s_lines = 0;
+		const size_t dropped = abl::appendBounded(dest, item);
 		if (dropped)
-			reportConcatTruncated(destCap, dropped);
+			reportTruncated("concat", s_lines, dest.size(), dropped);
 	}
 
 	tos->integer = 0;
@@ -352,10 +346,14 @@ void execStdGetModule (void) {
 
 	//----------------------------------------------------------
 	// Return the handle of the current module being executed...
-	char* curBuffer = ABLi_popCharPtr();
-	char* fsmBuffer = ABLi_popCharPtr();
-	strcpy(curBuffer, CurModule->getFileName());
-	strcpy(fsmBuffer, CurFSM ? CurFSM->getFileName() : "none");
+	// The names go into the script's char[N] variables, bounded by their declared sizes.
+	const std::span<char> curBuffer = ABLi_popCharBuf();
+	const std::span<char> fsmBuffer = ABLi_popCharBuf();
+	static int s_lines = 0;
+	if (const size_t dropped = abl::copyBounded(curBuffer, abl::textOf(CurModule->getFileName())))
+		reportTruncated("getmodule", s_lines, curBuffer.size(), dropped);
+	if (const size_t dropped = abl::copyBounded(fsmBuffer, CurFSM ? abl::textOf(CurFSM->getFileName()) : std::string_view{"none"}))
+		reportTruncated("getmodule", s_lines, fsmBuffer.size(), dropped);
 	ABLi_pushInteger(CurModuleHandle);
 }
 

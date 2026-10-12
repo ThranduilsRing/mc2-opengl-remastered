@@ -1,6 +1,7 @@
 // ABL native bindings: unit status, repair, messaging, path queries, pilot state and debug bindings.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_out_params.h"
 
 
 void execIsGateOpen (void) {
@@ -86,13 +87,15 @@ void execGetRelativePositionToObject (void) {
 		return;
 	}
 
+	// Only a mover has a position relative to itself: any other object (or an unknown id) answers the zero vector, so the
+	// script's real[3] never keeps a stale or uninitialised value.
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
 		Stuff::Vector3D newPos;
 		newPos = ((MoverPtr)object)->relativePosition(angle, distance, flags);
-		relPos[0] = newPos.x;
-		relPos[1] = newPos.y;
-		relPos[2] = newPos.z;
+		abl::writeVec3(std::span<float, 3>(relPos, 3), newPos.x, newPos.y, newPos.z);
+	} else {
+		abl::writeZeroVec3(std::span<float, 3>(relPos, 3));
 	}
 }
 

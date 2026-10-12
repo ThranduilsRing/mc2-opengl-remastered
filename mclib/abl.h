@@ -10,6 +10,8 @@
 #ifndef ABL_H
 #define	ABL_H
 
+#include <span>
+
 #ifndef ABLGEN_H
 #include"ablgen.h"
 #endif
@@ -137,6 +139,9 @@ float ABLi_popIntegerReal (void);
 long ABLi_popAnything (ABLStackItem* value);
 
 char* ABLi_popCharPtr (void);
+// A char[] argument that the routine writes into: the span covers the variable's declared size (a script variable is a heap
+// block of exactly that many bytes). Empty when the argument is not a char array of known size; writers then store nothing.
+std::span<char> ABLi_popCharBuf (void);
 int* ABLi_popIntegerPtr (void);
 float* ABLi_popRealPtr (void);
 char* ABLi_popBooleanPtr (void);
