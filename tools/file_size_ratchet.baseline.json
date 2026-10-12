@@ -21,7 +21,7 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1783,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "RenderCore/RendererFeatureRegistry.h": 2533,
+  "RenderCore/RendererFeatureRegistry.h": 2352,
   "code/artlry.cpp": 1818,
   "code/bldng.cpp": 1704,
   "code/brain_special_dispatch.cpp": 2772,
@@ -61,9 +61,9 @@
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1778,
   "mclib/tgl.h": 1702,
-  "shaders/terrain_lod_chunk.frag": 2412
+  "shaders/terrain_lod_chunk.frag": 2286
  },
- "head": "1e4cb7b13",
+ "head": "baf462195",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -87,7 +87,7 @@
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2533
+   "max_lines": 2352
   },
   "RenderWorld": {
    "files": 6,
@@ -114,7 +114,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 609,
+   "files": 610,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -123,7 +123,7 @@
    "files": 172,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2412
+   "max_lines": 2286
   }
  },
  "thresholds": [
@@ -160,20 +160,16 @@
    "lines": 2631
   },
   {
-   "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 2533
-  },
-  {
    "file": "code/mpparameterscreen.cpp",
    "lines": 2415
   },
   {
-   "file": "shaders/terrain_lod_chunk.frag",
-   "lines": 2412
-  },
-  {
    "file": "code/gameobj.cpp",
    "lines": 2370
+  },
+  {
+   "file": "RenderCore/RendererFeatureRegistry.h",
+   "lines": 2352
   },
   {
    "file": "code/turret.cpp",
@@ -182,6 +178,10 @@
   {
    "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
    "lines": 2332
+  },
+  {
+   "file": "shaders/terrain_lod_chunk.frag",
+   "lines": 2286
   },
   {
    "file": "code/warrior.h",
@@ -253,7 +253,7 @@
   }
  ],
  "total": {
-  "files": 1830,
+  "files": 1831,
   "files_over_1500": 49,
   "files_over_3000": 1,
   "max_lines": 3753
