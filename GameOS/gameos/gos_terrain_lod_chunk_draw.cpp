@@ -852,17 +852,11 @@ static void uploadTerrainTuning() {
             if (s_locEdgeFeather >= 0) glUniform1i(s_locEdgeFeather, kTglcEdgeFeather ? 1 : 0);
             if (s_locEdgeFeatherStr >= 0) glUniform1f(s_locEdgeFeatherStr, kTglcEdgeFeatherStr);
         }
-        // Chunk POM: the march uses the real per-fragment view vector, faded
-        // over a world-distance band (1 tile = 384 wu) so the cost is bounded.
+        // Chunk POM: the march uses the real per-fragment view vector; its layer counts and
+        // world-distance fade band are constants in terrain_lod_chunk.frag.
         {
-            constexpr float kPomMaxSteps = 16.0f;
-            constexpr float kPomMinSteps = 8.0f;
-            constexpr float kPomFadeNear = 1500.0f;
-            constexpr float kPomFadeFar  = 3500.0f;
-            if (s_locPomParams >= 0)
-                glUniform4f(s_locPomParams, gos_GetTerrainPOMScale(), kPomMinSteps, kPomMaxSteps, 0.0f);
-            if (s_locPomView >= 0)
-                glUniform4f(s_locPomView, 1.0f, kPomFadeNear, kPomFadeFar, 0.0f);
+            if (s_locPomScale >= 0)
+                glUniform1f(s_locPomScale, gos_GetTerrainPOMScale());
             // cameraPos is read by the POM view vector and the 8192 oracle viz.
             if (s_locCameraPos >= 0) {
                 float cx = 0.0f, cy = 0.0f, cz = 0.0f;

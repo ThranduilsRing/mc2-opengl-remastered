@@ -53,7 +53,7 @@ RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
     "DynamicPropShadowSsbo",
     0u};
 // typeIDs drawn into the static building shadow map. When the static building
-// shadow is active, flushShadow(skipStaticBuildingTypes=true) skips these in the
+// shadow is active, flushShadow() skips these in the
 // DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
 std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 
@@ -201,21 +201,6 @@ bool staticPropAmbientV1Enabled() {
     return on;
 }
 
-// PROP-BASE-LIGHT-DIR-1: directional (hemispherical-wrap) modulation of the
-// baked per-vertex base_light seed. See the long rationale block in
-// shaders/static_prop.vert next to `vec3 baseLightDir`.
-//
-// The user's defect -- "this building face should be in shadow as the light is
-// from behind" -- is NOT a shadow bug. base_light is orientation-free, so a
-// wall facing away from the sun renders as bright as one facing it. Its sun
-// term is already ndl==0, so no shadow term can darken it (measured: <=0.05%
-// of pixels day, 0.000% night for MC2_PROP_SHADOW_RECEIVE). This gate gives
-// that baked seed the missing orientation term.
-//
-// The strength is the directional wrap term's weight: back-faces scale to (1 - 0.45) of their baked seed, faces
-// toward the sun are multiplied by exactly 1.0. Below 1.0 so the back-face factor never goes negative (black walls).
-extern const float s_propBaseLightDirStrength = 0.45f;
-
 // FAR-BACKDROP-LIT: gate + tunables for the night-shade substitution applied to
 // far/impostor static-prop LODs (see static_prop.vert). Default-OFF; "=1" / any
 // non-"0", non-empty value enables. When OFF the per-frame upload pushes
@@ -225,51 +210,6 @@ extern const float s_propBaseLightDirStrength = 0.45f;
 // Distance band defaults bracket the LOD impostor distance (800
 // world units; bdactor.cpp selectActiveLOD) so the fade completes as
 // the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
-// EDGE-LIGHT-EMISSION-1: stock MC2 lights windows, building base lights and the runway/beacon fixtures through authored
-// hot-colour vertex tags ("Hot Green -- Building Base Lights -- ONLY at NIGHT"). This path used to pass a daytime state to
-// get_base_light(), so every night-only arm took its daytime result and the lights never came on. The night state is now
-// uploaded and the emission delta is applied at full stock strength (kNightEmissiveScale in the batcher internals);
-// light fixtures get the same scale through the fixture discriminator below (kFixtureEmissiveScale), so they come on
-// at night without a screen-size clamp: the emission rides real fixture geometry and shrinks and fades with distance.
-
-// BEACON-FIXTURE-ID-1: the fixture discriminator, validated against all 773
-// stock data/tgl .ini.
-//
-// A light fixture declares the SAME saturated primary for all three Hot*RGB
-// slots -- it has one emission colour and does not care which magic tag the
-// artist painted the post with. Buildings declare desaturated greys/olives
-// (0x00707070, 0x00557238, 0x006AA6A6, ...) and declare them INDEPENDENTLY per
-// slot, so their three values are essentially never equal.
-//
-// Both halves of the test are load-bearing. "Saturated primary" ALONE is leaky
-// because mclib/bdactor.cpp:813-819 defaults an undeclared slot to the magic tag
-// itself (HotGreenRGB -> 0xff00ff00, a saturated primary): 503 of 773 .ini trip
-// the naive test. Requiring all three EQUAL rejects every one of those, because
-// the three defaults differ from each other.
-//
-// Measured on the stock data set: 4 of 773 .ini match -- runwaylight,
-// redbeaconlight, greenbeaconlight, bluebeaconlight -- backing the ~24 fixture
-// .ase (base/x/dam/damx/l1 variants). Zero buildings match. This is data-driven
-// rather than a hardcoded name list, so it also classifies modded fixtures that
-// follow the same authoring convention.
-bool isEmissiveFixtureType(DWORD pink, DWORD yellow, DWORD green)
-{
-    const DWORD rgbP = pink & 0x00FFFFFFu;
-    const DWORD rgbY = yellow & 0x00FFFFFFu;
-    const DWORD rgbG = green & 0x00FFFFFFu;
-    if (rgbP != rgbY || rgbY != rgbG) return false;   // rejects the default-mix case
-    const int r = (int)((rgbP >> 16) & 0xFFu);
-    const int g = (int)((rgbP >>  8) & 0xFFu);
-    const int b = (int)((rgbP >>  0) & 0xFFu);
-    const int mx = (r > g ? (r > b ? r : b) : (g > b ? g : b));
-    const int mn = (r < g ? (r < b ? r : b) : (g < b ? g : b));
-    return mx >= 200 && mn <= 40 && (mx - mn) >= 160;  // saturated primary
-}
-
-// BEACON-FIXTURE-ID-1: numeric receipt -- how many registered types the
-// discriminator classified as fixtures on the loaded map.
-unsigned s_fixtureTypeCount = 0;
-
 extern const bool s_farBackdropLitEnabled = mc2::gate::get<"MC2_FAR_BACKDROP_LIT">();
 extern const float s_farBackdropNear = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_NEAR">();
 extern const float s_farBackdropFar = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_FAR">();

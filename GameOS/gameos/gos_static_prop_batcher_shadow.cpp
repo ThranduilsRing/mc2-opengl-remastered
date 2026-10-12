@@ -149,7 +149,7 @@ static void bindPropShadowAtlasPacket(GLuint prog,
 static int s_shadowTypesDrawn = 0;
 static int s_shadowInstDrawn  = 0;
 
-void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
+void GpuStaticPropBatcher::flushShadow() {
     // Non-indirect, full-range, depth-only draw for GPU static props.
     // Uses the shadow_static_prop program (Task 1) and the same per-frame
     // SSBO upload as flush() (shared via uploadAllBucketsIfNeeded /
@@ -273,11 +273,10 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
         const TypeRangeSsbo& r = rit->second;
         const GpuStaticPropType& type = s_types[typeID];
         if (r.instanceCount == 0 || type.packetCount == 0) continue;
-        // SHADOW-STATIC-BUILDINGS-2: when the static building shadow map is active,
-        // skip building types in the DYNAMIC pass — they already cast a crisp
-        // shadow via the world-fixed static map; the dynamic copy is a redundant,
-        // fuzzy double-shadow. Trees/mechs/other props still cast dynamically.
-        if (skipStaticBuildingTypes && s_buildingShadowTypeIDs.count(typeID)) continue;
+        // SHADOW-STATIC-BUILDINGS-2: skip building types in the DYNAMIC pass — they
+        // already cast a crisp shadow via the world-fixed static map; the dynamic copy
+        // is a redundant, fuzzy double-shadow. Trees/mechs/other props still cast dynamically.
+        if (s_buildingShadowTypeIDs.count(typeID)) continue;
 
         // Bind the per-type instance SSBO range (binding 0 = Instances block
         // in shadow_static_prop.vert, indexed by gl_InstanceID).

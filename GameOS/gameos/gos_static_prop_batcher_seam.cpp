@@ -130,40 +130,8 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
     // The per-instance Colors SSBO zero-fill is skipped: no production shader reads colors_ (addr-mode 4 reads v_argb).
 }
 
-void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance* arr,
-                                                     uint32_t count) {
-    if (!arr || count == 0u) return;
-    // Group consecutive same-typeID runs so the map lookup + the color resize
-    // happen ONCE per run, not per leaf.
-    uint32_t i = 0u;
-    while (i < count) {
-        const uint32_t typeID = arr[i].typeID;
-        if (typeID >= s_types.size()) { ++i; continue; }
-        PerTypeBucket& bucket = s_bucketsByType[typeID];          // one lookup per run
-        uint32_t j = i;
-        while (j < count && arr[j].typeID == typeID) ++j;
-        const uint32_t n = j - i;
-        // patch 2: ONE color resize/fill per run, not per-instance insert.
-        // 2A REGRESSION FIX: do NOT reserve(size+n) per call — for single-leaf ranges
-        // (n==1, the common case) that sets capacity to EXACTLY size+1 each call,
-        // defeating std::vector geometric growth → a reallocation per leaf (O(N^2)).
-        // Plain push_back (like legacy submitCachedInstance) grows geometrically.
-        // The colors zero-fill is skipped (no production shader reads colors_).
-        for (uint32_t local = 0u; local < n; ++local) {
-            GpuStaticPropInstance updated = arr[i + local];
-            // firstColorOffset is unused by any production shader.
-            updated.firstColorOffset = 0u;
-            bucket.instances.push_back(updated);
-        }
-        i = j;
-    }
-}
-
 uint64_t GpuStaticPropBatcher::persistentStaticGen() { return s_persistentStaticGen; }
 void GpuStaticPropBatcher::setPersistentStaticGen(uint64_t g) { s_persistentStaticGen = g; }
-uint64_t GpuStaticPropBatcher::persistentStaticTotalCount() {
-    uint64_t n = 0; for (auto& kv : s_persistentStaticStore) n += kv.second.size(); return n;
-}
 
 // VANISH-PROBE-1: stable-order access to persistent static instance origins.
 // Free functions (no header coupling) so code/gamecam.cpp can extern-declare
@@ -573,7 +541,7 @@ static void rebuildStaticDrawCmdsIfDirty() {
 
     // Diag (env-gated): dump the static cmd summary so Task 3 can be validated
     // before the draw exists. Sum of instanceCount over OFF/ON groups must equal
-    // persistentStaticTotalCount(); non-zero cmd count == sorted packet count.
+    // the persistent store's total instance count; non-zero cmd count == sorted packet count.
     static const bool s_cmdDiag = mc2::gate::get<"MC2_STATIC_POP_SPLIT_CMD_DIAG">();
     if (s_cmdDiag) {
         // maxBaseInstance+its instanceCount must stay within the static pool
@@ -811,14 +779,13 @@ void batcher_compareSnapshotPackets(RenderSnapshot* snap) {
 
 void batcher_getSnapshotBuildStats(uint32_t* attempted, uint32_t* countMismatch,
                                    uint32_t* packetMismatch, uint32_t* metaMismatch,
-                                   uint32_t* fallback, uint32_t* retired)
+                                   uint32_t* fallback)
 {
     if (attempted)      *attempted      = s_spBuildAttempted;
     if (countMismatch)  *countMismatch  = s_spBuildCountMismatch;
     if (packetMismatch) *packetMismatch = s_spBuildPacketMismatch;
     if (metaMismatch)   *metaMismatch   = s_spBuildMetaMismatch;
     if (fallback)       *fallback       = s_spBuildFallback;
-    if (retired)        *retired        = s_spBuildRetired;
 }
 
 uint32_t batcher_getPerTypePeakCount(uint32_t typeID) {

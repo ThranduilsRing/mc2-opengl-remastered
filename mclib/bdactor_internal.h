@@ -179,6 +179,6 @@ bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
 bool mc2ConeGroundHit (const Stuff::Vector3D& apex, const Stuff::Vector3D& aim, float beamLen, Stuff::Vector3D& hitOut);
-void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex, const char* reason);
+void bldgTriggerStaticShadowRebake(bool wasRegistered);
 
 #endif // BDACTOR_INTERNAL_H

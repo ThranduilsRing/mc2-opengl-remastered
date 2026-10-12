@@ -2540,8 +2540,7 @@
     "invalid",
     "skipped",
     "mat_mismatch",
-    "overflow",
-    "retired"
+    "overflow"
    ],
    "count": 1
   },
@@ -3917,26 +3916,6 @@
     "multi_packet",
     "alpha_on_fallback",
     "no_primary"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUPROPS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "id",
-    "name",
-    "rgb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUPROPS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "scale"
    ],
    "count": 1
   },

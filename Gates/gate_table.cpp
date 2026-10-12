@@ -598,9 +598,6 @@ L(Lead1, "MC2_MECH_IMPORT_GPU", Bool, false, "code", "", "", verified),
 P("MC2_MECH_IMPORT_GPU_AXIS", Int, 2, "code", "", "", verified),
 P("MC2_MECH_IMPORT_GPU_LIFT", Float, 0.0, "code", "", "", verified),
 P("MC2_MECH_IMPORT_GPU_LIFT_AXIS", Int, 1, "code", "", "", verified),
-// MechLightFreshness (MECH-LIGHTROW-FRESHNESS-1)
-// MUST STAY LAST -- kFeatureTable is indexed by RendererFeature, so this
-// entry's position is its enum value (62).
 L(Presence, "MC2_MECH_LIGHT_TRACE", Bool, false, "mech", "", "", verified),
 L(Presence, "MC2_MECH_LOD_TRACE", Bool, false, "mech", "", "MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.", verified),
 P("MC2_MECH_METAL_ROUGHNESS", Float, 0.85, "mech", "", "", clampRange(0.04, 1.0) | verified),
@@ -979,16 +976,11 @@ L(Lead0, "MC2_STATIC_PROP_IBL_SUN_ROTATE", Bool, false, "props", "", "[DEFAULT-O
 // history: docs/gate-history.md#MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR
 P("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", Float, 0.45, "props", "", "[VALUE, not a boolean: the floor in the probe's own irradiance units.", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", -1, true) | clampRange(0.0, 2.0) | verified),
 G("MC2_STATIC_PROP_LATE_SPAWN_REG", Bool, false, "props", "", "Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20).", verified),
-// StaticPropLightFreshness (LIGHTROW-FRESHNESS-1)
-// kFeatureTable is indexed by RendererFeature, so this entry's position is
-// its enum value (61).
-// DrawPacket v8 kill-switch
 G("MC2_STATIC_PROP_MISSION_LOAD_REG", Bool, true, "props", "", "Task 9 (Track B): mission-load + late-spawn registration ON by default.", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_PBR_V1
 L(Lead0, "MC2_STATIC_PROP_PBR_V1", Bool, false, "props", "", "V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular on StaticPropOpaque lane (static_prop.frag, inside `#if defined(MC2_USE_VIEW_UNIFORMS)`).", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_PBR_V1", 16, false) | verified),
 L(Lead0, "MC2_STATIC_PROP_PICK", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_STATIC_PROP_PICK_DEBUG", Bool, false, "code", "", "", verified),
-// STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1
 L(Lead0Kill, "MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY", Bool, true, "gameos", "", "", passthrough | verified),
 L(Lead0, "MC2_STATIC_PROP_TRACE", Bool, false, "props", "", "Stage 2.C+ instrumentation: one-shot registered-types dump.", verified),
 L(Lead0Kill, "MC2_STATIC_RECIPE_RECYCLE", Bool, true, "props", "", "", verified),

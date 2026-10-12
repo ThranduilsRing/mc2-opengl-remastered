@@ -175,13 +175,11 @@ void queryShadowFeed(int32_t recipeIndex, ShadowFeedReport& out)
     scanFeed(bldg, out.recipeResolved, recipeTypeId, out.recipePos,
              out.inBuildingFeed);
 
-    // includeBuildings=false mirrors the default the per-frame dynamic caster
-    // draw uses when the static building map is active. When it is NOT active
-    // the engine passes true (mclib/txmmgr.cpp:3283 `includeBldg`), so a
-    // building can legitimately appear in the dynamic feed too; that is why
-    // the caller is given the static-pass draw counts alongside.
+    // The dynamic caster feed never includes buildings: they cast through the
+    // static building map, and the caller is given the static-pass draw counts
+    // alongside to tell a drawn feed from an undrawn one.
     std::vector<GpuStaticPropInstance> dyn;
-    GpuStaticPropRegistry::getDynamicPropShadowInstances(dyn, false);
+    GpuStaticPropRegistry::getDynamicPropShadowInstances(dyn);
     out.dynamicFeedTotal = (int)dyn.size();
     scanFeed(dyn, out.recipeResolved, recipeTypeId, out.recipePos,
              out.inDynamicFeed);

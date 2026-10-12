@@ -705,10 +705,9 @@ void BldgAppearance::touchSerialCommit()
 // BldgAppearance::destroy() -- mission-end/pool-recycle teardown, cheap
 // insurance for the case a registered building never went through (1) first.
 // Only worth the rebake cost (a full-map static shadow replay,
-// ZoneScopedN("Shadow.StaticFullMapBuild") in txmmgr.cpp) when (a) this
-// building actually had a static registration, AND (b) the building
-// static-shadow map is active (buildings cast through it in every mission).
-void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t /*recipeIndex*/, const char* /*reason*/)
+// ZoneScopedN("Shadow.StaticFullMapBuild") in txmmgr.cpp) when this
+// building actually had a static registration.
+void bldgTriggerStaticShadowRebake(bool wasRegistered)
 {
 	if (!wasRegistered) return;
 	gos_ResetStaticLightMatrix();
@@ -725,7 +724,6 @@ void BldgAppearance::destroy (void)
 {
 	// Capture BEFORE invalidateStaticRegistration() clears staticReg below.
 	const bool    wasStaticRegistered   = staticReg.registered;
-	const int32_t prevStaticRecipeIndex = staticReg.recipeIndex;
 
 	// Stage 3.D: NULL the registry's RecipeRange::multi pointer before
 	// bldgShape is freed below. Mirrors TreeAppearance::destroy ordering.
@@ -735,7 +733,7 @@ void BldgAppearance::destroy (void)
 	// comment. In practice combat-destroyed buildings are already re-armed
 	// earlier via setObjStatus(OBJECT_STATUS_DESTROYED); this covers the
 	// mission-end/pool-recycle path.
-	bldgTriggerStaticShadowRebakeIfArmed(wasStaticRegistered, prevStaticRecipeIndex, "appearance_destroy");
+	bldgTriggerStaticShadowRebake(wasStaticRegistered);
 
 	if ( bldgShape )
 	{

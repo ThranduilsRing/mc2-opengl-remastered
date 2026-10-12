@@ -872,7 +872,6 @@ _KNOWN_DIAG_TAGS: frozenset[str] = frozenset({
     "GPU_CULL",
     "LIGHTBAKE_PROOF",
     "ANIM_GATE",
-    "SPFLUSH_COST_SPLIT",
     "TerrainLOD_prod",
     "TERRAIN_ACTIVE_AB",
     "TERRAIN_SOLID_AB",
@@ -889,7 +888,7 @@ def get_diagnostic_events(tag: str, last_n: int = 50) -> str:
     """
     Return the last N diagnostic events for a tag from diagnostic_trace.jsonl.
 
-    tag: registered tag name (GPU_CULL, SPFLUSH_COST_SPLIT, ANIM_GATE, etc.)
+    tag: registered tag name (GPU_CULL, ANIM_GATE, etc.)
          Use tag="*" to get all events regardless of tag.
          Unknown/unregistered tag returns an error with the known tag list.
     last_n: max events to return (default 50, capped at 500).

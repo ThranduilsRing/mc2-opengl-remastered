@@ -1520,7 +1520,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             u.iblShStrength = 0.0f;
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
-        u.glassDither = 1;   // GL parity: ordered-dither glass translucency
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant

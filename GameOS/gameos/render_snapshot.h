@@ -203,10 +203,8 @@ struct RenderSnapshot {
     //   spCountMismatch==0, spSortedSlotMismatch==0, spGlobalPacketMismatch==0,
     //   spPipelineMismatch==0, spMaterialIdxMismatch==0, spTexLayerMismatch==0.
     // Informational (excluded from ok): spInstanceCountMismatch,
-    //   spBuildAttempted, spBuildFallback, spBuildRetired,
+    //   spBuildAttempted, spBuildFallback,
     //   mechSnapshotCount, mechMatValid, mechMatSentinel.
-    // v8: when spBuildRetired==1 there is no per-flush compare; spBuild*Mismatch are 0 by construction
-    //     and the gate must not treat spBuildAttempted==0 as a failure.
     uint32_t ok = 0u;
 
     // --- v2.2: dispatch-fact compare results (filled by batcher_compareSnapshotPackets) ---
@@ -233,15 +231,6 @@ struct RenderSnapshot {
     uint32_t spBuildMetaMismatch   = 0u;  // DispatchMeta field divergence (accumulated)
     uint32_t spBuildFallback       = 0u;  // gate enabled/attempted but snapshot arrays NOT dispatched
 
-    // v8 STATIC-PROP-SNAPSHOT-FINISH: explicit retired state. Informational (excluded from ok gate
-    // as a mismatch; but the gate must NOT flag spBuildAttempted==0 as failure when this is 1).
-    //   spBuildRetired==1                       → live builder + compare intentionally skipped (sole-owner).
-    //   spBuildRetired==0 && spBuildAttempted==0 → suspicious / unvalidated.
-    //   spBuildRetired==0 && spBuildAttempted==1 → dual-build path ran the compare (kill-switch on).
-    //   NOTE: spBuildRetired==1 means retirement is ARMED this flush; on a rare
-    //   structural-invalid frame the live builder still runs as the safety net —
-    //   spBuildFallback (>0) is the authoritative "live builder actually ran" signal.
-    uint32_t spBuildRetired        = 0u;
 
     // --- TERRAIN-PASS-PACKET-0: pass-level terrain facts (inspection-only) ---
     // Populated in gameosmain after ExtractRenderSnapshot() returns; NOT touched

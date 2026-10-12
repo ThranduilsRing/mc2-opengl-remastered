@@ -599,7 +599,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         static std::vector<RenderCore::DrawPacket>  v6Packets;
         static std::vector<StaticPropDispatchMeta>  v6Meta;
         initV6State(f);
-        buildV6Packets(f);
+        resetV6FrameCounters(f);
         decideV5(f);
 
         if (f.runV6 && f.v6LockstepViolations == 0u) {

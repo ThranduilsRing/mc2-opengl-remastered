@@ -515,17 +515,13 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 		// terrain depth (gos_BeginShadowPrePass(false) = no clear). Relies on C-pre min-combine
 		// (7ea32b83) so a building in both this and the dynamic bounded-near map does
 		// not double-darken terrain. Only runs when the prepass actually activates.
-		{
-			{
-				if (gos_BeginShadowPrePass(false)) {  // append, no clear
-					// Local (not static): runs once per mission; getBuildingShadowInstances
-					// clears+fills it. No need to retain capacity for the process lifetime.
-					std::vector<GpuStaticPropInstance> bldgShadowInstances;
-					GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
-					GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
-					gos_EndShadowPrePass();
-				}
-			}
+		if (gos_BeginShadowPrePass(false)) {  // append, no clear
+			// Local (not static): runs once per mission; getBuildingShadowInstances
+			// clears+fills it. No need to retain capacity for the process lifetime.
+			std::vector<GpuStaticPropInstance> bldgShadowInstances;
+			GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
+			GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
+			gos_EndShadowPrePass();
 		}
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowStatic);
 	}

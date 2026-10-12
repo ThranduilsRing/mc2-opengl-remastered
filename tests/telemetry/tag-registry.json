@@ -85,16 +85,6 @@
       "notes": "Pixel oracle screenshot capture event. Emitted by gameosmain.cpp when MC2_SCREENSHOT_AT_FRAME=N triggers. Reads offscreen post-process scene FBO (RGBA16F) via glReadPixels -> TGA. Appears as a single event per run."
     },
     {
-      "tag": "SNAPSHOT_BRIDGE_COMPARE",
-      "version": 1,
-      "kind": "oracle",
-      "gate": false,
-      "oracle_fields_must_be_zero": ["immutableMismatch", "rowCountMismatch", "hasCullMismatch"],
-      "counter_fields": ["path", "regGen", "cullVer", "rowCount", "oracleCount", "rowCountMismatch", "immutableMismatch", "hasCullMismatch"],
-      "doc": "docs/tier1_env_vars.md",
-      "notes": "Static-prop snapshot bridge compare oracle. Requires MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE=1. Emitted per frame with path=DIRTY|CLEAN. gate=false: advisory only until promoted per cockpit promotion rule."
-    },
-    {
       "tag": "FASTPATH_DROP",
       "version": 0,
       "kind": "event",
@@ -124,17 +114,6 @@
       "event_kinds": ["readback_ok", "lifecycle_snapshot", "motion_tolerance", "fallback_n2", "fallback_conservative", "readback_stale_reset"],
       "doc": "docs/tier1_env_vars.md",
       "notes": "GPU cull readback diagnostics (gos_static_prop_batcher.cpp). Most events require MC2_GPU_CULL_READBACK_TRACE=1. readback_stale_reset is unconditional (signals real error: 10-frame miss -> slot abandon). Appears in Event Timeline."
-    },
-    {
-      "tag": "SPFLUSH_COST_SPLIT",
-      "version": 1,
-      "kind": "counter",
-      "gate": false,
-      "counter_fields": ["event", "submit_loop", "inst_build", "map_lookup", "color_fill", "actor_record", "world_to_block", "substrate_append", "baseinstance_upload", "invalidates", "registrations", "rebuilds", "light_writes"],
-      "event_kinds": ["summary"],
-      "doc": "docs/tier1_env_vars.md",
-      "notes": "StaticPropRegistryFlush RDTSC cost-split decomposition. Requires MC2_STATIC_PROP_FLUSH_COST_SPLIT=1. Emits event=summary every 10 frames with per-bucket ns averages. Feeds Counter Trends panel and budget tracking.",
-      "modder_text": "SPFLUSH_COST_SPLIT is a performance diagnostic for the static prop flush path. Values are per-bucket nanosecond averages. Elevated submit_loop or inst_build ns may indicate a complex or dense prop scene."
     },
     {
       "tag": "TIMING",
@@ -306,7 +285,7 @@
       "gate": false,
       "counter_fields": ["event"],
       "doc": "docs/tier1_env_vars.md",
-      "notes": "Light bake / permanent light data event (MC2_LIGHTBAKE_STABILITY)."
+      "notes": "Light bake / permanent light data event."
     },
     {
       "tag": "LIGHTBRIDGE",
@@ -477,7 +456,7 @@
       "gate": false,
       "counter_fields": ["event"],
       "doc": "docs/tier1_env_vars.md",
-      "notes": "Static prop draw-packet dispatch version emit (DrawPacket v8). MC2_STATIC_PROP_LEGACY_DISPATCH=1 reverts to v7."
+      "notes": "Static prop draw-packet dispatch version emit (DrawPacket v8)."
     },
     {
       "tag": "STATIC_PROP_REG",

@@ -57,7 +57,6 @@ All fields are bool. `true` = gate active (feature enabled). `false` = gate inac
 |---|---|---|---|
 | `MC2_DEBUG_STATE_DUMP` | `true` | `MC2_DEBUG_STATE_DUMP` | Always `true` in the snapshot (file only exists when dump is on). |
 | `MC2_VIEW_UNIFORMS` | `true` | `MC2_VIEW_UNIFORMS` | ViewUniforms UBO upload. =0 to disable. |
-| `MC2_SNAPSHOT_STATIC_PROP_BUILD` | `true` | - | Snapshot-built static-prop dispatch (always on; the key is kept constant for readers). |
 | `MC2_MATERIAL_GPU` | `true` | `MC2_MATERIAL_GPU` | GPU material table. =0 disables. |
 | `MC2_MATERIAL_GPU_SAMPLE` | `true` | `MC2_MATERIAL_GPU_SAMPLE` | GPU albedo sampling in static_prop.frag. Requires `MC2_MATERIAL_GPU`. =0 falls back to texArrayLayer. |
 | `MC2_STATIC_PROP_IBL_SH` | `true` | `MC2_STATIC_PROP_IBL_SH` | SH-L2 image-based ambient on static props. =0 disables. |

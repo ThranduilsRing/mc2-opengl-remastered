@@ -99,33 +99,7 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
             unpack(pink,   perTypeBlob[i].hotPinkRGB);
             unpack(yellow, perTypeBlob[i].hotYellowRGB);
             unpack(green,  perTypeBlob[i].hotGreenRGB);
-            // BEACON-FIXTURE-ID-1: ride the existing std430 vec4 padding lane
-            // (hotPinkRGB.w, previously a hardcoded 0.0) rather than growing the
-            // struct -- no size change, no lockstep risk, no new binding.
-            // 1.0 = light fixture, 0.0 = everything else.
-            perTypeBlob[i].hotPinkRGB[3] =
-                isEmissiveFixtureType(pink, yellow, green) ? 1.0f : 0.0f;
-            if (perTypeBlob[i].hotPinkRGB[3] > 0.0f) {
-                ++s_fixtureTypeCount;
-                // FIXTURE-GLOW-1: name the classified types, not just count
-                // them. The count alone hid the fact that a map can register
-                // five fixture types that are all the SAME colour -- which is
-                // exactly what mc2_10 does, and why four lanes only ever put
-                // eyes on green.
-                const char* fname = "<unknown>";
-                for (const auto& kv : s_typeIndex) {
-                    if (kv.second == i && kv.first) {
-                        fname = const_cast<TG_TypeShape*>(kv.first)->getNodeId();
-                        break;
-                    }
-                }
-                mc2::fmt::print_err("[GPUPROPS] fixture-light type: id={:d} name={} rgb=0x{:06X}\n",
-                    mc2::fmt::as_size(i), mc2::fmt::safe(fname), mc2::fmt::as_u32((unsigned long)(pink & 0x00FFFFFFu)));
-            }
         }
-        mc2::fmt::print_err("[GPUPROPS] fixture-lights: {:d} of {:d} types classified as emissive fixtures (scale={:.2f})\n",
-                     mc2::fmt::as_u32(s_fixtureTypeCount), mc2::fmt::as_size(s_types.size()), kFixtureEmissiveScale);
-
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perTypeSsbo);

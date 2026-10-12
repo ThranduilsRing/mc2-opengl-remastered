@@ -61,10 +61,6 @@ extern const bool s_treeDiagTrace = mc2::gate::get<"MC2_TREE_DIAG_TRACE">();
 // used by [OBJBATCHER v1] / [TGL_POOL v1].
 extern const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
 
-// SP-BATCHER-ALPHASCAN-GATE-1: see header. Starts at 1 so a fresh scan (cached
-// gen 0) always runs its first pass regardless of any early destruction events.
-std::atomic<uint64_t> g_staticPropAlphaGeneration{1};
-
 // MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1 — forces the legacy per-type-cap
 // coalesce layout (keeps existing path; new global-pool path is disabled).
 // Env-read once at process start; survives until soak completes.
@@ -112,7 +108,6 @@ uint32_t s_spBuildCountMismatch  = 0u;
 uint32_t s_spBuildPacketMismatch = 0u;
 uint32_t s_spBuildMetaMismatch   = 0u;
 uint32_t s_spBuildFallback       = 0u;
-uint32_t s_spBuildRetired        = 0u;  // v8: 1 when the snapshot is the sole owner this flush
 
 // Returns 0 (opaque) or 1 (alpha-test). Returns 0xFFFFFFFFu for unknown pipelineId.
 // Used by snapshot builder to derive group from the snapshot row's stored pipelineId.

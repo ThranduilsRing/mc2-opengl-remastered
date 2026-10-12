@@ -21,7 +21,6 @@
 #include <chrono>
 #include <set>
 #include <unordered_map>
-#include <intrin.h>  // __rdtsc — [SPFLUSH_COST_SPLIT v1]
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
 

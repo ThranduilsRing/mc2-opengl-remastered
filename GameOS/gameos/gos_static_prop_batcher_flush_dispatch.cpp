@@ -102,7 +102,7 @@ void GpuStaticPropBatcher::initV6State(StaticPropFlushFrame& f) {
 }
 
 // Reset the per-flush DrawPacket v6 counters. The packet arrays are built from the render snapshot in dispatchV6.
-void GpuStaticPropBatcher::buildV6Packets(StaticPropFlushFrame& f) {
+void GpuStaticPropBatcher::resetV6FrameCounters(StaticPropFlushFrame& f) {
     auto& runV6 = f.runV6;
         if (runV6) {
             s_v6FrameDrawsIssued        = 0u;
@@ -114,12 +114,9 @@ void GpuStaticPropBatcher::buildV6Packets(StaticPropFlushFrame& f) {
             s_v6FrameGlErrors           = 0u;
             ++s_v6TotalFrameCount;
 
-            // v3: reset per-flush build counters so stale stats never persist.
+            // Reset the per-flush snapshot-build counters so stale stats never persist.
             s_spBuildAttempted = s_spBuildCountMismatch = s_spBuildPacketMismatch =
-            s_spBuildMetaMismatch = s_spBuildFallback = s_spBuildRetired = 0u;
-
-            // v8: the snapshot is the sole packet owner (1 = no live build ran this frame).
-            s_spBuildRetired = 1u;
+            s_spBuildMetaMismatch = s_spBuildFallback = 0u;
 
             const uint32_t totalCmds = s_alphaOffCmdCount + s_alphaOnCmdCount;
 
@@ -172,94 +169,92 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
             bool snapBuilt = false;
             s_spBuildAttempted = 1u;
 
-            {
-                // Stage 1: structural guards — snap unusable (no counter).
-                if (snap == nullptr || snap->ok != 1u ||
-                         snap->staticPropPackets.data == nullptr) {
-                    /* no counter — snap is unusable, not a v3 failure */
-                }
-                // Stage 3: v2.2 structural must be clean.
-                else if (snap->spCountMismatch       != 0u ||
-                         snap->spSortedSlotMismatch  != 0u ||
-                         snap->spGlobalPacketMismatch != 0u ||
-                         snap->spPipelineMismatch     != 0u ||
-                         snap->spMaterialIdxMismatch  != 0u ||
-                         snap->spTexLayerMismatch     != 0u) {
-                    /* no counter — v2.2 gate failed; ordering unreliable */
-                }
-                else if (snap->staticPropPackets.count != totalCmds) {
-                    ++s_spBuildCountMismatch;
-                    ++s_spBuildFallback;
-                }
-                else {
-                    {
-                    ZoneScopedN("StaticProp.SnapshotBuild");
-                    mc2_hitch::HitchScope _hitchSnap(mc2_hitch::HitchSpanKind::GpuStaticPropsSnapshot);
-                    s_snapV6Packets.resize(totalCmds);
-                    s_snapV6Meta.resize(totalCmds);
+            // Guard 1: structural guards — snap unusable (no counter).
+            if (snap == nullptr || snap->ok != 1u ||
+                     snap->staticPropPackets.data == nullptr) {
+                /* no counter — snap is unusable, not a v3 failure */
+            }
+            // Guard 2: v2.2 structural must be clean.
+            else if (snap->spCountMismatch       != 0u ||
+                     snap->spSortedSlotMismatch  != 0u ||
+                     snap->spGlobalPacketMismatch != 0u ||
+                     snap->spPipelineMismatch     != 0u ||
+                     snap->spMaterialIdxMismatch  != 0u ||
+                     snap->spTexLayerMismatch     != 0u) {
+                /* no counter — v2.2 gate failed; ordering unreliable */
+            }
+            else if (snap->staticPropPackets.count != totalCmds) {
+                ++s_spBuildCountMismatch;
+                ++s_spBuildFallback;
+            }
+            else {
+                {
+                ZoneScopedN("StaticProp.SnapshotBuild");
+                mc2_hitch::HitchScope _hitchSnap(mc2_hitch::HitchSpanKind::GpuStaticPropsSnapshot);
+                s_snapV6Packets.resize(totalCmds);
+                s_snapV6Meta.resize(totalCmds);
 
-                    for (uint32_t si = 0u; si < totalCmds; ++si) {
-                        const ExtractedStaticPropPacket& row =
-                            snap->staticPropPackets.data[si];
+                for (uint32_t si = 0u; si < totalCmds; ++si) {
+                    const ExtractedStaticPropPacket& row =
+                        snap->staticPropPackets.data[si];
 
-                        // Snapshot owns slot identity — row must claim this slot.
-                        if (row.sortedSlot != si) {
-                            ++s_spBuildMetaMismatch;
-                            s_snapV6Meta[si]    = {};
-                            s_snapV6Packets[si] = {};
-                            continue;
-                        }
-                        // Guard: globalPacketIdx in bounds.
-                        if (row.globalPacketIdx >=
-                                static_cast<uint32_t>(s_packets.size())) {
-                            ++s_spBuildPacketMismatch;
-                            s_snapV6Meta[si]    = {};
-                            s_snapV6Packets[si] = {};
-                            continue;
-                        }
-                        const GpuStaticPropPacket& spkt = s_packets[row.globalPacketIdx];
-
-                        if (row.typeId >= static_cast<uint32_t>(s_types.size())) {
-                            ++s_spBuildMetaMismatch;
-                            s_snapV6Meta[si]    = {};
-                            s_snapV6Packets[si] = {};
-                            continue;
-                        }
-                        // Fail closed on unknown pipelineId.
-                        const uint32_t grp = pipelineId_to_group(row.pipelineId);
-                        if (grp == 0xFFFFFFFFu) {
-                            ++s_spBuildMetaMismatch;
-                            s_snapV6Meta[si]    = {};
-                            s_snapV6Packets[si] = {};
-                            continue;
-                        }
-                        // instanceCount from current-frame live (NOT snapshot prev-frame).
-                        const auto typeIt = s_typeRanges.find(row.typeId);
-                        const uint32_t instCount =
-                            (typeIt != s_typeRanges.end())
-                                ? typeIt->second.instanceCount : 0u;
-
-                        s_snapV6Meta[si].sortedSlot      = row.sortedSlot;
-                        s_snapV6Meta[si].globalPacketIdx = row.globalPacketIdx;
-                        s_snapV6Meta[si].typeId          = row.typeId;
-                        s_snapV6Meta[si].group           = grp;
-                        s_snapV6Meta[si].instanceCount   = instCount;
-                        s_snapV6Meta[si].baseInstance    = baseInstanceMapDisp[si];
-                        s_snapV6Meta[si].drawIDBase      = si;
-                        s_snapV6Meta[si].baseVertex      = spkt.baseVertex;
-
-                        s_snapV6Packets[si]            = RenderCore::DrawPacket{};
-                        s_snapV6Packets[si].pipelineId = static_cast<uint32_t>(
-                            grp == 0u ? RenderCore::PipelineId::StaticPropOpaque
-                                      : RenderCore::PipelineId::StaticPropAlphaTest);
-                        s_snapV6Packets[si].firstIndex = spkt.firstIndex;
-                        s_snapV6Packets[si].indexCount = spkt.indexCount;
+                    // Snapshot owns slot identity — row must claim this slot.
+                    if (row.sortedSlot != si) {
+                        ++s_spBuildMetaMismatch;
+                        s_snapV6Meta[si]    = {};
+                        s_snapV6Packets[si] = {};
+                        continue;
                     }
+                    // Guard: globalPacketIdx in bounds.
+                    if (row.globalPacketIdx >=
+                            static_cast<uint32_t>(s_packets.size())) {
+                        ++s_spBuildPacketMismatch;
+                        s_snapV6Meta[si]    = {};
+                        s_snapV6Packets[si] = {};
+                        continue;
+                    }
+                    const GpuStaticPropPacket& spkt = s_packets[row.globalPacketIdx];
 
-                    }  // end StaticProp.SnapshotBuild
+                    if (row.typeId >= static_cast<uint32_t>(s_types.size())) {
+                        ++s_spBuildMetaMismatch;
+                        s_snapV6Meta[si]    = {};
+                        s_snapV6Packets[si] = {};
+                        continue;
+                    }
+                    // Fail closed on unknown pipelineId.
+                    const uint32_t grp = pipelineId_to_group(row.pipelineId);
+                    if (grp == 0xFFFFFFFFu) {
+                        ++s_spBuildMetaMismatch;
+                        s_snapV6Meta[si]    = {};
+                        s_snapV6Packets[si] = {};
+                        continue;
+                    }
+                    // instanceCount from current-frame live (NOT snapshot prev-frame).
+                    const auto typeIt = s_typeRanges.find(row.typeId);
+                    const uint32_t instCount =
+                        (typeIt != s_typeRanges.end())
+                            ? typeIt->second.instanceCount : 0u;
 
-                    snapBuilt = true;
+                    s_snapV6Meta[si].sortedSlot      = row.sortedSlot;
+                    s_snapV6Meta[si].globalPacketIdx = row.globalPacketIdx;
+                    s_snapV6Meta[si].typeId          = row.typeId;
+                    s_snapV6Meta[si].group           = grp;
+                    s_snapV6Meta[si].instanceCount   = instCount;
+                    s_snapV6Meta[si].baseInstance    = baseInstanceMapDisp[si];
+                    s_snapV6Meta[si].drawIDBase      = si;
+                    s_snapV6Meta[si].baseVertex      = spkt.baseVertex;
+
+                    s_snapV6Packets[si]            = RenderCore::DrawPacket{};
+                    s_snapV6Packets[si].pipelineId = static_cast<uint32_t>(
+                        grp == 0u ? RenderCore::PipelineId::StaticPropOpaque
+                                  : RenderCore::PipelineId::StaticPropAlphaTest);
+                    s_snapV6Packets[si].firstIndex = spkt.firstIndex;
+                    s_snapV6Packets[si].indexCount = spkt.indexCount;
                 }
+
+                }  // end StaticProp.SnapshotBuild
+
+                snapBuilt = true;
             }
 
             bool useSnapshot;
@@ -655,11 +650,6 @@ void GpuStaticPropBatcher::legacyPrepare() {
             if (s_locsLegacy.ambientV1Strength >= 0)
                 glUniform1f(s_locsLegacy.ambientV1Strength,
                             staticPropAmbientV1Enabled() ? 1.0f : 0.0f);
-            // PROP-BASE-LIGHT-DIR-1: same semantics as the coalesce site.
-            // 0.0 default -> byte-identical OFF.
-            if (s_locsLegacy.propBaseLightDirStrength >= 0)
-                glUniform1f(s_locsLegacy.propBaseLightDirStrength,
-                            s_propBaseLightDirStrength);
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (legacy
             // program). Frag applies it only to kFlagDecalFill (bit 3) fragments.
             if (s_locsLegacy.terrainDecalFill >= 0)
@@ -668,10 +658,6 @@ void GpuStaticPropBatcher::legacyPrepare() {
             // (legacy program). Same flag-gated no-op contract as coalesce.
             if (s_locsLegacy.terrainDecalColorBlend >= 0)
                 glUniform1f(s_locsLegacy.terrainDecalColorBlend, g_terrainDecalColorBlend);
-            // BUILDING-GLASS-1: dither-glass translucency toggle (legacy program).
-            if (s_locsLegacy.glassDither >= 0)
-                glUniform1f(s_locsLegacy.glassDither,
-                            1.0f);
             if (g_terrainDecalColorBlend > 0.0f) {
                 extern GLuint gos_terrain_indirect_getAtlasGLTex();
                 extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
@@ -712,9 +698,8 @@ void GpuStaticPropBatcher::legacyPrepare() {
                 gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
                 glUniform3f(s_locsLegacy.terrainSunMC2, tsx, tsy, tsz);
             }
-            // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state. Gate OFF ->
-            // 0/0/0 uploaded -> get_base_light takes its daytime arms -> render is
-            // byte-identical to the pre-fix build.
+            // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state; by day the
+            // 0/0 state makes get_base_light take its daytime arms.
             if (s_locsLegacy.isNight >= 0 || s_locsLegacy.nightFactor >= 0) {
                 bool  nIsNight = false;
                 float nFactor  = 0.0f;
@@ -724,10 +709,6 @@ void GpuStaticPropBatcher::legacyPrepare() {
                     glUniform1i(s_locsLegacy.isNight, nIsNight ? 1 : 0);
                 if (s_locsLegacy.nightFactor >= 0)
                     glUniform1f(s_locsLegacy.nightFactor, nFactor);
-                if (s_locsLegacy.nightEmissiveScale >= 0)
-                    glUniform1f(s_locsLegacy.nightEmissiveScale, kNightEmissiveScale);
-                if (s_locsLegacy.fixtureEmissiveScale >= 0)
-                    glUniform1f(s_locsLegacy.fixtureEmissiveScale, kFixtureEmissiveScale);
             }
             // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy).
             // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 ->

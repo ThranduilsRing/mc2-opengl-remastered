@@ -17,9 +17,9 @@ namespace RenderCore { struct MaterialGpu; }
 namespace RenderCore { struct StaticPropTypeDesc; }
 
 // SHADOW-STABILITY-1: read-only accessor for the last static-building shadow
-// caster counts (types/instances/draw-calls). Zero unless
-// MC2_STATIC_PROP_BUILDING_SHADOW drew this mission. Consumed by the shadow
-// state trace in gameos_graphics.cpp.
+// caster counts (types/instances/draw-calls). Zero until the static building
+// shadow has drawn this mission. Consumed by the shadow state trace in
+// gameos_graphics.cpp.
 void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
 
 // Per-instance shader-visible struct: GpuStaticPropInstance (112 B, std430).
@@ -267,7 +267,7 @@ private:
     void drawStaticPopulation();
     void decideV6(StaticPropFlushFrame& f);
     void initV6State(StaticPropFlushFrame& f);
-    void buildV6Packets(StaticPropFlushFrame& f);
+    void resetV6FrameCounters(StaticPropFlushFrame& f);
     void decideV5(StaticPropFlushFrame& f);
     void dispatchV6(const RenderSnapshot* snap, std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
     void dispatchV5(StaticPropFlushFrame& f);
@@ -281,11 +281,10 @@ private:
     void releaseGlGuards(StaticPropFlushFrame& f);
     void finishFlush();
 public:
-    // depth-only into the dynamic shadow FBO. skipStaticBuildingTypes=true (set
-    // when MC2_STATIC_PROP_BUILDING_SHADOW is active) omits building types — they
-    // cast via the world-fixed static map, so the dynamic copy would be a
-    // redundant fuzzy double-shadow. Default false = draw all (back-compat).
-    void flushShadow(bool skipStaticBuildingTypes = false);
+    // depth-only into the dynamic shadow FBO. Building types are omitted: they cast
+    // via the world-fixed static map, so a dynamic copy would be a redundant fuzzy
+    // double-shadow.
+    void flushShadow();
 
     // SHADOW-STATIC-BUILDINGS-2: depth-only draw of ALL registered rigid-building
     // recipe leaves (from GpuStaticPropRegistry::getBuildingShadowInstances — the
@@ -358,19 +357,10 @@ public:
     // the Colors SSBO binding 1).
     void submitCachedInstance(const GpuStaticPropInstance& inst);
 
-    // 2A: bulk variant — one map lookup + bulk reserve/insert for an entire
-    // contiguous run of recipes of (possibly mixed) typeIDs. firstColorOffset is
-    // computed from the running bucket color offset, so it is correct even when a
-    // type bucket also holds dynamic instances submitted earlier this frame.
-    // Equivalent result to calling submitCachedInstance() per element, at a
-    // fraction of the per-leaf overhead.
-    void submitCachedInstanceRange(const GpuStaticPropInstance* arr, uint32_t count);
-
     // 2b Stage 2 (Mechanism B-reinject): persistent static instance store.
     // Registry drives: clear+append on a dirty generation, reinject every frame.
     uint64_t persistentStaticGen();
     void     setPersistentStaticGen(uint64_t g);
-    uint64_t persistentStaticTotalCount();
     void     clearPersistentStatic();
     void     appendPersistentStaticRange(const GpuStaticPropInstance* arr, uint32_t count);
     void     reinjectPersistentStatic();
@@ -546,14 +536,6 @@ extern int g_lightProbeSetupPath;  // [GPUPROPS v1]
 // recipe path in mclib/bdactor.cpp — they must agree or the population splits.
 int gos_lightBillboardFacingMode();
 
-// SP-BATCHER-ALPHASCAN-GATE-1: monotonic generation bumped whenever a static-prop
-// type's per-texture alpha bit actually flips (TG_TypeMultiShape::SetTextureAlpha,
-// msl.cpp). Consumed by the batcher's per-frame alpha-test re-resolve scan in
-// flush() so it can early-out when no destruction/damage-texture-alpha event has
-// occurred since the last scan (the flags are otherwise frame-constant). Atomic
-// because SetTextureAlpha can run on FRAME-JOBS workers via the touch/update split.
-extern std::atomic<uint64_t> g_staticPropAlphaGeneration;
-
 // MaterialGpu-3: look up an entry from the per-mission material table by index.
 // Returns true and fills *out if MC2_MATERIAL_GPU=1, geometry is finalized,
 // and index < table size. Returns false otherwise (out is not modified).
@@ -656,10 +638,9 @@ void batcher_compareSnapshotPackets(RenderSnapshot* snap);
 // packetMismatch: DrawPacket field divergence count (accumulated per-slot).
 // metaMismatch:   DispatchMeta field divergence count (accumulated per-slot).
 // fallback:       gate enabled/attempted but snapshot arrays not dispatched this flush.
-// retired:        v8: 1 when live builder + compare retired this flush (sole-owner).
 void batcher_getSnapshotBuildStats(uint32_t* attempted, uint32_t* countMismatch,
                                    uint32_t* packetMismatch, uint32_t* metaMismatch,
-                                   uint32_t* fallback, uint32_t* retired = nullptr);
+                                   uint32_t* fallback);
 
 // DEBUG-STATE-DUMP-1: read-only StaticPropOpaque visual/debug state.
 struct StaticPropOpaqueDebugState {

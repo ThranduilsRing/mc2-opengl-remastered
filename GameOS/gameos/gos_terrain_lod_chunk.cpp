@@ -395,9 +395,8 @@ GLint s_locVisualDisplaceFar  = -1; // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD
 GLint s_locVisualDampOn       = -1; // TERRAIN-REAUTH-UNPIN-1 Half B
 GLint s_locGeomorphMips       = -1; // TERRAIN-LOD-GEOMORPH-1: b26 has max-mip levels
 GLint s_locMorphFactor        = -1; // TERRAIN-LOD-GEOMORPH-1: per-block parent-band lerp
-GLint s_locPomParams      = -1;
+GLint s_locPomScale       = -1; // TERRAIN-CHUNK-POM-1: u_pomScale
 GLint s_locCameraPos      = -1; // TERRAIN-CHUNK-POM-1: "cameraPos" (Stuff/MLR eye, legacy name)
-GLint s_locPomView        = -1; // TERRAIN-CHUNK-POM-1: u_pomView (.x=gate, .y=near, .z=far)
 GLint s_locMatProfile     = -1;
 GLint s_locControlMap     = -1;  // TERRAIN-CONTROLMAP-SAMPLE-1: u_controlMap sampler
 GLint s_locUseControlMap  = -1;  // u_useControlMap gate uniform
@@ -603,9 +602,8 @@ void gos_TerrainLodChunk_Init()
             s_locVisualDampOn      = glGetUniformLocation(s_terrainProgram, "u_visualDampOn");
             s_locGeomorphMips      = glGetUniformLocation(s_terrainProgram, "u_geomorphMips");   // TERRAIN-LOD-GEOMORPH-1
             s_locMorphFactor       = glGetUniformLocation(s_terrainProgram, "u_morphFactor");    // TERRAIN-LOD-GEOMORPH-1
-            s_locPomParams   = glGetUniformLocation(s_terrainProgram, "pomParams");
+            s_locPomScale    = glGetUniformLocation(s_terrainProgram, "u_pomScale");
             s_locCameraPos   = glGetUniformLocation(s_terrainProgram, "cameraPos");  // TERRAIN-CHUNK-POM-1
-            s_locPomView     = glGetUniformLocation(s_terrainProgram, "u_pomView");  // TERRAIN-CHUNK-POM-1
             s_locMatProfile  = glGetUniformLocation(s_terrainProgram, "g_terrainMaterialProfile");
             s_locCementAtlas    = glGetUniformLocation(s_terrainProgram, "u_cementAtlas");
             s_locUseCement      = glGetUniformLocation(s_terrainProgram, "u_useCement");

@@ -826,10 +826,10 @@ void flush() {
             && freshLightIdx == s_recipes[rng.first].lightDataIndex;
         flushLeafDiag(regIdx, rng, freshLightIdx, useCachedBlob);
         if (!useCachedBlob) {
-        flushLegacyRange(batcher, s_diag_flush_calls, s_diag_leaves_appended, regIdx, rng, freshLightIdx, actorWorldCenter);
+            flushLegacyRange(batcher, s_diag_flush_calls, s_diag_leaves_appended, regIdx, rng, freshLightIdx, actorWorldCenter);
         } else {
-        flushCachedRange(batcher, s_storeDirty, s_diag_leaves_appended, regIdx, rng);
-        } // end gate branch
+            flushCachedRange(batcher, s_storeDirty, s_diag_leaves_appended, regIdx, rng);
+        }
     }
 
     flushReinjectPersistentStore(batcher_pb, s_currentGen, s_storeDirty);
@@ -947,14 +947,13 @@ void getBuildingShadowInstances(std::vector<GpuStaticPropInstance>& out) {
 // which are non-buildings in practice — buildings are tagged Building at register)
 // is included so the dynamic shadow pass admits ALL props regardless of camera
 // visibility. Mirror of getBuildingShadowInstances with the filter inverted.
-void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out,
-                                   bool includeBuildings) {
+void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out) {
     out.clear();
     const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
     for (const RecipeRange& rng : s_recipeRanges) {
         if (rng.count == 0) continue;            // tombstone (invalidated/destroyed)
         if (rng.noShadow) continue;              // SHADOW-FOLIAGE: impostor/far-LOD casts no shadow
-        if (!includeBuildings && rng.population == bldg) continue;  // buildings cast via the static map
+        if (rng.population == bldg) continue;    // buildings cast via the static map
         const size_t end = static_cast<size_t>(rng.first) + rng.count;
         if (end > s_recipes.size()) continue;     // defense: stale range
         out.insert(out.end(),

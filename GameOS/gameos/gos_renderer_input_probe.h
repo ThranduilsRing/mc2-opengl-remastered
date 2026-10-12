@@ -96,9 +96,8 @@ struct ShadowFeedReport {
     ShadowFeedHit inDynamicFeed;
 
     // Did the STATIC building shadow pass actually DRAW this mission?
-    // gos_GetStaticBuildingShadowCounts is documented zero unless
-    // MC2_STATIC_PROP_BUILDING_SHADOW drew -- i.e. this is a behavioural
-    // receipt, not a getenv echo. Membership in a feed that never drew is not
+    // gos_GetStaticBuildingShadowCounts is zero until the static building
+    // shadow has drawn -- i.e. this is a behavioural receipt, not a config echo. Membership in a feed that never drew is not
     // a shadow; reporting membership without this would be a lying instrument.
     int  bldgDrawTypes = 0;
     int  bldgDrawInst  = 0;

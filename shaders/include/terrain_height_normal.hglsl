@@ -21,8 +21,8 @@
 // unit 11). bind site: GameOS/gameos/gos_terrain_height_tex.cpp.
 // terrainHeightParams.x = grid side (0 = texture not uploaded; treat as off).
 // terrainHeightParams.y = 1 / worldUnitsPerVertex (effective per-render-sample
-//                         spacing — divided by MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR
-//                         when resampled).
+//                         spacing — divided by the resample factor of the Terrain
+//                         Pass setting when resampled).
 // terrainHeightParams.zw = mapTopLeft3d.xy in world units.
 uniform sampler2D terrainHeightTex;
 uniform PREC vec4 terrainHeightParams;

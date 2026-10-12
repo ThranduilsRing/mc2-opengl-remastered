@@ -89,8 +89,6 @@ extern uint32_t g_mc2FrameCounter;
 #include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
 
 
-#include <intrin.h>  // __rdtsc (MSVC intrinsic)
-
 #include "mc2_hitch_trace.h"
 
 
@@ -297,7 +295,6 @@ struct ProgramLocs {
     GLint texArr              = -1;
     GLint materialGpuSample   = -1;   // MaterialGpu-3: u_materialGpuSample
     GLint ambientV1Strength   = -1;   // V-AMBIENT-STATIC-1: u_ambientV1Strength
-    GLint propBaseLightDirStrength = -1; // PROP-BASE-LIGHT-DIR-1: u_propBaseLightDirStrength
     GLint debugMaterialMode   = -1;   // V-MATERIAL-DEBUG-1: u_debugMaterialMode
     GLint iblSh               = -1;   // V-IBL-STATIC-1: u_iblSh[9] (vec3 array)
     GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
@@ -310,8 +307,6 @@ struct ProgramLocs {
     // EDGE-LIGHT-EMISSION-1: stock night-tag emission state.
     GLint isNight            = -1;   // u_isNight (int 0/1)
     GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
-    GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
-    GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
     GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
     GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
@@ -319,7 +314,6 @@ struct ProgramLocs {
     GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
     GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
     GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
-    GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
     // FAR-BACKDROP-LIT: night-shade substitution for far/impostor LODs.
     GLint farBackdropLit         = -1;  // u_farBackdropLit (int, 0=off)
     GLint farBackdropNear        = -1;  // u_farBackdropNear (float)
@@ -398,7 +392,6 @@ extern const bool s_alphaTrace;
 const float* gos_GetObjectFixBMVPMat4();
 extern const bool s_treeDiagTrace;
 extern const bool s_spotlightRealTrace;
-extern std::atomic<uint64_t> g_staticPropAlphaGeneration;
 extern const bool s_globalPoolLegacy;
 extern const bool s_legacyInstancePools;
 extern const bool s_v5Enabled;
@@ -416,7 +409,6 @@ extern uint32_t s_spBuildCountMismatch;
 extern uint32_t s_spBuildPacketMismatch;
 extern uint32_t s_spBuildMetaMismatch;
 extern uint32_t s_spBuildFallback;
-extern uint32_t s_spBuildRetired;
 uint32_t pipelineId_to_group(uint32_t pid);
 extern uint32_t s_v6FrameDrawsIssued;
 extern uint32_t s_v6FrameZeroInstSkips;
@@ -500,13 +492,6 @@ extern GLuint s_perDrawSsbo;
 extern const bool s_materialGpuEnabled;
 extern const bool s_materialGpuSampleEnabled;
 bool staticPropAmbientV1Enabled();
-extern const float s_propBaseLightDirStrength;
-// Night emission scales. get_base_light()'s night-minus-day emission delta is applied at full stock
-// strength to every tagged prop and to the classified light fixtures.
-inline constexpr float kNightEmissiveScale = 1.0f;
-inline constexpr float kFixtureEmissiveScale = 1.0f;
-bool isEmissiveFixtureType(DWORD pink, DWORD yellow, DWORD green);
-extern unsigned s_fixtureTypeCount;
 extern const bool s_farBackdropLitEnabled;
 extern const float s_farBackdropNear;
 extern const float s_farBackdropFar;

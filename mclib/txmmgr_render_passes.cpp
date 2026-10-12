@@ -88,30 +88,21 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			// Item 1 P1: caster set used by the CSM cascade replay (set in the
 			// prop-caster path below; nullptr => CSM replay uses flushShadow).
 			const std::vector<GpuStaticPropInstance>* csmCasterSet = nullptr;
-			// SHADOW-STATIC-BUILDINGS-2: when buildings cast via the world-fixed
-			// static map, skip them in the dynamic pass to avoid a redundant fuzzy
-			// double-shadow on buildings (trees/mechs still cast dynamically).
-			constexpr bool s_skipBldgInDynamic = true;
 			// SHADOW-DYNAMIC-PROP-CASTERS-1 (gate, DEFAULT ON; =0 kill-switch): the camera-visible
 			// flushShadow feed (s_typeRanges) only admits props the camera frustum
 			// cull marked visible this frame, so most trees never cast into the (now
 			// correctly camera-fit) dynamic map -- only the few nearest the camera.
 			// When enabled, replay ALL registered NON-building props from the
 			// registry (visibility-independent) into the dynamic map instead, so
-			// every tree/prop in the light box casts. Buildings keep casting via the
-			// world-fixed static map, so this pairs with MC2_STATIC_PROP_BUILDING_SHADOW
-			// (with that OFF, buildings get no dynamic shadow -- intended for the
-			// combined config). flushShadow is skipped entirely in this mode (it would
+			// every tree/prop in the light box casts. Buildings cast via the
+			// world-fixed static map and are left out of this feed (a dynamic copy would be
+			// a redundant fuzzy double-shadow). flushShadow is skipped entirely in this mode (it would
 			// only double-draw the camera-visible subset). Mechs still cast via their
 			// own batcher. Gate OFF -> byte-identical to prior behavior.
 			static const bool s_dynPropCasters =
 				!mc2::gate::is<"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "0">();  // DEFAULT ON; =0 kill-switch
 			if (s_dynPropCasters) {
 				static std::vector<GpuStaticPropInstance> s_dynPropInsts; // reused; accessor clears
-				// Include buildings in the dynamic feed ONLY when the static building
-					// map is NOT active (else buildings would double-shadow). This keeps
-					// buildings casting under bare MC2_SHADOW_ENABLE (no regression).
-					const bool includeBldg = !s_skipBldgInDynamic;
 					// SHADOW-DYNAMIC-PROP-DIRTY-ONLY-1 (gate, DEFAULT OFF; set env to enable):
 					// The caster set (registry-indexed instances: modelMatrix + typeID) is
 					// REGISTRY-STATIC — it changes only when a prop spawns, despawns, or has
@@ -119,25 +110,18 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 					// shadow pass uses only modelMatrix+typeID from the instances (no lighting
 					// data, no per-frame color offset), so the vector is safe to cache across
 					// frames as long as the generation is unchanged.
-					// Cache policy: rebuild when (a) generation changes, or (b) includeBldg
-					// toggles (env-gated at startup — in practice stable per session, but
-					// compare it anyway). On a clean scene getDynamicPropShadowInstances walks
-					// the full s_recipeRanges vector (~14K recipes); skipping it saves ~120-
-					// 150µs of cache-cold memory traffic per frame.
-					// NOTE: includeBldg is captured from a static at the outer scope, so it
-					// is also effectively constant per session; the extra compare is free.
+					// Cache policy: rebuild when the registry generation changes. On a clean scene
+					// getDynamicPropShadowInstances would walk the full s_recipeRanges vector (~14K recipes);
+					// skipping it saves ~120-150 us of cache-cold memory traffic per frame.
 					// DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven
 					// s_registryGeneration dirty-only pattern, shadow pass reads only
 					// modelMatrix+typeID): a value starting with "0" opts out.
 					static const bool s_dynPropDirtyOnly = mc2::gate::get<"MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY">();
 					static uint64_t  s_dynPropInstsGeneration = UINT64_MAX; // sentinel: force first build
-					static bool      s_dynPropInstsIncludeBldg = false;
 					if (!s_dynPropDirtyOnly ||
-					    GpuStaticPropRegistry::getRegistryGeneration() != s_dynPropInstsGeneration ||
-					    includeBldg != s_dynPropInstsIncludeBldg) {
-						GpuStaticPropRegistry::getDynamicPropShadowInstances(s_dynPropInsts, includeBldg);
-						s_dynPropInstsGeneration  = GpuStaticPropRegistry::getRegistryGeneration();
-						s_dynPropInstsIncludeBldg = includeBldg;
+					    GpuStaticPropRegistry::getRegistryGeneration() != s_dynPropInstsGeneration) {
+						GpuStaticPropRegistry::getDynamicPropShadowInstances(s_dynPropInsts);
+						s_dynPropInstsGeneration = GpuStaticPropRegistry::getRegistryGeneration();
 					}
 
 					// SHADOW-CASTER-LIGHTBOX-CULL-1 (gate MC2_SHADOW_CASTER_LIGHTBOX_CULL,
@@ -174,7 +158,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 						// stationary camera its 16 floats are bit-identical across frames.
 						// Reuse the previous culled vector when BOTH are unchanged; any
 						// camera motion or registry mutation recomputes exactly as before.
-						// margin + includeBldg are session-static (env-init'd) — no key part.
+						// margin is session-static (env-init'd) — no key part.
 						static const bool s_cullCacheEnabled = mc2::gate::get<"MC2_SHADOW_CASTER_CULL_CACHE">();
 						static uint64_t s_cullCacheGen = UINT64_MAX;   // sentinel: no cache
 						static float    s_cullCacheM[16] = {};
@@ -284,7 +268,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 #endif
 				csmCasterSet = dynShadowSet;   // Item 1 P1: remember for the cascade replay
 			} else {
-				GpuStaticPropBatcher::instance().flushShadow(s_skipBldgInDynamic);
+				GpuStaticPropBatcher::instance().flushShadow();
 			}
 			GpuMechBatcher::instance().flushShadow();
 			gos_EndDynamicShadowPass();
@@ -308,7 +292,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 						if (csmCasterSet)
 							GpuStaticPropBatcher::instance().drawDynamicPropShadows(*csmCasterSet);
 						else
-							GpuStaticPropBatcher::instance().flushShadow(s_skipBldgInDynamic);
+							GpuStaticPropBatcher::instance().flushShadow();
 						GpuMechBatcher::instance().flushShadow();
 						ppCsm->endDynamicShadowCascadePass();
 #ifdef MC2_VULKAN_ISLAND

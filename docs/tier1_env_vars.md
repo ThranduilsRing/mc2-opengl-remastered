@@ -198,7 +198,6 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 - `MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY` — default **ON** (flipped after Tracy proof). STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1 gate.
   - unset/1: on clean `registryGeneration` AND `cullRecordVersion` (vs cached), skip Fill + WriteLoop and `memcpy` the cached rows into the snapshot arena (`Extract.SP.CleanCopy` zone); per-prop diagnostic counters restored from cache. Dirty frames run the legacy path and refresh the cache. First ~10 frames after mission load rebuild while cullVer settles — win is steady-state. **Tracy (user, mc2-win64-water):** `ExtractRenderSnapshot` median 1.68ms→36.7µs (−97%); `Extract.SP.Fill` 1.15ms + `WriteLoop` 159µs → gone, replaced by `CleanCopy` ~15µs.
   - 0: legacy full rebuild every frame (`fillStaticPropSlots` + per-prop WriteLoop) — kill-switch.
-  - Combine with `MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE=1` to prove cached rows still match a live registry rebuild (`path=CLEAN immutableMismatch=0`). Note: compare ON forces the oracle's own Fill, so Tracy under compare will NOT show the Fill drop — measure with compare OFF.
 - `MC2_THIN_CANARY=1` — re-enable Probe-6 thin-record canary readback (per-frame ~80KB `glGetBufferSubData` ×2 + CPU recipeIdx/flags compare). Default **OFF**. Diagnostic only; gated 2026-06-03 (was ungated per-frame stall).
 
 ## Shadow tuning
@@ -476,7 +475,7 @@ Gates found in source but missing from check-env-registry.sh (retired in G8; the
 - `MC2_SOAK_STOP_AT_BAY=1` — soak harness parks at the mech bay instead of auto-advancing (requires `MC2_SOAK_AUTOWIN`).
 - `MC2_DRAW_PACKET_V3=1` — static-prop DrawPacket v3 candidate→`RenderCore::DrawPacket[]` ABI promotion (no dispatch; legacy flush unchanged).
 - `MC2_DRAW_PACKET_COALESCE_V5=1` — DrawPacket v5 per-draw-call substitutive dispatch (requires ARB_base_instance). `_TRACE` variant logs.
-- `MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE=1` — v7 canonical packet+meta dispatch trace (the v6 opt-in gate itself is retired; kill-switch is `MC2_STATIC_PROP_LEGACY_DISPATCH=1`).
+- `MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE=1` — v7 canonical packet+meta dispatch trace (the v6 opt-in gate is retired; the snapshot dispatch always runs).
 - `MC2_STATIC_C1B_DRAW=1` — re-enable the (architecturally buggy) C1b GPU indirect instance count for the per-type legacy static-prop draw loop.
 - `MC2_REGFLUSH_GUARD2=1` — static-registry persistent-vanish discriminator: per-typeID stale buckets + consecutive-stale streaks (streak ≥16 frames = real drop, not transient cull). Per-range map cost when on.
 - `MC2_M2D_PZ_PARITY=1` — quad `pz` clip-path vs legacy-formula parity probe (demoted-not-deleted after green).
@@ -944,8 +943,8 @@ lights should remain visible at every angle instead of blinking out.
     - `shadow_feed <partId>` — membership in the two prop shadow feeds
       (`getBuildingShadowInstances`, `getDynamicPropShadowInstances`), the pose each
       one **submitted**, `shadowDrift` against the live pose, and `staticBldgPass:
-      drew=` from `gos_GetStaticBuildingShadowCounts` (documented zero unless
-      `MC2_STATIC_PROP_BUILDING_SHADOW` actually drew). Membership in a feed that never
+      drew=` from `gos_GetStaticBuildingShadowCounts` (zero until
+      the static building shadow has drawn). Membership in a feed that never
       drew is not a shadow, which is why the draw receipt is printed alongside.
     - `ground <partId>` / `ground <x> <y>` — terrain elevation, type, normal and
       terrain light under a point; for an object also `objAboveGround`, and for a
@@ -1079,7 +1078,7 @@ Crash handlers still write to stderr as the last-resort path.
 
 - `MC2_DIAGNOSTIC_TRACE_FILE=<path>` — JSONL output file. Default: `debug_state/diagnostic_trace.jsonl`. Set to `off` to disable.
 - `MC2_DIAG_TAGS=<list>` — comma-separated tag whitelist. Controls which tags write events.
-  - Unset: default high-value whitelist (`GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,SPFLUSH_COST_SPLIT,CONFIG,BUILD,DEVICE,SHADER_COMPILE`).
+  - Unset: default high-value whitelist (`GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,CONFIG,BUILD,DEVICE,SHADER_COMPILE`).
   - `*` — all registered tags.
   - `none` — disable JSONL output entirely.
   - Unknown tag names in list → startup warning to stderr, tag ignored.
@@ -1097,7 +1096,6 @@ Crash handlers still write to stderr as the last-resort path.
 | `GPU_CULL` | GPU cull readback | `MC2_GPU_CULL_READBACK_TRACE=1` stderr |
 | `LIGHTBAKE_PROOF` | Light bake parity | `MC2_LIGHTBAKE_PARITY` stderr |
 | `ANIM_GATE` | Animation eligibility summary | `MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE` stderr |
-| `SPFLUSH_COST_SPLIT` | Static prop flush perf | `MC2_STATIC_PROP_FLUSH_COST_SPLIT=1` stderr |
 | `TerrainLOD_prod` | Terrain chunk production telemetry | `[TerrainLOD prod]` stderr |
 | `CONFIG` | Feature gate snapshot at startup | (new) |
 | `BUILD` | Build identity at startup | (new) |
@@ -1143,16 +1141,8 @@ $env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE,GPU_CULL"
 ```
 `get_diagnostic_events("GPU_CULL", 20)` — substrate_init, gl_probe, c1b_cull_ok/fail, compute_selftest, readback_init, readback_selftest per session.
 
-**Static prop flush perf triage** — 10-frame perf window with per-bucket ns breakdown:
-```powershell
-$env:MC2_STATIC_PROP_FLUSH_COST_SPLIT="1"
-$env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE,SPFLUSH_COST_SPLIT"
-```
-`get_diagnostic_events("SPFLUSH_COST_SPLIT", 10)` — summary events with `frame`, `window_frames`, and all ns buckets.
-
 **Light bake stability triage** — bake index permanence/parity proof:
 ```powershell
-$env:MC2_LIGHTBAKE_STABILITY="1"
 $env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE,LIGHTBAKE_PROOF"
 ```
 `get_diagnostic_events("LIGHTBAKE_PROOF", 20)` — enabled/first/coverage/UNSTABLE events.

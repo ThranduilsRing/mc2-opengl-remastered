@@ -393,8 +393,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 // comment there has the full rationale); needed here because the REAL
 // in-game combat-destroy event is this function's OBJECT_STATUS_DESTROYED
 // transition, which runs long before that definition in file order.
-void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
-                                                  const char* reason);
+void bldgTriggerStaticShadowRebake(bool wasRegistered);
 
 void BldgAppearance::setObjStatus (long oStatus)
 {
@@ -424,11 +423,9 @@ void BldgAppearance::setObjStatus (long oStatus)
 		// eventual outcome, no double-invalidate risk (the guard inside is
 		// `if (staticReg.registered ...)`).
 		if (oStatus == OBJECT_STATUS_DESTROYED) {
-			const bool    wasRegistered   = staticReg.registered;
-			const int32_t prevRecipeIndex = staticReg.recipeIndex;
+			const bool wasRegistered = staticReg.registered;
 			invalidateStaticRegistration();
-			bldgTriggerStaticShadowRebakeIfArmed(wasRegistered, prevRecipeIndex,
-			                                      "setObjStatus_destroyed");
+			bldgTriggerStaticShadowRebake(wasRegistered);
 		}
 
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))

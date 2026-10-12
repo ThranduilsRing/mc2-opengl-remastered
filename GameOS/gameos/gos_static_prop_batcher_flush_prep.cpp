@@ -329,39 +329,37 @@ void GpuStaticPropBatcher::refreshAlphaFlags() {
                 s_lastSeenMaterialFlags.assign(pktCount, -1);
             }
             // The per-packet OR-reduce scan runs every frame.
-            {
-                bool anyChanged = false;
+            bool anyChanged = false;
+            for (size_t i = 0; i < pktCount; ++i) {
+                const uint32_t globalPktIdx = s_sortedPacketOrder[i];
+                if (globalPktIdx >= s_packets.size()) continue;
+                const auto& pkt = s_packets[globalPktIdx];
+                int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST)
+                                ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
+                if (flags == 0 && pkt.owningTypeID < s_types.size()) {
+                    const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
+                    if (src && src->listOfTextures &&
+                        pkt.textureSlot < src->numTextures &&
+                        src->listOfTextures[pkt.textureSlot].textureAlpha) {
+                        flags = STATIC_PROP_FLAG_ALPHA_TEST;
+                    }
+                }
+                if (s_lastSeenMaterialFlags[i] != flags) {
+                    s_lastSeenMaterialFlags[i] = flags;
+                    anyChanged = true;
+                }
+            }
+            if (anyChanged && s_perDrawSsbo) {
+                const size_t entryStride = sizeof(PerDrawEntry);
+                const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
                 for (size_t i = 0; i < pktCount; ++i) {
-                    const uint32_t globalPktIdx = s_sortedPacketOrder[i];
-                    if (globalPktIdx >= s_packets.size()) continue;
-                    const auto& pkt = s_packets[globalPktIdx];
-                    int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST)
-                                    ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
-                    if (flags == 0 && pkt.owningTypeID < s_types.size()) {
-                        const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
-                        if (src && src->listOfTextures &&
-                            pkt.textureSlot < src->numTextures &&
-                            src->listOfTextures[pkt.textureSlot].textureAlpha) {
-                            flags = STATIC_PROP_FLAG_ALPHA_TEST;
-                        }
-                    }
-                    if (s_lastSeenMaterialFlags[i] != flags) {
-                        s_lastSeenMaterialFlags[i] = flags;
-                        anyChanged = true;
-                    }
+                    const int32_t f = s_lastSeenMaterialFlags[i];
+                    MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
+                                    static_cast<GLintptr>(i * entryStride + flagOffset),
+                                    sizeof(int32_t), &f);
                 }
-                if (anyChanged && s_perDrawSsbo) {
-                    const size_t entryStride = sizeof(PerDrawEntry);
-                    const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags);
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
-                    for (size_t i = 0; i < pktCount; ++i) {
-                        const int32_t f = s_lastSeenMaterialFlags[i];
-                        MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
-                                        static_cast<GLintptr>(i * entryStride + flagOffset),
-                                        sizeof(int32_t), &f);
-                    }
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                }
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
             }
         }
 }
@@ -449,30 +447,19 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
         if (s_locsCoalesce.ambientV1Strength >= 0)
             glUniform1f       (s_locsCoalesce.ambientV1Strength,
                                staticPropAmbientV1Enabled() ? 1.0f : 0.0f);
-        // PROP-BASE-LIGHT-DIR-1: directional modulation of the baked seed.
-        // 0.0 (default) -> shader's `> 0.0` guard skips the block entirely,
-        // so this is a no-op stronger than a multiply-by-one: the code path
-        // never runs and the pixel is byte-identical.
-        if (s_locsCoalesce.propBaseLightDirStrength >= 0)
-            glUniform1f       (s_locsCoalesce.propBaseLightDirStrength,
-                               s_propBaseLightDirStrength);
         // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor. Uploaded
         // globally but the frag only applies it to fragments whose instance
         // carries kFlagDecalFill (bit 3) — set solely on MarbleCliff decal
-        // instances. Other props are byte-identical regardless of this value.
+        // instances. Other props are unchanged by this value.
         if (s_locsCoalesce.terrainDecalFill >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalFill, g_terrainDecalFill);
         // TERRAIN-DECAL-COLORBLEND-1: bind the terrain colormap atlas + atlas-UV
         // params so the flagged cliff decal can pull its albedo toward the
         // surrounding terrain colour. Only touches GL texture state when the
-        // feature is active (blend>0); with blend==0 (default) we still upload
-        // the 0.0 scalar so the shader's flag-gated branch is a no-op and every
-        // prop stays byte-identical.
+        // blend slider is above zero; at zero the scalar is still uploaded so the
+        // shader's flag-gated branch is skipped.
         if (s_locsCoalesce.terrainDecalColorBlend >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend);
-        // BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass) texels.
-        if (s_locsCoalesce.glassDither >= 0)
-            glUniform1f       (s_locsCoalesce.glassDither, 1.0f);
         if (g_terrainDecalColorBlend > 0.0f) {
             extern GLuint gos_terrain_indirect_getAtlasGLTex();
             extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
@@ -526,10 +513,6 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
                 glUniform1i(s_locsCoalesce.isNight, nIsNight ? 1 : 0);
             if (s_locsCoalesce.nightFactor >= 0)
                 glUniform1f(s_locsCoalesce.nightFactor, nFactor);
-            if (s_locsCoalesce.nightEmissiveScale >= 0)
-                glUniform1f(s_locsCoalesce.nightEmissiveScale, kNightEmissiveScale);
-            if (s_locsCoalesce.fixtureEmissiveScale >= 0)
-                glUniform1f(s_locsCoalesce.fixtureEmissiveScale, kFixtureEmissiveScale);
         }
         // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
         // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->

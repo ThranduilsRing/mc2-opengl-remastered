@@ -33,8 +33,7 @@ struct ColorFrameUBO {
     float   iblSh[9][4];        // @vec4xN SH-L2 coefficients, .w pad each
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
-    int32_t glassDither;        // 1 = Bayer alpha-test dither (GL u_glassDither parity)
-    float   _pad[1];            // @cpp_only pad to a 16 B multiple
+    float   _pad[2];            // @cpp_only pad to a 16 B multiple
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"

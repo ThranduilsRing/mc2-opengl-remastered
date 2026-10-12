@@ -130,7 +130,7 @@ uniform float u_fogValue;        // 1.0 = clear, 0.0 = fully fogged
 uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash, 3 white, 4 argb-only, 5 tex-only, 6 highlight-only, 7 tex+highlight
 
 // V-MATERIAL-DEBUG-1: per-fragment material debug view (StaticPropOpaque lane).
-// Default 0 = OFF; CPU uploads 0 unless MC2_STATIC_PROP_DEBUG_MATERIAL is set.
+// 0 = OFF; the inspector's material-view selector uploads the mode.
 // Modes:
 //   0 off          (no visual change — guarded by `if (mode != 0) { ...; return; }`)
 //   1 albedo       (raw sampled albedo, no lighting/fog/highlight)
@@ -158,8 +158,8 @@ uniform int   u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (
 // floor, so a face pointing away from the sun goes to ~0 (black void). This
 // uniform is applied as a per-fragment floor ONLY to fragments whose instance
 // carries kFlagDecalFill (bit 3, set solely on MarbleCliff decal instances in
-// bdactor.cpp). Default 0.0 upload + bit-unset = byte-identical for every other
-// static prop AND (when unset) for the decal itself. CPU default is 0.20.
+// bdactor.cpp). Bit-unset = no change for every other static prop; the lighting
+// slider sets the strength.
 uniform float u_terrainDecalFill;
 const uint kFlagDecalFill = (1u << 3);
 
@@ -171,9 +171,8 @@ const uint kFlagDecalFill = (1u << 3);
 // u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits): the batcher binds the merged
 // colormap atlas to kColormapTexUnit and uploads the atlas params.
 //   - Applied ONLY to fragments carrying kFlagDecalFill (bit 3).
-//   - u_terrainDecalColorBlend == 0.0 (default upload when MC2_TERRAIN_DECAL_
-//     COLORBLEND unset) OR flag-unset -> the whole block is skipped -> every
-//     other static prop (and the decal itself) is byte-identical.
+//   - u_terrainDecalColorBlend == 0.0 (slider at zero) OR flag-unset -> the whole
+//     block is skipped -> every other static prop is unchanged.
 //   - Requires v_worldPos (MC2/terrain world frame, same as the chunk shader),
 //     which only exists under MC2_USE_VIEW_UNIFORMS; guarded accordingly.
 uniform sampler2D u_terrainColormap;    // merged colormap atlas (kColormapTexUnit)
@@ -192,8 +191,6 @@ uniform float     u_terrainDecalColorBlend;  // 0 = off (byte-identical)
 // a 4x4 Bayer threshold instead of the fixed 0.5: binary-alpha texels behave
 // exactly as before (a<=1/32 always discards, a>=31/32 never), partial-alpha
 // texels become depth-correct stippled translucency.
-// 0.0 = legacy a<0.5 discard (the engine uploads 1.0).
-uniform float u_glassDither;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 GBuffer1;
@@ -284,22 +281,17 @@ void main() {
     // transparent"). All other debug modes (1..7) retain the discard so
     // existing tree-card / alpha-test diagnostics are unchanged.
     if (u_debugAddrMode != 8 && (materialFlags & ALPHA_TEST_BIT) != 0) {
-        if (u_glassDither > 0.5) {
-            // BUILDING-GLASS-1: Bayer 4x4 ordered-dither threshold. Values are
-            // (index+0.5)/16 so thresholds span (0,1) exclusive — a==0 always
-            // discards, a==1 never does (binary fence textures unchanged).
-            if (propBayerDitherDiscard(tex_color.a, gl_FragCoord.xy)) {
-                discard;
-            }
-        } else if (tex_color.a < 0.5) {
+        // BUILDING-GLASS-1: Bayer 4x4 ordered-dither threshold. Values are
+        // (index+0.5)/16 so thresholds span (0,1) exclusive — a==0 always
+        // discards, a==1 never does (binary fence textures unchanged).
+        if (propBayerDitherDiscard(tex_color.a, gl_FragCoord.xy)) {
             discard;
         }
     }
 
     // V-MATERIAL-DEBUG-1: per-fragment material debug view.
-    // PIXEL-INVARIANT PROOF: when u_debugMaterialMode == 0 (default; CPU
-    // uploads 0 unless MC2_STATIC_PROP_DEBUG_MATERIAL is set non-zero), this
-    // entire block is skipped via the `!= 0` guard, control flow returns to
+    // PIXEL-INVARIANT PROOF: when u_debugMaterialMode == 0 (the selector's
+    // default), this entire block is skipped via the `!= 0` guard, control flow returns to
     // the existing pipeline at the next line, and the output is byte-identical
     // to pre-slice f005f7ce. Alpha-test discard above already ran exactly as
     // before, so discard behavior is unchanged.
@@ -418,7 +410,7 @@ void main() {
     //     REMEDIATION-LAND-1). u_iblShStrength is uploaded through
     //     iblShStrengthNightScaled() (gos_static_prop_batcher.cpp:1129), which
     //     applies IBL-NIGHT-SCALE-1's `strength *= 1 - (1 - 0.25)*nightFactor`
-    //     -- DEFAULT-ON gate MC2_STATIC_PROP_IBL_NIGHT_SCALE. At nightFactor
+    //     -- always on. At nightFactor
     //     1.0 the effective strength is 0.55*0.25 = 0.1375, and 0.1375 * the
     //     probe's 4.896 maximum is 0.673, under the clamp: the probe saturates
     //     0.0% of the sphere and the "unsaturated remainder" is the WHOLE

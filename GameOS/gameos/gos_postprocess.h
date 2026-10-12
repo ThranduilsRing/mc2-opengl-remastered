@@ -276,12 +276,12 @@ public:
 
     // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening, folded into the
     // composite shader (same precedent as FXAA above). Applied to the final graded
-    // LDR color; gate OFF -> u_casEnabled==0 -> shader skips it (byte-identical).
-    // Seeded from MC2_POST_CAS / MC2_POST_CAS_SHARPNESS at init.
+    // LDR color; off -> u_casEnabled==0 -> shader skips it.
+    // Set from options.cfg (PostCAS / PostCASSharpness) through gos_SetPostFxOptions().
     bool  casEnabled_;
     float casSharpness_;  // 0..1, default 0.5
 
-    // POST-FX-TONEMAP-V2: 0 off (default, byte-identical), 1 AgX, 2 Hable, 3 Reinhard.
+    // POST-FX-TONEMAP-V2: 0 off (default), 1 AgX, 2 Hable, 3 Reinhard; options.cfg TonemapMode.
     int   tonemapMode_;
 
     void runScreenShadow();

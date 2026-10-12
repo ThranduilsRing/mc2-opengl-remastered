@@ -77,17 +77,10 @@ uniform vec3 u_terrainSunMC2;
 // Lights` block -- evaluated its DAYTIME arm and emitted nothing. The lights
 // were off. The legacy CPU path (tgl.cpp:1901) never had this bug.
 //
-// u_nightEmissiveScale is applied to the EMISSION DELTA only (night base minus
-// day base), so 1.0 is exact stock; it is not a fudge in the lighting maths.
+// The emission delta (night base minus day base) is applied at full stock strength to every
+// tagged vertex, so the stock lights come on exactly as authored.
 uniform int   u_isNight;             // 0/1
 uniform float u_nightFactor;         // 0..1 day->night blend
-uniform float u_nightEmissiveScale;  // 1.0 = stock
-// BEACON-FIXTURE-ID-1: emission scale applied ONLY to types the CPU-side
-// discriminator classified as light fixtures (runway/taxiway edge lights and
-// beacons). The flag rides ptd.hotPinkRGB.w -- 1.0 = fixture, 0.0 = everything
-// else. This is what lets the fixtures come on at night while every building
-// keeps its own scale, so fixtures and buildings can be graded apart.
-uniform float u_fixtureEmissiveScale;
 // FAR-BACKDROP-LIT (gate MC2_FAR_BACKDROP_LIT, default OFF): night-shade
 // substitution for far/impostor static-prop LODs. Far/impostor LODs register
 // via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_
@@ -146,15 +139,12 @@ uniform int u_parityBaseLightDebugMode;
 // existing window-skip of calc_light).
 uniform float u_ambientV1Strength;
 
-// PROP-BASE-LIGHT-DIR-1: strength of the directional (hemispherical-wrap)
-// modulation applied to the baked per-vertex base_light seed. 0.0 (default,
-// CPU uploads 0.0 when MC2_PROP_BASE_LIGHT_DIR is unset/0) makes the term a
-// bitwise no-op -- the `> 0.0` guard below skips it entirely, so seed ==
-// base_light and the render is byte-identical to pre-slice output.
-// Range 0..1: the modulation factor is mix(1-strength, 1, wrap), so a face
-// pointing AT the sun keeps factor 1.0 exactly and can never brighten; a
-// face pointing directly AWAY is scaled by (1-strength).
-uniform float u_propBaseLightDirStrength;
+// PROP-BASE-LIGHT-DIR-1: strength of the directional (hemispherical-wrap) modulation
+// applied to the baked per-vertex base_light seed. The factor is mix(1-strength, 1, wrap):
+// a face pointing AT the sun keeps factor 1.0 exactly and can never brighten, a face
+// pointing directly AWAY is scaled by (1-strength). Below 1.0 so the back-face factor
+// never reaches black.
+const float kPropBaseLightDirStrength = 0.45;
 
 // V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane.
 // Coefficient order (must match projector tools/ibl/project_sh.py +
@@ -484,8 +474,7 @@ void main() {
     // EDGE-LIGHT-EMISSION-1: evaluate get_base_light TWICE -- once with the
     // night state forced off (exactly the pre-fix "stubbed false/0" result)
     // and once with the eye's real night state. The difference is the stock
-    // NIGHT EMISSION and nothing else, so scaling only that delta is provably
-    // a no-op at scale 0 and exact stock at scale 1. The tagged vertices are
+    // NIGHT EMISSION and nothing else, added at full strength. The tagged vertices are
     // self-illuminated by construction: this term is ADDITIVE and computed
     // before ambient/sun, so night ambient never darkens it.
     vec3 base_day = get_base_light(
@@ -495,29 +484,20 @@ void main() {
         ptd.hotYellowRGB.rgb,
         ptd.hotGreenRGB.rgb);
     vec3 base_light = base_day;
-    // BEACON-FIXTURE-ID-1: pick the emission scale by fixture identity. A
-    // fixture takes max(all-props scale, fixture scale); everything else keeps
-    // the all-props scale.
-    // NOTE: this scales the emission on the fixture's REAL geometry only. It
-    // deliberately introduces no screen-size clamp and no billboard -- the
-    // unbounded min-screen-size clamp is exactly what produced the
-    // "atrociously hideous" overview-altitude streaks in RUNWAY-MARKER-LIGHTS-1
-    // (and why MC2_LIGHT_BILLBOARD_FACING was defaulted OFF). The emission
-    // therefore shrinks and fades with distance on its own.
-    bool  isFixture     = (ptd.hotPinkRGB.w > 0.5);
-    float emissiveScale = isFixture
-                        ? max(u_nightEmissiveScale, u_fixtureEmissiveScale)
-                        : u_nightEmissiveScale;
+    // Light fixtures and buildings take the same emission, on their REAL geometry only:
+    // no screen-size clamp and no billboard (an unbounded clamp produced the
+    // overview-altitude streaks of RUNWAY-MARKER-LIGHTS-1), so the glow shrinks and
+    // fades with distance on its own.
     // Night weight, 0.0 in full daylight: the emissive block is skipped by day.
     float nightWeight = clamp(max(float(u_isNight), u_nightFactor), 0.0, 1.0);
-    if (emissiveScale > 0.0 && nightWeight > 0.0) {
+    if (nightWeight > 0.0) {
         vec3 base_night = get_base_light(
             perVertexARGB,
             u_isNight != 0, u_nightFactor, false, lightsOut,
             ptd.hotPinkRGB.rgb,
             ptd.hotYellowRGB.rgb,
             ptd.hotGreenRGB.rgb);
-        base_light = clamp(base_day + (base_night - base_day) * emissiveScale,
+        base_light = clamp(base_day + (base_night - base_day),
                            vec3(0.0), vec3(1.0));
     }
 
@@ -674,7 +654,7 @@ void main() {
         //     claim without re-measuring mc2_05.
         //     ★ POINTER RESTORED 2026-07-31 (REMEDIATION-LAND-1). The text this
         //     correction replaced ended "...composes safely with
-        //     MC2_STATIC_PROP_IBL_NIGHT_SCALE", and that was this file's ONLY
+        //     IBL-NIGHT-SCALE-1", and that was this file's ONLY
         //     mention of the night scaling. Deleting it left the saturation
         //     arithmetic in property 3 below with nothing pointing at the term
         //     that halves its premise, which is how the day-only bound got
@@ -709,7 +689,7 @@ void main() {
         //     iblShStrengthNightScaled() (gos_static_prop_batcher.cpp:1129,
         //     feeding :7031/:8251/:9585), which applies IBL-NIGHT-SCALE-1:
         //         strength *= 1 - (1 - floor) * nightFactor,  floor = 0.25
-        //     (MC2_STATIC_PROP_IBL_NIGHT_SCALE, DEFAULT-ON). At full night the
+        //     (IBL-NIGHT-SCALE-1, always on). At full night the
         //     effective strength is 0.55*0.25 = 0.1375, and the probe's own
         //     maximum irradiance is 4.896, so its largest possible contribution
         //     is 4.896 * 0.1375 = 0.673 -- BELOW the clamp. Recomputed over the
@@ -746,11 +726,10 @@ void main() {
         // one mix per vertex, on a path that already normalizes both operands
         // for ndl.
         float propDirFactor = 1.0;
-        if (u_propBaseLightDirStrength > 0.0 &&
-            (inst.flags & kFlagIsAlphaTest) == 0u) {
+        if ((inst.flags & kFlagIsAlphaTest) == 0u) {
             float wrap = 0.5 + 0.5 * dot(normalize(worldNormalMC2),
                                          normalize(u_terrainSunMC2));
-            propDirFactor = mix(1.0 - u_propBaseLightDirStrength, 1.0, wrap);
+            propDirFactor = mix(1.0 - kPropBaseLightDirStrength, 1.0, wrap);
         }
         // --------------------------------------------------------------------
 
@@ -767,9 +746,8 @@ void main() {
             // pop boundary (smooth distance fade).
             seed = mix(base_light, ambientTerm + u_farBackdropTint, fbT);
         }
-        // PROP-BASE-LIGHT-DIR-1: propDirFactor == 1.0 when the gate is off
-        // (strength 0.0), making this arithmetically identical to the previous
-        // `seed + ambientTerm + sunColor * ndl`.
+        // PROP-BASE-LIGHT-DIR-1: propDirFactor is 1.0 for alpha-test props and for
+        // faces toward the sun; the sun term below is never scaled by it.
         lit = (seed + ambientTerm) * propDirFactor + sunColor * ndl;
 
         // V-AMBIENT-STATIC-1: hemisphere fill. Strength=0.0 (default) is a
@@ -842,7 +820,7 @@ void main() {
         //      33.5% (0.60) of the normal sphere in all three channels, WITH
         //      MISSION LIGHTING SET TO ZERO. Every pre-clamp knob on this
         //      surface -- MC2_STATIC_PROP_AMBIENT_V1 above,
-        //      MC2_PROP_BASE_LIGHT_DIR above, the TERRAIN-DECAL-FILL floor in
+        //      PROP-BASE-LIGHT-DIR-1 above, the TERRAIN-DECAL-FILL floor in
         //      the frag -- is bounded by that, and several shipped "fixes"
         //      were arithmetically inert because of it
         //      (.claude/LIGHTING-HEADROOM-AUDIT.md sections 3-4).
@@ -851,8 +829,8 @@ void main() {
         //      arrives in that uniform is not the visual_tuning.json number --
         //      it is iblShStrengthNightScaled() (gos_static_prop_batcher.cpp
         //      :1129 -> :7031/:8251/:9585), which applies IBL-NIGHT-SCALE-1's
-        //      `strength *= 1 - (1 - 0.25) * nightFactor` (DEFAULT-ON gate
-        //      MC2_STATIC_PROP_IBL_NIGHT_SCALE). At nightFactor 1.0 the
+        //      `strength *= 1 - (1 - 0.25) * nightFactor` (always on,
+        //      IBL-NIGHT-SCALE-1). At nightFactor 1.0 the
         //      effective strengths are 0.1375 / 0.1500 / 0.1625, and since the
         //      probe's own maximum is 4.896 its largest contribution is 0.796
         //      -- under the clamp. The saturated share is then 0.0%, 0.0% and
@@ -909,7 +887,7 @@ void main() {
         //      of wall azimuths unclamped, and a full sun-align rotation there
         //      moves a mean of 0.0037 -- ONE BYTE. mc2_22 is the same trap
         //      (0.0123). That pose earned its reputation from
-        //      MC2_PROP_BASE_LIGHT_DIR, which is a MULTIPLICATIVE darkening and
+        //      PROP-BASE-LIGHT-DIR-1, which is a MULTIPLICATIVE darkening and
         //      so pulls pixels DOWN out of the clamp; a rotation mostly swaps
         //      one clamped state for another. Different term shape, different
         //      trap. GRADE INSTEAD ON mc2_17 (mean move 0.181, 54.6% of wall
