@@ -413,7 +413,6 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 // transition, which runs long before that definition in file order.
 void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
                                                   const char* reason);
-bool bldgStaticShadowRebakeGatesActive();
 
 void BldgAppearance::setObjStatus (long oStatus)
 {
@@ -442,13 +441,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 		// the new rubble shape instead of the shape-swap path -- same
 		// eventual outcome, no double-invalidate risk (the guard inside is
 		// `if (staticReg.registered ...)`).
-		// GATED (byte-identical when off): only take the synchronous path
-		// when the rebake would actually fire -- gates() checked BEFORE
-		// invalidateStaticRegistration() runs, not just inside the trigger
-		// helper, so a mission that never opted into
-		// MC2_STATIC_PROP_BUILDING_SHADOW keeps the exact original timing
-		// (lazy shape-swap detection on a later touch()/update(), unchanged).
-		if (oStatus == OBJECT_STATUS_DESTROYED && bldgStaticShadowRebakeGatesActive()) {
+		if (oStatus == OBJECT_STATUS_DESTROYED) {
 			const bool    wasRegistered   = staticReg.registered;
 			const int32_t prevRecipeIndex = staticReg.recipeIndex;
 			invalidateStaticRegistration();

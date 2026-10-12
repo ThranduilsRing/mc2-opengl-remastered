@@ -44,8 +44,7 @@ GLuint s_staticBldgShadowSsbo = 0;
 // GL args/slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
 // registered at create (bufferData), invalidated on destroy.
 // The sibling buffers in gap B#5 are DEFERRED to the exclusion ledger (created only under
-// default-OFF gates): s_staticBldgShadowSsbo (MC2_STATIC_PROP_BUILDING_SHADOW, default
-// OFF); s_blockVisSsbo (gos_vegetation.cpp, MC2_VEGETATION_CARDS, default OFF); particle
+// default-OFF gates): s_blockVisSsbo (gos_vegetation.cpp, MC2_VEGETATION_CARDS, default OFF); particle
 // s_ssbo (gos_particle_bridge.cpp, MC2_GPU_PARTICLES, default OFF -- CPU/MLR is the stock
 // path) + s_tubePos/Col/UvSsbo (MC2_VFX_ORACLE_TUBE, default OFF/parked).
 RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{

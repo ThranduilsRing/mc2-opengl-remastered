@@ -853,35 +853,11 @@ void BldgAppearance::touchSerialCommit()
 // Only worth the rebake cost (a full-map static shadow replay,
 // ZoneScopedN("Shadow.StaticFullMapBuild") in txmmgr.cpp) when (a) this
 // building actually had a static registration, AND (b) the building
-// static-shadow map is actually active -- MC2_STATIC_PROP_BUILDING_SHADOW is
-// default OFF, and the unconditional terrain-only static build must NOT be
-// forced to redundantly re-run (wasted GPU work, zero visual change) on
-// missions that never opted into building-in-static-map at all.
-// MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE is a dedicated kill-switch (default
-// ON, independent of the parent gate) for this specific rebake trigger, in
-// case it proves too expensive on destruction-heavy missions.
-// Gate check split out so callers can decide whether to ALSO do the
-// synchronous invalidateStaticRegistration() dance (see setObjStatus) --
-// that call must byte-identically NOT happen when the gates are off, so it
-// cannot live only inside this function's early-return.
-bool bldgStaticShadowRebakeGatesActive()
+// static-shadow map is active (buildings cast through it in every mission).
+void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t /*recipeIndex*/, const char* /*reason*/)
 {
-	static const bool s_bldgStaticShadowActive = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
-
-	static const bool s_rebakeOnDestroy = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "0">();
-	return s_bldgStaticShadowActive && s_rebakeOnDestroy;
-}
-
-void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
-                                                  const char* reason)
-{
-	if (!wasRegistered || !bldgStaticShadowRebakeGatesActive()) return;
-	static const bool s_rebakeTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "2">();
+	if (!wasRegistered) return;
 	gos_ResetStaticLightMatrix();
-	if (s_rebakeTrace) {
-		mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE v1] event={} recipeIndex={:d}\n", mc2::fmt::safe(reason), mc2::fmt::as_i32(recipeIndex));
-		fflush(stderr);
-	}
 }
 
 void BldgAppearance::invalidateStaticRegistration()

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1042
-registry_entry_count: 265
-verified_count: 1035
+gate_count: 1040
+registry_entry_count: 263
+verified_count: 1033
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5409,26 +5409,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_STATIC_PROP_BUILDING_SHADOW
-    kind: Enum
-    default: "0"
-    rule: Std
-    owner: props
-    doc: "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once..."
-    tokens: "0|1|2"
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS, kind: Feature, order: -1, default_on: false}
-  - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
-    kind: Enum
-    default: "1"
-    rule: Std
-    owner: props
-    doc: "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --..."
-    tokens: "1|0|2"
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
     kind: Int
     default: -1

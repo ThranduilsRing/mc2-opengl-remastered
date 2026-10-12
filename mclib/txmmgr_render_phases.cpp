@@ -512,28 +512,18 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 		// Source = the FULL registry (all buildings, visibility-independent, baked
 		// at mission-load registerStatic), NOT per-frame visible buckets (Option B's
 		// failure). Trees excluded by the Building population filter. Appends to the
-		// terrain depth (gos_BeginShadowPrePass(false) = no clear). Gate
-		// MC2_STATIC_PROP_BUILDING_SHADOW=1 (default OFF). Relies on C-pre min-combine
+		// terrain depth (gos_BeginShadowPrePass(false) = no clear). Relies on C-pre min-combine
 		// (7ea32b83) so a building in both this and the dynamic bounded-near map does
 		// not double-darken terrain. Only runs when the prepass actually activates.
 		{
-			static const bool s_bldgStaticShadow = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
-			if (s_bldgStaticShadow) {
-				const bool s_sbTxmTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "2">();
+			{
 				if (gos_BeginShadowPrePass(false)) {  // append, no clear
 					// Local (not static): runs once per mission; getBuildingShadowInstances
 					// clears+fills it. No need to retain capacity for the process lifetime.
 					std::vector<GpuStaticPropInstance> bldgShadowInstances;
 					GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
-					if (s_sbTxmTrace) {
-						mc2::fmt::print_err("[SHADOW_STATIC_BLDG_TXM] prepass=1 instances={:d}\n", mc2::fmt::as_size(bldgShadowInstances.size()));
-						fflush(stderr);
-					}
 					GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
 					gos_EndShadowPrePass();
-				} else if (s_sbTxmTrace) {
-					mc2::fmt::print_err("[SHADOW_STATIC_BLDG_TXM] prepass=0 (shadows off, skipped)\n");
-					fflush(stderr);
 				}
 			}
 		}

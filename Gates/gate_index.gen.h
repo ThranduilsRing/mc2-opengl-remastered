@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1042;
+inline constexpr std::size_t kGateCount = 1040;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -710,8 +710,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STATIC_POP_SPLIT_CMD_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_PROP_AMBIENT_V1", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATIC_PROP_BAKE_SELFTEST", Kind::Bool, Rule::Presence, {}},
-    {"MC2_STATIC_PROP_BUILDING_SHADOW", Kind::Enum, Rule::Std, "0|1|2"},
-    {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Kind::Enum, Rule::Std, "1|0|2"},
     {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_PROP_COLORS_FILL", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATIC_PROP_DEPTH_PREPASS", Kind::Bool, Rule::Presence, {}},

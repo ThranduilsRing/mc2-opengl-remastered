@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1039,
+ "count": 1037,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -19832,90 +19832,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_BUILDING_SHADOW",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0P",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once per mission at the static-map build.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
-     "idiom": "Custom[00000001]"
-    },
-    {
-     "at": "mclib/bdactor.cpp:5562",
-     "idiom": "Lead0P"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:3517",
-     "idiom": "Lead0P"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:3518",
-     "idiom": "Lead0P"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:3521",
-     "idiom": "Partial[D,off,off,off,off,off,off,on]"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:3659",
-     "idiom": "Lead0P"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:3660",
-     "idiom": "Lead0P"
-    }
-   ],
-   "conflict": true,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SHADOW_STATIC_BUILDINGS",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Custom",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed -- primarily BldgAppearance::setObjStatus transitioning to OBJECT_STATUS_DESTROYED (the real in-game combat-destroy event), with BldgAppearance::destroy (mission-end/pool-recycle) as cheap insurance -- so txmmgr's static-shadow build block (terrain + buildings) replays next frame WITHOUT the destroyed building instead of keeping its stale baked shadow until mission reload (docs/known_issues.md).",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:5566",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "mclib/bdactor.cpp:5577",
-     "idiom": "Custom[00000001]"
-    },
-    {
-     "at": "mclib/bdactor.cpp:5578",
-     "idiom": "Custom[00000001]"
-    }
-   ],
-   "conflict": true,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE",
    "retireVerdict": ""
   },
   {

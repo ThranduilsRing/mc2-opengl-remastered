@@ -91,7 +91,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			// SHADOW-STATIC-BUILDINGS-2: when buildings cast via the world-fixed
 			// static map, skip them in the dynamic pass to avoid a redundant fuzzy
 			// double-shadow on buildings (trees/mechs still cast dynamically).
-			static const bool s_skipBldgInDynamic = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
+			constexpr bool s_skipBldgInDynamic = true;
 			// SHADOW-DYNAMIC-PROP-CASTERS-1 (gate, DEFAULT ON; =0 kill-switch): the camera-visible
 			// flushShadow feed (s_typeRanges) only admits props the camera frustum
 			// cull marked visible this frame, so most trees never cast into the (now

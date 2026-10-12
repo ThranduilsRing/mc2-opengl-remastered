@@ -1529,20 +1529,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead...",
     },
     {
-        "MC2_FEATURE_SHADOW_STATIC_BUILDINGS",
-        "MC2_STATIC_PROP_BUILDING_SHADOW",
-        EnvVarKind::Feature,
-        false,
-        "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once...",
-    },
-    {
-        "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE",
-        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
-        EnvVarKind::Feature,
-        true,
-        "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --...",
-    },
-    {
         "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
         "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
         EnvVarKind::Trace,

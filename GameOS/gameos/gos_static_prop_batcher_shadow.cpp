@@ -465,10 +465,6 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
     s_staticBldgShadowTypes = typesDrawn;
     s_staticBldgShadowInst  = instDrawn;
     s_staticBldgShadowDraws = drawCalls;
-    if (mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "2">()) {
-        mc2::fmt::print_err("[SHADOW_STATIC_BLDG v1] recipes_in={:d} types={:d} inst={:d} draws={:d} (buildings only; full registry, NOT per-frame buckets)\n", mc2::fmt::as_size(instances.size()), mc2::fmt::as_i32(typesDrawn), mc2::fmt::as_i32(instDrawn), mc2::fmt::as_i32(drawCalls));
-        fflush(stderr);
-    }
 }
 
 // SHADOW-STABILITY-1: read-only accessor so the shadow-pass state trace

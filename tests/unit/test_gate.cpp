@@ -1052,8 +1052,6 @@ TEST_CASE("G6 predicate enums accept their documented spellings without a badval
 TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
     struct Want { const char* name; const char* tokens; const char* def; };
     const Want want[] = {
-        {"MC2_STATIC_PROP_BUILDING_SHADOW", "0|1|2", "0"},
-        {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "1|0|2", "1"},
         {"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "1|0|2", "1"},
         {"MC2_SPOTLIGHT_DIRECTION_FIX", "0|1|2", "0"},
     };
@@ -1067,7 +1065,6 @@ TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
         CHECK(g1b::intOf(r, nullptr) == 0);
         CHECK(g1b::intOf(r, "9") == 0);
     }
-    CHECK(g1b::intOf(g1b::rowNamed("MC2_STATIC_PROP_BUILDING_SHADOW"), "2") == 2);
     CHECK(g1b::intOf(g1b::rowNamed("MC2_SHADOW_DYNAMIC_PROP_CASTERS"), "0") == 1);
 }
 
