@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in ablxstd_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablxstd_internal.h"
+#include "abl_string_append.h"
 #include "mc2fmt.h"
 
 
@@ -195,6 +196,18 @@ void execStdPrint (void) {
 
 //***************************************************************************
 
+// A script string that outgrows its char[N] is cut at the capacity and logged (malformed content is clamped with a log
+// line, never a crash); the log stops after a few lines so a looping script cannot flood it.
+static void reportConcatTruncated (size_t capacity, size_t dropped) {
+	static int s_lines = 0;
+	if (s_lines >= 16)
+		return;
+	++s_lines;
+	mc2::fmt::print_err("[ABL v1] event=concat_truncated module={} line={:d} capacity={:d} dropped={:d}\n",
+	                    mc2::fmt::safe(CurModule ? CurModule->getName() : nullptr), mc2::fmt::as_i32(execLineNumber),
+	                    mc2::fmt::as_size(capacity), mc2::fmt::as_size(dropped));
+}
+
 TypePtr execStdConcat (void) {
 
 	//-------------------
@@ -202,35 +215,45 @@ TypePtr execStdConcat (void) {
 	getCodeToken();
 
 	//--------------------------
-	// Get destination string...
+	// Get destination string: a char[N] variable, whose declared size bounds the append (the variable is a heap
+	// block of exactly N bytes).
 	getCodeToken();
-	execExpression();
+	TypePtr destTypePtr = execExpression();
 	char* dest = (char*)tos->address;
 	pop();
+	const size_t destCap = (destTypePtr && destTypePtr->form == FRM_ARRAY && destTypePtr->info.array.elementCount > 0)
+	                           ? (size_t)destTypePtr->info.array.elementCount : 0u;
 
 	//----------------------
 	// Get item to append...
 	getCodeToken();
 	TypePtr paramTypePtr = execExpression();
-	char buffer[20];
+	char buffer[32];
+	const char* item = nullptr;
 	if (paramTypePtr == IntegerTypePtr) {
 		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(tos->integer));
-		strcat(dest, buffer);
+		item = buffer;
 		}
 	else if (paramTypePtr == CharTypePtr) {
 		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(tos->byte));
-		strcat(dest, buffer);
+		item = buffer;
 		}
 	else if (paramTypePtr == RealTypePtr) {
 		mc2::fmt::to_buf(buffer, "{:.2f}", tos->real);
-		strcat(dest, buffer);
+		item = buffer;
 		}
 	else if (paramTypePtr == BooleanTypePtr) {
 		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(tos->integer ? "true" : "false"));
-		strcat(dest, buffer);
+		item = buffer;
 		}
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
-		strcat(dest, (char*)tos->address);
+		item = (char*)tos->address;
+
+	if (item) {
+		const size_t dropped = abl::appendBounded(dest, destCap, item);
+		if (dropped)
+			reportConcatTruncated(destCap, dropped);
+	}
 
 	tos->integer = 0;
 
