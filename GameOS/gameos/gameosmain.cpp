@@ -1309,7 +1309,7 @@ int main(int argc, char** argv)
             TracyGpuCollect;
         }
         FrameMark;
-        mc2::gpumem::tick((unsigned long)g_mc2FrameCounter);   // VRAM.Process.MB plot beside the frame marks
+        mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter));   // VRAM.Process.MB plot beside the frame marks
 
         {
             ZoneScopedN("Frame.ExitCheck");

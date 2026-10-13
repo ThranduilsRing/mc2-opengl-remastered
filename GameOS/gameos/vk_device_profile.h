@@ -194,7 +194,7 @@ inline std::string formatLine(const std::string& deviceName, const DeviceCaps& c
 }  // namespace mc2vk::profile
 
 struct VkPhysicalDevice_T;
-typedef struct VkPhysicalDevice_T* VkPhysicalDevice;
+using VkPhysicalDevice = VkPhysicalDevice_T*;
 
 namespace mc2vk::profile {
 // Reads one physical device's version, extensions, feature bits and limits (vk_device_profile.cpp). `instanceApi` is the apiVersion the instance was

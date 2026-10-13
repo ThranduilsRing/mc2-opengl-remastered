@@ -10,6 +10,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string_view>
 
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"
@@ -29,12 +30,12 @@ constexpr GLenum kAtiTextureFreeMemory = 0x87FC;            // GL_TEXTURE_FREE_M
 constexpr GLenum kNvxDedicatedVidmem = 0x9047;              // GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
 constexpr GLenum kNvxCurrentAvailableVidmem = 0x9049;       // GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
 
-bool hasGlExtension(const char* name) {
+bool hasGlExtension(std::string_view name) {
     GLint n = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &n);
     for (GLint i = 0; i < n; ++i) {
         const GLubyte* e = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
-        if (e && std::strcmp(reinterpret_cast<const char*>(e), name) == 0) return true;
+        if (e && name == reinterpret_cast<const char*>(e)) return true;
     }
     return false;
 }
@@ -132,18 +133,18 @@ Snapshot take() {
     return s;
 }
 
-std::string format(const char* phase, const Snapshot& s) {
+std::string format(std::string_view phase, const Snapshot& s) {
     char buf[640];
     std::snprintf(buf, sizeof(buf),
                   "[VRAM v1] phase=%s backend=%s gl_ati_tex_free_mb=%lld gl_ati_tex_largest_free_mb=%lld gl_nvx_dedicated_mb=%lld "
                   "gl_nvx_available_mb=%lld vk_budget_mb=%lld vk_usage_mb=%lld vk_allocated_mb=%lld adapter_dedicated_mb=%lld "
                   "proc_dedicated_mb=%lld proc_budget_mb=%lld",
-                  phase ? phase : "unknown", s.backend ? s.backend : "gl",
-                  (long long)kibToMib(s.glAtiTexFreeKb), (long long)kibToMib(s.glAtiTexLargestFreeKb),
-                  (long long)kibToMib(s.nvxDedicatedKb), (long long)kibToMib(s.nvxCurrentAvailableKb),
-                  (long long)bytesToMib(s.vkBudgetBytes), (long long)bytesToMib(s.vkUsageBytes), (long long)bytesToMib(s.vkAllocatedBytes),
-                  (long long)bytesToMib(s.dxgiAdapterDedicatedBytes), (long long)bytesToMib(s.dxgiProcessUsageBytes),
-                  (long long)bytesToMib(s.dxgiProcessBudgetBytes));
+                  std::string(phase).c_str(), s.backend ? s.backend : "gl",
+                  static_cast<long long>(kibToMib(s.glAtiTexFreeKb)), static_cast<long long>(kibToMib(s.glAtiTexLargestFreeKb)),
+                  static_cast<long long>(kibToMib(s.nvxDedicatedKb)), static_cast<long long>(kibToMib(s.nvxCurrentAvailableKb)),
+                  static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
+                  static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
+                  static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
     return buf;
 }
 
@@ -154,15 +155,15 @@ std::string toJson(const Snapshot& s) {
                   "\"gl_nvx_available_mb\": %lld, \"vk_budget_mb\": %lld, \"vk_usage_mb\": %lld, \"vk_allocated_mb\": %lld, "
                   "\"adapter_dedicated_mb\": %lld, \"proc_dedicated_mb\": %lld, \"proc_budget_mb\": %lld}",
                   s.backend ? s.backend : "gl",
-                  (long long)kibToMib(s.glAtiTexFreeKb), (long long)kibToMib(s.glAtiTexLargestFreeKb),
-                  (long long)kibToMib(s.nvxDedicatedKb), (long long)kibToMib(s.nvxCurrentAvailableKb),
-                  (long long)bytesToMib(s.vkBudgetBytes), (long long)bytesToMib(s.vkUsageBytes), (long long)bytesToMib(s.vkAllocatedBytes),
-                  (long long)bytesToMib(s.dxgiAdapterDedicatedBytes), (long long)bytesToMib(s.dxgiProcessUsageBytes),
-                  (long long)bytesToMib(s.dxgiProcessBudgetBytes));
+                  static_cast<long long>(kibToMib(s.glAtiTexFreeKb)), static_cast<long long>(kibToMib(s.glAtiTexLargestFreeKb)),
+                  static_cast<long long>(kibToMib(s.nvxDedicatedKb)), static_cast<long long>(kibToMib(s.nvxCurrentAvailableKb)),
+                  static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
+                  static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
+                  static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
     return buf;
 }
 
-void log(const char* phase) {
+void log(std::string_view phase) {
     if (!SmokeMode::state().enabled && !mc2DiagVerbose()) return;
     const std::string line = format(phase, take());
     std::printf("%s\n", line.c_str());

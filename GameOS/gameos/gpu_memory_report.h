@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace mc2::gpumem {
 
@@ -39,13 +40,13 @@ struct Snapshot {
 Snapshot take();
 
 // `[VRAM v1] phase=<phase> backend=... key=value ...` with every size in whole MiB (-1 = unavailable). Pure: no GPU or driver access.
-std::string format(const char* phase, const Snapshot& s);
+std::string format(std::string_view phase, const Snapshot& s);
 
 // The same numbers as one JSON object (whole MiB, -1 = unavailable) for the debug-state dump.
 std::string toJson(const Snapshot& s);
 
 // Print the line when the smoke harness or MC2_DIAG_VERBOSE asked for diagnostics (a player's console stays quiet).
-void log(const char* phase);
+void log(std::string_view phase);
 
 // Once per `kPlotEveryFrames` frames: plot the process's dedicated video memory (MiB) to Tracy as "VRAM.Process.MB".
 void tick(unsigned long frame);
