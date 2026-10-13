@@ -10,7 +10,8 @@ Lane 2 untouched (only readers of its files). Another agent runs the editor roun
 - eda9fba5c M2 (call-site seal = git blob id of the LF form, host independent), M3 (four unchecked FIT reads through `readPlain`; an absent Chassis / VariantName rejects the variant), L1 (two `from_c`), L2 (`static_cast`, `CHECK_ONLY_FLAGS` deleted).
 - 8300da27d L3 (`objective_text::readText` core), L4 (tests for `campaign_save_roundtrip`, the mask file, `masked_resave_verdict`; `compare` skips pilot byte 220), L5 (the 4800-byte mask ranges are `MovePath::stepList`), L7 nits, `tests/analyze/name_sort_probe.py`.
 - 86e101fa0 B1.5: front-end screens on std::string (16 files), `aText::textString()`, the Mechlopedia vehicles-tab STOP fixed.
-- (this commit) docs: notes 8e, this file.
+- b85d86dc8 docs: notes 8e, this file.
+- dd6ea8cbe `default_build_quiet` baseline keeps `[VIDEO v1]` (the full board at b85d86dc8 was red on that one row only; everything else green; the row also reports two RETIRED tags, ASSET_LOAD v1 and WATER_SHORE_EDGE v1, not from this lane).
 
 ## Results (numbers)
 - M1 proof: campaign auto-win run (`A:/Games/mc2-capture-evidence/m1-prevideo/`): `[VIDEO v1] event=pre_video site=campaign_start name=cinema1.bik` then `event=skip ... reason=boot_to_bay`; `site=won_mission name=cinema2.bik` and `cinema3.bik` each followed by a skip; `none` x11. In-mission (tier2 mc2_10 via `run_smoke.py`): `event=play_mission name=MC2_10A` and `MC2_10B`. The headless harness cannot play a movie (BOOT_TO_BAY and the smoke mode skip it), so "played" means the request reached the player.
