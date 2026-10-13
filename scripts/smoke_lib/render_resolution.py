@@ -13,6 +13,8 @@ tools/tracy_capture_compare.py. The smoke runner (scripts/run_smoke.py tier1) is
 """
 from __future__ import annotations
 
+from typing import Mapping, Optional
+
 PINNED_WIDTH = 1920
 PINNED_HEIGHT = 1080
 
@@ -35,3 +37,22 @@ def size_env(width: int = PINNED_WIDTH, height: int = PINNED_HEIGHT) -> "dict[st
 
 def pinned_env() -> "dict[str, str]":
     return size_env()
+
+
+SIZE_KEYS = ("MC2_WIDTH", "MC2_HEIGHT")
+
+
+class HalfDeclaredSize(ValueError):
+    """A caller declared MC2_WIDTH or MC2_HEIGHT but not both."""
+
+
+def pin_unless_declared(env: "dict[str, str]", declared: "Optional[Mapping[str, str]]") -> "dict[str, str]":
+    """Put the pinned size into `env` unless the caller declared one (--env / --env-declare). A size is a pair: declaring one side alone would
+    give a mixed size (2560 wide beside the pinned 1080 high) that nobody asked for, so that is refused instead of guessed."""
+    given = [k for k in SIZE_KEYS if k in (declared or {})]
+    if len(given) == 1:
+        raise HalfDeclaredSize(f"{given[0]} is declared without {SIZE_KEYS[1 - SIZE_KEYS.index(given[0])]}: declare both (a size is a pair) or neither "
+                               f"(the pinned {PINNED_WIDTH}x{PINNED_HEIGHT} applies)")
+    if not given:
+        env.update(pinned_env())
+    return env

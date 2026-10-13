@@ -184,6 +184,71 @@ def vary_list(text) -> "list[str]":
     return [k.strip() for k in (text or "").split(",") if k.strip()]
 
 
+def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
+    """The environment the game runs under for a trace: the shell's, minus stray backend variables, plus the harness's settings, the pinned
+    drawable size, the arm, and the caller's --env entries (which win). A function of its inputs so the pin is testable without an engine."""
+    env = os.environ.copy()
+    # scrub stray backend vars so the arm is exactly what we asked for
+    for k in list(env):
+        if k.startswith("MC2_VK") or k == "MC2_RENDER_BACKEND":
+            env.pop(k)
+    env.update({
+        "MC2_NO_LAUNCHER": "1",
+        "MC2_SMOKE_MODE": "1",
+        # BACKGROUND-SMOKE-1: never fullscreen / never grab the pointer.
+        # setdefault-equivalent is not used here because this dict IS the
+        # harness intent; a caller overriding via --env still wins downstream.
+        "MC2_WINDOWED": "1",
+        "MC2_NO_CURSOR_GRAB": "1",
+        # NOFOCUS-FINISH-1: and never occupy visible desktop area. This harness
+        # was invisible to BOTH guards until now -- it hand-rolls its own
+        # STARTUPINFO and its own Popen (no nofocus), and its argv name
+        # `game_cmd` was not in check-background-launch's ENGINE_ARGV heuristic,
+        # so it never appeared in the launch inventory either. Combined with
+        # SW_SHOWNOACTIVATE below that made it the one harness that put a
+        # genuinely VISIBLE, options.cfg-sized window on the user's desktop for
+        # the entire capture.
+        #
+        # Safe for the measurement, which is the whole point of this file:
+        # gameosmain.cpp's 10ms background throttle keys on
+        # `SDL_GetWindowFlags & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)`, and
+        # an offscreen-but-shown window sets NEITHER -- so
+        # Frame.BackgroundThrottle still never fires and
+        # assert_window_was_visible() still passes. Offscreen is a POSITION, not
+        # a visibility state. Same reason the VK arm is unaffected: the
+        # swapchain surface extent comes from the drawable, which keeps its full
+        # size, so the VK present path does not fail-soft to GL.
+        "MC2_WINDOW_OFFSCREEN": "1",
+        # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
+        # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
+        # so nothing about the run can be verified afterwards.
+        "MC2_LOG": "1",
+    })
+    # Every trace is taken at the pinned drawable size, not whatever options.cfg says
+    # (smoke_lib/render_resolution.py carries the reason); --env MC2_WIDTH=... --env MC2_HEIGHT=... overrides it (one side alone is refused).
+    try:
+        render_resolution.pin_unless_declared(env, dict(kv.partition("=")[::2] for kv in (extra_env or [])))
+    except render_resolution.HalfDeclaredSize as e:
+        sys.exit(f"ERROR: {e}")
+    if fixed_timestep:
+        env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+    if fps_cap is not None:
+        env["MC2_FPS_CAP"] = str(fps_cap)
+    if pose:
+        env["MC2_CAMERA_PARK"] = pose
+    if arm == "vk":
+        env.update(VK_ENV)
+        print("NOTE: VK arm -- keep the game window visible/non-minimized or VK "
+              "fail-softs to GL and you profile the wrong present path.")
+    for kv in (extra_env or []):
+        k, sep, v = kv.partition("=")
+        if not sep:
+            sys.exit(f"ERROR: --env expects KEY=VAL, got '{kv}'")
+        env[k] = v
+        print(f"[capture] extra env {k}={v}")
+    return env
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True) -> int:
@@ -233,6 +298,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         sys.exit("ABORT: an mc2.exe is already running -- the user may be playing. "
                  "Not launching another instance; nothing was touched.")
 
+    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env)   # before the recorder starts: a refused --env must leave nothing running
+
     # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
     cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
                "-s", str(seconds), "-f", "-o", str(out)]
@@ -241,63 +308,6 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     recorder = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
                                 **nofocus.hidden_kwargs())  # tracy-capture is a console tool
     time.sleep(1.0)  # let it bind the port before the game boots
-
-    env = os.environ.copy()
-    # scrub stray backend vars so the arm is exactly what we asked for
-    for k in list(env):
-        if k.startswith("MC2_VK") or k == "MC2_RENDER_BACKEND":
-            env.pop(k)
-    env.update({
-        "MC2_NO_LAUNCHER": "1",
-        "MC2_SMOKE_MODE": "1",
-        # BACKGROUND-SMOKE-1: never fullscreen / never grab the pointer.
-        # setdefault-equivalent is not used here because this dict IS the
-        # harness intent; a caller overriding via --env still wins downstream.
-        "MC2_WINDOWED": "1",
-        "MC2_NO_CURSOR_GRAB": "1",
-        # NOFOCUS-FINISH-1: and never occupy visible desktop area. This harness
-        # was invisible to BOTH guards until now -- it hand-rolls its own
-        # STARTUPINFO and its own Popen (no nofocus), and its argv name
-        # `game_cmd` was not in check-background-launch's ENGINE_ARGV heuristic,
-        # so it never appeared in the launch inventory either. Combined with
-        # SW_SHOWNOACTIVATE below that made it the one harness that put a
-        # genuinely VISIBLE, options.cfg-sized window on the user's desktop for
-        # the entire capture.
-        #
-        # Safe for the measurement, which is the whole point of this file:
-        # gameosmain.cpp's 10ms background throttle keys on
-        # `SDL_GetWindowFlags & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)`, and
-        # an offscreen-but-shown window sets NEITHER -- so
-        # Frame.BackgroundThrottle still never fires and
-        # assert_window_was_visible() still passes. Offscreen is a POSITION, not
-        # a visibility state. Same reason the VK arm is unaffected: the
-        # swapchain surface extent comes from the drawable, which keeps its full
-        # size, so the VK present path does not fail-soft to GL.
-        "MC2_WINDOW_OFFSCREEN": "1",
-        # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
-        # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
-        # so nothing about the run can be verified afterwards.
-        "MC2_LOG": "1",
-    })
-    # Every trace is taken at the pinned drawable size, not whatever options.cfg says
-    # (smoke_lib/render_resolution.py carries the reason); --env MC2_WIDTH=... overrides it below.
-    env.update(render_resolution.pinned_env())
-    if fixed_timestep:
-        env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
-    if fps_cap is not None:
-        env["MC2_FPS_CAP"] = str(fps_cap)
-    if pose:
-        env["MC2_CAMERA_PARK"] = pose
-    if arm == "vk":
-        env.update(VK_ENV)
-        print("NOTE: VK arm -- keep the game window visible/non-minimized or VK "
-              "fail-softs to GL and you profile the wrong present path.")
-    for kv in (extra_env or []):
-        k, sep, v = kv.partition("=")
-        if not sep:
-            sys.exit(f"ERROR: --env expects KEY=VAL, got '{kv}'")
-        env[k] = v
-        print(f"[capture] extra env {k}={v}")
 
     # The render options are an input of the trace like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE. They are written
     # next to the trace so a later compare can refuse two traces taken with different options.

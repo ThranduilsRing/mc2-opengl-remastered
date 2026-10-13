@@ -4109,8 +4109,15 @@
           "text": "from scripts.smoke_lib import preflight_cache as pc"
         },
         {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import render_options_pin as rop"
+        },
+        {
           "path": "tests/smoke/test_resolution_tier.py",
-          "line": 6,
+          "line": 8,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import render_resolution"
@@ -4440,6 +4447,13 @@
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 144,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import Verdict"
+        },
+        {
           "path": "tests/smoke/test_report.py",
           "line": 2,
           "evidence": "import",
@@ -4554,6 +4568,13 @@
           "text": "from scripts.smoke_lib.logparse import LogSummary, MARKER_BUCKETS, PerfRow, parse_log"
         },
         {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 145,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib.logparse import LogSummary"
+        },
+        {
           "path": "tests/smoke/test_report.py",
           "line": 1,
           "evidence": "import",
@@ -4598,7 +4619,7 @@
         },
         {
           "path": "tests/smoke/test_resolution_tier.py",
-          "line": 7,
+          "line": 9,
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
           "text": "from scripts.smoke_lib.manifest import parse_manifest"
@@ -4706,6 +4727,35 @@
       ]
     },
     {
+      "path": "scripts/smoke_lib/render_options_pin.py",
+      "basename": "render_options_pin.py",
+      "stem": "render_options_pin",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_smoke.py",
+          "line": 43,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from . import render_options_pin"
+        },
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from scripts.smoke_lib import render_options_pin as rop"
+        }
+      ]
+    },
+    {
       "path": "scripts/smoke_lib/render_resolution.py",
       "basename": "render_resolution.py",
       "stem": "render_resolution",
@@ -4727,7 +4777,7 @@
         },
         {
           "path": "tests/smoke/test_resolution_tier.py",
-          "line": 6,
+          "line": 8,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_resolution",
           "text": "from scripts.smoke_lib import render_resolution"
@@ -4753,6 +4803,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.report",
           "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib.report import Row, render_json, render_markdown"
         },
         {
           "path": "tests/smoke/test_report.py",
@@ -9865,7 +9922,15 @@
       "path": "tools/tracy_capture_compare.py",
       "basename": "tracy_capture_compare.py",
       "stem": "tracy_capture_compare",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 121,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-lane2/tools/tracy_capture_compare.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -10484,6 +10549,13 @@
       "stem": "capture_ab",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 101,
+          "evidence": "import",
+          "reference": "capture_ab",
+          "text": "import capture_ab"
+        },
         {
           "path": "tools/visual_verify/test_capture_ab.py",
           "line": 9,

@@ -1,4 +1,6 @@
 """The weekly `resolution` smoke tier and the pinned capture/trace size (scripts/smoke_lib/render_resolution.py)."""
+import ast
+import importlib.util
 from pathlib import Path
 
 import pytest
@@ -37,6 +39,58 @@ def test_shipped_manifest_has_one_entry_per_tier_size():
     assert {e.stem for e in entries} == {"mc2_01"}
 
 
-@pytest.mark.parametrize("driver", ["scripts/run_visual_capture.py", "tools/tracy_capture_compare.py"])
-def test_capture_and_trace_drivers_read_the_pinned_size(driver):
-    assert "render_resolution.pinned_env()" in (ROOT / driver).read_text(encoding="utf-8")
+def test_pin_applies_unless_the_caller_declares_the_whole_size():
+    env = {"KEEP": "1"}
+    assert render_resolution.pin_unless_declared(env, None) is env
+    assert env == {"KEEP": "1", "MC2_WIDTH": "1920", "MC2_HEIGHT": "1080"}
+    env = {}
+    render_resolution.pin_unless_declared(env, {"MC2_WIDTH": "2560", "MC2_HEIGHT": "1440"})
+    assert env == {}                                    # declared: the caller's own values go in later, the pin stays out
+    for half in ({"MC2_WIDTH": "2560"}, {"MC2_HEIGHT": "1440"}):
+        with pytest.raises(render_resolution.HalfDeclaredSize):
+            render_resolution.pin_unless_declared({}, half)
+
+
+def _load(path, name):
+    spec = importlib.util.spec_from_file_location(name, ROOT / path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_capture_driver_builds_the_pinned_env(tmp_path):
+    rvc = _load("scripts/run_visual_capture.py", "run_visual_capture_under_test")
+    args = (tmp_path / "bm.json", tmp_path, 431, 30, True)
+    env, _ = rvc.build_capture_env(*args, None)
+    assert (env["MC2_WIDTH"], env["MC2_HEIGHT"]) == ("1920", "1080")
+    env, _ = rvc.build_capture_env(*args, {"MC2_WIDTH": "2560", "MC2_HEIGHT": "1440"})
+    assert (env["MC2_WIDTH"], env["MC2_HEIGHT"]) == ("2560", "1440")
+    with pytest.raises(SystemExit):
+        rvc.build_capture_env(*args, {"MC2_WIDTH": "2560"})   # 2560 beside the pinned 1080 would be a size nobody asked for
+
+
+def test_tracy_driver_builds_the_pinned_env():
+    tcc = _load("tools/tracy_capture_compare.py", "tracy_capture_compare_pin_under_test")
+    env = tcc.game_env("gl", False, 0, None, [])
+    assert (env["MC2_WIDTH"], env["MC2_HEIGHT"]) == ("1920", "1080")
+    env = tcc.game_env("gl", False, 0, None, ["MC2_WIDTH=2560", "MC2_HEIGHT=1440"])
+    assert (env["MC2_WIDTH"], env["MC2_HEIGHT"]) == ("2560", "1440")
+    with pytest.raises(SystemExit):
+        tcc.game_env("gl", False, 0, None, ["MC2_HEIGHT=1440"])
+
+
+def test_smoke_runner_names_every_per_row_artifact_by_the_row_label():
+    """The two `resolution` rows share a mission stem; an artifact named by the stem would be overwritten by the second row."""
+    tree = ast.parse((ROOT / "scripts" / "run_smoke.py").read_text(encoding="utf-8"))
+    bad = []
+    for node in ast.walk(tree):
+        # f"{e.stem}.ring_trace.log" parses as [FormattedValue(e.stem), Constant(".ring_trace.log")]
+        if (isinstance(node, ast.JoinedStr) and len(node.values) == 2 and isinstance(node.values[0], ast.FormattedValue)
+                and ast.unparse(node.values[0].value) == "e.stem" and isinstance(node.values[1], ast.Constant)
+                and node.values[1].value.startswith((".crash_evidence", ".ring_trace", ".log"))):
+            bad.append((node.lineno, node.values[1].value))
+        # _crash_evidence.capture(<name>, ...) writes <name>.crash_evidence.json
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "capture"
+                and ast.unparse(node.func.value) == "_crash_evidence" and ast.unparse(node.args[0]) != "label"):
+            bad.append((node.lineno, "crash evidence named by " + ast.unparse(node.args[0])))
+    assert not bad, f"per-row artifacts named by the mission stem: {bad}"

@@ -189,6 +189,76 @@ def guard_exe(exe: Path) -> bool:
     return verdict.ok
 
 
+def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, settle: int, deterministic_clock: bool,
+                      declared_env: "dict | None") -> "tuple[dict, dict]":
+    """The environment a capture launches the engine under, and its record: the harness's own settings, the pinned drawable size, the declared
+    variables, nothing else from the shell. Split out of run_one so the pinned size is testable without an engine."""
+    # CAPTURE-ENV-PIN-1: do NOT inherit the ambient MC2_* environment.
+    # os.environ.copy() would silently ride every stray gate in
+    # the operator's shell into the captured frame -- unrecorded. See
+    # scripts/mc2_env_pin.py for the incident that motivated this.
+    harness_sets = {
+        "MC2_SMOKE_MODE": "1",
+        # MC2_LOG master gate: keep stdout live (engine default redirects it -> NUL
+        # so normal play never hitches on the unbuffered printf flush). Capture
+        # detection reads [VISUAL_CAPTURE] from stderr, but this keeps capture-run
+        # behavior identical to pre-gate. See gameosmain.cpp after setvbuf.
+        "MC2_LOG": "1",
+        "MC2_SMOKE_SEED": "0xC0FFEE",
+        "MC2_HEARTBEAT": "1",
+        "MC2_VISUAL_BOOKMARK_CAPTURE": str(bookmarks_path),
+        "MC2_VISUAL_CAPTURE_DIR": str(out_dir),
+        "MC2_VISUAL_CAPTURE_FRAME": str(trigger_frame),
+        "MC2_VISUAL_SETTLE": str(settle),
+    }
+    if deterministic_clock:
+        harness_sets["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+
+    # BACKGROUND-SMOKE-1: an agent capture must never take the display
+    # fullscreen or grab the pointer. These are HARNESS_CONTROL vars in
+    # mc2_env_pin, so they survive the scrub and are recorded under
+    # `harness_control` in the sidecar.
+    #
+    # The drawable size is pinned (smoke_lib/render_resolution.py carries the
+    # reason): a capture is graded at one resolution on every install instead of
+    # at whatever options.cfg ResolutionX/Y says. A caller that declares
+    # MC2_WIDTH/MC2_HEIGHT (--env-declare) takes the size it asked for.
+    try:
+        render_resolution.pin_unless_declared(harness_sets, declared_env)
+    except render_resolution.HalfDeclaredSize as e:
+        raise SystemExit(f"[viscap] {e}")
+    for _k, _v in nofocus.NOFOCUS_ENV.items():
+        harness_sets.setdefault(_k, _v)
+
+    # NOFOCUS-FINISH-1: deliver MC2_WINDOW_OFFSCREEN too. This is the busiest
+    # capture path in the project and it was the one still exposed: it builds
+    # its child env through env_pin.build_pinned_env() rather than
+    # nofocus.apply_env(), env_pin is deny-by-default, and MC2_WINDOW_OFFSCREEN
+    # was not in its HARNESS_CONTROL passthrough -- so the engine-side fix
+    # arrived inert and the only thing left was the 250ms park poller, which
+    # cannot fire before the window exists. This is the fix for the
+    # flash, not the backstop for it.
+    #
+    # Free of pixel consequences: the GL drawable keeps its full size, and this
+    # runner reads pixels via the engine's glReadPixels FBO readback, not the
+    # desktop composite -- same reason park_window_offscreen(force=True) below
+    # is safe here and is not safe in the pyautogui harnesses.
+    #
+    # OWNER RULE (background-only): --show-window no longer opts out. It used to
+    # mean "put the window on the desktop", which is exactly the focus/cursor
+    # theft the owner banned. It now only means "not MINIMIZED" (SW_SHOWNOACTIVATE
+    # instead of SW_SHOWMINNOACTIVE, so SDL does not throttle the loop); the
+    # window is still parked offscreen and still non-activating.
+    for _k, _v in nofocus.OFFSCREEN_ENV.items():
+        harness_sets.setdefault(_k, _v)
+
+    env, env_record = env_pin.build_pinned_env(harness_sets, declared_env)
+    warn = env_pin.format_warning(env_record)
+    if warn:
+        print(warn, file=sys.stderr)
+    return env, env_record
+
+
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int,
             deterministic_clock: bool, show_window: bool = False,
@@ -231,74 +301,14 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             if f.exists():
                 f.unlink()
 
+    env, env_record = build_capture_env(bookmarks_path, out_dir, trigger_frame, settle, deterministic_clock, declared_env)
+
     _kill_existing_mc2()
     park_cursor_center()   # before launch: no edge-scroll from a stray cursor
 
     log_path = out_dir / f"{mission_token}_capture.log"
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
-    # CAPTURE-ENV-PIN-1: do NOT inherit the ambient MC2_* environment.
-    # os.environ.copy() would silently ride every stray gate in
-    # the operator's shell into the captured frame -- unrecorded. See
-    # scripts/mc2_env_pin.py for the incident that motivated this.
-    harness_sets = {
-        "MC2_SMOKE_MODE": "1",
-        # MC2_LOG master gate: keep stdout live (engine default redirects it -> NUL
-        # so normal play never hitches on the unbuffered printf flush). Capture
-        # detection reads [VISUAL_CAPTURE] from stderr, but this keeps capture-run
-        # behavior identical to pre-gate. See gameosmain.cpp after setvbuf.
-        "MC2_LOG": "1",
-        "MC2_SMOKE_SEED": "0xC0FFEE",
-        "MC2_HEARTBEAT": "1",
-        "MC2_VISUAL_BOOKMARK_CAPTURE": str(bookmarks_path),
-        "MC2_VISUAL_CAPTURE_DIR": str(out_dir),
-        "MC2_VISUAL_CAPTURE_FRAME": str(trigger_frame),
-        "MC2_VISUAL_SETTLE": str(settle),
-    }
-    if deterministic_clock:
-        harness_sets["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
-
-    # BACKGROUND-SMOKE-1: an agent capture must never take the display
-    # fullscreen or grab the pointer. These are HARNESS_CONTROL vars in
-    # mc2_env_pin, so they survive the scrub and are recorded under
-    # `harness_control` in the sidecar.
-    #
-    # The drawable size is pinned (smoke_lib/render_resolution.py carries the
-    # reason): a capture is graded at one resolution on every install instead of
-    # at whatever options.cfg ResolutionX/Y says. A caller that declares
-    # MC2_WIDTH/MC2_HEIGHT (--env-declare) takes the size it asked for.
-    for _k, _v in render_resolution.pinned_env().items():
-        if _k not in (declared_env or {}):
-            harness_sets[_k] = _v
-    for _k, _v in nofocus.NOFOCUS_ENV.items():
-        harness_sets.setdefault(_k, _v)
-
-    # NOFOCUS-FINISH-1: deliver MC2_WINDOW_OFFSCREEN too. This is the busiest
-    # capture path in the project and it was the one still exposed: it builds
-    # its child env through env_pin.build_pinned_env() rather than
-    # nofocus.apply_env(), env_pin is deny-by-default, and MC2_WINDOW_OFFSCREEN
-    # was not in its HARNESS_CONTROL passthrough -- so the engine-side fix
-    # arrived inert and the only thing left was the 250ms park poller, which
-    # cannot fire before the window exists. This is the fix for the
-    # flash, not the backstop for it.
-    #
-    # Free of pixel consequences: the GL drawable keeps its full size, and this
-    # runner reads pixels via the engine's glReadPixels FBO readback, not the
-    # desktop composite -- same reason park_window_offscreen(force=True) below
-    # is safe here and is not safe in the pyautogui harnesses.
-    #
-    # OWNER RULE (background-only): --show-window no longer opts out. It used to
-    # mean "put the window on the desktop", which is exactly the focus/cursor
-    # theft the owner banned. It now only means "not MINIMIZED" (SW_SHOWNOACTIVATE
-    # instead of SW_SHOWMINNOACTIVE, so SDL does not throttle the loop); the
-    # window is still parked offscreen and still non-activating.
-    for _k, _v in nofocus.OFFSCREEN_ENV.items():
-        harness_sets.setdefault(_k, _v)
-
-    env, env_record = env_pin.build_pinned_env(harness_sets, declared_env)
-    warn = env_pin.format_warning(env_record)
-    if warn:
-        print(warn, file=sys.stderr)
     # The render options are an input of the capture like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE.
     options_rec = render_options_pin.record(exe.parent, env)
     for rj in options_rec["rejected"]:

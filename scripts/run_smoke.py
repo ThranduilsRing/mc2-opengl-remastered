@@ -1537,10 +1537,10 @@ def main():
                 set(result.verdict.buckets) & _crash_evidence.EVIDENCE_BUCKETS):
             try:
                 _crash_evidence.capture(
-                    e.stem, result, Path(cfg.exe[0]), artifact_dir,
+                    label, result, Path(cfg.exe[0]), artifact_dir,
                     enum_procs_fn=_enum_mc2_processes)
-                print(f"[runner] [CRASH_EVIDENCE] {e.stem}: wrote "
-                      f"{e.stem}.crash_evidence.json (exit={result.exit_code} "
+                print(f"[runner] [CRASH_EVIDENCE] {label}: wrote "
+                      f"{label}.crash_evidence.json (exit={result.exit_code} "
                       f"buckets={','.join(result.verdict.buckets)})", file=sys.stderr)
             except Exception as _cee:
                 print(f"[runner] [CRASH_EVIDENCE] capture skipped: {_cee}",
@@ -1567,7 +1567,7 @@ def main():
             # across runs (the per-mission unlink above resets it for next).
             try:
                 if ring_sink_path.exists():
-                    (artifact_dir / f"{e.stem}.ring_trace.log").write_text(
+                    (artifact_dir / f"{label}.ring_trace.log").write_text(
                         ring_sink_path.read_text(encoding="utf-8", errors="replace"),
                         encoding="utf-8", errors="replace")
             except Exception as exc:
