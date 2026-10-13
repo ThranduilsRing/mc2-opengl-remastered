@@ -318,6 +318,24 @@ TEST_CASE("H18 change() takes a HEAP INDEX: handing it the item's id re-keys whi
 	CHECK(popOrder(false) == std::vector<uint32_t>{3, 2, 1}); // the node in slot 2 (id 1) was pushed down instead
 }
 
+TEST_CASE("H18b change(0, key), what a find() MISS hands over, turns the sentinel slot into a live node and loses the minimum")
+{
+	// find() answers 0 for "not in the heap" and 0 is also the sentinel's heap position. A caller that passes the miss on to change() re-keys the sentinel and
+	// sifts it DOWN into the live heap: the sentinel id surfaces as a node and the real minimum is parked in slot 0 and never popped. The A* callers skip the
+	// re-key on a miss for this reason.
+	OldHeap h(20);
+	h.insert(5, 3);
+	h.insert(6, 1);
+	h.insert(7, 2);
+	REQUIRE(h.find(9) == 0);
+	h.change(h.find(9), 99);
+	std::vector<uint32_t> ids;
+	PQNode n;
+	while (h.pop(n))
+		ids.push_back(n.id);
+	CHECK(ids == std::vector<uint32_t>{1, 2, 0xFFFFFFFFu});
+}
+
 TEST_CASE("HP6 golden scripts: 2000 random A*-shaped scripts reproduce the committed hashes")
 {
 	REQUIRE(sizeof(kHp6Hashes) / sizeof(kHp6Hashes[0]) == 2000);

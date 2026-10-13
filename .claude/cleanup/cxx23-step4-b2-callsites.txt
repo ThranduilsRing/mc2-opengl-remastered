@@ -1,5 +1,5 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1541 sites in 115 files
+# total 1539 sites in 115 files
 # per kind:
 #     397  EList::Begin
 #     345  EList
@@ -20,14 +20,14 @@
 #       7  SortList
 #       7  SortList::sort
 #       7  PriorityQueue
-#       7  PriorityQueue::find
-#       7  PriorityQueue::change
 #       6  SortList::SortList
 #       6  SortList::init
 #       6  SortList::clear
 #       6  SortList::~SortList
 #       6  PriorityQueue::PriorityQueue
 #       6  PriorityQueue::init
+#       6  PriorityQueue::find
+#       6  PriorityQueue::change
 #       5  PriorityQueue::clear
 #       5  PriorityQueue::isEmpty
 #       5  PriorityQueue::remove
@@ -43,13 +43,12 @@
 #       1  PriorityQueue::~PriorityQueue
 #       1  EList::operator=
 # per batch (cxx23-step4-b2-files.json):
-#      10  B2.1
 #     388  B2.2
-#      77  B2.3
-#      23  B2.4
+#      83  B2.3
+#      26  B2.4
 #      39  B2.4-pre
-#      41  B2.5
-#      12  B2.5-pre
+#      42  B2.5
+#      10  B2.5-pre
 #       6  B6
 #     295  E1
 #     447  E2
@@ -92,7 +91,6 @@
 #      13  code/group_goals.cpp
 #      12  code/ablmc2_camera.cpp
 #      12  editor/MissionValidation.cpp
-#      12  mclib/move_globalmap_path.cpp
 #      11  editor/ChooseBuildingDlg.cpp
 #      11  editor/Objective.h
 #      11  mclib/move_movemap_escape.cpp
@@ -100,6 +98,7 @@
 #      10  code/logisticspilot.cpp
 #      10  code/mission.cpp
 #      10  editor/ChooseUnitDlg.cpp
+#      10  mclib/move_globalmap_path.cpp
 #       9  editor/CampaignSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
 #       8  code/logisticsdata.h
@@ -283,7 +282,7 @@
 # blob 74ef015b489c98a38a7b9d374e843fb92fbcabb9 editor/UnitSettingsDlg.h
 # blob 619210428008117dc1f29936615705e39b76bd39 editor/campaignData.h
 # blob c931869d1cfab7b3f3de2e51d23993c7a1c476cd editor/eraser.cpp
-# blob bd4433203972978f0043ff94dcebba60a266d94c mclib/move_globalmap_path.cpp
+# blob 409ada6e420f8583d47f99d9f8234442e7f17dd3 mclib/move_globalmap_path.cpp
 # blob 4bf8e0d3cb198bbc3be48b7ae51b8864466a1d00 mclib/move_internal.h
 # blob 4d080d2c16290b54a1ccf14c08687a6fe505b4f1 mclib/move_movemap_escape.cpp
 # blob 47a9faa5eddfcd7e4f24ef8ba9b308aca83c179c mclib/move_movemap_path.cpp
@@ -1780,18 +1779,16 @@ editor/campaignData.h:49:EList
 editor/eraser.cpp:44:EList::Count
 editor/eraser.cpp:184:EList::Begin
 editor/eraser.cpp:203:EList::Begin
-mclib/move_globalmap_path.cpp:195:PriorityQueue::find
-mclib/move_globalmap_path.cpp:201:PriorityQueue::change
-mclib/move_globalmap_path.cpp:279:PriorityQueue
-mclib/move_globalmap_path.cpp:279:PriorityQueue::PriorityQueue
-mclib/move_globalmap_path.cpp:281:PriorityQueue::init
-mclib/move_globalmap_path.cpp:356:PriorityQueue::clear
-mclib/move_globalmap_path.cpp:360:PriorityQueue::insert
-mclib/move_globalmap_path.cpp:367:PriorityQueue::isEmpty
-mclib/move_globalmap_path.cpp:369:PriorityQueue::remove
-mclib/move_globalmap_path.cpp:447:PriorityQueue::find
-mclib/move_globalmap_path.cpp:453:PriorityQueue::change
-mclib/move_globalmap_path.cpp:476:PriorityQueue::insert
+mclib/move_globalmap_path.cpp:13:PriorityQueue::find
+mclib/move_globalmap_path.cpp:23:PriorityQueue::change
+mclib/move_globalmap_path.cpp:296:PriorityQueue
+mclib/move_globalmap_path.cpp:296:PriorityQueue::PriorityQueue
+mclib/move_globalmap_path.cpp:298:PriorityQueue::init
+mclib/move_globalmap_path.cpp:373:PriorityQueue::clear
+mclib/move_globalmap_path.cpp:377:PriorityQueue::insert
+mclib/move_globalmap_path.cpp:384:PriorityQueue::isEmpty
+mclib/move_globalmap_path.cpp:386:PriorityQueue::remove
+mclib/move_globalmap_path.cpp:487:PriorityQueue::insert
 mclib/move_internal.h:177:PriorityQueue::find
 mclib/move_internal.h:184:PriorityQueue::change
 mclib/move_internal.h:245:PriorityQueue::find

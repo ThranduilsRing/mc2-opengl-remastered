@@ -662,6 +662,7 @@
    3
   ]
  },
+ "row_batch": {"code/mission.cpp": {"EList": "B2.3", "SortList": "B2.4", "PriorityQueue": "B2.5"}},
  "codex_owned": {
   "code/ablmc2_queries.cpp": "B2.4-pre (execGetContacts :107-133, execSortWeapons :645-654 write through ABLi_popIntegerBuf spans; listSize clamp + log; sortWeapons signature) and B2.4 (the SortList call sites)",
   "code/ablmc2_camera.cpp": "B2.4-pre (getMoversWithinRadius 255 movers into a 200-slot list; the unused static sortValues[MAX_MOVERS] at :10) and B2.4 (SortList call site)",

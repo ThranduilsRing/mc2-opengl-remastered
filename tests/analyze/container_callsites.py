@@ -14,6 +14,7 @@ census file can carry them as comment lines.
   py -3 tests/analyze/container_callsites.py BUILD.log [--out PATH]    # census from a deprecation build
   py -3 tests/analyze/container_callsites.py --drop code/x.cpp code/y.cpp:42 ...
   py -3 tests/analyze/container_callsites.py --remap BASE code/x.cpp ...
+  py -3 tests/analyze/container_callsites.py --add code/x.cpp:42:EList::Append ...   # a call that moved into a new line (a helper) after --remap dropped its row
   py -3 tests/analyze/container_callsites.py --seal | --check
   py -3 tests/analyze/container_callsites.py --ifdef-scan
 """
@@ -93,16 +94,26 @@ def batch_of() -> dict:
         return {}
 
 
+def row_batches() -> dict:
+    """file -> {class -> batch}: a file the batch table gives one label may hold rows of other batches (code/mission.cpp: one B2.1 global, the rest B2.3 to B2.5)."""
+    try:
+        with open(FILES_JSON, encoding="utf-8") as f:
+            return json.load(f).get("row_batch", {})
+    except OSError:
+        return {}
+
+
 def render(rows, blobs=None) -> str:
     per_file = collections.Counter(r[0] for r in rows)
     batches = batch_of()
+    by_class = row_batches()
     per_batch = collections.Counter()
     unlisted = collections.Counter()
-    for path, n in per_file.items():
+    for path, _line, _col, kind in rows:
         if path in batches:
-            per_batch[batches[path]] += n
+            per_batch[by_class.get(path, {}).get(kind.split("::")[0], batches[path])] += 1
         else:
-            unlisted[path] = n
+            unlisted[path] += 1
     per_kind = collections.Counter(r[3] for r in rows)
     out = ["# Step 4 B2 container call sites from a [[deprecated(\"B2\")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.",
            f"# total {len(rows)} sites in {len(per_file)} files",
@@ -184,6 +195,25 @@ def remap(path: str, base: str, targets: list[str]) -> int:
     blobs.update(ec.blob_hashes(targets))
     write(path, rows, blobs)
     print(f"container_callsites: {dropped} row(s) on edited lines dropped; {len(rows)} sites in {len({r[0] for r in rows})} files remain -> {path}")
+    return 0
+
+
+def add(path: str, specs: list[str]) -> int:
+    """Append rows `file:line:kind` for calls that now sit on a line the conversion wrote (a helper that wraps a call): --remap drops a row on an edited line,
+    and the call is still a site for the batch that converts the wrapped type. The file's content seal is refreshed."""
+    rows = read_rows(path)
+    have = {(r[0], r[1], r[3]) for r in rows}
+    touched = set()
+    for spec in specs:
+        file, line, kind = spec.split(":", 2)
+        if (file, int(line), kind) not in have:
+            rows.append((file, int(line), "0", kind))
+            touched.add(file)
+    rows.sort()
+    blobs = ec.recorded_blobs(path)
+    blobs.update(ec.blob_hashes(touched))
+    write(path, rows, {p: h for p, h in blobs.items() if p in {r[0] for r in rows}})
+    print(f"container_callsites: {len(rows)} sites in {len({r[0] for r in rows})} files -> {path}")
     return 0
 
 
@@ -297,6 +327,7 @@ def main() -> int:
     ap.add_argument("log", nargs="?", help="the deprecation build's log")
     ap.add_argument("--drop", nargs="+", metavar="FILE[:LINE]")
     ap.add_argument("--remap", nargs="+", metavar=("BASE", "FILE"))
+    ap.add_argument("--add", nargs="+", metavar="FILE:LINE:KIND")
     ap.add_argument("--seal", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--ifdef-scan", action="store_true")
@@ -307,6 +338,8 @@ def main() -> int:
         if len(args.remap) < 2:
             ap.error("--remap needs a base commit and at least one file")
         return remap(args.out, args.remap[0], args.remap[1:])
+    if args.add:
+        return add(args.out, args.add)
     if args.seal:
         return seal(args.out)
     if args.check:
