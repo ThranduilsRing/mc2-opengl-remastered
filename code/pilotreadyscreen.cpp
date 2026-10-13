@@ -13,6 +13,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"mechbayscreen.h"
 #include"warrior.h"
 #include"gamesound.h"
+#include"mc2str.h"
 #include"multplyr.h"
 #include"chatwindow.h"
 #include"../GuiRuntime/GuiRuntime.h"
@@ -795,7 +796,7 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		char fileName[256];
 		strcpy( fileName, artPath );
 		strcat( fileName, "MCL_PR_" );
-		strcat( fileName, pPilot->getName() );
+		strcat( fileName, pPilot->getName().c_str() );
 		strcat( fileName, ".tga" );
 		EString str = fileName;
 		str.MakeLower();
@@ -838,10 +839,9 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		textObjects[7].setText( number );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_kills_number", number );
 
-		EString name = pCurPilot->getName();
-		name.MakeUpper();
-		textObjects[8].setText( name  );
-		setDefsElementText( "game.mcl_pr_layout.text.pilot_name_header", (const char*)name );
+		const std::string name = mc2::str::ascii_upper( pCurPilot->getName() );
+		textObjects[8].setText( name );
+		setDefsElementText( "game.mcl_pr_layout.text.pilot_name_header", name.c_str() );
 
 		int count = 32;
 		const char* specialtySkills[32];

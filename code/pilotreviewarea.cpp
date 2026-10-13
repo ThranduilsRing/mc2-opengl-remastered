@@ -467,7 +467,7 @@ DeadPilotListItem::DeadPilotListItem( LogisticsPilot* pPilot )
 	sprintf( realText, tmpText, numberOfKills );	
 	killsText.setText( realText);
 
-	const char* name = pPilot->getName();
+	const char* name = pPilot->getName().c_str();
 	cLoadString( IDS_PILOT_NAME, tmpText, 255 );
 	sprintf( realText, tmpText, name );	
 	nameText.setText( realText);
@@ -1251,7 +1251,7 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	cLoadString( IDS_KILLS_NO_COUNT, tmpText, 255 );
 	killsText.setText( tmpText);
 
-	const char* name = pPilot->getName();
+	const char* name = pPilot->getName().c_str();
 	cLoadString( IDS_PILOT_NAME, tmpText, 255 );
 	sprintf( realText, tmpText, name );	
 	nameText.setText( realText);
@@ -1487,7 +1487,7 @@ void PilotPromotionArea::setPilot( LogisticsPilot* pPilot, PilotIcon* pIcon )
 	areaLeft.textObjects[2].setText( realText );
 
 
-	const char* name = pPilot->getName();
+	const char* name = pPilot->getName().c_str();
 	cLoadString( IDS_PILOT_NAME, tmpText, 255 );
 	sprintf( realText, tmpText, name );	
 	areaLeft.textObjects[1].setText( realText );

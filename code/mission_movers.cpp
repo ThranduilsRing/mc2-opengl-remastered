@@ -409,7 +409,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	MoverInitData mData;
 	memset(&mData,0,sizeof(MoverInitData));
 	
-	strncpy(mData.pilotFileName,mechData->getPilot()->getFileName(),49);
+	strncpy(mData.pilotFileName,mechData->getPilot()->getFileName().c_str(),49);
 	strcpy(mData.brainFileName,"pbrain");
 	strncpy(mData.csvFileName,mechData->getFileName().c_str(),50);
 	

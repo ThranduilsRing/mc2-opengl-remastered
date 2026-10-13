@@ -10,6 +10,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 #include"logisticspilot.h"
 #include "../resource.h"
 #include"pilotreadyscreen.h"
+#include"mc2str.h"
 
 LogisticsPilotListBoxItem* LogisticsPilotListBoxItem::s_templateItem = nullptr;
 
@@ -85,9 +86,7 @@ LogisticsPilotListBoxItem::LogisticsPilotListBoxItem( LogisticsPilot* pNewPilot 
 	addChild( &line );
 	addChild( &pilotOutline );
 
-	EString name = pPilot->getName();
-	name.MakeUpper();
-	nameText.setText(name);
+	nameText.setText( mc2::str::ascii_upper( pPilot->getName() ) );
 
 	//ACE not continguous with other ranks.  Added too late!
 	if (pPilot->getRank() != 4)
@@ -310,7 +309,7 @@ long LogisticsPilotListBox::AddItem( aListItem* pNewItem )
 			{
 
 				// do not put in twice.
-				if ( pPilot->getName().Compare( pTmpItem->getPilot()->getName() ) == 0 )
+				if ( mc2::str::iequals( pPilot->getName(), pTmpItem->getPilot()->getName() ) )
 				{
 					delete pItem;
 					return -1;
@@ -327,7 +326,8 @@ long LogisticsPilotListBox::AddItem( aListItem* pNewItem )
 						return InsertItem( pItem, i );
 					}
 					else if ( pPilot->getGunnery() == pTmpItem->getPilot()->getGunnery() &&
-						pPilot->getName().Compare( pTmpItem->getPilot()->getName() ) < 0 )
+						// the order of pilots equal in rank and gunnery: name, ignoring ASCII case, then raw bytes
+						mc2::str::ci_total_less{}( pPilot->getName(), pTmpItem->getPilot()->getName() ) )
 					{
 						return InsertItem( pItem, i );
 					}

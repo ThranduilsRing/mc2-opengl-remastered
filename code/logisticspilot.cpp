@@ -16,6 +16,7 @@
 #include"mechicon.h"
 #include"objmgr.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 char	LogisticsPilot::skillTexts[NUM_SPECIALTY_SKILLS][255] = {0};
 extern const char* SpecialtySkillsTable[NUM_SPECIALTY_SKILLS];
@@ -62,18 +63,18 @@ LogisticsPilot::~LogisticsPilot()
 
 int LogisticsPilot::init( char* pilotFileName )
 {
-	fileName = pilotFileName;
+	fileName = mc2::str::from_c( pilotFileName );
 	
 	char path[256];
 	strcpy( path, warriorPath );
-	strcat( path, fileName );
+	strcat( path, fileName.c_str() );
 	strcat( path, ".fit" );
 
 	FitIniFile pilotFile;
 	if ( NO_ERR != pilotFile.open( path ) )
 	{
 		char errorString[256];
-		mc2::fmt::to_buf(errorString, "Couldn't open file {}", mc2::fmt::safe((const char*)fileName));
+		mc2::fmt::to_buf(errorString, "Couldn't open file {}", fileName);
 		Assert( 0, 0, errorString );
 		return -1;
 	}
@@ -173,7 +174,7 @@ long LogisticsPilot::save( FitIniFile& file, long which )
 	mc2::fmt::to_buf(tmp, "Pilot{:d}", mc2::fmt::as_i32(which));
 	file.writeBlock( tmp );
 
-	file.writeIdString( "FileName", fileName );
+	file.writeIdString( "FileName", fileName.c_str() );
 	file.writeIdLong( "Rank", rank );
 	file.writeIdFloat( "Gunnery", gunnery );
 	file.writeIdFloat( "Piloting", piloting );

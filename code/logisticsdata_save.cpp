@@ -62,7 +62,7 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 	for ( PILOT_LIST::EIterator iter = pilots.Begin();
 		!iter.IsDone(); iter++ )
 		{
-			const char *nameCheck = (*iter).getName();
+			const char *nameCheck = (*iter).getName().c_str();
 			if ( (*iter).isAvailable() && (MPlayer || !MechWarrior::warriorInUse((char *)nameCheck)) )
 				pPilots[counter++] = &(*iter);
 		}
@@ -89,14 +89,14 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 		if ( pPilots[i]->isAvailable() && !pPilots[i]->isUsed() )
 		{
 			pPilots[i]->setUsed( 1 );
-			return pPilots[i]->getFileName();
+			return pPilots[i]->getFileName().c_str();   // the pilots list outlives the caller's use
 		}
 	}
 
 	gosASSERT( !"We're out of pilots, shouldn't be here" );
 	
 	pPilots[0]->setUsed( true );
-	return pPilots[0]->getFileName();
+	return pPilots[0]->getFileName().c_str();
 
 
 }
@@ -115,7 +115,7 @@ bool		LogisticsData::gotPilotsLeft()
 	for ( PILOT_LIST::EIterator iter = pilots.Begin();
 		!iter.IsDone(); iter++ )
 		{
-			const char *nameCheck = (*iter).getName();
+			const char *nameCheck = (*iter).getName().c_str();
 			if ( (*iter).isAvailable() && ( MPlayer || !MechWarrior::warriorInUse((char *)nameCheck)) )
 				pPilots[counter++] = &(*iter);
 		}
@@ -319,7 +319,7 @@ long	LogisticsData::load( FitIniFile& file )
 		// pilot should already exist
 		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 		{
-			if ( (*pIter).getFileName().Compare( tmp, 0 ) == 0 )
+			if ( mc2::str::iequals( (*pIter).getFileName(), mc2::str::from_c( tmp ) ) )
 			{
 				(*pIter).load( file );
 			}
@@ -430,7 +430,7 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 
 			for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 			{
-				if ( (*pIter).getFileName().Compare( tmp, 0  ) == 0 )
+				if ( mc2::str::iequals( (*pIter).getFileName(), mc2::str::from_c( tmp ) ) )
 				{
 					pMech->setPilot( &(*pIter ) );
 					count++;
@@ -639,7 +639,7 @@ LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotN
 
 			else
 			{
-				if ( (*iter)->getPilot() && (*iter)->getPilot()->getName().Compare( pilotName, 0 ) == 0 )
+				if ( (*iter)->getPilot() && mc2::str::iequals( (*iter)->getPilot()->getName(), mc2::str::from_c( pilotName ) ) )
 					return (*iter);
 			}
 		}
@@ -663,12 +663,13 @@ void LogisticsData::removeMechFromInventory( const char* mechName, const char* p
 
 LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 {
+	const std::string wanted = mc2::str::from_c( pilotName );
 	// look for available ones first
 	for( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++ )
 	{
 		if ( (*iter).isAvailable() )
 		{
-			if ( (*iter).getName().Compare( pilotName, 0 ) == 0 )
+			if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 			{
 				return &(*iter);
 			}
@@ -677,7 +678,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 	
 	for( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++ )
 	{
-		if ( (*iter).getName().Compare( pilotName, 0 ) == 0 )
+		if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 		{
 			return &(*iter);
 		}

@@ -1,38 +1,32 @@
 # EString call sites from a [[deprecated]] build of the old API (tests/analyze/estring_callsites.py); a batch commit removes its rows.
-# total 411 sites in 63 files
+# total 381 sites in 56 files
 # per kind:
-#     154  EString::operator ECHARPTR
+#     136  EString::operator ECHARPTR
 #     130  EString::Data
 #      70  EString::Format
-#      23  EString::Compare
-#      10  EString::MakeUpper
+#      13  EString::Compare
 #      10  EString::operator ==
+#       8  EString::MakeUpper
 #       7  EString::Remove
 #       3  EString::operator !=
 #       2  EString::MakeLower
 #       1  EString::Find
 #       1  EString::Insert
 # per batch (files that name the type, cxx23-step4-b1-files.json):
-#       3  B1.3
-#      73  B1.4
-#      49  B1.5
+#      60  B1.4
+#      46  B1.5
 #     135  B1.6
 #      26  B1.7
 #      50  B6
-# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 75 in 18 files
+# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 64 in 13 files
 #      17  gui/aanim.cpp
 #      12  gui/aedit.cpp
 #       9  editor/EditorData_save.cpp
 #       6  editor/EditorInterface_terrain.cpp
 #       6  gui/alistbox.cpp
-#       4  code/logistics_begin.cpp
 #       4  code/mainmenu.cpp
-#       3  code/logisticspilot.cpp
-#       3  code/pilotreviewarea.cpp
 #       3  gui/asystem.cpp
-#       1  code/logisticsmech.cpp
-#       1  code/mission_movers.cpp
-#       1  code/mission_update.cpp
+#       2  code/logistics_begin.cpp
 #       1  code/missionbegin.cpp
 #       1  code/missionresults.cpp
 #       1  code/pausewindow.cpp
@@ -49,17 +43,15 @@
 #      15  editor/Objective_conditions.cpp
 #      12  code/logisticsmissioninfo_query.cpp
 #      12  gui/aedit.cpp
-#      10  code/logisticsdata_availability.cpp
-#      10  code/logisticsdata_save.cpp
 #      10  code/mpgamebrowser.cpp
 #      10  editor/CampaignData.cpp
 #      10  editor/ObjectivesSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
 #       8  code/logisticsmissioninfo_progress.cpp
+#       7  code/logisticsdata_availability.cpp
 #       7  code/logisticsmissioninfo.cpp
 #       7  code/mpprefs.cpp
 #       6  code/mechlabscreen.cpp
-#       6  code/pilotreadyscreen.cpp
 #       6  editor/EditorData_terrain.cpp
 #       6  editor/EditorInterface_terrain.cpp
 #       6  editor/Objective.h
@@ -67,18 +59,16 @@
 #       6  gui/alistbox.cpp
 #       5  code/infowindow.cpp
 #       5  code/mpconnectiontype.cpp
-#       4  code/logistics_begin.cpp
 #       4  code/mainmenu.cpp
 #       4  code/missionbriefingscreen.cpp
 #       4  code/mploadmap.cpp
 #       4  code/mpparameterscreen.cpp
 #       4  editor/EditorData_tacmap.cpp
-#       3  code/logisticspilot.cpp
-#       3  code/logisticspilotlistbox.cpp
 #       3  code/mechlistbox.cpp
-#       3  code/pilotreviewarea.cpp
+#       3  code/pilotreadyscreen.cpp
 #       3  editor/ObjectivesDlg.cpp
 #       3  gui/asystem.cpp
+#       2  code/logistics_begin.cpp
 #       2  code/saveload.cpp
 #       2  code/simplecomponentlistbox.cpp
 #       2  editor/ChooseBuildingDlg.cpp
@@ -87,11 +77,8 @@
 #       2  editor/Objective_internal.h
 #       1  code/chatwindow.cpp
 #       1  code/controlgui_chat.cpp
-#       1  code/logisticsdata.cpp
 #       1  code/logisticsdata_init.cpp
-#       1  code/logisticsmech.cpp
-#       1  code/mission_movers.cpp
-#       1  code/mission_update.cpp
+#       1  code/logisticsdata_save.cpp
 #       1  code/missionbegin.cpp
 #       1  code/missionresults.cpp
 #       1  code/missionselectionscreen.cpp
@@ -112,30 +99,15 @@ code/infowindow.cpp:1449:operator ECHARPTR
 code/infowindow.cpp:1562:operator ECHARPTR
 code/logistics_begin.cpp:61:operator ECHARPTR
 code/logistics_begin.cpp:146:operator ECHARPTR
-code/logistics_begin.cpp:169:operator ECHARPTR
-code/logistics_begin.cpp:325:operator ECHARPTR
-code/logisticsdata.cpp:563:Compare
 code/logisticsdata_availability.cpp:32:MakeLower
 code/logisticsdata_availability.cpp:52:operator ECHARPTR
 code/logisticsdata_availability.cpp:56:operator ECHARPTR
 code/logisticsdata_availability.cpp:60:Format
 code/logisticsdata_availability.cpp:61:operator ECHARPTR
-code/logisticsdata_availability.cpp:245:Compare
-code/logisticsdata_availability.cpp:303:operator ECHARPTR
-code/logisticsdata_availability.cpp:309:operator ECHARPTR
-code/logisticsdata_availability.cpp:385:operator ECHARPTR
-code/logisticsdata_availability.cpp:464:Compare
+code/logisticsdata_availability.cpp:305:operator ECHARPTR
+code/logisticsdata_availability.cpp:311:operator ECHARPTR
 code/logisticsdata_init.cpp:640:operator ECHARPTR
-code/logisticsdata_save.cpp:65:operator ECHARPTR
-code/logisticsdata_save.cpp:92:operator ECHARPTR
-code/logisticsdata_save.cpp:99:operator ECHARPTR
-code/logisticsdata_save.cpp:118:operator ECHARPTR
-code/logisticsdata_save.cpp:322:Compare
-code/logisticsdata_save.cpp:433:Compare
 code/logisticsdata_save.cpp:456:operator ECHARPTR
-code/logisticsdata_save.cpp:642:Compare
-code/logisticsdata_save.cpp:671:Compare
-code/logisticsdata_save.cpp:680:Compare
 code/logisticsdialog.cpp:831:Compare
 code/logisticsdialog.cpp:845:Compare
 code/logisticsdialog.cpp:857:operator ECHARPTR
@@ -158,7 +130,6 @@ code/logisticsdialog.cpp:1785:operator ECHARPTR
 code/logisticsdialog.cpp:1814:operator ECHARPTR
 code/logisticsdialog.cpp:1874:operator ECHARPTR
 code/logisticsdialog.cpp:1921:operator ECHARPTR
-code/logisticsmech.cpp:57:operator ECHARPTR
 code/logisticsmissioninfo.cpp:199:operator ECHARPTR
 code/logisticsmissioninfo.cpp:419:operator ECHARPTR
 code/logisticsmissioninfo.cpp:454:operator ECHARPTR
@@ -186,12 +157,6 @@ code/logisticsmissioninfo_query.cpp:163:Compare
 code/logisticsmissioninfo_query.cpp:165:operator ECHARPTR
 code/logisticsmissioninfo_query.cpp:193:operator ECHARPTR
 code/logisticsmissioninfo_query.cpp:198:operator ECHARPTR
-code/logisticspilot.cpp:69:operator ECHARPTR
-code/logisticspilot.cpp:76:operator ECHARPTR
-code/logisticspilot.cpp:176:operator ECHARPTR
-code/logisticspilotlistbox.cpp:89:MakeUpper
-code/logisticspilotlistbox.cpp:313:Compare
-code/logisticspilotlistbox.cpp:330:Compare
 code/mainmenu.cpp:262:operator ECHARPTR
 code/mainmenu.cpp:573:operator ECHARPTR
 code/mainmenu.cpp:604:operator ECHARPTR
@@ -225,8 +190,6 @@ code/mechlopedia.cpp:1549:operator ECHARPTR
 code/mechlopedia.cpp:1562:operator ECHARPTR
 code/mechlopedia.cpp:1586:MakeUpper
 code/mechlopedia.cpp:1589:Remove
-code/mission_movers.cpp:412:operator ECHARPTR
-code/mission_update.cpp:1088:operator ECHARPTR
 code/missionbegin.cpp:1524:operator ECHARPTR
 code/missionbriefingscreen.cpp:283:operator ECHARPTR
 code/missionbriefingscreen.cpp:351:operator ECHARPTR
@@ -285,15 +248,9 @@ code/mpsetuparea.cpp:801:Data
 code/mpsetuparea.cpp:813:Data
 code/mpstats.cpp:244:operator ECHARPTR
 code/pausewindow.cpp:299:Data
-code/pilotreadyscreen.cpp:798:operator ECHARPTR
-code/pilotreadyscreen.cpp:801:MakeLower
-code/pilotreadyscreen.cpp:802:operator ECHARPTR
-code/pilotreadyscreen.cpp:811:operator ECHARPTR
-code/pilotreadyscreen.cpp:842:MakeUpper
-code/pilotreadyscreen.cpp:844:operator ECHARPTR
-code/pilotreviewarea.cpp:470:operator ECHARPTR
-code/pilotreviewarea.cpp:1254:operator ECHARPTR
-code/pilotreviewarea.cpp:1490:operator ECHARPTR
+code/pilotreadyscreen.cpp:802:MakeLower
+code/pilotreadyscreen.cpp:803:operator ECHARPTR
+code/pilotreadyscreen.cpp:812:operator ECHARPTR
 code/saveload.cpp:97:Data
 code/saveload.cpp:503:Data
 code/simplecomponentlistbox.cpp:156:Format

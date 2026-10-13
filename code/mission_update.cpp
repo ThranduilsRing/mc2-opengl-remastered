@@ -1085,7 +1085,7 @@ void Mission::updateSoakPilotPromote() {
 						: nullptr;
 				if (!lp) continue;
 				lPilot = lp;
-				pilotName = lp->getName();
+				pilotName = lp->getName().c_str();
 			}
 
 			if (lPilot)

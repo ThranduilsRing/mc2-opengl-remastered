@@ -166,7 +166,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 				mechData.baseColor = MPlayer->colors[MPlayer->playerInfo[MPlayer->commanderID].baseColor[BASECOLOR_TEAM]];
 				mechData.highlightColor1 = MPlayer->colors[MPlayer->playerInfo[MPlayer->commanderID].stripeColor];
 				mechData.highlightColor2 = MPlayer->colors[MPlayer->playerInfo[MPlayer->commanderID].stripeColor];
-				strcpy(mechData.pilotFile, (*iter)->getPilot()->getFileName());
+				strcpy(mechData.pilotFile, (*iter)->getPilot()->getFileName().c_str());
 				strcpy(mechData.mechFile, (*iter)->getFileName().c_str());
 				strcpy(mechData.variantName, (*iter)->getName().c_str());
 				mechData.variantNum = (*iter)->getVariant()->getFileID();
@@ -322,7 +322,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 			strcpy( data.csvFileName, (*iter)->getFileName().c_str() );
 			if ( !(*iter)->getPilot() )
 				continue;
-			strcpy( data.pilotFileName, (*iter)->getPilot()->getFileName() );
+			strcpy( data.pilotFileName, (*iter)->getPilot()->getFileName().c_str() );
 			data.overrideLoadedPilot = true;
 			data.gunnerySkill = (*iter)->getPilot()->getGunnery();
 			data.pilotingSkill = (*iter)->getPilot()->getPiloting();

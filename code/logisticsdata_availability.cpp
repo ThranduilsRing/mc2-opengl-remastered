@@ -240,9 +240,11 @@ long LogisticsData::updateAvailability()
 		if ( NO_ERR != file.readIdString( tmp, pilotName, 254 ) )
 			break;
 
+		// The purchase file names a pilot in its own case (PMWChopper) and the pilot FIT is lower case (pmwchopper): the match ignores ASCII case.
+		const std::string pilotKey = mc2::str::from_c( pilotName );
 		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 		{
-			if ( (*pIter).getFileName().Compare( pilotName, 0 ) == 0 )
+			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
 			{
 				(*pIter).setAvailable( true );
 			}
@@ -382,7 +384,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 		long lim = pcount < 48 ? pcount : 48;
 		for ( long i = 0; i < lim; ++i ) {
 			if ( i ) j += ",";
-			j += "{\"name\":\"" + esc( pp[i] ? (const char*)pp[i]->getName() : "" )
+			j += "{\"name\":\"" + esc( pp[i] ? pp[i]->getName().c_str() : "" )
 			   + "\",\"available\":" + ( ( pp[i] && pp[i]->isAvailable() ) ? "true" : "false" ) + "}";
 		}
 		j += "]";
@@ -459,9 +461,10 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		if ( NO_ERR != file.readIdString( tmp, pilotName, 254 ) )
 			break;
 
+		const std::string pilotKey = mc2::str::from_c( pilotName );
 		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 		{
-			if ( (*pIter).getFileName().Compare( pilotName, 0 ) == 0 )
+			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
 			{
 				(*pIter).setAvailable( true );
 				bNewPilots = true;

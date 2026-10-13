@@ -558,9 +558,10 @@ void				LogisticsData::setVideoShown()
 }
 void	LogisticsData::setPilotUnused( const char* pName )
 {
+	const std::string wanted = mc2::str::from_c( pName );
 	for ( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++  )
 	{
-		if ( (*iter).getFileName().Compare( pName, 0 ) == 0 )
+		if ( mc2::str::iequals( (*iter).getFileName(), wanted ) )
 		{
 			(*iter).setUsed( 0 );
 			break;

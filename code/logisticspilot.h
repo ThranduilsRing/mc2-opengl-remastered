@@ -14,7 +14,7 @@ class ForceGroupIcon;
 CLASS DESCRIPTION
 LogisticsPilot:
 **************************************************************************************************/
-#include"estring.h"
+#include <string>
 #include"elist.h"
 #include"warrior.h"
 
@@ -53,11 +53,11 @@ class LogisticsPilot
 		~LogisticsPilot();
 
 
-		const EString&  getName() const { return name; }
-		const EString&	 getAudio() const { return audio; }
-		const EString& getVideo() const { return video; }
+		const std::string&	getName() const { return name; }
+		const std::string&	getAudio() const { return audio; }
+		const std::string&	getVideo() const { return video; }
 		int			getRank() const { return rank; }
-		const EString& getIconFile() const { return iconFile; }
+		const std::string&	getIconFile() const { return iconFile; }
 		float			getGunnery() const { return gunnery; }
 		float			getPiloting() const { return piloting; }
 		int			getMechKills() const { return mechKills; }
@@ -98,7 +98,7 @@ class LogisticsPilot
 
 
 		static		const char* getSkillText( int skillID );
-		const EString&	getFileName(){ return fileName; }
+		const std::string&	getFileName() const { return fileName; }
 
 		long		save( FitIniFile& file, long count );
 		long		load( FitIniFile& file );
@@ -124,11 +124,11 @@ class LogisticsPilot
 
 
 	private:
-		EString		name;
-		EString		audio;
-		EString		video;
+		std::string	name;
+		std::string	audio;
+		std::string	video;
 		long			rank;
-		EString		iconFile; // or file name?
+		std::string	iconFile;
 		float			gunnery;
 		float			piloting;
 		long			mechKills;
@@ -147,7 +147,7 @@ class LogisticsPilot
 		bool			specialtySkills[NUM_SPECIALTY_SKILLS];
 
 		static char skillTexts[][255];
-		EString		fileName;
+		std::string	fileName;
 
 		bool		medals[MAX_MEDAL];
 		bool		medalsLastMission[MAX_MEDAL];

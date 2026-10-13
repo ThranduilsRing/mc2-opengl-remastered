@@ -54,7 +54,7 @@ long LogisticsMech::save( FitIniFile& file, long counter )
 	file.writeIdString( "Chassis", pVariant->getFileName().c_str() );
 	file.writeIdString( "Variant", pVariant->getName().c_str() );
 	if ( pilot )
-		file.writeIdString( "Pilot", pilot->getFileName() );
+		file.writeIdString( "Pilot", pilot->getFileName().c_str() );
 	file.writeIdBoolean( "Designer", pVariant->isDesignerMech() );
 
 	return 0;
