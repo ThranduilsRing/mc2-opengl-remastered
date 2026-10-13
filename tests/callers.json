@@ -7521,6 +7521,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "tests/analyze/objhash_all.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "objhash",
+          "text": "import objhash  # noqa: E402"
+        },
+        {
           "path": "tools/comment_guard.py",
           "line": 1203,
           "evidence": "import",

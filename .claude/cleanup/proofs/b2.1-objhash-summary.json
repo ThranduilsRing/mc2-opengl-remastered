@@ -1,0 +1,1190 @@
+{
+ "what": "tools/objhash.py per-symbol proof of B2.1 (4c89bfdf8) over every object of the all-targets tree; produced by tests/analyze/objhash_all.py (review M3: the classes partition the objects, the exceptions are listed)",
+ "before": "ec1052dfb (tag step4-b2-pre)",
+ "after": "4c89bfdf8",
+ "tree": "build-alltargets in a scratch worktree, `tools/build_all_targets.py --root-only`, MC2_FINGERPRINT_FREEZE=1 for both builds",
+ "sources": 1010,
+ "objects": 1186,
+ "classes": {
+  "DIFF": 3,
+  "IDENTICAL": 335,
+  "LAYOUT-ONLY": 67,
+  "NOT-REBUILT": 758,
+  "ORDER-ONLY": 23
+ },
+ "class_meaning": {
+  "NOT-REBUILT": "no input of the object changed; the file is the before object",
+  "IDENTICAL": "every code, data and relocation section and the symbol table equal (debug sections excluded)",
+  "LAYOUT-ONLY": ".data/.bss section order differs; symbol set, every symbol's bytes and relocation targets equal by name",
+  "ORDER-ONLY": "only symbol-table / relocation index order differs; per-symbol identical",
+  "DIFF": "anything else; the three are explained below"
+ },
+ "diff_explained": {
+  "3rdparty/assimp/code/Common/Version.cpp": "the git sha of HEAD compiled in through revision.h (differs between any two commits)",
+  "code/mission.cpp": "the two removed globals (.bss VisibleBits, SeenBits) and 3 removed lines. Executable sections: 306 vs 306, 304 identical byte for byte with relocation fields resolved to symbol names; the other two (InitDifficultySettings, resetTeamsAndCommanders) differ ONLY in imm32 line-number constants passed to the Fatal / assert calls, each exactly 3 lower after (342->339, 346->343, 350->347, 354->351, 358->355, 596->593): the 3 removed lines sit above them. mission.cpp is on the PCH skip list (cmake/pch/pch_skip.cmake) and its code is unchanged apart from those constants.",
+  "mclib/terrain_update.cpp": "one local-static scope less in every mangled name (scope index letters) and Tracy zone names carrying __LINE__, same symbol count 2007. Executable sections: 367 vs 367; 366 identical byte for byte after resolving relocation fields to symbol names and normalising digits and scope indices in those names; Terrain::update (14515 bytes, same length, same relocations) differs in 25 bytes: register fields of SSE moves and one commutative operand order (`mov eax,[rbx+8]; add eax,[rbx]` against `mov eax,[rbx]; add eax,[rbx+8]`): a different register assignment after the empty godMode block and the commented lines left the function, not a different call, constant or branch. NOT byte-identical, and the B2.1 commit message did not claim it was."
+ },
+ "not_identical": [
+  {
+   "source": "3rdparty/assimp/code/Common/Version.cpp",
+   "object": "build-alltargets/out/3rdparty/assimp/code/CMakeFiles/assimp.dir/Common/Version.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gameosmain_frame.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_main.dir/gameosmain_frame.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_flush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "6:.bss"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_flush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "6:.bss"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_program.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "22:.bss",
+    "22:.data",
+    "23:.bss",
+    "23:.data"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_program.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "22:.bss",
+    "22:.data",
+    "23:.bss",
+    "23:.data"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_submit.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_submit.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "22:.bss",
+    "22:.data",
+    "23:.bss",
+    "23:.data"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_submit.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_submit.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "22:.bss",
+    "22:.data",
+    "23:.bss",
+    "23:.data"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_registry.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_registry.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss",
+    "5:.bss"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_registry.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_registry.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss",
+    "5:.bss"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_terrain_lighting.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_terrain_lighting.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "704:.data",
+    "8:.bss",
+    "9:.bss"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_terrain_lighting.cpp",
+   "object": "build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_terrain_lighting.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "704:.data",
+    "8:.bss",
+    "9:.bss"
+   ]
+  },
+  {
+   "source": "code/bldng.cpp",
+   "object": "build-alltargets/CMakeFiles/mc2.dir/code/bldng.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "4:.bss",
+    "4:.data",
+    "5:.bss",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "code/logisticsdata.cpp",
+   "object": "build-alltargets/CMakeFiles/mc2.dir/code/logisticsdata.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "4:.bss",
+    "4:.data",
+    "5:.bss",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "code/mechcmd2.cpp",
+   "object": "build-alltargets/CMakeFiles/mc2.dir/code/mechcmd2.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "477:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/mission.cpp",
+   "object": "build-alltargets/CMakeFiles/mc2.dir/code/mission.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .rdata",
+    "section .text$mn",
+    ".bss symbol ?SeenBits@@3PEAVByteFlag@@EA (only before)",
+    ".bss symbol ?VisibleBits@@3PEAVByteFlag@@EA (only before)"
+   ]
+  },
+  {
+   "source": "code/missiongui_cursor.cpp",
+   "object": "build-alltargets/CMakeFiles/mc2.dir/code/missiongui_cursor.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "code/pausewindow.cpp",
+   "object": "build-alltargets/CMakeFiles/mc2.dir/code/pausewindow.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "editor/Action.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/Action.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "108:.bss",
+    "109:.bss",
+    "110:.bss",
+    "112:.bss",
+    "113:.bss",
+    "28:.bss",
+    "30:.bss",
+    "38:.bss",
+    "39:.bss",
+    "40:.bss",
+    "41:.bss",
+    "42:.bss"
+   ]
+  },
+  {
+   "source": "editor/AssetThumbnailCache.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/AssetThumbnailCache.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "35:.data"
+   ]
+  },
+  {
+   "source": "editor/BuildingBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/BuildingBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "101:.bss",
+    "102:.bss",
+    "103:.bss",
+    "104:.bss",
+    "105:.bss",
+    "125:.bss",
+    "126:.bss",
+    "127:.bss",
+    "128:.bss",
+    "129:.bss",
+    "16:.bss",
+    "20:.bss"
+   ]
+  },
+  {
+   "source": "editor/BuildingLink.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/BuildingLink.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "101:.rdata$r",
+    "101:.text$mn",
+    "102:.data$rs",
+    "102:.text$mn",
+    "103:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/BuildingSettingsDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/BuildingSettingsDlg.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "105:.bss",
+    "10:.bss",
+    "16:.bss",
+    "425:.data",
+    "83:.bss",
+    "84:.bss",
+    "85:.bss",
+    "86:.bss",
+    "87:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss"
+   ]
+  },
+  {
+   "source": "editor/ChooseBuildingDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/ChooseBuildingDlg.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "110:.rdata",
+    "72:.rdata",
+    "72:.rdata$r",
+    "73:.data$rs",
+    "73:.rdata",
+    "74:.rdata"
+   ]
+  },
+  {
+   "source": "editor/CommandPalette.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/CommandPalette.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "19:.rdata",
+    "20:.rdata",
+    "216:.text$mn",
+    "21:.rdata",
+    "22:.rdata",
+    "23:.rdata"
+   ]
+  },
+  {
+   "source": "editor/DamageBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/DamageBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "25:.bss",
+    "7:.bss"
+   ]
+  },
+  {
+   "source": "editor/DragTool.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/DragTool.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "16:.bss",
+    "284:.data"
+   ]
+  },
+  {
+   "source": "editor/Editor.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/Editor.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "341:.data",
+    "59:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorData.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "28:.bss",
+    "52:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorData_save.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData_save.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.rdata$r",
+    "101:.rdata$r",
+    "102:.rdata",
+    "102:.rdata$r",
+    "104:.rdata",
+    "105:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorData_tacmap.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData_tacmap.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.rdata",
+    "105:.rdata",
+    "106:.rdata",
+    "107:.rdata",
+    "108:.rdata",
+    "109:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorData_terrain.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData_terrain.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.rdata",
+    "105:.rdata",
+    "106:.rdata",
+    "107:.rdata",
+    "108:.rdata",
+    "109:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorDebugOverlay.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorDebugOverlay.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "569:.data",
+    "7:.bss",
+    "8:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorGameOS.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorGameOS.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "1717:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "5:.bss",
+    "659:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface_editor.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface_editor.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.rdata$r",
+    "11:.data$rs",
+    "11:.rdata$r",
+    "12:.data$rs",
+    "12:.rdata$r",
+    "13:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface_imgui.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface_imgui.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "14:.rdata",
+    "22:.rdata",
+    "23:.rdata",
+    "24:.rdata",
+    "25:.rdata",
+    "26:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface_mouse.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface_mouse.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "103:.data",
+    "16:.bss",
+    "17:.bss",
+    "18:.bss",
+    "19:.bss",
+    "21:.bss",
+    "22:.bss",
+    "23:.bss",
+    "24:.bss",
+    "512:.data",
+    "56:.bss",
+    "61:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface_objects.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface_objects.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "22:.rdata",
+    "23:.rdata",
+    "24:.rdata",
+    "25:.rdata",
+    "26:.rdata",
+    "27:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface_terrain.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface_terrain.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "22:.rdata",
+    "23:.rdata",
+    "24:.rdata",
+    "25:.rdata",
+    "26:.rdata",
+    "27:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorInterface_wnd.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorInterface_wnd.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "22:.rdata",
+    "23:.rdata",
+    "24:.rdata",
+    "25:.rdata",
+    "26:.rdata",
+    "27:.rdata"
+   ]
+  },
+  {
+   "source": "editor/EditorMFC.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorMFC.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "56:.bss",
+    "57:.bss",
+    "587:.data",
+    "58:.bss",
+    "62:.bss",
+    "63:.bss",
+    "64:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorModProject.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorModProject.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "35:.data",
+    "794:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorObjectMgr.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjectMgr.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "107:.bss",
+    "108:.bss",
+    "109:.bss",
+    "10:.bss",
+    "110:.bss",
+    "111:.bss",
+    "118:.bss",
+    "20:.bss",
+    "30:.bss",
+    "31:.bss",
+    "34:.bss",
+    "38:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorObjectMgr_io.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjectMgr_io.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "101:.bss",
+    "102:.bss",
+    "103:.bss",
+    "104:.bss",
+    "105:.bss",
+    "125:.bss",
+    "126:.bss",
+    "127:.bss",
+    "128:.bss",
+    "129:.bss",
+    "1428:.data",
+    "25:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorObjectMgr_pick.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjectMgr_pick.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "107:.bss",
+    "108:.bss",
+    "109:.bss",
+    "10:.bss",
+    "110:.bss",
+    "111:.bss",
+    "20:.bss",
+    "30:.bss",
+    "318:.data",
+    "31:.bss",
+    "34:.bss",
+    "38:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorObjectMgr_render.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjectMgr_render.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "107:.bss",
+    "108:.bss",
+    "109:.bss",
+    "10:.bss",
+    "110:.bss",
+    "111:.bss",
+    "20:.bss",
+    "30:.bss",
+    "31:.bss",
+    "34:.bss",
+    "38:.bss",
+    "40:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorObjectMgr_select.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjectMgr_select.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "107:.bss",
+    "108:.bss",
+    "109:.bss",
+    "10:.bss",
+    "110:.bss",
+    "111:.bss",
+    "20:.bss",
+    "30:.bss",
+    "31:.bss",
+    "34:.bss",
+    "387:.data",
+    "38:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorObjects.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjects.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "100:.bss",
+    "102:.bss",
+    "103:.bss",
+    "104:.bss",
+    "105:.bss",
+    "106:.bss",
+    "10:.bss",
+    "11:.bss",
+    "13:.bss",
+    "15:.bss",
+    "16:.bss",
+    "17:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorObjects_pilot.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjects_pilot.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "101:.bss",
+    "102:.bss",
+    "103:.bss",
+    "104:.bss",
+    "105:.bss",
+    "10:.bss",
+    "13:.bss",
+    "14:.bss",
+    "16:.bss",
+    "20:.bss",
+    "24:.bss",
+    "30:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorObjects_unit.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjects_unit.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "13:.bss",
+    "14:.bss",
+    "16:.bss",
+    "20:.bss",
+    "24:.bss",
+    "30:.bss",
+    "34:.data",
+    "40:.data",
+    "523:.data",
+    "77:.bss",
+    "78:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorPlaytest.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorPlaytest.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "36:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorTacMap.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorTacMap.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "101:.bss",
+    "102:.bss",
+    "103:.bss",
+    "104:.bss",
+    "105:.bss",
+    "125:.bss",
+    "126:.bss",
+    "127:.bss",
+    "128:.bss",
+    "129:.bss",
+    "16:.bss",
+    "20:.bss"
+   ]
+  },
+  {
+   "source": "editor/FoliageRender.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/FoliageRender.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "442:.data"
+   ]
+  },
+  {
+   "source": "editor/GameplayDebugger.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/GameplayDebugger.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "86:.rdata",
+    "88:.rdata$r",
+    "92:.rdata$r",
+    "symbols"
+   ]
+  },
+  {
+   "source": "editor/InspectorPanel.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/InspectorPanel.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "65:.rdata$r",
+    "67:.rdata",
+    "67:.rdata$r",
+    "68:.rdata$r",
+    "69:.rdata",
+    "69:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/LinkBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/LinkBrush.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.rdata",
+    "25:.rdata",
+    "25:.rdata$r",
+    "26:.data$rs",
+    "26:.rdata",
+    "27:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/MainFrm.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/MainFrm.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "12:.bss",
+    "16:.bss",
+    "311:.data"
+   ]
+  },
+  {
+   "source": "editor/MapGeneratorDialog.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/MapGeneratorDialog.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "968:.data"
+   ]
+  },
+  {
+   "source": "editor/MineBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/MineBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "14:.bss",
+    "27:.bss"
+   ]
+  },
+  {
+   "source": "editor/MissionSettingsDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/MissionSettingsDlg.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "87:.rdata",
+    "88:.rdata",
+    "89:.rdata",
+    "90:.rdata",
+    "91:.rdata",
+    "92:.rdata"
+   ]
+  },
+  {
+   "source": "editor/MissionValidation.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/MissionValidation.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "13:.bss",
+    "7:.bss"
+   ]
+  },
+  {
+   "source": "editor/ObjectSelectionBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/ObjectSelectionBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "101:.bss",
+    "102:.bss",
+    "103:.bss",
+    "104:.bss",
+    "105:.bss",
+    "125:.bss",
+    "126:.bss",
+    "127:.bss",
+    "128:.bss",
+    "129:.bss",
+    "16:.bss",
+    "20:.bss"
+   ]
+  },
+  {
+   "source": "editor/Objective.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/Objective.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "1089:.data",
+    "119:.bss",
+    "120:.bss",
+    "121:.bss",
+    "122:.bss",
+    "123:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/ObjectiveDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/ObjectiveDlg.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.rdata",
+    "100:.rdata$r",
+    "101:.data$rs",
+    "101:.rdata",
+    "102:.rdata",
+    "102:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/Objective_actions.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/Objective_actions.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "119:.bss",
+    "120:.bss",
+    "121:.bss",
+    "122:.bss",
+    "123:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/Objective_conditions.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/Objective_conditions.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "119:.bss",
+    "120:.bss",
+    "121:.bss",
+    "122:.bss",
+    "123:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/ObjectivesDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/ObjectivesDlg.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "90:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/ObjectivesSummaryPanel.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/ObjectivesSummaryPanel.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "34:.bss"
+   ]
+  },
+  {
+   "source": "editor/PlayerSettingsDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/PlayerSettingsDlg.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data"
+   ]
+  },
+  {
+   "source": "editor/ScatterBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/ScatterBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "23:.bss",
+    "28:.bss"
+   ]
+  },
+  {
+   "source": "editor/SceneOutliner.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/SceneOutliner.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "128:.rdata",
+    "62:.rdata",
+    "62:.rdata$r",
+    "63:.data$rs",
+    "63:.rdata",
+    "64:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/SelectTerrainTypeDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/SelectTerrainTypeDlg.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.rdata",
+    "58:.rdata",
+    "58:.rdata$r",
+    "59:.data$rs",
+    "59:.rdata",
+    "60:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/SelectionBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/SelectionBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "107:.bss",
+    "108:.bss",
+    "109:.bss",
+    "10:.bss",
+    "110:.bss",
+    "111:.bss",
+    "20:.bss",
+    "30:.bss",
+    "31:.bss",
+    "34:.bss",
+    "380:.data",
+    "38:.bss"
+   ]
+  },
+  {
+   "source": "editor/TargetAreaDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/TargetAreaDlg.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "110:.rdata",
+    "72:.rdata",
+    "72:.rdata$r",
+    "73:.data$rs",
+    "73:.rdata",
+    "74:.rdata"
+   ]
+  },
+  {
+   "source": "editor/TelemetryPanel.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/TelemetryPanel.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "81:.rdata",
+    "82:.rdata",
+    "symbols"
+   ]
+  },
+  {
+   "source": "editor/UnitBrainPanel.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/UnitBrainPanel.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "17:.data",
+    "18:.bss",
+    "21:.bss",
+    "21:.data",
+    "22:.data",
+    "23:.bss",
+    "24:.data"
+   ]
+  },
+  {
+   "source": "editor/UnitSettingsDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/UnitSettingsDlg.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "16:.bss",
+    "482:.data"
+   ]
+  },
+  {
+   "source": "editor/dropZoneBrush.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/dropZoneBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "25:.bss",
+    "7:.bss"
+   ]
+  },
+  {
+   "source": "editor/eraser.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/eraser.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "202:.text$di",
+    "50:.rdata",
+    "51:.rdata",
+    "52:.rdata",
+    "53:.rdata",
+    "54:.rdata"
+   ]
+  },
+  {
+   "source": "editor/mapsizedlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/mapsizedlg.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "107:.bss",
+    "108:.bss",
+    "109:.bss",
+    "111:.bss",
+    "112:.bss",
+    "222:.data",
+    "34:.bss",
+    "36:.bss",
+    "44:.bss",
+    "45:.bss",
+    "46:.bss",
+    "47:.bss"
+   ]
+  },
+  {
+   "source": "editor/sunDlg.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/sunDlg.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "16:.bss",
+    "398:.data"
+   ]
+  },
+  {
+   "source": "editor/tacMapTGA.cpp",
+   "object": "build-alltargets/out/editor/CMakeFiles/EditRel.dir/tacMapTGA.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data"
+   ]
+  },
+  {
+   "source": "mclib/mapdata.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/mapdata.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "5:.bss",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "mclib/mech3d_type.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/mech3d_type.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "27:.bss",
+    "3:.bss",
+    "3:.data",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "mclib/move.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/move.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss"
+   ]
+  },
+  {
+   "source": "mclib/terrain_update.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrain_update.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .pdata",
+    "section .rdata",
+    "section .text$mn",
+    "section .text$yd",
+    ".data symbol ?planeNames@?DG@??update@Terrain@@QEAAJXZ@4PAPEBDA (only after)",
+    ".data symbol ?planeNames@?DJ@??update@Terrain@@QEAAJXZ@4PAPEBDA (only before)",
+    ".data symbol ?pn2@?EA@??update@Terrain@@QEAAJXZ@4PAPEBDA (only after)",
+    ".data symbol ?pn2@?ED@??update@Terrain@@QEAAJXZ@4PAPEBDA (only before)",
+    ".data symbol ?pn@?EC@??update@Terrain@@QEAAJXZ@4PAPEBDA (only after)",
+    ".data symbol ?pn@?EF@??update@Terrain@@QEAAJXZ@4PAPEBDA (only before)",
+    ".data symbol ?pnz@?MJ@??update@Terrain@@QEAAJXZ@4PAPEBDA (only after)"
+   ]
+  },
+  {
+   "source": "mclib/terrtxm2.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrtxm2.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "mclib/tgl.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "511:.text$mn",
+    "513:.text$mn",
+    "515:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "mclib/txmmgr.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/txmmgr.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "21:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "mclib/txmmgr_diag.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/txmmgr_diag.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "200:.bss",
+    "215:.bss",
+    "56:.bss",
+    "69:.bss",
+    "81:.bss",
+    "84:.bss"
+   ]
+  },
+  {
+   "source": "mclib/txmmgr_lightrow.cpp",
+   "object": "build-alltargets/out/mclib/CMakeFiles/mclib.dir/txmmgr_lightrow.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "tools/asset_viewer/engine_stubs.cpp",
+   "object": "build-alltargets/out/tools/asset_viewer/CMakeFiles/mc2_tglloader.dir/engine_stubs.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss",
+    "5:.bss",
+    "5:.data",
+    "6:.data"
+   ]
+  }
+ ]
+}

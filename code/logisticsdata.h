@@ -12,6 +12,7 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 #include<elist.h>
 #include <string>
 #include <vector>
+#include <deque>
 
 #include"logisticsmech.h"
 #include"logisticscomponent.h"

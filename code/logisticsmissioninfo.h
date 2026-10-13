@@ -12,6 +12,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 #endif
 
 #include <string>
+#include <vector>
 
 inline constexpr int MAX_PLAYER_NAME_LENGTH = 64;
 

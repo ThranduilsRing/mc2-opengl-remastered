@@ -13,6 +13,7 @@ ComponentListBox.h			: Interface for the ComponentListBox component.
 
 #ifndef AANIM_H
 #include"aanim.h"
+#include <vector>
 #endif
 
 #ifndef ELIST_H

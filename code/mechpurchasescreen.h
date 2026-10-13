@@ -8,6 +8,7 @@ MechPurchaseScreen.h			: Interface for the MechPurchaseScreen component.
 \*************************************************************************************************/
 
 #ifndef LOGISTICSSCREEN_H
+#include <vector>
 #include"logisticsscreen.h"
 #endif
 

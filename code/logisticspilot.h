@@ -15,6 +15,7 @@ CLASS DESCRIPTION
 LogisticsPilot:
 **************************************************************************************************/
 #include <string>
+#include <vector>
 #include"elist.h"
 #include"warrior.h"
 
