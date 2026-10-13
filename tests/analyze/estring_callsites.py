@@ -10,6 +10,7 @@ The deprecation itself is applied to mclib/estring.h by an uncommitted local edi
 
   py -3 tests/analyze/estring_callsites.py BUILD.log [--out PATH] [--root A:/Games/mc2-main]
   py -3 tests/analyze/estring_callsites.py --drop code/objective.cpp code/x.cpp:42 ...   # remove converted rows from the committed list
+  py -3 tests/analyze/estring_callsites.py --check                                       # every remaining row still names its kind on its line
 """
 from __future__ import annotations
 
@@ -104,13 +105,65 @@ def drop(path: str, targets: list[str]) -> int:
     return 0
 
 
+def kind_token(kind: str) -> str | None:
+    """The text a row's kind leaves on its source line; None for the implicit conversion, which leaves none."""
+    if kind == "operator ECHARPTR":
+        return None
+    if kind.startswith("operator "):
+        return kind[len("operator "):]
+    return "." + kind + "(" if kind == "Data" else kind + "("
+
+
+def check(path: str) -> int:
+    """Fail when the list is out of step with the tree: a row whose file is gone, whose line no longer holds its kind, or a header total that
+    does not match the rows. A converted file must leave the list through --drop; a file edited without that shows up here."""
+    total = files = None
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for ln in f:
+            m = re.match(r"# total (\d+) sites in (\d+) files", ln)
+            if m:
+                total, files = int(m[1]), int(m[2])
+            if ln.startswith("#") or not ln.strip():
+                continue
+            file, line, kind = ln.rstrip().split(":", 2)
+            rows.append((file, int(line), kind))
+    problems = []
+    if (total, files) != (len(rows), len({r[0] for r in rows})):
+        problems.append(f"header says {total} sites in {files} files, the rows are {len(rows)} in {len({r[0] for r in rows})}")
+    cache: dict[str, list[str] | None] = {}
+    for file, line, kind in rows:
+        if file not in cache:
+            try:
+                with open(os.path.join(ROOT, file), encoding="utf-8", errors="replace") as src:
+                    cache[file] = src.read().splitlines()
+            except OSError:
+                cache[file] = None
+        text = cache[file]
+        if text is None:
+            problems.append(f"{file}:{line}:{kind}: the file is gone")
+        elif not 1 <= line <= len(text):
+            problems.append(f"{file}:{line}:{kind}: the file has {len(text)} lines")
+        else:
+            token = kind_token(kind)
+            if token is not None and token not in text[line - 1]:
+                problems.append(f"{file}:{line}:{kind}: the line no longer contains '{token}'")
+    for p in problems:
+        print(f"estring_callsites: {p}")
+    print(f"estring_callsites: {'FAIL' if problems else 'OK'} - {len(rows)} sites, {len(problems)} problem(s)")
+    return 1 if problems else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("log", nargs="?", help="the deprecation build's log (omit with --drop)")
     ap.add_argument("--drop", nargs="+", metavar="FILE[:LINE]", help="remove these rows from the committed list: a batch that converted them, proven by the build")
+    ap.add_argument("--check", action="store_true", help="verify the committed list against the tree (exit 1 on a stale or converted row)")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--root", default=ROOT)
     args = ap.parse_args()
+    if args.check:
+        return check(args.out)
     if args.drop:
         return drop(args.out, args.drop)
     if not args.log:

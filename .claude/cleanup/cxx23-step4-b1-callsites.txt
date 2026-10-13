@@ -591,18 +591,18 @@ gui/aanim.cpp:116:Format
 gui/aanim.cpp:117:operator ECHARPTR
 gui/aanim.cpp:123:Format
 gui/aanim.cpp:124:operator ECHARPTR
-gui/aedit.cpp:285:Insert
-gui/aedit.cpp:511:Remove
-gui/aedit.cpp:534:operator ECHARPTR
-gui/aedit.cpp:535:operator ECHARPTR
-gui/aedit.cpp:538:Remove
-gui/aedit.cpp:627:operator ECHARPTR
-gui/aedit.cpp:628:operator ECHARPTR
-gui/aedit.cpp:642:operator ECHARPTR
+gui/aedit.cpp:286:Insert
+gui/aedit.cpp:527:Remove
+gui/aedit.cpp:550:operator ECHARPTR
+gui/aedit.cpp:551:operator ECHARPTR
+gui/aedit.cpp:554:Remove
 gui/aedit.cpp:643:operator ECHARPTR
-gui/aedit.cpp:714:operator ECHARPTR
-gui/aedit.cpp:719:operator ECHARPTR
-gui/aedit.cpp:756:operator ECHARPTR
+gui/aedit.cpp:644:operator ECHARPTR
+gui/aedit.cpp:658:operator ECHARPTR
+gui/aedit.cpp:659:operator ECHARPTR
+gui/aedit.cpp:730:operator ECHARPTR
+gui/aedit.cpp:735:operator ECHARPTR
+gui/aedit.cpp:772:operator ECHARPTR
 gui/alistbox.cpp:1327:operator ECHARPTR
 gui/alistbox.cpp:1337:operator ECHARPTR
 gui/alistbox.cpp:1344:operator ECHARPTR
@@ -610,6 +610,6 @@ gui/alistbox.cpp:1353:operator ECHARPTR
 gui/alistbox.cpp:1359:operator ECHARPTR
 gui/alistbox.cpp:1375:operator ECHARPTR
 gui/alistbox.h:130:operator ECHARPTR
-gui/asystem.cpp:1061:operator ECHARPTR
-gui/asystem.cpp:1065:operator ECHARPTR
-gui/asystem.cpp:1120:operator ECHARPTR
+gui/asystem.cpp:1071:operator ECHARPTR
+gui/asystem.cpp:1075:operator ECHARPTR
+gui/asystem.cpp:1130:operator ECHARPTR

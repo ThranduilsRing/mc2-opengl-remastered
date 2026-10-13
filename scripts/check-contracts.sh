@@ -799,6 +799,7 @@ fi
 run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
 run_check "abl_writer_census"              "py -3 tools/abl_writer_census.py --check"
 run_check "analyze_dangling"              "py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
+run_check "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
 run_check "gate_classifier_selftest"        "py -3 scripts/gate_default_classifier.py --selftest"
 # G4: the VK umbrella members are read only through mc2vkgate::armed<> (never a direct gate::effective<>, which
 # would skip the session fail-soft veto), and the per-call readers stay uncached so a mid-session fail-soft disarms them.
