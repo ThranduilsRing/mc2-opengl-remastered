@@ -29,6 +29,7 @@ EditorCamera.h			: Interface for the EditorCamera component.
                                                   // subsystem headers the editor firewall forbids.
 #include "../GameOS/gameos/view_uniforms_gl.h"  // setCurrentView + uploadViewUniforms
 #include "EditorGpuTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
+#include "AuthoredMissionState.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -75,6 +76,18 @@ extern bool g_cliClosePosted;
 class EditorCamera : public Camera
 {
 public:
+		// Mission zoom settings belong to the document; viewport initialization
+		// and navigation must not replace them with renderer-derived values.
+		struct MissionView
+		{
+			float scale = 0.5f;
+			float zoomMaximum = 2.0f;
+			bool operator==(const MissionView&) const = default;
+		};
+		std::optional<MissionView> missionView;
+		bool readMissionView(FitIniFile& file);
+		bool saveMissionView(FitIniFile* file);
+		MissionView currentMissionView() const;
 
 		AppearancePtr			compass;
 		AppearancePtr			theSky;
@@ -91,6 +104,7 @@ public:
 		virtual void init (void)
 		{
 			Camera::init();
+			missionView.reset();
 			compass = NULL;
 			drawCompass = true;
 			cameraLineChanged = 0;

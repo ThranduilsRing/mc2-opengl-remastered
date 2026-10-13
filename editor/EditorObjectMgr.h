@@ -170,6 +170,7 @@ public:
 
 	bool		saveDropZones( FitIniFile& file );
 	bool		loadDropZones( FitIniFile& file );
+	bool        loadNavMarkers(FitIniFile& file);
 
 	bool		saveForests( FitIniFile& file );
 	bool		loadForests( FitIniFile& file );

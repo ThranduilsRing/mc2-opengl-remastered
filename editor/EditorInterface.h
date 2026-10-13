@@ -143,6 +143,9 @@ public:
 	~EditorInterface();
 
 	void handleNewMenuMessage( long specificMessage );
+	bool refreshMissionDefinitionsFromCatalog();
+	bool authorMissionCameraZoom();
+	bool runDefinitionSmoke();
 
 	void init( const char* fileName );
 

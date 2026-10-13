@@ -78,9 +78,11 @@ WORKFLOW_PANELS = {
     "Inspector": "teams_abl", "UnitBrain": "teams_abl",
     "ObjectivesSummary": "objectives", "CampaignOverview": "campaign_links",
     "MissionWriter": "mission_export",
+    "MissionDefinitions": "mission_definitions",
 }
 MODEL_ONLY = {"ObjectivesSummary", "CampaignOverview"}
 BASELINE = REPO / "tests/smoke/editor/roundtrip-baseline.json"
+PINNED_BEFORE = REPO / "tests/smoke/editor/old-editor-2026-10-13"
 
 
 def read_json_object(path: Path) -> dict:
@@ -205,6 +207,20 @@ def compare_fit(original: bytes, written: bytes) -> dict:
                 output_sha256=hashlib.sha256(written).hexdigest(),
                 removed=removed, added=added, changed=changed, explanation=explanation,
                 classes=list(classes.values()), classification=classification)
+
+
+def pinned_class_delta(mission: str, original: bytes, current: dict, directory: Path = PINNED_BEFORE) -> dict:
+    """Historical overlays remain qualified; only equal input hashes are comparable."""
+    metadata, written = directory / f"{mission}.json", directory / f"{mission}.written.fit"
+    if not metadata.exists() or not written.exists():
+        return dict(status="no pinned comparison", disappeared=[], remaining=[])
+    before = read_json_object(metadata)
+    if before.get("input_sha256") != hashlib.sha256(original).hexdigest():
+        return dict(status="different pinned input", disappeared=[], remaining=[])
+    old_classes = {c["name"] for c in compare_fit(original, written.read_bytes())["classes"]}
+    new_classes = {c["name"] for c in current["classes"]}
+    return dict(status="same input; historical non-stock catalog", disappeared=sorted(old_classes - new_classes),
+                remaining=sorted(old_classes & new_classes), introduced=sorted(new_classes - old_classes))
 
 
 class StockInputs:
@@ -365,7 +381,7 @@ def gate_baseline(results: list, path: Path, rebaseline: bool, archives: dict, a
         if previous.get("archives") != archives:
             print(f"[REBASELINE] archives: {json.dumps(previous.get('archives'))} -> {json.dumps(archives)}")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes((json.dumps(dict(version=1, reason="E0 stock editor FIT writer floor; exact bytes, no masks.",
+        path.write_bytes((json.dumps(dict(version=1, reason="E-W stock editor FIT writer floor; authored document state, exact bytes, no masks.",
                                          archives=archives, stock_allowlist=allowances or {}, missions=current), indent=2, sort_keys=True) + "\n").encode())
         return
     for mission, row in rows.items():
@@ -399,7 +415,7 @@ def write_roundtrip_ledger(path: Path, results: list, groups: dict, evidence: Pa
     marker = "\n## Writer findings"
     previous = path.read_text(encoding="utf-8") if path.exists() else ""
     notes = marker + previous.split(marker, 1)[1] if marker in previous else ""
-    lines = ["# Editor round-trip ledger (E0)", "",
+    lines = ["# Editor round-trip ledger (E-W)", "",
              f"Summary: {counts['byte-identical']} byte-identical, {counts['lossless-only']} lossless-only, "
              f"{counts['semantic']} semantic; {unverified} blocked of 24.", "",
              "Owner finding: dev `mc2-win64-v0.4` AND golden `mc2-win64-v0.4c` ship non-stock loose "
@@ -428,6 +444,14 @@ def write_roundtrip_ledger(path: Path, results: list, groups: dict, evidence: Pa
             answer, size = "blocked", "—"
             reason = row.get("detail") or row.get("bucket") or "Not run; no byte comparison observed."
         lines.append(f"| {mission} | {answer} | {size} | {reason.replace('|', '/')} |")
+    if any("pinned_delta" in row for row in rows.values()):
+        lines += ["", "## Pinned before class comparison", "",
+                  "Pinned commit: `73b111f33`. That record used a non-stock loose catalog; equal mission input hashes permit a class comparison, not a stock-environment claim. mc2_22 has no pinned comparison.", "",
+                  "| Mission | Qualification | Disappeared classes | Remaining / introduced |", "|---|---|---|---|"]
+        for mission in STOCK_MISSIONS:
+            delta = rows.get(mission, {}).get("pinned_delta", {})
+            lines.append(f"| {mission} | {delta.get('status', 'not run')} | {', '.join(delta.get('disappeared', [])) or '-'} | "
+                         f"{', '.join(delta.get('remaining', []) + delta.get('introduced', [])) or '-'} |")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(("\n".join(lines) + "\n" + notes).encode("utf-8"))
 
@@ -847,6 +871,7 @@ def main() -> int:
                             written = output.read_bytes()
                             comparison = compare_fit(original, written)
                             row["roundtrip"] = comparison
+                            row["pinned_delta"] = pinned_class_delta(mission, original, comparison)
                             row["detail"] = comparison["explanation"]
                             if not comparison["byte_identical"]:
                                 row["result_label"] = "FINDING"
@@ -867,7 +892,7 @@ def main() -> int:
                 if not output.exists() or not (deploy / "terrain_gen_out/e0_workflows.pak").exists():
                     row.update(passed=False, bucket="workflow_export_missing", detail="fresh workflow PAK/FIT missing")
                 else:
-                    row["detail"] = "Five action-handler probes and two model-only probes graded; authored state, undo, save and reload required."
+                    row["detail"] = "Six action-handler probes and two model-only probes graded; authored state, undo, save and reload required."
             results.append(row)
         elif c == "gen_save_load":
             # Two phases: (1) generate a RANDOM map + save to .pak; (2) load that

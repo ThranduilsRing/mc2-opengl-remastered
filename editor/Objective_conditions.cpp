@@ -78,13 +78,10 @@ bool CSpecificUnitObjectiveCondition::operator==(const CObjectiveCondition &rhs)
 
 bool CSpecificUnitObjectiveCondition::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-
-	float positionX, positionY;
-	result = sReadIdFloat(missionFile, "PositionX", positionX);
-	if (NO_ERR != result) { return false; }
-	result = sReadIdFloat(missionFile, "PositionY", positionY);
-	if (NO_ERR != result) { return false; }
+	float positionX = 0, positionY = 0;
+	if (!EditorFit::floatValue(*missionFile, "PositionX", positionX)
+		|| !EditorFit::floatValue(*missionFile, "PositionY", positionY))
+		return EditorFit::reject("objective unit coordinates");
 	EditorObjectMgr::UNIT_LIST units = EditorObjectMgr::instance()->getUnits();
 	EditorObjectMgr::UNIT_LIST::EConstIterator it = units.Begin();
 	while (!it.IsDone()) {
@@ -93,8 +90,9 @@ bool CSpecificUnitObjectiveCondition::Read( FitIniFile* missionFile )
 		}
 		it++;
 	}
-	if (it.IsDone()) { assert(false); return false; }
+	if (it.IsDone()) return EditorFit::reject("objective unit reference");
 	m_pUnit = (*it);
+	m_authoredPosition.read(positionX, positionY, m_pUnit->getPosition().x, m_pUnit->getPosition().y);
 	if (m_pUnit) {
 		m_LastNotedPositionX = m_pUnit->getPosition().x;
 		m_LastNotedPositionY = m_pUnit->getPosition().y;
@@ -105,10 +103,10 @@ bool CSpecificUnitObjectiveCondition::Read( FitIniFile* missionFile )
 
 bool CSpecificUnitObjectiveCondition::Save( FitIniFile* file )
 {
-	assert(m_pUnit);	// todo: exception handling
+	if (!m_pUnit) return EditorFit::reject("objective unit reference");
 
-	file->writeIdFloat( "PositionX", m_pUnit->getPosition().x  );
-	file->writeIdFloat( "PositionY", m_pUnit->getPosition().y );
+	file->writeIdFloat( "PositionX", m_authoredPosition.writeX(m_pUnit->getPosition().x) );
+	file->writeIdFloat( "PositionY", m_authoredPosition.writeY(m_pUnit->getPosition().y) );
 
 	long cellx, celly;
 	m_pUnit->getCells(cellx, celly);
@@ -127,8 +125,10 @@ bool CSpecificUnitObjectiveCondition::Save( FitIniFile* file )
 }
 
 bool CSpecificUnitObjectiveCondition::EditDialog() {
+	const Unit* previous = m_pUnit;
 	ChooseUnitDlg ChooseUnitDialog(m_pUnit);
 	int ret = ChooseUnitDialog.DoModal();
+	if (IDOK == ret && previous != m_pUnit) m_authoredPosition = {};
 	if (m_pUnit) {
 		m_LastNotedPositionX = m_pUnit->getPosition().x;
 		m_LastNotedPositionY = m_pUnit->getPosition().y;
@@ -182,8 +182,10 @@ bool CSpecificUnitObjectiveCondition::RestoreObjectPointerReferencesFromNotedPos
 }
 
 bool CSpecificEnemyUnitObjectiveCondition::EditDialog() {
+	const Unit* previous = m_pUnit;
 	ChooseUnitDlg ChooseUnitDialog(m_pUnit, Alignment());
 	int ret = ChooseUnitDialog.DoModal();
+	if (IDOK == ret && previous != m_pUnit) m_authoredPosition = {};
 	if (m_pUnit) {
 		m_LastNotedPositionX = m_pUnit->getPosition().x;
 		m_LastNotedPositionY = m_pUnit->getPosition().y;
@@ -210,13 +212,10 @@ bool CSpecificStructureObjectiveCondition::operator==(const CObjectiveCondition 
 
 bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-
-	float positionX, positionY;
-	result = sReadIdFloat(missionFile, "PositionX", positionX);
-	if (NO_ERR != result) { return false; }
-	result = sReadIdFloat(missionFile, "PositionY", positionY);
-	if (NO_ERR != result) { return false; }
+	float positionX = 0, positionY = 0;
+	if (!EditorFit::floatValue(*missionFile, "PositionX", positionX)
+		|| !EditorFit::floatValue(*missionFile, "PositionY", positionY))
+		return EditorFit::reject("objective structure coordinates");
 	EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
 	EditorObjectMgr::BUILDING_LIST::EConstIterator it = buildings.Begin();
 	while (!it.IsDone()) {
@@ -225,8 +224,9 @@ bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 		}
 		it++;
 	}
-	if (it.IsDone()) { assert(false); return false; }
+	if (it.IsDone()) return EditorFit::reject("objective structure reference");
 	m_pBuilding = (*it);
+	m_authoredPosition.read(positionX, positionY, m_pBuilding->getPosition().x, m_pBuilding->getPosition().y);
 	if (m_pBuilding) {
 		m_LastNotedPositionX = m_pBuilding->getPosition().x;
 		m_LastNotedPositionY = m_pBuilding->getPosition().y;
@@ -237,10 +237,10 @@ bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 
 bool CSpecificStructureObjectiveCondition::Save( FitIniFile* file )
 {
-	assert(m_pBuilding);	// todo: exception handling
+	if (!m_pBuilding) return EditorFit::reject("objective structure reference");
 
-	file->writeIdFloat( "PositionX", m_pBuilding->getPosition().x  );
-	file->writeIdFloat( "PositionY", m_pBuilding->getPosition().y );
+	file->writeIdFloat( "PositionX", m_authoredPosition.writeX(m_pBuilding->getPosition().x) );
+	file->writeIdFloat( "PositionY", m_authoredPosition.writeY(m_pBuilding->getPosition().y) );
 
 	long cellx, celly;
 	m_pBuilding->getCells(cellx, celly);
@@ -253,8 +253,10 @@ bool CSpecificStructureObjectiveCondition::Save( FitIniFile* file )
 }
 
 bool CSpecificStructureObjectiveCondition::EditDialog() {
+	const EditorObject* previous = m_pBuilding;
 	ChooseBuildingDlg ChooseBuildingDlg(m_pBuilding);
 	int ret = ChooseBuildingDlg.DoModal();
+	if (IDOK == ret && previous != m_pBuilding) m_authoredPosition = {};
 	if (m_pBuilding) {
 		m_LastNotedPositionX = m_pBuilding->getPosition().x;
 		m_LastNotedPositionY = m_pBuilding->getPosition().y;

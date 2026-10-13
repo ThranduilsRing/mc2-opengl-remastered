@@ -13,6 +13,7 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 {
 	if (!land || !EditorData::instance || !EditorObjectMgr::instance())
 		return;
+	EditorSmokePanelFact("mission_definitions", "MissionDefinitions", runDefinitionSmoke());
 
 	const int mid = (land->realVerticesMapSide - 1) / 2;
 	const int oldType = land->getTerrain(mid, mid);

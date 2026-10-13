@@ -220,6 +220,7 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	m_resetStatusOnFlag = master.m_resetStatusOnFlag;
 	m_resetStatusFlagID = master.m_resetStatusFlagID;
 	m_modelID = master.m_modelID;
+	m_modelDefinition = master.m_modelDefinition;
 	m_highlightColor = master.m_highlightColor;
 	m_highlightColor2 = master.m_highlightColor2;
 	m_baseColor = master.m_baseColor;
@@ -254,6 +255,7 @@ bool CObjective::operator==(const CObjective &rhs) const {
 		(m_resetStatusOnFlag == rhs.m_resetStatusOnFlag) &&
 		(m_resetStatusFlagID == rhs.m_resetStatusFlagID) &&
 		(m_modelID == rhs.m_modelID) &&
+		(m_modelDefinition == rhs.m_modelDefinition) &&
 		(m_highlightColor == rhs.m_highlightColor) &&
 		(m_highlightColor2 == rhs.m_highlightColor2) &&
 		(m_baseColor == rhs.m_baseColor)) {
@@ -400,6 +402,11 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 
 
 	int numConditions = 0;
+	if (!EditorFit::stringValue(*missionFile, "ObjectiveModel", m_modelDefinition.name)
+		|| !EditorFit::longValue(*missionFile, "ModelType", m_modelDefinition.type)
+		|| !EditorFit::floatValue(*missionFile, "ModelScale", m_modelDefinition.scale)
+		|| m_modelDefinition.type < 0 || m_modelDefinition.type > 255 || m_modelDefinition.scale <= 0)
+		return EditorFit::reject("objective model");
 	result = sReadIdWholeNum(missionFile, "NumConditions", numConditions);
 	if (NO_ERR != result) { return false; }
 	int numActions = 0;
@@ -435,7 +442,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			CObjectiveCondition *pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
 			if (!pNewObjectiveCondition) { assert(false); delete pNewObjectiveCondition; continue; }
 			bool bresult = pNewObjectiveCondition->Read(missionFile);
-			if (true != bresult) { assert(false); delete pNewObjectiveCondition; continue; }
+			if (true != bresult) { delete pNewObjectiveCondition; return false; }
 			Append(pNewObjectiveCondition);
 		}
 	}
@@ -475,7 +482,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			CObjectiveCondition *pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
 			if (!pNewObjectiveFailureCondition) { assert(false); delete pNewObjectiveFailureCondition; continue; }
 			bool bresult = pNewObjectiveFailureCondition->Read(missionFile);
-			if (true != bresult) { assert(false); delete pNewObjectiveFailureCondition; continue; }
+			if (true != bresult) { delete pNewObjectiveFailureCondition; return false; }
 			m_failureConditionList.Append(pNewObjectiveFailureCondition);
 		}
 	}
@@ -499,6 +506,33 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			m_failureActionList.Append(pNewObjectiveFailureAction);
 		}
 	}
+	return true;
+}
+
+void CObjective::ModelID(int newID)
+{
+	if (newID == m_modelID) return;
+	const long previous = m_modelID;
+	m_modelID = newID;
+	if (!refreshModelFromCatalog()) m_modelID = previous;
+}
+
+bool CObjective::refreshModelFromCatalog()
+{
+	if (m_modelID == -1)
+	{
+		m_modelDefinition = {};
+		return true;
+	}
+	unsigned long group = 0, index = 0;
+	if (!EditorObjectMgr::instance()->getBuildingFromID(m_modelID, group, index, true))
+	{
+		fprintf(stderr, "[EDITOR_DOCUMENT] catalog refresh skipped unknown model %ld\n", m_modelID);
+		return false;
+	}
+	const int id = EditorObjectMgr::instance()->getID(group, index);
+	const char* name = EditorObjectMgr::instance()->getFileName(id);
+	m_modelDefinition = {name ? name : "", (id >> 24) & 0xff, EditorObjectMgr::instance()->getScale(id)};
 	return true;
 }
 
@@ -528,41 +562,14 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 	file->writeIdULong( "NumFailureConditions", m_failureConditionList.Count() );
 	file->writeIdULong( "NumFailureActions", m_failureActionList.Count() );
 
-	const char* pName = "";
-	int type = 0;
-	float scale = 1.0;
-	if ( m_modelID != -1 )
-	{
-		unsigned long ulGroup, ulIndex;
-		// getBuildingFromID returns false when m_modelID references a building not
-		// present in the editor object catalog (e.g. a mission authored against a
-		// different/mod object set). On failure it leaves ulGroup past the end of the
-		// groups array, so getID()/getFileName()/getScale() would index out of bounds
-		// and read a garbage fileName pointer (AV at Objective.cpp). Guard it: skip the
-		// model fields and serialize defaults rather than crash.
-		if ( EditorObjectMgr::instance()->getBuildingFromID( m_modelID, ulGroup, ulIndex, true) )
-		{
-			int ID = EditorObjectMgr::instance()->getID( ulGroup, ulIndex );
-			const char* pFileName = EditorObjectMgr::instance()->getFileName( ID );
-			pName = pFileName ? pFileName : "";
-			type = (ID >> 24) & 0xff;
-			scale = EditorObjectMgr::instance()->getScale( ID );
-		}
-		else
-		{
-			char warnBuf[160];
-			sprintf( warnBuf, "CObjective::Save: objective model ID %ld not found in editor object catalog; writing default model\n", (long)m_modelID );
-			OutputDebugString( warnBuf );
-		}
-	}
-	file->writeIdString( "ObjectiveModel", pName );
-	file->writeIdLong( "ModelType", type );
+	file->writeIdString( "ObjectiveModel", m_modelDefinition.name.c_str() );
+	file->writeIdLong( "ModelType", m_modelDefinition.type );
 	file->writeIdLong( "BaseColor", m_baseColor );
 	file->writeIdLong( "HighlightColor", m_highlightColor );
 	file->writeIdLong( "HighlightColor2", m_highlightColor2 );
 	file->writeIdULong( "ModelID Version", 2 );
 	file->writeIdLong( "ModelID", m_modelID );
-	file->writeIdFloat( "ModelScale", scale );
+	file->writeIdFloat( "ModelScale", m_modelDefinition.scale );
 
 	
 
@@ -832,7 +839,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			if (NO_ERR != result) { assert(false); continue; }
 			CObjective *pNewObjective = new CObjective(m_alignment);
 			bool bresult = pNewObjective->Read(missionFile, i, objectivesVersion);
-			if (true != bresult) { assert(false); delete pNewObjective; continue; }
+			if (true != bresult) { delete pNewObjective; return false; }
 			Append(pNewObjective);
 		}
 	}

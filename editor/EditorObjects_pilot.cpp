@@ -505,14 +505,30 @@ void Pilot::setName( const char* newName )
 
 }
 
+void NavMarker::CastAndCopy(const EditorObject& master)
+{
+	if (const auto* marker = dynamic_cast<const NavMarker*>(&master)) *this = *marker;
+}
+
+bool NavMarker::readDefinition(FitIniFile& file)
+{
+	float x = 0, y = 0, loadedRadius = 0;
+	if (!EditorFit::floatValue(file, "xPos", x) || !EditorFit::floatValue(file, "yPos", y)
+		|| !EditorFit::floatValue(file, "radius", loadedRadius) || loadedRadius < 0)
+		return EditorFit::reject("NavMarker coordinates/radius");
+	authoredPosition.read(x, y, getPosition().x, getPosition().y);
+	radius = loadedRadius;
+	return true;
+}
+
 bool NavMarker::save( FitIniFile* file, int warriorNumber )
 { 
 	char text[32];
 	sprintf( text, "NavMarker%ld", warriorNumber );
 	file->writeBlock( text );
 
-	file->writeIdFloat( "xPos", appearance()->position.x );
-	file->writeIdFloat( "yPos", appearance()->position.y );
-	file->writeIdFloat( "radius", 256.f );
+	file->writeIdFloat( "xPos", authoredPosition.writeX(appearance()->position.x) );
+	file->writeIdFloat( "yPos", authoredPosition.writeY(appearance()->position.y) );
+	file->writeIdFloat( "radius", radius );
 	return true; 
 }

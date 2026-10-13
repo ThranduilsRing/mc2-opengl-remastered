@@ -16,6 +16,7 @@ class FitIniFile;
 #include "ObjectAppearance.h"
 
 #include <vector>
+#include "AuthoredMissionState.h"
 #include <string.h> // PILOT-PROFILE-PRESERVE-1: strncpy in Pilot::syncRawProfile
 
 #ifndef HEAP_H
@@ -248,6 +249,9 @@ public:
 
 	bool save( FitIniFile* file, int warriorNumber ) override;
 	bool load( FitIniFile* file, int warriorNumber ) override;
+	const std::optional<PartDefinition>& partDefinition() const { return authoredPart; }
+	void restorePartDefinition(std::optional<PartDefinition> definition) { authoredPart = std::move(definition); }
+	void refreshPartFromCatalog();
 
 	void getColors( unsigned long& base, unsigned long& color1, unsigned long& color2 ) const;
 	void setColors( unsigned long base, unsigned long color1, unsigned long color2 );
@@ -304,7 +308,7 @@ public:
 
 protected:
 
-	bool save( FitIniFile* file, int WarriorNumber, int controlDataType, const char* objectProfile );
+	std::optional<PartDefinition> authoredPart;
 
 	Brain brain;
 	bool selfRepairBehaviorEnabled;
@@ -356,6 +360,11 @@ class NavMarker : public EditorObject
 		NavMarker();
 		EditorObject *Clone() override { return(new NavMarker(*this)); }
 		bool save( FitIniFile* file, int number ) override;
+		bool readDefinition(FitIniFile& file);
+		void CastAndCopy(const EditorObject& master) override;
+	private:
+		AuthoredTargetPosition authoredPosition;
+		float radius = 256.0f;
 
 };
 

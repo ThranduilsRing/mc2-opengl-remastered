@@ -3744,7 +3744,15 @@
       "path": "scripts/run_editor_smoke.py",
       "basename": "run_editor_smoke.py",
       "stem": "run_editor_smoke",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_editor_smoke.py",
+          "line": 16,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-codex\\scripts/run_editor_smoke.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"editor_smoke\", SCRIPT)"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -5060,6 +5068,13 @@
       "path": "scripts/tests/test_dup_lines_ratchet.py",
       "basename": "test_dup_lines_ratchet.py",
       "stem": "test_dup_lines_ratchet",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_editor_smoke.py",
+      "basename": "test_editor_smoke.py",
+      "stem": "test_editor_smoke",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

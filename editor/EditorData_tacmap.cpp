@@ -673,7 +673,7 @@ bool CTeams::operator==(const CTeams &rhs) const {
 
 bool CTeams::Read( FitIniFile* missionFile ) {
 	for (int i = 0; i < GAME_MAX_PLAYERS; i++) {
-		m_teamArray[i].Read(missionFile);
+		if (!m_teamArray[i].Read(missionFile)) return false;
 	}
 	return true;
 }

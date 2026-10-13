@@ -1047,6 +1047,8 @@ void EditorInterface::handleNewMenuMessage( long specificMessage )
 		}
 		switch (specificMessage) {
 			case ID_FILE_NEW2: { New(); } break;
+			case ID_MISSION_REFRESH_DEFINITIONS: { refreshMissionDefinitionsFromCatalog(); } break;
+			case ID_MISSION_AUTHOR_CAMERA_ZOOM: { authorMissionCameraZoom(); } break;
 			case ID_FILE_OPEN2: { FileOpen(); } break;
 			case ID_FILE_SAVEAS: { SaveAs(); } break;
 			case ID_FILE_SAVE: {

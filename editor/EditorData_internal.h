@@ -19,6 +19,10 @@
 #include "editorinterface.h"
 #include "EString.h"
 
+bool EditorReadMissionCamera(FitIniFile& file);
+bool EditorSaveMissionCamera(FitIniFile& file);
+void EditorResetMissionCamera();
+
 #include "../EditorBridge/EditorRenderBridge.h"  // GPU batcher/registry/cull lifecycle (firewall)
 #include "../GameOS/gameos/gos_crashbundle.h"
 #include "../GameOS/gameos/gos_terrain_indirect.h"

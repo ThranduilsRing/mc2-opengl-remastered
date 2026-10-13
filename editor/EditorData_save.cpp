@@ -767,7 +767,7 @@ bool EditorData::saveMissionFitFileStuff( FitIniFile &fitFile )
 {
 	bool bRetVal = true;
 	EditorDataTrace("EditorData::saveMissionFitFileStuff: eye->save");
-	eye->save( &fitFile );
+	if (!EditorSaveMissionCamera(fitFile)) return false;
 	EditorDataTrace("EditorData::saveMissionFitFileStuff: land->save(fitFile)");
 	bRetVal = land->save( &fitFile ) && bRetVal;
 

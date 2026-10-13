@@ -47,6 +47,15 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorInterface::instance()->SetBusyMode(false/*no redraw*/);
 
 	clear();
+	// A rejected document has no editable remnants that a subsequent save could
+	// accidentally bless. The inactive camera also protects an empty viewport.
+	const auto rejectDocument = [] {
+		clear();
+		if (eye) eye->active = false;
+		EditorInterface::instance()->UnsetBusyMode();
+		bIsLoading = false;
+		return false;
+	};
 
 	if (!fileName || !fileName[0])
 	{
@@ -126,6 +135,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: after land->init realVerticesMapSide=%ld", land->realVerticesMapSide);
 	EditorDataTrace("EditorData::initTerrainFromPCV: before eye init");
 	eye->init();
+	if (!EditorReadMissionCamera(file))
+	{
+		return rejectDocument();
+	}
 	eye->init( &file );
 	EditorDataTrace("EditorData::initTerrainFromPCV: after eye init");
 
@@ -170,7 +183,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: gpu_cull substrate/compute/readback + terrain_lighting + shadow priming initialized");
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadMechs");
-	EditorObjectMgr::instance()->loadMechs( file );
+	if (!EditorObjectMgr::instance()->loadMechs(file))
+	{
+		return rejectDocument();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadDropZones");
 	EditorObjectMgr::instance()->loadDropZones( file );
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadForests");
@@ -196,6 +212,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: before EditorObjectMgr::load");
 	// Step 10 — editor's only inserted step (actor spawn).
 	EditorObjectMgr::instance()->load( pFile, 1 );
+	if (!EditorObjectMgr::instance()->loadNavMarkers(file))
+	{
+		return rejectDocument();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: after EditorObjectMgr::load");
 
 	// Pull in existing patrols for EVERY loaded unit on mission open: parse each
@@ -539,7 +559,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	}
 
 	EditorData::instance->TeamsRef().Clear();
-	EditorData::instance->TeamsRef().Read( &file );
+	if (!EditorData::instance->TeamsRef().Read(&file))
+	{
+		return rejectDocument();
+	}
 	EditorData::instance->PlayersRef().Clear();
 	EditorData::instance->PlayersRef().Read( &file );
 

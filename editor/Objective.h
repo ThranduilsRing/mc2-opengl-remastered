@@ -10,6 +10,7 @@ Objective.h			: Interface for the Objective component.
 #include "elist.h"
 #include "EString.h"
 #include "tchar.h"
+#include "AuthoredMissionState.h"
 
 class EditorObject;
 class Unit;
@@ -143,6 +144,7 @@ public:
 
 class CSpecificUnitObjectiveCondition: public CObjectiveCondition { /*abstract class*/
 protected:
+	AuthoredTargetPosition m_authoredPosition;
 	Unit *m_pUnit;
 	float m_LastNotedPositionX;
 	float m_LastNotedPositionY;
@@ -184,6 +186,7 @@ public:
 
 class CSpecificStructureObjectiveCondition: public CObjectiveCondition { /*abstract class*/
 protected:
+	AuthoredTargetPosition m_authoredPosition;
 	EditorObject *m_pBuilding;
 	float m_LastNotedPositionX;
 	float m_LastNotedPositionY;
@@ -580,6 +583,7 @@ private:
 	bool m_resetStatusOnFlag;
 	EString m_resetStatusFlagID;
 	long	m_modelID;
+	ObjectiveModelDefinition m_modelDefinition;
 	long m_baseColor;
 	long m_highlightColor;
 	long m_highlightColor2;
@@ -658,7 +662,9 @@ public:
 	int HighlightColor2( ) const { return m_highlightColor2; }
 	void HighlightColor2( int newColor ) { m_highlightColor2 = newColor; }
 	long ModelID() const { return m_modelID; }
-	void ModelID( int newID ) { m_modelID = newID; }
+	void ModelID(int newID);
+	bool refreshModelFromCatalog();
+	const ObjectiveModelDefinition& ModelDefinition() const { return m_modelDefinition; }
 };
 
 class CObjectives : public/*maybe protected*/ EList <CObjective *, CObjective *> {

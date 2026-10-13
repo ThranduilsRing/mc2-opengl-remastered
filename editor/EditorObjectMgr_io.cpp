@@ -1,6 +1,7 @@
 // EditorObjectMgr: save/load of buildings, mechs, forests and drop zones.
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
+#include <algorithm>
 #include "mc2fmt.h"
 
 
@@ -160,7 +161,10 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			continue;
 		}
 
-		EditorObject* pInfo = (EditorObject*)addBuilding( vector, group, index, EDITOR_TEAMNONE, rotation );
+		// A saved marker position is authored state, including free transforms.
+		// Brush placement snapping must not change it during document reload.
+		const bool snapToCell = getSpecialType(getID(group, index)) != NAV_MARKER;
+		EditorObject* pInfo = addBuilding(vector, group, index, EDITOR_TEAMNONE, rotation, 1.0f, snapToCell);
 		if ( !pInfo || !pInfo->appearance() )
 		{
 			continue;
@@ -253,9 +257,9 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 	// disable animation loading to decrease loading time
 	Mech3DAppearanceType::disableAnimationLoading();
 
-	unsigned long count;
-	file.seekBlock( "Parts" );
-	file.readIdULong( "NumParts", count );
+	long count = 0;
+	if (file.seekBlock("Parts") != NO_ERR || !EditorFit::longValue(file, "NumParts", count, true) || count > 100000)
+		return EditorFit::reject("Part count");
 
 	int alternativeInstancesCounter = count + 1;
 	Stuff::Vector3D position;
@@ -264,20 +268,16 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 	for ( int i = 1; i < count + 1; ++i )
 	{
 		sprintf( buffer, "Part%ld", i );
-		file.seekBlock( buffer );
-		unsigned long fitID;
-		file.readIdULong( "ObjectNumber",fitID );
+		long fitID = 0;
+		if (file.seekBlock(buffer) != NO_ERR || !EditorFit::longValue(file, "ObjectNumber", fitID, true))
+			return EditorFit::reject("Part object number");
 		
 		unsigned long group, index;
 		if ( !getBuildingFromID( fitID, group, index, true ) )
 		{
-			// Mission references an object type absent from the (possibly
-			// incomplete) editor object catalog. getBuildingFromID leaves
-			// group/index past-the-end on a miss; addBuilding/getType would
-			// then OOB-deref (the gosASSERT bounds check is a no-op in this
-			// build config). Skip this part instead of crashing the whole
-			// mission load. Real fix is a complete object data env.
-			continue;
+			// An unresolved unit cannot be edited losslessly. Reject the document
+			// instead of permitting a save that silently removes the unit.
+			return EditorFit::reject("Part object absent from catalog");
 		}
 
 		EditorObject* pObject = (EditorObject*)(addBuilding( position, group, index, 0, 0 ));
@@ -286,7 +286,11 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 
 		gosASSERT( dynamic_cast<Unit*>(pObject)  );
 
-		pObject->load( &file, i );
+		if (!pObject->load(&file, i))
+		{
+			deleteBuilding(pObject);
+			return false;
+		}
 
 		if (Mech3DAppearance* m3d = dynamic_cast<Mech3DAppearance*>(pObject->appearance()))
 			GameAdapters::Mech::syncSpawn(*m3d, 0u);
@@ -302,16 +306,21 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 		for (j = 0; j < ((Unit *)(pObject))->tmpNumAlternativeInstances; j += 1)
 		{
 			sprintf( buffer, "Part%ld", alternativeInstancesCounter );
-			file.seekBlock( buffer );
-			unsigned long fitID;
-			file.readIdULong( "ObjectNumber",fitID );
+			long alternativeFitID = 0;
+			if (file.seekBlock(buffer) != NO_ERR || !EditorFit::longValue(file, "ObjectNumber", alternativeFitID, true))
+				return EditorFit::reject("alternative Part object number");
 			
 			unsigned long group, index;
-			getBuildingFromID( fitID, group, index, true );
+			if (!getBuildingFromID(alternativeFitID, group, index, true))
+				return EditorFit::reject("alternative Part object absent from catalog");
 
 			EditorObject* pAltObject = (EditorObject*)(addBuilding( position, group, index, 0, 0 ));
 			gosASSERT( dynamic_cast<Unit*>(pAltObject)  );
-			pAltObject->load( &file, alternativeInstancesCounter );		
+			if (!pAltObject || !pAltObject->load(&file, alternativeInstancesCounter))
+			{
+				if (pAltObject) deleteBuilding(pAltObject);
+				return false;
+			}
 			((Unit *)(pObject))->pAlternativeInstances->Append(*((Unit *)(pAltObject)));
 			deleteBuilding(pAltObject);
 
@@ -699,4 +708,32 @@ bool EditorObjectMgr::loadDropZones( FitIniFile& file )
 	return true;
 	
 	
+}
+
+bool EditorObjectMgr::loadNavMarkers(FitIniFile& file)
+{
+	if (file.seekBlock("NavMarkers") != NO_ERR) return true;
+	long count = 0;
+	if (!EditorFit::longValue(file, "NumNavMarkers", count, true) || count > buildings.Count())
+		return EditorFit::reject("NavMarker count");
+	std::vector<NavMarker*> markers;
+	for (auto it = buildings.Begin(); !it.IsDone(); it++)
+		if (auto* marker = dynamic_cast<NavMarker*>(*it)) markers.push_back(marker);
+	if (static_cast<size_t>(count) != markers.size()) return EditorFit::reject("NavMarker count mismatch");
+	for (long i = 0; i < count; ++i)
+	{
+		char block[32];
+		sprintf(block, "NavMarker%ld", i);
+		if (file.seekBlock(block) != NO_ERR) return EditorFit::reject("NavMarker block missing");
+		float x = 0, y = 0;
+		if (!EditorFit::floatValue(file, "xPos", x) || !EditorFit::floatValue(file, "yPos", y))
+			return EditorFit::reject("NavMarker coordinates");
+		auto found = std::find_if(markers.begin(), markers.end(), [x, y](NavMarker* marker) {
+			return std::abs(marker->getPosition().x - x) < 1.0f && std::abs(marker->getPosition().y - y) < 1.0f;
+		});
+		if (found == markers.end()) return EditorFit::reject("NavMarker reference");
+		if (!(*found)->readDefinition(file)) return false;
+		markers.erase(found);
+	}
+	return true;
 }

@@ -35,6 +35,28 @@ def panel_lines():
 
 
 class EditorSmokeTests(unittest.TestCase):
+    def test_pinned_delta_uses_exact_input_and_reports_disappeared_classes(self):
+        with scratch_directory() as directory:
+            original = b'[Part1]\nul ControlDataType = 2\nst CSVFile = "Authored_CASE"\n[Cameras]\nf ZoomMax = 1.0\n'
+            rewritten = original.replace(b'= 2', b'= 1').replace(b'Authored_CASE', b'authored_case').replace(b'= 1.0', b'= 2.0')
+            old = smoke.compare_fit(original, rewritten)
+            (directory / "mc2_01.json").write_text(json.dumps(old), encoding="utf-8")
+            (directory / "mc2_01.written.fit").write_bytes(rewritten)
+            current = smoke.compare_fit(original, original)
+            delta = smoke.pinned_class_delta("mc2_01", original, current, directory)
+            self.assertEqual(delta["disappeared"], ["Cameras", "Part CSV spelling", "Part control/profile"])
+            self.assertEqual(delta["remaining"], [])
+            mismatch = smoke.pinned_class_delta("mc2_01", original + b"\n", current, directory)
+            self.assertEqual(mismatch["status"], "different pinned input")
+            missing = smoke.pinned_class_delta("mc2_22", original, current, directory)
+            self.assertEqual(missing["status"], "no pinned comparison")
+
+    def test_definition_preservation_and_command_probe_is_required(self):
+        lines = panel_lines()
+        without_definitions = "\n".join(line for line in lines.splitlines() if "panel=MissionDefinitions" not in line)
+        self.assertIn("mission_definitions/MissionDefinitions", smoke.grade_workflows(without_definitions))
+        self.assertEqual(smoke.grade_workflows(lines), "")
+
     def test_adopted_fixture_contains_all_24_exact_hash_pairs_and_stock_provenance(self):
         baseline = json.loads(smoke.BASELINE.read_text(encoding="utf-8"))
         self.assertEqual(baseline["version"], 1)
@@ -62,7 +84,7 @@ class EditorSmokeTests(unittest.TestCase):
 
     def test_all_required_workflows(self):
         self.assertEqual(smoke.grade_workflows(panel_lines()), "")
-        self.assertEqual(len(set(smoke.WORKFLOW_PANELS.values())), 6)
+        self.assertEqual(len(set(smoke.WORKFLOW_PANELS.values())), 7)
 
     def test_missing_failed_and_mislabelled_panel_are_red(self):
         lines = panel_lines()
