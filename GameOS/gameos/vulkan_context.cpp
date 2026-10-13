@@ -350,7 +350,7 @@ bool VulkanContext::init(bool wantPresent) {
     std::vector<const char*> devExts;
     for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
 
-    // The feature bits the profile selected. Seven are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
+    // The feature bits the profile selected. Eight bits are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
     // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2) and enabled although no island consumes them
     // yet; independentBlend is required because the islands' two-attachment pipelines already need it. An accepted device has every one and no island
     // carries a fallback arm for any. Each bit goes through the struct that defines it (the core 1.0 features, the core 1.2 / 1.3 aggregate when the

@@ -168,6 +168,10 @@ def merge(ledger: "dict[str, dict]", root: str, refresh: "list[str] | None") -> 
         old = out.get(name)
         if old and old.get("void") and not row["void"]:
             row["void"], row["void_reason"] = True, old.get("void_reason") or "flagged VOID earlier"
+        if old and row["poses_present"] < old.get("poses_present", 0):
+            # Pose files were deleted from a set whose directory remains: what the poses drew and read back was recorded while they existed, and
+            # describing the set again must not turn that into "unrecorded".
+            row["drew"], row["readback"] = old.get("drew", row["drew"]), old.get("readback", row["readback"])
         if old and old.get("note"):
             row["note"] = old["note"]
         out[name] = row

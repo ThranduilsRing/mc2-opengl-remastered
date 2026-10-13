@@ -13,7 +13,7 @@ OK_LINE = ('[VK_PROFILE v1] verdict=ok device="AMD Radeon RX 7900 XTX" api=1.4.0
            "runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2,independentBlend "
            "extensions=VK_KHR_swapchain,VK_EXT_memory_budget")
 OLD_GPU = ('[VK_PROFILE v1] verdict=refused device="old gpu" api=1.1.0 instance_api=1.3.0 floor=1.2 '
-           "required_missing=api_1_2,timeline_semaphore,buffer_device_address,descriptor_indexing,dynamic_rendering,synchronization2 wanted_missing=- "
+           "required_missing=api_1_2,timeline_semaphore,buffer_device_address,descriptor_indexing,dynamic_rendering,synchronization2,independent_blend wanted_missing=- "
            "items=api_1_2:-,swapchain:ext,limits:limit,timeline_semaphore:-,buffer_device_address:-,descriptor_indexing:-,dynamic_rendering:-,"
            "synchronization2:-,independent_blend:-,memory_budget:ext enabled=- extensions=-")
 EXT_ROUTE = OK_LINE.replace("api=1.4.0 instance_api=1.3.0", "api=1.2.0 instance_api=1.2.0").replace("dynamic_rendering:core,synchronization2:core",
@@ -37,7 +37,7 @@ def test_an_extension_route_on_a_1_2_device_is_read_as_ext():
 
 def test_a_refused_line_names_what_is_missing():
     (p,) = vk_profile.parse(OLD_GPU)
-    assert not p.accepted and p.required_missing[0] == "api_1_2" and len(p.required_missing) == 6
+    assert not p.accepted and p.required_missing[0] == "api_1_2" and len(p.required_missing) == 7
     assert p.wanted_missing == [] and p.enabled == [] and p.extensions == []
 
 

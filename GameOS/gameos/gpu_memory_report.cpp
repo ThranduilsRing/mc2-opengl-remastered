@@ -92,7 +92,7 @@ bool renderAdapterLuid(uint8_t (&luid)[8]) {
     return true;
 }
 
-const char* g_adapterRule = "unresolved";                    // "luid" or "most_dedicated": which rule picked the DXGI adapter (printed once by log())
+const char* g_adapterRule = "unresolved";                    // "luid", "most_dedicated" (the driver gave no LUID) or "most_dedicated_luid_unmatched": which rule picked the DXGI adapter (printed once by log())
 
 // The DXGI adapter the engine renders on, found once; queried per call. Matched by LUID to the Vulkan device or the GL context's device; when the
 // driver gives no LUID the adapter with the most dedicated memory (the discrete GPU on a desktop with an iGPU) is used, which is wrong on a host with two
@@ -110,31 +110,33 @@ IDXGIAdapter3* dxgiAdapter() {
     if (!create || FAILED(create(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&factory))) || !factory) return nullptr;
     uint8_t luid[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     const bool haveLuid = renderAdapterLuid(luid);
-    SIZE_T best = 0;
-    bool matched = false;
-    for (UINT i = 0;; ++i) {
-        IDXGIAdapter1* a = nullptr;
-        if (factory->EnumAdapters1(i, &a) == DXGI_ERROR_NOT_FOUND) break;
-        DXGI_ADAPTER_DESC1 d{};
-        a->GetDesc1(&d);
-        IDXGIAdapter3* a3 = nullptr;
-        const bool sameLuid = haveLuid && std::memcmp(&d.AdapterLuid, luid, sizeof(luid)) == 0;
-        const bool takeIt = haveLuid ? sameLuid : (d.DedicatedVideoMemory >= best);
-        if (!(d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) && takeIt &&
-            SUCCEEDED(a->QueryInterface(__uuidof(IDXGIAdapter3), reinterpret_cast<void**>(&a3))) && a3) {
-            if (adapter) adapter->Release();
-            adapter = a3;
-            best = d.DedicatedVideoMemory;
-            matched = sameLuid;
+    // One pass over the DXGI adapters. By LUID it takes the adapter the engine renders on; otherwise the one with the most dedicated memory.
+    auto pass = [&](bool byLuid) {
+        SIZE_T best = 0;
+        for (UINT i = 0;; ++i) {
+            IDXGIAdapter1* a = nullptr;
+            if (factory->EnumAdapters1(i, &a) == DXGI_ERROR_NOT_FOUND) break;
+            DXGI_ADAPTER_DESC1 d{};
+            a->GetDesc1(&d);
+            IDXGIAdapter3* a3 = nullptr;
+            const bool takeIt = byLuid ? std::memcmp(&d.AdapterLuid, luid, sizeof(luid)) == 0 : (d.DedicatedVideoMemory >= best);
+            if (!(d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) && takeIt &&
+                SUCCEEDED(a->QueryInterface(__uuidof(IDXGIAdapter3), reinterpret_cast<void**>(&a3))) && a3) {
+                if (adapter) adapter->Release();
+                adapter = a3;
+                best = d.DedicatedVideoMemory;
+            }
+            a->Release();
         }
-        a->Release();
+    };
+    if (haveLuid) pass(true);
+    g_adapterRule = "luid";
+    if (!adapter) {
+        // No LUID from the driver, or one that names no DXGI adapter (a remote session, WARP): report the most dedicated adapter and say which case it was.
+        pass(false);
+        g_adapterRule = haveLuid ? "most_dedicated_luid_unmatched" : "most_dedicated";
     }
     factory->Release();
-    if (haveLuid && !matched) {                                 // the driver's LUID names no DXGI adapter: fall back rather than report nothing
-        g_adapterRule = "most_dedicated";
-        return adapter;
-    }
-    g_adapterRule = haveLuid ? "luid" : "most_dedicated";
     return adapter;
 }
 
