@@ -23,6 +23,12 @@ Lane 2 untouched (readers only). The Codex track owns `editor/`, `code/saveload.
 - Idiom KPI (`cxx17_ratchet --report` TOTAL summed, 21 idioms): session start 16,193 -> after B2.1 16,170 (-23: LG01 -6, LG02 -2, LG03 -10, LG04 -1, LG09 -4: bitflag, team_los, terrain); B2.0 / B2.5-pre / fixes 0.
 - Remaining B2 call sites (`cxx23-step4-b2-callsites.txt`, 1541 sites in 115 files): EList 1410, SortList 69, PriorityQueue 62; editor 933 sites in 63 files (Codex), code 555 in 47, mclib 53 in 5. By batch: B2.2 388, B2.3 77, B2.4-pre 39, B2.4 23, B2.5 41, B2.5-pre 12 (PriorityQueue rows that B2.5 converts), B6 6, E1 295, E2 447, E3 43, E4 148, codex-owned ABL 12.
 
+## Checkpoint (exe of f00894207, deployed to mc2-win64-v0.4; docs-only commits since)
+- Build: dev tree rc 0; build_all_targets root rc 0 (at B2.1); 20 harnesses; doctest 2823 plain and 2823 under ASan (0 ASan reports; the 1 failed assertion is the known should-fail case); `cxx17_ratchet --check --worktree` OK; own_inventory OK.
+- `bash scripts/check-contracts.sh`: red rows `background_launch` (scripts/tests/test_board_selftests.py), `delivery_installs`, `doc_links` (6 refs), `scripts_tests` (only the background-launch test): none from this lane; `script_callers` and the estring census are green.
+- tier1 5/5 `2026-10-13T16-39-18` (mc2_01 145 fps, mc2_03 82, mc2_10 101, mc2_17 114, mc2_24 121). The first attempt `2026-10-13T16-26-33` failed mc2_24 `heartbeat_freeze_play` (the known flake) while this lane ran the ASan build and the contract board beside it; the rerun on a quiet host passed.
+- The dev install was contended: the Codex track (`A:/Games/mc2-s3`, tier2 and single-mission runs) and this lane both deploy into `mc2-win64-v0.4`; `deploy_payload.py` does not honour the folder lease, so a deploy can replace an exe a lease holder is about to run (this lane's 16:1x deploy happened while mc2-s3 held the folder lease for mc2_10). Agree on one owner of 0.4 per hour, or give the Codex track its own lane install.
+
 ## Open from this session
 - F1 (the `[VIDEO v1]` floor has no enforcing parser): NOT added: lane 2 has `scripts/smoke_lib/logparse.py` and `report.py` modified and uncommitted, and the floor is an ABSENCE rule (a MarkerBucket flags a line that is present). Smoke owner: assert `pre_video site=campaign_start` after a campaign boot and `play_requested` in tier1 mc2_10; then name the parser in the baseline reason (`tests/contract/default_build_quiet_baseline.json`).
 - F4 (a `std::string` resource loader for the 251 `cLoadString` sites) later batch.
