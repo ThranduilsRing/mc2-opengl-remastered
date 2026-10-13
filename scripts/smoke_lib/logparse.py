@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-from . import vk_profile, vram
+from . import vk_profile, vk_validation, vram
 
 PERF_RE = re.compile(
     r"\[PERF v1\] avg_fps=(?P<avg>[\d.]+) p50_ms=(?P<p50>[\d.]+) "
@@ -126,6 +126,10 @@ MARKER_BUCKETS: tuple = (
     # for Vulkan would otherwise pass on the wrong backend. Emitter: GameOS/gameos/vulkan_context.cpp (vk_device_profile.h table).
     MarkerBucket(re.compile(r"\[VK_PROFILE v1\] verdict=refused\b"),
                  "vk_profile_refused", "red", None),
+    # The Khronos validation layer reported an ERROR (or was requested and is not installed: id=layer_unavailable). Warnings are counted in the report,
+    # never red. Emitter: GameOS/gameos/vulkan_context.cpp; the layer is on only when the run sets MC2_VULKAN_VALIDATION (smoke, never a player).
+    MarkerBucket(re.compile(r"\[VK_VALIDATION v1\] severity=error\b"),
+                 "vk_validation_error", "red", None),
 )
 
 
@@ -184,6 +188,8 @@ class LogSummary:
     vram: list = field(default_factory=list)
     # The `[VK_PROFILE v1]` lines (the Vulkan device profile verdict), see smoke_lib/vk_profile.py.
     vk_profile: list = field(default_factory=list)
+    # The `[VK_VALIDATION v1]` lines (Khronos validation layer messages), see smoke_lib/vk_validation.py.
+    vk_validation: list = field(default_factory=list)
 
 
 def parse_log(text: str,
@@ -212,6 +218,8 @@ def parse_log(text: str,
             s.vram.extend(vram.parse(line))
         if "[VK_PROFILE v1]" in line:
             s.vk_profile.extend(vk_profile.parse(line))
+        if "[VK_VALIDATION v1]" in line:
+            s.vk_validation.extend(vk_validation.parse(line))
         if "[SMOKE v1] event=banner" in line:
             s.smoke_banner_seen = True
         if "[SMOKE v1] event=mission_resolve" in line:

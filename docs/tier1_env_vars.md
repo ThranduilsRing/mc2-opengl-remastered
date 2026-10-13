@@ -106,7 +106,7 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 Vulkan gates. Readers in `GameOS/gameos/vulkan_*.cpp`; `MC2_VULKAN_SPV_DIR` is read by every VK island loader.
 
 - `MC2_VULKAN_SPV_DIR=<path>` — override the compiled-`.spv` directory the Vulkan islands and the present object load from. Default = `shaders/vulkan`.
-- `MC2_VULKAN_VALIDATION=<preset>` — enable the `VK_LAYER_KHRONOS_validation` layer + debug-utils messenger in the Vulkan context and present object, selecting a validation **preset** (VULKAN-VALIDATION-PRESETS-1). Default **OFF**. Presets:
+- `MC2_VULKAN_VALIDATION=<preset>` — enable the `VK_LAYER_KHRONOS_validation` layer + debug-utils messenger in the Vulkan context and present object, selecting a validation **preset** (VULKAN-VALIDATION-PRESETS-1). Default **OFF**. A Vulkan smoke run with it set grades the layer's messages (`[VK_VALIDATION v1]`, error = red bucket `vk_validation_error`): see `docs/vk-validation.md`. Presets:
   - unset / `0` / `off` — validation OFF (unchanged legacy behavior).
   - `1` / `core` / present-but-empty — core validation only (backward-compatible with the historical bare `=1`).
   - `sync` — core + `VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT`.

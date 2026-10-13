@@ -29,7 +29,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_harness_desktop_safety.py` | 407 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 457 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
-| `tests/smoke/test_launcher_legacy_env.py` | 51 | `subprocess.run` **raw, allowed:** the launcher's --sync-options mode edits two files and exits before it creates a window; it never starts the game | offscreen |
+| `tests/smoke/test_launcher_legacy_env.py` | 68 | `subprocess.run` **raw, allowed:** the launcher's --sync-options mode edits two files and exits before it creates a window; it never starts the game | offscreen |
 | `tools/campaign_save_roundtrip.py` | 161 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/perf_snapshot.py` | 105 | `nofocus.spawn` | offscreen |

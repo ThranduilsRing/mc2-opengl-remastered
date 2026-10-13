@@ -24,6 +24,7 @@
 
 #include "vulkan_context.h"
 #include "vk_device_profile.h"
+#include "vk_validation_line.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -65,17 +66,26 @@ VulkanContext g_engineContext;
 // pointer is sufficient (set in init()).
 VulkanContext* g_cbContext = nullptr;
 
+// One validation-layer message in the engine log (vk_validation_line.h); the smoke parser grades an error red and counts the warnings. The layer limits
+// repeats of one message id itself, so the log stays small.
+void validationLog(std::string_view severity, std::string_view id, std::string_view text) {
+    const std::string line = formatValidationLine(severity, id, text);
+    std::fprintf(stderr, "%s\n", line.c_str());
+    std::fflush(stderr);
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT /*types*/,
     const VkDebugUtilsMessengerCallbackDataEXT* pData,
     void* /*user*/) {
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
+    const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         if (g_cbContext) ++g_cbContext->mutableHealth().validationErrors;
-        std::fprintf(stderr, "[VK_ENGINE_CONTEXT_VALIDATION] ERROR: %s\n", msg);
+        validationLog("error", id, msg);
     } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        std::fprintf(stderr, "[VK_ENGINE_CONTEXT_VALIDATION] warning: %s\n", msg);
+        validationLog("warning", id, msg);
     }
     return VK_FALSE;
 }
@@ -211,6 +221,8 @@ bool VulkanContext::init(bool wantPresent) {
             wantValidation = false;
             health_.validationEnabled = false;
             ctxlog("validation requested but %s unavailable; continuing WITHOUT.", want);
+            // A validation run that silently has no layer would look green with no coverage: the smoke grades this error red.
+            validationLog("error", "layer_unavailable", std::string(want) + " was requested (MC2_VULKAN_VALIDATION) and the Vulkan loader does not offer it; this run is NOT validated");
         }
     }
 
@@ -253,10 +265,16 @@ bool VulkanContext::init(bool wantPresent) {
                                   VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
             mci.pfnUserCallback = engine_ctx_debug_cb;
             VkResult mr = pfnCreate(instance_, &mci, nullptr, &messenger_);
-            if (mr == VK_SUCCESS) ctxlog("validation messenger engaged (preset=%s).", valPreset);
-            else ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", (int)mr);
+            if (mr == VK_SUCCESS) {
+                ctxlog("validation messenger engaged (preset=%s).", valPreset);
+                validationLog("info", "layer_enabled", std::string("VK_LAYER_KHRONOS_validation messenger engaged, preset=") + valPreset);
+            } else {
+                ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", (int)mr);
+                validationLog("error", "messenger_unavailable", "vkCreateDebugUtilsMessengerEXT failed (" + std::to_string(static_cast<int>(mr)) + "); this run is NOT validated");
+            }
         } else {
             ctxlog("vkCreateDebugUtilsMessengerEXT not found; no error capture.");
+            validationLog("error", "messenger_unavailable", "vkCreateDebugUtilsMessengerEXT is not exported; this run is NOT validated");
         }
     }
 

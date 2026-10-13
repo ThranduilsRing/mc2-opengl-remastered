@@ -54,6 +54,17 @@ def _vk_profile_line(rows: list[Row]) -> str:
     return ""
 
 
+def _vk_validation_line(rows: list[Row]) -> str:
+    """One report line with the validation-layer error / warning counts and ids of every mission that ran with the layer (or printed a message)."""
+    from . import vk_validation
+    parts = []
+    for r in rows:
+        messages = getattr(r.summary, "vk_validation", None) or []
+        if messages:
+            parts.append(f"{r.stem} {vk_validation.describe(messages)}")
+    return ("> **Vulkan validation:** " + " | ".join(parts) + "\n\n") if parts else ""
+
+
 def _resolution_line(tier: str) -> str:
     """The size a pinned tier ran at (the fps numbers mean this size); other tiers take the install's options.cfg size and say nothing."""
     from . import render_resolution
@@ -99,6 +110,7 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
     head += _resolution_line(tier)
     head += _vram_line(rows)
     head += _vk_profile_line(rows)
+    head += _vk_validation_line(rows)
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"

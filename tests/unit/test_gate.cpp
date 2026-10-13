@@ -18,6 +18,7 @@
 #include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
 #include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
+#include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
 
 #include <cstdio>
 #include <limits>
@@ -1716,4 +1717,24 @@ TEST_CASE("vk profile: the line names the device, both versions, what is missing
     CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);
     CHECK(vkp::formatLine("gpu", device12Caps(false), lacking).find(" required_missing=dynamic_rendering,synchronization2 wanted_missing=- ") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+// Vulkan validation-layer line (GameOS/gameos/vk_validation_line.h): one message is always one line the smoke parser can read
+// ---------------------------------------------------------------------------
+
+TEST_CASE("vk validation line: a message becomes one line with a clean id and a quote-free text") {
+    using mc2vk::formatValidationLine;
+    CHECK(formatValidationLine("error", "VUID-vkCmdDraw-None-02699", "vkCmdDraw(): set 0 not updated") ==
+          "[VK_VALIDATION v1] severity=error id=VUID-vkCmdDraw-None-02699 text=\"vkCmdDraw(): set 0 not updated\"");
+    // a multi-line message with quotes and tabs stays on one line and keeps its closing quote unambiguous
+    CHECK(formatValidationLine("warning", "UNASSIGNED id with spaces", "line one\nline \"two\"\r\n\tline three") ==
+          "[VK_VALIDATION v1] severity=warning id=UNASSIGNED_id_with_spaces text=\"line one line 'two'   line three\"");
+    CHECK(formatValidationLine("info", "", "x") == "[VK_VALIDATION v1] severity=info id=- text=\"x\"");
+}
+
+TEST_CASE("vk validation line: a very long message is capped") {
+    const std::string line = mc2vk::formatValidationLine("error", "id", std::string(5000, 'a'));
+    CHECK(line.size() == std::string("[VK_VALIDATION v1] severity=error id=id text=\"\"").size() + mc2vk::kValidationTextCap);
+    CHECK(line.back() == '"');
 }

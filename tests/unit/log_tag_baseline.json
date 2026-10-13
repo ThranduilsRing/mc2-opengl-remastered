@@ -11316,13 +11316,6 @@
    "count": 1
   },
   {
-   "tag": "VK_ENGINE_CONTEXT_VALIDATION",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 2
-  },
-  {
    "tag": "VK_FEED_DUMP",
    "ver": -1,
    "stream": "stderr",
@@ -11888,6 +11881,17 @@
     "record_submit_us",
     "fence_wait_us",
     "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_VALIDATION",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "severity",
+    "id",
+    "text"
    ],
    "count": 1
   },
