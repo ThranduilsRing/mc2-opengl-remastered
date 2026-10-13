@@ -12,7 +12,7 @@ Active work time about 3 h (the session clock jumped 7 h between two tool calls 
 - 1266aa1a2 F6 (`analyze_dangling.py` lost the `cl /analyze` leg: 20 s -> 8 s; exact tag set; exit 2 for a file with no compile_commands entry or that did not parse), F7 (`estring_callsites.py --check` + board row
   `estring_callsites`; gui/aedit.cpp and gui/asystem.cpp rows moved to their lines), F12 (`tests/callers.json` regenerated).
 - c1a283422 B1.3a: `LogisticsChassis` / `LogisticsVariant` / `LogisticsMech` on `std::string`, `const std::string&` accessors, `setName(std::string)`, every variant / mech / chassis-file lookup `iequals` on a `from_c` key, the two bare `==`
-  (inventory, modify) as `iequals`, mechlist variant order `ci_total_less`, `mc2::str::file_stem` (replaces the Find/Left/ReverseFind/Right chain at 3 sites; tested against it on the stock file names). 21 edited files. LG06 -2, LG09 -49.
+  (inventory, modify) as `iequals`, mechlist variant order `ci_total_less`, `mc2::str::file_stem` (replaces the Find/Left/ReverseFind/Right chain at 3 sites; tested against it on the stock file names). 21 edited files. LG06 -2, LG09 -22 (6,627 -> 6,605; the first draft of this line said -49).
 - 06ea51611 `mechbay_preview_harness.py`: `encyclopedia`, `encyclopedia_vehicles`, `encyclopedia_pilots` screens (boot from the main menu, no mission is played).
 - 45f39522a B1.3b: `LogisticsPilot` on `std::string`; the fold-only site (`PMWChopper` / `pmwchopper`, `updateAvailability` and `appendAvailability`) and every pilot lookup `iequals`; pilot list order `ci_total_less`; display upper-casing `ascii_upper`.
   13 edited files. LG09 -3.
@@ -27,8 +27,7 @@ within the 28 s window; the duration cap is 30 s, rerun when the host is quiet. 
 ## B1.3 save-diff explanation (mc2_01, render frame 1000; pre-batch exe 1266aa1a2 vs 06ea51611 (3a) vs 45f39522a (3b))
 Between any two of the three exes: the mission text packet (packet 2) is byte-identical; MechData (134) and GroundVehicleData (151) differ ONLY at bytes 2953-2955 and 3001-3003 of every record (3a vs pre) / 2954-2955 and 3002-3003 (3b vs 3a): the
 saved vftable pointers of the embedded `MoverControl` (offset 2952) and `MoverDynamics` (offset 3000), which move with every link; plus 3020-3035 in one MechData packet (the known noise); MechWarriorData (38-41) and CommanderData (1-2) are
-the noise set (they differ between two runs of one exe). Nothing else differs: logistics state is not in the mission save, so the variant / mech / pilot writers (`LogisticsVariant::save`, `LogisticsMech::save`, `LogisticsPilot::save`)
-are covered only by reading (`c_str()` of the same text) until B1.4's campaign-save proof.
+the noise set (they differ between two runs of one exe). Nothing else differs. (Correction 2026-10-13: logistics state IS in the mission save, as its last text packet: 52 pilot blocks, byte-identical across the three exes, so `LogisticsPilot::save` is covered; `VariantCount` and `InventoryCount` are 0 in a mission-boot save, so the variant and mech writers were covered only by reading until the campaign-save round trip of notes section 8c.)
 
 ## Proof numbers
 - Pre-commit, each of c1a283422 and 45f39522a: `scripts/ninja_build.py` rc 0; `tools/build_all_targets.py` rc 0 (every stage); `build_contract_harnesses --run --unit` 20 harnesses pass, doctest 2782 passed / 0 failed / 1 skipped (plain), 2782 under
