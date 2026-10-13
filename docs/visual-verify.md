@@ -134,8 +134,9 @@ them, and the report records both. The older 3840x2160 set `reset-50331d5` stays
 1080p capture against it. To re-bless: capture three runs with `tools/visual_verify/capture.py` (`--env MC2_SMOKE_FREEZE_ANIM=1`), then `bless.py` below, then
 point `CURRENT_GOLDEN` at the new directory. The render options (`render_options` in `capture_run.json`) are an input of every
 capture too; `capture_ab.py compare` refuses sets whose options differ unless `--vary Key,Key` names them, and refuses a set that was not drawn by the backend
-its name says (a `-vk` set whose sidecars say GL is "VK arm UNPROVEN"). `.claude/l2cap/index.md` (`tools/visual_verify/capture_index.py`) is the committed
-one-line-per-set record of the scratch capture sets: requested backend, backend that drew, readback source, exe commit, option differences, frozen or not, VOID flag.
+its name says (a `-vk` set whose sidecars say GL is "VK arm UNPROVEN"). `.claude/l2cap/ledger.json` (`tools/visual_verify/capture_index.py`, rendered as `index.md`) is the committed
+one-entry-per-set record of the scratch capture sets: requested backend, backend that drew, readback source, exe commit, option differences from that exe's own defaults, frozen or not,
+VOID flag and reason. It keeps a set whose PNG directory was deleted, and a VOID flag never clears; run the tool after taking a set to add it.
 
 If you ever need **frame-level** goldens (full 4K), keep them in an external dir
 (they are ~5-10 MB each — do not commit) and record the path in `golden.json`'s

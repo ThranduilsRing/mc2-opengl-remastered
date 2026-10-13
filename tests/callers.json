@@ -3147,6 +3147,20 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/visual_verify/capture_index.py",
+          "line": 28,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/visual_verify/test_capture_index.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (scripts/ is on sys.path through capture_index)"
+        },
+        {
           "path": "tools/witness_smoke.py",
           "line": 30,
           "evidence": "import",
@@ -10895,7 +10909,7 @@
       "callers_by_stem": [
         {
           "path": "tools/visual_verify/test_capture_index.py",
-          "line": 9,
+          "line": 14,
           "evidence": "import",
           "reference": "capture_index",
           "text": "import capture_index  # noqa: E402"
