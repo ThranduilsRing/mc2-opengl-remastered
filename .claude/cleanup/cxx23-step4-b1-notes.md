@@ -51,8 +51,8 @@ Header fan-out: `code/logisticsdata.h` 33 includers, `editor/EditorData.h` 22, `
 
 COUPLING TO THE GUI WIDGETS (not B1, but B1 must not break it): `aText::setText(const EString&)` (`gui/asystem.h:315`), `aEdit::getEntry(EString&)` / `setEntry(const EString&, BYTE)`
 (`gui/aedit.h:46`), the members `text`/`hiddenText` of `aListItem`/`aText`/`aEdit` (`gui/alistbox.h:91,134`, `gui/asystem.h:318`, `gui/aedit.h:130`), 3 local uses (`gui/aanim.cpp`,
-`gui/aedit.cpp`, `gui/logisticsscreen.cpp`). **B1.0 adds the bridge as `setText(const char*)` plus `setText(const std::string&)` forwarding to the EString member** (and the matching
-`setEntry` overloads, and `aEdit::entry()` returning `std::string`, the final API): there is NO `setText(std::string_view)` (it would make every `setText("literal")` ambiguous
+`gui/aedit.cpp`, `gui/logisticsscreen.cpp`). **B1.0 adds the bridge as `setText(const char*)` plus `setText(const std::string&)` forwarding to the EString member** (on `aText` and `aTextListItem`; the matching
+`aEdit::setEntry` overloads, and `aEdit::entry()` returning `std::string`, the final API; `tests/unit/test_gui_bridge.cpp` is the compile-time overload-resolution test): there is NO `setText(std::string_view)` (it would make every `setText("literal")` ambiguous
 between two user-defined conversions) and NO `EString::view()` (a view of a temporary EString dangles). `EString::str()` exists and is used only on text coming FROM a widget.
 Each overload carries a WHAT+WHY comment naming B6 as its deletion point; **B6 folds the three into one `setText(std::string_view)` with zero caller edits**, and deletes `str()` and the class.
 A compile test calls `setText("x")`, `setText(std::string{})`, `setText(es)` and `setText(0L)`.
@@ -67,7 +67,8 @@ b. **The site list is a compiler list, not grep.** In an uncommitted local build
    `Compare`, `Make{Upper,Lower}`, `Find/ReverseFind/SubString/Left/Right/Remove/Replace/Insert`, `Format`). The warning list (file:line:kind, every TU, editor included) is committed as
    `.claude/cleanup/cxx23-step4-b1-callsites.txt` with counts per file. It also catches `std::string == const char*`, which compiles silently, and files without the token. The
    deprecation itself is NEVER committed. Each batch commit removes its rows; the count only goes down.
-c. **The lifetime gate** (section 5): `tests/analyze/analyze_dangling.py` with a seeded negative test; `/we4840`; a board row only if the script runs under a minute.
+c. **The lifetime gate** (section 5): `tests/analyze/analyze_dangling.py` with a seeded negative test (a board row: it runs in 10 s). `/we4840` (a class object through `...`) is its own
+   commit, B1.0f: the whole all-targets build has zero C4840 today, so the flag is a single global line in the root CMakeLists.txt, at the price of one full rebuild of every tree.
 d. **A one-off probe on the OLD exe** (a diagnostic patch applied by script, NEVER committed): log every `Compare`/`==`/`<` where the fold matched and the bytes did not, by call site; log every
    `sReadIdString` miss whose caller then used the stale value. Run on stock data: tier2 missions mc2_01, mc2_03, mc2_10, mc2_24 (these boot into missions, so the logistics and campaign
    screens are NOT covered by them: `MC2_BOOT_TO_MECHLAB`, `MC2_BOOT_TO_BAY` and a campaign start are separate runs when the harness allows). The result (sites and counts on stock data)
@@ -129,9 +130,10 @@ must be silent. **The gate is trusted only for the shapes the seeded test proves
 - C1 Types: owned text `std::string`; a read-only parameter `std::string_view`, except where the text reaches a C API (`seekBlock`, `writeIdString`, `AddString`, `playDigitalStream`, printf), where it is
   `const std::string&` or `const char*`. A `string_view` is never a member, never a return value (except a string literal), never a local bound to a call result.
 - C2 Every legacy `const char*` entering a converted string goes through `mc2::str::from_c(p)` (null gives empty). Never `std::string(p)` on a pointer not proven non-null.
-- C3 Identity comparisons of names that come from data use `mc2::str::iequals` (ASCII fold, locale-free); containers keyed by such names use a transparent `mc2::str::ci_less`. There is no
-  case-insensitive string TYPE. A bare `==` is allowed only when both operands are produced by code, and the commit names the site.
-- C4 `ci_less` is the total order. Each sort site states its order in a comment; expected UI order changes (punctuation such as `-`, `'`, `_`, and case variants that compared equal) are listed
+- C3 Identity comparisons of names that come from data use `mc2::str::iequals` (ASCII fold, locale-free); containers keyed by such names use the transparent `mc2::str::ci_less` / `ci_equal` (equivalence =
+  `iequals`). There is no case-insensitive string TYPE. A bare `==` is allowed only when both operands are produced by code, and the commit names the site.
+- C4 A sorted list uses `mc2::str::ci_total_less` (folded lexicographic, then the raw bytes, so case variants have a fixed order; `ci_less` is NOT used for sorting because it leaves case variants
+  equivalent). Each sort site states its order in a comment; expected UI order changes (punctuation such as `-`, `'`, `_`, and case variants that compared equal) are listed
   in the commit with the stock pairs that move.
 - C5 `MakeLower`/`MakeUpper` become `mc2::str::ascii_lower/ascii_upper`; bytes >= 0x80 pass through, a test pins that.
 - C6 Accessors that return a member return `const std::string&`; computed text returns `std::string`; constant species names become `std::string_view` of a literal; setters take `std::string` by value and move it.
@@ -144,9 +146,39 @@ must be silent. **The gate is trusted only for the shapes the seeded test proves
 - C13 The code and editor objective models use the SAME helpers and rules.
 - C14 Comments are WHAT+WHY; wrong ones (`logisticsdata_save.cpp:577`) are deleted.
 
-## 8. Results recorded by B1.0 (filled in as the items land)
+## 8. Results recorded by B1.0 (2026-10-12)
 
-(empty until B1.0b-d have run: call-site count per file, the probe's list of fold-only and stale-reader sites on stock data, the lifetime gate's per-shape verdict.)
+**Call sites (3b, `cxx23-step4-b1-callsites.txt`).** 598 sites in 76 files from the deprecation build of the old API: operator ECHARPTR 212, Data 187, Format 103, Compare 35, operator== 13,
+Find 11, MakeUpper 11, Remove 7, MakeLower 4, Left/Right/ReverseFind/operator!= 3 each, SubString 2, Insert 1. Per batch (files that name the type): B1.1 90, B1.2 4, B1.3 15, B1.4 99, B1.5 82,
+B1.6 135, B1.7 26, B6 (mp screens) 50; 97 more sites in 21 files that do not name the type (includers the compiler forces, and the gui widgets). The files outside the grep set that a batch must
+therefore also edit: `code/missionbegin.cpp` 9, `logistics_begin.cpp` 5, `mainmenu.cpp` 4, `controlgui_objectives.cpp` 3, `pilotreviewarea.cpp` 3, `logisticsvariant.cpp` 6, `logisticsmech.cpp` 3,
+`logisticspilot.cpp` 3, `mission_movers.cpp` 2, `controlgui_update.cpp`, `mission_update.cpp`, `missionresults.cpp`, `pausewindow.cpp` (1 each) in code/; `editor/EditorData_save.cpp` 9,
+`EditorInterface_terrain.cpp` 6, `BeautySidecarPreview.cpp` 1 in editor/. (The Compare count of 35 matches the review's 35 `Compare(x, 0)` lookups.)
+
+**Probe on the old exe (3d; a diagnostic patch applied by script and reverted, never committed).** Run on the install `mc2-win64-v0.4` with the exe built from 5e02d2347 plus the patch:
+tier2 missions mc2_01, mc2_03, mc2_10, mc2_24 (28 s each), the logistics screens `purchase`, `bay`, `loadout`, `briefing`, `launch` through `scripts/mechbay_preview_harness.py` (this boots the
+first campaign mission with auto-win and then parks on the screen), `bay` with `MC2_BOOT_TO_MECHLAB=1`, and one quicksave / quickload round trip of mc2_01 (`saveload_roundtrip.py resave`).
+- **Fold-only matches (the bytes differ, the old compare said equal): ONE site on stock data**, hit in every mission boot and every logistics screen and again on quickload:
+  `LogisticsData::updateAvailability` (`code/logisticsdata_availability.cpp:245`, `(*pIter).getFileName().Compare(pilotName, 0)`, reached from `ensureMechBayDataLoaded`, `LogisticsData::init`
+  and `LogisticsData::load`). The pairs are the lower-case pilot file name against the mixed-case name in the availability list: `pmwchopper`/`PMWChopper`, `pmwcreep`/`PMWCreep`,
+  `pmwhacksaw`/`PMWHacksaw`, `pmwpsycho`/`PMWPsycho`, 15 hits per run. **A bare `==` there leaves those pilots unavailable in the stock campaign**: this is the one C3 site that matters on stock
+  data, and `iequals` is the conversion. Every other `Compare(x, 0)` / `==` site either never saw a case difference in these runs or was not reached.
+- **Order disagreements with a plain ASCII fold**: none fired in these runs (no sort site that differs from `lstrcmpi` was reached: mechlopedia, the pilot list and mech list sorts need screens
+  that the harness does not open). The corpus test lists the order differences over the 7046 stock file names: 20 adjacent pairs, all `digit`/`.` after `_`/`-` (lstrcmpi is a word sort, the new
+  order is plain byte order of the folded text); equality agrees on every name and its case variants.
+- **Stale-reader hits (`sReadIdString` found no key and the caller reused the previous text): none while loading a mission from its FIT; two on quickload of mc2_01**, both
+  `key=ObjectiveModel` with the stale text empty (`""`), plus one benign `BooleanString0` (the loop's terminating read of an empty flag block). The cause on quickload: the objective writer
+  OMITS `ObjectiveModel` when the name was never assigned (H15), the reader then keeps whatever the previous read left in its shared temporary (here the empty `ResetStatusFlagID`), and
+  `ModelName("")` is assigned where the original was null. No stock objective was seen taking the Title text for a missing `Description` (the stock FITs carry the key); the explicit
+  "Description falls back to the Title" rule in the reader is for authored and mod content.
+- Noise set of the save (old exe, two runs, mc2_01 at frame 1000): 241 of 20000 packets differ run to run (TerrainObjectData 191, MechWarriorData 41, MechData 6, CommanderData 2, and the mission FIT
+  text packet 2). The text-packet noise is the objective MODEL fields written uninitialised: `ModelType`, `BaseColor`, `HighlightColor`, `HighlightColor2` carry stack garbage
+  (`-1052649298` against `0`) in objectives that have no model. B1.1 initialises them so the writer is a defined format.
+
+**Lifetime gate (3c, `tests/analyze/analyze_dangling.py`).** On this host (MSVC 14.44, clang 23.1): `cl /analyze` with the CppCoreCheckLifetimeRules set reports NONE of the c_str() shapes
+(C26815/C26816 do not fire; it flagged only a returned local array, as C26847). clang-cl catches all four seeded shapes: A (local holds `make().c_str()`) `-Wdangling-gsl`, B (`return make().c_str()`)
+and B2 (`return local.c_str()`) `-Wreturn-stack-address`, C (member stores a pointer into a temporary) `-Wdangling-assignment-gsl`; the clean twin is silent in both. The gate is therefore clang-cl
+and covers exactly these shapes. It runs in about 10 s and is a board row (`analyze_dangling`).
 
 ## 9. What the gates cannot see, and what a wrong conversion looks like
 
