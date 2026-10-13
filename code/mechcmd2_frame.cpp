@@ -297,12 +297,6 @@ void __stdcall TerminateGameEngine()
 
 		//
 		//
-		if (g_textureCache_FilenameOfLastLoadedTexture)
-		{
-			delete g_textureCache_FilenameOfLastLoadedTexture;
-			g_textureCache_FilenameOfLastLoadedTexture = nullptr;
-		}
-
 		if (ForceGroupIcon::jumpJetIcon)
 		{
 			delete ForceGroupIcon::jumpJetIcon;

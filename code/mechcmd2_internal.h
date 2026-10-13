@@ -205,7 +205,6 @@ extern float averageFrameRate;
 extern long currentFrameNum;
 extern float last30Frames[];
 extern bool WindowsNT;
-extern EString *g_textureCache_FilenameOfLastLoadedTexture;
 extern bool checkedBomb;
 extern char DebugStatusBarString[256];
 extern GameDebugWindow* DebugWindow[NUM_DEBUG_WINDOWS];

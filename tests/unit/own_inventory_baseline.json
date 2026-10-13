@@ -1939,23 +1939,6 @@
    "new_array": 0,
    "owners": []
   },
-  "EString": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
-    "mclib/tgainfo.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "Editor": {
    "delete": 1,
    "delete_array": 0,
@@ -8092,7 +8075,7 @@
   "code/mover.cpp": 1,
   "code/mpparameterscreen.cpp": 1,
   "code/mpprefs.cpp": 1,
-  "code/objective.cpp": 10,
+  "code/objective.cpp": 8,
   "code/objmgr.cpp": 1,
   "code/objmgr_io.cpp": 2,
   "code/objtype.cpp": 1,

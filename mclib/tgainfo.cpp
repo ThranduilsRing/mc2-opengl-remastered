@@ -12,8 +12,6 @@
 #include"tgainfo.h"
 #endif
 
-#include"estring.h"
-
 #include<string.h>
 #include<gameos.hpp>
 //---------------------------------------------------------------------------
@@ -205,36 +203,8 @@ void tgaCopy (MemoryPtr dest, MemoryPtr src, long size)
 }
 
 //---------------------------------------------------------------------------
-static const int g_textureCache_BufferSize = 16384/*64*64*sizeof(DWORD)*/;
-static BYTE g_textureCache_Buffer[g_textureCache_BufferSize];
-EString *g_textureCache_FilenameOfLastLoadedTexture = nullptr;/*This is an (EString *) instead of an EString because apparently gos memory management has a problem with global static allocation of EStrings.*/
-static int g_textureCache_WidthOfLastLoadedTexture = 0;/*just to be sure*/
-static int g_textureCache_HeightOfLastLoadedTexture = 0;/*just to be sure*/
-static int g_textureCache_NumberOfConsecutiveLoads = 0;
-static bool g_textureCache_LastTextureIsCached = false;
-
 void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 {
-	if (!g_textureCache_FilenameOfLastLoadedTexture)
-		g_textureCache_FilenameOfLastLoadedTexture = new EString;
-
-	if (width * height * sizeof(DWORD) <= g_textureCache_BufferSize)
-	{
-		if ((g_textureCache_FilenameOfLastLoadedTexture->Data())
-			&& (0 == strcmp(tgaFile->getFilename(), g_textureCache_FilenameOfLastLoadedTexture->Data()))
-			&& ((const int)width == g_textureCache_WidthOfLastLoadedTexture)
-			&& ((const int)height == g_textureCache_HeightOfLastLoadedTexture)
-			)
-		{
-			if (g_textureCache_LastTextureIsCached)
-			{
-				g_textureCache_NumberOfConsecutiveLoads += 1;
-				memcpy(ourRAM, g_textureCache_Buffer, width*height*sizeof(DWORD));
-				return;
-			}
-		}
-	}
-
 	MemoryPtr tgaBuffer = (MemoryPtr)malloc(tgaFile->fileSize());
 
 	tgaFile->read(tgaBuffer,tgaFile->fileSize());
@@ -326,34 +296,6 @@ void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 	}
 
 	free(tgaBuffer);
-
-	if (width * height * sizeof(DWORD) <= g_textureCache_BufferSize)
-	{
-		if ((g_textureCache_FilenameOfLastLoadedTexture->Data())
-			&& (0 == strcmp(tgaFile->getFilename(), g_textureCache_FilenameOfLastLoadedTexture->Data()))
-			&& ((const int)width == g_textureCache_WidthOfLastLoadedTexture)
-			&& ((const int)height == g_textureCache_HeightOfLastLoadedTexture)
-			)
-		{
-			g_textureCache_NumberOfConsecutiveLoads += 1;
-			if (2 == g_textureCache_NumberOfConsecutiveLoads )
-			{
-				memcpy(g_textureCache_Buffer, ourRAM, width*height*sizeof(DWORD));
-				(*g_textureCache_FilenameOfLastLoadedTexture) = tgaFile->getFilename();
-				g_textureCache_WidthOfLastLoadedTexture = width;
-				g_textureCache_HeightOfLastLoadedTexture = height;
-				g_textureCache_LastTextureIsCached = true;
-			}
-		}
-		else
-		{
-			(*g_textureCache_FilenameOfLastLoadedTexture) = tgaFile->getFilename();
-			g_textureCache_WidthOfLastLoadedTexture = width;
-			g_textureCache_HeightOfLastLoadedTexture = height;
-			g_textureCache_NumberOfConsecutiveLoads = 1;
-			g_textureCache_LastTextureIsCached = false;
-		}
-	}
 }	
 
 void loadTGAMask (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
