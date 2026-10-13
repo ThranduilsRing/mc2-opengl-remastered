@@ -127,6 +127,7 @@ def test_allowlist_and_stale_check(tmp_path, monkeypatch, capsys):
 
 def test_git_spawn_uses_console_child(monkeypatch, root):
     calls = []
+    monkeypatch.setattr(type(root), "is_file", lambda path: path == root / "tools/target.py")
     monkeypatch.setattr(callers.console_child, "child_kwargs", lambda **kw: {"sentinel": kw["redirected"]})
     def run(args, **kwargs):
         calls.append((args, kwargs))
@@ -134,3 +135,5 @@ def test_git_spawn_uses_console_child(monkeypatch, root):
     monkeypatch.setattr(callers.subprocess, "run", run)
     assert callers.tracked_files(root) == ["tools/target.py"]
     assert calls[0][1]["sentinel"] is True
+    monkeypatch.setattr(type(root), "is_file", lambda path: False)
+    assert callers.tracked_files(root) == []

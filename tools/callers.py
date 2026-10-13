@@ -31,7 +31,9 @@ EXCLUDED = {"tests/callers.json", "tests/callers_allowlist.json", "tests/verifie
 # These delivery inputs already exist before the coordinator can stage them.
 # The fixed union keeps the pre-commit and post-commit snapshot identical.
 DELIVERY_INPUTS = {"tools/callers.py", "tools/verified.py", "tools/host_inventory.py",
-                   "tests/test_callers.py", "tests/test_verified.py", "tests/test_host_inventory.py"}
+                   "tests/test_callers.py", "tests/test_verified.py", "tests/test_host_inventory.py",
+                   "scripts/tests/test_contract_coverage.py", "scripts/tests/test_raw_gl_firewall.py",
+                   "scripts/tests/test_deploy_disk_space.py"}
 
 
 def tracked_files(root: Path) -> list[str]:
@@ -40,7 +42,7 @@ def tracked_files(root: Path) -> list[str]:
                             **console_child.child_kwargs(redirected=True))
     paths = {p.replace("\\", "/") for p in result.stdout.decode("utf-8").split("\0") if p}
     paths.update(p for p in DELIVERY_INPUTS if (root / p).is_file())
-    return sorted(paths)
+    return sorted(p for p in paths if (root / p).is_file())
 
 
 def _remove_comment(line: str, suffix: str) -> str:

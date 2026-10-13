@@ -920,8 +920,6 @@ run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet
 # (measured 0.2s). Test EXECUTION deliberately stays in the manual tier with
 # scripts/run-unit-tests.sh; see manual-checks.allowlist for why, and for the
 # measured numbers that would justify promoting it.
-run_check "test_tier_coverage"     "py -3 scripts/check-test-tier-coverage.py --quiet"
-run_check "test_tier_selftest"     "py -3 scripts/check-test-tier-coverage.py --self-test"
 run_check "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
 run_check "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
 run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet"
@@ -930,12 +928,6 @@ run_check "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py -
 run_check "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
 run_check "frame_feedback"         "py -3 scripts/check-frame-resource-feedback.py --quiet"
 run_check "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
-run_check "raw_gl_depthfunc"       "py -3 scripts/check-raw-gl-depthfunc.py --quiet"
-run_check "raw_gl_depthmask"       "py -3 scripts/check-raw-gl-depthmask.py --quiet"
-run_check "raw_gl_colormask"       "py -3 scripts/check-raw-gl-colormask.py --quiet"
-run_check "raw_gl_blendfunc"       "py -3 scripts/check-raw-gl-blendfunc.py --quiet"
-run_check "raw_gl_fbobind"         "py -3 scripts/check-raw-gl-fbobind.py --quiet"
-run_check "raw_gl_capstone"        "py -3 scripts/check-raw-gl-capstone.py --quiet"
 run_check "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
 run_check "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"
 run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet"
@@ -1241,7 +1233,6 @@ run_check "counter_honesty_selftest" "py -3 scripts/check-counter-honesty.py --s
 # seen passing on good input is not evidence of anything. The live checks live
 # at the call sites (build_release.sh, deploy_payload.py, run_visual_capture.py,
 # renderdoc_capture.py). Read-only, no build, sub-second.
-run_check "disk_guard_selftest" "py -3 scripts/check-disk-space.py --selftest"
 
 # ---------------------------------------------------------------------------
 # LINK-GUARD-1 (2026-07-30 shared-install incident)
@@ -1434,8 +1425,6 @@ run_check "review_pack_registry_guard" "py -3 scripts/build_review_pack.py --sel
 # that needs a build, a cook, a deploy tree or a live engine is in
 # scripts/manual-checks.allowlist WITH A REASON, and check-contract-coverage.py
 # fails if any check script is in neither list -- so this class cannot recur.
-run_check "contract_coverage"          "py -3 scripts/check-contract-coverage.py"
-run_check "contract_coverage_selftest" "py -3 scripts/check-contract-coverage.py --selftest"
 # CONTRACTS-DOC-SELFTEST-1: and the aggregator's OWN rendering, which until now
 # was the one guarded behaviour on this board with nothing guarding it. See the
 # block above _selftest_rows for what it pins and why it re-executes this script
