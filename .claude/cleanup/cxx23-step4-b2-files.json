@@ -1,19 +1,22 @@
 {
- "about": "step 4 batch B2 (value containers -> std containers), file -> batch (cxx23-step4-b2-notes.md section 4). Game batches B2.1-B2.5; E1-E4 are the editor's EList users (owner's Codex track, a suggested grouping, 25 files at most each); E-end deletes mclib/elist.h after the last editor batch; B6 = the two multiplayer files that only need an edit when elist.h goes. `files` maps a path to the batch that first edits it; `also_touched` lists later batches that edit the same file again; `sites` is [token lines, API-call lines] of grep-grade census (comments and strings NOT blanked; the exact list is the B2.0 deprecation census). Deleted files are marked in `deleted`.",
- "commit": "6729e6f8c",
- "verify": "python census (EList, aliases COMPONENT_LIST PILOT_LIST VARIANT_LIST MECH_LIST VEHICLE_LIST BUILDING_LIST MISSION_LIST FILE_LIST CObjectives CObjectiveConditionList CObjectiveActionList CListOfDropListPointers action_list_type condition_list_type EIterator EConstIterator) over code mclib gui GameOS editor tools tests data_tools mc2fx: 39 code files, 64 editor files, 0 elsewhere",
+ "about": "step 4 batch B2 (value containers -> std containers), file -> batch (cxx23-step4-b2-notes.md section 4, revised after the Opus before-review RB2). Game batches B2.1, B2.2 (a/b/c), B2.3, B2.4-pre, B2.4, B2.5-pre, B2.5; E1-E4 are the editor's EList users (owner's Codex track, a suggested grouping, 25 files at most each); E-end deletes mclib/elist.h after the last editor batch; B6 = the two multiplayer files that only need an edit when elist.h goes. `files` maps a path to the batch that first edits it; `also_touched` lists later batches that edit the same file again; `codex_owned` lists files lane 1 never edits (the Codex track's ABL slice): the sites are handed over; `sites` is [token lines, API-call lines] of grep-grade census (comments and strings NOT blanked; the exact list is the B2.0 deprecation census). Deleted files are marked in `deleted`.",
+ "commit": "6729e6f8c (census); RB2 a57179247",
+ "verify": "python census (EList, aliases COMPONENT_LIST PILOT_LIST VARIANT_LIST MECH_LIST VEHICLE_LIST BUILDING_LIST MISSION_LIST FILE_LIST CObjectives CObjectiveConditionList CObjectiveActionList CListOfDropListPointers action_list_type condition_list_type EIterator EConstIterator) over code mclib gui GameOS editor tools tests data_tools mc2fx: 39 code files, 64 editor files with a type use, 0 elsewhere. Two more editor headers (ChooseUnitDlg.h, TargetAreaDlg.h) only #include <elist.h> and are listed under E-end, not E4: E1-E4 = 64 files.",
  "counts": {
-  "B2.1": 8,
+  "B2.1": 11,
   "B2.2": 23,
   "B2.3": 13,
-  "B2.4": 17,
-  "B2.5": 10,
+  "B2.4-pre": 8,
+  "B2.4": 8,
+  "B2.5-pre": 1,
+  "B2.5": 9,
   "E1": 21,
   "E2": 13,
-  "E4": 20,
   "E3": 12,
+  "E4": 18,
   "B6": 2,
-  "E-end": 1
+  "E-end": 3,
+  "codex_owned": 4
  },
  "deleted": [
   "mclib/bitflag.h",
@@ -26,13 +29,16 @@
  ],
  "new": [
   "mclib/score_sort.h (B2.4)",
-  "mclib/indexed_min_heap.h (B2.5)",
-  "tests/unit/test_elist_contract.cpp, test_sortlist_contract.cpp, test_pqueue_contract.cpp (B2.0)",
+  "mclib/indexed_min_heap.h (B2.5; class mc2::PathOpenList or the old name, D9)",
+  "tests/unit/test_elist_contract.cpp, test_sortlist_contract.cpp, test_pqueue_contract.cpp (B2.0; goldens committed first)",
   "tests/unit/test_score_sort.cpp (B2.4)",
-  "tests/unit/test_indexed_min_heap.cpp (B2.5)"
+  "tests/unit/test_indexed_min_heap.cpp (B2.5)",
+  "tests/analyze/ scripts: the B2 census, the golden generators, probes P1-P3 (B2.0; R9)",
+  "mclib span test for ABLi_popIntegerBuf (B2.4-pre, Codex slice)"
  ],
  "also_touched": {
   "code/mission.cpp": [
+   "B2.1 (VisibleBits/SeenBits globals)",
    "B2.3 (CObjectives loops at lines 985-1020)",
    "B2.4 (delete Mover/SensorSystem/Team sortList)",
    "B2.5 (delete openList)"
@@ -47,7 +53,8 @@
    "B2.4 (Team::sortList declaration)"
   ],
   "code/group_goals.cpp": [
-   "B2.5 (openList lazy init)"
+   "B2.4-pre (MoverGroup::sortMovers dead consumer)",
+   "B2.5 (openList lazy init; PCH skip list D16, pch_skip.cmake:92)"
   ],
   "code/logisticsdata_save.cpp": [
    "B2.3 (the CObjectives loop at line 476)"
@@ -60,28 +67,49 @@
    "B2.4",
    "B2.5",
    "B2.E"
+  ],
+  "code/contact.cpp": [
+   "B2.4 (SensorSystem::sortList use at :966-967)"
+  ],
+  "code/mover.h": [
+   "B2.4 (Mover::sortList; sortWeapons signature by arrangement with the Codex F task)"
+  ],
+  "code/mover_combat.cpp": [
+   "B2.4 (sort calls)"
+  ],
+  "mclib/move_globalmap_path.cpp": [
+   "B2.5 (per-solver open list)"
+  ],
+  "mclib/pqueue.cpp": [
+   "B2.5 (replaced by indexed_min_heap.h)"
+  ],
+  "code/objective.cpp": [
+   "PCH skip list (D16): include-only commit before B2.3"
+  ],
+  "mclib/move.cpp": [
+   "PCH skip list (D16): include-only commit before B2.5 (pch_skip.cmake:69)"
   ]
  },
  "deferred": {
   "mclib/stuff/marray.hpp": "DynamicArrayOf/StaticArrayOf: 0 users in code/, editor/, gui/; ~190 sites are MLR (out of scope, deleted at queue item 13), the rest gosFX (debriscloud, tube, fcurve, particlecloud, singleton: B8, .fx byte layout) and Stuff math (extentbox, plane), particles/spec_library.h (B8)",
   "mclib/stuff/memoryblock.hpp": "MemoryBlock: pool allocator under Stuff Chain/Tree/SortedChain links; the only users of those are gosfx/effect.cpp (ChainOf) and mlr/gosimagepool: B8",
-  "mclib/stuff/chain.hpp": "Stuff chain family (Chain, SortedChain, Tree, Hash, Plug, Socket): users only inside mclib/stuff, gosfx/effect and mlr/gosimagepool: B8"
+  "mclib/stuff/chain.hpp": "Stuff chain family (Chain, SortedChain, Tree, Hash, Plug, Socket): users only inside mclib/stuff, gosfx/effect and mlr/gosimagepool: B8",
+  "b8_list": "survivors of the marray.hpp deferral, named for B8 (R12): mc2::particles::SpecLibrary::m_effects (particles/spec_library.h:45) and gosFX tube.cpp:1435 static Stuff::DynamicArrayOf<float> s_worldPos (a static-duration owner)"
  },
  "files": {
-  "code/ablmc2_camera.cpp": "B2.4",
-  "code/ablmc2_queries.cpp": "B2.4",
+  "code/brain_special_dispatch.cpp": "B2.4-pre",
   "code/componentlistbox.cpp": "B2.2",
   "code/componentlistbox.h": "B2.2",
-  "code/contact.cpp": "B2.4",
+  "code/contact.cpp": "B2.4-pre",
   "code/contact.h": "B2.4",
   "code/controlgui_objectives.cpp": "B2.3",
   "code/controlgui_render.cpp": "B2.3",
   "code/controlgui_update.cpp": "B2.3",
   "code/gametacmap.cpp": "B2.3",
-  "code/group.h": "B2.4",
-  "code/group_goals.cpp": "B2.4",
+  "code/group.h": "B2.4-pre",
+  "code/group_goals.cpp": "B2.4-pre",
   "code/group_internal.h": "B2.5",
-  "code/group_orders.cpp": "B2.4",
+  "code/group_orders.cpp": "B2.4-pre",
   "code/logistics_begin.cpp": "B2.2",
   "code/logisticsdata.cpp": "B2.2",
   "code/logisticsdata.h": "B2.2",
@@ -120,9 +148,10 @@
   "code/saveload_load.cpp": "B2.3",
   "code/team.cpp": "B2.3",
   "code/team.h": "B2.3",
-  "code/warrior.cpp": "B2.4",
-  "code/warrior.h": "B2.4",
-  "code/warrior_state.cpp": "B2.4",
+  "code/team_los.cpp": "B2.1",
+  "code/warrior.cpp": "B2.4-pre",
+  "code/warrior.h": "B2.4-pre",
+  "code/warrior_state.cpp": "B2.4-pre",
   "editor/Action.cpp": "E2",
   "editor/Action.h": "E2",
   "editor/BuildingBrush.cpp": "E3",
@@ -137,7 +166,7 @@
   "editor/ChooseBuildingDlg.cpp": "E4",
   "editor/ChooseBuildingDlg.h": "E4",
   "editor/ChooseUnitDlg.cpp": "E4",
-  "editor/ChooseUnitDlg.h": "E4",
+  "editor/ChooseUnitDlg.h": "E-end",
   "editor/DamageBrush.cpp": "E3",
   "editor/EditorData.h": "E1",
   "editor/EditorData_save.cpp": "E1",
@@ -182,7 +211,7 @@
   "editor/SceneOutliner.cpp": "E4",
   "editor/SelectionBrush.cpp": "E3",
   "editor/TargetAreaDlg.cpp": "E1",
-  "editor/TargetAreaDlg.h": "E4",
+  "editor/TargetAreaDlg.h": "E-end",
   "editor/TelemetryPanel.cpp": "E4",
   "editor/UnitBrainPanel.cpp": "E4",
   "editor/UnitSettingsDlg.cpp": "E4",
@@ -197,7 +226,7 @@
   "mclib/mclib.h": "B2.1",
   "mclib/move.cpp": "B2.5",
   "mclib/move.h": "B2.5",
-  "mclib/move_globalmap_path.cpp": "B2.5",
+  "mclib/move_globalmap_path.cpp": "B2.5-pre",
   "mclib/move_internal.h": "B2.5",
   "mclib/move_movemap_escape.cpp": "B2.5",
   "mclib/move_movemap_path.cpp": "B2.5",
@@ -207,7 +236,9 @@
   "mclib/score_sort.h": "B2.4",
   "mclib/sortlist.cpp": "B2.4",
   "mclib/sortlist.h": "B2.4",
-  "mclib/terrain.h": "B2.1"
+  "mclib/terrain.cpp": "B2.1",
+  "mclib/terrain.h": "B2.1",
+  "mclib/terrain_update.cpp": "B2.1"
  },
  "sites": {
   "code/componentlistbox.cpp": [
@@ -622,5 +653,11 @@
    2,
    3
   ]
+ },
+ "codex_owned": {
+  "code/ablmc2_queries.cpp": "B2.4-pre (execGetContacts :107-133, execSortWeapons :645-654 write through ABLi_popIntegerBuf spans; listSize clamp + log; sortWeapons signature) and B2.4 (the SortList call sites)",
+  "code/ablmc2_camera.cpp": "B2.4-pre (getMoversWithinRadius 255 movers into a 200-slot list; the unused static sortValues[MAX_MOVERS] at :10) and B2.4 (SortList call site)",
+  "mclib/ablxstd_stack.cpp": "B2.4-pre (new ABLi_popIntegerBuf, precedent ABLi_popCharBuf :89-98)",
+  "mclib/abl.h": "B2.4-pre (ABLi_popIntegerBuf declaration next to :144)"
  }
 }
