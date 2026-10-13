@@ -3,6 +3,7 @@
 #include "logisticsvariant_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "objective_text.h"
 
 
 // Next discrete move-speed class up the 5/10/15/19/23/27/31/35 ladder.
@@ -577,9 +578,8 @@ void LogisticsVehicle::init( FitIniFile& file )
 	componentCount = 0;
 	
 	file.seekBlock( "ObjectType" );
-	char tmp[256];
-	file.readIdString( "AppearanceName", tmp, 255 );
-	fileName = tmp;
+	// A vehicle file without an AppearanceName has an empty chassis file name; the old read left an uninitialised buffer in it.
+	fileName = objective_text::readPlain( file, "AppearanceName" ).value_or( std::string() );
 
 	file.seekBlock( "General" );
 	file.readIdLong( "DescIndex", chassisNameID );

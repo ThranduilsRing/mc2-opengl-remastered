@@ -463,7 +463,7 @@ void MechLabScreen::update()
 		{
 			if ( pCurDialog->getStatus() == YES )
 			{
-				LogisticsData::instance->acceptMechModifications( pCurDialog->getFileName() );
+				LogisticsData::instance->acceptMechModifications( pCurDialog->getFileName().c_str() );
 				pCurDialog->end();
 				status = UP;
 				bSaveDlg = 0;

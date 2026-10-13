@@ -7,6 +7,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 \*************************************************************************************************/
 
 #include"logisticsdialog.h"
+#include "mc2str.h"
 #include"abutton.h"
 #include"inifile.h"
 #include"mclib.h"
@@ -485,7 +486,7 @@ void LogisticsSaveDialog::begin()
 			setDefsEditText( kSvEditKey, itemText ? itemText : "" );
 		else
 			edits[0].setEntry( itemText );
-		selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
+		selectedName = mc2::str::from_c( ( ((aLocalizedListItem*)pItem)->getHiddenText() ) );
 	}
 
 	updateMissionInfo();
@@ -546,7 +547,7 @@ void LogisticsSaveDialog::beginLoad(bool bSkipSaveScan)
 				setDefsEditText( kSvEditKey, itemText ? itemText : "" );
 			else
 				edits[0].setEntry( itemText );
-			selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
+			selectedName = mc2::str::from_c( ( ((aLocalizedListItem*)pItem)->getHiddenText() ) );
 		}
 
 		updateMissionInfo();
@@ -575,7 +576,7 @@ void LogisticsSaveDialog::beginCampaign()
 		{
 			pItem->select();
 			edits[0].setEntry( ((aTextListItem*)pItem)->getText() );
-			selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
+			selectedName = mc2::str::from_c( ( ((aLocalizedListItem*)pItem)->getHiddenText() ) );
 		}
 	}
 
@@ -796,7 +797,7 @@ void LogisticsSaveDialog::update()
 	buttons[2].disable( 0 );
 	buttons[0].disable( 0 );
 
-	EString fileName;
+	std::string fileName;
 	if ( hasDefsEditBox() )
 	{
 		std::string s;
@@ -804,12 +805,12 @@ void LogisticsSaveDialog::update()
 		fileName = s.c_str();
 	}
 	else
-		edits[0].getEntry( fileName );
+		fileName = edits[0].entry();
 
 	if (bCampaign)
 	{
-		fileName.Empty();
-		EString displayName;
+		fileName.clear();
+		std::string displayName;
 		if ( hasDefsEditBox() )
 		{
 			std::string s;
@@ -817,7 +818,7 @@ void LogisticsSaveDialog::update()
 			displayName = s.c_str();
 		}
 		else
-			edits[0].getEntry( displayName );
+			displayName = edits[0].entry();
 		{
 			/*if there is a selected item and it matches the text in the editbox, then use that selected item*/
 			aLocalizedListItem* pSelectedItem = 0;
@@ -828,21 +829,21 @@ void LogisticsSaveDialog::update()
 			}
 			if (pSelectedItem)
 			{
-				if (0 == displayName.Compare(pSelectedItem->getText(), false/*not case sensitive*/))
+				if ( mc2::str::iequals( displayName, mc2::str::from_c( pSelectedItem->getText() ) ) )
 				{
 					fileName = pSelectedItem->getHiddenText();
 				}
 			}
 		}
 
-		if (fileName.IsEmpty())
+		if (fileName.empty())
 		{
 			/* No item is selected or the selected item doesn't match the editbox. */
 			// loop through the entries in the game list box, and fine the same one, and find its hidden text
 			for ( int i = 0; i < gameListBox.GetItemCount(); i++ )
 			{
 				aLocalizedListItem* pItem = dynamic_cast<aLocalizedListItem*>(gameListBox.GetItem( i ));
-				if ( displayName.Compare( pItem->getText(), false/*not case sensitive*/ ) == 0  )
+				if ( mc2::str::iequals( displayName, mc2::str::from_c( pItem->getText() ) ) )
 				{
 					fileName = pItem->getHiddenText( );
 					break;
@@ -851,21 +852,21 @@ void LogisticsSaveDialog::update()
 		}
 	}
 
-	if ( (bLoad || bCampaign) && fileName.Length() )
+	if ( (bLoad || bCampaign) && !fileName.empty() )
 	{
 		if ( bCampaign )
-			ActivateCampaignMod( fileName );
+			ActivateCampaignMod( fileName.c_str() );
 
 		FullPathFileName path;
 		const bool do_not_lower = true;
-		path.init( bCampaign ? campaignPath : savePath, fileName, ".fit" , do_not_lower);
+		path.init( bCampaign ? campaignPath : savePath, fileName.c_str(), ".fit" , do_not_lower);
 
 		if ( fileExists( path ) )
 			getButton( YES )->disable( false );
 		else
 			getButton( YES )->disable( true );
 	}
-	else if (!fileName.Length() )
+	else if (fileName.empty() )
 	{	
 		getButton( YES )->disable( true );	
 	}
@@ -898,11 +899,11 @@ void LogisticsSaveDialog::update()
 			FullPathFileName name;
 			if ( bCampaign )
 			{
-				name.init( campaignPath, selectedName, ".fit" );
+				name.init( campaignPath, selectedName.c_str(), ".fit" );
 			}
 			else
 			{
-				name.init( savePath, selectedName, ".fit" );
+				name.init( savePath, selectedName.c_str(), ".fit" );
 			}
 				// delete the file
 				DeleteFile( name );
@@ -919,7 +920,7 @@ void LogisticsSaveDialog::update()
 				}
 				else
 				{
-					edits[0].getEntry( selectedName );
+					selectedName = edits[0].entry();
 					edits[0].setEntry( "" );
 				}
 				selectedName = "";
@@ -933,7 +934,7 @@ void LogisticsSaveDialog::update()
 						setDefsEditText( kSvEditKey, itemText ? itemText : "" );
 					else
 						edits[0].setEntry( itemText );
-					selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
+					selectedName = mc2::str::from_c( ( ((aLocalizedListItem*)pItem)->getHiddenText() ) );
 				}
 
 		}
@@ -964,7 +965,7 @@ void LogisticsSaveDialog::update()
 				setDefsEditText( kSvEditKey, text ? text : "" );
 			else
 				edits[0].setEntry( text );
-			selectedName = ((aLocalizedListItem*)gameListBox.GetItem( defsItem ))->getHiddenText();
+			selectedName = mc2::str::from_c( ((aLocalizedListItem*)gameListBox.GetItem( defsItem ))->getHiddenText() );
 			updateMissionInfo();
 		}
 		else if ( userInput->isLeftClick() )
@@ -985,7 +986,7 @@ void LogisticsSaveDialog::update()
 						setDefsEditText( kSvEditKey, text ? text : "" );
 					else
 						edits[0].setEntry( text );
-					selectedName = ((aLocalizedListItem*)gameListBox.GetItem( item ))->getHiddenText();
+					selectedName = mc2::str::from_c( ((aLocalizedListItem*)gameListBox.GetItem( item ))->getHiddenText() );
 					updateMissionInfo();
 				}
 			}
@@ -1006,7 +1007,7 @@ void LogisticsSaveDialog::update()
 				gameListBox.GetItem( item )->setColor( edits[0].getHighlightColor() );
 				const char* text = ((aTextListItem*)gameListBox.GetItem( item ))->getText();
 				edits[0].setEntry( text );
-				selectedName = ((aLocalizedListItem*)gameListBox.GetItem( item ))->getHiddenText();
+				selectedName = mc2::str::from_c( ((aLocalizedListItem*)gameListBox.GetItem( item ))->getHiddenText() );
 
 				// update mission info
 				updateMissionInfo();
@@ -1029,7 +1030,7 @@ void LogisticsSaveDialog::updateCampaignMissionInfo()
 
 	FitIniFile file;
 	FullPathFileName path;
-	path.init( campaignPath, selectedName, ".fit" );
+	path.init( campaignPath, selectedName.c_str(), ".fit" );
 	if ( NO_ERR != file.open( path ) )
 	{
 		Assert( 0, 0, "coudln't find the campaign file\n" );
@@ -1054,7 +1055,7 @@ void LogisticsSaveDialog::updateCampaignMissionInfo()
 }
 void LogisticsSaveDialog::updateMissionInfo()
 {
-	if ( !selectedName.Length() )
+	if ( selectedName.empty() )
 	{
 		setDefsElementTextureNode( kSvMapKey, 0 );
 		statics[MAP_STATIC].setColor( 0 );
@@ -1069,7 +1070,7 @@ void LogisticsSaveDialog::updateMissionInfo()
 
 
 	FullPathFileName fileName;
-	fileName.init( savePath, selectedName, ".fit" );
+	fileName.init( savePath, selectedName.c_str(), ".fit" );
 
 	FitIniFile file;
 	if ( NO_ERR == file.open( fileName ) )
@@ -1290,7 +1291,7 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 	
 	if ( YES == who )
 	{
-		EString str;
+		std::string str;
 		if ( hasDefsEditBox() )
 		{
 			std::string s;
@@ -1298,20 +1299,20 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 			str = s.c_str();
 		}
 		else
-			edits[0].getEntry(str);
+			str = edits[0].entry();
 		bool bFound = 0;
 
 		// look and see if you are overwriting anything here...
 		for ( int i= 0; i < gameListBox.GetItemCount(); i++ )
 		{
-		 if ( str.Compare( ((aLocalizedListItem*)gameListBox.GetItem( i ))->getText(), 0 ) == 0 )
+		 if ( mc2::str::iequals( str, mc2::str::from_c( ((aLocalizedListItem*)gameListBox.GetItem( i ))->getText() ) ) )
 		 {
 			 // do prompt here
-			selectedName = ((aLocalizedListItem*)gameListBox.GetItem( i ))->getHiddenText();
+			selectedName = mc2::str::from_c( ((aLocalizedListItem*)gameListBox.GetItem( i ))->getHiddenText() );
 			char str[256];
 			cLoadString( IDS_DIALOG_OVERWRITE_PROMPT, str, 255 );
 			char promptString[256];
-			sprintf( promptString, str, (const char*)selectedName );
+			sprintf( promptString, str, selectedName.c_str() );
 			LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
 				IDS_DIALOG_NO, IDS_DIALOG_YES );
 			LogisticsOKDialog::instance()->setText( promptString );
@@ -1346,7 +1347,7 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 	{
 		if (gameListBox.GetItemCount())
 		{
-			EString tmpName;
+			std::string tmpName;
 			if ( hasDefsEditBox() )
 			{
 				std::string s;
@@ -1354,20 +1355,20 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 				tmpName = s.c_str();
 			}
 			else
-				edits[0].getEntry(tmpName);
+				tmpName = edits[0].entry();
 			for ( int i = 0; i < gameListBox.GetItemCount(); i++ )
 			{
 				const char* pFileName = ((aLocalizedListItem*)gameListBox.GetItem(i))->getHiddenText();
-				if ( tmpName.Compare( pFileName, 0  ) == 0 )
+				if ( mc2::str::iequals( tmpName, mc2::str::from_c( pFileName ) ) )
 				{
-					selectedName = pFileName;
+					selectedName = mc2::str::from_c( pFileName );
 					break;
 				}
 			}
 			char str[256];
 			cLoadString( IDS_DIALOG_DELETE_PROMPT, str, 255 );
 			char promptString[256];
-			sprintf( promptString, str, (const char*)tmpName );
+			sprintf( promptString, str, tmpName.c_str() );
 	
 			LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
 						IDS_DIALOG_NO, IDS_DIALOG_YES );	
@@ -1543,7 +1544,7 @@ void LogisticsVariantDialog::initVariantList()
 			{
 				pEntry->select();
 				edits[0].setEntry( ((aTextListItem*)pEntry)->getText() );
-				selectedName = ( ((aTextListItem*)pEntry)->getText() );
+				selectedName = mc2::str::from_c( ( ((aTextListItem*)pEntry)->getText() ) );
 				bValid = true;
 
 			}
@@ -1590,7 +1591,7 @@ void LogisticsVariantDialog::update()
 			if ( bTranscript )
 			{
 				FullPathFileName path;
-				path.init( "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR, selectedName, ".txt" );
+				path.init( "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR, selectedName.c_str(), ".txt" );
 
 				DeleteFile( path );
 				initTranscript();
@@ -1598,9 +1599,9 @@ void LogisticsVariantDialog::update()
 			}
 			else
 			{
-				LogisticsData::instance->removeVariant( selectedName );
+				LogisticsData::instance->removeVariant( selectedName.c_str() );
 				initVariantList();
-				edits[0].getEntry( selectedName );
+				selectedName = edits[0].entry();
 			}
 			bDeletePrompt = 0;
 			edits[0].setEntry( "" );	
@@ -1632,7 +1633,7 @@ void LogisticsVariantDialog::update()
 					gameListBox.GetItem( i )->setColor( edits[0].getColor() );
 				}
 				gameListBox.GetItem( item )->setColor( edits[0].getHighlightColor() );
-				const char* text = ((aTextListItem*)gameListBox.GetItem( item ))->getText();
+				const std::string text = mc2::str::from_c( ((aTextListItem*)gameListBox.GetItem( item ))->getText() );
 				edits[0].setEntry( text );
 				selectedName = text;
 			}
@@ -1647,9 +1648,9 @@ void LogisticsVariantDialog::update()
 		}
 	}
 
-	EString text;
-	edits[0].getEntry( text );
-	if ( ( !bTranscript && !LogisticsData::instance->canReplaceVariant( text ) ) || !text.Length() )
+	std::string text;
+	text = edits[0].entry();
+	if ( ( !bTranscript && !LogisticsData::instance->canReplaceVariant( text.c_str() ) ) || text.empty() )
 	{
 		buttons[2].disable( 1 );	
 	}
@@ -1658,16 +1659,16 @@ void LogisticsVariantDialog::update()
 		buttons[2].disable( 0 );
 	}
 
-	if ( bTranscript || LogisticsData::instance->canDeleteVariant( text ) )
+	if ( bTranscript || LogisticsData::instance->canDeleteVariant( text.c_str() ) )
 	{
 		if ( bTranscript )
 		{
-			if ( !text.Length() )
+			if ( text.empty() )
 				buttons[0].disable( true );
 			else
 			{
 				FullPathFileName path;
-				path.init( "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR, text, ".txt" );
+				path.init( "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR, text.c_str(), ".txt" );
 				if ( fileExists( path ) )
 				{
 					buttons[0].disable( 0 );
@@ -1769,20 +1770,20 @@ int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long wh
 	
 	if ( YES == who )
 	{
-		 edits[0].getEntry(selectedName);
+		 selectedName = edits[0].entry();
 		 bool bFound = 0;
 
 		 // look and see if you are overwriting anything here...
 		 for ( int i= 0; i < gameListBox.GetItemCount(); i++ )
 		 {
-			 if ( selectedName.Compare( ((aTextListItem*)gameListBox.GetItem( i ))->getText(), 0 ) == 0 )
+			 if ( mc2::str::iequals( selectedName, mc2::str::from_c( ((aTextListItem*)gameListBox.GetItem( i ))->getText() ) ) )
 			 {
 				 // do prompt here
 				 
 				char str[256];
 				cLoadString( IDS_DIALOG_OVERWRITE_PROMPT, str, 255 );
 				char promptString[256];
-				sprintf( promptString, str, (const char*)selectedName );
+				sprintf( promptString, str, selectedName.c_str() );
 				LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
 					IDS_DIALOG_NO, IDS_DIALOG_YES );
 				LogisticsOKDialog::instance()->setText( promptString );
@@ -1807,11 +1808,11 @@ int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long wh
 	}
 	if ( DELETE_BUTTON == who )
 	{
-		edits[0].getEntry(selectedName);
+		selectedName = edits[0].entry();
 		char str[256];
 		cLoadString( IDS_DIALOG_DELETE_PROMPT, str, 255 );
 		char promptString[256];
-		sprintf( promptString, str, (const char*)selectedName );
+		sprintf( promptString, str, selectedName.c_str() );
 
 		LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
 					IDS_DIALOG_NO, IDS_DIALOG_YES );	
@@ -1871,11 +1872,11 @@ void LogisticsAcceptVariantDialog::update()
 		LogisticsOKDialog::instance()->update();
 		if ( YES == LogisticsOKDialog::instance()->getStatus() )
 		{
-			LogisticsData::instance->removeVariant( selectedName );
+			LogisticsData::instance->removeVariant( selectedName.c_str() );
 			initVariantList();
 			bDeletePrompt = 0;
 
-			edits[0].getEntry( selectedName );
+			selectedName = edits[0].entry();
 			edits[0].setEntry( "" );
 		
 		}
@@ -1901,7 +1902,7 @@ void LogisticsAcceptVariantDialog::update()
 					gameListBox.GetItem( i )->setColor( edits[0].getColor() );
 				}
 				gameListBox.GetItem( item )->setColor( edits[0].getHighlightColor() );
-				const char* text = ((aTextListItem*)gameListBox.GetItem( item ))->getText();
+				const std::string text = mc2::str::from_c( ((aTextListItem*)gameListBox.GetItem( item ))->getText() );
 				edits[0].setEntry( text );
 				selectedName = text;
 			}
@@ -1916,9 +1917,9 @@ void LogisticsAcceptVariantDialog::update()
 		}
 	}
 
-	EString text;
-	edits[0].getEntry( text );
-	if ( !LogisticsData::instance->canReplaceVariant( text ) )
+	std::string text;
+	text = edits[0].entry();
+	if ( !LogisticsData::instance->canReplaceVariant( text.c_str() ) )
 	{
 		buttons[1].disable( 1 );	
 	}

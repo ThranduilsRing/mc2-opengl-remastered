@@ -2,19 +2,11 @@
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
+#include "objective_text.h"
 
+#include <optional>
 
-// Snapshot of deployed (force-group) mechs captured before removeMechsInForceGroup()
-// deletes the LogisticsMech objects.  pVariant remains valid (owned by the variants list,
-// not by LogisticsMech) so the pointer survives the delete.  Used by setMissionCompleted()
-// to recover mod-purchased mechs whose variantName is absent from the variants list at
-// mission end (getVariant would otherwise return NULL, silently losing the mech).
-struct DeployedMechSnapshot
-{
-	std::string       variantName; // copy of LogisticsVariant::variantName (== BattleMech::variantName)
-	LogisticsVariant* pVariant;    // raw ptr -- valid lifetime: variants list outlives this snapshot
-};
-static std::vector<DeployedMechSnapshot> s_deployedMechSnapshot;
 
 void LogisticsData::removeMechsInForceGroup()
 {
@@ -22,7 +14,7 @@ void LogisticsData::removeMechsInForceGroup()
 	// pVariant is owned by the variants list, not by LogisticsMech, so the pointer
 	// survives the delete below and can be used by setMissionCompleted() as a fallback
 	// for mod-purchased variants whose name is absent from the loaded variants list.
-	s_deployedMechSnapshot.clear();
+	deployedMechSnapshot.clear();
 	for ( MECH_LIST::EIterator si = inventory.Begin(); !si.IsDone(); si++ )
 	{
 		if ( (*si)->getForceGroup() )
@@ -30,7 +22,7 @@ void LogisticsData::removeMechsInForceGroup()
 			DeployedMechSnapshot snap;
 			snap.variantName = (*si)->getName(); // a copy: variantName == LogisticsVariant::getName()
 			snap.pVariant    = (*si)->getVariant();
-			s_deployedMechSnapshot.push_back( snap );
+			deployedMechSnapshot.push_back( snap );
 		}
 	}
 
@@ -419,20 +411,20 @@ long LogisticsData::loadVariant( FitIniFile& file )
 
 long LogisticsData::loadMech( FitIniFile& file, int& count )
 {
-	char tmp[256];
-	file.readIdString( "Variant", tmp, 255 );
+	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
 	for ( VARIANT_LIST::EIterator mIter = variants.Begin(); !mIter.IsDone(); mIter++ )
 	{
-		if ( mc2::str::iequals( (*mIter)->getName(), mc2::str::from_c( tmp ) ) )
+		if ( mc2::str::iequals( (*mIter)->getName(), variantKey ) )
 		{
 			
 			LogisticsMech* pMech = new LogisticsMech( (*mIter), count );
-			file.readIdString( "Pilot", tmp, 255 );
+			// A mech without a Pilot key has no pilot: the key is never read as the variant text.
+			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
 			inventory.Append( pMech );
 
-			for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+			for ( PILOT_LIST::EIterator pIter = pilots.Begin(); pilotKey && !pIter.IsDone(); pIter++ )
 			{
-				if ( mc2::str::iequals( (*pIter).getFileName(), mc2::str::from_c( tmp ) ) )
+				if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
 				{
 					pMech->setPilot( &(*pIter ) );
 					count++;
@@ -573,7 +565,7 @@ void	LogisticsData::setMissionCompleted( )
 							// the pre-removal snapshot captured by removeMechsInForceGroup().
 							// The pVariant pointer in the snapshot is still valid -- LogisticsVariant
 							// objects are owned by the variants list, not by LogisticsMech.
-							for ( const DeployedMechSnapshot& snap : s_deployedMechSnapshot )
+							for ( const DeployedMechSnapshot& snap : deployedMechSnapshot )
 							{
 								// Variant names match ignoring ASCII case, like every other variant lookup;
 								// BattleMech::variantName is set from LogisticsVariant::getName() at deploy.

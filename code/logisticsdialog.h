@@ -8,6 +8,7 @@ LogisticsDialog.h			: Interface for the LogisticsDialog component.
 \*************************************************************************************************/
 
 #ifndef LOGISTICSSCREEN_H
+#include <string>
 #include"logisticsscreen.h"
 #endif
 
@@ -168,7 +169,7 @@ class LogisticsSaveDialog : public LogisticsDialog
 		static int init( FitIniFile& file );
 		virtual int			handleMessage( unsigned long, unsigned long );
 
-		const EString& getFileName( ){ return selectedName; }
+		const std::string& getFileName( ){ return selectedName; }
 
 
 
@@ -182,7 +183,7 @@ class LogisticsSaveDialog : public LogisticsDialog
 
 		aListBox	gameListBox;
 
-		EString		selectedName;
+		std::string	selectedName;
 
 		void	initDialog(const char* path, bool bCampaign);
 		void	updateCampaignMissionInfo();
@@ -222,7 +223,7 @@ public:
 		int init( FitIniFile& file );
 		virtual int			handleMessage( unsigned long, unsigned long );
 
-		const EString& getFileName( ){ return selectedName; }
+		const std::string& getFileName( ){ return selectedName; }
 
 
 
@@ -230,7 +231,7 @@ protected:
 
 		static LogisticsVariantDialog*		s_instance;
 		aListBox	gameListBox;
-		EString		selectedName;
+		std::string	selectedName;
 
 		bool	bPromptOverwrite;
 		bool	bDeletePrompt;
@@ -261,7 +262,7 @@ public:
  
 private:
 
-	EString		selectedName;
+	std::string	selectedName;
 	bool		bNameUsedPrompt;
 
 };

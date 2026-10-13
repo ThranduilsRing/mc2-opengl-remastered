@@ -259,7 +259,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 				LogisticsSaveDialog::instance()->beginCampaign();
 				if ( LogisticsSaveDialog::instance()->isDone() )
 				{
-					LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName());
+					LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str());
 					status = RESTART;
 				}
 			}
@@ -570,7 +570,7 @@ void MainMenu::update()
 			
 			char name[1024];
 			strcpy( name, savePath );
-			strcat( name, LogisticsSaveDialog::instance()->getFileName() );
+			strcat( name, LogisticsSaveDialog::instance()->getFileName().c_str() );
 			int index = strlen( name ) - 4;
 			if ( S_stricmp( &name[index], ".fit" ) !=0 ) 
 				strcat( name, ".fit" );
@@ -601,7 +601,7 @@ void MainMenu::update()
 			}
 			else if ( bLoadCampaign )
 			{
-				LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName());
+				LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str());
 				status = endResult = RESTART;
 //				background.beginFadeOut( 1.0f );
 //				beginFadeOut( 1.0f );

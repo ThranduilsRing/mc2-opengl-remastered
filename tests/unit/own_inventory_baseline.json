@@ -4364,9 +4364,6 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsmissioninfo.cpp": {
-     "new": 1
-    },
     "code/logisticsmissioninfo_progress.cpp": {
      "new": 1
     },
@@ -4374,7 +4371,7 @@
      "new": 1
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },

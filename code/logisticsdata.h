@@ -10,7 +10,8 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 
 #include"stuff/stuff.hpp"
 #include<elist.h>
-#include"estring.h"
+#include <string>
+#include <vector>
 
 #include"logisticsmech.h"
 #include"logisticscomponent.h"
@@ -255,6 +256,15 @@ private:
 	BUILDING_LIST									buildings;
 	
 	LogisticsMissionInfo*							missionInfo;
+
+	// The mechs that were deployed in a mission, captured before they leave the inventory, so a mech that survives the mission can be put back by
+	// its variant name even when the variants list no longer resolves that name (a mod-purchased variant). The variant is owned by the variants list.
+	struct DeployedMechSnapshot
+	{
+		std::string			variantName;
+		LogisticsVariant*	pVariant = nullptr;
+	};
+	std::vector<DeployedMechSnapshot>				deployedMechSnapshot;
 	
 
 	LogisticsMech*									currentlyModifiedMech;

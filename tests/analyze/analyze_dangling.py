@@ -41,6 +41,9 @@ SEED = os.path.join(HERE, "dangling_seed.cpp")
 CLEAN = os.path.join(HERE, "dangling_clean.cpp")
 CLANG_CL = os.environ.get("MC2_TOOL_CLANG_CL") or "C:/Program Files/LLVM/bin/clang-cl.exe"
 CLANG_FLAGS = ["-Wdangling", "-Wdangling-gsl", "-Wdangling-assignment-gsl", "-Wreturn-stack-address", "-Wdangling-field"]
+#: Flags for --check only. WHAT: MSVC accepts a narrowing conversion in a braced initialiser (`ctx = { this, edits[0].getColor() }` in logisticsdialog.cpp) where clang
+#: stops with an error. WHY: a translation unit clang cannot parse gets no lifetime verdict at all, and that is a worse outcome than a warning we do not care about here.
+CHECK_ONLY_FLAGS = ["-Wno-c++11-narrowing"]
 #: The shapes dangling_seed.cpp must carry: a local (A), a returned temporary (B), a returned local (B2), a stored member (C).
 EXPECTED_SHAPES = {"A", "B", "B2", "C"}
 _CLANG_DIAG = re.compile(r"^(?P<file>.+?)\((?P<line>\d+),\d+\):\s*warning:.*\[(?P<code>-W[\w-]+)\]")
@@ -123,7 +126,7 @@ def check_files(files: list[str], cc_path: str | None) -> int:
             print(f"analyze_dangling: {fpath} has no entry in {cc_path} (no verdict)")
             unverified.append(fpath)
             continue
-        hits, out = run_clang(absf, compile_flags(entries[absf]) if cc_path else [])
+        hits, out = run_clang(absf, (compile_flags(entries[absf]) if cc_path else []) + CHECK_ONLY_FLAGS)
         mine = [h for h in hits if h[0].startswith(norm(ROOT))]
         for f, ln, code in sorted(set(mine)):
             print(f"{os.path.relpath(f, ROOT)}({ln}): {code} (clang-cl)")

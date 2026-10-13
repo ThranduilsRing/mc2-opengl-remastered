@@ -236,12 +236,12 @@ void MPStats::update()
 		LogisticsVariantDialog::instance()->update();
 		if ( LogisticsVariantDialog::instance()->getStatus() == YES )
 		{
-			EString str = LogisticsVariantDialog::instance()->getFileName();
+			const std::string str = LogisticsVariantDialog::instance()->getFileName();
 
 			FullPathFileName oldPath;
 			FullPathFileName newPath;
             const char* path = "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR;
-			newPath.init(path, str, ".txt");
+			newPath.init(path, str.c_str(), ".txt");
 			oldPath.init(path, "transcript", ".txt" );
 
 			LogisticsVariantDialog::instance()->end();
