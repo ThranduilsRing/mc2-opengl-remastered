@@ -1,0 +1,74 @@
+--- mc2_11.input.fit
++++ mc2_11.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 22.500000
+ f DayToNightTime = -1.000000
+ f LightDirYaw = -16.250000
+-f NewScale = 0.580301
++f NewScale = 0.823278
+ f StartRotation = -163.250000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -1840,9 +1840,9 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 57
+ ul NumAlternatives = 0
+@@ -2043,7 +2043,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = 4032.000000
+-f PositionY = 3477.333252
++f PositionY = 3477.333496
+ ul CellX = 98
+ ul CellY = 274
+ ul Commander = 1
+@@ -2192,7 +2192,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = -3178.666504
+-f PositionY = 5098.666504
++f PositionY = 5098.666992
+ ul CellX = 60
+ ul CellY = 105
+ ul Commander = 1
+@@ -2233,7 +2233,7 @@
+ ul ConditionSpecies = 9
+ st ConditionSpeciesString = "CaptureOrDestroySpecificStructure"
+ f PositionX = -4629.333008
+-f PositionY = -362.666656
++f PositionY = -362.666504
+ ul CellX = 188
+ ul CellY = 71
+ ul Commander = 1
+@@ -2318,7 +2318,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 3946.666992
+-f PositionY = -3690.666748
++f PositionY = -3690.666992
+ ul CellX = 266
+ ul CellY = 272
+ ul Commander = 1
+@@ -2327,7 +2327,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 2922.666992
+-f PositionY = -1173.333374
++f PositionY = -1173.333008
+ ul CellX = 207
+ ul CellY = 248
+ ul Commander = 1

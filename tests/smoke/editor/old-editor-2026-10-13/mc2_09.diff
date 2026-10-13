@@ -1,0 +1,208 @@
+--- mc2_09.input.fit
++++ mc2_09.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 22.500000
+ f DayToNightTime = -1.000000
+ f LightDirYaw = 28.750000
+-f NewScale = 0.586656
++f NewScale = 0.821793
+ f StartRotation = -164.250000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -496,9 +496,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 11
+ ul NumAlternatives = 0
+@@ -544,9 +544,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 12
+ ul NumAlternatives = 0
+@@ -736,9 +736,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 21
+ ul NumAlternatives = 0
+@@ -784,9 +784,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 23
+ ul NumAlternatives = 0
+@@ -1024,9 +1024,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 30
+ ul NumAlternatives = 0
+@@ -1072,9 +1072,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 31
+ ul NumAlternatives = 0
+@@ -1120,9 +1120,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 32
+ ul NumAlternatives = 0
+@@ -1552,9 +1552,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 45
+ ul NumAlternatives = 0
+@@ -1600,9 +1600,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 46
+ ul NumAlternatives = 0
+@@ -1792,9 +1792,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 50
+ ul NumAlternatives = 0
+@@ -2320,8 +2320,8 @@
+ ul HighlightColor1 = 12632256
+ ul HighlightColor2 = 8421504
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 66
+@@ -2896,9 +2896,9 @@
+ ul HighlightColor1 = -2245808
+ ul HighlightColor2 = -16777216
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "Swarmlrmc"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "ClanLRMC"
+ ul VariantNumber = 0
+ ul SquadNum = 80
+ ul NumAlternatives = 0
+@@ -3212,7 +3212,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 3178.666992
+-f PositionY = -917.333313
++f PositionY = -917.333008
+ ul CellX = 201
+ ul CellY = 254
+ ul Commander = 1
+@@ -3221,7 +3221,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 4202.666992
+-f PositionY = -789.333313
++f PositionY = -789.333008
+ ul CellX = 198
+ ul CellY = 278
+ ul Commander = 1
+@@ -3239,7 +3239,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 4074.666992
+-f PositionY = -661.333313
++f PositionY = -661.333008
+ ul CellX = 195
+ ul CellY = 275
+ ul Commander = 1
+@@ -3291,8 +3291,8 @@
+ [Team0Objective2Condition0]
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+-f PositionX = 3904.000244
+-f PositionY = 3562.666748
++f PositionX = 3904.000000
++f PositionY = 3562.666504
+ ul CellX = 96
+ ul CellY = 271
+ ul Commander = 1

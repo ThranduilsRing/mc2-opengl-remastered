@@ -1,0 +1,72 @@
+--- mc2_21.input.fit
++++ mc2_21.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 270.000000
+ f DayToNightTime = -1.000000
+ f LightDirYaw = 15.000000
+-f NewScale = 0.589724
++f NewScale = 0.826326
+ f StartRotation = -172.125000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -880,8 +880,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 26
+@@ -2585,7 +2585,7 @@
+ [Team0Objective1Condition0]
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+-f PositionX = 661.333557
++f PositionX = 661.333008
+ f PositionY = 2240.000000
+ ul CellX = 127
+ ul CellY = 195
+@@ -2594,7 +2594,7 @@
+ [Team0Objective1Condition1]
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+-f PositionX = 234.666901
++f PositionX = 234.666504
+ f PositionY = 2282.666504
+ ul CellX = 126
+ ul CellY = 185
+@@ -2636,7 +2636,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 1813.333008
+-f PositionY = -3818.666748
++f PositionY = -3818.666992
+ ul CellX = 269
+ ul CellY = 222
+ ul Commander = 1
+@@ -2654,7 +2654,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 2624.000000
+-f PositionY = -3946.666748
++f PositionY = -3946.666992
+ ul CellX = 272
+ ul CellY = 241
+ ul Commander = 1
+@@ -2736,7 +2736,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = -5098.666992
+-f PositionY = -2837.333252
++f PositionY = -2837.333008
+ ul CellX = 246
+ ul CellY = 60
+ ul Commander = 1

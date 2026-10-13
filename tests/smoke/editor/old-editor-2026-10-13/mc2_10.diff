@@ -1,0 +1,207 @@
+--- mc2_10.input.fit
++++ mc2_10.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 180.000000
+ f DayToNightTime = -1.000000
+ f LightDirYaw = 28.750000
+-f NewScale = 0.578907
++f NewScale = 0.822830
+ f StartRotation = 178.750000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -433,9 +433,9 @@
+ ul HighlightColor1 = -12363385
+ ul HighlightColor2 = -12363385
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 15
+ ul NumAlternatives = 0
+@@ -481,9 +481,9 @@
+ ul HighlightColor1 = -12363385
+ ul HighlightColor2 = -12363385
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 16
+ ul NumAlternatives = 0
+@@ -1633,8 +1633,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Ambulance"
+ ul VariantNumber = 0
+ ul SquadNum = 35
+@@ -1681,8 +1681,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Ambulance"
+ ul VariantNumber = 0
+ ul SquadNum = 36
+@@ -1729,8 +1729,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "APC"
+ ul VariantNumber = 0
+ ul SquadNum = 37
+@@ -1777,8 +1777,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "APC"
+ ul VariantNumber = 0
+ ul SquadNum = 38
+@@ -1825,8 +1825,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "TroopTransport"
+ ul VariantNumber = 0
+ ul SquadNum = 45
+@@ -1873,8 +1873,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "TroopTransport"
+ ul VariantNumber = 0
+ ul SquadNum = 46
+@@ -1921,8 +1921,8 @@
+ ul HighlightColor1 = -10932992
+ ul HighlightColor2 = -10932992
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 101
+@@ -1969,8 +1969,8 @@
+ ul HighlightColor1 = -10932992
+ ul HighlightColor2 = -10932992
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 101
+@@ -2017,8 +2017,8 @@
+ ul HighlightColor1 = -10932992
+ ul HighlightColor2 = -10932992
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 101
+@@ -2065,8 +2065,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Ambulance"
+ ul VariantNumber = 0
+ ul SquadNum = 104
+@@ -2113,8 +2113,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Ambulance"
+ ul VariantNumber = 0
+ ul SquadNum = 105
+@@ -2161,8 +2161,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "APC"
+ ul VariantNumber = 0
+ ul SquadNum = 106
+@@ -2209,8 +2209,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "APC"
+ ul VariantNumber = 0
+ ul SquadNum = 107
+@@ -2257,8 +2257,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Jeep"
+ ul VariantNumber = 0
+ ul SquadNum = 108
+@@ -2305,8 +2305,8 @@
+ ul HighlightColor1 = -1
+ ul HighlightColor2 = -1
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Jeep"
+ ul VariantNumber = 0
+ ul SquadNum = 109

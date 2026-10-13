@@ -1,0 +1,76 @@
+--- mc2_14.input.fit
++++ mc2_14.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 20.000000
+ f DayToNightTime = 864000.000000
+ f LightDirYaw = -42.000000
+-f NewScale = 0.572915
++f NewScale = 0.820911
+ f StartRotation = 173.250000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -733,9 +733,9 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 33
+ ul NumAlternatives = 0
+@@ -1645,8 +1645,8 @@
+ ul HighlightColor1 = 1835754357
+ ul HighlightColor2 = 1949200481
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 52
+@@ -2266,7 +2266,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = -4800.000000
+-f PositionY = -4629.333496
++f PositionY = -4629.333008
+ ul CellX = 288
+ ul CellY = 67
+ ul Commander = 1
+@@ -2430,7 +2430,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = 960.000000
+-f PositionY = -4629.333496
++f PositionY = -4629.333008
+ ul CellX = 288
+ ul CellY = 202
+ ul Commander = 1
+@@ -2471,7 +2471,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = -746.666504
+-f PositionY = -277.333344
++f PositionY = -277.333496
+ ul CellX = 186
+ ul CellY = 162
+ ul Commander = 1
+@@ -2512,7 +2512,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = 832.000000
+-f PositionY = 4714.666504
++f PositionY = 4714.666992
+ ul CellX = 69
+ ul CellY = 199
+ ul Commander = 1
