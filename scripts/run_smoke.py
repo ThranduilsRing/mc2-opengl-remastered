@@ -1578,6 +1578,8 @@ def main():
                 "mean": result.summary.destroys, "stddev": 0, "samples": 1,
                 "updated": timestamp,
             }
+            # An informational record for whoever reads tests/smoke/baselines.json (a perf comparison starts from these numbers): no grader reads it, so a
+            # run is never red for being slower than this; only `destroys` above is compared.
             baseline_data[key]["perf"] = {
                 "avg_fps": result.summary.perf.avg_fps,
                 "p1low_fps": result.summary.perf.p1low_fps,
