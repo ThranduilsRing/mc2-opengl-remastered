@@ -32,13 +32,13 @@ std::vector<std::string>& p1Dirty()
 }
 int g_p1Events = 0;
 
-struct Node
+struct B2Node
 {
 	float value;
 	unsigned long id;
 };
 
-std::string describe(const Node* nodes, size_t count)
+std::string describe(const B2Node* nodes, size_t count)
 {
 	std::string out;
 	for (size_t i = 0; i < count && i < 12; ++i)
@@ -90,13 +90,13 @@ void p2Flush()
 extern "C" void b2P1Sort(void* base, size_t n, size_t /*width*/, int (*cmp)(const void*, const void*), int descending)
 {
 	using namespace b2probe;
-	Node* list = static_cast<Node*>(base);
+	B2Node* list = static_cast<B2Node*>(base);
 	const float sentinel = descending ? -3.4E38f : 3.4E38f;
 	size_t k = 0;
 	while (k < n && list[k].value != sentinel)
 		++k;
-	std::vector<Node> ref(list, list + k);
-	std::stable_sort(ref.begin(), ref.end(), [&](const Node& a, const Node& b) {
+	std::vector<B2Node> ref(list, list + k);
+	std::stable_sort(ref.begin(), ref.end(), [&](const B2Node& a, const B2Node& b) {
 		const bool na = std::isnan(a.value), nb = std::isnan(b.value);
 		if (na || nb)
 			return !na && nb;
@@ -113,8 +113,8 @@ extern "C" void b2P1Sort(void* base, size_t n, size_t /*width*/, int (*cmp)(cons
 		if (i && !std::isnan(ref[i].value) && ref[i].value == ref[i - 1].value)
 			ties = true;
 	}
-	std::vector<Node> before(list, list + (k < 12 ? k : 12));
-	std::qsort(base, n, sizeof(Node), cmp);
+	std::vector<B2Node> before(list, list + (k < 12 ? k : 12));
+	std::qsort(base, n, sizeof(B2Node), cmp);
 	bool diff = false, leak = false;
 	for (size_t i = 0; i < k; ++i)
 	{

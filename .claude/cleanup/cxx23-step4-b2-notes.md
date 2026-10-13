@@ -110,7 +110,7 @@ BASE (every code batch): `py -3 scripts/ninja_build.py`, `py -3 tools/build_all_
 | B2.5-pre | P2 hits = 0: `check` x4 identical; else patched-old equivalence + ruled re-baseline | - | - | P2 hit count |
 | B2.5 | `check` x4 identical vs the current baselines; P2 per-solve hashes identical in both `MC2_PATH_SOLVE_ISOLATED` positions | masked mission save mc2_24 frame 2400 | - | P2 (the save mask hides `stepList`, so P2 is the only path-CONTENT proof); goal-map solves counted and covered (liveness fixture or HP6); tier2 once; Tracy `Move.*` |
 | E1-E4 | `run_editor_smoke` 15/15 | E0 ledger `-mission`/`-smoke-save` `.fit` old vs new editor byte-identical (container-only) | - | dialogs compile-only, listed |
-PATCHED-OLD EQUIVALENCE (replaces the SIMID ladder; the first SIMID divergence = first P1 divergence is necessary, not sufficient: a reordered contact list changes state frames later or never). Build the pre-B2.4 tree with an uncommitted ~20-line patch that sorts ONLY the filled prefix with the new key (a scratch worktree, the B1 G2 recipe `git worktree add --detach A:/Games/mc2-g2 <sha>`) and record its SIMID chain on mc2_03/10/16/24 as a scratch baseline; the B2.4 exe must equal it on every frame of every window. Then the whole SIMID change is attributable to the rule and the container refactor is proven neutral; the orchestrator adopts that chain as the new baseline (a reviewed ruleset change; a lane never re-baselines on its own). New exe != patched-old exe is a defect and a hard stop. Step 4 (12 pairs `--duration 60` + the camera-park pair on the new exe) stays. The same equivalence applies to H18 if P2 shows hits inside a window. Expect P1 > 0 (ties are common at `sortWeapons`, `getContacts`, `getMoversWithinRadius`) and plan ONE re-baseline at B2.4. Orchestrator action (R11): tell lane 2 and the Codex sim-kernel track before B2.4 that the baselines are re-made once (the design's step-1 freeze comes after B2.4, or B2.4 is its first reviewed ruleset change).
+PATCHED-OLD EQUIVALENCE (replaces the SIMID ladder; the first SIMID divergence = first P1 divergence is necessary, not sufficient: a reordered contact list changes state frames later or never). Build the pre-B2.4 tree with an uncommitted ~20-line patch that sorts ONLY the filled prefix with the new key (a scratch worktree, the B1 G2 recipe `git worktree add --detach A:/Games/mc2-g2 <sha>`) and record its SIMID chain on mc2_03/10/16/24 as a scratch baseline; the B2.4 exe must equal it on every frame of every window. Then the whole SIMID change is attributable to the rule and the container refactor is proven neutral; the orchestrator adopts that chain as the new baseline (a reviewed ruleset change; a lane never re-baselines on its own). New exe != patched-old exe is a defect and a hard stop. Step 4 (12 pairs `--duration 60` + the camera-park pair on the new exe) stays AS A REQUIREMENT, but `scripts/run_smoke.py` refuses any `--duration` above 30 (hard cap, CLAUDE.md soak rule): until the owner rules on the cap the pairs run at 30 s (2460-3611 sim frames on the four missions, section 8b) and the part past about tick 3600 is unproven. The same equivalence applies to H18 if P2 shows hits inside a window. Expect P1 > 0 (ties are common at `sortWeapons`, `getContacts`, `getMoversWithinRadius`) and plan ONE re-baseline at B2.4. Orchestrator action (R11): tell lane 2 and the Codex sim-kernel track before B2.4 that the baselines are re-made once (the design's step-1 freeze comes after B2.4, or B2.4 is its first reviewed ruleset change).
 
 ## 6. What the gates cannot see, and the closing proof
 SIMID covers movers (position, target, brain, move state, path step COUNT), buildings, turrets, ABL and RNG counts. It does NOT see logistics lists and their order, the deployed force before launch, UI text, objective status except through side effects, saved objective text, the CONTENT of a path (only where the mover ends up), contact lists that no brain consumed in the window, weapon ORDER when nothing fires in the window (only its effect via hp/RNG counts), or anything after the baseline window. tier1 boots straight into missions (no logistics, no campaign flow). So each batch has one probe or round trip that observes the container output directly instead of its distant consequence (P1/P2/P3, the campaign round trip). Saved containers: objectives (mission text packet), variants, inventory, pilots (LogisticsData text packet), `groups[].infos`/`additionalPurchaseFiles` (campaign save). SortList and the heap are not saved; their outputs are (targets, `MovePath::stepList`, masked).
@@ -153,7 +153,92 @@ SIMID covers movers (position, target, brain, move state, path step COUNT), buil
 Container-attributable LG03 lines: B2.1 -8 (the whole `bitflag.cpp` count; crater.cpp:134 stays for B4), B2.4 -12 (ablmc2_camera 1, contact 4, mover_init 1, warrior 2, warrior_state 1, mission 3), B2.5 -6 (group_goals 1, globalmap 1, escape 1, movemap_path 2, mission 1) = -26 of 2,397 (1.1%), plus the CObjective delete sites if D12 lands (counted, not promised). B2.2 changes no LG03 line. The deleted files carry 52 idiom lines (elist.h 20, sortlist.* 10, pqueue.* 4, bitflag.* 16, dbitflag.h 2): the idiom total falls by about 78 at E-end, minus what the new headers add (target 0). B2's value is not the ratchet. Structural KPI to report on the board: hand-written container classes in the game 5 -> 0 (EList last, at E-end), static sort singletons 5 -> 0, static scratch arrays 2 -> 0 (plus `::openList`), EList-derived classes 5 -> 0, UB/corruption sites 6 -> 0 (H7 x2, H8 x2, `wcl[8]`, H18), files naming EList 39 -> 0 in code/ and 64 -> 0 in editor/, A* capacity tied to the graph, a defined and portable sort order. The `own_inventory` and pointer-order baselines are rewritten with the reason in each commit.
 
 ## 8b. Probe results (filled by B2.0; the old exe, mc2_03/10/24/16 plus one long mc2_24 `--duration 60`)
-(pending B2.0)
+PROBE EXE: scratch worktree `A:/Games/mc2-g2` at 1a5b4f94f = a61552298 (B2.0 census commit) + the `tests/analyze/b2_probes` patch (`apply_probes.py`), clean tree, built with Ninja and deployed to the dev install `mc2-win64-v0.4` (main's exe was deployed again afterwards). Runs: `tools/sim_determinism.py check <mission> --duration 30` from that worktree (two runs each under MC2_SMOKE_FIXED_TIMESTEP, MC2_DETERMINISTIC_RNG and MC2_SIM_IDENTITY_TRACE). The two runs of a mission were identical over 2460 (mc2_03), 2763 (mc2_10), 3611 (mc2_24) and 2509 (mc2_16, liveness fixture) sim frames, and the first 1000 frames equal the committed baseline chain in every digest on all four: the probes change nothing. Window = the 1000 frames a baseline covers.
+COVERAGE LIMITS, stated so "0" is never read as "none": (1) the long mc2_24 run past tick 4000 was NOT made: `run_smoke.py` refuses `--duration 60` (hard cap 30 s, the CLAUDE.md soak rule), so every run reached 2460-3611 sim frames; the review's `--duration 60` pairs for B2.4 meet the same cap and need an owner ruling (a lane never changes a proof standard). (2) Sites and solvers marked UNEXERCISED had zero calls in all four runs: `sortWeapons` (both branches), the escape solver and the goal-map solver. (3) The first mc2_03 check failed ONLY its baseline leg, on the install data fingerprint: deploying from the fresh scratch worktree rewrote `data/tgl/QuonsetGLB.mcasset.json` with its committed (LF) bytes, 2642 bytes against the 2701 of main's working copy; the data fingerprint is path + size, so a deploy from another worktree can move it. The file was restored (the fingerprint returned to 17051a2e90619f97) and the mc2_03 first-1000-frame chain, recomputed from the log, equals the baseline (3bfc7e1947c403dc).
+
+```
+### mc2_03: 2460 sim frames, last 2459; baseline window 1000
+P1 (SortList):
+| site | calls | max n | ties | qsort != rule | NaN | inf | leak | first tie frame | first diff frame | diff within window |
+|---|---|---|---|---|---|---|---|---|---|---|
+| getContacts | 0 (UNEXERCISED) | | | | | | | | | |
+| getMoversWithinRadius | 0 (UNEXERCISED) | | | | | | | | | |
+| calcOptimalRange | 33 | 5 | 33 | 31 | 0 | 0 | 0 | 0 | 0 | 31 of 33 |
+| sortWeapons_attack | 0 (UNEXERCISED) | | | | | | | | | |
+| sortWeapons_value | 0 (UNEXERCISED) | | | | | | | | | |
+P2 (A* open list):
+| solver | solves | max open | find()==0 | largest index to change | change > live n | change >= buffer | min key | solves > 5001 |
+|---|---|---|---|---|---|---|---|---|
+| globalmap | 247 | 149 | 0 | 137 | 0 | 0 | 0 | 0 |
+| movemap | 130 | 211 | 0 | 206 | 0 | 0 | 1 | 0 |
+| movemap_jump | 54 | 2330 | 0 | 2322 | 0 | 0 | 1 | 0 |
+| movemap_escape | 0 (UNEXERCISED) | | | | | | | |
+| goalmap | 0 (UNEXERCISED) | | | | | | | |
+propogateCost hits (door != openIndex): 0 total, 0 within frame 1000; stale 0, door >= 5002 0
+
+### mc2_10: 2763 sim frames, last 2762; baseline window 1000
+P1 (SortList):
+| site | calls | max n | ties | qsort != rule | NaN | inf | leak | first tie frame | first diff frame | diff within window |
+|---|---|---|---|---|---|---|---|---|---|---|
+| getContacts | 165 | 8 | 0 | 0 | 0 | 0 | 0 | - | - | 0 of 162 |
+| getMoversWithinRadius | 0 (UNEXERCISED) | | | | | | | | | |
+| calcOptimalRange | 239 | 5 | 239 | 237 | 0 | 0 | 0 | 0 | 0 | 86 of 88 |
+| sortWeapons_attack | 0 (UNEXERCISED) | | | | | | | | | |
+| sortWeapons_value | 0 (UNEXERCISED) | | | | | | | | | |
+P2 (A* open list):
+| solver | solves | max open | find()==0 | largest index to change | change > live n | change >= buffer | min key | solves > 5001 |
+|---|---|---|---|---|---|---|---|---|
+| globalmap | 417 | 109 | 0 | 102 | 0 | 0 | 0 | 0 |
+| movemap | 173 | 187 | 0 | 177 | 0 | 0 | 1 | 0 |
+| movemap_jump | 99 | 2088 | 0 | 2080 | 0 | 0 | 0 | 0 |
+| movemap_escape | 0 (UNEXERCISED) | | | | | | | |
+| goalmap | 0 (UNEXERCISED) | | | | | | | |
+propogateCost hits (door != openIndex): 0 total, 0 within frame 1000; stale 0, door >= 5002 0
+
+### mc2_24: 3611 sim frames, last 3610; baseline window 1000
+P1 (SortList):
+| site | calls | max n | ties | qsort != rule | NaN | inf | leak | first tie frame | first diff frame | diff within window |
+|---|---|---|---|---|---|---|---|---|---|---|
+| getContacts | 1245 | 6 | 0 | 0 | 0 | 0 | 0 | - | - | 0 of 0 |
+| getMoversWithinRadius | 18 | 6 | 18 | 16 | 0 | 0 | 0 | 2618 | 2618 | 0 of 0 |
+| calcOptimalRange | 268 | 5 | 268 | 243 | 0 | 0 | 0 | 0 | 0 | 53 of 75 |
+| sortWeapons_attack | 0 (UNEXERCISED) | | | | | | | | | |
+| sortWeapons_value | 0 (UNEXERCISED) | | | | | | | | | |
+P2 (A* open list):
+| solver | solves | max open | find()==0 | largest index to change | change > live n | change >= buffer | min key | solves > 5001 |
+|---|---|---|---|---|---|---|---|---|
+| globalmap | 2596 | 579 | 0 | 538 | 0 | 0 | 0 | 0 |
+| movemap | 1237 | 267 | 0 | 257 | 0 | 0 | 0 | 0 |
+| movemap_jump | 614 | 2238 | 0 | 2233 | 0 | 0 | 0 | 0 |
+| movemap_escape | 0 (UNEXERCISED) | | | | | | | |
+| goalmap | 0 (UNEXERCISED) | | | | | | | |
+propogateCost hits (door != openIndex): 0 total, 0 within frame 1000; stale 0, door >= 5002 0
+
+### mc2_16: 2509 sim frames, last 2508; baseline window 1000
+P1 (SortList):
+| site | calls | max n | ties | qsort != rule | NaN | inf | leak | first tie frame | first diff frame | diff within window |
+|---|---|---|---|---|---|---|---|---|---|---|
+| getContacts | 667 | 5 | 0 | 0 | 0 | 0 | 0 | - | - | 0 of 69 |
+| getMoversWithinRadius | 19 | 5 | 4 | 4 | 0 | 0 | 0 | 1735 | 1735 | 0 of 0 |
+| calcOptimalRange | 130 | 5 | 130 | 115 | 0 | 0 | 0 | 0 | 0 | 42 of 46 |
+| sortWeapons_attack | 0 (UNEXERCISED) | | | | | | | | | |
+| sortWeapons_value | 0 (UNEXERCISED) | | | | | | | | | |
+P2 (A* open list):
+| solver | solves | max open | find()==0 | largest index to change | change > live n | change >= buffer | min key | solves > 5001 |
+|---|---|---|---|---|---|---|---|---|
+| globalmap | 470 | 366 | 0 | 346 | 0 | 0 | 0 | 0 |
+| movemap | 383 | 302 | 0 | 296 | 0 | 0 | 0 | 0 |
+| movemap_jump | 1685 | 2593 | 0 | 2557 | 0 | 0 | 1 | 0 |
+| movemap_escape | 0 (UNEXERCISED) | | | | | | | |
+| goalmap | 0 (UNEXERCISED) | | | | | | | |
+propogateCost hits (door != openIndex): 0 total, 0 within frame 1000; stale 0, door >= 5002 0
+
+```
+
+READ (what B2.4 and B2.5-pre can expect on stock data):
+- P1 `getContacts`: 2077 calls across the four missions (n <= 8), ZERO with ties: the tie order cannot matter there. `getMoversWithinRadius`: exercised only in mc2_24 (18 calls, 18 with ties) and mc2_16 (19 calls, 4 with ties); the first tie is at sim frame 2618 (mc2_24) and 1735 (mc2_16), OUTSIDE the 1000-frame baseline windows; mc2_03 and mc2_10 never call it. `calcOptimalRange` has ties in every call (equal range totals) and the CRT order differs from (score, slot) in most, but it reads the tie SET (H11), so it cannot move the sim. `sortWeapons` unexercised. NaN, +-inf and sentinel leaks: 0 everywhere. So the baseline windows are expected to stay IDENTICAL at B2.4; the patched-old equivalence still runs because it is the only proof past the window.
+- P2: ZERO `propogateCost` hits (door != openIndex), zero find()==0, zero change() indices beyond the live heap or the buffer, minimum key 0-1 (no negative key, H14 not reached). Largest open list per solver: global map 579, move map 302, jump solver 2593 (the big one), all far below 5001, so H12 (capacity) is not reached on stock missions and the A* bug (H18) is dormant there. B2.5-pre is therefore expected to be baseline-neutral on the four windows; its value is removing a latent corruption that a mod map with a denser door graph could reach.
+- P3 (objective status per frame) is not built yet; it belongs to B2.3.
 
 ## 9. Decisions (the 11 questions of the notes, answered by RB2 section 11)
 1. Defer `DynamicArrayOf`/`StaticArrayOf`/`MemoryBlock` to B8. The reason is NOT "every user is MLR": a storage swap behind `marray.hpp` zero-fills where `new T[n]` did not, changes `sizeof` of every holder, and edits code the owner ruled out of ownership work, and buys nothing if MLR retires; two users survive MLR and are named in the B8 list (section 4).
