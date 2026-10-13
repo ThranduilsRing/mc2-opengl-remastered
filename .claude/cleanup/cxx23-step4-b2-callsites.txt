@@ -1,5 +1,5 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1545 sites in 116 files
+# total 1541 sites in 115 files
 # per kind:
 #     397  EList::Begin
 #     345  EList
@@ -33,7 +33,6 @@
 #       5  PriorityQueue::remove
 #       5  SortList::getValue
 #       4  EList::DeleteTail
-#       4  ByteFlag
 #       4  EList::Insert
 #       3  EList::GetTail
 #       3  PriorityQueue::getNumItems
@@ -44,7 +43,7 @@
 #       1  PriorityQueue::~PriorityQueue
 #       1  EList::operator=
 # per batch (cxx23-step4-b2-files.json):
-#      14  B2.1
+#      10  B2.1
 #     388  B2.2
 #      77  B2.3
 #      23  B2.4
@@ -92,7 +91,6 @@
 #      13  code/contact.cpp
 #      13  code/group_goals.cpp
 #      12  code/ablmc2_camera.cpp
-#      12  code/mission.cpp
 #      12  editor/MissionValidation.cpp
 #      12  mclib/move_globalmap_path.cpp
 #      11  editor/ChooseBuildingDlg.cpp
@@ -100,6 +98,7 @@
 #      11  mclib/move_movemap_escape.cpp
 #      10  code/logistics_begin.cpp
 #      10  code/logisticspilot.cpp
+#      10  code/mission.cpp
 #      10  editor/ChooseUnitDlg.cpp
 #       9  editor/CampaignSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
@@ -140,7 +139,6 @@
 #       3  editor/eraser.cpp
 #       2  code/controlgui_update.cpp
 #       2  code/logisticsmissioninfo.h
-#       2  code/mission_internal.h
 #       2  code/missionbriefingscreen.cpp
 #       2  code/team.cpp
 #       2  editor/BuildingSettingsDlg.h
@@ -205,8 +203,7 @@
 # blob e4d58fc989ac6a9aa7f3d52dc49ac062d2edf9a3 code/mechbayscreen_mechs.cpp
 # blob f7476284850fa26ea2383f33cb9affe49b3c9281 code/mechpurchasescreen.cpp
 # blob 4f3d2601eb34fb3c59ccedc114ec3b1cabb8715d code/mechpurchasescreen.h
-# blob d09e6bd3c5268668b4b25a35fbf888b1b4977e97 code/mission.cpp
-# blob 5c9957cc007656288206ac2936c6c73c46d40617 code/mission_internal.h
+# blob e9927601b721b01b2470dedb17e35ddebdd73d1c code/mission.cpp
 # blob a88d8a6ee22d155d5076d0eb806bf585324d1948 code/mission_update.cpp
 # blob 85bd38e2830d57350581cc0b071271e3010ca46d code/missionbegin.cpp
 # blob b4e21bac7f99f4d93dc94039cea09b36e50f6a75 code/missionbriefingscreen.cpp
@@ -291,11 +288,7 @@
 # blob 4d080d2c16290b54a1ccf14c08687a6fe505b4f1 mclib/move_movemap_escape.cpp
 # blob 47a9faa5eddfcd7e4f24ef8ba9b308aca83c179c mclib/move_movemap_path.cpp
 # blob 99e09e07f7c8586317c224a0ef8872141f21588b mclib/move_solvectx.h
-# mentions inside inactive #if branches (grep, the compiler cannot see them): 6
-#   code/team_los.cpp:152 (branch opened at 123): visbBits[0] = Terrain::VisibleBits->getFlag(tileRow, tileCol);
-#   code/team_los.cpp:158 (branch opened at 123): visbBits[1] = Terrain::VisibleBits->getFlag(tileRow + 1, tileCol);
-#   code/team_los.cpp:165 (branch opened at 123): visbBits[2] = Terrain::VisibleBits->getFlag(tileRow + 1, tileCol + 1);
-#   code/team_los.cpp:172 (branch opened at 123): visbBits[3] = Terrain::VisibleBits->getFlag(tileRow, tileCol + 1);
+# mentions inside inactive #if branches (grep, the compiler cannot see them): 2
 #   editor/EditorObjectMgr_select.cpp:174 (branch opened at 167): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 #   editor/EditorObjectMgr_select.cpp:198 (branch opened at 193): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 # file:line:kind
@@ -712,20 +705,16 @@ code/mechpurchasescreen.cpp:384:EList::End
 code/mechpurchasescreen.cpp:391:EList
 code/mechpurchasescreen.cpp:391:EList::Begin
 code/mechpurchasescreen.h:68:EList
-code/mission.cpp:76:ByteFlag
-code/mission.cpp:77:ByteFlag
-code/mission.cpp:716:SortList::~SortList
-code/mission.cpp:722:SortList::~SortList
-code/mission.cpp:792:PriorityQueue::~PriorityQueue
-code/mission.cpp:798:SortList::~SortList
-code/mission.cpp:983:EList::Count
-code/mission.cpp:985:EList::Begin
-code/mission.cpp:1001:EList::Count
-code/mission.cpp:1003:EList::Begin
-code/mission.cpp:1018:EList::Count
-code/mission.cpp:1020:EList::Begin
-code/mission_internal.h:207:ByteFlag
-code/mission_internal.h:208:ByteFlag
+code/mission.cpp:713:SortList::~SortList
+code/mission.cpp:719:SortList::~SortList
+code/mission.cpp:789:PriorityQueue::~PriorityQueue
+code/mission.cpp:795:SortList::~SortList
+code/mission.cpp:980:EList::Count
+code/mission.cpp:982:EList::Begin
+code/mission.cpp:998:EList::Count
+code/mission.cpp:1000:EList::Begin
+code/mission.cpp:1015:EList::Count
+code/mission.cpp:1017:EList::Begin
 code/mission_update.cpp:623:EList::Count
 code/missionbegin.cpp:1020:EList
 code/missionbegin.cpp:1020:EList::EList
