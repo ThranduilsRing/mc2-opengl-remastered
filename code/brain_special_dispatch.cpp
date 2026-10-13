@@ -60,6 +60,9 @@
 
 #include "brain_special_internal.h"
 #include "brain_special_frame.h"
+#include "dteam.h"   // MAX_CONTACTS_PER_TEAM: the length of every getContacts output array
+
+#include <array>
 
 // ---------------------------------------------------------------------------
 // TECHSCRIPT-DISPATCH-1D-M: MissionVarStore global definition.
@@ -1439,7 +1442,7 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
 
     // A sleeping Sentry only engages once a detected enemy has woken it (WakeOnAttack).
     if (runtime->sentryAsleep && !runtime->sentryWoken) {
-        int wcl[8]; long wn = veh->getContacts(wcl, (1 | 64), 0);
+        std::array<int, MAX_CONTACTS_PER_TEAM> wcl; long wn = veh->getContacts(wcl.data(), (1 | 64), 0);   // getContacts writes every valid contact
         if (wn <= 0) return false;                  // still asleep, nothing detected
         runtime->sentryWoken = true;
         std::fprintf(stderr, "[BRAIN_SENTRY_WAKE] wid=%d\n", wid);
@@ -1456,8 +1459,8 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     long teamContacts = 0;
     float tcNear = -1.0f;
     {
-        int cl[MAX_CONTACTS_PER_SENSOR];
-        teamContacts = veh->getContacts(cl, (1 | 64), CONTACT_SORT_DISTANCE);  // ENEMY|NOT_DISABLED, nearest first
+        std::array<int, MAX_CONTACTS_PER_TEAM> cl;
+        teamContacts = veh->getContacts(cl.data(), (1 | 64), CONTACT_SORT_DISTANCE);  // ENEMY|NOT_DISABLED, nearest first
         if (teamContacts > 0) {
             GameObjectPtr c0 = ObjectManager->get(cl[0]);                       // contact list holds handles
             if (c0) { tgtWID = c0->getWatchID(); tcNear = veh->distanceFrom(c0->getPosition()); }

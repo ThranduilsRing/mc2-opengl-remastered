@@ -1,5 +1,5 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1539 sites in 115 files
+# total 1521 sites in 111 files
 # per kind:
 #     397  EList::Begin
 #     345  EList
@@ -14,24 +14,24 @@
 #      18  EList::End
 #      10  PriorityQueue::insert
 #      10  EList::GetHead
-#       9  SortList::setId
-#       9  SortList::setValue
-#       8  SortList::getId
-#       7  SortList
-#       7  SortList::sort
+#       7  SortList::setId
+#       7  SortList::setValue
 #       7  PriorityQueue
-#       6  SortList::SortList
-#       6  SortList::init
-#       6  SortList::clear
-#       6  SortList::~SortList
+#       6  SortList::getId
 #       6  PriorityQueue::PriorityQueue
 #       6  PriorityQueue::init
 #       6  PriorityQueue::find
 #       6  PriorityQueue::change
+#       5  SortList::sort
+#       5  SortList::~SortList
 #       5  PriorityQueue::clear
 #       5  PriorityQueue::isEmpty
 #       5  PriorityQueue::remove
 #       5  SortList::getValue
+#       4  SortList
+#       4  SortList::SortList
+#       4  SortList::init
+#       4  SortList::clear
 #       4  EList::DeleteTail
 #       4  EList::Insert
 #       3  EList::GetTail
@@ -46,7 +46,7 @@
 #     388  B2.2
 #      83  B2.3
 #      26  B2.4
-#      39  B2.4-pre
+#      21  B2.4-pre
 #      42  B2.5
 #      10  B2.5-pre
 #       6  B6
@@ -88,7 +88,6 @@
 #      18  editor/SceneOutliner.cpp
 #      14  code/mechpurchasescreen.cpp
 #      13  code/contact.cpp
-#      13  code/group_goals.cpp
 #      12  code/ablmc2_camera.cpp
 #      12  editor/MissionValidation.cpp
 #      11  editor/ChooseBuildingDlg.cpp
@@ -101,6 +100,7 @@
 #      10  mclib/move_globalmap_path.cpp
 #       9  editor/CampaignSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
+#       8  code/group_goals.cpp
 #       8  code/logisticsdata.h
 #       8  editor/Action.h
 #       8  editor/CampaignData.cpp
@@ -115,13 +115,11 @@
 #       6  editor/MineBrush.cpp
 #       6  editor/OverlayBrush.cpp
 #       6  editor/ResourceStringSelectionDlg.cpp
-#       5  code/group_orders.cpp
 #       5  code/mpparameterscreen.cpp
 #       4  code/gametacmap.cpp
 #       4  code/mechbayscreen.cpp
 #       4  code/mechbayscreen_mechs.cpp
 #       4  code/pilotreadyscreen.cpp
-#       4  code/warrior.cpp
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
 #       4  editor/EditorInterface_mouse.cpp
@@ -130,7 +128,6 @@
 #       3  code/controlgui_objectives.cpp
 #       3  code/controlgui_render.cpp
 #       3  code/mover_init.cpp
-#       3  code/warrior_state.cpp
 #       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
 #       3  editor/TelemetryPanel.cpp
@@ -154,7 +151,6 @@
 #       2  editor/campaignData.h
 #       1  code/componentlistbox.h
 #       1  code/controlgui_chat.cpp
-#       1  code/group.h
 #       1  code/logisticspilot.h
 #       1  code/mechpurchasescreen.h
 #       1  code/mission_update.cpp
@@ -175,15 +171,13 @@
 # blob 5a7a30319898fe33053a5250d927b51ab393f195 code/ablmc2_camera.cpp
 # blob 09074e0c98a03167be0ef854264528d26ce72ed9 code/componentlistbox.cpp
 # blob 9eddb819538aed58e6e9257a31b2d1d72e99eb46 code/componentlistbox.h
-# blob f1158cc8ad27580584db3bd9bc7067e714a53cda code/contact.cpp
+# blob d6158799855276bbebdb0e719ac317508b6240c6 code/contact.cpp
 # blob 3722da314d07cdd27f5514ea65711ee04e255e48 code/controlgui_chat.cpp
 # blob d10cadf8499b96a7f5eeb189ce058661d719cddc code/controlgui_objectives.cpp
 # blob ae50b024f49b340ee342a7da78ef380b6345ce0b code/controlgui_render.cpp
 # blob 0cd1469a3dcc86b12627da43a7f5e87b536d1363 code/controlgui_update.cpp
 # blob a6463b7e4d51bfd627e62f3e0d397083266e11f4 code/gametacmap.cpp
-# blob 2fcd3f04c5649c31717d0a4c4ea9792e951bacd6 code/group.h
-# blob 4ce8c22f5fb3c5197d602d4dafee2845671ef225 code/group_goals.cpp
-# blob ca6fa525ba3610d46bcc09be875902c1dee60a31 code/group_orders.cpp
+# blob fd9f18996de4c78e649e163af98ded8c17a0d1ce code/group_goals.cpp
 # blob 1f92f72d26aadd653a27c378f2467cef5b4dfdbb code/logistics_begin.cpp
 # blob af81fd347abe831a24b18a217efff76b6d105691 code/logisticsdata.cpp
 # blob 226630194f42d811043feb566241dbc61b388aab code/logisticsdata.h
@@ -217,8 +211,6 @@
 # blob 54506ad442f25e740549ed384ec3556310931ccd code/pilotreviewarea.cpp
 # blob c35a58198029cd5efde1ce269c5a09b60f0795fb code/saveload_load.cpp
 # blob 50ca1b8e2c7618977f33e780a980ececa48cc4a6 code/team.cpp
-# blob ebd40c49efb61f5918013f254eb728413a2073fd code/warrior.cpp
-# blob 4b3a8dd6509142fda4673f5a728cffb6ed0e7b3e code/warrior_state.cpp
 # blob 203f0e44db92e2d5f3526feca15b32faa8a29fdf editor/Action.cpp
 # blob 4ec93ea4adfebad05779bf646f9598158c1d4c36 editor/Action.h
 # blob 3bb73f78efe7050a2464d40c8f5c56aa0adf36be editor/BuildingBrush.cpp
@@ -315,15 +307,15 @@ code/contact.cpp:133:SortList
 code/contact.cpp:133:SortList::SortList
 code/contact.cpp:136:SortList::init
 code/contact.cpp:146:SortList::~SortList
-code/contact.cpp:956:SortList
-code/contact.cpp:956:SortList::SortList
-code/contact.cpp:959:SortList::init
-code/contact.cpp:964:SortList::clear
-code/contact.cpp:966:SortList::setId
-code/contact.cpp:967:SortList::setValue
-code/contact.cpp:969:SortList::sort
-code/contact.cpp:971:SortList::getId
-code/contact.cpp:1309:SortList::~SortList
+code/contact.cpp:958:SortList
+code/contact.cpp:958:SortList::SortList
+code/contact.cpp:961:SortList::init
+code/contact.cpp:966:SortList::clear
+code/contact.cpp:968:SortList::setId
+code/contact.cpp:969:SortList::setValue
+code/contact.cpp:971:SortList::sort
+code/contact.cpp:973:SortList::getId
+code/contact.cpp:1311:SortList::~SortList
 code/controlgui_chat.cpp:124:EList::Count
 code/controlgui_objectives.cpp:129:EList::Count
 code/controlgui_objectives.cpp:165:EList
@@ -337,25 +329,14 @@ code/gametacmap.cpp:246:EList
 code/gametacmap.cpp:246:EList::Begin
 code/gametacmap.cpp:538:EList
 code/gametacmap.cpp:538:EList::Begin
-code/group.h:86:SortList
-code/group_goals.cpp:109:SortList::clear
-code/group_goals.cpp:119:SortList::setId
-code/group_goals.cpp:120:SortList::setValue
-code/group_goals.cpp:122:SortList::sort
-code/group_goals.cpp:124:SortList::getId
-code/group_goals.cpp:165:PriorityQueue
-code/group_goals.cpp:165:PriorityQueue::PriorityQueue
-code/group_goals.cpp:167:PriorityQueue::init
-code/group_goals.cpp:182:PriorityQueue::clear
-code/group_goals.cpp:183:PriorityQueue::insert
-code/group_goals.cpp:187:PriorityQueue::isEmpty
-code/group_goals.cpp:192:PriorityQueue::remove
-code/group_goals.cpp:253:PriorityQueue::insert
-code/group_orders.cpp:62:SortList::clear
-code/group_orders.cpp:68:SortList::setId
-code/group_orders.cpp:69:SortList::setValue
-code/group_orders.cpp:73:SortList::sort
-code/group_orders.cpp:88:SortList::getId
+code/group_goals.cpp:140:PriorityQueue
+code/group_goals.cpp:140:PriorityQueue::PriorityQueue
+code/group_goals.cpp:142:PriorityQueue::init
+code/group_goals.cpp:157:PriorityQueue::clear
+code/group_goals.cpp:158:PriorityQueue::insert
+code/group_goals.cpp:162:PriorityQueue::isEmpty
+code/group_goals.cpp:167:PriorityQueue::remove
+code/group_goals.cpp:228:PriorityQueue::insert
 code/logistics_begin.cpp:155:EList
 code/logistics_begin.cpp:155:EList::EList
 code/logistics_begin.cpp:160:EList
@@ -839,13 +820,6 @@ code/pilotreviewarea.cpp:1172:EList::Count
 code/saveload_load.cpp:449:EList::Begin
 code/team.cpp:80:EList::Begin
 code/team.cpp:100:EList::Begin
-code/warrior.cpp:538:SortList
-code/warrior.cpp:538:SortList::SortList
-code/warrior.cpp:541:SortList::init
-code/warrior.cpp:1056:SortList::~SortList
-code/warrior_state.cpp:889:SortList
-code/warrior_state.cpp:889:SortList::SortList
-code/warrior_state.cpp:892:SortList::init
 editor/Action.cpp:31:EList::EList
 editor/Action.cpp:39:EList::~EList
 editor/Action.cpp:47:EList::Count

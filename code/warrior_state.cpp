@@ -884,14 +884,6 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum)
 	}
 
 
-	if (!sortList) 
-	{
-		sortList = new SortList;
-		if (!sortList)
-			Fatal(0, " Unable to create Warrior::sortList ");
-		sortList->init(100);
-	}
-
 	return packetNum;
 }
 

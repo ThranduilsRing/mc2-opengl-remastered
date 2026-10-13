@@ -923,11 +923,13 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 	if ((sortType != CONTACT_SORT_NONE) && !looker)
 		return(0);
 
-	static float sortValues[MAX_CONTACTS_PER_SENSOR];
+	// A team can hold MAX_CONTACTS_PER_TEAM contacts and every one may pass the criteria, so the buffers are that long; the caller's contactList must be too.
+	static_assert(sizeof(TeamSensorSystem::contacts) / sizeof(long) == MAX_CONTACTS_PER_TEAM, "getContacts buffers follow the team contact list");
+	float sortValues[MAX_CONTACTS_PER_TEAM];
 
 	float CV = 0;
 	long numValidContacts = 0;
-	long handleList[MAX_CONTACTS_PER_SENSOR];
+	long handleList[MAX_CONTACTS_PER_TEAM];
 	for (long i = 0; i < numContacts; i++) {
 		MoverPtr mover = (MoverPtr)ObjectManager->get(contacts[i]);
 		if (!meetsCriteria(looker, mover, contactCriteria))
