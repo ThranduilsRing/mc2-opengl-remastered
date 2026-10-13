@@ -83,7 +83,7 @@ bool isBad(const gate::Row& row, const char* text) {
     return (gate::detail::parseRow(row, text) & gate::detail::kBadBit) != 0;
 }
 
-// Probe order of scripts/gate_idioms.py: unset, "", "0", "false", "1", "yes", "10", "2.5".
+// The probe texts every rule is tried on, in the order of the vector strings below: unset, "", "0", "false", "1", "yes", "10", "2.5".
 constexpr const char* kProbeText[8] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5"};
 
 struct Vector {
@@ -92,7 +92,7 @@ struct Vector {
     const char* bits;  // on(1)/off(0) per probe
 };
 
-// The vectors named in scripts/gate_idioms.py (_BOOL_NAMES) plus the two default-carrying
+// One vector per boolean reading rule, plus the two default-carrying
 // rules, spelled out so a change of either side shows up here.
 constexpr Vector kVectors[] = {
     {Rule::Std, false, "00001111"},      {Rule::Std, true, "11001111"},

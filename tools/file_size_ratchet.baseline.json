@@ -27,12 +27,12 @@
   "code/brain_special_dispatch.cpp": 2772,
   "code/gamecam.cpp": 1591,
   "code/gameobj.cpp": 2370,
-  "code/infowindow.cpp": 1733,
-  "code/logisticsdialog.cpp": 2149,
+  "code/infowindow.cpp": 1730,
+  "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1967,
-  "code/mechlabscreen.cpp": 1953,
-  "code/mechlopedia.cpp": 1662,
-  "code/missionbegin.cpp": 2164,
+  "code/mechlabscreen.cpp": 1952,
+  "code/mechlopedia.cpp": 1649,
+  "code/missionbegin.cpp": 2171,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
@@ -63,7 +63,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "d84de3318",
+ "head": "4f54d1e9d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -180,16 +180,16 @@
    "lines": 2176
   },
   {
+   "file": "code/missionbegin.cpp",
+   "lines": 2171
+  },
+  {
    "file": "code/warrior.h",
    "lines": 2171
   },
   {
-   "file": "code/missionbegin.cpp",
-   "lines": 2164
-  },
-  {
    "file": "code/logisticsdialog.cpp",
-   "lines": 2149
+   "lines": 2148
   },
   {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
@@ -205,7 +205,7 @@
   },
   {
    "file": "code/mechlabscreen.cpp",
-   "lines": 1953
+   "lines": 1952
   },
   {
    "file": "mclib/gosfx/fcurve.cpp",

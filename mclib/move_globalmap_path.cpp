@@ -198,7 +198,8 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 				sprintf(s, "GlobalMap.propogateCost: Cannot find globalmap door [%d, %d, %d, %d] for change\n", door, cost, fromAreaIndex, g);
 				gosASSERT(openIndex != 0);
 			}
-			openList->change(door, curMapDoor->fPrime);
+			else
+				openList->change(openIndex, curMapDoor->fPrime);
 			}
 		else {
 			long toAreaIndex = 1 - fromAreaIndex;

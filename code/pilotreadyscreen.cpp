@@ -14,6 +14,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"warrior.h"
 #include"gamesound.h"
 #include"mc2str.h"
+#include <format>
 #include"multplyr.h"
 #include"chatwindow.h"
 #include"../GuiRuntime/GuiRuntime.h"
@@ -793,12 +794,7 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 			return;
 		}
 
-		char fileName[256];
-		strcpy( fileName, artPath );
-		strcat( fileName, "MCL_PR_" );
-		strcat( fileName, pPilot->getName().c_str() );
-		strcat( fileName, ".tga" );
-		const std::string str = mc2::str::ascii_lower( fileName );
+		const std::string str = mc2::str::ascii_lower( std::format( "{}MCL_PR_{}.tga", mc2::str::from_c( artPath ), pPilot->getName() ) );
 		statics[67].setTexture( str.c_str() );
 		statics[67].setColor( 0xffffffff );
 		statics[67].setUVs( 0, 0, 92, 128 );

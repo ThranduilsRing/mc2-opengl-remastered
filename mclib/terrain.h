@@ -24,10 +24,6 @@
 #include"terrtxm2.h"
 #endif
 
-#ifndef BITLAG_H
-#include"bitflag.h"
-#endif
-
 #ifndef INIFILE_H
 #include"inifile.h"
 #endif
@@ -210,8 +206,6 @@ class Terrain
 		static TerrainTexturesPtr				terrainTextures;			//Pointer to class that manages terrain textures.
 		static TerrainColorMapPtr				terrainTextures2;			//Pointer to class that manages the NEW color map terrain texture.
 		static UserHeapPtr						terrainHeap;				//Heap used for terrain.
-
-//		static ByteFlag							*VisibleBits;				//What can currently be seen
 
 		static char 							*terrainName;				//Name of terrain data file.
 		static char								*colorMapName;				//Name of colormap, if different from terrainName.

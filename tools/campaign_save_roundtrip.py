@@ -72,7 +72,7 @@ def logistics_text(path: str) -> str:
 
 #: The leading bytes of a MechWarriorData record that the logistics pilot text feeds: the strings (bytes 1-180: name, callsign, video, audio, brain) and the
 #: numeric pilot state after them (index, paint scheme, rank, skills, the skill and kill tables, goals). The range ends where the first run-to-run noise
-#: measured in tools/save_noise_mask.json starts (2168, inside the first tactical-order block); the pilot's logistics fields all lie below it.
+#: range of tools/save_noise_mask.json starts (2168); the pilot's logistics fields all lie below it.
 PILOT_STATE_BYTES = 2168
 #: Bytes inside that range that are not pilot text and differ between two campaign starts: offset -> why.
 PILOT_RUN_NOISE = {

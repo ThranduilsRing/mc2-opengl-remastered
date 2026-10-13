@@ -1,0 +1,131 @@
+{
+  "depthfunc": {
+    "pattern": "\\bglDepthFunc\\s*\\(",
+    "paths": [
+      "GameOS/gameos/debug_renderer.cpp",
+      "GameOS/gameos/gameos_graphics_bridge.cpp",
+      "GameOS/gameos/gameos_graphics_capi.cpp",
+      "GameOS/gameos/gameos_graphics_draw.cpp",
+      "GameOS/gameos/gameos_graphics_overlay.cpp",
+      "GameOS/gameos/gameos_graphics_shadow.cpp",
+      "GameOS/gameos/gameos_graphics_water.cpp",
+      "GameOS/gameos/gl_state_guard.h",
+      "GameOS/gameos/gos_mech_batcher_flush.cpp",
+      "GameOS/gameos/gos_particle_bridge.cpp",
+      "GameOS/gameos/gos_particle_bridge_tube.cpp",
+      "GameOS/gameos/gos_postprocess_shadow.cpp",
+      "GameOS/gameos/gos_render_context.cpp",
+      "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
+      "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp",
+      "GameOS/gameos/gos_vegetation.cpp",
+      "GameOS/gameos/gos_vfx_mesh_bridge.cpp",
+      "GameOS/gameos/pipeline_binder.cpp",
+      "editor/EditorGameOS.cpp"
+    ],
+    "prefixes": [
+      "tools/asset_viewer/",
+      "tools/glstate_guard_harness/",
+      "tests/"
+    ]
+  },
+  "depthmask": {
+    "pattern": "\\bglDepthMask\\s*\\(",
+    "paths": [
+      "GameOS/gameos/debug_renderer.cpp",
+      "GameOS/gameos/gameos_graphics_bridge.cpp",
+      "GameOS/gameos/gameos_graphics_capi.cpp",
+      "GameOS/gameos/gameos_graphics_draw.cpp",
+      "GameOS/gameos/gameos_graphics_overlay.cpp",
+      "GameOS/gameos/gameos_graphics_shadow.cpp",
+      "GameOS/gameos/gameos_graphics_water.cpp",
+      "GameOS/gameos/gameosmain.cpp",
+      "GameOS/gameos/gl_state_guard.h",
+      "GameOS/gameos/gos_mech_batcher_flush.cpp",
+      "GameOS/gameos/gos_particle_bridge.cpp",
+      "GameOS/gameos/gos_particle_bridge_tube.cpp",
+      "GameOS/gameos/gos_postprocess.cpp",
+      "GameOS/gameos/gos_postprocess_effects.cpp",
+      "GameOS/gameos/gos_postprocess_shadow.cpp",
+      "GameOS/gameos/gos_postprocess_skybox.cpp",
+      "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp",
+      "GameOS/gameos/gos_vegetation.cpp",
+      "GameOS/gameos/gos_vfx_mesh_bridge.cpp",
+      "GameOS/gameos/pipeline_binder.cpp",
+      "editor/EditorGameOS.cpp"
+    ],
+    "prefixes": [
+      "tools/asset_viewer/",
+      "tools/glstate_guard_harness/",
+      "tests/"
+    ]
+  },
+  "colormask": {
+    "pattern": "\\bglColorMaski?\\s*\\(",
+    "paths": [
+      "GameOS/gameos/debug_renderer.cpp",
+      "GameOS/gameos/gameos_graphics_bridge.cpp",
+      "GameOS/gameos/gameos_graphics_capi.cpp",
+      "GameOS/gameos/gameos_graphics_shadow.cpp",
+      "GameOS/gameos/gl_state_guard.h",
+      "GameOS/gameos/gos_postprocess.cpp",
+      "GameOS/gameos/gos_postprocess_shadow.cpp",
+      "GameOS/gameos/gos_postprocess_skybox.cpp",
+      "GameOS/gameos/gos_static_prop_batcher_submit.cpp",
+      "GameOS/gameos/pipeline_binder.cpp",
+      "RenderCore/ambient_contract.h",
+      "editor/EditorGameOS.cpp"
+    ],
+    "prefixes": [
+      "tools/asset_viewer/",
+      "tools/glstate_guard_harness/",
+      "tests/"
+    ]
+  },
+  "blendfunc": {
+    "pattern": "\\bglBlend(Func|FuncSeparate|Equation|EquationSeparate)i?\\s*\\(",
+    "paths": [
+      "GameOS/gameos/debug_renderer.cpp",
+      "GameOS/gameos/gameos_graphics_bridge.cpp",
+      "GameOS/gameos/gameos_graphics_capi.cpp",
+      "GameOS/gameos/gameos_graphics_draw.cpp",
+      "GameOS/gameos/gameos_graphics_hud.cpp",
+      "GameOS/gameos/gameos_graphics_water.cpp",
+      "GameOS/gameos/gl_state_guard.h",
+      "GameOS/gameos/gos_particle_bridge.cpp",
+      "GameOS/gameos/gos_particle_bridge_tube.cpp",
+      "GameOS/gameos/gos_postprocess.cpp",
+      "GameOS/gameos/gos_postprocess_effects.cpp",
+      "GameOS/gameos/gos_vfx_mesh_bridge.cpp",
+      "GameOS/gameos/pipeline_binder.cpp",
+      "editor/EditorGameOS.cpp"
+    ],
+    "prefixes": [
+      "tools/asset_viewer/",
+      "tools/glstate_guard_harness/",
+      "tests/"
+    ]
+  },
+  "fbobind": {
+    "pattern": "\\bglBindFramebuffer\\s*\\(",
+    "paths": [
+      "GameOS/gameos/gameos_graphics_capi.cpp",
+      "GameOS/gameos/gameos_graphics_overlay.cpp",
+      "GameOS/gameos/gameos_graphics_shadow.cpp",
+      "GameOS/gameos/gameosmain_frame.cpp",
+      "GameOS/gameos/gos_postprocess.cpp",
+      "GameOS/gameos/gos_postprocess_effects.cpp",
+      "GameOS/gameos/gos_postprocess_executor.cpp",
+      "GameOS/gameos/gos_postprocess_fbo.cpp",
+      "GameOS/gameos/gos_postprocess_shadow.cpp",
+      "GameOS/gameos/gos_terrain_indirect_dispatch.cpp",
+      "RenderWorld/RenderWorld.cpp",
+      "editor/EditorGameOS.cpp",
+      "editor/EditorInterface.cpp",
+      "editor/EditorInterface_mouse.cpp"
+    ],
+    "prefixes": [
+      "tools/",
+      "tests/"
+    ]
+  }
+}

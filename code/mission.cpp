@@ -73,9 +73,6 @@ long globalEnemyWeapons[4];
 
 float globalMissionValues[MAX_GLOBAL_MISSION_VALUES];
 
-ByteFlag *VisibleBits = nullptr;		//What can currently be seen
-ByteFlag *SeenBits = nullptr;			//What HAS been seen
-
 UserHeapPtr missionHeap = nullptr;
 
 unsigned int MultiPlayTeamId = 0xFFFFFFFF;

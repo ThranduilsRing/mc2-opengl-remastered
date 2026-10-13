@@ -139,15 +139,15 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 225,
+   "LG01": 223,
    "LG02": 212,
-   "LG03": 953,
+   "LG03": 951,
    "LG04": 21,
    "LG05": 194,
    "LG06": 452,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2308,
+   "LG09": 2307,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 458,
-   "LG02": 287,
-   "LG03": 1138,
-   "LG04": 16,
+   "LG01": 454,
+   "LG02": 285,
+   "LG03": 1130,
+   "LG04": 15,
    "LG05": 136,
    "LG06": 670,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2180,
+   "LG09": 2177,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 210,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 45
+   "LG20": 44
   }
  },
  "dirs": [
@@ -2948,9 +2948,9 @@
    "LG02": 3
   },
   "code/team_los.cpp": {
-   "LG01": 4,
-   "LG03": 4,
-   "LG09": 4
+   "LG01": 2,
+   "LG03": 2,
+   "LG09": 3
   },
   "code/terrobj.cpp": {
    "LG01": 4,
@@ -3363,14 +3363,6 @@
    "LG03": 3,
    "LG09": 7
   },
-  "mclib/bitflag.cpp": {
-   "LG03": 8,
-   "LG04": 1,
-   "LG09": 3
-  },
-  "mclib/bitflag.h": {
-   "LG01": 4
-  },
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
   },
@@ -3519,9 +3511,6 @@
   },
   "mclib/dbasegui.h": {
    "LG13": 33
-  },
-  "mclib/dbitflag.h": {
-   "LG02": 2
   },
   "mclib/dcamera.h": {
    "LG02": 1,
@@ -5178,13 +5167,13 @@
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 41
+   "LG20": 40
   },
   "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
    "LG20": 2
   }
  },
- "head": "ed4225631",
+ "head": "ec1052dfb",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

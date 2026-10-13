@@ -580,7 +580,7 @@ long MechListBox::AddItem(aListItem* itemString)
 			pItem->countText.showGUIWindow( 0 );
 		}
 	
-		// Same-weight mechs order by chassis display name, ignoring ASCII case (the stock names do not move: tests/analyze/name_sort_probe.py), then by variant.
+		// Same-weight mechs order by chassis display name, ignoring ASCII case (the stock mech names order the same as under the former locale collation), then by variant.
 		for ( int i = 0; i < itemCount; i++ )
 		{
 

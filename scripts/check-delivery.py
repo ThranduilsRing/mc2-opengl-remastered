@@ -1,113 +1,20 @@
 #!/usr/bin/env python3
-"""DELIVERY-GATE-1 -- "would I see this fix if I launched?", answered mechanically.
+"""Check whether a fix is present in an installed binary, enabled by default, and supplied with its data.
 
-WHY THIS EXISTS
----------------
-Every lane in this project asks "is the fix CORRECT?". The user never
-experiences correctness. The user experiences
+Binary fingerprints identify the source commit. Gate defaults come from
+Gates/gate_table.json at that same commit; a missing table or gate stays UNKNOWN.
+Manifest integrity uses the working-tree table so uncommitted changes are visible.
+Registry summaries in the table must agree with its typed defaults.
 
-    is the fix in the binary I run, ON by default, with its required data present?
+Usage:
+  py -3 scripts/check-delivery.py --contract
+  py -3 scripts/check-delivery.py --selftest
+  py -3 scripts/check-delivery.py --gate MC2_SSAO_ENABLE --json
+  py -3 scripts/check-delivery.py --nominate mc2-win64-v0.4
 
-and nothing in 117 check scripts ever asked that question, because each of its
-four parts lives in a different tool and no tool JOINs them:
-
-  * scripts/exe_fingerprint.py     knows what commit a binary was built from
-  * gate_default_classifier.py knows what a gate's reader does when unset
-  * check-beauty-sidecars.py       knows whether one class of data reached a tree
-  * check-deploy-coherence.py      knows whether a deploy drifted from its manifest
-                                   -- and is documented "ALWAYS exits 0, advisory
-                                   only", which is the wrong semantics for a
-                                   delivery gate, which is why this is a new
-                                   script rather than an extension of that one.
-
-The measured cost of the missing join, all from this repo:
-  * 19 of 27 gates shipped default-OFF -- correct code, unreachable by the user.
-  * The shipped v0.5.2 release carries ZERO .beauty sidecars (0 rows matching
-    "beauty" in release_assets/0.5.2/release_install_manifest.csv, 28,459 files),
-    so every default-ON gate that reads one runs as a silent no-op there.
-  * VEHICLE-AMBIENT-FLOOR-1 (e3310409) landed default-ON and is HALF DATA: its
-    own commit message says "the deployed shaders/ tree must carry the new
-    gos_tex_vertex_lighted.vert or the uniform does not exist in the program,
-    glGetUniformLocation returns -1, the set silently no-ops and the gate runs
-    OFF while reporting ON."
-  * 6 of the 14 fingerprint-attributable installs on this disk (5 distinct
-    build commits) run MC2_PAVED_OVERLAY_CLASS with default 1 -- a promotion
-    the canonical tip RETRACTED at 2ade84a8, because the lane that shipped it
-    had already measured and retracted its justification in writing. Concrete
-    graded on those installs grades withdrawn code, and no tool said so.
-  * 6 further installs carry MC2_LEGACY_LIT_MC2_FRAME's code with the gate
-    still default-OFF, because they predate the promotion. An A/B of "=1
-    versus unset" on those compares ON against ON -- the identical mistake
-    MC2_SHADOW_ENABLE caused, one gate later.
-
-THE FOUR AXES, AND WHAT EACH ONE REFUSES TO TRUST
--------------------------------------------------
-1. CODE IN THE BINARY. Read from the EXE'S OWN BYTES.
-   * Never a manifest's `git.commit` field: 28 of 31 capture manifests named a
-     commit that was never in the binary they measured (CAPTURE-PROVENANCE-TRUTH-1).
-   * Never generated/build_fingerprint.h: a failed or skipped compile leaves the
-     header freshly stamped and the exe stale.
-   Three evidence tiers, strongest first, and a disagreement between them is
-   REPORTED, never silently resolved:
-     binary       -- the fix's own literal (uniform name / gate name) found in
-                     the image, with a positive AND a negative control on the
-                     same blob so an absence is a finding rather than a failure
-                     of the scanner.
-     source@sha   -- `git show <embedded-sha>:<path>` contains the needle. This
-                     is what catches WITHDRAWN code; ancestry cannot, because a
-                     revert leaves the introducing commit an ancestor forever.
-     ancestry     -- merge-base --is-ancestor. Weakest, and never sufficient
-                     alone when a stronger tier is declared.
-   A binary built from a DIRTY tree invalidates the two source-derived tiers
-   (the sha does not describe the bytes) and is marked so; the binary tier
-   survives, because bytes are bytes.
-
-2. ON BY DEFAULT. Read from the C++ READER, at the commit THAT INSTALL WAS BUILT
-   FROM -- not the tip, not the registry, not docs/tier1_env_vars.md, not a
-   comment. Seventeen documented-vs-actual default lies were found in this tree
-   in one day. A reader-vs-registry disagreement is a FAIL, not a warning.
-   Boolean readers are classified by gate_default_classifier.py's own rule
-   table (imported, not reimplemented, so the two can never drift). NUMERIC
-   readers are classified here, because that checker deliberately skips them as
-   "value-read (not a boolean gate)" -- which is how a numeric gate's retracted
-   default-ON survived on 5 installs unnoticed.
-
-3. DATA PRESENT. A deploy-tree file that EXISTS is not evidence: the half-data
-   failure is an old shader sitting where a new one should be. So a data item may
-   declare a `needle` the deployed file must contain.
-
-4. WHICH INSTALLS. Every engine binary under the install root, graded
-   individually. "The fix is in" is not a property of the repo.
-
-UNKNOWN IS NEVER A PASS. An install with no readable fingerprint, a gate whose
-reader cannot be classified, a data item that was never declared -- each of these
-produces a distinct visible state and can never produce "WOULD SEE IT". A tool
-that quietly upgrades ignorance to agreement is the exact instrument this repo
-keeps getting burned by.
-
-USAGE
-  py -3 scripts/check-delivery.py                     # every fix, every install
-  py -3 scripts/check-delivery.py --fix VEHICLE-AMBIENT-FLOOR-1
-  py -3 scripts/check-delivery.py --gate MC2_SSAO_ENABLE     # ad-hoc, no manifest
-  py -3 scripts/check-delivery.py --install mc2-win64-v0.4
-  py -3 scripts/check-delivery.py --list-installs      # scope + every label
-  py -3 scripts/check-delivery.py --nominate mc2-win64-v0.4    # ONE install
-  py -3 scripts/check-delivery.py --contract           # repo-integrity only (CI)
-  py -3 scripts/check-delivery.py --selftest           # injected-regression proof
-  py -3 scripts/check-delivery.py --json
-
-EVERY GRADING RUN STATES ITS SCOPE (roots, depth, exclusions, rejections,
-install count, label count) before the first table, and --json carries the same
-under "scope". Two prior sweeps of this disk each published a bare total for
-about half its engine binaries with no stated scope, and each was read as a
-whole-disk figure. A total without a scope is not a measurement.
-
-EXIT CODES
-  0  the queried fix(es) would be seen on at least one install, and no lie found
-  1  DELIVERY FAILURE -- no install on disk would show the fix
-  2  INTEGRITY FAILURE -- something in the tree is lying (reader vs registry,
-     manifest naming a commit/needle that does not exist, scanner control failed)
+Exit 0: delivery confirmed; 1: delivery failure; 2: integrity failure.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -115,6 +22,7 @@ import fnmatch
 import glob as _glob
 import importlib.util
 import json
+import math
 import os
 import re
 import subprocess
@@ -218,6 +126,10 @@ DEFAULT_INSTALL_ROOTS = [
 ]
 
 REGISTRY_REL = "RenderCore/RendererFeatureRegistry.h"
+GATE_TABLE_REL = "Gates/gate_table.json"
+SCAN_DIRS = ("GameOS", "mclib", "code", "RenderCore", "editor", "GuiRuntime",
+             "GameAdapters", "RenderWorld", "gui", "EditorBridge", "HostServices", "Viewer")
+SCAN_EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 
 # States. Deliberately three-valued everywhere.
 YES, NO, UNK = "YES", "NO", "?"
@@ -237,49 +149,7 @@ def _load(mod_name: str, filename: str):
     return mod
 
 
-def _load_committed(mod_name: str, filename: str, rev: str = "HEAD"):
-    """Load a sibling module from its COMMITTED bytes, not the working copy."""
-    import tempfile
-    blob = subprocess.check_output(
-        ["git", "-C", WORKTREE, "show", f"{rev}:scripts/{filename}"], **console_child.child_kwargs(redirected=True))
-    tmp = os.path.join(tempfile.gettempdir(), f"_committed_{mod_name}.py")
-    with open(tmp, "wb") as f:
-        f.write(blob)
-    spec = importlib.util.spec_from_file_location(mod_name, tmp)
-    mod = importlib.util.module_from_spec(spec)          # type: ignore[arg-type]
-    sys.modules[mod_name] = mod
-    spec.loader.exec_module(mod)                          # type: ignore[union-attr]
-    return mod
-
-
-def _is_dirty(rel: str) -> bool:
-    out = subprocess.run(["git", "-C", WORKTREE, "status", "--porcelain", rel],
-                         capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
-    return bool(out.stdout.strip())
-
-
 ef = _load("exe_fingerprint", "exe_fingerprint.py")
-
-# THE CLASSIFIER IS BORROWED, SO ITS STATE IS PART OF THIS TOOL'S HONESTY.
-#
-# Every default verdict here is produced by gate_default_classifier.py's
-# rule table. In a shared worktree that file is routinely mid-edit by another
-# lane -- it was during this tool's own bring-up (218 inserted lines touching
-# find_readers). A verdict that silently changes because a neighbour is halfway
-# through a refactor is precisely the class of instrument this repo keeps
-# getting burned by, so the borrowing is made visible rather than assumed
-# harmless: the working copy is used by default (so this tool and
-# check-contracts.sh always agree about what the rules ARE), and its dirtiness
-# is announced. --classifier committed pins the rules to HEAD for a
-# reproducible verdict.
-CLASSIFIER_DIRTY = _is_dirty("scripts/gate_default_classifier.py")
-gda = _load("gate_default_agreement", "gate_default_classifier.py")
-
-
-def use_committed_classifier(rev: str = "HEAD") -> None:
-    global gda
-    gda = _load_committed("gate_default_agreement_committed",
-                          "gate_default_classifier.py", rev)
 
 
 # ---------------------------------------------------------------------------
@@ -387,47 +257,9 @@ def scan_binary(blob: bytes, needle: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Reader classification at an arbitrary commit
+# Gate defaults at the binary's source commit
 # ---------------------------------------------------------------------------
-_CALLEE_BEFORE = re.compile(r"([A-Za-z_]\w*)\s*(?:::\s*)?$")
-
-# Numeric idioms. gate_default_classifier.py deliberately declines these
-# ("value-read (not a boolean gate)"), which is correct for ITS question and
-# leaves this one unanswered: a numeric gate still has a shipped default, and
-# MC2_PAVED_OVERLAY_CLASS's retracted default-ON lived in exactly this blind
-# spot on 5 installs. Only the unambiguous forms are matched; anything else is
-# UNKNOWN, which can never grade as delivered.
-#
-# TWO BLIND SPOTS OF THE FIRST VERSION, both found by pointing this tool at a
-# real gate rather than at its own fixtures (DELIVERY-CLOSE-1):
-#
-#   * THE POINTER NAME WAS HARD-CODED to `v`. Every rule literally spelled `v`,
-#     so a reader that happened to name its getenv result anything else was
-#     invisible. gos_terrain_lod_chunk.cpp:2884 names it `e`.
-#   * THE DEFAULT HAD TO BE AN INTEGER. `return 0.35f;` matched nothing, so
-#     MC2_TERRAIN_AMBIENT_FLOOR -- shipped default-ON in this session, and one
-#     of the five user-facing fixes this lane was asked to grade -- classified
-#     UNKNOWN and could never grade as delivered no matter what any install
-#     contained. A float gate is still a shipped default.
-#
-# The identifier is now CAPTURED and BACK-REFERENCED, so `!a || !b[0]` is still
-# correctly refused: the two spellings must be the same variable.
-_ID = r"(?P<id>[A-Za-z_]\w*)"
-_NUM = r"(?P<num>-?\d+(?:\.\d+)?)[fFuUlL]*"
-_NUM_RULES = [
-    re.compile(r"if\s*\(\s*!\s*" + _ID + r"\s*\|\|\s*!\s*(?P=id)\s*\[\s*0\s*\]"
-               r"\s*\)\s*return\s+" + _NUM + r"\s*;"),
-    re.compile(r"if\s*\(\s*!\s*" + _ID + r"\s*\|\|\s*!\s*\*\s*(?P=id)\s*\)"
-               r"\s*return\s+" + _NUM + r"\s*;"),
-    re.compile(r"if\s*\(\s*!\s*" + _ID + r"\s*\)\s*return\s+" + _NUM + r"\s*;"),
-    re.compile(r"if\s*\(\s*" + _ID + r"\s*==\s*(?:nullptr|NULL|0)\s*\)\s*"
-               r"return\s+" + _NUM + r"\s*;"),
-    re.compile(r"\b" + _ID + r"\s*\?\s*(?:ato[ilf]|std\s*::\s*sto[ilfd])"
-               r"\s*\(\s*(?P=id)\s*\)\s*:\s*" + _NUM),
-]
-
-
-_NUMERIC_LITERAL = re.compile(r"-?\d+(?:\.\d+)?")
+_NUMERIC_LITERAL = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
 
 
 def canon_num(text: str) -> str | None:
@@ -443,6 +275,8 @@ def canon_num(text: str) -> str | None:
     if not _NUMERIC_LITERAL.fullmatch(t):
         return None
     f = float(t)
+    if not math.isfinite(f):
+        return None
     return str(int(f)) if f == int(f) else ("%g" % f)
 
 
@@ -490,206 +324,76 @@ def expect_mismatch(actual: str | None, expect: str | None) -> str | None:
     return None
 
 
-def _binds_of(flat: str, var: str) -> set[str]:
-    """Names this block assigns `getenv("var")` to. Empty = bare presence test."""
-    rx = re.compile(r"([A-Za-z_]\w*)\s*=\s*(?:std\s*::\s*)?getenv\s*\(\s*"
-                    + '"' + re.escape(var) + '"' + r"\s*\)")
-    return {m.group(1) for m in rx.finditer(flat)}
-
-
-def classify_numeric(block: str, var: str | None = None):
-    """The numeric default `var` falls back to in `block`, or None.
-
-    THE NUMERIC MATCH MUST BE BOUND TO THIS GATE'S OWN VARIABLE.
-    ------------------------------------------------------------
-    Caught by pointing the generalised rules at the real tree rather than at a
-    fixture (DELIVERY-CLOSE-1). gos_terrain_lod_chunk.cpp reads TWO gates in one
-    enclosing block:
-
-        static const char* s_ambEnv = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
-        static const float s_amb    = []() {
-            const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
-            if (!e || !e[0]) return 0.35f;              <-- the FLOOR's default
-            ...
-        }();
-        ...
-        if (!s_traced && getenv("MC2_TERRAIN_AMBIENT_FLOOR_TRACE")) { ... }
-
-    gda.enclosing_block() hands back that whole block for BOTH getenv sites, so
-    an unbound regex sweep reported MC2_TERRAIN_AMBIENT_FLOOR_TRACE -- a bare
-    presence test with no numeric default at all -- as "defaults 0.35", and then
-    as "REGISTRY LIES" against its honest defaultOn=false. That is a
-    tool-manufactured lie of exactly the kind this script exists to catch, and
-    it would have been a NEW one.
-
-    So: a numeric idiom counts only when its variable is one this block actually
-    assigned `getenv("<var>")` to. A gate whose value is never bound to a name
-    is a presence test, which has no numeric default -- None, i.e. UNKNOWN,
-    which can never grade as delivered.
-    """
-    flat = re.sub(r"\s+", " ", block)
-    bound = _binds_of(flat, var) if var is not None else None
-    if bound is not None and not bound:
-        return None
-    for rx in _NUM_RULES:
-        for m in rx.finditer(flat):
-            if bound is not None and m.group("id") not in bound:
-                continue
-            return canon_num(m.group("num"))
-    return None
-
-
-def sources_at(sha: str, var: str):
-    """Comment-stripped (path, body) pairs at `sha` that mention `var`."""
-    paths = grep_files(sha, f'"{var}"', gda.SCAN_DIRS)
-    out = []
-    for p in paths:
-        if not p.endswith(gda.SCAN_EXTS):
-            continue
-        if p.replace("\\", "/").endswith(REGISTRY_REL):
-            continue          # names every var in literals; not a reader
-        body = show(sha, p)
-        if body is None:
-            continue
-        out.append((p, gda.strip_comments(body)))
-    return out
-
-
-def _helper_round_two(sha, sources, var):
-    """Fetch definition files for helper callees we saw but could not resolve.
-
-    Without this, a gate read through a helper that lives in a file which does
-    not itself name the variable classifies UNKNOWN -- and UNKNOWN would then
-    be reported for a gate whose default is perfectly well defined. One bounded
-    round; still UNKNOWN afterwards stays UNKNOWN.
-    """
-    needle = re.compile(r'\(\s*"' + re.escape(var) + r'"\s*(?=[),])')
-    callees = set()
-    for _p, body in sources:
-        for m in needle.finditer(body):
-            cm = _CALLEE_BEFORE.search(body[max(0, m.start() - 64):m.start()])
-            if cm:
-                callees.add(cm.group(1))
-    callees.discard("getenv")
-    extra = []
-    seen = {p for p, _ in sources}
-    for c in sorted(callees):
-        for p in grep_files(sha, f"bool {c}(", gda.SCAN_DIRS):
-            if p in seen or not p.endswith(gda.SCAN_EXTS):
-                continue
-            body = show(sha, p)
-            if body is not None:
-                seen.add(p)
-                extra.append((p, gda.strip_comments(body)))
-    return sources + extra
+def default_from_table(text: str, var: str) -> dict:
+    """Return a typed default; missing or ambiguous evidence remains UNKNOWN."""
+    res = {"default": None, "kind": None, "readers": [], "registry": None,
+           "agree": None, "notes": []}
+    try:
+        table = json.loads(text)
+        rows = table["gates"]
+        if not isinstance(rows, list):
+            raise ValueError("gates must be an array")
+        by_name = {}
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("name"), str):
+                raise ValueError("each gate must have a name")
+            if row["name"] in by_name:
+                raise ValueError(f"duplicate gate {row['name']}")
+            by_name[row["name"]] = row
+        row = by_name.get(var)
+        if row is None:
+            res["notes"].append(f"{var} absent from {GATE_TABLE_REL}")
+            return res
+        for flag in ("verified", "divergent"):
+            if flag in row and type(row[flag]) is not bool:
+                raise ValueError(f"invalid {flag} flag for {var}")
+        if row.get("divergent"):
+            res["notes"].append("GATE DEFAULTS DISAGREE: table marks this gate divergent")
+            return res
+        if row.get("verified") is False:
+            res["notes"].append("gate table default is unverified")
+            return res
+        kind, value = row["kind"], row["default"]
+        if kind == "Bool" and type(value) is bool:
+            default, result_kind = ("ON" if value else "OFF"), "bool"
+        elif kind == "Int" and type(value) is int:
+            default, result_kind = str(value), "numeric"
+        elif kind == "Float" and type(value) in (int, float) and math.isfinite(value):
+            default, result_kind = canon_num("%.9g" % value), "numeric"
+        elif kind not in {"Bool", "Int", "Float"}:
+            res["notes"].append(f"unsupported gate kind {kind}")
+            return res
+        else:
+            raise ValueError(f"invalid {kind} default for {var}")
+        registry = row.get("registry")
+        if registry is not None:
+            if not isinstance(registry, dict) or type(registry.get("defaultOn")) is not bool:
+                raise ValueError(f"invalid registry defaultOn for {var}")
+            res["registry"] = registry["defaultOn"]
+            res["agree"] = is_on(default) == res["registry"]
+            if not res["agree"]:
+                res["notes"].append(f"REGISTRY LIES: defaultOn={res['registry']} "
+                                    f"but gate table defaults {default}")
+        res.update(default=default, kind=result_kind, readers=[f"{GATE_TABLE_REL}: {var}"])
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        res["notes"].append(f"invalid {GATE_TABLE_REL}: {exc}")
+    return res
 
 
 def read_default_at(sha: str | None, var: str) -> dict:
-    """The gate's UNSET-CASE default, as implemented at commit `sha`.
-
-    -> {default: 'ON'|'OFF'|'<int>'|None, kind: 'bool'|'numeric'|None,
-        readers: [...], registry: True|False|None, agree: bool|None, notes: []}
-    """
-    res = {"default": None, "kind": None, "readers": [], "registry": None,
-           "agree": None, "notes": []}
-    srcs = sources_at(sha, var)
-    if not srcs:
-        res["notes"].append(f"no source at {label_of(sha)} names \"{var}\"")
+    """Read the gate table from the requested commit, never substituting the tip."""
+    try:
+        text = show(sha, GATE_TABLE_REL)
+        res = default_from_table(text if text is not None else "{}", var)
+    except OSError as exc:
+        res = default_from_table("{}", var)
+        res["notes"] = [f"cannot read {GATE_TABLE_REL}: {exc}"]
         return res
-
-    helpers = gda.resolve_helpers(srcs)
-    hits = gda.find_readers(var, srcs, helpers)
-    if any(h["verdict"] == gda.UNKNOWN for h in hits) or not hits:
-        srcs2 = _helper_round_two(sha, srcs, var)
-        if len(srcs2) != len(srcs):
-            srcs = srcs2
-            helpers = gda.resolve_helpers(srcs)
-            hits = gda.find_readers(var, srcs, helpers)
-
-    # NUMERIC FIRST, deliberately. MC2_PAVED_OVERLAY_CLASS is a 0/1/2 knob whose
-    # `if (!v || !v[0]) return 0;` prologue the boolean rule table happily
-    # classifies as OFF -- true, but it collapses "the value the tip retracted"
-    # (1) and "the value it retracted TO" (0) into ON/OFF and hides which arm an
-    # install actually ships. When a reader states an integer, the integer is the
-    # more specific truth and it is what gets reported.
-    found = {}
-    for p, body in srcs:
-        for m in re.finditer(r'getenv\s*\(\s*"' + re.escape(var) + r'"', body):
-            blk = gda.enclosing_block(body, m.end())
-            seg = body[blk[0]:blk[1]] if blk else body[m.start():
-                                                       m.start() + 400]
-            n = classify_numeric(seg, var)
-            if n is not None:
-                line = body.count("\n", 0, m.start()) + 1
-                found.setdefault(n, []).append(f"{p}:{line} numeric default")
-
-    # A gate read only through the typed registry (gate::get<"MC2_X">()) has no getenv idiom to classify: its default
-    # is the gate table row's, at the same commit.
-    if not found and not hits:
-        typed = [(p, body) for p, body in srcs
-                 if re.search(r'\b(?:get|state)\s*<\s*"' + re.escape(var) + '"', body)]
-        tbl = show(sha, "Gates/gate_table.json") if typed else None
-        if tbl:
-            try:
-                row = {g["name"]: g for g in json.loads(tbl)["gates"]}[var]
-            except (ValueError, KeyError):
-                row = None
-            if row is not None:
-                where = [f"{p} typed gate::get<>" for p, _ in typed]
-                if row["kind"] == "Bool":
-                    res["kind"] = "bool"
-                    res["default"] = "ON" if row["default"] else "OFF"
-                    res["readers"] = where
-                elif row["kind"] in ("Int", "Float"):
-                    res["kind"] = "numeric"
-                    res["default"] = canon_num("%.9g" % float(row["default"]))
-                    res["readers"] = where
-
-    bool_verdicts = {h["verdict"] for h in hits}
-    if res.get("default") is not None and res.get("kind") in ("bool", "numeric") and not found and not hits:
-        pass
-    elif len(found) == 1:
-        res["kind"] = "numeric"
-        res["default"] = next(iter(found))
-        res["readers"] = found[res["default"]]
-    elif len(found) > 1:
-        res["kind"] = "numeric"
-        res["notes"].append("NUMERIC READERS DISAGREE: "
-                            + ", ".join(sorted(found)))
-    elif hits and bool_verdicts <= {gda.ON, gda.OFF}:
-        res["kind"] = "bool"
-        res["readers"] = [f"{h['path']}:{h['line']} {h['rule']}" for h in hits]
-        if len(bool_verdicts) == 1:
-            res["default"] = "ON" if bool_verdicts == {gda.ON} else "OFF"
-        else:
-            res["notes"].append("READERS DISAGREE with each other")
-    else:
-        res["notes"].append("reader idiom not classifiable")
-        res["readers"] = [f"{h['path']}:{h['line']} {h['rule']}"
-                          for h in hits]
-
-    # Registry cross-check AT THE SAME COMMIT.
-    reg = show(sha, REGISTRY_REL)
-    if reg is None:
-        res["notes"].append(f"{REGISTRY_REL} absent at {label_of(sha)}")
-    else:
-        ent = [e for e in gda.parse_registry(reg) if e["var"] == var]
-        if not ent:
-            res["notes"].append(f"gate not registered at {label_of(sha)}")
-        else:
-            res["registry"] = ent[0]["default_on"]
-            on = is_on(res["default"])
-            if on is not None:
-                # A numeric gate's registry flag is a coarse on/off summary, so
-                # the comparison is on/off in both cases; nonzero default vs
-                # defaultOn=false is still a flat contradiction.
-                res["agree"] = (on == res["registry"])
-                if not res["agree"]:
-                    res["notes"].append(
-                        f"REGISTRY LIES: registry defaultOn="
-                        f"{str(res['registry']).lower()} but the reader "
-                        f"defaults {res['default']}")
+    if text is None:
+        res["notes"] = [f"{GATE_TABLE_REL} absent at {label_of(sha)}"]
     return res
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -985,9 +689,8 @@ def grade_default(fix, inst, cache) -> dict:
     if key not in cache:
         cache[key] = read_default_at(sha, var)
     r = cache[key]
-    # A reader/registry disagreement AT AN OLD COMMIT is history, not a lie in
-    # the tree today, so it is reported in its own section rather than failing
-    # the run. The reader still wins: it is what that binary compiled.
+    # Historical table disagreements are reported separately from current integrity failures.
+    # The typed default remains the value declared by that build's table.
     disagreement = [n for n in r["notes"]
                     if "REGISTRY LIES" in n or "DISAGREE" in n]
     if r["default"] is None:
@@ -1137,7 +840,7 @@ def check_integrity(fix, at=WORKING_TREE) -> list[str]:
             if "REGISTRY LIES" in n or "DISAGREE" in n:
                 errs.append(f"{var}: {n}")
         if r["default"] is None:
-            errs.append(f"{var}: default not classifiable at {label_of(at)} -- "
+            errs.append(f"{var}: default unavailable at {label_of(at)} -- "
                         f"{'; '.join(r['notes']) or 'no reason given'}")
         else:
             mm = expect_mismatch(r["default"], fix.get("expect_default"))
@@ -1156,8 +859,8 @@ def load_manifest() -> list[dict]:
 
 def synth_fix(var: str) -> dict:
     """Ad-hoc entry for --gate: axes 1/2/4 only, axis 3 stays UNDECLARED."""
-    paths = grep_files("HEAD", f'"{var}"', gda.SCAN_DIRS)
-    paths = [p for p in paths if p.endswith(gda.SCAN_EXTS)
+    paths = grep_files("HEAD", f'"{var}"', SCAN_DIRS)
+    paths = [p for p in paths if p.endswith(SCAN_EXTS)
              and not p.replace("\\", "/").endswith(REGISTRY_REL)]
     commit = ""
     if paths:
@@ -1243,7 +946,7 @@ def report(fixes, installs, out=sys.stdout, want_json=False, scope=None):
         print(f"FIX  {fix['id']}", file=out)
         print(f"     commit {fix['commit']}   gate "
               f"{fix.get('gate') or '(ungated)'}   "
-              f"reader default at the tip: {head_default}", file=out)
+              f"gate table default at the tip: {head_default}", file=out)
         print(f"{'=' * RULE}", file=out)
         print(f"  {'install':{W}} {'built-from':19} {'code':4} {'dflt':4} "
               f"{'data':4}  would I see it if I launched?", file=out)
@@ -1434,71 +1137,6 @@ def delivery_gaps(results, adhoc: bool = False,
 # ---------------------------------------------------------------------------
 # Self-test: injected regressions, each of which MUST be caught
 # ---------------------------------------------------------------------------
-_SELF_REG = '''
-enum class Feature { Alpha = 0, Beta = 1, COUNT = 2 };
-static const EnvVarEntry kEntries[] = {
-    { "MC2_SELF_ALPHA", "MC2_SELF_ALPHA", EnvVarKind::Feature, true, "d" },
-    { "MC2_SELF_BETA",  "MC2_SELF_BETA",  EnvVarKind::Feature, false, "d" },
-};
-'''
-
-_SELF_SRC_OK = r'''
-static bool alphaOn() {
-    const char* v = getenv("MC2_SELF_ALPHA");
-    return !(v && v[0] == '0');   // default ON
-}
-static int betaMode() {
-    static const int s = [](){
-        const char* v = getenv("MC2_SELF_BETA");
-        if (!v || !v[0]) return 0;
-        return 1;
-    }();
-    return s;
-}
-'''
-
-_SELF_SRC_LIE = r'''
-static bool alphaOn() {
-    const char* v = getenv("MC2_SELF_ALPHA");
-    return (v && v[0] == '1');    // silently flipped to opt-in
-}
-static int betaMode() {
-    static const int s = [](){
-        const char* v = getenv("MC2_SELF_BETA");
-        if (!v || !v[0]) return 1;
-        return 1;
-    }();
-    return s;
-}
-'''
-
-
-def _classify_pair(reg_text, src_text, var):
-    """Same comparison read_default_at() performs, on in-memory text."""
-    srcs = [("self.cpp", gda.strip_comments(src_text))]
-    helpers = gda.resolve_helpers(srcs)
-    hits = gda.find_readers(var, srcs, helpers)
-    verdicts = {h["verdict"] for h in hits}
-    if hits and verdicts <= {gda.ON, gda.OFF} and len(verdicts) == 1:
-        kind, dflt = "bool", ("ON" if verdicts == {gda.ON} else "OFF")
-    else:
-        n = None
-        for _p, body in srcs:
-            for m in re.finditer(r'getenv\s*\(\s*"' + re.escape(var) + r'"',
-                                 body):
-                blk = gda.enclosing_block(body, m.end())
-                n = classify_numeric(body[blk[0]:blk[1]] if blk else body, var)
-                if n is not None:
-                    break
-        kind, dflt = ("numeric", n) if n is not None else (None, None)
-    ent = [e for e in gda.parse_registry(reg_text) if e["var"] == var]
-    reg = ent[0]["default_on"] if ent else None
-    if dflt is None or reg is None:
-        return None
-    on = dflt == "ON" if kind == "bool" else dflt not in ("0", "-0")
-    return on == reg
-
-
 def selftest() -> int:
     fails = []
 
@@ -1511,30 +1149,21 @@ def selftest() -> int:
     print("check-delivery selftest -- every case injects the REAL regression "
           "shape, not a fixture that merely resembles it")
 
-    # 1. Reader-vs-registry agreement, both directions.
-    ck("bool reader agreeing with registry passes",
-       _classify_pair(_SELF_REG, _SELF_SRC_OK, "MC2_SELF_ALPHA") is True,
-       "an honest default-ON pair was reported as a disagreement")
-    ck("INJECTED bool default inversion is caught",
-       _classify_pair(_SELF_REG, _SELF_SRC_LIE, "MC2_SELF_ALPHA") is False,
-       "a reader flipped to opt-in against registry defaultOn=true was "
-       "reported as agreeing -- this is the 17-lies failure mode")
-    ck("numeric reader agreeing with registry passes",
-       _classify_pair(_SELF_REG, _SELF_SRC_OK, "MC2_SELF_BETA") is True)
-    ck("INJECTED numeric default promotion is caught",
-       _classify_pair(_SELF_REG, _SELF_SRC_LIE, "MC2_SELF_BETA") is False,
-       "a numeric gate promoted to default 1 against registry "
-       "defaultOn=false was reported as agreeing -- this is the "
-       "MC2_PAVED_OVERLAY_CLASS blind spot")
+    def table_default(kind, value, registry):
+        row = {"name": "MC2_SELF", "kind": kind, "default": value,
+               "registry": {"defaultOn": registry}}
+        return default_from_table(json.dumps({"gates": [row]}), "MC2_SELF")
 
-    # 2. A variable that appears ONLY IN A COMMENT must not register as a
-    #    reader. Two contract rules in this repo passed their own self-tests
-    #    while satisfied by nothing more than an identifier in a comment.
-    comment_only = '// getenv("MC2_SELF_ALPHA") -- default ON, honest\n'
-    srcs = [("c.cpp", gda.strip_comments(comment_only))]
-    ck("a gate named only in a COMMENT is not a reader",
-       gda.find_readers("MC2_SELF_ALPHA", srcs) == [],
-       "a commented-out getenv was accepted as the reader")
+    ck("bool table default agrees with registry",
+       table_default("Bool", True, True)["agree"] is True)
+    ck("INJECTED bool default inversion is caught",
+       table_default("Bool", False, True)["agree"] is False)
+    ck("numeric table default agrees with registry",
+       table_default("Int", 0, False)["agree"] is True)
+    ck("INJECTED numeric default promotion is caught",
+       table_default("Int", 1, False)["agree"] is False)
+    ck("a missing gate stays UNKNOWN",
+       default_from_table('{"gates": []}', "MC2_SELF")["default"] is None)
 
     # 3. Byte scanner controls.
     fake = b"xx" + ef.POSITIVE_CONTROL + b"\x00u_realNeedle\x00yy"
@@ -1659,38 +1288,12 @@ def selftest() -> int:
                                     adhoc=True)] == ["A"],
        "an ad-hoc query that proved the code is absent was let through")
 
-    # 5c. NUMERIC READER BLIND SPOTS, both found by pointing the tool at a real
-    #     gate rather than at a fixture built to its own shape.
-    ck("INJECTED float default is classified (was UNKNOWN -> ungradeable)",
-       classify_numeric('const char* e = getenv("X"); '
-                        'if (!e || !e[0]) return 0.35f;', "X") == "0.35",
-       "MC2_TERRAIN_AMBIENT_FLOOR ships default 0.35 and classified UNKNOWN, "
-       "so it could never grade as delivered on any install")
-    ck("INJECTED non-'v' pointer name is classified",
-       classify_numeric('const char* envStr = getenv("X"); '
-                        'if (!envStr) return 2;', "X") == "2",
-       "every rule hard-coded the pointer name `v`")
-    ck("a MISMATCHED pointer pair is still refused",
-       classify_numeric('const char* a = getenv("X"); '
-                        'if (!a || !b[0]) return 7;', "X") is None,
-       "the back-reference did not hold: two different variables were "
-       "accepted as one null-check idiom")
-    # THE REAL FALSE POSITIVE the generalised rules produced on first contact
-    # with the tree, reproduced verbatim in shape: two gates in ONE enclosing
-    # block, one of them a bare presence test. gda.enclosing_block() hands the
-    # whole block to both, so an unbound sweep credits the neighbour's default.
-    _two_gates = ('static const char* s_ambEnv = getenv("MC2_X"); '
-                  'const char* e = getenv("MC2_X"); '
-                  'if (!e || !e[0]) return 0.35f; '
-                  'if (!s_traced && getenv("MC2_X_TRACE")) { trace(); }')
-    ck("the gate that OWNS the default still classifies in a shared block",
-       classify_numeric(_two_gates, "MC2_X") == "0.35")
-    ck("INJECTED neighbour-default theft (bare presence test in the same "
-       "block) is refused",
-       classify_numeric(_two_gates, "MC2_X_TRACE") is None,
-       "a presence-test gate was credited with the neighbouring gate's float "
-       "default and then reported as REGISTRY LIES -- a lie manufactured by "
-       "the checker itself")
+    ck("float table default remains numeric",
+       table_default("Float", 0.35, True)["default"] == "0.35")
+    ck("malformed boolean defaults stay UNKNOWN",
+       table_default("Bool", "false", False)["default"] is None)
+    ck("malformed table stays UNKNOWN",
+       default_from_table("{", "MC2_SELF")["default"] is None)
     ck("float 0.0 reads as OFF", is_on("0.0") is False)
     ck("float 0.35 reads as ON", is_on("0.35") is True)
     ck("'0' and '0.0' are the same shipped default",
@@ -1860,23 +1463,9 @@ def main(argv=None) -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--self-test", dest="selftest", action="store_true")
-    ap.add_argument("--classifier", choices=("worktree", "committed"),
-                    default="worktree",
-                    help="whose gate-default rules to use: the working copy of "
-                         "gate_default_classifier.py (default, matches "
-                         "check-contracts.sh) or its committed bytes "
-                         "(reproducible)")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
-
-    if args.classifier == "committed":
-        use_committed_classifier()
-    elif CLASSIFIER_DIRTY and not args.quiet:
-        print("[check-delivery] NOTE: scripts/gate_default_classifier.py "
-              "is DIRTY; every default verdict below was produced by another "
-              "lane's in-flight rules. Re-run with --classifier committed for "
-              "a reproducible verdict.", file=sys.stderr)
 
     if args.selftest:
         return selftest()
