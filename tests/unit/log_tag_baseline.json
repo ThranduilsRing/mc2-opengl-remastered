@@ -11006,6 +11006,38 @@
    "count": 1
   },
   {
+   "tag": "VIDEO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VIDEO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VIDEO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "site",
+    "name"
+   ],
+   "count": 2
+  },
+  {
    "tag": "VIEWPORT_PROBE",
    "ver": -1,
    "stream": "stderr",

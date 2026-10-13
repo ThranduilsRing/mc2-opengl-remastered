@@ -347,7 +347,7 @@ long Logistics::update (void)
 					else
 					{
 						const std::string videoName = LogisticsData::instance->getCurrentBigVideo();
-						MC2_LOG(Core, Info, "logistics: pre-video after a won mission: {}", videoName.empty() ? std::string_view( "none" ) : std::string_view( videoName ));
+						MC2_EVENT(Core, "VIDEO", 1, "event=pre_video site=won_mission name={}", videoName.empty() ? std::string_view( "none" ) : std::string_view( videoName ));
 
 						if ( !videoName.empty() )
 						{

@@ -750,6 +750,7 @@ void MissionBegin::updateDumpFrontEndState() {
 
 // Run the main menu and leave it for the first screen or a restart.
 bool MissionBegin::updateSplash() {
+	pendingPreVideo.clear();
 	if ( bSplash )
 	{
 		mainMenu->update();
@@ -807,11 +808,11 @@ bool MissionBegin::updateSplash() {
 					screens[curScreenX][curScreenY]->beginFadeIn( 1.0 );
 					screens[curScreenX][curScreenY]->begin();
 				}
-				// The campaign's pre-video is consumed here and not played: the function answers whether the splash is still running (a bool).
-				const std::string bigVideo = LogisticsData::instance->getCurrentBigVideo();
-				MC2_LOG(Core, Info, "missionbegin: campaign-start pre-video: {}", bigVideo.empty() ? std::string_view( "none" ) : std::string_view( bigVideo ));
-				return !bigVideo.empty();
-
+				// Starting a campaign hands out its pre-video once (empty when the group has none). update() returns the name so that
+				// Logistics::update plays it; the first screen was begun above, so this frame ends here.
+				pendingPreVideo = LogisticsData::instance->getCurrentBigVideo();
+				MC2_EVENT(Core, "VIDEO", 1, "event=pre_video site=campaign_start name={}", pendingPreVideo.empty() ? std::string_view( "none" ) : std::string_view( pendingPreVideo ));
+				return true;
 			}
 			else if ( LogisticsScreen::MULTIPLAYERRESTART == mainMenu->getStatus() )
 			{
@@ -1663,12 +1664,13 @@ void MissionBegin::updateScreenAdvance(LogisticsScreen* pCurScreen, bool& soakFo
 
 // Per-frame front-end update. The screen lookup, the logistics brain call, the screen update, the soak gate and the
 // ready-to-load latch stay here; each other phase is a member helper declared in missionbegin.h, run in the
-// original order. A phase that leaves the update returns true and the orchestrator returns NULL.
+// original order. A phase that leaves the update returns true and the orchestrator returns NULL, or the full-screen
+// video name the phase left in pendingPreVideo for the caller to play.
 const char* MissionBegin::update()
 {
 	updateDumpFrontEndState();
 
-	if (updateSplash()) return NULL;
+	if (updateSplash()) return pendingPreVideo.empty() ? NULL : pendingPreVideo.c_str();
 
 	leftAnim.update();
 	rightAnim.update();
