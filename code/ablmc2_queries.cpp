@@ -1,6 +1,20 @@
 // ABL native bindings: warrior/contact/weapon queries and setters.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+#include <vector>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 
 
 void execGetId (void) {
@@ -113,24 +127,17 @@ void execGetContacts (void) {
 	//				integer				sort criteria
 	//		RETURN: integer				result code
 
-	int* contactList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
+	int contactList[MAX_CONTACTS_PER_TEAM] = {};
 	int contactCriteria = ABLi_popInteger();
 	int sortCriteria = ABLi_popInteger();
 
-	if (s_ablArgGuard && !contactList) {
-		abl_arg_guard_log("execGetContacts", "contactList");
-		ABLi_pushInteger(0);
-		return;
-	}
-
-	long numContacts = CurObject->getContacts(contactList, contactCriteria, sortCriteria);
-	ABLi_pushInteger(numContacts);
-
+	long numContacts = CurObject ? CurObject->getContacts(contactList, contactCriteria, sortCriteria) : 0;
 	for (long i = 0; i < numContacts; i++) {
 		GameObjectPtr obj = ObjectManager->get(contactList[i]);
-		Assert(obj != nullptr, 0, " NULL contact");
-		contactList[i] = obj->getPartId();
+		contactList[i] = obj ? obj->getPartId() : 0;
 	}
+	ABLi_pushInteger(abl::copyIntArray(output, {contactList, static_cast<size_t>(std::max(0L, numContacts))}, "getcontacts_truncated"));
 }
 
 void execGetEnemyCount (void) {
@@ -333,57 +340,100 @@ void execGetTarget (void) {
 
 void execGetWeaponsReady (void) {
 
-	int* weaponList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
 	int listSize = ABLi_popInteger();
 
-	if (s_ablArgGuard && !weaponList) {
-		abl_arg_guard_log("execGetWeaponsReady", "weaponList");
-		ABLi_pushInteger(0);
-		return;
+	long result = 0;
+	if (CurObject && CurObject->isMover()) {
+		auto* mover = static_cast<MoverPtr>(CurObject);
+		std::vector<int> weapons;
+		if (listSize == -1) {
+			weapons.resize(MAX_WEAPONS_PER_MOVER);
+		} else {
+			if (listSize < 0) {
+				abl::reportBadArgument("getweaponsready", "listSize");
+				ABLi_pushInteger(0);
+				return;
+			}
+			listSize = static_cast<int>(abl::clampArrayCount(listSize, output.size(), "getweaponsready_truncated"));
+			if (listSize) weapons.assign(output.begin(), output.begin() + listSize);
+			if (std::ranges::any_of(weapons, [mover](int index) { return !mover->isWeaponIndex(index); })) {
+				abl::reportBadArgument("getweaponsready", "weaponIndex");
+				ABLi_pushInteger(0);
+				return;
+			}
+		}
+		result = mover->getWeaponsReady(weapons.data(), listSize);
+		if (result >= 0)
+			result = abl::copyIntArray(output, {weapons.data(), static_cast<size_t>(result)}, "getweaponsready_truncated");
 	}
-
-	long numWeapons = 0;
-	if (CurObject->isMover())
-		numWeapons = ((MoverPtr)CurObject)->getWeaponsReady(weaponList, listSize);
-
-	ABLi_pushInteger(numWeapons);
+	ABLi_pushInteger(result);
 }
 
 void execGetWeaponsLocked (void) {
 
-	int* weaponList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
 	int listSize = ABLi_popInteger();
 
-	if (s_ablArgGuard && !weaponList) {
-		abl_arg_guard_log("execGetWeaponsLocked", "weaponList");
-		ABLi_pushInteger(0);
-		return;
+	long result = 0;
+	if (CurObject && CurObject->isMover()) {
+		auto* mover = static_cast<MoverPtr>(CurObject);
+		std::vector<int> weapons;
+		if (listSize == -1) {
+			weapons.resize(MAX_WEAPONS_PER_MOVER);
+		} else {
+			if (listSize < 0) {
+				abl::reportBadArgument("getweaponslocked", "listSize");
+				ABLi_pushInteger(0);
+				return;
+			}
+			listSize = static_cast<int>(abl::clampArrayCount(listSize, output.size(), "getweaponslocked_truncated"));
+			if (listSize) weapons.assign(output.begin(), output.begin() + listSize);
+			if (std::ranges::any_of(weapons, [mover](int index) { return !mover->isWeaponIndex(index); })) {
+				abl::reportBadArgument("getweaponslocked", "weaponIndex");
+				ABLi_pushInteger(0);
+				return;
+			}
+		}
+		result = mover->getWeaponsLocked(weapons.data(), listSize);
+		if (result >= 0)
+			result = abl::copyIntArray(output, {weapons.data(), static_cast<size_t>(result)}, "getweaponslocked_truncated");
 	}
-
-	long numWeapons = 0;
-	if (CurObject->isMover())
-		numWeapons = ((MoverPtr)CurObject)->getWeaponsLocked(weaponList, listSize);
-
-	ABLi_pushInteger(numWeapons);
+	ABLi_pushInteger(result);
 }
 
 void execGetWeaponsInRange (void) {
 
-	int* weaponList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
 	int listSize = ABLi_popInteger();
 
-	if (s_ablArgGuard && !weaponList) {
-		abl_arg_guard_log("execGetWeaponsInRange", "weaponList");
-		ABLi_pushInteger(0);
-		return;
+	long result = 0;
+	if (CurObject && CurObject->isMover()) {
+		auto* mover = static_cast<MoverPtr>(CurObject);
+		std::vector<int> weapons;
+		if (listSize == -1) {
+			weapons.resize(MAX_WEAPONS_PER_MOVER);
+		} else {
+			if (listSize < 0) {
+				abl::reportBadArgument("getweaponsinrange", "listSize");
+				ABLi_pushInteger(0);
+				return;
+			}
+			listSize = static_cast<int>(abl::clampArrayCount(listSize, output.size(), "getweaponsinrange_truncated"));
+			if (listSize) weapons.assign(output.begin(), output.begin() + listSize);
+			if (std::ranges::any_of(weapons, [mover](int index) { return !mover->isWeaponIndex(index); })) {
+				abl::reportBadArgument("getweaponsinrange", "weaponIndex");
+				ABLi_pushInteger(0);
+				return;
+			}
+		}
+		auto* target = CurWarrior ? CurWarrior->getCurrentTarget() : nullptr;
+		if (target)
+			result = mover->getWeaponsInRange(weapons.data(), listSize, CurObject->distanceFrom(target->getPosition()));
+		if (result >= 0)
+			result = abl::copyIntArray(output, {weapons.data(), static_cast<size_t>(result)}, "getweaponsinrange_truncated");
 	}
-
-	GameObjectPtr target = CurWarrior->getCurrentTarget();
-	long numWeapons = 0;
-	if (CurObject->isMover() && target)
-		numWeapons = ((MoverPtr)CurObject)->getWeaponsInRange(weaponList, listSize, CurObject->distanceFrom(target->getPosition()));
-
-	ABLi_pushInteger(numWeapons);
+	ABLi_pushInteger(result);
 }
 
 void execGetWeaponShots (void) {
@@ -407,7 +457,8 @@ void execGetWeaponRanges (void) {
 	//		RETURN: none
 
 	long objectId = ABLi_popInteger();
-	float* rangeList = ABLi_popRealPtr();
+	const auto output = ABLi_popRealBuf();
+	float rangeList[3] = {};
 
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
@@ -417,17 +468,14 @@ void execGetWeaponRanges (void) {
 		}
 	else
 		rangeList[0] = rangeList[1] = rangeList[2] = 0.0;
+	abl::copyRealArray(output, rangeList, "getweaponranges_truncated");
 }
 
 void execGetObjectPosition (void) {
 
 	long objectId = ABLi_popInteger();
-	float* coordList = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !coordList) {
-		abl_arg_guard_log("execGetObjectPosition", "coordList");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float coordList[3] = {};
 
 	coordList[0] = 0.0;
 	coordList[1] = 0.0;
@@ -440,6 +488,7 @@ void execGetObjectPosition (void) {
 		coordList[1] = pos.y;
 		coordList[2] = pos.z;
 	}
+	abl::copyRealArray(output, coordList, "getobjectposition_truncated");
 }
 
 void execGetIntegerMemory (void) {
@@ -473,8 +522,11 @@ void execGetAlarmTriggers (void) {
 	//		PARAMS:	integer[]
 	//		RETURN: integer
 
-	int* triggerList = ABLi_popIntegerPtr();
-	ABLi_pushInteger(CurWarrior->getEventHistory(CurAlarm, triggerList));
+	const auto output = ABLi_popIntBuf();
+	int triggers[MAX_ALARM_TRIGGERS] = {};
+	const long count = CurWarrior && CurAlarm >= 0 && CurAlarm < NUM_PILOT_ALARMS
+	    ? CurWarrior->getEventHistory(CurAlarm, triggers) : 0;
+	ABLi_pushInteger(abl::copyIntArray(output, {triggers, static_cast<size_t>(count)}, "getalarmtriggers_truncated"));
 }
 
 void execGetChallenger (void) {
@@ -526,14 +578,14 @@ void execGetFireRanges (void) {
 	//		PARAMS:	@real[4]			sets the game's current ranges (meters)				
 	//		RETURN: none
 
-	float* ranges = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !ranges) { abl_arg_guard_log("execGetFireRanges", "ranges"); return; }
+	const auto output = ABLi_popRealBuf();
+	float ranges[4] = {};
 
 	ranges[0] = WeaponRange[FIRERANGE_SHORT];
 	ranges[1] = WeaponRange[FIRERANGE_MEDIUM];
 	ranges[2] = WeaponRange[FIRERANGE_LONG];
 	ranges[3] = 250.0; //No one should use this in MC2!
+	abl::copyRealArray(output, ranges, "getfireranges_truncated");
 }
 
 void execGetAttackers (void) {
@@ -545,19 +597,14 @@ void execGetAttackers (void) {
 	//				real				seconds
 	//		RETURN: integer				num attackers
 
-	int* attackers = ABLi_popIntegerPtr();
-	float seconds = ABLi_popReal();
-
-	if (s_ablArgGuard && !attackers) {
-		abl_arg_guard_log("execGetAttackers", "attackers");
-		ABLi_pushInteger(0);
-		return;
-	}
-
-	long numAttackers = 0;
-	if (CurWarrior)
-		numAttackers = CurWarrior->getAttackers((unsigned int*)attackers, seconds);
-	ABLi_pushInteger(numAttackers);
+	const auto output = ABLi_popIntBuf();
+	const float seconds = ABLi_popReal();
+	unsigned int attackers[MAX_ATTACKERS] = {};
+	const long count = CurWarrior ? CurWarrior->getAttackers(attackers, seconds) : 0;
+	const long written = abl::clampArrayCount(count, output.size(), "getattackers_truncated");
+	for (long i = 0; i < written; ++i)
+		output[i] = static_cast<int>(attackers[i]);
+	ABLi_pushInteger(written);
 }
 
 void execGetAttackerInfo (void) {
@@ -644,13 +691,31 @@ void execHasMovePath (void) {
 
 void execSortWeapons (void) {
 
-	int* weaponList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
 	long listSize = ABLi_popInteger();
-	long sortType = ABLi_popInteger();
-
-	long valueList[50];
-	if (CurObject && CurObject->isMover())
-		((MoverPtr)CurObject)->sortWeapons(weaponList, valueList, listSize, sortType, true);
+	const long sortType = ABLi_popInteger();
+	if (!CurObject || !CurObject->isMover()) return;
+	auto* mover = static_cast<MoverPtr>(CurObject);
+	if (listSize < -1) {
+		abl::reportBadArgument("sortweapons", "listSize");
+		return;
+	}
+	int weapons[MAX_WEAPONS_PER_MOVER] = {};
+	long values[MAX_WEAPONS_PER_MOVER] = {};
+	const long count = listSize == -1 ? mover->numWeapons : abl::clampArrayCount(listSize,
+	    std::min(output.size(), std::size(weapons)), "sortweapons_truncated");
+	if (listSize != -1) {
+		std::copy_n(output.begin(), count, weapons);
+		if (std::ranges::any_of(std::span{weapons, static_cast<size_t>(count)}, [mover](int index) {
+			return index != -1 && !mover->isWeaponIndex(index);
+		})) {
+			abl::reportBadArgument("sortweapons", "weaponIndex");
+			return;
+		}
+		listSize = count;
+	}
+	if (mover->sortWeapons(weapons, values, listSize, sortType, true) == NO_ERR)
+		abl::copyIntArray(output, {weapons, static_cast<size_t>(count)}, "sortweapons_truncated");
 }
 
 void execGetVisualRange (void) {
@@ -685,13 +750,8 @@ void execGetUnitMates (void) {
 	//		RETURN: integer			num objects in unit
 
 	long objectId = ABLi_popInteger();
-	int* mateList = ABLi_popIntegerPtr();
-
-	if (s_ablArgGuard && !mateList) {
-		abl_arg_guard_log("execGetUnitMates", "mateList");
-		ABLi_pushInteger(0);
-		return;
-	}
+	const auto output = ABLi_popIntBuf();
+	int mateList[MAX_MOVERS] = {};
 
 	long numObjs = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
@@ -712,7 +772,7 @@ void execGetUnitMates (void) {
 			}
 		}
 	}
-	ABLi_pushInteger(numObjs);		
+	ABLi_pushInteger(abl::copyIntArray(output, {mateList, static_cast<size_t>(numObjs)}, "getunitmates_truncated"));
 }
 
 void execGetTacOrder(void) {
@@ -728,9 +788,12 @@ void execGetTacOrder(void) {
 
 	long objectId = ABLi_popInteger();
 	float* time = ABLi_popRealPtr();
-	int* paramList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
+	int paramList[19] = {};
+	if (!output.empty()) std::copy_n(output.begin(), std::min(output.size(), std::size(paramList)), paramList);
 	
 	long code = 0;
+	size_t count = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		}
 	else {
@@ -744,11 +807,13 @@ void execGetTacOrder(void) {
 				float goalRange = 0.0;
 				paramList[17] = pilot->getMainGoal(goalObj, goalLoc, goalRange);
 				paramList[18] = goalObj ? goalObj->getPartId() : 0;
+				count = std::size(paramList);
 			}
 		}
 	}
 
 	ABLi_pushInteger(code);
+	abl::copyIntArray(output, {paramList, count}, "gettacorder_truncated");
 }	
 
 void execGetLastTacOrder(void) {
@@ -764,19 +829,32 @@ void execGetLastTacOrder(void) {
 
 	long objectId = ABLi_popInteger();
 	float* time = ABLi_popRealPtr();
-	int* paramList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
+	int paramList[14] = {};
+	if (!output.empty()) std::copy_n(output.begin(), std::min(output.size(), std::size(paramList)), paramList);
 	
 	long code = 0;
+	size_t count = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		}
 	else {
 		GameObjectPtr object = getObject(objectId);
 		if (object && object->isMover()) {
 			MechWarriorPtr pilot = ((MoverPtr)object)->getPilot();
-			if (pilot)
+			if (pilot) {
 				code = pilot->getLastTacOrder()->getParamData(time, paramList);
+				count = 7;
+				switch (code) {
+					case TACTICAL_ORDER_MOVETO_POINT:
+					case TACTICAL_ORDER_GUARD: count = 12; break;
+					case TACTICAL_ORDER_MOVETO_OBJECT: count = 10; break;
+					case TACTICAL_ORDER_ATTACK_OBJECT: count = 14; break;
+					default: break;
+				}
+			}
 		}
 	}
 
 	ABLi_pushInteger(code);
+	abl::copyIntArray(output, {paramList, count}, "getlasttacorder_truncated");
 }	

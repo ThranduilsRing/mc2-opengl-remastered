@@ -303,3 +303,4 @@ target_compile_definitions(mc2_modlint PRIVATE
 if(MSVC)
     target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
 endif()
+target_sources(mc2_tests PRIVATE test_abl_outarrays.cpp)

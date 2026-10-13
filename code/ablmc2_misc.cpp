@@ -1,6 +1,19 @@
 // ABL native bindings: unit status, repair, messaging, path queries, pilot state and debug bindings.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 
 
 void execIsGateOpen (void) {
@@ -389,27 +402,22 @@ void execPathExists (void) {
 void execConvertCoords (void) {
 
 	int convertType = ABLi_popInteger();
-	float* worldPos = ABLi_popRealPtr();
-	int* cellPos = ABLi_popIntegerPtr();
-
+	const auto worldPos = ABLi_popRealBuf();
+	const auto cellPos = ABLi_popIntBuf();
 	ABLi_pushInteger(0);
-
-	if (s_ablArgGuard && !worldPos) { abl_arg_guard_log("execConvertCoords", "worldPos"); return; }
-	if (s_ablArgGuard && !cellPos) { abl_arg_guard_log("execConvertCoords", "cellPos"); return; }
-
+	if (!land) return;
 	if (convertType == 0) {
-		Stuff::Vector3D worldP;
-		worldP.x = worldPos[0];
-		worldP.y = worldPos[1];
-		worldP.z = worldPos[2];
-		land->worldToCell(worldP, cellPos[0], cellPos[1]);
-		}
-	else {
+		if (worldPos.size() < 3) { abl::reportBadArgument("convertcoords", "worldPos"); return; }
+		Stuff::Vector3D worldP(worldPos[0], worldPos[1], worldPos[2]);
+		int cells[2] = {};
+		land->worldToCell(worldP, cells[0], cells[1]);
+		abl::copyIntArray(cellPos, cells, "convertcoords_truncated");
+	} else {
+		if (cellPos.size() < 2) { abl::reportBadArgument("convertcoords", "cellPos"); return; }
 		Stuff::Vector3D worldP;
 		land->cellToWorld(cellPos[0], cellPos[1], worldP);
-		worldPos[0] = worldP.x;
-		worldPos[1] = worldP.y;
-		worldPos[2] = 0.0;
+		const float coords[] = {worldP.x, worldP.y, 0.0f};
+		abl::copyRealArray(worldPos, coords, "convertcoords_truncated");
 	}
 }
 
@@ -450,10 +458,13 @@ void execGetNextPilotEvent (void) {
 	//		PARAMS:	@integer[3]		parameter list
 	//		RETURN: integer			event ID
 
-	int* paramList = ABLi_popIntegerPtr();
-	
-	long eventID = CurWarrior->getNextEventHistory(paramList);
-
+	const auto output = ABLi_popIntBuf();
+	int params[MAX_ALARM_TRIGGERS] = {};
+	const long eventID = CurWarrior ? CurWarrior->getNextEventHistory(params) : -1;
+	if (eventID >= 0) {
+		const auto count = CurWarrior->getEventHistory(eventID, params);
+		abl::copyIntArray(output, {params, static_cast<size_t>(count)}, "getnextpilotevent_truncated");
+	}
 	ABLi_pushInteger(eventID);
 }
 

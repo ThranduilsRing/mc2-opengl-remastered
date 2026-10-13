@@ -3,6 +3,34 @@
 // bindings against a scripted ABL stack (tests/unit/test_abl_position.cpp).
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include <algorithm>
+#include <span>
+
+std::span<float> ABLi_popRealBuf(void);
+
+namespace abl {
+
+long clampArrayCount(long count, size_t capacity, std::string_view event) {
+	if (count <= 0) return 0;
+	const auto written = std::min(static_cast<size_t>(count), capacity);
+	if (written < static_cast<size_t>(count))
+		reportTruncated(event, capacity, static_cast<size_t>(count) - written);
+	return static_cast<long>(written);
+}
+
+long copyIntArray(std::span<int> dest, std::span<const int> src, std::string_view event) {
+	const auto written = clampArrayCount(static_cast<long>(src.size()), dest.size(), event);
+	if (written) std::copy_n(src.begin(), written, dest.begin());
+	return written;
+}
+
+long copyRealArray(std::span<float> dest, std::span<const float> src, std::string_view event) {
+	const auto written = clampArrayCount(static_cast<long>(src.size()), dest.size(), event);
+	if (written) std::copy_n(src.begin(), written, dest.begin());
+	return written;
+}
+
+}
 
 
 void execGetRelativePositionToPoint (void) {
@@ -20,20 +48,13 @@ void execGetRelativePositionToPoint (void) {
 	float angle = ABLi_popReal();
 	float distance = ABLi_popReal();
 	long flags = ABLi_popInteger();
-	float* relPos = ABLi_popRealPtr();
+	const auto output = ABLi_popRealBuf();
+	float relPos[3] = {};
 
-	// H2: guard sibling of execGetRelativePositionToObject.
-	// pos is READ (curPos.x = pos[0..2]); relPos is WRITE (relPos[0..2] = newPos).
-	// Both crash on null. Guard both independently so each gets a distinct log line.
-	if (s_ablArgGuard && !pos) {
-		abl_arg_guard_log("execGetRelativePositionToPoint", "pos");
+	if (!pos) {
+		abl::reportBadArgument("getrelativepositiontopoint", "pos");
 		return;
 	}
-	if (s_ablArgGuard && !relPos) {
-		abl_arg_guard_log("execGetRelativePositionToPoint", "relPos");
-		return;
-	}
-
 	Stuff::Vector3D curPos;
 	curPos.x = pos[0];
 	curPos.y = pos[1];
@@ -43,6 +64,7 @@ void execGetRelativePositionToPoint (void) {
 	relPos[0] = newPos.x;
 	relPos[1] = newPos.y;
 	relPos[2] = newPos.z;
+	abl::copyRealArray(output, relPos, "getrelativepositiontopoint_truncated");
 }
 
 void execGetRelativePositionToObject (void) {
@@ -60,11 +82,11 @@ void execGetRelativePositionToObject (void) {
 	float angle = ABLi_popReal();
 	float distance = ABLi_popReal();
 	long flags = ABLi_popInteger();
-	float* relPos = ABLi_popRealPtr();
+	const auto output = ABLi_popRealBuf();
+	float relPos[3] = {};
 
-	// relPos is NULL when the calling script passes a wrong-type or missing argument. Both branches below write it, so the test is
-	// unconditional here (not behind MC2_ABL_ARG_GUARD): a bad script is rejected with a log line, never faults the engine.
-	if (!relPos) {
+	// Missing or unknown output extents are rejected even with the optional argument guard disabled.
+	if (output.data() == nullptr) {
 		abl::reportBadArgument("getRelativePositionToObject", "relPos");
 		return;
 	}
@@ -81,4 +103,5 @@ void execGetRelativePositionToObject (void) {
 	} else {
 		relPos[0] = relPos[1] = relPos[2] = 0.0f;
 	}
+	abl::copyRealArray(output, relPos, "getrelativepositiontoobject_truncated");
 }

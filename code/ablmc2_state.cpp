@@ -1,6 +1,19 @@
 // ABL native bindings: object state get/set, salvage, capture, strikes, prisoners and gates.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 
 
 void execSetObjectActive(void) {
@@ -693,32 +706,26 @@ void execGetSalvage (void) {
 
 	long objectId = ABLi_popInteger();
 	long itemCount = ABLi_popInteger();
-	int* items = ABLi_popIntegerPtr();
-	int* quantities = ABLi_popIntegerPtr();
-
-	if (s_ablArgGuard && !items) { abl_arg_guard_log("execGetSalvage", "items"); return; }
-	if (s_ablArgGuard && !quantities) { abl_arg_guard_log("execGetSalvage", "quantities"); return; }
-
-	for (long i = 0; i < itemCount; i++) {
-		items[i] = -1;
-		quantities[i] = -1;
+	const auto items = ABLi_popIntBuf();
+	const auto quantities = ABLi_popIntBuf();
+	if (itemCount < 0) {
+		abl::reportBadArgument("getsalvage", "itemCount");
+		return;
 	}
-
-	GameObjectPtr obj = getObject(objectId);
-	if (obj) {
+	itemCount = abl::clampArrayCount(itemCount, std::min(items.size(), quantities.size()), "getsalvage_truncated");
+	std::fill_n(items.begin(), itemCount, -1);
+	std::fill_n(quantities.begin(), itemCount, -1);
 #ifdef USE_SALVAGE
-		SalvageItemPtr tmpSalvage = object->getSalvage();
-		while (tmpSalvage && itemCount > 0)
-		{
-			*tmpItems = tmpSalvage->itemID;
-			*tmpQuantities = tmpSalvage->numItems;
-			tmpItems++;
-			tmpQuantities++;
-			tmpSalvage = tmpSalvage->next;
-			itemCount--;
+	if (auto* object = getObject(objectId)) {
+		auto* salvage = object->getSalvage();
+		for (long i = 0; salvage && i < itemCount; ++i, salvage = salvage->next) {
+			items[i] = salvage->itemID;
+			quantities[i] = salvage->numItems;
 		}
-#endif
 	}
+#else
+	(void)objectId;
+#endif
 }
 
 void execOrderRefit (void) {
