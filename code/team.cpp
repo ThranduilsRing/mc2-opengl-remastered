@@ -10,6 +10,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "team_internal.h"
+#include <algorithm>
 
 
 char Team::relations[MAX_TEAMS][MAX_TEAMS] = {
@@ -499,7 +500,8 @@ long Team::Save (PacketFilePtr file, long packetNum)
 		MC2_SAVE_STRUCT(TeamData, data);
 		data.id = teams[i]->getId();
 		data.rosterSize = teams[i]->rosterSize;
-		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * MAX_MOVERS_PER_TEAM);
+		// Only the live entries are written: the rest of roster[] is never initialised, and copying it would put heap leftovers into the save.
+		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * std::min<long>(teams[i]->rosterSize, MAX_MOVERS_PER_TEAM));
 
 		file->writePacket(packetNum,(MemoryPtr)&data,sizeof(TeamData),STORAGE_TYPE_RAW);
 		packetNum++;
