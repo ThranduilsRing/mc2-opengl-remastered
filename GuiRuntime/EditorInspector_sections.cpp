@@ -2,6 +2,7 @@
 // the per-kind panels, the pass sections and the material and gate tables. The orchestrator is in EditorInspector.cpp.
 #include "EditorInspector_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 namespace EditorInspector {
 
@@ -256,14 +257,14 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                                       "declared in MaterialGpu but unused today.");
 
                 // V-AMBIENT-STATIC-1: hemisphere ambient fill mode (default-OFF).
-                // Inspect the env var directly (cheap; this panel only runs
-                // when MC2_IMGUI_INSPECTOR is on).
-                bool ambOn = mc2::gate::get<"MC2_STATIC_PROP_AMBIENT_V1">();
+                // Read the published option (this panel only runs when
+                // MC2_IMGUI_INSPECTOR is on).
+                bool ambOn = mc2::options::current().staticPropAmbient;
                 ImGui::Text("  ambient        %s", ambOn ? "hemisphere_v1" : "off");
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("V-AMBIENT-STATIC-1 hemisphere ambient fill in\n"
                                       "static_prop.vert (skips window-flag nodes).\n"
-                                      "Gate: MC2_STATIC_PROP_AMBIENT_V1=1.\n"
+                                      "options.cfg: StaticPropAmbient = TRUE.\n"
                                       "OFF -> u_ambientV1Strength=0.0 (byte-identical).");
 
                 // DEBUG-VIEW-REGISTRY-1: interactive debug view combo for StaticPropOpaque.
@@ -300,7 +301,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 // byte-identical pre-flip OFF behavior. ImGui slider below
                 // tunes runtime strength when gate is on.
                 // MUST match s_iblShEnabled lambda in gos_static_prop_batcher.cpp.
-                bool iblOn = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">();
+                bool iblOn = mc2::options::current().staticPropIblSh;
                 if (iblOn) {
                     // V-IBL-STATIC-2: surface active per-mission SH set name.
                     const char* shSetName = ibl_sh_runtime_currentSetName();
@@ -313,7 +314,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("V-IBL-STATIC-1 SH-L2 image-based ambient in\n"
                                       "static_prop.vert (skips window-flag nodes).\n"
-                                      "Gate: MC2_STATIC_PROP_IBL_SH=1 (env-authoritative).\n"
+                                      "options.cfg: StaticPropIblSh = TRUE.\n"
                                       "Slider modulates strength when env=1.\n"
                                       "OFF -> u_iblShStrength=0.0 (byte-identical).");
                 // Tunables (IBL SH strength + PBR V1 strength + roughness
@@ -324,7 +325,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
 
                 // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe
                 // specular status (read-only here; slider in Graphics Options).
-                bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
+                bool pbrOn = mc2::options::current().staticPropPbr;
                 if (pbrOn) {
                     ImGui::Text("  pbr v1         on (strength=%.2f)",
                                 g_pbrV1Strength);
@@ -352,20 +353,23 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
             static const FallbackRow kFallbacks[] = {
                 { "material sample",     "MC2_MATERIAL_GPU_SAMPLE",         true  },
                 { "object-ID buffer",    "MC2_OBJECT_ID_BUFFER",            true  },
-                { "ambient v1",          "MC2_STATIC_PROP_AMBIENT_V1",      false },
-                { "ibl sh",              "MC2_STATIC_PROP_IBL_SH",          true  },
-                { "pbr v1",              "MC2_STATIC_PROP_PBR_V1",          false },
             };
-            for (const auto& fb : kFallbacks) {
-                const auto st = mc2::gate::boolState(fb.envVar);
-                const bool on = (!st || !st->set) ? fb.defaultOn : st->on;
-                ImGui::Text("  %-22s", fb.label);
+            const auto showRow = [](const char* label, bool on) {
+                ImGui::Text("  %-22s", label);
                 ImGui::SameLine(0.f, 4.f);
                 if (on)
                     ImGui::TextColored(ImVec4(0.4f, 1.f, 0.4f, 1.f), "ON");
                 else
                     ImGui::TextColored(ImVec4(1.f, 0.55f, 0.3f, 1.f), "OFF");
+            };
+            for (const auto& fb : kFallbacks) {
+                const auto st = mc2::gate::boolState(fb.envVar);
+                showRow(fb.label, (!st || !st->set) ? fb.defaultOn : st->on);
             }
+            // The three static-prop lighting rows are options.cfg settings, not environment gates.
+            showRow("ambient v1", mc2::options::current().staticPropAmbient);
+            showRow("ibl sh",     mc2::options::current().staticPropIblSh);
+            showRow("pbr v1",     mc2::options::current().staticPropPbr);
         }
     }
 }

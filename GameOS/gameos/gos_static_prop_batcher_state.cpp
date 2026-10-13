@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: the shared GPU buffer, ring, program-location, coalesce and static-draw state, the IBL helpers and the material and base-instance bookkeeping.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "Gates/render_options.h"
 
 
 namespace gos_static_prop_batcher_detail {
@@ -190,14 +191,14 @@ extern const bool s_materialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
 // Invariant: materials[materialIdx].albedoTex == texArrayLayer must hold while both paths live.
 extern const bool s_materialGpuSampleEnabled = mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">();
 
-// V-AMBIENT-STATIC-1: hemisphere ambient fill. Default-OFF; only ON when
-// MC2_STATIC_PROP_AMBIENT_V1 is set to a non-"0" value. When OFF (default),
+// V-AMBIENT-STATIC-1: hemisphere ambient fill. Default-OFF; only on when the options.cfg
+// key StaticPropAmbient is TRUE. When off (default),
 // the uploaded strength is 0.0 so static_prop.vert's hemisphere term is a
 // bitwise no-op and the output is byte-identical to pre-slice af314d22.
-// Read at first use, after main() has applied any launcher_env.json: a namespace-scope initializer would
-// resolve the gate during static initialization, before that apply, and keep the stale value.
+// Read at first use, after CPrefs::applyPrefs() has published options.cfg: a namespace-scope initializer would
+// resolve it during static initialization, before that publish, and keep the default.
 bool staticPropAmbientV1Enabled() {
-    static const bool on = mc2::gate::get<"MC2_STATIC_PROP_AMBIENT_V1">();
+    static const bool on = mc2::options::current().staticPropAmbient;
     return on;
 }
 
@@ -230,10 +231,10 @@ static const bool s_farBackdropTintParsed = []() {
 }();
 
 // V-IBL-STATIC-1: SH-L2 image-based ambient lane.
-//   - env var MC2_STATIC_PROP_IBL_SH is the AUTHORITATIVE GATE
-//     (resolved once at process start; matches V-AMBIENT-STATIC-1 pattern).
+//   - the options.cfg key StaticPropIblSh is the authoritative switch
+//     (resolved once at first use; matches the V-AMBIENT-STATIC-1 pattern).
 //   - runtime global g_iblShStrength (below) is the ImGui slider value;
-//     it ONLY contributes when the env-gate is on.
+//     it ONLY contributes when the option is on.
 //   - per-frame upload: iblShStrengthNightScaled() -- was
 //     `s_iblShEnabled ? g_iblShStrength : 0.0f` until IBL-NIGHT-SCALE-1 added
 //     the night curve on top (see that block below). Still 0.0f when the
@@ -248,7 +249,7 @@ static const bool s_farBackdropTintParsed = []() {
 // env unset -> true; env="0" -> false; env="1"/anything else -> true.
 // Read at first use (after main() applied launcher_env.json), see staticPropAmbientV1Enabled().
 bool iblShEnabled() {
-    static const bool on = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">();
+    static const bool on = mc2::options::current().staticPropIblSh;
     return on;
 }
 
@@ -263,7 +264,7 @@ bool iblShEnabled() {
 // props run +44%..+83% brighter than with the probe off and one building face
 // hard-clips to 255 on 2.49% of its pixels. Stock MC2 had no IBL at all.
 //
-// WHY NOT THE EXISTING KILLSWITCH. MC2_STATIC_PROP_IBL_SH=0 removes the term
+// WHY NOT THE EXISTING KILLSWITCH. StaticPropIblSh = FALSE removes the term
 // outright and drives the perimeter wall, turrets and bunker domes 29%..46%
 // darker -- the near-black props the user has separately complained about. The
 // probe's DIRECTIONAL STRUCTURE (sky above, ground below) is still correct at
@@ -314,7 +315,7 @@ float iblShStrengthNightScaled() {
 // before any u_cameraWorldPos access -> mathematically byte-identical
 // (strength=0 -> lit += specular * 0 = lit unchanged).
 bool pbrV1Enabled() {   // first-use read, see staticPropAmbientV1Enabled()
-    static const bool on = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
+    static const bool on = mc2::options::current().staticPropPbr;
     return on;
 }
 
@@ -404,7 +405,7 @@ extern const RenderCore::IblShSet* s_currentShSet = &RenderCore::kIblShSets[0];
 // Canonical DEFAULT-OFF opt-in reader.
 // Read at first use, see staticPropAmbientV1Enabled().
 static bool iblSunRotateEnabled() {
-    static const bool on = mc2::gate::get<"MC2_STATIC_PROP_IBL_SUN_ROTATE">();
+    static const bool on = mc2::options::current().staticPropIblSunRotate;
     return on;
 }
 
@@ -458,7 +459,7 @@ static bool iblSunRotateEnabled() {
 // never a silent giant lift.
 // Read at first use, see staticPropAmbientV1Enabled().
 static float iblSunRotateFloor() {
-    static const float v = mc2::gate::get<"MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR">();
+    static const float v = mc2::options::current().staticPropIblSunRotateFloor;
     return v;
 }
 

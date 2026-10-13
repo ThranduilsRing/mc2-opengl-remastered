@@ -539,7 +539,7 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
         // V-IBL-STATIC-2: source coeffs from the per-mission set (defaults to
         // "default" == kIblShCoeffs, so byte-identical to V-IBL-STATIC-1 when
         // no registry entry matches).
-        // IBL-SUN-ROTATE-1: when MC2_STATIC_PROP_IBL_SUN_ROTATE is off this
+        // IBL-SUN-ROTATE-1: when the StaticPropIblSunRotate option is off this
         // returns &s_currentShSet->coeffs[0][0] -- the same pointer this line
         // passed before the slice -- so the upload is byte-identical.
         if (s_locsCoalesce.iblSh >= 0)

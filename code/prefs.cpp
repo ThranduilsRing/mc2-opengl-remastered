@@ -12,9 +12,76 @@
 #include"soundsys.h"
 #include"../resource.h"
 #include "mc2fmt.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 extern SoundSystem *sndSystem;
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
+
+namespace {
+
+// One log line per rejected value; the default (or the value the file had before) stays.
+void logRejectedOption(const char* key, const char* text, mc2::options::Verdict why, const mc2::options::Option* opt) {
+	if (opt && opt->kind != mc2::options::Kind::Bool)
+		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} want={:g}..{:g} kept=default\n", mc2::fmt::safe(key), mc2::fmt::safe(text),
+		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage", opt->lo, opt->hi);
+	else
+		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} kept=default\n", mc2::fmt::safe(key), mc2::fmt::safe(text),
+		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage");
+}
+
+// Reads every option of the table from the open [MechCommander2] block. A missing key keeps the default silently; a present key that is
+// garbage, not finite or outside its bounds is rejected with one log line and keeps the default.
+void loadRenderOptions(FitIniFile& file, mc2::options::RenderOptions& out) {
+	using namespace mc2::options;
+	for (const Option& opt : kOptions) {
+		switch (opt.kind) {
+		case Kind::Bool: {
+			bool v = false;
+			if (file.readIdBoolean(opt.key, v) == NO_ERR)
+				out.*(opt.b) = v;
+			break;
+		}
+		case Kind::Long: {
+			long v = 0;
+			if (file.readIdLong(opt.key, v) == NO_ERR) {
+				const Verdict why = setLong(out, opt, v);
+				if (why != Verdict::Ok) {
+					char text[32];
+					mc2::fmt::to_buf(text, "{}", v);
+					logRejectedOption(opt.key, text, why, &opt);
+				}
+			}
+			break;
+		}
+		case Kind::Float: {
+			float v = 0.0f;
+			if (file.readIdFloat(opt.key, v) == NO_ERR) {
+				const Verdict why = setFloat(out, opt, v);
+				if (why != Verdict::Ok) {
+					char text[32];
+					mc2::fmt::to_buf(text, "{:g}", v);
+					logRejectedOption(opt.key, text, why, &opt);
+				}
+			}
+			break;
+		}
+		}
+	}
+}
+
+void saveRenderOptions(FitIniFile& file, const mc2::options::RenderOptions& in) {
+	using namespace mc2::options;
+	for (const Option& opt : kOptions) {
+		switch (opt.kind) {
+		case Kind::Bool:  file.writeIdBoolean(opt.key, in.*(opt.b)); break;
+		case Kind::Long:  file.writeIdLong(opt.key, in.*(opt.l)); break;
+		case Kind::Float: file.writeIdFloat(opt.key, in.*(opt.f)); break;
+		}
+	}
+}
+
+}  // namespace
 
 extern long DigitalMasterVolume;
 extern long MusicVolume;
@@ -83,9 +150,7 @@ CPrefs::CPrefs() {
 	scrollSpeedMult = 2.0f;
 	zoomSpeedMult   = 2.0f;
 
-	postCas          = false;
-	postCasSharpness = 0.5f;
-	tonemapMode      = 0;
+	render = mc2::options::RenderOptions{};
 
 #if 0
 	FilterState = gos_FilterNone;
@@ -291,15 +356,8 @@ int CPrefs::load( const char* pFileName ) {
 			if ( result != NO_ERR )
 				zoomSpeedMult = 2.0f;
 
-			result = prefsFile->readIdBoolean( "PostCAS", postCas );
-			if ( result != NO_ERR )
-				postCas = false;
-			result = prefsFile->readIdFloat( "PostCASSharpness", postCasSharpness );
-			if ( result != NO_ERR )
-				postCasSharpness = 0.5f;
-			result = prefsFile->readIdLong( "TonemapMode", tonemapMode );
-			if ( result != NO_ERR )
-				tonemapMode = 0;
+			render = mc2::options::RenderOptions{};
+			loadRenderOptions( *prefsFile, render );
 
 		}
 
@@ -396,9 +454,7 @@ int CPrefs::save() {
 			result = prefsFile->writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
 			result = prefsFile->writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
 
-			result = prefsFile->writeIdBoolean( "PostCAS", postCas );
-			result = prefsFile->writeIdFloat( "PostCASSharpness", postCasSharpness );
-			result = prefsFile->writeIdLong( "TonemapMode", tonemapMode );
+			saveRenderOptions( *prefsFile, render );
 
 		}
 	}
@@ -452,7 +508,26 @@ int CPrefs::applyPrefs(bool applyRes) {
 	::useNonWeaponEffects = this->useNonWeaponEffects;
 	::useHighObjectDetail = this->useHighObjectDetail;
 
-	gos_SetPostFxOptions(this->postCas ? 1 : 0, this->postCasSharpness, static_cast<int>(this->tonemapMode));
+	// The effective options: the file's values, then the MC2_OPTIONS_OVERRIDE test channel on top (never written back by save()).
+	{
+		mc2::options::RenderOptions effective = this->render;
+		static bool s_reported = false;
+		const std::string overrideSpec = mc2::gate::str<"MC2_OPTIONS_OVERRIDE">();
+		if (!overrideSpec.empty()) {
+			std::vector<mc2::options::Reject> rejects;
+			const int accepted = mc2::options::applyOverrides(effective, overrideSpec, rejects);
+			if (!s_reported)
+				mc2::fmt::print_err("[OPTIONS v1] event=override accepted={} rejected={} spec={}\n", accepted, rejects.size(), mc2::fmt::safe(overrideSpec.c_str()));
+			for (const auto& r : rejects)
+				if (!s_reported)
+					logRejectedOption(r.key.c_str(), r.text.c_str(), r.why, mc2::options::find(r.key));
+		}
+		mc2::options::publish(effective);
+		if (!s_reported)
+			mc2::fmt::print_err("[OPTIONS v1] event=published early_reads={}\n", mc2::options::earlyReads());
+		s_reported = true;
+		gos_SetPostFxOptions(effective.postCas ? 1 : 0, effective.postCasSharpness, effective.tonemapMode);
+	}
 
 	int bitDepth = this->bitDepth;
 

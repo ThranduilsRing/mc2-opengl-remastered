@@ -205,8 +205,8 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         //
         // FAR-BAND-BLACK-1 FIX: this block was gated on dynShadowGate alone, NOT on
         // the CSM sub-gate as the comment above claims -- so
-        // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (MC2_SHADOW_CSM=1,
-        // default ON) fed CSM cascade data to the VK terrain frag even with
+        // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (ShadowCSM on,
+        // the default) fed CSM cascade data to the VK terrain frag even with
         // MC2_VK_TERRAIN_CSM=0 (or unset with the umbrella off). The field launcher bat
         // sets exactly this combination (DYNSHADOW+CSM both umbrella members, CSM only
         // gets explicitly forced off in isolation tests) -- the resulting csmEnabled=1

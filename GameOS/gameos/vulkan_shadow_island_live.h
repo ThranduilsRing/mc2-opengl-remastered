@@ -143,7 +143,7 @@ int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 // VK-MECH-MATERIAL-LIGHTING-1 pattern: LightsData GL SSBO name/size (binding 20,
 // copy-per-frame into the island's own SSBO) + the static IBL-SH coefficient table
 // (header-only constexpr, no GL round-trip needed) + the live iblShStrength slider
-// value (0.0 when MC2_STATIC_PROP_IBL_SH=0 -> shader short-circuits, byte-identical
+// value (0.0 when StaticPropIblSh is off -> shader short-circuits, byte-identical
 // contribution). ambient_v1 hemisphere tints are NOT part of this feed (still a GL
 // constant the island approximates locally) -- only the ObjectLights AMBIENT-type
 // sum and the SH-L2 fill are real data now.

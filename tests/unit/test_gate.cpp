@@ -14,9 +14,11 @@
 #include "Gates/gate_parse.h"
 #include "Gates/gate_row.h"
 #include "Gates/gate_table_dsl.h"
+#include "Gates/render_options.h"
 #include "mlr/mlr_gate.h"
 
 #include <cstdio>
+#include <limits>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -309,10 +311,10 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // The table is exactly 1000 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
+    // The table is exactly 987 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
     // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
     // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
-    REQUIRE(n >= 990);
+    REQUIRE(n >= 975);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -1133,10 +1135,6 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
-    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
-    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);
-    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "abc") == 0.0f);
     CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
     CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
     CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
@@ -1254,4 +1252,101 @@ TEST_CASE("mlr_gate latches the env value on first use and every thread sees it"
 
     _putenv_s("MC2_DISABLE_GOSFX", "");
     mc2::gate::invalidateAll();
+}
+
+// ---------------------------------------------------------------------------
+// options.cfg render options (Gates/render_options.h): defaults, bounds, garbage rejection and the override channel
+// ---------------------------------------------------------------------------
+
+TEST_CASE("render options default to what the gate rows they replaced defaulted to") {
+    const mc2::options::RenderOptions d{};
+    CHECK_FALSE(d.postCas);
+    CHECK(d.postCasSharpness == 0.5f);
+    CHECK(d.tonemapMode == 0);
+    CHECK(d.shadowCsm);
+    CHECK(d.shadowBoundedNearFit);
+    CHECK(d.propShadowReceive == 0);
+    CHECK(d.shorelineLegacySuppress);
+    CHECK(d.cpuPhongRetire);
+    CHECK_FALSE(d.staticPropAmbient);
+    CHECK(d.staticPropIblSh);
+    CHECK_FALSE(d.staticPropIblSunRotate);
+    CHECK(d.staticPropIblSunRotateFloor == 0.45f);
+    CHECK_FALSE(d.staticPropPbr);
+    CHECK_FALSE(d.sunAxisFix);
+    CHECK_FALSE(d.sunElevationFix);
+    CHECK_FALSE(d.vfxSoftParticles);
+    CHECK_FALSE(d.vfxLitParticles);
+}
+
+TEST_CASE("render option keys are unique and findable") {
+    namespace mo = mc2::options;
+    for (std::size_t i = 0; i < mo::kOptionCount; ++i) {
+        REQUIRE(mo::find(mo::kOptions[i].key) == &mo::kOptions[i]);
+    }
+    CHECK(mo::find("NotAnOption") == nullptr);
+    CHECK(mo::kOptionCount == 17);
+}
+
+TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
+    namespace mo = mc2::options;
+    mo::RenderOptions o{};
+    const mo::Option& sharp = *mo::find("PostCASSharpness");
+    CHECK(mo::setFloat(o, sharp, 0.8f) == mo::Verdict::Ok);
+    CHECK(o.postCasSharpness == 0.8f);
+    CHECK(mo::setFloat(o, sharp, 1.5f) == mo::Verdict::OutOfRange);
+    CHECK(mo::setFloat(o, sharp, -0.1f) == mo::Verdict::OutOfRange);
+    CHECK(mo::setFloat(o, sharp, std::numeric_limits<float>::quiet_NaN()) == mo::Verdict::Garbage);
+    CHECK(mo::setFloat(o, sharp, std::numeric_limits<float>::infinity()) == mo::Verdict::Garbage);
+    CHECK(o.postCasSharpness == 0.8f);
+    const mo::Option& tone = *mo::find("TonemapMode");
+    CHECK(mo::setLong(o, tone, 3) == mo::Verdict::Ok);
+    CHECK(mo::setLong(o, tone, 4) == mo::Verdict::OutOfRange);
+    CHECK(mo::setLong(o, tone, -1) == mo::Verdict::OutOfRange);
+    CHECK(o.tonemapMode == 3);
+    const mo::Option& floor = *mo::find("StaticPropIblSunRotateFloor");
+    CHECK(mo::setFloat(o, floor, 2.0f) == mo::Verdict::Ok);
+    CHECK(mo::setFloat(o, floor, 9.0f) == mo::Verdict::OutOfRange);
+    CHECK(o.staticPropIblSunRotateFloor == 2.0f);
+    const mo::Option& recv = *mo::find("PropShadowReceive");
+    CHECK(mo::setLong(o, recv, 2) == mo::Verdict::OutOfRange);
+    CHECK(o.propShadowReceive == 0);
+}
+
+TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports every bad one") {
+    namespace mo = mc2::options;
+    mo::RenderOptions o{};
+    std::vector<mo::Reject> rej;
+    const int n = mo::applyOverrides(o, "ShadowCSM=0, StaticPropPbr=TRUE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
+    CHECK(n == 2);
+    CHECK_FALSE(o.shadowCsm);
+    CHECK(o.staticPropPbr);
+    CHECK(o.postCasSharpness == 0.5f);
+    CHECK(o.tonemapMode == 0);
+    CHECK_FALSE(o.vfxLitParticles);
+    REQUIRE(rej.size() == 5);
+    CHECK(rej[0].key == "PostCASSharpness");
+    CHECK(rej[1].key == "TonemapMode");
+    CHECK(rej[1].why == mo::Verdict::OutOfRange);
+    CHECK(rej[2].key == "Bogus");
+    CHECK(rej[3].key == "SunAxisFix");
+    CHECK(rej[4].key == "VfxLitParticles");
+    std::vector<mo::Reject> none;
+    CHECK(mo::applyOverrides(o, "", none) == 0);
+    CHECK(none.empty());
+}
+
+TEST_CASE("render options read before the publish are counted, and publish replaces the values") {
+    namespace mo = mc2::options;
+    const int before = mo::earlyReads();
+    (void)mo::current();
+    if (!mo::g_published) CHECK(mo::earlyReads() == before + 1);
+    mo::RenderOptions o{};
+    o.sunAxisFix = true;
+    mo::publish(o);
+    CHECK(mo::current().sunAxisFix);
+    const int after = mo::earlyReads();
+    (void)mo::current();
+    CHECK(mo::earlyReads() == after);
+    mo::publish(mo::RenderOptions{});   // leave the process-wide values at the defaults for the other cases
 }

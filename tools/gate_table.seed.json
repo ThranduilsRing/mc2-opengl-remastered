@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 997,
+ "count": 983,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -3229,34 +3229,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_CPU_PHONG_RETIRE",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "[DEFAULT-ON KILLSWITCH; '=0' is the only revert token -- MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape.]",
-   "readers": [
-    {
-     "at": "mclib/mapdata.cpp:2452",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "reader_file"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_CPU_PHONG_RETIRE",
    "retireVerdict": ""
   },
   {
@@ -15363,32 +15335,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_PROP_SHADOW_RECEIVE",
-   "kind": "Int",
-   "default": 0,
-   "rule": "Prefix",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already carry the full prop caster set via the DynShadowCSM replay).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:444",
-     "idiom": "Num(atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_PROP_SHADOW_RECEIVE",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_PURCHASE_ALL",
    "kind": "Bool",
    "default": false,
@@ -16985,34 +16931,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_SHADOW_BOUNDED_NEAR_FIT",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS, default 2500wu) for higher texel density. **DEFAULT ON; opt out with MC2_SHADOW_BOUNDED_NEAR_FIT=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6577",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SHADOW_BOUNDED_NEAR_FIT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SHADOW_BOUNDED_NEAR_RADIUS",
    "kind": "Float",
    "default": 2500.0,
@@ -17117,35 +17035,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SHADOW_CSM",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:60",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1",
-    "value"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_SHADOW_CSM",
    "retireVerdict": ""
   },
   {
@@ -18072,32 +17961,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SHORELINE_LEGACY_SUPPRESS",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3979",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_SHORELINE_LEGACY_SUPPRESS",
    "retireVerdict": ""
   },
   {
@@ -19497,38 +19360,6 @@
    "retireVerdict": "tierB:MERGE"
   },
   {
-   "name": "MC2_STATIC_PROP_AMBIENT_V1",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane (static_prop.vert).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:831",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GuiRuntime/EditorInspector.cpp:682",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_AMBIENT_V1",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_BAKE_SELFTEST",
    "kind": "Bool",
    "default": false,
@@ -19663,103 +19494,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_STATIC_PROP_IBL_SH",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane (static_prop.vert).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/debug_state_dump.cpp:485",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1084",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GuiRuntime/EditorInspector.cpp:726",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:701",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0",
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_IBL_SH",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_IBL_SUN_ROTATE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "[DEFAULT-OFF OPT-IN.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1275",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR",
-   "kind": "Float",
-   "default": 0.45,
-   "rule": "Prefix",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "[VALUE, not a boolean: the floor in the probe's own irradiance units.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1327",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": true,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "loExclusive": true,
-    "style": "compare"
-   },
-   "readerDefault": 0.45,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE_FLOOR",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_STATIC_PROP_LATE_SPAWN_REG",
    "kind": "Bool",
    "default": false,
@@ -19811,50 +19545,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STATIC_PROP_PBR_V1",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular on StaticPropOpaque lane (static_prop.frag, inside `#if defined(MC2_USE_VIEW_UNIFORMS)`).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/debug_state_dump.cpp:486",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1164",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GuiRuntime/EditorInspector.cpp:751",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:727",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:755",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_STATIC_PROP_PBR_V1",
    "retireVerdict": ""
   },
   {
@@ -20216,62 +19906,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": "tierB:MERGE"
-  },
-  {
-   "name": "MC2_SUN_AXIS_FIX",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:2530",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "mclib/txmmgr.cpp:2425",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_SUN_AXIS_FIX",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SUN_ELEVATION_FIX",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit.",
-   "readers": [
-    {
-     "at": "mclib/camera.cpp:2306",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_SUN_ELEVATION_FIX",
-   "retireVerdict": ""
   },
   {
    "name": "MC2_TACMAP_FORMATION_LINE",
@@ -24704,34 +24338,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VFX_LIT_PARTICLES",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-LIT-PARTICLES-MVP-1 (Track V): simple directional+ambient lighting for alpha-blended smoke/dust particles.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:204",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VFX_LIT_PARTICLES",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VFX_ORACLE_RENDER",
    "kind": "Bool",
    "default": false,
@@ -24896,34 +24502,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VFX_SOFT_PARTICLES",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_particle_bridge.cpp:172",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VFX_SOFT_PARTICLES",
    "retireVerdict": ""
   },
   {

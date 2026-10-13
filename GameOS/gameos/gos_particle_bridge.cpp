@@ -11,6 +11,7 @@
 
 #include "gos_particle_bridge_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 // VAO rebind helper (memory/projectz_overlay_findings.md trap #4) — AMD
@@ -86,8 +87,8 @@ float s_vfxAgeFade            = 0.0f;
 static float clampVfxScale(float v) { return v < 0.0f ? 0.0f : (v > 8.0f ? 8.0f : v); }   // the runtime setters
 static float clampAgeFade(float v)  { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
 
-// VFX-SOFT-PARTICLES-MVP-1: depth-fade enable + world-unit fade band. Gate
-// MC2_VFX_SOFT_PARTICLES (default OFF -> byte-identical). When ON, the flush
+// VFX-SOFT-PARTICLES-MVP-1: depth-fade enable + world-unit fade band. The options.cfg
+// key VfxSoftParticles (default off -> byte-identical). When on, the flush
 // snapshots scene depth and the FS softens alpha where alpha particles meet
 // opaque geometry. Distance is ImGui-tunable (gos_vfx_setSoftDistance); enable
 // is ImGui-toggleable (gos_vfx_setSoftEnabled). No emission/lifetime/timing
@@ -98,7 +99,7 @@ float s_softDistance     = 30.0f;   // world-unit fade band
 static float clampSoftDist(float v) { return v < 0.0f ? 0.0f : (v > 500.0f ? 500.0f : v); }
 void vfxSoftInitIfNeeded() {
     if (s_soft_initialized) return;
-    s_soft_enabled = mc2::gate::get<"MC2_VFX_SOFT_PARTICLES">();
+    s_soft_enabled = mc2::options::current().vfxSoftParticles;
     s_soft_initialized   = true;
 }
 
@@ -117,18 +118,18 @@ void vfxSceneColorGrabInitIfNeeded() {
     s_scenecolor_initialized = true;
 }
 
-// VFX-LIT-PARTICLES-MVP-1: scene-lit alpha smoke/dust. Gate MC2_VFX_LIT_PARTICLES
-// (default OFF -> byte-identical). Strength = the 0.7 default / per-mission
+// VFX-LIT-PARTICLES-MVP-1: scene-lit alpha smoke/dust. The options.cfg key
+// VfxLitParticles (default off -> byte-identical). Strength = the 0.7 default / per-mission
 // "vfxLitStrength" profile key / ImGui slider (clamped 0..1). When OFF the
 // bridge uploads strength 0 so the FS lit branch is inert.
 // Alpha groups only; additive flashes stay emissive.
 bool  s_lit_initialized = false;
 bool  s_lit_enabled     = false;
-float s_litStrength     = 0.7f;   // applied only while the gate is ON
+float s_litStrength     = 0.7f;   // applied only while the option is on
 static float clampLit(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }   // the runtime setter
 void vfxLitInitIfNeeded() {
     if (s_lit_initialized) return;
-    s_lit_enabled = mc2::gate::get<"MC2_VFX_LIT_PARTICLES">();
+    s_lit_enabled = mc2::options::current().vfxLitParticles;
     s_lit_initialized = true;
 }
 
@@ -279,7 +280,7 @@ void ensureInitialized() {
         // dead-code elimination strips it).
         s_loc_vfxAgeFade            = glGetUniformLocation(s_prog->shp_, "u_vfxAgeFade");
         // VFX-SOFT-PARTICLES-MVP-1: soft-particle depth-fade uniforms (may be
-        // -1 when MC2_VFX_SOFT_PARTICLES is OFF and dead-code elim strips them).
+        // -1 when VfxSoftParticles is off and dead-code elim strips them).
         s_loc_uSceneDepth    = glGetUniformLocation(s_prog->shp_, "u_sceneDepth");
         s_loc_invWorldToClip = glGetUniformLocation(s_prog->shp_, "u_invWorldToClip");
         s_loc_screenSize     = glGetUniformLocation(s_prog->shp_, "u_screenSize");

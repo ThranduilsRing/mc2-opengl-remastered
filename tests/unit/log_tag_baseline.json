@@ -6737,6 +6737,55 @@
    "count": 1
   },
   {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "accepted",
+    "rejected",
+    "spec"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "early_reads"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "key",
+    "value",
+    "why",
+    "kept"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "key",
+    "value",
+    "why",
+    "want",
+    "kept"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ORDER_FIXTURE",
    "ver": -1,
    "stream": "stdout",
@@ -12483,6 +12532,7 @@
   "MOVER_COHERENCE",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
+  "RESOLUTION",
   "SHADER",
   "SHADER ERROR",
   "SHADER_SCHEMA",

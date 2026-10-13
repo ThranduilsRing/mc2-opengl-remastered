@@ -18,24 +18,23 @@
     },
     {
       "id": "soft_particles",
-      "description": "VFX-SOFT-PARTICLES-MVP-1: depth-fade alpha particles at scene intersections (MC2_VFX_SOFT_PARTICLES=1). Look for soft smoke/dust where it meets terrain/mechs instead of hard billboard edges.",
+      "description": "VFX-SOFT-PARTICLES-MVP-1: depth-fade alpha particles at scene intersections (options.cfg VfxSoftParticles=1, passed as MC2_OPTIONS_OVERRIDE). Look for soft smoke/dust where it meets terrain/mechs instead of hard billboard edges.",
       "env": {
-        "MC2_VFX_SOFT_PARTICLES": "1"
+        "MC2_OPTIONS_OVERRIDE": "VfxSoftParticles=1"
       }
     },
     {
       "id": "lit_particles",
-      "description": "VFX-LIT-PARTICLES-MVP-1: scene-lit alpha smoke/dust (MC2_VFX_LIT_PARTICLES=1). Smoke should take on the mission sun/ambient tint; additive flashes unchanged.",
+      "description": "VFX-LIT-PARTICLES-MVP-1: scene-lit alpha smoke/dust (options.cfg VfxLitParticles=1, passed as MC2_OPTIONS_OVERRIDE). Smoke should take on the mission sun/ambient tint; additive flashes unchanged.",
       "env": {
-        "MC2_VFX_LIT_PARTICLES": "1"
+        "MC2_OPTIONS_OVERRIDE": "VfxLitParticles=1"
       }
     },
     {
       "id": "payoff_full",
       "description": "Full VFX-payoff stack: soft + lit particles.",
       "env": {
-        "MC2_VFX_SOFT_PARTICLES": "1",
-        "MC2_VFX_LIT_PARTICLES": "1"
+        "MC2_OPTIONS_OVERRIDE": "VfxSoftParticles=1,VfxLitParticles=1"
       }
     },
     {

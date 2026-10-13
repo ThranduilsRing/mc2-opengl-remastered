@@ -38,6 +38,7 @@
 #include"../GameOS/gameos/gos_terrain_indirect.h"
 #include"../GameOS/gameos/gos_terrain_surface.h"  // PR-1: continuous-surface regen on recipe rebuild
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
@@ -2443,11 +2444,11 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 	//
 	// Default-ON killswitch (MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape):
 	// unset = Phong retired = gameplay elevation matches the drawn LOD-chunk
-	// surface. MC2_CPU_PHONG_RETIRE=0 restores the exact legacy Phong term.
+	// surface. options.cfg CpuPhongRetire = FALSE restores the exact legacy Phong term.
 	// Enforced against silent re-divergence by scripts/check-cpu-gpu-cogating.py.
 	if (Terrain::terrainTextures2) {
 		TerrainColorMap* tcm = Terrain::terrainTextures2;
-		static const bool s_retireCpuPhong = mc2::gate::get<"MC2_CPU_PHONG_RETIRE">();
+		static const bool s_retireCpuPhong = mc2::options::current().cpuPhongRetire;
 		float phongAlpha = gos_GetTerrainPhongAlpha();
 		float displaceScale = gos_GetTerrainDisplaceScale();
 		float detailTiling = gos_GetTerrainDetailTiling();
