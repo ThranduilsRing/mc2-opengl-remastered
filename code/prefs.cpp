@@ -21,15 +21,18 @@ extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemap
 
 namespace {
 
+// Writes one option into the open [MechCommander2] block; the overload taken is the one for the option's value type.
+struct OptionWriter {
+	FitIniFile& file;
+	const char* key;
+	void operator()(bool v) const { file.writeIdBoolean(key, v); }
+	void operator()(int v) const { file.writeIdLong(key, v); }
+	void operator()(float v) const { file.writeIdFloat(key, v); }
+};
+
 void saveRenderOptions(FitIniFile& file, const mc2::options::RenderOptions& in) {
-	for (const mc2::options::Option& opt : mc2::options::kOptions) {
-		mc2::options::withValue(in, opt, [&](const auto& field) {
-			using T = std::remove_cvref_t<decltype(field)>;
-			if constexpr (std::is_same_v<T, bool>) file.writeIdBoolean(opt.key, field);
-			else if constexpr (std::is_same_v<T, int>) file.writeIdLong(opt.key, field);
-			else file.writeIdFloat(opt.key, field);
-		});
-	}
+	for (const mc2::options::Option& opt : mc2::options::kOptions)
+		mc2::options::withValue(in, opt, OptionWriter{file, opt.key});
 }
 
 }  // namespace
