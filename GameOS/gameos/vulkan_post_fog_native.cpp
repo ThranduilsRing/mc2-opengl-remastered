@@ -191,7 +191,8 @@ static bool vkPostFogDirectChainEnabled();
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) {
+                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
@@ -201,6 +202,7 @@ bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -294,8 +296,8 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         if (r != VK_SUCCESS) { vlog("vkCreateSampler failed (%d).", (int)r); return false; }
     }
 
-    if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->edgeUbo, &s->edgeUboAlloc)) return false;
-    if (!make_buffer(s, sizeof(FogOobParams),  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->oobUbo,  &s->oobUboAlloc))  return false;
+    if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->edgeUbo, &s->edgeUboAlloc, "postfog.edgeUbo")) return false;
+    if (!make_buffer(s, sizeof(FogOobParams),  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->oobUbo,  &s->oobUboAlloc, "postfog.oobUbo"))  return false;
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (fog blends OVER the
     // scene), STORE; layout-STABLE COLOR_ATTACHMENT both ends (GL hands it over /
@@ -450,7 +452,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         cb.attachmentCount = 1; cb.pAttachments = &cba;
 
-        auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod, VkPipeline* out) -> bool {
+        auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod, VkPipeline* out, const char* name) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";
@@ -471,10 +473,11 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
             if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out) != VK_SUCCESS) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
+            mc2vk::nameObject(s->device, *out, name);
             return true;
         };
-        if (!make_pipeline(s->edgeVert, s->edgeFrag, &s->edgePipe)) return false;
-        if (!make_pipeline(s->oobVert,  s->oobFrag,  &s->oobPipe))  return false;
+        if (!make_pipeline(s->edgeVert, s->edgeFrag, &s->edgePipe, "postfog.edgePipe")) return false;
+        if (!make_pipeline(s->oobVert,  s->oobFrag,  &s->oobPipe, "postfog.oobPipe"))  return false;
     }
 
     {

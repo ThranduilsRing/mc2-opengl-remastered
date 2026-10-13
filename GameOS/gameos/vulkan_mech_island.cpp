@@ -301,7 +301,8 @@ static bool g_mechSessionDeclined  = false;
 static int  g_mechInitReachedBuild = 0;
 
 bool make_buffer(MechIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
+                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -311,6 +312,7 @@ bool make_buffer(MechIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -407,7 +409,7 @@ void bind_scheme_images(MechIsland* s, VkDescriptorSet set, VkImageView albedo,
 }
 
 bool ensure_buf_capacity(MechIsland* s, VkBuffer* buf, VmaAllocation* alloc, VkDeviceSize* cap,
-                         VkDeviceSize bytes) {
+                         VkDeviceSize bytes, const char* name, int slot) {
     if (*buf != VK_NULL_HANDLE && bytes <= *cap) return true;
     // Descriptor rewrite below touches BOTH parity sets for every scheme.
     if (!s->schemes.empty()) vkDeviceWaitIdle(s->device);
@@ -416,7 +418,7 @@ bool ensure_buf_capacity(MechIsland* s, VkBuffer* buf, VmaAllocation* alloc, VkD
         *buf = VK_NULL_HANDLE;
     }
     VkDeviceSize c = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, c, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true)) return false;
+    if (!make_buffer(s, c, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true, name, slot)) return false;
     *cap = c;
     write_buffer_bindings_all(s);
     return true;
@@ -468,7 +470,7 @@ bool make_albedo_sampler(MechIsland* s) {
 bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
                          uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "mech.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
       std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
@@ -484,6 +486,7 @@ bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
     if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
+    mc2vk::nameObject(s->device, e.img, "mech.texture");
     VkCommandBuffer cb = cp_begin(s);
     if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
     VkImageMemoryBarrier bar{};
@@ -669,14 +672,14 @@ bool init_island(MechIsland* s, int w, int h) {
 
     // Instance + bone + UBO buffers.
     for (int i = 0; i < 2; ++i) {
-    if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], 256 * 1024)) return false;
-    if (!ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], 256 * 1024)) return false;
+    if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], 256 * 1024, "mech.instBuf", (int)i)) return false;
+    if (!ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], 256 * 1024, "mech.boneBuf", (int)i)) return false;
     // LightsData copy buffer — valid before the first frame so binding4 is always bound
     // (one ObjectLights record is 3600B; start with a few slots).
-    if (!ensure_buf_capacity(s, &s->lightBuf[i], &s->lightAlloc[i], &s->lightCap[i], 32 * 1024)) return false;
-    if (!make_buffer(s, sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true)) return false;
+    if (!ensure_buf_capacity(s, &s->lightBuf[i], &s->lightAlloc[i], &s->lightCap[i], 32 * 1024, "mech.lightBuf", (int)i)) return false;
+    if (!make_buffer(s, sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "mech.ubo", (int)i)) return false;
     // VK-PARITY-MECH-1: fixed-size object light-pool SSBO (256 x 48B).
-    if (!make_buffer(s, kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->poolBuf[i], &s->poolAlloc[i], true)) return false;
+    if (!make_buffer(s, kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->poolBuf[i], &s->poolAlloc[i], true, "mech.poolBuf", (int)i)) return false;
     }
     // Pre-create tiny inst/bone SSBOs so scheme descriptor sets never bind a null buffer
     // (they grow in run() via ensure_buf_capacity, which rewrites all cached sets).
@@ -891,6 +894,7 @@ bool init_island(MechIsland* s, int w, int h) {
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
             setFallback("pipeline_failed"); return false;
         }
+        mc2vk::nameObject(s->device, s->pipe, "mech.pipe");
     }
 
     s->inited = true;
@@ -917,8 +921,8 @@ bool upload_geometry_once(MechIsland* s) {
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
 
-    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;
-    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true)) return false;
+    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true, "mech.vbo")) return false;
+    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true, "mech.ibo")) return false;
 
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {
@@ -1056,11 +1060,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const VkDeviceSize boneBytes = (VkDeviceSize)(feed.boneCount ? feed.boneCount : 1) * 64ull;
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     for (uint32_t i = 0; i < 2; ++i) {
-        if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], instBytes) ||
-            !ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], boneBytes) ||
+        if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], instBytes, "mech.instBuf", (int)i) ||
+            !ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], boneBytes, "mech.boneBuf", (int)i) ||
             (s->wantLighting && nativeLight &&
              !ensure_buf_capacity(s, &s->lightBuf[i], &s->lightAlloc[i], &s->lightCap[i],
-                                  (VkDeviceSize)feed.lightDataCpuBytes))) {
+                                  (VkDeviceSize)feed.lightDataCpuBytes, "mech.lightBuf", (int)i))) {
             s->disabled = true; return 0;
         }
     }

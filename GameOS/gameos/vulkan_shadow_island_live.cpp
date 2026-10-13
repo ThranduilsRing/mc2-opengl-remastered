@@ -265,7 +265,8 @@ bool g_shadowSessionDeclined  = false;
 int  g_shadowInitReachedBuild = 0;
 
 bool make_buffer(ShadowIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
+                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -275,6 +276,7 @@ bool make_buffer(ShadowIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -300,7 +302,7 @@ bool ensure_inst_capacity(ShadowIsland* s, VkDeviceSize bytes) {
         s->instBuf = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf, &s->instAlloc, true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf, &s->instAlloc, true, "shadow.instBuf"))
         return false;
     s->instCapBytes = cap;
     write_descriptors(s);
@@ -384,6 +386,7 @@ bool init_island(ShadowIsland* s, int size) {
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
+    if (ok) mc2vk::nameObject(s->device, s->depthResource.image, "shadow.depthResource");
     if (!ok) {
         vkImageResourceDestroy(&s->depthResource, s->device);
         setFallback("depth_resource_setup_failed");
@@ -413,7 +416,7 @@ bool init_island(ShadowIsland* s, int size) {
 
     // ---- Instance SSBO + UBO. ----
     if (!ensure_inst_capacity(s, 256 * 1024)) return false;  // ~2340 instances to start
-    if (!make_buffer(s, sizeof(ShadowFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true)) return false;
+    if (!make_buffer(s, sizeof(ShadowFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true, "shadow.ubo")) return false;
 
     // ---- Depth-only render pass (single depth attachment; CLEAR to 1.0 forward-Z,
     // STORE). Interop layout: GL never writes this image, VK is sole producer; we
@@ -580,6 +583,7 @@ bool init_island(ShadowIsland* s, int size) {
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
+        mc2vk::nameObject(s->device, s->pipe, "shadow.pipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity). ----
@@ -626,6 +630,7 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
+    if (ok) mc2vk::nameObject(s->device, s->csmFullMapResource.image, "shadow.csmFullMap");
     if (!ok) {
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
         setFallback("csm_fullmap_resource_setup_failed");
@@ -699,6 +704,7 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
         setFallback("csm_array_image_failed");
         return false;
     }
+    mc2vk::nameObject(s->device, s->csmArrayImg, "shadow.csmArray");
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -774,8 +780,8 @@ bool upload_geometry_once(ShadowIsland* s) {
     if (feed.vertexStride != mc2_static_prop_vertex_stride())
         vlog("ERROR: feed vertexStride %u != pipeline stride %u (shadow geometry will explode).", feed.vertexStride, mc2_static_prop_vertex_stride());
 
-    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;
-    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true)) return false;
+    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true, "shadow.vbo")) return false;
+    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true, "shadow.ibo")) return false;
     // The CPU staging was freed at finalize; pull the immutable GL buffer bytes ONCE
     // (map-load, not per-frame) via glGetBufferSubData into a scratch, then memcpy
     // into the VK buffers. This one-time geometry copy is NOT the shadow-map surface,
@@ -934,7 +940,7 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
     out.clear(); if (!s || !img || dim <= 0 || s->cpool == VK_NULL_HANDLE) return;
     const VkDeviceSize bytes = (VkDeviceSize)dim * dim * 4;
     VkBuffer buf = VK_NULL_HANDLE; VmaAllocation al = VK_NULL_HANDLE;
-    if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &buf, &al, true)) return;
+    if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &buf, &al, true, "shadow.diagReadback")) return;
     VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;

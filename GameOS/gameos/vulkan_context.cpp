@@ -61,6 +61,9 @@ void profileLog(std::string_view line) {
 // The single process-wide shared context.
 VulkanContext g_engineContext;
 
+// True while the debug-utils messenger is up (a validation run); object names are only attached then.
+bool g_debugNames = false;
+
 // Debug-utils callback pointer target: increments the live context's error
 // counter. Because there is exactly one engine context, a file-static back
 // pointer is sufficient (set in init()).
@@ -82,7 +85,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
     const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-        if (g_cbContext) ++g_cbContext->mutableHealth().validationErrors;
+        if (g_cbContext) g_cbContext->mutableHealth().validationErrors.fetch_add(1, std::memory_order_relaxed);
         validationLog("error", id, msg);
     } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         validationLog("warning", id, msg);
@@ -267,6 +270,7 @@ bool VulkanContext::init(bool wantPresent) {
             VkResult mr = pfnCreate(instance_, &mci, nullptr, &messenger_);
             if (mr == VK_SUCCESS) {
                 ctxlog("validation messenger engaged (preset=%s).", valPreset);
+                g_debugNames = true;
                 validationLog("info", "layer_enabled", std::string("VK_LAYER_KHRONOS_validation messenger engaged, preset=") + valPreset);
             } else {
                 ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", (int)mr);
@@ -424,6 +428,7 @@ bool VulkanContext::init(bool wantPresent) {
 }
 
 void VulkanContext::destroy() {
+    g_debugNames = false;
     if (allocator_) { vmaDestroyAllocator(allocator_); allocator_ = nullptr; }
     if (device_ != VK_NULL_HANDLE) {
         vkDestroyDevice(device_, nullptr);
@@ -471,9 +476,31 @@ void VulkanContext::logHealth() const {
                  "validation_enabled=%d validation_errors=%lu fallback_reason=\"%s\"\n",
                  health_.created ? 1 : 0, health_.attempted ? 1 : 0,
                  health_.deviceName, health_.validationEnabled ? 1 : 0,
-                 health_.validationErrors,
+                 health_.validationErrors.load(),
                  health_.fallbackReason.empty() ? "" : health_.fallbackReason.c_str());
     std::fflush(stderr);
+}
+
+bool debugNamesEnabled() { return g_debugNames; }
+
+void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, const char* name) {
+    if (!g_debugNames || device == VK_NULL_HANDLE || handle == 0 || !name || !vkSetDebugUtilsObjectNameEXT) return;
+    VkDebugUtilsObjectNameInfoEXT info{};
+    info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    info.objectType = type;
+    info.objectHandle = handle;
+    info.pObjectName = name;
+    vkSetDebugUtilsObjectNameEXT(device, &info);
+}
+
+void setObjectNamef(VkDevice device, VkObjectType type, uint64_t handle, const char* fmt, ...) {
+    if (!g_debugNames) return;
+    char buf[128];
+    va_list ap;
+    va_start(ap, fmt);
+    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    setObjectName(device, type, handle, buf);
 }
 
 VulkanContext& getOrCreateEngineVulkanContext() {

@@ -135,7 +135,8 @@ struct VfxIsland {
 VfxIsland* g_island = nullptr;
 
 bool make_buffer(VfxIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc) {
+                 VkBuffer* buf, VmaAllocation* alloc,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
@@ -145,6 +146,7 @@ bool make_buffer(VfxIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed (size=%llu).", (unsigned long long)size); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -170,7 +172,7 @@ bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
     if (s->ssbo != VK_NULL_HANDLE) vmaDestroyBuffer(s->allocator, s->ssbo, s->ssboAlloc);
     s->ssbo = VK_NULL_HANDLE; s->ssboAlloc = VK_NULL_HANDLE; s->ssboBytes = 0;
     VkDeviceSize cap = bytes + bytes / 2;   // 1.5x headroom
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->ssbo, &s->ssboAlloc)) return false;
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->ssbo, &s->ssboAlloc, "vfx.ssbo")) return false;
     s->ssboBytes = cap;
     write_descriptors(s);
     return true;
@@ -235,6 +237,7 @@ VkPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive) {
         vlog("vkCreateGraphicsPipelines(%s) failed.", additive ? "additive" : "alpha");
         return VK_NULL_HANDLE;
     }
+    mc2vk::nameObject(s->device, pipe, "vfx.pipe.%s", additive ? "additive" : "alpha");
     return pipe;
 }
 
@@ -289,7 +292,7 @@ bool init_island(VfxIsland* s, int w, int h) {
     }
 
     // UBO + initial particle SSBO.
-    if (!make_buffer(s, sizeof(VfxVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc)) return false;
+    if (!make_buffer(s, sizeof(VfxVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, "vfx.ubo")) return false;
     if (!ensure_ssbo(s, 64 * 1024)) return false;   // ~1024 particles to start
 
     // Render pass: color0 (LOAD, blend, STORE) + normal (LOAD, STORE, writemask 0) +

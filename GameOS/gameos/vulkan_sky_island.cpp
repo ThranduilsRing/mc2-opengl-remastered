@@ -103,12 +103,15 @@ int  g_initReachedBuild = 0;
 struct Pending { bool valid = false; float invProj[16] = {}; float rot[9] = {}; float yaw = 0.f; unsigned int tex = 0; };
 Pending g_pending;
 
-bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) {
+bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO; aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-    return vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) == VK_SUCCESS;
+    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) return false;
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
+    return true;
 }
 
 void destroy_hdri(Island* s) {
@@ -244,6 +247,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
         ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
         if (vmaCreateImage(s->allocator, &ii, &aci, &s->hdriImg, &s->hdriAlloc, nullptr) != VK_SUCCESS) return false;
+        mc2vk::nameObject(s->device, s->hdriImg, "sky.hdri");
         VkImageViewCreateInfo vi{};
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         vi.image = s->hdriImg; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
@@ -255,7 +259,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
     VkDeviceSize total = 0;
     for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += (VkDeviceSize)((levels[i].size() + 15) & ~size_t(15)); }
     VkBuffer staging = VK_NULL_HANDLE; VmaAllocation stagingAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc)) return false;
+    if (!make_buffer(s, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc, "sky.staging")) return false;
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, stagingAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, staging, stagingAlloc); return false; }
@@ -422,6 +426,7 @@ bool init_island(Island* s, int w, int h) {
         gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb; gp.pDynamicState = &dsci;
         gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) { setFallback("pipeline_failed"); return false; }
+        mc2vk::nameObject(s->device, s->pipe, "sky.pipe");
     }
     s->inited = true; setFallback("");
     vlog("island initialized %dx%d (HDRI equirect sky -> shared color0; GEQUAL z=0, no depth write).", w, h);

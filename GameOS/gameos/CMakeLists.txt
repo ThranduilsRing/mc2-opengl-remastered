@@ -248,6 +248,8 @@ if(MC2_VULKAN)
         # VK-RUNG8-ITEM2 deleted vk_image_resource's exportable half -- both caller-free
         # after item 6 retired the static-shadow substrate. #ifdef MC2_VULKAN_ISLAND.
         list(APPEND SOURCES vk_image_resource.cpp)
+        # The first layout of the shared scene images (UNDEFINED at creation; every island declares an attachment layout from frame 1).
+        list(APPEND SOURCES vk_first_layout.cpp)
         # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
         # host-visible ring on the shared engine device) consumed by the mech +
         # color-prop islands instead of twin per-island ~3.5 MB copies of the

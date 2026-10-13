@@ -77,7 +77,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
     uint32_t mips = 1;
     { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "terrain.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
       std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
@@ -93,6 +93,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
     if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
+    mc2vk::nameObject(s->device, e.img, "terrain.overlayTexture");
     VkCommandBuffer cb = begin_oneshot(s);
     if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
 
@@ -353,11 +354,12 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             gp.pDynamicState = &dsci;
             gp.layout = o->playout; gp.renderPass = o->rpass; gp.subpass = 0;
             if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &o->pipe[k]) != VK_SUCCESS) return false;
+            mc2vk::nameObject(s->device, o->pipe[k], "terrain.overlayPipe[%d]", (int)k);
         }
     }
     for (int i = 0; i < 2; ++i) {
         o->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true)) return false;
+        if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true, "terrain.overlay.vtx", (int)i)) return false;
     }
     o->inited = true;
     vlog("[VK_TERRAIN_OVERLAY] island initialized %dx%d (cement/road overlays + decals -> shared GBuffer; GEQUAL reverse-Z).", w, h);
@@ -425,7 +427,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         vkDeviceWaitIdle(s->device);
         if (o->stat != VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc); o->stat = VK_NULL_HANDLE; }
         o->statCap = bytes + 256;
-        if (!make_buffer(s, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->stat, &o->statAlloc, true)) {
+        if (!make_buffer(s, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->stat, &o->statAlloc, true, "terrain.overlay.stat")) {
             o->disabled = true; return 0;
         }
         void* dst = nullptr;
@@ -440,7 +442,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
             vmaDestroyBuffer(s->allocator, o->vtx[i], o->vtxAlloc[i]);
             o->vtx[i] = VK_NULL_HANDLE;
             o->vtxCap[i] = dynBytes + dynBytes / 2;
-            if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true)) {
+            if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true, "terrain.overlay.vtx", (int)i)) {
                 o->disabled = true; return 0;
             }
         }

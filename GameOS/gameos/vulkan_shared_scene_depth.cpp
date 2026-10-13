@@ -29,6 +29,7 @@
 #include <volk.h>
 #include <GL/glew.h>
 
+#include "vk_first_layout.h"
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
 
@@ -101,6 +102,13 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, const char** outRea
         return bail("vk_image_resource_create_failed");
     }
     d->resValid = true;
+    mc2vk::nameObject(device, d->res.image, "shared.scene.depth");
+
+    // The islands declare DEPTH_STENCIL_ATTACHMENT_OPTIMAL from their first frame, so the image must already be in it.
+    if (!mc2vkGiveSharedImageFirstLayout(ctx, d->res, SharedImageStart::DepthStencilAttachment)) {
+        mc2SharedSceneDepthDestroy(d);
+        return bail("first_layout_failed");
+    }
 
     if (outReason) *outReason = "active_vk_only";
     g_activeSharedDepth = d;

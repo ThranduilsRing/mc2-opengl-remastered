@@ -206,7 +206,8 @@ static bool vkPostSsaoDirectChainEnabled();
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostSsaoNative* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) {
+                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
@@ -216,6 +217,7 @@ bool make_buffer(gosPostProcess::VkPostSsaoNative* s, VkDeviceSize size,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -343,6 +345,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         if (vmaCreateImage(s->allocator, &ici, &aci, &s->occImage, &s->occAlloc, nullptr) != VK_SUCCESS) {
             vlog("vmaCreateImage(occlusion) failed."); return false;
         }
+        mc2vk::nameObject(s->device, s->occImage, "ssao.occlusion");
         VkImageViewCreateInfo vci{};
         vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         vci.image = s->occImage;
@@ -353,8 +356,8 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         if (r != VK_SUCCESS) { vlog("occ view create failed (%d).", (int)r); return false; }
     }
 
-    if (!make_buffer(s, sizeof(SsaoNativeOcclusionParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->occUbo, &s->occUboAlloc)) return false;
-    if (!make_buffer(s, sizeof(SsaoNativeApplyParams),     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->applyUbo, &s->applyUboAlloc)) return false;
+    if (!make_buffer(s, sizeof(SsaoNativeOcclusionParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->occUbo, &s->occUboAlloc, "ssao.occUbo")) return false;
+    if (!make_buffer(s, sizeof(SsaoNativeApplyParams),     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->applyUbo, &s->applyUboAlloc, "ssao.applyUbo")) return false;
 
     // Render pass 1 (gen): 1 attachment = the VK-owned occlusion image.
     // UNDEFINED -> CLEAR (GL glClear parity; fully overwritten anyway) -> STORE,
@@ -556,7 +559,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod,
                                  VkPipelineLayout layout, VkRenderPass rpass,
                                  int vw, int vh, bool multiplyBlend,
-                                 VkPipeline* out) -> bool {
+                                 VkPipeline* out, const char* name) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";
@@ -613,12 +616,13 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
             if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out) != VK_SUCCESS) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
+            mc2vk::nameObject(s->device, *out, name);
             return true;
         };
         if (!make_pipeline(s->occVert, s->occFrag, s->occPlayout, s->occRpass,
-                           halfW, halfH, /*multiply*/false, &s->occPipe)) return false;
+                           halfW, halfH, /*multiply*/false, &s->occPipe, "ssao.occPipe")) return false;
         if (!make_pipeline(s->applyVert, s->applyFrag, s->applyPlayout, s->applyRpass,
-                           w, h, /*multiply*/true, &s->applyPipe)) return false;
+                           w, h, /*multiply*/true, &s->applyPipe, "ssao.applyPipe")) return false;
     }
 
     {

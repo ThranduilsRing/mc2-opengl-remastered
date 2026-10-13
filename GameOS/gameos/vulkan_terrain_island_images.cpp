@@ -96,7 +96,7 @@ bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outA
 
     // Staging buffer (host-visible).
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "terrain.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
       std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
@@ -113,6 +113,7 @@ bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outA
     if (vmaCreateImage(s->allocator, &ici, &aci, outImg, outAlloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
+    mc2vk::nameObject(s->device, *outImg, "terrain.texture");
 
     // Copy staging -> image, transition UNDEFINED -> TRANSFER_DST -> SHADER_READ.
     VkCommandBuffer cb = begin_oneshot(s);
@@ -299,7 +300,7 @@ bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation
     if (*outImg)  { vmaDestroyImage(s->allocator, *outImg, *outAlloc); *outImg = VK_NULL_HANDLE; }
 
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "terrain.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
       std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
@@ -315,6 +316,7 @@ bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation
     if (vmaCreateImage(s->allocator, &ici, &aci, outImg, outAlloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
+    mc2vk::nameObject(s->device, *outImg, "terrain.texture");
 
     VkCommandBuffer cb = begin_oneshot(s);
     if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
@@ -424,7 +426,7 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             s->cementBuf = VK_NULL_HANDLE;
         }
         VkDeviceSize cap = (VkDeviceSize)feed.cementBytes + feed.cementBytes / 4 + 4096;
-        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true))
+        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true, "terrain.cementBuf"))
             return false;
         s->cementCapBytes = cap;
         s->cementVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -463,7 +465,7 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             s->visualHeightBuf = VK_NULL_HANDLE;
         }
         VkDeviceSize cap = (VkDeviceSize)feed.visualHeightBytes + feed.visualHeightBytes / 4 + 4096;
-        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true))
+        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true, "terrain.visualHeightBuf"))
             return false;
         s->visualHeightCapBytes = cap;
         s->visualHeightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -545,6 +547,7 @@ bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
     if (vmaCreateImage(s->allocator, &ici, &aci, img, alloc, nullptr) != VK_SUCCESS) {
         *img = VK_NULL_HANDLE; return false;
     }
+    mc2vk::nameObject(s->device, *img, "terrain.shadowDepth");
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     vci.image = *img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_D32_SFLOAT;
@@ -596,6 +599,7 @@ bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers) {
     if (vmaCreateImage(s->allocator, &ici, &aci, &s->csmArrayImg, &s->csmArrayAlloc, nullptr) != VK_SUCCESS) {
         s->csmArrayImg = VK_NULL_HANDLE; return false;
     }
+    mc2vk::nameObject(s->device, s->csmArrayImg, "terrain.csmArray");
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     vci.image = s->csmArrayImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = VK_FORMAT_D32_SFLOAT;
@@ -710,7 +714,7 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
             vmaDestroyBuffer(s->allocator, *stage, *stageAlloc);
             *stage = VK_NULL_HANDLE;
         }
-        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stage, stageAlloc, true))
+        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stage, stageAlloc, true, "terrain.staging"))
             return false;
         *stageBytes = bytes;
     }

@@ -801,6 +801,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.compositePipe) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
+        mc2vk::nameObject(s.dev, s.compositePipe, "present.compositePipe");
     }
     return true;
 }
@@ -945,6 +946,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.shadowDebugPipe) != VK_SUCCESS) {
             s.shadowDebugVkFailed = true; return false;
         }
+        mc2vk::nameObject(s.dev, s.shadowDebugPipe, "present.shadowDebugPipe");
     }
     return true;
 }
@@ -967,6 +969,7 @@ bool ensureHudColorVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
     bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     if (vkCreateBuffer(s.dev, &bci, nullptr, &s.hudColorVertexBuf) != VK_SUCCESS)
         return false;
+    mc2vk::nameObject(s.dev, s.hudColorVertexBuf, "present.hudColorVertex");
     VkMemoryRequirements req{};
     vkGetBufferMemoryRequirements(s.dev, s.hudColorVertexBuf, &req);
     const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
@@ -986,13 +989,14 @@ bool ensureHudColorVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
 }
 
 bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsageFlags usage,
-                      VkBuffer* outBuf, VkDeviceMemory* outMem) {
+                      VkBuffer* outBuf, VkDeviceMemory* outMem, const char* name) {
     VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bci.size = bytes;
     bci.usage = usage;
     bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     if (vkCreateBuffer(s.dev, &bci, nullptr, outBuf) != VK_SUCCESS)
         return false;
+    mc2vk::nameObject(s.dev, *outBuf, name);
     VkMemoryRequirements req{};
     vkGetBufferMemoryRequirements(s.dev, *outBuf, &req);
     const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
@@ -1021,7 +1025,7 @@ bool ensureHudTexVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
         s.hudTexVertexMem = VK_NULL_HANDLE;
     }
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                          &s.hudTexVertexBuf, &s.hudTexVertexMem))
+                          &s.hudTexVertexBuf, &s.hudTexVertexMem, "present.hudTexVertex"))
         return false;
     s.hudTexVertexBytes = bytes;
     return true;
@@ -1149,6 +1153,12 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
                   VK_BLEND_FACTOR_ONE)) {
         s.hudColorVkFailed = true; return false;
     }
+    mc2vk::nameObject(s.dev, s.hudColorTriPipe, "present.hudColorTriPipe");
+    mc2vk::nameObject(s.dev, s.hudColorLinePipe, "present.hudColorLinePipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriOpaquePipe, "present.hudColorTriOpaquePipe");
+    mc2vk::nameObject(s.dev, s.hudColorLineOpaquePipe, "present.hudColorLineOpaquePipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriOneInvAlphaPipe, "present.hudColorTriOneInvAlphaPipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriOneOnePipe, "present.hudColorTriOneOnePipe");
     return true;
 }
 
@@ -1261,6 +1271,10 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
         !makeTexPipe(true, VK_BLEND_FACTOR_ONE, &s.hudTexOneOnePipe, VK_BLEND_FACTOR_ONE)) {
         s.hudColorVkFailed = true; return false;
     }
+    mc2vk::nameObject(s.dev, s.hudTexPipe, "present.hudTexPipe");
+    mc2vk::nameObject(s.dev, s.hudTexOpaquePipe, "present.hudTexOpaquePipe");
+    mc2vk::nameObject(s.dev, s.hudTexOneInvAlphaPipe, "present.hudTexOneInvAlphaPipe");
+    mc2vk::nameObject(s.dev, s.hudTexOneOnePipe, "present.hudTexOneOnePipe");
     return true;
 }
 
@@ -1287,7 +1301,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         return nullptr;
     if (m.buffer) { vkDestroyBuffer(s.dev, m.buffer, nullptr); m.buffer = VK_NULL_HANDLE; }
     if (m.memory) { vkFreeMemory(s.dev, m.memory, nullptr); m.memory = VK_NULL_HANDLE; }
-    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &m.buffer, &m.memory))
+    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &m.buffer, &m.memory, "present.hudTextureMirror"))
         return nullptr;
     const std::vector<uint8_t>& rgba = *d.textureRgba;
     std::vector<uint32_t> packed((size_t)d.textureWidth * (size_t)d.textureHeight);
@@ -1718,6 +1732,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
         reason = "vkImageResourceCreate(VK-only RGBA8) failed";
         return false;
     }
+    mc2vk::nameObject(s.dev, s.sharedImg.image, "present.sharedImage");
     s.imgW = w; s.imgH = h;
     static bool loggedOnce = false;
     if (!loggedOnce) {
@@ -1938,6 +1953,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         return false;
     if (!ensureCompositeObjects(s))
         return false;
+    // The composite's descriptor set always binds the object-id view when that image exists, so the image has to be in the sampled layout for every draw
+    // that uses the set, whether or not this view mode reads it.
+    VkImageResource* boundObjectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
+    if (boundObjectId && !boundObjectId->view) boundObjectId = nullptr;
 
     // Direct-chain: scene (+objectId) already Vulkan-owned by upstream islands, so
     // no per-image frame-begin and no GL<->VK handoff. The fences remain unused.
@@ -1984,8 +2003,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    if (needsObjectId) {
-        barrier(cc, objectId->image,
+    if (boundObjectId) {
+        barrier(cc, boundObjectId->image,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -2036,8 +2055,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    if (needsObjectId) {
-        barrier(cc, objectId->image,
+    if (boundObjectId) {
+        barrier(cc, boundObjectId->image,
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -2491,6 +2510,7 @@ void EnginePresentVk::verifyReadbackContent() {
         bci.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         if (vkCreateBuffer(s.dev, &bci, nullptr, &s.readbackBuf) != VK_SUCCESS) return;
+        mc2vk::nameObject(s.dev, s.readbackBuf, "present.readback");
         VkMemoryRequirements mr{}; vkGetBufferMemoryRequirements(s.dev, s.readbackBuf, &mr);
         VkPhysicalDeviceMemoryProperties mp{}; vkGetPhysicalDeviceMemoryProperties(s.phys, &mp);
         uint32_t idx = UINT32_MAX;

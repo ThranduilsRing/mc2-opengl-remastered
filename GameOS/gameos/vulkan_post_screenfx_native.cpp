@@ -254,7 +254,8 @@ static bool vkPostScreenFxDirectChainEnabled();
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostScreenFx* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) {
+                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 const char* name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
@@ -264,6 +265,7 @@ bool make_buffer(gosPostProcess::VkPostScreenFx* s, VkDeviceSize size,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -386,9 +388,9 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         }
     }
 
-    if (!make_buffer(s, sizeof(ScreenFxCloudParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->cloudUbo, &s->cloudUboAlloc)) return false;
-    if (!make_buffer(s, sizeof(ScreenFxShoreParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->shoreUbo, &s->shoreUboAlloc)) return false;
-    if (!make_buffer(s, sizeof(ScreenFxShadowStaticParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->shadowUbo, &s->shadowUboAlloc)) return false;
+    if (!make_buffer(s, sizeof(ScreenFxCloudParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->cloudUbo, &s->cloudUboAlloc, "screenfx.cloudUbo")) return false;
+    if (!make_buffer(s, sizeof(ScreenFxShoreParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->shoreUbo, &s->shoreUboAlloc, "screenfx.shoreUbo")) return false;
+    if (!make_buffer(s, sizeof(ScreenFxShadowStaticParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->shadowUbo, &s->shadowUboAlloc, "screenfx.shadowUbo")) return false;
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (multiply blends
     // against the scene), STORE; layout-STABLE COLOR_ATTACHMENT both ends
@@ -592,7 +594,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shadow) failed (%d).", (int)r); return false; }
 
         auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod,
-                                 VkPipelineLayout layout, VkPipeline* out) -> bool {
+                                 VkPipelineLayout layout, VkPipeline* out, const char* name) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";
@@ -645,12 +647,13 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
             if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out) != VK_SUCCESS) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
+            mc2vk::nameObject(s->device, *out, name);
             return true;
         };
-        if (!make_pipeline(s->cloudVert, s->cloudFrag, s->cloudPlayout, &s->cloudPipe)) return false;
-        if (!make_pipeline(s->shoreVert, s->shoreFrag, s->shorePlayout, &s->shorePipe)) return false;
-        if (!make_pipeline(s->shadowVert, s->shadowFrag, s->shadowPlayout, &s->shadowPipe)) return false;
-        if (!make_pipeline(s->shadowVert, s->shadowCsmFrag, s->shadowPlayout, &s->shadowCsmPipe)) return false;
+        if (!make_pipeline(s->cloudVert, s->cloudFrag, s->cloudPlayout, &s->cloudPipe, "screenfx.cloudPipe")) return false;
+        if (!make_pipeline(s->shoreVert, s->shoreFrag, s->shorePlayout, &s->shorePipe, "screenfx.shorePipe")) return false;
+        if (!make_pipeline(s->shadowVert, s->shadowFrag, s->shadowPlayout, &s->shadowPipe, "screenfx.shadowPipe")) return false;
+        if (!make_pipeline(s->shadowVert, s->shadowCsmFrag, s->shadowPlayout, &s->shadowCsmPipe, "screenfx.shadowCsmPipe")) return false;
     }
 
     {

@@ -68,8 +68,8 @@ bool init_island(WaterIsland* s, int w, int h) {
          "(color0+normal+depth, no composite, direct-chain native, no interop).");
     // ---- UBOs (per parity slot, VK-WATER-FENCE-DEFER-1). ----
     for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo[i], &s->vsUboAlloc[i])) return false;
-        if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo[i], &s->fsUboAlloc[i])) return false;
+        if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo[i], &s->vsUboAlloc[i], "water.vsUbo", (int)i)) return false;
+        if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo[i], &s->fsUboAlloc[i], "water.fsUbo", (int)i)) return false;
     }
 
     // ---- Recipe SSBO (mission-static, copied once at first run). Sized to the
@@ -78,7 +78,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         const uint32_t rc = WaterStream::GetRecipeCount();
         // 64B/recipe (WaterRecipe). Allocate at least 1 to keep the descriptor valid.
         s->recipeBytes = (VkDeviceSize)(rc ? rc : 1) * 64;
-        if (!make_buffer(s, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc)) return false;
+        if (!make_buffer(s, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc, "water.recipeBuf")) return false;
     }
     // Thin SSBOs (per parity slot) — start with a small ring; grows in run().
     if (!ensure_thin_capacity(s, 0, 64 * 1024)) return false; // ~1365 records to start
@@ -284,6 +284,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
+        mc2vk::nameObject(s->device, s->pipe, "water.pipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity) + fence. ----
