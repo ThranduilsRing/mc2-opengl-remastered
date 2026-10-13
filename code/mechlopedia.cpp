@@ -1318,8 +1318,7 @@ void Mechlopedia::PersonalityScreen::begin()
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
 				MechlopediaListItem* pTmpItem = (MechlopediaListItem*)groupListBox->GetItem( j );
-				// The list is ordered by name, ignoring ASCII case; the stock personality names keep the order of the former locale collation
-				// (tests/analyze/name_sort_probe.py: 0 of 55 pairs move).
+				// The list is ordered by name, ignoring ASCII case; the stock personality names keep the order of the former locale collation.
 				if ( mc2::str::icompare( upper, mc2::str::from_c( pTmpItem->getText() ) ) < 0 )
 				{
 					groupListBox->InsertItem( pItem, j );

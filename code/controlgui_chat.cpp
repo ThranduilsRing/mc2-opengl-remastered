@@ -4,6 +4,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <string_view>
+#include "mc2str.h"
 
 
 void ControlGui::beginPause()
@@ -74,7 +75,7 @@ void ControlGui::playMovie( const char* fileName )
 	// them too so the boot-to-purchase capture is not blocked by standin.bik.
 	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
 	{
-		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", std::string_view( fileName ));
+		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", mc2::str::from_c( fileName ));
 		return;
 	}
 
@@ -98,8 +99,9 @@ void ControlGui::playMovie( const char* fileName )
 	movieName.init(moviePath,realName,".bik");
 	bMovie = new MC2Movie;
 	bMovie->init(movieName,vRect,true);
-	// The in-mission video surface (objective and ABL play-video actions): one line per movie that reaches the player, so a harness run shows it.
-	MC2_EVENT(Core, "VIDEO", 1, "event=play_mission name={}", std::string_view( realName ));
+	// The in-mission video surface (objective and ABL play-video actions): one line per movie REQUESTED of the player, so a harness run shows that the
+	// request path was reached. It is logged before the frame-rate check below, which may still discard the movie; a headless run never decodes one.
+	MC2_EVENT(Core, "VIDEO", 1, "event=play_requested name={}", std::string_view( realName ));
 
 	//Maybe not enough frames to run.  Do not flash the border!
 	// Do ONE update to make sure the damned sound starts at least!!
