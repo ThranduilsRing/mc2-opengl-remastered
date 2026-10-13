@@ -526,7 +526,7 @@
           "path": "scripts/tests/test_delivery_gate_defaults.py",
           "line": 11,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-main/scripts/check-delivery.py",
+          "reference": "A:\\Games\\mc2-lane2/scripts/check-delivery.py",
           "text": "spec = importlib.util.spec_from_file_location(\"delivery_gate_defaults\", ROOT / \"scripts/check-delivery.py\")"
         }
       ],
@@ -606,7 +606,7 @@
           "path": "scripts/deploy_payload.py",
           "line": 1440,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-hygiene.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
         }
       ],
