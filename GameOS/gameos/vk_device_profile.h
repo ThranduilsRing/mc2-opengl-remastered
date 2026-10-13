@@ -205,20 +205,24 @@ inline std::string versionText(uint32_t v) {
     return std::to_string(apiMajor(v)) + "." + std::to_string(apiMinor(v)) + "." + std::to_string(v & 0xFFF);
 }
 
+// The floor as the line states it: major.minor.
+inline std::string floorText() { return std::to_string(apiMajor(kFloorApi)) + "." + std::to_string(apiMinor(kFloorApi)); }
+
 // `[VK_PROFILE v1] verdict=ok|refused device="..." api=1.4.3 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- items=id:route,...
-//  enabled=feature,... extensions=ext,...` (a "-" is "none"). `extensions` is every device extension the context enables. Pure: no I/O. One snprintf
+//  enabled=feature,... extensions=ext,...` (a "-" is "none"). `floor` is kFloorApi; `extensions` is every device extension the context enables. Pure: no I/O. One snprintf
 // carries the whole format so the log-tag census sees the line and its key order.
 inline std::string formatLine(std::string_view deviceName, const DeviceCaps& c, const Evaluation& e) {
     std::string items;
     for (const ItemResult& i : e.items)
         items += std::string(items.empty() ? "" : ",") + std::string(i.id) + ":" + std::string(routeName(i.route));
-    const std::string device(deviceName), api = versionText(c.deviceApi), instanceApi = versionText(c.instanceApi), requiredMissing = joinOr(e.missingRequired),
-                      wantedMissing = joinOr(e.missingWanted), enabled = joinOr(e.enabledFeatures), extensions = joinOr(e.deviceExtensions);
+    const std::string device(deviceName), api = versionText(c.deviceApi), instanceApi = versionText(c.instanceApi), floor = floorText(),
+                      requiredMissing = joinOr(e.missingRequired), wantedMissing = joinOr(e.missingWanted), enabled = joinOr(e.enabledFeatures),
+                      extensions = joinOr(e.deviceExtensions);
     auto print = [&](char* out, size_t capacity) {
         return std::snprintf(out, capacity,
-                             "[VK_PROFILE v1] verdict=%s device=\"%s\" api=%s instance_api=%s floor=1.2 required_missing=%s wanted_missing=%s items=%s enabled=%s extensions=%s",
-                             e.accepted ? "ok" : "refused", device.c_str(), api.c_str(), instanceApi.c_str(), requiredMissing.c_str(), wantedMissing.c_str(),
-                             items.c_str(), enabled.c_str(), extensions.c_str());
+                             "[VK_PROFILE v1] verdict=%s device=\"%s\" api=%s instance_api=%s floor=%s required_missing=%s wanted_missing=%s items=%s enabled=%s extensions=%s",
+                             e.accepted ? "ok" : "refused", device.c_str(), api.c_str(), instanceApi.c_str(), floor.c_str(), requiredMissing.c_str(),
+                             wantedMissing.c_str(), items.c_str(), enabled.c_str(), extensions.c_str());
     };
     std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
     print(line.data(), line.size() + 1);

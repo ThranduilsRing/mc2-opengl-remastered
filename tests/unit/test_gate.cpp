@@ -1713,6 +1713,7 @@ TEST_CASE("vk profile: the line names the device, both versions, what is missing
                   "dynamic_rendering:core,synchronization2:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,"
                   "runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2 "
                   "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
+    CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);
     CHECK(vkp::formatLine("gpu", device12Caps(false), lacking).find(" required_missing=dynamic_rendering,synchronization2 wanted_missing=- ") != std::string::npos);
 }

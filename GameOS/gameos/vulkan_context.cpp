@@ -166,8 +166,8 @@ bool VulkanContext::init(bool wantPresent) {
         refused.accepted = false;
         refused.items.push_back({"api_1_2", profile::Need::Required, false, profile::Route::None});
         refused.missingRequired.push_back("api_1_2");
-        profileLog(profile::formatLine("(no device queried: the Vulkan loader is below 1.2)", none, refused));
-        return fail("the Vulkan loader reports instance version " + profile::versionText(loaderApi) + ", below the 1.2 floor");
+        profileLog(profile::formatLine("(no device queried: the Vulkan loader is below the floor)", none, refused));
+        return fail("the Vulkan loader reports instance version " + profile::versionText(loaderApi) + ", below the " + profile::floorText() + " floor");
     }
 
     // ---- validation preset ----
