@@ -267,15 +267,19 @@ def baseline_path(mission: str) -> str:
     return os.path.join(BASELINE_DIR, mission + ".json")
 
 
+def masked_resave_verdict(first: str, second: str, mask_path: str):
+    """-> (ok, report lines) judging a re-save against the byte-offset noise mask instead of byte identity: ok when every differing byte lies inside it.
+    WHY across builds: a planted save is written by ANOTHER exe by definition (that is what the leg proves), so the mask's cross-build ranges apply."""
+    res = si.compare(si.load(first)[1], si.load(second)[1], si.load_mask(mask_path), across_builds=True)
+    return res["first_outside"] is None, si.describe(res)
+
+
 def cmd_fixture(args) -> int:
     dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant)
     ok, lines = resave_verdict(first, second)
     print(f"files kept in {dest}")
     if args.cmd == "resave" and args.mask and first and second:
-        # The planted save came from another exe: judge the re-save against the byte-offset noise mask instead of byte identity.
-        res = si.compare(si.load(first)[1], si.load(second)[1], si.load_mask(args.mask), across_builds=True)
-        ok = res["first_outside"] is None
-        lines = si.describe(res)
+        ok, lines = masked_resave_verdict(first, second, args.mask)
     if args.cmd == "resave":
         print(("saveload_roundtrip resave: PASS" if ok else "saveload_roundtrip resave: FAIL") + "\n" + "\n".join(lines))
         return 0 if ok else 1

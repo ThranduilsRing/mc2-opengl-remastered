@@ -28,3 +28,27 @@ def test_a_save_that_differs_names_its_packet_and_offset(tmp_path):
         rt.si.scs.write(str(tmp_path / name), p, False)
     ok, rep = rt.resave_verdict(str(tmp_path / "a.ims"), str(tmp_path / "b.ims"))
     assert not ok and "packet 2" in " ".join(rep) and "offset 10" in " ".join(rep)
+
+
+def test_planted_save_is_judged_against_the_noise_mask_across_builds(tmp_path):
+    """resave --plant --mask: a planted save comes from another exe, so run and build ranges both apply; a byte outside them fails."""
+    mask = os.path.join(HERE, "save_noise_mask.json")
+    size = 19864                                                  # MechWarriorData
+
+    def save(name, offset=None):
+        record = bytearray(size)
+        if offset is not None:
+            record[offset] = 1
+        path = str(tmp_path / name)
+        rt.si.scs.write(path, [(0, b"ver\0"), (4, bytes(record))], False)
+        return path
+
+    base = save("base.ims")
+    ok, _ = rt.masked_resave_verdict(base, save("same.ims"), mask)
+    assert ok
+    ok, _ = rt.masked_resave_verdict(base, save("run.ims", 10100), mask)                  # a MovePath step-list byte: run-to-run noise
+    assert ok
+    ok, _ = rt.masked_resave_verdict(base, save("build.ims", 2200), mask)                 # inside a TacticalOrder block: cross-build noise
+    assert ok
+    ok, rep = rt.masked_resave_verdict(base, save("text.ims", 5), mask)                   # a pilot string byte is never masked
+    assert not ok and "outside the mask" in " ".join(rep)

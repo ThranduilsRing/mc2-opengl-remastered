@@ -23,6 +23,24 @@ std::string replaceAll(std::string_view text, std::string_view from, std::string
 	return result;
 }
 
+// The one FIT text read: the value of `key` up to its first NUL, at most `maxLength` characters, into `value` (empty unless the status is Read).
+// WHY one function: classifying the reader's result and logging a malformed value must read the same for every caller.
+ReadStatus readText(FitIniFile& file, const char* key, unsigned long maxLength, std::string& value)
+{
+	value.clear();
+	std::string buffer(maxLength + 1, '\0');
+	const long result = file.readIdString(key, buffer.data(), static_cast<unsigned long>(buffer.size()));
+	if (result == BUFFER_TOO_SMALL) {
+		MC2_LOG(Io, Warn, "fit: the value of '{}' is longer than {} characters and is ignored", key, maxLength);
+		return ReadStatus::TooLong;
+	}
+	if (result != NO_ERR) {
+		return ReadStatus::Absent;
+	}
+	value = buffer.c_str();
+	return ReadStatus::Read;
+}
+
 }  // namespace
 
 std::string toMemoryBreaks(std::string_view fileText) { return replaceAll(fileText, "\n", "\r\n"); }
@@ -31,18 +49,11 @@ std::string toFileBreaks(std::string_view memoryText) { return replaceAll(memory
 
 ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value)
 {
-	value.clear();
-	char buffer[kMaxTextLength + 1] = {};
-	const long result = file.readIdString(key, buffer, sizeof(buffer));
-	if (result == BUFFER_TOO_SMALL) {
-		MC2_LOG(Io, Warn, "objective: the value of '{}' is longer than {} characters and is ignored", key, kMaxTextLength);
-		return ReadStatus::TooLong;
+	const ReadStatus status = readText(file, key, kMaxTextLength, value);
+	if (status == ReadStatus::Read) {
+		value = toMemoryBreaks(value);
 	}
-	if (result != NO_ERR) {
-		return ReadStatus::Absent;
-	}
-	value = toMemoryBreaks(buffer);
-	return ReadStatus::Read;
+	return status;
 }
 
 std::optional<std::string> read(FitIniFile& file, const char* key)
@@ -56,16 +67,11 @@ std::optional<std::string> read(FitIniFile& file, const char* key)
 
 std::optional<std::string> readPlain(FitIniFile& file, const char* key, unsigned long maxLength)
 {
-	std::string buffer(maxLength + 1, '\0');
-	const long result = file.readIdString(key, buffer.data(), static_cast<unsigned long>(buffer.size()));
-	if (result == BUFFER_TOO_SMALL) {
-		MC2_LOG(Io, Warn, "fit: the value of '{}' is longer than {} characters and is ignored", key, maxLength);
+	std::string value;
+	if (readText(file, key, maxLength, value) != ReadStatus::Read) {
 		return std::nullopt;
 	}
-	if (result != NO_ERR) {
-		return std::nullopt;
-	}
-	return std::string(buffer.c_str());
+	return value;
 }
 
 std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey)

@@ -434,15 +434,18 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
 			inventory.Append( pMech );
 
-			for ( PILOT_LIST::EIterator pIter = pilots.Begin(); pilotKey && !pIter.IsDone(); pIter++ )
+			if ( pilotKey )
 			{
-				if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
+				for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 				{
-					pMech->setPilot( &(*pIter ) );
-					count++;
-					if ( count > -1 && count < 13 )
-						pMech->setForceGroup( count );
-					break;
+					if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
+					{
+						pMech->setPilot( &(*pIter ) );
+						count++;
+						if ( count > -1 && count < 13 )
+							pMech->setForceGroup( count );
+						break;
+					}
 				}
 			}
 

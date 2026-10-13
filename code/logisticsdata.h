@@ -259,6 +259,7 @@ private:
 
 	// The mechs that were deployed in a mission, captured before they leave the inventory, so a mech that survives the mission can be put back by
 	// its variant name even when the variants list no longer resolves that name (a mod-purchased variant). The variant is owned by the variants list.
+	// The snapshot is cleared by removeMechsInForceGroup, which runs at every mission launch, so it never holds a variant of a campaign that was loaded over.
 	struct DeployedMechSnapshot
 	{
 		std::string			variantName;

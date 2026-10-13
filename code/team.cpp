@@ -500,9 +500,11 @@ long Team::Save (PacketFilePtr file, long packetNum)
 	{
 		MC2_SAVE_STRUCT(TeamData, data);
 		data.id = teams[i]->getId();
-		data.rosterSize = teams[i]->rosterSize;
-		// Only the live entries are written: the rest of roster[] is never initialised, and copying it would put heap leftovers into the save.
-		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * std::clamp<long>(teams[i]->rosterSize, 0, MAX_MOVERS_PER_TEAM));
+		// The written size is the one the loader accepts. Only the live entries are written: the rest of roster[] is never initialised, and copying it
+		// would put heap leftovers into the save.
+		const long liveRoster = std::clamp<long>(teams[i]->rosterSize, 0, MAX_MOVERS_PER_TEAM);
+		data.rosterSize = liveRoster;
+		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * liveRoster);
 
 		file->writePacket(packetNum,(MemoryPtr)&data,sizeof(TeamData),STORAGE_TYPE_RAW);
 		packetNum++;

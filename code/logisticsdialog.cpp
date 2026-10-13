@@ -1648,8 +1648,7 @@ void LogisticsVariantDialog::update()
 		}
 	}
 
-	std::string text;
-	text = edits[0].entry();
+	std::string text = edits[0].entry();
 	if ( ( !bTranscript && !LogisticsData::instance->canReplaceVariant( text.c_str() ) ) || text.empty() )
 	{
 		buttons[2].disable( 1 );	
@@ -1917,8 +1916,7 @@ void LogisticsAcceptVariantDialog::update()
 		}
 	}
 
-	std::string text;
-	text = edits[0].entry();
+	std::string text = edits[0].entry();
 	if ( !LogisticsData::instance->canReplaceVariant( text.c_str() ) )
 	{
 		buttons[1].disable( 1 );	

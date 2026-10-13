@@ -8,6 +8,8 @@ LogisticsData text packet of a save: the campaign state, the pilots and the inve
 WHY: the logistics writers and readers (LogisticsMissionInfo / LogisticsPilot / LogisticsMech / LogisticsVariant save and load) run only after a campaign
 start. A save written by one exe, loaded by another and written again must equal the original except for the known noise bytes
 (tools/save_noise_mask.json); that is the proof that a string-type change in those classes left the on-disk format alone.
+`compare` is meaningful for exactly one pairing: a save and the re-save of THAT save by the exe under test. Two independent captures differ in pilot rolls made
+at campaign start (PILOT_RUN_NOISE) and, by timing, in the mission the capture lands in; between those, judge the logistics text only.
 
   py -3 tools/campaign_save_roundtrip.py capture --out DIR [--deploy INSTALL] [--save-at 2400] [--timeout 150]
   py -3 tools/campaign_save_roundtrip.py capture --out DIR --load OLD/save1.ims --load-at 900     # load a save from another exe, re-save
@@ -68,14 +70,28 @@ def logistics_text(path: str) -> str:
     return found
 
 
-#: The first bytes of a MechWarriorData record (name, callsign, video, audio, brain strings, skills): byte-identical in every run and across builds
-#: (tools/save_noise_mask.json, pilot_text_fields). The logistics pilot text feeds them.
-PILOT_TEXT_BYTES = 2168
+#: The leading bytes of a MechWarriorData record that the logistics pilot text feeds: the strings (bytes 1-180: name, callsign, video, audio, brain) and the
+#: numeric pilot state after them (index, paint scheme, rank, skills, the skill and kill tables, goals). The range ends where the first run-to-run noise
+#: measured in tools/save_noise_mask.json starts (2168, inside the first tactical-order block); the pilot's logistics fields all lie below it.
+PILOT_STATE_BYTES = 2168
+#: Bytes inside that range that are not pilot text and differ between two campaign starts: offset -> why.
+PILOT_RUN_NOISE = {
+    220: "escapesThruEjection: warrior.cpp rolls RandomNumber(100) for it each time a pilot is created, so two separate captures differ in 15-22 of 120 records",
+}
+
+
+def pilot_state(record: bytes) -> bytes:
+    """The leading bytes of a MechWarriorData record that are compared, with the per-run noise bytes zeroed."""
+    head = bytearray(record[:PILOT_STATE_BYTES])
+    for off in PILOT_RUN_NOISE:
+        if off < len(head):
+            head[off] = 0
+    return bytes(head)
 
 
 def compare(a: str, b: str, show: int = 40) -> int:
     """Compare the two saves where the logistics classes can change them: the LogisticsData text packet, the first two packets (version and campaign
-    name) and the text bytes of every pilot record. -> 0 when all three are equal. The mission objects (terrain, buildings, movers) are NOT compared:
+    name) and the leading pilot-state bytes of every pilot record. -> 0 when all three are equal. The mission objects (terrain, buildings, movers) are NOT compared:
     a save written during a campaign flow and one re-written in a mission boot differ there by design, and a within-exe re-save is not byte-identical either."""
     import difflib
     pa, pb = si.load(a)[1], si.load(b)[1]
@@ -93,8 +109,9 @@ def compare(a: str, b: str, show: int = 40) -> int:
     print("packets 0-1 (version, campaign name): " + ("identical" if same_head else "DIFFERENT"))
     bad += 0 if same_head else 1
     pilots = [(i, x[1], y[1]) for i, (x, y) in enumerate(zip(pa, pb)) if si.packet_kind(*x) == "MechWarriorData" and si.packet_kind(*y) == "MechWarriorData"]
-    off = [i for i, x, y in pilots if x[:PILOT_TEXT_BYTES] != y[:PILOT_TEXT_BYTES]]
-    print(f"pilot records: {len(pilots)} compared, text bytes 0-{PILOT_TEXT_BYTES - 1} " + ("identical" if not off and pilots else f"DIFFERENT in packets {off[:10]}"))
+    off = [i for i, x, y in pilots if pilot_state(x) != pilot_state(y)]
+    skipped = ", ".join(f"byte {o} skipped" for o in sorted(PILOT_RUN_NOISE))
+    print(f"pilot records: {len(pilots)} compared, bytes 0-{PILOT_STATE_BYTES - 1} ({skipped}) " + ("identical" if not off and pilots else f"DIFFERENT in packets {off[:10]}"))
     bad += 0 if (pilots and not off) else 1
     return 1 if bad else 0
 

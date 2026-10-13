@@ -5996,7 +5996,15 @@
       "basename": "campaign_save_roundtrip.py",
       "stem": "campaign_save_roundtrip",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/test_campaign_save_roundtrip.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "campaign_save_roundtrip",
+          "text": "import campaign_save_roundtrip as mod  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/check_ubo_layout.py",
@@ -8110,7 +8118,7 @@
       "callers_by_stem": [
         {
           "path": "tools/campaign_save_roundtrip.py",
-          "line": 33,
+          "line": 35,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -8147,7 +8155,7 @@
       "callers_by_stem": [
         {
           "path": "tools/campaign_save_roundtrip.py",
-          "line": 34,
+          "line": 36,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
@@ -9099,6 +9107,13 @@
       "path": "tools/test_abl_writer_census.py",
       "basename": "test_abl_writer_census.py",
       "stem": "test_abl_writer_census",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_campaign_save_roundtrip.py",
+      "basename": "test_campaign_save_roundtrip.py",
+      "stem": "test_campaign_save_roundtrip",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
