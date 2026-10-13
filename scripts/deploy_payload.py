@@ -41,6 +41,7 @@ import ctypes
 import datetime
 import hashlib
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
@@ -271,90 +272,75 @@ def fail(msg, code=1):
     sys.exit(code)
 
 
+def disk_space(path, need_bytes, warn_bytes=0, label=None, quiet=False):
+    """Measure the destination volume before a write can truncate its files."""
+    if need_bytes < 0 or warn_bytes < 0:
+        raise ValueError("disk-space thresholds must be nonnegative")
+    probe = os.path.abspath(path)
+    while not os.path.exists(probe):
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            raise OSError(f"no existing ancestor of {path}")
+        probe = parent
+    if not os.path.isdir(probe):
+        probe = os.path.dirname(probe)
+    usage = shutil.disk_usage(probe)
+    rc = 3 if usage.free < need_bytes else 1 if usage.free < need_bytes + warn_bytes else 0
+    verdict = {0: "OK", 1: "LOW", 3: "CRITICAL"}[rc]
+    if rc or not quiet:
+        print(f"[DISK_GUARD] {verdict}: {usage.free} bytes free, {need_bytes} needed "
+              f"for {label or 'write'} on {probe}", file=sys.stderr if rc == 3 else sys.stdout)
+    return rc, {"verdict": verdict, "path": probe, "free_bytes": usage.free,
+                "need_bytes": need_bytes, "warn_margin_bytes": warn_bytes, "op": label}
+
+
+def disk_space_main(argv=None):
+    """Read-only entry point shared by release, isolated deploy and capture callers."""
+    import json
+    import math
+    parser = argparse.ArgumentParser(description="Check free space before writing")
+    parser.add_argument("--path", default=repo_root())
+    need = parser.add_mutually_exclusive_group(required=True)
+    need.add_argument("--need-bytes", type=int)
+    need.add_argument("--need-gb", type=float)
+    parser.add_argument("--warn-gb", type=float, default=5.0)
+    parser.add_argument("--label")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        if not math.isfinite(args.warn_gb) or (args.need_gb is not None and not math.isfinite(args.need_gb)):
+            raise ValueError("disk-space thresholds must be finite")
+        if args.warn_gb < 0 or (args.need_gb is not None and args.need_gb < 0):
+            raise ValueError("disk-space thresholds must be nonnegative")
+        required = args.need_bytes if args.need_bytes is not None else int(args.need_gb * 1024 ** 3)
+        rc, facts = disk_space(args.path, required, int(args.warn_gb * 1024 ** 3), args.label, args.quiet)
+        if args.json:
+            print(json.dumps(facts))
+        return rc
+    except (OSError, ValueError) as exc:
+        print(f"[DISK_GUARD] ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
 def check_free_space_for_payload(items, target):
-    """DISK-GUARD-1: refuse to start a deploy that cannot fit.
-
-    Motivated by the 2026-07-29 ENOSPC incident: a write that runs out of space
-    part-way through TRUNCATES its target. A deploy that dies mid-copy leaves a
-    half-written mc2.exe in a deploy dir that other lanes then smoke, and the
-    manifest hash check only catches it *after* the damage.
-
-    The required figure is MEASURED from the enumerated payload, not guessed.
-    +15% headroom covers filesystem slack, the manifest, and the fact that
-    overwriting an existing file can transiently need space for both copies.
-    Verdict handling (DISK-GUARD-3, 2026-07-29):
-      OK (0)            -> proceed silently.
-      LOW (1)           -> warn and proceed. This is the genuine advisory case:
-                           the guard RAN, measured the volume, and said "tight
-                           but it fits."
-      CRITICAL (3) /
-      ERROR (2)         -> fatal, nothing written.
-      guard missing, guard un-runnable, or guard returned an unrecognised
-      code -> ALSO FATAL.
-
-    That last line is a reversal of DISK-GUARD-2, which warned and proceeded
-    UNGUARDED. The reasoning: this guard's entire purpose is to prevent a
-    silent, hard-to-attribute corruption (an ENOSPC-truncated mc2.exe that
-    other lanes then smoke). Degrading to unguarded on a missing dependency
-    means the protection evaporates exactly when the checkout is already in a
-    state nobody has verified -- and it does so in a WARNING line, in the
-    middle of a deploy's normal chatter, which is precisely the kind of
-    diagnostic the 2026-07-29 incident proved nobody reads. A guard that
-    fails open is not a guard; it is a log line.
-    check-disk-space.py is a sibling file in this same repo, so its absence
-    means a broken or partial checkout -- not a condition to shrug at.
-
-    There is a deliberate, LOUD escape hatch: MC2_DEPLOY_SKIP_DISK_GUARD=1.
-    Bypassing is a decision someone makes on purpose and can be found in the
-    environment afterwards, rather than something the tool does quietly on
-    their behalf.
-    """
+    """Require the measured payload plus headroom, with a 2 GiB floor."""
     if os.environ.get("MC2_DEPLOY_SKIP_DISK_GUARD") == "1":
-        log("WARNING: MC2_DEPLOY_SKIP_DISK_GUARD=1 -- free-space preflight "
-            "BYPASSED BY REQUEST. A mid-copy ENOSPC will truncate its target "
-            "and the manifest check only catches that afterwards.")
+        log("WARNING: MC2_DEPLOY_SKIP_DISK_GUARD=1 -- free-space preflight BYPASSED BY REQUEST.")
         return
-
     total = 0
-    missing = 0
     for src, _rel, _kind in items:
         try:
             total += os.path.getsize(src)
         except OSError:
-            missing += 1  # optional payload entry (e.g. absent pdb) -- fine
-    need = int(total * 1.15)
-    log(f"disk guard: payload {total} bytes across {len(items) - missing} "
-        f"present files; requiring {need} bytes (+15% headroom) on {target}")
-
-    guard = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         "check-disk-space.py")
-    if not os.path.isfile(guard):
-        fail(f"disk guard script not found at {guard} — refusing to deploy "
-             "UNGUARDED. check-disk-space.py is a sibling of this script in "
-             "the same repo; its absence means a broken or partial checkout. "
-             "Restore it, or set MC2_DEPLOY_SKIP_DISK_GUARD=1 to bypass "
-             "deliberately.")
+            pass  # Optional payload entries need no space when absent.
+    required = max(2 * 1024 ** 3, (total * 115 + 99) // 100)
     try:
-        r = subprocess.run(
-            [sys.executable, guard, "--path", target,
-             "--need-bytes", str(need), "--label", "deploy payload"],
-            timeout=60, **console_child.child_kwargs())
-        rc = r.returncode
-    except Exception as e:  # noqa: BLE001
-        fail(f"disk guard could not run ({e}) — refusing to deploy UNGUARDED. "
-             "Fix the guard invocation, or set MC2_DEPLOY_SKIP_DISK_GUARD=1 "
-             "to bypass deliberately.")
-    if rc in (2, 3):
-        fail("insufficient free space for this deploy payload — NOTHING was "
-             "written. See the [DISK_GUARD] lines above, reclaim space "
-             "(.claude/DISK-RECLAIM-PLAN.md), then re-run.")
-    if rc == 1:
-        log("WARNING: disk guard verdict LOW — the payload fits but headroom "
-            "is thin. Proceeding.")
-    elif rc != 0:
-        fail(f"disk guard returned unrecognised exit code {rc} — refusing to "
-             "deploy on an unreadable verdict. Set "
-             "MC2_DEPLOY_SKIP_DISK_GUARD=1 to bypass deliberately.")
+        rc, _facts = disk_space(target, required, label="deploy payload")
+    except (OSError, ValueError) as exc:
+        fail(f"cannot measure deploy free space: {exc} -- nothing was written")
+    if rc == 3:
+        fail("insufficient free space for deploy payload -- nothing was written")
 
 
 def check_hardlink_isolation(items, target):
@@ -1449,8 +1435,7 @@ def main():
     # invisible to it. Run the standalone hygiene gate as a non-fatal warning so
     # every deploy surfaces leaked dev artifacts. Fully skippable / advisory.
     try:
-        hygiene = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "check-deploy-hygiene.py")
+        hygiene = Path(__file__).resolve().parent / "check-deploy-hygiene.py"
         if os.path.isfile(hygiene):
             r = subprocess.run([sys.executable, hygiene, target],
                                capture_output=True, text=True, timeout=120, **console_child.child_kwargs(redirected=True))
