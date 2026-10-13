@@ -57,6 +57,14 @@ recorder.
   profile the GL present path while thinking you measured VK.
 - **Pin the pose.** `baseline`/`regress` set `MC2_CAMERA_PARK` so both arms —
   and a later re-run — measure the exact same scene.
+- **The drawable is pinned to 1920x1080** (`MC2_WIDTH`/`MC2_HEIGHT` from `scripts/smoke_lib/render_resolution.py`; `--env MC2_WIDTH=... --env
+  MC2_HEIGHT=...` overrides one run). Before 2026-10-12 a trace took whatever the install's options.cfg said, which is 3840x2160 on every install
+  on this host, so traces and `release_assets/tracy-baselines` taken before that date are 4K and are **not comparable** with a new trace: re-take
+  the baseline before a `regress`.
+- **The render options are an input.** Each trace gets a `<trace>.options.json` (the install's options.cfg render options plus
+  `MC2_OPTIONS_OVERRIDE`, `scripts/smoke_lib/render_options_pin.py`); `baseline.json` keeps them per arm. `compare` and `regress` refuse two runs whose
+  options differ (`StaticPropPbr` on one side only is a different frame cost, not a regression) and refuse a run with no record; `--vary Key,Key`
+  names the options that differ on purpose.
 
 ## The two arms
 

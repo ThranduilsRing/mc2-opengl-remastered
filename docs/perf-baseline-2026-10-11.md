@@ -5,6 +5,11 @@ The reference the C++23 / S5 perf steps are measured against. Capture only, no e
 (deployed to `A:/Games/mc2-opengl/mc2-win64-lane2`, exe-guard fingerprint verified), RX 7900 XTX, 3840x2160 drawable,
 stock profile, shipped default gates.
 
+**Resolution caveat (2026-10-12):** the 3840x2160 here was the install's options.cfg size, not a choice. Since then captures and Tracy traces are
+pinned to 1920x1080 (`scripts/smoke_lib/render_resolution.py`), so a trace taken today is a quarter of the pixels and is NOT comparable with the
+numbers below (fragment-bound zones move most). Re-take this baseline at the pinned size before using it as a regress reference; the options.cfg
+render options of a trace are recorded next to it (`<trace>.options.json`) and `compare`/`regress` refuse a mismatch.
+
 ## How it was measured
 - `tools/tracy_capture_compare.py baseline` per mission, both arms, 20 s Tracy window, free timestep, `MC2_FPS_CAP=0`
   (uncapped, render-bound), `MC2_LOG=1`, window shown but parked offscreen (never minimised: no `Frame.BackgroundThrottle`

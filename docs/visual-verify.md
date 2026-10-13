@@ -126,6 +126,11 @@ committed regions are small strips (a whole bookmark set is a few hundred KB), s
 they live in-repo cheaply and diff exactly. Each set carries a `golden.json`
 identity block (install, exe, frame, per-crop sha256, source capture manifest).
 
+**Resolution.** Captures are pinned to 1920x1080 (`scripts/smoke_lib/render_resolution.py`). The golden set `tests/visual/goldens/reset-50331d5` was
+blessed at 3840x2160, so `check-capture-resolution.py` refuses every capture against it until the owner re-blesses at the pinned size (capture three
+runs with `tools/visual_verify/capture.py`, then `bless.py` below). The render options (`render_options` in `capture_run.json`) are an input of every
+capture too; `capture_ab.py compare` refuses sets whose options differ unless `--vary Key,Key` names them.
+
 If you ever need **frame-level** goldens (full 4K), keep them in an external dir
 (they are ~5-10 MB each — do not commit) and record the path in `golden.json`'s
 `frames_dir`. For **regression goldens** the default path is crop-only. (This is
