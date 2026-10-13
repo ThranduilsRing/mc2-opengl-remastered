@@ -97,7 +97,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		char buffer[512];
 		EditorSafeLoadString( IDS_COULDNT_OPEN, buffer, 256, gameResourceHandle );
 		char buffer2[512];
-		sprintf( buffer2, buffer, camFileName );
+		sprintf( buffer2, buffer, (LPCTSTR)camFileName );   // an MFC CString goes through "..." as its character pointer
 		/*I think MessageBox() would not be modal wrt the application.*/
 		if (!g_cliSuppressModals) AfxMessageBox(buffer2);
 		EditorInterface::instance()->UnsetBusyMode();

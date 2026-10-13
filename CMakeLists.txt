@@ -856,6 +856,17 @@ if(MC2_EDITOR)
     endif()
 endif()
 
+# A class object (std::string, EString) passed through "..." compiles and prints garbage; C4840 is the diagnostic, kept an error so that a printf-style
+# call fed a string object fails the build (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md hazard H10). Applied to the targets that hold the
+# EString callers; gameos is left out because GameOS/gameos/vulkan_context.cpp:109 still passes a std::string to ctxlog (lane 2 owns that file).
+if(MSVC)
+    foreach(_t mc2 mclib gui EditRel)
+        if(TARGET ${_t})
+            target_compile_options(${_t} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/we4840>")
+        endif()
+    endforeach()
+endif()
+
 # -----------------------------------------------------------------------
 # Shader contract reflection CI (Tier 1.2)
 # Depends on Vulkan SDK tools: glslangValidator, spirv-cross.
