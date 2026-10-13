@@ -21,6 +21,17 @@ facility deletes the older arm instead of keeping it.
 | `descriptor_indexing` | required | core 1.2: the umbrella bit plus `runtimeDescriptorArray`, `shaderSampledImageArrayNonUniformIndexing`, `descriptorBindingPartiallyBound` | device refused |
 | `dynamic_rendering` | required | core 1.3 when device and instance have it, else `VK_KHR_dynamic_rendering` | device refused |
 | `synchronization2` | required | core 1.3 when device and instance have it, else `VK_KHR_synchronization2` | device refused |
+| `memory_budget` | optional | `VK_EXT_memory_budget` | the VRAM line is VMA's own estimate, not the OS's number (reported in `wanted_missing`, never a refusal) |
+
+## What the context keeps and enables
+
+The context keeps the `Evaluation` of the device it chose: `VulkanContext::profile()`, with `featureEnabled(name)` and `route(item)`. An island asks the ROUTE of a
+facility (core, or the KHR extension on a 1.2 device, where the entry points to load differ) and whether the optional memory budget is on; it never asks
+whether a required facility exists. The eight feature bits that are enabled are exactly the ones the ruling requires: `timelineSemaphore`,
+`bufferDeviceAddress`, `descriptorIndexing` with the three bits that define the bindless table (`runtimeDescriptorArray`,
+`shaderSampledImageArrayNonUniformIndexing`, `descriptorBindingPartiallyBound`), `dynamicRendering` and `synchronization2`. No island consumes any of them yet:
+they are on because the ruling requires them, and a bit nothing requires is not enabled. The device extensions enabled are the ones on the `extensions=` list of
+the line (the swapchain of a present window, the KHR routes on a 1.2 device, the memory budget), read from the context's one enumeration of the device.
 
 ## Hardware floor (owner ruling 2026-10-13)
 
@@ -32,7 +43,7 @@ play the OpenGL build; the Vulkan path logs `verdict=refused` with the missing i
 ## The log line
 
 `[VK_PROFILE v1] verdict=ok|refused device="..." api=.. instance_api=.. floor=1.2 required_missing=.. wanted_missing=.. items=id:route,.. enabled=.. extensions=..`
-(`-` is none; a route is `core`, `ext`, `limit` or `-`). A refused device lists what is missing in `required_missing` and gets nothing in `enabled` /
+(`extensions` is every device extension enabled; `-` is none; a route is `core`, `ext`, `limit` or `-`). A refused device lists what is missing in `required_missing` and gets nothing in `enabled` /
 `extensions`. `scripts/smoke_lib/vk_profile.py` parses it; the smoke runner grades `verdict=refused` red (marker bucket `vk_profile_refused`) and the report has a
 `Vulkan profile:` line. Unit tests: the `vk profile:` cases in `tests/unit/test_gate.cpp` (the table, including one case per required facility) and
 `tests/smoke/test_vk_profile.py` (the parser and the grading).

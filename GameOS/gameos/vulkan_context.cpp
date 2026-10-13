@@ -179,8 +179,7 @@ bool VulkanContext::init(bool wantPresent) {
     std::vector<const char*> layers;
     std::vector<const char*> instExts;
 
-    // No interop instance caps are requested.
-    // get_physical_device_properties_2 is VK 1.1 core anyway (apiVersion 1.1).
+    // No interop instance caps are requested: physical-device properties2 is core at the 1.2 floor.
 
     // VK-P13 T3: surface instance extensions so the shared device can create a
     // VkSurfaceKHR for the hidden present window (SDL_Vulkan_CreateSurface needs
@@ -270,7 +269,6 @@ bool VulkanContext::init(bool wantPresent) {
     // ---- device profile: the first discrete device that meets every REQUIRED item, else the first device that does; if none does, the engine
     // refuses Vulkan (fail-soft to GL) and the refused device's line says which items it lacks ----
     profile::DeviceCaps caps;
-    profile::Evaluation verdict;
     {
         struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; };
         std::vector<Candidate> cands;
@@ -295,7 +293,7 @@ bool VulkanContext::init(bool wantPresent) {
         }
         phys_ = pick->pd;
         caps = pick->caps;
-        verdict = pick->ev;
+        profile_ = pick->ev;
         std::strncpy(health_.deviceName, pick->name.c_str(), sizeof(health_.deviceName) - 1);
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
@@ -321,32 +319,16 @@ bool VulkanContext::init(bool wantPresent) {
     qci.queueCount = 1;
     qci.pQueuePriorities = &prio;
 
+    // Every device extension comes from the profile, in table order: the swapchain of a present window, the KHR routes of dynamic rendering /
+    // synchronization2 on a 1.2 device, and the memory-budget extension when the device has it (the VRAM line is then the OS's number and not VMA's
+    // estimate). No external-memory extension is requested: no VK resource is exportable.
     std::vector<const char*> devExts;
-    // VK-RUNG8-ITEM3: the external-memory/-semaphore Win32 device extensions (the last
-    // hard MoltenVK/Metal-gate blocker) were REMOVED -- no VK resource is exportable
-    // anymore. VK_KHR_dedicated_allocation + VK_KHR_get_memory_requirements_2 are VK 1.1
-    // core (apiVersion 1.1), so the surviving dedicated allocations need no extension.
-    // vkCreateDevice on MoltenVK no longer fails on an unsupported extension here.
-    // VK-P13 T3: swapchain device extension for the hidden present window.
-    if (wantPresent) {
-        devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    }
+    for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
 
-    // VK_EXT_memory_budget: the OS's per-heap budget and usage, so the VRAM line of the smoke report is the driver's number and not VMA's estimate.
-    {
-        uint32_t extCount = 0;
-        vkEnumerateDeviceExtensionProperties(phys_, nullptr, &extCount, nullptr);
-        std::vector<VkExtensionProperties> have(extCount);
-        if (extCount) vkEnumerateDeviceExtensionProperties(phys_, nullptr, &extCount, have.data());
-        for (const auto& e : have) {
-            if (std::strcmp(e.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0) { memoryBudgetExt_ = true; break; }
-        }
-        if (memoryBudgetExt_) devExts.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-    }
-
-    // The profile's extension routes (dynamic rendering / synchronization2 on a 1.2 device), then the feature bits it selected: only supported bits
-    // are enabled, each through the struct that defines it (the core 1.2 / 1.3 aggregate when the version allows, the KHR struct otherwise).
-    for (const std::string& e : verdict.deviceExtensions) devExts.push_back(e.c_str());
+    // The feature bits the profile selected. All of them are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
+    // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2), so an accepted device has every one and no
+    // island carries a fallback arm for it; no island consumes any of them yet, they are enabled because the ruling requires them. Each bit goes through
+    // the struct that defines it (the core 1.2 / 1.3 aggregate when the route is core, the KHR struct otherwise).
 
     VkPhysicalDeviceFeatures2 enableFeatures{};
     enableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -359,24 +341,22 @@ bool VulkanContext::init(bool wantPresent) {
     VkPhysicalDeviceSynchronization2FeaturesKHR enS2{};
     enS2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
     {
-        using profile::featureEnabled;
-        en12.timelineSemaphore = featureEnabled(verdict, "timelineSemaphore") ? VK_TRUE : VK_FALSE;
-        en12.bufferDeviceAddress = featureEnabled(verdict, "bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
-        en12.descriptorIndexing = featureEnabled(verdict, "descriptorIndexing") ? VK_TRUE : VK_FALSE;
-        en12.runtimeDescriptorArray = featureEnabled(verdict, "runtimeDescriptorArray") ? VK_TRUE : VK_FALSE;
-        en12.shaderSampledImageArrayNonUniformIndexing = featureEnabled(verdict, "shaderSampledImageArrayNonUniformIndexing") ? VK_TRUE : VK_FALSE;
-        en12.descriptorBindingPartiallyBound = featureEnabled(verdict, "descriptorBindingPartiallyBound") ? VK_TRUE : VK_FALSE;
-        const bool drCore = profile::routeOf(verdict, "dynamic_rendering") == profile::Route::Core;
-        const bool s2Core = profile::routeOf(verdict, "synchronization2") == profile::Route::Core;
-        if (featureEnabled(verdict, "dynamicRendering")) (drCore ? en13.dynamicRendering : enDr.dynamicRendering) = VK_TRUE;
-        if (featureEnabled(verdict, "synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
+        en12.timelineSemaphore = featureEnabled("timelineSemaphore") ? VK_TRUE : VK_FALSE;
+        en12.bufferDeviceAddress = featureEnabled("bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
+        en12.descriptorIndexing = featureEnabled("descriptorIndexing") ? VK_TRUE : VK_FALSE;
+        en12.runtimeDescriptorArray = featureEnabled("runtimeDescriptorArray") ? VK_TRUE : VK_FALSE;
+        en12.shaderSampledImageArrayNonUniformIndexing = featureEnabled("shaderSampledImageArrayNonUniformIndexing") ? VK_TRUE : VK_FALSE;
+        en12.descriptorBindingPartiallyBound = featureEnabled("descriptorBindingPartiallyBound") ? VK_TRUE : VK_FALSE;
+        const bool drCore = route("dynamic_rendering") == profile::Route::Core;
+        const bool s2Core = route("synchronization2") == profile::Route::Core;
+        if (featureEnabled("dynamicRendering")) (drCore ? en13.dynamicRendering : enDr.dynamicRendering) = VK_TRUE;
+        if (featureEnabled("synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
         void** tail = &enableFeatures.pNext;
         auto chain = [&](auto& s) { *tail = &s; tail = &s.pNext; };
         chain(en12);
         if (drCore || s2Core) chain(en13);
-        if (featureEnabled(verdict, "dynamicRendering") && !drCore) chain(enDr);
-        if (featureEnabled(verdict, "synchronization2") && !s2Core) chain(enS2);
-        bufferDeviceAddress_ = en12.bufferDeviceAddress == VK_TRUE;
+        if (featureEnabled("dynamicRendering") && !drCore) chain(enDr);
+        if (featureEnabled("synchronization2") && !s2Core) chain(enS2);
     }
 
     VkDeviceCreateInfo dci{};
@@ -403,8 +383,8 @@ bool VulkanContext::init(bool wantPresent) {
         aci.device = device_;
         aci.instance = instance_;
         aci.vulkanApiVersion = caps.usableApi();   // never above what the device or the instance was created for
-        if (memoryBudgetExt_) aci.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-        if (bufferDeviceAddress_) aci.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        if (route("memory_budget") == profile::Route::Ext) aci.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+        if (featureEnabled("bufferDeviceAddress")) aci.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         VmaVulkanFunctions fns{};
         r = vmaImportVulkanFunctionsFromVolk(&aci, &fns);
         if (r != VK_SUCCESS) return fail("vmaImportVulkanFunctionsFromVolk failed");
@@ -440,8 +420,8 @@ void VulkanContext::destroy() {
         instance_ = VK_NULL_HANDLE;
     }
     if (g_cbContext == this) g_cbContext = nullptr;
-    memoryBudgetExt_ = false;
-    bufferDeviceAddress_ = false;
+    profile_ = profile::Evaluation{};
+    profile_.accepted = false;
     health_.created = false;
 }
 
@@ -488,7 +468,7 @@ bool engineVulkanContextValid() {
 //     call here), return true immediately -- NO second init, NO second volkLoadDevice
 //     (the device is shared; init() is a no-op after success).
 //   - Else init(wantPresent=false): brings up instance/device/queue/VMA + the SINGLE
-//     volkLoadDevice, plain VK 1.1 core (no interop exts, no surface/swapchain). Native
+//     volkLoadDevice, Vulkan 1.2+ with the profile's features (no interop exts, no surface/swapchain). Native
 //     VK regions reuse this device.
 //   - init() is one-shot: after a failed attempt it returns false without retrying, so
 //     a repeated caller never thrashes. Fail-soft: returns false, caller falls back to GL.

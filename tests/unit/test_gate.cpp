@@ -1516,12 +1516,12 @@ TEST_CASE("the render options serialize as one JSON object of all 17 values for 
 namespace {
 namespace vkp = mc2vk::profile;
 
-// A device that has everything: 1.4 device under a 1.3 instance, every feature bit, the swapchain, roomy limits.
+// A device that has everything: 1.4 device under a 1.3 instance, every feature bit, the swapchain and memory-budget extensions, roomy limits.
 vkp::DeviceCaps fullCaps() {
     vkp::DeviceCaps c;
     c.deviceApi = vkp::makeApi(1, 4);
     c.instanceApi = vkp::makeApi(1, 3);
-    c.extensions = {"VK_KHR_swapchain"};
+    c.extensions = {"VK_KHR_swapchain", "VK_EXT_memory_budget"};
     c.timelineSemaphore = c.bufferDeviceAddress = c.descriptorIndexing = c.runtimeDescriptorArray = true;
     c.shaderSampledImageArrayNonUniformIndexing = c.descriptorBindingPartiallyBound = true;
     c.dynamicRendering = c.synchronization2 = true;
@@ -1566,7 +1566,11 @@ TEST_CASE("vk profile: a device with everything is accepted and every facility t
     CHECK(vkp::routeOf(e, "no_such_item") == vkp::Route::None);
     CHECK((vkp::routeName(vkp::Route::Core) == "core" && vkp::routeName(vkp::Route::Ext) == "ext" && vkp::routeName(vkp::Route::Limit) == "limit" &&
            vkp::routeName(vkp::Route::None) == "-"));
-    CHECK(e.deviceExtensions.empty());                                  // core: nothing to enable by name
+    CHECK(vkp::routeOf(e, "memory_budget") == vkp::Route::Ext);
+    // core: no KHR extension is named; the swapchain of the present window and the memory budget are, in table order
+    REQUIRE(e.deviceExtensions.size() == 2);
+    CHECK(e.deviceExtensions[0] == "VK_KHR_swapchain");
+    CHECK(e.deviceExtensions[1] == "VK_EXT_memory_budget");
     CHECK(vkp::featureEnabled(e, "timelineSemaphore"));
     CHECK(vkp::featureEnabled(e, "bufferDeviceAddress"));
     CHECK(vkp::featureEnabled(e, "descriptorIndexing"));
@@ -1581,6 +1585,7 @@ TEST_CASE("vk profile: on a 1.2 device dynamic rendering and synchronization2 co
     CHECK(vkp::routeOf(e, "synchronization2") == vkp::Route::Ext);
     CHECK(hasId(e.deviceExtensions, vkp::kExtDynamicRendering));
     CHECK(hasId(e.deviceExtensions, vkp::kExtSynchronization2));
+    CHECK(e.deviceExtensions.size() == 4);                              // swapchain, the two KHR routes, memory budget
     CHECK(vkp::featureEnabled(e, "dynamicRendering"));
     CHECK(vkp::routeOf(e, "timeline_semaphore") == vkp::Route::Core);   // core in 1.2: no extension to name
 }
@@ -1647,6 +1652,7 @@ TEST_CASE("vk profile: the swapchain is required only when the context drives a 
     c.extensions.clear();
     const vkp::Evaluation headless = vkp::evaluate(c, false);
     CHECK(headless.accepted);
+    CHECK_FALSE(hasId(headless.deviceExtensions, vkp::kExtSwapchain));    // a context with no window never names the swapchain
     CHECK(hasId(headless.missingWanted, "swapchain"));                  // reported, never a refusal
     const vkp::Evaluation e = vkp::evaluate(c, true);
     CHECK_FALSE(e.accepted);
@@ -1683,14 +1689,30 @@ TEST_CASE("vk profile: descriptor indexing needs the umbrella bit and every indi
     }
 }
 
+TEST_CASE("vk profile: the memory-budget extension is optional: reported when missing, enabled when present") {
+    vkp::DeviceCaps c = fullCaps();
+    c.extensions = {"VK_KHR_swapchain"};
+    const vkp::Evaluation e = vkp::evaluate(c, true);
+    CHECK(e.accepted);
+    CHECK(hasId(e.missingWanted, "memory_budget"));
+    CHECK(e.missingRequired.empty());
+    CHECK(vkp::routeOf(e, "memory_budget") == vkp::Route::None);
+    CHECK_FALSE(hasId(e.deviceExtensions, vkp::kExtMemoryBudget));
+    const std::string line = vkp::formatLine("gpu", c, e);
+    CHECK(line.find(" wanted_missing=memory_budget ") != std::string::npos);
+    CHECK(line.find(" extensions=VK_KHR_swapchain") != std::string::npos);
+    CHECK(vkp::evaluate(fullCaps(), true).missingWanted.empty());
+}
+
 TEST_CASE("vk profile: the line names the device, both versions, what is missing and what is enabled") {
     const vkp::DeviceCaps c = fullCaps();
     const vkp::Evaluation e = vkp::evaluate(c, true);
     const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
     CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
                   "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-                  "dynamic_rendering:core,synchronization2:core enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,runtimeDescriptorArray,"
-                  "shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2 extensions=-");
+                  "dynamic_rendering:core,synchronization2:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,"
+                  "runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2 "
+                  "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);
     CHECK(vkp::formatLine("gpu", device12Caps(false), lacking).find(" required_missing=dynamic_rendering,synchronization2 wanted_missing=- ") != std::string::npos);
 }

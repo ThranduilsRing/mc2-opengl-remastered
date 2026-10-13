@@ -24,8 +24,11 @@
 
 #include <volk.h>
 
+#include "vk_device_profile.h"
+
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 // VMA allocator handle (forward-declared to keep vk_mem_alloc.h out of this
 // header; the .cpp includes it). VmaAllocator is a pointer typedef.
@@ -84,6 +87,15 @@ public:
     uint32_t         graphicsFamily() const { return gfxFamily_; }
     VmaAllocator     allocator()     const { return allocator_; }
 
+    // What the device profile decided for the device this context chose: every facility's route, the feature bits and device extensions that were
+    // enabled. The five facilities of the owner ruling (dynamic rendering, synchronization2, timeline semaphores, descriptor indexing, buffer device
+    // address) are required, so a valid context always has them; what an island still has to ask is the ROUTE (core, or the KHR extension on a 1.2
+    // device: the entry points to load differ) and whether an optional extension (memory budget) is on. Empty and not accepted before a device was
+    // chosen, after a refusal and after destroy().
+    const profile::Evaluation& profile() const { return profile_; }
+    bool featureEnabled(std::string_view name) const { return profile::featureEnabled(profile_, name); }
+    profile::Route route(std::string_view item) const { return profile::routeOf(profile_, item); }
+
     const EngineContextHealth& health() const { return health_; }
     EngineContextHealth&       mutableHealth() { return health_; }
 
@@ -105,8 +117,7 @@ private:
     VkQueue          gfxQueue_          = VK_NULL_HANDLE;
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
-    bool             memoryBudgetExt_   = false;   // VK_EXT_memory_budget enabled on the device
-    bool             bufferDeviceAddress_ = false; // the device profile enabled bufferDeviceAddress (VMA is told so)
+    profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
 
     EngineContextHealth health_;
 };
@@ -127,7 +138,7 @@ bool engineVulkanContextValid();
 // WITHOUT MC2_RENDER_BACKEND=vulkan and without a healthy present/window. init() is
 // one-shot (no retry after failure). Fail-soft: false -> caller uses GL.
 // VK-RUNG8-ITEM3: renamed from ensureEngineVulkanContext -- there is no
-// interop extension family anymore; the shared device is plain VK 1.1 core.
+// interop extension family anymore; the shared device is Vulkan 1.2 or newer (see vk_device_profile.h for the floor).
 bool ensureEngineVulkanContext();
 
 }  // namespace mc2vk

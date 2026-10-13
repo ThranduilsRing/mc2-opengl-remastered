@@ -4583,7 +4583,7 @@
         },
         {
           "path": "tests/smoke/test_vk_profile.py",
-          "line": 80,
+          "line": 82,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -4718,7 +4718,7 @@
         },
         {
           "path": "tests/smoke/test_vk_profile.py",
-          "line": 96,
+          "line": 98,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -5047,7 +5047,7 @@
         },
         {
           "path": "tests/smoke/test_vk_profile.py",
-          "line": 97,
+          "line": 99,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import Verdict"

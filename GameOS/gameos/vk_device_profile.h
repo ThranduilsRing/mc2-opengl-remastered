@@ -2,8 +2,10 @@
 // the verdict for one physical device.
 //
 // WHAT: one table of facilities (the 1.2 API floor, swapchain, a few limits, timeline semaphores, descriptor indexing, buffer device address,
-// dynamic rendering, synchronization2), each with its core-or-extension route; `evaluate()` turns the capabilities of a device (`DeviceCaps`, plain
-// data) into a verdict, the set of device extensions and feature bits to enable, and the `[VK_PROFILE v1]` line.
+// dynamic rendering, synchronization2, and the optional memory-budget extension), each with its core-or-extension route; `evaluate()` turns the
+// capabilities of a device (`DeviceCaps`, plain data) into a verdict, the set of device extensions and feature bits to enable, and the
+// `[VK_PROFILE v1]` line. The context keeps the Evaluation of the device it chose (`VulkanContext::profile()`), so an island asks what is enabled and by
+// which route instead of re-deriving it.
 // WHY: the shared context asked for Vulkan 1.1, enabled no feature and never looked at what the device offered, so "1.2 minimum" was a sentence and
 // not a check. Raising the instance version does not enable a single device feature: a feature is used only if it was queried, found and enabled.
 // The table keeps that decision in one place. Owner ruling 2026-10-13: the five facilities (dynamic rendering, synchronization2, timeline semaphores,
@@ -16,6 +18,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -91,18 +94,19 @@ struct Evaluation {
     std::vector<ItemResult> items;
     std::vector<std::string> missingRequired;        // item ids; non-empty = the device is refused
     std::vector<std::string> missingWanted;          // item ids that are optional for this context (the swapchain without a present window); never a refusal
-    std::vector<std::string> deviceExtensions;       // device extensions to enable (swapchain excluded: the context adds it with the surface); empty for a refused device
+    std::vector<std::string> deviceExtensions;       // every device extension to enable, in table order; empty for a refused device
     std::vector<std::string> enabledFeatures;        // feature names to enable, in the spelling of the Vulkan struct member; empty for a refused device
     bool accepted = true;
 };
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                                "dynamic_rendering", "synchronization2"};
+                                                "dynamic_rendering", "synchronization2", "memory_budget"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
 inline constexpr std::string_view kExtSwapchain = "VK_KHR_swapchain";
+inline constexpr std::string_view kExtMemoryBudget = "VK_EXT_memory_budget";   // the OS's per-heap budget and usage; the VRAM report reads it
 
 namespace detail {
 
@@ -130,7 +134,9 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
         if (!ok) (need == Need::Required ? e.missingRequired : e.missingWanted).emplace_back(id);
     };
     add("api_1_2", Need::Required, c.deviceApi >= kFloorApi && c.instanceApi >= kFloorApi, Route::Core);
-    add("swapchain", wantPresent ? Need::Required : Need::Wanted, c.hasExtension(kExtSwapchain), Route::Ext);
+    const bool swapchain = c.hasExtension(kExtSwapchain);
+    add("swapchain", wantPresent ? Need::Required : Need::Wanted, swapchain, Route::Ext);
+    if (wantPresent && swapchain) e.deviceExtensions.emplace_back(kExtSwapchain);
     add("limits", Need::Required, detail::limitsOk(c), Route::Limit);
 
     const bool timeline = c.usableApi() >= kFloorApi && c.timelineSemaphore;
@@ -161,6 +167,11 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     add("synchronization2", Need::Required, s2 != Route::None, s2);
     if (s2 != Route::None) e.enabledFeatures.push_back("synchronization2");
     if (s2 == Route::Ext) e.deviceExtensions.emplace_back(kExtSynchronization2);
+
+    // Optional: the VRAM report is the driver's number when the device has it and VMA's own estimate when it does not.
+    const bool budget = c.hasExtension(kExtMemoryBudget);
+    add("memory_budget", Need::Wanted, budget, Route::Ext);
+    if (budget) e.deviceExtensions.emplace_back(kExtMemoryBudget);
 
     e.accepted = e.missingRequired.empty();
     if (!e.accepted) {                               // a refused device gets nothing enabled
@@ -195,15 +206,23 @@ inline std::string versionText(uint32_t v) {
 }
 
 // `[VK_PROFILE v1] verdict=ok|refused device="..." api=1.4.3 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- items=id:route,...
-//  enabled=feature,... extensions=ext,...` (a "-" is "none"). Pure: no I/O.
+//  enabled=feature,... extensions=ext,...` (a "-" is "none"). `extensions` is every device extension the context enables. Pure: no I/O. One snprintf
+// carries the whole format so the log-tag census sees the line and its key order.
 inline std::string formatLine(std::string_view deviceName, const DeviceCaps& c, const Evaluation& e) {
     std::string items;
     for (const ItemResult& i : e.items)
         items += std::string(items.empty() ? "" : ",") + std::string(i.id) + ":" + std::string(routeName(i.route));
-    return std::string("[VK_PROFILE v1] verdict=") + (e.accepted ? "ok" : "refused") + " device=\"" + std::string(deviceName) + "\" api=" + versionText(c.deviceApi) +
-           " instance_api=" + versionText(c.instanceApi) + " floor=1.2 required_missing=" + joinOr(e.missingRequired) +
-           " wanted_missing=" + joinOr(e.missingWanted) + " items=" + items + " enabled=" + joinOr(e.enabledFeatures) +
-           " extensions=" + joinOr(e.deviceExtensions);
+    const std::string device(deviceName), api = versionText(c.deviceApi), instanceApi = versionText(c.instanceApi), requiredMissing = joinOr(e.missingRequired),
+                      wantedMissing = joinOr(e.missingWanted), enabled = joinOr(e.enabledFeatures), extensions = joinOr(e.deviceExtensions);
+    auto print = [&](char* out, size_t capacity) {
+        return std::snprintf(out, capacity,
+                             "[VK_PROFILE v1] verdict=%s device=\"%s\" api=%s instance_api=%s floor=1.2 required_missing=%s wanted_missing=%s items=%s enabled=%s extensions=%s",
+                             e.accepted ? "ok" : "refused", device.c_str(), api.c_str(), instanceApi.c_str(), requiredMissing.c_str(), wantedMissing.c_str(),
+                             items.c_str(), enabled.c_str(), extensions.c_str());
+    };
+    std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
+    print(line.data(), line.size() + 1);
+    return line;
 }
 
 #ifdef MC2_VULKAN
