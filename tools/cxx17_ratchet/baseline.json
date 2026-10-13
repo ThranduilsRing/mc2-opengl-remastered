@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 118,
-   "LG06": 498,
+   "LG06": 497,
    "LG07": 0,
    "LG08": 266,
    "LG09": 1996,
@@ -1122,7 +1122,6 @@
    "LG06": 1
   },
   "GameOS/gameos/vk_device_profile.h": {
-   "LG06": 1,
    "LG11": 1
   },
   "GameOS/gameos/vk_feed_dump.h": {
@@ -5188,7 +5187,7 @@
    "LG20": 2
   }
  },
- "head": "cc05eaf6d",
+ "head": "4b3e35187",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
