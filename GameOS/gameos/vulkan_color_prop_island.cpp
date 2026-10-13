@@ -302,7 +302,7 @@ ColorPropIsland* g_island = nullptr;
 
 bool make_buffer(ColorPropIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
-                 const char* name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -395,7 +395,7 @@ bool ensure_light_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes)
         s->lightBuf[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lightBuf[par], &s->lightAlloc[par], true, "colorprop.lightBuf", (int)par))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lightBuf[par], &s->lightAlloc[par], true, "colorprop.lightBuf", static_cast<int>(par)))
         return false;
     s->lightCap[par] = cap;
     write_descriptors(s);
@@ -496,7 +496,7 @@ bool ensure_inst_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) 
         s->instBuf[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf[par], &s->instAlloc[par], true, "colorprop.instBuf", (int)par))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf[par], &s->instAlloc[par], true, "colorprop.instBuf", static_cast<int>(par)))
         return false;
     s->instCapBytes[par] = cap;
     write_descriptors(s);

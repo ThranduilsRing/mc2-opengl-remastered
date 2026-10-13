@@ -104,7 +104,7 @@ struct Pending { bool valid = false; float invProj[16] = {}; float rot[9] = {}; 
 Pending g_pending;
 
 bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
-                 const char* name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};

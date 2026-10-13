@@ -250,6 +250,8 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_image_resource.cpp)
         # The first layout of the shared scene images (UNDEFINED at creation; every island declares an attachment layout from frame 1).
         list(APPEND SOURCES vk_first_layout.cpp)
+        # Move-only owners of the Vulkan objects an island creates (RAII; the destructor is the only release path).
+        list(APPEND SOURCES vk_owned.cpp)
         # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
         # host-visible ring on the shared engine device) consumed by the mech +
         # color-prop islands instead of twin per-island ~3.5 MB copies of the

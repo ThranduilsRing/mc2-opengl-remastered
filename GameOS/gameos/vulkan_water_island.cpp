@@ -149,7 +149,7 @@ WaterIsland* g_island = nullptr;
 
 bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc,
-                 const char* name, int i0, int i1) {
+                 std::string_view name, int i0, int i1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
@@ -231,7 +231,7 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
         s->thinBuf[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096; // headroom
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->thinBuf[par], &s->thinAlloc[par], "water.thinBuf", (int)par))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->thinBuf[par], &s->thinAlloc[par], "water.thinBuf", static_cast<int>(par)))
         return false;
     s->thinCapBytes[par] = cap;
     write_descriptors(s);

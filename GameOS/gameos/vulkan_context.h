@@ -141,27 +141,28 @@ private:
 };
 
 // Object names for the validation layer and the capture tools: a message that says `VkImage 0x310000000031` is decoded by creation order, one that says
-// `terrain.gbuffer.normal` is not. The names are live only while the debug-utils messenger is (a validation run); otherwise every call returns at once. `name` comes from the creating site and says what the object is for.
+// `shared.scene.normal` is not. The names are live only while the debug-utils messenger is (a validation run); otherwise every call returns at once.
+// `name` comes from the creating site and says what the object is for.
 bool debugNamesEnabled();
-void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, const char* name);
-void setObjectNamef(VkDevice device, VkObjectType type, uint64_t handle, const char* fmt, ...);
+void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name);
 constexpr VkObjectType objectTypeOf(VkImage)    { return VK_OBJECT_TYPE_IMAGE; }
 constexpr VkObjectType objectTypeOf(VkBuffer)   { return VK_OBJECT_TYPE_BUFFER; }
 constexpr VkObjectType objectTypeOf(VkPipeline) { return VK_OBJECT_TYPE_PIPELINE; }
 
-// `nameObject(device, image, "terrain.normal")`, or printf-style for a per-slot object: `nameObject(device, buf, "mech.lights[%u]", slot)`.
-template <class Handle, class... Args>
-inline void nameObject(VkDevice device, Handle handle, const char* name, Args... args) {
-    if constexpr (sizeof...(Args) == 0) setObjectName(device, objectTypeOf(handle), reinterpret_cast<uint64_t>(handle), name);
-    else setObjectNamef(device, objectTypeOf(handle), reinterpret_cast<uint64_t>(handle), name, args...);
+// `nameObject(device, image, "terrain.normal")`.
+template <class Handle>
+inline void nameObject(VkDevice device, Handle handle, std::string_view name) {
+    setObjectName(device, objectTypeOf(handle), reinterpret_cast<uint64_t>(handle), name);
 }
 
 // The same for an object that exists once per slot: `name[i0]` or `name[i0][i1]`; a negative index is left out.
 template <class Handle>
-inline void nameObjectAt(VkDevice device, Handle handle, const char* name, int i0 = -1, int i1 = -1) {
-    if (i0 < 0) nameObject(device, handle, name);
-    else if (i1 < 0) nameObject(device, handle, "%s[%d]", name, i0);
-    else nameObject(device, handle, "%s[%d][%d]", name, i0, i1);
+inline void nameObjectAt(VkDevice device, Handle handle, std::string_view name, int i0 = -1, int i1 = -1) {
+    if (!debugNamesEnabled()) return;
+    std::string full(name);
+    if (i0 >= 0) full += "[" + std::to_string(i0) + "]";
+    if (i1 >= 0) full += "[" + std::to_string(i1) + "]";
+    nameObject(device, handle, full);
 }
 
 // Process-wide accessor for the shared engine context. Returns the same object

@@ -138,7 +138,7 @@ bool mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
             return false;   // fail-soft: caller runs its own copy path
         }
         sl.cap = cap;
-        mc2vk::nameObject(device, sl.buf, "lightfeed.ring[%d]", slot);
+        mc2vk::nameObjectAt(device, sl.buf, "lightfeed.ring", slot);
     }
 
     {

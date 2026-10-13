@@ -9,7 +9,7 @@ namespace vk_terrain_detail {
 
 bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
-                 const char* name, int i0, int i1) {
+                 std::string_view name, int i0, int i1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -308,7 +308,7 @@ bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes) {
         s->ubo[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + sizeof(TerrainFrameUBO);
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[par], &s->uboAlloc[par], true, "terrain.ubo", (int)par))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[par], &s->uboAlloc[par], true, "terrain.ubo", static_cast<int>(par)))
         return false;
     s->uboCapBytes[par] = cap;
     write_descriptors(s);
@@ -327,7 +327,7 @@ bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSi
         s->lpBuf[par][k] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 256;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lpBuf[par][k], &s->lpAlloc[par][k], true, "terrain.lpBuf", (int)par, (int)k))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lpBuf[par][k], &s->lpAlloc[par][k], true, "terrain.lpBuf", static_cast<int>(par), static_cast<int>(k)))
         return false;
     s->lpCap[par][k] = cap;
     write_descriptors(s);

@@ -131,7 +131,7 @@ std::vector<Mc2LegacyMlrDraw> g_pending;
 
 bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf,
                  VmaAllocation* alloc, bool hostVisible,
-                 const char* name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -338,9 +338,9 @@ bool init_island(Island* s, int w, int h) {
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
 
     for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "legacyshape.ubo", (int)i)) return false;
+        if (!make_buffer(s, sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "legacyshape.ubo", static_cast<int>(i))) return false;
         s->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", (int)i)) return false;
+        if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", static_cast<int>(i))) return false;
     }
 
     {   // command pool + per-parity command buffers
@@ -533,7 +533,7 @@ bool init_island(Island* s, int w, int h) {
             if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipes[k]) != VK_SUCCESS) {
                 setFallback("pipeline_failed"); return false;
             }
-            mc2vk::nameObject(s->device, s->pipes[k], "legacyshape.pipe[%d]", (int)k);
+            mc2vk::nameObjectAt(s->device, s->pipes[k], "legacyshape.pipe", static_cast<int>(k));
         }
     }
 
@@ -605,7 +605,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
             vmaDestroyBuffer(s->allocator, s->vtx[i], s->vtxAlloc[i]);
             s->vtx[i] = VK_NULL_HANDLE;
             s->vtxCap[i] = totalBytes + totalBytes / 2;
-            if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", (int)i)) {
+            if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", static_cast<int>(i))) {
                 s->disabled = true; setFallback("vtx_grow_failed"); return 0;
             }
         }

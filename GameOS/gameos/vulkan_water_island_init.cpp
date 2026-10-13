@@ -68,8 +68,8 @@ bool init_island(WaterIsland* s, int w, int h) {
          "(color0+normal+depth, no composite, direct-chain native, no interop).");
     // ---- UBOs (per parity slot, VK-WATER-FENCE-DEFER-1). ----
     for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo[i], &s->vsUboAlloc[i], "water.vsUbo", (int)i)) return false;
-        if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo[i], &s->fsUboAlloc[i], "water.fsUbo", (int)i)) return false;
+        if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo[i], &s->vsUboAlloc[i], "water.vsUbo", static_cast<int>(i))) return false;
+        if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo[i], &s->fsUboAlloc[i], "water.fsUbo", static_cast<int>(i))) return false;
     }
 
     // ---- Recipe SSBO (mission-static, copied once at first run). Sized to the

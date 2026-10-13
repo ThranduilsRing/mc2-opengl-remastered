@@ -989,7 +989,7 @@ bool ensureHudColorVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
 }
 
 bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsageFlags usage,
-                      VkBuffer* outBuf, VkDeviceMemory* outMem, const char* name) {
+                      VkBuffer* outBuf, VkDeviceMemory* outMem, std::string_view name) {
     VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bci.size = bytes;
     bci.usage = usage;

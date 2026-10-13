@@ -302,7 +302,7 @@ static int  g_mechInitReachedBuild = 0;
 
 bool make_buffer(MechIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
-                 const char* name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -409,7 +409,7 @@ void bind_scheme_images(MechIsland* s, VkDescriptorSet set, VkImageView albedo,
 }
 
 bool ensure_buf_capacity(MechIsland* s, VkBuffer* buf, VmaAllocation* alloc, VkDeviceSize* cap,
-                         VkDeviceSize bytes, const char* name, int slot) {
+                         VkDeviceSize bytes, std::string_view name, int slot) {
     if (*buf != VK_NULL_HANDLE && bytes <= *cap) return true;
     // Descriptor rewrite below touches BOTH parity sets for every scheme.
     if (!s->schemes.empty()) vkDeviceWaitIdle(s->device);
@@ -672,14 +672,14 @@ bool init_island(MechIsland* s, int w, int h) {
 
     // Instance + bone + UBO buffers.
     for (int i = 0; i < 2; ++i) {
-    if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], 256 * 1024, "mech.instBuf", (int)i)) return false;
-    if (!ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], 256 * 1024, "mech.boneBuf", (int)i)) return false;
+    if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], 256 * 1024, "mech.instBuf", static_cast<int>(i))) return false;
+    if (!ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], 256 * 1024, "mech.boneBuf", static_cast<int>(i))) return false;
     // LightsData copy buffer — valid before the first frame so binding4 is always bound
     // (one ObjectLights record is 3600B; start with a few slots).
-    if (!ensure_buf_capacity(s, &s->lightBuf[i], &s->lightAlloc[i], &s->lightCap[i], 32 * 1024, "mech.lightBuf", (int)i)) return false;
-    if (!make_buffer(s, sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "mech.ubo", (int)i)) return false;
+    if (!ensure_buf_capacity(s, &s->lightBuf[i], &s->lightAlloc[i], &s->lightCap[i], 32 * 1024, "mech.lightBuf", static_cast<int>(i))) return false;
+    if (!make_buffer(s, sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "mech.ubo", static_cast<int>(i))) return false;
     // VK-PARITY-MECH-1: fixed-size object light-pool SSBO (256 x 48B).
-    if (!make_buffer(s, kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->poolBuf[i], &s->poolAlloc[i], true, "mech.poolBuf", (int)i)) return false;
+    if (!make_buffer(s, kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->poolBuf[i], &s->poolAlloc[i], true, "mech.poolBuf", static_cast<int>(i))) return false;
     }
     // Pre-create tiny inst/bone SSBOs so scheme descriptor sets never bind a null buffer
     // (they grow in run() via ensure_buf_capacity, which rewrites all cached sets).
@@ -1060,8 +1060,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const VkDeviceSize boneBytes = (VkDeviceSize)(feed.boneCount ? feed.boneCount : 1) * 64ull;
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     for (uint32_t i = 0; i < 2; ++i) {
-        if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], instBytes, "mech.instBuf", (int)i) ||
-            !ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], boneBytes, "mech.boneBuf", (int)i) ||
+        if (!ensure_buf_capacity(s, &s->instBuf[i], &s->instAlloc[i], &s->instCap[i], instBytes, "mech.instBuf", static_cast<int>(i)) ||
+            !ensure_buf_capacity(s, &s->boneBuf[i], &s->boneAlloc[i], &s->boneCap[i], boneBytes, "mech.boneBuf", static_cast<int>(i)) ||
             (s->wantLighting && nativeLight &&
              !ensure_buf_capacity(s, &s->lightBuf[i], &s->lightAlloc[i], &s->lightCap[i],
                                   (VkDeviceSize)feed.lightDataCpuBytes, "mech.lightBuf", (int)i))) {

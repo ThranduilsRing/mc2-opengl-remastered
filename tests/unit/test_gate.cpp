@@ -19,6 +19,7 @@
 #include "mlr/mlr_gate.h"
 #include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
 #include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
+#include "owned_handle.h"       // the move-only owner the Vulkan islands hold their objects in (header-only, Vulkan-free)
 
 #include <cstdio>
 #include <limits>
@@ -1740,4 +1741,74 @@ TEST_CASE("vk validation line: a very long message is capped") {
     const std::string line = mc2vk::formatValidationLine("error", "id", std::string(5000, 'a'));
     CHECK(line.size() == std::string("[VK_VALIDATION v1] severity=error id=id text=\"\"").size() + mc2vk::kValidationTextCap);
     CHECK(line.back() == '"');
+}
+
+// Owned handles (GameOS/gameos/owned_handle.h): the release happens once, from the destructor, on every path.
+namespace {
+int g_released = 0;
+int g_lastReleased = 0;
+struct CountingRelease {
+    void operator()(int* context, int handle) const { ++g_released; g_lastReleased = handle; *context += 1; }
+};
+using IntOwner = mc2::OwnedHandle<int, int*, CountingRelease>;
+}  // namespace
+
+TEST_CASE("owned handle: the destructor releases the handle once and an empty owner releases nothing") {
+    g_released = 0;
+    int context = 0;
+    {
+        IntOwner empty;
+        CHECK_FALSE(static_cast<bool>(empty));
+        IntOwner held(&context, 7);
+        CHECK(static_cast<bool>(held));
+        CHECK(held.get() == 7);
+    }
+    CHECK(g_released == 1);
+    CHECK(g_lastReleased == 7);
+    CHECK(context == 1);
+}
+
+TEST_CASE("owned handle: a move transfers the release and leaves the source empty") {
+    g_released = 0;
+    int context = 0;
+    {
+        IntOwner a(&context, 3);
+        IntOwner b(std::move(a));
+        CHECK_FALSE(static_cast<bool>(a));
+        CHECK(b.get() == 3);
+        IntOwner c;
+        c = std::move(b);
+        CHECK_FALSE(static_cast<bool>(b));
+        CHECK(c.get() == 3);
+        CHECK(g_released == 0);
+    }
+    CHECK(g_released == 1);
+}
+
+TEST_CASE("owned handle: assigning over a held handle releases the old one first, reset releases at once and twice is harmless") {
+    g_released = 0;
+    int context = 0;
+    IntOwner a(&context, 1);
+    a = IntOwner(&context, 2);
+    CHECK(g_released == 1);
+    CHECK(g_lastReleased == 1);
+    CHECK(a.get() == 2);
+    a.reset();
+    a.reset();
+    CHECK(g_released == 2);
+    CHECK(g_lastReleased == 2);
+    CHECK_FALSE(static_cast<bool>(a));
+    a = std::move(a);                  // a self move must not release or lose the handle
+    IntOwner b(&context, 5);
+    b = std::move(b);
+    CHECK(b.get() == 5);
+    CHECK(g_released == 2);
+}
+
+TEST_CASE("owned handle: the owners are move-only") {
+    static_assert(!std::is_copy_constructible_v<IntOwner>);
+    static_assert(!std::is_copy_assignable_v<IntOwner>);
+    static_assert(std::is_nothrow_move_constructible_v<IntOwner>);
+    static_assert(std::is_nothrow_move_assignable_v<IntOwner>);
+    CHECK(true);
 }

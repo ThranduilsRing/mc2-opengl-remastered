@@ -147,7 +147,7 @@ namespace {
 
 bool make_buffer(gosPostProcess::VkPostHzbNative* s, VkDeviceSize size,
                  VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
-                 const char* name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size;
@@ -329,7 +329,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
                 vlog("vmaCreateImage(level %d) failed.", level);
                 return false;
             }
-            mc2vk::nameObject(s->device, lv.image, "posthzb.level[%d]", level);
+            mc2vk::nameObjectAt(s->device, lv.image, "posthzb.level", level);
 
             VkImageViewCreateInfo vci{};
             vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

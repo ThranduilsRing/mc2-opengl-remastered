@@ -207,7 +207,7 @@ namespace {
 
 bool make_buffer(gosPostProcess::VkPostSsaoNative* s, VkDeviceSize size,
                  VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
-                 const char* name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
@@ -559,7 +559,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod,
                                  VkPipelineLayout layout, VkRenderPass rpass,
                                  int vw, int vh, bool multiplyBlend,
-                                 VkPipeline* out, const char* name) -> bool {
+                                 VkPipeline* out, std::string_view name) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";

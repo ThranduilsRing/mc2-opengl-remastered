@@ -483,24 +483,15 @@ void VulkanContext::logHealth() const {
 
 bool debugNamesEnabled() { return g_debugNames; }
 
-void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, const char* name) {
-    if (!g_debugNames || device == VK_NULL_HANDLE || handle == 0 || !name || !vkSetDebugUtilsObjectNameEXT) return;
+void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name) {
+    if (!g_debugNames || device == VK_NULL_HANDLE || handle == 0 || !vkSetDebugUtilsObjectNameEXT) return;
+    const std::string terminated(name);
     VkDebugUtilsObjectNameInfoEXT info{};
     info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
     info.objectType = type;
     info.objectHandle = handle;
-    info.pObjectName = name;
+    info.pObjectName = terminated.c_str();
     vkSetDebugUtilsObjectNameEXT(device, &info);
-}
-
-void setObjectNamef(VkDevice device, VkObjectType type, uint64_t handle, const char* fmt, ...) {
-    if (!g_debugNames) return;
-    char buf[128];
-    va_list ap;
-    va_start(ap, fmt);
-    std::vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    setObjectName(device, type, handle, buf);
 }
 
 VulkanContext& getOrCreateEngineVulkanContext() {
