@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 14972,
+  "code": 14970,
   "mclib": 32412,
   "shaders": 2980
  },
@@ -175,7 +175,7 @@
   "code/logisticsdata_inventory.cpp": 8,
   "code/logisticsdata_modify.cpp": 8,
   "code/logisticsdata_save.cpp": 16,
-  "code/logisticsdialog.cpp": 423,
+  "code/logisticsdialog.cpp": 421,
   "code/logisticsmechdisplay.cpp": 20,
   "code/logisticsmechicon.cpp": 8,
   "code/logisticsmissioninfo.cpp": 23,
@@ -652,8 +652,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "d24168a41",
+ "head": "dda2e815f",
  "n": 8,
- "total": 56673,
+ "total": 56671,
  "version": 1
 }
