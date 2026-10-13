@@ -198,14 +198,13 @@ void ControlGui::toggleChat(bool isTeamOnly)
 	bChatting ^= 1;
 	if ( !bChatting && MPlayer ) // over -- broadcast messages
 	{
-		EString tmp;
-		personalEdit.getEntry( tmp );
+		std::string tmp = personalEdit.entry();
 
-		if ( tmp.Length() )
+		if ( !tmp.empty() )
 		{
 		
 			char team = chatIsTeamOnly ? MPlayer->getPlayerInfo( MPlayer->commanderID )->team : -1;
-			MPlayer->sendChat(nullptr, team, (char*)(const char*)tmp);
+			MPlayer->sendChat(nullptr, team, tmp.data());    // writable C string, used inside the call
 		}
 		personalEdit.setFocus( 0 );
 	}

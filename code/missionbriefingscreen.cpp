@@ -278,9 +278,9 @@ void MissionBriefingScreen::update()
 
 		if ( ID != -1  )
 		{
-			if ( objectiveModels[ID].Length() )
+			if ( !objectiveModels[ID].empty() )
 			{
-				camera.setObject( objectiveModels[ID], modelTypes[ID], modelColors[ID][0],
+				camera.setObject( objectiveModels[ID].c_str(), modelTypes[ID], modelColors[ID][0],
 					modelColors[ID][1], modelColors[ID][2] );
 
 				camera.setScale( modelScales[ID] );
@@ -348,10 +348,10 @@ void MissionBriefingScreen::update()
 				missionListBox.GetItem( selItem )->setColor( 0xffff0000 );
 				if ( objectiveButtons[ID] )
 					objectiveButtons[ID]->setColor( 0xffff0000 );
-				camera.setObject( objectiveModels[ID], modelTypes[ID], modelColors[ID][0],
+				camera.setObject( objectiveModels[ID].c_str(), modelTypes[ID], modelColors[ID][0],
 					modelColors[ID][1], modelColors[ID][2]);
 				camera.setScale( modelScales[ID] );
-				if ( objectiveModels[ID].Length() )
+				if ( !objectiveModels[ID].empty() )
 					statics[35].showGUIWindow( 0 );
 				else
 					statics[35].showGUIWindow( 1 );
@@ -600,7 +600,7 @@ void MissionBriefingScreen::begin()
 
 					addLBItem( pObjective->LocalizedDescription().c_str(), 0xffffffff, count );
 
-					objectiveModels[count] = pObjective->ModelName().c_str();
+					objectiveModels[count] = pObjective->ModelName();
 					modelTypes[count] = pObjective->ModelType();
 
 					modelColors[count][0] = pObjective->ModelBaseColor();

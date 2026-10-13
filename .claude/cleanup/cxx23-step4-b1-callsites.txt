@@ -1,37 +1,31 @@
 # EString call sites from a [[deprecated]] build of the old API (tests/analyze/estring_callsites.py); a batch commit removes its rows.
-# total 308 sites in 42 files
+# total 267 sites in 32 files
 # per kind:
-#     127  EString::Data
-#      78  EString::operator ECHARPTR
-#      69  EString::Format
+#     126  EString::Data
+#      66  EString::Format
+#      58  EString::operator ECHARPTR
 #      10  EString::operator ==
-#       8  EString::MakeUpper
-#       5  EString::Compare
-#       5  EString::Remove
 #       3  EString::operator !=
+#       2  EString::Remove
 #       1  EString::Find
-#       1  EString::MakeLower
 #       1  EString::Insert
 # per batch (files that name the type, cxx23-step4-b1-files.json):
-#      41  B1.5
 #     135  B1.6
 #      26  B1.7
 #      49  B6
-# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 57 in 9 files
+# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 57 in 8 files
 #      17  gui/aanim.cpp
 #      13  gui/aedit.cpp
 #       9  editor/EditorData_save.cpp
 #       6  editor/EditorInterface_terrain.cpp
 #       6  gui/alistbox.cpp
-#       3  gui/asystem.cpp
-#       1  code/mainmenu.cpp
+#       4  gui/asystem.cpp
 #       1  editor/BeautySidecarPreview.cpp
 #       1  gui/alistbox.h
 # per file:
 #      43  editor/Objective.cpp
 #      26  editor/ObjectiveDlg.cpp
 #      24  editor/Objective_actions.cpp
-#      20  code/mechlopedia.cpp
 #      17  gui/aanim.cpp
 #      16  code/mpsetuparea.cpp
 #      15  editor/Objective_conditions.cpp
@@ -46,38 +40,21 @@
 #       6  editor/Objective.h
 #       6  editor/TargetAreaDlg.cpp
 #       6  gui/alistbox.cpp
-#       5  code/infowindow.cpp
 #       5  code/mpconnectiontype.cpp
-#       4  code/mechlabscreen.cpp
 #       4  code/mploadmap.cpp
 #       4  code/mpparameterscreen.cpp
 #       4  editor/EditorData_tacmap.cpp
-#       3  code/mechlistbox.cpp
-#       3  code/pilotreadyscreen.cpp
+#       4  gui/asystem.cpp
 #       3  editor/ObjectivesDlg.cpp
-#       3  gui/asystem.cpp
-#       2  code/missionbriefingscreen.cpp
-#       2  code/simplecomponentlistbox.cpp
 #       2  editor/ChooseBuildingDlg.cpp
 #       2  editor/ChooseUnitDlg.cpp
 #       2  editor/EditorObjectMgr_io.cpp
 #       2  editor/Objective_internal.h
-#       1  code/chatwindow.cpp
-#       1  code/controlgui_chat.cpp
-#       1  code/mainmenu.cpp
 #       1  code/mphostgame.cpp
 #       1  code/mploadmap.h
 #       1  code/mpprefs.h
 #       1  editor/BeautySidecarPreview.cpp
 #       1  gui/alistbox.h
-# blob 3009e4e740ce0a385955249cfc11cfeeb964f576 code/chatwindow.cpp
-# blob c1381f2971ba7cfd3550ab004a4ae45bea13e3cd code/controlgui_chat.cpp
-# blob ae1995d1705feb04296d5c00fecbb7968c2b9c89 code/infowindow.cpp
-# blob f8f36a2ce98d5b64a8566d1f89e4846f0948fdc8 code/mainmenu.cpp
-# blob 25a9c13b6f3a356eb39ecbf7bf3846c3bdd05b81 code/mechlabscreen.cpp
-# blob ed3cc70c0b88604408685b8ca0710ce692618fbf code/mechlistbox.cpp
-# blob 176d03379a5c90b2af92d69fec3544310caad60d code/mechlopedia.cpp
-# blob 9ef17fbf84a01bafc3d592bee6a1fa90467bcce8 code/missionbriefingscreen.cpp
 # blob 6555a71866405bdaee5871d3026b0d4c4ba758da code/mpconnectiontype.cpp
 # blob 8ba431450c640fc04ba8ca7c615fc59e01dd2ed6 code/mpgamebrowser.cpp
 # blob 656f75b4ecdcd75116f9ca909159ef1010e982c5 code/mphostgame.cpp
@@ -87,8 +64,6 @@
 # blob 7f974973296dc9d27d051bbe60f65eb15c291bde code/mpprefs.cpp
 # blob 2b3a2135e3a99719c46d7a20f18c816dee27a892 code/mpprefs.h
 # blob 44873f27ef6768c9f8c4241f02f2a15a0401839d code/mpsetuparea.cpp
-# blob a5ea64f8be0b0bf95725383b0c6a46c51a547c08 code/pilotreadyscreen.cpp
-# blob f9ab422e07df69ede9d34e7b442bf30e00d562ae code/simplecomponentlistbox.cpp
 # blob 465ef39e11e6682d426f67ce04ac942b24a47605 editor/BeautySidecarPreview.cpp
 # blob 4a7384d4960d36bdb47b0784f3c6eb0312547086 editor/CampaignData.cpp
 # blob 32ba9b5f7f678c0864b2f95ebbcef00454d6dd97 editor/ChooseBuildingDlg.cpp
@@ -111,45 +86,8 @@
 # blob 9141cfafbbcd405fafdc2f15628cb5d801377d7e gui/aedit.cpp
 # blob ef34efdc94fac2c261fd223d6906b363c332f882 gui/alistbox.cpp
 # blob 7cc05c8f3ea7576da1d00e9b1aa3bb82859eaa0f gui/alistbox.h
-# blob e7befd659d8e4312e5fa76ceb5c28130a3cb3527 gui/asystem.cpp
+# blob 6306ad7160d8610cd9eabd176a16c27af66e9294 gui/asystem.cpp
 # file:line:kind
-code/chatwindow.cpp:224:operator ECHARPTR
-code/controlgui_chat.cpp:200:operator ECHARPTR
-code/infowindow.cpp:1268:Format
-code/infowindow.cpp:1269:Data
-code/infowindow.cpp:1448:Format
-code/infowindow.cpp:1449:operator ECHARPTR
-code/infowindow.cpp:1562:operator ECHARPTR
-code/mainmenu.cpp:883:operator ECHARPTR
-code/mechlabscreen.cpp:424:operator ECHARPTR
-code/mechlabscreen.cpp:554:Compare
-code/mechlabscreen.cpp:1155:operator ECHARPTR
-code/mechlabscreen.cpp:1194:operator ECHARPTR
-code/mechlistbox.cpp:598:Compare
-code/mechlistbox.cpp:603:Compare
-code/mechlistbox.cpp:609:Compare
-code/mechlopedia.cpp:451:MakeUpper
-code/mechlopedia.cpp:452:operator ECHARPTR
-code/mechlopedia.cpp:569:operator ECHARPTR
-code/mechlopedia.cpp:576:operator ECHARPTR
-code/mechlopedia.cpp:690:MakeUpper
-code/mechlopedia.cpp:801:MakeUpper
-code/mechlopedia.cpp:1054:MakeUpper
-code/mechlopedia.cpp:1055:operator ECHARPTR
-code/mechlopedia.cpp:1081:MakeUpper
-code/mechlopedia.cpp:1316:MakeUpper
-code/mechlopedia.cpp:1317:operator ECHARPTR
-code/mechlopedia.cpp:1328:Compare
-code/mechlopedia.cpp:1537:MakeUpper
-code/mechlopedia.cpp:1539:Remove
-code/mechlopedia.cpp:1541:Remove
-code/mechlopedia.cpp:1546:operator ECHARPTR
-code/mechlopedia.cpp:1549:operator ECHARPTR
-code/mechlopedia.cpp:1562:operator ECHARPTR
-code/mechlopedia.cpp:1586:MakeUpper
-code/mechlopedia.cpp:1589:Remove
-code/missionbriefingscreen.cpp:283:operator ECHARPTR
-code/missionbriefingscreen.cpp:351:operator ECHARPTR
 code/mpconnectiontype.cpp:644:operator ECHARPTR
 code/mpconnectiontype.cpp:768:Find
 code/mpconnectiontype.cpp:797:operator ECHARPTR
@@ -199,11 +137,6 @@ code/mpsetuparea.cpp:533:Data
 code/mpsetuparea.cpp:546:Data
 code/mpsetuparea.cpp:801:Data
 code/mpsetuparea.cpp:813:Data
-code/pilotreadyscreen.cpp:802:MakeLower
-code/pilotreadyscreen.cpp:803:operator ECHARPTR
-code/pilotreadyscreen.cpp:812:operator ECHARPTR
-code/simplecomponentlistbox.cpp:156:Format
-code/simplecomponentlistbox.cpp:157:operator ECHARPTR
 editor/BeautySidecarPreview.cpp:46:Data
 editor/CampaignData.cpp:135:Format
 editor/CampaignData.cpp:136:Data
@@ -418,6 +351,7 @@ gui/alistbox.cpp:1353:operator ECHARPTR
 gui/alistbox.cpp:1359:operator ECHARPTR
 gui/alistbox.cpp:1375:operator ECHARPTR
 gui/alistbox.h:134:operator ECHARPTR
-gui/asystem.cpp:1071:operator ECHARPTR
-gui/asystem.cpp:1075:operator ECHARPTR
-gui/asystem.cpp:1130:operator ECHARPTR
+gui/asystem.cpp:1068:operator ECHARPTR
+gui/asystem.cpp:1077:operator ECHARPTR
+gui/asystem.cpp:1081:operator ECHARPTR
+gui/asystem.cpp:1136:operator ECHARPTR

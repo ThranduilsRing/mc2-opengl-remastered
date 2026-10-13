@@ -215,13 +215,13 @@ void ChatWindow::update()
 	{
 		if ( bFocused )
 		{
-			EString text;
-			edits[0].getEntry( text );
+			std::string text = edits[0].entry();
 			int team = getButton( MP_CHAT_TEAMONLY )->isPressed() ? 
 				MPlayer->getPlayerInfo( MPlayer->commanderID )->team : -1;
-			if ( text.Length() )
+			if ( !text.empty() )
 			{
-				MPlayer->sendChat( nullptr, team, (char*)(const char*)text );
+				// sendChat takes a writable C string and uses it inside the call.
+				MPlayer->sendChat( nullptr, team, text.data() );
 			}
 			edits[0].setEntry( "" );
 			edits[0].setFocus( false );

@@ -383,7 +383,7 @@ void MechLabScreen::begin()
 	setDefsElementText( "game.mcl_mc.text.cbills_text", text );
 
 
-	variantList.EditBox().getEntry(varName);
+	varName = variantList.EditBox().entry();
 
 	if ( pVariant->getChassis()->jumpJetsAllowed() )
 	{
@@ -421,7 +421,7 @@ void MechLabScreen::update()
 	};
 	for ( const auto& m : s_textDefsMap )
 		if ( m.idx < textCount )
-			setDefsElementText( m.key, std::string( (const char*)textObjects[m.idx].text ) );
+			setDefsElementText( m.key, textObjects[m.idx].textString() );
 
 	// Swap the weapon-info ICON set to match the selected component type, the way
 	// the legacy code toggled statics[] in setComponent()/showJumpJetItems(). The
@@ -549,9 +549,8 @@ void MechLabScreen::update()
 	}
 
 	// see if the variant changed
-	EString tmp;
-	variantList.EditBox().getEntry(tmp);
-	if ( varName.Compare( tmp ) != 0 )
+	const std::string tmp = variantList.EditBox().entry();
+	if ( !mc2::str::iequals( varName, tmp ) )
 	{
 		swapVariant();
 	}
@@ -1150,9 +1149,9 @@ void MechLabScreen::updateArmorMeter()
 void MechLabScreen::swapVariant()
 {
 	// variant changed
-	variantList.EditBox().getEntry(varName);
+	varName = variantList.EditBox().entry();
 
-	LogisticsVariant* pNewVariant = LogisticsData::instance->getVariant( varName );
+	LogisticsVariant* pNewVariant = LogisticsData::instance->getVariant( varName.c_str() );
 	if ( pVariant && pNewVariant)
 	{
 		std::string oldName = pVariant->getName();
@@ -1191,7 +1190,7 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 				else
 				{				
 					// see if it's the same as the current variant...
-					LogisticsVariant* pCurVar = LogisticsData::instance->getVariant( varName );
+					LogisticsVariant* pCurVar = LogisticsData::instance->getVariant( varName.c_str() );
 					if ( pCurVar && *pCurVar == *pVariant )
 					{
 						LogisticsData::instance->acceptMechModificationsUseOldVariant( pCurVar->getName().c_str() );

@@ -147,7 +147,7 @@
    "LG06": 452,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2312,
+   "LG09": 2308,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -1710,7 +1710,7 @@
   "code/chatwindow.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 5,
+   "LG09": 4,
    "LG12b": 2
   },
   "code/chatwindow.h": {
@@ -1764,7 +1764,7 @@
   "code/controlgui_chat.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 2,
+   "LG09": 1,
    "LG11": 1
   },
   "code/controlgui_hudtabs.cpp": {
@@ -2409,7 +2409,7 @@
   "code/mechlabscreen.cpp": {
    "LG03": 4,
    "LG05": 7,
-   "LG09": 8,
+   "LG09": 7,
    "LG11": 1
   },
   "code/mechlabscreen.h": {
@@ -2847,7 +2847,7 @@
   },
   "code/pilotreadyscreen.cpp": {
    "LG03": 5,
-   "LG09": 7,
+   "LG09": 6,
    "LG12b": 10
   },
   "code/pilotreviewarea.cpp": {
@@ -5184,7 +5184,7 @@
    "LG20": 2
   }
  },
- "head": "ec1e72abb",
+ "head": "8300da27d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

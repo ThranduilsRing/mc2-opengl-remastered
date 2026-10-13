@@ -13,6 +13,7 @@ SimpleComponentListBox.cpp			: Implementation of the SimpleComponentListBox comp
 #include"logisticsdata.h"
 #include"cmponent.h"
 #include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
+#include "mc2fmt.h"
 
 //-------------------------------------------------------------------------------------------------
 ComponentListBox::ComponentListBox()
@@ -135,8 +136,6 @@ void ComponentListBox::setComponents( long componentCount, LogisticsComponent** 
 
 			if ( finalList[0] )
 			{
-				EString str;
-				
 				// add the header
 				// no more headers, keeping code just in case
 //				aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
@@ -153,8 +152,7 @@ void ComponentListBox::setComponents( long componentCount, LogisticsComponent** 
 					aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
 					if ( finalList[j]->getType() != COMPONENT_FORM_JUMPJET )
 					{
-						str.Format( "%d/%d %s", finalListCount[j],  finalListCount[j], finalList[j]->getName() );
-						textItem->setText( str );
+						textItem->setText( std::format( "{:d}/{:d} {}", mc2::fmt::as_i32( finalListCount[j] ), mc2::fmt::as_i32( finalListCount[j] ), mc2::fmt::safe( finalList[j]->getName() ) ) );
 					}
 					else
 						textItem->setText( finalList[j]->getName()  );
