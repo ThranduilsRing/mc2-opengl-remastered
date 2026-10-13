@@ -52,12 +52,12 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 118,
-   "LG06": 497,
+   "LG06": 498,
    "LG07": 0,
    "LG08": 266,
    "LG09": 1996,
    "LG10": 39,
-   "LG11": 102,
+   "LG11": 103,
    "LG12a": 95,
    "LG12b": 30,
    "LG13": 315,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 44
+   "LG20": 45
   }
  },
  "dirs": [
@@ -1120,6 +1120,10 @@
   },
   "GameOS/gameos/visual_tuning_profile.h": {
    "LG06": 1
+  },
+  "GameOS/gameos/vk_device_profile.h": {
+   "LG06": 1,
+   "LG11": 1
   },
   "GameOS/gameos/vk_feed_dump.h": {
    "LG06": 1
@@ -5178,13 +5182,13 @@
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 40
+   "LG20": 41
   },
   "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
    "LG20": 2
   }
  },
- "head": "8300da27d",
+ "head": "cc05eaf6d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
