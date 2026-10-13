@@ -259,5 +259,6 @@
   "tools/witness_smoke.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/tests/test_contract_coverage.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_raw_gl_firewall.py": "Pytest-discovered module through the scripts_tests board row.",
-  "scripts/tests/test_deploy_disk_space.py": "Pytest-discovered module through the scripts_tests board row."
+  "scripts/tests/test_deploy_disk_space.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_delivery_gate_defaults.py": "Pytest-discovered module through the scripts_tests board row."
 }
