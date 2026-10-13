@@ -71,6 +71,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     c.descriptorBindingPartiallyBound = f12.descriptorBindingPartiallyBound == VK_TRUE;
     c.dynamicRendering = (core13 ? f13.dynamicRendering : dr.dynamicRendering) == VK_TRUE;
     c.synchronization2 = (core13 ? f13.synchronization2 : s2.synchronization2) == VK_TRUE;
+    c.independentBlend = f2.features.independentBlend == VK_TRUE;
     return c;
 }
 

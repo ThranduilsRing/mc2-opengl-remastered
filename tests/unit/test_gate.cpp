@@ -1526,6 +1526,7 @@ vkp::DeviceCaps fullCaps() {
     c.timelineSemaphore = c.bufferDeviceAddress = c.descriptorIndexing = c.runtimeDescriptorArray = true;
     c.shaderSampledImageArrayNonUniformIndexing = c.descriptorBindingPartiallyBound = true;
     c.dynamicRendering = c.synchronization2 = true;
+    c.independentBlend = true;
     c.maxImageDimension2D = 16384;
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
@@ -1609,7 +1610,7 @@ TEST_CASE("vk profile: a 1.2 device without the KHR extensions is refused and ge
     CHECK_FALSE(bit.accepted);
 }
 
-TEST_CASE("vk profile: each of the five facilities is required (owner ruling 2026-10-13)") {
+TEST_CASE("vk profile: each of the five facilities of the owner ruling, and independent blend, is required") {
     struct Row { const char* id; void (*drop)(vkp::DeviceCaps&); };
     const Row rows[] = {
         {"timeline_semaphore", [](vkp::DeviceCaps& c) { c.timelineSemaphore = false; }},
@@ -1617,6 +1618,7 @@ TEST_CASE("vk profile: each of the five facilities is required (owner ruling 202
         {"descriptor_indexing", [](vkp::DeviceCaps& c) { c.descriptorIndexing = false; }},
         {"dynamic_rendering", [](vkp::DeviceCaps& c) { c.dynamicRendering = false; }},
         {"synchronization2", [](vkp::DeviceCaps& c) { c.synchronization2 = false; }},
+        {"independent_blend", [](vkp::DeviceCaps& c) { c.independentBlend = false; }},
     };
     for (const Row& r : rows) {
         vkp::DeviceCaps c = fullCaps();
@@ -1711,8 +1713,9 @@ TEST_CASE("vk profile: the line names the device, both versions, what is missing
     const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
     CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
                   "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-                  "dynamic_rendering:core,synchronization2:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,"
-                  "runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2 "
+                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,"
+                  "descriptorIndexing,runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,"
+                  "synchronization2,independentBlend "
                   "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
     CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);

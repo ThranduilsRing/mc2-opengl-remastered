@@ -68,6 +68,9 @@ struct DeviceCaps {
     bool descriptorBindingPartiallyBound = false;
     bool dynamicRendering = false;
     bool synchronization2 = false;
+    // A core 1.0 feature (VkPhysicalDeviceFeatures): the terrain, water, VFX and legacy-shape pipelines write two colour attachments with a different blend
+    // state each (blended colour, untouched normal / object-id target), which is invalid without it.
+    bool independentBlend = false;
     // Limits.
     uint32_t maxImageDimension2D = 0;
     uint32_t maxBoundDescriptorSets = 0;
@@ -104,7 +107,7 @@ struct Evaluation {
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                                "dynamic_rendering", "synchronization2", "memory_budget"};
+                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
@@ -170,6 +173,11 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     add("synchronization2", Need::Required, s2 != Route::None, s2);
     if (s2 != Route::None) e.enabledFeatures.push_back("synchronization2");
     if (s2 == Route::Ext) e.deviceExtensions.emplace_back(kExtSynchronization2);
+
+    // Required since the first validation run of the Vulkan smoke tier: the islands' two-attachment pipelines blend the colour attachment only.
+    const bool independentBlend = c.independentBlend;
+    add("independent_blend", Need::Required, independentBlend, Route::Core);
+    if (independentBlend) e.enabledFeatures.push_back("independentBlend");
 
     // Optional: the VRAM report is the driver's number when the device has it and VMA's own estimate when it does not.
     const bool budget = c.hasExtension(kExtMemoryBudget);

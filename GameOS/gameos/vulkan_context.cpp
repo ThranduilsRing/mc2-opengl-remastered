@@ -346,10 +346,11 @@ bool VulkanContext::init(bool wantPresent) {
     std::vector<const char*> devExts;
     for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
 
-    // The feature bits the profile selected. All of them are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
-    // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2), so an accepted device has every one and no
-    // island carries a fallback arm for it; no island consumes any of them yet, they are enabled because the ruling requires them. Each bit goes through
-    // the struct that defines it (the core 1.2 / 1.3 aggregate when the route is core, the KHR struct otherwise).
+    // The feature bits the profile selected. Seven are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
+    // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2) and enabled although no island consumes them
+    // yet; independentBlend is required because the islands' two-attachment pipelines already need it. An accepted device has every one and no island
+    // carries a fallback arm for any. Each bit goes through the struct that defines it (the core 1.0 features, the core 1.2 / 1.3 aggregate when the
+    // route is core, the KHR struct otherwise).
 
     VkPhysicalDeviceFeatures2 enableFeatures{};
     enableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -362,6 +363,7 @@ bool VulkanContext::init(bool wantPresent) {
     VkPhysicalDeviceSynchronization2FeaturesKHR enS2{};
     enS2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
     {
+        enableFeatures.features.independentBlend = featureEnabled("independentBlend") ? VK_TRUE : VK_FALSE;
         en12.timelineSemaphore = featureEnabled("timelineSemaphore") ? VK_TRUE : VK_FALSE;
         en12.bufferDeviceAddress = featureEnabled("bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
         en12.descriptorIndexing = featureEnabled("descriptorIndexing") ? VK_TRUE : VK_FALSE;

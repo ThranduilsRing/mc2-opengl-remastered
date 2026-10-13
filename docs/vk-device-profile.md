@@ -21,16 +21,18 @@ facility deletes the older arm instead of keeping it.
 | `descriptor_indexing` | required | core 1.2: the umbrella bit plus `runtimeDescriptorArray`, `shaderSampledImageArrayNonUniformIndexing`, `descriptorBindingPartiallyBound` | device refused |
 | `dynamic_rendering` | required | core 1.3 when device and instance have it, else `VK_KHR_dynamic_rendering` | device refused |
 | `synchronization2` | required | core 1.3 when device and instance have it, else `VK_KHR_synchronization2` | device refused |
+| `independent_blend` | required | core 1.0 feature `independentBlend` | device refused |
 | `memory_budget` | optional | `VK_EXT_memory_budget` | the VRAM line is VMA's own estimate, not the OS's number (reported in `wanted_missing`, never a refusal) |
 
 ## What the context keeps and enables
 
 The context keeps the `Evaluation` of the device it chose: `VulkanContext::profile()`, with `featureEnabled(name)` and `route(item)`. An island asks the ROUTE of a
 facility (core, or the KHR extension on a 1.2 device, where the entry points to load differ) and whether the optional memory budget is on; it never asks
-whether a required facility exists. The eight feature bits that are enabled are exactly the ones the ruling requires: `timelineSemaphore`,
-`bufferDeviceAddress`, `descriptorIndexing` with the three bits that define the bindless table (`runtimeDescriptorArray`,
-`shaderSampledImageArrayNonUniformIndexing`, `descriptorBindingPartiallyBound`), `dynamicRendering` and `synchronization2`. No island consumes any of them yet:
-they are on because the ruling requires them, and a bit nothing requires is not enabled. The device extensions enabled are the ones on the `extensions=` list of
+whether a required facility exists. Nine feature bits are enabled. Eight are the ones the ruling requires: `timelineSemaphore`, `bufferDeviceAddress`,
+`descriptorIndexing` with the three bits that define the bindless table (`runtimeDescriptorArray`, `shaderSampledImageArrayNonUniformIndexing`,
+`descriptorBindingPartiallyBound`), `dynamicRendering` and `synchronization2`; no island consumes them yet, they are on because the ruling requires them.
+The ninth, `independentBlend`, has consumers today: the terrain, water, VFX and legacy-shape pipelines write two colour attachments with different blend states,
+which the validation layer flagged as invalid without it (first run of the validation tier). A bit nothing requires and nothing uses is not enabled. The device extensions enabled are the ones on the `extensions=` list of
 the line (the swapchain of a present window, the KHR routes on a 1.2 device, the memory budget), read from the context's one enumeration of the device.
 
 ## Hardware floor (owner ruling 2026-10-13)
