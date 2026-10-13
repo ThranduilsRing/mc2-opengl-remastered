@@ -43,16 +43,25 @@ Usage:
   Cases: gen_map_basic, foliage_present, foliage_missing, foliage_garbage (default: all)
 """
 import argparse
+import difflib
+import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
 import time
+import zlib
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import host_lease  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402
 
 DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.4\Mission Editor.exe"
 
@@ -63,6 +72,364 @@ MINIMIZED = True
 # caught by rc!=0 (the editor exit(1)s under -exit-on-load-fail).
 CRASH_TOKENS = ("unhandled exception", "access violation", "stack overflow", "fatal error")
 REPO = Path(__file__).resolve().parents[1]
+STOCK_MISSIONS = tuple(f"mc2_{n:02}" for n in range(1, 25))
+WORKFLOW_PANELS = {
+    "PaintMaterial": "terrain_paint", "AssetBrowser": "object_placement",
+    "Inspector": "teams_abl", "UnitBrain": "teams_abl",
+    "ObjectivesSummary": "objectives", "CampaignOverview": "campaign_links",
+    "MissionWriter": "mission_export",
+}
+MODEL_ONLY = {"ObjectivesSummary", "CampaignOverview"}
+BASELINE = REPO / "tests/smoke/editor/roundtrip-baseline.json"
+
+
+def read_json_object(path: Path) -> dict:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"expected a JSON object: {path}")
+    return data
+
+
+def parse_panels(text: str) -> dict:
+    """Facts from the main-thread probes; duplicate IPC copies must agree."""
+    panels = {}
+    for line in text.splitlines():
+        if not line.startswith("[EDITOR_PANEL v1] "):
+            continue
+        fields = dict(re.findall(r"(\w+)=([^\s]+)", line))
+        name = fields.get("panel", "")
+        if name in panels and panels[name] != fields:
+            raise ValueError(f"conflicting panel facts: {name}")
+        panels[name] = fields
+    return panels
+
+
+def grade_workflows(text: str) -> str:
+    try:
+        panels = parse_panels(text)
+    except ValueError as exc:
+        return str(exc)
+    failures = []
+    for panel, workflow in WORKFLOW_PANELS.items():
+        fields = panels.get(panel, {})
+        coverage = "model-only" if panel in MODEL_ONLY else "action-handler"
+        reached = "0" if panel in MODEL_ONLY else "1"
+        if (fields.get("workflow") != workflow or fields.get("reached") != reached
+                or fields.get("coverage") != coverage or fields.get("ok") != "1"
+                or any(fields.get(key) != "1" for key in ("authored", "undo", "saved", "reloaded"))):
+            failures.append(f"{workflow}/{panel}: missing or unsuccessful probe")
+    return "; ".join(failures)
+
+
+def fit_fields(data: bytes) -> dict:
+    """Diagnostic field census, preserving duplicate keys and array continuations."""
+    fields = {}
+    section = "preamble"
+    key = None
+    for line in data.decode("latin-1").splitlines():
+        line = line.strip()
+        if not line or line.startswith("//"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section, key = line[1:-1], None
+            continue
+        match = re.match(r"(\w+(?:\[\d+\])?)\s+(\w+)\s*=\s*(.*)", line)
+        if match:
+            kind, name, value = match.groups()
+            key = f"{section}/{name}"
+            fields.setdefault(key, []).append(f"{kind} {value}")
+        elif key and line not in ("FITini", "FitEnd"):
+            fields[key][-1] += " " + line
+    return fields
+
+
+def compare_fit(original: bytes, written: bytes) -> dict:
+    """Byte equality is authoritative; the field census only explains findings."""
+    size = sum(a != b for a, b in zip(original, written)) + abs(len(original) - len(written))
+    before, after = fit_fields(original), fit_fields(written)
+    removed = sorted(before.keys() - after.keys())
+    added = sorted(after.keys() - before.keys())
+    changed = sorted(k for k in before.keys() & after.keys() if before[k] != after[k])
+    if not size:
+        explanation = "Exact byte match."
+    else:
+        explanations = []
+        if original.replace(b"\r\n", b"\n").replace(b"\r", b"") == written.replace(b"\r\n", b"\n").replace(b"\r", b""):
+            explanations.append("Line-ending normalization only")
+        for label, keys in (("removed", removed), ("added", added), ("changed", changed)):
+            if keys:
+                sections = sorted({key.split("/", 1)[0] for key in keys})
+                explanations.append(f"{label} {len(keys)} fields in {', '.join(sections)}")
+        if not explanations:
+            explanations.append("Formatting, section ordering or non-field text changed")
+        explanation = "FINDING: " + "; ".join(explanations) + ". Full keys and text diff in evidence."
+    classes = {}
+    for key in removed + added + changed:
+        section, name = key.split("/", 1)
+        old, new = before.get(key), after.get(key)
+        lossless = False
+        label = "Unclassified fields"
+        if old and new and len(old) == len(new) == 1:
+            old_kind, old_value = old[0].split(" ", 1)
+            new_kind, new_value = new[0].split(" ", 1)
+            if old_kind == new_kind and old_kind in ("f", "l", "ul", "s", "us", "uc"):
+                try:
+                    lossless = Decimal(old_value) == Decimal(new_value)
+                except InvalidOperation:
+                    pass
+            if lossless:
+                label = "Number formatting"
+        if not lossless:
+            if section == "Cameras":
+                label = "Cameras"
+            elif re.fullmatch(r"Part\d+", section) and name in ("ControlDataType", "ObjectProfile"):
+                label = "Part control/profile"
+            elif re.fullmatch(r"Part\d+", section) and name == "CSVFile":
+                lossless = bool(old and new and [s.casefold() for s in old] == [s.casefold() for s in new])
+                label = "Part CSV spelling" if lossless else "Part CSV value"
+            elif re.fullmatch(r"NavMarker\d+", section):
+                label = "NavMarker coordinates"
+            elif "Objective" in section and "Condition" in section and name in ("PositionX", "PositionY"):
+                label = "Objective condition coordinates"
+            elif re.fullmatch(r"Team\d+Objective\d+", section) and name == "ModelType":
+                label = "Objective ModelType"
+        fact = classes.setdefault(label, dict(name=label, semantic=False, fields=[]))
+        fact["semantic"] |= not lossless
+        fact["fields"].append(key)
+    if size and not classes:
+        classes["Text formatting/order"] = dict(name="Text formatting/order", semantic=False, fields=[])
+    classification = "byte-identical" if not size else ("semantic" if any(c["semantic"] for c in classes.values()) else "lossless-only")
+    return dict(byte_identical=(original == written), diff_size=size,
+                input_size=len(original), output_size=len(written),
+                input_sha256=hashlib.sha256(original).hexdigest(),
+                output_sha256=hashlib.sha256(written).hexdigest(),
+                removed=removed, added=added, changed=changed, explanation=explanation,
+                classes=list(classes.values()), classification=classification)
+
+
+class StockInputs:
+    """Stock archive bytes pin the input; loose overrides fail instead of hiding mods."""
+    def __init__(self, deploy: Path):
+        self.deploy = deploy
+        self.entries = {e[3].lower().replace("\\", "/"): e for e in fst_entries(deploy / "mission.fst")}
+
+    def read(self, relative: str) -> bytes:
+        entry = self.entries[relative.lower()]
+        off, comp, real, _, is_lz, archive = entry
+        try:
+            data = decompress_entry(off, comp, real, is_lz, archive)
+        except zlib.error as exc:
+            raise ValueError(f"stock archive decompression failed: {relative}") from exc
+        if len(data) != real:
+            raise ValueError(f"stock archive length mismatch: {relative}")
+        loose = self.deploy / relative
+        if loose.exists() and loose.read_bytes() != data:
+            raise ValueError(f"stock input shadowed by loose override: {relative}")
+        return data
+
+
+def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None = None) -> dict:
+    """Audit the complete VFS namespace, including shadows outside mission.fst.
+
+    Allowances name exact bytes and a reason; a path-only exemption cannot hide
+    a changed catalog. Unknown loose data also needs an explicit allowance.
+    """
+    allowlist = allowlist or {}
+    archives, resolved = {}, {}
+    system = fit_fields((deploy / "system.cfg").read_bytes())
+    count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
+    if {key for key in system if key.startswith("FastFiles/File")} != {f"FastFiles/File{n}" for n in range(count)}:
+        raise ValueError("FastFiles count/entries disagree")
+    for key, values in system.items():
+        if key.startswith("systemPaths/") and key.lower().endswith("path"):
+            value = values[0].split(" ", 1)[1].strip('"').replace("\\", "/")
+            if not value.lower().startswith("data/") or ".." in Path(value).parts:
+                raise ValueError(f"non-stock data path in system.cfg: {key}={value}")
+    for index in range(count):
+        name = system[f"FastFiles/File{index}"][0].split(" ", 1)[1].strip('"')
+        archive = deploy / name
+        if archive.parent != deploy or archive.suffix.lower() != ".fst":
+            raise ValueError(f"invalid stock archive path: {name}")
+        archive_hash = hashlib.sha256(archive.read_bytes()).hexdigest()
+        archives[name] = archive_hash
+        for entry in fst_entries(archive):
+            relative = entry[3].lower().replace("\\", "/")
+            if relative in resolved:
+                continue  # FastFile lookup uses the first matching archive.
+            data = decompress_entry(entry[0], entry[1], entry[2], entry[4], entry[5])
+            if len(data) != entry[2]:
+                raise ValueError(f"stock archive length mismatch: {name}/{relative}")
+            resolved[relative] = dict(path=relative, sha256=hashlib.sha256(data).hexdigest(),
+                                      archive=name, archive_sha256=archive_hash, source="archive")
+    shadows, violations = [], []
+    for loose in sorted((deploy / "data").rglob("*")):
+        if not loose.is_file():
+            continue
+        relative = loose.relative_to(deploy).as_posix().lower()
+        digest = hashlib.sha256(loose.read_bytes()).hexdigest()
+        archived = resolved.get(relative)
+        allowance = allowlist.get(relative, {})
+        allowed = allowance.get("sha256") == digest and bool(allowance.get("reason", "").strip())
+        stock = archived is not None and archived["sha256"] == digest
+        fact = dict(path=relative, sha256=digest, source="loose",
+                    archive=archived["archive"] if archived else None,
+                    archive_sha256=archived["archive_sha256"] if archived else None,
+                    archive_entry_sha256=archived["sha256"] if archived else None,
+                    stock=stock, reason=allowance.get("reason") if allowed else None)
+        shadows.append(fact)
+        resolved[relative] = fact
+        if not stock and not allowed:
+            violations.append(relative)
+    manifest = dict(version=1, system_sha256=hashlib.sha256((deploy / "system.cfg").read_bytes()).hexdigest(),
+                    archives=archives, loose_files=shadows,
+                    resolved=list(sorted(resolved.values(), key=lambda item: item["path"])),
+                    violations=violations)
+    destination.write_bytes((json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode())
+    if violations:
+        raise ValueError(f"non-stock loose data: {', '.join(violations[:12])}; see {destination}")
+    return manifest
+
+
+def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> None:
+    """Replace overlays only in this worktree's scratch runtime; record every change."""
+    scratch = (REPO / "scratch").resolve()
+    deploy = deploy.resolve()
+    data_root = (deploy / "data").resolve()
+    if not deploy.is_relative_to(scratch) or not data_root.is_relative_to(deploy):
+        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime")
+    system = fit_fields((deploy / "system.cfg").read_bytes())
+    count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
+    stock, changes = {}, []
+    for index in range(count):
+        name = system[f"FastFiles/File{index}"][0].split(" ", 1)[1].strip('"')
+        archive = (deploy / name).resolve()
+        if archive.parent != deploy or archive.suffix.lower() != ".fst":
+            raise ValueError(f"invalid archive path: {name}")
+        for entry in fst_entries(archive):
+            relative = entry[3].lower().replace("\\", "/")
+            target = (deploy / relative).resolve()
+            if not target.is_relative_to(data_root):
+                raise ValueError(f"archive entry outside scratch data: {relative}")
+            if relative not in stock:
+                content = decompress_entry(entry[0], entry[1], entry[2], entry[4], entry[5])
+                if len(content) != entry[2]:
+                    raise ValueError(f"archive length mismatch: {relative}")
+                stock[relative] = content
+    for loose in sorted(data_root.rglob("*")):
+        if not loose.is_file():
+            continue
+        if not loose.resolve().is_relative_to(data_root):
+            raise ValueError(f"loose file outside scratch data: {loose}")
+        relative = loose.relative_to(deploy).as_posix().lower()
+        content = loose.read_bytes()
+        digest = hashlib.sha256(content).hexdigest()
+        waiver = allowances.get(relative, {})
+        if waiver.get("sha256") == digest and waiver.get("reason", "").strip():
+            continue
+        if relative in stock and stock[relative] == content:
+            continue
+        changes.append(dict(path=relative, previous_sha256=digest,
+                            action="replace-from-stock" if relative in stock else "remove-nonstock-loose"))
+        loose.unlink()
+    for relative, content in stock.items():
+        target = deploy / relative
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+    destination.write_bytes((json.dumps(dict(changes=changes), indent=2, sort_keys=True) + "\n").encode())
+    print(f"[STOCK_SCRATCH] {len(changes)} loose files removed/replaced; {len(stock)} stock entries materialized")
+
+
+def baseline_fact(row: dict) -> dict:
+    comparison = row.get("roundtrip")
+    return dict(input_sha256=row.get("input_sha256") if not comparison else comparison["input_sha256"],
+                output_sha256=None if not comparison else comparison["output_sha256"],
+                outcome="blocked" if not comparison else ("identical" if comparison["byte_identical"] else "differs"))
+
+
+def gate_baseline(results: list, path: Path, rebaseline: bool, archives: dict, allowances: dict | None = None) -> None:
+    rows = {r["name"].split(":", 1)[1]: r for r in results if r["name"].startswith("stock_roundtrip:")}
+    if not rows:
+        return
+    previous = read_json_object(path) if path.exists() else {}
+    expected = previous.get("missions", {})
+    if not isinstance(expected, dict):
+        raise ValueError(f"invalid baseline missions: {path}")
+    current = {mission: baseline_fact(row) for mission, row in rows.items()}
+    if rebaseline:
+        if set(rows) != set(STOCK_MISSIONS) or any(not r.get("roundtrip") or not r["passed"] for r in rows.values()):
+            raise ValueError("--rebaseline requires all 24 successful fresh comparisons")
+        for mission, fact in current.items():
+            if expected.get(mission) != fact:
+                print(f"[REBASELINE] {mission}: {json.dumps(expected.get(mission))} -> {json.dumps(fact)}")
+        if previous.get("archives") != archives:
+            print(f"[REBASELINE] archives: {json.dumps(previous.get('archives'))} -> {json.dumps(archives)}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes((json.dumps(dict(version=1, reason="E0 stock editor FIT writer floor; exact bytes, no masks.",
+                                         archives=archives, stock_allowlist=allowances or {}, missions=current), indent=2, sort_keys=True) + "\n").encode())
+        return
+    for mission, row in rows.items():
+        if (not row.get("roundtrip") or expected.get(mission) != current[mission]
+                or previous.get("version") != 1 or set(expected) != set(STOCK_MISSIONS) or previous.get("archives") != archives):
+            row.update(passed=False, result_label="FAIL", bucket="roundtrip_baseline_changed",
+                       detail=f"{row.get('detail', '')} Exact baseline mismatch: expected={expected.get(mission)}, observed={current[mission]}; archive identities must agree. Explicit --rebaseline required.")
+
+
+def campaign_groups(data: bytes) -> dict:
+    fields = fit_fields(data)
+    count = int(fields["Campaign/GroupCount"][0].split(" ", 1)[1])
+    groups = {}
+    for group in range(count):
+        missions = int(fields[f"Group{group}/MissionCount"][0].split(" ", 1)[1])
+        if missions <= 0:
+            raise ValueError(f"empty campaign group {group}")
+        groups[group] = [fields[f"Group{group}Mission{n}/FileName"][0].split(" ", 1)[1].strip('"')
+                         for n in range(missions)]
+    if {m for missions in groups.values() for m in missions} != set(STOCK_MISSIONS):
+        raise ValueError("campaign does not cover exactly the 24 stock missions")
+    return groups
+
+
+def write_roundtrip_ledger(path: Path, results: list, groups: dict, evidence: Path, dependency_hash="", baseline=BASELINE):
+    rows = {r["name"].removeprefix("stock_roundtrip:"): r for r in results if r["name"].startswith("stock_roundtrip:")}
+    counts = {name: sum(r.get("roundtrip", {}).get("classification") == name for r in rows.values())
+              for name in ("byte-identical", "lossless-only", "semantic")}
+    unverified = len(STOCK_MISSIONS) - sum(counts.values())
+    # Reviewed writer provenance and artifact decisions survive automatic census refreshes.
+    marker = "\n## Writer findings"
+    previous = path.read_text(encoding="utf-8") if path.exists() else ""
+    notes = marker + previous.split(marker, 1)[1] if marker in previous else ""
+    lines = ["# Editor round-trip ledger (E0)", "",
+             f"Summary: {counts['byte-identical']} byte-identical, {counts['lossless-only']} lossless-only, "
+             f"{counts['semantic']} semantic; {unverified} blocked of 24.", "",
+             "Owner finding: dev `mc2-win64-v0.4` AND golden `mc2-win64-v0.4c` ship non-stock loose "
+             "`data/art/Buildings.csv`, SHA-256 `86153dd5c4793672d35033ce4e8e90a871df8b1e131ccde7e8d61ab1cf083ae9`. "
+             "Neither install was changed. The stock art.fst entry is `3a1b449d5e4336c7e2345ebd577181fcc7f9f41107cbc1ffa6da7e0ff9b6ebce`.", "",
+             f"Dependency manifest: `{evidence.as_posix()}/dependencies.json`; SHA-256 `{dependency_hash}`. "
+             f"Frozen exact-byte baseline: `{baseline.as_posix()}`; changes fail unless explicitly rebaselined.", "",
+             "Stock inputs come from mission.fst; all resolved archive entries and loose data are fingerprinted, "
+             "and non-stock loose overrides are rejected. "
+             "Each row loads the stock PAK through -mission and writes a separate PAK/FIT through -smoke-save (quick save). "
+             "This proves the FIT writer and editor reload payload, not a full MOVE/tac-map export.", "",
+             "Diff size = unequal bytes at matching offsets + the absolute length difference. "
+             "Byte equality is unmasked; the field census explains changes without blessing them.", "",
+             f"Evidence: `{evidence.as_posix()}` (input FIT, written FIT, unified text diff, SHA-256 JSON and report).", "",
+             "Campaign representatives: " + "; ".join(f"group {g}: {missions[0]}" for g, missions in groups.items()) + ".", "",
+             "| Mission | Byte-identical yes/no | Diff size | Explanation |", "|---|---|---:|---|"]
+    for mission in STOCK_MISSIONS:
+        row = rows.get(mission, {})
+        comparison = row.get("roundtrip")
+        if comparison:
+            answer = "yes" if comparison["byte_identical"] else "no"
+            size, reason = comparison["diff_size"], comparison["explanation"]
+            if comparison.get("classes"):
+                reason = "FINDING: " + comparison["classification"] + "; classes: " + ", ".join(c["name"] for c in comparison["classes"]) + f". {len(comparison['changed'])} altered, {len(comparison['added'])} added, {len(comparison['removed'])} removed fields; see evidence."
+        else:
+            answer, size = "blocked", "—"
+            reason = row.get("detail") or row.get("bucket") or "Not run; no byte comparison observed."
+        lines.append(f"| {mission} | {answer} | {size} | {reason.replace('|', '/')} |")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(("\n".join(lines) + "\n" + notes).encode("utf-8"))
 
 
 def _gen_foliage_json(deploy: Path, instances: bool) -> bool:
@@ -113,6 +480,18 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
              extra_flags: list, expect) -> dict:
     """Launch the editor for one case; return a result dict with verdict."""
     log = deploy / "editor-startup.log"
+    # Stale outputs cannot prove a save, including on the access-violation retry.
+    destinations = []
+    for flag in extra_flags:
+        if flag.startswith("-smoke-save="):
+            destinations.append(flag.split("=", 1)[1].replace("\\", "/"))
+    if "-smoke-workflows" in extra_flags:
+        destinations += ["terrain_gen_out/e0_authored.pak", "terrain_gen_out/e0_objectives.fit", "terrain_gen_out/e0_campaign.fit"]
+    for destination in destinations:
+        output = deploy / destination
+        output.parent.mkdir(parents=True, exist_ok=True)
+        for stale in (output, output.with_suffix(".fit"), Path(str(output) + ".old"), Path(str(output.with_suffix(".fit")) + ".old")):
+            stale.unlink(missing_ok=True)
     try:
         if log.exists():
             log.unlink()
@@ -126,6 +505,9 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     argv = [str(exe), f"-smoke-exit-sec={exit_sec}", "-exit-on-load-fail"] + extra_flags
     env = dict(os.environ)
     env["MC2_EDITOR_TRACE"] = "1"
+    env["MC2_ACTIVE_MOD"] = ""
+    env["MC2_MOD_DEPS"] = ""
+    env["MC2_LAUNCHER_ENV_JSON"] = "0"
 
     # Launch minimized + non-activating so the smoke does not steal focus or pop a
     # window over the user's work. The editor's MFC main frame honors nCmdShow from
@@ -152,6 +534,8 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     except FileNotFoundError:
         return dict(name=name, passed=False, bucket="exe_missing",
                     detail=f"editor exe not found: {exe}")
+    except (OSError, host_lease.HostLeaseBusy, nofocus.ExeRefused) as exc:
+        return dict(name=name, passed=False, bucket="launch_refused", detail=str(exc), rc="-", seconds=round(time.time() - t0, 1), esmoke={})
     dt = time.time() - t0
 
     logtext = ""
@@ -181,6 +565,12 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
 
     # Per-case expectation -------------------------------------------------------
     detail = ""
+    if not bucket and expect == "workflows":
+        detail = grade_workflows(combined)
+        if detail:
+            bucket = "workflow_probe_failed"
+        elif esmoke.get("saved") != "1":
+            bucket, detail = "save_failed", "workflow export did not save"
     if not bucket and expect:
         fc = int(esmoke.get("foliage_count", "-1"))
         if expect == "foliage_present" and fc <= 0:
@@ -282,7 +672,7 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     config = [ln.strip() for ln in (out or "").splitlines()
               if ln.startswith("[CONFIG v1]") and ("summary" in ln or "warn=" in ln or "fatal=" in ln)]
     return dict(name=name, passed=passed, bucket=bucket, detail=detail,
-                rc=rc, seconds=round(dt, 1), esmoke=esmoke, config=config, captured=out or "")
+                rc=rc, seconds=round(dt, 1), esmoke=esmoke, config=config, captured=combined)
 
 
 # Windows STATUS_ACCESS_VIOLATION (0xC0000005) returncode, in both the unsigned
@@ -363,6 +753,12 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
     ap.add_argument("--case", action="append", help="run only these cases (repeatable)")
     ap.add_argument("--keep-logs", action="store_true", help="save each case's captured stderr/stdout (incl. the [CONFIG v1] lines) into the report dir")
+    ap.add_argument("--ledger", type=Path, help="write the 24-row round-trip ledger to this Markdown path")
+    ap.add_argument("--out", type=Path, default=REPO / "scratch" / "editor-smoke", help="transient evidence directory root")
+    ap.add_argument("--baseline", type=Path, default=BASELINE, help="frozen exact FIT hashes for all stock missions")
+    ap.add_argument("--rebaseline", action="store_true", help="explicitly replace baseline after all 24 fresh comparisons; print changes")
+    ap.add_argument("--stock-allowlist", type=Path, help="JSON map: relative loose path -> exact sha256 and reason")
+    ap.add_argument("--prepare-stock-scratch", action="store_true", help="remove/replace overlays only under this worktree's scratch runtime, then audit")
     ap.add_argument("--minimized", dest="minimized", action="store_true", default=True,
                     help="launch the editor minimized/non-activating (default; Windows only)")
     ap.add_argument("--no-minimized", dest="minimized", action="store_false",
@@ -372,18 +768,53 @@ def main() -> int:
     global MINIMIZED
     MINIMIZED = args.minimized
 
-    exe = Path(args.exe)
+    exe = Path(args.exe).resolve()
     deploy = exe.parent
     if not exe.exists():
-        print(f"ERROR: editor exe not found: {exe}\n  Build EditRel + deploy-editor (DEPLOY=...0.4c) first.")
+        print(f"ERROR: editor exe not found: {exe}\n  Build EditRel in RelWithDebInfo and deploy to a private runtime first.")
+        return 2
+    if any(os.environ.get(key) for key in ("MC2_ACTIVE_MOD", "MC2_MOD_DEPS")):
+        print("ERROR: stock editor proof refuses MC2_ACTIVE_MOD or MC2_MOD_DEPS; clear mod selection before running")
         return 2
 
     suite = build_suite(deploy)
-    ALL = list(suite.keys()) + ["gen_save_load"]
+    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load"]
+    single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
-        if c not in ALL:
+        if c not in ALL and c not in single_stock:
             print(f"ERROR: unknown case '{c}'. Valid: {', '.join(ALL)}")
+            return 2
+
+    ts = time.strftime("%Y-%m-%dT%H-%M-%S")
+    rptdir = args.out / ts
+    rptdir.mkdir(parents=True, exist_ok=False)
+    stock, groups = None, {}
+    try:
+        allowances = (read_json_object(args.stock_allowlist) if args.stock_allowlist
+                      else read_json_object(args.baseline).get("stock_allowlist", {}) if args.baseline.exists() else {})
+        if not isinstance(allowances, dict) or any(not isinstance(value, dict)
+                or not isinstance(value.get("reason"), str) or not isinstance(value.get("sha256"), str)
+                for value in allowances.values()):
+            raise ValueError("stock allowances must map paths to sha256/reason strings")
+        if args.prepare_stock_scratch:
+            prepare_stock_scratch(deploy, rptdir / "preparation.json", allowances)
+        dependencies = dependency_manifest(deploy, rptdir / "dependencies.json", allowances)
+        dependency_hash = hashlib.sha256((rptdir / "dependencies.json").read_bytes()).hexdigest()
+        print(f"[STOCK_DEPENDENCIES] PASS sha256={dependency_hash} loose={len(dependencies['loose_files'])}")
+    except (OSError, KeyError, ValueError, zlib.error) as exc:
+        print(f"ERROR: stock dependency audit failed: {exc}")
+        return 2
+    if any(c == "stock_roundtrip" or c in single_stock for c in selected) or "workflows" in selected:
+        try:
+            stock = StockInputs(deploy)
+            campaign = stock.read("data/campaign/campaign.fit")
+            groups = campaign_groups(campaign)
+            campaign_path = deploy / "terrain_gen_out" / "e0_stock_campaign.fit"
+            campaign_path.parent.mkdir(parents=True, exist_ok=True)
+            campaign_path.write_bytes(campaign)
+        except (OSError, KeyError, ValueError) as exc:
+            print(f"ERROR: stock setup failed: {exc}")
             return 2
 
     # Setup fixtures
@@ -396,7 +827,49 @@ def main() -> int:
 
     results = []
     for c in selected:
-        if c == "gen_save_load":
+        if c == "stock_roundtrip" or c in single_stock:
+            missions = (single_stock[c],) if c in single_stock else STOCK_MISSIONS
+            for mission in missions:
+                name = f"stock_roundtrip:{mission}"
+                original = None
+                try:
+                    original = stock.read(f"data/missions/{mission}.fit")
+                    stock.read(f"data/missions/{mission}.pak")
+                    (rptdir / f"{mission}.input.fit").write_bytes(original)
+                    save_rel = f"terrain_gen_out/e0_roundtrip/{mission}.pak"
+                    row = run_case_with_retry(name, exe, deploy, args.exit_sec, args.timeout,
+                                              [f"-mission=data/missions/{mission}.pak", f"-smoke-save={save_rel}"], "saved")
+                    output = deploy / Path(save_rel).with_suffix(".fit")
+                    if row["passed"]:
+                        if not output.exists() or not (deploy / save_rel).exists():
+                            row.update(passed=False, bucket="roundtrip_output_missing", detail="save=1 but fresh PAK/FIT output missing")
+                        else:
+                            written = output.read_bytes()
+                            comparison = compare_fit(original, written)
+                            row["roundtrip"] = comparison
+                            row["detail"] = comparison["explanation"]
+                            if not comparison["byte_identical"]:
+                                row["result_label"] = "FINDING"
+                            (rptdir / f"{mission}.written.fit").write_bytes(written)
+                            (rptdir / f"{mission}.json").write_text(json.dumps(comparison, indent=2) + "\n", encoding="utf-8")
+                            diff = difflib.unified_diff(original.decode("latin-1").splitlines(keepends=True), written.decode("latin-1").splitlines(keepends=True), fromfile=f"{mission}.input.fit", tofile=f"{mission}.written.fit")
+                            (rptdir / f"{mission}.diff").write_bytes("".join(diff).encode("latin-1"))
+                except (OSError, KeyError, ValueError) as exc:
+                    row = dict(name=name, passed=False, bucket="roundtrip_failed", detail=str(exc), esmoke={})
+                if original is not None:
+                    row["input_sha256"] = hashlib.sha256(original).hexdigest()
+                results.append(row)
+        elif c == "workflows":
+            row = run_case_with_retry("workflows", exe, deploy, args.exit_sec, args.timeout,
+                                     ["-mission=data/missions/mc2_01.pak", "-smoke-workflows", "-smoke-save=terrain_gen_out/e0_workflows.pak"], "workflows")
+            if row["passed"]:
+                output = deploy / "terrain_gen_out/e0_workflows.fit"
+                if not output.exists() or not (deploy / "terrain_gen_out/e0_workflows.pak").exists():
+                    row.update(passed=False, bucket="workflow_export_missing", detail="fresh workflow PAK/FIT missing")
+                else:
+                    row["detail"] = "Five action-handler probes and two model-only probes graded; authored state, undo, save and reload required."
+            results.append(row)
+        elif c == "gen_save_load":
             # Two phases: (1) generate a RANDOM map + save to .pak; (2) load that
             # .pak back. Both must reach a clean summary -> generate->save->load
             # works through the editor itself.
@@ -424,11 +897,19 @@ def main() -> int:
             results.append(run_case_with_retry(c, exe, deploy, args.exit_sec, args.timeout, list(flags), expect))
 
     # Report
-    ts = time.strftime("%Y-%m-%dT%H-%M-%S")
-    rptdir = REPO / "tests" / "smoke" / "editor" / ts
-    rptdir.mkdir(parents=True, exist_ok=True)
+    try:
+        gate_baseline(results, args.baseline, args.rebaseline, dependencies["archives"], allowances)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: baseline gate failed: {exc}")
+        for row in results:
+            if row["name"].startswith("stock_roundtrip:"):
+                row.update(passed=False, result_label="FAIL", bucket="rebaseline_failed", detail=str(exc))
+    if args.ledger:
+        write_roundtrip_ledger(args.ledger, results, groups, rptdir.relative_to(REPO) if rptdir.is_relative_to(REPO) else rptdir,
+                               dependency_hash, args.baseline.relative_to(REPO) if args.baseline.is_relative_to(REPO) else args.baseline)
     npass = sum(1 for r in results if r["passed"])
     nflaky = sum(1 for r in results if r.get("flaky") and r.get("passed"))
+    nfindings = sum(1 for r in results if r.get("result_label") == "FINDING")
     # A clean green run is npass==N AND no flaky-passes. Flaky-passes still count
     # toward npass (the suite is usable as a gate) but the header marks the run so
     # it is never read as strictly clean.
@@ -438,6 +919,7 @@ def main() -> int:
     header_star = "*" if nflaky else ""
     lines = [f"# Editor smoke {ts}  result={verdict}{header_star} "
              f"({npass}/{len(results)}{flaky_note})", "",
+             f"Round-trip findings: {nfindings}. PASS requires exact frozen input/output hashes and outcome (no masks).", "",
              "| Case | Result | Bucket | rc | sec | foliage_count |",
              "|------|--------|--------|----|----|---------------|"]
     for r in results:

@@ -112,7 +112,12 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 		{
 			CString CStr;
 			CStr.Format(IDS_TOO_MANY_TURRETS, numTurrets);
-			AfxMessageBox(CStr);
+			extern bool g_cliSuppressModals;
+			extern void EditorSmokeLogSuppressedModal(const char*, const char*);
+			if (g_cliSuppressModals)
+				EditorSmokeLogSuppressedModal(CStr, "IDS_TOO_MANY_TURRETS default=IDOK");
+			else
+				AfxMessageBox(CStr);
 		}
 	}
 

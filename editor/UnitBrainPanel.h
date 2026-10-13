@@ -23,6 +23,7 @@ public:
 	static void Close();
 	static void Toggle();
 	static bool IsOpen();
+	static bool SmokeProbe();
 
 	// Draw the floating panel each frame from renderToolbarImGui().
 	// No-op cheaply when closed.

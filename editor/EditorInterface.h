@@ -97,6 +97,7 @@ public:
 	// path (same as setSculptBrush/setStampBrush). 'terrainType' is a TerrainType enum
 	// value (mclib/dmapdata.h); brushId/menuId use a synthetic-negative range.
 	void setPaintMaterialBrush( int terrainType );
+	void runWorkflowSmoke(const char* campaignPath);
 	void renderTerrainSelection();
 
 	// Editable Inspector v1: set one object's world XY + absolute yaw through the

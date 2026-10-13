@@ -1,0 +1,146 @@
+{
+  "archives": {
+    "art.fst": "c3192ea7cc259ecd22d69f09572d1c010dead5dbd1f8dc1d673ece192a9bd04c",
+    "camera.fst": "8f1745c0102f4564dbc73c07b2df2dfa8bdc3043ae863d50f357807de63bbdf1",
+    "effect.fst": "47c18482ca4678eb9a46255cbf1ea3db00de673dd474f1c20af988bb340c52c0",
+    "insignia.fst": "81b692a7fa4f4660f1498e31b6d7cfa5e1cb59a0f91c797adf2219e1c6502fca",
+    "misc.fst": "9fa20b880b826ad7e247b0fca16d6fc12ac2d79a4d3d16a4ea301ca9f4277220",
+    "mission.fst": "4e999afdcf08d6efebb338e7c7d4fb6a0b9a818f1e0b783b7af9457a3079629e",
+    "textures.fst": "3013e055fa24ee28025ca60ba3a44f024efd9e1ba4b2904547b7e8b4af75c9c2",
+    "tgl.fst": "e08f2da2bf8bc87b44b05882f5f7294863764f23826209698b5459d34e0207a9"
+  },
+  "missions": {
+    "mc2_01": {
+      "input_sha256": "95c715176dd664c68f1d04f386e954ef296724a4e0919bf33fa4e43dbef2d958",
+      "outcome": "differs",
+      "output_sha256": "61ba4897aab8db9c9e7e07cbe2f78c06a21263d16bd6f642d16265e1ff724ffc"
+    },
+    "mc2_02": {
+      "input_sha256": "e860d257d76a3fa506d6eba24b0345d7f6b9fda4be588efd486b91e3fd8e1835",
+      "outcome": "differs",
+      "output_sha256": "377bad94295b402ef71b663a411ae27cd87770e96cd003fa4077acf441fbb93d"
+    },
+    "mc2_03": {
+      "input_sha256": "e874277bc7a6de6ed4e682f07c2cbb471a0daa5d80fa753df9004b842446e1e5",
+      "outcome": "differs",
+      "output_sha256": "3be94e32930aa742147fe8e42f688e4c36a2c08a04a8f490f6e929cdff33b76f"
+    },
+    "mc2_04": {
+      "input_sha256": "90ab1204542efcbb4c1b7bed277b9ebf4849123701ceb2238300b43481417a4d",
+      "outcome": "differs",
+      "output_sha256": "f76bbc113f65bb225f01098c6b81892ae98dde36ee7affd1f3f70b988ac99abd"
+    },
+    "mc2_05": {
+      "input_sha256": "d2d14790a3420b483a3a4b28e88853e16f67b6aafb6a8c5cecd715c68df23852",
+      "outcome": "differs",
+      "output_sha256": "61e33600a86c31e35dade90af8962fe321bc7cdae9c6ff207a48306459f7a1cd"
+    },
+    "mc2_06": {
+      "input_sha256": "9c13410dd984297d6b01ec55410280e61257bc594aa787eb6b0facb897dc9e2d",
+      "outcome": "differs",
+      "output_sha256": "c8c39c49784b008cbdf97b573f10fb8ea5be07461e5966609a144b12470eafdd"
+    },
+    "mc2_07": {
+      "input_sha256": "d4382286d80902cd25c63b48b98d81b1d7157a5cddd20e9f6a24afe102abfec8",
+      "outcome": "differs",
+      "output_sha256": "35cc79c438c836edc274c47aecacfa239ff3e482d0a6439f1e28831ce3b17af5"
+    },
+    "mc2_08": {
+      "input_sha256": "805e6e7e26e1790959daf1ced07eac448bd644204ca725c170dc463faff00392",
+      "outcome": "differs",
+      "output_sha256": "c1645372d532c93de5d9f15d71d1ebf807d052ce06fc8bc557f76057e20db915"
+    },
+    "mc2_09": {
+      "input_sha256": "6f5dc64190b090d871bef3932025e143a5fb5ca15fa7fd548ad2feeb59b02738",
+      "outcome": "differs",
+      "output_sha256": "9235f1a1147a83bc58c32a58fb8670cfe9420cfadb8d731f3b1a3251f4188365"
+    },
+    "mc2_10": {
+      "input_sha256": "885244171387ccdf64f1414de2d2009ac67bf35002fb7fe689342f1d0f9c656b",
+      "outcome": "differs",
+      "output_sha256": "721cad800e23fc49eac001dffc4ad22936ae96455d16e69ecac4b7cbdee6b6b9"
+    },
+    "mc2_11": {
+      "input_sha256": "505afc9cd374a99e35eb5971b8307d6ff5ae6b34ad9462152fe442da7066e004",
+      "outcome": "differs",
+      "output_sha256": "715c623834040d807d067c8e25fa4fc123fabf667ad6bbc3c44e31f07a43c450"
+    },
+    "mc2_12": {
+      "input_sha256": "e1634e979f32ee6b40cb9794a96132c4bb417a4e2424f3a4978c7457dce9d9b2",
+      "outcome": "differs",
+      "output_sha256": "06eca63c51243d0c63a6b739fc8c3402e51dd6130447707409fb1ef960a78e91"
+    },
+    "mc2_13": {
+      "input_sha256": "3640d3fd1b71cea70a9662fef494665706a41f89aee6cb27708e0b72dfe4ac83",
+      "outcome": "differs",
+      "output_sha256": "4178a55985b16097e7122ff681016415866f837546215cfce1befd8d326fc93f"
+    },
+    "mc2_14": {
+      "input_sha256": "7518d12bfa2d0493f7d691e40e235c61f914d7cba501ef566387f214c817e306",
+      "outcome": "differs",
+      "output_sha256": "ff6e90c9822251aec15a971601321a2d51a3a805c158bd1dce0728d4ea0ab909"
+    },
+    "mc2_15": {
+      "input_sha256": "87fe8f51ed0a78d5663ac65117bccf5da89eae6a66f94846172553e8c7fd1a53",
+      "outcome": "differs",
+      "output_sha256": "cf6dcf9d46c634b2c863889867fe5efa5f39c2ee92ee70d8fac5fd6a56649d31"
+    },
+    "mc2_16": {
+      "input_sha256": "bb10f379df7f4619dc2d9a72fd8604ccfa90a5cb57fedf394b87977f4220cf42",
+      "outcome": "differs",
+      "output_sha256": "ab6f8b783d486159e5b04ee1c659f2f509f91fff05b1bdae080f56cde2183ab9"
+    },
+    "mc2_17": {
+      "input_sha256": "57931cc53ce9beadf4931d9853d2165be0d5b236017311d2f0c4b954d8ccd46b",
+      "outcome": "differs",
+      "output_sha256": "60d88ca6b318243f2d414de8f8b661722e094afa7fedfe2651d33b1e3c31c0f2"
+    },
+    "mc2_18": {
+      "input_sha256": "c87c7b91cd5c17f519d13e544e0c10e20642db8a5eeeb333a5440fab337d9dfe",
+      "outcome": "differs",
+      "output_sha256": "2c7a302c3936198374c221b480e7129b2e3aec2cf03a83519e14cdfd6359dbba"
+    },
+    "mc2_19": {
+      "input_sha256": "24c300ccb0c33da5db55852b37ac188d9426672599154ea04d3eb926661150e7",
+      "outcome": "differs",
+      "output_sha256": "d001cb586f3cbc7591d8c97b7a26ae274e6f6d423ed32a41feaf065cccbd8e39"
+    },
+    "mc2_20": {
+      "input_sha256": "bd1b849dca7bb080cf7ef6912f608219f292fe5e911e9b3fa8f66daca58107b4",
+      "outcome": "differs",
+      "output_sha256": "56d90837e89a0de3a52a76788a708af531324089804c10e47977505c2a55553e"
+    },
+    "mc2_21": {
+      "input_sha256": "0a2937d89192f5f34073ab8ead1a93a1504493bc99a503bc8d8bbd04a960e85d",
+      "outcome": "differs",
+      "output_sha256": "3cd65088b130453694ed40874705ed306f44c6066276b1a8f07edd28291a1102"
+    },
+    "mc2_22": {
+      "input_sha256": "a916c6164543866bb71082e698c0c8c0c839673a748a99daef89fe64dd50ed1b",
+      "outcome": "differs",
+      "output_sha256": "cae85974b619a88d082aa97ec27a576ffd6db1b16e11d2fcc4cd21754e5a1413"
+    },
+    "mc2_23": {
+      "input_sha256": "91df83a6103fe93d54bfb7df03c06dd5151cbee71062994da221af48d429cfbd",
+      "outcome": "differs",
+      "output_sha256": "1b9855d8c36e469174f4bad01174173de4f60b6d7b3b77909baa4f0767ae31be"
+    },
+    "mc2_24": {
+      "input_sha256": "d554a3948e9df993c19baec80868fbb03bff835f471096b467c58d121ed10341",
+      "outcome": "differs",
+      "output_sha256": "139c0868586ad5fb636f602da1fb63bb9113d49d8420ed5982e4ea35c4825c33"
+    }
+  },
+  "reason": "E0 stock editor FIT writer floor; exact bytes, no masks.",
+  "stock_allowlist": {
+    "data/objects/badpilots.csv": {
+      "reason": "Stock-derived decode of misc.fst badpilots.csv (archive entry compressed-size equals uncompressed-size, so the generic extractor returns its 44 zlib bytes). zlib.decompress yields the original 44-byte PMWGreen/PMWRegular/PMWVeteran/PMWElite catalog, byte-identical to mc2srcdata-fresh/objects/BadPilots.csv. No authored metadata changed.",
+      "sha256": "d7d84d0f79afd52c6f73072f41be8c7203a72b53c3cd018a9548b77487ea9fd8"
+    },
+    "data/objects/object2.pak": {
+      "reason": "Required loose stock-derived PacketFile, absent from FSTs. All 1188 decoded packets equal original mc2srcdata-fresh/objects/object2.pak (SHA-256 eb46be8f57acb49f52d8951af25725fd50a21f55ec66273c2be6e657bebaec28, also byte-identical in mc2-srcdata). Only packet compression differs; scratch/inspect_editor_object_pak.py verified zero changed packets.",
+      "sha256": "dda3fd6c8e03e21fb88dd409fba3afd355f2f58fd34c9801ea9ab17a1f0d2488"
+    }
+  },
+  "version": 1
+}
