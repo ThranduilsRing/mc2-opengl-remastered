@@ -17,7 +17,8 @@
 #include "Vertex.h"
 #include "terrtxm.h"
 #include "editorinterface.h"
-#include "EString.h"
+#include "mc2fmt.h"
+#include "objective_text.h"
 
 bool EditorReadMissionCamera(FitIniFile& file);
 bool EditorSaveMissionCamera(FitIniFile& file);
@@ -100,31 +101,6 @@ static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &v
 	} else {
 		value = tmpULong;
 	}
-	return result;
-}
-
-static long sReadIdString(FitIniFile* missionFile, const char *varName, EString &ECStr) {
-	long result = 0;
-	char buffer[2001/*buffer size*/]; buffer[0] = '\0';
-	result = missionFile->readIdString((char *)varName, buffer, 2001/*buffer size*/ - 1);
-	CString CStr = buffer;
-	/*readIdString can't read in "\r\n"*/
-	CStr.Replace("\n", "\r\n");
-	if ((NO_ERR != result) && (BUFFER_TOO_SMALL != result)) {
-		//gosASSERT(false);
-	} else {
-		ECStr = CStr.GetBuffer(0);
-	}
-	return result;
-}
-
-static long sWriteIdString(FitIniFile* missionFile, const char *varName, const char *szStr) {
-	if (!szStr) { return !(NO_ERR); }
-	long result = 0;
-	CString CStr = szStr;
-	/*readIdString can't read in "\r\n"*/
-	CStr.Replace("\r\n", "\n");
-	result = missionFile->writeIdString(varName, CStr.GetBuffer(0));
 	return result;
 }
 

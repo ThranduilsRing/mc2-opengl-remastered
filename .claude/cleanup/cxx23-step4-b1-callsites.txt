@@ -1,9 +1,9 @@
 # EString call sites from a [[deprecated]] build of the old API (tests/analyze/estring_callsites.py); a batch commit removes its rows.
-# total 173 sites in 33 files
+# total 131 sites in 24 files
 # per kind:
-#      77  EString::operator ECHARPTR
-#      52  EString::Data
-#      20  EString::Format
+#      70  EString::operator ECHARPTR
+#      26  EString::Data
+#      11  EString::Format
 #       8  EString::MakeUpper
 #       5  EString::Compare
 #       5  EString::Remove
@@ -13,17 +13,13 @@
 #       1  EString::Insert
 # per batch (files that name the type, cxx23-step4-b1-files.json):
 #      41  B1.5
-#      26  B1.7
 #      49  B6
-# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 57 in 9 files
+# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 41 in 6 files
 #      17  gui/aanim.cpp
 #      13  gui/aedit.cpp
-#       9  editor/EditorData_save.cpp
-#       6  editor/EditorInterface_terrain.cpp
 #       6  gui/alistbox.cpp
 #       3  gui/asystem.cpp
 #       1  code/mainmenu.cpp
-#       1  editor/BeautySidecarPreview.cpp
 #       1  gui/alistbox.h
 # per file:
 #      20  code/mechlopedia.cpp
@@ -31,33 +27,24 @@
 #      16  code/mpsetuparea.cpp
 #      13  gui/aedit.cpp
 #      10  code/mpgamebrowser.cpp
-#      10  editor/CampaignData.cpp
-#       9  editor/EditorData_save.cpp
 #       7  code/mpprefs.cpp
-#       6  editor/EditorData_terrain.cpp
-#       6  editor/EditorInterface_terrain.cpp
 #       6  gui/alistbox.cpp
 #       5  code/infowindow.cpp
 #       5  code/mpconnectiontype.cpp
 #       4  code/mechlabscreen.cpp
 #       4  code/mploadmap.cpp
 #       4  code/mpparameterscreen.cpp
-#       4  editor/EditorData_tacmap.cpp
 #       3  code/mechlistbox.cpp
 #       3  code/pilotreadyscreen.cpp
 #       3  gui/asystem.cpp
 #       2  code/missionbriefingscreen.cpp
 #       2  code/simplecomponentlistbox.cpp
-#       2  editor/ChooseBuildingDlg.cpp
-#       2  editor/ChooseUnitDlg.cpp
-#       2  editor/EditorObjectMgr_io.cpp
 #       1  code/chatwindow.cpp
 #       1  code/controlgui_chat.cpp
 #       1  code/mainmenu.cpp
 #       1  code/mphostgame.cpp
 #       1  code/mploadmap.h
 #       1  code/mpprefs.h
-#       1  editor/BeautySidecarPreview.cpp
 #       1  gui/alistbox.h
 # blob 3009e4e740ce0a385955249cfc11cfeeb964f576 code/chatwindow.cpp
 # blob 349865ab375c34d305e860227e19449fe681c221 code/controlgui_chat.cpp
@@ -78,15 +65,6 @@
 # blob 44873f27ef6768c9f8c4241f02f2a15a0401839d code/mpsetuparea.cpp
 # blob a5ea64f8be0b0bf95725383b0c6a46c51a547c08 code/pilotreadyscreen.cpp
 # blob f9ab422e07df69ede9d34e7b442bf30e00d562ae code/simplecomponentlistbox.cpp
-# blob 465ef39e11e6682d426f67ce04ac942b24a47605 editor/BeautySidecarPreview.cpp
-# blob 4a7384d4960d36bdb47b0784f3c6eb0312547086 editor/CampaignData.cpp
-# blob 32ba9b5f7f678c0864b2f95ebbcef00454d6dd97 editor/ChooseBuildingDlg.cpp
-# blob 72daa11b8cb3816dd3e1f44cd01d8998653d7b92 editor/ChooseUnitDlg.cpp
-# blob f461839852617550e9e009e11e137dbd0144879d editor/EditorData_save.cpp
-# blob e8878a3434d34d2ec9d0c4c80229b8de0152c1c6 editor/EditorData_tacmap.cpp
-# blob acf536b5c171c338136c373ca186191ffaca226b editor/EditorData_terrain.cpp
-# blob 5a6cb2db2daaee99346621ba0b27f5ea5af07885 editor/EditorInterface_terrain.cpp
-# blob d96618fa15da2f2130c0854c6163818dacc450cd editor/EditorObjectMgr_io.cpp
 # blob 70a7ec861f40c764ce45417ab619736ef289ffef gui/aanim.cpp
 # blob 9141cfafbbcd405fafdc2f15628cb5d801377d7e gui/aedit.cpp
 # blob ef34efdc94fac2c261fd223d6906b363c332f882 gui/alistbox.cpp
@@ -184,48 +162,6 @@ code/pilotreadyscreen.cpp:803:operator ECHARPTR
 code/pilotreadyscreen.cpp:812:operator ECHARPTR
 code/simplecomponentlistbox.cpp:156:Format
 code/simplecomponentlistbox.cpp:157:operator ECHARPTR
-editor/BeautySidecarPreview.cpp:46:Data
-editor/CampaignData.cpp:135:Format
-editor/CampaignData.cpp:136:Data
-editor/CampaignData.cpp:158:Format
-editor/CampaignData.cpp:159:Data
-editor/CampaignData.cpp:212:Format
-editor/CampaignData.cpp:213:Data
-editor/CampaignData.cpp:214:Data
-editor/CampaignData.cpp:242:Format
-editor/CampaignData.cpp:243:Data
-editor/CampaignData.cpp:246:Data
-editor/ChooseBuildingDlg.cpp:73:Format
-editor/ChooseBuildingDlg.cpp:74:Data
-editor/ChooseUnitDlg.cpp:76:Format
-editor/ChooseUnitDlg.cpp:77:Data
-editor/EditorData_save.cpp:786:operator ECHARPTR
-editor/EditorData_save.cpp:789:operator ECHARPTR
-editor/EditorData_save.cpp:790:Data
-editor/EditorData_save.cpp:793:Data
-editor/EditorData_save.cpp:803:operator ECHARPTR
-editor/EditorData_save.cpp:806:operator ECHARPTR
-editor/EditorData_save.cpp:845:operator ECHARPTR
-editor/EditorData_save.cpp:852:operator ECHARPTR
-editor/EditorData_save.cpp:896:operator ECHARPTR
-editor/EditorData_tacmap.cpp:742:Format
-editor/EditorData_tacmap.cpp:743:Data
-editor/EditorData_tacmap.cpp:751:Format
-editor/EditorData_tacmap.cpp:752:Data
-editor/EditorData_terrain.cpp:266:Data
-editor/EditorData_terrain.cpp:287:Data
-editor/EditorData_terrain.cpp:294:Data
-editor/EditorData_terrain.cpp:315:Data
-editor/EditorData_terrain.cpp:393:Data
-editor/EditorData_terrain.cpp:407:Data
-editor/EditorInterface_terrain.cpp:535:Data
-editor/EditorInterface_terrain.cpp:538:Data
-editor/EditorInterface_terrain.cpp:539:Data
-editor/EditorInterface_terrain.cpp:542:Data
-editor/EditorInterface_terrain.cpp:553:Data
-editor/EditorInterface_terrain.cpp:556:Data
-editor/EditorObjectMgr_io.cpp:572:Format
-editor/EditorObjectMgr_io.cpp:574:Data
 gui/aanim.cpp:73:operator ECHARPTR
 gui/aanim.cpp:77:operator ECHARPTR
 gui/aanim.cpp:82:operator ECHARPTR

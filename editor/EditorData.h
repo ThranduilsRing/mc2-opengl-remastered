@@ -15,9 +15,7 @@
 #include "elist.h"
 #endif
 
-#ifndef ESTRING_H
-#include "EString.h"
-#endif
+#include <utility>
 
 static const int GAME_MAX_PLAYERS = 8;
 
@@ -206,8 +204,8 @@ class EditorData
 		static bool RebuildMoveIfDirty(std::string* errorOut = nullptr);
 		static void updateTitleBar();
 
-		EString MissionName() { return m_missionName; }
-		void MissionName(EString missionName) { m_missionName = missionName; }
+		const std::string& MissionName() const { return m_missionName; }
+		void MissionName(std::string missionName) { m_missionName = std::move(missionName); }
 
 		bool MissionNameUseResourceString() { return m_missionNameUseResourceString; }
 		void MissionNameUseResourceString(bool missionNameUseResourceString) { m_missionNameUseResourceString = missionNameUseResourceString; }
@@ -215,11 +213,11 @@ class EditorData
 		int MissionNameResourceStringID() { return m_missionNameResourceStringID; }
 		void MissionNameResourceStringID(int missionNameResourceStringID) { m_missionNameResourceStringID = missionNameResourceStringID; }
 
-		EString Author() { return m_author; }
-		void Author(EString author) { m_author = author; }
+		const std::string& Author() const { return m_author; }
+		void Author(std::string author) { m_author = std::move(author); }
 
-		EString Blurb() { return m_blurb; }
-		void Blurb(EString blurb) { m_blurb = blurb; }
+		const std::string& Blurb() const { return m_blurb; }
+		void Blurb(std::string blurb) { m_blurb = std::move(blurb); }
 
 		bool BlurbUseResourceString() { return m_blurbUseResourceString; }
 		void BlurbUseResourceString(bool blurbUseResourceString) { m_blurbUseResourceString = blurbUseResourceString; }
@@ -227,8 +225,8 @@ class EditorData
 		int BlurbResourceStringID() { return m_blurbResourceStringID; }
 		void BlurbResourceStringID(int blurbResourceStringID) { m_blurbResourceStringID = blurbResourceStringID; }
 
-		EString Blurb2() { return m_blurb2; }
-		void Blurb2(EString blurb2) { m_blurb2 = blurb2; }
+		const std::string& Blurb2() const { return m_blurb2; }
+		void Blurb2(std::string blurb2) { m_blurb2 = std::move(blurb2); }
 
 		bool Blurb2UseResourceString() { return m_blurb2UseResourceString; }
 		void Blurb2UseResourceString(bool blurb2UseResourceString) { m_blurb2UseResourceString = blurb2UseResourceString; }
@@ -263,14 +261,14 @@ class EditorData
 		int ScenarioTune() { return m_scenarioTune; }
 		void ScenarioTune(int scenarioTune) { m_scenarioTune = scenarioTune; }
 
-		EString VideoFilename() { return m_videoFilename; }
-		void VideoFilename(EString videoFilename) { m_videoFilename = videoFilename; }
+		const std::string& VideoFilename() const { return m_videoFilename; }
+		void VideoFilename(std::string videoFilename) { m_videoFilename = std::move(videoFilename); }
 
 		int NumRandomRPbuildings() { return m_numRandomRPbuildings; }
 		void NumRandomRPbuildings(int numRandomRPbuildings) { m_numRandomRPbuildings = numRandomRPbuildings; }
 
-		EString DownloadURL() { return m_downloadURL; }
-		void DownloadURL(EString downloadURL) { m_downloadURL = downloadURL; }
+		const std::string& DownloadURL() const { return m_downloadURL; }
+		void DownloadURL(std::string downloadURL) { m_downloadURL = std::move(downloadURL); }
 
 		int MissionType() { return m_missionType; }
 		void MissionType(int missionType) { m_missionType = missionType; }
@@ -359,14 +357,14 @@ class EditorData
 		EditorData( const EditorData& editorData );
 		bool saveTacMap (PacketFile* file, long whichPacket );
 
-		EString m_missionName;
+		std::string m_missionName;
 		bool m_missionNameUseResourceString;
 		int m_missionNameResourceStringID;
-		EString m_author;
-		EString m_blurb;
+		std::string m_author;
+		std::string m_blurb;
 		bool m_blurbUseResourceString;
 		int m_blurbResourceStringID;
-		EString m_blurb2;
+		std::string m_blurb2;
 		bool m_blurb2UseResourceString;
 		int m_blurb2ResourceStringID;
 		float m_timeLimit;
@@ -379,9 +377,9 @@ class EditorData
 		CTeams m_teams;
 		CPlayers m_players;
 		int m_scenarioTune;
-		EString m_videoFilename;
+		std::string m_videoFilename;
 		int m_numRandomRPbuildings;
-		EString m_downloadURL;
+		std::string m_downloadURL;
 		int m_missionType;
 
 		bool m_airStrikesEnabledDefault;

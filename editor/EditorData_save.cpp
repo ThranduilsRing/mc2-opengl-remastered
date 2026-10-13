@@ -783,14 +783,14 @@ bool EditorData::saveMissionFitFileStuff( FitIniFile &fitFile )
 
 	EditorDataTrace("EditorData::saveMissionFitFileStuff: MissionSettings block");
 	fitFile.writeBlock( "MissionSettings" );
-	fitFile.writeIdString( "MissionName", EditorData::instance->MissionName() );
+	fitFile.writeIdString( "MissionName", EditorData::instance->MissionName().c_str() );
 	fitFile.writeIdBoolean( "MissionNameUseResourceString", EditorData::instance->MissionNameUseResourceString() );
 	fitFile.writeIdULong( "MissionNameResourceStringID", EditorData::instance->MissionNameResourceStringID() );
-	fitFile.writeIdString( "Author", EditorData::instance->Author() );
-	sWriteIdString( &fitFile, "Blurb", EditorData::instance->Blurb().Data() );
+	fitFile.writeIdString( "Author", EditorData::instance->Author().c_str() );
+	objective_text::write(fitFile, "Blurb", EditorData::instance->Blurb());
 	fitFile.writeIdBoolean( "BlurbUseResourceString", EditorData::instance->BlurbUseResourceString() );
 	fitFile.writeIdULong( "BlurbResourceStringID", EditorData::instance->BlurbResourceStringID() );
-	sWriteIdString( &fitFile, "Blurb2", EditorData::instance->Blurb2().Data() );
+	objective_text::write(fitFile, "Blurb2", EditorData::instance->Blurb2());
 	fitFile.writeIdBoolean( "Blurb2UseResourceString", EditorData::instance->Blurb2UseResourceString() );
 	fitFile.writeIdULong( "Blurb2ResourceStringID", EditorData::instance->Blurb2ResourceStringID() );
 	fitFile.writeIdFloat( "TimeLimit", EditorData::instance->TimeLimit() );
@@ -800,10 +800,10 @@ bool EditorData::saveMissionFitFileStuff( FitIniFile &fitFile )
 	fitFile.writeIdULong( "MaximumNumberOfTeams", EditorData::instance->MaxTeams() );
 	fitFile.writeIdULong( "MaximumNumberOfPlayers", EditorData::instance->MaxPlayers() );
 	fitFile.writeIdUChar( "scenarioTuneNum", EditorData::instance->ScenarioTune() );
-	fitFile.writeIdString( "AVIFilename", EditorData::instance->VideoFilename() );
+	fitFile.writeIdString( "AVIFilename", EditorData::instance->VideoFilename().c_str() );
 	fitFile.writeIdLong( "AdditionalCBills", EditorData::instance->m_CBills );
 	fitFile.writeIdULong( "NumRandomRPbuildings", EditorData::instance->NumRandomRPbuildings() );
-	fitFile.writeIdString( "DownloadURL", EditorData::instance->DownloadURL() );
+	fitFile.writeIdString( "DownloadURL", EditorData::instance->DownloadURL().c_str() );
 	fitFile.writeIdULong( "MissionType", EditorData::instance->MissionType() );
 	fitFile.writeIdBoolean( "AirStrikesEnabledDefault", EditorData::instance->AirStrikesEnabledDefault() );
 	fitFile.writeIdBoolean( "MineLayersEnabledDefault", EditorData::instance->MineLayersEnabledDefault() );
@@ -842,14 +842,14 @@ bool EditorData::saveMissionFitFileStuff( FitIniFile &fitFile )
 	if (mapAsset)
 	{
 		char buf[512] = {0};
-		strncpy(buf, EditorData::instance->MissionName(), 511);		
+		strncpy(buf, EditorData::instance->MissionName().c_str(), 511);
 		if (buf[0])
 		{
 			mapAsset->AddProperty("MissionName", buf);
 		}
 
 		memset(buf, 0, 512);
-		strncpy(buf, EditorData::instance->Author(), 511);
+		strncpy(buf, EditorData::instance->Author().c_str(), 511);
 		if (buf[0])
 		{
 			mapAsset->AddProperty("MissionAuthor", buf);
@@ -890,10 +890,10 @@ bool EditorData::saveMissionFitFileStuff( FitIniFile &fitFile )
 			mapAsset->AddRelationship("ScenarioScript", buf);
 		}
 		
-		if (EditorData::instance->VideoFilename()[0])
+		if (!EditorData::instance->VideoFilename().empty())
 		{
 			strcpy(buf, "Data\\Movies\\");
-			strcat(buf, EditorData::instance->VideoFilename());
+			strcat(buf, EditorData::instance->VideoFilename().c_str());
 			strcat(buf, ".abl");
 			mapAsset->AddRelationship("AVIFilename", buf);
 		}

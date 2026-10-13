@@ -80,7 +80,7 @@ class LinkBrush: public Brush
 		virtual bool undo();
 
 		EList< LinkInfo, const LinkInfo& > changedLinks;
-		void AddToListOnce( const LinkAction::LinkInfo& info );
+		void AddToListOnce( const LinkBrush::LinkInfo& info );
 	};
 
 	LinkAction* pAction;

@@ -1,8 +1,8 @@
 // EditorData: terrain creation from PCV/TGA/generated recipes, height edits and the scaled colour map.
 // Declared in the class headers; shared names in EditorData_internal.h.
 #include "EditorData_internal.h"
-#include "mc2str.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 
 static void EditorDataWarmTerrain(const char* where)
@@ -48,7 +48,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		if (extension != fitPath.npos) fitPath.replace(extension, fitPath.npos, ".fit");
 		if (!EditorFit::objectiveTextLengths(fitPath.c_str(), fileName)) return false;
 	}
-
 
 	bool bRetVal = true;
 	bIsLoading = true;
@@ -268,11 +267,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		result = file.seekBlock("MissionSettings");
 		if (NO_ERR == result)
 		{
-			EString tmpECStr = "";
-			result = sReadIdString(&file, "MissionName", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "MissionName"))
 			{
-				EditorData::instance->MissionName(_T(tmpECStr.Data()));
+				EditorData::instance->MissionName(std::move(*text));
 			}
 
 			bool tmpBool = false;
@@ -289,18 +286,14 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->MissionNameResourceStringID(tmpInt);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "Author", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "Author"))
 			{
-				EditorData::instance->Author(_T(tmpECStr.Data()));
+				EditorData::instance->Author(std::move(*text));
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "Blurb", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "Blurb"))
 			{
-				EditorData::instance->Blurb(_T(tmpECStr.Data()));
+				EditorData::instance->Blurb(std::move(*text));
 			}
 
 			tmpBool = false;
@@ -317,11 +310,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->BlurbResourceStringID(tmpInt);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "Blurb2", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "Blurb2"))
 			{
-				EditorData::instance->Blurb2(_T(tmpECStr.Data()));
+				EditorData::instance->Blurb2(std::move(*text));
 			}
 
 			tmpBool = false;
@@ -395,11 +386,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->ScenarioTune(tmpUChar);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "AVIFilename", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "AVIFilename"))
 			{
-				EditorData::instance->VideoFilename(_T(tmpECStr.Data()));
+				EditorData::instance->VideoFilename(std::move(*text));
 			}
 
 			tmpULong = 0;
@@ -409,11 +398,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->NumRandomRPbuildings(tmpULong);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "DownloadURL", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "DownloadURL"))
 			{
-				EditorData::instance->DownloadURL(_T(tmpECStr.Data()));
+				EditorData::instance->DownloadURL(std::move(*text));
 			}
 
 			tmpULong = 0;

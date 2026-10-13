@@ -1,6 +1,7 @@
 // Editor: terrain tools, mission settings, team/player, texture dialogs, link and drop-zone commands.
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
+#include "mc2str.h"
 
 
 int EditorInterface::NewHeightMap()
@@ -532,14 +533,14 @@ int EditorInterface::SaveHeightMap()
 int EditorInterface::MissionSettings()
 {
 	MissionSettingsDlg dlg;
-	dlg.m_MissionNameUnlocalizedText = EditorData::instance->MissionName().Data();
+	dlg.m_MissionNameUnlocalizedText = EditorData::instance->MissionName().c_str();
 	dlg.m_MissionNameUseResourceString = EditorData::instance->MissionNameUseResourceString();
 	dlg.m_MissionNameResourceStringID = EditorData::instance->MissionNameResourceStringID();
-	dlg.m_AuthorEdit = EditorData::instance->Author().Data();
-	dlg.m_BlurbUnlocalizedText = EditorData::instance->Blurb().Data();
+	dlg.m_AuthorEdit = EditorData::instance->Author().c_str();
+	dlg.m_BlurbUnlocalizedText = EditorData::instance->Blurb().c_str();
 	dlg.m_BlurbUseResourceString = EditorData::instance->BlurbUseResourceString();
 	dlg.m_BlurbResourceStringID = EditorData::instance->BlurbResourceStringID();
-	dlg.m_Blurb2UnlocalizedText = EditorData::instance->Blurb2().Data();
+	dlg.m_Blurb2UnlocalizedText = EditorData::instance->Blurb2().c_str();
 	dlg.m_Blurb2UseResourceString = EditorData::instance->Blurb2UseResourceString();
 	dlg.m_Blurb2ResourceStringID = EditorData::instance->Blurb2ResourceStringID();
 	dlg.m_TimeLimit = EditorData::instance->TimeLimit();
@@ -550,10 +551,10 @@ int EditorInterface::MissionSettings()
 	dlg.m_MaxPlayers = EditorData::instance->MaxPlayers();
 	dlg.m_ScenarioTune.Empty();
 	dlg.m_ScenarioTune.Format(_T("%d"), EditorData::instance->ScenarioTune());
-	dlg.m_VideoFilename = EditorData::instance->VideoFilename().Data();
+	dlg.m_VideoFilename = EditorData::instance->VideoFilename().c_str();
 	dlg.m_CBills = EditorData::instance->CBills();
 	dlg.m_NumRPBuildings = EditorData::instance->NumRandomRPbuildings();
-	dlg.m_DownloadUrlEdit = EditorData::instance->DownloadURL().Data();
+	dlg.m_DownloadUrlEdit = EditorData::instance->DownloadURL().c_str();
 	dlg.m_MissionType = EditorData::instance->MissionType();
 	dlg.m_AirStrikeCheck = EditorData::instance->AirStrikesEnabledDefault();
 	dlg.m_MineLayerCheck = EditorData::instance->MineLayersEnabledDefault();
@@ -569,14 +570,14 @@ int EditorInterface::MissionSettings()
 	dlg.m_RPsForMechsCheck = EditorData::instance->RPsForMechsEnabledDefault();
 	if ( IDOK == dlg.DoModal() )
 	{
-		EditorData::instance->MissionName(dlg.m_MissionNameUnlocalizedText.GetBuffer(0));
+		EditorData::instance->MissionName(mc2::str::from_c(dlg.m_MissionNameUnlocalizedText.GetBuffer(0)));
 		EditorData::instance->MissionNameUseResourceString(dlg.m_MissionNameUseResourceString);
 		EditorData::instance->MissionNameResourceStringID(dlg.m_MissionNameResourceStringID);
-		EditorData::instance->Author(dlg.m_AuthorEdit.GetBuffer(0));
-		EditorData::instance->Blurb(dlg.m_BlurbUnlocalizedText.GetBuffer(0));
+		EditorData::instance->Author(mc2::str::from_c(dlg.m_AuthorEdit.GetBuffer(0)));
+		EditorData::instance->Blurb(mc2::str::from_c(dlg.m_BlurbUnlocalizedText.GetBuffer(0)));
 		EditorData::instance->BlurbUseResourceString(dlg.m_BlurbUseResourceString);
 		EditorData::instance->BlurbResourceStringID(dlg.m_BlurbResourceStringID);
-		EditorData::instance->Blurb2(dlg.m_Blurb2UnlocalizedText.GetBuffer(0));
+		EditorData::instance->Blurb2(mc2::str::from_c(dlg.m_Blurb2UnlocalizedText.GetBuffer(0)));
 		EditorData::instance->Blurb2UseResourceString(dlg.m_Blurb2UseResourceString);
 		EditorData::instance->Blurb2ResourceStringID(dlg.m_Blurb2ResourceStringID);
 		EditorData::instance->TimeLimit(dlg.m_TimeLimit);
@@ -586,10 +587,10 @@ int EditorInterface::MissionSettings()
 		EditorData::instance->MaxTeams(dlg.m_MaxTeams);
 		EditorData::instance->MaxPlayers(dlg.m_MaxPlayers);
 		EditorData::instance->ScenarioTune(atoi(dlg.m_ScenarioTune.GetBuffer(0)));
-		EditorData::instance->VideoFilename(dlg.m_VideoFilename.GetBuffer(0));
+		EditorData::instance->VideoFilename(mc2::str::from_c(dlg.m_VideoFilename.GetBuffer(0)));
 		EditorData::instance->CBills( dlg.m_CBills);
 		EditorData::instance->NumRandomRPbuildings(dlg.m_NumRPBuildings);
-		EditorData::instance->DownloadURL(dlg.m_DownloadUrlEdit.GetBuffer(0));
+		EditorData::instance->DownloadURL(mc2::str::from_c(dlg.m_DownloadUrlEdit.GetBuffer(0)));
 		EditorData::instance->MissionType(dlg.m_MissionType);
 		EditorData::instance->AirStrikesEnabledDefault(dlg.m_AirStrikeCheck);
 		EditorData::instance->MineLayersEnabledDefault(dlg.m_MineLayerCheck);

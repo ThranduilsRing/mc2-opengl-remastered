@@ -568,10 +568,10 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 						mates[mateIndex] = 0;
 					}
 				}
-				EString commanderBlock;
-				commanderBlock.Format("Commander%ldGroup:%ld", playerNum, lanceGroup);
+				std::string commanderBlock;
+				commanderBlock = std::format("Commander{}Group:{}", mc2::fmt::as_i32(playerNum), mc2::fmt::as_i32(lanceGroup));
 
-				file.writeBlock( commanderBlock.Data() );
+				file.writeBlock( commanderBlock.c_str() );
 
 				file.writeIdLongArray( "Mates", &(mates[0]), 12 );
 			}

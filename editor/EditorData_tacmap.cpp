@@ -738,18 +738,18 @@ void CPlayer::DefaultTeam(int team) {
 bool CPlayer::Read( FitIniFile* missionFile, int playerNum )
 {
 	long result = 0;
-	EString tmpStr;
-	tmpStr.Format("Player%d", playerNum);
-	result = missionFile->seekBlock(tmpStr.Data());
+	std::string tmpStr;
+	tmpStr = std::format("Player{}", playerNum);
+	result = missionFile->seekBlock(tmpStr.c_str());
 	result = sReadIdWholeNum(missionFile, "DefaultTeam", m_defaultTeam);
 	return result;
 }
 
 bool CPlayer::Save( FitIniFile* missionFile, int playerNum )
 {
-	EString tmpStr;
-	tmpStr.Format("Player%d", playerNum);
-	missionFile->writeBlock( tmpStr.Data() );
+	std::string tmpStr;
+	tmpStr = std::format("Player{}", playerNum);
+	missionFile->writeBlock( tmpStr.c_str() );
 	missionFile->writeIdULong( "DefaultTeam", DefaultTeam() );
 	return true;
 }
