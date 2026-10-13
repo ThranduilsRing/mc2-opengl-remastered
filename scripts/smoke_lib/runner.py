@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-from . import nofocus
+from . import nofocus, vk_validation
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
 
@@ -333,6 +333,8 @@ def run_one(cfg: RunConfig) -> RunResult:
         duration_s=cfg.duration,
         allow_asset_oob=cfg.allow_asset_oob,
         marker_overrides=cfg.marker_overrides,
+        validation_requested=vk_validation.requested(env),
+        stem=cfg.stem,
     )
     verdict = evaluate(summary, gcfg, exit_code=proc.returncode,
                        walltime_s=walltime, killed_by_timeout=killed)

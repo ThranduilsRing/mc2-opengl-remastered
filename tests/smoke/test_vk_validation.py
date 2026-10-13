@@ -84,3 +84,34 @@ def test_the_report_has_a_vulkan_validation_line_only_for_missions_that_printed_
     assert "**Vulkan validation:** mc2_01 errors=1 (VUID-vkCmdDraw-None-02699 x1) warnings=1" in md
     quiet = Row(stem="mc2_03", verdict=Verdict(passed=True, buckets=[], details=[]), summary=LogSummary(), destroys_delta=0)
     assert "Vulkan validation" not in report.render_markdown([quiet], tier="tier1", profile="stock", timestamp="t")
+
+
+def test_a_run_that_asked_for_validation_and_never_confirmed_the_layer_is_red():
+    assert vk_validation.grade(vk_validation.parse(ENABLED), asked=True) == []
+    assert vk_validation.grade(vk_validation.parse(""), asked=True) == [vk_validation.UNCONFIRMED]
+    assert vk_validation.grade(vk_validation.parse(""), asked=False) == []
+
+
+def test_requested_reads_the_environment_the_way_the_engine_does():
+    assert vk_validation.requested({"MC2_VULKAN_VALIDATION": "1"})
+    assert vk_validation.requested({"MC2_VULKAN_VALIDATION": ""})            # set but empty is the core preset
+    assert vk_validation.requested({"MC2_VULKAN_VALIDATION": "sync"})
+    assert not vk_validation.requested({"MC2_VULKAN_VALIDATION": "0"})
+    assert not vk_validation.requested({"MC2_VULKAN_VALIDATION": "off"})
+    assert not vk_validation.requested({})
+
+
+def test_the_gate_grades_an_unconfirmed_request_red_and_a_confirmed_one_clean():
+    from scripts.smoke_lib.gates import GateConfig, evaluate
+    cfg = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3, duration_s=30, validation_requested=True)
+
+    def run(text):
+        s = logparse.parse_log(text)
+        s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
+        s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
+        s.perf = logparse.PerfRow(avg_fps=60)
+        return evaluate(s, cfg, exit_code=0, walltime_s=31)
+
+    assert run(ENABLED + "\n").passed
+    unconfirmed = run("\n")
+    assert not unconfirmed.passed and "vk_validation_unconfirmed" in unconfirmed.buckets
