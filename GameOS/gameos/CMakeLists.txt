@@ -97,6 +97,7 @@ set(SOURCES ${SOURCES}
     gos_crashbundle.cpp
     mc2_verify.cpp
     gos_smoke.cpp
+    gpu_memory_report.cpp
     debug_renderer.cpp
     gos_font.cpp
     gos_input.cpp

@@ -86,6 +86,11 @@ public:
     const EngineContextHealth& health() const { return health_; }
     EngineContextHealth&       mutableHealth() { return health_; }
 
+    // Device-local memory as VMA sees it, summed over the device-local heaps: the OS budget, the process usage and the bytes handed out by
+    // allocations. With VK_EXT_memory_budget enabled (requested whenever the device has it) the budget and usage are the OS's numbers; without
+    // it they are VMA's own estimate. False when no allocator is live.
+    bool deviceLocalMemory(uint64_t& budgetBytes, uint64_t& usageBytes, uint64_t& allocatedBytes) const;
+
     // Emit the [VK_ENGINE_CONTEXT] health line (device_name / validation_errors
     // / created / fallback_reason) to stderr for the T5 device-birth proof.
     void logHealth() const;
@@ -99,6 +104,7 @@ private:
     VkQueue          gfxQueue_          = VK_NULL_HANDLE;
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
+    bool             memoryBudgetExt_   = false;   // VK_EXT_memory_budget enabled on the device
 
     EngineContextHealth health_;
 };

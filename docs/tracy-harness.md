@@ -65,6 +65,13 @@ recorder.
   `MC2_OPTIONS_OVERRIDE`, `scripts/smoke_lib/render_options_pin.py`); `baseline.json` keeps them per arm. `compare` and `regress` refuse two runs whose
   options differ (`StaticPropPbr` on one side only is a different frame cost, not a regression) and refuse a run with no record; `--vary Key,Key`
   names the options that differ on purpose.
+- **GPU memory is recorded next to the frame rate.** The engine plots the process's dedicated video memory to Tracy as `VRAM.Process.MB` (DXGI
+  `QueryVideoMemoryInfo`, every 120 frames) and prints `[VRAM v1]` lines at the end of mission load and at the end of a smoke run
+  (`GameOS/gameos/gpu_memory_report.cpp`: on VK the VMA budget/usage, on GL `GL_TEXTURE_FREE_MEMORY_ATI` on AMD or `GL_NVX_gpu_memory_info` on NVIDIA,
+  and the DXGI process counter on both; -1 = that counter does not exist on the driver). `baseline.json` keeps the plot summary and the log samples per
+  arm (`vram`), `summary.md` has a GPU memory table, `tools/perf_baseline_report.py` prints a GPU memory line per trace, the smoke report carries a
+  `VRAM:` line per mission (`scripts/smoke_lib/vram.py`), and the debug-state dump has a `gpu_memory` object. A trace taken with an exe that predates the
+  plot says so instead of staying silent.
 
 ## The two arms
 

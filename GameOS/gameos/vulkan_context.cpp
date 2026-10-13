@@ -287,6 +287,18 @@ bool VulkanContext::init(bool wantPresent) {
         devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     }
 
+    // VK_EXT_memory_budget: the OS's per-heap budget and usage, so the VRAM line of the smoke report is the driver's number and not VMA's estimate.
+    {
+        uint32_t extCount = 0;
+        vkEnumerateDeviceExtensionProperties(phys_, nullptr, &extCount, nullptr);
+        std::vector<VkExtensionProperties> have(extCount);
+        if (extCount) vkEnumerateDeviceExtensionProperties(phys_, nullptr, &extCount, have.data());
+        for (const auto& e : have) {
+            if (std::strcmp(e.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0) { memoryBudgetExt_ = true; break; }
+        }
+        if (memoryBudgetExt_) devExts.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+    }
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dci.queueCreateInfoCount = 1;
@@ -310,6 +322,7 @@ bool VulkanContext::init(bool wantPresent) {
         aci.device = device_;
         aci.instance = instance_;
         aci.vulkanApiVersion = VK_API_VERSION_1_1;
+        if (memoryBudgetExt_) aci.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
         VmaVulkanFunctions fns{};
         r = vmaImportVulkanFunctionsFromVolk(&aci, &fns);
         if (r != VK_SUCCESS) return fail("vmaImportVulkanFunctionsFromVolk failed");
@@ -345,7 +358,24 @@ void VulkanContext::destroy() {
         instance_ = VK_NULL_HANDLE;
     }
     if (g_cbContext == this) g_cbContext = nullptr;
+    memoryBudgetExt_ = false;
     health_.created = false;
+}
+
+bool VulkanContext::deviceLocalMemory(uint64_t& budgetBytes, uint64_t& usageBytes, uint64_t& allocatedBytes) const {
+    if (!allocator_ || phys_ == VK_NULL_HANDLE) return false;
+    VkPhysicalDeviceMemoryProperties mp{};
+    vkGetPhysicalDeviceMemoryProperties(phys_, &mp);
+    VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
+    vmaGetHeapBudgets(allocator_, budgets);
+    budgetBytes = usageBytes = allocatedBytes = 0;
+    for (uint32_t i = 0; i < mp.memoryHeapCount; ++i) {
+        if (!(mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) continue;
+        budgetBytes += budgets[i].budget;
+        usageBytes += budgets[i].usage;
+        allocatedBytes += budgets[i].statistics.allocationBytes;
+    }
+    return true;
 }
 
 void VulkanContext::logHealth() const {

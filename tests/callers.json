@@ -377,7 +377,7 @@
         },
         {
           "path": "tools/visual_verify/verify.py",
-          "line": 241,
+          "line": 263,
           "evidence": "load module",
           "reference": "A:\\Games\\mc2-lane2/scripts/check-capture-resolution.py",
           "text": "_spec = _ilu.spec_from_file_location("
@@ -3747,7 +3747,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/mcp/mc2_render_state_server.py",
-          "line": 736,
+          "line": 737,
           "evidence": "command",
           "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
           "text": "result = subprocess.run("
@@ -4047,6 +4047,13 @@
           "text": "from . import bounded_wait, child_registry"
         },
         {
+          "path": "scripts/smoke_lib/logparse.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import vram"
+        },
+        {
           "path": "scripts/smoke_lib/nofocus.py",
           "line": 337,
           "evidence": "import",
@@ -4094,6 +4101,20 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 38,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import vram"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import render_resolution"
         },
         {
           "path": "scripts/smoke_lib/runner.py",
@@ -4157,6 +4178,20 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import render_resolution"
+        },
+        {
+          "path": "tests/smoke/test_resolution_tier.py",
+          "line": 111,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import report"
+        },
+        {
+          "path": "tests/smoke/test_vram.py",
+          "line": 2,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import logparse, report, vram"
         },
         {
           "path": "tests/telemetry/test_cockpit_s2.py",
@@ -4633,6 +4668,20 @@
           "text": "from scripts.smoke_lib.logparse import LogSummary, PerfRow"
         },
         {
+          "path": "tests/smoke/test_vram.py",
+          "line": 2,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib import logparse, report, vram"
+        },
+        {
+          "path": "tests/smoke/test_vram.py",
+          "line": 54,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib.logparse import LogSummary"
+        },
+        {
           "path": "tools/test_sim_determinism.py",
           "line": 16,
           "evidence": "import",
@@ -4827,6 +4876,13 @@
           "text": "from .render_resolution import parse as parse_resolution"
         },
         {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_resolution",
+          "text": "from . import render_resolution"
+        },
+        {
           "path": "tests/smoke/test_resolution_tier.py",
           "line": 8,
           "evidence": "import",
@@ -4868,6 +4924,27 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.report",
           "text": "from scripts.smoke_lib.report import Row, render_markdown, render_json"
+        },
+        {
+          "path": "tests/smoke/test_resolution_tier.py",
+          "line": 111,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib import report"
+        },
+        {
+          "path": "tests/smoke/test_vram.py",
+          "line": 2,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib import logparse, report, vram"
+        },
+        {
+          "path": "tests/smoke/test_vram.py",
+          "line": 3,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib.report import Row"
         }
       ]
     },
@@ -4897,6 +4974,42 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import run_one, RunConfig"
+        },
+        {
+          "path": "tests/smoke/test_vram.py",
+          "line": 55,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.runner",
+          "text": "from scripts.smoke_lib.runner import Verdict"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/vram.py",
+      "basename": "vram.py",
+      "stem": "vram",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/smoke_lib/logparse.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vram",
+          "text": "from . import vram"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 38,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vram",
+          "text": "from . import vram"
+        },
+        {
+          "path": "tests/smoke/test_vram.py",
+          "line": 2,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vram",
+          "text": "from scripts.smoke_lib import logparse, report, vram"
         }
       ]
     },
@@ -7528,8 +7641,24 @@
       "path": "tools/perf_baseline_report.py",
       "basename": "perf_baseline_report.py",
       "stem": "perf_baseline_report",
-      "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_basename": [
+        {
+          "path": "tests/smoke/test_perf_baseline_vram.py",
+          "line": 6,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-lane2/tools/perf_baseline_report.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"perf_baseline_report_under_test\", ROOT / \"tools\" / \"perf_baseline_report.py\")"
+        }
+      ],
+      "callers_by_stem": [
+        {
+          "path": "tools/tracy_capture_compare.py",
+          "line": 81,
+          "evidence": "import",
+          "reference": "perf_baseline_report",
+          "text": "import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)"
+        }
+      ]
     },
     {
       "path": "tools/perf_snapshot.py",
@@ -10736,6 +10865,13 @@
           "evidence": "import",
           "reference": "verify",
           "text": "from verify import diff_crops, grade, DEFAULT_THRESHOLDS  # noqa: E402"
+        },
+        {
+          "path": "tools/visual_verify/bless_selftest.py",
+          "line": 60,
+          "evidence": "import",
+          "reference": "verify",
+          "text": "import verify as verifylib  # noqa: E402"
         }
       ]
     },

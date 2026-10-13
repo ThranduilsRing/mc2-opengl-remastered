@@ -11959,6 +11959,26 @@
    "count": 1
   },
   {
+   "tag": "VRAM",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "phase",
+    "backend",
+    "gl_ati_tex_free_mb",
+    "gl_ati_tex_largest_free_mb",
+    "gl_nvx_dedicated_mb",
+    "gl_nvx_available_mb",
+    "vk_budget_mb",
+    "vk_usage_mb",
+    "vk_allocated_mb",
+    "adapter_dedicated_mb",
+    "proc_dedicated_mb",
+    "proc_budget_mb"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VSYNC",
    "ver": -1,
    "stream": "stdout",
@@ -12530,7 +12550,8 @@
   "TGL_POOL",
   "TIMING",
   "VEG_SUMMARY",
-  "VISUAL_CAPTURE"
+  "VISUAL_CAPTURE",
+  "VRAM"
  ],
  "plain_tags": [
   "VEG_SUMMARY",

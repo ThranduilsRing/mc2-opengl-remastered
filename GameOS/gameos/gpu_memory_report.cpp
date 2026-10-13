@@ -1,0 +1,184 @@
+// GameOS/gameos/gpu_memory_report.cpp -- see gpu_memory_report.h.
+#include "gpu_memory_report.h"
+
+#include "gos_profiler.h"          // GLEW + Tracy (TracyPlot)
+#include "gos_smoke.h"
+#include "mc2_diag_verbose.h"
+#include "render_backend_select.h"
+
+#include <SDL2/SDL.h>
+
+#include <cstdio>
+#include <cstring>
+
+#ifdef MC2_VULKAN
+#include "vulkan_context.h"
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
+#include <dxgi1_4.h>
+#endif
+
+namespace mc2::gpumem {
+
+namespace {
+
+// GL_ATI_meminfo and GL_NVX_gpu_memory_info enums (not every GL header carries them).
+constexpr GLenum kAtiTextureFreeMemory = 0x87FC;            // GL_TEXTURE_FREE_MEMORY_ATI: 4 ints, KiB
+constexpr GLenum kNvxDedicatedVidmem = 0x9047;              // GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
+constexpr GLenum kNvxCurrentAvailableVidmem = 0x9049;       // GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
+
+bool hasGlExtension(const char* name) {
+    GLint n = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+    for (GLint i = 0; i < n; ++i) {
+        const GLubyte* e = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
+        if (e && std::strcmp(reinterpret_cast<const char*>(e), name) == 0) return true;
+    }
+    return false;
+}
+
+void readGl(Snapshot& s) {
+    if (!SDL_GL_GetCurrentContext()) return;               // the queries need the context of this thread
+    static int ati = -1, nvx = -1;                          // -1 unknown, 0 absent, 1 present (extension lists do not change)
+    if (ati < 0) { ati = hasGlExtension("GL_ATI_meminfo") ? 1 : 0; nvx = hasGlExtension("GL_NVX_gpu_memory_info") ? 1 : 0; }
+    while (glGetError() != GL_NO_ERROR) {}                  // leave no stale error for the engine's own [GL_ERROR] accounting to blame on us
+    if (ati == 1) {
+        GLint v[4] = {0, 0, 0, 0};
+        glGetIntegerv(kAtiTextureFreeMemory, v);
+        if (glGetError() == GL_NO_ERROR) { s.glAtiTexFreeKb = v[0]; s.glAtiTexLargestFreeKb = v[1]; }
+    }
+    if (nvx == 1) {
+        GLint dedicated = 0, available = 0;
+        glGetIntegerv(kNvxDedicatedVidmem, &dedicated);
+        glGetIntegerv(kNvxCurrentAvailableVidmem, &available);
+        if (glGetError() == GL_NO_ERROR) { s.nvxDedicatedKb = dedicated; s.nvxCurrentAvailableKb = available; }
+    }
+}
+
+#ifdef MC2_VULKAN
+void readVulkan(Snapshot& s) {
+    if (!mc2vk::engineVulkanContextValid()) return;
+    uint64_t budget = 0, usage = 0, allocated = 0;
+    if (mc2vk::getOrCreateEngineVulkanContext().deviceLocalMemory(budget, usage, allocated)) {
+        s.vkBudgetBytes = static_cast<int64_t>(budget);
+        s.vkUsageBytes = static_cast<int64_t>(usage);
+        s.vkAllocatedBytes = static_cast<int64_t>(allocated);
+    }
+}
+#endif
+
+#ifdef _WIN32
+// The adapter with the most dedicated memory (the discrete GPU on a desktop with an iGPU), found once; queried per call.
+IDXGIAdapter3* dxgiAdapter() {
+    static IDXGIAdapter3* adapter = nullptr;
+    static bool tried = false;
+    if (tried) return adapter;
+    tried = true;
+    HMODULE dll = LoadLibraryA("dxgi.dll");
+    if (!dll) return nullptr;
+    using CreateFactory1 = HRESULT(WINAPI*)(REFIID, void**);
+    auto create = reinterpret_cast<CreateFactory1>(GetProcAddress(dll, "CreateDXGIFactory1"));
+    IDXGIFactory1* factory = nullptr;
+    if (!create || FAILED(create(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&factory))) || !factory) return nullptr;
+    SIZE_T best = 0;
+    for (UINT i = 0;; ++i) {
+        IDXGIAdapter1* a = nullptr;
+        if (factory->EnumAdapters1(i, &a) == DXGI_ERROR_NOT_FOUND) break;
+        DXGI_ADAPTER_DESC1 d{};
+        a->GetDesc1(&d);
+        IDXGIAdapter3* a3 = nullptr;
+        if (!(d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) && d.DedicatedVideoMemory >= best &&
+            SUCCEEDED(a->QueryInterface(__uuidof(IDXGIAdapter3), reinterpret_cast<void**>(&a3))) && a3) {
+            if (adapter) adapter->Release();
+            adapter = a3;
+            best = d.DedicatedVideoMemory;
+        }
+        a->Release();
+    }
+    factory->Release();
+    return adapter;
+}
+
+void readDxgi(Snapshot& s) {
+    IDXGIAdapter3* a = dxgiAdapter();
+    if (!a) return;
+    DXGI_ADAPTER_DESC d{};
+    if (SUCCEEDED(a->GetDesc(&d))) s.dxgiAdapterDedicatedBytes = static_cast<int64_t>(d.DedicatedVideoMemory);
+    DXGI_QUERY_VIDEO_MEMORY_INFO info{};
+    if (SUCCEEDED(a->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info))) {
+        s.dxgiProcessUsageBytes = static_cast<int64_t>(info.CurrentUsage);
+        s.dxgiProcessBudgetBytes = static_cast<int64_t>(info.Budget);
+    }
+}
+#endif
+
+int64_t kibToMib(int64_t v) { return v < 0 ? kUnavailable : v / 1024; }
+int64_t bytesToMib(int64_t v) { return v < 0 ? kUnavailable : v / (1024 * 1024); }
+
+}  // namespace
+
+Snapshot take() {
+    Snapshot s;
+    s.backend = (mc2::renderBackend() == mc2::RenderBackend::Vulkan) ? "vk" : "gl";
+    readGl(s);
+#ifdef MC2_VULKAN
+    readVulkan(s);
+#endif
+#ifdef _WIN32
+    readDxgi(s);
+#endif
+    return s;
+}
+
+std::string format(const char* phase, const Snapshot& s) {
+    char buf[640];
+    std::snprintf(buf, sizeof(buf),
+                  "[VRAM v1] phase=%s backend=%s gl_ati_tex_free_mb=%lld gl_ati_tex_largest_free_mb=%lld gl_nvx_dedicated_mb=%lld "
+                  "gl_nvx_available_mb=%lld vk_budget_mb=%lld vk_usage_mb=%lld vk_allocated_mb=%lld adapter_dedicated_mb=%lld "
+                  "proc_dedicated_mb=%lld proc_budget_mb=%lld",
+                  phase ? phase : "unknown", s.backend ? s.backend : "gl",
+                  (long long)kibToMib(s.glAtiTexFreeKb), (long long)kibToMib(s.glAtiTexLargestFreeKb),
+                  (long long)kibToMib(s.nvxDedicatedKb), (long long)kibToMib(s.nvxCurrentAvailableKb),
+                  (long long)bytesToMib(s.vkBudgetBytes), (long long)bytesToMib(s.vkUsageBytes), (long long)bytesToMib(s.vkAllocatedBytes),
+                  (long long)bytesToMib(s.dxgiAdapterDedicatedBytes), (long long)bytesToMib(s.dxgiProcessUsageBytes),
+                  (long long)bytesToMib(s.dxgiProcessBudgetBytes));
+    return buf;
+}
+
+std::string toJson(const Snapshot& s) {
+    char buf[640];
+    std::snprintf(buf, sizeof(buf),
+                  "{\"backend\": \"%s\", \"gl_ati_tex_free_mb\": %lld, \"gl_ati_tex_largest_free_mb\": %lld, \"gl_nvx_dedicated_mb\": %lld, "
+                  "\"gl_nvx_available_mb\": %lld, \"vk_budget_mb\": %lld, \"vk_usage_mb\": %lld, \"vk_allocated_mb\": %lld, "
+                  "\"adapter_dedicated_mb\": %lld, \"proc_dedicated_mb\": %lld, \"proc_budget_mb\": %lld}",
+                  s.backend ? s.backend : "gl",
+                  (long long)kibToMib(s.glAtiTexFreeKb), (long long)kibToMib(s.glAtiTexLargestFreeKb),
+                  (long long)kibToMib(s.nvxDedicatedKb), (long long)kibToMib(s.nvxCurrentAvailableKb),
+                  (long long)bytesToMib(s.vkBudgetBytes), (long long)bytesToMib(s.vkUsageBytes), (long long)bytesToMib(s.vkAllocatedBytes),
+                  (long long)bytesToMib(s.dxgiAdapterDedicatedBytes), (long long)bytesToMib(s.dxgiProcessUsageBytes),
+                  (long long)bytesToMib(s.dxgiProcessBudgetBytes));
+    return buf;
+}
+
+void log(const char* phase) {
+    if (!SmokeMode::state().enabled && !mc2DiagVerbose()) return;
+    const std::string line = format(phase, take());
+    std::printf("%s\n", line.c_str());
+    std::fflush(stdout);
+}
+
+void tick(unsigned long frame) {
+    if (frame % kPlotEveryFrames != 0) return;
+#ifdef _WIN32
+    IDXGIAdapter3* a = dxgiAdapter();
+    DXGI_QUERY_VIDEO_MEMORY_INFO info{};
+    if (a && SUCCEEDED(a->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info)))
+        TracyPlot("VRAM.Process.MB", static_cast<int64_t>(info.CurrentUsage / (1024 * 1024)));
+#else
+    (void)frame;
+#endif
+}
+
+}  // namespace mc2::gpumem

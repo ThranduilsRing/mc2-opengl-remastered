@@ -33,6 +33,17 @@ def _options_line(rows: list[Row]) -> str:
     return "> **Render options:** " + " | ".join(shown) + "\n\n"
 
 
+def _vram_line(rows: list[Row]) -> str:
+    """One report line with the GPU memory of every mission that printed `[VRAM v1]` (load end -> run end); nothing when no row did."""
+    from . import vram
+    parts = []
+    for r in rows:
+        samples = getattr(r.summary, "vram", None) or []
+        if samples:
+            parts.append(f"{r.stem} " + "; ".join(vram.describe(s) for s in samples))
+    return ("> **VRAM:** " + " | ".join(parts) + "\n\n") if parts else ""
+
+
 def _resolution_line(tier: str) -> str:
     """The size a pinned tier ran at (the fps numbers mean this size); other tiers take the install's options.cfg size and say nothing."""
     from . import render_resolution
@@ -76,6 +87,7 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
                  + "".join(f"> - {f}\n" for f in run_failures) + "\n")
     head += _options_line(rows)
     head += _resolution_line(tier)
+    head += _vram_line(rows)
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"
@@ -133,6 +145,7 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
                 "simid_frames": r.summary.simid_frames,
                 "simid_chain": r.summary.simid_chain,
                 "render_options": r.render_options,
+                "vram": [{"phase": v.phase, "backend": v.backend, "values": v.values} for v in (getattr(r.summary, "vram", None) or [])],
             }
             for r in rows
         ],

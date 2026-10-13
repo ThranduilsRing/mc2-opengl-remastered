@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
+from . import vram
+
 PERF_RE = re.compile(
     r"\[PERF v1\] avg_fps=(?P<avg>[\d.]+) p50_ms=(?P<p50>[\d.]+) "
     r"p99_ms=(?P<p99>[\d.]+) p1low_fps=(?P<p1l>[\d.]+) peak_ms=(?P<peak>[\d.]+) "
@@ -174,6 +176,8 @@ class LogSummary:
     # Two runs under MC2_SMOKE_FIXED_TIMESTEP + MC2_DETERMINISTIC_RNG must carry the same chain over their common frames (tools/sim_determinism.py).
     simid_frames: int = 0
     simid_chain: Optional[str] = None
+    # The `[VRAM v1]` samples of the run (load_end, run_end): GPU memory counters, see smoke_lib/vram.py.
+    vram: list = field(default_factory=list)
 
 
 def parse_log(text: str,
@@ -198,6 +202,8 @@ def parse_log(text: str,
         if line.startswith("[SIMID v1] simframe="):
             simid.update(line.rstrip().encode("utf-8", "replace"))
             s.simid_frames += 1
+        if "[VRAM v1]" in line:
+            s.vram.extend(vram.parse(line))
         if "[SMOKE v1] event=banner" in line:
             s.smoke_banner_seen = True
         if "[SMOKE v1] event=mission_resolve" in line:
