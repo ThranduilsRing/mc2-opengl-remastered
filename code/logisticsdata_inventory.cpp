@@ -15,8 +15,7 @@ int LogisticsData::getAvailableComponents( LogisticsComponent** pComps, int& max
 	int retVal = 0;
 
 	int i = 0;
-	for ( COMPONENT_LIST::EIterator iter = components.Begin(); 
-		!iter.IsDone(); iter++ )
+	for ( auto iter = components.begin(); iter != components.end(); ++iter )
 		{
 			if ( (*iter).isAvailable()  )
 			{
@@ -40,8 +39,7 @@ int	LogisticsData::getAllComponents( LogisticsComponent** pComps, int& maxCount 
 	int retVal = 0;
 	
 	int i = 0;
-	for ( COMPONENT_LIST::EIterator iter = components.Begin(); 
-		!iter.IsDone(); iter++ )
+	for ( auto iter = components.begin(); iter != components.end(); ++iter )
 		{
 			if ( i < maxCount )
 					pComps[i]	= &(*iter);	
@@ -50,7 +48,7 @@ int	LogisticsData::getAllComponents( LogisticsComponent** pComps, int& maxCount 
 				++i;
 		}
 
-	maxCount = components.Count();
+	maxCount = static_cast<int>(std::ssize(components));
 
 	return retVal; 
 }
@@ -334,7 +332,7 @@ int LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemoveP
 LogisticsPilot* LogisticsData::getFirstAvailablePilot()
 {
 	ensureMechBayDataLoaded("getFirstAvailablePilot");
-	for ( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++  )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 	{
 		 bool bIsUsed = false;
 		 for ( auto mIter = inventory.begin(); mIter != inventory.end(); ++mIter )

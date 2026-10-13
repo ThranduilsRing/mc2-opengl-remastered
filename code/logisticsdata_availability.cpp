@@ -43,7 +43,7 @@ long LogisticsData::updateAvailability()
 	int newMechAvailableCount = 0;
 	int oldPilotAvailableCount = 0;
 	int newPilotAvailableCount= 0;
-	for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 	{
 		if ( (*pIter).bAvailable )
 			oldPilotAvailableCount++;
@@ -103,7 +103,7 @@ long LogisticsData::updateAvailability()
 	}
 
 	// go through comonent list, and set 'em
-	for ( COMPONENT_LIST::EIterator cIter = components.Begin(); !cIter.IsDone(); cIter++ )
+	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
 	{
 		if ( available[(*cIter).getID()] || bAll )
 		{
@@ -157,7 +157,7 @@ long LogisticsData::updateAvailability()
 		if ( enableWireForced > 0 )
 		{
 			LOG_LOGISTICS_UA( "updateAvailability: enable-wire forced %zu component(s)", enableWireForced );
-			for ( COMPONENT_LIST::EIterator cIter = components.Begin(); !cIter.IsDone(); cIter++ )
+			for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
 			{
 				if ( available[(*cIter).getID()] && !(*cIter).isAvailable() )
 				{
@@ -169,7 +169,7 @@ long LogisticsData::updateAvailability()
 	}
 
 	// go through comonent list, and set 'em
-	for (COMPONENT_LIST::EIterator cIter = components.Begin(); !cIter.IsDone(); cIter++ )
+	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
 	{
 		if ( !available[(*cIter).getID()]  )
 		{
@@ -243,7 +243,7 @@ long LogisticsData::updateAvailability()
 
 		// The purchase file names a pilot in its own case (PMWChopper) and the pilot FIT is lower case (pmwchopper): the match ignores ASCII case.
 		const std::string pilotKey = mc2::str::from_c( pilotName );
-		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 		{
 			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
 			{
@@ -253,7 +253,7 @@ long LogisticsData::updateAvailability()
 		}
 	}
 
-	for (PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 	{
 		
 		if ( (*pIter).bAvailable )
@@ -459,7 +459,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 			break;
 
 		const std::string pilotKey = mc2::str::from_c( pilotName );
-		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 		{
 			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
 			{

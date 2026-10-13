@@ -84,7 +84,7 @@ void				LogisticsData::startNewCampaign( const char* fileName )
 
 	inventory.clear();
 	resourcePoints = 0;
-	pilots.Clear();
+	clearPilots();
 	initPilots();
 
 	ActivateCampaignMod(fileName);
@@ -114,7 +114,7 @@ void LogisticsData::startMultiPlayer()
 {
 	inventory.clear();
 	resourcePoints = 0;
-	pilots.Clear();
+	clearPilots();
 	initPilots();
 
 	// kill all old designer mechs
@@ -373,7 +373,7 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale 
 		}
 		
 		bldg.scale = scale;
-		buildings.Append( bldg );
+		buildings.push_back( bldg );
 
 		
 	}
@@ -384,8 +384,7 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale 
 //*************************************************************************************************
 LogisticsComponent* LogisticsData::getComponent( int componentID )
 {
-	for ( COMPONENT_LIST::EIterator iter = components.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = components.begin(); iter != components.end(); ++iter )
 	{
 			if ( ((*iter).getID() & 0x000000ff) == (componentID & 0x000000ff) )
 				return &(*iter);
@@ -397,8 +396,7 @@ LogisticsComponent* LogisticsData::getComponent( int componentID )
 //*************************************************************************************************
 LogisticsData::Building*			LogisticsData::getBuilding( int nameID )
 {
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin(); iter != buildings.end(); ++iter )
 		{
 			if ( (*iter).nameID == nameID )
 				return &(*iter);
@@ -415,8 +413,7 @@ int					LogisticsData::getBuildings( Building** bdgs, int& count )
 	count = 0;
 	int retVal = 0;
 
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin(); iter != buildings.end(); ++iter )
 	{
 		if ( count < maxCount )
 		{
@@ -558,7 +555,7 @@ void				LogisticsData::setVideoShown()
 void	LogisticsData::setPilotUnused( const char* pName )
 {
 	const std::string wanted = mc2::str::from_c( pName );
-	for ( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++  )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter).getFileName(), wanted ) )
 		{

@@ -45,13 +45,12 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 {
 	ensureMechBayDataLoaded("getBestPilot");
 
-	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( pilots.Count() * sizeof( LogisticsPilot*) );
-	memset( pPilots, 0, pilots.Count() * sizeof( LogisticsPilot*) );
+	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( pilots.size() * sizeof( LogisticsPilot*) );
+	memset( pPilots, 0, pilots.size() * sizeof( LogisticsPilot*) );
 
 	int counter = 0;
 #ifndef VIEWER
-	for ( PILOT_LIST::EIterator iter = pilots.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 		{
 			const char *nameCheck = (*iter).getName().c_str();
 			if ( (*iter).isAvailable() && (MPlayer || !MechWarrior::warriorInUse((char *)nameCheck)) )
@@ -96,15 +95,14 @@ bool		LogisticsData::gotPilotsLeft()
 {
 	ensureMechBayDataLoaded("gotPilotsLeft");
 
-	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( pilots.Count() * sizeof( LogisticsPilot*) );
-	memset( pPilots, 0, pilots.Count() * sizeof( LogisticsPilot*) );
+	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( pilots.size() * sizeof( LogisticsPilot*) );
+	memset( pPilots, 0, pilots.size() * sizeof( LogisticsPilot*) );
 
 	int counter = 0;
 
 	#ifndef VIEWER
 
-	for ( PILOT_LIST::EIterator iter = pilots.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 		{
 			const char *nameCheck = (*iter).getName().c_str();
 			if ( (*iter).isAvailable() && ( MPlayer || !MechWarrior::warriorInUse((char *)nameCheck)) )
@@ -192,7 +190,7 @@ long	LogisticsData::save( FitIniFile& file )
 	file.writeBlock( "General" );	
 	
 	file.writeIdLong( "VariantCount", variantCount );
-	file.writeIdLong( "PilotCount", pilots.Count() );
+	file.writeIdLong( "PilotCount", static_cast<long>(std::ssize(pilots)) );
 	file.writeIdLong( "InventoryCount", static_cast<long>(std::ssize(inventory)) );
 	file.writeIdBoolean( "FirstTimeResults", MissionResults::FirstTimeResults);
 
@@ -201,8 +199,7 @@ long	LogisticsData::save( FitIniFile& file )
 
 	int pilotCount = 0;
 	// save the pilots
-	for ( PILOT_LIST::EIterator pIter = pilots.Begin();
-		!pIter.IsDone(); pIter++ )
+	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 		{
 			(*pIter).save( file, pilotCount++ );
 		}
@@ -235,7 +232,7 @@ long	LogisticsData::load( FitIniFile& file )
 {
 	clearInventory();
 	resourcePoints = 0;
-	pilots.Clear();
+	clearPilots();
 	initPilots();
 	clearVariants();
 
@@ -303,7 +300,7 @@ long	LogisticsData::load( FitIniFile& file )
 		const std::string pilotKey = objective_text::readPlain( file, "FileName" ).value_or( std::string() );
 
 		// pilot should already exist
-		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 		{
 			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
 			{
@@ -428,7 +425,7 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 
 			if ( pilotKey )
 			{
-				for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
+				for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 				{
 					if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
 					{
@@ -459,8 +456,7 @@ void	LogisticsData::setMissionCompleted( )
 	rpJustAdded = 0;
 
 	// first set all pilots as not just dead
-	for ( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone();
-		iter++ )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 		{
 			(*iter).setUsed( 0 );
 		}
@@ -665,7 +661,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 {
 	const std::string wanted = mc2::str::from_c( pilotName );
 	// look for available ones first
-	for( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 	{
 		if ( (*iter).isAvailable() )
 		{
@@ -676,7 +672,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 		}
 	}
 	
-	for( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 		{

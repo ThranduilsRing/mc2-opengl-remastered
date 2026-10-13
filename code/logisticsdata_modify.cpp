@@ -44,19 +44,19 @@ void LogisticsData::clearInventory()
 
 int	LogisticsData::getPilotCount()
 {
-	return pilots.Count();
+	return static_cast<int>(std::ssize(pilots));
 }
 int	LogisticsData::getPilots( LogisticsPilot** pArray, long& count )
 {
 	ensureMechBayDataLoaded("getPilots");
-	if ( count < pilots.Count() )
+	if ( count < std::ssize(pilots) )
 	 {
 		return NEED_BIGGER_ARRAY;
 	 }	 
 
 	 count= 0;
 
-	 for ( PILOT_LIST::EIterator iter = instance->pilots.Begin(); !iter.IsDone(); iter++  )
+	 for ( auto iter = instance->pilots.begin(); iter != instance->pilots.end(); ++iter )
 	 {
 		 pArray[count++] = &(*iter);
 	 }
