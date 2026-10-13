@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 987
-registry_entry_count: 210
-verified_count: 980
+gate_count: 980
+registry_entry_count: 204
+verified_count: 973
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5605,68 +5605,6 @@ flags:
     doc: "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x)."
     verified: true
     registry: {feature_id: MC2_DIAG_TERRAIN_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_LATERAL
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: code
-    doc: "TERRAIN-DECAL-SLICE-0B: lateral nudge (float world units, default 0.0) along the wall 'tangent' (contour) axis - side-to-side placement."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_LATERAL, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_LIFT
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: code
-    doc: "TERRAIN-DECAL-SLICE-0B: vertical nudge (float world units, default 0.0) along world-up - lifts/lowers the CLIFF_WALL mesh-decal."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_LIFT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_OFFSET
-    kind: Float
-    default: 8
-    rule: Prefix
-    owner: code
-    doc: "TERRAIN-DECAL-SLICE-0B: outward offset distance (float world units, default 8.0) along the wall 'facing' axis - replaces the hardcoded 8.0 Slice-0A z-fight..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_OFFSET, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_PITCH
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: code
-    doc: "TERRAIN-DECAL-PITCH: pitch/lean (float degrees, default 0.0) of the wall about the horizontal tangent (contour) axis - positive leans the wall TOP backward..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_PITCH, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_SCALE
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: code
-    doc: "TERRAIN-DECAL-SLICE-0B: uniform scale (float, default 1.0) of the CLIFF_WALL mesh-decal - multiplies the face-frame's 3 basis rows before translation."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_SCALE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DECAL_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_TERRAIN_DECAL_YAW
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: code
-    doc: "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up - corrects the outward-facing direction."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_DECAL_YAW, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DETAIL_ANTITILE
     kind: Bool
     default: false

@@ -699,7 +699,7 @@ static void DrawCliffDecalPanel() {
     if (ImGui::Button("Copy current values (-> stderr)"))
         CliffDecalTuning::cliffDecal_logValues();
     ImGui::SameLine();
-    ImGui::TextDisabled("as MC2_TERRAIN_DECAL_* env vars");
+    ImGui::TextDisabled("freeze into CliffDecalTuning::kDefault*");
 
     ImGui::End();
 }

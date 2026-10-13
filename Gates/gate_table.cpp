@@ -1038,21 +1038,6 @@ L(Presence, "MC2_TERRAIN_CULL_PROBE", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_TERRAIN_CULL_WIDE", Bool, false, "terrain", "", "S2.13: MC2_TERRAIN_CULL_WIDE=1 forces the angular sphere cull to admit-all (constants set to 1e9).", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_DEBUG_MODE
 P("MC2_TERRAIN_DEBUG_MODE", Float, 0.0, "gameos", "", "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x).", registry(Trace, "MC2_DIAG_TERRAIN_DEBUG_MODE", -1, false) | verified),  // default not derivable from the tree
-// TerrainDecal (TERRAIN-DECAL-SLICE-0A)
-P("MC2_TERRAIN_DECAL_LATERAL", Float, 0.0, "code", "", "TERRAIN-DECAL-SLICE-0B: lateral nudge (float world units, default 0.0) along the wall 'tangent' (contour) axis - side-to-side placement.", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_LATERAL", -1, false) | verified),
-P("MC2_TERRAIN_DECAL_LIFT", Float, 0.0, "code", "", "TERRAIN-DECAL-SLICE-0B: vertical nudge (float world units, default 0.0) along world-up - lifts/lowers the CLIFF_WALL mesh-decal.", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_LIFT", -1, false) | verified),
-P("MC2_TERRAIN_DECAL_OFFSET", Float, 8.0, "code", "", "TERRAIN-DECAL-SLICE-0B: outward offset distance (float world units, default 8.0) along the wall 'facing' axis - replaces the hardcoded 8.0 Slice-0A z-fight...", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_OFFSET", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_DECAL_PITCH
-P("MC2_TERRAIN_DECAL_PITCH", Float, 0.0, "code", "", "TERRAIN-DECAL-PITCH: pitch/lean (float degrees, default 0.0) of the wall about the horizontal tangent (contour) axis - positive leans the wall TOP backward...", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_PITCH", -1, false) | verified),
-// TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
-// (mclib/bdactor.cpp registerStatic). Read once at process start; all default
-// to Slice-0A behavior -> byte-identical when unset. Only consulted when
-// MC2_TERRAIN_DECAL is armed and the appearance is "MarbleCliff".
-// history: docs/gate-history.md#MC2_TERRAIN_DECAL_SCALE
-P("MC2_TERRAIN_DECAL_SCALE", Float, 1.0, "code", "", "TERRAIN-DECAL-SLICE-0B: uniform scale (float, default 1.0) of the CLIFF_WALL mesh-decal - multiplies the face-frame's 3 basis rows before translation.", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_SCALE", -1, false) | verified),
-L(Presence, "MC2_TERRAIN_DECAL_TRACE", Bool, false, "props", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_DECAL_YAW
-P("MC2_TERRAIN_DECAL_YAW", Float, 0.0, "code", "", "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up - corrects the outward-facing direction.", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_YAW", -1, false) | verified),
 L(Lead0, "MC2_TERRAIN_DETAIL_ANTITILE", Bool, false, "terrain", "", "", verified),
 P("MC2_TERRAIN_DETAIL_FADE_END", Float, 3000.0, "gameos", "", "", verified),
 P("MC2_TERRAIN_DETAIL_FADE_START", Float, 1000.0, "gameos", "", "", verified),

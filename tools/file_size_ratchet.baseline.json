@@ -21,7 +21,7 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1779,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "RenderCore/RendererFeatureRegistry.h": 1939,
+  "RenderCore/RendererFeatureRegistry.h": 1783,
   "code/artlry.cpp": 1818,
   "code/bldng.cpp": 1704,
   "code/brain_special_dispatch.cpp": 2772,
@@ -52,7 +52,7 @@
   "mclib/camera.h": 1812,
   "mclib/file.cpp": 2685,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/mapdata.cpp": 2631,
+  "mclib/mapdata.cpp": 2632,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
@@ -63,7 +63,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "0af64d2d6",
+ "head": "e8a4ac64e",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -81,13 +81,13 @@
    "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1196
+   "max_lines": 1200
   },
   "RenderCore": {
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1939
+   "max_lines": 1783
   },
   "RenderWorld": {
    "files": 6,
@@ -153,7 +153,7 @@
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2631
+   "lines": 2632
   },
   {
    "file": "code/mpparameterscreen.cpp",
@@ -208,10 +208,6 @@
    "lines": 1953
   },
   {
-   "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 1939
-  },
-  {
    "file": "mclib/gosfx/fcurve.cpp",
    "lines": 1923
   },
@@ -242,6 +238,10 @@
   {
    "file": "mclib/camera.h",
    "lines": 1812
+  },
+  {
+   "file": "RenderCore/RendererFeatureRegistry.h",
+   "lines": 1783
   },
   {
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",

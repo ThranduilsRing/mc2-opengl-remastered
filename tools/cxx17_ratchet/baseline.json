@@ -75,7 +75,7 @@
    "LG03": 0,
    "LG04": 0,
    "LG05": 4,
-   "LG06": 12,
+   "LG06": 13,
    "LG07": 2,
    "LG08": 1,
    "LG09": 45,
@@ -90,7 +90,7 @@
    "LG17": 2,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 24
+   "LG20": 21
   },
   "RenderCore": {
    "LG01": 0,
@@ -142,9 +142,9 @@
    "LG01": 225,
    "LG02": 212,
    "LG03": 954,
-   "LG04": 21,
+   "LG04": 23,
    "LG05": 204,
-   "LG06": 447,
+   "LG06": 448,
    "LG07": 0,
    "LG08": 14,
    "LG09": 2351,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 14
+   "LG20": 12
   },
   "tools": {
    "LG01": 0,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 58
+   "LG20": 44
   }
  },
  "dirs": [
@@ -1404,10 +1404,10 @@
    "LG17": 1
   },
   "GuiRuntime/EditorInspector_sections.cpp": {
-   "LG06": 1,
+   "LG06": 2,
    "LG09": 1,
    "LG17": 1,
-   "LG20": 9
+   "LG20": 6
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
    "LG05": 1,
@@ -2861,8 +2861,9 @@
   },
   "code/prefs.cpp": {
    "LG03": 4,
+   "LG04": 2,
    "LG05": 1,
-   "LG06": 4,
+   "LG06": 5,
    "LG09": 1
   },
   "code/prefs.h": {
@@ -5174,20 +5175,20 @@
    "LG20": 6
   },
   "tests/unit/test_rendercore.cpp": {
-   "LG20": 5
+   "LG20": 3
   },
   "tools/job_system_harness/job_system_harness.cpp": {
    "LG20": 2
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 54
+   "LG20": 40
   },
   "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
    "LG20": 2
   }
  },
- "head": "c5156854d",
+ "head": "e8a4ac64e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

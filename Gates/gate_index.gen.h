@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 987;
+inline constexpr std::size_t kGateCount = 980;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -738,13 +738,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_CULL_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_CULL_WIDE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_DEBUG_MODE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_LATERAL", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_LIFT", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_OFFSET", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_PITCH", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_SCALE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_DECAL_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_TERRAIN_DECAL_YAW", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_DETAIL_ANTITILE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_DETAIL_FADE_END", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_DETAIL_FADE_START", Kind::Float, Rule::Prefix, {}},

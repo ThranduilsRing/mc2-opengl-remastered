@@ -9711,27 +9711,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "MC2_TERRAIN_DECAL_SCALE",
-    "MC2_TERRAIN_DECAL_OFFSET",
-    "MC2_TERRAIN_DECAL_LATERAL",
-    "MC2_TERRAIN_DECAL_LIFT",
-    "MC2_TERRAIN_DECAL_YAW",
-    "MC2_TERRAIN_DECAL_PITCH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_DECAL",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "name",
-    "pos",
     "scale",
     "offset",
     "lateral",
     "lift",
-    "yaw"
+    "yaw",
+    "pitch"
    ],
    "count": 1
   },

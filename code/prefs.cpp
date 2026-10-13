@@ -21,12 +21,12 @@ extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemap
 namespace {
 
 // One log line per rejected value; the default (or the value the file had before) stays.
-void logRejectedOption(const char* key, const char* text, mc2::options::Verdict why, const mc2::options::Option* opt) {
+void logRejectedOption(std::string_view key, std::string_view text, mc2::options::Verdict why, const mc2::options::Option* opt) {
 	if (opt && opt->kind != mc2::options::Kind::Bool)
-		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} want={:g}..{:g} kept=default\n", mc2::fmt::safe(key), mc2::fmt::safe(text),
+		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} want={:g}..{:g} kept=default\n", key, text,
 		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage", opt->lo, opt->hi);
 	else
-		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} kept=default\n", mc2::fmt::safe(key), mc2::fmt::safe(text),
+		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} kept=default\n", key, text,
 		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage");
 }
 
@@ -520,11 +520,12 @@ int CPrefs::applyPrefs(bool applyRes) {
 				mc2::fmt::print_err("[OPTIONS v1] event=override accepted={} rejected={} spec={}\n", accepted, rejects.size(), mc2::fmt::safe(overrideSpec.c_str()));
 			for (const auto& r : rejects)
 				if (!s_reported)
-					logRejectedOption(r.key.c_str(), r.text.c_str(), r.why, mc2::options::find(r.key));
+					logRejectedOption(r.key, r.text, r.why, mc2::options::find(r.key));
 		}
 		mc2::options::publish(effective);
-		if (!s_reported)
-			mc2::fmt::print_err("[OPTIONS v1] event=published early_reads={} first={}:{} changed_since_start={}\n", mc2::options::earlyReads(), mc2::fmt::safe(mc2::options::firstEarlyFile()), mc2::options::firstEarlyLine(), mc2::options::publishChangedValues() ? 1 : 0);
+		// Quiet when every reader saw the published values; a reader that cached its value before the publish names itself.
+		if (!s_reported && (mc2::options::earlyReads() > 0 || mc2::options::publishChangedValues()))
+			mc2::fmt::print_err("[OPTIONS v1] event=stale_reader early_reads={} first={}:{} changed_since_start={}\n", mc2::options::earlyReads(), mc2::fmt::safe(mc2::options::firstEarlyFile()), mc2::options::firstEarlyLine(), mc2::options::publishChangedValues() ? 1 : 0);
 		s_reported = true;
 		gos_SetPostFxOptions(effective.postCas ? 1 : 0, effective.postCasSharpness, effective.tonemapMode);
 	}

@@ -354,8 +354,8 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 { "material sample",     "MC2_MATERIAL_GPU_SAMPLE",         true  },
                 { "object-ID buffer",    "MC2_OBJECT_ID_BUFFER",            true  },
             };
-            const auto showRow = [](const char* label, bool on) {
-                ImGui::Text("  %-22s", label);
+            const auto showRow = [](std::string_view label, bool on) {
+                ImGui::Text("  %-22.*s", static_cast<int>(label.size()), label.data());
                 ImGui::SameLine(0.f, 4.f);
                 if (on)
                     ImGui::TextColored(ImVec4(0.4f, 1.f, 0.4f, 1.f), "ON");

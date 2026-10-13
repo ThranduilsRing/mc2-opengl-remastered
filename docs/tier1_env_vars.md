@@ -481,7 +481,6 @@ Gates found in source but missing from check-env-registry.sh (retired in G8; the
 - `MC2_REGFLUSH_GUARD2=1` — static-registry persistent-vanish discriminator: per-typeID stale buckets + consecutive-stale streaks (streak ≥16 frames = real drop, not transient cull). Per-range map cost when on.
 - `MC2_M2D_PZ_PARITY=1` — quad `pz` clip-path vs legacy-formula parity probe (demoted-not-deleted after green).
 - `MC2_3DVIEW_DIAG=1` — one-shot 3D-view composite diagnostics (`gameos_graphics.cpp`).
-- `MC2_TERRAIN_DECAL_TRACE=1` — CLIFF_WALL mesh-decal placement trace (`mclib/bdactor.cpp`).
 - `MC2_BOOKMARK_SAVE_DIR=<dir>` — output dir for the in-game "Save Camera Bookmark" inspector button (default `saved_bookmarks/` under the working dir); files are bookmark-schema JSON directly consumable by `MC2_VISUAL_BOOKMARK_CAPTURE`. `MC2_BOOKMARK_SAVE_TEST=1` auto-fires one save ~120 frames after mission load (round-trip proof hook).
 - `MC2_WATER_S6_TRACE=1` / `MC2_WATER_S6_COST=1` — water S6 armed-skip ownership transitions / setupTextures QPC cost summary every 600 frames.
 
