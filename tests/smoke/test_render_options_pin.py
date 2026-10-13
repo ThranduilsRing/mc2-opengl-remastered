@@ -22,7 +22,8 @@ def values(**changes):
 def test_table_is_the_engines_seventeen_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
     assert len(t) == 17
-    assert t["ShadowCSM"].default is True and t["StaticPropPbr"].default is False
+    assert t["ShadowCSM"].default is True and t["StaticPropPbr"].default is True and t["StaticPropAmbient"].default is True
+    assert t["SunAxisFix"].default is False
     assert t["PostCASSharpness"].default == 0.5 and t["PostCASSharpness"].hi == 1.0
     assert t["TonemapMode"].kind == "long" and (t["TonemapMode"].lo, t["TonemapMode"].hi) == (0, 3)
     assert t["StaticPropIblSunRotateFloor"].default == 0.45
@@ -45,17 +46,17 @@ def test_accepted_spellings_and_first_key_wins():
     v = values()
     rej = []
     rop.apply_cfg(v, "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nl TonemapMode = 3\r\n"
-                     "f PostCASSharpness = 0.25\r\nb StaticPropPbr =   True  \r\nb ShadowCSM = TRUE\r\n[Keys]\r\nb StaticPropAmbient = TRUE\r\n", rej)
+                     "f PostCASSharpness = 0.25\r\nb StaticPropPbr =   False  \r\nb ShadowCSM = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n", rej)
     assert rej == []
-    assert v["ShadowCSM"] is False and v["SunAxisFix"] is True and v["VfxLitParticles"] is True and v["StaticPropPbr"] is True
+    assert v["ShadowCSM"] is False and v["SunAxisFix"] is True and v["VfxLitParticles"] is True and v["StaticPropPbr"] is False
     assert v["TonemapMode"] == 3 and v["PostCASSharpness"] == 0.25
-    assert v["StaticPropAmbient"] is False      # another block
+    assert v["SunElevationFix"] is False      # another block
 
 
 def test_record_reads_the_install_then_the_override_case_insensitively(tmp_path):
-    (tmp_path / "options.cfg").write_text("[MechCommander2]\r\nb StaticPropPbr = TRUE\r\nb ShadowCSM = banana\r\n", encoding="latin-1")
+    (tmp_path / "options.cfg").write_text("[MechCommander2]\r\nb StaticPropPbr = FALSE\r\nb ShadowCSM = banana\r\n", encoding="latin-1")
     rec = rop.record(tmp_path, {"MC2_OPTIONS_OVERRIDE": "shadowcsm=0, TonemapMode=9, Nope=1"})
-    assert rec["values"]["StaticPropPbr"] is True
+    assert rec["values"]["StaticPropPbr"] is False
     assert rec["values"]["ShadowCSM"] is False                     # the override beats the (rejected) file value
     assert rec["values"]["TonemapMode"] == 0
     assert {(r["key"], r["why"]) for r in rec["rejected"]} == {("ShadowCSM", "garbage"), ("TonemapMode", "out_of_range"), ("Nope", "unknown_key")}
@@ -65,14 +66,14 @@ def test_record_reads_the_install_then_the_override_case_insensitively(tmp_path)
 def test_matching_options_pass_and_a_difference_is_a_hard_failure():
     a, b = {"values": values()}, {"values": values()}
     rop.require_same(a, b)
-    b = {"values": values(StaticPropPbr=True, PostCASSharpness=0.75)}
+    b = {"values": values(SunAxisFix=True, PostCASSharpness=0.75)}
     with pytest.raises(rop.OptionsMismatch) as e:
         rop.require_same(a, b, a_name="BEFORE", b_name="AFTER")
     msg = str(e.value)
-    assert "StaticPropPbr: A=False B=True" in msg and "PostCASSharpness" in msg and "BEFORE" in msg and "--vary" in msg
-    rop.require_same(a, b, vary=["StaticPropPbr", "postcassharpness"])     # named on purpose, any case
+    assert "SunAxisFix: A=False B=True" in msg and "PostCASSharpness" in msg and "BEFORE" in msg and "--vary" in msg
+    rop.require_same(a, b, vary=["SunAxisFix", "postcassharpness"])     # named on purpose, any case
     with pytest.raises(rop.OptionsMismatch):
-        rop.require_same(a, b, vary=["StaticPropPbr"])                        # the other key still differs
+        rop.require_same(a, b, vary=["SunAxisFix"])                        # the other key still differs
     with pytest.raises(ValueError):
         rop.require_same(a, b, vary=["NotAnOption"])
 
@@ -142,10 +143,10 @@ def test_tracy_driver_refuses_traces_with_different_options(tmp_path):
 def test_smoke_report_records_the_options():
     from scripts.smoke_lib.gates import Verdict
     from scripts.smoke_lib.logparse import LogSummary
-    row = Row(stem="mc2_01", verdict=Verdict(passed=True), summary=LogSummary(), render_options=values(StaticPropPbr=True))
+    row = Row(stem="mc2_01", verdict=Verdict(passed=True), summary=LogSummary(), render_options=values(SunAxisFix=True))
     md = render_markdown([row], tier="tier1", profile="stock", timestamp="t")
-    assert "Render options:** StaticPropPbr=True" in md
-    assert render_json([row], tier="tier1", profile="stock", timestamp="t")["rows"][0]["render_options"]["StaticPropPbr"] is True
+    assert "Render options:** SunAxisFix=True" in md
+    assert render_json([row], tier="tier1", profile="stock", timestamp="t")["rows"][0]["render_options"]["SunAxisFix"] is True
     plain = Row(stem="mc2_01", verdict=row.verdict, summary=row.summary, render_options=values())
     assert "Render options:** all defaults" in render_markdown([plain], tier="tier1", profile="stock", timestamp="t")
     assert "Render options:** not recorded" in render_markdown([Row(stem="x", verdict=row.verdict, summary=row.summary)], tier="tier1", profile="stock", timestamp="t")

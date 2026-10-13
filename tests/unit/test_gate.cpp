@@ -1259,7 +1259,7 @@ TEST_CASE("mlr_gate latches the env value on first use and every thread sees it"
 // options.cfg render options (Gates/render_options.h): defaults, bounds, garbage rejection and the override channel
 // ---------------------------------------------------------------------------
 
-TEST_CASE("render options default to what the gate rows they replaced defaulted to") {
+TEST_CASE("render options default to what the gate rows they replaced defaulted to, except the two static-prop lighting rows flipped ON") {
     const mc2::options::RenderOptions d{};
     CHECK_FALSE(d.postCas);
     CHECK(d.postCasSharpness == 0.5f);
@@ -1269,11 +1269,11 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK(d.propShadowReceive == 0);
     CHECK(d.shorelineLegacySuppress);
     CHECK(d.cpuPhongRetire);
-    CHECK_FALSE(d.staticPropAmbient);
+    CHECK(d.staticPropAmbient);        // flipped ON 2026-10-13 with StaticPropPbr (the final release ships these on)
     CHECK(d.staticPropIblSh);
     CHECK_FALSE(d.staticPropIblSunRotate);
     CHECK(d.staticPropIblSunRotateFloor == 0.45f);
-    CHECK_FALSE(d.staticPropPbr);
+    CHECK(d.staticPropPbr);
     CHECK_FALSE(d.sunAxisFix);
     CHECK_FALSE(d.sunElevationFix);
     CHECK_FALSE(d.vfxSoftParticles);
@@ -1318,10 +1318,10 @@ TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports eve
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     std::vector<mo::Reject> rej;
-    const int n = mo::applyOverrides(o, "ShadowCSM=0, StaticPropPbr=TRUE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
+    const int n = mo::applyOverrides(o, "ShadowCSM=0, StaticPropPbr=FALSE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
     CHECK(n == 2);
     CHECK_FALSE(o.shadowCsm);
-    CHECK(o.staticPropPbr);
+    CHECK_FALSE(o.staticPropPbr);
     CHECK(o.postCasSharpness == 0.5f);
     CHECK(o.tonemapMode == 0);
     CHECK_FALSE(o.vfxLitParticles);
@@ -1389,13 +1389,13 @@ TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the 
 
     // the whole-file load the engine runs before the window exists: valid keys apply, an out-of-range one is skipped, other blocks are ignored
     mo::RenderOptions loaded{};
-    const std::string cfgText = "[MechCommander2]\r\nb ShadowCSM = FALSE\r\nl TonemapMode = 7\r\nf PostCASSharpness = 0.75\r\nb SunAxisFix = TRUE\r\n[Keys]\r\nb StaticPropPbr = TRUE\r\n";
+    const std::string cfgText = "[MechCommander2]\r\nb ShadowCSM = FALSE\r\nl TonemapMode = 7\r\nf PostCASSharpness = 0.75\r\nb SunAxisFix = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n";
     CHECK(mo::cfg::loadFromText(loaded, cfgText) == 3);
     CHECK_FALSE(loaded.shadowCsm);
     CHECK(loaded.tonemapMode == 0);
     CHECK(loaded.postCasSharpness == 0.75f);
     CHECK(loaded.sunAxisFix);
-    CHECK_FALSE(loaded.staticPropPbr);
+    CHECK_FALSE(loaded.sunElevationFix);
 
     // what the editor writes is what the table's validation accepts
     mo::RenderOptions o{};
@@ -1446,7 +1446,7 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     mo::RenderOptions o{};
     std::vector<mo::Reject> rejects;
     const std::string good = "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nb VfxSoftParticles = 0\r\n"
-                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropPbr =   True  \r\n";
+                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropPbr =   False  \r\n";
     CHECK(mo::cfg::loadFromText(o, good, &rejects) == 7);
     CHECK(rejects.empty());
     CHECK_FALSE(o.shadowCsm);
@@ -1455,7 +1455,7 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     CHECK_FALSE(o.vfxSoftParticles);
     CHECK(o.tonemapMode == 3);
     CHECK(o.postCasSharpness == 0.25f);
-    CHECK(o.staticPropPbr);
+    CHECK_FALSE(o.staticPropPbr);
 
     // a duplicate key is read at its first line; a rejected value does not clobber a value the struct already holds
     mo::RenderOptions dup{};

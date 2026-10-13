@@ -32,11 +32,11 @@ struct RenderOptions {
     bool cpuPhongRetire          = true;    // gameplay elevation follows the drawn terrain surface
 
     // Static prop lighting.
-    bool  staticPropAmbient           = false;   // hemisphere ambient fill
+    bool  staticPropAmbient           = true;    // hemisphere ambient fill
     bool  staticPropIblSh             = true;    // SH-L2 image-based ambient
     bool  staticPropIblSunRotate      = false;   // aim the IBL probe at the sun
     float staticPropIblSunRotateFloor = 0.45f;   // probe floor, 0 = bare
-    bool  staticPropPbr               = false;   // Schlick-Fresnel specular
+    bool  staticPropPbr               = true;    // Schlick-Fresnel specular
 
     // Sun direction.
     bool sunAxisFix      = false;   // mech/vehicle diffuse axis

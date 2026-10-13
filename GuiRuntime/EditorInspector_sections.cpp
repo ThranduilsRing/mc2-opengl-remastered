@@ -256,7 +256,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                                       "only for the GBuffer1 write. normalTex is\n"
                                       "declared in MaterialGpu but unused today.");
 
-                // V-AMBIENT-STATIC-1: hemisphere ambient fill mode (default-OFF).
+                // V-AMBIENT-STATIC-1: hemisphere ambient fill mode (default ON).
                 // Read the published option (this panel only runs when
                 // MC2_IMGUI_INSPECTOR is on).
                 bool ambOn = mc2::options::current().staticPropAmbient;

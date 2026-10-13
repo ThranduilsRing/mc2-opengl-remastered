@@ -191,10 +191,9 @@ extern const bool s_materialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
 // Invariant: materials[materialIdx].albedoTex == texArrayLayer must hold while both paths live.
 extern const bool s_materialGpuSampleEnabled = mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">();
 
-// V-AMBIENT-STATIC-1: hemisphere ambient fill. Default-OFF; only on when the options.cfg
-// key StaticPropAmbient is TRUE. When off (default),
-// the uploaded strength is 0.0 so static_prop.vert's hemisphere term is a
-// bitwise no-op and the output is byte-identical to pre-slice af314d22.
+// V-AMBIENT-STATIC-1: hemisphere ambient fill. Default ON; the options.cfg key StaticPropAmbient = FALSE
+// turns it off, and then the uploaded strength is 0.0 so static_prop.vert's hemisphere term is a
+// bitwise no-op.
 // Read at first use, after CPrefs::applyPrefs() has published options.cfg: a namespace-scope initializer would
 // resolve it during static initialization, before that publish, and keep the default.
 bool staticPropAmbientV1Enabled() {
@@ -308,12 +307,9 @@ float iblShStrengthNightScaled() {
     return g_iblShStrength * (1.0f - (1.0f - s_iblNightFloor) * nFactor);
 }
 
-// V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular gate.
-// Default-OFF; "=1" / any non-"0" value enables. Matches V-IBL-STATIC-1
-// pre-flip env-parse pattern. When OFF, the per-frame upload pushes
-// u_pbrV1Strength=0.0f -> shader `if (u_pbrV1Strength > 0.0)` short-circuits
-// before any u_cameraWorldPos access -> mathematically byte-identical
-// (strength=0 -> lit += specular * 0 = lit unchanged).
+// V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular. Default ON; the options.cfg key
+// StaticPropPbr = FALSE turns it off, and then the per-frame upload pushes u_pbrV1Strength=0.0f, so the
+// shader skips the term and the lit colour is unchanged.
 bool pbrV1Enabled() {   // first-use read, see staticPropAmbientV1Enabled()
     static const bool on = mc2::options::current().staticPropPbr;
     return on;
