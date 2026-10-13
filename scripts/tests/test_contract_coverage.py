@@ -84,11 +84,15 @@ def test_contract_and_test_tier_coverage():
                   or re.fullmatch(r'tools/(?:check_[\w-]+|glsl_port_diff)\.py', item["path"]))
               and item["path"] != "scripts/check-contracts.sh"]
     registered = set()
-    for node in ast.walk(ast.parse(read("tools/run_contract_tests.py"))):
+    native_contracts = set()
+    for node in ast.walk(ast.parse(read("tools/build_contract_harnesses.py"))):
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id in
                 {"REGISTERED_HARNESSES", "PY_HARNESSES"} for t in node.targets):
+            values = ast.literal_eval(node.value)
             registered.update(value.split("/")[1] if value.startswith("tools/") else value
-                              for value in ast.literal_eval(node.value))
+                              for value in values)
+            if any(t.id == "REGISTERED_HARNESSES" for t in node.targets if isinstance(t, ast.Name)):
+                native_contracts.update(values)
     harnesses = {path.parent.name for path in (ROOT / "tools").glob("*_harness/CMakeLists.txt")}
     issues = coverage_problems(checks, inventory, entries(read("scripts/manual-checks.allowlist"), ":"),
                                read("scripts/check-contracts.sh"), harnesses, registered,
@@ -97,6 +101,10 @@ def test_contract_and_test_tier_coverage():
               "tests/model_override/CMakeLists.txt", "tests/static_natural_skip/CMakeLists.txt")}
     sources = {path.name: path.read_text(encoding="utf-8")
                for path in (ROOT / "tests/unit").glob("test_*.cpp")}
+    for name in native_contracts:
+        source = sources.get(f"test_{name}.cpp", "")
+        if not re.search(r'TEST_CASE(?:_FIXTURE)?\s*\([^\n]*"' + re.escape(name) + r'/', source):
+            issues.append(f"missing migrated contract cases: {name}")
     runners = read("scripts/run-unit-tests.sh") + read("tools/build_contract_harnesses.py")
     issues += tier_problems(sources, cmakes, runners)
     assert not issues, "\n".join(issues)

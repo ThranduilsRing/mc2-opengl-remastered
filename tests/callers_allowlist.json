@@ -261,5 +261,6 @@
   "scripts/tests/test_raw_gl_firewall.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_deploy_disk_space.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_delivery_gate_defaults.py": "Pytest-discovered module through the scripts_tests board row.",
-  "scripts/tests/test_board_selftests.py": "Pytest-discovered module through the scripts_tests board row."
+  "scripts/tests/test_board_selftests.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_contract_harness_migration.py": "Pytest-discovered module through the scripts_tests board row."
 }

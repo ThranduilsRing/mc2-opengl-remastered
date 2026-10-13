@@ -34,7 +34,7 @@ DELIVERY_INPUTS = {"tools/callers.py", "tools/verified.py", "tools/host_inventor
                    "tests/test_callers.py", "tests/test_verified.py", "tests/test_host_inventory.py",
                    "scripts/tests/test_contract_coverage.py", "scripts/tests/test_raw_gl_firewall.py",
                    "scripts/tests/test_deploy_disk_space.py", "scripts/tests/test_delivery_gate_defaults.py",
-                   "scripts/tests/test_board_selftests.py"}
+                   "scripts/tests/test_board_selftests.py", "scripts/tests/test_contract_harness_migration.py"}
 
 
 def tracked_files(root: Path) -> list[str]:

@@ -298,3 +298,48 @@ target_compile_definitions(mc2_modlint PRIVATE
 if(MSVC)
     target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
 endif()
+
+# The former contract executables share doctest; the GL guard cases retain a real hidden context.
+target_sources(mc2_tests PRIVATE
+    test_contract_smoke_harness.cpp
+    test_shader_contract_harness.cpp
+    test_render_state_contract_harness.cpp
+    test_objmgr_contract_harness.cpp
+    test_ibl_registry_contract_harness.cpp
+    test_render_pass_table_harness.cpp
+    test_logistics_csv_harness.cpp
+    test_camera_frustum_harness.cpp
+    test_mech_texname_harness.cpp
+    test_icon_atlas_harness.cpp
+    test_timing_math_harness.cpp
+    test_job_system_harness.cpp
+    test_terrain_daylight_harness.cpp
+    test_object_light_row_harness.cpp
+    test_class_light_band_harness.cpp
+    test_glstate_guard_harness.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
+    ${MC2_WORKTREE_ROOT}/tools/render_state_contract_harness/gos_counter_stubs.cpp
+    ${MC2_WORKTREE_ROOT}/code/job_system.cpp
+    ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
+)
+target_compile_features(mc2_tests PRIVATE cxx_std_23)
+target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}")
+target_include_directories(mc2_tests PRIVATE
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils
+    ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
+)
+find_package(Threads REQUIRED)
+target_link_libraries(mc2_tests PRIVATE
+    Threads::Threads
+    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/SDL2.lib
+    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
+    opengl32
+)
+foreach(_contract_dll SDL2.dll glew32.dll)
+    add_custom_command(TARGET mc2_tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/${_contract_dll}"
+            "$<TARGET_FILE_DIR:mc2_tests>/${_contract_dll}"
+        COMMENT "Copy ${_contract_dll} for hidden GL guard tests"
+    )
+endforeach()
