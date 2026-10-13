@@ -3,7 +3,7 @@
 
 STATUS (2026-10-13): the before-review (`cxx23-step4-b1-review.md`, dbb25604a, APPROVE-WITH-CHANGES) is applied as its changes R1-R12. DONE: B1.0 (harness: db9b1d4fa, 432b4ae03, 5e02d2347,
 3a851f497, the /we4840 flag), B1.1 (runtime objectives, e5600b260), B1.2 (texture cache deleted, 5d640f3f5), the cleanup-review fixes F1-F12 (ef9a9ab30, ea995215d, 1266aa1a2), B1.3a (variant + mech
-headers, c1a283422) and B1.3b (pilot header, 45f39522a). The grouped Opus after-review RA1 (`cxx23-step4-b1-after-review-1.md`, ACCEPT-WITH-FIX) and the Sonnet cleanup review (`reviews/lane1-2026-10-13-b1.3-cleanup.md`) are folded in (section 8c). NEXT: B1.4a / B1.4b per section 8b as amended. The reviews are the
+headers, c1a283422) and B1.3b (pilot header, 45f39522a). The grouped Opus after-review RA1 (`cxx23-step4-b1-after-review-1.md`, ACCEPT-WITH-FIX) and the Sonnet cleanup review (`reviews/lane1-2026-10-13-b1.3-cleanup.md`) are folded in (section 8c). B1.4a (ffc879042) and B1.4b (2d68841a4) are DONE with the G2 campaign-save round trip (section 8d). NEXT: B1.5 (front-end screens), the G6 editor probe, then B1.6 / B1.7. The reviews are the
 checklist; where this file and a review disagree, the review wins and this file is wrong.
 INPUTS: `cxx23-step4-ownership-plan.md` sections 5 and 10, `cxx23-step4-review.md` finding 10, `program-review-2026-10-12.md` section 8, the owner rulings in
 `ORCHESTRATOR-HANDOFF.md`. Owner rulings that bind B1: saves may break before the final release but every writer stays a defined format; readers reject malformed content
@@ -253,6 +253,32 @@ and gunnery (the ones the name decides in `logisticspilotlistbox.cpp`). The mech
 **Save-noise mask (RA1 F1).** `tools/save_noise_mask.json` + `save_inspect.py diff --mask M [--across-builds]` (selftest pins it). Measured over the three exe pairs (mission-boot saves, mc2_01 frame 1000): MechWarriorData bytes 0-2167 are identical in every run pair and across 1266aa1a2 / 06ea51611 / 45f39522a; the 24
 four-byte words of one pilot record (index 9 of 120) in the three `TacticalOrder` blocks (2192-2451, 3188-3447, 3520-3779) differ between builds and not between runs: an existing save-writer defect (never-initialised order fields holding image-relative addresses), as are the vftable pointers of
 MechData / GroundVehicleData (2952-2955, 3000-3003); both are for the save-format arc to zero at write time. All cross-build diffs of the three pairs lie inside the mask; without `--across-builds` the 8 build-only bytes per record are reported.
+
+## 8d. B1.4a / B1.4b results and the G2 campaign-save round trip (2026-10-13)
+**Commits.** 2c577a5ed (RA1 / cleanup-review fixes, mask, probe, call-site hash), e3a2940ad (docs), ffc879042 (B1.4a), 2d68841a4 (B1.4b). Exes: 1266aa1a2 (before B1.3), 45f39522a (B1.3b), ffc879042 (B1.4a), 2d68841a4 (B1.4b). The two old exes were built in a scratch worktree (`git worktree add --detach`
+at `A:/Games/mc2-g2`, its own `build64-ninja`, deployed with `deploy_payload.py --target game --ninja` from there so the shaders match; the worktree is removed at the end of the session).
+**G2 (RA1 section 6, the cleanup review's F1).** A mission-boot save carries no inventory; a campaign start does. `tools/campaign_save_roundtrip.py capture` boots the stock campaign through `MC2_BOOT_TO_BAY` with the soak auto-win and auto-purchase, quicksaves at render frame 2400 and keeps `testgame.ims`;
+its LogisticsData text packet holds the campaign state, 52 pilots and 3 inventory mechs (`InventoryCount = 3`). A campaign soak makes no variant, so `add-variant` crafts a copy of a save with one player-made variant (`Bush-Whacker 'Test' Z`, chassis `bushwacker.csv`) and points inventory mech 1 at it spelt `BUSH-WHACKER 'TEST' z`.
+`saveload_roundtrip.py resave --plant SAVE --mission mc2_05 --save-at 1000000000 --load-at 1100` boots mc2_05, quickloads the planted save (every logistics reader runs: `LogisticsMissionInfo::load/init`, `LogisticsData::load/loadVariant/loadMech`, the pilot loader) and writes the re-save.
+`campaign_save_roundtrip.py compare` judges the LOGISTICS surface: the LogisticsData text packet byte for byte, packets 0-1 (version, campaign name), and bytes 0-2167 of every MechWarriorData record. The mission objects are not compared: a campaign-flow save re-written by a mission boot differs there by design (1250 of 20000 packets, in the
+old exe as well), which is not a B1 surface.
+| run | result |
+|---|---|
+| 1266aa1a2 captures a campaign save (`old_a`, mission mc2_05) | 68237-byte logistics text |
+| 45f39522a captures one (`mid_a`, mc2_05) | logistics text IDENTICAL to `old_a` |
+| 2d68841a4 captures one (`newb_b`, mc2_05) | logistics text IDENTICAL to `old_a` (68237 bytes); a capture that lands in mc2_04 differs only in the campaign position and the progress of the pilots / mechs of that position (56 lines: Group, MissionName, MissionFileName, kills, missions, the three inventory mechs) |
+| old exe loads `old_a`, re-saves | identical (baseline) |
+| 45f39522a loads `old_a` and `mid_a` | identical, identical |
+| ffc879042 loads `old_a` and `mid_a` | identical, identical |
+| 2d68841a4 loads `old_a` and `mid_a` | identical, identical |
+| `var_a` (crafted: one player variant, spelt differently in the inventory) loaded by 1266aa1a2, 45f39522a, ffc879042, 2d68841a4 | the four re-saves are identical to each other (68365 bytes); against the crafted file they differ in exactly two lines: the mech's `Variant` is written in the variant's own spelling, and `Designer = FALSE` (the player variant is not a designer variant) |
+Every loaded save re-saved with identical pilot text bytes (120 records, bytes 0-2167). The byte-offset mask (`tools/save_noise_mask.json`) is applied to the mission-boot saves of B1.1-B1.3; for the campaign saves it is not needed: nothing on the logistics surface is noisy.
+**A4 boot-log proof.** In the campaign soak log of ffc879042 and 2d68841a4: `missionbegin: campaign-start pre-video: cinema1.bik` (site reached, a real name; consumed and not played, see 8b) and `logistics: pre-video after a won mission:` `none` 10 times and `cinema2.bik` once at the group change (identical in the logs of both exes), so both decisions are reached with `none` and with a real name.
+**Per-batch proof.** B1.4a: build_all_targets rc 0; doctest 2794 under ASan and plain; `analyze_dangling --check` over 17 edited TUs 0 diagnostics; exact census 381 -> 335; `sim_determinism check` mc2_03 (2413 frames), mc2_10, mc2_24 (3560), mc2_16 liveness (2446) PASS against the baselines; mechbay captures bay / purchase / loadout / launch / briefing viewed (same
+text, lists and order; only the idle mech animation and a fade of at most 21 of 255; before = `A:/Games/mc2-capture-evidence/b1-after-B1.3b`, after = `b1-after-B1.4a`); tier1 5/5 `2026-10-13T08-59-02`. B1.4b: build_all_targets rc 0; doctest 2794 plain and ASan; `analyze_dangling --check` over 6 TUs 0 (logisticsdialog.cpp needed `-Wno-c++11-narrowing`: clang rejects a
+braced initialiser MSVC accepts, so it had never had a verdict); exact census 335 -> 308 (B1.4 rows 0); determinism mc2_03 (2416), mc2_10, mc2_24 (3556), mc2_16 liveness (2447) PASS; captures (`b1-after-B1.4b`) the same as `b1-after-B1.4a`, loadout / launch within 6 of 255 of the pre-B1.3 captures; tier1 5/5 2026-10-13T09-38-40.
+The save / load / variant dialogs of `logisticsdialog.cpp` are not reachable headless: their conversion is compile-checked, read, and covered by the `iequals` corpus test only.
+**Remaining call sites (exact census at 2d68841a4: 308 in 42 files).** B1.5 41, B1.6 135, B1.7 26, B6 (multiplayer screens) 49, includers and gui widgets 57. By kind: Data 127, operator ECHARPTR 78, Format 69, `==` 10, MakeUpper 8, Compare 5, Remove 5, `!=` 3, Find / MakeLower / Insert 1 each.
 
 ## 9. What the gates cannot see, and what a wrong conversion looks like
 
