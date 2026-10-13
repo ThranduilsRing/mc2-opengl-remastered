@@ -152,14 +152,15 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale) {
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
-// VK-TERRAIN-POM sub-slice: port GL parallax-occlusion (terrain_lod_chunk.frag
-// chunkSampleDisplacement + chunkParallax, :295-327) VERBATIM. GL pomParams is
-// {terrain_pom_scale_, 8, 32, 0} = {0.02, 8, 32, 0} (gameos_graphics.cpp:7112 default,
-// scale member :2456). Baked const (no new UBO field). Displacement = matNormalArray
-// alpha channel (carried through VK's copy-once RGBA8 import). GL reads it via
-// textureLod(...,0.0) — base level (POM standard), valid in any control flow. This is
-// the full GL POM (fixed faux view dir, 16-layer bounded march); GL POM carries NO
-// self-shadow term, so this is already the biggest-safe-subset (POM sans self-shadow).
+// Terrain parallax-occlusion march (legacy variant). This is the fixed-view-direction march
+// GL used before GL moved to a real per-fragment tangent-space view vector with a world-distance
+// fade and slope/cement exclusions (GL terrain_lod_chunk.frag chunkParallaxView). VK has NOT been
+// ported to that: it still marches along one fixed faux direction and is always on. The GL
+// promotions VK still lacks are listed in .claude/VK-PARITY-GAPS.md (rows 13-19) and
+// .claude/cleanup/vk-default-flip-checklist.md section 5; porting this block to the real-view
+// march is row 13. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import),
+// read with textureLod base level so it is valid in any control flow. No self-shadow term.
+// Constants are the GL scale and layer counts: {scale 0.02, minLayers 8, maxLayers 32}.
 const vec4 MATV_POM_PARAMS = vec4(0.02, 8.0, 32.0, 0.0);  // scale,minLayers,maxLayers,_
 float mv_pomDisplacement(vec2 uv, vec4 w) {
     float d = 0.0;
@@ -195,9 +196,10 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
 // (fwRock..fwSnow, GL :353-357) + ★anti-tile resample gated by `fw* > 0.5 && ats* >
 // 0.01` EXACTLY as GL :392-415. Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
-// previously omitted — now included to match GL. ★POM (chunkParallax) NOW PORTED too
-// (see mv_parallax below). DEFERRED vs GL (report): LOD-tier fade, painted-concrete normal, cliff
-// triplanar. Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
+// previously omitted — now included to match GL. POM is the legacy fixed-view march
+// (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
+// triplanar / height normal / cliff POM, real-view POM (VK-PARITY-GAPS rows 13-14).
+// Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
 // here — no non-uniform weight branch, so LOD is well-defined). -------------------
 // VK-TERRAIN-LODFADE: LOD_NEAR/LOD_NEAR_FADE constants verbatim from gos_terrain.frag
 // :163-164. camDist matches gos_terrain.frag :322-326 EXACTLY: ground-plane distance

@@ -309,7 +309,10 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    REQUIRE(n > 1000);
+    // The table is exactly 1000 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
+    // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
+    // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
+    REQUIRE(n >= 990);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -792,8 +795,6 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
         {"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", false, static_cast<double>(0.05f), kFltMax},
         {"MC2_TERRAIN_LOD_MORPH_START", true, 0.0, 0.95},
         {"MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", true, 0.0, 1.0},
-        {"MC2_TERRAIN_POM_FAR", false, 0.0, kFltMax},
-        {"MC2_TERRAIN_POM_STEPS", false, 4.0, 16.0},
         {"MC2_TERRAIN_SHORELINE_EDGE_JITTER", true, 0.0, 32.0},
         {"MC2_TERRAIN_SHORELINE_STRENGTH", true, 0.0, 2.0},
         {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", true, 0.0, 1.0},
@@ -816,22 +817,10 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
     CHECK(asFloat(gate::detail::parseRow(dist, "0.050001")) == 0.050001f);
     // A clamp row clamps; a reject row falls back to its default.
     const gate::Row& clamp = g1b::rowNamed("MC2_TERRAIN_SHORELINE_STRENGTH");
-    const gate::Row& reject = g1b::rowNamed("MC2_TERRAIN_POM_STEPS");
+    const gate::Row& reject = g1b::rowNamed("MC2_MOVER_CONTACT_SHADOW");
     CHECK(asFloat(gate::detail::parseRow(clamp, "9")) == 2.0f);
-    CHECK(asFloat(gate::detail::parseRow(reject, "99")) == 16.0f);
-    CHECK(asFloat(gate::detail::parseRow(reject, "8")) == 8.0f);
-}
-
-TEST_CASE("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR is an Enum of 1, 2, 4 that reads 1 for anything else") {
-    const gate::Row& r = g1b::rowNamed("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR");
-    CHECK(r.kind == Kind::Enum);
-    CHECK(std::string(r.tokens) == "1|2|4");
-    CHECK(g1b::intOf(r, "2") == 1);
-    CHECK(g1b::intOf(r, "4") == 2);
-    for (const char* t : {static_cast<const char*>(nullptr), "", "1", "3", "8", "abc", "0"}) {
-        INFO((t ? t : "(unset)"));
-        CHECK(g1b::intOf(r, t) == 0);
-    }
+    CHECK(asFloat(gate::detail::parseRow(reject, "99")) == 0.0f);
+    CHECK(asFloat(gate::detail::parseRow(reject, "0.5")) == 0.5f);
 }
 
 TEST_CASE("isNonEmpty is the old v && v[0] test, whatever the row kind") {
@@ -1028,15 +1017,6 @@ TEST_CASE("G6 String rows keep path and text values verbatim") {
     CHECK(std::string(g1b::rowNamed("MC2_MECH_IMPORT_FORCE_BONE").defStr) == "j_LThigh");
 }
 
-TEST_CASE("G6 MC2_FORCE_LOD is an integer level (the reader was atoi)") {
-    const gate::Row& row = g1b::rowNamed("MC2_FORCE_LOD");
-    CHECK(row.kind == Kind::Int);
-    CHECK(g1b::intOf(row, nullptr) == 0);
-    CHECK(g1b::intOf(row, "2") == 2);
-    CHECK(g1b::intOf(row, "2.9") == 2);   // atoi stops at the dot
-    CHECK(g1b::intOf(row, "abc") == 0);
-}
-
 TEST_CASE("G6 the mod-cache refresh flag is re-read after an in-process putenv") {
     const gate::Row& row = g1b::rowNamed("MC2_REBUILD_MOD_CACHE");
     CHECK(row.reread);
@@ -1063,8 +1043,6 @@ TEST_CASE("G6 predicate enums accept their documented spellings without a badval
 TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
     struct Want { const char* name; const char* tokens; const char* def; };
     const Want want[] = {
-        {"MC2_STATIC_PROP_BUILDING_SHADOW", "0|1|2", "0"},
-        {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "1|0|2", "1"},
         {"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "1|0|2", "1"},
         {"MC2_SPOTLIGHT_DIRECTION_FIX", "0|1|2", "0"},
     };
@@ -1078,7 +1056,6 @@ TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
         CHECK(g1b::intOf(r, nullptr) == 0);
         CHECK(g1b::intOf(r, "9") == 0);
     }
-    CHECK(g1b::intOf(g1b::rowNamed("MC2_STATIC_PROP_BUILDING_SHADOW"), "2") == 2);
     CHECK(g1b::intOf(g1b::rowNamed("MC2_SHADOW_DYNAMIC_PROP_CASTERS"), "0") == 1);
 }
 
@@ -1143,7 +1120,7 @@ TEST_CASE("G5 postprocess text rows and the backend selector") {
     CHECK(be.kind == Kind::Enum);
     CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
     CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
-    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
+    for (const char* name : {"MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }
 
@@ -1156,28 +1133,10 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", nullptr) == 0.5f);
-    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", "9") == 3.0f);
-    CHECK(fl("MC2_TERRAIN_DECAL_FILL", nullptr) == 0.2f);
-    CHECK(fl("MC2_TERRAIN_DECAL_FILL", "5") == 1.0f);
-    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", "-1") == 0.0f);
-    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", nullptr) == 0.35f);
-    CHECK(fl("MC2_STATIC_PROP_PBR_V1_STRENGTH", "10") == 3.0f);
-    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "2") == 1.0f);
-    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "") == 0.0f);
-    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "7") == 2);
-    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "-1") == 0);
-    CHECK(fl("MC2_STATIC_PROP_NIGHT_TAGS_SCALE", "99") == 16.0f);
-    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", nullptr) == 1.0f);
-    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", "100") == 16.0f);
-    CHECK(fl("MC2_STATIC_PROP_FIXTURE_GLOW", "100") == 8.0f);
-    CHECK(fl("MC2_STATIC_PROP_IBL_NIGHT_SCALE", "3") == 1.0f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);
     CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "abc") == 0.0f);
-    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "9") == 6);
-    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "") == 0);
     CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
     CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
     CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);

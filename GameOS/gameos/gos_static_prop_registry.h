@@ -13,10 +13,6 @@ namespace GpuStaticPropRegistry {
 void init();
 void destroy();
 
-// Returns true iff MC2_STATIC_PROP_REGISTRY=1 was set at startup.
-// Valid before init() because flags are parsed at file scope.
-bool isEnabled();
-
 // Returns true iff MC2_STATIC_PROP_MISSION_LOAD_REG=1 was set at startup.
 // Gates the mission-load bulk registration walk in GameObjectManager.
 bool isMissionLoadRegEnabled();
@@ -207,12 +203,9 @@ void getBuildingShadowInstances(std::vector<GpuStaticPropInstance>& out);
 // leaves (trees/fences/generic props; baked modelMatrix + typeID) to `out`.
 // Visibility-independent (full registry, NOT per-frame markVisible buckets), so
 // the dynamic shadow pass admits EVERY prop, not just the camera-visible subset
-// that reached s_typeRanges. By default buildings are EXCLUDED (they cast via the
-// world-fixed static map); pass includeBuildings=true to also include them (used
-// when the static building map is NOT active, so buildings still cast a dynamic
-// shadow). includeBuildings=false = inverse filter of getBuildingShadowInstances.
-void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out,
-                                   bool includeBuildings = false);
+// that reached s_typeRanges. Buildings are EXCLUDED (they cast via the
+// world-fixed static map): the inverse filter of getBuildingShadowInstances.
+void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out);
 
 // Returns RecipeRange::extentRadius. Value is from the previous frame's markVisible()
 // call; 0.0f if markVisible was never called for this recipe.

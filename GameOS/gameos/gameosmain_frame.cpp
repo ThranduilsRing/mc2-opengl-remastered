@@ -132,7 +132,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // Full log line under MC2_RENDER_SNAPSHOT_LOG=1.
             static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
             if (s_logEnabled) {
-                mc2::fmt::print_err("[DRAW_PACKET v1] frame={:d} emitted={:d} expected={:d} old_expected={:d} distinct_types={:d} static_props={:d} invalid={:d} skipped={:d} mat_mismatch={:d} overflow={:d} retired={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(stats.emitted), mc2::fmt::as_u32(stats.expectedPackets), mc2::fmt::as_u32(stats.oldExpected), mc2::fmt::as_u32(stats.distinctTypes), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(stats.invalidRanges), mc2::fmt::as_u32(stats.skippedRanges), mc2::fmt::as_u32(stats.materialMismatches), mc2::fmt::as_i32(stats.overflow ? 1 : 0), mc2::fmt::as_u32(snap.spBuildRetired));
+                mc2::fmt::print_err("[DRAW_PACKET v1] frame={:d} emitted={:d} expected={:d} old_expected={:d} distinct_types={:d} static_props={:d} invalid={:d} skipped={:d} mat_mismatch={:d} overflow={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(stats.emitted), mc2::fmt::as_u32(stats.expectedPackets), mc2::fmt::as_u32(stats.oldExpected), mc2::fmt::as_u32(stats.distinctTypes), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(stats.invalidRanges), mc2::fmt::as_u32(stats.skippedRanges), mc2::fmt::as_u32(stats.materialMismatches), mc2::fmt::as_i32(stats.overflow ? 1 : 0));
             }
 
             // Feed ImGui DrawPackets panel (read in GraphicsOptionsWindow::draw).

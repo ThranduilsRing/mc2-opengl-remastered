@@ -57,7 +57,6 @@ All fields are bool. `true` = gate active (feature enabled). `false` = gate inac
 |---|---|---|---|
 | `MC2_DEBUG_STATE_DUMP` | `true` | `MC2_DEBUG_STATE_DUMP` | Always `true` in the snapshot (file only exists when dump is on). |
 | `MC2_VIEW_UNIFORMS` | `true` | `MC2_VIEW_UNIFORMS` | ViewUniforms UBO upload. =0 to disable. |
-| `MC2_SNAPSHOT_STATIC_PROP_BUILD` | `true` | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | Snapshot-built static-prop dispatch (v3). =0 reverts to live builder. |
 | `MC2_MATERIAL_GPU` | `true` | `MC2_MATERIAL_GPU` | GPU material table. =0 disables. |
 | `MC2_MATERIAL_GPU_SAMPLE` | `true` | `MC2_MATERIAL_GPU_SAMPLE` | GPU albedo sampling in static_prop.frag. Requires `MC2_MATERIAL_GPU`. =0 falls back to texArrayLayer. |
 | `MC2_STATIC_PROP_IBL_SH` | `true` | `MC2_STATIC_PROP_IBL_SH` | SH-L2 image-based ambient on static props. =0 disables. |
@@ -104,7 +103,7 @@ Runtime visual globals for the StaticPropOpaque render lane. Values reflect the 
 | Field | Type | Description |
 |---|---|---|
 | `snapshotDispatchDefault` | bool | `true` = v6 snapshot-built dispatch is active (default). `false` = legacy multidraw. Complement of `legacyDispatch`. |
-| `legacyDispatch` | bool | `true` = `MC2_STATIC_PROP_LEGACY_DISPATCH=1` kill-switch is active. |
+| `legacyDispatch` | bool | `true` = the v6 dispatch disarmed (no ARB_base_instance / drawID uniform) and the legacy multidraw runs. |
 | `materialGpuEnabled` | bool | GPU material table is active. |
 | `materialGpuSample` | bool | GPU albedo sampling is active (requires `materialGpuEnabled`). |
 | `iblShEnabled` | bool | SH-L2 IBL ambient is active. |

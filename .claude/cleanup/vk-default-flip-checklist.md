@@ -44,3 +44,16 @@ Note: ab.py MAD is not a pass signal; always view montages, A/B one day + one ni
 13. Test tiers: resolve check-test-tier-coverage FAIL rows; gate-default agreement check (flags.auto.yaml vs RendererFeatureRegistry: 0 disagree).
 14. Flip: git revert abffc9ab7 (or re-apply ff459a48a 4 files); re-run steps 3, 10, 12 on the flipped default build; keep MC2_RENDER_BACKEND=gl as documented opt-out.
 15. Post-flip: ab.py once more on default binary, no env vars, before merging.
+
+## 5. Promotions the flip must port (gate amnesty wave 2, 2026-10-12)
+GL promoted these features to always-on and deleted their gates, so `tools/vk_not_ported.allowlist` and `gl_vk_feature_coverage.py --flip-check` no longer see them (a
+row for a deleted gate is STALE). Each is a GL-only behaviour today: flipping the default to VK without porting it changes what the player sees. Full rows with the
+VK file to change: `.claude/VK-PARITY-GAPS.md` rows 13-19. GL lines as of b629795cc.
+- [ ] 13 Terrain POM real-view march + distance fade: GL `shaders/terrain_lod_chunk.frag:540` (`chunkParallaxView`), `:599-640`; VK `shaders/vulkan/terrain_tier1.frag` still carries the DELETED faux-view `mv_parallax` (:172). Port, do not just delete.
+- [ ] 14 Cliff material (triplanar + height normal + cliff POM): GL `shaders/terrain_lod_chunk.frag:424-436`, `:1494-1600`; VK none.
+- [ ] 15 Night tags + fixture emission: GL `shaders/static_prop.vert:82-84`, `:507-516`; VK `shaders/vulkan/color_prop_tier1.vert:148-175` stubs the daytime arm (no lit windows or runway lights at night).
+- [ ] 16 Base-light direction 0.45: GL `shaders/static_prop.vert:749-754`, `GameOS/gameos/gos_static_prop_batcher_state.cpp:217`; VK none.
+- [ ] 17 Building static shadow + rebake on destroy: GL `mclib/txmmgr_render_passes.cpp:94-140`, `mclib/bdactor_static.cpp:711`; VK unverified (verify before porting).
+- [ ] 18 Terrain mesh decal fill / colour blend: GL `shaders/static_prop.frag:156-183`, `:404-453`; VK none (no stock mission places a cliff decal).
+- [ ] 19 Post-FX options (CAS, tonemap mode): GL `GameOS/gameos/gos_postprocess.cpp` (`gos_SetPostFxOptions`); VK post chain unverified.
+Go/no-go: items 13-16 are visible in every day / night mission, so they gate step 4 and step 9 of section 4 the same way the night gap #1 does; 17-19 need a verify-then-decide line each.

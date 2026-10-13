@@ -149,7 +149,7 @@ static void bindPropShadowAtlasPacket(GLuint prog,
 static int s_shadowTypesDrawn = 0;
 static int s_shadowInstDrawn  = 0;
 
-void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
+void GpuStaticPropBatcher::flushShadow() {
     // Non-indirect, full-range, depth-only draw for GPU static props.
     // Uses the shadow_static_prop program (Task 1) and the same per-frame
     // SSBO upload as flush() (shared via uploadAllBucketsIfNeeded /
@@ -273,11 +273,10 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
         const TypeRangeSsbo& r = rit->second;
         const GpuStaticPropType& type = s_types[typeID];
         if (r.instanceCount == 0 || type.packetCount == 0) continue;
-        // SHADOW-STATIC-BUILDINGS-2: when the static building shadow map is active,
-        // skip building types in the DYNAMIC pass — they already cast a crisp
-        // shadow via the world-fixed static map; the dynamic copy is a redundant,
-        // fuzzy double-shadow. Trees/mechs/other props still cast dynamically.
-        if (skipStaticBuildingTypes && s_buildingShadowTypeIDs.count(typeID)) continue;
+        // SHADOW-STATIC-BUILDINGS-2: skip building types in the DYNAMIC pass — they
+        // already cast a crisp shadow via the world-fixed static map; the dynamic copy
+        // is a redundant, fuzzy double-shadow. Trees/mechs/other props still cast dynamically.
+        if (s_buildingShadowTypeIDs.count(typeID)) continue;
 
         // Bind the per-type instance SSBO range (binding 0 = Instances block
         // in shadow_static_prop.vert, indexed by gl_InstanceID).
@@ -465,10 +464,6 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
     s_staticBldgShadowTypes = typesDrawn;
     s_staticBldgShadowInst  = instDrawn;
     s_staticBldgShadowDraws = drawCalls;
-    if (mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "2">()) {
-        mc2::fmt::print_err("[SHADOW_STATIC_BLDG v1] recipes_in={:d} types={:d} inst={:d} draws={:d} (buildings only; full registry, NOT per-frame buckets)\n", mc2::fmt::as_size(instances.size()), mc2::fmt::as_i32(typesDrawn), mc2::fmt::as_i32(instDrawn), mc2::fmt::as_i32(drawCalls));
-        fflush(stderr);
-    }
 }
 
 // SHADOW-STABILITY-1: read-only accessor so the shadow-pass state trace
@@ -906,29 +901,6 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->terrainSunMC2[1] = tsy;
     out->terrainSunMC2[2] = tsz;
 
-    // VK-P11 MATERIAL DEBUG (temporary): one-shot INSTANCE-WEIGHTED layer histogram so
-    // we can SEE whether the VISIBLE prop types (high instance count) actually get a
-    // real albedo layer or fall to teal. Type-count alone hid that the big buildings
-    // were the no_primary bucket. Env-gated + one-shot (no hot-loop spam). REMOVE once
-    // the teal bug is confirmed fixed in-engine.
-    if (mc2::gate::get<"MC2_VK_PROP_MATERIAL_DEBUG">()) {
-        static bool s_histLogged = false;
-        if (!s_histLogged) {
-            s_histLogged = true;
-            uint64_t instTextured = 0, instAlphaOn = 0, instNoPrimary = 0, instTotal = 0;
-            uint32_t tyTextured = 0, tyAlphaOn = 0, tyNoPrimary = 0;
-            for (size_t t = 0; t < s_typeAlbedoLayer.size(); ++t) {
-                const auto icIt = s_typeInstanceCountPrevFrame.find((uint32_t)t);
-                const uint64_t ic = (icIt != s_typeInstanceCountPrevFrame.end()) ? icIt->second : 0u;
-                instTotal += ic;
-                if (s_typeAlphaClass[t] == 1) { ++tyAlphaOn; instAlphaOn += ic; }
-                else if (s_typeAlbedoLayer[t] < 0) { ++tyNoPrimary; instNoPrimary += ic; }
-                else { ++tyTextured; instTextured += ic; }
-            }
-            mc2::fmt::print_err("[GPUPROPS_HIST v2] types: textured={:d} alpha_on={:d} no_primary={:d} | instances: textured={:d} alpha_on={:d} no_primary={:d} total={:d}\n", mc2::fmt::as_u32(tyTextured), mc2::fmt::as_u32(tyAlphaOn), mc2::fmt::as_u32(tyNoPrimary), mc2::fmt::as_u64((unsigned long long)instTextured), mc2::fmt::as_u64((unsigned long long)instAlphaOn), mc2::fmt::as_u64((unsigned long long)instNoPrimary), mc2::fmt::as_u64((unsigned long long)instTotal));
-            std::fflush(stderr);
-        }
-    }
     return 1;
 }
 

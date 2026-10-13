@@ -1520,10 +1520,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             u.iblShStrength = 0.0f;
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
-        {   // GL parity: MC2_SP_GLASS_DITHER (default ON; =0 -> legacy binary a<0.5 discard).
-            static const int s_glassDither = mc2::gate::get<"MC2_SP_GLASS_DITHER">();
-            u.glassDither = s_glassDither;
-        }
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant

@@ -1777,22 +1777,6 @@
    "count": 1
   },
   {
-   "tag": "BUCKET_ORDER",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "sample",
-    "uploadCall",
-    "types",
-    "static_only",
-    "dynamic_only",
-    "mixed",
-    "mixed_static_first",
-    "mixed_dynamic_first"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BUILDING_PBR",
    "ver": -1,
    "stream": "stderr",
@@ -2569,8 +2553,7 @@
     "invalid",
     "skipped",
     "mat_mismatch",
-    "overflow",
-    "retired"
+    "overflow"
    ],
    "count": 1
   },
@@ -3951,26 +3934,6 @@
   },
   {
    "tag": "GPUPROPS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "id",
-    "name",
-    "rgb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUPROPS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "scale"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUPROPS",
    "ver": 1,
    "stream": "stderr",
    "keys": [
@@ -3985,21 +3948,6 @@
     "splog",
     "unk",
     "typeIndexSize"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUPROPS_HIST",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "textured",
-    "alpha_on",
-    "no_primary",
-    "textured",
-    "alpha_on",
-    "no_primary",
-    "total"
    ],
    "count": 1
   },
@@ -7090,32 +7038,6 @@
    "count": 1
   },
   {
-   "tag": "PERSIST_BUCKET_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "checks",
-    "mismatches",
-    "stored"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PERSIST_BUCKET_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "sample",
-    "event",
-    "stored",
-    "expect",
-    "dirty"
-   ],
-   "count": 1
-  },
-  {
    "tag": "PHOTO",
    "ver": -1,
    "stream": "stdout",
@@ -7969,29 +7891,6 @@
    "ver": 3,
    "stream": "stderr",
    "keys": [
-    "frame"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDER_SNAPSHOT",
-   "ver": 3,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "attempted",
-    "count_mismatch",
-    "pkt_mismatch",
-    "meta_mismatch",
-    "fallback"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDER_SNAPSHOT",
-   "ver": 3,
-   "stream": "stderr",
-   "keys": [
     "frame",
     "attempted",
     "count_mismatch",
@@ -8404,7 +8303,6 @@
     "name",
     "registered",
     "hasShape",
-    "enabled",
     "eligible",
     "renderShape"
    ],
@@ -8418,7 +8316,6 @@
     "name",
     "registered",
     "hasShape",
-    "enabled",
     "renderShape"
    ],
    "count": 1
@@ -8752,28 +8649,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOW_STATIC_BLDG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "recipes_in",
-    "types",
-    "inst",
-    "draws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_BLDG_REBAKE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "recipeIndex"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_STATIC_BLDG_REBAKE_TEST",
    "ver": 1,
    "stream": "stderr",
@@ -8781,25 +8656,6 @@
     "event",
     "frame",
     "buildingIndex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_BLDG_TXM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "prepass"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_BLDG_TXM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "prepass",
-    "instances"
    ],
    "count": 1
   },
@@ -8947,23 +8803,6 @@
    "keys": [
     "dt_ms",
     "fps"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SNAPSHOT_BRIDGE_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "path",
-    "frame",
-    "regGen",
-    "cullVer",
-    "rowCount",
-    "oracleCount",
-    "rowCountMismatch",
-    "immutableMismatch",
-    "hasCullMismatch"
    ],
    "count": 1
   },
@@ -9200,80 +9039,6 @@
     "renderState",
     "permMask",
     "deltaMask"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SPFLUSH_CACHED_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "checked",
-    "mismatches"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SPFLUSH_CACHED_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "sample",
-    "event",
-    "recipe",
-    "field",
-    "cached_light",
-    "legacy_light"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SPFLUSH_CACHED_COMPARE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "sample",
-    "event",
-    "recipe",
-    "field",
-    "hash_cached",
-    "hash_legacy"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SPFLUSH_COST_SPLIT",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "leaves",
-    "ranges",
-    "submit_loop_ns",
-    "inst_build_ns",
-    "map_lookup_ns",
-    "color_fill_ns",
-    "actor_record_ns",
-    "world_to_block_ns",
-    "substrate_append_ns",
-    "baseinstance_upload_ns",
-    "total_ns",
-    "submit_ns",
-    "records_ns",
-    "builds_pf",
-    "hits_pf",
-    "invalidates",
-    "registrations",
-    "rebuilds",
-    "light_writes",
-    "invalidates",
-    "registrations",
-    "rebuilds",
-    "light_writes"
    ],
    "count": 1
   },
@@ -9534,19 +9299,6 @@
     "reason",
     "got",
     "want"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_ORM_PROBE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "layer",
-    "dims",
-    "src",
-    "sidecar"
    ],
    "count": 1
   },

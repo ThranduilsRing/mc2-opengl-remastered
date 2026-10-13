@@ -17,9 +17,9 @@ namespace RenderCore { struct MaterialGpu; }
 namespace RenderCore { struct StaticPropTypeDesc; }
 
 // SHADOW-STABILITY-1: read-only accessor for the last static-building shadow
-// caster counts (types/instances/draw-calls). Zero unless
-// MC2_STATIC_PROP_BUILDING_SHADOW drew this mission. Consumed by the shadow
-// state trace in gameos_graphics.cpp.
+// caster counts (types/instances/draw-calls). Zero until the static building
+// shadow has drawn this mission. Consumed by the shadow state trace in
+// gameos_graphics.cpp.
 void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
 
 // Per-instance shader-visible struct: GpuStaticPropInstance (112 B, std430).
@@ -154,8 +154,7 @@ public:
 
     // V-IBL-STATIC-2: select the SH coefficient set for the loaded mission.
     // Called from Mission::init right after onMapLoad(). Safe to call with
-    // nullptr/empty (-> "default"). Env override MC2_STATIC_PROP_IBL_SH_SET
-    // wins when set + matches an existing set. Per-mission registry lives
+    // nullptr/empty (-> "default"). Per-mission registry lives
     // in RenderCore/IblShRegistry.h (kMissionShMap).
     static void setMissionForIbl(const char* missionName);
 
@@ -246,9 +245,8 @@ public:
     bool isMultiShapeEligibleForGpuObjects(const TG_MultiShape* multi) const;
 
     // Per-frame dispatch.
-    // Main color pass. snap: optional prior-frame RenderSnapshot for snap-cull
-    // (MC2_SNAP_CULL=1). nullptr = no snap-cull (default OFF).
-    // snap pointer is not stored; read only during this call.
+    // Main color pass. snap: optional prior-frame RenderSnapshot the DrawPacket v6 dispatch builds its
+    // packet+meta arrays from. snap pointer is not stored; read only during this call.
     void flush(const RenderSnapshot* snap = nullptr);
 
 private:
@@ -269,7 +267,7 @@ private:
     void drawStaticPopulation();
     void decideV6(StaticPropFlushFrame& f);
     void initV6State(StaticPropFlushFrame& f);
-    void buildV6Packets(std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
+    void resetV6FrameCounters(StaticPropFlushFrame& f);
     void decideV5(StaticPropFlushFrame& f);
     void dispatchV6(const RenderSnapshot* snap, std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
     void dispatchV5(StaticPropFlushFrame& f);
@@ -283,11 +281,10 @@ private:
     void releaseGlGuards(StaticPropFlushFrame& f);
     void finishFlush();
 public:
-    // depth-only into the dynamic shadow FBO. skipStaticBuildingTypes=true (set
-    // when MC2_STATIC_PROP_BUILDING_SHADOW is active) omits building types — they
-    // cast via the world-fixed static map, so the dynamic copy would be a
-    // redundant fuzzy double-shadow. Default false = draw all (back-compat).
-    void flushShadow(bool skipStaticBuildingTypes = false);
+    // depth-only into the dynamic shadow FBO. Building types are omitted: they cast
+    // via the world-fixed static map, so a dynamic copy would be a redundant fuzzy
+    // double-shadow.
+    void flushShadow();
 
     // SHADOW-STATIC-BUILDINGS-2: depth-only draw of ALL registered rigid-building
     // recipe leaves (from GpuStaticPropRegistry::getBuildingShadowInstances — the
@@ -360,19 +357,10 @@ public:
     // the Colors SSBO binding 1).
     void submitCachedInstance(const GpuStaticPropInstance& inst);
 
-    // 2A: bulk variant — one map lookup + bulk reserve/insert for an entire
-    // contiguous run of recipes of (possibly mixed) typeIDs. firstColorOffset is
-    // computed from the running bucket color offset, so it is correct even when a
-    // type bucket also holds dynamic instances submitted earlier this frame.
-    // Equivalent result to calling submitCachedInstance() per element, at a
-    // fraction of the per-leaf overhead.
-    void submitCachedInstanceRange(const GpuStaticPropInstance* arr, uint32_t count);
-
     // 2b Stage 2 (Mechanism B-reinject): persistent static instance store.
     // Registry drives: clear+append on a dirty generation, reinject every frame.
     uint64_t persistentStaticGen();
     void     setPersistentStaticGen(uint64_t g);
-    uint64_t persistentStaticTotalCount();
     void     clearPersistentStatic();
     void     appendPersistentStaticRange(const GpuStaticPropInstance* arr, uint32_t count);
     void     reinjectPersistentStatic();
@@ -548,14 +536,6 @@ extern int g_lightProbeSetupPath;  // [GPUPROPS v1]
 // recipe path in mclib/bdactor.cpp — they must agree or the population splits.
 int gos_lightBillboardFacingMode();
 
-// SP-BATCHER-ALPHASCAN-GATE-1: monotonic generation bumped whenever a static-prop
-// type's per-texture alpha bit actually flips (TG_TypeMultiShape::SetTextureAlpha,
-// msl.cpp). Consumed by the batcher's per-frame alpha-test re-resolve scan in
-// flush() so it can early-out when no destruction/damage-texture-alpha event has
-// occurred since the last scan (the flags are otherwise frame-constant). Atomic
-// because SetTextureAlpha can run on FRAME-JOBS workers via the touch/update split.
-extern std::atomic<uint64_t> g_staticPropAlphaGeneration;
-
 // MaterialGpu-3: look up an entry from the per-mission material table by index.
 // Returns true and fills *out if MC2_MATERIAL_GPU=1, geometry is finalized,
 // and index < table size. Returns false otherwise (out is not modified).
@@ -641,23 +621,6 @@ uint32_t batcher_getDrawSlotCount();
 // materialIdx: 0xFFFFFFFFu if MC2_MATERIAL_GPU sidecar was not valid at finalizeGeometry().
 bool batcher_getDrawSlotEntry(uint32_t slot, ExtractedStaticPropPacket* out);
 
-// ---------------------------------------------------------------------------
-// [SPFLUSH_COST_SPLIT v1] -- cross-TU RDTSC cycle adders.
-// Defined in gos_static_prop_batcher.cpp; declared here (file scope) so
-// gos_static_prop_registry.cpp and mclib/txmmgr.cpp can call them without
-// any extern-inside-function declarations. All functions are no-ops when
-// MC2_STATIC_PROP_FLUSH_COST_SPLIT is not set (gate is checked in the .cpp).
-// ---------------------------------------------------------------------------
-namespace spflush_cost_split {
-void AddSubmitMapLookupCycles(unsigned long long c);
-void AddColorZeroFillCycles(unsigned long long c);
-// Called from GpuStaticPropRegistry::flush() summary emit to read + reset the
-// batcher-side window accumulators. Returns raw cycle counts accumulated since
-// the last call (or since process start).
-unsigned long long ConsumeSubmitMapLookupCycles();
-unsigned long long ConsumeColorZeroFillCycles();
-}  // namespace spflush_cost_split
-
 // v2.2 extraction: dispatch-fact compare (extraction-time facts only; baseInstance deferred).
 // Compares snap->staticPropPackets[] against live batcher state (sortedPacketOrder,
 // pipelineId via RenderCore::PipelineId, materialIdx sidecar, texArrayLayer vs albedoTex).
@@ -668,14 +631,6 @@ unsigned long long ConsumeColorZeroFillCycles();
 struct RenderSnapshot;
 void batcher_compareSnapshotPackets(RenderSnapshot* snap);
 
-// v2.3 snap-cull: read counters written by the most recent flush().
-// All three output pointers may be nullptr (individual fields skipped).
-// skipped:      slots skipped via prev-frame zero-instance check.
-// active:       slots drawn when snap-cull enabled (prev-frame instanceCount > 0).
-// slotMismatch: sortedSlot identity failures — row.sortedSlot != i.
-//   slotMismatch is included in the RenderSnapshot ok gate; the others are informational.
-void batcher_getSnapCullStats(uint32_t* skipped, uint32_t* active, uint32_t* slotMismatch);
-
 // v3 snapshot build: read counters written by the most recent flush().
 // All output pointers may be nullptr (individual fields skipped).
 // attempted:      1 if snapshot build gate check ran this flush.
@@ -683,10 +638,9 @@ void batcher_getSnapCullStats(uint32_t* skipped, uint32_t* active, uint32_t* slo
 // packetMismatch: DrawPacket field divergence count (accumulated per-slot).
 // metaMismatch:   DispatchMeta field divergence count (accumulated per-slot).
 // fallback:       gate enabled/attempted but snapshot arrays not dispatched this flush.
-// retired:        v8: 1 when live builder + compare retired this flush (sole-owner).
 void batcher_getSnapshotBuildStats(uint32_t* attempted, uint32_t* countMismatch,
                                    uint32_t* packetMismatch, uint32_t* metaMismatch,
-                                   uint32_t* fallback, uint32_t* retired = nullptr);
+                                   uint32_t* fallback);
 
 // DEBUG-STATE-DUMP-1: read-only StaticPropOpaque visual/debug state.
 struct StaticPropOpaqueDebugState {
@@ -746,7 +700,7 @@ void batcher_buildCandidateLog();
 // DEBUG-VIEW-REGISTRY-1: runtime getter/setter for the static-prop fragment debug mode.
 // shaderMode maps directly to s_staticPropDebugMaterialMode (shader branch 0..6).
 // 0=Final (off), 1=Albedo, 2=MaterialIdx, 3=Normal, 4=TexArrayLayer, 5=Roughness, 6=Metallic.
-// Setter clamps input to 0..6. Initial value comes from MC2_STATIC_PROP_DEBUG_MATERIAL env var.
+// Setter clamps input to 0..6. The initial value is 0 (Final).
 // ImGui can override at runtime via these functions without restarting the process.
 // Canonical label/description strings are in RenderCore/RenderDebugView.h.
 void batcher_setDebugMaterialMode(int shaderMode);

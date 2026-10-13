@@ -126,12 +126,10 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = clamp(lodOn, 0.0, 1.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
-        if (uFrame.glassDither != 0) {
-            // BUILDING-GLASS-1 parity: GL static_prop.frag:290-306 Bayer 4x4 ordered
-            // dither (thresholds (index+0.5)/16, gl_FragCoord-based) so partial-alpha
-            // leaf/edge texels stipple instead of hard-cutting at 0.5.
-            if (propBayerDitherDiscard(texc.a, gl_FragCoord.xy)) discard;
-        } else if (texc.a < 0.5) discard;
+        // BUILDING-GLASS-1 parity with GL static_prop.frag: Bayer 4x4 ordered dither
+        // (thresholds (index+0.5)/16, gl_FragCoord-based) so partial-alpha leaf/edge
+        // texels stipple instead of hard-cutting at 0.5.
+        if (propBayerDitherDiscard(texc.a, gl_FragCoord.xy)) discard;
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't

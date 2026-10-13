@@ -158,17 +158,10 @@ static void applyKey(const char* key, float val, int& count) {
                strcmp(key, "terrainLightingV2Floor") == 0) {
         // Retired keys: shipped installs still carry them; ignored silently.
     } else if (strcmp(key, "staticPropIblStrength") == 0) {
-        // ★ THIS LINE, NOT THE C++ INITIALISER, IS THE SHIPPED VALUE OF THE
-        // SH-IBL PROBE STRENGTH. gos_static_prop_batcher.cpp's 0.5f is only a
-        // pre-mission fallback -- this runs on every mission load and wins.
-        // A tuning pass graded against 0.5 was graded on a value no mission
-        // renders at (INCAPABLE-BATCH-1, 2026-07-31; see the long note at the
-        // g_iblShStrength definition). Note the env guard below does not just
-        // override the number, it suppresses the per-mission profile entirely.
-        if (!mc2::gate::isNonEmpty<"MC2_STATIC_PROP_IBL_SH_STRENGTH">()) {
-            g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
-            count++;
-        }
+        // This is the shipped value of the SH-IBL probe strength: it runs on
+        // every mission load and replaces the batcher's pre-mission fallback.
+        g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
+        count++;
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
         if (!mc2::gate::get<"MC2_WATER_SKYTINT">()) {
             gos_SetWaterSkyTintStrength(val);

@@ -122,9 +122,6 @@ PROSE_ALLOWLIST = [
     (HEADER, "0.375", "Picking 0.375 would have moved",
      "same rationale, continued: the counterfactual consequence of the value "
      "that was NOT chosen."),
-    ("shaders/static_prop.frag", "0.20", "CPU default is 0.20",
-     "a CPU-side decal alpha default, not a GBuffer1 mask class. Shares a "
-     "comment with the words 'static prop' by coincidence of topic."),
     ("shaders/static_prop.frag", "0.1375", "effective strength is",
      "intermediate arithmetic in the IBL night-scale worked example "
      "(0.55*0.25), not a mask class."),

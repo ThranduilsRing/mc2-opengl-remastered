@@ -61,36 +61,6 @@ extern const bool s_treeDiagTrace = mc2::gate::get<"MC2_TREE_DIAG_TRACE">();
 // used by [OBJBATCHER v1] / [TGL_POOL v1].
 extern const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
 
-// SP-BATCHER-ALPHASCAN-GATE-1: see header. Starts at 1 so a fresh scan (cached
-// gen 0) always runs its first pass regardless of any early destruction events.
-std::atomic<uint64_t> g_staticPropAlphaGeneration{1};
-
-extern const bool s_spflushCostSplitEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
-
-namespace gos_static_prop_batcher_detail {
-unsigned long long s_spflush_submit_map_lookup_cyc = 0;
-unsigned long long s_spflush_color_zero_fill_cyc   = 0;
-}  // namespace gos_static_prop_batcher_detail
-
-namespace spflush_cost_split {
-void AddSubmitMapLookupCycles(unsigned long long c) {
-    if (s_spflushCostSplitEnabled) s_spflush_submit_map_lookup_cyc += c;
-}
-void AddColorZeroFillCycles(unsigned long long c) {
-    if (s_spflushCostSplitEnabled) s_spflush_color_zero_fill_cyc += c;
-}
-unsigned long long ConsumeSubmitMapLookupCycles() {
-    const unsigned long long v = s_spflush_submit_map_lookup_cyc;
-    s_spflush_submit_map_lookup_cyc = 0;
-    return v;
-}
-unsigned long long ConsumeColorZeroFillCycles() {
-    const unsigned long long v = s_spflush_color_zero_fill_cyc;
-    s_spflush_color_zero_fill_cyc = 0;
-    return v;
-}
-}  // namespace spflush_cost_split
-
 // MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1 — forces the legacy per-type-cap
 // coalesce layout (keeps existing path; new global-pool path is disabled).
 // Env-read once at process start; survives until soak completes.
@@ -117,10 +87,8 @@ bool s_baseInstanceSupported = false;  // set on first gate-ON flush
 bool s_v5Armed      = false;  // true once gate-arm checks have run
 bool s_v5Disarmed   = false;  // true if gate-arm check failed for session
 
-// DrawPacket v7: canonical packet+meta array dispatch — DEFAULT ON.
-// Kill-switch: MC2_STATIC_PROP_LEGACY_DISPATCH=1 reverts to legacy multidraw.
-// Requires: ARB_base_instance (checked independently of v5 arm block).
-extern const bool s_v6Enabled = !mc2::gate::get<"MC2_STATIC_PROP_LEGACY_DISPATCH">();
+// DrawPacket v7: canonical packet+meta array dispatch. The legacy multidraw only runs when v6 disarms
+// (a context without ARB_base_instance, a missing drawID uniform).
 extern const bool s_v6TraceEnabled = mc2::gate::get<"MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE">();
 bool s_v6Armed    = false;
 bool s_v6Disarmed = false;
@@ -130,16 +98,8 @@ bool s_v6Disarmed = false;
 std::vector<RenderCore::DrawPacket> s_snapV6Packets;
 std::vector<StaticPropDispatchMeta> s_snapV6Meta;
 
-// v3 env gate. File-local — not exported in header. Cached at process start.
-// DEFAULT ON (STATIC-PROP-V3-FLIP, 2026-05-27). Kill-switch: MC2_SNAPSHOT_STATIC_PROP_BUILD=0.
-// Unset or any value other than literal '0' = ON. Live builder + compare authority retained as fallback.
-extern const bool s_snapshotBuildEnabled = mc2::gate::get<"MC2_SNAPSHOT_STATIC_PROP_BUILD">();
-// STATIC-PROP-SNAPSHOT-FINISH (v8): snapshot is the sole draw-packet owner.
-// DEBUG/LEGACY kill-switch — default OFF (retired). =1 restores the v3-flip dual
-// build (live + snapshot_packet_build) + compare path for regression bisect / A-B.
-extern const bool s_keepLiveBuilder = mc2::gate::get<"MC2_STATIC_PROP_LIVE_BUILDER">();
-// One-shot arm log latch (the arm log itself is emitted in a LATER task, when retirement is real).
-bool s_v8ArmLogged = false;
+// STATIC-PROP-SNAPSHOT-FINISH (v8): the snapshot is the sole draw-packet owner; the live builder only runs as the
+// structural fallback for a frame whose snapshot is unusable.
 
 // v3 per-flush counters. Reset each flush by the runV6 block.
 // Read by batcher_getSnapshotBuildStats() for render_snapshot.cpp ok gate.
@@ -148,11 +108,6 @@ uint32_t s_spBuildCountMismatch  = 0u;
 uint32_t s_spBuildPacketMismatch = 0u;
 uint32_t s_spBuildMetaMismatch   = 0u;
 uint32_t s_spBuildFallback       = 0u;
-uint32_t s_spBuildRetired        = 0u;  // v8: 1 when live builder + compare retired this flush
-// Latched on first fallback; never reset. Guards the first-occurrence log line.
-bool s_spBuildFirstFallbackLogged = false;
-// Latched on first snap-cull collision; never reset. Guards the one-shot collision log line.
-bool s_spBuildCollisionLoggedOnce = false;
 
 // Returns 0 (opaque) or 1 (alpha-test). Returns 0xFFFFFFFFu for unknown pipelineId.
 // Used by snapshot builder to derive group from the snapshot row's stored pipelineId.
@@ -171,12 +126,6 @@ uint32_t s_v6FramePacketOob          = 0u;
 uint32_t s_v6FrameTypeOob            = 0u;
 uint32_t s_v6FrameLockstepViolations = 0u;
 
-// v2.3 snap-cull: per-frame counters. Reset at top of flush(); read via batcher_getSnapCullStats().
-uint32_t s_snapCullSkipped      = 0u;
-uint32_t s_snapCullActive       = 0u;
-uint32_t s_snapCullSlotMismatch = 0u;
-// Env-var gate: strictly MC2_SNAP_CULL=1. Unset and MC2_SNAP_CULL=0 both leave snap-cull OFF.
-extern const bool s_snapCullEnabled = mc2::gate::get<"MC2_SNAP_CULL">();
 uint32_t s_v6FrameGlErrors           = 0u;
 uint32_t s_v6TotalFrameCount         = 0u;
 
@@ -200,47 +149,11 @@ int g_lightProbeSetupPath = 0;
 // Defined at file scope (NOT in anonymous namespace) for external linkage
 // so GuiRuntime/EditorInspector.cpp can drive the slider.
 //
-// V-IBL-STATIC-1-SOAK: optional MC2_STATIC_PROP_IBL_SH_STRENGTH env override
-// for the default. ImGui slider remains the interactive tuning surface; the
-// env exists so headless capture harnesses can drive strength deterministically
-// from a parent process. Parsed once at process start, clamped 0.0..3.0.
-// Env unset/empty -> 0.5f.
-//
-// ★ 0.5f IS A PRE-MISSION FALLBACK ONLY. NO SHIPPED MISSION EVER RENDERS AT
-// IT. (Correction landed by INCAPABLE-BATCH-1, 2026-07-31; the text here used
-// to read "default 0.5f (V-IBL-STATIC-1-TUNE: user eyeball pass at e061e44c
-// selected 0.5 as 'looks good')", which is a live falsehood in every sense
-// that matters.) data/visual_tuning.json OVERWRITES this global on EVERY
-// mission load -- visual_tuning_profile.cpp applyKey("staticPropIblStrength")
-// -> visualTuning_applyProfile(), called unconditionally from
-// code/mission.cpp:3874, and the file ships (scripts/deploy_payload.py:118,
-// verified present in the 2026-07-30 install). The values that actually
-// render are:
-//     defaults           0.55
-//     mc2_01/10/24       0.60
-//     mc2_03             0.55 (explicit)
-//     gaea_peaks_01      0.65
-// The ONLY way 0.5f survives into a frame is (a) frames drawn before the
-// first mission load (shell/mechbay -- gos_mech_batcher.cpp shares this same
-// global), or (b) data/visual_tuning.json missing/unreadable.
-//
-// CONSEQUENCES, both of which have already cost real work:
-//   - Any eyeball tuning pass recorded "at 0.5" was graded on a value the
-//     game does not use. If you tune this feature, edit the JSON.
-//   - Setting MC2_STATIC_PROP_IBL_SH_STRENGTH does not merely override this
-//     line, it DISABLES the whole per-mission JSON override
-//     (visual_tuning_profile.cpp guards the apply with envIsSet()), so an
-//     env-driven A/B is measuring a different mission profile than a default
-//     launch. docs/tier1_env_vars.md carries this warning too.
-// Left at 0.5f on purpose: changing it would move shell/mechbay frames (a
-// user-visible default-launch delta) while changing nothing in-mission.
-// If you change it, change data/visual_tuning.json "defaults" in the same
-// commit so the two cannot disagree again.
-// KNOWN STILL-DIVERGENT (not fixed here -- the file is held by another lane):
-// tools/class_light_band_harness/class_light_band_harness.cpp hardcodes
-// kIblStrengthDefault = 0.5 and asserts it, so every band the harness models
-// is computed at a strength no mission uses.
-float g_iblShStrength = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH_STRENGTH">();
+// This 0.5 is the pre-mission fallback only (shell and mech-bay frames, or a
+// missing data/visual_tuning.json). data/visual_tuning.json overwrites it on
+// every mission load (visual_tuning_profile.cpp "staticPropIblStrength"), so
+// the per-mission strength is tuned there.
+float g_iblShStrength = 0.5f;
 
 // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): beacon/runway light fixtures
 // (TG_Shape::isLightBillboard, node-name substring "beaconlight") pop in and
@@ -302,64 +215,27 @@ int gos_lightBillboardFacingMode() {
 // kFlagDecalFill bit (bit 3), set on the MarbleCliff decal instances at
 // registration (bdactor.cpp). All other static props (mechs/buildings/trees)
 // never carry that bit, so they are byte-identical regardless of this value.
-// MC2_TERRAIN_DECAL_FILL overrides (clamped 0..1). External linkage so
-// GuiRuntime.cpp can drive a slider.
+// Startup value 0.2; external linkage so GuiRuntime.cpp can drive a slider.
 //
-// ★ TWO CORRECTIONS (INCAPABLE-BATCH-1, 2026-07-31). The text removed from
-// here claimed "static_prop lighting is max(N·L,0) with no ambient floor, so a
-// face pointing away from the sun goes to ~0 (black void)". THAT PREMISE IS
-// FALSE AT HEAD, and it is why the v1 implementation of this feature shipped
-// dead:
-//   1. There IS an ambient floor, and it is large. static_prop.vert sums
-//      base_light + object-light ambientTerm + the DEFAULT-ON SH-IBL probe
-//      before the sun term. The probe alone returns irradiance 0.232..4.896
-//      over the sphere and is multiplied by staticPropIblStrength (0.55-0.65
-//      from data/visual_tuning.json), so an away-facing normal lands around
-//      0.13 at the absolute worst and typically far higher -- never a black
-//      void. Because litRgb therefore essentially never fell below 0.20, the
-//      v1 form `max(litRgb, u_terrainDecalFill)` returned litRgb every time
-//      and was a visual no-op (LIGHTING-HEADROOM-AUDIT.md section 3 #4).
-//      7de56d52 fixed it by moving to a post-texture ADDITIVE weighted by
-//      (1 - litMax); that form is arithmetically live because litMax < 1 on
-//      any fragment the clamp has not already saturated. See the note at
-//      shaders/static_prop.frag next to the c.rgb block.
-//   2. "Default 0.20" reads as default-ON and is NOT. Bit 3 is only ever set
-//      inside `if (useCliffWallFrame)` (mclib/bdactor.cpp), which requires
-//      s_terrainDecal == true -- and that gate is an opt-in:
-//      MC2_TERRAIN_DECAL is default OFF (reader mclib/bdactor.cpp:4827).
-//      On a default launch ZERO fragments carry the flag, so this 0.20
-//      reaches nothing; it is the fill strength for the opted-in case.
-//      (Phrasing note, 2026-07-31: this sentence used to end "...not a
-//      shipped default-on value", which check-gate-default-agreement.py
-//      read as an ASSERTION that the gate defaults ON and reported as a
-//      contradiction -- the opposite of what the line said. The checker's
-//      negation blind spot is fixed there (_NEG_RE); the line is also
-//      restated positively here so the claim is machine-CHECKED and agrees,
-//      rather than merely skipped.)
-float g_terrainDecalFill = mc2::gate::get<"MC2_TERRAIN_DECAL_FILL">();
+// static_prop.vert sums base_light + the object-light ambient + the SH-IBL probe before the sun term, so an
+// away-facing normal never falls near black. The fill is therefore an ADDITIVE post-texture term weighted by
+// (1 - litMax) (see the c.rgb block in static_prop.frag): arithmetically live on every fragment the clamp has
+// not already saturated.
+float g_terrainDecalFill = 0.2f;
 
 // TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-color match for the cliff mesh
 // decal. Blends the flagged decal's albedo toward the terrain COLORMAP sampled
 // at the decal's world-XY (same atlas + world->UV transform the terrain chunk
-// shader uses). Applied ONLY to kFlagDecalFill (bit 3) fragments in the shader;
-// 0.0 (default when MC2_TERRAIN_DECAL_COLORBLEND unset) OR flag-unset OR
-// blend==0 -> byte-identical for every other static prop AND the decal itself.
-// Default 0.35 (subtle base-color pull toward terrain). Env override clamped
-// 0..1. External linkage so GuiRuntime.cpp can drive the "Color blend" slider.
-float g_terrainDecalColorBlend = mc2::gate::get<"MC2_TERRAIN_DECAL_COLORBLEND">();
+// shader uses). Applied ONLY to kFlagDecalFill (bit 3) fragments in the shader.
+// Startup value 0.35 (subtle base-color pull toward terrain). External linkage
+// so GuiRuntime.cpp can drive the "Color blend" slider.
+float g_terrainDecalColorBlend = 0.35f;
 
 // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel specular slider value
-// (interactive). Default 1.0f. Only contributes when the env-gate
-// s_pbrV1Enabled is ON (and MC2_VIEW_UNIFORMS is not disabled). Optional env
-// override MC2_STATIC_PROP_PBR_V1_STRENGTH wins over the default; clamped
-// 0..3 to match the slider range. External linkage so EditorInspector.cpp
-// can drive the slider (same pattern as g_iblShStrength).
-// 2026-05-28: default dialled back from 1.0 → 0.5 per user direction.
-// Full-strength Schlick specular was too blunt on flat-roofed legacy
-// assets without material specular masking; 0.5 is the new "looks
-// sensible without bespoke per-material tuning" baseline. Env override
-// still wins (clamped 0..3).
-float g_pbrV1Strength = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_STRENGTH">();
+// (interactive; EditorInspector.cpp drives it, range 0..3). Full-strength
+// specular was too blunt on flat-roofed legacy assets without material
+// specular masking, so the startup value is 0.5.
+float g_pbrV1Strength = 0.5f;
 
 // V-MATERIAL-PBR-2-TUNE-UI: ImGui-driven runtime roughness override layer
 // on top of the static_prop.vert 0.6 literal baseline. Default DISABLED;

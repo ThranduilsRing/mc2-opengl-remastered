@@ -114,7 +114,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                 bucket.instances.size());
         }
     }
-    if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 2; ++bucket.dbgDynamic; }
     bucket.instances.push_back(inst);
     s_lastBuiltBatch.push_back(inst);  // Stage 3.C: batch accumulator
 
@@ -479,7 +478,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     //   (daytime base=0) vertex mismatch: GPU applies white directional light,
     //   CPU applied the terrain-tinted (~0.88) directional light.
     // ------------------------------------------------------------------
-    // LIGHTROW-FRESHNESS-1 (default-ON; MC2_STATIC_PROP_LIGHT_FRESHNESS=0 reverts)
+    // LIGHTROW-FRESHNESS-1
     //
     // THE DEFECT THIS FIXES. cachedGpuLightIndex_ is a DYNAMIC slot index, and
     // dynamic slot indices are rebased EVERY FRAME: MC_TextureManager::resetLightData
@@ -534,19 +533,18 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // state, the right fix is to re-stamp the row at update() time rather than
     // re-gather here, and this gate should be reconsidered rather than defended.
     // ------------------------------------------------------------------
-    const bool freshnessOn = staticPropLightFreshnessEnabled();
     const bool cacheFresh  = (multi->cachedFrame_ == g_mc2FrameCounter);
     const bool cacheSet    = (multi->cachedGpuLightIndex_ != 0xFFFFFFFFu);
 
     uint32_t lightDataIndex = 0;
     bool     lightRowResolved = false;
-    if (cacheSet && (!freshnessOn || cacheFresh)) {
+    if (cacheSet && cacheFresh) {
         lightDataIndex   = multi->cachedGpuLightIndex_;
         lightRowResolved = true;
     } else if (firstShapeNodeLeaf != nullptr) {
         // Fallback: first frame, non-GPU-object path cached nothing, or (new)
         // the cached index is a stale prior-frame slot. Re-gather for this frame.
-        if (freshnessOn && cacheSet && !cacheFresh) {
+        if (cacheSet && !cacheFresh) {
             ++s_counters.mono_stale_light_row_regathered;
             // FAIL-LOUD: one line per distinct typeID, uncapped counter in the
             // message so nobody counts log lines. Silence here is what let this
@@ -585,7 +583,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // it would emit nothing anyway. This branch is therefore expected to be
     // unreachable in practice -- which is exactly why it gets a counter rather
     // than a silent `= 0`. If it ever fires, that assumption has broken.
-    if (freshnessOn && !lightRowResolved) {
+    if (!lightRowResolved) {
         ++s_counters.mono_stale_light_row_unresolvable;
         static bool s_loggedUnresolvable = false;
         if (!s_loggedUnresolvable) {
@@ -608,7 +606,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // construction, so this is an invariant assertion, not a expected path --
     // it must read zero. It is NOT repaired by clamping (clamping would just
     // re-introduce the silent wrong-row substitution this slice removes).
-    if (freshnessOn && mcTextureManager &&
+    if (mcTextureManager &&
         lightDataIndex >= mcTextureManager->getLightStructCount()) {
         ++s_counters.mono_light_row_out_of_range;
         static bool s_loggedOob = false;
@@ -856,24 +854,6 @@ bool uploadAllBucketsIfNeeded() {
         instCursor += r.instanceByteSize;
         colCursor  += r.colorByteSize;
         s_typeRanges[typeID] = r;
-    }
-
-    if (s_bucketOrderTrace) {
-        static uint64_t s_botCall = 0, s_botEmitted = 0;
-        ++s_botCall;
-        if ((s_botCall % 60u) == 0u && s_botEmitted < 16) {
-            ++s_botEmitted;
-            uint32_t sOnly = 0, dOnly = 0, mixed = 0, mixSF = 0, mixDF = 0;
-            for (auto& kv : s_bucketsByType) {
-                const PerTypeBucket& b = kv.second;
-                const bool hs = b.dbgStatic > 0, hd = b.dbgDynamic > 0;
-                if (hs && hd) { ++mixed; if (b.dbgFirst == 1) ++mixSF; else ++mixDF; }
-                else if (hs)  ++sOnly;
-                else if (hd)  ++dOnly;
-            }
-            mc2::fmt::print_err("[BUCKET_ORDER v1] sample=first16_every60calls uploadCall={:d} types={:d} static_only={:d} dynamic_only={:d} mixed={:d} mixed_static_first={:d} mixed_dynamic_first={:d}\n", mc2::fmt::as_u64((unsigned long long)s_botCall), mc2::fmt::as_size(s_bucketsByType.size()), mc2::fmt::as_u32(sOnly), mc2::fmt::as_u32(dOnly), mc2::fmt::as_u32(mixed), mc2::fmt::as_u32(mixSF), mc2::fmt::as_u32(mixDF));
-            std::fflush(stderr);
-        }
     }
 
     s_lastUploadedSlot = s_frameSlot;

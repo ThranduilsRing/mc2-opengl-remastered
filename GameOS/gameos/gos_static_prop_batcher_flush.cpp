@@ -527,12 +527,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     static const bool s_btf_enabled = mc2::gate::get<"MC2_BATCHER_FLUSH_TIMING">();
     const auto _btf_t0 = std::chrono::steady_clock::now();
 
-    // v2.3 snap-cull: reset per-frame counters unconditionally so batcher_getSnapCullStats()
-    // always returns valid (zero) data even when geometry is not yet finalized or runV6 is false.
-    s_snapCullSkipped      = 0u;
-    s_snapCullActive       = 0u;
-    s_snapCullSlotMismatch = 0u;
-
     if (!s_geometryFinalized || s_fatalRegistrationFailure) {
         s_bucketsByType.clear();
         accumulateMonotonicAndMaybeEmit(/*forceEmit=*/false);
@@ -605,7 +599,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         static std::vector<RenderCore::DrawPacket>  v6Packets;
         static std::vector<StaticPropDispatchMeta>  v6Meta;
         initV6State(f);
-        buildV6Packets(v6Packets, v6Meta, f);
+        resetV6FrameCounters(f);
         decideV5(f);
 
         if (f.runV6 && f.v6LockstepViolations == 0u) {

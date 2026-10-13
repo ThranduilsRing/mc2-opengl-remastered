@@ -292,14 +292,6 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 const char* srcName = mcTextureManager->getTextureName(u.nodeIdx);
                 if (srcName && *srcName) {
                     const std::string ormPath = deriveOrmSidecar(srcName);
-                    // STATICPROP-ORM-VISUAL-CHECK-1: observability — log every ORM
-                    // unique probed (src path + expected sidecar + dims) so an
-                    // operator can author/place a matching .orm.ktx2. Gated; off by default.
-                    static const bool s_ormProbeTrace = mc2::gate::get<"MC2_STATICPROP_ORM_TRACE">();
-                    if (s_ormProbeTrace) {
-                        mc2::fmt::print_err("[STATICPROP_ORM_PROBE] group={:d} layer={:d} dims={:d}x{:d} src={} sidecar={}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(k), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::safe(srcName), ormPath.c_str());
-                        std::fflush(stderr);
-                    }
                     RenderCore::KtxImage img;
                     const bool loadOk = RenderCore::ktxLoadRgba8(ormPath.c_str(), img);
                     // Reject compressed sidecars (block bytes are not RGBA8) and

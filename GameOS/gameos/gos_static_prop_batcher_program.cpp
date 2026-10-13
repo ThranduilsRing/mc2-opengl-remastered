@@ -140,7 +140,6 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.packetID          = glGetUniformLocation(s_staticPropProgram, "u_packetID");
     // V-AMBIENT-STATIC-1: hemisphere ambient strength uniform (default 0.0 = OFF).
     s_locsLegacy.ambientV1Strength = glGetUniformLocation(s_staticPropProgram, "u_ambientV1Strength");
-    s_locsLegacy.propBaseLightDirStrength = glGetUniformLocation(s_staticPropProgram, "u_propBaseLightDirStrength");
     // V-MATERIAL-DEBUG-1: per-fragment material debug view mode (default 0 = OFF).
     s_locsLegacy.debugMaterialMode = glGetUniformLocation(s_staticPropProgram, "u_debugMaterialMode");
     s_locsLegacy.pathTint          = glGetUniformLocation(s_staticPropProgram, "u_pathTint");
@@ -148,9 +147,6 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.terrainSunMC2     = glGetUniformLocation(s_staticPropProgram, "u_terrainSunMC2");
     s_locsLegacy.isNight            = glGetUniformLocation(s_staticPropProgram, "u_isNight");
     s_locsLegacy.nightFactor        = glGetUniformLocation(s_staticPropProgram, "u_nightFactor");
-    s_locsLegacy.nightEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_nightEmissiveScale");
-    s_locsLegacy.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_fixtureEmissiveScale");
-    s_locsLegacy.fixtureGlowStrength  = glGetUniformLocation(s_staticPropProgram, "u_fixtureGlowStrength");
     // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
     s_locsLegacy.terrainDecalFill  = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalFill");
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -159,8 +155,6 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasTLY");
     s_locsLegacy.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasOOW");
     s_locsLegacy.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalColorBlend");
-    // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
-    s_locsLegacy.glassDither            = glGetUniformLocation(s_staticPropProgram, "u_glassDither");
     s_locsLegacy.farBackdropLit         = glGetUniformLocation(s_staticPropProgram, "u_farBackdropLit");
     s_locsLegacy.farBackdropNear        = glGetUniformLocation(s_staticPropProgram, "u_farBackdropNear");
     s_locsLegacy.farBackdropFar         = glGetUniformLocation(s_staticPropProgram, "u_farBackdropFar");
@@ -172,7 +166,6 @@ void loadProgramsIfNeeded() {
     // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular (default strength 0.0 = OFF).
     s_locsLegacy.pbrV1Strength     = glGetUniformLocation(s_staticPropProgram, "u_pbrV1Strength");
     s_locsLegacy.pbrV1RoughnessOverride = glGetUniformLocation(s_staticPropProgram, "u_pbrV1RoughnessOverride");
-    s_locsLegacy.pbrV1DiagSunFound = glGetUniformLocation(s_staticPropProgram, "u_pbrV1DiagSunFound");
     // s_locsLegacy.drawIDBase / texArr stay -1 (coalesce-only; legacy
     // shader has no such uniforms).
 
@@ -206,7 +199,6 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.materialGpuSample = glGetUniformLocation(s_staticPropProgramCoalesce, "u_materialGpuSample");
             // V-AMBIENT-STATIC-1: hemisphere ambient strength uniform (default 0.0 = OFF).
             s_locsCoalesce.ambientV1Strength = glGetUniformLocation(s_staticPropProgramCoalesce, "u_ambientV1Strength");
-            s_locsCoalesce.propBaseLightDirStrength = glGetUniformLocation(s_staticPropProgramCoalesce, "u_propBaseLightDirStrength");
             // V-MATERIAL-DEBUG-1: per-fragment material debug view mode (default 0 = OFF).
             s_locsCoalesce.debugMaterialMode = glGetUniformLocation(s_staticPropProgramCoalesce, "u_debugMaterialMode");
             s_locsCoalesce.pathTint          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pathTint");
@@ -214,9 +206,6 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.terrainSunMC2     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainSunMC2");
             s_locsCoalesce.isNight            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_isNight");
             s_locsCoalesce.nightFactor        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightFactor");
-            s_locsCoalesce.nightEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightEmissiveScale");
-            s_locsCoalesce.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureEmissiveScale");
-            s_locsCoalesce.fixtureGlowStrength  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureGlowStrength");
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
             s_locsCoalesce.terrainDecalFill  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalFill");
             // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -225,8 +214,6 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasTLY");
             s_locsCoalesce.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasOOW");
             s_locsCoalesce.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalColorBlend");
-            // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
-            s_locsCoalesce.glassDither            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_glassDither");
             s_locsCoalesce.farBackdropLit         = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropLit");
             s_locsCoalesce.farBackdropNear        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropNear");
             s_locsCoalesce.farBackdropFar         = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropFar");
@@ -238,7 +225,6 @@ void loadProgramsIfNeeded() {
             // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular (default strength 0.0 = OFF).
             s_locsCoalesce.pbrV1Strength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1Strength");
             s_locsCoalesce.pbrV1RoughnessOverride = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1RoughnessOverride");
-            s_locsCoalesce.pbrV1DiagSunFound = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1DiagSunFound");
             // STATICPROP-MATERIAL-ORM-1: ORM sampler + sample-enable. The shader
             // does not declare these yet (separate later task) so both resolve to
             // -1 here; the ProgramLocs default-init keeps them -1 and every upload
@@ -510,13 +496,6 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
 }
 ObjBatcherCounters s_counters;
 
-// LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch; MC2_STATIC_PROP_LIGHT_FRESHNESS=0
-// restores the pre-slice behaviour (trust cachedGpuLightIndex_ with no frame check)
-// bit-for-bit, which is the only way to grade a suspected regression against it.
-bool staticPropLightFreshnessEnabled() {
-    static const bool s_on = mc2::gate::get<"MC2_STATIC_PROP_LIGHT_FRESHNESS">();
-    return s_on;
-}
 bool s_objbatcherTrace     = false;
 bool s_objbatcherTraceInit = false;
 bool s_atexitRegistered    = false;

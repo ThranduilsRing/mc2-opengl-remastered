@@ -7,7 +7,6 @@
 #include <atomic>
 #include <cstdint>
 
-std::atomic<uint64_t> g_staticPropAlphaGeneration{1};       // gos_static_prop_batcher.cpp:154
 unsigned long g_fbDiagPtSpotConsumed = 0;                   // bdactor.cpp:166
 unsigned long g_fbDiagPtSpotZeroDir = 0;                    // bdactor.cpp:167
 bool g_txmmgrBoundsTrace = false;                           // txmmgr.cpp:416 (env-gated there)

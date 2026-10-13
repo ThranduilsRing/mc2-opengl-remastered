@@ -14,6 +14,7 @@
 #include "mc2fmt.h"
 
 extern SoundSystem *sndSystem;
+extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
 
 extern long DigitalMasterVolume;
 extern long MusicVolume;
@@ -81,6 +82,10 @@ CPrefs::CPrefs() {
 
 	scrollSpeedMult = 2.0f;
 	zoomSpeedMult   = 2.0f;
+
+	postCas          = false;
+	postCasSharpness = 0.5f;
+	tonemapMode      = 0;
 
 #if 0
 	FilterState = gos_FilterNone;
@@ -286,6 +291,16 @@ int CPrefs::load( const char* pFileName ) {
 			if ( result != NO_ERR )
 				zoomSpeedMult = 2.0f;
 
+			result = prefsFile->readIdBoolean( "PostCAS", postCas );
+			if ( result != NO_ERR )
+				postCas = false;
+			result = prefsFile->readIdFloat( "PostCASSharpness", postCasSharpness );
+			if ( result != NO_ERR )
+				postCasSharpness = 0.5f;
+			result = prefsFile->readIdLong( "TonemapMode", tonemapMode );
+			if ( result != NO_ERR )
+				tonemapMode = 0;
+
 		}
 
 	}
@@ -381,6 +396,10 @@ int CPrefs::save() {
 			result = prefsFile->writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
 			result = prefsFile->writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
 
+			result = prefsFile->writeIdBoolean( "PostCAS", postCas );
+			result = prefsFile->writeIdFloat( "PostCASSharpness", postCasSharpness );
+			result = prefsFile->writeIdLong( "TonemapMode", tonemapMode );
+
 		}
 	}
 #ifndef VIEWER	
@@ -432,6 +451,8 @@ int CPrefs::applyPrefs(bool applyRes) {
 	::useLeftRightMouseProfile = this->useLeftRightMouseProfile;
 	::useNonWeaponEffects = this->useNonWeaponEffects;
 	::useHighObjectDetail = this->useHighObjectDetail;
+
+	gos_SetPostFxOptions(this->postCas ? 1 : 0, this->postCasSharpness, static_cast<int>(this->tonemapMode));
 
 	int bitDepth = this->bitDepth;
 

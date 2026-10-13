@@ -118,7 +118,6 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
     // so only persistent (never-drawn-again) ranges accumulate toward kVanishFrames.
     if (s_guard2 && !s_staleStreak.empty()) s_staleStreak.erase(regIdx);
     ++s_diag_ranges_drawn;
-    if (s_spflushEnabled) ++s_win_ranges_drawn; // [SPFLUSH_COST_SPLIT v1]
     // 2026-05-10 diag: env-gated dump of multi-leaf ranges (MC2_REGFLUSH_MULTI=1).
     {
         static const bool s_traceMulti = mc2::gate::get<"MC2_REGFLUSH_MULTI">();
@@ -283,16 +282,10 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
 
 // Submit each leaf of the range with the fresh light index and append its cull record.
 void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, const float (&actorWorldCenter)[3]) {
-    // --- GATE OFF: legacy per-leaf rebuild path (verbatim, moved) ---
-    // [SPFLUSH_COST_SPLIT v1] submit_loop_total span wraps the whole leaf loop
-    // for this range. One span per range covering all its leaves.
-    const unsigned long long _t_loop0 = s_spflushEnabled ? __rdtsc() : 0ULL;
+    // Per-leaf rebuild path: a range whose light row does not match its stamped recipe value.
     for (uint32_t i = 0; i < rng.count; ++i) {
-        // [SPFLUSH_COST_SPLIT v1] inst_build span: stack copy + lightDataIndex patch.
-        const unsigned long long _t_inst0 = s_spflushEnabled ? __rdtsc() : 0ULL;
         GpuStaticPropInstance inst = s_recipes[rng.first + i]; // stack copy
         inst.lightDataIndex = freshLightIdx;
-        if (s_spflushEnabled) s_w_inst_build_cyc += __rdtsc() - _t_inst0;
         // G2: under the frozen-records gate this legacy (light-mismatch) range is
         // already in the all-recipes persistent store — skip the per-frame submit
         // to avoid double-counting the instance.
@@ -315,8 +308,6 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
         // reach this loop (CPU visibility IS the admission gate for registry path).
         // Any GPU-culled prop that the CPU admitted will just fall back to 0-count
         // draw — invisible for that frame, restored next frame as it re-enters frustum.
-        // [SPFLUSH_COST_SPLIT v1] actor_record_build span starts here.
-        const unsigned long long _t_arb0 = s_spflushEnabled ? __rdtsc() : 0ULL;
         if (gpu_cull::substrate_isEnabled()) {
             gpu_cull::GpuActorRecord gpuRec{};
             // World position: inst.modelMatrix is Stuff row-vector
@@ -389,12 +380,9 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
             // is raw-MC2 east, [1] raw-MC2 north (the -stuff.x unswap was
             // applied above producing the east-frame). Feed [0],[1] ONLY;
             // NEVER [2] (elevation). worldCenter fully populated above.
-            // [SPFLUSH_COST_SPLIT v1] world_to_block_idx span (nested inside actor_record_build).
-            const unsigned long long _t_wtb0 = s_spflushEnabled ? __rdtsc() : 0ULL;
             gpuRec.blockIdx       = static_cast<uint32_t>(
                 Terrain::worldToBlockIdx(gpuRec.worldCenter[0],
                                          gpuRec.worldCenter[1]));
-            if (s_spflushEnabled) s_w_world_to_block_idx_cyc += __rdtsc() - _t_wtb0;
             // [BLKIDX v1] env-gated GEOMETRIC probe (demote-not-delete).
             // Non-degeneracy is provably blind to a frame mirror — assert
             // the helper == hand-rolled CPU block math for THIS prop's
@@ -420,8 +408,6 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                     fflush(stderr);
                 }
             }
-            // [SPFLUSH_COST_SPLIT v1] substrate_append span.
-            const unsigned long long _t_sa0 = s_spflushEnabled ? __rdtsc() : 0ULL;
             // M1: under the frozen-records gate, the legacy (light-mismatch)
             // path is unsupported — these ranges go to submitCachedInstance
             // (per-frame bucket), NOT the persistent store, so they have no
@@ -430,9 +416,7 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
             // surface as oracle emptyPoolButVisible. Skip the per-frame append.
             if (!s_staticFrozenReg)
                 gpu_cull::substrate_appendStaticPropRecord(gpuRec);
-            if (s_spflushEnabled) s_w_substrate_append_cyc += __rdtsc() - _t_sa0;
             ++s_diag_leaves_appended;
-            if (s_spflushEnabled) ++s_win_leaves_appended; // [SPFLUSH_COST_SPLIT v1]
             // v2: record substrate submission for this recipe (extraction reads previous frame's state).
             if (regIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
                 s_recipeHasSubstrateRecord[regIdx] = 1u;
@@ -454,118 +438,36 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                 }
             }
         }
-        // [SPFLUSH_COST_SPLIT v1] actor_record_build span ends here (includes world_to_block_idx).
-        if (s_spflushEnabled) s_w_actor_record_build_cyc += __rdtsc() - _t_arb0;
     }
-    // [SPFLUSH_COST_SPLIT v1] submit_loop_total span ends after all leaves of this range.
-    if (s_spflushEnabled) s_w_submit_loop_total_cyc += __rdtsc() - _t_loop0;
 }
 
 // Bulk-submit the range from the cached records and the persistent store.
-void flushCachedRange(uint32_t currentFrame, GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t& s_pbExpectStaticCount, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx) {
-    // --- GATE ON: cached-blob flush path (Task 4, STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A) ---
-    const unsigned long long _t_cached0 = s_spflushEnabled ? __rdtsc() : 0ULL;
-    // 1. Instances: one bulk call. Recipes carry the permanent lightDataIndex from Task 1 —
-    //    no per-frame light patch required.
-    const unsigned long long _t_csub0 = s_spflushEnabled ? __rdtsc() : 0ULL;
-    if (s_persistentBuckets) {
-        // B-reinject: append to the persistent store ONLY on a dirty generation;
-        // a clean frame skips this entirely (reinjected in bulk after the loop).
-        // G2: under the frozen-records gate the store is built from ALL recipes
-        // in the all-recipes pass above — skip the per-visible append here.
-        if (s_storeDirty && !s_staticFrozenReg) {
-            batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
-            s_pbExpectStaticCount += rng.count;
-        }
-    } else {
-        batcher.submitCachedInstanceRange(&s_recipes[rng.first], rng.count);
-    }
-    if (s_spflushEnabled) s_w_cached_submit_cyc += __rdtsc() - _t_csub0;
+void flushCachedRange(GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng) {
+    // 1. Instances: recipes carry the permanent lightDataIndex, so no per-frame light patch is needed. Append to the
+    //    persistent store ONLY on a dirty generation; a clean frame skips this entirely (it is reinjected in bulk after
+    //    the loop). Under the frozen-records gate the store is built from ALL recipes in the all-recipes pass, so the
+    //    per-visible append is skipped.
+    if (s_storeDirty && !s_staticFrozenReg)
+        batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
     // 2. Per-recipe cached cull records.
-    const unsigned long long _t_crec0 = s_spflushEnabled ? __rdtsc() : 0ULL;
     if (gpu_cull::substrate_isEnabled()) {
-        // FNV-1a-64 hasher for compare mode (patch 8).
-        // Defined inline here; only referenced in the gate-ON path.
-        auto fnvStruct = [](const void* p, size_t n) -> uint64_t {
-            const uint8_t* data = static_cast<const uint8_t*>(p);
-            uint64_t h = 14695981039346656037ULL;
-            for (size_t k = 0; k < n; ++k) {
-                h ^= static_cast<uint64_t>(data[k]);
-                h *= 1099511628211ULL;
-            }
-            return h;
-        };
-        // Compare-mode counters (patch 8): per-frame, reset each range entry.
-        // Declared static so they persist across range iterations within a frame.
-        // NOTE: these accumulate across ALL ranges in a single flush() call and
-        // are printed once after the per-range loop (see below, outside this else).
-        // Actually they must be declared outside the range loop — see patch 8 block
-        // after the range loop end. Declare here as statics so they survive the loop.
-        static uint64_t s_cmp_checked   = 0;
-        static uint64_t s_cmp_mismatches = 0;
-        static uint32_t s_cmp_mismatch_cap = 0;  // per-session cap on mismatch logs
         for (uint32_t i = 0; i < rng.count; ++i) {
             const uint32_t ri = rng.first + i;
             // Lazy build of the cached cull record on first flush of this recipe.
             if (!s_cachedActorRecordValid[ri]) {
                 buildCachedActorRecord(rng, ri, s_cachedActorRecord[ri]);
                 s_cachedActorRecordValid[ri] = 1u;
-                if (s_spflushEnabled) ++s_win_cache_builds;   // thrash if ~= leaves/frame
-            } else if (s_spflushEnabled) {
-                ++s_win_cache_hits;
             }
-            // G2: under the frozen-records gate the golden (records + store rank)
-            // is built from ALL alive recipes in the all-recipes pass above, so
-            // the per-visible loop adds nothing here. Gate-off keeps the per-frame
-            // substrate append (original M1-step-1 behavior).
+            // Under the frozen-records gate the golden (records + store rank) is built from ALL alive recipes in the
+            // all-recipes pass, so the per-visible loop adds nothing here.
             if (!s_staticFrozenReg) {
                 gpu_cull::substrate_appendStaticPropRecord(s_cachedActorRecord[ri]);
             }
             ++s_diag_leaves_appended;
-            if (s_spflushEnabled) ++s_win_leaves_appended;
-            // v2: record substrate submission for this recipe (matches legacy path exactly).
+            // v2: record substrate submission for this recipe (matches the per-leaf path exactly).
             if (regIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
                 s_recipeHasSubstrateRecord[regIdx] = 1u;
-            // --- patch 8: compare mode (only when s_flushCachedBlobCompare is set) ---
-            if (s_flushCachedBlobCompare) {
-                ++s_cmp_checked;
-                // (a) Light index: the permanent index in s_recipes[ri] MUST equal freshLightIdx.
-                //     If they differ, the Task 1 persist has a bug or the bake hasn't run yet.
-                const uint32_t cachedLightIdx = s_recipes[ri].lightDataIndex;
-                if (cachedLightIdx != freshLightIdx) {
-                    if (s_cmp_mismatch_cap < 32) {
-                        ++s_cmp_mismatch_cap;
-                        mc2::fmt::print_err("[SPFLUSH_CACHED_COMPARE v1] event=mismatch sample=first32 (event=summary carries the true total) recipe={:d} field=inst_light cached_light={:d} legacy_light={:d}\n", mc2::fmt::as_u32(ri), mc2::fmt::as_u32(cachedLightIdx), mc2::fmt::as_u32(freshLightIdx));
-                        fflush(stderr);
-                    }
-                    ++s_cmp_mismatches;
-                }
-                // (b) Actor record hash: cached vs freshly-built legacy record.
-                gpu_cull::GpuActorRecord legacyRec{};
-                buildCachedActorRecord(rng, ri, legacyRec);
-                const uint64_t hashCached = fnvStruct(&s_cachedActorRecord[ri],
-                                                       sizeof(gpu_cull::GpuActorRecord));
-                const uint64_t hashLegacy = fnvStruct(&legacyRec,
-                                                       sizeof(gpu_cull::GpuActorRecord));
-                if (hashCached != hashLegacy) {
-                    if (s_cmp_mismatch_cap < 32) {
-                        ++s_cmp_mismatch_cap;
-                        mc2::fmt::print_err("[SPFLUSH_CACHED_COMPARE v1] event=mismatch sample=first32 (event=summary carries the true total) recipe={:d} field=record hash_cached={:d} hash_legacy={:d}\n", mc2::fmt::as_u32(ri), mc2::fmt::as_u64((unsigned long long)hashCached), mc2::fmt::as_u64((unsigned long long)hashLegacy));
-                        fflush(stderr);
-                    }
-                    ++s_cmp_mismatches;
-                }
-                // Emit periodic summary every 600 frames.
-                if (s_flushCachedBlobCompare && (currentFrame % 600u) == 0u && i == 0u) {
-                    mc2::fmt::print_err("[SPFLUSH_CACHED_COMPARE v1] event=summary checked={:d} mismatches={:d}\n", mc2::fmt::as_u64((unsigned long long)s_cmp_checked), mc2::fmt::as_u64((unsigned long long)s_cmp_mismatches));
-                    fflush(stderr);
-                }
-            }
         }
-    }
-    if (s_spflushEnabled) {
-        s_w_cached_records_cyc += __rdtsc() - _t_crec0;
-        s_w_cached_total_cyc   += __rdtsc() - _t_cached0;
     }
 }
 

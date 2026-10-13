@@ -56,29 +56,6 @@ extern const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRE
 extern const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
 extern const bool  kTglcSlopeBias         = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS">();
 extern const float kTglcSlopeBiasStr      = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS_STRENGTH">();   // row: default 1, > 0
-extern const bool  kTglcCliffTriplanar    = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR">();
-extern const float kTglcCliffTriplanarStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH">();
-// TERRAIN-CLIFF-HEIGHT-NORMAL-1: derive the cliff SHADING normal from the height
-// gradient of the cooked cliff displacement (mat5 layer-5 alpha) so the rich rock
-// relief actually catches light (the smooth marble rgb normal left it flat).
-// Trace knob MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH, default 2.0; only consumed
-// inside the useTriplanarCliff frag block. Values <= 0 are rejected (the row is > 0) and use the default.
-extern const float kTglcCliffHeightNormalStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH">();
-// TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.
-// Gate MC2_TERRAIN_CLIFF_POM (default OFF -> u_cliffPom.x=0 -> frag march skipped,
-// the triplanar block behaves exactly as TRIPLANAR-1). Depth (world-unit height
-// scale, default 12) via MC2_TERRAIN_CLIFF_POM_DEPTH; max march steps (clamp
-// 8..32, default 24) via MC2_TERRAIN_CLIFF_POM_STEPS.
-extern const bool  kTglcCliffPom          = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM">();
-extern const float kTglcCliffPomDepth     = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_DEPTH">();
-extern const float kTglcCliffPomSteps     = []() {
-    float s = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_STEPS">();
-    if (s < 8.0f) s = 8.0f; if (s > 32.0f) s = 32.0f;
-    return s;
-}();
-// TERRAIN-CLIFF-DEBUG: bounded debug-viz gate (default 0/off -> u_cliffDebug=0 ->
-// frag block skipped -> byte-identical). 1..4 select the debug output (see frag).
-extern const int kTglcCliffDebug = mc2::gate::get<"MC2_TERRAIN_CLIFF_DEBUG">();
 extern const float kTglcMacroVariation    = []() {
     if (!mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION">()) return 0.0f;
     return mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION_STRENGTH">();

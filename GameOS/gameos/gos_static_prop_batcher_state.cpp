@@ -44,8 +44,7 @@ GLuint s_staticBldgShadowSsbo = 0;
 // GL args/slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
 // registered at create (bufferData), invalidated on destroy.
 // The sibling buffers in gap B#5 are DEFERRED to the exclusion ledger (created only under
-// default-OFF gates): s_staticBldgShadowSsbo (MC2_STATIC_PROP_BUILDING_SHADOW, default
-// OFF); s_blockVisSsbo (gos_vegetation.cpp, MC2_VEGETATION_CARDS, default OFF); particle
+// default-OFF gates): s_blockVisSsbo (gos_vegetation.cpp, MC2_VEGETATION_CARDS, default OFF); particle
 // s_ssbo (gos_particle_bridge.cpp, MC2_GPU_PARTICLES, default OFF -- CPU/MLR is the stock
 // path) + s_tubePos/Col/UvSsbo (MC2_VFX_ORACLE_TUBE, default OFF/parked).
 RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
@@ -54,7 +53,7 @@ RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
     "DynamicPropShadowSsbo",
     0u};
 // typeIDs drawn into the static building shadow map. When the static building
-// shadow is active, flushShadow(skipStaticBuildingTypes=true) skips these in the
+// shadow is active, flushShadow() skips these in the
 // DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
 std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 
@@ -96,17 +95,9 @@ size_t   s_parityBytesUsedPerSlot[RING_FRAMES] = {0};
 std::vector<uint8_t> s_parityReadbackScratch;
 std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 
-// STATICPROP-COLORS-FILL-DEBUGONLY-1: the per-instance Colors SSBO (binding 1) is
-// read by NO production shader — static_prop.vert declares colors_ but never uses
-// it, firstColorOffset is unused, and the coalesce multidraw never binds binding 1
-// (only the legacy non-coalesce draw does, gos_static_prop_batcher.cpp ~:6256).
-// So the per-static-instance colors zero-fill (~80ns/leaf at wolfman) is pure
-// waste. DEFAULT-SKIP for static-registry instances; MC2_STATIC_PROP_COLORS_FILL=1
-// restores the legacy fill (kill-switch). Dynamic submit()/submitMultiShape path
-// is untouched.
-extern const bool s_staticPropColorsFill = mc2::gate::get<"MC2_STATIC_PROP_COLORS_FILL">();
-
-extern const bool s_bucketOrderTrace = mc2::gate::get<"MC2_BUCKET_ORDER_TRACE">();
+// The per-instance Colors SSBO (binding 1) is read by NO production shader (static_prop.vert declares colors_ but
+// never uses it, firstColorOffset is unused, and the coalesce multidraw never binds binding 1), so the
+// per-static-instance colors zero-fill is skipped; the dynamic submit()/submitMultiShape path is untouched.
 
 // 2b Stage 2 (Mechanism B-reinject): persistent per-type static instance store,
 // rebuilt only when the registry generation changes. Each frame the registry
@@ -210,175 +201,15 @@ bool staticPropAmbientV1Enabled() {
     return on;
 }
 
-// PROP-BASE-LIGHT-DIR-1: directional (hemispherical-wrap) modulation of the
-// baked per-vertex base_light seed. See the long rationale block in
-// shaders/static_prop.vert next to `vec3 baseLightDir`.
-//
-// The user's defect -- "this building face should be in shadow as the light is
-// from behind" -- is NOT a shadow bug. base_light is orientation-free, so a
-// wall facing away from the sun renders as bright as one facing it. Its sun
-// term is already ndl==0, so no shadow term can darken it (measured: <=0.05%
-// of pixels day, 0.000% night for MC2_PROP_SHADOW_RECEIVE). This gate gives
-// that baked seed the missing orientation term.
-//
-// VALUE = float strength 0..1, NOT a bool. This is deliberately one knob
-// rather than an enable-bool plus a separate strength var: the strength IS the
-// enable (0.0 == off), which makes an ENV_DROP failure impossible to confuse
-// with a weak setting, and lets the default be tuned without a code change.
-//   unset / "0" -> 0.0 -> shader's `> 0.0` guard skips the whole block ->
-//                  seed == base_light -> BYTE-IDENTICAL to pre-slice output.
-//   "0.45"      -> back-faces scaled to 55% of their baked seed; faces
-//                  pointing at the sun are multiplied by exactly 1.0.
-// Clamped to [0,1] because >1 would drive the back-face factor negative and
-// produce black-clamped walls -- the exact failure mode of the blunt IBL
-// killswitch the user rejected.
-extern const float s_propBaseLightDirStrength = mc2::gate::get<"MC2_PROP_BASE_LIGHT_DIR">();
-
 // FAR-BACKDROP-LIT: gate + tunables for the night-shade substitution applied to
 // far/impostor static-prop LODs (see static_prop.vert). Default-OFF; "=1" / any
 // non-"0", non-empty value enables. When OFF the per-frame upload pushes
 // u_farBackdropLit=0 so the shader's `if (u_farBackdropLit != 0)` branch is
 // skipped entirely -> seed==base_light -> byte-identical to the pre-change
 // render (stronger than a multiply-by-zero: the substitution code never runs).
-// Distance band defaults bracket the LOD impostor distance (MC2_IMPOSTOR_DIST,
-// default 800 world units; bdactor.cpp selectActiveLOD) so the fade completes as
+// Distance band defaults bracket the LOD impostor distance (800
+// world units; bdactor.cpp selectActiveLOD) so the fade completes as
 // the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
-// EDGE-LIGHT-EMISSION-1 (master-FAIL #8, re-framed). User verdict that opened
-// this lane: "edge light is just doing the wrong thing entirely. the actual
-// lights are not on at ALL." Two predecessor lanes chased whether the light
-// FIXTURES are visible (backface culling, then camera-facing billboards + a
-// screen-size clamp). That framing is superseded: visibility was never the
-// problem. The fixtures were being drawn -- they were drawn UNLIT.
-//
-// Stock MC2 lights them through authored hot-colour vertex tags. All four
-// fixture meshes (data/tgl/{runway,red,green,blue}beaconlight.ase) paint their
-// post base pure green = 0xff00ff00 = "Hot Green -- Building Base Lights --
-// ONLY at NIGHT", and each fixture's .ini declares the colour to emit in a
-// `//Night Lights` block (runwaylight + redbeaconlight 0x00ff0000 red,
-// greenbeaconlight 0x0000ff00, bluebeaconlight 0x000000ff -- so per-fixture
-// colour is stock data and needs no new authoring). The legacy CPU path reads
-// eye->getIsNight()/getNightFactor() (mclib/tgl.cpp:1901) and honours them.
-// THIS path passed `false, 0.0` hardcoded into get_base_light(), so all three
-// night-only branches (lit windows, outside building lights, base lights) took
-// their daytime arm and emitted nothing.
-//
-// Gate MC2_STATIC_PROP_NIGHT_TAGS: 0 = OFF (isNight/factor uploaded as 0/0 ->
-// byte-identical to the pre-fix render), 1 = ON (stock emission restored),
-// 2 = verify-by-exaggeration (emission delta scaled by
-// MC2_STATIC_PROP_NIGHT_TAGS_SCALE, default 4x under mode 2).
-//
-// BLAST RADIUS, stated plainly: this is not scoped to runway lights. It
-// restores the night tags for EVERY static prop that carries one, so building
-// windows and building base lights relight at night too. That is equally
-// stock-correct and equally currently-wrong, but it is a broad visual change
-// and is the reason this ships default-OFF pending user click-through.
-//
-// NOTE ON DISTANCE BEHAVIOUR: the emission rides real fixture geometry, so it
-// shrinks and fades with distance on its own. It deliberately does NOT
-// resurrect any screen-size clamp -- the unbounded clamp is what produced the
-// "atrociously hideous" overview streaks (RUNWAY-MARKER-LIGHTS-1).
-extern const int s_nightTagMode = mc2::gate::get<"MC2_STATIC_PROP_NIGHT_TAGS">();
-extern const float s_nightTagScale = []() {
-    if (mc2::gate::isNonEmpty<"MC2_STATIC_PROP_NIGHT_TAGS_SCALE">())
-        return mc2::gate::get<"MC2_STATIC_PROP_NIGHT_TAGS_SCALE">();   // row clamps to [0, 16]
-    return (s_nightTagMode == 2) ? 4.0f : 1.0f;
-}();
-
-// BEACON-FIXTURE-ID-1: fixture-scoped night emission.
-//
-// MC2_STATIC_PROP_NIGHT_TAGS (above) restores the stock night vertex tags for
-// EVERY tagged prop, which is why it ships default-OFF: 738 of 2947 stock .ase
-// carry the Hot Green tag and only 8 of them are runway/beacon fixtures -- the
-// other ~730 are buildings. The tag's stock name is literally "Building Base
-// Lights" (shaders/include/lighting.hglsl:118); the fixtures BORROW it. So
-// vertex colour cannot separate fixtures from buildings, and scoping by colour
-// would relight 730 buildings to buy 8 fixtures -- straight into the user's
-// separate over-lit-buildings complaint.
-//
-// This gate scopes by FIXTURE IDENTITY instead, via a discriminator on the
-// per-shape .ini emission colours (see isEmissiveFixtureType below). It relights
-// ONLY the runway/taxiway/beacon fixtures and leaves every building byte-
-// identical, so it is safe to default ON.
-//
-// Unset/"1" -> stock fixture emission (default ON). "0" -> off, byte-identical
-// to the pre-fix render. Numeric > 1 -> verify-by-exaggeration. Resolved once at
-// process start.
-extern const float s_fixtureLightsScale = mc2::gate::get<"MC2_STATIC_PROP_FIXTURE_LIGHTS">();
-
-// FIXTURE-GLOW-1: strength of the bounded, distance-attenuated ADDITIVE glow
-// applied to the fixture types isEmissiveFixtureType() classifies.
-//
-// This is the successor mechanism to MC2_STATIC_PROP_FIXTURE_LIGHTS above, and
-// it exists because that gate provably CANNOT fix the defect: get_base_light()
-// clamps at 1.0 (scales 1/4/8 render byte-identical frames), and whatever
-// survives the clamp is then multiplied by the fixture's dark lens albedo in
-// static_prop.frag. A light source is not expressible as a multiplier on a dark
-// texture. This gate adds a separate term after both, in the fragment shader.
-//
-// The two properties that keep it out of the RUNWAY-MARKER-LIGHTS-1 failure
-// mode (constant-screen-size dashes at overview altitude) are enforced in the
-// shader, not here: no geometry/screen-size term of any kind, and an attenuation
-// that is arithmetically zero beyond a compile-time far plane well inside
-// overview altitude. The near/far window is deliberately NOT env-tunable so the
-// bound cannot be configured away.
-//
-// DEFAULT-OFF on measured evidence. The mechanism is verified and bounded
-// (see .claude/FIXTURE-GLOW-1-STATUS.md), but at strength 1.0 the visible
-// result on the only fixtures that could be observed on screen -- the green
-// beacons of mc2_10 -- is a modest pale-ing of an already-green cone, not the
-// "a light came on" the user asked for. Two facts drive the OFF default:
-//   * the fixture lens already renders at channel max, so the ONLY headroom
-//     left in an LDR target is the OTHER channels -- i.e. any additional glow
-//     necessarily desaturates toward white. That is physically what a hot light
-//     core does, but it is an aesthetic call, and this user has already
-//     rejected one fixture-lighting attempt as "atrociously hideous";
-//   * the red and blue fixture types were never observed glowing on screen (see
-//     the status doc) -- only green was, for the fifth lane running.
-// Shipping this ON would repeat the predecessor's outcome: a safe default-ON
-// change that does not close the complaint. It needs a strength picked by eye.
-//
-// "0"/unset -> off, byte-identical. Numeric -> strength; 1.0 is the calibrated
-// baseline, 3-4 is the "clearly a light" range. Resolved once at process start.
-extern const float s_fixtureGlowStrength = mc2::gate::get<"MC2_STATIC_PROP_FIXTURE_GLOW">();
-
-// BEACON-FIXTURE-ID-1: the fixture discriminator, validated against all 773
-// stock data/tgl .ini.
-//
-// A light fixture declares the SAME saturated primary for all three Hot*RGB
-// slots -- it has one emission colour and does not care which magic tag the
-// artist painted the post with. Buildings declare desaturated greys/olives
-// (0x00707070, 0x00557238, 0x006AA6A6, ...) and declare them INDEPENDENTLY per
-// slot, so their three values are essentially never equal.
-//
-// Both halves of the test are load-bearing. "Saturated primary" ALONE is leaky
-// because mclib/bdactor.cpp:813-819 defaults an undeclared slot to the magic tag
-// itself (HotGreenRGB -> 0xff00ff00, a saturated primary): 503 of 773 .ini trip
-// the naive test. Requiring all three EQUAL rejects every one of those, because
-// the three defaults differ from each other.
-//
-// Measured on the stock data set: 4 of 773 .ini match -- runwaylight,
-// redbeaconlight, greenbeaconlight, bluebeaconlight -- backing the ~24 fixture
-// .ase (base/x/dam/damx/l1 variants). Zero buildings match. This is data-driven
-// rather than a hardcoded name list, so it also classifies modded fixtures that
-// follow the same authoring convention.
-bool isEmissiveFixtureType(DWORD pink, DWORD yellow, DWORD green)
-{
-    const DWORD rgbP = pink & 0x00FFFFFFu;
-    const DWORD rgbY = yellow & 0x00FFFFFFu;
-    const DWORD rgbG = green & 0x00FFFFFFu;
-    if (rgbP != rgbY || rgbY != rgbG) return false;   // rejects the default-mix case
-    const int r = (int)((rgbP >> 16) & 0xFFu);
-    const int g = (int)((rgbP >>  8) & 0xFFu);
-    const int b = (int)((rgbP >>  0) & 0xFFu);
-    const int mx = (r > g ? (r > b ? r : b) : (g > b ? g : b));
-    const int mn = (r < g ? (r < b ? r : b) : (g < b ? g : b));
-    return mx >= 200 && mn <= 40 && (mx - mn) >= 160;  // saturated primary
-}
-
-// BEACON-FIXTURE-ID-1: numeric receipt -- how many registered types the
-// discriminator classified as fixtures on the loaded map.
-unsigned s_fixtureTypeCount = 0;
-
 extern const bool s_farBackdropLitEnabled = mc2::gate::get<"MC2_FAR_BACKDROP_LIT">();
 extern const float s_farBackdropNear = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_NEAR">();
 extern const float s_farBackdropFar = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_FAR">();
@@ -456,26 +287,19 @@ bool iblShEnabled() {
 // is exactly 0.0f, so the multiplier is exactly 1.0f and `strength * 1.0f`
 // returns the identical float. No epsilon, no rounding.
 //
-// Value semantics: float 0..1 = the night floor. "1.0" -> multiplier is exactly
-// 1.0 at every nightFactor -> byte-identical to the pre-slice build (this is
-// the killswitch). "0.0" -> hard (1 - nightFactor). Unset -> 0.25.
-static const float s_iblNightFloor = mc2::gate::get<"MC2_STATIC_PROP_IBL_NIGHT_SCALE">();
+// The night floor is the knee of the sweep above.
+static constexpr float s_iblNightFloor = 0.25f;
 
 // Effective SH-IBL strength for this frame: the configured strength (ImGui
-// slider / MC2_STATIC_PROP_IBL_SH_STRENGTH env / per-mission
-// data/visual_tuning.json "staticPropIblStrength") scaled by the night curve.
+// slider / per-mission data/visual_tuning.json "staticPropIblStrength") scaled
+// by the night curve.
 //
 // NOTE ON SOURCING NIGHT STATE. This deliberately calls gos_GetNightState()
 // directly instead of reusing the nFactor computed in the uniform-upload
-// blocks below. Those blocks only fetch real night state when one of
-// MC2_STATIC_PROP_NIGHT_TAGS / _FIXTURE_LIGHTS / _FIXTURE_GLOW is active and
-// otherwise leave nFactor at 0.0. _FIXTURE_LIGHTS happens to default ON today,
-// so piggy-backing would work by luck -- and would silently degrade to a no-op
-// the moment a user set MC2_STATIC_PROP_FIXTURE_LIGHTS=0. This fix must not
-// depend on an unrelated gate's default.
+// blocks below, so the probe's night scale does not depend on how those blocks
+// source their state.
 float iblShStrengthNightScaled() {
     if (!iblShEnabled()) return 0.0f;
-    if (s_iblNightFloor >= 1.0f) return g_iblShStrength;   // killswitch: exact
     bool  isNight = false;
     float nFactor = 0.0f;
     ::gos_GetNightState(&isNight, &nFactor);
@@ -509,12 +333,6 @@ extern const bool s_ormSlotsEnabled = mc2::gate::get<"MC2_STATICPROP_MATERIAL_PB
 // at process start; mirrors the IBL env-gate idiom.
 extern const bool s_viewUniformsDisabled = !mc2::gate::get<"MC2_VIEW_UNIFORMS">();
 
-// V-MATERIAL-PBR-2-DIAG: diagnostic visualizer gate. Default-OFF; "=1" / any
-// non-"0" value enables. Mirrors s_pbrV1Enabled parse pattern. When ON AND
-// PBR gate is also ON, shader replaces lit with cyan (sunFound=true) /
-// magenta (false) instead of running Schlick math. Diagnostic-only; never
-// commits a behavior change to the default path.
-extern const bool s_pbrV1DiagSunFound = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_DIAG_SUNFOUND">();
 // Note: definition of `g_iblShStrength` lives at file scope above the
 // anonymous namespace (line ~191) so it has external linkage. The lambda-
 // initialized s_iblShEnabled stays local here; the slider value is global.
@@ -528,12 +346,7 @@ extern const bool s_pbrV1DiagSunFound = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_D
 //   - setMissionForIbl(name) is called from Mission::init right after
 //     onMapLoad(); it consults the compile-time registry (kMissionShMap
 //     in IblShRegistry.h) and falls back to "default" for unknown names.
-//   - Optional env override MC2_STATIC_PROP_IBL_SH_SET=<name> wins over
-//     the registry when set + matches an existing set; unset/empty/typo
-//     -> registry. Resolved once at process start.
 extern const RenderCore::IblShSet* s_currentShSet = &RenderCore::kIblShSets[0];
-static const std::string s_iblShSetEnvOverrideText = mc2::gate::str<"MC2_STATIC_PROP_IBL_SH_SET">();   // "" when unset or empty
-extern const char* s_iblShSetEnvOverride = s_iblShSetEnvOverrideText.empty() ? nullptr : s_iblShSetEnvOverrideText.c_str();
 
 // ── IBL-SUN-ROTATE-1 ────────────────────────────────────────────────────────
 // Rotate the SH-IBL ambient probe about world-up so its bright lobe lands on
@@ -782,9 +595,8 @@ const float* iblShCoeffsForUpload() {
 }
 
 // V-MATERIAL-DEBUG-1: per-fragment material debug view mode for the
-// StaticPropOpaque lane. Default 0 = OFF (byte-identical to legacy output —
-// shader short-circuits via `if (u_debugMaterialMode != 0) { ...; return; }`).
-// Env var MC2_STATIC_PROP_DEBUG_MATERIAL accepts integer 0..N:
+// StaticPropOpaque lane. 0 = OFF; the inspector selector sets it at runtime.
+// Modes:
 //   0 = off (default)
 //   1 = albedo (raw texture)
 //   2 = materialIdx (hashed palette)
@@ -793,8 +605,7 @@ const float* iblShCoeffsForUpload() {
 //   5 = roughnessFactor as grayscale (V-MATERIAL-PBR-1)
 //   6 = metallicFactor as grayscale  (V-MATERIAL-PBR-1)
 // Values outside the implemented range render as hot-pink in the shader.
-// Resolved once at process start (atoi semantics: invalid -> 0).
-int s_staticPropDebugMaterialMode = mc2::gate::get<"MC2_STATIC_PROP_DEBUG_MATERIAL">();
+int s_staticPropDebugMaterialMode = 0;
 bool s_materialKtxEnabled = mc2::gate::get<"MC2_MATERIAL_KTX">();   // MC2_MATERIAL_KTX=1
 // MC2_STATICPROP_TEX_TIER: 128 | 256 | 512 (default) | 1024
 // Selects which cooked tier directory (data/tgl/<tier>/<name>.ktx2) is loaded
@@ -988,10 +799,6 @@ size_t   s_offGroupBytesThisFrame  = 0;
 size_t   s_onGroupBytesThisFrame   = 0;
 size_t   s_totalUsedBytesThisFrame = 0;
 
-// BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass)
-// texels on ALPHA_TEST packets. Default ON; MC2_SP_GLASS_DITHER=0 kills it
-// (shader falls back to the legacy binary a<0.5 discard, byte-identical).
-extern const bool s_glassDitherEnabled = mc2::gate::get<"MC2_SP_GLASS_DITHER">();
 ProgramLocs s_locsLegacy;
 ProgramLocs s_locsCoalesce;
 

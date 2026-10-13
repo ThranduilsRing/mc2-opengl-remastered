@@ -53,10 +53,6 @@ flat in uint v_drawID;          // plan v3.8 Step 8.3: forwarded from VS as
 in       vec3 v_dbgSun;
 in       vec3 v_dbgAmbient;
 flat in  vec4 v_dbgLightMeta;   // x=lightDataIndex, y=numLights
-// FIXTURE-GLOW-1: pre-attenuated additive glow for light-fixture lens vertices.
-// vec3(0.0) everywhere else, and vec3(0.0) for ALL vertices when the gate is off
-// or in daylight or beyond the attenuation far plane. See static_prop.vert.
-in       vec3 v_fixtureGlow;
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
 // V-MATERIAL-PBR-3: per-fragment PBR varyings (must match static_prop.vert
@@ -74,13 +70,11 @@ flat in  int  v_pbrV1SunFound;
 // is required. Default behavior preserved:
 //   u_pbrV1Strength             = 0.0  (PBR block short-circuits)
 //   u_pbrV1RoughnessOverride    = -1.0 (sentinel; use material/literal)
-//   u_pbrV1DiagSunFound         = 0    (DIAG off)
 // Runtime safety interlock (s_viewUniformsDisabled flag in the batcher)
 // force-uploads strength=0 when MC2_VIEW_UNIFORMS=0, complementing this
 // compile-guard.
 uniform float u_pbrV1Strength;
 uniform float u_pbrV1RoughnessOverride;
-uniform int   u_pbrV1DiagSunFound;
 #endif
 
 #ifdef MC2_COALESCE
@@ -136,7 +130,7 @@ uniform float u_fogValue;        // 1.0 = clear, 0.0 = fully fogged
 uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash, 3 white, 4 argb-only, 5 tex-only, 6 highlight-only, 7 tex+highlight
 
 // V-MATERIAL-DEBUG-1: per-fragment material debug view (StaticPropOpaque lane).
-// Default 0 = OFF; CPU uploads 0 unless MC2_STATIC_PROP_DEBUG_MATERIAL is set.
+// 0 = OFF; the inspector's material-view selector uploads the mode.
 // Modes:
 //   0 off          (no visual change — guarded by `if (mode != 0) { ...; return; }`)
 //   1 albedo       (raw sampled albedo, no lighting/fog/highlight)
@@ -164,8 +158,8 @@ uniform int   u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (
 // floor, so a face pointing away from the sun goes to ~0 (black void). This
 // uniform is applied as a per-fragment floor ONLY to fragments whose instance
 // carries kFlagDecalFill (bit 3, set solely on MarbleCliff decal instances in
-// bdactor.cpp). Default 0.0 upload + bit-unset = byte-identical for every other
-// static prop AND (when unset) for the decal itself. CPU default is 0.20.
+// bdactor.cpp). Bit-unset = no change for every other static prop; the lighting
+// slider sets the strength.
 uniform float u_terrainDecalFill;
 const uint kFlagDecalFill = (1u << 3);
 
@@ -177,9 +171,8 @@ const uint kFlagDecalFill = (1u << 3);
 // u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits): the batcher binds the merged
 // colormap atlas to kColormapTexUnit and uploads the atlas params.
 //   - Applied ONLY to fragments carrying kFlagDecalFill (bit 3).
-//   - u_terrainDecalColorBlend == 0.0 (default upload when MC2_TERRAIN_DECAL_
-//     COLORBLEND unset) OR flag-unset -> the whole block is skipped -> every
-//     other static prop (and the decal itself) is byte-identical.
+//   - u_terrainDecalColorBlend == 0.0 (slider at zero) OR flag-unset -> the whole
+//     block is skipped -> every other static prop is unchanged.
 //   - Requires v_worldPos (MC2/terrain world frame, same as the chunk shader),
 //     which only exists under MC2_USE_VIEW_UNIFORMS; guarded accordingly.
 uniform sampler2D u_terrainColormap;    // merged colormap atlas (kColormapTexUnit)
@@ -198,8 +191,6 @@ uniform float     u_terrainDecalColorBlend;  // 0 = off (byte-identical)
 // a 4x4 Bayer threshold instead of the fixed 0.5: binary-alpha texels behave
 // exactly as before (a<=1/32 always discards, a>=31/32 never), partial-alpha
 // texels become depth-correct stippled translucency.
-// 0.0 (default / MC2_SP_GLASS_DITHER=0 killswitch) = legacy a<0.5 discard.
-uniform float u_glassDither;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 GBuffer1;
@@ -290,22 +281,17 @@ void main() {
     // transparent"). All other debug modes (1..7) retain the discard so
     // existing tree-card / alpha-test diagnostics are unchanged.
     if (u_debugAddrMode != 8 && (materialFlags & ALPHA_TEST_BIT) != 0) {
-        if (u_glassDither > 0.5) {
-            // BUILDING-GLASS-1: Bayer 4x4 ordered-dither threshold. Values are
-            // (index+0.5)/16 so thresholds span (0,1) exclusive — a==0 always
-            // discards, a==1 never does (binary fence textures unchanged).
-            if (propBayerDitherDiscard(tex_color.a, gl_FragCoord.xy)) {
-                discard;
-            }
-        } else if (tex_color.a < 0.5) {
+        // BUILDING-GLASS-1: Bayer 4x4 ordered-dither threshold. Values are
+        // (index+0.5)/16 so thresholds span (0,1) exclusive — a==0 always
+        // discards, a==1 never does (binary fence textures unchanged).
+        if (propBayerDitherDiscard(tex_color.a, gl_FragCoord.xy)) {
             discard;
         }
     }
 
     // V-MATERIAL-DEBUG-1: per-fragment material debug view.
-    // PIXEL-INVARIANT PROOF: when u_debugMaterialMode == 0 (default; CPU
-    // uploads 0 unless MC2_STATIC_PROP_DEBUG_MATERIAL is set non-zero), this
-    // entire block is skipped via the `!= 0` guard, control flow returns to
+    // PIXEL-INVARIANT PROOF: when u_debugMaterialMode == 0 (the selector's
+    // default), this entire block is skipped via the `!= 0` guard, control flow returns to
     // the existing pipeline at the next line, and the output is byte-identical
     // to pre-slice f005f7ce. Alpha-test discard above already ran exactly as
     // before, so discard behavior is unchanged.
@@ -424,15 +410,13 @@ void main() {
     //     REMEDIATION-LAND-1). u_iblShStrength is uploaded through
     //     iblShStrengthNightScaled() (gos_static_prop_batcher.cpp:1129), which
     //     applies IBL-NIGHT-SCALE-1's `strength *= 1 - (1 - 0.25)*nightFactor`
-    //     -- DEFAULT-ON gate MC2_STATIC_PROP_IBL_NIGHT_SCALE. At nightFactor
+    //     -- always on. At nightFactor
     //     1.0 the effective strength is 0.55*0.25 = 0.1375, and 0.1375 * the
     //     probe's 4.896 maximum is 0.673, under the clamp: the probe saturates
     //     0.0% of the sphere and the "unsaturated remainder" is the WHOLE
     //     surface. See the ★★ block in static_prop.vert for the full table.
-    //   - the kFlagDecalFill producer sits behind the DEFAULT-OFF opt-in
-    //     MC2_TERRAIN_DECAL (mclib/bdactor.cpp useCliffWallFrame), so on a
-    //     default launch this whole block runs for zero fragments. The v1
-    //     no-op was never visible to the user for that reason either.
+    //   - the kFlagDecalFill producer is mclib/bdactor.cpp useCliffWallFrame
+    //     (the MarbleCliff mesh decals); the block runs only for those fragments.
 
     // TERRAIN-DECAL-COLORBLEND-1: mix the cliff-decal albedo toward the terrain
     // colormap sampled at this fragment's world-XY (same atlas-UV reconstruction
@@ -494,10 +478,7 @@ void main() {
     const uint kFlagIsWindow = (1u << 1);
     if (u_pbrV1Strength > 0.0 && (v_flags & kFlagIsWindow) == 0u) {
         if (v_pbrV1SunFound != 0) {
-            if (u_pbrV1DiagSunFound != 0) {
-                // DIAG cyan: sun found at this fragment's provoking vertex.
-                c.rgb = vec3(0.0, 1.0, 1.0);
-            } else {
+            {
                 // Material scalars: prefer MaterialGpu when sampling is on;
                 // fall back to the literal defaults otherwise (metallic=0,
                 // roughness=1.0) so gate-ON behavior degrades gracefully when
@@ -564,10 +545,6 @@ void main() {
 
                 c.rgb += specular * u_pbrV1Strength;
             }
-        } else if (u_pbrV1DiagSunFound != 0) {
-            // DIAG magenta: PBR gate ON, DIAG ON, but no INFINITE light
-            // found in this fragment's ObjectLights entry.
-            c.rgb = vec3(1.0, 0.0, 1.0);
         }
     }
 #endif  // MC2_USE_VIEW_UNIFORMS
@@ -622,19 +599,6 @@ void main() {
     }
 
     c.rgb = mix(v_fog.rgb, c.rgb, u_fogValue);
-
-    // FIXTURE-GLOW-1: the additive term, applied LAST on purpose.
-    //   * after `c = tex_color * litRgb` (line ~436), so the fixture's dark lens
-    //     albedo cannot multiply the light away -- the failure that made every
-    //     emissive-side attempt look "not on at ALL";
-    //   * after the get_base_light() 1.0 clamp, so it is not swallowed by an
-    //     already-saturated emissive seed (scales 1/4/8 were byte-identical);
-    //   * after fog, so a light still reads through night haze at play distance.
-    // It is added after the debug-view early-returns above, so every debug
-    // channel is unaffected. v_fixtureGlow is exactly vec3(0.0) whenever the
-    // gate is off, in daylight, on non-fixtures, and past the far plane, so all
-    // of those cases stay byte-identical.
-    c.rgb += v_fixtureGlow;
 
     FragColor = c;
     // Static props receive the static shadow map but NOT the dynamic-cascade

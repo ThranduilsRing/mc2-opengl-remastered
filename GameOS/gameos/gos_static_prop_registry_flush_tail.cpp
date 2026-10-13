@@ -7,7 +7,7 @@ namespace GpuStaticPropRegistry {
 
 
 // Rebuild the persistent static store and golden list from every registered recipe.
-void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty, uint64_t& s_pbExpectStaticCount) {
+void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty) {
     if (s_staticFrozenReg && s_storeDirty) {
         // G2 GPU-Scene: under the frozen-records gate the store + golden are built
         // from ALL alive registered recipes (not the per-frame visible
@@ -31,7 +31,6 @@ void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty
                 s_recipes[ri].lightDataIndex = aregIdx;   // permanent per-actor slot
             }
             batcher_pb.appendPersistentStaticRange(&s_recipes[arng.first], arng.count);
-            s_pbExpectStaticCount += arng.count;
             for (uint32_t i = 0u; i < arng.count; ++i) {
                 const uint32_t ri = arng.first + i;
                 if (ri >= s_recipes.size()) break;
@@ -51,40 +50,13 @@ void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty
     }
 }
 
-// Finalise the persistent static store and run its consistency oracle.
-void flushReinjectPersistentStore(GpuStaticPropBatcher& batcher_pb, uint64_t s_currentGen, bool s_storeDirty, uint64_t& s_pbExpectStaticCount, uint64_t s_diag_flush_calls) {
+// Finalise the persistent static store and bulk-inject it into the per-type buckets.
+void flushReinjectPersistentStore(GpuStaticPropBatcher& batcher_pb, uint64_t s_currentGen, bool s_storeDirty) {
     // 2b Stage 2 (Mechanism B-reinject): finalize the store on a dirty rebuild, then
     // bulk-inject the static blocks into s_bucketsByType every frame (one memcpy per
     // type). The downstream upload + coalesce pool read s_bucketsByType unchanged.
-    if (s_persistentBuckets) {
-        if (s_storeDirty) batcher_pb.setPersistentStaticGen(s_currentGen);
-        batcher_pb.reinjectPersistentStatic();
-        // [_COMPARE] store-consistency oracle: on a DIRTY rebuild the store total
-        // must equal what we just appended (s_pbExpectStaticCount); on a CLEAN frame
-        // it must be UNCHANGED from the last rebuild (the store is frozen between
-        // dirty events). A mismatch = store corruption / a missed generation bump.
-        // (Visual/instance equivalence vs legacy is validated by the rendered-output
-        // parity + tier1 + Tracy, per the validation bar.)
-        if (s_persistentBucketsCompare) {
-            static uint64_t s_pbCmpChecks = 0, s_pbCmpMismatch = 0, s_pbCmpCap = 0;
-            static uint64_t s_pbLastRebuildCount = 0;
-            ++s_pbCmpChecks;
-            const uint64_t storedCount = batcher_pb.persistentStaticTotalCount();
-            const uint64_t expect = s_storeDirty ? s_pbExpectStaticCount : s_pbLastRebuildCount;
-            if (s_storeDirty) s_pbLastRebuildCount = storedCount;
-            if (storedCount != expect) {
-                ++s_pbCmpMismatch;
-                if (s_pbCmpCap < 32) { ++s_pbCmpCap;
-                    mc2::fmt::print_err("[PERSIST_BUCKET_COMPARE v1] event=mismatch sample=first32 (event=summary carries the true total) stored={:d} expect={:d} dirty={:d}\n", mc2::fmt::as_u64((unsigned long long)storedCount), mc2::fmt::as_u64((unsigned long long)expect), mc2::fmt::as_i32(s_storeDirty ? 1 : 0));
-                    fflush(stderr);
-                }
-            }
-            if ((s_diag_flush_calls % 600u) == 0u) {
-                mc2::fmt::print_err("[PERSIST_BUCKET_COMPARE v1] event=summary checks={:d} mismatches={:d} stored={:d}\n", mc2::fmt::as_u64((unsigned long long)s_pbCmpChecks), mc2::fmt::as_u64((unsigned long long)s_pbCmpMismatch), mc2::fmt::as_u64((unsigned long long)storedCount));
-                fflush(stderr);
-            }
-        }
-    }
+    if (s_storeDirty) batcher_pb.setPersistentStaticGen(s_currentGen);
+    batcher_pb.reinjectPersistentStatic();
 }
 
 // Count the registered props whose light slot was never baked and dump their rows once.
@@ -165,60 +137,6 @@ void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total
                 if (kv.second > worstCount) { worstCount = kv.second; worstType = kv.first; }
             mc2::fmt::print_err("[REGFLUSH_GUARD2 v1] event=summary persistent_vanish={:d} stale_types={:d} worst_typeID={:d} worst_stale_total={:d} live_streaks={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_persistent_vanish), mc2::fmt::as_size(s_staleByType.size()), mc2::fmt::as_i32(worstType), mc2::fmt::as_u64((unsigned long long)worstCount), mc2::fmt::as_size(s_staleStreak.size()));
             fflush(stderr);
-        }
-    }
-}
-
-// Emit the per-10-frame cost-split summary and reset its window.
-void flushSpflushWindow() {
-    // [SPFLUSH_COST_SPLIT v1] -- per-10-frame summary emit.
-    // s_win_leaves_appended / s_win_ranges_drawn are incremented directly in the
-    // leaf loop above (alongside the existing s_diag_* counters). Window accumulators
-    // are reset after each emit, so they hold the current window-period totals.
-    if (s_spflushEnabled) {
-        if (!s_spflushCalibrated) spflushCalibrate();
-        ++s_spflushWindowFrames;
-        if (s_spflushWindowFrames >= 10) {
-            // Consume batcher-side callee accumulators (read+reset).
-            const unsigned long long map_lookup_cyc  = spflush_cost_split::ConsumeSubmitMapLookupCycles();
-            const unsigned long long color_fill_cyc  = spflush_cost_split::ConsumeColorZeroFillCycles();
-            // Consume txmmgr-side accumulators (file-scope externs declared below namespace).
-            const unsigned long long bi_upload_cyc       = ::spflush_ConsumeBaseInstanceUploadCycles();
-            const unsigned long long win_recipe_rebuilds = ::spflush_ConsumeRecipeRebuildsDelta();
-            const unsigned long long tot_recipe_rebuilds = ::spflush_GetRecipeRebuildTotal();
-            // Convert cycles -> ns using the calibrated cycles_per_ns.
-            const double cpns = s_spflushCyclesPerNs;
-            const double wf   = static_cast<double>(s_spflushWindowFrames);
-            auto cyc2ns = [&](unsigned long long c) -> long long {
-                return static_cast<long long>(static_cast<double>(c) / cpns / wf);
-            };
-            // Per-frame leaf/range averages (window totals / frames).
-            const long long leaves_pf  = static_cast<long long>(s_win_leaves_appended / static_cast<unsigned long long>(s_spflushWindowFrames));
-            const long long ranges_pf  = static_cast<long long>(s_win_ranges_drawn    / static_cast<unsigned long long>(s_spflushWindowFrames));
-            mc2::fmt::print_err("[SPFLUSH_COST_SPLIT v1] event=summary frames=10 leaves={:d} ranges={:d} submit_loop_ns={:d} inst_build_ns={:d} map_lookup_ns={:d} color_fill_ns={:d} actor_record_ns={:d} world_to_block_ns={:d} substrate_append_ns={:d} baseinstance_upload_ns={:d} | CACHED: total_ns={:d} submit_ns={:d} records_ns={:d} builds_pf={:d} hits_pf={:d} | dirty(window): invalidates={:d} registrations={:d} rebuilds={:d} light_writes={:d} | dirty(total): invalidates={:d} registrations={:d} rebuilds={:d} light_writes={:d}\n", mc2::fmt::as_i64(leaves_pf), mc2::fmt::as_i64(ranges_pf), mc2::fmt::as_i64(cyc2ns(s_w_submit_loop_total_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_inst_build_cyc)), mc2::fmt::as_i64(cyc2ns(map_lookup_cyc)), mc2::fmt::as_i64(cyc2ns(color_fill_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_actor_record_build_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_world_to_block_idx_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_substrate_append_cyc)), mc2::fmt::as_i64(cyc2ns(bi_upload_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_total_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_submit_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_records_cyc)), mc2::fmt::as_i64(static_cast<long long>(s_win_cache_builds / static_cast<unsigned long long>(s_spflushWindowFrames))), mc2::fmt::as_i64(static_cast<long long>(s_win_cache_hits   / static_cast<unsigned long long>(s_spflushWindowFrames))), mc2::fmt::as_u64(s_win_invalidates), mc2::fmt::as_u64(s_win_registrations), mc2::fmt::as_u64(win_recipe_rebuilds), mc2::fmt::as_u64(win_recipe_rebuilds), mc2::fmt::as_u64(s_total_invalidates), mc2::fmt::as_u64(s_total_registrations), mc2::fmt::as_u64(tot_recipe_rebuilds), mc2::fmt::as_u64(tot_recipe_rebuilds));
-            fflush(stderr);
-            if (mc2_diag::tagEnabled("SPFLUSH_COST_SPLIT")) {
-                char diag_buf[2048];
-                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"summary\",\"frame\":{:d},\"window_frames\":{:d},\"leaves\":{:d},\"ranges\":{:d},\"submit_loop_ns\":{:d},\"inst_build_ns\":{:d},\"map_lookup_ns\":{:d},\"color_fill_ns\":{:d},\"actor_record_ns\":{:d},\"world_to_block_ns\":{:d},\"substrate_append_ns\":{:d},\"baseinstance_upload_ns\":{:d},\"cached_total_ns\":{:d},\"cached_submit_ns\":{:d},\"cached_records_ns\":{:d},\"win_cache_builds\":{:d},\"win_cache_hits\":{:d},\"win_invalidates\":{:d},\"win_registrations\":{:d},\"win_recipe_rebuilds\":{:d},\"tot_invalidates\":{:d},\"tot_registrations\":{:d},\"tot_recipe_rebuilds\":{:d}}}", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(s_spflushWindowFrames), mc2::fmt::as_i64(leaves_pf), mc2::fmt::as_i64(ranges_pf), mc2::fmt::as_i64(cyc2ns(s_w_submit_loop_total_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_inst_build_cyc)), mc2::fmt::as_i64(cyc2ns(map_lookup_cyc)), mc2::fmt::as_i64(cyc2ns(color_fill_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_actor_record_build_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_world_to_block_idx_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_substrate_append_cyc)), mc2::fmt::as_i64(cyc2ns(bi_upload_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_total_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_submit_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_records_cyc)), mc2::fmt::as_i64(static_cast<long long>(s_win_cache_builds / static_cast<unsigned long long>(s_spflushWindowFrames))), mc2::fmt::as_i64(static_cast<long long>(s_win_cache_hits   / static_cast<unsigned long long>(s_spflushWindowFrames))), mc2::fmt::as_u64(s_win_invalidates), mc2::fmt::as_u64(s_win_registrations), mc2::fmt::as_u64(win_recipe_rebuilds), mc2::fmt::as_u64(s_total_invalidates), mc2::fmt::as_u64(s_total_registrations), mc2::fmt::as_u64(tot_recipe_rebuilds));
-                mc2_diag::writeEvent("SPFLUSH_COST_SPLIT", 1, g_mc2FrameCounter, diag_buf);
-            }
-            // Reset window accumulators.
-            s_w_submit_loop_total_cyc  = 0;
-            s_w_inst_build_cyc         = 0;
-            s_w_actor_record_build_cyc = 0;
-            s_w_world_to_block_idx_cyc = 0;
-            s_w_substrate_append_cyc   = 0;
-            s_win_leaves_appended      = 0;
-            s_win_ranges_drawn         = 0;
-            s_w_cached_total_cyc       = 0;
-            s_w_cached_submit_cyc      = 0;
-            s_w_cached_records_cyc     = 0;
-            s_win_cache_builds         = 0;
-            s_win_cache_hits           = 0;
-            s_win_invalidates          = 0;
-            s_win_registrations        = 0;
-            // s_win_recipe_rebuilds reset inside spflush_ConsumeRecipeRebuildsDelta() (txmmgr).
-            s_spflushWindowFrames      = 0;
         }
     }
 }

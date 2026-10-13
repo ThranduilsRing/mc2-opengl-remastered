@@ -386,11 +386,6 @@ GLint s_locAmbientDayGate   = -1;  // TERRAIN-AMBIENT-FLOOR-2
 GLint s_locNfhStrength    = -1;
 GLint s_locUseRockSlopeBias = -1;  // TERRAIN-SLOPE-BIAS-VISUAL-1 (B4a)
 GLint s_locRockSlopeBiasStr = -1;
-GLint s_locUseTriplanarCliff = -1; // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1
-GLint s_locCliffTriplanarStr = -1;
-GLint s_locCliffHeightNormalStr = -1; // TERRAIN-CLIFF-HEIGHT-NORMAL-1
-GLint s_locCliffPom          = -1; // TERRAIN-CLIFF-POM-1: u_cliffPom (.x=gate,.y=depth,.z=steps)
-GLint s_locCliffDebug        = -1; // TERRAIN-CLIFF-DEBUG: u_cliffDebug (0=off,1..4 debug-viz)
 GLint s_locMacroVariation    = -1; // TERRAIN-MACRO-VARIATION-1
 GLint s_locEdgeFeather        = -1; // TERRAIN-EDGE-FEATHER-1
 GLint s_locEdgeFeatherStr     = -1;
@@ -400,9 +395,8 @@ GLint s_locVisualDisplaceFar  = -1; // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD
 GLint s_locVisualDampOn       = -1; // TERRAIN-REAUTH-UNPIN-1 Half B
 GLint s_locGeomorphMips       = -1; // TERRAIN-LOD-GEOMORPH-1: b26 has max-mip levels
 GLint s_locMorphFactor        = -1; // TERRAIN-LOD-GEOMORPH-1: per-block parent-band lerp
-GLint s_locPomParams      = -1;
+GLint s_locPomScale       = -1; // TERRAIN-CHUNK-POM-1: u_pomScale
 GLint s_locCameraPos      = -1; // TERRAIN-CHUNK-POM-1: "cameraPos" (Stuff/MLR eye, legacy name)
-GLint s_locPomView        = -1; // TERRAIN-CHUNK-POM-1: u_pomView (.x=gate, .y=near, .z=far)
 GLint s_locMatProfile     = -1;
 GLint s_locControlMap     = -1;  // TERRAIN-CONTROLMAP-SAMPLE-1: u_controlMap sampler
 GLint s_locUseControlMap  = -1;  // u_useControlMap gate uniform
@@ -599,11 +593,6 @@ void gos_TerrainLodChunk_Init()
             s_locNfhStrength = glGetUniformLocation(s_terrainProgram, "terrainNormalsFromHeightStrength");
             s_locUseRockSlopeBias = glGetUniformLocation(s_terrainProgram, "useRockSlopeBias");
             s_locRockSlopeBiasStr = glGetUniformLocation(s_terrainProgram, "rockSlopeBiasStrength");
-            s_locUseTriplanarCliff = glGetUniformLocation(s_terrainProgram, "useTriplanarCliff");
-            s_locCliffTriplanarStr = glGetUniformLocation(s_terrainProgram, "cliffTriplanarStrength");
-            s_locCliffHeightNormalStr = glGetUniformLocation(s_terrainProgram, "cliffHeightNormalStrength");  // TERRAIN-CLIFF-HEIGHT-NORMAL-1
-            s_locCliffPom          = glGetUniformLocation(s_terrainProgram, "u_cliffPom");  // TERRAIN-CLIFF-POM-1
-            s_locCliffDebug        = glGetUniformLocation(s_terrainProgram, "u_cliffDebug");  // TERRAIN-CLIFF-DEBUG
             s_locMacroVariation    = glGetUniformLocation(s_terrainProgram, "macroVariationStrength");
             s_locEdgeFeather       = glGetUniformLocation(s_terrainProgram, "u_edgeFeather");
             s_locEdgeFeatherStr    = glGetUniformLocation(s_terrainProgram, "u_edgeFeatherStrength");
@@ -613,9 +602,8 @@ void gos_TerrainLodChunk_Init()
             s_locVisualDampOn      = glGetUniformLocation(s_terrainProgram, "u_visualDampOn");
             s_locGeomorphMips      = glGetUniformLocation(s_terrainProgram, "u_geomorphMips");   // TERRAIN-LOD-GEOMORPH-1
             s_locMorphFactor       = glGetUniformLocation(s_terrainProgram, "u_morphFactor");    // TERRAIN-LOD-GEOMORPH-1
-            s_locPomParams   = glGetUniformLocation(s_terrainProgram, "pomParams");
+            s_locPomScale    = glGetUniformLocation(s_terrainProgram, "u_pomScale");
             s_locCameraPos   = glGetUniformLocation(s_terrainProgram, "cameraPos");  // TERRAIN-CHUNK-POM-1
-            s_locPomView     = glGetUniformLocation(s_terrainProgram, "u_pomView");  // TERRAIN-CHUNK-POM-1
             s_locMatProfile  = glGetUniformLocation(s_terrainProgram, "g_terrainMaterialProfile");
             s_locCementAtlas    = glGetUniformLocation(s_terrainProgram, "u_cementAtlas");
             s_locUseCement      = glGetUniformLocation(s_terrainProgram, "u_useCement");

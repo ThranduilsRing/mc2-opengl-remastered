@@ -89,21 +89,15 @@ const std::vector<GpuStaticPropInstance>& GpuStaticPropBatcher::getLastBuiltBatc
 
 void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& inst) {
     if (inst.typeID >= s_types.size()) return;
-    // [SPFLUSH_COST_SPLIT v1] submit_map_lookup span.
-    const unsigned long long _t_lookup0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
-    const GpuStaticPropType& type = s_types[inst.typeID];
     PerTypeBucket& bucket = s_bucketsByType[inst.typeID];
-    if (s_spflushCostSplitEnabled) spflush_cost_split::AddSubmitMapLookupCycles(__rdtsc() - _t_lookup0);
 
     // firstColorOffset must be updated to the current bucket color position
     // so the GPU shader indexes colors correctly for this frame's layout.
     // Diagnostic counters (submitted_instances_by_pop etc.) are NOT incremented
     // for registry-injected instances — they measure the dynamic compute path.
     GpuStaticPropInstance updated = inst;
-    // firstColorOffset is unused by any production shader; only meaningful when the
-    // (default-skipped) colors fill runs. Keep it accurate when filling, else 0.
-    updated.firstColorOffset = s_staticPropColorsFill
-        ? static_cast<uint32_t>(bucket.colors.size()) : 0u;
+    // firstColorOffset is unused by any production shader (the colors fill is skipped).
+    updated.firstColorOffset = 0u;
     {
         // MC2_TREE_DIAG_TRACE diagnostic. Same format as submit() so a grep
         // diff (`grep "[TREE_DIAG]" log | sort`) lines up dyn-vs-static fields.
@@ -132,64 +126,12 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
                 bucket.instances.size());
         }
     }
-    if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; ++bucket.dbgStatic; }
     bucket.instances.push_back(updated);
-    // STATICPROP-COLORS-FILL-DEBUGONLY-1: default-SKIP the colors zero-fill (no
-    // production shader reads colors_; addr-mode 4 reads v_argb). MC2_STATIC_PROP_COLORS_FILL=1
-    // restores it. [SPFLUSH_COST_SPLIT v1] color_zero_fill span (now ~0 by default).
-    const unsigned long long _t_color0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
-    if (s_staticPropColorsFill)
-        bucket.colors.insert(bucket.colors.end(), type.vertexCount, 0u);
-    if (s_spflushCostSplitEnabled) spflush_cost_split::AddColorZeroFillCycles(__rdtsc() - _t_color0);
-}
-
-void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance* arr,
-                                                     uint32_t count) {
-    if (!arr || count == 0u) return;
-    // Group consecutive same-typeID runs so the map lookup + the color resize
-    // happen ONCE per run, not per leaf.
-    uint32_t i = 0u;
-    while (i < count) {
-        const uint32_t typeID = arr[i].typeID;
-        if (typeID >= s_types.size()) { ++i; continue; }
-        const GpuStaticPropType& type = s_types[typeID];
-        const unsigned long long _t_lk0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
-        PerTypeBucket& bucket = s_bucketsByType[typeID];          // one lookup per run
-        if (s_spflushCostSplitEnabled) spflush_cost_split::AddSubmitMapLookupCycles(__rdtsc() - _t_lk0);
-        uint32_t j = i;
-        while (j < count && arr[j].typeID == typeID) ++j;
-        const uint32_t n = j - i;
-        // patch 2: ONE color resize/fill per run, not per-instance insert.
-        // 2A REGRESSION FIX: do NOT reserve(size+n) per call — for single-leaf ranges
-        // (n==1, the common case) that sets capacity to EXACTLY size+1 each call,
-        // defeating std::vector geometric growth → a reallocation per leaf (O(N^2)).
-        // Plain push_back (like legacy submitCachedInstance) grows geometrically.
-        // STATICPROP-COLORS-FILL-DEBUGONLY-1: default-SKIP the colors zero-fill
-        // (no production shader reads colors_). MC2_STATIC_PROP_COLORS_FILL=1 restores it.
-        const unsigned long long _t_cf0 = s_spflushCostSplitEnabled ? __rdtsc() : 0ULL;
-        const size_t colOldSize = bucket.colors.size();
-        if (s_staticPropColorsFill)
-            bucket.colors.resize(colOldSize + (size_t)n * type.vertexCount, 0u);
-        if (s_spflushCostSplitEnabled) spflush_cost_split::AddColorZeroFillCycles(__rdtsc() - _t_cf0);
-        for (uint32_t local = 0u; local < n; ++local) {
-            GpuStaticPropInstance updated = arr[i + local];
-            // firstColorOffset is unused by any production shader; keep it accurate
-            // when filling, else 0 (running bucket offset only meaningful with fill).
-            updated.firstColorOffset = s_staticPropColorsFill
-                ? static_cast<uint32_t>(colOldSize + (size_t)local * type.vertexCount)
-                : 0u;
-            if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; ++bucket.dbgStatic; }
-            bucket.instances.push_back(updated);
-        }
-        i = j;
-    }
+    // The per-instance Colors SSBO zero-fill is skipped: no production shader reads colors_ (addr-mode 4 reads v_argb).
 }
 
 uint64_t GpuStaticPropBatcher::persistentStaticGen() { return s_persistentStaticGen; }
 void GpuStaticPropBatcher::setPersistentStaticGen(uint64_t g) { s_persistentStaticGen = g; }
-uint64_t GpuStaticPropBatcher::persistentStaticTotalCount() {
-    uint64_t n = 0; for (auto& kv : s_persistentStaticStore) n += kv.second.size(); return n;
-}
 
 // VANISH-PROBE-1: stable-order access to persistent static instance origins.
 // Free functions (no header coupling) so code/gamecam.cpp can extern-declare
@@ -264,7 +206,6 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
         bucket.reinjPos   = (uint32_t)bucket.instances.size();
         bucket.reinjCount = (uint32_t)block.size();
         bucket.instances.insert(bucket.instances.end(), block.begin(), block.end());  // bulk
-        if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; bucket.dbgStatic += (uint32_t)block.size(); }
     }
 }
 
@@ -600,7 +541,7 @@ static void rebuildStaticDrawCmdsIfDirty() {
 
     // Diag (env-gated): dump the static cmd summary so Task 3 can be validated
     // before the draw exists. Sum of instanceCount over OFF/ON groups must equal
-    // persistentStaticTotalCount(); non-zero cmd count == sorted packet count.
+    // the persistent store's total instance count; non-zero cmd count == sorted packet count.
     static const bool s_cmdDiag = mc2::gate::get<"MC2_STATIC_POP_SPLIT_CMD_DIAG">();
     if (s_cmdDiag) {
         // maxBaseInstance+its instanceCount must stay within the static pool
@@ -836,22 +777,15 @@ void batcher_compareSnapshotPackets(RenderSnapshot* snap) {
     }
 }
 
-void batcher_getSnapCullStats(uint32_t* skipped, uint32_t* active, uint32_t* slotMismatch) {
-    if (skipped)      *skipped      = s_snapCullSkipped;
-    if (active)       *active       = s_snapCullActive;
-    if (slotMismatch) *slotMismatch = s_snapCullSlotMismatch;
-}
-
 void batcher_getSnapshotBuildStats(uint32_t* attempted, uint32_t* countMismatch,
                                    uint32_t* packetMismatch, uint32_t* metaMismatch,
-                                   uint32_t* fallback, uint32_t* retired)
+                                   uint32_t* fallback)
 {
     if (attempted)      *attempted      = s_spBuildAttempted;
     if (countMismatch)  *countMismatch  = s_spBuildCountMismatch;
     if (packetMismatch) *packetMismatch = s_spBuildPacketMismatch;
     if (metaMismatch)   *metaMismatch   = s_spBuildMetaMismatch;
     if (fallback)       *fallback       = s_spBuildFallback;
-    if (retired)        *retired        = s_spBuildRetired;
 }
 
 uint32_t batcher_getPerTypePeakCount(uint32_t typeID) {
@@ -864,8 +798,8 @@ uint32_t batcher_getCoalesceFrameSlot() { return s_coalesceFrameSlot; }  // diag
 
 void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     if (!out) return;
-    out->snapshotDispatchDefault     = s_v6Enabled;
-    out->legacyDispatch              = !s_v6Enabled;
+    out->snapshotDispatchDefault     = !s_v6Disarmed;
+    out->legacyDispatch              = s_v6Disarmed;
     out->materialGpuEnabled          = s_materialGpuEnabled;
     out->materialGpuSample           = s_materialGpuSampleEnabled;
     out->iblShEnabled                = iblShEnabled();

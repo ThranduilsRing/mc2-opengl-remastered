@@ -19,7 +19,6 @@ std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented{0};
 
 // Game-layer diagnostics tgl.cpp / msl.cpp reference; permanently off in the importer.
-std::atomic<unsigned long long> g_staticPropAlphaGeneration{1};
 unsigned long g_fbDiagPtSpotConsumed = 0;
 unsigned long g_fbDiagPtSpotZeroDir = 0;
 int g_mechPreviewRenderDepth = 0;

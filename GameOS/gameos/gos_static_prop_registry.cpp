@@ -1,77 +1,6 @@
 #include "gos_static_prop_registry_internal.h"
-// ---------------------------------------------------------------------------
-// [SPFLUSH_COST_SPLIT v1] — env gate + RDTSC storage + TSC calibration.
-// Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
-// All accumulation is no-op when the gate is unset (checked per-frame at
-// the top of flush() before any RDTSC reads, AND in the adder functions
-// in gos_static_prop_batcher.cpp for the callee-side buckets).
-// ---------------------------------------------------------------------------
+
 namespace GpuStaticPropRegistry {
-const bool s_spflushEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
-
-// TSC -> ns calibration. Computed once on first flush() call under the gate.
-// Spin std::chrono::steady_clock for ~1ms, measure __rdtsc() delta.
-double s_spflushCyclesPerNs = 1.0;  // safe default: 1 cycle/ns (no divide-by-zero)
-bool   s_spflushCalibrated  = false;
-
-void spflushCalibrate() {
-    if (s_spflushCalibrated) return;
-    using Clock = std::chrono::steady_clock;
-    const auto wall0 = Clock::now();
-    const unsigned long long tsc0 = __rdtsc();
-    // Spin ~1ms
-    while (std::chrono::duration_cast<std::chrono::microseconds>(
-               Clock::now() - wall0).count() < 1000) { /* spin */ }
-    const unsigned long long tsc1 = __rdtsc();
-    const long long wallUs = std::chrono::duration_cast<std::chrono::microseconds>(
-                                 Clock::now() - wall0).count();
-    if (wallUs > 0 && tsc1 > tsc0) {
-        const double wallNs = static_cast<double>(wallUs) * 1000.0;
-        s_spflushCyclesPerNs = static_cast<double>(tsc1 - tsc0) / wallNs;
-    }
-    s_spflushCalibrated = true;
-}
-
-// Per-frame (window) RDTSC cycle accumulators — reset every 10 frames.
-// Registry-side buckets (accumulated in flush())
-unsigned long long s_w_submit_loop_total_cyc    = 0;
-unsigned long long s_w_inst_build_cyc           = 0;
-unsigned long long s_w_actor_record_build_cyc   = 0;
-unsigned long long s_w_world_to_block_idx_cyc   = 0;
-unsigned long long s_w_substrate_append_cyc     = 0;
-// Lifetime dirty-rate counters (monotonic, registry-side only)
-unsigned long long s_total_invalidates           = 0;
-unsigned long long s_total_registrations         = 0;
-// recipe_rebuilds / light_index_writes are sourced from txmmgr::bakeStaticLightSlot
-// via spflush_ConsumeRecipeRebuildsDelta() + spflush_GetRecipeRebuildTotal() — not tracked here.
-// (light_index_writes == recipe_rebuilds — both happen at bakeStaticLightSlot; only one kept.)
-// Window dirty-rate deltas (reset after each summary emit)
-unsigned long long s_win_invalidates             = 0;
-unsigned long long s_win_registrations           = 0;
-// Per-frame pass-through counters (use existing s_diag_* but we snapshot them)
-int                s_spflushWindowFrames         = 0;
-unsigned long long s_win_leaves_appended         = 0;
-unsigned long long s_win_ranges_drawn            = 0;
-// 2A cached-path diagnostics (gate-ON branch only) — find the 5x regression.
-unsigned long long s_w_cached_total_cyc          = 0;  // whole cached else-branch per range
-unsigned long long s_w_cached_submit_cyc         = 0;  // submitCachedInstanceRange
-unsigned long long s_w_cached_records_cyc        = 0;  // per-leaf cached-record loop
-unsigned long long s_win_cache_builds            = 0;  // buildCachedActorRecord calls (thrash if ~= leaves)
-unsigned long long s_win_cache_hits              = 0;  // cached-record reuse (valid)
-}  // namespace GpuStaticPropRegistry
-
-// The Std rows ("0"/"false"/"off"/"no" are false, anything else true, unset/empty reads the row default) replace
-// the old parseEnvBoolWithDefault helper.
-
-// Parsed at file-scope (program start) so isEnabled() is valid before init()
-// is called and before the [INSTR v1] banner fires.
-//
-// 2026-05-05: slice 3.C ship gate. MC2_STATIC_PROP_REGISTRY now defaults ON.
-// Set MC2_STATIC_PROP_REGISTRY=0 to disable (e.g., for A/B comparison or
-// when chasing a regression). The MC2_FORCE_DYNAMIC_TREES env in
-// TreeAppearance::render() still works as the per-tree operator escape.
-namespace GpuStaticPropRegistry {
-const bool s_enabled             = mc2::gate::get<"MC2_STATIC_PROP_REGISTRY">();
 const bool s_trace = mc2::gate::get<"MC2_STATIC_PROP_TRACE">();
 // Task 9 (Track B): mission-load + late-spawn registration ON by default.
 // Soak started 2026-05-06; all Task 8 parity gates passed.
@@ -117,39 +46,10 @@ static const bool s_lateSpawnRegEnabled =
 const bool s_perInstanceLight =
     mc2::gate::get<"MC2_STATIC_PER_INSTANCE_LIGHT">();
 
-// STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A: build cached immutable instance +
-// per-recipe actor-record content once and bulk-append per frame instead of
-// per-leaf rebuild.
-//
-// STATUS 2026-07-01 (TXMMGR-PERF-EASYWINS-1 audit): SUBSUMED by
-// MC2_STATIC_PROP_PERSISTENT_BUCKETS (default-ON since 2026-06-03, soaked
-// tier1 5/5) — the cached-record branch keys on
-// (s_flushCachedBlob || s_persistentBuckets) below, so the cached path IS the
-// default path already. Do NOT flip this default: with PERSISTENT_BUCKETS=0
-// (the soaked kill-switch restoring the legacy per-leaf path) a default-ON
-// here would silently re-engage the cached bulk path (submitCachedInstanceRange
-// branch), a config that was never the soaked default. Kill-switch matrix:
-//   BUCKETS=1 (default)              -> cached records + persistent store
-//   BUCKETS=0                        -> legacy per-leaf path (full revert)
-//   BUCKETS=0 + CACHED_BLOB=1        -> cached records + per-frame bulk submit
-const bool s_flushCachedBlob =
-    mc2::gate::get<"MC2_STATIC_PROP_FLUSH_CACHED_BLOB">();
-// Diagnostic compare (patch 8): when the cached path is active, ALSO build the
-// legacy temp instance+record for each leaf and compare hash/count; log any
-// mismatch. Default OFF. Requires MC2_STATIC_PROP_FLUSH_CACHED_BLOB=1.
-const bool s_flushCachedBlobCompare =
-    mc2::gate::get<"MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE">();
-
-// STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 (Mechanism B): keep the static
-// per-type instance block in a persistent batcher store, rebuilt only when the
-// registry generation changes; skip the per-frame static instance re-push. Default
-// OFF until proven. _COMPARE drives the FNV cached-vs-rebuilt oracle.
-// DEFAULT-ON 2026-06-03 (user-Tracy: StaticPropRegistryFlush 312us->68us at wolfman,
-// ~78%; compare-oracle clean; tier1 5/5). Kill-switch MC2_STATIC_PROP_PERSISTENT_BUCKETS=0.
-const bool s_persistentBuckets =
-    mc2::gate::get<"MC2_STATIC_PROP_PERSISTENT_BUCKETS">();
-const bool s_persistentBucketsCompare =
-    mc2::gate::get<"MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE">();
+// STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2: the static per-type instance block lives in a persistent batcher
+// store, rebuilt only when the registry generation changes, and the per-frame static instance re-push is skipped
+// (StaticPropRegistryFlush 312us -> 68us at wolfman). Recipes whose light row matches their stamped value take the
+// cached-record branch below.
 
 // 2b Stage 2 dirty signal: monotonic generation bumped on every structural change
 // to the static-prop registry (spawn/despawn/immutable-field write). A clean
@@ -370,7 +270,6 @@ extern void mc2ClearAllBakedStaticLight();
 
 namespace GpuStaticPropRegistry {
 
-bool isEnabled()               { return s_enabled; }
 bool isMissionLoadRegEnabled() { return s_missionLoadRegEnabled; }
 bool isLateSpawnRegEnabled()   { return s_lateSpawnRegEnabled; }
 
@@ -450,14 +349,12 @@ void init() {
     // TERRAIN-DECAL-SLICE-0C: new mission -> drop stale decal capture (re-captured
     // by BldgAppearance::registerStatic if this mission places a MarbleCliff).
     CliffDecalTuning_clearOnMissionReset();
-    // Env flags already parsed at file scope. init() reserves memory.
-    if (s_enabled) {
-        s_recipes.reserve(20000);
-        s_recipeRanges.reserve(15000);
-        s_liveRangeIndices.reserve(15000);
-        printf("[STATIC_PROP] registry init: memory reserved\n");
-        fflush(stdout);
-    }
+    // init() reserves memory.
+    s_recipes.reserve(20000);
+    s_recipeRanges.reserve(15000);
+    s_liveRangeIndices.reserve(15000);
+    printf("[STATIC_PROP] registry init: memory reserved\n");
+    fflush(stdout);
 }
 
 void destroy() {
@@ -522,13 +419,12 @@ void destroy() {
 }
 
 void frameBegin() {
-    if (!s_enabled) return;
     s_liveRangeIndices.clear();
 }
 
 int32_t registerRecipe(TG_MultiShape* multi,
                        const std::vector<GpuStaticPropInstance>& batch) {
-    if (!s_enabled || batch.empty() || !multi) return -1;
+    if (batch.empty() || !multi) return -1;
     RecipeRange rng;
     rng.first = static_cast<uint32_t>(s_recipes.size());
     rng.count = static_cast<uint32_t>(batch.size());
@@ -570,8 +466,6 @@ int32_t registerRecipe(TG_MultiShape* multi,
     if (!batch.empty()) {
         s_typeIDToRecipeIndex[batch[0].typeID] = regIdx;
     }
-    // [SPFLUSH_COST_SPLIT v1] lifetime registration counter.
-    if (s_spflushEnabled) { ++s_total_registrations; ++s_win_registrations; }
     SP_TRACE("register regIdx=%d first=%u count=%u", regIdx, rng.first, rng.count);
 
     // Pin every mcTextureNodeIndex referenced by this recipe's multi-shape.
@@ -609,7 +503,6 @@ int32_t registerRecipe(TG_MultiShape* multi,
 }
 
 void markVisible(int32_t regIdx, uint32_t lightDataIndex, float extentRadius) {
-    if (!s_enabled) return;
     if (regIdx < 0 || static_cast<uint32_t>(regIdx) >= s_recipeRanges.size()) return;
     RecipeRange& rng = s_recipeRanges[static_cast<uint32_t>(regIdx)];
     if (rng.count == 0) return; // tombstone
@@ -648,7 +541,6 @@ void markVisible(int32_t regIdx, uint32_t lightDataIndex, float extentRadius) {
 // "Submitted" result GUARANTEES flush will not skip the range for those reasons.
 StaticSubmitResult markVisibleChecked(int32_t regIdx, uint32_t lightDataIndex,
                                       float extentRadius) {
-    if (!s_enabled) return StaticSubmitResult::NotRegistered;
     if (regIdx < 0 || static_cast<uint32_t>(regIdx) >= s_recipeRanges.size())
         return StaticSubmitResult::MissingRange;
     const RecipeRange& rng = s_recipeRanges[static_cast<uint32_t>(regIdx)];
@@ -659,12 +551,7 @@ StaticSubmitResult markVisibleChecked(int32_t regIdx, uint32_t lightDataIndex,
 }
 
 void invalidate(int32_t regIdx) {
-    if (!s_enabled) return;
     if (regIdx < 0 || static_cast<uint32_t>(regIdx) >= s_recipeRanges.size()) return;
-    // [SPFLUSH_COST_SPLIT v1] lifetime invalidation counter.
-    // LOD swaps manifest as paired invalidate+registration churn and are not
-    // separately identifiable here — no separate LOD counter.
-    if (s_spflushEnabled) { ++s_total_invalidates; ++s_win_invalidates; }
     RecipeRange& rng = s_recipeRanges[static_cast<uint32_t>(regIdx)];
     // RECIPE-SLOT-RECYCLE: only reclaim a slot that was actually LIVE this call.
     // invalidate() is idempotent (may be called on an already-tombstoned slot);
@@ -718,7 +605,6 @@ uint64_t getRegistryGeneration() { return s_registryGeneration; }
 uint64_t getCullRecordVersion() { return s_cullRecordVersion; }
 
 bool isReady(int32_t regIdx) {
-    if (!s_enabled) return false;
     if (regIdx < 0 || static_cast<uint32_t>(regIdx) >= s_recipeRanges.size()) return false;
     return s_recipeRanges[static_cast<uint32_t>(regIdx)].count > 0;
 }
@@ -820,7 +706,7 @@ void flush() {
     // V1A: latch BEFORE any early return so queryVisibility() always sees
     // a current-frame value (0 when disabled or nothing visible this frame).
     s_lastFlushLiveCount = static_cast<uint64_t>(s_liveRangeIndices.size());
-    if (!s_enabled || s_liveRangeIndices.empty()) return;
+    if (s_liveRangeIndices.empty()) return;
     const uint32_t currentFrame = g_mc2FrameCounter;
     GpuStaticPropBatcher& batcher = GpuStaticPropBatcher::instance();
     // 2026-05-10 diag: per-frame outcome counters across all ranges.
@@ -859,11 +745,9 @@ void flush() {
     // (substrate) still run per-frame (that's Stage 3 work).
     GpuStaticPropBatcher& batcher_pb = GpuStaticPropBatcher::instance();
     const uint64_t s_currentGen   = getRegistryGeneration();
-    const bool     s_storeDirty   = s_persistentBuckets &&
-                                    (batcher_pb.persistentStaticGen() != s_currentGen);
+    const bool     s_storeDirty   = batcher_pb.persistentStaticGen() != s_currentGen;
     if (s_storeDirty) batcher_pb.clearPersistentStatic();
-    uint64_t s_pbExpectStaticCount = 0;  // [_COMPARE] sum of stored leaves this rebuild
-    flushFrozenStoreRebuild(batcher_pb, s_storeDirty, s_pbExpectStaticCount);
+    flushFrozenStoreRebuild(batcher_pb, s_storeDirty);
 
     for (uint32_t regIdx : s_liveRangeIndices) {
         RecipeRange& rng = s_recipeRanges[regIdx];
@@ -897,10 +781,6 @@ void flush() {
             static_light_row::resolve(s_perInstanceLight,
                                       rng.lightDataIndex,
                                       rng.multi->getCachedGpuLightIndex());
-        // [LIGHTBAKE-PROOF v1] prove the resolved per-instance index is permanent
-        // (stable across frames) + in the static prefix [0..S). No-op unless
-        // MC2_LIGHTBAKE_STABILITY is set.
-        mc2LightBakeStabilityObserve(static_cast<int32_t>(regIdx), freshLightIdx);
         flushLightRowDiag(s_diag_flush_calls, regIdx, rng, freshLightIdx);
 
         // 2026-05-10 actor-center fix: every leaf of one multishape must share
@@ -942,19 +822,17 @@ void flush() {
         // equivalence guard) — its instance submit routes to the persistent store
         // instead of the per-frame bucket.
         const bool useCachedBlob =
-            (s_flushCachedBlob || s_persistentBuckets)
-            && freshLightIdx != 0xFFFFFFFFu
+            freshLightIdx != 0xFFFFFFFFu
             && freshLightIdx == s_recipes[rng.first].lightDataIndex;
         flushLeafDiag(regIdx, rng, freshLightIdx, useCachedBlob);
         if (!useCachedBlob) {
-        flushLegacyRange(batcher, s_diag_flush_calls, s_diag_leaves_appended, regIdx, rng, freshLightIdx, actorWorldCenter);
+            flushLegacyRange(batcher, s_diag_flush_calls, s_diag_leaves_appended, regIdx, rng, freshLightIdx, actorWorldCenter);
         } else {
-        flushCachedRange(currentFrame, batcher, s_storeDirty, s_pbExpectStaticCount, s_diag_leaves_appended, regIdx, rng, freshLightIdx);
-        } // end gate branch
+            flushCachedRange(batcher, s_storeDirty, s_diag_leaves_appended, regIdx, rng);
+        }
     }
 
-    flushReinjectPersistentStore(batcher_pb, s_currentGen, s_storeDirty, s_pbExpectStaticCount, s_diag_flush_calls);
-    (void)s_pbExpectStaticCount;
+    flushReinjectPersistentStore(batcher_pb, s_currentGen, s_storeDirty);
 
     s_diag_total_ns += static_cast<uint64_t>(
         std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -962,7 +840,6 @@ void flush() {
 
     flushZeroLightProbe(s_diag_flush_calls);
     flushDiagSummary(s_diag_flush_calls, s_diag_ranges_total, s_diag_ranges_tombstone, s_diag_ranges_stale_frame, s_diag_ranges_stale_after_drawn, s_diag_ranges_drawn, s_diag_leaves_appended, s_diag_persistent_vanish, s_diag_total_ns, s_guard2, s_staleByType, s_staleStreak);
-    flushSpflushWindow();
     flushCullRecordVersion();
     // compute_dispatch() runs after this (moved to txmmgr.cpp between registry flush
     // and batcher flush) so it sees the appended static prop records.
@@ -1070,14 +947,13 @@ void getBuildingShadowInstances(std::vector<GpuStaticPropInstance>& out) {
 // which are non-buildings in practice — buildings are tagged Building at register)
 // is included so the dynamic shadow pass admits ALL props regardless of camera
 // visibility. Mirror of getBuildingShadowInstances with the filter inverted.
-void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out,
-                                   bool includeBuildings) {
+void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out) {
     out.clear();
     const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
     for (const RecipeRange& rng : s_recipeRanges) {
         if (rng.count == 0) continue;            // tombstone (invalidated/destroyed)
         if (rng.noShadow) continue;              // SHADOW-FOLIAGE: impostor/far-LOD casts no shadow
-        if (!includeBuildings && rng.population == bldg) continue;  // buildings cast via the static map
+        if (rng.population == bldg) continue;    // buildings cast via the static map
         const size_t end = static_cast<size_t>(rng.first) + rng.count;
         if (end > s_recipes.size()) continue;     // defense: stale range
         out.insert(out.end(),

@@ -79,6 +79,11 @@ public:
     void setSkyNumber(int skyNumber);
     int  getSkyNumber() const { return skyNumber_; }  // SCENE-LIGHTING-STATE-1: last requested sky #
 
+    // Player post-FX options (options.cfg PostCAS / PostCASSharpness / TonemapMode); see gos_SetPostFxOptions().
+    void setPostFxOptions(bool casEnabled, float casSharpness, int tonemapMode) {
+        casEnabled_ = casEnabled; casSharpness_ = casSharpness; tonemapMode_ = tonemapMode;
+    }
+
     // Renders the HDRI background as a fullscreen triangle.
     // Assumes scene FBO is bound. Writes only color attachment 0.
     // viewMat, projMat are column-major 4x4 floats (16 floats each).
@@ -271,12 +276,12 @@ public:
 
     // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening, folded into the
     // composite shader (same precedent as FXAA above). Applied to the final graded
-    // LDR color; gate OFF -> u_casEnabled==0 -> shader skips it (byte-identical).
-    // Seeded from MC2_POST_CAS / MC2_POST_CAS_SHARPNESS at init.
+    // LDR color; off -> u_casEnabled==0 -> shader skips it.
+    // Set from options.cfg (PostCAS / PostCASSharpness) through gos_SetPostFxOptions().
     bool  casEnabled_;
     float casSharpness_;  // 0..1, default 0.5
 
-    // POST-FX-TONEMAP-V2: 0 off (default, byte-identical), 1 AgX, 2 Hable, 3 Reinhard.
+    // POST-FX-TONEMAP-V2: 0 off (default), 1 AgX, 2 Hable, 3 Reinhard; options.cfg TonemapMode.
     int   tonemapMode_;
 
     void runScreenShadow();
@@ -899,6 +904,10 @@ float gos_GetSsaoBias();
 // Call at mission load after the mission sky number is known.
 // No-op when HDRI is disabled or skyNumber is out of range (1-21).
 void gos_SetSkyNumber(int skyNumber);
+
+// Player post-FX options from options.cfg (CPrefs::applyPrefs): CAS on/off, CAS sharpness 0..1, tonemap mode
+// 0 off / 1 AgX / 2 Hable / 3 Reinhard. Safe before the post-processor exists: the values are kept and read at its init.
+void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);
 
 // VK-GL-LOST-DRAWS-1: per-draw-group GL_SAMPLES_PASSED diagnostic (env
 // MC2_VK_SCENE_GL_PRODUCER_QUERY=1 AND MC2_RENDER_BACKEND=vulkan; otherwise the

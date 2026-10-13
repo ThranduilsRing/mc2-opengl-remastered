@@ -126,23 +126,10 @@ extern bool useNonWeaponEffects;
 extern bool useHighObjectDetail;
 extern bool MLRVertexLimitReached;
 
-// Eager gate caches defined in bdactor.cpp (shared by the static-registry pieces).
-extern const bool s_proxyReconEnabled;
 extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
 extern TouchEntryDiag s_touchEntryDiag;
 extern MidLevelRenderer::MLRClipper * theClipper;
 extern std::atomic<uint32_t> s_animTypeIdleNowStatic;
-extern std::atomic<int64_t> g_spr_phase2Calls;
-extern std::atomic<int64_t> g_spr_bldgCalls;
-extern std::atomic<int64_t> g_spr_treeCalls;
-extern std::atomic<int64_t> g_spr_proxyCandidate;
-extern std::atomic<int64_t> g_spr_rejNoShape;
-extern std::atomic<int64_t> g_spr_rejNoStaticReg;
-extern std::atomic<int64_t> g_spr_rejBadLightIdx;
-extern std::atomic<int64_t> g_spr_rejNoValidLight;
-extern std::atomic<int64_t> g_spr_rejLightGenMismatch;
-extern std::atomic<int64_t> g_spr_rejNeedsFullBake;
-extern std::atomic<int64_t> g_spr_callCounter;
 void recordStableLightSkipDiag(bool armed, bool eligible, bool notRegistered, bool noValidLight, bool envGenMiss, bool needsFullBake, bool invalidLightIdx);
 void lbssRecordBldg(bool eligible, bool taken, bool blk_idx, bool blk_gen, bool blk_noelig);
 
@@ -192,7 +179,6 @@ bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
 bool mc2ConeGroundHit (const Stuff::Vector3D& apex, const Stuff::Vector3D& aim, float beamLen, Stuff::Vector3D& hitOut);
-bool bldgStaticShadowRebakeGatesActive();
-void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex, const char* reason);
+void bldgTriggerStaticShadowRebake(bool wasRegistered);
 
 #endif // BDACTOR_INTERNAL_H

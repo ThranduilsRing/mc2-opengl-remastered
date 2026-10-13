@@ -89,15 +89,6 @@ extern uint32_t g_mc2FrameCounter;
 #include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
 
 
-// ---------------------------------------------------------------------------
-// [SPFLUSH_COST_SPLIT v1] — batcher-side RDTSC cycle accumulators.
-// Implemented here (submitCachedInstance is in this TU).
-// Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
-// Adder functions are declared in gos_static_prop_batcher.h (file scope);
-// the registry + txmmgr TUs call them after measuring spans with __rdtsc().
-// ---------------------------------------------------------------------------
-#include <intrin.h>  // __rdtsc (MSVC intrinsic)
-
 #include "mc2_hitch_trace.h"
 
 
@@ -180,12 +171,6 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries);
 struct PerTypeBucket {
     std::vector<GpuStaticPropInstance> instances;
     std::vector<uint32_t>              colors;  // concatenated per-instance color blocks
-    // 2b Stage 2 Task-0 diagnostic (MC2_BUCKET_ORDER_TRACE): per-frame static-vs-
-    // dynamic add counts + which path touched this bucket first. Decides Mechanism
-    // A (static-front persist) vs B (separate persistent store). Throwaway.
-    uint32_t dbgStatic  = 0;
-    uint32_t dbgDynamic = 0;
-    uint8_t  dbgFirst   = 0;   // 0=none, 1=static-first, 2=dynamic-first
     // VK color feed: range of `instances` that reinjectPersistentStatic() bulk-copied
     // from the persistent store this frame. The VK feed already flattens the store,
     // so it skips this range and appends only the per-frame dynamic remainder.
@@ -310,13 +295,11 @@ struct ProgramLocs {
     GLint texArr              = -1;
     GLint materialGpuSample   = -1;   // MaterialGpu-3: u_materialGpuSample
     GLint ambientV1Strength   = -1;   // V-AMBIENT-STATIC-1: u_ambientV1Strength
-    GLint propBaseLightDirStrength = -1; // PROP-BASE-LIGHT-DIR-1: u_propBaseLightDirStrength
     GLint debugMaterialMode   = -1;   // V-MATERIAL-DEBUG-1: u_debugMaterialMode
     GLint iblSh               = -1;   // V-IBL-STATIC-1: u_iblSh[9] (vec3 array)
     GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
     GLint pbrV1Strength       = -1;   // V-MATERIAL-PBR-2: u_pbrV1Strength
     GLint pbrV1RoughnessOverride = -1; // V-MATERIAL-PBR-2-TUNE-UI: u_pbrV1RoughnessOverride
-    GLint pbrV1DiagSunFound   = -1;   // V-MATERIAL-PBR-2-DIAG: u_pbrV1DiagSunFound
     GLint ormTexArr           = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormTexArr (sampler2DArray)
     GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
     GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
@@ -324,9 +307,6 @@ struct ProgramLocs {
     // EDGE-LIGHT-EMISSION-1: stock night-tag emission state.
     GLint isNight            = -1;   // u_isNight (int 0/1)
     GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
-    GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
-    GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
-    GLint fixtureGlowStrength  = -1; // u_fixtureGlowStrength  (FIXTURE-GLOW-1)
     GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
     GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
@@ -334,7 +314,6 @@ struct ProgramLocs {
     GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
     GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
     GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
-    GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
     // FAR-BACKDROP-LIT: night-shade substitution for far/impostor LODs.
     GLint farBackdropLit         = -1;  // u_farBackdropLit (int, 0=off)
     GLint farBackdropNear        = -1;  // u_farBackdropNear (float)
@@ -413,8 +392,6 @@ extern const bool s_alphaTrace;
 const float* gos_GetObjectFixBMVPMat4();
 extern const bool s_treeDiagTrace;
 extern const bool s_spotlightRealTrace;
-extern std::atomic<uint64_t> g_staticPropAlphaGeneration;
-extern const bool s_spflushCostSplitEnabled;
 extern const bool s_globalPoolLegacy;
 extern const bool s_legacyInstancePools;
 extern const bool s_v5Enabled;
@@ -422,23 +399,16 @@ extern const bool s_v5TraceEnabled;
 extern bool s_baseInstanceSupported;
 extern bool s_v5Armed;
 extern bool s_v5Disarmed;
-extern const bool s_v6Enabled;
 extern const bool s_v6TraceEnabled;
 extern bool s_v6Armed;
 extern bool s_v6Disarmed;
 extern std::vector<RenderCore::DrawPacket> s_snapV6Packets;
 extern std::vector<StaticPropDispatchMeta> s_snapV6Meta;
-extern const bool s_snapshotBuildEnabled;
-extern const bool s_keepLiveBuilder;
-extern bool s_v8ArmLogged;
 extern uint32_t s_spBuildAttempted;
 extern uint32_t s_spBuildCountMismatch;
 extern uint32_t s_spBuildPacketMismatch;
 extern uint32_t s_spBuildMetaMismatch;
 extern uint32_t s_spBuildFallback;
-extern uint32_t s_spBuildRetired;
-extern bool s_spBuildFirstFallbackLogged;
-extern bool s_spBuildCollisionLoggedOnce;
 uint32_t pipelineId_to_group(uint32_t pid);
 extern uint32_t s_v6FrameDrawsIssued;
 extern uint32_t s_v6FrameZeroInstSkips;
@@ -446,10 +416,6 @@ extern uint32_t s_v6FrameSortedOob;
 extern uint32_t s_v6FramePacketOob;
 extern uint32_t s_v6FrameTypeOob;
 extern uint32_t s_v6FrameLockstepViolations;
-extern uint32_t s_snapCullSkipped;
-extern uint32_t s_snapCullActive;
-extern uint32_t s_snapCullSlotMismatch;
-extern const bool s_snapCullEnabled;
 extern uint32_t s_v6FrameGlErrors;
 extern uint32_t s_v6TotalFrameCount;
 extern uint32_t s_v5FrameDrawsIssued;
@@ -498,8 +464,6 @@ extern size_t   s_parityBytesUsedThisFrame;
 extern size_t   s_parityBytesUsedPerSlot[RING_FRAMES];
 extern std::vector<uint8_t> s_parityReadbackScratch;
 extern std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
-extern const bool s_staticPropColorsFill;
-extern const bool s_bucketOrderTrace;
 extern std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
 extern uint64_t s_persistentStaticGen;
 extern std::vector<GpuStaticPropInstance> s_lastBuiltBatch;
@@ -528,13 +492,6 @@ extern GLuint s_perDrawSsbo;
 extern const bool s_materialGpuEnabled;
 extern const bool s_materialGpuSampleEnabled;
 bool staticPropAmbientV1Enabled();
-extern const float s_propBaseLightDirStrength;
-extern const int s_nightTagMode;
-extern const float s_nightTagScale;
-extern const float s_fixtureLightsScale;
-extern const float s_fixtureGlowStrength;
-bool isEmissiveFixtureType(DWORD pink, DWORD yellow, DWORD green);
-extern unsigned s_fixtureTypeCount;
 extern const bool s_farBackdropLitEnabled;
 extern const float s_farBackdropNear;
 extern const float s_farBackdropFar;
@@ -545,9 +502,7 @@ float iblShStrengthNightScaled();
 bool pbrV1Enabled();
 extern const bool s_ormSlotsEnabled;
 extern const bool s_viewUniformsDisabled;
-extern const bool s_pbrV1DiagSunFound;
 extern const RenderCore::IblShSet* s_currentShSet;
-extern const char* s_iblShSetEnvOverride;
 const float* iblShCoeffsForUpload();
 extern int s_staticPropDebugMaterialMode;
 extern bool s_materialKtxEnabled;
@@ -618,7 +573,6 @@ extern uint32_t s_offGroupCountThisFrame;
 extern size_t   s_offGroupBytesThisFrame;
 extern size_t   s_onGroupBytesThisFrame;
 extern size_t   s_totalUsedBytesThisFrame;
-extern const bool s_glassDitherEnabled;
 extern ProgramLocs s_locsLegacy;
 extern ProgramLocs s_locsCoalesce;
 void allocPermutationSsboAsIdentity(uint32_t typeCount);
@@ -628,7 +582,6 @@ void coalesceRollbackTexBuild(std::vector<DWORD>& tempPins);
 void loadProgramsIfNeeded();
 extern std::unordered_map<const TG_TypeShape*, bool> s_failedTypes;
 extern ObjBatcherCounters s_counters;
-bool staticPropLightFreshnessEnabled();
 extern bool s_objbatcherTrace;
 extern bool s_objbatcherTraceInit;
 extern bool s_atexitRegistered;

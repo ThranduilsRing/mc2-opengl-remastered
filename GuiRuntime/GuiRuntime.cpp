@@ -649,10 +649,9 @@ static bool demoEnabled() {
 }
 
 // TERRAIN-DECAL-SLICE-0C: live cliff mesh-decal placement panel. Renders only when a
-// CLIFF_WALL decal was captured this mission (MC2_TERRAIN_DECAL=1 + a MarbleCliff was
-// placed). Dragging a slider recomputes the decal's face-frame transform and re-uploads
-// it to the static-prop registry the same frame — no relaunch. Gate-OFF => no decal
-// captured => this draws nothing (byte-identical).
+// CLIFF_WALL decal was captured this mission (a MarbleCliff was placed). Dragging a
+// slider recomputes the decal's face-frame transform and re-uploads it to the
+// static-prop registry the same frame — no relaunch. No decal captured => draws nothing.
 static void DrawCliffDecalPanel() {
     if (!CliffDecalTuning::cliffDecal_hasDecal()) return;
 

@@ -21,7 +21,7 @@ namespace mc2_diag {
 void init(const char* sessionId, int pid);
 
 // Write one diagnostic event. Returns false if JSONL disabled or tag not in whitelist.
-// tag: registered tag name (e.g. "GPU_CULL", "SPFLUSH_COST_SPLIT")
+// tag: registered tag name (e.g. "GPU_CULL", "ANIM_GATE")
 // version: schema version integer for this tag's data block
 // frame: current frame index (pass 0 if not available)
 // dataJson: raw JSON object string, e.g. "{\"count\":5,\"ms\":1.2}"

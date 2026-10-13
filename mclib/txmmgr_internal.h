@@ -59,7 +59,6 @@
 #include <atomic>   // FRAME-JOBS-2 precondition: g_numShadowShapes
 #include <mutex>    // FRAME-JOBS-2 precondition: s_lightDataMapMu
 #include <chrono>   // [LIGHTBRIDGE v1] coarse per-frame populate sizing
-#include <intrin.h> // __rdtsc — [SPFLUSH_COST_SPLIT v1]
 #include <utils/gl_utils.h>
 #include <GL/glew.h>                 // TEXMGR-COMPRESSED-UPLOAD-1: BPTC cap + GL_COMPRESSED_* enums
 #include "../RenderCore/KtxLoader.h" // TEXMGR-COMPRESSED-UPLOAD-1: BC7 .ktx2 sidecar loader
@@ -99,9 +98,6 @@ extern uint32_t g_mc2FrameCounter;
 extern long s_txmAllocThisMission;
 
 // Eager gate caches and counters defined in txmmgr.cpp / txmmgr_diag.cpp and read by several pieces.
-extern const bool s_spflushTxmEnabled;
-extern unsigned long long s_spflush_baseinstance_upload_cyc;
-extern unsigned long long s_spflush_recipe_rebuilds_txm;
 extern const bool s_txmLeakTrace;
 
 // Bump on every fresh node-slot creation (the three creation paths).
@@ -117,7 +113,6 @@ uint32_t mc2StaticLightHighWater();
 void mc2MarkStaticLightPrefixDirty();
 bool mc2ConsumeStaticLightPrefixDirty();
 bool mc2StaticLightUploadSplitEnabled();
-void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex);
 bool mc2IsBakedStaticLightPresent(int32_t recipeIndex);
 void mc2SetBakedStaticLight(int32_t recipeIndex, const TG_HWLightsData& in);
 void mc2EraseBakedStaticLight(int32_t recipeIndex);

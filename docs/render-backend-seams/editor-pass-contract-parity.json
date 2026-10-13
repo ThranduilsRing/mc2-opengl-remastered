@@ -12,7 +12,7 @@
       "editor": "rendered",
       "classification": "shared",
       "rationale": "Editor runs the identical GpuStaticPropBatcher via Environment.UpdateRenderers()->editor->render(). Same PassId, same PipelineDesc, same scene-FBO attachment contract (beginScene MRT). No editor override.",
-      "killSwitchEnv": "MC2_STATIC_PROP_REGISTRY"
+      "killSwitchEnv": null
     },
     {
       "passId": "Terrain",

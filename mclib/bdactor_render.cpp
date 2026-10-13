@@ -221,7 +221,6 @@ long BldgAppearance::render (long depthFixup)
 				// static-eligible, snapshot the leaf batch into the registry.
 				// Subsequent frames use the static path above.
 				if (submittedToGpu && !staticReg.registered
-				        && GpuStaticPropRegistry::isEnabled()
 				        && !needsFullBakeNextFrame
 				        && isStaticEligible()) {
 					const auto& batch =
@@ -578,7 +577,6 @@ long TreeAppearance::render (long depthFixup)
 				// registry. Subsequent frames use the static path above.
 				// Pass treeShape as multi so flush() can patch lightDataIndex each frame.
 				if (submittedToGpu && !staticReg[activeLOD].registered
-				        && GpuStaticPropRegistry::isEnabled()
 				        && !needsFullBakeNextFrame) {
 					const auto& batch =
 						GpuStaticPropBatcher::instance().getLastBuiltBatch();

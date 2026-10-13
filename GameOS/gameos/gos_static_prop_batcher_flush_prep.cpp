@@ -328,56 +328,38 @@ void GpuStaticPropBatcher::refreshAlphaFlags() {
             if (s_lastSeenMaterialFlags.size() != pktCount) {
                 s_lastSeenMaterialFlags.assign(pktCount, -1);
             }
-            // SP-BATCHER-ALPHASCAN-GATE-1: the per-packet OR-reduce scan below is
-            // frame-constant except immediately after a destruction/damage event
-            // (which flips a type's texture alpha via TG_TypeMultiShape::SetTextureAlpha
-            // and bumps g_staticPropAlphaGeneration). When the gate is armed and the
-            // generation is unchanged since the last scan AND the packet count is
-            // unchanged (buffer layout stable), skip the whole scan — the SSBO already
-            // holds the correct flags from the last event. Default OFF => scan always
-            // runs (byte-identical). First scan always runs (cached gen 0 != live >=1).
-            static const bool s_alphaScanGate = mc2::gate::get<"MC2_SP_ALPHASCAN_GATE">();
-            static uint64_t s_lastScannedAlphaGen = 0;
-            static size_t   s_lastScannedPktCount = (size_t)-1;
-            const uint64_t liveAlphaGen = g_staticPropAlphaGeneration.load(std::memory_order_relaxed);
-            const bool alphaScanSkip = s_alphaScanGate &&
-                s_lastScannedAlphaGen == liveAlphaGen &&
-                s_lastScannedPktCount == pktCount;
-            if (!alphaScanSkip) {
-                s_lastScannedAlphaGen = liveAlphaGen;
-                s_lastScannedPktCount = pktCount;
-                bool anyChanged = false;
+            // The per-packet OR-reduce scan runs every frame.
+            bool anyChanged = false;
+            for (size_t i = 0; i < pktCount; ++i) {
+                const uint32_t globalPktIdx = s_sortedPacketOrder[i];
+                if (globalPktIdx >= s_packets.size()) continue;
+                const auto& pkt = s_packets[globalPktIdx];
+                int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST)
+                                ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
+                if (flags == 0 && pkt.owningTypeID < s_types.size()) {
+                    const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
+                    if (src && src->listOfTextures &&
+                        pkt.textureSlot < src->numTextures &&
+                        src->listOfTextures[pkt.textureSlot].textureAlpha) {
+                        flags = STATIC_PROP_FLAG_ALPHA_TEST;
+                    }
+                }
+                if (s_lastSeenMaterialFlags[i] != flags) {
+                    s_lastSeenMaterialFlags[i] = flags;
+                    anyChanged = true;
+                }
+            }
+            if (anyChanged && s_perDrawSsbo) {
+                const size_t entryStride = sizeof(PerDrawEntry);
+                const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
                 for (size_t i = 0; i < pktCount; ++i) {
-                    const uint32_t globalPktIdx = s_sortedPacketOrder[i];
-                    if (globalPktIdx >= s_packets.size()) continue;
-                    const auto& pkt = s_packets[globalPktIdx];
-                    int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST)
-                                    ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
-                    if (flags == 0 && pkt.owningTypeID < s_types.size()) {
-                        const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
-                        if (src && src->listOfTextures &&
-                            pkt.textureSlot < src->numTextures &&
-                            src->listOfTextures[pkt.textureSlot].textureAlpha) {
-                            flags = STATIC_PROP_FLAG_ALPHA_TEST;
-                        }
-                    }
-                    if (s_lastSeenMaterialFlags[i] != flags) {
-                        s_lastSeenMaterialFlags[i] = flags;
-                        anyChanged = true;
-                    }
+                    const int32_t f = s_lastSeenMaterialFlags[i];
+                    MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
+                                    static_cast<GLintptr>(i * entryStride + flagOffset),
+                                    sizeof(int32_t), &f);
                 }
-                if (anyChanged && s_perDrawSsbo) {
-                    const size_t entryStride = sizeof(PerDrawEntry);
-                    const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags);
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
-                    for (size_t i = 0; i < pktCount; ++i) {
-                        const int32_t f = s_lastSeenMaterialFlags[i];
-                        MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
-                                        static_cast<GLintptr>(i * entryStride + flagOffset),
-                                        sizeof(int32_t), &f);
-                    }
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                }
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
             }
         }
 }
@@ -465,32 +447,19 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
         if (s_locsCoalesce.ambientV1Strength >= 0)
             glUniform1f       (s_locsCoalesce.ambientV1Strength,
                                staticPropAmbientV1Enabled() ? 1.0f : 0.0f);
-        // PROP-BASE-LIGHT-DIR-1: directional modulation of the baked seed.
-        // 0.0 (default) -> shader's `> 0.0` guard skips the block entirely,
-        // so this is a no-op stronger than a multiply-by-one: the code path
-        // never runs and the pixel is byte-identical.
-        if (s_locsCoalesce.propBaseLightDirStrength >= 0)
-            glUniform1f       (s_locsCoalesce.propBaseLightDirStrength,
-                               s_propBaseLightDirStrength);
         // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor. Uploaded
         // globally but the frag only applies it to fragments whose instance
         // carries kFlagDecalFill (bit 3) — set solely on MarbleCliff decal
-        // instances. Other props are byte-identical regardless of this value.
+        // instances. Other props are unchanged by this value.
         if (s_locsCoalesce.terrainDecalFill >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalFill, g_terrainDecalFill);
         // TERRAIN-DECAL-COLORBLEND-1: bind the terrain colormap atlas + atlas-UV
         // params so the flagged cliff decal can pull its albedo toward the
         // surrounding terrain colour. Only touches GL texture state when the
-        // feature is active (blend>0); with blend==0 (default) we still upload
-        // the 0.0 scalar so the shader's flag-gated branch is a no-op and every
-        // prop stays byte-identical.
+        // blend slider is above zero; at zero the scalar is still uploaded so the
+        // shader's flag-gated branch is skipped.
         if (s_locsCoalesce.terrainDecalColorBlend >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend);
-        // BUILDING-GLASS-1: dither-glass translucency toggle (default ON,
-        // MC2_SP_GLASS_DITHER=0 -> 0.0 -> legacy binary discard in frag).
-        if (s_locsCoalesce.glassDither >= 0)
-            glUniform1f       (s_locsCoalesce.glassDither,
-                               s_glassDitherEnabled ? 1.0f : 0.0f);
         if (g_terrainDecalColorBlend > 0.0f) {
             extern GLuint gos_terrain_indirect_getAtlasGLTex();
             extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
@@ -533,32 +502,17 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
             gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
             glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz);
         }
-        // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state. Gate OFF ->
-        // 0/0/0 uploaded -> get_base_light takes its daytime arms -> render is
-        // byte-identical to the pre-fix build.
+        // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state for get_base_light
+        // (lit windows, building base lights, runway/beacon fixtures).
         if (s_locsCoalesce.isNight >= 0 || s_locsCoalesce.nightFactor >= 0) {
             bool  nIsNight = false;
             float nFactor  = 0.0f;
-            // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
-            // Safe for non-fixtures: their scale stays 0.0, so get_base_light
-            // keeps its daytime result (delta * 0 == 0).
-            if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f ||
-                    s_fixtureGlowStrength > 0.0f) {
-                extern void gos_GetNightState(bool*, float*);
-                gos_GetNightState(&nIsNight, &nFactor);
-            }
+            extern void gos_GetNightState(bool*, float*);
+            gos_GetNightState(&nIsNight, &nFactor);
             if (s_locsCoalesce.isNight >= 0)
                 glUniform1i(s_locsCoalesce.isNight, nIsNight ? 1 : 0);
             if (s_locsCoalesce.nightFactor >= 0)
                 glUniform1f(s_locsCoalesce.nightFactor, nFactor);
-            if (s_locsCoalesce.nightEmissiveScale >= 0)
-                glUniform1f(s_locsCoalesce.nightEmissiveScale,
-                            (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
-            if (s_locsCoalesce.fixtureEmissiveScale >= 0)
-                glUniform1f(s_locsCoalesce.fixtureEmissiveScale, s_fixtureLightsScale);
-            // FIXTURE-GLOW-1: 0.0 -> v_fixtureGlow is vec3(0.0) -> byte-identical.
-            if (s_locsCoalesce.fixtureGlowStrength >= 0)
-                glUniform1f(s_locsCoalesce.fixtureGlowStrength, s_fixtureGlowStrength);
         }
         // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
         // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->
@@ -614,12 +568,6 @@ void GpuStaticPropBatcher::uploadCoalesceUniforms() {
                 (g_pbrV1RoughnessOverrideEnabled && !s_viewUniformsDisabled)
                     ? g_pbrV1RoughnessOverrideValue : -1.0f;
             glUniform1f(s_locsCoalesce.pbrV1RoughnessOverride, pbrRough);
-        }
-        // V-MATERIAL-PBR-2-DIAG: diagnostic visualizer upload. Default 0
-        // (off) -> shader runs existing PBR math unchanged.
-        if (s_locsCoalesce.pbrV1DiagSunFound >= 0) {
-            glUniform1i(s_locsCoalesce.pbrV1DiagSunFound,
-                        s_pbrV1DiagSunFound ? 1 : 0);
         }
 
         // 11.7.e — slot 1 is NOT bound (per v2r18 §3.X.1: colors_.c[]

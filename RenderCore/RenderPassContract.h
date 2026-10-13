@@ -169,7 +169,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         /*pipelineDescRegistered*/   true,
         /*snapshotRowAuthoritative*/ true,
         "StaticProp",
-        "MC2_SNAPSHOT_STATIC_PROP_BUILD",
+        nullptr,
         "Reference path: snapshot-owned v6 DrawPacket+meta dispatch default-on (STATIC-PROP-V3-FLIP 2a88a5a8). "
         "POSTPROCESS-SCENEOBJECTID-RESOURCE-1: SceneObjectId write is conditional on RenderWorld::IsObjectIdBufferEnabled() "
         "(static_prop.frag layout location=2 out uint v_objectId; only emitted when MRT 3-entry draw-buffer set is active).",
