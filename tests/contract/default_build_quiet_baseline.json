@@ -52,6 +52,14 @@
     "WATER_SHORE_EDGE v1": {
       "status": "keep",
       "reason": "FAIL-LOUD by design (mclib/terrain.cpp): default shore mode 2 silently degrades to mask mode when visual_height_4x.r32 is missing from the install; NOT FOUND/size/read failures print once per mission load. LOADED is MC2_DIAGF (2026-10-07)."
+    },
+    "VRAM v1": {
+      "status": "keep",
+      "reason": "scripts/smoke_lib/vram.py parses the load_end / run_end GPU-memory lines into the smoke report and the perf baseline. GameOS/gameos/gpu_memory_report.cpp prints them only when the smoke harness or MC2_DIAG_VERBOSE asked for diagnostics (log() returns early otherwise), so a player's console stays quiet; this check grades a smoke log, which is why it sees the tag."
+    },
+    "VRAM_ADAPTER v1": {
+      "status": "keep",
+      "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
     }
   }
 }
