@@ -2377,6 +2377,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tests/analyze/container_callsites.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tests/analyze/estring_callsites.py",
           "line": 34,
           "evidence": "import",
