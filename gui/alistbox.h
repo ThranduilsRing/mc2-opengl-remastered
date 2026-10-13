@@ -23,6 +23,7 @@ inline constexpr unsigned int ITEM_OUT_OF_RANGE = 0xEEEE0002;
 
 #ifndef ESTRING_H
 #include"estring.h"
+#include <string>
 #endif
 
 class aListItem : public aObject
@@ -71,6 +72,8 @@ public:
 	virtual ~aTextListItem();
 
 	void		setText( const char* text );
+	// Bridge until the widgets convert (B6): lets a caller that holds std::string pass it without .c_str(); folds into setText(std::string_view).
+	void		setText( const std::string& text ) { setText( text.c_str() ); }
 	void		setText( long resID );
 	const char* getText() const;
 	void		sizeToText();

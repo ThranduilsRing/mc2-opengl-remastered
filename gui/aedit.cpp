@@ -433,6 +433,22 @@ void aEdit::getEntry(EString& str)
 {
 	str = text;
 }
+
+std::string aEdit::entry() const
+{
+	const char* p = text;      // null while nothing was typed or set
+	return p ? std::string(p) : std::string();
+}
+
+void aEdit::setEntry(const char* str, BYTE byHighlight)
+{
+	setEntry(EString(str), byHighlight);
+}
+
+void aEdit::setEntry(const std::string& str, BYTE byHighlight)
+{
+	setEntry(EString(str.c_str()), byHighlight);
+}
 void aEdit::setEntry(const EString& str, BYTE byHighlight)
 {
 	text = str;

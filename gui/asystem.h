@@ -14,6 +14,7 @@ class InterfaceObject;
 #include<gameos.hpp>
 
 #include"estring.h"
+#include <string>
 #include"afont.h"
 #include "asset_scale.h"
 
@@ -313,6 +314,11 @@ public:
 	void	init( FitIniFile* file, const char* header );
 
 	void	setText( const EString& text );
+	// Bridge for callers that already hold std::string or a C string (step 4 batch B1): the member stays an EString until the widgets convert
+	// (B6), where these two and the EString overload fold into setText(std::string_view). A string_view overload here would make
+	// setText("literal") ambiguous, so the pair is const char* + const std::string&.
+	void	setText( const char* text );
+	void	setText( const std::string& text );
 	void		setText( long resID );
 
 	EString		text;

@@ -1052,6 +1052,16 @@ void aText::setText(const EString& str)
 	text = str;
 }
 
+void aText::setText(const char* str)
+{
+	text = str;                 // a null pointer empties the label, as it did through EString
+}
+
+void aText::setText(const std::string& str)
+{
+	text = str.c_str();
+}
+
 void aText::render()
 {
 	if ( showWindow && text.Length()>0)
