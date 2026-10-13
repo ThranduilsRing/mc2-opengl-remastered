@@ -23,8 +23,9 @@ inline constexpr unsigned int ITEM_OUT_OF_RANGE = 0xEEEE0002;
 
 #ifndef ESTRING_H
 #include"estring.h"
-#include <string>
 #endif
+
+#include <string>
 
 class aListItem : public aObject
 {

@@ -34,12 +34,25 @@ std::optional<std::string> read(FitIniFile& file, const char* key)
 	char buffer[kMaxTextLength + 1] = {};
 	const long result = file.readIdString(key, buffer, kMaxTextLength);
 	if (result == BUFFER_TOO_SMALL) {
-		// The reader fills the whole buffer without a terminator in this case; the zeroed last byte supplies it.
-		MC2_LOG(Io, Warn, "objective: the value of '{}' is longer than {} characters and was cut", key, kMaxTextLength);
-	} else if (result != NO_ERR) {
+		MC2_LOG(Io, Warn, "objective: the value of '{}' is longer than {} characters and is ignored", key, kMaxTextLength);
+		return std::nullopt;
+	}
+	if (result != NO_ERR) {
 		return std::nullopt;
 	}
 	return toMemoryBreaks(buffer);
+}
+
+std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey)
+{
+	if (std::optional<std::string> id = read(file, idKey)) {
+		return id;
+	}
+	unsigned long index = 0;
+	if (file.readIdULong(indexKey, index) == NO_ERR) {
+		return std::to_string(static_cast<int>(index));
+	}
+	return std::nullopt;
 }
 
 void readFields(FitIniFile& file, Fields& fields)
@@ -50,13 +63,8 @@ void readFields(FitIniFile& file, Fields& fields)
 	} else {
 		fields.description = fields.title;
 	}
-	if (std::optional<std::string> flagID = read(file, "ActivateFlagID")) {
+	if (std::optional<std::string> flagID = readFlagID(file, "ActivateFlagID", "ActivateFlagIndex")) {
 		fields.activateFlagID = std::move(*flagID);
-	} else {
-		unsigned long flagIndex = 0;
-		if (file.readIdULong("ActivateFlagIndex", flagIndex) == NO_ERR) {
-			fields.activateFlagID = std::to_string(static_cast<int>(flagIndex));
-		}
 	}
 	if (std::optional<std::string> flagID = read(file, "ResetStatusFlagID")) {
 		fields.resetStatusFlagID = std::move(*flagID);

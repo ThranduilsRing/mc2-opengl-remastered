@@ -15,6 +15,7 @@ aEdit.cpp			: Implementation of the aEdit component of the GUI library.
 #include"platform_mbstring.h" // isleadbyte
 //#include<winnls.h>
 #include"soundsys.h"
+#include"mc2str.h"
 #include "../resource.h"
 #include "../GameOS/gameos/gos_profiler.h"
 
@@ -436,8 +437,7 @@ void aEdit::getEntry(EString& str)
 
 std::string aEdit::entry() const
 {
-	const char* p = text;      // null while nothing was typed or set
-	return p ? std::string(p) : std::string();
+	return mc2::str::from_c(text);      // the entry is null while nothing was typed or set
 }
 
 void aEdit::setEntry(const char* str, BYTE byHighlight)

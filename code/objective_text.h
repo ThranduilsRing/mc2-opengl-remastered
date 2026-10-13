@@ -2,10 +2,9 @@
 //
 // WHAT: reads and writes the quoted string values of an objective (title, description, flag IDs, model name, file names) and converts the
 // line breaks between the FIT form ("\n" inside the quotes) and the in-memory form ("\r\n").
-// WHY: the old readers left their output variable untouched when a key was missing, and every caller reused one temporary for the next key,
-// so a missing Description showed the previous key's text and a missing ObjectiveModel took a flag ID. A missing key is now an empty
-// optional, the caller decides what it means, and a writer always writes its key (an empty value is a legal value) so a saved file never
-// depends on whether a string was ever assigned.
+// WHY: a missing key must not leak the text of the key read before it, so the reader reports it as an empty optional and the caller decides
+// what absence means. A writer always writes its key (an empty value is a legal value) so a saved file never depends on whether a string
+// was ever assigned.
 // LEAF: depends on FitIniFile and the log facade only, so the unit tier links it without the game.
 #pragma once
 
@@ -17,11 +16,16 @@ class FitIniFile;
 
 namespace objective_text {
 
-// Longest value read back; a longer one is cut and logged (it is malformed content, never a crash).
+// Longest value read back. A longer one is malformed content: it is logged and read as absent, never cut, because a cut flag ID or
+// file name would be a different name.
 inline constexpr unsigned long kMaxTextLength = 2000;
 
-// The value of `key` in the current block, line breaks converted to "\r\n"; empty when the key is absent.
+// The value of `key` in the current block, line breaks converted to "\r\n"; empty when the key is absent or over-long.
 std::optional<std::string> read(FitIniFile& file, const char* key);
+
+// A flag reference: the text of `idKey`, else the decimal number stored under `indexKey` (files from before flags had names).
+// Empty when neither key is present.
+std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey);
 
 // Writes `key = "text"` with line breaks stored as "\n". Always writes the key. Returns the writer's result.
 long write(FitIniFile& file, const char* key, std::string_view text);
@@ -38,7 +42,7 @@ struct Fields {
 // Reads the five fields of the current block into `fields`. The rule for each missing key is written here and nowhere else:
 //  - Title: empty.
 //  - Description: the Title. Older mission files carry only a title, so the objective shows it.
-//  - ActivateFlagID: the decimal ActivateFlagIndex of files from before flags had names; when that is absent too, `fields` keeps its value.
+//  - ActivateFlagID: readFlagID with ActivateFlagIndex; when that is absent too, `fields` keeps its value.
 //  - ResetStatusFlagID: `fields` keeps its value.
 //  - ObjectiveModel: empty, never the text of a key read before it.
 void readFields(FitIniFile& file, Fields& fields);

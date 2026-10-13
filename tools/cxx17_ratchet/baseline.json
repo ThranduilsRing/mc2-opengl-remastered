@@ -144,7 +144,7 @@
    "LG03": 954,
    "LG04": 21,
    "LG05": 204,
-   "LG06": 447,
+   "LG06": 449,
    "LG07": 0,
    "LG08": 14,
    "LG09": 2351,
@@ -2771,10 +2771,10 @@
    "LG14": 4
   },
   "code/objective_text.cpp": {
-   "LG06": 2
+   "LG06": 3
   },
   "code/objective_text.h": {
-   "LG06": 2
+   "LG06": 3
   },
   "code/objmgr.cpp": {
    "LG01": 1,
@@ -5187,7 +5187,7 @@
    "LG20": 2
   }
  },
- "head": "8f9c5811b",
+ "head": "ff24afe9a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

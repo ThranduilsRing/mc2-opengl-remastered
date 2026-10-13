@@ -3,8 +3,7 @@
 // WHAT: a team's table of named boolean flags, kept in insertion order, with the save/load of its `Team<N>BooleanFlags` block.
 // WHY: objectives coordinate through these flags (an action sets one, a condition or an activation test reads it), so the table is
 // mission logic and a lookup that misses a flag keeps an objective from ever completing. Flag IDs come from mission data and are written
-// in different case by different authors, so identity is the case-insensitive ASCII fold of mc2::str, the same on every host and locale
-// (the old table compared through the Windows locale collation).
+// in different case by different authors, so identity is the case-insensitive ASCII fold of mc2::str, the same on every host and locale.
 // LEAF: depends on FitIniFile, objective_text and the log facade only, so the unit tier links it without the game.
 #pragma once
 

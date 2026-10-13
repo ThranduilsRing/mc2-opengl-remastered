@@ -11,8 +11,6 @@ Objective.cpp			: Implementation of the Objective component.
 
 #include"objective.h"
 
-#include"estring.h"
-
 #ifndef INIFILE_H
 #include"inifile.h"
 #endif
@@ -52,7 +50,6 @@ Objective.cpp			: Implementation of the Objective component.
 #include "platform_tchar.h"
 #include<assert.h>
 #include "mc2fmt.h"
-#include "mc2str.h"
 #include "objective_text.h"
 
 #include <format>
@@ -981,18 +978,10 @@ objective_status_type CMoveAllSurvivingMechsToArea::Status()
 
 bool CBooleanFlagIsSet::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	std::optional<std::string> flagID = objective_text::read(*missionFile, "FlagID");
-	if (!flagID) {
-		/*for backward compatibility*/
-		int flagIndex = 0;
-		result = sReadIdWholeNum(missionFile, "FlagIndex", flagIndex);
-		if (NO_ERR != result) { return false; }
-		m_flagID = std::to_string(flagIndex);
-	} else {
-		m_flagID = std::move(*flagID);
-	}
-	result = sReadIdBoolean(missionFile, "Value", m_value);
+	std::optional<std::string> flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
+	if (!flagID) { return false; }
+	m_flagID = std::move(*flagID);
+	sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }
 
@@ -1087,18 +1076,10 @@ int CDisplayResourceTextMessage::Execute()
 
 bool CSetBooleanFlag::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	std::optional<std::string> flagID = objective_text::read(*missionFile, "FlagID");
-	if (!flagID) {
-		/*for backward compatibility*/
-		int flagIndex = 0;
-		result = sReadIdWholeNum(missionFile, "FlagIndex", flagIndex);
-		if (NO_ERR != result) { return false; }
-		m_flagID = std::to_string(flagIndex);
-	} else {
-		m_flagID = std::move(*flagID);
-	}
-	result = sReadIdBoolean(missionFile, "Value", m_value);
+	std::optional<std::string> flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
+	if (!flagID) { return false; }
+	m_flagID = std::move(*flagID);
+	sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }
 

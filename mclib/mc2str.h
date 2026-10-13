@@ -1,13 +1,13 @@
 // mc2str.h -- the string helpers that replace the behaviour EString gave for free (step 4 batch B1,
 // .claude/cleanup/cxx23-step4-b1-notes.md).
 //
-// WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare / ci_less / ci_equal compare names that
+// WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare / ci_less compare names that
 // come from data (file names, mech / pilot / variant / mission names, flag IDs) ignoring ASCII case; ci_total_less is the
 // total order for sorted lists; ascii_lower / ascii_upper change case of ASCII letters only.
-// WHY: EString equality was case-insensitive through the Windows lstrcmpi (a locale-dependent word sort, absent on other
-// platforms), and EString(nullptr) was an empty string. std::string is neither. Names in the shipped data differ in case from
-// the names that look them up, so identity stays case-insensitive, but as a fixed ASCII fold that gives the same answer on
-// every host and locale. Bytes >= 0x80 are never folded: they compare and order by value, which is defined and deterministic.
+// WHY: std::string compares case-exactly and std::string(nullptr) is undefined, while names in the shipped data differ in case
+// from the names that look them up and legacy callers pass null for "no text". Identity is therefore case-insensitive, as a fixed
+// ASCII fold that gives the same answer on every host and locale (the Windows lstrcmpi collation is locale-dependent and absent
+// on other platforms). Bytes >= 0x80 are never folded: they compare and order by value, which is defined and deterministic.
 // HEADER-ONLY on purpose (mclib is linked by standalone tools that do not link GameOS).
 #pragma once
 
@@ -18,7 +18,7 @@
 
 namespace mc2::str {
 
-// A legacy `const char*` may be null (EString(nullptr) was empty); std::string(nullptr) is undefined behaviour.
+// A legacy `const char*` may be null, which means "no text"; std::string(nullptr) is undefined behaviour.
 // Every pointer that enters a std::string from older code passes through here.
 inline std::string from_c(const char* p) { return p ? std::string(p) : std::string(); }
 
@@ -45,11 +45,6 @@ constexpr bool iequals(std::string_view a, std::string_view b) noexcept { return
 struct ci_less {
     using is_transparent = void;
     constexpr bool operator()(std::string_view a, std::string_view b) const noexcept { return icompare(a, b) < 0; }
-};
-
-struct ci_equal {
-    using is_transparent = void;
-    constexpr bool operator()(std::string_view a, std::string_view b) const noexcept { return iequals(a, b); }
 };
 
 // Total order for a sorted list: folded lexicographic, then the raw bytes, so two names that differ only in case keep a

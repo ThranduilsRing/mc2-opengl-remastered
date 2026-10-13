@@ -3,12 +3,12 @@
 // The objective text reader / writer (code/objective_text.cpp) and the boolean flag table (code/objective_flags.cpp), step 4 batch B1.1
 // (.claude/cleanup/cxx23-step4-b1-notes.md, hazards H1, H2, H15). Both are leaf TUs over FitIniFile, so the real file stack runs here.
 //
-// What changed against the EString-era code, each pinned below:
-//  - a missing key is an empty optional (the old reader left its output untouched and the caller reused one temporary, so a missing
-//    ObjectiveModel took the text of the key read before it, and a missing Description took the Title by accident);
-//  - a writer always writes its key, an empty value included (the old one skipped a null EString);
-//  - the line-break conversion keeps the character after the last break (the old one dropped a single trailing character);
-//  - flag IDs match ignoring ASCII case (the old table compared through the Windows locale collation).
+// The rules pinned below:
+//  - a missing or over-long key is an empty optional, so a missing ObjectiveModel never takes the text of the key read before it;
+//  - a writer always writes its key, an empty value included;
+//  - the line-break conversion keeps the character after the last break;
+//  - a flag reference is its ID, else its decimal index;
+//  - flag IDs match ignoring ASCII case.
 
 #include "doctest.h"
 
@@ -67,7 +67,7 @@ TEST_CASE("a missing key is an empty optional, an empty value is an empty string
 TEST_CASE("line breaks: every one converts and the text after the last one is kept")
 {
 	using namespace objective_text;
-	CHECK(toMemoryBreaks("a\nb") == "a\r\nb");                  // the old converter returned "a\r\n": it dropped a single trailing character
+	CHECK(toMemoryBreaks("a\nb") == "a\r\nb");                  // the character after the last break survives
 	CHECK(toMemoryBreaks("a\nb\nc") == "a\r\nb\r\nc");
 	CHECK(toMemoryBreaks("a\n") == "a\r\n");
 	CHECK(toMemoryBreaks("") == "");
@@ -78,15 +78,37 @@ TEST_CASE("line breaks: every one converts and the text after the last one is ke
 	CHECK(toFileBreaks("lone \r stays") == "lone \r stays");
 }
 
-TEST_CASE("a value longer than the reader's buffer is cut to the buffer size, terminated")
+TEST_CASE("a value longer than the reader's buffer is rejected, not cut")
 {
 	std::string longValue(objective_text::kMaxTextLength + 50, 'x');
-	MemFit f("[Obj]\r\nst Long = \"" + longValue + "\"\r\n");
+	MemFit f("[Obj]\r\nst Long = \"" + longValue + "\"\r\nst Fits = \"ok\"\r\n");
 	REQUIRE(f.fit.seekBlock("Obj") == NO_ERR);
-	std::optional<std::string> value = objective_text::read(f.fit, "Long");
-	REQUIRE(value.has_value());
-	CHECK(value->size() == objective_text::kMaxTextLength);
-	CHECK(value->find_first_not_of('x') == std::string::npos);
+	CHECK_FALSE(objective_text::read(f.fit, "Long").has_value());
+	std::optional<std::string> fits = objective_text::read(f.fit, "Fits");
+	REQUIRE(fits.has_value());
+	CHECK(*fits == "ok");
+}
+
+TEST_CASE("a flag reference is its ID, else its decimal index")
+{
+	SUBCASE("the ID wins over an index")
+	{
+		MemFit f("[Obj]\r\nst FlagID = \"gate\"\r\nul FlagIndex = 4\r\n");
+		REQUIRE(f.fit.seekBlock("Obj") == NO_ERR);
+		CHECK(objective_text::readFlagID(f.fit, "FlagID", "FlagIndex") == std::optional<std::string>("gate"));
+	}
+	SUBCASE("only an index")
+	{
+		MemFit f("[Obj]\r\nul FlagIndex = 4\r\n");
+		REQUIRE(f.fit.seekBlock("Obj") == NO_ERR);
+		CHECK(objective_text::readFlagID(f.fit, "FlagID", "FlagIndex") == std::optional<std::string>("4"));
+	}
+	SUBCASE("neither")
+	{
+		MemFit f("[Obj]\r\nst Title = \"T\"\r\n");
+		REQUIRE(f.fit.seekBlock("Obj") == NO_ERR);
+		CHECK_FALSE(objective_text::readFlagID(f.fit, "FlagID", "FlagIndex").has_value());
+	}
 }
 
 TEST_CASE("the writer always writes the key, with line breaks stored as a bare line feed")
@@ -101,7 +123,7 @@ TEST_CASE("the writer always writes the key, with line breaks stored as a bare l
 		out.close();
 	}
 	const std::string bytes = slurp(path);
-	CHECK(bytes.find("st Empty = \"\"") != std::string::npos);                  // an empty value is still a key (the old writer skipped a null string)
+	CHECK(bytes.find("st Empty = \"\"") != std::string::npos);                  // an empty value is still a key
 	CHECK(bytes.find("st Text = \"two\nlines\"") != std::string::npos);       // stored with a bare line feed
 
 	FitIniFile in;
@@ -137,7 +159,7 @@ TEST_CASE("objective fields: the rule for each missing key")
 		objective_text::readFields(f.fit, fields);
 		CHECK(fields.title == "Only a title");
 		CHECK(fields.description == "Only a title");
-		CHECK(fields.modelName.empty());                         // the old reader left its temporary, here "flagR", and the model took it
+		CHECK(fields.modelName.empty());                         // not "flagR", the key read just before
 	}
 	SUBCASE("an empty Description is a Description, not an absent one")
 	{
