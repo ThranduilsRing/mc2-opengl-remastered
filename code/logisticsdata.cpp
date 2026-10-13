@@ -40,23 +40,23 @@ LogisticsData::LogisticsData()
 
 LogisticsData::~LogisticsData()
 {
-	for( VARIANT_LIST::EIterator iter = variants.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		delete( *iter );
 	}
 
-	for ( VEHICLE_LIST::EIterator vIter = vehicles.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = vehicles.begin(); vIter != vehicles.end(); ++vIter )
 	{
 		delete (*vIter );
 	}
 
-	for ( MECH_LIST::EIterator mIter = inventory.Begin(); !mIter.IsDone(); mIter++ )
+	for ( auto mIter = inventory.begin(); mIter != inventory.end(); ++mIter )
 	{
 		delete (*mIter);
 	}
 
-	variants.Clear();
-	vehicles.Clear();
+	variants.clear();
+	vehicles.clear();
 
 	delete missionInfo;
 	missionInfo = nullptr;
@@ -82,7 +82,7 @@ void				LogisticsData::startNewCampaign( const char* fileName )
 	}
 #endif
 
-	inventory.Clear();
+	inventory.clear();
 	resourcePoints = 0;
 	pilots.Clear();
 	initPilots();
@@ -112,7 +112,7 @@ void				LogisticsData::startNewCampaign( const char* fileName )
 
 void LogisticsData::startMultiPlayer()
 {
-	inventory.Clear();
+	inventory.clear();
 	resourcePoints = 0;
 	pilots.Clear();
 	initPilots();
@@ -205,8 +205,7 @@ int					LogisticsData::getPlayerVariantNames( const char** array, int& count )
 	count = 0;
 
 	int retVal = 0;
-	for ( VARIANT_LIST::EIterator iter = variants.Begin(); 
-		!iter.IsDone(); iter++ )
+	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 		{
 			if ( !(*iter)->isDesignerMech() )
 			{
@@ -230,7 +229,7 @@ int		LogisticsData::getEncyclopediaMechs( const LogisticsVariant** pChassis, int
 	int retVal = 0;
 	int maxCount = count;
 	count = 0;
-	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
 		if ( (*vIter)->getName().find( "Prime" ) != std::string::npos && (*vIter)->isDesignerMech() )
 		{
@@ -253,7 +252,7 @@ int	LogisticsData::getHelicopters( const LogisticsVariant** pChassis, int& count
 	int retVal = 0;
 	int maxCount = count;
 	count = 0;
-	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
 		if ( (((*vIter)->getVariantID() >> 16 & 0xff) == 0) && 
 			(*vIter)->getName().find( "Prime" ) == std::string::npos && (*vIter)->isDesignerMech() )
@@ -278,7 +277,7 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 	int retVal = 0;
 	int maxCount = count;
 	count = 0;
-	for ( VEHICLE_LIST::EIterator vIter = vehicles.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = vehicles.begin(); vIter != vehicles.end(); ++vIter )
 	{
 			if ( count < maxCount )
 				pChassis[count] = (*vIter);
@@ -298,7 +297,7 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 LogisticsVehicle*	LogisticsData::getVehicle( const char* pName )
 {
 	char tmpStr[256];
-	for ( VEHICLE_LIST::EIterator vIter = vehicles.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = vehicles.begin(); vIter != vehicles.end(); ++vIter )
 	{
 		cLoadString( (*vIter)->getNameID(), tmpStr, 255 );
 		if ( S_stricmp( tmpStr, pName ) == 0 )

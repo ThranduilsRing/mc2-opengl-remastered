@@ -171,8 +171,7 @@ void PilotReadyScreen::begin()
 	getButton( MB_MSG_MAINMENU )->disable( false );
 	launchFadeTime = 0;
 	// initialize both the inventory and icon lists
-	EList< LogisticsMech*, LogisticsMech* > mechList;
-	LogisticsData::instance->getInventory( mechList );
+	auto mechList = LogisticsData::instance->getInventory();
 
 	// reset force group
 	forceGroupCount = 0;
@@ -223,8 +222,7 @@ void PilotReadyScreen::begin()
 		}
 
 
-		for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = mechList.Begin();
-		!iter.IsDone(); iter++ )
+		for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
 		{
 			if ( (*iter)->getForceGroup() )
 			{

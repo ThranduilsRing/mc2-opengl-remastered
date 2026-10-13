@@ -152,17 +152,16 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 
 	if (MPlayer) {
 		if (missionLoadType == MISSION_LOAD_MP_LOGISTICS) {
-			EList< LogisticsMech*, LogisticsMech* > list;
-			LogisticsData::instance->getForceGroup(list);
+			auto list = LogisticsData::instance->getForceGroup();
 
 			long dropZoneIndex = 0;
 			long numMechs = 0;
-			for (EList< LogisticsMech*, LogisticsMech* >::EIterator iter = list.Begin(); !iter.IsDone(); iter++) {
+			for ( auto iter = list.begin(); iter != list.end(); ++iter ) {
 				numMechs++;
 				if ( !(*iter)->getPilot() )
 					continue;
 				CompressedMech mechData;
-				mechData.lastMech = (list.Count() == numMechs);
+				mechData.lastMech = (std::ssize(list) == numMechs);
 				mechData.objNumber =  (*iter)->getFitID();
 				mechData.commanderID = MPlayer->commanderID;
 				mechData.baseColor = MPlayer->colors[MPlayer->playerInfo[MPlayer->commanderID].baseColor[BASECOLOR_TEAM]];
@@ -285,10 +284,9 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 
 		}
 	else if (missionLoadType == MISSION_LOAD_SP_LOGISTICS) {
-		EList< LogisticsMech*, LogisticsMech* > list;
-		LogisticsData::instance->getForceGroup( list );
+		auto list = LogisticsData::instance->getForceGroup();
 
-		float rotation = list.Count() ? 360.f/list.Count() : 0.f;
+		float rotation = std::ssize(list) ? 360.f/std::ssize(list) : 0.f;
 
 		MoverInitData data;
 		memset( &data, 0, sizeof( data ) );
@@ -315,7 +313,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		vector.y = 1.f;
 		vector.z = 0.f;
 		Stuff::Vector3D scaled;
-		for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = list.Begin(); !iter.IsDone(); iter++) {
+		for ( auto iter = list.begin(); iter != list.end(); ++iter ) {
 			scaled = vector;
 			scaled *= 128.;
 			data.position.Add(dropZoneList[0], scaled);

@@ -249,13 +249,12 @@ long LogisticsPilot::load( FitIniFile& file )
 void LogisticsPilot::clearIcons()
 {
 	// clear out the old ones
-	for ( EList<ForceGroupIcon*, ForceGroupIcon*>::EIterator iter = 
-		killedIcons.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = killedIcons.begin(); iter != killedIcons.end(); ++iter )
 	{
 		delete (*iter);
 	}
 
-	killedIcons.Clear();
+	killedIcons.clear();
 }
 
 long LogisticsPilot::update( MechWarrior* pWarrior )
@@ -263,13 +262,12 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 #ifndef VIEWER
 	
 	// clear out the old ones
-	for ( EList<ForceGroupIcon*, ForceGroupIcon*>::EIterator iter = 
-		killedIcons.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = killedIcons.begin(); iter != killedIcons.end(); ++iter )
 	{
 		delete (*iter);
 	}
 
-	killedIcons.Clear();
+	killedIcons.clear();
 
 	missionsCompleted++;
 	long missionJustPlayed = LogisticsData::instance->getCurrentMissionId();
@@ -330,7 +328,7 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 		{
 			MechIcon* pIcon = new MechIcon();
 			pIcon->swapResolutions(0);
-			killedIcons.Append( pIcon );
+			killedIcons.push_back( pIcon );
 			pIcon->init( (Mover*)pDead );
 			pIcon->update();
 			if (((MoverPtr)pDead)->getMoveType() != MOVETYPE_AIR)
@@ -340,7 +338,7 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 		{
 			VehicleIcon* pIcon = new VehicleIcon();
 			pIcon->swapResolutions(0);
-			killedIcons.Append( pIcon );
+			killedIcons.push_back( pIcon );
 			pIcon->init( (Mover*)pDead );
 			pIcon->update();
 		}

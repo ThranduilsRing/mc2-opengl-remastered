@@ -65,7 +65,7 @@ int LogisticsData::getPurchasableMechs( LogisticsVariant** array, int& count )
 	long arraySize = count;
 
 	count = 0;
-	for( VARIANT_LIST::EIterator iter = instance->variants.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = instance->variants.begin(); iter != instance->variants.end(); ++iter )
 	{
 		if ( (*iter)->isAvailable() )
 		{
@@ -100,7 +100,7 @@ int LogisticsData::purchaseMech( LogisticsVariant* pVariant )
 	{
 		int count = instance->createInstanceID( pVariant );
 		LogisticsMech* pMech = new LogisticsMech( pVariant, count );
-		instance->inventory.Append( pMech );
+		instance->inventory.push_back( pMech );
 		if ( !cheatInfiniteMoney() )
 			missionInfo->decrementCBills( pVariant->getCost() );
 		return 0;
@@ -135,7 +135,8 @@ int LogisticsData::sellMech( LogisticsMech* pVar )
 	if ( !pVar )
 		return -1;
 
-	for ( MECH_LIST::EIterator iter = instance->inventory.End(); !iter.IsDone(); iter-- )
+	// Newest first: the last copy of the variant that is not in the force group is the one that is sold.
+	for ( auto iter = instance->inventory.rbegin(); iter != instance->inventory.rend(); ++iter )
 	{
 		if ( (*iter)->getForceGroup() )
 			continue;
@@ -144,7 +145,7 @@ int LogisticsData::sellMech( LogisticsMech* pVar )
 			int cost = ((*iter))->getCost();
 			(*iter)->setPilot( nullptr );
 			delete *iter;
-			instance->inventory.Delete( iter );
+			instance->inventory.erase( std::next( iter ).base() );
 
 			missionInfo->incrementCBills( cost );
 			return 0;
@@ -165,8 +166,8 @@ int LogisticsData::removeVariant( const char* varName )
 	if ( mc2::str::iequals( currentlyModifiedMech->getName(), wanted ) || mc2::str::iequals( oldVariant->getName(), wanted ) )
 		return -1;
 
-    VARIANT_LIST::EIterator vIter = variants.Begin();
-	for ( ; !vIter.IsDone(); vIter++ )
+    auto vIter = variants.begin();
+	for ( ; vIter != variants.end(); ++vIter )
 	{
 		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
@@ -181,7 +182,7 @@ int LogisticsData::removeVariant( const char* varName )
 	}
 
     
-	for (MECH_LIST::EIterator iter = instance->inventory.End(); !iter.IsDone(); iter-- )
+	for ( auto iter = instance->inventory.rbegin(); iter != instance->inventory.rend(); ++iter )
 	{
 		if ( (*iter)->getVariant() == pVar )
 		{
@@ -190,7 +191,7 @@ int LogisticsData::removeVariant( const char* varName )
 	}
 
 	delete pVar;
-	variants.Delete( vIter );
+	variants.erase( vIter );
 
 	return 0;
 }
@@ -200,7 +201,7 @@ int LogisticsData::removeVariant( const char* varName )
 int LogisticsData::createInstanceID( LogisticsVariant* pVar )
 {
 	int count = -1;
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( pVar->getVariantID() == (*iter)->getVariantID() ) 
 		{
@@ -214,7 +215,7 @@ int LogisticsData::createInstanceID( LogisticsVariant* pVar )
 
 LogisticsVariant* LogisticsData::getVariant( int ID )
 {
-	for ( VARIANT_LIST::EIterator iter = variants.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		if ( (*iter)->getID() == (ID & 0x00ffffff) )
 		{
@@ -230,7 +231,7 @@ LogisticsVariant* LogisticsData::getVariant( int ID )
 
 LogisticsMech*	LogisticsData::getMech( int ID )
 {
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( (*iter)->getID() == ID )
 			return (*iter );
@@ -270,7 +271,7 @@ int LogisticsData::addMechToForceGroup( LogisticsMech* pMech, int slot )
 
 int		LogisticsData::removeMechFromForceGroup( int slot )
 {
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( (*iter)->getForceGroup() == slot )
 		{
@@ -289,7 +290,7 @@ LogisticsMech*		LogisticsData::getMechWithoutForceGroup( LogisticsMech* pMech )
 	if ( !pMech->getForceGroup() )
 		return pMech;
 
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 		{
 			if ( (*iter)->getVariant() == pMech->getVariant() && !(*iter)->getForceGroup() )
 			{
@@ -315,7 +316,7 @@ int LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemoveP
 	}
 
 	// find similar one
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( (*iter)->getVariant() == pMech->getVariant() && (*iter)->getForceGroup() )
 		{
@@ -336,7 +337,7 @@ LogisticsPilot* LogisticsData::getFirstAvailablePilot()
 	for ( PILOT_LIST::EIterator iter = pilots.Begin(); !iter.IsDone(); iter++  )
 	{
 		 bool bIsUsed = false;
-		 for ( MECH_LIST::EIterator mIter = inventory.Begin(); !mIter.IsDone(); mIter++ )
+		 for ( auto mIter = inventory.begin(); mIter != inventory.end(); ++mIter )
 		 {
 			LogisticsPilot* pPilot = (*mIter)->getPilot();
 			if ( pPilot && pPilot->getID() == (*iter).getID() )
@@ -402,32 +403,30 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 }
 
 
-void	LogisticsData::getForceGroup( EList<LogisticsMech*, LogisticsMech*>& newList )
+LogisticsData::MechList	LogisticsData::getForceGroup()
 {
 	ensureMechBayDataLoaded("getForceGroup");
+	MechList newList;
 	int count = 0;
 
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( count > 11 )
 			break;
 
 		if ( (*iter)->getForceGroup() )
 		{
-			newList.Append( (*iter) );
+			newList.push_back( (*iter) );
 			count++;
 		}
 	}
+	return newList;
 }
 
-void	LogisticsData::getInventory( EList<LogisticsMech*, LogisticsMech*>& newList )
+LogisticsData::MechList	LogisticsData::getInventory()
 {
 	ensureMechBayDataLoaded("getInventory");
-	for ( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
-	{
-
-		newList.Append( (*iter) );
-	}
+	return inventory;
 }
 
 
@@ -438,7 +437,7 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, LogisticsPilot* 
 	{
 		int count = instance->createInstanceID( pVar );
 		LogisticsMech* pMech = new LogisticsMech( pVar, count );
-		inventory.Append( pMech );
+		inventory.push_back( pMech );
 		pMech->setForceGroup( ForceGroup );
 		if ( pPilot && !pPilot->isDead() )
 			pMech->setPilot( pPilot );
@@ -458,7 +457,7 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 	{
 		int count = instance->createInstanceID( pVar );
 		LogisticsMech* pMech = new LogisticsMech( pVar, count );
-		inventory.Append( pMech );
+		inventory.push_back( pMech );
 		if ( addToForceGroup > -1 && addToForceGroup < 13 )
 			pMech->setForceGroup( addToForceGroup );
 		if ( pPilot && !pPilot->isDead() )
@@ -475,7 +474,7 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 LogisticsVariant* LogisticsData::getVariant( const char* pCSVFileName, int VariantNum )
 {
 	const std::string lowerCase = mc2::str::ascii_lower( mc2::str::from_c( pCSVFileName ) );
-	for( VARIANT_LIST::EIterator iter = variants.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		if ( (*iter)->getFileName().find( lowerCase ) != std::string::npos
 			&& (((*iter)->getVariantID()>>16)&0xff) == VariantNum )

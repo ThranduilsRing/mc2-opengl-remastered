@@ -16,7 +16,6 @@ LogisticsPilot:
 **************************************************************************************************/
 #include <string>
 #include <vector>
-#include"elist.h"
 #include"warrior.h"
 
 inline constexpr int MAX_MISSIONS = 50;
@@ -120,7 +119,7 @@ class LogisticsPilot
 
 		
 		unsigned long	id;
-		EList< ForceGroupIcon*, ForceGroupIcon* >	killedIcons;
+		std::vector< ForceGroupIcon* >	killedIcons;
 
 
 

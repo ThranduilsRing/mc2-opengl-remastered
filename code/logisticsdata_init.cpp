@@ -471,7 +471,7 @@ void LogisticsData::initVariants()
 	for (auto& job : mechJobs) {
 		if (job.chassis) {
 			for (auto* v : job.varList)
-				variants.Append(v);
+				variants.push_back(v);
 		}
 	}
 
@@ -479,7 +479,7 @@ void LogisticsData::initVariants()
 	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		int totalVariants = 0;
 		bool shadowhawkFound = false;
-		for ( VARIANT_LIST::EIterator it = variants.Begin(); !it.IsDone(); it++ ) {
+		for ( auto it = variants.begin(); it != variants.end(); ++it ) {
 			totalVariants++;
 			const std::string& fn = (*it)->getFileName();
 			char fnLow[1024];
@@ -514,7 +514,7 @@ void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale,
 		pVehicle->init( file );
 		pVehicle->setScale( scale );
 			if ( nameID ) pVehicle->setNameID( nameID );
-		vehicles.Append( pVehicle );
+		vehicles.push_back( pVehicle );
 	}
 }
 

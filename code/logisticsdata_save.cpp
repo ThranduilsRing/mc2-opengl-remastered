@@ -16,7 +16,7 @@ void LogisticsData::removeMechsInForceGroup()
 	// survives the delete below and can be used by setMissionCompleted() as a fallback
 	// for mod-purchased variants whose name is absent from the loaded variants list.
 	deployedMechSnapshot.clear();
-	for ( MECH_LIST::EIterator si = inventory.Begin(); !si.IsDone(); si++ )
+	for ( auto si = inventory.begin(); si != inventory.end(); ++si )
 	{
 		if ( (*si)->getForceGroup() )
 		{
@@ -27,19 +27,17 @@ void LogisticsData::removeMechsInForceGroup()
 		}
 	}
 
-	if ( !inventory.Count() )
+	if ( !std::ssize(inventory) )
 		return;
-	for ( MECH_LIST::EIterator iter = inventory.End(); !iter.IsDone();  )
+	// Newest first: the mechs of the force group are deleted from the back of the inventory forward.
+	for ( auto iter = inventory.end(); iter != inventory.begin(); )
 	{
+		--iter;
 		if ( (*iter)->getForceGroup() )
 		{
-			MECH_LIST::EIterator tmpIter = iter;
-			iter--;
-			delete *tmpIter;
-			inventory.Delete( tmpIter );
+			delete *iter;
+			iter = inventory.erase( iter );
 		}
-		else
-			iter--;
 	}
 }
 
@@ -135,7 +133,7 @@ int LogisticsData::comparePilots( LogisticsPilot* p1, LogisticsPilot* p2, long w
 	else if ( p2->isUsed() )
 		return 1;
 	
-		for ( MECH_LIST::EIterator mIter = instance->inventory.Begin(); !mIter.IsDone(); mIter++ )
+		for ( auto mIter = instance->inventory.begin(); mIter != instance->inventory.end(); ++mIter )
 		 {
 			LogisticsPilot* pPilot = (*mIter)->getPilot();
 			if ( pPilot )
@@ -179,8 +177,7 @@ long	LogisticsData::save( FitIniFile& file )
 		
 	int variantCount = 0;
 	// save the player created variants
-	for ( VARIANT_LIST::EIterator vIter = variants.Begin();
-		!vIter.IsDone();  vIter++ )
+	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			if ( !(*vIter)->isDesignerMech() )
 			{
@@ -196,7 +193,7 @@ long	LogisticsData::save( FitIniFile& file )
 	
 	file.writeIdLong( "VariantCount", variantCount );
 	file.writeIdLong( "PilotCount", pilots.Count() );
-	file.writeIdLong( "InventoryCount", inventory.Count() );
+	file.writeIdLong( "InventoryCount", static_cast<long>(std::ssize(inventory)) );
 	file.writeIdBoolean( "FirstTimeResults", MissionResults::FirstTimeResults);
 
 	// save the campaign info
@@ -212,8 +209,7 @@ long	LogisticsData::save( FitIniFile& file )
 
 	int mechCount = 0;
 	// save the inventory
-	for ( MECH_LIST::EIterator mIter = inventory.Begin();
-		!mIter.IsDone(); mIter++ )
+	for ( auto mIter = inventory.begin(); mIter != inventory.end(); ++mIter )
 		{
 			(*mIter)->save( file, mechCount++ );
 		}
@@ -223,20 +219,16 @@ long	LogisticsData::save( FitIniFile& file )
 
 void LogisticsData::clearVariants()
 {
-	for ( VARIANT_LIST::EIterator iter = variants.End(); !iter.IsDone();  )
+	// Newest first: the player-made variants are deleted from the back of the list forward.
+	for ( auto iter = variants.end(); iter != variants.begin(); )
 	{
+		--iter;
 		if ( !(*iter)->isDesignerMech() )
 		{
-			VARIANT_LIST::EIterator tmpIter = iter;
-			iter --;
-			delete *tmpIter;
-			variants.Delete( tmpIter );
-	
+			delete *iter;
+			iter = variants.erase( iter );
 		}
-		else
-			iter--;
 	}
-		
 }
 
 long	LogisticsData::load( FitIniFile& file )
@@ -357,7 +349,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 
 	const LogisticsChassis* pChassis  = nullptr;
 	// go out and find that chassis
-	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
 		if ( mc2::str::iequals( (*vIter)->getFileName(), *chassisKey ) )
 		{
@@ -382,7 +374,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	// create the variant, add to the list
 	LogisticsVariant* pVariant = new LogisticsVariant( pChassis, 0 );	
 
-	variants.Append( pVariant );
+	variants.push_back( pVariant );
 	
 	pVariant->setName( *variantName );
 
@@ -424,7 +416,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 long LogisticsData::loadMech( FitIniFile& file, int& count )
 {
 	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
-	for ( VARIANT_LIST::EIterator mIter = variants.Begin(); !mIter.IsDone(); mIter++ )
+	for ( auto mIter = variants.begin(); mIter != variants.end(); ++mIter )
 	{
 		if ( mc2::str::iequals( (*mIter)->getName(), variantKey ) )
 		{
@@ -432,7 +424,7 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 			LogisticsMech* pMech = new LogisticsMech( (*mIter), count );
 			// A mech without a Pilot key has no pilot: the key is never read as the variant text.
 			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
-			inventory.Append( pMech );
+			inventory.push_back( pMech );
 
 			if ( pilotKey )
 			{
@@ -635,7 +627,7 @@ void	LogisticsData::setMissionCompleted( )
 LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotName )
 {
 	const std::string wanted = mc2::str::from_c( MechName );
-	for( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
 		{
@@ -664,7 +656,7 @@ void LogisticsData::removeMechFromInventory( const char* mechName, const char* p
 
 	if ( pMech )
 	{
-		inventory.Delete( inventory.Find(pMech) );
+		std::erase( inventory, pMech );
 		delete pMech;
 	}
 }
@@ -698,7 +690,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 LogisticsVariant* LogisticsData::getVariant( const char* mechName )
 {
 	const std::string wanted = mc2::str::from_c( mechName );
-	for ( VARIANT_LIST::EIterator iter = variants.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
 			return (*iter);

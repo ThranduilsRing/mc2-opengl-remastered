@@ -77,8 +77,10 @@ public:
 	// returns a shared, hidden-from-roster (setAvailable(false)) standard vehicle pilot.
 	bool				isVehicleUnit( class LogisticsMech* pMech );
 	LogisticsPilot*		getVehiclePilot();
-	void				getForceGroup( EList<LogisticsMech*, LogisticsMech*>& newList );
-	void				getInventory( EList<LogisticsMech*, LogisticsMech*>& newList );
+	// A snapshot of the pointers, taken by value: a caller may sell and delete from the live inventory while it walks its copy.
+	using MechList = std::vector<LogisticsMech*>;
+	MechList			getForceGroup();
+	MechList			getInventory();
 
 
 	void				removeMechsInForceGroup(); // takes mechs that are in the force group out of the inventory
@@ -244,9 +246,11 @@ private:
 
 	typedef EList< LogisticsComponent, const LogisticsComponent& >	COMPONENT_LIST;
 	typedef EList< LogisticsPilot, const LogisticsPilot& >			PILOT_LIST;
-	typedef EList< LogisticsVariant*, LogisticsVariant* >			VARIANT_LIST;
-	typedef EList< LogisticsMech*, LogisticsMech* >					MECH_LIST;
-	typedef EList< LogisticsVehicle*, LogisticsVehicle* >			VEHICLE_LIST;
+	// Order is insertion order. variants and inventory lose elements through removeVariant / sellMech / the mech-list rewrites, which erase the pointer and delete the
+	// pointee themselves; vehicles are filled once at init.
+	using VARIANT_LIST = std::vector<LogisticsVariant*>;
+	using MECH_LIST = MechList;
+	using VEHICLE_LIST = std::vector<LogisticsVehicle*>;
 	typedef EList< Building, const Building& >						BUILDING_LIST;
 	
 	VARIANT_LIST									variants;

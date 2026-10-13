@@ -119,7 +119,7 @@ long LogisticsData::updateAvailability()
 
 
 	// reset all variants to unavailable
-	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
+	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
 		if ( (*vIter)->isAvailable()  && !((*vIter)->getID() >> 16 ))
 			oldMechAvailableCount++;
@@ -193,7 +193,7 @@ long LogisticsData::updateAvailability()
 		LOG_LOGISTICS_UA("updateAvailability: [Mechs] Mech%d='%s'", i, chassisFileName);
 
 		// go through each variant, if it has the same chassis, check and see if all of its components are valid
-		for (VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
+		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			const std::string& mechName = (*vIter)->getFileName();
 			char realName[1024];
@@ -343,13 +343,11 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 
 	// Inventory (owned mechs).
 	{
-		EList<LogisticsMech*, LogisticsMech*> inv;
-		getInventory( inv );
-		j += ",\"inventoryCount\":" + std::to_string( (int)inv.Count() );
+		const MechList inv = getInventory();
+		j += ",\"inventoryCount\":" + std::to_string( (int)std::ssize(inv) );
 		j += ",\"inventory\":[";
 		int i = 0;
-		for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-		      !it.IsDone() && i < 64; it++, ++i ) {
+		for ( auto it = inv.begin(); it != inv.end() && i < 64; ++it, ++i ) {
 			if ( i ) j += ",";
 			j += "\"" + esc( ( *it )->getName().c_str() ) + "\"";
 		}
@@ -358,13 +356,11 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 
 	// Force group (the deployed loadout / launch roster).
 	{
-		EList<LogisticsMech*, LogisticsMech*> fg;
-		getForceGroup( fg );
-		j += ",\"forceGroupCount\":" + std::to_string( (int)fg.Count() );
+		const MechList fg = getForceGroup();
+		j += ",\"forceGroupCount\":" + std::to_string( (int)std::ssize(fg) );
 		j += ",\"forceGroup\":[";
 		int i = 0;
-		for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = fg.Begin();
-		      !it.IsDone() && i < 24; it++, ++i ) {
+		for ( auto it = fg.begin(); it != fg.end() && i < 24; ++it, ++i ) {
 			if ( i ) j += ",";
 			j += "\"" + esc( ( *it )->getName().c_str() ) + "\"";
 		}
@@ -485,7 +481,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 			break;
 
 		// go through each variant, if it has the same chassis, check and see if all of its components are valid
-		for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
+		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			const std::string& mechName = (*vIter)->getFileName();
 			char realName[255];
