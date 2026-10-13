@@ -12,9 +12,30 @@
 #include"soundsys.h"
 #include"../resource.h"
 #include "mc2fmt.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
+#include "Gates/render_options_publish.h"
 
 extern SoundSystem *sndSystem;
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
+
+namespace {
+
+// Writes one option into the open [MechCommander2] block; the overload taken is the one for the option's value type.
+struct OptionWriter {
+	FitIniFile& file;
+	const char* key;
+	void operator()(bool v) const { file.writeIdBoolean(key, v); }
+	void operator()(int v) const { file.writeIdLong(key, v); }
+	void operator()(float v) const { file.writeIdFloat(key, v); }
+};
+
+void saveRenderOptions(FitIniFile& file, const mc2::options::RenderOptions& in) {
+	for (const mc2::options::Option& opt : mc2::options::kOptions)
+		mc2::options::withValue(in, opt, OptionWriter{file, opt.key});
+}
+
+}  // namespace
 
 extern long DigitalMasterVolume;
 extern long MusicVolume;
@@ -83,9 +104,7 @@ CPrefs::CPrefs() {
 	scrollSpeedMult = 2.0f;
 	zoomSpeedMult   = 2.0f;
 
-	postCas          = false;
-	postCasSharpness = 0.5f;
-	tonemapMode      = 0;
+	render = mc2::options::RenderOptions{};
 
 #if 0
 	FilterState = gos_FilterNone;
@@ -291,15 +310,12 @@ int CPrefs::load( const char* pFileName ) {
 			if ( result != NO_ERR )
 				zoomSpeedMult = 2.0f;
 
-			result = prefsFile->readIdBoolean( "PostCAS", postCas );
-			if ( result != NO_ERR )
-				postCas = false;
-			result = prefsFile->readIdFloat( "PostCASSharpness", postCasSharpness );
-			if ( result != NO_ERR )
-				postCasSharpness = 0.5f;
-			result = prefsFile->readIdLong( "TonemapMode", tonemapMode );
-			if ( result != NO_ERR )
-				tonemapMode = 0;
+			// The same strict reader the engine runs before the window exists; a rejected value is logged and keeps its default.
+			render = mc2::options::RenderOptions{};
+			std::vector<mc2::options::Reject> rejects;
+			mc2::options::cfg::loadFromText( render, mc2::options::cfg::readTextFile( prefsPathname ), &rejects );
+			for ( const auto& r : rejects )
+				mc2::options::logRejectedOption( r.key, r.text, r.why, mc2::options::find( r.key ) );
 
 		}
 
@@ -396,9 +412,7 @@ int CPrefs::save() {
 			result = prefsFile->writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
 			result = prefsFile->writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
 
-			result = prefsFile->writeIdBoolean( "PostCAS", postCas );
-			result = prefsFile->writeIdFloat( "PostCASSharpness", postCasSharpness );
-			result = prefsFile->writeIdLong( "TonemapMode", tonemapMode );
+			saveRenderOptions( *prefsFile, render );
 
 		}
 	}
@@ -452,7 +466,29 @@ int CPrefs::applyPrefs(bool applyRes) {
 	::useNonWeaponEffects = this->useNonWeaponEffects;
 	::useHighObjectDetail = this->useHighObjectDetail;
 
-	gos_SetPostFxOptions(this->postCas ? 1 : 0, this->postCasSharpness, static_cast<int>(this->tonemapMode));
+	// The effective options: the file's values, then the MC2_OPTIONS_OVERRIDE test channel on top (never written back by save()).
+	{
+		mc2::options::RenderOptions effective = this->render;
+		// The log lines print once per process: applyPrefs() runs again when the player changes a setting.
+		static bool s_logged = false;
+		const bool report = !s_logged;
+		s_logged = true;
+		const std::string overrideSpec = mc2::gate::str<"MC2_OPTIONS_OVERRIDE">();
+		if (!overrideSpec.empty()) {
+			std::vector<mc2::options::Reject> rejects;
+			const int accepted = mc2::options::applyOverrides(effective, overrideSpec, rejects);
+			if (report) {
+				mc2::fmt::print_err("[OPTIONS v1] event=override accepted={} rejected={} spec={}\n", accepted, rejects.size(), mc2::fmt::safe(overrideSpec.c_str()));
+				for (const auto& r : rejects)
+					mc2::options::logRejectedOption(r.key, r.text, r.why, mc2::options::find(r.key));
+			}
+		}
+		mc2::options::publish(effective);
+		// Quiet when every reader saw the published values; a reader that cached its value before the publish names itself.
+		if (report && (mc2::options::earlyReads() > 0 || mc2::options::publishChangedValues()))
+			mc2::fmt::print_err("[OPTIONS v1] event=stale_reader early_reads={} first={}:{} changed_since_start={}\n", mc2::options::earlyReads(), mc2::fmt::safe(mc2::options::firstEarlyFile()), mc2::options::firstEarlyLine(), mc2::options::publishChangedValues() ? 1 : 0);
+		gos_SetPostFxOptions(effective.postCas ? 1 : 0, effective.postCasSharpness, effective.tonemapMode);
+	}
 
 	int bitDepth = this->bitDepth;
 

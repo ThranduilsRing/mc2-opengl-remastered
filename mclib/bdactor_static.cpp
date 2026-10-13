@@ -193,17 +193,10 @@ void BldgAppearance::registerStatic() {
 			nAcc.x += nc.x; nAcc.y += nc.y; nAcc.z += nc.z;
 		}
 		decalNAcc = nAcc;
-		// Build the initial CLIFF_WALL face frame from the current (env-seeded) knobs.
+		// Build the initial CLIFF_WALL face frame from the current knobs.
 		CliffDecalTuning::buildCliffWallMatrix(
 		    xlatPosition, nAcc, CliffDecalTuning::knobs(), cliffWallXform);
 		useCliffWallFrame = true;
-		if (mc2::gate::get<"MC2_TERRAIN_DECAL_TRACE">()) {
-			const CliffDecalTuning::Knobs& k = CliffDecalTuning::knobs();
-			mc2::fmt::print_err("[TERRAIN_DECAL v1] CLIFF_WALL name={} pos=({:.1f},{:.1f}) scale={:.3f} offset={:.1f} lateral={:.1f} lift={:.1f} yaw={:.1f}\n",
-			        mc2::fmt::safe(appearType->name), position.x, position.y,
-			        k.scale, k.offset, k.lateral, k.lift, k.yawDeg),
-			    fflush(stderr);
-		}
 	}
 
 	// Build per-leaf recipe batch.

@@ -2,6 +2,7 @@
 // Declared in GraphicsOptionsWindow_internal.h.
 #include "GraphicsOptionsWindow_internal.h"
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "mc2fmt.h"
 
 namespace GraphicsOptionsWindow {
@@ -486,10 +487,10 @@ void drawTerrainTuningSection() {
 // modulate strength when the matching env gate is ON.
 void drawStaticPropTuningSection() {
     // IBL SH ambient (V-IBL-STATIC-1; default-ON env). Slider modulates
-    // strength when MC2_STATIC_PROP_IBL_SH != 0 (default-on).
+    // strength when the StaticPropIblSh option is on (default on).
     ImGui::SeparatorText("IBL SH ambient");
     {
-        bool iblOn = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">();
+        bool iblOn = mc2::options::current().staticPropIblSh;
         const char* setName = ibl_sh_runtime_currentSetName();
         if (iblOn) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
@@ -497,7 +498,7 @@ void drawStaticPropTuningSection() {
                 setName ? setName : "default", g_iblShStrength);
         } else {
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                "IBL SH: OFF (env-gated; MC2_STATIC_PROP_IBL_SH=0)");
+                "IBL SH: OFF (options.cfg StaticPropIblSh)");
         }
         ImGui::BeginDisabled(!iblOn);
         if (ImGui::SliderFloat("Strength##ibl_sh", &g_iblShStrength, 0.0f, 3.0f, "%.2f")) {}
@@ -514,13 +515,13 @@ void drawStaticPropTuningSection() {
     // slider controls strength. Default value 0.5 (dialled back from 1.0).
     ImGui::SeparatorText("PBR V1 specular");
     {
-        bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
+        bool pbrOn = mc2::options::current().staticPropPbr;
         if (pbrOn) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
                 "PBR V1: ON (strength=%.2f)", g_pbrV1Strength);
         } else {
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                "PBR V1: OFF (set MC2_STATIC_PROP_PBR_V1=1)");
+                "PBR V1: OFF (set options.cfg StaticPropPbr)");
         }
         ImGui::BeginDisabled(!pbrOn);
         if (ImGui::SliderFloat("Strength##pbr_v1", &g_pbrV1Strength, 0.0f, 3.0f, "%.2f")) {}
@@ -540,7 +541,7 @@ void drawStaticPropTuningSection() {
     // legacy assets too glossy.
     ImGui::SeparatorText("PBR roughness override");
     {
-        bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
+        bool pbrOn = mc2::options::current().staticPropPbr;
         if (pbrOn) {
             ImGui::TextColored(g_pbrV1RoughnessOverrideEnabled
                                    ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)

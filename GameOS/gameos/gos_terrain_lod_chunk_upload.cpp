@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 // ---------------------------------------------------------------------------
@@ -512,7 +513,7 @@ bool gos_TerrainShorelineGateOn()
 // So MC2_TERRAIN_LOD_CHUNK=0 is NOT the configuration this pass was written
 // for -- it is not a working configuration for this pass at all. There is NO
 // configuration in which the (0.15, 0.35) classifier matches a water pixel.
-// `MC2_SHORELINE_LEGACY_SUPPRESS=0` does not restore shoreline foam anywhere;
+// ShorelineLegacySuppress = FALSE does not restore shoreline foam anywhere;
 // it restores the animated rim on prop silhouettes, in every configuration.
 //
 // Census 4 of scripts/check-render-contract-gbuffer1.sh now pins the
@@ -533,11 +534,11 @@ bool gos_TerrainShorelineGateOn()
 // report is open. What they lose with it is a shimmer that moves on a static
 // building, which no grading pass would have kept.
 //
-// Default ON (canonical killswitch); `MC2_SHORELINE_LEGACY_SUPPRESS=0` restores
+// Default ON (options.cfg ShorelineLegacySuppress); FALSE restores
 // the legacy pass exactly as it shipped.
 bool gos_TerrainShorelineLegacySuppressOn()
 {
-    static const bool s_on = mc2::gate::get<"MC2_SHORELINE_LEGACY_SUPPRESS">();
+    static const bool s_on = mc2::options::current().shorelineLegacySuppress;
     return s_on;
 }
 

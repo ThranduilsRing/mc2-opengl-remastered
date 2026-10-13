@@ -59,3 +59,8 @@ tier3 cfv2_mission1_escort allow_asset_oob=1 mod=MCO-ClanEagle deps=mco-compat r
 # 1K-vertex map fixture for TerrainLOD Phase 8 extraction sweeps (not a gate)
 tier3 1kbasicmap heartbeat_timeout_load=180 heartbeat_timeout_play=60 reason="1K map LOD active/solid A/B fixture"
 tier3 metropolitan heartbeat_timeout_load=180 heartbeat_timeout_play=60 reason="dense urban perf fixture (FindTerrainObj/Warrior.Path hotspots)"
+
+# Resolution matrix (weekly; `run_smoke.py --tier resolution --deploy <name>`): one mission, once per drawable size. Not part of the daily
+# tier1; sizes come from scripts/smoke_lib/render_resolution.py (the pinned capture size and the 4K size a stock install is configured for).
+resolution mc2_01 resolution=1920x1080 reason="baseline mission at the pinned capture size"
+resolution mc2_01 resolution=3840x2160 reason="baseline mission at the stock install size"

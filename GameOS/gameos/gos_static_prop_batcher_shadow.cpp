@@ -925,8 +925,8 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     // sites, so VK and the debug state dump see the rotated set when the gate
     // is on and cannot silently disagree with GL. Gate OFF -> identical bytes.
     std::memcpy(out->iblSh, iblShCoeffsForUpload(), sizeof(out->iblSh));
-    // s_iblShEnabled: MC2_STATIC_PROP_IBL_SH=0 kill-switch (default-ON). Mirrors the
-    // GL per-frame upload rule exactly: env unset/1 -> g_iblShStrength; env=0 -> 0.0.
+    // The StaticPropIblSh option (default on). Mirrors the GL per-frame upload rule
+    // exactly: on -> g_iblShStrength; off -> 0.0.
     out->iblShStrength = iblShStrengthNightScaled();
     return 1;
 }

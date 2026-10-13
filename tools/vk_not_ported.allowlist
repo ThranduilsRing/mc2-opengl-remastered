@@ -24,7 +24,6 @@ MC2_OBJECT_ID_BUFFER | shaders/static_prop_depth.frag | define MC2_COALESCE: no 
 MC2_PBR_AMBIENT_SPECULAR | shaders/mech.frag | uniform u_pbrAmbientSpecularStrength: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_PBR_ROUGHNESS_MAX | shaders/mech.frag | uniform u_pbrRoughnessMax: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_PBR_TRIPLANAR_SCALE | shaders/mech.frag | uniform u_pbrTriplanarScale: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
-MC2_SHADOW_CSM | shaders/shadow_screen.frag | define MC2_SHADOW_CSM: no such name in the VK twin (shaders/vulkan/screen_shadow_csm.*, shaders/vulkan/screen_shadow_static.*) shader, island C++ or gpu_abi
 MC2_SHADOW_STATIC_BANDFIX | shaders/gos_terrain.frag | define MC2_SHADOW_STATIC_BANDFIX: no such name in the VK twin (shaders/vulkan/terrain_tier1.*) shader, island C++ or gpu_abi
 MC2_SHADOW_STATIC_BANDFIX_V2 | shaders/gos_terrain.frag | define MC2_SHADOW_STATIC_BANDFIX_V2: no such name in the VK twin (shaders/vulkan/terrain_tier1.*) shader, island C++ or gpu_abi
 MC2_SHADOW_STATIC_BANDFIX_V2 | shaders/terrain_lod_chunk.frag | define MC2_SHADOW_STATIC_BANDFIX_V2: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
@@ -60,12 +59,10 @@ MC2_PROP_FIXB_MVP | shaders/gos_terrain.vert | uniform mvp: no such name in the 
 MC2_PROP_FIXB_MVP | shaders/gos_tex_vertex.vert | uniform mvp: no such name in the VK twin (shaders/vulkan/legacy_shape_tier1.*) shader, island C++ or gpu_abi
 MC2_PROP_FIXB_MVP | shaders/gos_vertex.vert | uniform mvp: no such name in the VK twin (shaders/vulkan/legacy_shape_tier1.*) shader, island C++ or gpu_abi
 MC2_PROP_FIXB_MVP | shaders/gos_vertex_lighted.vert | uniform mvp: no such name in the VK twin (shaders/vulkan/legacy_shape_tier1.*) shader, island C++ or gpu_abi
-MC2_PROP_SHADOW_RECEIVE | shaders/shadow_screen.frag | uniform propShadowReceive: no such name in the VK twin (shaders/vulkan/screen_shadow_csm.*, shaders/vulkan/screen_shadow_static.*) shader, island C++ or gpu_abi
 MC2_STANDARD_LIT_V1 | shaders/mech.frag | uniform u_standardLitEnabled: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_STATICPROP_MATERIAL_PBR_SLOTS | shaders/static_prop.frag | define MC2_STATICPROP_PBR_SLOTS: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_STATICPROP_MATERIAL_PBR_SLOTS | shaders/static_prop.vert | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_STATICPROP_MATERIAL_PBR_SLOTS | shaders/static_prop_depth.frag | define MC2_COALESCE, define MC2_STATICPROP_PBR_SLOTS: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_SUN_AXIS_FIX | shaders/mech.vert | VK mech_tier1.vert calc_light has no sunAxisMc2Fix parameter, so flipping the gate corrects GL mech/vehicle diffuse only and leaves VK on the uncorrected Stuff-frame sun. Pinned as the calc_light debt in tools/glsl_port_diff.allowlist.
 MC2_TERRAIN_DETAIL_ANTITILE | shaders/terrain_lod_chunk.frag | uniform detailNormalStrength: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_DETAIL_MACRO_STRENGTH | shaders/terrain_lod_chunk.frag | uniform detailNormalStrength: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_MACRO_VARIATION | shaders/terrain_lod_chunk.frag | uniform macroVariationStrength: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
@@ -86,7 +83,6 @@ MC2_HDRI_SKY_FRAME_FIX | shaders/hdri_skybox.frag | uniform frameFix: no such na
 MC2_HDRI_SKY_UV_DEBUG | shaders/hdri_skybox.frag | uniform uvDebug: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_MECH_FRAG_DEBUG | shaders/mech.frag | uniform u_debugMode: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_SHADER_PATH_TINT | shaders/terrain_lod_chunk.frag | uniform u_pathTint: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
-MC2_SHADOW_CSM | shaders/shadow_debug.frag | define MC2_SHADOW_CSM, uniform shadowDebugLayer, uniform shadowDebugUseArray: no such name in the VK twin (shaders/vulkan/shadow_debug_overlay.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_LOD_CHUNK_DIAG | shaders/terrain_lod_chunk.frag | uniform u_diag: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR | shaders/terrain_lod_chunk.frag | uniform u_forceColor: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_WATER_DEBUG_MODE | shaders/gos_terrain_water_mdi.frag | uniform u_waterDebugMode: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi

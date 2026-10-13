@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 void gosPostProcess::drawShadowDebugOverlay()
@@ -523,7 +524,7 @@ void gosPostProcess::initDynamicShadows()
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
-    // === Item 1 P1: cascaded depth array (only when MC2_SHADOW_CSM is ON) ===
+    // === Item 1 P1: cascaded depth array (only when the ShadowCSM option is on) ===
     // GL_DEPTH_COMPONENT24 GL_TEXTURE_2D_ARRAY (dynShadowMapSize_^2 x N) with the
     // EXACT sampler param set the legacy single dynamic map uses:
     // COMPARE_REF_TO_TEXTURE / GL_LEQUAL / CLAMP_TO_BORDER / border 1.0. The
@@ -1030,8 +1031,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     if (fitRadius > r) fitRadius = r;
     const float origFitRadius = fitRadius;
 
-    // SHADOW-BOUNDED-NEAR-FIT-1 (gate, DEFAULT ON -- opt out with
-    // MC2_SHADOW_BOUNDED_NEAR_FIT=0): cap fit radius for higher near-shadow
+    // SHADOW-BOUNDED-NEAR-FIT-1 (options.cfg ShadowBoundedNearFit, default on): cap fit radius for higher near-shadow
     // texel density. Center is now correct by construction (light-space AABB);
     // no separate center-override needed.
     //
@@ -1042,7 +1042,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     // line, RendererFeatureRegistry.h and the tier1 doc in the SAME commit --
     // scripts/check-gate-defaults.py now fails the build if they disagree.
     {
-        static const bool s_boundedNear = mc2::gate::get<"MC2_SHADOW_BOUNDED_NEAR_FIT">();
+        static const bool s_boundedNear = mc2::options::current().shadowBoundedNearFit;
         if (s_boundedNear) {
             static const float s_boundedRadiusRaw = mc2::gate::get<"MC2_SHADOW_BOUNDED_NEAR_RADIUS">();
             float boundedRadius = s_boundedRadiusRaw;

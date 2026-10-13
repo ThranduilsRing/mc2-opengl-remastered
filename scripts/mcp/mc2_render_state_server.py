@@ -463,6 +463,7 @@ def get_visual_settings() -> str:
 
     return _stale_banner() + json.dumps({
         "frame": frame,
+        "renderOptions": data.get("renderOptions"),   # every options.cfg render option as the renderer read it
         "renderPasses": {
             "shadow":       rp.get("shadow"),
             "screenShadow": rp.get("screenShadow"),

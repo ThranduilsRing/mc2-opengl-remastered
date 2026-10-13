@@ -216,7 +216,7 @@
           "path": "scripts/tests/test_check_background_launch.py",
           "line": 20,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-background-launch.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-background-launch.py",
           "text": "return subprocess.run([sys.executable, str(SCRIPT), *args],"
         }
       ],
@@ -371,7 +371,7 @@
           "path": "tools/visual_verify/verify.py",
           "line": 241,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-main/scripts/check-capture-resolution.py",
+          "reference": "A:\\Games\\mc2-lane2/scripts/check-capture-resolution.py",
           "text": "_spec = _ilu.spec_from_file_location("
         }
       ],
@@ -546,44 +546,44 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 992,
+          "line": 993,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 114,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 124,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 352,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
           "text": "assert subprocess.run(argv, capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0"
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 353,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run(argv + [\"--strict\"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))"
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 359,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         }
       ],
@@ -640,9 +640,9 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 926,
+          "line": 927,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-deploy-target.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
         }
       ],
@@ -679,21 +679,21 @@
           "path": "scripts/make-isolated-deploy.py",
           "line": 281,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
         },
         {
           "path": "scripts/renderdoc_capture.py",
           "line": 155,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
         },
         {
           "path": "scripts/run_visual_capture.py",
-          "line": 156,
+          "line": 157,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
         }
       ],
@@ -849,7 +849,7 @@
           "path": "scripts/test_gl_shader_variants.py",
           "line": 23,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-main\\scripts/check-gl-shader-variants.py",
+          "reference": "A:\\Games\\mc2-lane2\\scripts/check-gl-shader-variants.py",
           "text": "_spec = importlib.util.spec_from_file_location(\"check_glsv\", HERE / \"check-gl-shader-variants.py\")"
         }
       ],
@@ -908,7 +908,7 @@
           "path": "scripts/make-isolated-deploy.py",
           "line": 126,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-main\\scripts/check-hardlink-isolation.py",
+          "reference": "A:\\Games\\mc2-lane2\\scripts/check-hardlink-isolation.py",
           "text": "spec = importlib.util.spec_from_file_location(\"check_hardlink_isolation\","
         }
       ],
@@ -1540,7 +1540,7 @@
           "path": "scripts/check-sampler-bindings-selftest.py",
           "line": 75,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check-sampler-bindings.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check-sampler-bindings.py",
           "text": "subprocess.run([sys.executable, str(CHECKER), \"--root\", str(root),"
         }
       ],
@@ -2058,9 +2058,9 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1010,
+          "line": 1011,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/check_shader_bom.py",
+          "reference": "A:/Games/mc2-lane2/scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
         }
       ],
@@ -3105,7 +3105,7 @@
         },
         {
           "path": "tools/visual_verify/capture_ab.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3140,16 +3140,16 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 868,
+          "line": 869,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/deploy_payload.py",
+          "reference": "A:/Games/mc2-lane2/scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
         }
       ],
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1286,
+          "line": 1287,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -3284,9 +3284,9 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 392,
+          "line": 393,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/game_auto.py",
+          "reference": "A:/Games/mc2-lane2/scripts/game_auto.py",
           "text": "auto = subprocess.run("
         }
       ],
@@ -3670,14 +3670,14 @@
           "path": "scripts/sweep_campaign.py",
           "line": 24,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/resolve_campaign_config.py",
+          "reference": "A:/Games/mc2-lane2/scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
         },
         {
           "path": "scripts/verify_campaign_assets.py",
           "line": 43,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/resolve_campaign_config.py",
+          "reference": "A:/Games/mc2-lane2/scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
         }
       ],
@@ -3718,30 +3718,30 @@
       "callers_by_basename": [
         {
           "path": "scripts/mcp/mc2_render_state_server.py",
-          "line": 735,
+          "line": 736,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
           "text": "result = subprocess.run("
         },
         {
           "path": "scripts/test_release_zip_install.py",
           "line": 238,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, **console_child.child_kwargs())"
         },
         {
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 187,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
           "text": "return subprocess.run([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *args],"
         },
         {
           "path": "scripts/verify_background_launch.py",
           "line": 152,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
         }
       ],
@@ -3807,7 +3807,7 @@
           "path": "scripts/check-capture-determinism.py",
           "line": 217,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/run_visual_capture.py",
+          "reference": "A:/Games/mc2-lane2/scripts/run_visual_capture.py",
           "text": "subprocess.run(cmd, check=False, **console_child.child_kwargs())"
         }
       ],
@@ -3893,70 +3893,70 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 42,
+          "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 43,
+          "line": 44,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import exe_guard as _exe_guard"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 47,
+          "line": 48,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import runner as _smoke_runner"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 56,
+          "line": 57,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import cockpit as _cockpit"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 72,
+          "line": 73,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import fingerprint as _fingerprint"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 80,
+          "line": 81,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import crash_evidence as _crash_evidence"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 735,
+          "line": 736,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 765,
+          "line": 766,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 955,
+          "line": 956,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1141,
+          "line": 1142,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -4060,6 +4060,13 @@
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"
         },
         {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import render_options_pin"
+        },
+        {
           "path": "scripts/smoke_lib/runner.py",
           "line": 15,
           "evidence": "import",
@@ -4102,6 +4109,20 @@
           "text": "from scripts.smoke_lib import preflight_cache as pc"
         },
         {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import render_options_pin as rop"
+        },
+        {
+          "path": "tests/smoke/test_resolution_tier.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import render_resolution"
+        },
+        {
           "path": "tests/telemetry/test_cockpit_s2.py",
           "line": 31,
           "evidence": "import",
@@ -4118,10 +4139,10 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 42,
+          "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.baselines",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         }
       ]
     },
@@ -4176,7 +4197,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1141,
+          "line": 1142,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -4233,7 +4254,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 56,
+          "line": 57,
           "evidence": "import",
           "reference": "scripts.smoke_lib.cockpit",
           "text": "from scripts.smoke_lib import cockpit as _cockpit"
@@ -4262,7 +4283,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 80,
+          "line": 81,
           "evidence": "import",
           "reference": "scripts.smoke_lib.crash_evidence",
           "text": "from scripts.smoke_lib import crash_evidence as _crash_evidence"
@@ -4277,7 +4298,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 735,
+          "line": 736,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -4306,7 +4327,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 43,
+          "line": 44,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from scripts.smoke_lib import exe_guard as _exe_guard"
@@ -4349,7 +4370,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 72,
+          "line": 73,
           "evidence": "import",
           "reference": "scripts.smoke_lib.fingerprint",
           "text": "from scripts.smoke_lib import fingerprint as _fingerprint"
@@ -4392,7 +4413,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 44,
+          "line": 45,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict as _Verdict"
@@ -4426,6 +4447,13 @@
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 144,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import Verdict"
+        },
+        {
           "path": "tests/smoke/test_report.py",
           "line": 2,
           "evidence": "import",
@@ -4442,7 +4470,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 765,
+          "line": 766,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -4485,7 +4513,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 45,
+          "line": 46,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary as _LogSummary"
@@ -4499,7 +4527,7 @@
         },
         {
           "path": "scripts/smoke_lib/manifest.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from .logparse import MARKER_BUCKETS"
@@ -4540,6 +4568,13 @@
           "text": "from scripts.smoke_lib.logparse import LogSummary, MARKER_BUCKETS, PerfRow, parse_log"
         },
         {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 145,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib.logparse import LogSummary"
+        },
+        {
           "path": "tests/smoke/test_report.py",
           "line": 1,
           "evidence": "import",
@@ -4570,10 +4605,10 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 42,
+          "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "tests/smoke/test_manifest.py",
@@ -4581,6 +4616,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
           "text": "from scripts.smoke_lib.manifest import parse_manifest, Entry"
+        },
+        {
+          "path": "tests/smoke/test_resolution_tier.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.manifest",
+          "text": "from scripts.smoke_lib.manifest import parse_manifest"
         },
         {
           "path": "tests/smoke/test_selection.py",
@@ -4599,10 +4641,10 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 42,
+          "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.nofocus",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "scripts/smoke_lib/child_registry.py",
@@ -4670,7 +4712,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 955,
+          "line": 956,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -4681,6 +4723,64 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as pc"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/render_options_pin.py",
+      "basename": "render_options_pin.py",
+      "stem": "render_options_pin",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_smoke.py",
+          "line": 43,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from . import render_options_pin"
+        },
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from scripts.smoke_lib import render_options_pin as rop"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/render_resolution.py",
+      "basename": "render_resolution.py",
+      "stem": "render_resolution",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_smoke.py",
+          "line": 43,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_resolution",
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "scripts/smoke_lib/manifest.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_resolution",
+          "text": "from .render_resolution import parse as parse_resolution"
+        },
+        {
+          "path": "tests/smoke/test_resolution_tier.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_resolution",
+          "text": "from scripts.smoke_lib import render_resolution"
         }
       ]
     },
@@ -4699,10 +4799,17 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 42,
+          "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.report",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib.report import Row, render_json, render_markdown"
         },
         {
           "path": "tests/smoke/test_report.py",
@@ -4721,14 +4828,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 46,
+          "line": 47,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import RunConfig, run_one"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 47,
+          "line": 48,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib import runner as _smoke_runner"
@@ -5027,14 +5134,14 @@
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 137,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/write-deploy-manifest.py",
+          "reference": "A:/Games/mc2-lane2/scripts/write-deploy-manifest.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 153,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/scripts/write-deploy-manifest.py",
+          "reference": "A:/Games/mc2-lane2/scripts/write-deploy-manifest.py",
           "text": "r = subprocess.run("
         }
       ],
@@ -5108,7 +5215,7 @@
           "path": "tools/blender_pipeline/asset_edit.py",
           "line": 348,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/ase_to_glb.py",
+          "reference": "A:/Games/mc2-lane2/tools/ase_to_glb.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True,"
         }
       ],
@@ -5245,14 +5352,14 @@
           "path": "tools/asset_cook/tests/test_g1_stage.py",
           "line": 50,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/asset_cook/trackg_cook.py",
+          "reference": "A:/Games/mc2-lane2/tools/asset_cook/trackg_cook.py",
           "text": "proc = subprocess.run("
         },
         {
           "path": "tools/asset_cook/tests/test_g2_textures.py",
           "line": 65,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/asset_cook/trackg_cook.py",
+          "reference": "A:/Games/mc2-lane2/tools/asset_cook/trackg_cook.py",
           "text": "proc = subprocess.run("
         }
       ],
@@ -5282,21 +5389,21 @@
           "path": "scripts/check-asset-manifest-fixtures.py",
           "line": 40,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-lane2/tools/asset_cook/validate_asset_manifest.py",
           "text": "proc = subprocess.run("
         },
         {
           "path": "scripts/check-asset-manifests.py",
           "line": 33,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-lane2/tools/asset_cook/validate_asset_manifest.py",
           "text": "return subprocess.run(cmd, **console_child.child_kwargs()).returncode == 0"
         },
         {
           "path": "tools/asset_cook/tests/run_tests.py",
           "line": 53,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-lane2/tools/asset_cook/validate_asset_manifest.py",
           "text": "proc = subprocess.run("
         }
       ],
@@ -6940,7 +7047,7 @@
           "path": "scripts/verify_campaign_assets.py",
           "line": 32,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-main/tools/mc2x_import/fst.py",
+          "reference": "A:\\Games\\mc2-lane2/tools/mc2x_import/fst.py",
           "text": "spec = importlib.util.spec_from_file_location(\"fst\", str(p))"
         }
       ],
@@ -8256,7 +8363,7 @@
           "path": "tools/terrain_beautify/test_control_map_tool.py",
           "line": 45,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/terrain_beautify/control_map_tool.py",
+          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/control_map_tool.py",
           "text": "return subprocess.run("
         }
       ],
@@ -8286,7 +8393,7 @@
           "path": "tools/terrain_beautify/test_cook_markings.py",
           "line": 67,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/terrain_beautify/cook_markings.py",
+          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/cook_markings.py",
           "text": "return subprocess.run("
         }
       ],
@@ -8309,7 +8416,7 @@
           "path": "tools/terrain_beautify/test_cook_shoreline.py",
           "line": 51,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/terrain_beautify/cook_shoreline.py",
+          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/cook_shoreline.py",
           "text": "return subprocess.run("
         }
       ],
@@ -8511,7 +8618,7 @@
           "path": "tools/terrain_beautify/test_overlay_extract.py",
           "line": 40,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/terrain_beautify/overlay_extract.py",
+          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/overlay_extract.py",
           "text": "return subprocess.run("
         }
       ],
@@ -8541,7 +8648,7 @@
           "path": "tools/terrain_beautify/test_scatter_tool.py",
           "line": 56,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/terrain_beautify/scatter_tool.py",
+          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/scatter_tool.py",
           "text": "return subprocess.run("
         }
       ],
@@ -9815,7 +9922,15 @@
       "path": "tools/tracy_capture_compare.py",
       "basename": "tracy_capture_compare.py",
       "stem": "tracy_capture_compare",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 121,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-lane2/tools/tracy_capture_compare.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -10415,14 +10530,14 @@
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 225,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/visual_verify/capture.py",
+          "reference": "A:/Games/mc2-lane2/tools/visual_verify/capture.py",
           "text": "r = subprocess.run([sys.executable, str(ROOT / \"tools\" / \"visual_verify\" / \"capture.py\"),"
         },
         {
           "path": "tools/visual_verify/ab.py",
           "line": 38,
           "evidence": "command",
-          "reference": "A:/Games/mc2-main/tools/visual_verify/capture.py",
+          "reference": "A:/Games/mc2-lane2/tools/visual_verify/capture.py",
           "text": "rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK=\"1\"))"
         }
       ],
@@ -10434,6 +10549,13 @@
       "stem": "capture_ab",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tests/smoke/test_render_options_pin.py",
+          "line": 101,
+          "evidence": "import",
+          "reference": "capture_ab",
+          "text": "import capture_ab"
+        },
         {
           "path": "tools/visual_verify/test_capture_ab.py",
           "line": 9,
@@ -10451,7 +10573,7 @@
       "callers_by_stem": [
         {
           "path": "tools/visual_verify/capture_ab.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "montage_compact",
           "text": "import montage_compact as mc  # noqa: E402"

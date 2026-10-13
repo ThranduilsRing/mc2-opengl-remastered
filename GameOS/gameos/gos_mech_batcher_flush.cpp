@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 // APPLY-STATE-MECHOPAQUE-1: file-static flag mirroring s_staticPropStateAppliedByExecutor.
@@ -728,7 +729,7 @@ static void uploadShadingUniforms() {
         // agreement.py classifies a Feature gate's default FROM ITS READER, and
         // an idiom it cannot parse is a FAILURE, not a pass. The first draft
         // here used an early-return plus `? 0 : 1` and came back UNCLASSIFIABLE.
-        static const bool s_sunAxisMc2Fix = mc2::gate::get<"MC2_SUN_AXIS_FIX">();
+        static const bool s_sunAxisMc2Fix = mc2::options::current().sunAxisFix;
         glUniform1i(s_loc_u_sunAxisMc2Fix, s_sunAxisMc2Fix ? 1 : 0);
     }
     if (s_mechBatcherTrace) {

@@ -163,6 +163,8 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             "engine_deterministic": primary.get("engine_deterministic") if primary else None,
             "all_present": result.get("all_present"),
             "engine_capture_fired": result.get("engine_capture_fired"),
+            "render_options": (result.get("render_options") or {}).get("values"),
+            "render_options_disagree": (result.get("render_options") or {}).get("disagree") or [],
             "seconds": round(dt, 1),
             "log": result.get("log"),
         })
@@ -191,6 +193,8 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
         "deterministic_clock": det_clock,
         "declared_env": declared_env or {},
         "poses": poses,
+        # The options every pose of this sweep ran with (one install, one environment); capture_ab compares them between sets.
+        "render_options": next((p["render_options"] for p in poses if p.get("render_options")), None),
         "n_captured": sum(1 for p in poses if p["primary_png"]),
         "n_requested": len(bookmark_files),
     }
@@ -319,6 +323,9 @@ def main(argv=None) -> int:
     print(f"[vv-capture] manifest: {out_dir / 'capture_run.json'}")
     n_det = sum(1 for p in manifest["poses"] if p.get("engine_deterministic") is True)
     print(f"[vv-capture] deterministic poses: {n_det}/{manifest['n_captured']}")
+    if any(p.get("render_options_disagree") for p in manifest["poses"]):
+        print("[vv-capture] FAIL: the engine's render options differ from the harness reading of the install (see the log above)")
+        return 1
     return 0 if manifest["n_captured"] == manifest["n_requested"] else 1
 
 

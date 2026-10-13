@@ -4,7 +4,8 @@
 Line grammar (whitespace-split with shell-style quoting):
     <tier> <stem> [key=value]... [reason="..."]
 
-Tiers: tier1 | tier2 | tier3 | skip
+Tiers: tier1 | tier2 | tier3 | resolution | skip
+`resolution` entries carry `resolution=WxH` (the drawable size the mission runs at); the same stem may appear once per size.
 Unknown keys emit a warning (stderr) but are not errors.
 """
 from __future__ import annotations
@@ -16,10 +17,11 @@ from pathlib import Path
 from typing import Optional
 
 from .logparse import MARKER_BUCKETS
+from .render_resolution import parse as parse_resolution
 
-VALID_TIERS = {"tier1", "tier2", "tier3", "skip"}
+VALID_TIERS = {"tier1", "tier2", "tier3", "resolution", "skip"}
 VALID_KEYS = {"duration", "heartbeat_timeout_load", "heartbeat_timeout_play",
-              "profile", "active", "reason", "allow_asset_oob", "mod", "deps"}
+              "profile", "active", "reason", "allow_asset_oob", "mod", "deps", "resolution"}
 
 # META-FIX INFRA-3: manifest override keys registered by marker-bucket rows
 # (allow_asset_oob analog — downgrades that bucket to advisory per mission).
@@ -46,6 +48,8 @@ class Entry:
     # deps: comma-separated compat layer dir names (e.g. "mc2x-compat,mco-compat").
     mod: str = ""
     deps: str = ""
+    # `resolution` tier: the drawable size as "WxH" ("" = options.cfg size).
+    resolution: str = ""
     # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
     marker_overrides: dict = field(default_factory=dict)
     source_line: int = 0
@@ -92,6 +96,13 @@ def parse_manifest(path: Path) -> list[Entry]:
                 e.reason = v
             elif k == "allow_asset_oob":
                 e.allow_asset_oob = v.lower() in ("1", "true", "yes")
+            elif k == "resolution":
+                try:
+                    parse_resolution(v)
+                except ValueError as err:
+                    print(f"[manifest] warn: line {lineno} {err}", file=sys.stderr)
+                    continue
+                e.resolution = v.lower()
             elif k == "mod":
                 e.mod = v
             elif k == "deps":

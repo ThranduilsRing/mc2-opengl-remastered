@@ -5,12 +5,11 @@
 // Defines (in gos_static_prop_batcher.cpp):
 //   float g_iblShStrength;     // ImGui slider value, default 0.5f.
 //
-// The env var MC2_STATIC_PROP_IBL_SH (read once at process start as
-// s_iblShEnabled inside the batcher TU) is the AUTHORITATIVE GATE -- the
-// slider only modulates strength when the env-gate is on. Per-frame upload
-// computes `s_iblShEnabled ? g_iblShStrength : 0.0f` so
-// MC2_STATIC_PROP_IBL_SH=0 uploads 0.0 (byte-identical OFF, regardless of
-// slider value). The feature is default-ON when the env var is unset.
+// The options.cfg key StaticPropIblSh (read once as s_iblShEnabled inside the
+// batcher TU) is the authoritative switch -- the slider only modulates strength
+// when the option is on. Per-frame upload computes
+// `s_iblShEnabled ? g_iblShStrength : 0.0f` so StaticPropIblSh = FALSE uploads
+// 0.0 (byte-identical off, regardless of slider value). Default on.
 //
 // Consumers: GuiRuntime/EditorInspector.cpp (ImGui slider).
 //
@@ -21,9 +20,9 @@
 extern float g_iblShStrength;
 
 // V-MATERIAL-PBR-3 runtime cross-TU bridge. Same idiom as g_iblShStrength:
-// the env var MC2_STATIC_PROP_PBR_V1 (read once at process start as
-// s_pbrV1Enabled inside the batcher TU) is the AUTHORITATIVE GATE; the
-// slider only modulates strength when the env-gate is on. Per-frame upload
+// the options.cfg key StaticPropPbr (read once as s_pbrV1Enabled inside the
+// batcher TU) is the authoritative switch; the slider only modulates strength
+// when the option is on. Per-frame upload
 // computes `(s_pbrV1Enabled && !s_viewUniformsDisabled) ? g_pbrV1Strength
 // : 0.0f`. Default 0.5f at process start (slider range 0..3).
 extern float g_pbrV1Strength;

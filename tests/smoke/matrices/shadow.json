@@ -34,10 +34,10 @@
     },
     {
       "id": "shadow_bounded_near_fit",
-      "description": "Shadows on with bounded-near light-frustum fit (MC2_SHADOW_BOUNDED_NEAR_FIT=1). Tighter near plane -> denser shadow-map texel coverage near the camera.",
+      "description": "Shadows on with bounded-near light-frustum fit (options.cfg ShadowBoundedNearFit=1, the default; passed as MC2_OPTIONS_OVERRIDE so the arm stays explicit). Tighter near plane -> denser shadow-map texel coverage near the camera.",
       "env": {
         "MC2_SHADOW_ENABLE": "1",
-        "MC2_SHADOW_BOUNDED_NEAR_FIT": "1"
+        "MC2_OPTIONS_OVERRIDE": "ShadowBoundedNearFit=1"
       }
     }
   ]

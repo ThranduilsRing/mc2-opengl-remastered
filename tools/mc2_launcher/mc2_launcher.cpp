@@ -62,6 +62,9 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <string>
+#include "../../Gates/render_options_cfg.h"   // the options.cfg keys, types and bounds the engine reads, and the line editor
+
 #define IDC_MODLIST   1001
 #define IDC_LAUNCH    1002
 #define IDC_CANCEL    1003
@@ -156,10 +159,10 @@ static char      s_modsPath[MAX_PATH];      // <launcherDir>mods\
 
 // Two control types: checkbox (bool) or label+edit (value).
 struct EnvVarDef {
-    const char* key;         // env var name, e.g. "MC2_SHADOW_CSM"
+    const char* key;         // env var name (e.g. "MC2_CLOUD_SHADOW"), or the options.cfg key when `cfg` is set (e.g. "ShadowCSM")
     const char* label;       // display label
     bool        isBool;      // true = checkbox; false = static+edit
-    const char* defaultVal;  // shown in edit / initial check state; "" = unset by default
+    const char* defaultVal;  // shown in edit / initial check state; "" = unset by default; ignored for `cfg` rows (the engine's default is used)
     const char* section;     // section header (grouped in dialog)
     // KILLSWITCH-CHECKBOX-1: what an UNCHECKED bool emits.
     //   NULL (the default for every row that omits it) -> the variable is UNSET,
@@ -171,6 +174,9 @@ struct EnvVarDef {
     // was a no-op in the off direction. Any row whose gate is default-ON must
     // set offVal="0" or its checkbox silently cannot disable anything.
     const char* offVal;
+    // true = an options.cfg setting, not an environment variable: `key` is then the options.cfg key (Gates/render_options.h), launcher_env.json
+    // keeps the checkbox state under that same key, and Launch writes the value into options.cfg instead of the child's environment.
+    bool        cfg;
 };
 
 // Curated interactive list.  Excludes:
@@ -179,63 +185,20 @@ struct EnvVarDef {
 //   - Default-ON vars where toggling is rarely useful interactively
 static const EnvVarDef k_envVars[] = {
     // --- Rendering ---
-    // LAUNCHER-OFFVAL-2: reader gos_postprocess.cpp:57
-    // `!(v && v[0] == '0' && v[1] == '\0')` -- DEFAULT ON, and exactly "0" is the
-    // only kill token. Sole reader in the tree: every shader-define injection site
-    // (gameos_graphics.cpp:509/5503, gos_terrain_lod_chunk.cpp:1233,
-    // gos_postprocess.cpp:906/918) tests mc2ShadowCsmEnabled() rather than
-    // re-reading the env, so "0" kills the C++ path and the #define together and
-    // cannot desync them. offVal="0" is therefore mandatory and safe.
-    { "MC2_SHADOW_CSM",              "Cascaded shadow maps (CSM; ON)",       true,  "1",    "Rendering", "0" },
-    // NO offVal -- and the old label was FALSE. Reader gos_postprocess.cpp:501:
-    //     if (!v || !v[0]) return false;            // default OFF
-    //     return !(v[0] == '0' && v[1] == '\0');
-    // This gate is DEFAULT OFF, so unchecked == unset == off already; "0" would be
-    // redundant, not wrong. The label used to read "default ON", which is a
-    // surviving copy of the exact lie ENV-DROP-CLOSE-1 (2026-07-30) deleted from
-    // gos_postprocess.cpp:497 -- that comment notes it "would have had anyone
-    // A/B-ing '=0 versus unset' grading OFF against OFF". defaultVal "1" below is
-    // NOT the engine default; see the LAUNCHER-PREFERS-ON block further down.
+    // Rows marked `true` in the last column are options.cfg settings (Gates/render_options.h), not environment variables: the key is the
+    // options.cfg key and the engine reads it once at startup through CPrefs. The dialog starts such a row from the engine's own default for
+    // that key (RowDefault), so a fresh dialog shows what the game does with no key in options.cfg and Launch never writes a value the engine
+    // did not choose; its defaultVal column is ignored. offVal "0" on a default-ON row records that unchecking means FALSE.
+    { "ShadowCSM",                   "Cascaded shadow maps (CSM; ON)",       true,  NULL,   "Rendering", "0", true },
+    // An environment gate whose engine default is OFF; the launcher offers it pre-checked, so a launcher launch has cloud shadows on and a
+    // shell launch does not. Unchecked == unset == off (no offVal).
     { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering" },
-    { "MC2_SHADOW_BOUNDED_NEAR_FIT", "Crisp near shadows",                    true,  "",     "Rendering" },
-    { "MC2_PROP_SHADOW_RECEIVE",     "Building self/prop-on-prop shadows",    true,  "",     "Rendering" },
-    // === LAUNCHER-PREFERS-ON (LAUNCHER-OFFVAL-2 verdict: BUG, not curation) =====
-    // These two rows -- plus MC2_CLOUD_SHADOW above and MC2_WATER_SKYTINT below --
-    // declare defaultVal "1" while the ENGINE reader is DEFAULT-OFF:
-    //   MC2_STATIC_PROP_PBR_V1      gos_static_prop_batcher.cpp:1161
-    //                               `v != nullptr && v[0] != '0' && v[0] != '\0'`
-    //   MC2_STATIC_PROP_AMBIENT_V1  gos_static_prop_batcher.cpp:828 (same idiom)
-    // RendererFeatureRegistry.h agrees -- both entries declare `false`.
-    //
-    // THE CONSEQUENCE: DoLaunch applies EVERY row of this table unconditionally
-    // (the k_envVarCount loop around the SetEnvironmentVariableA calls); the user
-    // need never open the Options dialog for it to fire. So a LAUNCHER launch runs
-    // these features ON while a SHELL / batch-file launch runs them OFF. An A/B
-    // graded through the launcher is not the same build environment as one graded
-    // from a .bat, and neither arm is labelled with which set it got.
-    //
-    // WHY BUG AND NOT DELIBERATE CURATION: (1) the MC2_CLOUD_SHADOW row literally
-    // labelled a default-OFF gate "default ON" -- curation does not require a false
-    // label, and that specific false claim is one ENV-DROP-CLOSE-1 had already had
-    // to delete from the engine source; (2) every genuinely deliberate choice in
-    // this table is commented (the offVal rows, the default-OFF opt-in block below)
-    // and these four carried no rationale at all -- silence is the signature of
-    // drift; (3) for MC2_WATER_SKYTINT the override is not even a preference, it
-    // SUPPRESSES per-mission art direction (see that row).
-    //
-    // DELIBERATELY NOT FIXED HERE: flipping these four to defaultVal "" changes what
-    // every default launcher launch looks like. That is a user-graded default flip
-    // in this repo, not a lane's unilateral call. The labels now state the truth, so
-    // the dialog stops lying while that decision is pending.
-    { "MC2_STATIC_PROP_PBR_V1",      "Static prop PBR specular (engine OFF; launcher ON)",      true, "1", "Rendering" },
-    { "MC2_STATIC_PROP_AMBIENT_V1",  "Static prop hemisphere ambient (engine OFF; launcher ON)", true, "1", "Rendering" },
-    // offVal="0": this is the TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md).
-    // Reader is gos_static_prop_batcher.cpp:1066 `!(v && v[0]=='0')` -- default ON,
-    // "0" is the kill token -- so unchecking MUST emit "0". Without offVal the box
-    // only unset it and the engine stayed ON, which is exactly the bug
-    // KILLSWITCH-CHECKBOX-1 fixes. The other default-ON rows in this table still
-    // carry that bug and are listed in that commit message.
-    { "MC2_STATIC_PROP_IBL_SH",      "Static prop SH-L2 IBL ambient (ON)",    true,  "1",    "Rendering", "0" },
+    { "ShadowBoundedNearFit",        "Crisp near shadows (ON)",              true,  NULL,   "Rendering", "0", true },
+    { "PropShadowReceive",           "Building self/prop-on-prop shadows",    true,  NULL,   "Rendering", NULL, true },
+    { "StaticPropPbr",               "Static prop PBR specular (ON)",         true,  NULL,   "Rendering", "0", true },
+    { "StaticPropAmbient",           "Static prop hemisphere ambient (ON)",   true,  NULL,   "Rendering", "0", true },
+    // The TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md); default ON.
+    { "StaticPropIblSh",             "Static prop SH-L2 IBL ambient (ON)",    true,  NULL,   "Rendering", "0", true },
     // --- Display ---
     { "MC2_FORCE_43",                "Force 4:3 aspect (pillarbox widescreen)", true, "",    "Display"   },
     { "MC2_WINDOWED",                "Windowed mode",                          true,  "",    "Display"   },
@@ -265,16 +228,14 @@ static const EnvVarDef k_envVars[] = {
     // equivalent to unset: it would silently switch off per-mission water art
     // direction that unsetting leaves intact. Same hazard class as
     // MC2_TREE_DIAG_TRACE, where "=0" enables. Do not add offVal to this row.
-    // defaultVal "1" is the LAUNCHER-PREFERS-ON bug documented above, and this is
-    // its worst instance: it trips that presence test on every launcher launch.
-    // 2026-08-02 USER DIRECTIVE ("just turn it off"): defaultVal flipped "1" -> ""
-    // so the launcher no longer trips the presence test on every launch and the
-    // per-mission waterSkyTintStrength from data/visual_tuning.json applies again.
+    // 2026-08-02 USER DIRECTIVE ("just turn it off"): the box starts unchecked so a
+    // launcher launch no longer trips that presence test and the per-mission
+    // waterSkyTintStrength from data/visual_tuning.json applies again.
     // OFF here MUST mean UNSET (never "0") -- see presence-test note above.
     { "MC2_WATER_SKYTINT",           "Water sky tint override (suppresses per-mission art; leave OFF)", true, "",  "Water/VFX" },
     { "MC2_WATER_REFLECTION",        "Water SH-L2 sky reflection",            true,  "",     "Water/VFX" },
-    { "MC2_VFX_SOFT_PARTICLES",      "Soft particles (depth-fade)",           true,  "",     "Water/VFX" },
-    { "MC2_VFX_LIT_PARTICLES",       "Lit particles",                         true,  "",     "Water/VFX" },
+    { "VfxSoftParticles",            "Soft particles (depth-fade)",           true,  NULL,   "Water/VFX", NULL, true },
+    { "VfxLitParticles",             "Lit particles",                         true,  NULL,   "Water/VFX", NULL, true },
     // --- Debug ---
     { "MC2_IMGUI",                   "ImGui overlay",                         true,  "",     "Debug"     },
     { "MC2_IMGUI_INSPECTOR",         "ImGui inspector panel",                 true,  "",     "Debug"     },
@@ -285,31 +246,21 @@ static const EnvVarDef k_envVars[] = {
     // The gates the README in the install root asks for a human verdict on.
     // Read that file before flipping these.
     //
-    // DEFAULT-OFF opt-ins: unchecked == unset == the shipped expression
-    // bit-for-bit, so offVal stays NULL.
-    { "MC2_SUN_AXIS_FIX",            "Sun axis fix (mech/vehicle diffuse)",   true,  "",     "Lighting A/B" },
-    { "MC2_SUN_ELEVATION_FIX",       "Sun elevation fix (whole world)",       true,  "",     "Lighting A/B" },
-    // IBL-ROTATION-LAND-1 (f16b49e9): aims the SH-IBL prop ambient probe at the
-    // mission sun. Default-OFF opt-in; reader gos_static_prop_batcher.cpp:1264
-    // `(v && v[0] && v[0] != '0')`, so unset == off and offVal stays NULL.
-    { "MC2_STATIC_PROP_IBL_SUN_ROTATE", "Aim prop IBL probe at the sun",      true,  "",     "Lighting A/B" },
-    // Companion VALUE var (not a checkbox): the probe's irradiance floor.
-    // Reader default is 0.45; "0" gives the bare rotation with no floor.
-    { "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "  ^ probe floor (def 0.45, 0=bare)", false, "0.45", "Lighting A/B" },
-    // DEFAULT-ON killswitches -- these are already active on a normal launch.
-    // offVal="0" is mandatory: unchecking must EMIT "0", because merely unsetting
-    // it leaves the engine on its ON default and the box would do nothing.
-    //
-    // MC2_SHORELINE_LEGACY_SUPPRESS's default was flipped OFF -> ON by
-    // LEGACY-SHORELINE-MISAIM-1 (6340e052, 2026-07-31). Its row was written for
-    // the pre-flip default and kept the opt-in shape (defaultVal "", offVal
-    // NULL), which after the flip renders the box UNTICKED while the feature is
-    // ON and makes ticking-then-unticking a no-op -- the KILLSWITCH-CHECKBOX-1
-    // defect all over again. Reader gos_terrain_lod_chunk.cpp:4056 is
-    // `!(v && v[0] == '0')`: default ON, "0" the only kill token.
-    { "MC2_SHORELINE_LEGACY_SUPPRESS","Suppress legacy shoreline post pass (ON)", true, "1", "Lighting A/B", "0" },
-    // Reader mclib/mapdata.cpp:2452 `!v || v[0] != '0'`: default ON, "0" reverts.
-    { "MC2_CPU_PHONG_RETIRE",        "CPU Phong retire (grounding; ON)",      true,  "1",    "Lighting A/B", "0" },
+    // Default-OFF options: unchecked writes FALSE, which is what the engine does with
+    // no key, so offVal stays NULL.
+    { "SunAxisFix",                  "Sun axis fix (mech/vehicle diffuse)",   true,  NULL,   "Lighting A/B", NULL, true },
+    { "SunElevationFix",             "Sun elevation fix (whole world)",       true,  NULL,   "Lighting A/B", NULL, true },
+    // Aims the SH-IBL prop ambient probe at the mission sun. Default OFF.
+    { "StaticPropIblSunRotate",      "Aim prop IBL probe at the sun",         true,  NULL,   "Lighting A/B", NULL, true },
+    // Companion value row (not a checkbox): the probe's irradiance floor. "0" gives
+    // the bare rotation with no floor.
+    { "StaticPropIblSunRotateFloor", "  ^ probe floor (def 0.45, 0=bare)",    false, NULL,   "Lighting A/B", NULL, true },
+    // Default-ON options that are already active on a normal launch; unchecking
+    // writes FALSE (offVal "0"). Suppressing the legacy shoreline post pass has been
+    // the default since LEGACY-SHORELINE-MISAIM-1.
+    { "ShorelineLegacySuppress",     "Suppress legacy shoreline post pass (ON)", true, NULL, "Lighting A/B", "0", true },
+    // Gameplay elevation follows the drawn terrain surface; FALSE reverts to the legacy CPU Phong.
+    { "CpuPhongRetire",              "CPU Phong retire (grounding; ON)",      true,  NULL,   "Lighting A/B", "0", true },
     // --- Cheats (interactive play) ---
     { "MC2_CHEAT_INFINITE_MONEY",    "Infinite Money",                        true,  "",     "Cheats" },
     { "MC2_CHEAT_SALVAGE_ALL",       "Salvage Everything",                    true,  "",     "Cheats" },
@@ -498,9 +449,11 @@ static void SaveGfxJson() {
     fclose(f);
 }
 
+static void SaveCfgRows();   // defined with the other options.cfg helpers below
+
 // Replace the simple SaveEnvJson (engine-only) with one that also writes graphics vars.
 // The old SaveEnvJson is superseded — call SaveGfxJson() everywhere instead.
-static void SaveEnvJson() { SaveGfxJson(); }
+static void SaveEnvJson() { SaveGfxJson(); SaveCfgRows(); }
 
 // Load main-page selections from launcher_env.json into s_saved* globals.
 // Called at startup before RestoreMainPageSelections (which needs the UI to exist).
@@ -808,11 +761,27 @@ static void ClearAllModEnv() {
 
 // ---- Env-var persistence: launcher_env.json ----------------------------------
 
-// Initialize s_envVarValues from the defaultVal fields (before any load).
+// The text a row starts from. An options.cfg row starts from the engine's own default (RenderOptions{}), so the dialog cannot drift from what
+// the game does with no key in the file: a checkbox is "1" when the option is on and the row's offVal (or "") when off, a value row is the number.
+static std::string RowDefault(const EnvVarDef& row) {
+    if (!row.cfg) return row.defaultVal ? row.defaultVal : "";
+    const mc2::options::Option* opt = mc2::options::find(row.key);
+    if (!opt) return "";
+    const mc2::options::RenderOptions engineDefault;
+    if (row.isBool) {
+        const bool on = (opt->kind == mc2::options::Kind::Bool) ? engineDefault.*(opt->b) : (engineDefault.*(opt->l) != 0);
+        return on ? "1" : (row.offVal ? row.offVal : "");
+    }
+    if (opt->kind == mc2::options::Kind::Long) return std::to_string(engineDefault.*(opt->l));
+    char text[32];
+    const auto r = std::to_chars(text, text + sizeof(text), engineDefault.*(opt->f));
+    return std::string(text, r.ptr);
+}
+
+// Initialize s_envVarValues from each row's default (before any load).
 static void EnvVarsSetDefaults() {
     for (int i = 0; i < k_envVarCount; i++) {
-        _snprintf(s_envVarValues[i], sizeof(s_envVarValues[i]), "%s",
-                  k_envVars[i].defaultVal ? k_envVars[i].defaultVal : "");
+        _snprintf(s_envVarValues[i], sizeof(s_envVarValues[i]), "%s", RowDefault(k_envVars[i]).c_str());
         s_envVarValues[i][sizeof(s_envVarValues[i])-1] = '\0';
     }
 }
@@ -837,6 +806,91 @@ static void LoadEnvJson() {
             s_envVarValues[i][sizeof(s_envVarValues[i])-1] = '\0';
         }
     }
+}
+
+// ---- options.cfg settings (the rows whose `cfg` flag is set) ------------------
+
+static std::string ReadTextFile(const char* path) {
+    std::string out;
+    HANDLE fh = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (fh == INVALID_HANDLE_VALUE) return out;
+    char chunk[4096];
+    DWORD got = 0;
+    while (ReadFile(fh, chunk, sizeof(chunk), &got, NULL) && got > 0) out.append(chunk, got);
+    CloseHandle(fh);
+    return out;
+}
+
+// Replace the file in one step: a crash or a full disk mid-write must never leave the game a truncated options.cfg (the game would then boot at
+// its built-in resolution and drop every setting).
+static bool WriteTextFile(const char* path, const std::string& text) {
+    std::string tmp = std::string(path) + ".tmp";
+    HANDLE fh = CreateFileA(tmp.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (fh == INVALID_HANDLE_VALUE) return false;
+    DWORD wrote = 0;
+    const BOOL ok = WriteFile(fh, text.data(), (DWORD)text.size(), &wrote, NULL);
+    const BOOL flushed = ok && FlushFileBuffers(fh);
+    CloseHandle(fh);
+    if (!ok || !flushed || wrote != text.size()) { DeleteFileA(tmp.c_str()); return false; }
+    SetFileAttributesA(path, FILE_ATTRIBUTE_NORMAL);   // the game clears read-only itself before it saves; do the same
+    if (!MoveFileExA(tmp.c_str(), path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { DeleteFileA(tmp.c_str()); return false; }
+    return true;
+}
+
+static void OptionsCfgPath(char* out, size_t outSz) {
+    _snprintf(out, outSz, "%soptions.cfg", s_launcherDir);
+    out[outSz - 1] = '\0';
+}
+
+// The value of a row's key in the install's options.cfg, shown the way the dialog stores it: "1" checked, the row's offVal (or "")
+// unchecked, the text for a value row. A key the file does not have leaves the row as it is.
+static void LoadCfgRows() {
+    char path[MAX_PATH];
+    OptionsCfgPath(path, sizeof(path));
+    const std::string text = ReadTextFile(path);
+    if (text.empty()) return;
+    for (int i = 0; i < k_envVarCount; i++) {
+        if (!k_envVars[i].cfg) continue;
+        const auto v = mc2::options::cfg::get(text, k_envVars[i].key);
+        if (!v) continue;
+        const char* off = k_envVars[i].offVal ? k_envVars[i].offVal : "";
+        const char* shown;
+        if (k_envVars[i].isBool) {
+            if (mc2::options::detail::equalsNoCase(*v, "true") || *v == "1") shown = "1";
+            else if (mc2::options::detail::equalsNoCase(*v, "false") || *v == "0") shown = off;
+            else continue;
+        } else {
+            shown = v->c_str();
+        }
+        _snprintf(s_envVarValues[i], sizeof(s_envVarValues[i]), "%s", shown);
+        s_envVarValues[i][sizeof(s_envVarValues[i]) - 1] = '\0';
+    }
+}
+
+// Write every cfg row into options.cfg. A file that does not exist is left alone (the launcher never invents one: the game's resolution and
+// full-screen lines would be missing); a value row whose text is not a valid number in the option's bounds is skipped, not written.
+static void SaveCfgRows() {
+    char path[MAX_PATH];
+    OptionsCfgPath(path, sizeof(path));
+    const std::string before = ReadTextFile(path);
+    if (before.empty()) return;
+    std::string text = before;
+    for (int i = 0; i < k_envVarCount; i++) {
+        if (!k_envVars[i].cfg) continue;
+        const mc2::options::Option* opt = mc2::options::find(k_envVars[i].key);
+        if (!opt) continue;
+        std::string value;
+        if (k_envVars[i].isBool) {
+            const bool on = (strcmp(s_envVarValues[i], "1") == 0);
+            value = (opt->kind == mc2::options::Kind::Bool) ? (on ? "TRUE" : "FALSE") : (on ? "1" : "0");
+        } else {
+            mc2::options::RenderOptions scratch;
+            if (mc2::options::setFromText(scratch, *opt, s_envVarValues[i]) != mc2::options::Verdict::Ok) continue;
+            value = s_envVarValues[i];
+        }
+        text = mc2::options::cfg::set(text, *opt, value);
+    }
+    if (text != before) WriteTextFile(path, text);
 }
 
 // ---- Options dialog (in-process, no .rc file) --------------------------------
@@ -2127,6 +2181,7 @@ static void DoLaunch(HWND hwnd) {
         // the Faster Weapons toggle — skip them to avoid double-set.
         if (strcmp(k_envVars[i].key, "MC2_DIRECT_FIRE_STRAIGHT") == 0) continue;
         if (strcmp(k_envVars[i].key, "MC2_PROJECTILE_SPEED_MULT") == 0) continue;
+        if (k_envVars[i].cfg) continue;   // an options.cfg setting: written by SaveCfgRows() below, not passed in the environment
 
         const char* val = s_envVarValues[i];
         if (val[0]) {
@@ -2137,6 +2192,9 @@ static void DoLaunch(HWND hwnd) {
             SetEnvironmentVariableA(k_envVars[i].key, NULL);
         }
     }
+
+    // The options.cfg settings of the dialog go into the file the game reads at startup.
+    SaveCfgRows();
 
     // Apply Graphics Options env vars.
     // MC2_STATICPROP_TEX_TIER: texture resolution tier (engine reads this in the
@@ -2980,7 +3038,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
         EnvVarsSetDefaults(); GfxSetDefaults();
         _snprintf(s_envJsonPath, sizeof(s_envJsonPath), "%slauncher_env.json", s_launcherDir);
         s_envJsonPath[sizeof(s_envJsonPath)-1] = '\0';
-        LoadEnvJson(); LoadGfxJson(); LoadMainPageJson();
+        LoadEnvJson(); LoadCfgRows(); LoadGfxJson(); LoadMainPageJson();
         ScanMods(s_modsPath);
         // Eagerly resolve compat kind for all campaigns (deferred from ScanMods for GUI speed).
         for (int i = 0; i < s_campCount; i++) {
@@ -2992,6 +3050,17 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
             }
         }
         PrintListing();
+        return 0;
+    }
+
+    // Headless: write the dialog's options.cfg settings (launcher_env.json state, over what options.cfg already says) into options.cfg and exit.
+    // This is what Launch does for those rows; it exists so the round trip can be checked without a window.
+    if (lpCmd && strstr(lpCmd, "--sync-options")) {
+        EnvVarsSetDefaults();
+        _snprintf(s_envJsonPath, sizeof(s_envJsonPath), "%slauncher_env.json", s_launcherDir);
+        s_envJsonPath[sizeof(s_envJsonPath)-1] = '\0';
+        LoadEnvJson();
+        SaveCfgRows();
         return 0;
     }
 
@@ -3016,6 +3085,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
     EnvVarsSetDefaults();
     GfxSetDefaults();
     LoadEnvJson();
+    LoadCfgRows();
     LoadGfxJson();
     LoadMainPageJson();
 

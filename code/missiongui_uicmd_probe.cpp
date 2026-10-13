@@ -260,7 +260,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				extra += b;
 
 				// gos_GetStaticBuildingShadowCounts is documented zero
-				// unless MC2_STATIC_PROP_BUILDING_SHADOW actually DREW this
+				// unless the static building shadow pass actually DREW this
 				// mission. Membership in a feed that never drew is not a
 				// shadow, so printing membership without this would be a
 				// lying instrument.

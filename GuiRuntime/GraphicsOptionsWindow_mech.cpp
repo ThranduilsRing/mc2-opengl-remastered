@@ -357,7 +357,7 @@ void drawVfxTuningSection() {
             gos_vfx_setSoftEnabled(softOn ? 1 : 0);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Depth-fade alpha particles where they meet opaque geometry\n"
-                              "(no hard intersection lines). Default OFF (env MC2_VFX_SOFT_PARTICLES).\n"
+                              "(no hard intersection lines). Default OFF (options.cfg VfxSoftParticles).\n"
                               "Alpha groups only; additive flashes/lasers unaffected.");
         float sd = gos_vfx_getSoftDistance();
         if (ImGui::SliderFloat("Soft fade dist##vfx", &sd, 0.0f, 200.0f, "%.1f"))
@@ -373,7 +373,7 @@ void drawVfxTuningSection() {
             gos_vfx_setLitEnabled(litOn ? 1 : 0);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Tint alpha smoke/dust by the scene sun + ambient so it\n"
-                              "reads as lit volume. Default OFF (env MC2_VFX_LIT_PARTICLES).\n"
+                              "reads as lit volume. Default OFF (options.cfg VfxLitParticles).\n"
                               "Alpha groups only; additive flashes/lasers stay emissive.");
         float ls = gos_vfx_getLitStrength();
         if (ImGui::SliderFloat("Lit strength##vfx", &ls, 0.0f, 1.0f, "%.2f"))

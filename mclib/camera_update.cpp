@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 
@@ -139,7 +140,7 @@ long Camera::update (void)
 	// Should not be necessary every frame.
 	// TEST FOR NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	//
-	// SUN-ELEVATION-FIX-1 -- MC2_SUN_ELEVATION_FIX, DEFAULT OFF.
+	// SUN-ELEVATION-FIX-1 -- options.cfg SunElevationFix, DEFAULT OFF.
 	//
 	// THE DEFECT, and it is arithmetic, not taste. The legacy three lines below
 	// build a vector whose HORIZONTAL part is already unit length and whose z is
@@ -184,7 +185,7 @@ long Camera::update (void)
 	//
 	// WHEN ON, this also UNIFIES the world: the corrected terrain sun becomes
 	// EXACTLY -swap(ObjectLights.light_dir), the vector mech specular already
-	// uses and the one MC2_SUN_AXIS_FIX gives mech/vehicle diffuse -- so terrain,
+	// uses and the one SunAxisFix gives mech/vehicle diffuse -- so terrain,
 	// props, mech diffuse, mech specular and vehicles land on ONE sun vector by
 	// construction. Neither gate alone achieves that (harness test
 	// fix_b_unifies_terrain_sun_with_the_object_row).
@@ -199,7 +200,7 @@ long Camera::update (void)
 	// of the registry's stated OFF, reported as a DISAGREEMENT. The behaviour was
 	// right and the idiom was unreadable, which is exactly how the four gate-
 	// default defects found today survived. Do not "simplify" this back.
-	static const bool s_sunElevationFix = mc2::gate::get<"MC2_SUN_ELEVATION_FIX">();
+	static const bool s_sunElevationFix = mc2::options::current().sunElevationFix;
 
 	const float sunAzimuthRad = (lightYaw + 45.0f) * DEGREES_TO_RADS;
 	const float sunPitchRad   = lightPitch * DEGREES_TO_RADS;

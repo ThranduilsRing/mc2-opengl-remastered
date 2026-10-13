@@ -116,7 +116,7 @@ public:
     // before the in-scene particle flush so particle shaders can sample it
     // WITHOUT a read-from-bound-attachment feedback loop (sceneDepthTex_ is the
     // active depth attachment during the flush). Lazily allocated on the first
-    // copy (gated by MC2_VFX_SOFT_PARTICLES at the bridge) -> reads 0 and costs
+    // copy (gated by the VfxSoftParticles option at the bridge) -> reads 0 and costs
     // nothing until then. DEPTH24_STENCIL8, full-res, matches sceneDepthTex_ so
     // glCopyImageSubData is a same-format copy.
     GLuint getSceneDepthCopyTexture() const { return sceneDepthCopyTex_; }
@@ -236,8 +236,8 @@ public:
     float getShadowBiasUnits() const { return shadowBiasUnits_; }
 
     // --- Item 1: Cascaded Shadow Maps (dynamic path) -----------------------
-    // Gate (MC2_SHADOW_CSM, default ON since 2026-06-18 `8ff13a36`; "=0" opts
-    // out to the legacy single-map path above, byte-identical). When ON
+    // Option ShadowCSM (options.cfg, default on; off selects the legacy
+    // single-map path above, byte-identical). When on
     // (the default), the dynamic shadow is a GL_TEXTURE_2D_ARRAY of csmCount
     // layers, each with its own light matrix.
     GLuint getDynamicShadowArrayTexture() const { return dynShadowArrayTex_; }
@@ -781,7 +781,7 @@ private:
     float dynamicLightSpaceMatrix_[16];
     glsl_program* shadowDebugProg_;
 
-    // --- Item 1 CSM state (only used when MC2_SHADOW_CSM gate is ON) --------
+    // --- Item 1 CSM state (only used when the ShadowCSM option is on) --------
     static const int kMaxCsmCascades = 3;
     GLuint dynShadowArrayFBO_;                 // FBO whose depth attach is one array layer
     GLuint dynShadowArrayDummyColorTex_;       // 7900 XTX FBO-completeness dummy (array)

@@ -45,10 +45,8 @@ from smoke_lib import nofocus  # noqa: E402
 FIELD_ENV = {
     "MC2_NO_LAUNCHER": "1",
     "MC2_DEBUG_STATE_DUMP": "1",
-    "MC2_SHADOW_CSM": "1",
-    "MC2_STATIC_PROP_PBR_V1": "1",
-    "MC2_STATIC_PROP_AMBIENT_V1": "1",
-    "MC2_STATIC_PROP_IBL_SH": "1",
+    # The launcher's field lighting set, as options.cfg overrides.
+    "MC2_OPTIONS_OVERRIDE": "ShadowCSM=1,StaticPropPbr=1,StaticPropAmbient=1,StaticPropIblSh=1",
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_VK_SHARED_GBUFFER": "1",
 }

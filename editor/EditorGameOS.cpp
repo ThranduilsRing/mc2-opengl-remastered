@@ -50,6 +50,7 @@
 
 #include <SDL2/SDL.h>
 #include "Gates/gate.h"
+#include "Gates/render_options_publish.h"
 
 #ifdef TRACY_ENABLE
 #  include "tracy/Tracy.hpp"
@@ -251,6 +252,11 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
     GetGameOSEnvironment(commandLine ? commandLine : "");
     EditorGameOSTrace("InitGameOS: after GetGameOSEnvironment InitializeGameEngine=%p",
         Environment.InitializeGameEngine);
+
+    // The editor runs no CPrefs::load for options.cfg and no gameosmain, so it publishes the render options itself, with the game's reader
+    // and grammar, before any renderer reader runs (without this the editor rendered with the built-in defaults whatever options.cfg said).
+    for (const auto& r : mc2::options::publishFromInstall())
+        mc2::options::logRejectedOption(r.key, r.text, r.why, mc2::options::find(r.key));
 
     // The SDL GameOS main() normally creates the render window/context before
     // InitializeGameEngine().  The MFC editor does not run that main(), so do

@@ -1,9 +1,9 @@
 #pragma once
 // TERRAIN-DECAL-SLICE-0C — live cliff mesh-decal placement tuning.
 //
-// Holds the 5 placement knobs (scale/offset/lateral/lift/yaw) as MUTABLE global
-// state, initialized from the MC2_TERRAIN_DECAL_* env defaults so launch behavior
-// is byte-identical when the panel is untouched. bdactor.cpp's BldgAppearance::
+// Holds the placement knobs (scale/offset/lateral/lift/yaw/pitch) as MUTABLE global
+// state, starting from the frozen defaults below so launch behavior is
+// byte-identical when the panel is untouched. bdactor.cpp's BldgAppearance::
 // registerStatic captures the per-decal build context (recipe index + placement
 // origin + sampled terrain normal) here, and both registration and the live ImGui
 // panel share buildCliffWallMatrix() so a slider drag recomputes and re-uploads the
@@ -19,19 +19,26 @@ namespace Stuff { class Matrix4D; class Vector3D; }
 
 namespace CliffDecalTuning {
 
-// The five live placement knobs. Defaults match the Slice-0A/0B hardcoded values
-// (scale=1, offset=8, lateral=0, lift=0, yaw=0), overridable at launch via the
-// MC2_TERRAIN_DECAL_* env vars. Read once at first access, then mutated live.
+// The frozen placement defaults (the former MC2_TERRAIN_DECAL_* gate defaults). A tuned
+// placement found with the panel is frozen by changing these.
+inline constexpr float kDefaultScale    = 1.0f;
+inline constexpr float kDefaultOffset   = 8.0f;    // outward distance along the wall facing axis, world units
+inline constexpr float kDefaultLateral  = 0.0f;    // side-to-side along the wall contour axis, world units
+inline constexpr float kDefaultLift     = 0.0f;    // along world-up, world units
+inline constexpr float kDefaultYawDeg   = 0.0f;    // rotation of the facing/tangent about world-up
+inline constexpr float kDefaultPitchDeg = 0.0f;    // lean of the wall top backward toward the hill
+
+// The live placement knobs: the defaults above, then mutated by the panel.
 struct Knobs {
-    float scale   = 1.0f;
-    float offset  = 8.0f;
-    float lateral = 0.0f;
-    float lift    = 0.0f;
-    float yawDeg  = 0.0f;
-    float pitchDeg = 0.0f; // TERRAIN-DECAL-PITCH: lean the wall top backward toward the hill.
+    float scale    = kDefaultScale;
+    float offset   = kDefaultOffset;
+    float lateral  = kDefaultLateral;
+    float lift     = kDefaultLift;
+    float yawDeg   = kDefaultYawDeg;
+    float pitchDeg = kDefaultPitchDeg;
 };
 
-// Mutable knob accessor (lazily seeded from env on first call). GUI edits this.
+// Mutable knob accessor. GUI edits this.
 Knobs& knobs();
 
 // Shared face-frame builder used by BOTH registerStatic and the live update.
@@ -70,8 +77,8 @@ void cliffDecal_getKnobs(float* scale, float* offset, float* lateral,
 void cliffDecal_setKnobsAndApply(float scale, float offset, float lateral,
                                  float lift, float yawDeg, float pitchDeg);
 
-// Print the current knob values to stderr so a tuned placement can be captured
-// into view-terrain.bat (as MC2_TERRAIN_DECAL_* env vars).
+// Print the current knob values to stderr so a tuned placement can be frozen into
+// the kDefault* constants above.
 void cliffDecal_logValues();
 
 } // namespace CliffDecalTuning

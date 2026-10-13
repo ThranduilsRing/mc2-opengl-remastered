@@ -167,7 +167,7 @@ struct PostprocessHzbRegionContext {
 
 // Maximum cascade count the ShadowDepth region carries in a fixed inline array
 // (keeps the context a POD -- no heap / no std::vector in the neutral contract).
-// The GL CSM path (MC2_SHADOW_CSM) uses a small ladder; 4 covers it with slack.
+// The GL CSM path (the ShadowCSM option) uses a small ladder; 4 covers it with slack.
 static const int kMaxShadowCascades = 4;
 
 // BACKEND-NEUTRAL region context for the ShadowDepth region (VK-REGION-SHADOW-1).

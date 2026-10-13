@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 // MC2_POSTPROCESS_BACKEND selects the backend of every routed region: "vk" (or "vulkan") asks for the
@@ -12,14 +13,13 @@ bool postprocessBackendWantsVk()
 }
 
 // === Item 1: Cascaded Shadow Maps gate (dynamic shadow path) ==============
-// MC2_SHADOW_CSM  : master gate, DEFAULT ON (reworked 2026-06-18, `8ff13a36`;
-//                   see docs/tier1_env_vars.md "Dynamic CSM"). Set "=0" to opt
-//                   out to the legacy single dynamic map path.
+// ShadowCSM (options.cfg) : master switch, default on; off selects the legacy single dynamic
+//                   map path. See docs/tier1_env_vars.md "Dynamic CSM".
 // MC2_SHADOW_CSM_COUNT  : cascade count, default 3, clamp [1,3].
 // MC2_SHADOW_CSM_LAMBDA : log/uniform split blend, default 0.5, clamp [0,1].
 bool mc2ShadowCsmEnabled()
 {
-    static const bool s_on = mc2::gate::get<"MC2_SHADOW_CSM">();
+    static const bool s_on = mc2::options::current().shadowCsm;
     return s_on;
 }
 
@@ -276,12 +276,12 @@ float mc2ShadowMechSoft()
 
 // PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow
 // (building self-shadow + prop-on-prop) in shadow_screen.frag instead of the
-// static map only. MC2_PROP_SHADOW_RECEIVE, DEFAULT OFF; =1 enables. OFF =
+// static map only. options.cfg PropShadowReceive, default 0; 1 enables. 0 =
 // legacy: the GBuffer1.a=0.25 prop class skips sampleDynamicShadow entirely
 // (uniform uploads 0 -> shader branch unreachable -> pixel-identical).
 int mc2PropShadowReceive()
 {
-    static const int s_v = mc2::gate::get<"MC2_PROP_SHADOW_RECEIVE">();
+    static const int s_v = mc2::options::current().propShadowReceive;
     return s_v;
 }
 

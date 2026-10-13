@@ -10,7 +10,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
-#include "Gates/gate.h"
 #include "mc2fmt.h"
 
 namespace CliffDecalTuning {
@@ -23,23 +22,10 @@ Stuff::Vector3D  s_xlatPosition;   // shape-world placement origin
 Stuff::Vector3D  s_nAcc;           // accumulated world-axis terrain normal
 
 Knobs s_knobs;
-bool  s_knobsSeeded = false;
-
-void seedKnobsFromEnv() {
-    if (s_knobsSeeded) return;
-    s_knobsSeeded = true;
-    s_knobs.scale    = mc2::gate::get<"MC2_TERRAIN_DECAL_SCALE">();
-    s_knobs.offset   = mc2::gate::get<"MC2_TERRAIN_DECAL_OFFSET">();
-    s_knobs.lateral  = mc2::gate::get<"MC2_TERRAIN_DECAL_LATERAL">();
-    s_knobs.lift     = mc2::gate::get<"MC2_TERRAIN_DECAL_LIFT">();
-    s_knobs.yawDeg   = mc2::gate::get<"MC2_TERRAIN_DECAL_YAW">();
-    s_knobs.pitchDeg = mc2::gate::get<"MC2_TERRAIN_DECAL_PITCH">();
-}
 
 } // namespace
 
 Knobs& knobs() {
-    seedKnobsFromEnv();
     return s_knobs;
 }
 
@@ -129,7 +115,6 @@ void buildCliffWallMatrix(const Stuff::Vector3D& xlatPosition,
 void captureDecalContext(int32_t recipeIndex,
                          const Stuff::Vector3D& xlatPosition,
                          const Stuff::Vector3D& nAcc) {
-    seedKnobsFromEnv();
     s_recipeIndex  = recipeIndex;
     s_xlatPosition = xlatPosition;
     s_nAcc         = nAcc;
@@ -145,7 +130,6 @@ bool cliffDecal_hasDecal() {
 
 void cliffDecal_getKnobs(float* scale, float* offset, float* lateral,
                          float* lift, float* yawDeg, float* pitchDeg) {
-    seedKnobsFromEnv();
     if (scale)    *scale    = s_knobs.scale;
     if (offset)   *offset   = s_knobs.offset;
     if (lateral)  *lateral  = s_knobs.lateral;
@@ -156,7 +140,6 @@ void cliffDecal_getKnobs(float* scale, float* offset, float* lateral,
 
 void cliffDecal_setKnobsAndApply(float scale, float offset, float lateral,
                                  float lift, float yawDeg, float pitchDeg) {
-    seedKnobsFromEnv();
     s_knobs.scale    = scale;
     s_knobs.offset   = offset;
     s_knobs.lateral  = lateral;
@@ -175,8 +158,7 @@ void cliffDecal_setKnobsAndApply(float scale, float offset, float lateral,
 }
 
 void cliffDecal_logValues() {
-    seedKnobsFromEnv();
-    mc2::fmt::print_err("[TERRAIN_DECAL v1] tuned knobs: MC2_TERRAIN_DECAL_SCALE={:.4f} MC2_TERRAIN_DECAL_OFFSET={:.2f} MC2_TERRAIN_DECAL_LATERAL={:.2f} MC2_TERRAIN_DECAL_LIFT={:.2f} MC2_TERRAIN_DECAL_YAW={:.2f} MC2_TERRAIN_DECAL_PITCH={:.2f}\n", s_knobs.scale, s_knobs.offset, s_knobs.lateral, s_knobs.lift, s_knobs.yawDeg, s_knobs.pitchDeg);
+    mc2::fmt::print_err("[TERRAIN_DECAL v1] tuned knobs: scale={:.4f} offset={:.2f} lateral={:.2f} lift={:.2f} yaw={:.2f} pitch={:.2f}\n", s_knobs.scale, s_knobs.offset, s_knobs.lateral, s_knobs.lift, s_knobs.yawDeg, s_knobs.pitchDeg);
     std::fflush(stderr);
 }
 

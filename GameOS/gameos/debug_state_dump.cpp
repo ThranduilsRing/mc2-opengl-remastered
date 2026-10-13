@@ -163,6 +163,7 @@ extern "C" void mc2_render_backend_mech_region_health(
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
 
@@ -472,12 +473,14 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "    \"MC2_VIEW_UNIFORMS\": "; b(s, mc2::gate::get<"MC2_VIEW_UNIFORMS">()); s << ",\n";
     s << "    \"MC2_MATERIAL_GPU\": "; b(s, mc2::gate::get<"MC2_MATERIAL_GPU">()); s << ",\n";
     s << "    \"MC2_MATERIAL_GPU_SAMPLE\": "; b(s, mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">()); s << ",\n";
-    s << "    \"MC2_STATIC_PROP_IBL_SH\": "; b(s, mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">()); s << ",\n";
-    s << "    \"MC2_STATIC_PROP_PBR_V1\": "; b(s, mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">()); s << ",\n";
+    s << "    \"MC2_STATIC_PROP_IBL_SH\": "; b(s, mc2::options::current().staticPropIblSh); s << ",\n";
+    s << "    \"MC2_STATIC_PROP_PBR_V1\": "; b(s, mc2::options::current().staticPropPbr); s << ",\n";
     s << "    \"MC2_QUADSETUP_ARMED_SKIP\": "; b(s, mc2::gate::get<"MC2_QUADSETUP_ARMED_SKIP">()); s << ",\n";
     s << "    \"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE\": "; b(s, mc2::gate::get<"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE">()); s << ",\n";
     s << "    \"MC2_VEGETATION_CARDS\": "; b(s, mc2::gate::get<"MC2_VEGETATION_CARDS">()); s << "\n";
     s << "  },\n";
+    // Every options.cfg render option as the renderer reads it (file values plus MC2_OPTIONS_OVERRIDE): a proof records what it ran with.
+    s << "  \"renderOptions\": " << mc2::options::toJson(mc2::options::current()) << ",\n";
     s << "  \"engineView\": {\n";
     s << "    \"known\": "; b(s, viewKnown); s << ",\n";
     s << "    \"viewId\": " << view.id << ",\n";

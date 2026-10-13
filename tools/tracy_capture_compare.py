@@ -77,6 +77,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
 from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import render_options_pin, render_resolution  # noqa: E402
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
@@ -164,6 +165,90 @@ def mc2_running() -> bool:
 
 # ---------------------------------------------------------------- capture ----
 
+def options_sidecar(trace: Path) -> Path:
+    """Where capture_trace records the render options of a trace."""
+    return Path(trace).with_suffix(".options.json")
+
+
+def require_same_options(trace_a: Path, trace_b: Path, vary, a_name: str = "A", b_name: str = "B") -> None:
+    """Exit unless both traces recorded their render options and they agree on every key not in `vary` (a mismatch is a hard failure, like the
+    resolution)."""
+    try:
+        render_options_pin.require_same(render_options_pin.read(options_sidecar(trace_a)), render_options_pin.read(options_sidecar(trace_b)),
+                                        vary, a_name, b_name)
+    except render_options_pin.OptionsMismatch as e:
+        sys.exit(f"REFUSED: {e}")
+
+
+def vary_list(text) -> "list[str]":
+    return [k.strip() for k in (text or "").split(",") if k.strip()]
+
+
+def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
+    """The environment the game runs under for a trace: the shell's, minus stray backend variables, plus the harness's settings, the pinned
+    drawable size, the arm, and the caller's --env entries (which win). A function of its inputs so the pin is testable without an engine."""
+    env = os.environ.copy()
+    # scrub stray backend vars so the arm is exactly what we asked for
+    for k in list(env):
+        if k.startswith("MC2_VK") or k == "MC2_RENDER_BACKEND":
+            env.pop(k)
+    env.update({
+        "MC2_NO_LAUNCHER": "1",
+        "MC2_SMOKE_MODE": "1",
+        # BACKGROUND-SMOKE-1: never fullscreen / never grab the pointer.
+        # setdefault-equivalent is not used here because this dict IS the
+        # harness intent; a caller overriding via --env still wins downstream.
+        "MC2_WINDOWED": "1",
+        "MC2_NO_CURSOR_GRAB": "1",
+        # NOFOCUS-FINISH-1: and never occupy visible desktop area. This harness
+        # was invisible to BOTH guards until now -- it hand-rolls its own
+        # STARTUPINFO and its own Popen (no nofocus), and its argv name
+        # `game_cmd` was not in check-background-launch's ENGINE_ARGV heuristic,
+        # so it never appeared in the launch inventory either. Combined with
+        # SW_SHOWNOACTIVATE below that made it the one harness that put a
+        # genuinely VISIBLE, options.cfg-sized window on the user's desktop for
+        # the entire capture.
+        #
+        # Safe for the measurement, which is the whole point of this file:
+        # gameosmain.cpp's 10ms background throttle keys on
+        # `SDL_GetWindowFlags & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)`, and
+        # an offscreen-but-shown window sets NEITHER -- so
+        # Frame.BackgroundThrottle still never fires and
+        # assert_window_was_visible() still passes. Offscreen is a POSITION, not
+        # a visibility state. Same reason the VK arm is unaffected: the
+        # swapchain surface extent comes from the drawable, which keeps its full
+        # size, so the VK present path does not fail-soft to GL.
+        "MC2_WINDOW_OFFSCREEN": "1",
+        # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
+        # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
+        # so nothing about the run can be verified afterwards.
+        "MC2_LOG": "1",
+    })
+    # Every trace is taken at the pinned drawable size, not whatever options.cfg says
+    # (smoke_lib/render_resolution.py carries the reason); --env MC2_WIDTH=... --env MC2_HEIGHT=... overrides it (one side alone is refused).
+    try:
+        render_resolution.pin_unless_declared(env, dict(kv.partition("=")[::2] for kv in (extra_env or [])))
+    except render_resolution.HalfDeclaredSize as e:
+        sys.exit(f"ERROR: {e}")
+    if fixed_timestep:
+        env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+    if fps_cap is not None:
+        env["MC2_FPS_CAP"] = str(fps_cap)
+    if pose:
+        env["MC2_CAMERA_PARK"] = pose
+    if arm == "vk":
+        env.update(VK_ENV)
+        print("NOTE: VK arm -- keep the game window visible/non-minimized or VK "
+              "fail-softs to GL and you profile the wrong present path.")
+    for kv in (extra_env or []):
+        k, sep, v = kv.partition("=")
+        if not sep:
+            sys.exit(f"ERROR: --env expects KEY=VAL, got '{kv}'")
+        env[k] = v
+        print(f"[capture] extra env {k}={v}")
+    return env
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True) -> int:
@@ -213,6 +298,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         sys.exit("ABORT: an mc2.exe is already running -- the user may be playing. "
                  "Not launching another instance; nothing was touched.")
 
+    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env)   # before the recorder starts: a refused --env must leave nothing running
+
     # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
     cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
                "-s", str(seconds), "-f", "-o", str(out)]
@@ -222,59 +309,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                 **nofocus.hidden_kwargs())  # tracy-capture is a console tool
     time.sleep(1.0)  # let it bind the port before the game boots
 
-    env = os.environ.copy()
-    # scrub stray backend vars so the arm is exactly what we asked for
-    for k in list(env):
-        if k.startswith("MC2_VK") or k == "MC2_RENDER_BACKEND":
-            env.pop(k)
-    env.update({
-        "MC2_NO_LAUNCHER": "1",
-        "MC2_SMOKE_MODE": "1",
-        # BACKGROUND-SMOKE-1: never fullscreen / never grab the pointer.
-        # setdefault-equivalent is not used here because this dict IS the
-        # harness intent; a caller overriding via --env still wins downstream.
-        "MC2_WINDOWED": "1",
-        "MC2_NO_CURSOR_GRAB": "1",
-        # NOFOCUS-FINISH-1: and never occupy visible desktop area. This harness
-        # was invisible to BOTH guards until now -- it hand-rolls its own
-        # STARTUPINFO and its own Popen (no nofocus), and its argv name
-        # `game_cmd` was not in check-background-launch's ENGINE_ARGV heuristic,
-        # so it never appeared in the launch inventory either. Combined with
-        # SW_SHOWNOACTIVATE below that made it the one harness that put a
-        # genuinely VISIBLE, options.cfg-sized window on the user's desktop for
-        # the entire capture.
-        #
-        # Safe for the measurement, which is the whole point of this file:
-        # gameosmain.cpp's 10ms background throttle keys on
-        # `SDL_GetWindowFlags & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)`, and
-        # an offscreen-but-shown window sets NEITHER -- so
-        # Frame.BackgroundThrottle still never fires and
-        # assert_window_was_visible() still passes. Offscreen is a POSITION, not
-        # a visibility state. Same reason the VK arm is unaffected: the
-        # swapchain surface extent comes from the drawable, which keeps its full
-        # size, so the VK present path does not fail-soft to GL.
-        "MC2_WINDOW_OFFSCREEN": "1",
-        # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
-        # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
-        # so nothing about the run can be verified afterwards.
-        "MC2_LOG": "1",
-    })
-    if fixed_timestep:
-        env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
-    if fps_cap is not None:
-        env["MC2_FPS_CAP"] = str(fps_cap)
-    if pose:
-        env["MC2_CAMERA_PARK"] = pose
-    if arm == "vk":
-        env.update(VK_ENV)
-        print("NOTE: VK arm -- keep the game window visible/non-minimized or VK "
-              "fail-softs to GL and you profile the wrong present path.")
-    for kv in (extra_env or []):
-        k, sep, v = kv.partition("=")
-        if not sep:
-            sys.exit(f"ERROR: --env expects KEY=VAL, got '{kv}'")
-        env[k] = v
-        print(f"[capture] extra env {k}={v}")
+    # The render options are an input of the trace like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE. They are written
+    # next to the trace so a later compare can refuse two traces taken with different options.
+    options_rec = render_options_pin.record(install, env)
+    render_options_pin.write(options_sidecar(out), options_rec)
+    for rj in options_rec["rejected"]:
+        print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
     duration = seconds + 5  # game outlives the recorder window
     game_cmd = [str(game), "--profile", "stock", "--mission", mission,
@@ -298,8 +338,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     print(f"[capture] recorder pid={recorder.pid} -> {out}")
     # nofocus.spawn owns the STARTUPINFO verb (show_window -> SW_SHOWNOACTIVATE,
     # else SW_SHOWMINNOACTIVE), the windowing env and the offscreen backstop.
-    # small_window=False: this is a perf measurement, so the drawable must keep
-    # options.cfg size; the window is still parked offscreen (see env above).
+    # small_window=False: the pinned size above must not be replaced by the 640x480 smoke default; the window is still parked offscreen.
     gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
                        cwd=str(install), env=env,
                        show_window=show_window, small_window=False)
@@ -518,6 +557,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
         if not t.is_file():
             sys.exit(f"ERROR: trace not found: {t}")
     zones = [z.strip() for z in args.zones.split(",")] if args.zones else DEFAULT_ZONES
+    require_same_options(before, after, vary_list(args.vary), "BEFORE", "AFTER")
 
     cols = ["zone", "mean_ns B", "mean_ns A", "d_mean", "total_ms B", "total_ms A",
             "d_total", "count B", "count A"]
@@ -652,6 +692,7 @@ def cmd_baseline(args: argparse.Namespace) -> int:
                           pose=args.pose, fixed_timestep=False, fps_cap=0)
         rc = rc or r
         arm_results[arm] = measure_arm(trace, zones, args.seconds, export_exe)
+        arm_results[arm]["options"] = (render_options_pin.read(options_sidecar(trace)) or {}).get("values")
 
     meta = {
         "name": name,
@@ -721,8 +762,13 @@ def cmd_regress(args: argparse.Namespace) -> int:
         trace = out_dir / f"regress-{arm}.tracy"
         capture_trace(install, arm, base["mission"], seconds, trace,
                       pose=base["pose"], fixed_timestep=False, fps_cap=0)
-        new = measure_arm(trace, zones, seconds, export_exe)
         base_arm = base["arms"].get(arm, {})
+        try:
+            render_options_pin.require_same({"values": base_arm.get("options")}, render_options_pin.read(options_sidecar(trace)),
+                                            vary_list(args.vary), f"baseline {base['name']}", "this run")
+        except render_options_pin.OptionsMismatch as e:
+            sys.exit(f"REFUSED: {e}")
+        new = measure_arm(trace, zones, seconds, export_exe)
         bf = base_arm.get("frames", 0)
         nf = new["frames"]
         drop = (bf - nf) / bf * 100.0 if bf else 0.0  # +drop = slower
@@ -787,6 +833,7 @@ def _measure_pose(install: Path, out_dir: Path, tag: str, mission: str, pose: st
     cpu = zone_samples(trace, zone, export_exe)
     p50 = pct(s, 50)
     return {"tag": tag, "n": len(s),
+            "options": (render_options_pin.read(options_sidecar(trace)) or {}).get("values"),
             "p50_ms": p50, "p99_ms": pct(s, 99),
             "mean_ms": sum(s) / len(s),
             "fps_p50": 1000.0 / p50 if p50 else 0.0,
@@ -915,6 +962,8 @@ def main() -> int:
     d.add_argument("after")
     d.add_argument("--zones", help="comma-separated zone names "
                                    f"(default: {','.join(DEFAULT_ZONES)})")
+    d.add_argument("--vary", default="", help="comma-separated options.cfg keys that differ between the traces on purpose "
+                                              "(any other difference in the recorded render options is refused)")
     d.set_defaults(fn=cmd_compare)
 
     b = sub.add_parser("baseline", help="capture BOTH arms at a pose -> dated baseline dir")
@@ -942,6 +991,8 @@ def main() -> int:
                    help=f"frame-count drop%% that WARNs (default {REGRESS_WARN_PCT})")
     r.add_argument("--fail-pct", type=float, default=REGRESS_FAIL_PCT,
                    help=f"frame-count drop%% that FAILs (default {REGRESS_FAIL_PCT})")
+    r.add_argument("--vary", default="", help="comma-separated options.cfg keys that differ from the baseline on purpose "
+                                              "(any other difference in the recorded render options is refused)")
     r.set_defaults(fn=cmd_regress)
 
     s = sub.add_parser("selfcheck", help="prove the harness can see a known "

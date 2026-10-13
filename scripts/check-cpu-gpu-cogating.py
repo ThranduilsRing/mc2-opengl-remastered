@@ -138,8 +138,8 @@ PAIRS = [
         "cpu": {
             "file": "mclib/mapdata.cpp",
             "anchor": r"Phong smoothing \(legacy mirror of gos_terrain\.tese",
-            # The CPU half must be inert unless this env token is explicitly "0".
-            "inert_by": {"kind": "env", "token": "MC2_CPU_PHONG_RETIRE",
+            # The CPU half must be inert unless the options.cfg key CpuPhongRetire is explicitly FALSE.
+            "inert_by": {"kind": "option", "token": "CpuPhongRetire", "field": "cpuPhongRetire",
                          "reader_file": "mclib/mapdata.cpp"},
             # The guard that actually makes it inert must reference the gate.
             "guard": r"if\s*\(\s*!s_retireCpuPhong\s*&&\s*phongAlpha\s*>\s*0\.0f\s*\)",
@@ -246,20 +246,34 @@ def check(root: Path, quiet: bool = False) -> list[str]:
             if reader_src is None:
                 fail(pid, "R3-ORPHAN", f"gate reader file missing: {inert['reader_file']}")
                 continue
-            if token not in reader_src:
-                fail(pid, "R3-ORPHAN",
-                     f"gate {token} is not read in {inert['reader_file']} -- the CPU half "
-                     f"is NOT actually gated, so it still runs unconditionally.")
-                continue
+            if inert.get("kind") == "option":
+                # An options.cfg switch: the reader must consult the published option, and the option must default ON.
+                field = inert["field"]
+                if f"options::current().{field}" not in reader_src:
+                    fail(pid, "R3-ORPHAN",
+                         f"option {token} is not read in {inert['reader_file']} -- the CPU half "
+                         f"is NOT actually gated, so it still runs unconditionally.")
+                    continue
+                opts_src = read(root, "Gates/render_options.h") or ""
+                if not re.search(r"(?<![A-Za-z0-9_])%s\s*=\s*true(?![A-Za-z0-9_])" % re.escape(field), opts_src):
+                    fail(pid, "R3-ORPHAN",
+                         f"option {token} does not default ON in Gates/render_options.h; the "
+                         f"orphaned CPU term would still be live by default.")
+            else:
+                if token not in reader_src:
+                    fail(pid, "R3-ORPHAN",
+                         f"gate {token} is not read in {inert['reader_file']} -- the CPU half "
+                         f"is NOT actually gated, so it still runs unconditionally.")
+                    continue
 
-            # The reader's unset-case must leave the CPU term OFF.
-            idx = reader_src.index(token)
-            window = reader_src[max(0, idx - 400): idx + 400]
-            if not classify_default_on(window, token, root):
-                fail(pid, "R3-ORPHAN",
-                     f"{token} does not read as a default-ON killswitch near its reader in "
-                     f"{inert['reader_file']}; the orphaned CPU term would still be live by "
-                     f"default. Expected the `!v || v[0] != '0'` idiom.")
+                # The reader's unset-case must leave the CPU term OFF.
+                idx = reader_src.index(token)
+                window = reader_src[max(0, idx - 400): idx + 400]
+                if not classify_default_on(window, token, root):
+                    fail(pid, "R3-ORPHAN",
+                         f"{token} does not read as a default-ON killswitch near its reader in "
+                         f"{inert['reader_file']}; the orphaned CPU term would still be live by "
+                         f"default. Expected the `!v || v[0] != '0'` idiom.")
 
             # The guard that skips the CPU block must exist AND mention the gate.
             guard = cpu.get("guard")
@@ -309,7 +323,7 @@ INJECTIONS = [
      "if (phongAlpha > 0.0f) {"),
     ("R3: the killswitch reader stops reading the gate",
      "mclib/mapdata.cpp",
-     'mc2::gate::get<"MC2_CPU_PHONG_RETIRE">();',
+     'mc2::options::current().cpuPhongRetire;',
      "false;    // injected: gate no longer read"),
     ("R1: anchor vanishes (check goes blind)",
      "mclib/mapdata.cpp",

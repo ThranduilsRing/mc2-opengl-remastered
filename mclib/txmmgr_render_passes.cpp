@@ -127,7 +127,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 					// SHADOW-CASTER-LIGHTBOX-CULL-1 (gate MC2_SHADOW_CASTER_LIGHTBOX_CULL,
 					// DEFAULT OFF). The caster set above is the WHOLE registry (~14K props,
 					// visibility-independent). The dynamic shadow map is camera-fit (small,
-					// esp. under MC2_SHADOW_BOUNDED_NEAR_FIT), so thousands of off-map props
+					// esp. under ShadowBoundedNearFit), so thousands of off-map props
 					// draw shadows that never land in the map = wasted GPU fill. When ON,
 					// filter the casters to only those whose origin projects inside the
 					// dynamic shadow frustum (+margin), using the EXACT same matrix the
@@ -280,7 +280,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			// state). Each beginDynamicShadowCascade binds the array layer + sets
 			// the active cascade matrix (via getDynamicLightSpaceMatrix resolving to
 			// the active cascade) and clears forward-Z. Skipped entirely (no GL) and
-			// byte-identical when MC2_SHADOW_CSM is OFF. csmCasterSet is non-null in
+			// byte-identical when the ShadowCSM option is off. csmCasterSet is non-null in
 			// the prop-caster path; otherwise we fall back to flushShadow per layer.
 			if (mc2ShadowCsmEnabled()) {
 				gosPostProcess* ppCsm = getGosPostProcess();

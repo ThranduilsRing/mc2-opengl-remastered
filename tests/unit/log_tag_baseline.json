@@ -6737,6 +6737,57 @@
    "count": 1
   },
   {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "accepted",
+    "rejected",
+    "spec"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "early_reads",
+    "first",
+    "changed_since_start"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "key",
+    "value",
+    "why",
+    "kept"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OPTIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "key",
+    "value",
+    "why",
+    "want",
+    "kept"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ORDER_FIXTURE",
    "ver": -1,
    "stream": "stdout",
@@ -9660,27 +9711,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "MC2_TERRAIN_DECAL_SCALE",
-    "MC2_TERRAIN_DECAL_OFFSET",
-    "MC2_TERRAIN_DECAL_LATERAL",
-    "MC2_TERRAIN_DECAL_LIFT",
-    "MC2_TERRAIN_DECAL_YAW",
-    "MC2_TERRAIN_DECAL_PITCH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_DECAL",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "name",
-    "pos",
     "scale",
     "offset",
     "lateral",
     "lift",
-    "yaw"
+    "yaw",
+    "pitch"
    ],
    "count": 1
   },
@@ -12483,6 +12519,7 @@
   "MOVER_COHERENCE",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
+  "RESOLUTION",
   "SHADER",
   "SHADER ERROR",
   "SHADER_SCHEMA",

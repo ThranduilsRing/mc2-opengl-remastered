@@ -115,6 +115,7 @@ def assert_capture_resolution(golden_dir, run_dir) -> dict:
         raise ResolutionMismatch(
             f"{run_dir}: no readable capture PNGs -- cannot verify resolution")
     bad = [(bm, w, h) for bm, w, h in poses if (w, h) != (gw, gh)]
+    golden_name = f"tests/visual/goldens/{Path(golden_dir).name}"
     if bad:
         detail = ", ".join(f"{bm}={w}x{h}" for bm, w, h in bad[:6])
         ratio = (gw * gh) / max(1, bad[0][1] * bad[0][2])
@@ -123,8 +124,11 @@ def assert_capture_resolution(golden_dir, run_dir) -> dict:
             f"{gw}x{gh}: {len(bad)}/{len(poses)} pose(s) mismatched [{detail}]. "
             f"The first mismatch carries ~{ratio:.1f}x fewer pixels. Region "
             f"crops are resolution-independent and verify.py upscales silently, "
-            f"so this WOULD have graded and blessed successfully. Re-capture at "
-            f"{gw}x{gh} (check the install's options.cfg ResolutionX/Y).")
+            f"so this WOULD have graded and blessed successfully. Either re-capture at "
+            f"{gw}x{gh} (the install's options.cfg ResolutionX/Y; MC2_WIDTH/MC2_HEIGHT override it), or, when the golden is the stale one "
+            f"(captures are pinned to the size in scripts/smoke_lib/render_resolution.py), RE-BLESS it at the pinned size: capture three "
+            f"runs with `py -3 tools/visual_verify/capture.py --install <install> --bookmarks all --out <run>` and run "
+            f"`py -3 tools/visual_verify/bless.py --run <run1> --run <run2> --run <run3> --to {golden_name}`.")
     return {"reference": f"{gw}x{gh}", "poses_checked": len(poses),
             "verdict": "MATCH"}
 
@@ -179,6 +183,17 @@ def _selftest() -> int:
     case("1920x1080 vs 4K golden FAILS (same aspect)", "3840x2160", "1920x1080", True)
     # NEGATIVE CONTROL -- one axis off by a little.
     case("3840x2159 vs 4K golden FAILS", "3840x2160", "3840x2159", True)
+    # The refusal names the re-bless command, so the person who hits it is not left to find it.
+    with tempfile.TemporaryDirectory() as td:
+        g, r = build(Path(td), "3840x2160", "1920x1080")
+        try:
+            assert_capture_resolution(g, r)
+            named = False
+        except ResolutionMismatch as e:
+            named = "bless.py --run" in str(e) and "RE-BLESS" in str(e)
+        if not named:
+            ok = False
+        print(f"{PREFIX} selftest {'ok' if named else 'BROKEN'}: the refusal names the re-bless command")
     # NEGATIVE CONTROL -- golden that declares no reference at all.
     case("golden with no declared resolution FAILS", "3840x2160", "3840x2160",
          True, omit_res=True)

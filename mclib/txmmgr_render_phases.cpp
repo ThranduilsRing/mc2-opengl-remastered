@@ -3,6 +3,7 @@
 
 #include "txmmgr_render_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 mat4 gos2my(Stuff::Matrix4D& m)
 {
@@ -131,11 +132,11 @@ public:
 		// visual one -- 22 of 24 missions move, up to 0.53 of full scale, and
 		// almost exactly as many surface normals get DARKER as brighter. No
 		// human has seen it (engine launches are hard-blocked in this lane), so
-		// it ships opt-in. MC2_SUN_AXIS_FIX=1 enables.
+		// it ships opt-in: options.cfg SunAxisFix = TRUE enables.
 		// Canonical DEFAULT-OFF OPT-IN idiom `(v && v[0] && v[0] != '0')`, so
 		// scripts/check-gate-default-agreement.py can read the default OUT of
 		// the reader. An unparseable idiom is a FAILURE for a Feature gate.
-		static const bool s_sunAxisMc2Fix = mc2::gate::get<"MC2_SUN_AXIS_FIX">();
+		static const bool s_sunAxisMc2Fix = mc2::options::current().sunAxisFix;
 		gos_SetRenderMaterialParameterInt(mat, "u_sunAxisMc2Fix",
 			s_sunAxisMc2Fix ? 1 : 0);
 

@@ -7,9 +7,9 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
-| PORTED | 11 | 121 | 0 |
-| NOT_PORTED | 81 | 44 | 0 |
-| NO_TWIN | 26 | 64 | 0 |
+| PORTED | 10 | 94 | 0 |
+| NOT_PORTED | 76 | 39 | 0 |
+| NO_TWIN | 26 | 50 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
 
@@ -57,7 +57,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_PROP_FIXB_MVP` | OFF | `shaders/gos_tex_vertex_lighted.vert` | `u_worldToClipGL` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
 | `MC2_PROP_FIXB_MVP` | OFF | `shaders/gos_vertex.vert` | `mvp` (uniform) | shaders/vulkan/legacy_shape_tier1.* | HIGH | yes |
 | `MC2_PROP_FIXB_MVP` | OFF | `shaders/gos_vertex_lighted.vert` | `mvp` (uniform) | shaders/vulkan/legacy_shape_tier1.* | HIGH | yes |
-| `MC2_PROP_SHADOW_RECEIVE` | OFF | `shaders/shadow_screen.frag` | `propShadowReceive` (uniform) | shaders/vulkan/screen_shadow_csm.*, shaders/vulkan/screen_shadow_static.* | HIGH | yes |
 | `MC2_RENDER_WATER_FASTPATH_DEBUG` | OFF | `shaders/gos_terrain_water_fast.vert` | `debugMode` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 | `MC2_RENDER_WATER_FASTPATH_DEBUG` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `debugMode` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 | `MC2_SHADER_PATH_TINT` | OFF | `shaders/decal.frag` | `u_pathTint` (uniform) | shaders/vulkan/terrain_decal_tier1.* | MEDIUM | no |
@@ -65,13 +64,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_SHADER_PATH_TINT` | OFF | `shaders/static_prop.frag` | `u_pathTint` (uniform) | shaders/vulkan/color_prop_tier1.* | MEDIUM | no |
 | `MC2_SHADER_PATH_TINT` | OFF | `shaders/terrain_lod_chunk.frag` | `u_pathTint` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_SHADER_PATH_TINT` | OFF | `shaders/terrain_overlay.frag` | `u_pathTint` (uniform) | shaders/vulkan/terrain_decal_tier1.*, shaders/vulkan/terrain_overlay_tier1.* | MEDIUM | no |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `terrainLightDir` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/gos_tex_vertex_lighted.frag` | `terrainLightDir` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/gos_tex_vertex_lighted.vert` | `u_worldToClipGL` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/shadow_debug.frag` | `MC2_SHADOW_CSM` (define) | shaders/vulkan/shadow_debug_overlay.* | HIGH | yes |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/shadow_debug.frag` | `shadowDebugLayer` (uniform) | shaders/vulkan/shadow_debug_overlay.* | MEDIUM | yes |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/shadow_debug.frag` | `shadowDebugUseArray` (uniform) | shaders/vulkan/shadow_debug_overlay.* | HIGH | yes |
-| `MC2_SHADOW_CSM` | **ON (live drift)** | `shaders/shadow_screen.frag` | `MC2_SHADOW_CSM` (define) | shaders/vulkan/screen_shadow_csm.*, shaders/vulkan/screen_shadow_static.* | HIGH | yes |
 | `MC2_SHADOW_STATIC_BANDFIX` | **ON (live drift)** | `shaders/gos_terrain.frag` | `MC2_SHADOW_STATIC_BANDFIX` (define) | shaders/vulkan/terrain_tier1.* | HIGH | yes |
 | `MC2_SHADOW_STATIC_BANDFIX_V2` | **ON (live drift)** | `shaders/gos_terrain.frag` | `MC2_SHADOW_STATIC_BANDFIX_V2` (define) | shaders/vulkan/terrain_tier1.* | HIGH | yes |
 | `MC2_SHADOW_STATIC_BANDFIX_V2` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `MC2_SHADOW_STATIC_BANDFIX_V2` (define) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
@@ -80,8 +72,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_STATICPROP_MATERIAL_PBR_SLOTS` | OFF | `shaders/static_prop.vert` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_STATICPROP_MATERIAL_PBR_SLOTS` | OFF | `shaders/static_prop_depth.frag` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_STATICPROP_MATERIAL_PBR_SLOTS` | OFF | `shaders/static_prop_depth.frag` | `MC2_STATICPROP_PBR_SLOTS` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
-| `MC2_SUN_AXIS_FIX` | OFF | `shaders/gos_tex_vertex_lighted.vert` | `u_sunAxisMc2Fix` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
-| `MC2_SUN_AXIS_FIX` | OFF | `shaders/mech.vert` | `u_sunAxisMc2Fix` (uniform) | shaders/vulkan/mech_tier1.* | HIGH | yes |
 | `MC2_TERRAIN_CLIFF_DISPLACE` | OFF | `shaders/terrain_lod_chunk.tesc` | `u_cliffTessLevel` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | no |
 | `MC2_TERRAIN_DETAIL_ANTITILE` | OFF | `shaders/gos_terrain.frag` | `detailNormalStrength` (uniform) | shaders/vulkan/terrain_tier1.* | MEDIUM | no |
 | `MC2_TERRAIN_DETAIL_ANTITILE` | OFF | `shaders/terrain_lod_chunk.frag` | `detailNormalStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
@@ -143,7 +133,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 
-- NOT_PORTED pairs: 103, of which already default ON: 46
+- NOT_PORTED pairs: 95, of which already default ON: 41
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED
@@ -197,34 +187,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_PROP_FIXB_MVP` | `shaders/vfx_mesh.vert` | `u_worldToClipGL` | `shaders/vulkan/vfx_particle.vert` | MEDIUM |
 | `MC2_RENDER_WATER_FASTPATH_DEBUG` | `shaders/shadow_screen.frag` | `debugMode` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
 | `MC2_RENDER_WATER_FASTPATH_DEBUG` | `shaders/ssao_apply.frag` | `debugMode` | `shaders/vulkan/ssao_apply.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/cloud.frag` | `inverseViewProj` | `shaders/vulkan/cloud_shadow.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/decal.frag` | `terrainLightDir` | `shaders/vulkan/terrain_decal_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/gos_terrain.frag` | `terrainLightDir` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/gos_terrain.tese` | `u_worldToClipGL` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/gos_terrain_water_fast.vert` | `u_worldToClipGL` | `shaders/vulkan/water_geom.vert` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/gos_terrain_water_fast_mdi.vert` | `u_worldToClipGL` | `shaders/vulkan/water_geom.vert` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/mech.vert` | `u_worldToClipGL` | `shaders/vulkan/mech_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/particle_billboard.vert` | `u_worldToClipGL` | `shaders/vulkan/vfx_particle.vert` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `csmDepthSpan` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `dynamicCascadeMatrices` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `dynamicCascadeTexelWorld` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `dynamicCsmCount` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `dynamicFullMapTexelWorld` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `dynamicLightSpaceMatrix` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `enableDynamicShadows` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `enableShadows` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `inverseViewProj` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `lightSpaceMatrix` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_screen.frag` | `shadowSoftness` | `shaders/vulkan/screen_shadow_csm.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/shadow_static_prop.vert` | `lightSpaceMatrix` | `shaders/vulkan/shadow_prop.vert` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/ssao.frag` | `inverseViewProj` | `shaders/vulkan/ssao.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/static_prop.vert` | `u_worldToClipGL` | `shaders/vulkan/color_prop_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/terrain_lod_chunk.frag` | `terrainLightDir` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/terrain_lod_chunk.vert` | `u_worldToClipGL` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/terrain_overlay.frag` | `terrainLightDir` | `shaders/vulkan/terrain_decal_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/terrain_overlay.vert` | `u_worldToClipGL` | `shaders/vulkan/terrain_decal_tier1.frag` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/tube_ribbon.vert` | `u_worldToClipGL` | `shaders/vulkan/vfx_particle.vert` | MEDIUM |
-| `MC2_SHADOW_CSM` | `shaders/vfx_mesh.vert` | `u_worldToClipGL` | `shaders/vulkan/vfx_particle.vert` | MEDIUM |
 | `MC2_SHADOW_CSM_SOFTNESS` | `shaders/shadow_screen.frag` | `shadowSoftness` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
 | `MC2_SHADOW_MECH_SOFT` | `shaders/shadow_screen.frag` | `mechSoft` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
 | `MC2_SHADOW_OBJ_NORMAL_BIAS` | `shaders/shadow_screen.frag` | `objNormalBiasScale` | `shaders/vulkan/screen_shadow_csm.frag` | HIGH |
@@ -287,21 +249,17 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 
 | GL shader | gates |
 |---|---|
-| `shaders/box_decal.frag` | `MC2_BOX_DECAL_NORMAL_REJECT`, `MC2_BOX_DECAL_YSPAN`, `MC2_SHADOW_CSM` |
-| `shaders/box_decal.vert` | `MC2_SHADOW_CSM` |
-| `shaders/building_pbr.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
-| `shaders/gos_terrain_mask_solid.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
-| `shaders/gos_terrain_mask_water.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
-| `shaders/gos_terrain_mine_static.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
-| `shaders/gos_terrain_surface.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
+| `shaders/box_decal.frag` | `MC2_BOX_DECAL_NORMAL_REJECT`, `MC2_BOX_DECAL_YSPAN` |
+| `shaders/building_pbr.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
+| `shaders/gos_terrain_mask_solid.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
+| `shaders/gos_terrain_mask_water.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
+| `shaders/gos_terrain_mine_static.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
+| `shaders/gos_terrain_surface.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gos_text.vert` | `MC2_PROP_FIXB_MVP` |
 | `shaders/gos_vegetation_card.frag` | `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
-| `shaders/gos_vegetation_card.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
+| `shaders/gos_vegetation_card.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gpu_cull_patch.comp` | `MC2_STATIC_PROP_GLOBAL_POOL_LEGACY` |
-| `shaders/gpu_driven_terrain_solid.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
-| `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_TERRAIN_SHORELINE`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
-| `shaders/shadow_depth.vert` | `MC2_SHADOW_CSM` |
-| `shaders/shadow_mech.vert` | `MC2_SHADOW_CSM` |
-| `shaders/shadow_object.vert` | `MC2_SHADOW_CSM` |
-| `shaders/shadow_terrain.tese` | `MC2_SHADOW_CSM`, `MC2_TERRAIN_NORMAL_ARRAY` |
+| `shaders/gpu_driven_terrain_solid.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
+| `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_TERRAIN_SHORELINE`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
+| `shaders/shadow_terrain.tese` | `MC2_TERRAIN_NORMAL_ARRAY` |
 | `shaders/shadow_terrain.vert` | `MC2_PROP_FIXB_MVP` |

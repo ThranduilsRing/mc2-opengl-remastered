@@ -11,17 +11,16 @@
     },
     {
       "id": "staticprop_ibl_off",
-      "description": "IBL SH ambient disabled (MC2_STATIC_PROP_IBL_SH=0). Kill-switch path.",
+      "description": "IBL SH ambient disabled (options.cfg StaticPropIblSh=0, passed as MC2_OPTIONS_OVERRIDE). Kill-switch path.",
       "env": {
-        "MC2_STATIC_PROP_IBL_SH": "0"
+        "MC2_OPTIONS_OVERRIDE": "StaticPropIblSh=0"
       }
     },
     {
-      "id": "staticprop_pbr_on",
-      "description": "PBR V1 Schlick-Fresnel specular enabled. Requires MC2_VIEW_UNIFORMS=1.",
+      "id": "staticprop_pbr_ambient_off",
+      "description": "PBR V1 specular and hemisphere ambient disabled (options.cfg StaticPropPbr=0, StaticPropAmbient=0, passed as MC2_OPTIONS_OVERRIDE): the look before both became default ON.",
       "env": {
-        "MC2_STATIC_PROP_PBR_V1": "1",
-        "MC2_VIEW_UNIFORMS": "1"
+        "MC2_OPTIONS_OVERRIDE": "StaticPropPbr=0,StaticPropAmbient=0"
       }
     },
     {

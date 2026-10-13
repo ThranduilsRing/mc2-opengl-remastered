@@ -1062,6 +1062,7 @@ int main(int argc, char** argv)
 
     // fills in Environment structure
     GetGameOSEnvironment(cmdline);
+    initRenderOptionsFromConfig();
     initResolutionFromConfig();
 
     delete[] cmdline;
