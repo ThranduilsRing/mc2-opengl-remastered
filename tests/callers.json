@@ -1583,7 +1583,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 889,
+          "line": 900,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -8020,7 +8020,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 867,
+          "line": 878,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
