@@ -9,6 +9,7 @@ files that never name the type (editor/BeautySidecarPreview.cpp). Each batch com
 The deprecation itself is applied to mclib/estring.h by an uncommitted local edit and is NEVER committed.
 
   py -3 tests/analyze/estring_callsites.py BUILD.log [--out PATH] [--root A:/Games/mc2-main]
+  py -3 tests/analyze/estring_callsites.py --drop code/objective.cpp code/x.cpp:42 ...   # remove converted rows from the committed list
 """
 from __future__ import annotations
 
@@ -84,12 +85,36 @@ def render(rows) -> str:
     return "\n".join(out) + "\n"
 
 
+def drop(path: str, targets: list[str]) -> int:
+    """Rewrite the committed list without the rows of converted files (or file:line rows)."""
+    whole = {t for t in targets if ":" not in t}
+    lines = {tuple(t.rsplit(":", 1)) for t in targets if ":" in t}
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for ln in f:
+            if ln.startswith("#") or not ln.strip():
+                continue
+            file, line, kind = ln.rstrip().split(":", 2)
+            if file in whole or (file, line) in lines:
+                continue
+            rows.append((file, int(line), "0", "EString::" + kind))
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(render(rows))
+    print(f"estring_callsites: {len(rows)} sites in {len({r[0] for r in rows})} files remain -> {path}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("log")
+    ap.add_argument("log", nargs="?", help="the deprecation build's log (omit with --drop)")
+    ap.add_argument("--drop", nargs="+", metavar="FILE[:LINE]", help="remove these rows from the committed list: a batch that converted them, proven by the build")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--root", default=ROOT)
     args = ap.parse_args()
+    if args.drop:
+        return drop(args.out, args.drop)
+    if not args.log:
+        ap.error("a build log is required unless --drop is given")
     rows = parse(args.log, args.root)
     if not rows:
         print("estring_callsites: no EString C4996 rows in the log (was the deprecation applied?)", file=sys.stderr)
