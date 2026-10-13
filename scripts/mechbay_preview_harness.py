@@ -16,7 +16,8 @@ Usage:
   py -3 scripts/mechbay_preview_harness.py loadout
   py -3 scripts/mechbay_preview_harness.py bay --campaign "campaign" --frame 200 --deploy <dir>
 
-Screen names match mc2BootScreenXY in code/missionbegin.cpp: purchase|bay|loadout|launch|briefing.
+Screen names match mc2BootScreenXY in code/missionbegin.cpp: purchase|bay|loadout|launch|briefing. The encyclopedia names boot the Mechlopedia from
+the main menu instead (code/mainmenu.cpp, no mission is played): encyclopedia (mechs), encyclopedia_vehicles, encyclopedia_pilots.
 """
 import argparse
 import os
@@ -34,7 +35,7 @@ DEFAULT_DEPLOY = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("screen", choices=["purchase", "bay", "loadout", "launch", "briefing"])
+    ap.add_argument("screen", choices=["purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
@@ -67,6 +68,7 @@ def main():
               "MC2_SOAK_PILOT_PROMOTE"):
         env.pop(k, None)
 
+    encyclopedia = args.screen.startswith("encyclopedia")
     env.update({
         "MC2_BOOT_TO_BAY": args.campaign,
         "MC2_BOOT_TO_SCREEN": args.screen,
@@ -93,6 +95,11 @@ def main():
         # logistics/front-end path and smoke mode skips movies and screens.
         "MC2_NO_CURSOR_GRAB": "1",
     })
+
+    if encyclopedia:
+        # The Mechlopedia boots from the main menu: no campaign mission, no auto-win.
+        for k in ("MC2_BOOT_TO_BAY", "MC2_SOAK_AUTOWIN", "MC2_SOAK_WIN_AFTER_SEC", "MC2_SOAK_STOP_AT_BAY"):
+            env.pop(k, None)
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
     with open(out_stdout, "w") as fo, open(out_stderr, "w") as fe:
