@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 5667,
+  "GameOS": 5665,
   "GuiRuntime": 64,
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 15016,
-  "mclib": 32432,
-  "shaders": 3012
+  "code": 15014,
+  "mclib": 32412,
+  "shaders": 2980
  },
  "dirs": [
   "code",
@@ -57,8 +57,8 @@
   "GameOS/gameos/gos_static_prop_batcher.h": 14,
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 8,
   "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": 124,
-  "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp": 48,
-  "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp": 43,
+  "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp": 47,
+  "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp": 42,
   "GameOS/gameos/gos_static_prop_batcher_mapload.cpp": 26,
   "GameOS/gameos/gos_static_prop_batcher_program.cpp": 8,
   "GameOS/gameos/gos_static_prop_batcher_seam.cpp": 8,
@@ -245,7 +245,7 @@
   "code/mpsetuparea.h": 8,
   "code/mpstats.cpp": 34,
   "code/object_walk_trace.h": 8,
-  "code/objective.cpp": 515,
+  "code/objective.cpp": 513,
   "code/objmgr.cpp": 96,
   "code/objmgr.h": 29,
   "code/objmgr_io.cpp": 276,
@@ -291,7 +291,7 @@
   "mclib/ablenv.cpp": 209,
   "mclib/ablenv.h": 18,
   "mclib/ablexpr.cpp": 49,
-  "mclib/ablrtn.cpp": 111,
+  "mclib/ablrtn.cpp": 107,
   "mclib/ablscan.cpp": 50,
   "mclib/ablstd.cpp": 9,
   "mclib/ablstmt.cpp": 8,
@@ -556,7 +556,7 @@
   "mclib/terrtxm2.cpp": 8,
   "mclib/terrtxm2_bake.cpp": 188,
   "mclib/terrtxm2_load.cpp": 140,
-  "mclib/tgainfo.cpp": 113,
+  "mclib/tgainfo.cpp": 97,
   "mclib/tgl.h": 166,
   "mclib/tgl_parse.cpp": 138,
   "mclib/tgl_render.cpp": 58,
@@ -623,7 +623,7 @@
   "shaders/static_prop.frag": 63,
   "shaders/static_prop.vert": 19,
   "shaders/static_prop_depth.frag": 43,
-  "shaders/terrain_lod_chunk.frag": 95,
+  "shaders/terrain_lod_chunk.frag": 63,
   "shaders/terrain_overlay.frag": 21,
   "shaders/vulkan/cloud_shadow.frag": 61,
   "shaders/vulkan/edge_fog.frag": 40,
@@ -652,8 +652,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "1e4cb7b13",
+ "head": "0af64d2d6",
  "n": 8,
- "total": 56771,
+ "total": 56715,
  "version": 1
 }
