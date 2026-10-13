@@ -15,6 +15,7 @@
 #include "Gates/gate_row.h"
 #include "Gates/gate_table_dsl.h"
 #include "Gates/render_options.h"
+#include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
 
 #include <cstdio>
@@ -1349,4 +1350,45 @@ TEST_CASE("render options read before the publish are counted, and publish repla
     (void)mo::current();
     CHECK(mo::earlyReads() == after);
     mo::publish(mo::RenderOptions{});   // leave the process-wide values at the defaults for the other cases
+}
+
+TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the [MechCommander2] block") {
+    namespace mo = mc2::options;
+    const std::string head = "FITini \r\n\r\n[MechCommander2]\r\nl ResolutionX = 3840\r\nb FullScreen = TRUE\r\nb ShadowCSM = TRUE\r\n";
+    const std::string tail = "\r\n[Keys]\r\nl Foo = 1\r\n";
+    const std::string file = head + tail;
+    CHECK(*mo::cfg::get(file, "ResolutionX") == "3840");
+    CHECK(*mo::cfg::get(file, "shadowcsm") == "TRUE");
+    CHECK_FALSE(mo::cfg::get(file, "Foo").has_value());   // another block
+    CHECK_FALSE(mo::cfg::get(file, "PostCAS").has_value());
+
+    // an existing line is replaced in place, every other byte stays
+    const mo::Option& csm = *mo::find("ShadowCSM");
+    CHECK(mo::cfg::set(file, csm, "FALSE") == "FITini \r\n\r\n[MechCommander2]\r\nl ResolutionX = 3840\r\nb FullScreen = TRUE\r\nb ShadowCSM = FALSE\r\n" + tail);
+
+    // a missing key lands after the block's last line, before the blank line and the next block
+    const mo::Option& pbr = *mo::find("StaticPropPbr");
+    CHECK(mo::cfg::set(file, pbr, "TRUE") == head + "b StaticPropPbr = TRUE\r\n" + tail);
+
+    // value types: a float key carries the f prefix, a long key l; a key that is a prefix of another is not confused with it
+    const mo::Option& sharp = *mo::find("PostCASSharpness");
+    const std::string withSharp = mo::cfg::set(file, sharp, "0.25");
+    CHECK(*mo::cfg::get(withSharp, "PostCASSharpness") == "0.25");
+    CHECK(withSharp.find("f PostCASSharpness = 0.25") != std::string::npos);
+    CHECK_FALSE(mo::cfg::get(withSharp, "PostCAS").has_value());
+    CHECK(mo::cfg::set(file, *mo::find("TonemapMode"), "2").find("l TonemapMode = 2") != std::string::npos);
+
+    // LF files stay LF; a last line without a line break still gets the new line on its own line
+    const std::string lf = "[MechCommander2]\nb ShadowCSM = TRUE";
+    CHECK(mo::cfg::set(lf, pbr, "TRUE") == "[MechCommander2]\nb ShadowCSM = TRUE\nb StaticPropPbr = TRUE\n");
+
+    // no [MechCommander2] block: unchanged (the launcher never invents a file whose resolution lines are missing)
+    const std::string other = "[Other]\nb X = TRUE\n";
+    CHECK(mo::cfg::set(other, pbr, "TRUE") == other);
+    CHECK(mo::cfg::set(std::string{}, pbr, "TRUE").empty());
+
+    // what the editor writes is what the table's validation accepts
+    mo::RenderOptions o{};
+    CHECK(mo::setFromText(o, sharp, *mo::cfg::get(withSharp, "PostCASSharpness")) == mo::Verdict::Ok);
+    CHECK(o.postCasSharpness == 0.25f);
 }

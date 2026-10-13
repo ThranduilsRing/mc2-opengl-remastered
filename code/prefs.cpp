@@ -524,7 +524,7 @@ int CPrefs::applyPrefs(bool applyRes) {
 		}
 		mc2::options::publish(effective);
 		if (!s_reported)
-			mc2::fmt::print_err("[OPTIONS v1] event=published early_reads={}\n", mc2::options::earlyReads());
+			mc2::fmt::print_err("[OPTIONS v1] event=published early_reads={} first={}:{}\n", mc2::options::earlyReads(), mc2::fmt::safe(mc2::options::firstEarlyFile()), mc2::options::firstEarlyLine());
 		s_reported = true;
 		gos_SetPostFxOptions(effective.postCas ? 1 : 0, effective.postCasSharpness, effective.tonemapMode);
 	}

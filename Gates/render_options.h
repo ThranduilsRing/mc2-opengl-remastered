@@ -10,6 +10,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <source_location>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -181,12 +182,19 @@ inline int applyOverrides(RenderOptions& o, std::string_view spec, std::vector<R
 inline RenderOptions g_current{};
 inline bool          g_published = false;
 inline int           g_earlyReads = 0;
+inline const char*   g_firstEarlyFile = "";   // where the first early read came from, for the log line
+inline unsigned      g_firstEarlyLine = 0;
 
-inline const RenderOptions& current() {
-    if (!g_published) ++g_earlyReads;
+inline const RenderOptions& current(std::source_location where = std::source_location::current()) {
+    if (!g_published) {
+        if (g_earlyReads == 0) { g_firstEarlyFile = where.file_name(); g_firstEarlyLine = where.line(); }
+        ++g_earlyReads;
+    }
     return g_current;
 }
 inline void publish(const RenderOptions& o) { g_current = o; g_published = true; }
 inline int  earlyReads() { return g_earlyReads; }
+inline const char* firstEarlyFile() { return g_firstEarlyFile; }
+inline unsigned    firstEarlyLine() { return g_firstEarlyLine; }
 
 }  // namespace mc2::options

@@ -6754,7 +6754,8 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "early_reads"
+    "early_reads",
+    "first"
    ],
    "count": 1
   },
