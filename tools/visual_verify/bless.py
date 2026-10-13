@@ -156,6 +156,7 @@ from png_io import decode_png  # noqa: E402
 import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
 import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib import render_options_pin  # noqa: E402  (the render options are an input of the picture)
 # OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
 from smoke_lib import nofocus  # noqa: E402
 
@@ -306,6 +307,28 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
             f"builds that number measures a code change, not noise, and a "
             f"golden minted from it would carry a reproducibility claim it "
             f"never earned.")
+
+    # ---- the render options are an input of every crop: the runs must record them and agree ----
+    # A golden minted from runs with unrecorded or differing options could not say what picture it is the reference for, and verify.py could not
+    # tell a real regression from a different options.cfg.
+    run_options = [render_options_pin.values_of({"values": r["cap"].get("render_options")}) for r in runs]
+    if not all(run_options):
+        raise SystemExit(
+            "[vv-bless] refusing to bless: a capture run carries no render-option record (capture_run.json `render_options`). The 17 options.cfg "
+            "render options are an input of the picture; recapture with the current tools/visual_verify/capture.py, which records them.")
+    for i, opts in enumerate(run_options[1:], start=2):
+        diffs = render_options_pin.differences(run_options[0], opts)
+        if diffs:
+            raise SystemExit(f"[vv-bless] refusing to bless: run 1 and run {i} ran with different render options ({'; '.join(diffs)}); "
+                             f"three runs of one configuration are what the reproducibility rule grades.")
+    # ---- and the backend that drew them must be the one they asked for ----
+    for i, r in enumerate(runs, start=1):
+        backend = r["cap"].get("backend") or {}
+        drew = backend.get("drew")
+        drew = [drew] if isinstance(drew, str) else list(drew or [])
+        if backend.get("requested") and drew and drew != [backend["requested"]]:
+            raise SystemExit(f"[vv-bless] refusing to bless: run {i} asked for the {backend['requested']} backend and {drew} drew it; "
+                             f"its frames are not evidence for the backend a golden names.")
 
     to_dir = Path(to_dir).resolve()
     to_dir.mkdir(parents=True, exist_ok=True)
@@ -613,6 +636,11 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
         "settle": cap0.get("settle"),
         "deterministic_clock": cap0.get("deterministic_clock"),
         "effective_mc2_env": sorted(env_keys),
+        # What the frames were drawn with: the 17 render options (verify.py refuses a candidate whose options differ unless --vary names them),
+        # the declared environment (animation freeze, backend selector, clean-capture switches) and the backend that drew.
+        "render_options": run_options[0],
+        "declared_env": cap0.get("declared_env") or {},
+        "backend": cap0.get("backend") or {},
     }
     golden["gate_state"] = {
         "source": "capture manifests",

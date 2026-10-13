@@ -94,3 +94,37 @@ def test_smoke_runner_names_every_per_row_artifact_by_the_row_label():
                 and ast.unparse(node.func.value) == "_crash_evidence" and ast.unparse(node.args[0]) != "label"):
             bad.append((node.lineno, "crash evidence named by " + ast.unparse(node.args[0])))
     assert not bad, f"per-row artifacts named by the mission stem: {bad}"
+
+
+def test_tier1_is_pinned_and_the_other_tiers_keep_the_install_size():
+    assert render_resolution.PINNED_TIERS == ("tier1",)
+    assert render_resolution.asked_size("tier1") == (1920, 1080)
+    assert render_resolution.tier_size_env("tier1") == {"MC2_WIDTH": "1920", "MC2_HEIGHT": "1080"}
+    for tier in ("tier2", "tier3", "adhoc"):
+        assert render_resolution.asked_size(tier) is None and render_resolution.tier_size_env(tier) == {}
+    # an entry's own size wins in every tier (the `resolution` tier)
+    assert render_resolution.asked_size("resolution", "3840x2160") == (3840, 2160)
+    assert render_resolution.tier_size_env("tier1", "3840x2160") == {"MC2_WIDTH": "3840", "MC2_HEIGHT": "2160"}
+
+
+def test_the_smoke_report_says_which_size_a_pinned_tier_ran_at():
+    from scripts.smoke_lib import report
+    assert "1920x1080" in report._resolution_line("tier1") and "pinned for tier1" in report._resolution_line("tier1")
+    assert report._resolution_line("tier2") == ""
+
+
+def test_the_current_golden_exists_and_was_blessed_at_the_pinned_size():
+    ccr = _load("scripts/check-capture-resolution.py", "check_capture_resolution_under_test")
+    assert ccr.check_current_golden() == []
+    assert ccr.current_golden_dir().name == render_resolution.CURRENT_GOLDEN
+    assert ccr.main(["--current"]) == 0
+
+
+def test_the_current_golden_records_the_options_the_backend_and_the_frozen_animation():
+    import json
+    ccr = _load("scripts/check-capture-resolution.py", "check_capture_resolution_under_test2")
+    env = json.loads((ccr.current_golden_dir() / "golden.json").read_text(encoding="utf-8"))["capture_env"]
+    assert len(env["render_options"]) == 17
+    assert env["declared_env"].get("MC2_SMOKE_FREEZE_ANIM") == "1"
+    assert env["backend"] == {"requested": "gl", "drew": ["gl"]}
+    assert env["resolution"] == f"{render_resolution.PINNED_WIDTH}x{render_resolution.PINNED_HEIGHT}"

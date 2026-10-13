@@ -43,6 +43,10 @@ g1tip-vk **VOID** | vulkan | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 
 g1tip-vkarm | vulkan | vulkan | vk_present | 0d479ca9b915 | unrecorded | unfrozen | 2/2 | 2026-10-12
 g1tip1-gl | gl | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 1/2 | 2026-10-12
 g1tip2-gl | gl | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 2/2 | 2026-10-12
+gold1080-ab-pbr1 | gl | gl | gl_fbo | e9e3f19d6f6e | StaticPropPbr=true | frozen | 10/10 | 2026-10-13
+gold1080-r1 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
+gold1080-r2 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
+gold1080-r3 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 opt-off | gl | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 1/1 | 2026-10-12
 opt-on | gl | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 1/1 | 2026-10-12
 p1a-vk **VOID** | vulkan | gl | gl_fbo | 0196b20c5f56 | unrecorded | unfrozen | 2/2 | 2026-10-10
