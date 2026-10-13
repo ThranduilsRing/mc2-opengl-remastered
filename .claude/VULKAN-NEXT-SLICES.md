@@ -113,7 +113,7 @@ py -3 scripts/run_vulkan_probe.py --validation sync
 py -3 scripts/run_golden_parity.py mc2_01 --backend-compare --region <Region> --exe A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe
 # tier1 defaults (island exe, all gates OFF -> proves no default-path regression):
 $env:MC2_DEBUG_STATE_DUMP="1"; py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs --exe A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe
-# NEVER --kill-existing / --with-menu-canary / --duration > 30.
+# NEVER --kill-existing / --with-menu-canary / --duration > 30 (smokes and captures).
 ```
 
 ---

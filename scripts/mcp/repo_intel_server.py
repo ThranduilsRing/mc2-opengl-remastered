@@ -420,7 +420,7 @@ def harness(name: str = "all") -> str:
     Extracts the exact command from CLAUDE.md — do not invent commands.
     The returned command field is the ground truth to copy-paste verbatim.
 
-    smoke/tier1: NEVER add --kill-existing. NEVER --duration > 30. ALWAYS --keep-logs.
+    smoke/tier1: NEVER add --kill-existing. NEVER --duration > 30 (smokes and captures; only sim_determinism.py pairs may run 60). ALWAYS --keep-logs.
     build: invoke via /mc2-build skill. Never substitute direct MSBuild.
     deploy: scripts/deploy_payload.py only. Never manual file copies.
     """

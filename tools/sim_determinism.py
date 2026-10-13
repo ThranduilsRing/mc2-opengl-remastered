@@ -16,6 +16,8 @@ prefix is compared.
   py -3 tools/sim_determinism.py check mc2_16 --env MC2_FIXTURE_ORDER_LIVENESS=1   # two runs + the committed baseline (env comes from the file too)
   py -3 tools/sim_determinism.py run mc2_10 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
   py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 8 --duration 30 --out <dir>   # stops at the first diverging pair
+  --duration may be up to 60 (MAX_DURATION): the determinism window past sim tick ~3600 needs it (owner ruling 2026-10-13). Tier smokes and captures keep the 30 s cap of run_smoke.py;
+  the runs here pass --sim-determinism to it, which is the only thing that lifts the cap.
   py -3 tools/sim_determinism.py compare run_a/mc2_03.log run_b/mc2_03.log
   py -3 tools/sim_determinism.py write-baseline run_a/mc2_03.log --frames 1200 --mission mc2_03 [--env NAME=VALUE]
   py -3 tools/sim_determinism.py selftest          # offline; the `sim_determinism` board row
@@ -189,15 +191,21 @@ def build_and_deploy() -> None:
             sys.exit("sim_determinism: " + os.path.basename(cmd[1]) + " failed:\n" + "\n".join(r.stdout.splitlines()[-6:]))
 
 
+#: The longest smoke window a determinism run may ask for (owner ruling 2026-10-13); scripts/run_smoke.py refuses more than 30 s without `--sim-determinism`.
+MAX_DURATION = 60
+
+
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None) -> list:
     """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
     `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
     (the camera pose, an effects option) really does not; its "both" entry applies to the two runs (a mission fixture)."""
+    if int(duration) > MAX_DURATION:
+        sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
     logs = []
     for tag in ("a", "b"):
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
-                            "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            "--deploy", "0.4", "--keep-logs", "--sim-determinism"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
         if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):

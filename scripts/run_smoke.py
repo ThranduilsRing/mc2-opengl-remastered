@@ -592,6 +592,9 @@ def main():
     ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
                     help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--sim-determinism", action="store_true",
+                    help="set only by tools/sim_determinism.py: raises the --duration cap from 30 to 60 s (owner ruling 2026-10-13: determinism pairs "
+                         "need the longer window; tier smokes and captures keep the 30 s cap)")
     ap.add_argument("--lite", action="store_true",
                     help="SMOKE-LITE-1 inner-loop profile: mc2_10 (night/urban, "
                          "heaviest) + mc2_01 (day) at --duration 10 (override "
@@ -680,7 +683,7 @@ def main():
         os.environ["MC2_GL_DEBUG_FATAL"] = "1"
 
     # SMOKE-LATENCY-WINS-1 win #1: --duration hard cap + quick-tier banner.
-    # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed).
+    # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed); the one exception is a sim_determinism pair, which may run 60 (owner 2026-10-13).
     # 15s is a valid opt-in "does it still boot+run+not crash" inner-loop tier
     # (see .claude/SMOKE-LATENCY-1-RECON.md §4) -- all duration-independent
     # gates (crash_silent, crash_no_summary, engine_reported_fail, gl_error,
@@ -688,11 +691,13 @@ def main():
     # freeze gate (3s threshold) are satisfied well within 15s. It intentionally
     # loses soak coverage (mid-mission combat/FX/leak/hitch observation), so it
     # must stay opt-in and never silently replace the 30s default.
+    duration_cap = 60 if args.sim_determinism else 30
     if args.duration is not None:
-        if args.duration > 30:
+        if args.duration > duration_cap:
             print(f"[runner] ERROR: --duration {args.duration} exceeds the hard "
-                  f"cap of 30s. The 30s window is the soak/parity tier and must "
-                  f"never be exceeded (CLAUDE.md). Use the default (30) or a "
+                  f"cap of {duration_cap}s. The 30s window is the soak/parity tier and must "
+                  f"never be exceeded (CLAUDE.md); only tools/sim_determinism.py "
+                  f"may run up to 60s (--sim-determinism). Use the default (30) or a "
                   f"shorter --duration for a quick inner-loop tier.",
                   file=sys.stderr)
             sys.exit(2)
