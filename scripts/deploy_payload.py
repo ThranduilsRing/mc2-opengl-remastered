@@ -1256,6 +1256,7 @@ TARGET_PRESETS = {
 # (md5-verify after; a sibling may hold the lease).
 DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
+    "mc2-win64-lane3",
     "mc2-win64-v0.4c",
     "mc2-win64-0.4c",
 }

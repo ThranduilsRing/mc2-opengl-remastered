@@ -604,7 +604,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1449,
+          "line": 1450,
           "evidence": "command",
           "reference": "A:/Games/mc2-lane4/scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3065,6 +3065,13 @@
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_lane_names.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload  # noqa: E402"
+        },
+        {
           "path": "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
           "line": 34,
           "evidence": "import",
@@ -4562,14 +4569,14 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 16,
+          "line": 23,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 24,
+          "line": 31,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
@@ -8077,7 +8084,7 @@
         },
         {
           "path": "scripts/tests/test_lane_names.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "lane_model",
           "text": "import lane_model  # noqa: E402"
@@ -8424,7 +8431,7 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 7,
+          "line": 14,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
