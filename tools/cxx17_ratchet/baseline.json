@@ -190,7 +190,7 @@
    "LG03": 1139,
    "LG04": 16,
    "LG05": 136,
-   "LG06": 670,
+   "LG06": 671,
    "LG07": 0,
    "LG08": 74,
    "LG09": 2188,
@@ -1574,10 +1574,13 @@
    "LG12a": 1
   },
   "code/ablmc2_misc.cpp": {
-   "LG09": 9
+   "LG09": 8
   },
   "code/ablmc2_orders.cpp": {
    "LG09": 6
+  },
+  "code/ablmc2_position.cpp": {
+   "LG09": 1
   },
   "code/ablmc2_queries.cpp": {
    "LG09": 21
@@ -3951,6 +3954,9 @@
    "LG02": 1,
    "LG06": 3
   },
+  "mclib/mc2str.h": {
+   "LG06": 1
+  },
   "mclib/mclibresource.h": {
    "LG13": 75
   },
@@ -5180,7 +5186,7 @@
    "LG20": 2
   }
  },
- "head": "c8f6fa3df",
+ "head": "de7e5008f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

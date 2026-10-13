@@ -1,0 +1,77 @@
+// mc2str.h -- the string helpers that replace the behaviour EString gave for free (step 4 batch B1,
+// .claude/cleanup/cxx23-step4-b1-notes.md).
+//
+// WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare / ci_less / ci_equal compare names that
+// come from data (file names, mech / pilot / variant / mission names, flag IDs) ignoring ASCII case; ci_total_less is the
+// total order for sorted lists; ascii_lower / ascii_upper change case of ASCII letters only.
+// WHY: EString equality was case-insensitive through the Windows lstrcmpi (a locale-dependent word sort, absent on other
+// platforms), and EString(nullptr) was an empty string. std::string is neither. Names in the shipped data differ in case from
+// the names that look them up, so identity stays case-insensitive, but as a fixed ASCII fold that gives the same answer on
+// every host and locale. Bytes >= 0x80 are never folded: they compare and order by value, which is defined and deterministic.
+// HEADER-ONLY on purpose (mclib is linked by standalone tools that do not link GameOS).
+#pragma once
+
+#include <algorithm>
+#include <cstddef>
+#include <string>
+#include <string_view>
+
+namespace mc2::str {
+
+// A legacy `const char*` may be null (EString(nullptr) was empty); std::string(nullptr) is undefined behaviour.
+// Every pointer that enters a std::string from older code passes through here.
+inline std::string from_c(const char* p) { return p ? std::string(p) : std::string(); }
+
+namespace detail {
+constexpr unsigned char fold(unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') ? static_cast<unsigned char>(c + ('a' - 'A')) : c; }
+constexpr unsigned char upper(unsigned char c) noexcept { return (c >= 'a' && c <= 'z') ? static_cast<unsigned char>(c - ('a' - 'A')) : c; }
+}  // namespace detail
+
+// Lexicographic comparison of the ASCII-folded bytes: -1, 0 or +1. Zero exactly when iequals is true.
+constexpr int icompare(std::string_view a, std::string_view b) noexcept {
+    const std::size_t n = std::min(a.size(), b.size());
+    for (std::size_t i = 0; i < n; ++i) {
+        const unsigned char x = detail::fold(static_cast<unsigned char>(a[i]));
+        const unsigned char y = detail::fold(static_cast<unsigned char>(b[i]));
+        if (x != y) return x < y ? -1 : 1;
+    }
+    if (a.size() == b.size()) return 0;
+    return a.size() < b.size() ? -1 : 1;
+}
+
+constexpr bool iequals(std::string_view a, std::string_view b) noexcept { return a.size() == b.size() && icompare(a, b) == 0; }
+
+// Strict weak ordering whose equivalence is iequals: the key order of a container keyed by names that match ignoring case.
+struct ci_less {
+    using is_transparent = void;
+    constexpr bool operator()(std::string_view a, std::string_view b) const noexcept { return icompare(a, b) < 0; }
+};
+
+struct ci_equal {
+    using is_transparent = void;
+    constexpr bool operator()(std::string_view a, std::string_view b) const noexcept { return iequals(a, b); }
+};
+
+// Total order for a sorted list: folded lexicographic, then the raw bytes, so two names that differ only in case keep a
+// defined order instead of the order the sort happened to see them in.
+struct ci_total_less {
+    using is_transparent = void;
+    constexpr bool operator()(std::string_view a, std::string_view b) const noexcept {
+        const int c = icompare(a, b);
+        return c != 0 ? c < 0 : a < b;
+    }
+};
+
+inline std::string ascii_lower(std::string_view s) {
+    std::string r(s);
+    std::ranges::transform(r, r.begin(), [](unsigned char c) { return static_cast<char>(detail::fold(c)); });
+    return r;
+}
+
+inline std::string ascii_upper(std::string_view s) {
+    std::string r(s);
+    std::ranges::transform(r, r.begin(), [](unsigned char c) { return static_cast<char>(detail::upper(c)); });
+    return r;
+}
+
+}  // namespace mc2::str
