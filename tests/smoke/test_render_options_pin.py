@@ -22,7 +22,7 @@ def values(**changes):
 def test_table_is_the_engines_seventeen_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
     assert len(t) == 17
-    assert t["ShadowCSM"].default is True and t["StaticPropPbr"].default is True and t["StaticPropAmbient"].default is True
+    assert t["ShadowCSM"].default is True and t["StaticPropPbr"].default is False and t["StaticPropAmbient"].default is True
     assert t["SunAxisFix"].default is False
     assert t["PostCASSharpness"].default == 0.5 and t["PostCASSharpness"].hi == 1.0
     assert t["TonemapMode"].kind == "long" and (t["TonemapMode"].lo, t["TonemapMode"].hi) == (0, 3)
@@ -46,17 +46,17 @@ def test_accepted_spellings_and_first_key_wins():
     v = values()
     rej = []
     rop.apply_cfg(v, "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nl TonemapMode = 3\r\n"
-                     "f PostCASSharpness = 0.25\r\nb StaticPropPbr =   False  \r\nb ShadowCSM = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n", rej)
+                     "f PostCASSharpness = 0.25\r\nb StaticPropAmbient =   False  \r\nb ShadowCSM = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n", rej)
     assert rej == []
-    assert v["ShadowCSM"] is False and v["SunAxisFix"] is True and v["VfxLitParticles"] is True and v["StaticPropPbr"] is False
+    assert v["ShadowCSM"] is False and v["SunAxisFix"] is True and v["VfxLitParticles"] is True and v["StaticPropAmbient"] is False
     assert v["TonemapMode"] == 3 and v["PostCASSharpness"] == 0.25
     assert v["SunElevationFix"] is False      # another block
 
 
 def test_record_reads_the_install_then_the_override_case_insensitively(tmp_path):
-    (tmp_path / "options.cfg").write_text("[MechCommander2]\r\nb StaticPropPbr = FALSE\r\nb ShadowCSM = banana\r\n", encoding="latin-1")
+    (tmp_path / "options.cfg").write_text("[MechCommander2]\r\nb StaticPropAmbient = FALSE\r\nb ShadowCSM = banana\r\n", encoding="latin-1")
     rec = rop.record(tmp_path, {"MC2_OPTIONS_OVERRIDE": "shadowcsm=0, TonemapMode=9, Nope=1"})
-    assert rec["values"]["StaticPropPbr"] is False
+    assert rec["values"]["StaticPropAmbient"] is False
     assert rec["values"]["ShadowCSM"] is False                     # the override beats the (rejected) file value
     assert rec["values"]["TonemapMode"] == 0
     assert {(r["key"], r["why"]) for r in rec["rejected"]} == {("ShadowCSM", "garbage"), ("TonemapMode", "out_of_range"), ("Nope", "unknown_key")}

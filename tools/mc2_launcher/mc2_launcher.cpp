@@ -196,7 +196,7 @@ static const EnvVarDef k_envVars[] = {
     { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering" },
     { "ShadowBoundedNearFit",        "Crisp near shadows (ON)",              true,  NULL,   "Rendering", "0", true },
     { "PropShadowReceive",           "Building self/prop-on-prop shadows",    true,  NULL,   "Rendering", NULL, true },
-    { "StaticPropPbr",               "Static prop PBR specular (ON)",         true,  NULL,   "Rendering", "0", true },
+    { "StaticPropPbr",               "Static prop PBR specular (OFF)",        true,  NULL,   "Rendering", NULL, true },
     { "StaticPropAmbient",           "Static prop hemisphere ambient (ON)",   true,  NULL,   "Rendering", "0", true },
     // The TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md); default ON.
     { "StaticPropIblSh",             "Static prop SH-L2 IBL ambient (ON)",    true,  NULL,   "Rendering", "0", true },

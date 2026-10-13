@@ -37,7 +37,7 @@ struct RenderOptions {
     bool  staticPropIblSh             = true;    // SH-L2 image-based ambient
     bool  staticPropIblSunRotate      = false;   // aim the IBL probe at the sun
     float staticPropIblSunRotateFloor = 0.45f;   // probe floor, 0 = bare
-    bool  staticPropPbr               = true;    // Schlick-Fresnel specular
+    bool  staticPropPbr               = false;   // Schlick-Fresnel specular (OFF: most props carry no PBR data, the fallback sheen reads as a glint)
 
     // Sun direction.
     bool sunAxisFix      = false;   // mech/vehicle diffuse axis

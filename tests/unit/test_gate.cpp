@@ -1259,7 +1259,7 @@ TEST_CASE("mlr_gate latches the env value on first use and every thread sees it"
 // options.cfg render options (Gates/render_options.h): defaults, bounds, garbage rejection and the override channel
 // ---------------------------------------------------------------------------
 
-TEST_CASE("render options default to what the gate rows they replaced defaulted to, except the two static-prop lighting rows flipped ON") {
+TEST_CASE("render options default to what the gate rows they replaced defaulted to, except StaticPropAmbient, which is ON") {
     const mc2::options::RenderOptions d{};
     CHECK_FALSE(d.postCas);
     CHECK(d.postCasSharpness == 0.5f);
@@ -1269,11 +1269,11 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK(d.propShadowReceive == 0);
     CHECK(d.shorelineLegacySuppress);
     CHECK(d.cpuPhongRetire);
-    CHECK(d.staticPropAmbient);        // flipped ON 2026-10-13 with StaticPropPbr (the final release ships these on)
+    CHECK(d.staticPropAmbient);        // the flat fill is ON; the PBR specular below is OFF (owner ruling 2026-10-13: most props carry no PBR data)
     CHECK(d.staticPropIblSh);
     CHECK_FALSE(d.staticPropIblSunRotate);
     CHECK(d.staticPropIblSunRotateFloor == 0.45f);
-    CHECK(d.staticPropPbr);
+    CHECK_FALSE(d.staticPropPbr);
     CHECK_FALSE(d.sunAxisFix);
     CHECK_FALSE(d.sunElevationFix);
     CHECK_FALSE(d.vfxSoftParticles);
@@ -1320,10 +1320,10 @@ TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports eve
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     std::vector<mo::Reject> rej;
-    const int n = mo::applyOverrides(o, "shadowcsm=0, STATICPROPPBR=FALSE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
+    const int n = mo::applyOverrides(o, "shadowcsm=0, STATICPROPPBR=TRUE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
     CHECK(n == 2);
     CHECK_FALSE(o.shadowCsm);
-    CHECK_FALSE(o.staticPropPbr);
+    CHECK(o.staticPropPbr);
     CHECK(o.postCasSharpness == 0.5f);
     CHECK(o.tonemapMode == 0);
     CHECK_FALSE(o.vfxLitParticles);
@@ -1467,7 +1467,7 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     mo::RenderOptions o{};
     std::vector<mo::Reject> rejects;
     const std::string good = "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nb VfxSoftParticles = 0\r\n"
-                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropPbr =   False  \r\n";
+                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropAmbient =   False  \r\n";
     CHECK(mo::cfg::loadFromText(o, good, &rejects) == 7);
     CHECK(rejects.empty());
     CHECK_FALSE(o.shadowCsm);
@@ -1476,7 +1476,7 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     CHECK_FALSE(o.vfxSoftParticles);
     CHECK(o.tonemapMode == 3);
     CHECK(o.postCasSharpness == 0.25f);
-    CHECK_FALSE(o.staticPropPbr);
+    CHECK_FALSE(o.staticPropAmbient);
 
     // a duplicate key is read at its first line; a rejected value does not clobber a value the struct already holds
     mo::RenderOptions dup{};
@@ -1496,6 +1496,7 @@ TEST_CASE("the render options serialize as one JSON object of all 17 values for 
     const std::string d = mo::toJson(o);
     CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowCSM\": true", 0) == 0);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
+    CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
     CHECK(std::count(d.begin(), d.end(), ':') == 17);
     o.tonemapMode = 3;
