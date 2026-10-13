@@ -1,0 +1,626 @@
+{
+ "about": "step 4 batch B2 (value containers -> std containers), file -> batch (cxx23-step4-b2-notes.md section 4). Game batches B2.1-B2.5; E1-E4 are the editor's EList users (owner's Codex track, a suggested grouping, 25 files at most each); E-end deletes mclib/elist.h after the last editor batch; B6 = the two multiplayer files that only need an edit when elist.h goes. `files` maps a path to the batch that first edits it; `also_touched` lists later batches that edit the same file again; `sites` is [token lines, API-call lines] of grep-grade census (comments and strings NOT blanked; the exact list is the B2.0 deprecation census). Deleted files are marked in `deleted`.",
+ "commit": "6729e6f8c",
+ "verify": "python census (EList, aliases COMPONENT_LIST PILOT_LIST VARIANT_LIST MECH_LIST VEHICLE_LIST BUILDING_LIST MISSION_LIST FILE_LIST CObjectives CObjectiveConditionList CObjectiveActionList CListOfDropListPointers action_list_type condition_list_type EIterator EConstIterator) over code mclib gui GameOS editor tools tests data_tools mc2fx: 39 code files, 64 editor files, 0 elsewhere",
+ "counts": {
+  "B2.1": 8,
+  "B2.2": 23,
+  "B2.3": 13,
+  "B2.4": 17,
+  "B2.5": 10,
+  "E1": 21,
+  "E2": 13,
+  "E4": 20,
+  "E3": 12,
+  "B6": 2,
+  "E-end": 1
+ },
+ "deleted": [
+  "mclib/bitflag.h",
+  "mclib/bitflag.cpp",
+  "mclib/dbitflag.h",
+  "mclib/sortlist.h",
+  "mclib/sortlist.cpp",
+  "mclib/pqueue.cpp (replaced by mclib/indexed_min_heap.h)",
+  "mclib/elist.h (at E-end)"
+ ],
+ "new": [
+  "mclib/score_sort.h (B2.4)",
+  "mclib/indexed_min_heap.h (B2.5)",
+  "tests/unit/test_elist_contract.cpp, test_sortlist_contract.cpp, test_pqueue_contract.cpp (B2.0)",
+  "tests/unit/test_score_sort.cpp (B2.4)",
+  "tests/unit/test_indexed_min_heap.cpp (B2.5)"
+ ],
+ "also_touched": {
+  "code/mission.cpp": [
+   "B2.3 (CObjectives loops at lines 985-1020)",
+   "B2.4 (delete Mover/SensorSystem/Team sortList)",
+   "B2.5 (delete openList)"
+  ],
+  "code/mission_internal.h": [
+   "B2.5 (extern openList)"
+  ],
+  "code/team.cpp": [
+   "B2.4 (Team::sortList definition)"
+  ],
+  "code/team.h": [
+   "B2.4 (Team::sortList declaration)"
+  ],
+  "code/group_goals.cpp": [
+   "B2.5 (openList lazy init)"
+  ],
+  "code/logisticsdata_save.cpp": [
+   "B2.3 (the CObjectives loop at line 476)"
+  ],
+  "mclib/mclib.h": [
+   "B2.4",
+   "B2.5"
+  ],
+  "mclib/CMakeLists.txt": [
+   "B2.4",
+   "B2.5",
+   "B2.E"
+  ]
+ },
+ "deferred": {
+  "mclib/stuff/marray.hpp": "DynamicArrayOf/StaticArrayOf: 0 users in code/, editor/, gui/; ~190 sites are MLR (out of scope, deleted at queue item 13), the rest gosFX (debriscloud, tube, fcurve, particlecloud, singleton: B8, .fx byte layout) and Stuff math (extentbox, plane), particles/spec_library.h (B8)",
+  "mclib/stuff/memoryblock.hpp": "MemoryBlock: pool allocator under Stuff Chain/Tree/SortedChain links; the only users of those are gosfx/effect.cpp (ChainOf) and mlr/gosimagepool: B8",
+  "mclib/stuff/chain.hpp": "Stuff chain family (Chain, SortedChain, Tree, Hash, Plug, Socket): users only inside mclib/stuff, gosfx/effect and mlr/gosimagepool: B8"
+ },
+ "files": {
+  "code/ablmc2_camera.cpp": "B2.4",
+  "code/ablmc2_queries.cpp": "B2.4",
+  "code/componentlistbox.cpp": "B2.2",
+  "code/componentlistbox.h": "B2.2",
+  "code/contact.cpp": "B2.4",
+  "code/contact.h": "B2.4",
+  "code/controlgui_objectives.cpp": "B2.3",
+  "code/controlgui_render.cpp": "B2.3",
+  "code/controlgui_update.cpp": "B2.3",
+  "code/gametacmap.cpp": "B2.3",
+  "code/group.h": "B2.4",
+  "code/group_goals.cpp": "B2.4",
+  "code/group_internal.h": "B2.5",
+  "code/group_orders.cpp": "B2.4",
+  "code/logistics_begin.cpp": "B2.2",
+  "code/logisticsdata.cpp": "B2.2",
+  "code/logisticsdata.h": "B2.2",
+  "code/logisticsdata_availability.cpp": "B2.2",
+  "code/logisticsdata_init.cpp": "B2.2",
+  "code/logisticsdata_inventory.cpp": "B2.2",
+  "code/logisticsdata_modify.cpp": "B2.2",
+  "code/logisticsdata_save.cpp": "B2.2",
+  "code/logisticsmissioninfo.cpp": "B2.2",
+  "code/logisticsmissioninfo.h": "B2.2",
+  "code/logisticsmissioninfo_progress.cpp": "B2.2",
+  "code/logisticsmissioninfo_query.cpp": "B2.2",
+  "code/logisticspilot.cpp": "B2.2",
+  "code/logisticspilot.h": "B2.2",
+  "code/mechbayscreen.cpp": "B2.2",
+  "code/mechbayscreen_mechs.cpp": "B2.2",
+  "code/mechpurchasescreen.cpp": "B2.2",
+  "code/mechpurchasescreen.h": "B2.2",
+  "code/mission.cpp": "B2.1",
+  "code/mission.h": "B2.3",
+  "code/mission_init_load.cpp": "B2.3",
+  "code/mission_internal.h": "B2.1",
+  "code/missionbegin.cpp": "B2.2",
+  "code/missionbriefingscreen.cpp": "B2.3",
+  "code/missiongui_support.cpp": "B2.3",
+  "code/mover.cpp": "B2.4",
+  "code/mover.h": "B2.4",
+  "code/mover_combat.cpp": "B2.4",
+  "code/mover_init.cpp": "B2.4",
+  "code/mpparameterscreen.cpp": "B6",
+  "code/mpparameterscreen.h": "B6",
+  "code/objective.cpp": "B2.3",
+  "code/objective.h": "B2.3",
+  "code/pilotreadyscreen.cpp": "B2.2",
+  "code/pilotreviewarea.cpp": "B2.2",
+  "code/saveload_load.cpp": "B2.3",
+  "code/team.cpp": "B2.3",
+  "code/team.h": "B2.3",
+  "code/warrior.cpp": "B2.4",
+  "code/warrior.h": "B2.4",
+  "code/warrior_state.cpp": "B2.4",
+  "editor/Action.cpp": "E2",
+  "editor/Action.h": "E2",
+  "editor/BuildingBrush.cpp": "E3",
+  "editor/BuildingBrush.h": "E3",
+  "editor/BuildingLink.cpp": "E2",
+  "editor/BuildingLink.h": "E2",
+  "editor/BuildingSettingsDlg.cpp": "E4",
+  "editor/BuildingSettingsDlg.h": "E4",
+  "editor/CampaignData.cpp": "E1",
+  "editor/CampaignDialog.cpp": "E1",
+  "editor/CampaignSummaryPanel.cpp": "E1",
+  "editor/ChooseBuildingDlg.cpp": "E4",
+  "editor/ChooseBuildingDlg.h": "E4",
+  "editor/ChooseUnitDlg.cpp": "E4",
+  "editor/ChooseUnitDlg.h": "E4",
+  "editor/DamageBrush.cpp": "E3",
+  "editor/EditorData.h": "E1",
+  "editor/EditorData_save.cpp": "E1",
+  "editor/EditorData_terrain.cpp": "E1",
+  "editor/EditorDebugOverlay.cpp": "E4",
+  "editor/EditorInterface.cpp": "E4",
+  "editor/EditorInterface_editor.cpp": "E1",
+  "editor/EditorInterface_imgui.cpp": "E4",
+  "editor/EditorInterface_mouse.cpp": "E4",
+  "editor/EditorInterface_objects.cpp": "E4",
+  "editor/EditorInterface_wnd.cpp": "E4",
+  "editor/EditorObjectMgr.cpp": "E2",
+  "editor/EditorObjectMgr.h": "E2",
+  "editor/EditorObjectMgr_io.cpp": "E2",
+  "editor/EditorObjectMgr_pick.cpp": "E2",
+  "editor/EditorObjectMgr_render.cpp": "E2",
+  "editor/EditorObjectMgr_select.cpp": "E2",
+  "editor/EditorObjects.h": "E2",
+  "editor/EditorObjects_unit.cpp": "E2",
+  "editor/Eraser.h": "E3",
+  "editor/GameplayDebugger.cpp": "E4",
+  "editor/GroupDialog.cpp": "E2",
+  "editor/InspectorPanel.cpp": "E4",
+  "editor/LinkBrush.cpp": "E3",
+  "editor/LinkBrush.h": "E3",
+  "editor/MineBrush.cpp": "E3",
+  "editor/MineBrush.h": "E3",
+  "editor/MissionValidation.cpp": "E1",
+  "editor/ObjectSelectionBrush.h": "E3",
+  "editor/Objective.cpp": "E1",
+  "editor/Objective.h": "E1",
+  "editor/ObjectiveDlg.cpp": "E1",
+  "editor/ObjectiveDlg.h": "E1",
+  "editor/Objective_conditions.cpp": "E1",
+  "editor/Objective_internal.h": "E1",
+  "editor/ObjectivesDlg.cpp": "E1",
+  "editor/ObjectivesDlg.h": "E1",
+  "editor/ObjectivesSummaryPanel.cpp": "E1",
+  "editor/ObjectivesSummaryPanel.h": "E1",
+  "editor/OverlayBrush.cpp": "E3",
+  "editor/ResourceStringSelectionDlg.h": "E1",
+  "editor/SceneOutliner.cpp": "E4",
+  "editor/SelectionBrush.cpp": "E3",
+  "editor/TargetAreaDlg.cpp": "E1",
+  "editor/TargetAreaDlg.h": "E4",
+  "editor/TelemetryPanel.cpp": "E4",
+  "editor/UnitBrainPanel.cpp": "E4",
+  "editor/UnitSettingsDlg.cpp": "E4",
+  "editor/UnitSettingsDlg.h": "E4",
+  "editor/campaignData.h": "E1",
+  "editor/eraser.cpp": "E3",
+  "mclib/CMakeLists.txt": "B2.1",
+  "mclib/bitflag.cpp": "B2.1",
+  "mclib/bitflag.h": "B2.1",
+  "mclib/dbitflag.h": "B2.1",
+  "mclib/elist.h": "E-end",
+  "mclib/mclib.h": "B2.1",
+  "mclib/move.cpp": "B2.5",
+  "mclib/move.h": "B2.5",
+  "mclib/move_globalmap_path.cpp": "B2.5",
+  "mclib/move_internal.h": "B2.5",
+  "mclib/move_movemap_escape.cpp": "B2.5",
+  "mclib/move_movemap_path.cpp": "B2.5",
+  "mclib/move_solvectx.h": "B2.5",
+  "mclib/pqueue.cpp": "B2.5",
+  "mclib/pqueue.h": "B2.5",
+  "mclib/score_sort.h": "B2.4",
+  "mclib/sortlist.cpp": "B2.4",
+  "mclib/sortlist.h": "B2.4",
+  "mclib/terrain.h": "B2.1"
+ },
+ "sites": {
+  "code/componentlistbox.cpp": [
+   2,
+   6
+  ],
+  "code/componentlistbox.h": [
+   1,
+   0
+  ],
+  "code/controlgui_objectives.cpp": [
+   1,
+   2
+  ],
+  "code/controlgui_render.cpp": [
+   1,
+   2
+  ],
+  "code/controlgui_update.cpp": [
+   1,
+   1
+  ],
+  "code/gametacmap.cpp": [
+   2,
+   2
+  ],
+  "code/logistics_begin.cpp": [
+   4,
+   4
+  ],
+  "code/logisticsdata.cpp": [
+   12,
+   19
+  ],
+  "code/logisticsdata.h": [
+   14,
+   0
+  ],
+  "code/logisticsdata_availability.cpp": [
+   14,
+   14
+  ],
+  "code/logisticsdata_init.cpp": [
+   3,
+   17
+  ],
+  "code/logisticsdata_inventory.cpp": [
+   19,
+   25
+  ],
+  "code/logisticsdata_modify.cpp": [
+   15,
+   20
+  ],
+  "code/logisticsdata_save.cpp": [
+   21,
+   32
+  ],
+  "code/logisticsmissioninfo.cpp": [
+   5,
+   9
+  ],
+  "code/logisticsmissioninfo.h": [
+   4,
+   0
+  ],
+  "code/logisticsmissioninfo_progress.cpp": [
+   7,
+   8
+  ],
+  "code/logisticsmissioninfo_query.cpp": [
+   2,
+   13
+  ],
+  "code/logisticspilot.cpp": [
+   2,
+   6
+  ],
+  "code/logisticspilot.h": [
+   1,
+   0
+  ],
+  "code/mechbayscreen.cpp": [
+   2,
+   1
+  ],
+  "code/mechbayscreen_mechs.cpp": [
+   2,
+   1
+  ],
+  "code/mechpurchasescreen.cpp": [
+   5,
+   5
+  ],
+  "code/mechpurchasescreen.h": [
+   2,
+   0
+  ],
+  "code/mission.cpp": [
+   3,
+   7
+  ],
+  "code/mission.h": [
+   1,
+   0
+  ],
+  "code/mission_init_load.cpp": [
+   1,
+   2
+  ],
+  "code/missionbegin.cpp": [
+   9,
+   6
+  ],
+  "code/missionbriefingscreen.cpp": [
+   2,
+   3
+  ],
+  "code/missiongui_support.cpp": [
+   1,
+   4
+  ],
+  "code/mpparameterscreen.cpp": [
+   1,
+   5
+  ],
+  "code/mpparameterscreen.h": [
+   2,
+   0
+  ],
+  "code/objective.cpp": [
+   34,
+   35
+  ],
+  "code/objective.h": [
+   18,
+   0
+  ],
+  "code/pilotreadyscreen.cpp": [
+   2,
+   1
+  ],
+  "code/pilotreviewarea.cpp": [
+   1,
+   6
+  ],
+  "code/saveload_load.cpp": [
+   1,
+   2
+  ],
+  "code/team.cpp": [
+   2,
+   4
+  ],
+  "code/team.h": [
+   1,
+   0
+  ],
+  "editor/Action.cpp": [
+   22,
+   35
+  ],
+  "editor/Action.h": [
+   10,
+   1
+  ],
+  "editor/BuildingBrush.cpp": [
+   4,
+   6
+  ],
+  "editor/BuildingBrush.h": [
+   2,
+   0
+  ],
+  "editor/BuildingLink.cpp": [
+   8,
+   15
+  ],
+  "editor/BuildingLink.h": [
+   1,
+   0
+  ],
+  "editor/BuildingSettingsDlg.cpp": [
+   9,
+   17
+  ],
+  "editor/BuildingSettingsDlg.h": [
+   3,
+   0
+  ],
+  "editor/CampaignData.cpp": [
+   2,
+   7
+  ],
+  "editor/CampaignDialog.cpp": [
+   4,
+   25
+  ],
+  "editor/CampaignSummaryPanel.cpp": [
+   5,
+   9
+  ],
+  "editor/ChooseBuildingDlg.cpp": [
+   5,
+   8
+  ],
+  "editor/ChooseBuildingDlg.h": [
+   1,
+   0
+  ],
+  "editor/ChooseUnitDlg.cpp": [
+   4,
+   7
+  ],
+  "editor/DamageBrush.cpp": [
+   1,
+   1
+  ],
+  "editor/EditorData.h": [
+   2,
+   1
+  ],
+  "editor/EditorData_save.cpp": [
+   5,
+   9
+  ],
+  "editor/EditorData_terrain.cpp": [
+   1,
+   4
+  ],
+  "editor/EditorDebugOverlay.cpp": [
+   5,
+   4
+  ],
+  "editor/EditorInterface.cpp": [
+   1,
+   1
+  ],
+  "editor/EditorInterface_editor.cpp": [
+   2,
+   3
+  ],
+  "editor/EditorInterface_imgui.cpp": [
+   1,
+   1
+  ],
+  "editor/EditorInterface_mouse.cpp": [
+   4,
+   4
+  ],
+  "editor/EditorInterface_objects.cpp": [
+   3,
+   3
+  ],
+  "editor/EditorInterface_wnd.cpp": [
+   2,
+   6
+  ],
+  "editor/EditorObjectMgr.cpp": [
+   30,
+   77
+  ],
+  "editor/EditorObjectMgr.h": [
+   14,
+   3
+  ],
+  "editor/EditorObjectMgr_io.cpp": [
+   13,
+   42
+  ],
+  "editor/EditorObjectMgr_pick.cpp": [
+   11,
+   11
+  ],
+  "editor/EditorObjectMgr_render.cpp": [
+   13,
+   20
+  ],
+  "editor/EditorObjectMgr_select.cpp": [
+   33,
+   46
+  ],
+  "editor/EditorObjects.h": [
+   2,
+   0
+  ],
+  "editor/EditorObjects_unit.cpp": [
+   1,
+   2
+  ],
+  "editor/Eraser.h": [
+   1,
+   0
+  ],
+  "editor/GameplayDebugger.cpp": [
+   2,
+   2
+  ],
+  "editor/GroupDialog.cpp": [
+   2,
+   6
+  ],
+  "editor/InspectorPanel.cpp": [
+   1,
+   2
+  ],
+  "editor/LinkBrush.cpp": [
+   2,
+   4
+  ],
+  "editor/LinkBrush.h": [
+   1,
+   0
+  ],
+  "editor/MineBrush.cpp": [
+   2,
+   4
+  ],
+  "editor/MineBrush.h": [
+   1,
+   0
+  ],
+  "editor/MissionValidation.cpp": [
+   8,
+   6
+  ],
+  "editor/ObjectSelectionBrush.h": [
+   1,
+   0
+  ],
+  "editor/Objective.cpp": [
+   59,
+   32
+  ],
+  "editor/Objective.h": [
+   24,
+   3
+  ],
+  "editor/ObjectiveDlg.cpp": [
+   14,
+   105
+  ],
+  "editor/ObjectiveDlg.h": [
+   2,
+   0
+  ],
+  "editor/Objective_conditions.cpp": [
+   6,
+   4
+  ],
+  "editor/Objective_internal.h": [
+   1,
+   2
+  ],
+  "editor/ObjectivesDlg.cpp": [
+   2,
+   27
+  ],
+  "editor/ObjectivesDlg.h": [
+   1,
+   0
+  ],
+  "editor/ObjectivesSummaryPanel.cpp": [
+   11,
+   20
+  ],
+  "editor/ObjectivesSummaryPanel.h": [
+   1,
+   0
+  ],
+  "editor/OverlayBrush.cpp": [
+   3,
+   3
+  ],
+  "editor/ResourceStringSelectionDlg.h": [
+   2,
+   0
+  ],
+  "editor/SceneOutliner.cpp": [
+   11,
+   10
+  ],
+  "editor/SelectionBrush.cpp": [
+   1,
+   2
+  ],
+  "editor/TargetAreaDlg.cpp": [
+   1,
+   0
+  ],
+  "editor/TelemetryPanel.cpp": [
+   1,
+   3
+  ],
+  "editor/UnitBrainPanel.cpp": [
+   2,
+   2
+  ],
+  "editor/UnitSettingsDlg.cpp": [
+   19,
+   37
+  ],
+  "editor/UnitSettingsDlg.h": [
+   3,
+   0
+  ],
+  "editor/campaignData.h": [
+   3,
+   0
+  ],
+  "editor/eraser.cpp": [
+   2,
+   3
+  ]
+ }
+}
