@@ -42,6 +42,7 @@ The engine's drawable is options.cfg `ResolutionX/Y` unless `MC2_WIDTH`/`MC2_HEI
 
 **Tier1 perf numbers and tier2 perf numbers are not directly comparable, even for the same mission at the same duration.** They measure different things:
 
+- **Tier1 resolution (2026-10-13):** tier1 runs at the pinned 1920x1080 (`scripts/smoke_lib/render_resolution.py` `PINNED_TIERS`; the report header says so and the runner fails a run whose engine log has no `[RESOLUTION] Pre-window: 1920x1080` line). Before that it ran at the install's options.cfg size, 3840x2160 on every install on the lane host, so tier1 fps numbers recorded before 2026-10-13 are 4K numbers and are NOT comparable. A baseline entry's `perf.resolution` records the size it was taken at.
 - **Tier1 baselines** = isolated single-mission perf. Each gate run starts from a clean OS state (cold GPU, untouched file cache, no driver retained state). These numbers reflect what an end-user actually experiences when launching one mission. **Use tier1 baselines as the regression-detection reference.**
 - **Tier2 baselines** = sequenced stress perf. Captured during 24 back-to-back missions; the same mission late in the run sees GPU thermal load, evicted file caches, and AMD driver retained state from earlier missions. Useful as a long-session stress indicator and for surfacing intrinsically-heavy missions, but not as a per-mission perf reference.
 

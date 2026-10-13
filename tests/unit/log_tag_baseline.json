@@ -11316,13 +11316,6 @@
    "count": 1
   },
   {
-   "tag": "VK_ENGINE_CONTEXT_VALIDATION",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 2
-  },
-  {
    "tag": "VK_FEED_DUMP",
    "ver": -1,
    "stream": "stderr",
@@ -11629,6 +11622,24 @@
    "count": 1
   },
   {
+   "tag": "VK_PROFILE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "verdict",
+    "device",
+    "api",
+    "instance_api",
+    "floor",
+    "required_missing",
+    "wanted_missing",
+    "items",
+    "enabled",
+    "extensions"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_PROPS_PERF",
    "ver": -1,
    "stream": "stderr",
@@ -11874,6 +11885,17 @@
    "count": 1
   },
   {
+   "tag": "VK_VALIDATION",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "severity",
+    "id",
+    "text"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_VFX_TAIL",
    "ver": -1,
    "stream": "stderr",
@@ -11987,6 +12009,36 @@
    "keys": [
     "event",
     "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VRAM",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "phase",
+    "backend",
+    "gl_ati_tex_free_mb",
+    "gl_ati_tex_largest_free_mb",
+    "gl_nvx_dedicated_mb",
+    "gl_nvx_available_mb",
+    "vk_budget_mb",
+    "vk_usage_mb",
+    "vk_allocated_mb",
+    "adapter_dedicated_mb",
+    "proc_dedicated_mb",
+    "proc_budget_mb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VRAM_ADAPTER",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "rule",
+    "adapter_dedicated_mb"
    ],
    "count": 1
   },
@@ -12562,7 +12614,10 @@
   "TGL_POOL",
   "TIMING",
   "VEG_SUMMARY",
-  "VISUAL_CAPTURE"
+  "VISUAL_CAPTURE",
+  "VK_PROFILE",
+  "VK_VALIDATION",
+  "VRAM"
  ],
  "plain_tags": [
   "VEG_SUMMARY",

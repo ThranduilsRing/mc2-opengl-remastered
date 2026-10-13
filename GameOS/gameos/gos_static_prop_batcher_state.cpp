@@ -307,9 +307,9 @@ float iblShStrengthNightScaled() {
     return g_iblShStrength * (1.0f - (1.0f - s_iblNightFloor) * nFactor);
 }
 
-// V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular. Default ON; the options.cfg key
-// StaticPropPbr = FALSE turns it off, and then the per-frame upload pushes u_pbrV1Strength=0.0f, so the
-// shader skips the term and the lit colour is unchanged.
+// V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular. Default OFF (most props carry no PBR data, so the
+// fallback sheen reads as a glint); the options.cfg key StaticPropPbr = TRUE turns it on. While off, the per-frame upload
+// pushes u_pbrV1Strength=0.0f, so the shader skips the term and the lit colour is unchanged.
 bool pbrV1Enabled() {   // first-use read, see staticPropAmbientV1Enabled()
     static const bool on = mc2::options::current().staticPropPbr;
     return on;

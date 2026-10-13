@@ -33,10 +33,12 @@
 // StaticPropAmbient is ON in options.cfg (Gates/render_options.h) and the
 // base-light wrap (strength 0.45, alpha-test props such as trees excluded) is
 // always on. So Stage A's static-prop row, Stage C's prop column and the Stage
-// E/F/G prop numbers are the "both off" bands: exact for trees' direction term,
-// NOT the lit band a building gets today. test_models_describe_ambient_off_not_
-// the_shipped_default pins that gap so a lane that reads a number here as the
-// shipped band is contradicted by a red test the moment the models change.
+// E/F/G prop numbers are the "both off" bands: the ambient term is omitted from
+// the tree model as well (the option is ON by default), and the base-light wrap
+// is omitted exactly for trees only, so none of them is the lit band a building
+// gets today. test_models_describe_ambient_off_not_the_shipped_default pins that
+// gap so a lane that reads a number here as the shipped band is contradicted by
+// a red test the moment the models change.
 // The Stage G floor and the IBL-on default are read from the live option table.
 //
 // Build (standalone, no engine, no GL):
@@ -395,12 +397,13 @@ static double propMul(double seed, double A, double S, double ndl, double ibl)
 // with propDirFactor == 1.0 for a tree because the base-light wrap excludes
 // kFlagIsAlphaTest geometry, which trees are (the wrap is always on for the
 // other props since PROP-BASE-LIGHT-DIR-1 was promoted).
-//   static_prop.vert:838  lit += ambient_v1 * u_ambientV1Strength -- OFF by
-//                                default (gos_static_prop_batcher.cpp:757-759,
-//                                opt-in idiom), exact no-op.
-//   static_prop.vert:848  if (u_iblShStrength > 0.0) lit += evalShL2(n)*strength
-//                                DEFAULT-ON at 0.5 (:1008-1013 killswitch idiom
-//                                + :325-333 strength).
+//   static_prop.vert  lit += ambient_v1 * u_ambientV1Strength -- the hemisphere
+//                                fill (StaticPropAmbient, ON by default in
+//                                Gates/render_options.h). The tree model omits
+//                                it, so a tree band here is the "ambient term
+//                                omitted" band, not the shipped one.
+//   static_prop.vert  if (u_iblShStrength > 0.0) lit += evalShL2(n)*strength
+//                                (StaticPropIblSh, ON by default; strength 0.5).
 //
 // Hence the two models below. The ONLY difference between the tree stock MC2
 // drew and the tree HEAD draws is the SH-IBL addend -- a port-era term.
@@ -2683,7 +2686,8 @@ static bool test_live_option_defaults_the_models_assume(TestCtx& t)
 }
 
 // G8c. The static-prop band models omit the hemisphere ambient fill (the options-off
-// configuration); the shipped default has it ON. This test pins that gap: when the
+// configuration); the shipped default has it ON. This test pins that gap for the PROP model
+// (propMulPreClamp); the tree model omits the term too and is not exercised here. When the
 // models are re-derived with the term (or the default changes) this goes red and the
 // header note above is rewritten.
 static bool test_models_describe_ambient_off_not_the_shipped_default(TestCtx& t)

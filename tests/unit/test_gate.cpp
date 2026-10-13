@@ -17,6 +17,8 @@
 #include "Gates/render_options.h"
 #include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
+#include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
+#include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
 
 #include <cstdio>
 #include <limits>
@@ -1259,7 +1261,7 @@ TEST_CASE("mlr_gate latches the env value on first use and every thread sees it"
 // options.cfg render options (Gates/render_options.h): defaults, bounds, garbage rejection and the override channel
 // ---------------------------------------------------------------------------
 
-TEST_CASE("render options default to what the gate rows they replaced defaulted to, except the two static-prop lighting rows flipped ON") {
+TEST_CASE("render options default to what the gate rows they replaced defaulted to, except StaticPropAmbient, which is ON") {
     const mc2::options::RenderOptions d{};
     CHECK_FALSE(d.postCas);
     CHECK(d.postCasSharpness == 0.5f);
@@ -1269,11 +1271,11 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK(d.propShadowReceive == 0);
     CHECK(d.shorelineLegacySuppress);
     CHECK(d.cpuPhongRetire);
-    CHECK(d.staticPropAmbient);        // flipped ON 2026-10-13 with StaticPropPbr (the final release ships these on)
+    CHECK(d.staticPropAmbient);        // the flat fill is ON; the PBR specular below is OFF (owner ruling 2026-10-13: most props carry no PBR data)
     CHECK(d.staticPropIblSh);
     CHECK_FALSE(d.staticPropIblSunRotate);
     CHECK(d.staticPropIblSunRotateFloor == 0.45f);
-    CHECK(d.staticPropPbr);
+    CHECK_FALSE(d.staticPropPbr);
     CHECK_FALSE(d.sunAxisFix);
     CHECK_FALSE(d.sunElevationFix);
     CHECK_FALSE(d.vfxSoftParticles);
@@ -1320,10 +1322,10 @@ TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports eve
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     std::vector<mo::Reject> rej;
-    const int n = mo::applyOverrides(o, "shadowcsm=0, STATICPROPPBR=FALSE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
+    const int n = mo::applyOverrides(o, "shadowcsm=0, STATICPROPPBR=TRUE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
     CHECK(n == 2);
     CHECK_FALSE(o.shadowCsm);
-    CHECK_FALSE(o.staticPropPbr);
+    CHECK(o.staticPropPbr);
     CHECK(o.postCasSharpness == 0.5f);
     CHECK(o.tonemapMode == 0);
     CHECK_FALSE(o.vfxLitParticles);
@@ -1467,7 +1469,7 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     mo::RenderOptions o{};
     std::vector<mo::Reject> rejects;
     const std::string good = "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nb VfxSoftParticles = 0\r\n"
-                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropPbr =   False  \r\n";
+                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropAmbient =   False  \r\n";
     CHECK(mo::cfg::loadFromText(o, good, &rejects) == 7);
     CHECK(rejects.empty());
     CHECK_FALSE(o.shadowCsm);
@@ -1476,7 +1478,7 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     CHECK_FALSE(o.vfxSoftParticles);
     CHECK(o.tonemapMode == 3);
     CHECK(o.postCasSharpness == 0.25f);
-    CHECK_FALSE(o.staticPropPbr);
+    CHECK_FALSE(o.staticPropAmbient);
 
     // a duplicate key is read at its first line; a rejected value does not clobber a value the struct already holds
     mo::RenderOptions dup{};
@@ -1496,6 +1498,7 @@ TEST_CASE("the render options serialize as one JSON object of all 17 values for 
     const std::string d = mo::toJson(o);
     CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowCSM\": true", 0) == 0);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
+    CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
     CHECK(std::count(d.begin(), d.end(), ':') == 17);
     o.tonemapMode = 3;
@@ -1505,4 +1508,236 @@ TEST_CASE("the render options serialize as one JSON object of all 17 values for 
     CHECK(c.find("\"TonemapMode\": 3") != std::string::npos);
     CHECK(c.find("\"StaticPropPbr\": true") != std::string::npos);
     CHECK(c.find("\"PostCASSharpness\": 0.25") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+// Vulkan device profile (GameOS/gameos/vk_device_profile.h): every item of the table is required, so a device that lacks one is refused and gets nothing enabled
+// ---------------------------------------------------------------------------
+
+namespace {
+namespace vkp = mc2vk::profile;
+
+// A device that has everything: 1.4 device under a 1.3 instance, every feature bit, the swapchain and memory-budget extensions, roomy limits.
+vkp::DeviceCaps fullCaps() {
+    vkp::DeviceCaps c;
+    c.deviceApi = vkp::makeApi(1, 4);
+    c.instanceApi = vkp::makeApi(1, 3);
+    c.extensions = {"VK_KHR_swapchain", "VK_EXT_memory_budget"};
+    c.timelineSemaphore = c.bufferDeviceAddress = c.descriptorIndexing = c.runtimeDescriptorArray = true;
+    c.shaderSampledImageArrayNonUniformIndexing = c.descriptorBindingPartiallyBound = true;
+    c.dynamicRendering = c.synchronization2 = true;
+    c.independentBlend = true;
+    c.maxImageDimension2D = 16384;
+    c.maxBoundDescriptorSets = 32;
+    c.maxPushConstantsSize = 256;
+    c.maxStorageBufferRange = 0xFFFFFFFFull;
+    return c;
+}
+
+// A 1.2-only device: the 1.3 features exist only behind their KHR extensions.
+vkp::DeviceCaps device12Caps(bool withExtensions) {
+    vkp::DeviceCaps c = fullCaps();
+    c.deviceApi = vkp::makeApi(1, 2);
+    c.instanceApi = vkp::makeApi(1, 2);
+    if (withExtensions) {
+        c.extensions.emplace_back(vkp::kExtDynamicRendering);
+        c.extensions.emplace_back(vkp::kExtSynchronization2);
+    } else {
+        c.dynamicRendering = c.synchronization2 = false;
+    }
+    return c;
+}
+
+bool hasId(const std::vector<std::string>& v, std::string_view id) {
+    for (const std::string& s : v)
+        if (s == id) return true;
+    return false;
+}
+}  // namespace
+
+TEST_CASE("vk profile: a device with everything is accepted and every facility takes its core route") {
+    const vkp::Evaluation e = vkp::evaluate(fullCaps(), true);
+    CHECK(e.accepted);
+    CHECK(e.missingRequired.empty());
+    CHECK(e.missingWanted.empty());
+    REQUIRE(e.items.size() == sizeof(vkp::kItemIds) / sizeof(vkp::kItemIds[0]));
+    for (size_t i = 0; i < e.items.size(); ++i) CHECK((e.items[i].id == vkp::kItemIds[i]));   // the line lists the table in one order
+    CHECK(vkp::routeOf(e, "dynamic_rendering") == vkp::Route::Core);
+    CHECK(vkp::routeOf(e, "synchronization2") == vkp::Route::Core);
+    CHECK(vkp::routeOf(e, "limits") == vkp::Route::Limit);
+    CHECK(vkp::routeOf(e, "no_such_item") == vkp::Route::None);
+    CHECK((vkp::routeName(vkp::Route::Core) == "core" && vkp::routeName(vkp::Route::Ext) == "ext" && vkp::routeName(vkp::Route::Limit) == "limit" &&
+           vkp::routeName(vkp::Route::None) == "-"));
+    CHECK(vkp::routeOf(e, "memory_budget") == vkp::Route::Ext);
+    // core: no KHR extension is named; the swapchain of the present window and the memory budget are, in table order
+    REQUIRE(e.deviceExtensions.size() == 2);
+    CHECK(e.deviceExtensions[0] == "VK_KHR_swapchain");
+    CHECK(e.deviceExtensions[1] == "VK_EXT_memory_budget");
+    CHECK(vkp::featureEnabled(e, "timelineSemaphore"));
+    CHECK(vkp::featureEnabled(e, "bufferDeviceAddress"));
+    CHECK(vkp::featureEnabled(e, "descriptorIndexing"));
+    CHECK(vkp::featureEnabled(e, "dynamicRendering"));
+    CHECK(vkp::featureEnabled(e, "synchronization2"));
+}
+
+TEST_CASE("vk profile: on a 1.2 device dynamic rendering and synchronization2 come from their KHR extensions") {
+    const vkp::Evaluation e = vkp::evaluate(device12Caps(true), true);
+    CHECK(e.accepted);
+    CHECK(vkp::routeOf(e, "dynamic_rendering") == vkp::Route::Ext);
+    CHECK(vkp::routeOf(e, "synchronization2") == vkp::Route::Ext);
+    CHECK(hasId(e.deviceExtensions, vkp::kExtDynamicRendering));
+    CHECK(hasId(e.deviceExtensions, vkp::kExtSynchronization2));
+    CHECK(e.deviceExtensions.size() == 4);                              // swapchain, the two KHR routes, memory budget
+    CHECK(vkp::featureEnabled(e, "dynamicRendering"));
+    CHECK(vkp::routeOf(e, "timeline_semaphore") == vkp::Route::Core);   // core in 1.2: no extension to name
+}
+
+TEST_CASE("vk profile: a 1.2 device without the KHR extensions is refused and gets nothing enabled") {
+    vkp::DeviceCaps c = device12Caps(false);
+    const vkp::Evaluation e = vkp::evaluate(c, true);
+    CHECK_FALSE(e.accepted);
+    CHECK(hasId(e.missingRequired, "dynamic_rendering"));
+    CHECK(hasId(e.missingRequired, "synchronization2"));
+    CHECK(e.missingWanted.empty());
+    CHECK_FALSE(vkp::featureEnabled(e, "dynamicRendering"));
+    CHECK_FALSE(vkp::featureEnabled(e, "timelineSemaphore"));           // a refused device is enabled for nothing, not even the bits it has
+    CHECK(e.enabledFeatures.empty());
+    CHECK(e.deviceExtensions.empty());
+    // A feature bit with no extension and no core version behind it is not a route either.
+    c.dynamicRendering = true;
+    const vkp::Evaluation bit = vkp::evaluate(c, true);
+    CHECK(hasId(bit.missingRequired, "dynamic_rendering"));
+    CHECK_FALSE(bit.accepted);
+}
+
+TEST_CASE("vk profile: each of the five facilities of the owner ruling, and independent blend, is required") {
+    struct Row { const char* id; void (*drop)(vkp::DeviceCaps&); };
+    const Row rows[] = {
+        {"timeline_semaphore", [](vkp::DeviceCaps& c) { c.timelineSemaphore = false; }},
+        {"buffer_device_address", [](vkp::DeviceCaps& c) { c.bufferDeviceAddress = false; }},
+        {"descriptor_indexing", [](vkp::DeviceCaps& c) { c.descriptorIndexing = false; }},
+        {"dynamic_rendering", [](vkp::DeviceCaps& c) { c.dynamicRendering = false; }},
+        {"synchronization2", [](vkp::DeviceCaps& c) { c.synchronization2 = false; }},
+        {"independent_blend", [](vkp::DeviceCaps& c) { c.independentBlend = false; }},
+    };
+    for (const Row& r : rows) {
+        vkp::DeviceCaps c = fullCaps();
+        r.drop(c);
+        const vkp::Evaluation e = vkp::evaluate(c, true);
+        CHECK_FALSE(e.accepted);
+        REQUIRE(e.missingRequired.size() == 1);
+        CHECK(e.missingRequired[0] == r.id);
+        CHECK(e.missingWanted.empty());
+        const std::string line = vkp::formatLine("gpu", c, e);
+        CHECK(line.find(std::string(" required_missing=") + r.id + " ") != std::string::npos);
+        CHECK(line.find("verdict=refused") != std::string::npos);
+        CHECK(line.find(" enabled=- extensions=-") != std::string::npos);
+    }
+}
+
+TEST_CASE("vk profile: a device or instance below 1.2 is refused") {
+    vkp::DeviceCaps c = fullCaps();
+    c.deviceApi = vkp::makeApi(1, 1);
+    vkp::Evaluation e = vkp::evaluate(c, true);
+    CHECK_FALSE(e.accepted);
+    CHECK(hasId(e.missingRequired, "api_1_2"));
+    CHECK_FALSE(vkp::featureEnabled(e, "timelineSemaphore"));           // no 1.2 feature struct is valid on a 1.1 device
+    c = fullCaps();
+    c.instanceApi = vkp::makeApi(1, 1);                                 // the application asked for 1.1: 1.2 functionality is off limits
+    e = vkp::evaluate(c, true);
+    CHECK_FALSE(e.accepted);
+    CHECK(hasId(e.missingRequired, "api_1_2"));
+    CHECK(vkp::formatLine("old gpu", c, e).rfind("[VK_PROFILE v1] verdict=refused device=\"old gpu\" ", 0) == 0);
+}
+
+TEST_CASE("vk profile: the swapchain is required only when the context drives a present window") {
+    vkp::DeviceCaps c = fullCaps();
+    c.extensions.clear();
+    const vkp::Evaluation headless = vkp::evaluate(c, false);
+    CHECK(headless.accepted);
+    CHECK_FALSE(hasId(headless.deviceExtensions, vkp::kExtSwapchain));    // a context with no window never names the swapchain
+    CHECK(hasId(headless.missingWanted, "swapchain"));                  // reported, never a refusal
+    const vkp::Evaluation e = vkp::evaluate(c, true);
+    CHECK_FALSE(e.accepted);
+    CHECK(hasId(e.missingRequired, "swapchain"));
+}
+
+TEST_CASE("vk profile: each limit is required") {
+    vkp::DeviceCaps c = fullCaps();
+    c.maxImageDimension2D = 4096;                                       // below the 8192 shadow map
+    CHECK(hasId(vkp::evaluate(c, true).missingRequired, "limits"));
+    c = fullCaps();
+    c.maxBoundDescriptorSets = 3;
+    CHECK(hasId(vkp::evaluate(c, true).missingRequired, "limits"));
+    c = fullCaps();
+    c.maxPushConstantsSize = 64;
+    CHECK(hasId(vkp::evaluate(c, true).missingRequired, "limits"));
+    c = fullCaps();
+    c.maxStorageBufferRange = 1u << 20;
+    CHECK(hasId(vkp::evaluate(c, true).missingRequired, "limits"));
+    CHECK(vkp::evaluate(fullCaps(), true).missingRequired.empty());
+}
+
+TEST_CASE("vk profile: descriptor indexing needs the umbrella bit and every individual bit the descriptor table uses") {
+    for (int missing = 0; missing < 4; ++missing) {
+        vkp::DeviceCaps c = fullCaps();
+        if (missing == 0) c.descriptorIndexing = false;
+        if (missing == 1) c.runtimeDescriptorArray = false;
+        if (missing == 2) c.shaderSampledImageArrayNonUniformIndexing = false;
+        if (missing == 3) c.descriptorBindingPartiallyBound = false;
+        const vkp::Evaluation e = vkp::evaluate(c, true);
+        CHECK_FALSE(e.accepted);                                        // the bindless table needs the whole group
+        CHECK(hasId(e.missingRequired, "descriptor_indexing"));
+        CHECK_FALSE(vkp::featureEnabled(e, "runtimeDescriptorArray"));  // none of the group is enabled when one is missing
+    }
+}
+
+TEST_CASE("vk profile: the memory-budget extension is optional: reported when missing, enabled when present") {
+    vkp::DeviceCaps c = fullCaps();
+    c.extensions = {"VK_KHR_swapchain"};
+    const vkp::Evaluation e = vkp::evaluate(c, true);
+    CHECK(e.accepted);
+    CHECK(hasId(e.missingWanted, "memory_budget"));
+    CHECK(e.missingRequired.empty());
+    CHECK(vkp::routeOf(e, "memory_budget") == vkp::Route::None);
+    CHECK_FALSE(hasId(e.deviceExtensions, vkp::kExtMemoryBudget));
+    const std::string line = vkp::formatLine("gpu", c, e);
+    CHECK(line.find(" wanted_missing=memory_budget ") != std::string::npos);
+    CHECK(line.find(" extensions=VK_KHR_swapchain") != std::string::npos);
+    CHECK(vkp::evaluate(fullCaps(), true).missingWanted.empty());
+}
+
+TEST_CASE("vk profile: the line names the device, both versions, what is missing and what is enabled") {
+    const vkp::DeviceCaps c = fullCaps();
+    const vkp::Evaluation e = vkp::evaluate(c, true);
+    const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
+    CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
+                  "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
+                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,"
+                  "descriptorIndexing,runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,"
+                  "synchronization2,independentBlend "
+                  "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
+    CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
+    const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);
+    CHECK(vkp::formatLine("gpu", device12Caps(false), lacking).find(" required_missing=dynamic_rendering,synchronization2 wanted_missing=- ") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+// Vulkan validation-layer line (GameOS/gameos/vk_validation_line.h): one message is always one line the smoke parser can read
+// ---------------------------------------------------------------------------
+
+TEST_CASE("vk validation line: a message becomes one line with a clean id and a quote-free text") {
+    using mc2vk::formatValidationLine;
+    CHECK(formatValidationLine("error", "VUID-vkCmdDraw-None-02699", "vkCmdDraw(): set 0 not updated") ==
+          "[VK_VALIDATION v1] severity=error id=VUID-vkCmdDraw-None-02699 text=\"vkCmdDraw(): set 0 not updated\"");
+    // a multi-line message with quotes and tabs stays on one line and keeps its closing quote unambiguous
+    CHECK(formatValidationLine("warning", "UNASSIGNED id with spaces", "line one\nline \"two\"\r\n\tline three") ==
+          "[VK_VALIDATION v1] severity=warning id=UNASSIGNED_id_with_spaces text=\"line one line 'two'   line three\"");
+    CHECK(formatValidationLine("info", "", "x") == "[VK_VALIDATION v1] severity=info id=- text=\"x\"");
+}
+
+TEST_CASE("vk validation line: a very long message is capped") {
+    const std::string line = mc2vk::formatValidationLine("error", "id", std::string(5000, 'a'));
+    CHECK(line.size() == std::string("[VK_VALIDATION v1] severity=error id=id text=\"\"").size() + mc2vk::kValidationTextCap);
+    CHECK(line.back() == '"');
 }

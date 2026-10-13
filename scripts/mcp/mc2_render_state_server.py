@@ -464,6 +464,7 @@ def get_visual_settings() -> str:
     return _stale_banner() + json.dumps({
         "frame": frame,
         "renderOptions": data.get("renderOptions"),   # every options.cfg render option as the renderer read it
+        "gpu_memory": data.get("gpu_memory"),         # GPU memory the process held at the dump (whole MiB, -1 = counter unavailable)
         "renderPasses": {
             "shadow":       rp.get("shadow"),
             "screenShadow": rp.get("screenShadow"),

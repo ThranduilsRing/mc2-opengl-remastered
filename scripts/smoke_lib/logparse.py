@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
+from . import vk_profile, vk_validation, vram
+
 PERF_RE = re.compile(
     r"\[PERF v1\] avg_fps=(?P<avg>[\d.]+) p50_ms=(?P<p50>[\d.]+) "
     r"p99_ms=(?P<p99>[\d.]+) p1low_fps=(?P<p1l>[\d.]+) peak_ms=(?P<peak>[\d.]+) "
@@ -120,6 +122,14 @@ MARKER_BUCKETS: tuple = (
     # 24-map run is the documented follow-up).
     MarkerBucket(re.compile(r"\[APPEAR_AUDIT v1\] event=missing\b"),
                  "appear_audit", "advisory", None),
+    # The Vulkan device profile REFUSED the device (a required item of the 1.2 profile is missing): the engine fell back to GL, so a run that asked
+    # for Vulkan would otherwise pass on the wrong backend. Emitter: GameOS/gameos/vulkan_context.cpp (vk_device_profile.h table).
+    MarkerBucket(re.compile(r"\[VK_PROFILE v1\] verdict=refused\b"),
+                 "vk_profile_refused", "red", None),
+    # The Khronos validation layer reported an ERROR (or was requested and is not installed: id=layer_unavailable). Warnings are counted in the report,
+    # never red. Emitter: GameOS/gameos/vulkan_context.cpp; the layer is on only when the run sets MC2_VULKAN_VALIDATION (smoke, never a player).
+    MarkerBucket(re.compile(r"\[VK_VALIDATION v1\] severity=error\b"),
+                 "vk_validation_error", "red", None),
 )
 
 
@@ -174,6 +184,12 @@ class LogSummary:
     # Two runs under MC2_SMOKE_FIXED_TIMESTEP + MC2_DETERMINISTIC_RNG must carry the same chain over their common frames (tools/sim_determinism.py).
     simid_frames: int = 0
     simid_chain: Optional[str] = None
+    # The `[VRAM v1]` samples of the run (load_end, run_end): GPU memory counters, see smoke_lib/vram.py.
+    vram: list = field(default_factory=list)
+    # The `[VK_PROFILE v1]` lines (the Vulkan device profile verdict), see smoke_lib/vk_profile.py.
+    vk_profile: list = field(default_factory=list)
+    # The `[VK_VALIDATION v1]` lines (Khronos validation layer messages), see smoke_lib/vk_validation.py.
+    vk_validation: list = field(default_factory=list)
 
 
 def parse_log(text: str,
@@ -198,6 +214,12 @@ def parse_log(text: str,
         if line.startswith("[SIMID v1] simframe="):
             simid.update(line.rstrip().encode("utf-8", "replace"))
             s.simid_frames += 1
+        if "[VRAM v1]" in line:
+            s.vram.extend(vram.parse(line))
+        if "[VK_PROFILE v1]" in line:
+            s.vk_profile.extend(vk_profile.parse(line))
+        if "[VK_VALIDATION v1]" in line:
+            s.vk_validation.extend(vk_validation.parse(line))
         if "[SMOKE v1] event=banner" in line:
             s.smoke_banner_seen = True
         if "[SMOKE v1] event=mission_resolve" in line:

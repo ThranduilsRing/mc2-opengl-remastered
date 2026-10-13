@@ -23,7 +23,8 @@
   "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
  },
  "direct_spawn": {
-  "tests/smoke/test_launcher_legacy_env.py": "runs the mc2-launcher.exe copy headless (--sync-options: no window, no game) on a temp install; children use console_child.child_kwargs",
+  "tools/visual_verify/vk_replay.py": "runs tools/visual_verify/capture.py (the engine goes through nofocus.spawn and the host lease there) with the GFXReconstruct layer in the environment, and gfxrecon-replay.exe --wsi headless (no window, no game) under the host lease; children use console_child.child_kwargs",
+    "tests/smoke/test_launcher_legacy_env.py": "runs the mc2-launcher.exe copy headless (--sync-options: no window, no game) on a temp install; children use console_child.child_kwargs",
   "tests/analyze/analyze_dangling.py": "runs clang-cl under vcvars64 for the lifetime gate; a compiler, not the game; children use console_child.child_kwargs",
   ".claude/hooks/check_game_running.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "scripts/bake_colormap_ktx2.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",

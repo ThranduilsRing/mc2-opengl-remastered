@@ -4,6 +4,8 @@
 Reads the .tracy traces a `tracy_capture_compare.py baseline` run wrote and prints a markdown report:
   * frame-time percentiles from the wall-clock delta between consecutive DrawScreen starts, after dropping the first
     40% of frames (mission load / settle), or --skip-frames when a camera pose pins at a known frame, and any delta over 200 ms (same rule as the harness);
+  * the GPU memory the run held: the engine's `VRAM.Process.MB` Tracy plot (process dedicated video memory, sampled every 120 frames) over the same
+    steady window, and the `[VRAM v1]` lines of the trace's game log (load end / run end) when the log sits beside the trace;
   * the top N zones by SELF time per frame over that same steady-state window. Self time = a zone's duration minus
     the time of the zones nested directly inside it on the same thread, rebuilt from tracy-csvexport --unwrap
     (the aggregate CSV cannot be windowed, so its totals would include mission-load zones).
@@ -22,9 +24,10 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from smoke_lib import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
+from smoke_lib import nofocus, vram  # noqa: E402  (OWNER RULE: no window for any child process; vram parses the [VRAM v1] lines)
 
 FRAME_ZONE = "DrawScreen"
+VRAM_PLOT = "VRAM.Process.MB"
 WARMUP_FRAC = 0.4
 HITCH_MS = 200.0
 
@@ -55,6 +58,50 @@ def frame_starts(trace):
     return sorted(ts)
 
 
+def vram_plot_samples(trace):
+    """[(ns_since_start, MiB)] of the engine's VRAM plot, or [] when the trace has none (an exe built before the plot)."""
+    p = run_csv(["-u", "-p", "-f", VRAM_PLOT], trace)
+    out = []
+    for row in csv.DictReader(p.stdout):
+        if row.get("name") == VRAM_PLOT and row.get("ns_since_start") and row.get("value"):
+            out.append((int(row["ns_since_start"]), float(row["value"])))
+    p.wait()
+    return sorted(out)
+
+
+def vram_lines(plot, t0, game_log_text=""):
+    """Markdown lines for the GPU memory of a trace: the plot over the steady window starting at t0 (ns), then the `[VRAM v1]` samples of the game log.
+    Pure: takes the plot samples and the log text, so it can be tested without a trace."""
+    out = []
+    steady = [v for ns, v in plot if ns >= t0]
+    if plot:
+        vals = sorted(steady or [v for _ns, v in plot])
+        out.append("GPU memory, process dedicated video memory (Tracy plot `%s`, %d sample(s) in the steady window): median %.0f MiB, max %.0f MiB, "
+                   "first %.0f MiB, last %.0f MiB." % (VRAM_PLOT, len(steady), vals[len(vals) // 2], vals[-1], plot[0][1], plot[-1][1]))
+    else:
+        out.append("GPU memory: the trace has no `%s` plot (taken with an exe that predates it)." % VRAM_PLOT)
+    for s in vram.parse(game_log_text):
+        out.append("GPU memory, game log: %s." % vram.describe(s))
+    out.append("")
+    return out
+
+
+def vram_record(trace, t0=0):
+    """The GPU memory of one trace as plain data for a baseline.json arm: the plot summary over [t0, end) and the game log's `[VRAM v1]` samples."""
+    plot = vram_plot_samples(trace)
+    window = sorted(v for ns, v in plot if ns >= t0) or sorted(v for _ns, v in plot)
+    log = Path(trace).with_suffix(".game.log")
+    try:
+        text = log.read_text(encoding="utf-8", errors="replace") if log.is_file() else ""
+    except OSError:
+        text = ""
+    return {
+        "plot": ({"name": VRAM_PLOT, "samples": len(plot), "median_mb": window[len(window) // 2], "max_mb": window[-1], "last_mb": plot[-1][1]}
+                 if plot else None),
+        "log": [{"phase": s.phase, "backend": s.backend, "values": s.values} for s in vram.parse(text)],
+    }
+
+
 def analyse(trace, top, skip_frames=0):
     ts = frame_starts(trace)
     if len(ts) < 50:
@@ -69,6 +116,13 @@ def analyse(trace, top, skip_frames=0):
            "%d frames in the steady window (%d dropped as warm-up); frame time ms: mean %.2f, p50 %.2f, p95 %.2f, p99 %.2f, max %.2f "
            "(%.1f fps mean, %.1f fps at p99)." % (nframes, cut, mean, pct(deltas, 50), pct(deltas, 95), pct(deltas, 99),
                                                     deltas[-1], 1000.0 / mean, 1000.0 / pct(deltas, 99)), ""]
+
+    log = Path(trace).with_suffix(".game.log")
+    try:
+        log_text = log.read_text(encoding="utf-8", errors="replace") if log.is_file() else ""
+    except OSError:
+        log_text = ""
+    out += vram_lines(vram_plot_samples(trace), t0, log_text)
 
     # per-thread event lists inside the window
     events = defaultdict(list)       # thread -> [(start, dur, name)]

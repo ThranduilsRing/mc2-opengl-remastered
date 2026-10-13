@@ -7,9 +7,10 @@ WHY: the engine's drawable size comes from options.cfg ResolutionX/Y unless MC2_
 have graded different pixels (golden regions are fractions of the frame and the diff resizes a mismatched crop). Pinning makes a capture or a
 trace mean the same thing on every install and keeps its cost bounded: 1080p is a quarter of the pixels of 4K, which is the size a player on
 the reference desktop actually runs.
-WHO READS IT: scripts/run_visual_capture.py (so tools/visual_verify/capture.py, capture_ab.py and the golden/baseline capture runs) and
-tools/tracy_capture_compare.py. The smoke runner (scripts/run_smoke.py tier1) is NOT pinned: it keeps options.cfg size on purpose, and the
-`resolution` tier sets its own sizes from RESOLUTION_TIER_SIZES.
+WHO READS IT: scripts/run_visual_capture.py (so tools/visual_verify/capture.py, capture_ab.py and the golden/baseline capture runs),
+tools/tracy_capture_compare.py and the smoke runner (scripts/run_smoke.py) for the tiers in PINNED_TIERS (tier1: its fps numbers are a baseline,
+so they are taken at the same size as the captures and the traces; before 2026-10-13 they were whatever the install's options.cfg said, which is 4K).
+The `resolution` tier sets its own sizes from RESOLUTION_TIER_SIZES; the other tiers keep the options.cfg size.
 """
 from __future__ import annotations
 
@@ -17,6 +18,10 @@ from typing import Mapping, Optional
 
 PINNED_WIDTH = 1920
 PINNED_HEIGHT = 1080
+
+#: The golden set (tests/visual/goldens/<name>) blessed at the pinned size; `verify.py --golden current` and `check-capture-resolution.py --current`
+#: resolve to it. The 3840x2160 set `reset-50331d5` stays on disk under its own name (it can no longer be graded against: wrong size).
+CURRENT_GOLDEN = "golden-e9e3f19d6-1080p"
 
 #: The sizes the weekly `resolution` smoke tier runs one mission at: the pinned size and the 4K size a stock install is configured for.
 RESOLUTION_TIER_SIZES = ((PINNED_WIDTH, PINNED_HEIGHT), (3840, 2160))
@@ -37,6 +42,24 @@ def size_env(width: int = PINNED_WIDTH, height: int = PINNED_HEIGHT) -> "dict[st
 
 def pinned_env() -> "dict[str, str]":
     return size_env()
+
+
+#: The smoke tiers whose runs are taken at the pinned size (the per-entry `resolution=` of the `resolution` tier still wins).
+PINNED_TIERS = ("tier1",)
+
+
+def asked_size(tier: str, entry_resolution: str = "") -> "Optional[tuple[int, int]]":
+    """The (width, height) a smoke entry asks the engine for: its own `resolution=` when it has one, the pinned size for a pinned tier, else None
+    (the install's options.cfg size applies)."""
+    if entry_resolution:
+        return parse(entry_resolution)
+    return (PINNED_WIDTH, PINNED_HEIGHT) if tier in PINNED_TIERS else None
+
+
+def tier_size_env(tier: str, entry_resolution: str = "") -> "dict[str, str]":
+    """The engine env for `asked_size`, empty when the entry asks for no size."""
+    size = asked_size(tier, entry_resolution)
+    return size_env(*size) if size else {}
 
 
 SIZE_KEYS = ("MC2_WIDTH", "MC2_HEIGHT")

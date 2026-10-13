@@ -78,6 +78,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
 from smoke_lib import nofocus  # noqa: E402
 from smoke_lib import render_options_pin, render_resolution  # noqa: E402
+import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
@@ -656,6 +657,14 @@ def write_baseline_summary(md_path: Path, meta: dict) -> None:
                   "FIRST arm of a heavy map, an early crash, or a VK fail-soft to GL). Re-run to "
                   "capture against a now-warm cache, or raise `--seconds`. Do NOT trust a suspect "
                   "arm's fps."]
+    vram_rows = []
+    for arm in meta["arm_order"]:
+        v = (arms.get(arm) or {}).get("vram") or {}
+        plot = v.get("plot")
+        logged = "; ".join(f"{s['phase']} {s['backend']}" for s in v.get("log") or []) or "-"
+        vram_rows.append(f"| {arm} | " + (f"{plot['median_mb']:.0f} / {plot['max_mb']:.0f} / {plot['last_mb']:.0f}" if plot else "no plot") + f" | {logged} |")
+    lines += ["", "## GPU memory (process dedicated video memory, MiB)", "",
+              "| arm | plot median / max / last | `[VRAM v1]` samples in the game log |", "|---|---|---|"] + vram_rows
     lines += ["", "## Per-zone mean (ns)", "",
               "| zone | " + " | ".join(meta["arm_order"]) + " |",
               "|---|" + "|".join("--:" for _ in meta["arm_order"]) + "|"]
@@ -693,6 +702,8 @@ def cmd_baseline(args: argparse.Namespace) -> int:
         rc = rc or r
         arm_results[arm] = measure_arm(trace, zones, args.seconds, export_exe)
         arm_results[arm]["options"] = (render_options_pin.read(options_sidecar(trace)) or {}).get("values")
+        # GPU memory next to the frame rate: a baseline taken at a different working set is not the same baseline.
+        arm_results[arm]["vram"] = perf_baseline_report.vram_record(trace)
 
     meta = {
         "name": name,

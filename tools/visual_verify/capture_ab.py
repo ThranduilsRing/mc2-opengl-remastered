@@ -5,10 +5,13 @@ so only a result clearly above the noise floor needs a full montage.
 
 Usage:
   py -3 tools/visual_verify/capture_ab.py capture --install DIR --tag TAG [--root DIR] [--bookmarks a,b]
-      writes <root>/<TAG>1-gl, <root>/<TAG>2-gl and <root>/<TAG>-vk (capture.py --clean; VK via MC2_RENDER_BACKEND=vulkan).
+      writes <root>/<TAG>1-gl, <root>/<TAG>2-gl and <root>/<TAG>-vk (capture.py --clean; VK via the umbrella MC2_RENDER_BACKEND=vulkan
+      AND MC2_VK_SHARED_GBUFFER=1: the selector alone makes the engine force GL and the "VK" set would be a GL capture).
       Take the BEFORE set on the old install first, deploy the change, then take the AFTER set.
   py -3 tools/visual_verify/capture_ab.py compare --before TAG --after TAG [--root DIR] [--bookmarks a,b]
       prints, per bookmark: NOISE (before GL1 vs before GL2), GL (before GL1 vs after GL1 and GL2), VK (before vs after), each as montage_compact's DIFF line.
+      Refuses (exit 1) sets whose render options differ (--vary names a deliberate difference) and sets that were not drawn by the backend their name
+      says: a "-vk" set whose sidecars say GL is not Vulkan evidence.
 Launches go through capture.py only (lease, background-only, no window)."""
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 
 import console_child  # noqa: E402
 import montage_compact as mc  # noqa: E402
-from smoke_lib import render_options_pin  # noqa: E402
+from smoke_lib import capture_backend, render_options_pin  # noqa: E402
 
 DEFAULT_BOOKMARKS = "mc2_01_saved_205644,mc2_10_saved_204523"
 DEFAULT_ROOT = os.path.join(REPO, ".claude", "l2cap")
@@ -64,6 +67,26 @@ def check_options(root: str, before: str, after: str, vary: "list[str]") -> None
     reference = {"values": sweep_options(ref_name)}
     for name, label in sets[1:]:
         render_options_pin.require_same(reference, {"values": sweep_options(name)}, vary, ref_label, label)
+
+
+def check_backends(root: str, before: str, after: str, bookmarks: "list[str]") -> "list[str]":
+    """One message per set that was not drawn by the backend its name says ("-gl" = GL, "-vk" = Vulkan). The pose sidecars decide (the engine writes
+    `backend`, an older one only `readback_source`); a set with no sidecar at all is also a problem. A "-vk" set that drew GL says so in the message."""
+    problems = []
+    for tag in (before, after):
+        for name, want in ((f"{tag}1-gl", capture_backend.GL), (f"{tag}2-gl", capture_backend.GL), (f"{tag}-vk", capture_backend.VULKAN)):
+            sidecars = []
+            for bm in bookmarks:
+                try:
+                    with open(os.path.join(root, name, bm, bm + ".json"), encoding="utf-8") as f:
+                        sidecars.append((f"{name}/{bm}", json.load(f)))
+                except (OSError, ValueError):
+                    sidecars.append((f"{name}/{bm}", None))
+            found = capture_backend.check(want, sidecars)
+            if want == capture_backend.VULKAN and found:
+                found = ["VK arm UNPROVEN (GL pixels or no proof): " + m for m in found]
+            problems += found
+    return problems
 
 
 def compare(root: str, before: str, after: str, bookmarks: list[str]) -> list[str]:
@@ -122,7 +145,12 @@ def main(argv: list[str] | None = None) -> int:
         except render_options_pin.OptionsMismatch as e:
             print(f"REFUSED: {e}", file=sys.stderr)
             return 1
-        print("\n".join(compare(args.root, args.before, args.after, args.bookmarks.split(","))))
+        bookmarks = args.bookmarks.split(",")
+        bad = check_backends(args.root, args.before, args.after, bookmarks)
+        if bad:
+            print("REFUSED: a set was not drawn by the backend its name says:\n  " + "\n  ".join(bad), file=sys.stderr)
+            return 1
+        print("\n".join(compare(args.root, args.before, args.after, bookmarks)))
         return 0
     os.makedirs(args.root, exist_ok=True)
     rc = 0

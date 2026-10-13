@@ -1388,7 +1388,7 @@ def main():
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
-                **(render_resolution.size_env(*render_resolution.parse(e.resolution)) if e.resolution else {}),
+                **render_resolution.tier_size_env(tier, e.resolution),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).
                 **_mod_env,
@@ -1549,9 +1549,10 @@ def main():
         key = baselines.key(cfg.profile, label, tier, duration)
         delta = baselines.destroys_delta(baseline_data, key, result.summary.destroys)
 
-        if e.resolution:
+        _asked = render_resolution.asked_size(tier, e.resolution)
+        if _asked:
             # The size must have reached the engine: a clamped or ignored request would make this tier green without testing the size.
-            _asked_w, _asked_h = render_resolution.parse(e.resolution)
+            _asked_w, _asked_h = _asked
             if f"[RESOLUTION] Pre-window: {_asked_w}x{_asked_h} (from MC2_WIDTH/MC2_HEIGHT env)" not in result.stdout_text:
                 _resolution_failures.append(f"{label}: the engine log has no '[RESOLUTION] Pre-window: {_asked_w}x{_asked_h}' line")
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
@@ -1577,10 +1578,14 @@ def main():
                 "mean": result.summary.destroys, "stddev": 0, "samples": 1,
                 "updated": timestamp,
             }
+            # An informational record for whoever reads tests/smoke/baselines.json (a perf comparison starts from these numbers): no grader reads it, so a
+            # run is never red for being slower than this; only `destroys` above is compared.
             baseline_data[key]["perf"] = {
                 "avg_fps": result.summary.perf.avg_fps,
                 "p1low_fps": result.summary.perf.p1low_fps,
                 "peak_ms": result.summary.perf.peak_ms,
+                # The fps means this drawable size: a pinned tier is recorded at the pinned size, the others at whatever options.cfg said.
+                "resolution": (lambda s: f"{s[0]}x{s[1]}" if s else "install options.cfg size")(render_resolution.asked_size(tier, e.resolution)),
             }
 
         # VEG-SMOKE-FLOOR-1: check vegetation output contract when gate is active.
