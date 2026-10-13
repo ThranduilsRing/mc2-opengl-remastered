@@ -49,7 +49,7 @@
   "GameOS": {
    "LG01": 10,
    "LG02": 192,
-   "LG03": 301,
+   "LG03": 299,
    "LG04": 6,
    "LG05": 118,
    "LG06": 497,
@@ -1262,7 +1262,7 @@
    "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG06": 2,
    "LG09": 8,
    "LG11": 1,
@@ -5173,7 +5173,7 @@
    "LG20": 2
   }
  },
- "head": "c336a1dca",
+ "head": "fd000f067",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
