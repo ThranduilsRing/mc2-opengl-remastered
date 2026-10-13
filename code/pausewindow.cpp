@@ -296,7 +296,7 @@ void PauseWindow::update()
 
 	wasDragging = userInput->wasLeftDrag();
 
-	const std::string campaignName = LogisticsData::instance->getCampaignName();
+	const std::string& campaignName = LogisticsData::instance->getCampaignName();
 	char campName[1024];
 	_splitpath(campaignName.c_str(),nullptr,nullptr,campName,nullptr);
 	if ( MPlayer || 

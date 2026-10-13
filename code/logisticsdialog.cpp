@@ -647,7 +647,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 			LogisticsSaveDialog* self;
 			unsigned long itemColor;
 		};
-		ModCampaignCtx ctx = { this, edits[0].getColor() };
+		ModCampaignCtx ctx = { this, static_cast<unsigned long>( edits[0].getColor() ) };
 		EnumerateModCampaignFiles([](const char* fitFileName, const char* fullPath, void* ud) {
 			ModCampaignCtx* c = static_cast<ModCampaignCtx*>(ud);
 
@@ -831,7 +831,7 @@ void LogisticsSaveDialog::update()
 			{
 				if ( mc2::str::iequals( displayName, mc2::str::from_c( pSelectedItem->getText() ) ) )
 				{
-					fileName = pSelectedItem->getHiddenText();
+					fileName = mc2::str::from_c( pSelectedItem->getHiddenText() );
 				}
 			}
 		}
@@ -845,7 +845,7 @@ void LogisticsSaveDialog::update()
 				aLocalizedListItem* pItem = dynamic_cast<aLocalizedListItem*>(gameListBox.GetItem( i ));
 				if ( mc2::str::iequals( displayName, mc2::str::from_c( pItem->getText() ) ) )
 				{
-					fileName = pItem->getHiddenText( );
+					fileName = mc2::str::from_c( pItem->getHiddenText( ) );
 					break;
 				}
 			}
@@ -1648,8 +1648,7 @@ void LogisticsVariantDialog::update()
 		}
 	}
 
-	std::string text;
-	text = edits[0].entry();
+	std::string text = edits[0].entry();
 	if ( ( !bTranscript && !LogisticsData::instance->canReplaceVariant( text.c_str() ) ) || text.empty() )
 	{
 		buttons[2].disable( 1 );	
@@ -1917,8 +1916,7 @@ void LogisticsAcceptVariantDialog::update()
 		}
 	}
 
-	std::string text;
-	text = edits[0].entry();
+	std::string text = edits[0].entry();
 	if ( !LogisticsData::instance->canReplaceVariant( text.c_str() ) )
 	{
 		buttons[1].disable( 1 );	

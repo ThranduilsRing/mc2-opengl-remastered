@@ -565,10 +565,9 @@ long MechListBox::AddItem(aListItem* itemString)
 {
 	itemString->setID( ID );
 	MechListBoxItem* pItem = dynamic_cast<MechListBoxItem*>(itemString);
-	EString addedName;
 	char tmp[256];
 	cLoadString( pItem->getMech()->getChassisName(), tmp, 255 );
-	addedName = tmp;
+	const std::string addedName = tmp;
 	
 	if ( pItem )
 	{
@@ -581,32 +580,32 @@ long MechListBox::AddItem(aListItem* itemString)
 			pItem->countText.showGUIWindow( 0 );
 		}
 	
-		EString chassisName;
+		// Same-weight mechs order by chassis display name, ignoring ASCII case (the stock names do not move: tests/analyze/name_sort_probe.py), then by variant.
 		for ( int i = 0; i < itemCount; i++ )
 		{
 
 			long ID = ((MechListBoxItem*)items[i])->pMech->getChassisName();
 			char tmpChassisName[256];
 			cLoadString( ID, tmpChassisName, 255 );
-			chassisName = tmpChassisName;
+			const std::string chassisName = tmpChassisName;
 			if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() < pItem->pMech->getMaxWeight() )
 			{
 				return InsertItem( itemString, i );
 				break;
 			}
 			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
-				&& chassisName.Compare( addedName ) > 0 )
+				&& mc2::str::icompare( chassisName, addedName ) > 0 )
 			{
 				return InsertItem( itemString, i );
 			}
 			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
-				&& chassisName.Compare( addedName ) == 0 
+				&& mc2::str::iequals( chassisName, addedName )
 				&& ((MechListBoxItem*)itemString)->pMech->getName().find("Prime") != std::string::npos )
 			{
 				return InsertItem( itemString, i );
 			}
 			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
-				&& chassisName.Compare( addedName ) == 0 
+				&& mc2::str::iequals( chassisName, addedName )
 				&& ( ((MechListBoxItem*)items[i])->pMech->getName().find("Prime") == std::string::npos ) 
 				// variants of one chassis sort by name, ignoring ASCII case, then by raw bytes
 				&& mc2::str::ci_total_less{}( pItem->pMech->getName(), ((MechListBoxItem*)items[i])->pMech->getName() ) )

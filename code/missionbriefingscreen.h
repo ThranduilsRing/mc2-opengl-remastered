@@ -61,7 +61,7 @@ class MissionBriefingScreen: public LogisticsScreen
 	float			objMarkerFy[MAX_OBJECTIVES];
 	float			dropZoneFx, dropZoneFy;        // drop-zone marker map-fraction (0..1)
 	aObject			dropZoneButton;
-	EString			objectiveModels[MAX_OBJECTIVES];
+	std::string		objectiveModels[MAX_OBJECTIVES];
 	long			modelTypes[MAX_OBJECTIVES];
 	float			modelScales[MAX_OBJECTIVES];
 	long			modelColors[MAX_OBJECTIVES][3];

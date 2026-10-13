@@ -52,12 +52,12 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 118,
-   "LG06": 498,
+   "LG06": 497,
    "LG07": 0,
    "LG08": 266,
    "LG09": 1996,
    "LG10": 39,
-   "LG11": 103,
+   "LG11": 102,
    "LG12a": 95,
    "LG12b": 30,
    "LG13": 315,
@@ -143,11 +143,11 @@
    "LG02": 212,
    "LG03": 953,
    "LG04": 21,
-   "LG05": 192,
-   "LG06": 451,
+   "LG05": 194,
+   "LG06": 452,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2312,
+   "LG09": 2308,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 45
+   "LG20": 44
   }
  },
  "dirs": [
@@ -1121,10 +1121,6 @@
   "GameOS/gameos/visual_tuning_profile.h": {
    "LG06": 1
   },
-  "GameOS/gameos/vk_device_profile.h": {
-   "LG06": 1,
-   "LG11": 1
-  },
   "GameOS/gameos/vk_feed_dump.h": {
    "LG06": 1
   },
@@ -1714,7 +1710,7 @@
   "code/chatwindow.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 5,
+   "LG09": 4,
    "LG12b": 2
   },
   "code/chatwindow.h": {
@@ -1768,7 +1764,7 @@
   "code/controlgui_chat.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 2,
+   "LG09": 1,
    "LG11": 1
   },
   "code/controlgui_hudtabs.cpp": {
@@ -2190,7 +2186,7 @@
   },
   "code/logisticsdata_save.cpp": {
    "LG03": 6,
-   "LG05": 13,
+   "LG05": 15,
    "LG06": 4,
    "LG09": 11,
    "LG11": 3
@@ -2413,7 +2409,7 @@
   "code/mechlabscreen.cpp": {
    "LG03": 4,
    "LG05": 7,
-   "LG09": 8,
+   "LG09": 7,
    "LG11": 1
   },
   "code/mechlabscreen.h": {
@@ -2772,7 +2768,7 @@
    "LG14": 4
   },
   "code/objective_text.cpp": {
-   "LG06": 5
+   "LG06": 6
   },
   "code/objective_text.h": {
    "LG06": 5
@@ -2851,7 +2847,7 @@
   },
   "code/pilotreadyscreen.cpp": {
    "LG03": 5,
-   "LG09": 7,
+   "LG09": 6,
    "LG12b": 10
   },
   "code/pilotreviewarea.cpp": {
@@ -5182,13 +5178,13 @@
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 41
+   "LG20": 40
   },
   "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
    "LG20": 2
   }
  },
- "head": "69f421440",
+ "head": "8300da27d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

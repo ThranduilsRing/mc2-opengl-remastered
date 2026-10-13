@@ -880,7 +880,7 @@ void MainMenu::render()
 		drawShadowText( 0xffc66600, 0xff000000, textObjects[1].font.getTempHandle(),
 			textObjects[1].globalX(), textObjects[1].globalTop(),
 			textObjects[1].globalRight(), textObjects[1].globalBottom(),
-			true, textObjects[1].text, false, textObjects[1].font.getSize(), 1, 1 );
+			true, textObjects[1].textString().c_str(), false, textObjects[1].font.getSize(), 1, 1 );
 	}
 
 	textObjects[1].showGUIWindow( false );

@@ -17,6 +17,10 @@
 #include"objmgr.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "objective_text.h"
+
+#include <optional>
+#include <utility>
 
 char	LogisticsPilot::skillTexts[NUM_SPECIALTY_SKILLS][255] = {0};
 extern const char* SpecialtySkillsTable[NUM_SPECIALTY_SKILLS];
@@ -205,9 +209,9 @@ long LogisticsPilot::save( FitIniFile& file, long which )
 
 long LogisticsPilot::load( FitIniFile& file )
 {
-	char tmp[256];
-	file.readIdString( "FileName", tmp, 255 );
-	fileName = tmp;
+	// The pilot was matched by its file name before this call, so an absent key keeps it.
+	if ( std::optional<std::string> name = objective_text::readPlain( file, "FileName" ) )
+		fileName = std::move( *name );
 
 	file.readIdLong( "Rank", rank );
 	file.readIdFloat( "Gunnery", gunnery );

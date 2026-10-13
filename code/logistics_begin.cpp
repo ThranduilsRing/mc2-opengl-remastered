@@ -1,6 +1,8 @@
 // Logistics: beginMission, DoBeginMission, initializeLogData, the full-screen video player and the results host-left dialog.
 // Declared in the class headers; shared names in logistics_internal.h.
 #include "logistics_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include <string_view>
 
 
 //-----------------------------------------------------------------------------
@@ -459,7 +461,10 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	// automated boot reaches the bay/purchase screens deterministically instead
 	// of sitting on the intro for the capture window.
 	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
+	{
+		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", std::string_view( fileName ));
 		return;
+	}
 
 	FullPathFileName path;
 	path.init( moviePath, fileName, ".bik" );
@@ -478,6 +483,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 
 	bMovie = new MC2Movie;
 	bMovie->init(path,movieRect,true);
+	MC2_EVENT(Core, "VIDEO", 1, "event=play name={}", std::string_view( fileName ));
 
 	soundSystem->stopDigitalMusic();
 }

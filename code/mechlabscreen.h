@@ -109,7 +109,7 @@ class MechLabScreen: public LogisticsScreen
 
 		SimpleCamera		camera;
 
-		EString				varName;
+		std::string			varName;
 
 		static				GUI_RECT	sensorRects[4];
 		static				long		sensorHelpIDs[4];

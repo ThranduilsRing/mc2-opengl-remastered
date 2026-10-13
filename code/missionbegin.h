@@ -104,6 +104,8 @@ class MissionBegin
 
 		MainMenu*					mainMenu;
 		bool						bSplash;
+		// The campaign's pre-video handed out by this frame's updateSplash(); empty when there is none.
+		std::string					pendingPreVideo;
 
 		bool						animJustBegun;
 

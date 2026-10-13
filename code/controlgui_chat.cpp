@@ -1,6 +1,9 @@
 // ControlGui: pause, tab switch, movie / pilot video, rollover help text and the chat window.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+
+#include <string_view>
 
 
 void ControlGui::beginPause()
@@ -70,7 +73,10 @@ void ControlGui::playMovie( const char* fileName )
 	// bypassing the MC2_BOOT_TO_BAY gate in Logistics::playFullScreenVideo. Skip
 	// them too so the boot-to-purchase capture is not blocked by standin.bik.
 	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
+	{
+		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", std::string_view( fileName ));
 		return;
+	}
 
 	// Apply hiResOffsetX/Y at use time — they were still 0 when
 	// initStatics read videoRect from the layout file (swapResolutions
@@ -92,6 +98,8 @@ void ControlGui::playMovie( const char* fileName )
 	movieName.init(moviePath,realName,".bik");
 	bMovie = new MC2Movie;
 	bMovie->init(movieName,vRect,true);
+	// The in-mission video surface (objective and ABL play-video actions): one line per movie that reaches the player, so a harness run shows it.
+	MC2_EVENT(Core, "VIDEO", 1, "event=play_mission name={}", std::string_view( realName ));
 
 	//Maybe not enough frames to run.  Do not flash the border!
 	// Do ONE update to make sure the damned sound starts at least!!
@@ -190,14 +198,13 @@ void ControlGui::toggleChat(bool isTeamOnly)
 	bChatting ^= 1;
 	if ( !bChatting && MPlayer ) // over -- broadcast messages
 	{
-		EString tmp;
-		personalEdit.getEntry( tmp );
+		std::string tmp = personalEdit.entry();
 
-		if ( tmp.Length() )
+		if ( !tmp.empty() )
 		{
 		
 			char team = chatIsTeamOnly ? MPlayer->getPlayerInfo( MPlayer->commanderID )->team : -1;
-			MPlayer->sendChat(nullptr, team, (char*)(const char*)tmp);
+			MPlayer->sendChat(nullptr, team, tmp.data());    // writable C string, used inside the call
 		}
 		personalEdit.setFocus( 0 );
 	}

@@ -11006,6 +11006,38 @@
    "count": 1
   },
   {
+   "tag": "VIDEO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VIDEO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name",
+    "reason"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VIDEO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "site",
+    "name"
+   ],
+   "count": 2
+  },
+  {
    "tag": "VIEWPORT_PROBE",
    "ver": -1,
    "stream": "stderr",
@@ -12551,6 +12583,7 @@
   "TIMING",
   "VEG_SUMMARY",
   "VISUAL_CAPTURE",
+  "VK_PROFILE",
   "VRAM"
  ],
  "plain_tags": [

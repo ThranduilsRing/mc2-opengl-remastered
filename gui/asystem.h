@@ -320,6 +320,8 @@ public:
 	void	setText( const char* text );
 	void	setText( const std::string& text );
 	void		setText( long resID );
+	// The label as std::string, for callers that no longer hold an EString (step 4 batch B1); the member stays an EString until the widgets convert (B6).
+	std::string	textString() const;
 
 	EString		text;
 	long			alignment; // left, right, ala GOS

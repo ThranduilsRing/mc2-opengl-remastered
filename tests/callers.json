@@ -3042,6 +3042,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/test_estring_callsites.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/test_handoff_append.py",
           "line": 15,
           "evidence": "import",
@@ -6187,7 +6194,15 @@
       "basename": "campaign_save_roundtrip.py",
       "stem": "campaign_save_roundtrip",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/test_campaign_save_roundtrip.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "campaign_save_roundtrip",
+          "text": "import campaign_save_roundtrip as mod  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/check_ubo_layout.py",
@@ -8317,7 +8332,7 @@
       "callers_by_stem": [
         {
           "path": "tools/campaign_save_roundtrip.py",
-          "line": 33,
+          "line": 35,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -8354,7 +8369,7 @@
       "callers_by_stem": [
         {
           "path": "tools/campaign_save_roundtrip.py",
-          "line": 34,
+          "line": 36,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
@@ -9310,6 +9325,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/test_campaign_save_roundtrip.py",
+      "basename": "test_campaign_save_roundtrip.py",
+      "stem": "test_campaign_save_roundtrip",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/test_cite_guard.py",
       "basename": "test_cite_guard.py",
       "stem": "test_cite_guard",
@@ -9330,6 +9352,13 @@
           "text": "from test_comment_guard import make_obj  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/test_estring_callsites.py",
+      "basename": "test_estring_callsites.py",
+      "stem": "test_estring_callsites",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/test_git_util.py",

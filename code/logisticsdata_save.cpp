@@ -4,6 +4,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 #include <optional>
 
@@ -306,8 +307,8 @@ long	LogisticsData::load( FitIniFile& file )
 			gosASSERT( 0 );
 		}
 
-		file.readIdString( "FileName", tmp, 255 );
-		const std::string pilotKey = mc2::str::from_c( tmp );
+		// A pilot block without a FileName matches no pilot.
+		const std::string pilotKey = objective_text::readPlain( file, "FileName" ).value_or( std::string() );
 
 		// pilot should already exist
 		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
@@ -345,16 +346,20 @@ long	LogisticsData::load( FitIniFile& file )
 
 long LogisticsData::loadVariant( FitIniFile& file )
 {
-	char tmp[256];
-	
-	file.readIdString( "Chassis", tmp, 255 );
-	const std::string chassisKey = mc2::str::from_c( tmp );
+	char tmp[256] = {};
+
+	const std::optional<std::string> chassisKey = objective_text::readPlain( file, "Chassis" );
+	if ( !chassisKey )
+	{
+		MC2_LOG(Core, Warn, "logistics: a saved variant has no Chassis and is rejected");
+		return INVALID_FILE_NAME;
+	}
 
 	const LogisticsChassis* pChassis  = nullptr;
 	// go out and find that chassis
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 	{
-		if ( mc2::str::iequals( (*vIter)->getFileName(), chassisKey ) )
+		if ( mc2::str::iequals( (*vIter)->getFileName(), *chassisKey ) )
 		{
 			pChassis = (*vIter)->getChassis();
 		}
@@ -366,13 +371,20 @@ long LogisticsData::loadVariant( FitIniFile& file )
 		return INVALID_FILE_NAME;
 	}
 
+	// A variant without a name would take the chassis file name, so it is rejected.
+	const std::optional<std::string> variantName = objective_text::readPlain( file, "VariantName" );
+	if ( !variantName )
+	{
+		MC2_LOG(Core, Warn, "logistics: a saved variant of chassis '{}' has no VariantName and is rejected", *chassisKey);
+		return INVALID_FILE_NAME;
+	}
+
 	// create the variant, add to the list
-	file.readIdString( "VariantName", tmp, 255 );
 	LogisticsVariant* pVariant = new LogisticsVariant( pChassis, 0 );	
 
 	variants.Append( pVariant );
 	
-	pVariant->setName( tmp );
+	pVariant->setName( *variantName );
 
 	long componentCount = 0;
 	long x = 0;
@@ -422,15 +434,18 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
 			inventory.Append( pMech );
 
-			for ( PILOT_LIST::EIterator pIter = pilots.Begin(); pilotKey && !pIter.IsDone(); pIter++ )
+			if ( pilotKey )
 			{
-				if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
+				for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 				{
-					pMech->setPilot( &(*pIter ) );
-					count++;
-					if ( count > -1 && count < 13 )
-						pMech->setForceGroup( count );
-					break;
+					if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
+					{
+						pMech->setPilot( &(*pIter ) );
+						count++;
+						if ( count > -1 && count < 13 )
+							pMech->setForceGroup( count );
+						break;
+					}
 				}
 			}
 
