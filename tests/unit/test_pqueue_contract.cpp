@@ -297,6 +297,19 @@ TEST_CASE("HP7 init(max) holds max + 1 nodes (indices 1 .. max + 1); the next in
 	CHECK(n.key == 5);
 }
 
+TEST_CASE("HP7 the real open list is init(5000): 5001 nodes fit, and the heap that replaces it must hold at least that many")
+{
+	// The 5002nd insert (the first past the buffer) is NOT run here; B2.5 sizes each open list to its graph and may never hold fewer than this.
+	OldHeap h(5000);
+	for (uint32_t i = 1; i <= 5001; ++i)
+		CHECK(h.insert(int32_t(6000 - i), i) == 0);
+	CHECK(h.count() == 5001);
+	PQNode n;
+	REQUIRE(h.pop(n));
+	CHECK(n.key == 6000 - 5001);
+	CHECK(n.id == 5001);
+}
+
 TEST_CASE("H18 change() takes a HEAP INDEX: handing it the item's id re-keys whichever node sits in that slot")
 {
 	// GlobalMap::propogateCost once passed the door id where it had to pass find(door). Door ids and heap positions agree only by chance, so a

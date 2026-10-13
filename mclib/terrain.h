@@ -282,7 +282,6 @@ class Terrain
 			return mapData->waterElevation();
 		}
 
-		void markSeen (const Stuff::Vector3D &looker, byte who, float specialUnitExpand);
 		void markRadiusSeen (const Stuff::Vector3D &looker, float dist, byte who);
 
 		long update (void);

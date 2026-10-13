@@ -146,20 +146,14 @@ class Team {
 			destroy();
 		}
 
-		static bool lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float targetRadius, float startRadius = 0.0f, bool checkVisibleBits = true);
+		static bool lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float targetRadius, float startRadius = 0.0f);
 
-		static bool lineOfSight (Stuff::Vector3D myPos, Stuff::Vector3D targetPosition, long teamId, float targetRadius, float startRadius = 0.0f, bool checkVisibleBits = true);
+		static bool lineOfSight (Stuff::Vector3D myPos, Stuff::Vector3D targetPosition, long teamId, float targetRadius, float startRadius = 0.0f);
 
 		//-------------------------------------------		
 		// Can anyone on my team see this position?
 		// Used for cursors, artillery, indirect fire.
 		bool teamLineOfSight (Stuff::Vector3D tPos, float extRad);
-
-		void markRadiusSeen (Stuff::Vector3D& location, float radius);
-
-		void markRadiusSeenToTeams (Stuff::Vector3D& location, float radius = -1, bool shrinkForNight = false);
-
-		void markSeen (Stuff::Vector3D& location, float specialUnitExpand);
 
 		void setRelation (TeamPtr team, char relation) {
 			relations[id][team->getId()] = relation;

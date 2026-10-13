@@ -54,7 +54,7 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 		
 			if (dist <= (radius * 25.0f * worldUnitsPerMeter))
 			{
-				if (lineOfSight(obj->getLOSPosition(),tPos,id,extRad,0.0f,false))
+				if (lineOfSight(obj->getLOSPosition(),tPos,id,extRad,0.0f))
 					return true;
 			}
 		}
@@ -107,7 +107,7 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 			
 				if (dist <= (radius * 25.0f * worldUnitsPerMeter))
 				{
-					if (lineOfSight(obj->getLOSPosition(),tPos,id,0.0f,obj->getAppearRadius(),false))
+					if (lineOfSight(obj->getLOSPosition(),tPos,id,0.0f,obj->getAppearRadius()))
 						return true;
 				}
 			}
@@ -121,7 +121,7 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 constexpr float ACCURACY_ADJUST = 1.5f;
 const float HALF_CELL_DIST	= (128.0f / 6.0f);
 //---------------------------------------------------------------------------
-bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad, bool checkVisibleBits)
+bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad)
 {
 	#ifdef LAB_ONLY
 	__int64 x=GetCycles();
@@ -130,10 +130,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 	//-----------------------------------------------------
 	// Once we allow teams to have alliances (for contacts,
 	// etc.), simply set all nec. team bits in this mask...
-
-	//TILE HACK...
-	long tileRow = tCellRow / 3;
-	long tileCol = tCellCol / 3;
 
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))	//Not on any team.  It can see everything!
 		return true;
@@ -268,7 +264,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 }
 
 //---------------------------------------------------------------------------
-bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition, long teamId, float extRad, float startExtRad, bool checkVisibleBits) 
+bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition, long teamId, float extRad, float startExtRad) 
 {
 	int posCellR, posCellC;
 	int tarCellR, tarCellC;
@@ -281,5 +277,5 @@ bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition
 	elev = land->getTerrainElevation(targetPosition);
 	float localEnd = targetPosition.z - elev;
 	
-	return(lineOfSight(localStart,posCellR, posCellC, localEnd, tarCellR, tarCellC,teamId,extRad, startExtRad, checkVisibleBits));
+	return(lineOfSight(localStart,posCellR, posCellC, localEnd, tarCellR, tarCellC,teamId,extRad, startExtRad));
 }

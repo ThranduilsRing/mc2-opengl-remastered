@@ -687,11 +687,9 @@ class GameObject {
 
 		virtual long getLineOfSightNodes (long eyeCellRow, long eyeCellCol, long* cells);
 
-		virtual bool lineOfSight (long cellRow, long cellCol, bool checkVisibleBits = true);
+		virtual bool lineOfSight (Stuff::Vector3D point);
 
-		virtual bool lineOfSight (Stuff::Vector3D point, bool checkVisibleBits = true);
-
-		virtual bool lineOfSight (GameObjectPtr target, float startExtRad = 0.0f, bool checkVisibleBits = true);
+		virtual bool lineOfSight (GameObjectPtr target, float startExtRad = 0.0f);
 	
 		virtual float relFacingTo (Stuff::Vector3D goal, long bodyLocation = -1);
 

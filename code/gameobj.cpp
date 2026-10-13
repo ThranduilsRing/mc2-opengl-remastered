@@ -1977,29 +1977,21 @@ long GameObject::getLineOfSightNodes (long eyeCellRow, long eyeCellCol, long* ce
 
 //---------------------------------------------------------------------------
 
-bool GameObject::lineOfSight (long cellRow, long cellCol, bool checkVisibleBits) {
-
-	bool LOSclear = Team::lineOfSight(0.0f,cellPositionRow, cellPositionCol, cellRow, cellCol, getTeamId(), 15.0, checkVisibleBits);
-	return(LOSclear);
-}
-
-//---------------------------------------------------------------------------
-
-bool GameObject::lineOfSight (Stuff::Vector3D point, bool checkVisibleBits) {
+bool GameObject::lineOfSight (Stuff::Vector3D point) {
 
 	Stuff::Vector3D firingPosition = getLOSPosition();
 	Stuff::Vector3D targetPosition = point;
 	
 	bool LOSclear = false;
 	if (land->IsGameSelectTerrainPosition(point))
-		LOSclear = Team::lineOfSight(firingPosition, targetPosition, getTeamId(), 15.0, checkVisibleBits);
+		LOSclear = Team::lineOfSight(firingPosition, targetPosition, getTeamId(), 15.0);
 	
 	return(LOSclear);
 }
 
 //---------------------------------------------------------------------------
 
-inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bool checkVisibleBits)
+inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 {
 	ZoneScopedN("GameLogic.LOS.Update"); 
 
@@ -2059,7 +2051,7 @@ inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bo
 			char losStatus = ObjectManager->moverLineOfSightTable[index];
 			if (losStatus == -1) 
 			{
-				bool los = Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad, checkVisibleBits);
+				bool los = Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad);
 				if (los) 
 				{
 					ObjectManager->moverLineOfSightTable[index] = 1;
@@ -2085,7 +2077,7 @@ inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bo
 			}
 		}
 		
-		if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad, checkVisibleBits))
+		if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad))
 		{
 			return(true);
 		}
@@ -2109,7 +2101,7 @@ inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bo
 
 			Stuff::Vector3D targetPosition = target->getLOSPosition();
 		
-			if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad, checkVisibleBits))
+			if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad))
 			{
 				return(true);
 			}

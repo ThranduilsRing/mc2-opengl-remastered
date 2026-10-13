@@ -142,8 +142,6 @@ long BattleMech::update (void)
 
 		if (getAwake() && !isDisabled() && getTeam() && !godMode) 
 		{
-			BattleMechTypePtr mechType = (BattleMechTypePtr)ObjectManager->getObjectType(typeHandle);
-			getTeam()->markSeen(position,mechType->LOSFactor);
 			markDistanceMoved = 0.0;
 		}
 

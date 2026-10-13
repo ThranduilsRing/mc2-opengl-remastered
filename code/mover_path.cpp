@@ -193,22 +193,6 @@ float startLocal = 40.0f;
 	return(0);
 }
 
-long Mover::calcLineOfSightView (long range) {
-
-	GameMap->clearCellDebugs(1);
-	for (long r = cellPositionRow - range; r < cellPositionRow + range; r++)
-		for (long c = cellPositionCol - range; c < cellPositionCol + range; c++) {
-			if (GameMap->inBounds(r, c)) {
-				if (lineOfSight(r, c, false))
-					GameMap->setCellDebug(r, c, 1, 1);
-				else {
-					GameMap->setCellDebug(r, c, 2, 1);
-				}
-			}
-		}
-	return(0);
-}
-
 void Mover::setMoveType (long type) {
 
 	moveType = type;
@@ -688,9 +672,9 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 					if (movingToCapture)
 						noLOF = false;
 					else if (target)
-						noLOF = !lineOfSight(target, 0.0f, false);
+						noLOF = !lineOfSight(target, 0.0f);
 					else
-						noLOF = !lineOfSight(moveGoal, false);
+						noLOF = !lineOfSight(moveGoal);
 				}
 			}
 		}

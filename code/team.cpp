@@ -336,53 +336,6 @@ bool Team::isCapturing (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 
 //---------------------------------------------------------------------------
 
-void Team::markRadiusSeen (Stuff::Vector3D& location, float radius) {
-
-	//---------------------------------------------------------------
-	// Once we get visibits in for all 8 teams, we should change this
-	// appropriately...
-	land->markRadiusSeen(location, radius, id);
-}
-
-//---------------------------------------------------------------------------
-
-void Team::markRadiusSeenToTeams (Stuff::Vector3D& location, float radius, bool shrinkForNight) {
-
-	if (radius < 0.0)
-		radius = fireVisualRange;
-		
-	if (shrinkForNight)
-		radius -= (radius * 0.25f);
-
-	bool didTeam[MAX_TEAMS] = {false, false, false, false, false, false, false, false};
-	for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
-		MoverPtr mover = ObjectManager->getMover(i);
-		if (mover->getTeam() && !didTeam[mover->getTeamId()] && !isFriendly(mover->getTeam())) {
-			Stuff::Vector3D result;
-			result.x = location.x - mover->getPosition().x;
-			result.y = location.y - mover->getPosition().y;
-			result.z = 0.0;
-			float dist = result.GetLength() * metersPerWorldUnit;
-			if (dist < maxVisualRange) {
-				markRadiusSeen(location, radius);
-				didTeam[mover->getTeamId()] = true;
-			}
-		}
-	}
-}
-
-//---------------------------------------------------------------------------
-
-void Team::markSeen (Stuff::Vector3D& location, float specialUnitExpand) {
-
-	//---------------------------------------------------------------
-	// Once we get visibits in for all 8 teams, we should change this
-	// appropriately...
-	land->markSeen(location, id, specialUnitExpand);
-}
-
-//---------------------------------------------------------------------------
-
 
 //---------------------------------------------------------------------------
 

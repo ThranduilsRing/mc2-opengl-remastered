@@ -192,14 +192,12 @@ TEST_CASE("HS2 tie table: the CRT qsort permutations committed before any class 
 
 TEST_CASE("HS2 the order of equal scores is reversed or rotated, never kept, in the small ranges")
 {
-	// Documents the MSVC behaviour the notes assumed [unverified until B2.0]: two equal items come out reversed with no padding.
-	std::vector<float> two = {5.0f, 5.0f};
-	const std::string a = oldOrder(two, true, 2);
-	const std::string b = oldOrder(two, false, 2);
-	INFO("two equal descending: " << a << ", ascending: " << b);
-	// Whatever the CRT does, the golden table holds it; this case only prints it into the log for the review.
-	CHECK(!a.empty());
-	CHECK(!b.empty());
+	// Two equal items come out REVERSED and three equal [a,b,c] come out [b,c,a] on the MSVC CRT qsort, in both directions (the tie table above holds the same rows).
+	const std::vector<float> two = {5.0f, 5.0f};
+	CHECK(oldOrder(two, true, 2) == "1,0");
+	CHECK(oldOrder(two, false, 2) == "1,0");
+	const std::vector<float> three = {5.0f, 5.0f, 5.0f};
+	CHECK(oldOrder(three, true, 3) == "1,2,0");
 }
 
 TEST_CASE("HS3 clear writes id = slot and +-3.4E38, and a mismatched sentinel sorts FIRST")

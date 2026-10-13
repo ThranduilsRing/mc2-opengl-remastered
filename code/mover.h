@@ -1131,8 +1131,6 @@ class Mover : public GameObject {
 		
 		virtual Stuff::Vector3D relativePosition (float angle, float radius, unsigned long flags);
 
-		long calcLineOfSightView (long range);
-		
 		virtual void setSensorRange (float range);
 		
 		virtual Stuff::Vector3D getRotationVector (void) 
