@@ -1387,6 +1387,16 @@ TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the 
     CHECK(mo::cfg::set(other, pbr, "TRUE") == other);
     CHECK(mo::cfg::set(std::string{}, pbr, "TRUE").empty());
 
+    // the whole-file load the engine runs before the window exists: valid keys apply, an out-of-range one is skipped, other blocks are ignored
+    mo::RenderOptions loaded{};
+    const std::string cfgText = "[MechCommander2]\r\nb ShadowCSM = FALSE\r\nl TonemapMode = 7\r\nf PostCASSharpness = 0.75\r\nb SunAxisFix = TRUE\r\n[Keys]\r\nb StaticPropPbr = TRUE\r\n";
+    CHECK(mo::cfg::loadFromText(loaded, cfgText) == 3);
+    CHECK_FALSE(loaded.shadowCsm);
+    CHECK(loaded.tonemapMode == 0);
+    CHECK(loaded.postCasSharpness == 0.75f);
+    CHECK(loaded.sunAxisFix);
+    CHECK_FALSE(loaded.staticPropPbr);
+
     // what the editor writes is what the table's validation accepts
     mo::RenderOptions o{};
     CHECK(mo::setFromText(o, sharp, *mo::cfg::get(withSharp, "PostCASSharpness")) == mo::Verdict::Ok);

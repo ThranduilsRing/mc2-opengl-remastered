@@ -116,4 +116,14 @@ inline std::string set(std::string text, const Option& opt, std::string_view val
     return text;
 }
 
+// Fill `o` from every key of the table that `text` has. A value that fails the table's validation is skipped (the caller that owns the log
+// reports it); returns how many keys were applied.
+inline int loadFromText(RenderOptions& o, std::string_view text) {
+    int applied = 0;
+    for (const Option& opt : kOptions)
+        if (const auto v = get(text, opt.key))
+            if (setFromText(o, opt, *v) == Verdict::Ok) ++applied;
+    return applied;
+}
+
 }  // namespace mc2::options::cfg

@@ -173,6 +173,7 @@ void initDpiAwareness();
 bool initLauncherBootstrap();
 void initLauncherEnv();
 void initInstrBanner();
+void initRenderOptionsFromConfig();
 void initResolutionFromConfig();
 void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h);
 void frameThrottleLogicEvents();

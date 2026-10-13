@@ -2,6 +2,8 @@
 // the pre-window resolution and the Vulkan backend bring-up. The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
 #include "mc2fmt.h"
+#include "Gates/gate_cold.h"   // str<>()
+#include "Gates/render_options_cfg.h"
 
 
 // Opt the process into per-monitor DPI awareness unless MC2_DPI_UNAWARE is set.
@@ -258,6 +260,24 @@ void initInstrBanner() {
             puts(_pzbuf);
         }
     }
+}
+
+// Publish the render options (options.cfg, then the MC2_OPTIONS_OVERRIDE test channel) before the window and the renderer exist: the
+// shader-define and pipeline readers run during renderer start-up, long before CPrefs loads the file. CPrefs::applyPrefs() publishes the
+// validated values again and reports anything this early pass skipped.
+void initRenderOptionsFromConfig() {
+    mc2::options::RenderOptions options;
+    if (FILE* f = std::fopen("options.cfg", "rb")) {
+        std::string text;
+        char chunk[4096];
+        size_t got = 0;
+        while ((got = std::fread(chunk, 1, sizeof(chunk), f)) > 0) text.append(chunk, got);
+        std::fclose(f);
+        mc2::options::cfg::loadFromText(options, text);
+    }
+    std::vector<mc2::options::Reject> ignored;
+    mc2::options::applyOverrides(options, mc2::gate::str<"MC2_OPTIONS_OVERRIDE">(), ignored);
+    mc2::options::publish(options);
 }
 
 // Pick the pre-window resolution and fullscreen state from the environment or options.cfg.

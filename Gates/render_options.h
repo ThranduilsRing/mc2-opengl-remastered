@@ -45,6 +45,8 @@ struct RenderOptions {
     // Particles.
     bool vfxSoftParticles = false;  // depth-fade at scene intersections
     bool vfxLitParticles  = false;  // scene-lit smoke and dust
+
+    bool operator==(const RenderOptions&) const = default;
 };
 
 enum class Kind { Bool, Long, Float };
@@ -176,9 +178,12 @@ inline int applyOverrides(RenderOptions& o, std::string_view spec, std::vector<R
     return accepted;
 }
 
-// The process-wide values the renderer and the mclib readers consult. CPrefs::applyPrefs() publishes after options.cfg is loaded; a tool
-// that never loads options.cfg keeps the defaults. earlyReads() counts reads that happened before the publish (a reader that cached its
-// value too soon); CPrefs logs it so a reader ordering bug shows up in the engine log instead of as a setting that does nothing.
+// The process-wide values the renderer and the mclib readers consult. The game publishes twice with the same inputs: once before the window
+// exists (gameosmain_init.cpp, so readers that run during renderer start-up see options.cfg), and again from CPrefs::applyPrefs() once the
+// game has loaded and validated the file (CPrefs owns the log lines and the save). A tool that never loads options.cfg keeps the defaults.
+// earlyReads() counts reads before the first publish (a reader that cached its value too soon) and publishChangedValues() whether the second
+// publish differed from the first; CPrefs logs both, so a reader ordering bug shows up in the engine log instead of as a setting that does
+// nothing.
 inline RenderOptions g_current{};
 inline bool          g_published = false;
 inline int           g_earlyReads = 0;
@@ -192,8 +197,15 @@ inline const RenderOptions& current(std::source_location where = std::source_loc
     }
     return g_current;
 }
-inline void publish(const RenderOptions& o) { g_current = o; g_published = true; }
+inline bool          g_publishChanged = false;
+
+inline void publish(const RenderOptions& o) {
+    if (g_published && !(g_current == o)) g_publishChanged = true;
+    g_current = o;
+    g_published = true;
+}
 inline int  earlyReads() { return g_earlyReads; }
+inline bool publishChangedValues() { return g_publishChanged; }
 inline const char* firstEarlyFile() { return g_firstEarlyFile; }
 inline unsigned    firstEarlyLine() { return g_firstEarlyLine; }
 
