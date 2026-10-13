@@ -129,7 +129,9 @@ identity block (install, exe, frame, per-crop sha256, source capture manifest).
 **Resolution.** Captures are pinned to 1920x1080 (`scripts/smoke_lib/render_resolution.py`). The golden set `tests/visual/goldens/reset-50331d5` was
 blessed at 3840x2160, so `check-capture-resolution.py` refuses every capture against it until the owner re-blesses at the pinned size (capture three
 runs with `tools/visual_verify/capture.py`, then `bless.py` below). The render options (`render_options` in `capture_run.json`) are an input of every
-capture too; `capture_ab.py compare` refuses sets whose options differ unless `--vary Key,Key` names them.
+capture too; `capture_ab.py compare` refuses sets whose options differ unless `--vary Key,Key` names them, and refuses a set that was not drawn by the backend
+its name says (a `-vk` set whose sidecars say GL is "VK arm UNPROVEN"). `.claude/l2cap/index.md` (`tools/visual_verify/capture_index.py`) is the committed
+one-line-per-set record of the scratch capture sets: requested backend, backend that drew, readback source, exe commit, option differences, frozen or not, VOID flag.
 
 If you ever need **frame-level** goldens (full 4K), keep them in an external dir
 (they are ~5-10 MB each — do not commit) and record the path in `golden.json`'s

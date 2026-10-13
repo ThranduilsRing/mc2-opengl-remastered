@@ -20,6 +20,20 @@ import console_child  # noqa: E402  (windowless console children, scripts/consol
 LAUNCHER = ROOT / "build64-ninja" / "out" / "mc2_launcher" / "mc2-launcher.exe"
 needs_launcher = pytest.mark.skipif(not LAUNCHER.is_file(), reason="mc2-launcher.exe is not built in build64-ninja")
 
+# The launcher these tests run must be built from the source on disk: a test against an exe older than its sources grades the old code.
+LAUNCHER_SOURCES = [ROOT / "tools" / "mc2_launcher" / "mc2_launcher.cpp", ROOT / "Gates" / "render_options.h",
+                    ROOT / "Gates" / "render_options_cfg.h", ROOT / "Gates" / "render_options_legacy_env.h"]
+
+
+@pytest.fixture(autouse=True)
+def launcher_is_current(record_property):
+    if not LAUNCHER.is_file():
+        return
+    built = LAUNCHER.stat().st_mtime
+    record_property("launcher_exe", str(LAUNCHER))
+    stale = [p.name for p in LAUNCHER_SOURCES if p.is_file() and p.stat().st_mtime > built + 1]
+    assert not stale, f"{LAUNCHER} is older than {stale}: rebuild it (py -3 scripts/ninja_build.py mc2_launcher) before trusting this test"
+
 CFG = "FITini \r\nFITini \r\n\r\n[MechCommander2]\r\nl MusicVolume = 128\r\nb ShadowCSM = TRUE\r\nb SunAxisFix = FALSE\r\n"
 
 
@@ -46,6 +60,10 @@ def cfg_value(d, key):
 def log_lines(d):
     p = d / "launcher.log"
     return [l for l in p.read_text().splitlines() if "[LAUNCHER_ENV v1]" in l] if p.is_file() else []
+
+
+def sync_file(d):
+    return json.loads((d / "launcher_env.json").read_text())
 
 
 @needs_launcher
@@ -90,6 +108,61 @@ def test_a_meaningless_old_value_keeps_the_default_and_is_counted(tmp_path):
     assert cfg_value(d, "StaticPropIblSunRotateFloor") == "0.45"   # the engine default: no guess was made from "banana"
     assert cfg_value(d, "SunAxisFix") == "FALSE"
     assert "unmapped=2" in log_lines(d)[0]
+
+
+@needs_launcher
+def test_a_legacy_key_overrides_the_options_cfg_value_of_its_row(tmp_path):
+    # options.cfg is not a newer choice: the launcher writes every row's default there at Launch, so only a new NAME in launcher_env.json wins.
+    d = install(tmp_path, {"MC2_STATIC_PROP_IBL_SH": "1"}, cfg=CFG + "b StaticPropIblSh = FALSE\r\n")
+    sync(d)
+    assert cfg_value(d, "StaticPropIblSh") == "TRUE"
+    assert "applied=1" in log_lines(d)[0]
+
+
+@needs_launcher
+def test_keys_of_deleted_gates_are_counted_named_and_dropped_once(tmp_path):
+    d = install(tmp_path, {"MC2_TERRAIN_POM": "1", "MC2_GONE_GATE": "1", "MC2_CLOUD_SHADOW": "1", "MC2_FPS_CAP": "165",
+                           "last_campaign": "MC2_TERRAIN_POM", "last_base": "mymod"})
+    sync(d)
+    after = sync_file(d)
+    assert "MC2_TERRAIN_POM" not in after and "MC2_GONE_GATE" not in after            # gone
+    assert after["MC2_CLOUD_SHADOW"] == "1" and after["MC2_FPS_CAP"] == "165"             # live rows and graphics keys stay
+    assert after["last_campaign"] == "MC2_TERRAIN_POM" and after["last_base"] == "mymod"   # a value that looks like a key is a value
+    lines = log_lines(d)
+    assert len(lines) == 1 and "found=0" in lines[0] and "dropped_unknown=2" in lines[0]
+    assert "MC2_TERRAIN_POM" in lines[0] and "MC2_GONE_GATE" in lines[0] and "MC2_CLOUD_SHADOW" not in lines[0]
+    sync(d)
+    assert len(log_lines(d)) == 1                                                          # the second start finds nothing to do
+
+
+@needs_launcher
+def test_the_names_in_the_log_line_are_capped_at_eight_but_the_count_is_complete(tmp_path):
+    d = install(tmp_path, {f"MC2_DEAD_GATE_{i:02d}": "1" for i in range(11)})
+    sync(d)
+    line = log_lines(d)[0]
+    assert "dropped_unknown=11" in line and line.count("MC2_DEAD_GATE_") == 8 and "+3_more" in line
+
+
+@needs_launcher
+def test_headless_sync_of_a_minimal_file_writes_the_gui_graphics_defaults(tmp_path):
+    d = install(tmp_path, {"MC2_SHADOW_CSM": "0"})        # no MC2_STATICPROP_TEX_TIER / MC2_SHADOW_MAP_SIZE in the file
+    sync(d)
+    after = sync_file(d)
+    assert after["MC2_STATICPROP_TEX_TIER"] == "512" and after["MC2_SHADOW_MAP_SIZE"] == "8192"   # tier High / shadows High, not index 0
+
+
+@needs_launcher
+def test_a_failed_rewrite_is_logged_as_failed_and_leaves_the_keys_for_the_next_start(tmp_path):
+    d = install(tmp_path, {"MC2_SHADOW_CSM": "0"})
+    (d / "launcher_env.json.tmp").mkdir()                   # the atomic replace cannot create its temporary file
+    before = (d / "launcher_env.json").read_bytes()
+    sync(d)
+    assert (d / "launcher_env.json").read_bytes() == before
+    lines = log_lines(d)
+    assert len(lines) == 1 and "event=migrate_failed" in lines[0] and "migrated_legacy_keys" not in lines[0]
+    (d / "launcher_env.json.tmp").rmdir()
+    sync(d)                                                 # writable again: the next start does the migration
+    assert "event=migrated_legacy_keys" in log_lines(d)[-1] and "MC2_SHADOW_CSM" not in sync_file(d)
 
 
 @needs_launcher

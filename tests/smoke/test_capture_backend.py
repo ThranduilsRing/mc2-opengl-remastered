@@ -3,7 +3,9 @@
 WHY: the Vulkan arm of an A/B fell back to the GL framebuffer readback once and was graded as Vulkan evidence for a session.
 """
 import importlib.util
+import sys
 import io
+import json
 from pathlib import Path
 
 import pytest
@@ -96,5 +98,102 @@ def test_the_sweep_fails_on_a_backend_mismatch(tmp_path, drew, fails):
                                          declared_env={"MC2_RENDER_BACKEND": "vulkan"})
     finally:
         cap_rvc.run_one = real
-    assert manifest["backend"] == {"requested": "vulkan", "drew": drew}
+    assert manifest["backend"] == {"requested": "vulkan", "drew": [drew]}
     assert bool(capture.backend_failures(manifest)) is fails
+
+
+def test_a_gl_request_whose_pixels_came_from_a_vulkan_present_is_refused():
+    # backend says gl but the readback is the VK present image: the sidecar contradicts itself, so it is not a GL capture.
+    out = cb.check("gl", [("a", {"backend": "gl", "readback_source": "vk_present"})])
+    assert len(out) == 1 and "requested gl" in out[0] and "vk_present" in out[0]
+
+
+# --- the exit codes of the two drivers (the contract the A/B tooling relies on) -------------------------------------------------------------
+
+@pytest.fixture
+def drivers(monkeypatch):
+    """capture.py and run_visual_capture.py with their process side effects (cursor park, exe guard, live-process scan) switched off."""
+    capture = _load("tools/visual_verify/capture.py", "vv_capture_exit_codes_under_test")
+    rvc = capture.rvc
+    for name in ("_save_cursor", "_restore_cursor", "_reap_active"):
+        monkeypatch.setattr(rvc, name, lambda *a, **k: None)
+    monkeypatch.setattr(rvc, "guard_exe", lambda exe: True)
+    monkeypatch.setattr(rvc.time, "sleep", lambda s: None)
+    monkeypatch.setattr(rvc, "_print_result", lambda *a, **k: None)
+    monkeypatch.setattr(rvc, "write_manifest", lambda result, exe: Path("manifest.json"))
+    return capture, rvc
+
+
+def run_result(disagree):
+    return {"mission": "m", "all_present": True, "engine_capture_fired": True, "log": "x.log",
+            "bookmarks": [{"name": "pose", "present": True, "png": "p.png", "sha256": "0" * 64, "engine_deterministic": True}],
+            "backend": {"requested": "vulkan", "drew": ["gl" if disagree else "vulkan"], "disagree": disagree}}
+
+
+@pytest.mark.parametrize("disagree,rc", [([], 0), (["pose: requested vulkan but the sidecar says gl drew it"], 1)])
+def test_run_visual_capture_single_run_exits_1_on_a_backend_mismatch(drivers, monkeypatch, tmp_path, disagree, rc):
+    _capture, rvc = drivers
+    (tmp_path / "mc2.exe").write_bytes(b"")
+    (tmp_path / "bm.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(rvc, "run_one", lambda *a, **k: run_result(disagree))
+    monkeypatch.setattr(sys, "argv", ["run_visual_capture.py", "--exe", str(tmp_path / "mc2.exe"), "--bookmarks", str(tmp_path / "bm.json"),
+                                      "--out-dir", str(tmp_path / "out"), "--env-declare", "MC2_RENDER_BACKEND=vulkan"])
+    assert rvc.main() == rc
+
+
+def test_run_visual_capture_multi_run_exits_1_when_any_run_drew_the_wrong_backend(drivers, monkeypatch, tmp_path):
+    _capture, rvc = drivers
+    (tmp_path / "mc2.exe").write_bytes(b"")
+    (tmp_path / "bm.json").write_text("{}", encoding="utf-8")
+    results = iter([run_result([]), run_result(["pose: requested vulkan but the sidecar says gl drew it"])])
+    monkeypatch.setattr(rvc, "run_one", lambda *a, **k: next(results))
+    monkeypatch.setattr(sys, "argv", ["run_visual_capture.py", "--exe", str(tmp_path / "mc2.exe"), "--bookmarks", str(tmp_path / "bm.json"),
+                                      "--out-dir", str(tmp_path / "out"), "--runs", "2"])
+    assert rvc.main() == 1
+
+
+@pytest.mark.parametrize("drew,rc", [("vulkan", 0), ("gl", 1)])
+def test_capture_main_exits_1_when_the_sweep_drew_the_wrong_backend(drivers, monkeypatch, tmp_path, drew, rc):
+    capture, rvc = drivers
+    install = tmp_path / "inst"
+    (install / "saved_bookmarks").mkdir(parents=True)
+    (install / "mc2.exe").write_bytes(b"")
+    bm = install / "saved_bookmarks" / "pose.json"
+    bm.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(capture, "discover_bookmarks", lambda inst: [bm])
+    monkeypatch.setattr(capture, "_running_mc2_from", lambda inst: [])
+    problems = [] if drew == "vulkan" else ["pose: requested vulkan but the sidecar says gl drew it"]
+
+    def fake_sweep(install, files, out_dir, **kw):
+        return {"n_captured": 1, "n_requested": 1, "poses": [{"bookmark": "pose", "engine_deterministic": True, "backend_disagree": problems}],
+                "backend": {"requested": "vulkan", "drew": [drew]}}
+
+    monkeypatch.setattr(capture, "capture_sweep", fake_sweep)
+    assert capture.main(["--install", str(install), "--bookmarks", "pose", "--out", str(tmp_path / "out"),
+                         "--env", "MC2_RENDER_BACKEND=vulkan"]) == rc
+
+
+def test_the_manifest_verdict_names_why_it_failed_and_a_candidate_set_records_its_backend(drivers):
+    _capture, rvc = drivers
+    bad = dict(run_result(["pose: requested vulkan but the sidecar says gl drew it"]),
+               render_options={"values": {}, "disagree": ["ShadowCSM: harness true, engine false"]})
+    reasons = rvc.fail_reasons(bad)
+    assert any(r.startswith("render backend:") and "gl drew it" in r for r in reasons)
+    assert any(r.startswith("render options:") and "ShadowCSM" in r for r in reasons)
+    assert rvc.fail_reasons(run_result([])) == []
+    assert rvc.fail_reasons(dict(run_result([]), all_present=False)) == ["not every bookmark produced a PNG"]
+
+
+def test_a_candidate_set_records_the_backend_and_the_options_it_was_drawn_with(drivers, monkeypatch, tmp_path):
+    _capture, rvc = drivers
+    monkeypatch.setattr(rvc, "GOLDENS_DIR", tmp_path / "goldens")
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"")
+    png = tmp_path / "pose.png"
+    png.write_bytes(b"png")
+    last = dict(run_result([]), mission="mc2_01", render_options={"values": {"ShadowCSM": True}, "disagree": []},
+                bookmarks=[{"name": "pose", "present": True, "png": str(png), "sha256": "0" * 64, "covers": "x", "engine_deterministic": True}])
+    set_dir = rvc.materialize_candidate("cand", last, {"pose": {"stable": True, "shas": ["0" * 64]}}, exe, 3, 1)
+    record = json.loads((set_dir / "set.json").read_text(encoding="utf-8"))
+    assert record["backend"] == {"requested": "vulkan", "drew": ["vulkan"]}
+    assert record["render_options"] == {"ShadowCSM": True}

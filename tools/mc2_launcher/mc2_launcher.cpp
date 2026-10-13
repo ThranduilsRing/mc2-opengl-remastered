@@ -403,58 +403,55 @@ static void LoadGfxJson() {
     }
 }
 
-// Write graphics options into launcher_env.json (merges with engine-option keys).
-static void SaveGfxJson() {
-    if (!s_envJsonPath[0]) return;
-    FILE* f = fopen(s_envJsonPath, "w");
-    if (!f) return;
-    fprintf(f, "{\n");
+static bool WriteTextFile(const char* path, const std::string& text);   // defined with the other options.cfg helpers below
+
+// Write graphics options into launcher_env.json (merges with engine-option keys). The file is replaced in one step (a crash mid-write must not
+// leave a truncated json that drops every setting); false when it could not be written (read-only install, full disk).
+static bool SaveGfxJson() {
+    if (!s_envJsonPath[0]) return false;
+    std::string out = "{\n";
+    char line[1200];
     bool first = true;
     // Engine options
     for (int i = 0; i < k_envVarCount; i++) {
         if (!s_envVarValues[i][0]) continue;
-        if (!first) fprintf(f, ",\n");
-        fprintf(f, "  \"%s\": \"%s\"", k_envVars[i].key, s_envVarValues[i]);
+        if (!first) out += ",\n";
+        _snprintf(line, sizeof(line), "  \"%s\": \"%s\"", k_envVars[i].key, s_envVarValues[i]);
+        line[sizeof(line) - 1] = '\0';
+        out += line;
         first = false;
     }
     // Texture tier (always write so the engine always gets a value)
-    if (!first) fprintf(f, ",\n");
-    fprintf(f, "  \"MC2_STATICPROP_TEX_TIER\": \"%s\"", k_texTierValues[s_gfxTexQual]);
-    first = false;
+    if (!first) out += ",\n";
+    out += std::string("  \"MC2_STATICPROP_TEX_TIER\": \"") + k_texTierValues[s_gfxTexQual] + "\"";
     // Shadow map size (always write)
-    fprintf(f, ",\n  \"MC2_SHADOW_MAP_SIZE\": \"%s\"", k_shadSizeValues[s_gfxShadQual]);
+    out += std::string(",\n  \"MC2_SHADOW_MAP_SIZE\": \"") + k_shadSizeValues[s_gfxShadQual] + "\"";
     // Frame cap (only if enabled)
-    if (s_gfxFrameCapOn) {
-        char fpsBuf[32];
-        _snprintf(fpsBuf, sizeof(fpsBuf), "%d", s_gfxFrameCapFps);
-        fprintf(f, ",\n  \"MC2_FPS_CAP\": \"%s\"", fpsBuf);
-    }
+    if (s_gfxFrameCapOn) out += ",\n  \"MC2_FPS_CAP\": \"" + std::to_string(s_gfxFrameCapFps) + "\"";
     // VSync (only if enabled)
-    if (s_gfxVsync) {
-        fprintf(f, ",\n  \"MC2_VSYNC\": \"1\"");
-    }
+    if (s_gfxVsync) out += ",\n  \"MC2_VSYNC\": \"1\"";
     // Texture pack mod (always write; empty string = None)
     {
         const char* packFolder = "";
         if (s_gfxTexPackIdx > 0 && (s_gfxTexPackIdx - 1) < s_texQualCount)
             packFolder = s_texQual[s_gfxTexPackIdx - 1].folderName;
-        fprintf(f, ",\n  \"tex_pack_mod\": \"%s\"", packFolder);
+        out += std::string(",\n  \"tex_pack_mod\": \"") + packFolder + "\"";
     }
     // Main-page selections (always write)
-    fprintf(f, ",\n  \"last_campaign\": \"%s\"", s_savedCampaign);
-    fprintf(f, ",\n  \"last_base\": \"%s\"", s_savedBase);
-    fprintf(f, ",\n  \"last_addons\": \"%s\"", s_savedAddons);
-    fprintf(f, ",\n  \"last_faster_weapons\": \"%s\"", s_savedFasterWeapons);
-    fprintf(f, ",\n  \"last_data_driven\": \"%s\"", s_savedDataDriven);
-    fprintf(f, "\n}\n");
-    fclose(f);
+    out += std::string(",\n  \"last_campaign\": \"") + s_savedCampaign + "\"";
+    out += std::string(",\n  \"last_base\": \"") + s_savedBase + "\"";
+    out += std::string(",\n  \"last_addons\": \"") + s_savedAddons + "\"";
+    out += std::string(",\n  \"last_faster_weapons\": \"") + s_savedFasterWeapons + "\"";
+    out += std::string(",\n  \"last_data_driven\": \"") + s_savedDataDriven + "\"";
+    out += "\n}\n";
+    return WriteTextFile(s_envJsonPath, out);
 }
 
 static void SaveCfgRows();   // defined with the other options.cfg helpers below
 
 // Replace the simple SaveEnvJson (engine-only) with one that also writes graphics vars.
-// The old SaveEnvJson is superseded — call SaveGfxJson() everywhere instead.
-static void SaveEnvJson() { SaveGfxJson(); SaveCfgRows(); }
+// The old SaveEnvJson is superseded -- call SaveGfxJson() everywhere instead. False when launcher_env.json could not be written.
+static bool SaveEnvJson() { const bool ok = SaveGfxJson(); SaveCfgRows(); return ok; }
 
 // Load main-page selections from launcher_env.json into s_saved* globals.
 // Called at startup before RestoreMainPageSelections (which needs the UI to exist).
@@ -908,10 +905,39 @@ static void LauncherLogLine(const std::string& line) {
     fclose(f);
 }
 
+// The MC2_* keys in a launcher_env.json text that nothing in the launcher reads or maps any more: deleted gates the launcher once offered as rows.
+// They are dropped by the next save without a word unless they are named, so the migration counts and names them. A key is a quoted MC2_ name
+// followed by a colon; a value that happens to start with MC2_ is not a key. `names` receives at most `cap` names, the count is complete.
+static int CountUnknownEnvKeys(const std::string& json, std::string& names, int cap) {
+    static const char* const k_kept[] = { "MC2_STATICPROP_TEX_TIER", "MC2_SHADOW_MAP_SIZE", "MC2_FPS_CAP", "MC2_VSYNC" };   // the graphics-dialog keys
+    int count = 0;
+    std::string seen;   // ",NAME," entries, so a key repeated in the file counts once
+    for (size_t at = json.find("\"MC2_"); at != std::string::npos; at = json.find("\"MC2_", at + 1)) {
+        const size_t end = json.find('"', at + 1);
+        if (end == std::string::npos) break;
+        size_t after = end + 1;
+        while (after < json.size() && (json[after] == ' ' || json[after] == '\t' || json[after] == '\r' || json[after] == '\n')) ++after;
+        if (after >= json.size() || json[after] != ':') continue;   // a value, not a key
+        const std::string name = json.substr(at + 1, end - at - 1);
+        bool known = mc2::options::legacy::optionFor(name) != nullptr;
+        for (const char* k : k_kept) known = known || name == k;
+        for (int i = 0; i < k_envVarCount && !known; i++) known = (name == k_envVars[i].key);
+        if (known || seen.find("," + name + ",") != std::string::npos) continue;
+        seen += "," + name + ",";
+        if (count < cap) names += (names.empty() ? "" : ",") + name;
+        ++count;
+    }
+    return count;
+}
+
 // Before the render options moved into options.cfg, launcher_env.json held them under their environment names ("MC2_SHADOW_CSM": "0"). The
 // engine no longer reads those names, so a player's old choice would reset to the default without a word. Each such key is mapped to its options.cfg
-// row once, then the file is rewritten without it; a row the file already has under its new name keeps that value (the newer choice wins). Call it
-// after the rows are loaded and before the dialog or --sync-options use them.
+// row once, then the file is rewritten without it. A row the file already has under its NEW NAME in launcher_env.json keeps that value (the newer
+// choice wins); a value in options.cfg does not count as a newer choice (the launcher itself writes every row's default there at Launch), so a legacy
+// key overrides the options.cfg value of its row. Keys of deleted gates that have no options.cfg row are not migrated; they are counted and named in
+// the log line (`dropped_unknown`) and go with the same one-time rewrite. Call it after the rows are loaded and before the dialog or --sync-options
+// use them. The log line says `migrated_legacy_keys` only when the rewrite succeeded and `migrate_failed` otherwise (the keys then stay and the
+// next start tries again).
 static void MigrateLegacyEnvKeys() {
     if (!s_envJsonPath[0]) return;
     const std::string json = ReadTextFile(s_envJsonPath);
@@ -937,13 +963,21 @@ static void MigrateLegacyEnvKeys() {
         detail += (detail.empty() ? "" : ",") + std::string(lk.option) + "=" + *text;
         ++applied;
     }
-    if (!found) return;
+    std::string unknownNames;
+    const int unknown = CountUnknownEnvKeys(json, unknownNames, 8);
+    if (!found && !unknown) return;
     // SaveEnvJson rewrites the whole file, so the graphics and main-page state it also holds must be loaded first (a headless run has not).
     LoadGfxJson();
     LoadMainPageJson();
-    SaveEnvJson();
-    LauncherLogLine("[LAUNCHER_ENV v1] event=migrated_legacy_keys found=" + std::to_string(found) + " applied=" + std::to_string(applied) +
-                    " kept_existing=" + std::to_string(keptNew) + " unmapped=" + std::to_string(unmapped) + " options=" + (detail.empty() ? "-" : detail));
+    const std::string counts = " found=" + std::to_string(found) + " applied=" + std::to_string(applied) + " kept_existing=" + std::to_string(keptNew) +
+                               " unmapped=" + std::to_string(unmapped) + " options=" + (detail.empty() ? "-" : detail) +
+                               " dropped_unknown=" + std::to_string(unknown) + " names=" + (unknownNames.empty() ? "-" : unknownNames) +
+                               (unknown > 8 ? ",+" + std::to_string(unknown - 8) + "_more" : "");
+    if (!SaveEnvJson()) {
+        LauncherLogLine("[LAUNCHER_ENV v1] event=migrate_failed why=launcher_env.json_not_writable" + counts);
+        return;
+    }
+    LauncherLogLine("[LAUNCHER_ENV v1] event=migrated_legacy_keys" + counts);
 }
 
 // ---- Options dialog (in-process, no .rc file) --------------------------------
@@ -3110,6 +3144,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
     // This is what Launch does for those rows; it exists so the round trip can be checked without a window.
     if (lpCmd && strstr(lpCmd, "--sync-options")) {
         EnvVarsSetDefaults();
+        GfxSetDefaults();   // the migration rewrites the graphics keys too; unset they must come out as the GUI's defaults, not as zeroed globals
         _snprintf(s_envJsonPath, sizeof(s_envJsonPath), "%slauncher_env.json", s_launcherDir);
         s_envJsonPath[sizeof(s_envJsonPath)-1] = '\0';
         LoadEnvJson();
