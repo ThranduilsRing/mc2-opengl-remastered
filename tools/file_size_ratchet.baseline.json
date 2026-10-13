@@ -13,7 +13,7 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2727,
+  "GameOS/gameos/engine_present_vk.cpp": 2741,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1696,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2332,
   "GameOS/gameos/gpu_cull_compute.cpp": 1510,
@@ -31,7 +31,7 @@
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
-  "code/mechlopedia.cpp": 1649,
+  "code/mechlopedia.cpp": 1648,
   "code/missionbegin.cpp": 2171,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -63,7 +63,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "4f54d1e9d",
+ "head": "b0bfb4157",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -72,7 +72,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 323,
+   "files": 328,
    "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
@@ -114,7 +114,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 614,
+   "files": 611,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -141,7 +141,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2727
+   "lines": 2741
   },
   {
    "file": "code/warrior.cpp",
@@ -253,7 +253,7 @@
   }
  ],
  "total": {
-  "files": 1840,
+  "files": 1842,
   "files_over_1500": 49,
   "files_over_3000": 1,
   "max_lines": 3753
