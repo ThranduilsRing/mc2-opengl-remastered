@@ -106,7 +106,7 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
         feats.push_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
         return true;
     }
-    ctxlog("validation preset '%s' unrecognized; using 'core'.", env);
+    ctxlog("validation preset '%s' unrecognized; using 'core'.", env.c_str());
     resolvedName = "core";
     return true;
 }
