@@ -91,7 +91,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
-from smoke_lib import render_resolution  # noqa: E402
+from smoke_lib import render_options_pin, render_resolution  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
@@ -299,6 +299,10 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     warn = env_pin.format_warning(env_record)
     if warn:
         print(warn, file=sys.stderr)
+    # The render options are an input of the capture like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE.
+    options_rec = render_options_pin.record(exe.parent, env)
+    for rj in options_rec["rejected"]:
+        print(f"[viscap] WARN render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
@@ -392,11 +396,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         # correctly report as UNGRADED, i.e. a broken pipe would look exactly
         # like a real desync.
         simid = None
+        engine_options = None
         if side.exists():
             try:
                 sc = json.loads(side.read_text(encoding="utf-8"))
                 det = sc.get("deterministic")
                 simid = sc.get("sim_identity")
+                engine_options = sc.get("render_options")
             except Exception:
                 det = None
                 simid = None
@@ -410,6 +416,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             "covers": m.get("covers", []),
             "engine_deterministic": det,
             "sim_identity": simid,
+            "render_options": engine_options,
         })
 
     # Detect whether the engine's capture path even fired (RC may predate S9).
@@ -420,8 +427,17 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     except Exception:
         pass
 
+    # The engine's own report of the options is the record; this module's reading of the install must agree with it (a disagreement means the
+    # grammar port or the launch environment is wrong, and the capture cannot be attributed).
+    engine_opts = next((b["render_options"] for b in bm_results if b.get("render_options")), None)
+    options_disagree = render_options_pin.check_engine(options_rec["values"], engine_opts)
+    for line in options_disagree:
+        print(f"[viscap] FAIL render options: harness reading and engine report disagree: {line}", file=sys.stderr)
+
     return {
         "mission": mission_token,
+        "render_options": {"values": engine_opts or options_rec["values"], "from": "engine" if engine_opts else "install",
+                           "rejected": options_rec["rejected"], "disagree": options_disagree},
         "bookmarks_path": str(bookmarks_path),
         "out_dir": str(out_dir),
         "all_present": all_present,
@@ -438,6 +454,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 def write_manifest(result: dict, exe: Path) -> Path:
     out_dir = Path(result["out_dir"])
     verdict = ("PASS" if result["all_present"] and result["engine_capture_fired"]
+               and not (result.get("render_options") or {}).get("disagree")
                else "FAIL")
     ident = ms.identity_block(
         generator="visual_capture",
@@ -452,6 +469,7 @@ def write_manifest(result: dict, exe: Path) -> Path:
             "bookmarks_path": result["bookmarks_path"],
             "show_window": bool(result.get("show_window", False)),
             "mc2_env": result.get("mc2_env"),
+            "render_options": result.get("render_options"),
         },
     )
     rep = ms.report_summary(

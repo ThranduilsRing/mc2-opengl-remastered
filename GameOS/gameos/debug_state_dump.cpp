@@ -479,6 +479,8 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "    \"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE\": "; b(s, mc2::gate::get<"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE">()); s << ",\n";
     s << "    \"MC2_VEGETATION_CARDS\": "; b(s, mc2::gate::get<"MC2_VEGETATION_CARDS">()); s << "\n";
     s << "  },\n";
+    // Every options.cfg render option as the renderer reads it (file values plus MC2_OPTIONS_OVERRIDE): a proof records what it ran with.
+    s << "  \"renderOptions\": " << mc2::options::toJson(mc2::options::current()) << ",\n";
     s << "  \"engineView\": {\n";
     s << "    \"known\": "; b(s, viewKnown); s << ",\n";
     s << "    \"viewId\": " << view.id << ",\n";

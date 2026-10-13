@@ -150,6 +150,30 @@ inline Verdict setFromText(RenderOptions& o, const Option& opt, std::string_view
     return Verdict::Garbage;
 }
 
+// The values as one JSON object keyed by the options.cfg key names ({"PostCAS": false, "PostCASSharpness": 0.5, ...}), floats in their shortest
+// round-trip form. The state dump and the capture sidecar carry this so a proof records which options it ran with.
+inline std::string toJson(const RenderOptions& o) {
+    std::string s = "{";
+    for (const Option& opt : kOptions) {
+        if (s.size() > 1) s += ", ";
+        s += '"';
+        s += opt.key;
+        s += "\": ";
+        switch (opt.kind) {
+        case Kind::Bool: s += (o.*(opt.b)) ? "true" : "false"; break;
+        case Kind::Long: s += std::to_string(o.*(opt.l)); break;
+        case Kind::Float: {
+            char buf[32];
+            const auto r = std::to_chars(buf, buf + sizeof(buf), o.*(opt.f));
+            s.append(buf, r.ptr);
+            break;
+        }
+        }
+    }
+    s += "}";
+    return s;
+}
+
 struct Reject {
     std::string key;
     std::string text;

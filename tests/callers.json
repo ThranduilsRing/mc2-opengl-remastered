@@ -3105,7 +3105,7 @@
         },
         {
           "path": "tools/visual_verify/capture_ab.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3718,7 +3718,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/mcp/mc2_render_state_server.py",
-          "line": 735,
+          "line": 736,
           "evidence": "command",
           "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
           "text": "result = subprocess.run("
@@ -3896,7 +3896,7 @@
           "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "scripts/run_smoke.py",
@@ -4060,6 +4060,13 @@
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"
         },
         {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import render_options_pin"
+        },
+        {
           "path": "scripts/smoke_lib/runner.py",
           "line": 15,
           "evidence": "import",
@@ -4128,7 +4135,7 @@
           "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.baselines",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         }
       ]
     },
@@ -4580,7 +4587,7 @@
           "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "tests/smoke/test_manifest.py",
@@ -4616,7 +4623,7 @@
           "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.nofocus",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "scripts/smoke_lib/child_registry.py",
@@ -4709,7 +4716,7 @@
           "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_resolution",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "scripts/smoke_lib/manifest.py",
@@ -4745,7 +4752,7 @@
           "line": 43,
           "evidence": "import",
           "reference": "scripts.smoke_lib.report",
-          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report"
+          "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
           "path": "tests/smoke/test_report.py",
@@ -10494,7 +10501,7 @@
       "callers_by_stem": [
         {
           "path": "tools/visual_verify/capture_ab.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "montage_compact",
           "text": "import montage_compact as mc  # noqa: E402"

@@ -15,6 +15,22 @@ class Row:
     verdict: Verdict
     summary: LogSummary
     destroys_delta: int = 0
+    #: The render options the engine ran with (scripts/smoke_lib/render_options_pin.py record()["values"]); None when not recorded.
+    render_options: Optional[dict] = None
+
+
+def _options_line(rows: list[Row]) -> str:
+    """One report line naming the render options of the run: 'all defaults', or the keys that differ from the table defaults."""
+    from . import render_options_pin
+    recorded = [r.render_options for r in rows if r.render_options]
+    if not recorded:
+        return "> **Render options:** not recorded\n\n"
+    shown = []
+    for values in recorded:
+        text = render_options_pin.describe(values)
+        if text not in shown:
+            shown.append(text)
+    return "> **Render options:** " + " | ".join(shown) + "\n\n"
 
 
 def render_markdown(rows: list[Row], *, tier: str, profile: str,
@@ -49,6 +65,7 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
     if run_failures:
         head += ("> **RUN INVALID — the missions' results do not count.**\n>\n"
                  + "".join(f"> - {f}\n" for f in run_failures) + "\n")
+    head += _options_line(rows)
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"
@@ -105,6 +122,7 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
                 "destroys_delta": r.destroys_delta,
                 "simid_frames": r.summary.simid_frames,
                 "simid_chain": r.summary.simid_chain,
+                "render_options": r.render_options,
             }
             for r in rows
         ],

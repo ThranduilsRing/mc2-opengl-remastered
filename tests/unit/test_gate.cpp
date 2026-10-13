@@ -1468,3 +1468,20 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     CHECK(keep.tonemapMode == 2);
     CHECK(keepRejects.size() == 1);
 }
+
+TEST_CASE("the render options serialize as one JSON object of all 17 values for the state dump and the capture sidecar") {
+    namespace mo = mc2::options;
+    mo::RenderOptions o{};
+    const std::string d = mo::toJson(o);
+    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowCSM\": true", 0) == 0);
+    CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
+    CHECK(d.back() == '}');
+    CHECK(std::count(d.begin(), d.end(), ':') == 17);
+    o.tonemapMode = 3;
+    o.staticPropPbr = true;
+    o.postCasSharpness = 0.25f;
+    const std::string c = mo::toJson(o);
+    CHECK(c.find("\"TonemapMode\": 3") != std::string::npos);
+    CHECK(c.find("\"StaticPropPbr\": true") != std::string::npos);
+    CHECK(c.find("\"PostCASSharpness\": 0.25") != std::string::npos);
+}

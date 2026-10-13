@@ -95,6 +95,7 @@ extern "C" {
 #include "../../code/sim_identity.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "Gates/render_options.h"
 #include "mc2fmt.h"
 
 // Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
@@ -330,6 +331,8 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     mc2::fmt::to_buf(num, "  \"cap_proj\": {:.3f},\n", g_renderedProj); buf += num;
     mc2::fmt::to_buf(num, "  \"cap_rot\": {:.3f},\n", g_renderedRot); buf += num;
     mc2::fmt::to_buf(num, "  \"cap_alt\": {:.3f},\n", g_renderedAlt); buf += num;
+    // The render options the engine ran with (options.cfg plus MC2_OPTIONS_OVERRIDE): two captures are only comparable when these match.
+    buf += "  \"render_options\": "; buf += mc2::options::toJson(mc2::options::current()); buf += ",\n";
     buf += "  \"gate_env\": [";
     for (size_t i = 0; i < gateEnv.size(); ++i) {
         if (i) buf += ", ";

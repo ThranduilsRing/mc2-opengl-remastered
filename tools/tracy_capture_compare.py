@@ -77,7 +77,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
 from smoke_lib import nofocus  # noqa: E402
-from smoke_lib import render_resolution  # noqa: E402
+from smoke_lib import render_options_pin, render_resolution  # noqa: E402
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
@@ -164,6 +164,25 @@ def mc2_running() -> bool:
 
 
 # ---------------------------------------------------------------- capture ----
+
+def options_sidecar(trace: Path) -> Path:
+    """Where capture_trace records the render options of a trace."""
+    return Path(trace).with_suffix(".options.json")
+
+
+def require_same_options(trace_a: Path, trace_b: Path, vary, a_name: str = "A", b_name: str = "B") -> None:
+    """Exit unless both traces recorded their render options and they agree on every key not in `vary` (a mismatch is a hard failure, like the
+    resolution)."""
+    try:
+        render_options_pin.require_same(render_options_pin.read(options_sidecar(trace_a)), render_options_pin.read(options_sidecar(trace_b)),
+                                        vary, a_name, b_name)
+    except render_options_pin.OptionsMismatch as e:
+        sys.exit(f"REFUSED: {e}")
+
+
+def vary_list(text) -> "list[str]":
+    return [k.strip() for k in (text or "").split(",") if k.strip()]
+
 
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
@@ -279,6 +298,13 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             sys.exit(f"ERROR: --env expects KEY=VAL, got '{kv}'")
         env[k] = v
         print(f"[capture] extra env {k}={v}")
+
+    # The render options are an input of the trace like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE. They are written
+    # next to the trace so a later compare can refuse two traces taken with different options.
+    options_rec = render_options_pin.record(install, env)
+    render_options_pin.write(options_sidecar(out), options_rec)
+    for rj in options_rec["rejected"]:
+        print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
     duration = seconds + 5  # game outlives the recorder window
     game_cmd = [str(game), "--profile", "stock", "--mission", mission,
@@ -521,6 +547,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
         if not t.is_file():
             sys.exit(f"ERROR: trace not found: {t}")
     zones = [z.strip() for z in args.zones.split(",")] if args.zones else DEFAULT_ZONES
+    require_same_options(before, after, vary_list(args.vary), "BEFORE", "AFTER")
 
     cols = ["zone", "mean_ns B", "mean_ns A", "d_mean", "total_ms B", "total_ms A",
             "d_total", "count B", "count A"]
@@ -655,6 +682,7 @@ def cmd_baseline(args: argparse.Namespace) -> int:
                           pose=args.pose, fixed_timestep=False, fps_cap=0)
         rc = rc or r
         arm_results[arm] = measure_arm(trace, zones, args.seconds, export_exe)
+        arm_results[arm]["options"] = (render_options_pin.read(options_sidecar(trace)) or {}).get("values")
 
     meta = {
         "name": name,
@@ -724,8 +752,13 @@ def cmd_regress(args: argparse.Namespace) -> int:
         trace = out_dir / f"regress-{arm}.tracy"
         capture_trace(install, arm, base["mission"], seconds, trace,
                       pose=base["pose"], fixed_timestep=False, fps_cap=0)
-        new = measure_arm(trace, zones, seconds, export_exe)
         base_arm = base["arms"].get(arm, {})
+        try:
+            render_options_pin.require_same({"values": base_arm.get("options")}, render_options_pin.read(options_sidecar(trace)),
+                                            vary_list(args.vary), f"baseline {base['name']}", "this run")
+        except render_options_pin.OptionsMismatch as e:
+            sys.exit(f"REFUSED: {e}")
+        new = measure_arm(trace, zones, seconds, export_exe)
         bf = base_arm.get("frames", 0)
         nf = new["frames"]
         drop = (bf - nf) / bf * 100.0 if bf else 0.0  # +drop = slower
@@ -790,6 +823,7 @@ def _measure_pose(install: Path, out_dir: Path, tag: str, mission: str, pose: st
     cpu = zone_samples(trace, zone, export_exe)
     p50 = pct(s, 50)
     return {"tag": tag, "n": len(s),
+            "options": (render_options_pin.read(options_sidecar(trace)) or {}).get("values"),
             "p50_ms": p50, "p99_ms": pct(s, 99),
             "mean_ms": sum(s) / len(s),
             "fps_p50": 1000.0 / p50 if p50 else 0.0,
@@ -918,6 +952,8 @@ def main() -> int:
     d.add_argument("after")
     d.add_argument("--zones", help="comma-separated zone names "
                                    f"(default: {','.join(DEFAULT_ZONES)})")
+    d.add_argument("--vary", default="", help="comma-separated options.cfg keys that differ between the traces on purpose "
+                                              "(any other difference in the recorded render options is refused)")
     d.set_defaults(fn=cmd_compare)
 
     b = sub.add_parser("baseline", help="capture BOTH arms at a pose -> dated baseline dir")
@@ -945,6 +981,8 @@ def main() -> int:
                    help=f"frame-count drop%% that WARNs (default {REGRESS_WARN_PCT})")
     r.add_argument("--fail-pct", type=float, default=REGRESS_FAIL_PCT,
                    help=f"frame-count drop%% that FAILs (default {REGRESS_FAIL_PCT})")
+    r.add_argument("--vary", default="", help="comma-separated options.cfg keys that differ from the baseline on purpose "
+                                              "(any other difference in the recorded render options is refused)")
     r.set_defaults(fn=cmd_regress)
 
     s = sub.add_parser("selfcheck", help="prove the harness can see a known "

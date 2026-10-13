@@ -40,7 +40,7 @@ def _smoke_passthrough_names() -> frozenset:
 
 _SMOKE_PASSTHROUGH = _smoke_passthrough_names()
 
-from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report
+from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report
 from scripts.smoke_lib import exe_guard as _exe_guard
 from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
@@ -1554,8 +1554,12 @@ def main():
             _asked_w, _asked_h = render_resolution.parse(e.resolution)
             if f"[RESOLUTION] Pre-window: {_asked_w}x{_asked_h} (from MC2_WIDTH/MC2_HEIGHT env)" not in result.stdout_text:
                 _resolution_failures.append(f"{label}: the engine log has no '[RESOLUTION] Pre-window: {_asked_w}x{_asked_h}' line")
+        # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
+        # ambient environment through and applies cfg.env_extra last).
+        _options = render_options_pin.record(Path(args.exe).resolve().parent, {**os.environ, **cfg.env_extra})
         rows.append(report.Row(stem=label, verdict=result.verdict,
-                               summary=result.summary, destroys_delta=delta or 0))
+                               summary=result.summary, destroys_delta=delta or 0,
+                               render_options=_options["values"]))
 
         if not result.verdict.passed or args.keep_logs:
             (artifact_dir / f"{label}.log").write_text(result.stdout_text, encoding="utf-8", errors="replace")

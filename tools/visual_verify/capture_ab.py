@@ -13,6 +13,7 @@ Launches go through capture.py only (lease, background-only, no window)."""
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -24,6 +25,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 
 import console_child  # noqa: E402
 import montage_compact as mc  # noqa: E402
+from smoke_lib import render_options_pin  # noqa: E402
 
 DEFAULT_BOOKMARKS = "mc2_01_saved_205644,mc2_10_saved_204523"
 DEFAULT_ROOT = os.path.join(REPO, ".claude", "l2cap")
@@ -46,6 +48,22 @@ def diff_line(before_png: str, after_png: str) -> str:
 
 def frame(root: str, set_name: str, bookmark: str) -> str:
     return os.path.join(root, set_name, bookmark, bookmark + ".png")
+
+
+def check_options(root: str, before: str, after: str, vary: "list[str]") -> None:
+    """Refuse to compare sets that ran with different render options (options.cfg is an input of the picture); raises OptionsMismatch."""
+    def sweep_options(set_name: str):
+        try:
+            with open(os.path.join(root, set_name, "capture_run.json"), encoding="utf-8") as f:
+                return json.load(f).get("render_options")
+        except (OSError, ValueError):
+            return None
+    sets = [(f"{before}1-gl", "BEFORE gl1"), (f"{before}2-gl", "BEFORE gl2"), (f"{before}-vk", "BEFORE vk"),
+            (f"{after}1-gl", "AFTER gl1"), (f"{after}2-gl", "AFTER gl2"), (f"{after}-vk", "AFTER vk")]
+    ref_name, ref_label = sets[0]
+    reference = {"values": sweep_options(ref_name)}
+    for name, label in sets[1:]:
+        render_options_pin.require_same(reference, {"values": sweep_options(name)}, vary, ref_label, label)
 
 
 def compare(root: str, before: str, after: str, bookmarks: list[str]) -> list[str]:
@@ -89,8 +107,14 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--after", required=True)
     d.add_argument("--root", default=DEFAULT_ROOT)
     d.add_argument("--bookmarks", default=DEFAULT_BOOKMARKS)
+    d.add_argument("--vary", default="", help="comma-separated options.cfg keys that differ between the sets on purpose (any other difference is refused)")
     args = ap.parse_args(argv)
     if args.cmd == "compare":
+        try:
+            check_options(args.root, args.before, args.after, [k for k in args.vary.split(",") if k])
+        except render_options_pin.OptionsMismatch as e:
+            print(f"REFUSED: {e}", file=sys.stderr)
+            return 1
         print("\n".join(compare(args.root, args.before, args.after, args.bookmarks.split(","))))
         return 0
     os.makedirs(args.root, exist_ok=True)
