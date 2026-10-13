@@ -23,6 +23,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "vk_device_profile.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -47,6 +48,12 @@ void ctxlog(const char* fmt, ...) {
     std::vfprintf(stderr, fmt, ap);
     va_end(ap);
     std::fprintf(stderr, "\n");
+    std::fflush(stderr);
+}
+
+// The `[VK_PROFILE v1]` line goes to stderr beside the other [VK_ENGINE_CONTEXT] lines; the smoke parser grades a refused verdict red.
+void profileLog(const std::string& line) {
+    std::fprintf(stderr, "%s\n", line.c_str());
     std::fflush(stderr);
 }
 
@@ -147,6 +154,22 @@ bool VulkanContext::init(bool wantPresent) {
     }
     initedVolk_ = true;
 
+    // ---- instance version: the 1.2 floor, and 1.3 when the loader has it (core dynamic rendering / synchronization2) ----
+    // Raising the version enables no device feature by itself: the device profile below queries and enables each one it wants.
+    uint32_t loaderApi = VK_API_VERSION_1_0;
+    if (vkEnumerateInstanceVersion) vkEnumerateInstanceVersion(&loaderApi);
+    const uint32_t instanceApi = loaderApi < profile::kUseApi13 ? loaderApi : profile::kUseApi13;
+    if (instanceApi < profile::kFloorApi) {
+        profile::DeviceCaps none;
+        none.instanceApi = loaderApi;
+        profile::Evaluation refused;
+        refused.accepted = false;
+        refused.items.push_back({"api_1_2", profile::Need::Required, false, "-"});
+        refused.missingRequired.push_back("api_1_2");
+        profileLog(profile::formatLine("(no device queried: the Vulkan loader is below 1.2)", none, refused));
+        return fail("the Vulkan loader reports instance version " + profile::versionText(loaderApi) + ", below the 1.2 floor");
+    }
+
     // ---- validation preset ----
     std::vector<VkValidationFeatureEnableEXT> valFeatures;
     const char* valPreset = "off";
@@ -196,7 +219,7 @@ bool VulkanContext::init(bool wantPresent) {
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app.pApplicationName = "MC2 (engine Vulkan context)";
     app.pEngineName = "MC2-GameOS";
-    app.apiVersion = VK_API_VERSION_1_1;
+    app.apiVersion = instanceApi;
 
     VkValidationFeaturesEXT valFeaturesInfo{};
     valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
@@ -243,19 +266,41 @@ bool VulkanContext::init(bool wantPresent) {
     if (r != VK_SUCCESS || devCount == 0) return fail("no physical devices");
     std::vector<VkPhysicalDevice> devs(devCount);
     vkEnumeratePhysicalDevices(instance_, &devCount, devs.data());
-    phys_ = devs[0];
-    if (devCount > 1) {
+
+    // ---- device profile: the first discrete device that meets every REQUIRED item, else the first device that does; if none does, the engine
+    // refuses Vulkan (fail-soft to GL) and the refused device's line says which items it lacks ----
+    profile::DeviceCaps caps;
+    profile::Evaluation verdict;
+    {
+        struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; };
+        std::vector<Candidate> cands;
         for (auto pd : devs) {
             VkPhysicalDeviceProperties p{};
             vkGetPhysicalDeviceProperties(pd, &p);
-            if (p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { phys_ = pd; break; }
+            Candidate c{pd, profile::gather(pd, instanceApi), {}, p.deviceName, p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU};
+            c.ev = profile::evaluate(c.caps, wantPresent);
+            cands.push_back(std::move(c));
         }
-    }
-    {
-        VkPhysicalDeviceProperties props{};
-        vkGetPhysicalDeviceProperties(phys_, &props);
-        std::strncpy(health_.deviceName, props.deviceName, sizeof(health_.deviceName) - 1);
+        const Candidate* pick = nullptr;
+        for (const Candidate& c : cands)
+            if (c.ev.accepted && c.discrete) { pick = &c; break; }
+        if (!pick)
+            for (const Candidate& c : cands)
+                if (c.ev.accepted) { pick = &c; break; }
+        const bool accepted = pick != nullptr;
+        if (!pick) {                                      // report the device the engine would have preferred
+            pick = &cands[0];
+            for (const Candidate& c : cands)
+                if (c.discrete) { pick = &c; break; }
+        }
+        phys_ = pick->pd;
+        caps = pick->caps;
+        verdict = pick->ev;
+        std::strncpy(health_.deviceName, pick->name.c_str(), sizeof(health_.deviceName) - 1);
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
+        health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
+        profileLog(health_.profileLine);
+        if (!accepted) return fail("device profile: required item(s) missing on " + pick->name + ": " + profile::joinOr(pick->ev.missingRequired));
     }
 
     // ---- graphics queue family ----
@@ -299,8 +344,44 @@ bool VulkanContext::init(bool wantPresent) {
         if (memoryBudgetExt_) devExts.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     }
 
+    // The profile's extension routes (dynamic rendering / synchronization2 on a 1.2 device), then the feature bits it selected: only supported bits
+    // are enabled, each through the struct that defines it (the core 1.2 / 1.3 aggregate when the version allows, the KHR struct otherwise).
+    for (const std::string& e : verdict.deviceExtensions) devExts.push_back(e.c_str());
+
+    VkPhysicalDeviceFeatures2 enableFeatures{};
+    enableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    VkPhysicalDeviceVulkan12Features en12{};
+    en12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    VkPhysicalDeviceVulkan13Features en13{};
+    en13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR enDr{};
+    enDr.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+    VkPhysicalDeviceSynchronization2FeaturesKHR enS2{};
+    enS2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+    {
+        using profile::featureEnabled;
+        en12.timelineSemaphore = featureEnabled(verdict, "timelineSemaphore") ? VK_TRUE : VK_FALSE;
+        en12.bufferDeviceAddress = featureEnabled(verdict, "bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
+        en12.descriptorIndexing = featureEnabled(verdict, "descriptorIndexing") ? VK_TRUE : VK_FALSE;
+        en12.runtimeDescriptorArray = featureEnabled(verdict, "runtimeDescriptorArray") ? VK_TRUE : VK_FALSE;
+        en12.shaderSampledImageArrayNonUniformIndexing = featureEnabled(verdict, "shaderSampledImageArrayNonUniformIndexing") ? VK_TRUE : VK_FALSE;
+        en12.descriptorBindingPartiallyBound = featureEnabled(verdict, "descriptorBindingPartiallyBound") ? VK_TRUE : VK_FALSE;
+        const bool drCore = std::strcmp(profile::routeOf(verdict, "dynamic_rendering"), "core") == 0;
+        const bool s2Core = std::strcmp(profile::routeOf(verdict, "synchronization2"), "core") == 0;
+        if (featureEnabled(verdict, "dynamicRendering")) (drCore ? en13.dynamicRendering : enDr.dynamicRendering) = VK_TRUE;
+        if (featureEnabled(verdict, "synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
+        void** tail = &enableFeatures.pNext;
+        auto chain = [&](auto& s) { *tail = &s; tail = &s.pNext; };
+        chain(en12);
+        if (drCore || s2Core) chain(en13);
+        if (featureEnabled(verdict, "dynamicRendering") && !drCore) chain(enDr);
+        if (featureEnabled(verdict, "synchronization2") && !s2Core) chain(enS2);
+        bufferDeviceAddress_ = en12.bufferDeviceAddress == VK_TRUE;
+    }
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.pNext = &enableFeatures;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
     dci.enabledExtensionCount   = static_cast<uint32_t>(devExts.size());
@@ -321,8 +402,9 @@ bool VulkanContext::init(bool wantPresent) {
         aci.physicalDevice = phys_;
         aci.device = device_;
         aci.instance = instance_;
-        aci.vulkanApiVersion = VK_API_VERSION_1_1;
+        aci.vulkanApiVersion = caps.usableApi();   // never above what the device or the instance was created for
         if (memoryBudgetExt_) aci.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+        if (bufferDeviceAddress_) aci.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         VmaVulkanFunctions fns{};
         r = vmaImportVulkanFunctionsFromVolk(&aci, &fns);
         if (r != VK_SUCCESS) return fail("vmaImportVulkanFunctionsFromVolk failed");
@@ -359,6 +441,7 @@ void VulkanContext::destroy() {
     }
     if (g_cbContext == this) g_cbContext = nullptr;
     memoryBudgetExt_ = false;
+    bufferDeviceAddress_ = false;
     health_.created = false;
 }
 

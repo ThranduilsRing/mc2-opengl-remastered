@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-from . import vram
+from . import vk_profile, vram
 
 PERF_RE = re.compile(
     r"\[PERF v1\] avg_fps=(?P<avg>[\d.]+) p50_ms=(?P<p50>[\d.]+) "
@@ -122,6 +122,10 @@ MARKER_BUCKETS: tuple = (
     # 24-map run is the documented follow-up).
     MarkerBucket(re.compile(r"\[APPEAR_AUDIT v1\] event=missing\b"),
                  "appear_audit", "advisory", None),
+    # The Vulkan device profile REFUSED the device (a required item of the 1.2 profile is missing): the engine fell back to GL, so a run that asked
+    # for Vulkan would otherwise pass on the wrong backend. Emitter: GameOS/gameos/vulkan_context.cpp (vk_device_profile.h table).
+    MarkerBucket(re.compile(r"\[VK_PROFILE v1\] verdict=refused\b"),
+                 "vk_profile_refused", "red", None),
 )
 
 
@@ -178,6 +182,8 @@ class LogSummary:
     simid_chain: Optional[str] = None
     # The `[VRAM v1]` samples of the run (load_end, run_end): GPU memory counters, see smoke_lib/vram.py.
     vram: list = field(default_factory=list)
+    # The `[VK_PROFILE v1]` lines (the Vulkan device profile verdict), see smoke_lib/vk_profile.py.
+    vk_profile: list = field(default_factory=list)
 
 
 def parse_log(text: str,
@@ -204,6 +210,8 @@ def parse_log(text: str,
             s.simid_frames += 1
         if "[VRAM v1]" in line:
             s.vram.extend(vram.parse(line))
+        if "[VK_PROFILE v1]" in line:
+            s.vk_profile.extend(vk_profile.parse(line))
         if "[SMOKE v1] event=banner" in line:
             s.smoke_banner_seen = True
         if "[SMOKE v1] event=mission_resolve" in line:

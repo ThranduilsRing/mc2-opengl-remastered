@@ -44,6 +44,16 @@ def _vram_line(rows: list[Row]) -> str:
     return ("> **VRAM:** " + " | ".join(parts) + "\n\n") if parts else ""
 
 
+def _vk_profile_line(rows: list[Row]) -> str:
+    """One report line with the Vulkan device profile verdict of the run (the first mission that printed one): which routes the device offers."""
+    from . import vk_profile
+    for r in rows:
+        profiles = getattr(r.summary, "vk_profile", None) or []
+        if profiles:
+            return "> **Vulkan profile:** " + vk_profile.describe(profiles[0]) + "\n\n"
+    return ""
+
+
 def _resolution_line(tier: str) -> str:
     """The size a pinned tier ran at (the fps numbers mean this size); other tiers take the install's options.cfg size and say nothing."""
     from . import render_resolution
@@ -88,6 +98,7 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
     head += _options_line(rows)
     head += _resolution_line(tier)
     head += _vram_line(rows)
+    head += _vk_profile_line(rows)
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"

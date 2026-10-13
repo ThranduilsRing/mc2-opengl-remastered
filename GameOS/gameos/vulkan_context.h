@@ -42,6 +42,7 @@ struct EngineContextHealth {
     bool         validationEnabled  = false;
     unsigned long validationErrors  = 0;     // ERROR-severity validation msgs
     std::string  fallbackReason;             // empty == clean; set on any failure
+    std::string  profileLine;                // the [VK_PROFILE v1] line of the device the profile chose (or refused); empty before device selection
 };
 
 // The standalone shared engine Vulkan context. Owns instance + physical device
@@ -105,6 +106,7 @@ private:
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
     bool             memoryBudgetExt_   = false;   // VK_EXT_memory_budget enabled on the device
+    bool             bufferDeviceAddress_ = false; // the device profile enabled bufferDeviceAddress (VMA is told so)
 
     EngineContextHealth health_;
 };

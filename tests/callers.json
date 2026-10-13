@@ -4051,7 +4051,7 @@
           "line": 10,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
-          "text": "from . import vram"
+          "text": "from . import vk_profile, vram"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
@@ -4112,6 +4112,13 @@
         {
           "path": "scripts/smoke_lib/report.py",
           "line": 49,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import vk_profile"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 59,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_resolution"
@@ -4185,6 +4192,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import report"
+        },
+        {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import logparse, report, vk_profile"
         },
         {
           "path": "tests/smoke/test_vram.py",
@@ -4545,6 +4559,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
+        },
+        {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 69,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         }
       ]
     },
@@ -4666,6 +4687,20 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary, PerfRow"
+        },
+        {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib import logparse, report, vk_profile"
+        },
+        {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 85,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib.logparse import LogSummary"
         },
         {
           "path": "tests/smoke/test_vram.py",
@@ -4877,7 +4912,7 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 49,
+          "line": 59,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_resolution",
           "text": "from . import render_resolution"
@@ -4933,6 +4968,20 @@
           "text": "from scripts.smoke_lib import report"
         },
         {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib import logparse, report, vk_profile"
+        },
+        {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.report",
+          "text": "from scripts.smoke_lib.report import Row"
+        },
+        {
           "path": "tests/smoke/test_vram.py",
           "line": 2,
           "evidence": "import",
@@ -4976,11 +5025,47 @@
           "text": "from scripts.smoke_lib.runner import run_one, RunConfig"
         },
         {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 86,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.runner",
+          "text": "from scripts.smoke_lib.runner import Verdict"
+        },
+        {
           "path": "tests/smoke/test_vram.py",
           "line": 55,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import Verdict"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/vk_profile.py",
+      "basename": "vk_profile.py",
+      "stem": "vk_profile",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/smoke_lib/logparse.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_profile",
+          "text": "from . import vk_profile, vram"
+        },
+        {
+          "path": "scripts/smoke_lib/report.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_profile",
+          "text": "from . import vk_profile"
+        },
+        {
+          "path": "tests/smoke/test_vk_profile.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_profile",
+          "text": "from scripts.smoke_lib import logparse, report, vk_profile"
         }
       ]
     },
@@ -4995,7 +5080,7 @@
           "line": 10,
           "evidence": "import",
           "reference": "scripts.smoke_lib.vram",
-          "text": "from . import vram"
+          "text": "from . import vk_profile, vram"
         },
         {
           "path": "scripts/smoke_lib/report.py",
