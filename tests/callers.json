@@ -4102,6 +4102,13 @@
           "text": "from scripts.smoke_lib import host_lease, nofocus  # noqa: E402"
         },
         {
+          "path": "tests/smoke/test_capture_backend.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import capture_backend as cb"
+        },
+        {
           "path": "tests/smoke/test_preflight_cache.py",
           "line": 15,
           "evidence": "import",
@@ -4186,6 +4193,21 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait, deploy_lease  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/capture_backend.py",
+      "basename": "capture_backend.py",
+      "stem": "capture_backend",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/smoke/test_capture_backend.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.capture_backend",
+          "text": "from scripts.smoke_lib import capture_backend as cb"
         }
       ]
     },
