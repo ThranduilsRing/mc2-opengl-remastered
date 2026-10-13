@@ -15,7 +15,7 @@ bool CPlayBIK::operator==(const CObjectiveAction &rhs) const {
 	bool retval = false;
 	const CPlayBIK *pCastedRhs = dynamic_cast<const CPlayBIK *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if (m_pathname == pCastedRhs->m_pathname) {
+		if (mc2::str::iequals(m_pathname, pCastedRhs->m_pathname)) {
 			retval = true;
 		}
 	}
@@ -24,17 +24,15 @@ bool CPlayBIK::operator==(const CObjectiveAction &rhs) const {
 
 bool CPlayBIK::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "AVIFileName", tmpECStr);
-	if (NO_ERR != result) { return false; }
-	m_pathname = tmpECStr.Data();
+	auto text = objective_text::read(*missionFile, "AVIFileName");
+	if (!text) { return false; }
+	m_pathname = std::move(*text);
 	return true;
 }
 
 bool CPlayBIK::Save( FitIniFile* file )
 {
-	file->writeIdString( "AVIFileName", m_pathname.Data());
+	file->writeIdString("AVIFileName", m_pathname.c_str());
 	return true;
 }
 
@@ -57,7 +55,7 @@ bool CPlayBIK::EditDialog() {
 			}
 			delete [] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
 			if (0 == ret) {
-				m_pathname = (pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
+				m_pathname = mc2::str::from_c(pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;
 			} else {
 				AfxMessageBox(IDS_MUST_BE_IN_SUBDIRECTORY);
@@ -68,23 +66,21 @@ bool CPlayBIK::EditDialog() {
 	}
 }
 
-EString CPlayBIK::Description() {
-	EString retval = "PlayBIK"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_PlayBIK, retval);
+std::string CPlayBIK::Description() {
+	std::string retval = "PlayBIK"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_PlayBIK, retval);
 	return retval;
 }
 
-EString CPlayBIK::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_pathname.Data());
-	return tmpEStr;
+std::string CPlayBIK::InstanceDescription() {
+	return m_pathname;
 }
 
 bool CPlayWAV::operator==(const CObjectiveAction &rhs) const {
 	bool retval = false;
 	const CPlayWAV *pCastedRhs = dynamic_cast<const CPlayWAV *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if (m_pathname == pCastedRhs->m_pathname) {
+		if (mc2::str::iequals(m_pathname, pCastedRhs->m_pathname)) {
 			retval = true;
 		}
 	}
@@ -93,17 +89,15 @@ bool CPlayWAV::operator==(const CObjectiveAction &rhs) const {
 
 bool CPlayWAV::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "WAVFileName", tmpECStr);
-	if (NO_ERR != result) { return false; }
-	m_pathname = tmpECStr.Data();
+	auto text = objective_text::read(*missionFile, "WAVFileName");
+	if (!text) { return false; }
+	m_pathname = std::move(*text);
 	return true;
 }
 
 bool CPlayWAV::Save( FitIniFile* file )
 {
-	file->writeIdString( "WAVFileName", m_pathname.Data());
+	file->writeIdString("WAVFileName", m_pathname.c_str());
 	return true;
 }
 
@@ -126,7 +120,7 @@ bool CPlayWAV::EditDialog() {
 			}
 			delete[] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
 			if (0 == ret) {
-				m_pathname = (pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
+				m_pathname = mc2::str::from_c(pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;
 			} else {
 				AfxMessageBox(IDS_MUST_BE_IN_SUBDIRECTORY);
@@ -137,23 +131,21 @@ bool CPlayWAV::EditDialog() {
 	}
 }
 
-EString CPlayWAV::Description() {
-	EString retval = "PlayWAV"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_PlayWAV, retval);
+std::string CPlayWAV::Description() {
+	std::string retval = "PlayWAV"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_PlayWAV, retval);
 	return retval;
 }
 
-EString CPlayWAV::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_pathname.Data());
-	return tmpEStr;
+std::string CPlayWAV::InstanceDescription() {
+	return m_pathname;
 }
 
 bool CDisplayTextMessage::operator==(const CObjectiveAction &rhs) const {
 	bool retval = false;
 	const CDisplayTextMessage *pCastedRhs = dynamic_cast<const CDisplayTextMessage *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if (m_message == pCastedRhs->m_message) {
+		if (mc2::str::iequals(m_message, pCastedRhs->m_message)) {
 			retval = true;
 		}
 	}
@@ -162,41 +154,37 @@ bool CDisplayTextMessage::operator==(const CObjectiveAction &rhs) const {
 
 bool CDisplayTextMessage::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "Message", tmpECStr);
-	if (NO_ERR != result) { return false; }
-	m_message = tmpECStr.Data();
+	auto text = objective_text::read(*missionFile, "Message");
+	if (!text) { return false; }
+	m_message = std::move(*text);
 	return true;
 }
 
 bool CDisplayTextMessage::Save( FitIniFile* file )
 {
-	file->writeIdString( "Message", m_message.Data());
+	file->writeIdString("Message", m_message.c_str());
 	return true;
 }
 
 bool CDisplayTextMessage::EditDialog() {
 	TextMessageDlg textMessageDlg;
-	textMessageDlg.m_TextMessage = m_message.Data();
+	textMessageDlg.m_TextMessage = m_message.c_str();
 	int result = textMessageDlg.DoModal();
 	if (IDOK == result) {
-		m_message = textMessageDlg.m_TextMessage.GetBuffer(0);
+		m_message = mc2::str::from_c(textMessageDlg.m_TextMessage.GetBuffer(0));
 		return true;
 	}
 	return false;
 }
 
-EString CDisplayTextMessage::Description() {
-	EString retval = "DisplayTextMessage"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DisplayTextMessage, retval);
+std::string CDisplayTextMessage::Description() {
+	std::string retval = "DisplayTextMessage"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DisplayTextMessage, retval);
 	return retval;
 }
 
-EString CDisplayTextMessage::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_message.Data());
-	return tmpEStr;
+std::string CDisplayTextMessage::InstanceDescription() {
+	return m_message;
 }
 
 bool CDisplayResourceTextMessage::operator==(const CObjectiveAction &rhs) const {
@@ -235,17 +223,17 @@ bool CDisplayResourceTextMessage::EditDialog() {
 	return false;
 }
 
-EString CDisplayResourceTextMessage::Description() {
-	EString retval = "DisplayResourceTextMessage"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DisplayResourceTextMessage, retval);
+std::string CDisplayResourceTextMessage::Description() {
+	std::string retval = "DisplayResourceTextMessage"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DisplayResourceTextMessage, retval);
 	return retval;
 }
 
-EString CDisplayResourceTextMessage::InstanceDescription() {
-	EString resourceText;
-	ESLoadString(m_resourceStringID, resourceText);
-	EString tmpEStr;
-	tmpEStr.Format("%d: %s", m_resourceStringID, resourceText.Data());
+std::string CDisplayResourceTextMessage::InstanceDescription() {
+	std::string resourceText;
+	LoadObjectiveString(m_resourceStringID, resourceText);
+	std::string tmpEStr;
+	tmpEStr = std::format("{}: {}", m_resourceStringID, resourceText);
 	return tmpEStr;
 }
 
@@ -253,7 +241,7 @@ bool CSetBooleanFlag::operator==(const CObjectiveAction &rhs) const {
 	bool retval = false;
 	const CSetBooleanFlag *pCastedRhs = dynamic_cast<const CSetBooleanFlag *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if ((m_flagID == pCastedRhs->m_flagID) &&
+		if ((mc2::str::iequals(m_flagID, pCastedRhs->m_flagID)) &&
 			(m_value == pCastedRhs->m_value)) {
 			retval = true;
 		}
@@ -264,35 +252,27 @@ bool CSetBooleanFlag::operator==(const CObjectiveAction &rhs) const {
 bool CSetBooleanFlag::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "FlagID", tmpECStr);
-	if (NO_ERR != result) {
-		/*for backward compatibility*/
-		int flagIndex = 0;
-		result = sReadIdWholeNum(missionFile, "FlagIndex", flagIndex);
-		if (NO_ERR != result) { return false; }
-		m_flagID.Format("%d", flagIndex);
-	} else {
-		m_flagID = tmpECStr.Data();
-	}
+	auto flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
+	if (!flagID) { return false; }
+	m_flagID = std::move(*flagID);
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }
 
 bool CSetBooleanFlag::Save( FitIniFile* file )
 {
-	file->writeIdString("FlagID", m_flagID.Data());
+	file->writeIdString("FlagID", m_flagID.c_str());
 	file->writeIdBoolean("Value", m_value);
 	return true;
 }
 
 bool CSetBooleanFlag::EditDialog() {
 	CBooleanFlagIsSetDialog BooleanFlagIsSetDlg;
-	BooleanFlagIsSetDlg.m_FlagID = m_flagID.Data();
+	BooleanFlagIsSetDlg.m_FlagID = m_flagID.c_str();
 	BooleanFlagIsSetDlg.m_Value = 1;
 	if (false == m_value) { BooleanFlagIsSetDlg.m_Value = 0; }
 	if (IDOK == BooleanFlagIsSetDlg.DoModal()) {
-		m_flagID = BooleanFlagIsSetDlg.m_FlagID.GetBuffer(0);
+		m_flagID = mc2::str::from_c(BooleanFlagIsSetDlg.m_FlagID.GetBuffer(0));
 		m_value = true;
 		if (0 == BooleanFlagIsSetDlg.m_Value) { m_value = false; }
 		return true;
@@ -301,15 +281,15 @@ bool CSetBooleanFlag::EditDialog() {
 	}
 }
 
-EString CSetBooleanFlag::Description() {
-	EString retval = "SetBooleanFlag"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_SetBooleanFlag, retval);
+std::string CSetBooleanFlag::Description() {
+	std::string retval = "SetBooleanFlag"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_SetBooleanFlag, retval);
 	return retval;
 }
 
-EString CSetBooleanFlag::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("flag name: %s, value: %d", m_flagID.Data(), m_value);
+std::string CSetBooleanFlag::InstanceDescription() {
+	std::string tmpEStr;
+	tmpEStr = std::format("flag name: {}, value: {}", m_flagID, mc2::fmt::as_i32(m_value));
 	return tmpEStr;
 }
 
@@ -317,7 +297,7 @@ bool CMakeNewTechnologyAvailable::operator==(const CObjectiveAction &rhs) const 
 	bool retval = false;
 	const CMakeNewTechnologyAvailable *pCastedRhs = dynamic_cast<const CMakeNewTechnologyAvailable *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if (m_purchaseFilePathname == pCastedRhs->m_purchaseFilePathname) {
+		if (mc2::str::iequals(m_purchaseFilePathname, pCastedRhs->m_purchaseFilePathname)) {
 			retval = true;
 		}
 	}
@@ -326,17 +306,15 @@ bool CMakeNewTechnologyAvailable::operator==(const CObjectiveAction &rhs) const 
 
 bool CMakeNewTechnologyAvailable::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "PurchaseFileName", tmpECStr);
-	if (NO_ERR != result) { return false; }
-	m_purchaseFilePathname = tmpECStr.Data();
+	auto text = objective_text::read(*missionFile, "PurchaseFileName");
+	if (!text) { return false; }
+	m_purchaseFilePathname = std::move(*text);
 	return true;
 }
 
 bool CMakeNewTechnologyAvailable::Save( FitIniFile* file )
 {
-	file->writeIdString( "PurchaseFileName", m_purchaseFilePathname.Data());
+	file->writeIdString("PurchaseFileName", m_purchaseFilePathname.c_str());
 	return true;
 }
 
@@ -359,7 +337,7 @@ bool CMakeNewTechnologyAvailable::EditDialog() {
 			}
 			delete[] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
 			if (0 == ret) {
-				m_purchaseFilePathname = (pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
+				m_purchaseFilePathname = mc2::str::from_c(pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;
 			} else {
 				/* Put a dialog box saying that the wav must be in a subdirectory of the runtime 
@@ -371,14 +349,12 @@ bool CMakeNewTechnologyAvailable::EditDialog() {
 	}
 }
 
-EString CMakeNewTechnologyAvailable::Description() {
-	EString retval = "MakeNewTechnologyAvailable"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_MakeNewTechnologyAvailable, retval);
+std::string CMakeNewTechnologyAvailable::Description() {
+	std::string retval = "MakeNewTechnologyAvailable"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_MakeNewTechnologyAvailable, retval);
 	return retval;
 }
 
-EString CMakeNewTechnologyAvailable::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_purchaseFilePathname.Data());
-	return tmpEStr;
+std::string CMakeNewTechnologyAvailable::InstanceDescription() {
+	return m_purchaseFilePathname;
 }

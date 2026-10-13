@@ -129,11 +129,11 @@ CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type 
 	return retval;
 }
 
-EString CObjective::DescriptionOfConditionSpecies(condition_species_type conditionSpecies) {
+std::string CObjective::DescriptionOfConditionSpecies(condition_species_type conditionSpecies) {
 	CString CStr;
 	CStr.LoadString(IDS_UNIMPLEMENTED_CONDITION);
-	EString retval;
-	retval = CStr.GetBuffer(0);
+	std::string retval;
+	retval = mc2::str::from_c(CStr.GetBuffer(0));
 	CObjectiveCondition *tmpCondition = new_CObjectiveCondition(conditionSpecies, 0/*dummy alignment*/);
 	if (0 != tmpCondition) {
 		retval = tmpCondition->Description();
@@ -159,11 +159,11 @@ CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpe
 	return retval;
 }
 
-EString CObjective::DescriptionOfActionSpecies(action_species_type actionSpecies) {
+std::string CObjective::DescriptionOfActionSpecies(action_species_type actionSpecies) {
 	CString CStr;
 	CStr.LoadString(IDS_UNIMPLEMENTED_ACTION);
-	EString retval;
-	retval = CStr.GetBuffer(0);
+	std::string retval;
+	retval = mc2::str::from_c(CStr.GetBuffer(0));
 	CObjectiveAction *tmpAction = new_CObjectiveAction(actionSpecies, 0/*dummy alignment*/);
 	if (0 != tmpAction) {
 		retval = tmpAction->Description();
@@ -236,10 +236,10 @@ CObjective &CObjective::operator=(const CObjective &master) {
 bool CObjective::operator==(const CObjective &rhs) const {
 	bool retval = false;
 	if ((m_alignment == rhs.m_alignment) &&
-		(Title() == rhs.Title()) &&
+		(mc2::str::iequals(Title(), rhs.Title())) &&
 		(m_titleUseResourceString == rhs.m_titleUseResourceString) &&
 		(m_titleResourceStringID == rhs.m_titleResourceStringID) &&
-		(Description() == rhs.Description()) &&
+		(mc2::str::iequals(Description(), rhs.Description())) &&
 		(m_descriptionUseResourceString == rhs.m_descriptionUseResourceString) &&
 		(m_descriptionResourceStringID == rhs.m_descriptionResourceStringID) &&
 		(m_priority == rhs.m_priority) &&
@@ -251,9 +251,9 @@ bool CObjective::operator==(const CObjective &rhs) const {
 		(m_markerY == rhs.m_markerY) &&
 		(m_isHiddenTrigger == rhs.m_isHiddenTrigger) &&
 		(m_activateOnFlag == rhs.m_activateOnFlag) &&
-		(m_activateFlagID == rhs.m_activateFlagID) &&
+		(mc2::str::iequals(m_activateFlagID, rhs.m_activateFlagID)) &&
 		(m_resetStatusOnFlag == rhs.m_resetStatusOnFlag) &&
-		(m_resetStatusFlagID == rhs.m_resetStatusFlagID) &&
+		(mc2::str::iequals(m_resetStatusFlagID, rhs.m_resetStatusFlagID)) &&
 		(m_modelID == rhs.m_modelID) &&
 		(m_modelDefinition == rhs.m_modelDefinition) &&
 		(m_highlightColor == rhs.m_highlightColor) &&
@@ -340,13 +340,14 @@ static action_species_type ActionSpeciesMap(const char *speciesString) {
 bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 {
 	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "Title", tmpECStr);
-	Title(_T(tmpECStr.Data()));
+	objective_text::Fields text;
+	text.activateFlagID = m_activateFlagID;
+	text.resetStatusFlagID = m_resetStatusFlagID;
+	objective_text::readFields(*missionFile, text);
+	Title(std::move(text.title));
 	result = sReadIdBoolean(missionFile, "TitleUseResourceString", m_titleUseResourceString);
 	result = sReadIdWholeNum(missionFile, "TitleResourceStringID", m_titleResourceStringID);
-	result = sReadIdString(missionFile, "Description", tmpECStr);
-	Description(_T(tmpECStr.Data()));
+	Description(std::move(text.description));
 	result = sReadIdBoolean(missionFile, "DescriptionUseResourceString", m_descriptionUseResourceString);
 	result = sReadIdWholeNum(missionFile, "DescriptionResourceStringID", m_descriptionResourceStringID);
 
@@ -362,22 +363,9 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	result = sReadIdFloat(missionFile, "MarkerY", m_markerY);
 	result = sReadIdBoolean(missionFile, "HiddenTrigger", m_isHiddenTrigger);
 	result = sReadIdBoolean(missionFile, "ActivateOnFlag", m_activateOnFlag);
-	result = sReadIdString(missionFile, "ActivateFlagID", tmpECStr);
-	if (NO_ERR != result) {
-		/*for backward compatibility*/
-		int flagIndex = 0;
-		result = sReadIdWholeNum(missionFile, "ActivateFlagIndex", flagIndex);
-		if (NO_ERR == result) {
-			m_activateFlagID.Format("%d", flagIndex);
-		}
-	} else {
-		m_activateFlagID = tmpECStr.Data();
-	}
+	m_activateFlagID = std::move(text.activateFlagID);
 	result = sReadIdBoolean(missionFile, "ResetStatusOnFlag", m_resetStatusOnFlag);
-	result = sReadIdString(missionFile, "ResetStatusFlagID", tmpECStr);
-	if (NO_ERR == result) {
-		m_resetStatusFlagID = tmpECStr.Data();
-	}
+	m_resetStatusFlagID = std::move(text.resetStatusFlagID);
 
 	if ( NO_ERR != missionFile->readIdLong( "BaseColor", m_baseColor ) )
 		m_baseColor = -1;
@@ -419,24 +407,24 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numConditions; i += 1) {
-			EString tmpStr;
+			std::string tmpStr;
 			if (2 == version) {
-				tmpStr.Format("Objective%dCondition%d", objectiveNum, i);
+				tmpStr = std::format("Objective{}Condition{}", objectiveNum, i);
 			} else {
-				tmpStr.Format("Team%dObjective%dCondition%d", Alignment(), objectiveNum, i);
+				tmpStr = std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i);
 			}
-			result = missionFile->seekBlock(tmpStr.Data());
+			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			condition_species_type species;
-			result = sReadIdString(missionFile, "ConditionSpeciesString", tmpECStr);
-			if (NO_ERR != result) {
+			auto speciesText = objective_text::read(*missionFile, "ConditionSpeciesString");
+			if (!speciesText) {
 				/* this is just for backward compatibility, this entry is depricated */
 				int ispecies = 0;
 				result = sReadIdWholeNum(missionFile, "ConditionSpecies", ispecies);
 				if (NO_ERR != result) { continue; }
 				species = (condition_species_type)ispecies;
 			} else {
-				species = ConditionSpeciesMap(tmpECStr.Data());
+				species = ConditionSpeciesMap(speciesText->c_str());
 			}
 
 			CObjectiveCondition *pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
@@ -450,14 +438,14 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numActions; i += 1) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dAction%d", Alignment(), objectiveNum, i);
-			result = missionFile->seekBlock(tmpStr.Data());
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i);
+			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			action_species_type species;
-			result = sReadIdString(missionFile, "ActionSpeciesString", tmpECStr);
-			if (NO_ERR != result) { assert(false); continue; }
-			species = ActionSpeciesMap(tmpECStr.Data());
+			auto speciesText = objective_text::read(*missionFile, "ActionSpeciesString");
+			if (!speciesText) { assert(false); continue; }
+			species = ActionSpeciesMap(speciesText->c_str());
 
 			CObjectiveAction *pNewObjectiveAction = new_CObjectiveAction(species, m_alignment);
 			if (!pNewObjectiveAction) { assert(false); delete pNewObjectiveAction; continue; }
@@ -470,14 +458,14 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numFailureConditions; i += 1) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureCondition%d", Alignment(), objectiveNum, i);
-			result = missionFile->seekBlock(tmpStr.Data());
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i);
+			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			condition_species_type species;
-			result = sReadIdString(missionFile, "FailureConditionSpeciesString", tmpECStr);
-			if (NO_ERR != result) { assert(false); continue; }
-			species = ConditionSpeciesMap(tmpECStr.Data());
+			auto speciesText = objective_text::read(*missionFile, "FailureConditionSpeciesString");
+			if (!speciesText) { assert(false); continue; }
+			species = ConditionSpeciesMap(speciesText->c_str());
 
 			CObjectiveCondition *pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
 			if (!pNewObjectiveFailureCondition) { assert(false); delete pNewObjectiveFailureCondition; continue; }
@@ -490,14 +478,14 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numFailureActions; i += 1) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureAction%d", Alignment(), objectiveNum, i);
-			result = missionFile->seekBlock(tmpStr.Data());
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i);
+			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			action_species_type species;
-			result = sReadIdString(missionFile, "FailureActionSpeciesString", tmpECStr);
-			if (NO_ERR != result) { assert(false); continue; }
-			species = ActionSpeciesMap(tmpECStr.Data());
+			auto speciesText = objective_text::read(*missionFile, "FailureActionSpeciesString");
+			if (!speciesText) { assert(false); continue; }
+			species = ActionSpeciesMap(speciesText->c_str());
 
 			CObjectiveAction *pNewObjectiveFailureAction = new_CObjectiveAction(species, m_alignment);
 			if (!pNewObjectiveFailureAction) { assert(false); delete pNewObjectiveFailureAction; continue; }
@@ -538,10 +526,10 @@ bool CObjective::refreshModelFromCatalog()
 
 bool CObjective::Save( FitIniFile* file, int objectiveNum )
 {
-	sWriteIdString( file, "Title", Title().Data());
+	objective_text::write(*file, "Title", Title());
 	file->writeIdBoolean( "TitleUseResourceString", m_titleUseResourceString );
 	file->writeIdULong( "TitleResourceStringID", m_titleResourceStringID );
-	sWriteIdString( file, "Description", Description().Data());
+	objective_text::write(*file, "Description", Description());
 	file->writeIdBoolean( "DescriptionUseResourceString", m_descriptionUseResourceString );
 	file->writeIdULong( "DescriptionResourceStringID", m_descriptionResourceStringID );
 	file->writeIdULong( "Priority", m_priority );
@@ -553,9 +541,9 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 	file->writeIdFloat( "MarkerY", m_markerY );
 	file->writeIdBoolean( "HiddenTrigger", m_isHiddenTrigger );
 	file->writeIdBoolean( "ActivateOnFlag", m_activateOnFlag );
-	file->writeIdString( "ActivateFlagID", m_activateFlagID );
+	file->writeIdString("ActivateFlagID", m_activateFlagID.c_str());
 	file->writeIdBoolean( "ResetStatusOnFlag", m_resetStatusOnFlag );
-	file->writeIdString( "ResetStatusFlagID", m_resetStatusFlagID.Data() );
+	file->writeIdString("ResetStatusFlagID", m_resetStatusFlagID.c_str());
 
 	file->writeIdULong( "NumConditions", Count() );
 	file->writeIdULong( "NumActions", m_actionList.Count() );
@@ -577,9 +565,9 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		EIterator it = Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dCondition%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i);
+			file->writeBlock( tmpStr.c_str() );
 			file->writeIdULong( "ConditionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "ConditionSpeciesString", g_conditionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -592,9 +580,9 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		action_list_type::EIterator it = m_actionList.Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dAction%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i);
+			file->writeBlock( tmpStr.c_str() );
 			file->writeIdULong( "ActionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "ActionSpeciesString", g_actionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -607,9 +595,9 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		condition_list_type::EIterator it = m_failureConditionList.Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureCondition%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i);
+			file->writeBlock( tmpStr.c_str() );
 			file->writeIdULong( "FailureConditionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "FailureConditionSpeciesString", g_conditionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -622,9 +610,9 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		action_list_type::EIterator it = m_failureActionList.Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureAction%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i);
+			file->writeBlock( tmpStr.c_str() );
 			file->writeIdULong( "FailureActionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "FailureActionSpeciesString", g_actionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -725,24 +713,24 @@ static BOOL CSLoadString(int resourceID, CString &targetStr) {
 	return (!0);
 }
 
-EString CObjective::LocalizedTitle() const {
-	EString retval;
+std::string CObjective::LocalizedTitle() const {
+	std::string retval;
 	if (TitleUseResourceString()) {
 		CString CStr;
 		CSLoadString(TitleResourceStringID(), CStr);
-		retval = CStr.GetBuffer(0);
+		retval = mc2::str::from_c(CStr.GetBuffer(0));
 	} else {
 		retval = Title();
 	}
 	return retval;
 }
 
-EString CObjective::LocalizedDescription() const {
-	EString retval;
+std::string CObjective::LocalizedDescription() const {
+	std::string retval;
 	if (DescriptionUseResourceString()) {
 		CString CStr;
 		CSLoadString(DescriptionResourceStringID(), CStr);
-		retval = CStr.GetBuffer(0);
+		retval = mc2::str::from_c(CStr.GetBuffer(0));
 	} else {
 		retval = Description();
 	}
@@ -819,9 +807,9 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			}
 			result = missionFile->seekBlock("Objectives");
 		} else {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjectives", Alignment());
-			result = missionFile->seekBlock(tmpStr.Data());
+			std::string tmpStr;
+			tmpStr = std::format("Team{}Objectives", Alignment());
+			result = missionFile->seekBlock(tmpStr.c_str());
 		}
 		if (NO_ERR != result) { assert(false); }
 		int numObjectives = 0;
@@ -829,13 +817,13 @@ bool CObjectives::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		int i;
 		for (i = 0; i < numObjectives; i += 1) {
-			EString tmpStr;
+			std::string tmpStr;
 			if (2 == objectivesVersion) {
-				tmpStr.Format("Objective%d", i);
+				tmpStr = std::format("Objective{}", i);
 			} else {
-				tmpStr.Format("Team%dObjective%d", Alignment(), i);
+				tmpStr = std::format("Team{}Objective{}", Alignment(), i);
 			}
-			result = missionFile->seekBlock(tmpStr.Data());
+			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			CObjective *pNewObjective = new CObjective(m_alignment);
 			bool bresult = pNewObjective->Read(missionFile, i, objectivesVersion);
@@ -848,16 +836,16 @@ bool CObjectives::Read( FitIniFile* missionFile )
 
 bool CObjectives::Save( FitIniFile* file )
 {
-	EString tmpStr;
-	tmpStr.Format("Team%dObjectives", Alignment());
-	file->writeBlock( tmpStr.Data() );
+	std::string tmpStr;
+	tmpStr = std::format("Team{}Objectives", Alignment());
+	file->writeBlock( tmpStr.c_str() );
 	file->writeIdULong( "NumObjectives", Count() );
 	int i = 0;
 	EIterator it = Begin();
 	while (!it.IsDone()) {
-		EString tmpStr;
-		tmpStr.Format("Team%dObjective%d", Alignment(), i);
-		file->writeBlock( tmpStr.Data() );
+		std::string tmpStr;
+		tmpStr = std::format("Team{}Objective{}", Alignment(), i);
+		file->writeBlock( tmpStr.c_str() );
 		(*it)->Save(file, i);
 		i += 1;
 		it++;

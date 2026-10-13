@@ -44,7 +44,7 @@
 
 #include "EditorData.h"   // EditorData::instance, CTeams/CTeam, ObjectivesRef()
 #include "Objective.h"    // CObjective(s), condition/action lists, species enums
-#include "EString.h"
+#include <string>
 
 #include <cstdio>
 #include <cstring>
@@ -132,8 +132,8 @@ static int objCollectWarnings(CObjective* obj, const char* warn[OBJ_MAX_WARNINGS
     // Activate-on-flag with an empty flag id: the gate has no flag to watch.
     if (obj->ActivateOnFlag() && n < OBJ_MAX_WARNINGS)
     {
-        EString flag = obj->ActivateFlagID();
-        const char* f = flag.Data();
+        const std::string& flag = obj->ActivateFlagID();
+        const char* f = flag.c_str();
         if (!f || !f[0])
             warn[n++] = "Starts when flag is set, but no flag id is specified.";
     }
@@ -141,8 +141,8 @@ static int objCollectWarnings(CObjective* obj, const char* warn[OBJ_MAX_WARNINGS
     // Reset-on-flag with an empty flag id: same problem on the reset gate.
     if (obj->ResetStatusOnFlag() && n < OBJ_MAX_WARNINGS)
     {
-        EString flag = obj->ResetStatusFlagID();
-        const char* f = flag.Data();
+        const std::string& flag = obj->ResetStatusFlagID();
+        const char* f = flag.c_str();
         if (!f || !f[0])
             warn[n++] = "Resets when flag is set, but no flag id is specified.";
     }
@@ -167,8 +167,8 @@ static void objDrawCondition(CObjectiveCondition* cond)
         return;
     }
 
-    EString desc = cond->Description();   // local: EString returned by value
-    const char* label = desc.Data();
+    std::string desc = cond->Description();   // Own the localized label while ImGui uses its pointer.
+    const char* label = desc.c_str();
     if (!label) label = "(condition)";
 
     if (objIsObjectRefCondition(cond->Species()))
@@ -177,16 +177,15 @@ static void objDrawCondition(CObjectiveCondition* cond)
         return;
     }
 
-    EString inst = cond->InstanceDescription();
-    const char* params = inst.Data();
+    std::string inst = cond->InstanceDescription();
+    const char* params = inst.c_str();
     if (params && params[0])
         ImGui::BulletText("%s  %s", label, params);
     else
         ImGui::BulletText("%s", label);
 }
 
-// Render one action line. All action InstanceDescription() impls touch only
-// EString/int members (no object pointer deref) -> safe to call.
+// Action descriptions depend only on owned text and integers, so deleted object references cannot invalidate them.
 static void objDrawAction(CObjectiveAction* act)
 {
     if (!act)
@@ -195,12 +194,12 @@ static void objDrawAction(CObjectiveAction* act)
         return;
     }
 
-    EString desc = act->Description();
-    const char* label = desc.Data();
+    std::string desc = act->Description();
+    const char* label = desc.c_str();
     if (!label) label = "(action)";
 
-    EString inst = act->InstanceDescription();
-    const char* params = inst.Data();
+    std::string inst = act->InstanceDescription();
+    const char* params = inst.c_str();
     if (params && params[0])
         ImGui::BulletText("%s  %s", label, params);
     else
@@ -255,8 +254,8 @@ static void objTitleText(CObjective* obj, int objIndex, char* out, size_t cap)
                       obj->TitleResourceStringID());
         return;
     }
-    EString title = obj->Title();
-    const char* t = title.Data();
+    const std::string& title = obj->Title();
+    const char* t = title.c_str();
     std::snprintf(out, cap, "%d: %s", objIndex, (t && t[0]) ? t : "(untitled)");
 }
 
@@ -267,8 +266,8 @@ static void objActivationText(CObjective* obj, char* out, size_t cap)
 
     if (obj->ActivateOnFlag())
     {
-        EString flag = obj->ActivateFlagID();
-        const char* f = flag.Data();
+        const std::string& flag = obj->ActivateFlagID();
+        const char* f = flag.c_str();
         if (f && f[0])
             std::snprintf(out, cap, "Starts when flag '%s' is set", f);
         else
@@ -405,14 +404,14 @@ static void objDrawInspector(CObjective* obj)
     ImGui::Text("All prev primary:    %s", obj->AllPreviousPrimaryObjectivesMustBeComplete() ? "yes" : "no");
     ImGui::Text("Starts on flag:      %s", obj->ActivateOnFlag() ? "yes" : "no");
     {
-        EString flag = obj->ActivateFlagID();
-        const char* f = flag.Data();
+        const std::string& flag = obj->ActivateFlagID();
+        const char* f = flag.c_str();
         ImGui::Text("Start flag id:       %s", (f && f[0]) ? f : "(none)");
     }
     ImGui::Text("Resets on flag:      %s", obj->ResetStatusOnFlag() ? "yes" : "no");
     {
-        EString flag = obj->ResetStatusFlagID();
-        const char* f = flag.Data();
+        const std::string& flag = obj->ResetStatusFlagID();
+        const char* f = flag.c_str();
         ImGui::Text("Reset flag id:       %s", (f && f[0]) ? f : "(none)");
     }
     ImGui::Separator();

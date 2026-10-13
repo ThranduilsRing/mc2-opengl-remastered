@@ -12,7 +12,8 @@ TargetAreaDlg.cpp			: Implementation of the TargetAreaDlg component.
 
 #include <stdlib.h>
 #include <assert.h>
-#include "EString.h"
+#include <format>
+#include <string>
 
 #include "TargetAreaDlg.h"
 #include "Objective.h"
@@ -84,16 +85,16 @@ BOOL TargetAreaDlg::OnInitDialog()
 		}
 	}
 
-	EString tmpStr;
+	std::string tmpStr;
 
-	tmpStr.Format("%.3f", (*m_pTargetCenterX));
-	m_pTargetCenterXEditBox->SetWindowText(tmpStr.Data());
+	tmpStr = std::format("{:.3f}", (*m_pTargetCenterX));
+	m_pTargetCenterXEditBox->SetWindowText(tmpStr.c_str());
 
-	tmpStr.Format("%.3f", (*m_pTargetCenterY));
-	m_pTargetCenterYEditBox->SetWindowText(tmpStr.Data());
+	tmpStr = std::format("{:.3f}", (*m_pTargetCenterY));
+	m_pTargetCenterYEditBox->SetWindowText(tmpStr.c_str());
 
-	tmpStr.Format("%.3f", (*m_pTargetRadius));
-	m_pTargetRadiusEditBox->SetWindowText(tmpStr.Data());
+	tmpStr = std::format("{:.3f}", (*m_pTargetRadius));
+	m_pTargetRadiusEditBox->SetWindowText(tmpStr.c_str());
 
 	return 1;
 }

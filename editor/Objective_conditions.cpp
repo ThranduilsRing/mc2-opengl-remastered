@@ -11,9 +11,9 @@ bool CObjectiveCondition::operator==(const CObjectiveCondition &rhs) const {
 	return retval;
 }
 
-EString CDestroyAllEnemyUnits::Description() {
-	EString retval = "DestroyAllEnemyUnits"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DestroyAllEnemyUnits, retval);
+std::string CDestroyAllEnemyUnits::Description() {
+	std::string retval = "DestroyAllEnemyUnits"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DestroyAllEnemyUnits, retval);
 	return retval;
 }
 
@@ -53,15 +53,13 @@ bool CNumberOfEnemyUnitsObjectiveCondition::EditDialog() {
 	return (IDOK == ret);
 }
 
-EString CNumberOfEnemyUnitsObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%d", m_num);
-	return tmpEStr;
+std::string CNumberOfEnemyUnitsObjectiveCondition::InstanceDescription() {
+	return std::format("{}", m_num);
 }
 
-EString CDestroyNumberOfEnemyUnits::Description() {
-	EString retval = "DestroyNumberOfEnemyUnits"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DestroyNumberOfEnemyUnits, retval);
+std::string CDestroyNumberOfEnemyUnits::Description() {
+	std::string retval = "DestroyNumberOfEnemyUnits"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DestroyNumberOfEnemyUnits, retval);
 	return retval;
 }
 
@@ -136,23 +134,23 @@ bool CSpecificUnitObjectiveCondition::EditDialog() {
 	return (IDOK == ret);
 }
 
-EString CSpecificUnitObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
+std::string CSpecificUnitObjectiveCondition::InstanceDescription() {
+	std::string tmpEStr;
 	Stuff::Vector3D pos = m_pUnit->getPosition();
 	const char *szDisplayName = m_pUnit->getDisplayName(); // nb: localization
 	assert(szDisplayName);
-	tmpEStr.Format("(pos: %.3f, %.3f) %s", pos.x, pos.y, szDisplayName);
+	tmpEStr = std::format("(pos: {:.3f}, {:.3f}) {}", pos.x, pos.y, mc2::fmt::safe(szDisplayName));
 	return tmpEStr;
 }
 
-EString CSpecificUnitObjectiveCondition::ReadableTarget() {
-	EString s;
+std::string CSpecificUnitObjectiveCondition::ReadableTarget() {
+	std::string s;
 	if (m_pUnit) {
 		Stuff::Vector3D pos = m_pUnit->getPosition();
 		const char *name = m_pUnit->getDisplayName();
-		s.Format("%s  (%.0f, %.0f)", (name && name[0]) ? name : "unit", pos.x, pos.y);
+		s = std::format("{}  ({:.0f}, {:.0f})", (name && name[0]) ? name : "unit", pos.x, pos.y);
 	} else {
-		s.Format("unresolved unit  (%.0f, %.0f)", m_LastNotedPositionX, m_LastNotedPositionY);
+		s = std::format("unresolved unit  ({:.0f}, {:.0f})", m_LastNotedPositionX, m_LastNotedPositionY);
 	}
 	return s;
 }
@@ -193,9 +191,9 @@ bool CSpecificEnemyUnitObjectiveCondition::EditDialog() {
 	return (IDOK == ret);
 }
 
-EString CDestroySpecificEnemyUnit::Description() {
-	EString retval = "DestroySpecificEnemyUnit"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DestroySpecificEnemyUnit, retval);
+std::string CDestroySpecificEnemyUnit::Description() {
+	std::string retval = "DestroySpecificEnemyUnit"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DestroySpecificEnemyUnit, retval);
 	return retval;
 }
 
@@ -264,23 +262,23 @@ bool CSpecificStructureObjectiveCondition::EditDialog() {
 	return (IDOK == ret);
 }
 
-EString CSpecificStructureObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
+std::string CSpecificStructureObjectiveCondition::InstanceDescription() {
+	std::string tmpEStr;
 	Stuff::Vector3D pos = m_pBuilding->getPosition();
 	const char *szDisplayName = m_pBuilding->getDisplayName(); // nb: localization
 	assert(szDisplayName);
-	tmpEStr.Format("(pos: %.3f, %.3f) %s", pos.x, pos.y, szDisplayName);
+	tmpEStr = std::format("(pos: {:.3f}, {:.3f}) {}", pos.x, pos.y, mc2::fmt::safe(szDisplayName));
 	return tmpEStr;
 }
 
-EString CSpecificStructureObjectiveCondition::ReadableTarget() {
-	EString s;
+std::string CSpecificStructureObjectiveCondition::ReadableTarget() {
+	std::string s;
 	if (m_pBuilding) {
 		Stuff::Vector3D pos = m_pBuilding->getPosition();
 		const char *name = m_pBuilding->getDisplayName();
-		s.Format("%s  (%.0f, %.0f)", (name && name[0]) ? name : "structure", pos.x, pos.y);
+		s = std::format("{}  ({:.0f}, {:.0f})", (name && name[0]) ? name : "structure", pos.x, pos.y);
 	} else {
-		s.Format("unresolved structure  (%.0f, %.0f)", m_LastNotedPositionX, m_LastNotedPositionY);
+		s = std::format("unresolved structure  ({:.0f}, {:.0f})", m_LastNotedPositionX, m_LastNotedPositionY);
 	}
 	return s;
 }
@@ -309,75 +307,75 @@ bool CSpecificStructureObjectiveCondition::RestoreObjectPointerReferencesFromNot
 	return true;
 }
 
-EString CDestroySpecificStructure::Description() {
-	EString retval = "DestroySpecificStructure"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DestroySpecificStructure, retval);
+std::string CDestroySpecificStructure::Description() {
+	std::string retval = "DestroySpecificStructure"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DestroySpecificStructure, retval);
 	return retval;
 }
 
-EString CCaptureOrDestroyAllEnemyUnits::Description() {
-	EString retval = "CaptureOrDestroyAllEnemyUnits"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_CaptureOrDestroyAllEnemyUnits, retval);
+std::string CCaptureOrDestroyAllEnemyUnits::Description() {
+	std::string retval = "CaptureOrDestroyAllEnemyUnits"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_CaptureOrDestroyAllEnemyUnits, retval);
 	return retval;
 }
 
-EString CCaptureOrDestroyNumberOfEnemyUnits::Description() {
-	EString retval = "CaptureOrDestroyNumberOfEnemyUnits"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_CaptureOrDestroyNumberOfEnemyUnits, retval);
+std::string CCaptureOrDestroyNumberOfEnemyUnits::Description() {
+	std::string retval = "CaptureOrDestroyNumberOfEnemyUnits"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_CaptureOrDestroyNumberOfEnemyUnits, retval);
 	return retval;
 }
 
-EString CCaptureOrDestroySpecificEnemyUnit::Description() {
-	EString retval = "CaptureOrDestroySpecificEnemyUnit"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_CaptureOrDestroySpecificEnemyUnit, retval);
+std::string CCaptureOrDestroySpecificEnemyUnit::Description() {
+	std::string retval = "CaptureOrDestroySpecificEnemyUnit"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_CaptureOrDestroySpecificEnemyUnit, retval);
 	return retval;
 }
 
-EString CCaptureOrDestroySpecificStructure::Description() {
-	EString retval = "CaptureOrDestroySpecificStructure"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_CaptureOrDestroySpecificStructure, retval);
+std::string CCaptureOrDestroySpecificStructure::Description() {
+	std::string retval = "CaptureOrDestroySpecificStructure"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_CaptureOrDestroySpecificStructure, retval);
 	return retval;
 }
 
-EString CDeadOrFledAllEnemyUnits::Description() {
-	EString retval = "DeadOrFledAllEnemyUnits"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DeadOrFledAllEnemyUnits, retval);
+std::string CDeadOrFledAllEnemyUnits::Description() {
+	std::string retval = "DeadOrFledAllEnemyUnits"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DeadOrFledAllEnemyUnits, retval);
 	return retval;
 }
 
-EString CDeadOrFledNumberOfEnemyUnits::Description() {
-	EString retval = "DeadOrFledNumberOfEnemyUnits"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DeadOrFledNumberOfEnemyUnits, retval);
+std::string CDeadOrFledNumberOfEnemyUnits::Description() {
+	std::string retval = "DeadOrFledNumberOfEnemyUnits"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DeadOrFledNumberOfEnemyUnits, retval);
 	return retval;
 }
 
-EString CDeadOrFledSpecificEnemyUnit::Description() {
-	EString retval = "DeadOrFledSpecificEnemyUnit"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_DeadOrFledSpecificEnemyUnit, retval);
+std::string CDeadOrFledSpecificEnemyUnit::Description() {
+	std::string retval = "DeadOrFledSpecificEnemyUnit"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_DeadOrFledSpecificEnemyUnit, retval);
 	return retval;
 }
 
-EString CCaptureUnit::Description() {
-	EString retval = "CaptureSpecificUnit"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_CaptureSpecificUnit, retval);
+std::string CCaptureUnit::Description() {
+	std::string retval = "CaptureSpecificUnit"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_CaptureSpecificUnit, retval);
 	return retval;
 }
 
-EString CCaptureStructure::Description() {
-	EString retval = "CaptureSpecificStructure"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_CaptureSpecificStructure, retval);
+std::string CCaptureStructure::Description() {
+	std::string retval = "CaptureSpecificStructure"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_CaptureSpecificStructure, retval);
 	return retval;
 }
 
-EString CGuardSpecificUnit::Description() {
-	EString retval = "GuardSpecificUnit"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_GuardSpecificUnit, retval);
+std::string CGuardSpecificUnit::Description() {
+	std::string retval = "GuardSpecificUnit"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_GuardSpecificUnit, retval);
 	return retval;
 }
 
-EString CGuardSpecificStructure::Description() {
-	EString retval = "GuardSpecificStructure"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_GuardSpecificStructure, retval);
+std::string CGuardSpecificStructure::Description() {
+	std::string retval = "GuardSpecificStructure"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_GuardSpecificStructure, retval);
 	return retval;
 }
 
@@ -420,33 +418,33 @@ bool CAreaObjectiveCondition::EditDialog() {
 	return (IDOK == ret);
 }
 
-EString CAreaObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("x: %.3f, y: %.3f, radius: %.3f", m_targetCenterX, m_targetCenterY, m_targetRadius);
+std::string CAreaObjectiveCondition::InstanceDescription() {
+	std::string tmpEStr;
+	tmpEStr = std::format("x: {:.3f}, y: {:.3f}, radius: {:.3f}", m_targetCenterX, m_targetCenterY, m_targetRadius);
 	return tmpEStr;
 }
 
-EString CMoveAnyUnitToArea::Description() {
-	EString retval = "MoveAnyUnitToArea"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_MoveAnyUnitToArea, retval);
+std::string CMoveAnyUnitToArea::Description() {
+	std::string retval = "MoveAnyUnitToArea"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_MoveAnyUnitToArea, retval);
 	return retval;
 }
 
-EString CMoveAllUnitsToArea::Description() {
-	EString retval = "MoveAllUnitsToArea"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_MoveAllUnitsToArea, retval);
+std::string CMoveAllUnitsToArea::Description() {
+	std::string retval = "MoveAllUnitsToArea"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_MoveAllUnitsToArea, retval);
 	return retval;
 }
 
-EString CMoveAllSurvivingUnitsToArea::Description() {
-	EString retval = "MoveAllSurvivingUnitsToArea"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_MoveAllSurvivingUnitsToArea, retval);
+std::string CMoveAllSurvivingUnitsToArea::Description() {
+	std::string retval = "MoveAllSurvivingUnitsToArea"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_MoveAllSurvivingUnitsToArea, retval);
 	return retval;
 }
 
-EString CMoveAllSurvivingMechsToArea::Description() {
-	EString retval = "MoveAllSurvivingMechsToArea"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_MoveAllSurvivingMechsToArea, retval);
+std::string CMoveAllSurvivingMechsToArea::Description() {
+	std::string retval = "MoveAllSurvivingMechsToArea"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_MoveAllSurvivingMechsToArea, retval);
 	return retval;
 }
 
@@ -454,7 +452,7 @@ bool CBooleanFlagIsSet::operator==(const CObjectiveCondition &rhs) const {
 	bool retval = false;
 	const CBooleanFlagIsSet *pCastedRhs = dynamic_cast<const CBooleanFlagIsSet *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveCondition::operator==(rhs))) {
-		if ((m_flagID == pCastedRhs->m_flagID) &&
+		if ((mc2::str::iequals(m_flagID, pCastedRhs->m_flagID)) &&
 			(m_value == pCastedRhs->m_value)) {
 			retval = true;
 		}
@@ -465,35 +463,27 @@ bool CBooleanFlagIsSet::operator==(const CObjectiveCondition &rhs) const {
 bool CBooleanFlagIsSet::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "FlagID", tmpECStr);
-	if (NO_ERR != result) {
-		/*for backward compatibility*/
-		int flagIndex = 0;
-		result = sReadIdWholeNum(missionFile, "FlagIndex", flagIndex);
-		if (NO_ERR != result) { return false; }
-		m_flagID.Format("%d", flagIndex);
-	} else {
-		m_flagID = tmpECStr.Data();
-	}
+	auto flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
+	if (!flagID) { return false; }
+	m_flagID = std::move(*flagID);
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }
 
 bool CBooleanFlagIsSet::Save( FitIniFile* file )
 {
-	file->writeIdString("FlagID", m_flagID.Data());
+	file->writeIdString("FlagID", m_flagID.c_str());
 	file->writeIdBoolean("Value", m_value);
 	return true;
 }
 
 bool CBooleanFlagIsSet::EditDialog() {
 	CBooleanFlagIsSetDialog BooleanFlagIsSetDlg;
-	BooleanFlagIsSetDlg.m_FlagID = m_flagID.Data();
+	BooleanFlagIsSetDlg.m_FlagID = m_flagID.c_str();
 	BooleanFlagIsSetDlg.m_Value = 1;
 	if (false == m_value) { BooleanFlagIsSetDlg.m_Value = 0; }
 	if (IDOK == BooleanFlagIsSetDlg.DoModal()) {
-		m_flagID = BooleanFlagIsSetDlg.m_FlagID.GetBuffer(0);
+		m_flagID = mc2::str::from_c(BooleanFlagIsSetDlg.m_FlagID.GetBuffer(0));
 		m_value = true;
 		if (0 == BooleanFlagIsSetDlg.m_Value) { m_value = false; }
 		return true;
@@ -502,15 +492,15 @@ bool CBooleanFlagIsSet::EditDialog() {
 	}
 }
 
-EString CBooleanFlagIsSet::Description() {
-	EString retval = "BooleanFlagIsSet"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_BooleanFlagIsSet, retval);
+std::string CBooleanFlagIsSet::Description() {
+	std::string retval = "BooleanFlagIsSet"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_BooleanFlagIsSet, retval);
 	return retval;
 }
 
-EString CBooleanFlagIsSet::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("flag name: %s, value: %d", m_flagID.Data(), m_value);
+std::string CBooleanFlagIsSet::InstanceDescription() {
+	std::string tmpEStr;
+	tmpEStr = std::format("flag name: {}, value: {}", m_flagID, mc2::fmt::as_i32(m_value));
 	return tmpEStr;
 }
 
@@ -550,14 +540,14 @@ bool CElapsedMissionTime::EditDialog() {
 	}
 }
 
-EString CElapsedMissionTime::Description() {
-	EString retval = "ElapsedMissionTime"; /* needs to be put somewhere localizable */
-	ESLoadString(IDS_ElapsedMissionTime, retval);
+std::string CElapsedMissionTime::Description() {
+	std::string retval = "ElapsedMissionTime"; /* needs to be put somewhere localizable */
+	LoadObjectiveString(IDS_ElapsedMissionTime, retval);
 	return retval;
 }
 
-EString CElapsedMissionTime::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%f seconds", m_time);
+std::string CElapsedMissionTime::InstanceDescription() {
+	std::string tmpEStr;
+	tmpEStr = std::format("{:.6f} seconds", m_time);
 	return tmpEStr;
 }
