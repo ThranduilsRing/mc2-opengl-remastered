@@ -164,7 +164,7 @@ bool VulkanContext::init(bool wantPresent) {
         none.instanceApi = loaderApi;
         profile::Evaluation refused;
         refused.accepted = false;
-        refused.items.push_back({"api_1_2", profile::Need::Required, false, "-"});
+        refused.items.push_back({"api_1_2", profile::Need::Required, false, profile::Route::None});
         refused.missingRequired.push_back("api_1_2");
         profileLog(profile::formatLine("(no device queried: the Vulkan loader is below 1.2)", none, refused));
         return fail("the Vulkan loader reports instance version " + profile::versionText(loaderApi) + ", below the 1.2 floor");
@@ -366,8 +366,8 @@ bool VulkanContext::init(bool wantPresent) {
         en12.runtimeDescriptorArray = featureEnabled(verdict, "runtimeDescriptorArray") ? VK_TRUE : VK_FALSE;
         en12.shaderSampledImageArrayNonUniformIndexing = featureEnabled(verdict, "shaderSampledImageArrayNonUniformIndexing") ? VK_TRUE : VK_FALSE;
         en12.descriptorBindingPartiallyBound = featureEnabled(verdict, "descriptorBindingPartiallyBound") ? VK_TRUE : VK_FALSE;
-        const bool drCore = std::strcmp(profile::routeOf(verdict, "dynamic_rendering"), "core") == 0;
-        const bool s2Core = std::strcmp(profile::routeOf(verdict, "synchronization2"), "core") == 0;
+        const bool drCore = profile::routeOf(verdict, "dynamic_rendering") == profile::Route::Core;
+        const bool s2Core = profile::routeOf(verdict, "synchronization2") == profile::Route::Core;
         if (featureEnabled(verdict, "dynamicRendering")) (drCore ? en13.dynamicRendering : enDr.dynamicRendering) = VK_TRUE;
         if (featureEnabled(verdict, "synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
         void** tail = &enableFeatures.pNext;

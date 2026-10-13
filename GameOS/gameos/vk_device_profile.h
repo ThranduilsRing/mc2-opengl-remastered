@@ -37,6 +37,19 @@ inline constexpr uint64_t kMinStorageBufferRange = 128ull * 1024 * 1024;
 
 enum class Need { Required, Wanted };
 
+// How a facility is reached on a device: core in the usable version, through its extension, a plain limit, or not at all.
+enum class Route { None, Core, Ext, Limit };
+
+constexpr std::string_view routeName(Route r) {
+    switch (r) {
+        case Route::Core: return "core";
+        case Route::Ext: return "ext";
+        case Route::Limit: return "limit";
+        case Route::None: break;
+    }
+    return "-";
+}
+
 // What a physical device offers. `gather()` fills it from the driver; the tests fill it by hand.
 struct DeviceCaps {
     uint32_t deviceApi = 0;                          // VkPhysicalDeviceProperties::apiVersion
@@ -68,10 +81,10 @@ struct DeviceCaps {
 };
 
 struct ItemResult {
-    const char* id;
+    std::string_view id;    // one of kItemIds (literal-backed)
     Need need;
     bool ok;
-    const char* route;      // "core", "ext", "feature", "limit" or "-" (not available)
+    Route route;            // None when the item is not available
 };
 
 struct Evaluation {
@@ -84,12 +97,12 @@ struct Evaluation {
 };
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
-inline constexpr const char* kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                           "dynamic_rendering", "synchronization2"};
+inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
+                                                "dynamic_rendering", "synchronization2"};
 
-inline constexpr const char* kExtDynamicRendering = "VK_KHR_dynamic_rendering";
-inline constexpr const char* kExtSynchronization2 = "VK_KHR_synchronization2";
-inline constexpr const char* kExtSwapchain = "VK_KHR_swapchain";
+inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
+inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
+inline constexpr std::string_view kExtSwapchain = "VK_KHR_swapchain";
 
 namespace detail {
 
@@ -98,13 +111,13 @@ inline bool limitsOk(const DeviceCaps& c) {
            c.maxPushConstantsSize >= kMinPushConstantsSize && c.maxStorageBufferRange >= kMinStorageBufferRange;
 }
 
-// Route of a facility that became core in `coreSince` and has an extension for older versions: "core" when the usable version has it AND the feature
-// bit is on, "ext" when the extension is listed AND the bit is on, else "-".
-inline const char* routeFor(const DeviceCaps& c, uint32_t coreSince, std::string_view ext, bool featureBit) {
-    if (!featureBit) return "-";
-    if (c.usableApi() >= coreSince) return "core";
-    if (!ext.empty() && c.hasExtension(ext)) return "ext";
-    return "-";
+// Route of a facility that became core in `coreSince` and has an extension for older versions: Core when the usable version has it AND the feature
+// bit is on, Ext when the extension is listed AND the bit is on, else None.
+inline Route routeFor(const DeviceCaps& c, uint32_t coreSince, std::string_view ext, bool featureBit) {
+    if (!featureBit) return Route::None;
+    if (c.usableApi() >= coreSince) return Route::Core;
+    if (!ext.empty() && c.hasExtension(ext)) return Route::Ext;
+    return Route::None;
 }
 
 }  // namespace detail
@@ -112,26 +125,26 @@ inline const char* routeFor(const DeviceCaps& c, uint32_t coreSince, std::string
 // The verdict for `caps`. `wantPresent` adds VK_KHR_swapchain to the required set (the shared device drives the present window).
 inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     Evaluation e;
-    auto add = [&](const char* id, Need need, bool ok, const char* route) {
-        e.items.push_back({id, need, ok, ok ? route : "-"});
-        if (!ok) (need == Need::Required ? e.missingRequired : e.missingWanted).push_back(id);
+    auto add = [&](std::string_view id, Need need, bool ok, Route route) {
+        e.items.push_back({id, need, ok, ok ? route : Route::None});
+        if (!ok) (need == Need::Required ? e.missingRequired : e.missingWanted).emplace_back(id);
     };
-    add("api_1_2", Need::Required, c.deviceApi >= kFloorApi && c.instanceApi >= kFloorApi, "core");
-    add("swapchain", wantPresent ? Need::Required : Need::Wanted, c.hasExtension(kExtSwapchain), "ext");
-    add("limits", Need::Required, detail::limitsOk(c), "limit");
+    add("api_1_2", Need::Required, c.deviceApi >= kFloorApi && c.instanceApi >= kFloorApi, Route::Core);
+    add("swapchain", wantPresent ? Need::Required : Need::Wanted, c.hasExtension(kExtSwapchain), Route::Ext);
+    add("limits", Need::Required, detail::limitsOk(c), Route::Limit);
 
-    const char* timeline = (c.usableApi() >= kFloorApi && c.timelineSemaphore) ? "core" : "-";
-    add("timeline_semaphore", Need::Required, timeline[0] == 'c', timeline);
-    if (timeline[0] == 'c') e.enabledFeatures.push_back("timelineSemaphore");
+    const bool timeline = c.usableApi() >= kFloorApi && c.timelineSemaphore;
+    add("timeline_semaphore", Need::Required, timeline, Route::Core);
+    if (timeline) e.enabledFeatures.push_back("timelineSemaphore");
 
     const bool bda = c.usableApi() >= kFloorApi && c.bufferDeviceAddress;
-    add("buffer_device_address", Need::Required, bda, "core");
+    add("buffer_device_address", Need::Required, bda, Route::Core);
     if (bda) e.enabledFeatures.push_back("bufferDeviceAddress");
 
     // Descriptor indexing wants the umbrella bit AND each individual bit the descriptor-table design uses.
     const bool di = c.usableApi() >= kFloorApi && c.descriptorIndexing && c.runtimeDescriptorArray &&
                     c.shaderSampledImageArrayNonUniformIndexing && c.descriptorBindingPartiallyBound;
-    add("descriptor_indexing", Need::Required, di, "core");
+    add("descriptor_indexing", Need::Required, di, Route::Core);
     if (di) {
         e.enabledFeatures.push_back("descriptorIndexing");
         e.enabledFeatures.push_back("runtimeDescriptorArray");
@@ -139,15 +152,15 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
         e.enabledFeatures.push_back("descriptorBindingPartiallyBound");
     }
 
-    const char* dr = detail::routeFor(c, kUseApi13, kExtDynamicRendering, c.dynamicRendering);
-    add("dynamic_rendering", Need::Required, dr[0] != '-', dr);
-    if (dr[0] != '-') e.enabledFeatures.push_back("dynamicRendering");
-    if (dr[0] == 'e') e.deviceExtensions.push_back(kExtDynamicRendering);
+    const Route dr = detail::routeFor(c, kUseApi13, kExtDynamicRendering, c.dynamicRendering);
+    add("dynamic_rendering", Need::Required, dr != Route::None, dr);
+    if (dr != Route::None) e.enabledFeatures.push_back("dynamicRendering");
+    if (dr == Route::Ext) e.deviceExtensions.emplace_back(kExtDynamicRendering);
 
-    const char* s2 = detail::routeFor(c, kUseApi13, kExtSynchronization2, c.synchronization2);
-    add("synchronization2", Need::Required, s2[0] != '-', s2);
-    if (s2[0] != '-') e.enabledFeatures.push_back("synchronization2");
-    if (s2[0] == 'e') e.deviceExtensions.push_back(kExtSynchronization2);
+    const Route s2 = detail::routeFor(c, kUseApi13, kExtSynchronization2, c.synchronization2);
+    add("synchronization2", Need::Required, s2 != Route::None, s2);
+    if (s2 != Route::None) e.enabledFeatures.push_back("synchronization2");
+    if (s2 == Route::Ext) e.deviceExtensions.emplace_back(kExtSynchronization2);
 
     e.accepted = e.missingRequired.empty();
     if (!e.accepted) {                               // a refused device gets nothing enabled
@@ -157,11 +170,11 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     return e;
 }
 
-// The route of one item in `e` ("core", "ext", "feature", "limit"), or "-" when the item is absent or not available.
-inline const char* routeOf(const Evaluation& e, std::string_view id) {
+// The route of one item in `e`, or None when the item is absent or not available.
+inline Route routeOf(const Evaluation& e, std::string_view id) {
     for (const ItemResult& i : e.items)
         if (id == i.id) return i.route;
-    return "-";
+    return Route::None;
 }
 
 // True when feature `name` (the spelling of the Vulkan struct member) is in the enable set.
@@ -186,7 +199,7 @@ inline std::string versionText(uint32_t v) {
 inline std::string formatLine(std::string_view deviceName, const DeviceCaps& c, const Evaluation& e) {
     std::string items;
     for (const ItemResult& i : e.items)
-        items += std::string(items.empty() ? "" : ",") + i.id + ":" + i.route;
+        items += std::string(items.empty() ? "" : ",") + std::string(i.id) + ":" + std::string(routeName(i.route));
     return std::string("[VK_PROFILE v1] verdict=") + (e.accepted ? "ok" : "refused") + " device=\"" + std::string(deviceName) + "\" api=" + versionText(c.deviceApi) +
            " instance_api=" + versionText(c.instanceApi) + " floor=1.2 required_missing=" + joinOr(e.missingRequired) +
            " wanted_missing=" + joinOr(e.missingWanted) + " items=" + items + " enabled=" + joinOr(e.enabledFeatures) +

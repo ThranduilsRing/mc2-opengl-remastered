@@ -1538,15 +1538,15 @@ vkp::DeviceCaps device12Caps(bool withExtensions) {
     c.deviceApi = vkp::makeApi(1, 2);
     c.instanceApi = vkp::makeApi(1, 2);
     if (withExtensions) {
-        c.extensions.push_back(vkp::kExtDynamicRendering);
-        c.extensions.push_back(vkp::kExtSynchronization2);
+        c.extensions.emplace_back(vkp::kExtDynamicRendering);
+        c.extensions.emplace_back(vkp::kExtSynchronization2);
     } else {
         c.dynamicRendering = c.synchronization2 = false;
     }
     return c;
 }
 
-bool hasId(const std::vector<std::string>& v, const char* id) {
+bool hasId(const std::vector<std::string>& v, std::string_view id) {
     for (const std::string& s : v)
         if (s == id) return true;
     return false;
@@ -1559,9 +1559,13 @@ TEST_CASE("vk profile: a device with everything is accepted and every facility t
     CHECK(e.missingRequired.empty());
     CHECK(e.missingWanted.empty());
     REQUIRE(e.items.size() == sizeof(vkp::kItemIds) / sizeof(vkp::kItemIds[0]));
-    for (size_t i = 0; i < e.items.size(); ++i) CHECK(std::string(e.items[i].id) == vkp::kItemIds[i]);   // the line lists the table in one order
-    CHECK(std::string(vkp::routeOf(e, "dynamic_rendering")) == "core");
-    CHECK(std::string(vkp::routeOf(e, "synchronization2")) == "core");
+    for (size_t i = 0; i < e.items.size(); ++i) CHECK((e.items[i].id == vkp::kItemIds[i]));   // the line lists the table in one order
+    CHECK(vkp::routeOf(e, "dynamic_rendering") == vkp::Route::Core);
+    CHECK(vkp::routeOf(e, "synchronization2") == vkp::Route::Core);
+    CHECK(vkp::routeOf(e, "limits") == vkp::Route::Limit);
+    CHECK(vkp::routeOf(e, "no_such_item") == vkp::Route::None);
+    CHECK((vkp::routeName(vkp::Route::Core) == "core" && vkp::routeName(vkp::Route::Ext) == "ext" && vkp::routeName(vkp::Route::Limit) == "limit" &&
+           vkp::routeName(vkp::Route::None) == "-"));
     CHECK(e.deviceExtensions.empty());                                  // core: nothing to enable by name
     CHECK(vkp::featureEnabled(e, "timelineSemaphore"));
     CHECK(vkp::featureEnabled(e, "bufferDeviceAddress"));
@@ -1573,12 +1577,12 @@ TEST_CASE("vk profile: a device with everything is accepted and every facility t
 TEST_CASE("vk profile: on a 1.2 device dynamic rendering and synchronization2 come from their KHR extensions") {
     const vkp::Evaluation e = vkp::evaluate(device12Caps(true), true);
     CHECK(e.accepted);
-    CHECK(std::string(vkp::routeOf(e, "dynamic_rendering")) == "ext");
-    CHECK(std::string(vkp::routeOf(e, "synchronization2")) == "ext");
+    CHECK(vkp::routeOf(e, "dynamic_rendering") == vkp::Route::Ext);
+    CHECK(vkp::routeOf(e, "synchronization2") == vkp::Route::Ext);
     CHECK(hasId(e.deviceExtensions, vkp::kExtDynamicRendering));
     CHECK(hasId(e.deviceExtensions, vkp::kExtSynchronization2));
     CHECK(vkp::featureEnabled(e, "dynamicRendering"));
-    CHECK(std::string(vkp::routeOf(e, "timeline_semaphore")) == "core");   // core in 1.2: no extension to name
+    CHECK(vkp::routeOf(e, "timeline_semaphore") == vkp::Route::Core);   // core in 1.2: no extension to name
 }
 
 TEST_CASE("vk profile: a 1.2 device without the KHR extensions is refused and gets nothing enabled") {
