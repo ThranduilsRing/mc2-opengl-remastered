@@ -20,9 +20,25 @@ import console_child  # noqa: E402  (windowless console children, scripts/consol
 LAUNCHER = ROOT / "build64-ninja" / "out" / "mc2_launcher" / "mc2-launcher.exe"
 needs_launcher = pytest.mark.skipif(not LAUNCHER.is_file(), reason="mc2-launcher.exe is not built in build64-ninja")
 
-# The launcher these tests run must be built from the source on disk: a test against an exe older than its sources grades the old code.
+# The launcher these tests run must be built from the source on disk: a test against an exe older than its sources grades the old code. The launcher's
+# object file has a dependency record in Ninja's log (every header it really includes), so the exe is compared with exactly those files and a merge that only
+# touches unrelated files cannot turn this red. Without the record the four files the tests exercise are compared by modification time.
 LAUNCHER_SOURCES = [ROOT / "tools" / "mc2_launcher" / "mc2_launcher.cpp", ROOT / "Gates" / "render_options.h",
                     ROOT / "Gates" / "render_options_cfg.h", ROOT / "Gates" / "render_options_legacy_env.h"]
+NINJA_TREE = ROOT / "build64-ninja"
+LAUNCHER_OBJ = "out/tools/mc2_launcher/CMakeFiles/mc2_launcher.dir/mc2_launcher.cpp.obj"
+
+
+def _recorded_inputs():
+    """The files Ninja recorded as inputs of the launcher's object (its source and every header it includes); None when there is no record."""
+    try:
+        from configure_ninja import NINJA
+        r = subprocess.run([NINJA, "-C", str(NINJA_TREE), "-t", "deps", LAUNCHER_OBJ], capture_output=True, text=True, timeout=120,
+                           **console_child.child_kwargs(redirected=True))
+    except (ImportError, OSError, subprocess.SubprocessError):
+        return None
+    paths = [NINJA_TREE / ln.strip() for ln in r.stdout.splitlines() if ln.startswith((" ", "\t")) and ln.strip()]
+    return ([LAUNCHER_SOURCES[0]] + paths) if r.returncode == 0 and paths else None
 
 
 @pytest.fixture(autouse=True)
@@ -31,7 +47,8 @@ def launcher_is_current(record_property):
         return
     built = LAUNCHER.stat().st_mtime
     record_property("launcher_exe", str(LAUNCHER))
-    stale = [p.name for p in LAUNCHER_SOURCES if p.is_file() and p.stat().st_mtime > built + 1]
+    inputs = _recorded_inputs() or LAUNCHER_SOURCES
+    stale = sorted({p.name for p in inputs if p.is_file() and p.stat().st_mtime > built + 1})
     assert not stale, f"{LAUNCHER} is older than {stale}: rebuild it (py -3 scripts/ninja_build.py mc2_launcher) before trusting this test"
 
 CFG = "FITini \r\nFITini \r\n\r\n[MechCommander2]\r\nl MusicVolume = 128\r\nb ShadowCSM = TRUE\r\nb SunAxisFix = FALSE\r\n"
