@@ -2,15 +2,14 @@
 // the verdict for one physical device.
 //
 // WHAT: one table of facilities (the 1.2 API floor, swapchain, a few limits, timeline semaphores, descriptor indexing, buffer device address,
-// dynamic rendering, synchronization2), each with its core-or-extension route and what the engine does without it; `evaluate()` turns the
-// capabilities of a device (`DeviceCaps`, plain data) into a verdict, the set of device extensions and feature bits to enable, and the
-// `[VK_PROFILE v1]` line.
+// dynamic rendering, synchronization2), each with its core-or-extension route; `evaluate()` turns the capabilities of a device (`DeviceCaps`, plain
+// data) into a verdict, the set of device extensions and feature bits to enable, and the `[VK_PROFILE v1]` line.
 // WHY: the shared context asked for Vulkan 1.1, enabled no feature and never looked at what the device offered, so "1.2 minimum" was a sentence and
 // not a check. Raising the instance version does not enable a single device feature: a feature is used only if it was queried, found and enabled.
-// The table keeps that decision in one place: REQUIRED items refuse the device (the engine falls back to GL with a logged reason, never a crash);
-// WANTED items are enabled when present and the engine keeps the path it has today when they are not.
-// Owner question still open (best-practices review, question 1): whether the 1.2 floor should REQUIRE dynamic rendering and the other
-// selected extensions. Flipping a WANTED row to REQUIRED below is the whole change.
+// The table keeps that decision in one place. Owner ruling 2026-10-13: the five facilities (dynamic rendering, synchronization2, timeline semaphores,
+// descriptor indexing, buffer device address) are REQUIRED, so a Vulkan island may call any of them without a fallback arm; a device without one is
+// refused and the engine falls back to GL with a logged reason, never a crash (older GPUs play the OpenGL build). That one engine-level fallback is
+// the only one: an island has no per-facility alternative path.
 //
 // Header-only and Vulkan-free so the unit tests (tests/unit) and the engine read the same table with no link dependency; the code that queries a
 // real device is in vk_device_profile.cpp (MC2_VULKAN only).
@@ -78,9 +77,9 @@ struct ItemResult {
 struct Evaluation {
     std::vector<ItemResult> items;
     std::vector<std::string> missingRequired;        // item ids; non-empty = the device is refused
-    std::vector<std::string> missingWanted;          // item ids; the engine keeps its current path for each
-    std::vector<std::string> deviceExtensions;       // device extensions to enable (swapchain excluded: the context adds it with the surface)
-    std::vector<std::string> enabledFeatures;        // feature names to enable, in the spelling of the Vulkan struct member
+    std::vector<std::string> missingWanted;          // item ids that are optional for this context (the swapchain without a present window); never a refusal
+    std::vector<std::string> deviceExtensions;       // device extensions to enable (swapchain excluded: the context adds it with the surface); empty for a refused device
+    std::vector<std::string> enabledFeatures;        // feature names to enable, in the spelling of the Vulkan struct member; empty for a refused device
     bool accepted = true;
 };
 
@@ -122,17 +121,17 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     add("limits", Need::Required, detail::limitsOk(c), "limit");
 
     const char* timeline = (c.usableApi() >= kFloorApi && c.timelineSemaphore) ? "core" : "-";
-    add("timeline_semaphore", Need::Wanted, timeline[0] == 'c', timeline);
+    add("timeline_semaphore", Need::Required, timeline[0] == 'c', timeline);
     if (timeline[0] == 'c') e.enabledFeatures.push_back("timelineSemaphore");
 
     const bool bda = c.usableApi() >= kFloorApi && c.bufferDeviceAddress;
-    add("buffer_device_address", Need::Wanted, bda, "core");
+    add("buffer_device_address", Need::Required, bda, "core");
     if (bda) e.enabledFeatures.push_back("bufferDeviceAddress");
 
     // Descriptor indexing wants the umbrella bit AND each individual bit the descriptor-table design uses.
     const bool di = c.usableApi() >= kFloorApi && c.descriptorIndexing && c.runtimeDescriptorArray &&
                     c.shaderSampledImageArrayNonUniformIndexing && c.descriptorBindingPartiallyBound;
-    add("descriptor_indexing", Need::Wanted, di, "core");
+    add("descriptor_indexing", Need::Required, di, "core");
     if (di) {
         e.enabledFeatures.push_back("descriptorIndexing");
         e.enabledFeatures.push_back("runtimeDescriptorArray");
@@ -141,16 +140,20 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     }
 
     const char* dr = detail::routeFor(c, kUseApi13, kExtDynamicRendering, c.dynamicRendering);
-    add("dynamic_rendering", Need::Wanted, dr[0] != '-', dr);
+    add("dynamic_rendering", Need::Required, dr[0] != '-', dr);
     if (dr[0] != '-') e.enabledFeatures.push_back("dynamicRendering");
     if (dr[0] == 'e') e.deviceExtensions.push_back(kExtDynamicRendering);
 
     const char* s2 = detail::routeFor(c, kUseApi13, kExtSynchronization2, c.synchronization2);
-    add("synchronization2", Need::Wanted, s2[0] != '-', s2);
+    add("synchronization2", Need::Required, s2[0] != '-', s2);
     if (s2[0] != '-') e.enabledFeatures.push_back("synchronization2");
     if (s2[0] == 'e') e.deviceExtensions.push_back(kExtSynchronization2);
 
     e.accepted = e.missingRequired.empty();
+    if (!e.accepted) {                               // a refused device gets nothing enabled
+        e.enabledFeatures.clear();
+        e.deviceExtensions.clear();
+    }
     return e;
 }
 

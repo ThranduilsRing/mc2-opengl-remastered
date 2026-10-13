@@ -11,8 +11,8 @@ OK_LINE = ('[VK_PROFILE v1] verdict=ok device="AMD Radeon RX 7900 XTX" api=1.4.0
            "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
            "dynamic_rendering:core,synchronization2:core enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,runtimeDescriptorArray,"
            "shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2 extensions=VK_EXT_memory_budget")
-OLD_GPU = ('[VK_PROFILE v1] verdict=refused device="old gpu" api=1.1.0 instance_api=1.3.0 floor=1.2 required_missing=api_1_2 '
-           "wanted_missing=timeline_semaphore,buffer_device_address,descriptor_indexing,dynamic_rendering,synchronization2 "
+OLD_GPU = ('[VK_PROFILE v1] verdict=refused device="old gpu" api=1.1.0 instance_api=1.3.0 floor=1.2 '
+           "required_missing=api_1_2,timeline_semaphore,buffer_device_address,descriptor_indexing,dynamic_rendering,synchronization2 wanted_missing=- "
            "items=api_1_2:-,swapchain:ext,limits:limit,timeline_semaphore:-,buffer_device_address:-,descriptor_indexing:-,dynamic_rendering:-,"
            "synchronization2:- enabled=- extensions=-")
 EXT_ROUTE = OK_LINE.replace("api=1.4.0 instance_api=1.3.0", "api=1.2.0 instance_api=1.2.0").replace("dynamic_rendering:core,synchronization2:core",
@@ -35,8 +35,19 @@ def test_an_extension_route_on_a_1_2_device_is_read_as_ext():
 
 def test_a_refused_line_names_what_is_missing():
     (p,) = vk_profile.parse(OLD_GPU)
-    assert not p.accepted and p.required_missing == ["api_1_2"]
-    assert p.wanted_missing[0] == "timeline_semaphore" and p.enabled == [] and p.extensions == []
+    assert not p.accepted and p.required_missing[0] == "api_1_2" and len(p.required_missing) == 6
+    assert p.wanted_missing == [] and p.enabled == [] and p.extensions == []
+
+
+def test_a_missing_facility_of_the_ruling_refuses_the_device():
+    """Dynamic rendering, synchronization2, timeline semaphores, descriptor indexing and buffer device address are required (owner ruling 2026-10-13)."""
+    for facility in ("timeline_semaphore", "buffer_device_address", "descriptor_indexing", "dynamic_rendering", "synchronization2"):
+        line = (OK_LINE.replace("verdict=ok", "verdict=refused").replace("required_missing=-", f"required_missing={facility}")
+                .replace(f"{facility}:core", f"{facility}:-").replace("enabled=timelineSemaphore", "enabled=-").replace("extensions=VK_EXT_memory_budget", "extensions=-"))
+        (p,) = vk_profile.parse(line)
+        assert not p.accepted and p.required_missing == [facility]
+        (problem,) = vk_profile.grade([p])
+        assert "REFUSED" in problem and facility in problem and "fell back to GL" in problem
 
 
 def test_a_truncated_or_foreign_line_is_skipped():
@@ -47,8 +58,8 @@ def test_a_truncated_or_foreign_line_is_skipped():
 
 def test_grading_is_red_for_a_refused_verdict_and_for_a_contradiction_but_not_for_missing_wanted_items():
     assert vk_profile.grade(vk_profile.parse(OK_LINE)) == []
-    wanted_only = OK_LINE.replace("wanted_missing=-", "wanted_missing=dynamic_rendering")
-    assert vk_profile.grade(vk_profile.parse(wanted_only)) == []         # a missing WANTED item keeps its fallback: not a failure
+    wanted_only = OK_LINE.replace("wanted_missing=-", "wanted_missing=swapchain")
+    assert vk_profile.grade(vk_profile.parse(wanted_only)) == []         # an optional item (the swapchain of a context with no window) is reported, never a failure
     refused = vk_profile.grade(vk_profile.parse(OLD_GPU))
     assert len(refused) == 1 and "REFUSED" in refused[0] and "api_1_2" in refused[0] and "fell back to GL" in refused[0]
     contradiction = OK_LINE.replace("required_missing=-", "required_missing=limits")

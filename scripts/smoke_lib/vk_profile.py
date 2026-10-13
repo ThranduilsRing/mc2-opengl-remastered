@@ -4,9 +4,10 @@
 WHAT: `parse(text)` returns one `Profile` per line (the device, both API versions, which required and wanted items are missing, the route of each item,
 the features and extensions enabled); `grade(profiles)` returns the problems a smoke run must go red for.
 WHY: the Vulkan context used to ask for 1.1 and enable nothing, so "Vulkan 1.2 minimum" was not checked anywhere. The engine now refuses a device that
-lacks a REQUIRED item (it falls back to GL and says so), but a refused Vulkan run still plays on GL and would pass; the line is what lets a Vulkan
-smoke notice that the Vulkan it asked for is not the Vulkan it got. A WANTED item that is missing is not a failure (the engine keeps its current path);
-it is reported so a later batch can see which routes a device offers.
+lacks a REQUIRED item (the 1.2 floor, the limits and, by the owner ruling of 2026-10-13, dynamic rendering, synchronization2, timeline semaphores,
+descriptor indexing and buffer device address; it falls back to GL and says so), but a refused Vulkan run still plays on GL and would pass; the line is
+what lets a Vulkan smoke notice that the Vulkan it asked for is not the Vulkan it got. An optional item that is missing (`wanted_missing`) is not a
+failure; it is reported so a later reader can see which routes a device offers.
 """
 from __future__ import annotations
 

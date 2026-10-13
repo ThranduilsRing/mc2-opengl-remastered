@@ -17,7 +17,7 @@
 #include "Gates/render_options.h"
 #include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
-#include "vk_device_profile.h"   // the Vulkan 1.2 device profile table (header-only; tested here because this is the one unit file the capture lane may edit)
+#include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
 
 #include <cstdio>
 #include <limits>
@@ -1510,7 +1510,7 @@ TEST_CASE("the render options serialize as one JSON object of all 17 values for 
 }
 
 // ---------------------------------------------------------------------------
-// Vulkan 1.2 device profile (GameOS/gameos/vk_device_profile.h): required items refuse a device, wanted items are enabled when present
+// Vulkan device profile (GameOS/gameos/vk_device_profile.h): every item of the table is required, so a device that lacks one is refused and gets nothing enabled
 // ---------------------------------------------------------------------------
 
 namespace {
@@ -1581,20 +1581,46 @@ TEST_CASE("vk profile: on a 1.2 device dynamic rendering and synchronization2 co
     CHECK(std::string(vkp::routeOf(e, "timeline_semaphore")) == "core");   // core in 1.2: no extension to name
 }
 
-TEST_CASE("vk profile: a 1.2 device without the extensions is still accepted and never has the unavailable features enabled") {
+TEST_CASE("vk profile: a 1.2 device without the KHR extensions is refused and gets nothing enabled") {
     vkp::DeviceCaps c = device12Caps(false);
     const vkp::Evaluation e = vkp::evaluate(c, true);
-    CHECK(e.accepted);
-    CHECK(hasId(e.missingWanted, "dynamic_rendering"));
-    CHECK(hasId(e.missingWanted, "synchronization2"));
+    CHECK_FALSE(e.accepted);
+    CHECK(hasId(e.missingRequired, "dynamic_rendering"));
+    CHECK(hasId(e.missingRequired, "synchronization2"));
+    CHECK(e.missingWanted.empty());
     CHECK_FALSE(vkp::featureEnabled(e, "dynamicRendering"));
-    CHECK_FALSE(vkp::featureEnabled(e, "synchronization2"));
+    CHECK_FALSE(vkp::featureEnabled(e, "timelineSemaphore"));           // a refused device is enabled for nothing, not even the bits it has
+    CHECK(e.enabledFeatures.empty());
     CHECK(e.deviceExtensions.empty());
-    // A feature bit with no extension and no core version behind it is not a route either: never enabled, never called.
+    // A feature bit with no extension and no core version behind it is not a route either.
     c.dynamicRendering = true;
     const vkp::Evaluation bit = vkp::evaluate(c, true);
-    CHECK(hasId(bit.missingWanted, "dynamic_rendering"));
-    CHECK_FALSE(vkp::featureEnabled(bit, "dynamicRendering"));
+    CHECK(hasId(bit.missingRequired, "dynamic_rendering"));
+    CHECK_FALSE(bit.accepted);
+}
+
+TEST_CASE("vk profile: each of the five facilities is required (owner ruling 2026-10-13)") {
+    struct Row { const char* id; void (*drop)(vkp::DeviceCaps&); };
+    const Row rows[] = {
+        {"timeline_semaphore", [](vkp::DeviceCaps& c) { c.timelineSemaphore = false; }},
+        {"buffer_device_address", [](vkp::DeviceCaps& c) { c.bufferDeviceAddress = false; }},
+        {"descriptor_indexing", [](vkp::DeviceCaps& c) { c.descriptorIndexing = false; }},
+        {"dynamic_rendering", [](vkp::DeviceCaps& c) { c.dynamicRendering = false; }},
+        {"synchronization2", [](vkp::DeviceCaps& c) { c.synchronization2 = false; }},
+    };
+    for (const Row& r : rows) {
+        vkp::DeviceCaps c = fullCaps();
+        r.drop(c);
+        const vkp::Evaluation e = vkp::evaluate(c, true);
+        CHECK_FALSE(e.accepted);
+        REQUIRE(e.missingRequired.size() == 1);
+        CHECK(e.missingRequired[0] == r.id);
+        CHECK(e.missingWanted.empty());
+        const std::string line = vkp::formatLine("gpu", c, e);
+        CHECK(line.find(std::string(" required_missing=") + r.id + " ") != std::string::npos);
+        CHECK(line.find("verdict=refused") != std::string::npos);
+        CHECK(line.find(" enabled=- extensions=-") != std::string::npos);
+    }
 }
 
 TEST_CASE("vk profile: a device or instance below 1.2 is refused") {
@@ -1615,7 +1641,9 @@ TEST_CASE("vk profile: a device or instance below 1.2 is refused") {
 TEST_CASE("vk profile: the swapchain is required only when the context drives a present window") {
     vkp::DeviceCaps c = fullCaps();
     c.extensions.clear();
-    CHECK(vkp::evaluate(c, false).accepted);
+    const vkp::Evaluation headless = vkp::evaluate(c, false);
+    CHECK(headless.accepted);
+    CHECK(hasId(headless.missingWanted, "swapchain"));                  // reported, never a refusal
     const vkp::Evaluation e = vkp::evaluate(c, true);
     CHECK_FALSE(e.accepted);
     CHECK(hasId(e.missingRequired, "swapchain"));
@@ -1645,8 +1673,8 @@ TEST_CASE("vk profile: descriptor indexing needs the umbrella bit and every indi
         if (missing == 2) c.shaderSampledImageArrayNonUniformIndexing = false;
         if (missing == 3) c.descriptorBindingPartiallyBound = false;
         const vkp::Evaluation e = vkp::evaluate(c, true);
-        CHECK(e.accepted);                                              // wanted, not required: the conventional descriptor sets remain
-        CHECK(hasId(e.missingWanted, "descriptor_indexing"));
+        CHECK_FALSE(e.accepted);                                        // the bindless table needs the whole group
+        CHECK(hasId(e.missingRequired, "descriptor_indexing"));
         CHECK_FALSE(vkp::featureEnabled(e, "runtimeDescriptorArray"));  // none of the group is enabled when one is missing
     }
 }
@@ -1660,5 +1688,5 @@ TEST_CASE("vk profile: the line names the device, both versions, what is missing
                   "dynamic_rendering:core,synchronization2:core enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,runtimeDescriptorArray,"
                   "shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2 extensions=-");
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);
-    CHECK(vkp::formatLine("gpu", device12Caps(false), lacking).find("wanted_missing=dynamic_rendering,synchronization2 ") != std::string::npos);
+    CHECK(vkp::formatLine("gpu", device12Caps(false), lacking).find(" required_missing=dynamic_rendering,synchronization2 wanted_missing=- ") != std::string::npos);
 }
