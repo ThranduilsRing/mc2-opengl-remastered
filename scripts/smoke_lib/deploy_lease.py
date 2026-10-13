@@ -305,6 +305,11 @@ def acquire_lease(folder: str, intended_test: Optional[str] = None) -> str:
         return _acquire_locked(folder, intended_test)
 
 
+def acquire_lease_waiting(folder: str, intended_test: Optional[str], wait_s: float) -> None:
+    """Acquire the lease for `folder`, waiting up to `wait_s` seconds (visible countdown) while a live lease holds it; raises LeaseError when it stays busy."""
+    _acquire_waiting(folder, intended_test, f"deploy folder {_short_name(folder)}", wait_s)
+
+
 def release_lease(folder: str) -> None:
     """Release the lease for `folder`.  No-op if not held."""
     key = _folder_key(folder)

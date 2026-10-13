@@ -604,7 +604,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1440,
+          "line": 1482,
           "evidence": "command",
           "reference": "A:/Games/mc2-lane2/scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3717,7 +3717,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 684,
+          "line": 677,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import deploy_lease"
+        },
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 717,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -3822,14 +3829,14 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 330,
+          "line": 335,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 438,
+          "line": 443,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import child_registry"
@@ -3840,6 +3847,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"
+        },
+        {
+          "path": "scripts/smoke_lib/gates.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import vk_validation"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
@@ -3937,7 +3951,7 @@
           "line": 15,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
-          "text": "from . import nofocus"
+          "text": "from . import nofocus, vk_validation"
         },
         {
           "path": "scripts/smoke_lib/win_input.py",
@@ -4055,14 +4069,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 684,
+          "line": 717,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 330,
+          "line": 335,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait"
@@ -4120,7 +4134,7 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 438,
+          "line": 443,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import child_registry"
@@ -4212,6 +4226,13 @@
       "stem": "deploy_lease",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 677,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.deploy_lease",
+          "text": "from scripts.smoke_lib import deploy_lease"
+        },
         {
           "path": "scripts/run_smoke.py",
           "line": 736,
@@ -4363,6 +4384,13 @@
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
+          "path": "tests/smoke/test_marker_buckets.py",
+          "line": 122,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
+        },
+        {
           "path": "tests/smoke/test_render_options_pin.py",
           "line": 144,
           "evidence": "import",
@@ -4386,6 +4414,13 @@
         {
           "path": "tests/smoke/test_vk_validation.py",
           "line": 63,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
+        },
+        {
+          "path": "tests/smoke/test_vk_validation.py",
+          "line": 105,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -4450,10 +4485,10 @@
         },
         {
           "path": "scripts/smoke_lib/gates.py",
-          "line": 8,
+          "line": 9,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
-          "text": "from .logparse import MARKER_BUCKETS, LogSummary"
+          "text": "from .logparse import MARKER_BUCKETS, PRESENCE_RULES, LogSummary"
         },
         {
           "path": "scripts/smoke_lib/manifest.py",
@@ -4665,7 +4700,7 @@
           "line": 15,
           "evidence": "import",
           "reference": "scripts.smoke_lib.nofocus",
-          "text": "from . import nofocus"
+          "text": "from . import nofocus, vk_validation"
         },
         {
           "path": "scripts/tests/test_host_lease.py",
@@ -4934,6 +4969,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/smoke_lib/gates.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_validation",
+          "text": "from . import vk_validation"
+        },
+        {
           "path": "scripts/smoke_lib/logparse.py",
           "line": 10,
           "evidence": "import",
@@ -4946,6 +4988,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.vk_validation",
           "text": "from . import vk_validation"
+        },
+        {
+          "path": "scripts/smoke_lib/runner.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_validation",
+          "text": "from . import nofocus, vk_validation"
         },
         {
           "path": "tests/smoke/test_vk_validation.py",

@@ -670,6 +670,39 @@ def _check_running_processes(target_exe_resolved, exe_name):
 DEFAULT_DEPLOY_WAIT_S = 900.0
 
 
+def _deploy_lease_module():
+    try:
+        from smoke_lib import deploy_lease
+    except ImportError:
+        from scripts.smoke_lib import deploy_lease
+    return deploy_lease
+
+
+def take_folder_lease(target_dir, wait_s):
+    """Hold the smoke folder lease while this script writes into the install.
+
+    A smoke run holds the lease of the folder it plays from, and a deploy under it replaces the exe the run was started from; a lane that deploys into an
+    install somebody else leased must wait for the holder, not overwrite it. Waits up to `wait_s` seconds with a visible countdown; a lease that is still
+    live after that is fatal. Returns True when the lease is ours to release.
+    """
+    lease = _deploy_lease_module()
+    try:
+        lease.acquire_lease_waiting(target_dir, "deploy_payload", wait_s)
+    except lease.LeaseError as exc:
+        fail(f"{exc}\n  Another session leased this install (a smoke run, or a lane deploying); this script waited {wait_s:.0f}s and never overwrites a leased install.",
+             code=2)
+    log(f"folder lease taken: {target_dir}")
+    return True
+
+
+def release_folder_lease(target_dir):
+    try:
+        _deploy_lease_module().release_lease(target_dir)
+        log(f"folder lease released: {target_dir}")
+    except Exception as exc:  # noqa: BLE001 -- the deploy is done; a stale entry expires by TTL
+        log(f"folder lease release failed ({exc}); it expires by TTL")
+
+
 def check_locks(target_dir, exe_name, wait_s=0.0):
     target_exe = os.path.join(target_dir, exe_name)
     target_exe_resolved = os.path.normcase(os.path.abspath(target_exe))
@@ -1370,6 +1403,15 @@ def main():
 
     wait_s = args.wait if args.wait is not None else float(os.environ.get("MC2_DEPLOY_WAIT_S") or DEFAULT_DEPLOY_WAIT_S)
     check_locks(target, exe_name, wait_s)
+    lease_held = take_folder_lease(target, wait_s)
+    try:
+        run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
+    finally:
+        if lease_held:
+            release_folder_lease(target)
+
+
+def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
 
