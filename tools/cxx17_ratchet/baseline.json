@@ -141,13 +141,13 @@
   "code": {
    "LG01": 225,
    "LG02": 212,
-   "LG03": 957,
+   "LG03": 954,
    "LG04": 21,
-   "LG05": 206,
-   "LG06": 446,
+   "LG05": 204,
+   "LG06": 447,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2354,
+   "LG09": 2351,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -187,13 +187,13 @@
   "mclib": {
    "LG01": 458,
    "LG02": 287,
-   "LG03": 1139,
+   "LG03": 1138,
    "LG04": 16,
    "LG05": 136,
-   "LG06": 669,
+   "LG06": 670,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2186,
+   "LG09": 2180,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 210,
@@ -1571,10 +1571,13 @@
    "LG12a": 1
   },
   "code/ablmc2_misc.cpp": {
-   "LG09": 9
+   "LG09": 8
   },
   "code/ablmc2_orders.cpp": {
    "LG09": 6
+  },
+  "code/ablmc2_position.cpp": {
+   "LG09": 1
   },
   "code/ablmc2_queries.cpp": {
    "LG09": 21
@@ -2385,7 +2388,7 @@
    "LG09": 3
   },
   "code/mechcmd2_frame.cpp": {
-   "LG03": 21,
+   "LG03": 20,
    "LG09": 3,
    "LG11": 16,
    "LG12a": 1
@@ -2756,16 +2759,22 @@
    "LG12b": 1
   },
   "code/objective.cpp": {
-   "LG03": 54,
-   "LG05": 2,
-   "LG06": 9,
-   "LG09": 34
+   "LG03": 52,
+   "LG05": 1,
+   "LG06": 6,
+   "LG09": 31
   },
   "code/objective.h": {
    "LG02": 4,
-   "LG05": 2,
+   "LG05": 1,
    "LG09": 1,
    "LG14": 4
+  },
+  "code/objective_text.cpp": {
+   "LG06": 2
+  },
+  "code/objective_text.h": {
+   "LG06": 2
   },
   "code/objmgr.cpp": {
    "LG01": 1,
@@ -3242,7 +3251,7 @@
    "LG09": 13
   },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 27
+   "LG09": 25
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
@@ -3946,6 +3955,9 @@
   "mclib/mc2_audit.h": {
    "LG02": 1,
    "LG06": 3
+  },
+  "mclib/mc2str.h": {
+   "LG06": 1
   },
   "mclib/mclibresource.h": {
    "LG13": 75
@@ -4979,9 +4991,8 @@
    "LG09": 1
   },
   "mclib/tgainfo.cpp": {
-   "LG03": 1,
    "LG04": 2,
-   "LG09": 9
+   "LG09": 5
   },
   "mclib/tgainfo.h": {
    "LG14": 1
@@ -5176,7 +5187,7 @@
    "LG20": 2
   }
  },
- "head": "37e86abfe",
+ "head": "8f9c5811b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
