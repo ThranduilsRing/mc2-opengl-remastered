@@ -64,7 +64,28 @@ bool EditorInterface::runDefinitionSmoke()
     auto& camera = *static_cast<EditorCamera*>(eye);
     const auto storedView = camera.missionView;
     ok = storedView && storedView->scale == 0.375f && storedView->zoomMaximum == 1.25f && ok;
-    fprintf(stderr, "[EDITOR_DEFINITIONS] stage=preserved_reload ok=%d\n", ok);
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=preserved_reload ok=%d\n", ok);
+
+    // Coincident units can carry different definitions. Each instance must
+    // recover its own authored values even when every old lookup key matches.
+    auto* first = getUnit();
+    auto* second = dynamic_cast<Unit*>(EditorObjectMgr::instance()->addBuilding(first->getPosition(),
+        first->getGroup(), first->getIndexInGroup(), first->getAlignment(), first->appearance()->rotation, 1, false));
+    if (!second) return false;
+    second->setSquad(first->getSquad());
+    const PartDefinition secondDefinition{9, "Second_Profile", "Second_CASE"};
+    second->restorePartDefinition(secondDefinition);
+    const bool distinct = first->instanceId() != second->instanceId()
+        && first->getID() == second->getID() && first->getSquad() == second->getSquad()
+        && first->getPosition().x == second->getPosition().x && first->getPosition().y == second->getPosition().y;
+    handleNewMenuMessage(ID_MISSION_REFRESH_DEFINITIONS);
+    const auto firstRefreshed = first->partDefinition(), secondRefreshed = second->partDefinition();
+    const bool duplicateProof = distinct && firstRefreshed != storedPart && secondRefreshed != secondDefinition
+        && undoMgr.Undo() && first->partDefinition() == storedPart && second->partDefinition() == secondDefinition
+        && undoMgr.Redo() && first->partDefinition() == firstRefreshed && second->partDefinition() == secondRefreshed
+        && undoMgr.Undo() && first->partDefinition() == storedPart && second->partDefinition() == secondDefinition;
+    ok = EditorObjectMgr::instance()->deleteObject(second) && duplicateProof && ok;
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=%d\n", ok);
 
     // Coordinate writers must follow intentional transforms and recover the
     // original FIT reference on undo, including its sub-cell precision.
@@ -97,7 +118,7 @@ bool EditorInterface::runDefinitionSmoke()
     ok = verifyTransform(targetCondition ? targetCondition->BuildingPtr() : nullptr,
         [targetCondition](FitIniFile& file) { file.writeBlock("Reference"); return targetCondition->Save(&file); },
         "Reference", "PositionX", "PositionY") && ok;
-    fprintf(stderr, "[EDITOR_DEFINITIONS] stage=coordinate_transform_undo ok=%d\n", ok);
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=coordinate_transform_undo ok=%d\n", ok);
 
     if (!marker) return false;
     const auto markerPosition = marker->getPosition();
@@ -112,13 +133,13 @@ bool EditorInterface::runDefinitionSmoke()
             && (*it)->getPosition().y == authoredMarkerPosition.y) foundMovedMarker = true;
     markerReloaded = markerReloaded && foundMovedMarker;
     ok = EditorData::initTerrainFromPCV("terrain_gen_out/ew_preserved.pak") && markerReloaded && ok;
-    fprintf(stderr, "[EDITOR_DEFINITIONS] stage=marker_transform_reload ok=%d\n", ok);
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=marker_transform_reload ok=%d\n", ok);
 
     handleNewMenuMessage(ID_MISSION_AUTHOR_CAMERA_ZOOM);
     const auto authoredView = camera.missionView;
     ok = authoredView != storedView && undoMgr.Undo() && camera.missionView == storedView
         && undoMgr.Redo() && camera.missionView == authoredView && undoMgr.Undo() && ok;
-    fprintf(stderr, "[EDITOR_DEFINITIONS] stage=camera_command_undo_redo ok=%d\n", ok);
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=camera_command_undo_redo ok=%d\n", ok);
     handleNewMenuMessage(ID_MISSION_REFRESH_DEFINITIONS);
     const auto refreshedPart = getUnit()->partDefinition();
     const auto refreshedModel = getObjective()->ModelDefinition();
@@ -130,7 +151,34 @@ bool EditorInterface::runDefinitionSmoke()
     ok = EditorData::instance->save("terrain_gen_out/ew_refreshed.pak", true) && ok;
     ok = EditorData::initTerrainFromPCV("terrain_gen_out/ew_refreshed.pak")
         && getUnit()->partDefinition() == refreshedPart && getObjective()->ModelDefinition() == refreshedModel && ok;
-    fprintf(stderr, "[EDITOR_DEFINITIONS] stage=catalog_command_undo_redo_reload ok=%d\n", ok);
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=catalog_command_undo_redo_reload ok=%d\n", ok);
+
+    // Rejected text must preserve both the serialized document and its live
+    // objects, dirty flag and an executable undo/redo history.
+    handleNewMenuMessage(ID_MISSION_REFRESH_DEFINITIONS);
+    ok = undoMgr.Undo() && ok;
+    ok = EditorData::instance->save("terrain_gen_out/ew_before_reject.pak", true) && ok;
+    const auto beforeReject = readFixture("terrain_gen_out/ew_before_reject.fit");
+    auto* const previousLand = land;
+    auto* const previousUnit = getUnit();
+    const bool previousDirty = EditorData::instance->MissionNeedsSaving();
+    const bool previousUndo = undoMgr.HaveUndo(), previousRedo = undoMgr.HaveRedo();
+    for (const char* field : {"Title", "Description", "ActivateFlagID", "ResetStatusFlagID"})
+    {
+        std::string malformed = original;
+        const std::string oversized = "\"" + std::string(2001, 'x') + "\"";
+        const bool rejected = replaceValue(malformed, "Team0Objective0", field, oversized.c_str())
+            && writeFixture(fit, malformed) && !EditorData::initTerrainFromPCV(pak);
+        const bool unchanged = land == previousLand && getUnit() == previousUnit
+            && EditorData::instance->MissionNeedsSaving() == previousDirty
+            && undoMgr.HaveUndo() == previousUndo && undoMgr.HaveRedo() == previousRedo
+            && EditorData::instance->save("terrain_gen_out/ew_after_reject.pak", true)
+            && readFixture("terrain_gen_out/ew_after_reject.fit") == beforeReject;
+        ok = rejected && unchanged && ok;
+        fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=oversized_text field=%s rejected=%d unchanged=%d ok=%d\n",
+            field, rejected, unchanged, ok);
+    }
+    ok = undoMgr.Redo() && undoMgr.Undo() && ok;
 
     // Each malformed document must fail at its reader, before a save can bless it.
     struct BadLiteral { const char* block; const char* field; const char* value; };
@@ -146,9 +194,9 @@ bool EditorInterface::runDefinitionSmoke()
         std::string malformed = original;
         ok = replaceValue(malformed, bad.block, bad.field, bad.value) && writeFixture(fit, malformed)
             && !EditorData::initTerrainFromPCV(pak) && ok;
-        fprintf(stderr, "[EDITOR_DEFINITIONS] stage=reject field=%s ok=%d\n", bad.field, ok);
+        fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=reject field=%s ok=%d\n", bad.field, ok);
     }
     const bool restored = writeFixture(fit, original) && EditorData::initTerrainFromPCV(pak);
-    fprintf(stderr, "[EDITOR_DEFINITIONS] preservation_commands_undo_reload_malformed=%d\n", ok && restored);
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=%d\n", ok && restored);
     return ok && restored;
 }

@@ -120,6 +120,21 @@ def grade_workflows(text: str) -> str:
                 or fields.get("coverage") != coverage or fields.get("ok") != "1"
                 or any(fields.get(key) != "1" for key in ("authored", "undo", "saved", "reloaded"))):
             failures.append(f"{workflow}/{panel}: missing or unsuccessful probe")
+    definitions = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in text.splitlines()
+                   if line.startswith("[EDITOR_DEFINITIONS v1] ")]
+    for stage in ("duplicate_unit_refresh_undo_redo",):
+        if not any(row.get("stage") == stage and row.get("ok") == "1" for row in definitions):
+            failures.append(f"mission_definitions/{stage}: missing or unsuccessful probe")
+    if not any(row.get("preservation_commands_undo_reload_malformed") == "1" for row in definitions):
+        failures.append("mission_definitions: missing versioned summary")
+    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID"):
+        if not any(row.get("stage") == "oversized_text" and row.get("field") == field
+                   and all(row.get(key) == "1" for key in ("rejected", "unchanged", "ok")) for row in definitions):
+            failures.append(f"mission_definitions/{field}: missing rejected/unchanged proof")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/{field} " in line and "length=2001 rejected=1" in line and "mission=" in line]
+        if len(diagnostics) != 1:
+            failures.append(f"mission_definitions/{field}: expected one mission/field/length diagnostic")
     return "; ".join(failures)
 
 

@@ -7,6 +7,9 @@
 #include <cstdlib>
 #include <cerrno>
 #include "inifile.h"
+#include "objective_text.h"
+#include <string_view>
+#include <cctype>
 
 // Catalog identity and authored mission values have different lifetimes. Saves
 // consume these document values; only an authoring command consults the catalog.
@@ -44,9 +47,62 @@ struct AuthoredTargetPosition
 
 namespace EditorFit
 {
+// Validate the source before replacing the open document. The legacy FIT string
+// reader has a fixed line buffer, so it cannot safely measure oversized values.
+inline bool objectiveTextLengths(const char* fitPath, const char* mission)
+{
+    File file;
+    if (file.open(fitPath) != NO_ERR) return true; // The document loader reports missing files.
+    std::string source(file.getLength(), '\0');
+    file.read(reinterpret_cast<MemoryPtr>(source.data()), static_cast<long>(source.size()));
+    const std::string_view text(source);
+    std::string section;
+    for (size_t pos = 0; pos < text.size();)
+    {
+        const auto end = text.find('\n', pos);
+        auto line = text.substr(pos, end == text.npos ? text.size() - pos : end - pos);
+        const auto start = line.find_first_not_of(" \t\r");
+        if (start != line.npos) line.remove_prefix(start);
+        if (line.starts_with('['))
+        {
+            section = line.substr(0, line.find(']') + 1);
+            for (auto& c : section) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        }
+        if (section.find("objective") != section.npos && line.size() > 3
+            && (line[0] == 's' || line[0] == 'S') && (line[1] == 't' || line[1] == 'T')
+            && (line[2] == ' ' || line[2] == '\t'))
+        {
+            const auto equal = line.find('=');
+            const auto quote = equal == line.npos ? line.npos : line.find('"', equal);
+            if (quote != line.npos)
+            {
+                const auto first = pos + (line.data() - (text.data() + pos)) + quote + 1;
+                const auto last = text.find('"', first);
+                if (last != text.npos)
+                {
+                    size_t length = last - first;
+                    for (size_t i = first; i + 1 < last; ++i)
+                        if (text[i] == '\r' && text[i + 1] == '\n') --length;
+                    if (length > objective_text::kMaxTextLength)
+                    {
+                        auto field = line.substr(3, equal - 3);
+                        field = field.substr(0, field.find_last_not_of(" \t") + 1);
+                        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s field=%s/%.*s length=%zu rejected=1\n",
+                            mission, section.c_str(), static_cast<int>(field.size()), field.data(), length);
+                        return false;
+                    }
+                    pos = last + 1;
+                    continue;
+                }
+            }
+        }
+        pos = end == text.npos ? text.size() : end + 1;
+    }
+    return true;
+}
 inline bool reject(const char* field)
 {
-    fprintf(stderr, "[EDITOR_DOCUMENT] rejected malformed %s\n", field);
+    fprintf(stderr, "[EDITOR_DOCUMENT v1] rejected malformed %s\n", field);
     return false;
 }
 

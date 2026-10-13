@@ -223,7 +223,7 @@ No partial new save ships as default: codecs can land privately, then one comple
 - Effective sim options are saved as SimRules/fingerprinted and restored before any tick; unsupported IDs reject. Renderer settings cannot invalidate a sim save or advance its RNG. Appearance/RenderWeather checks are separate from authoritative Environment and its required RNG. Safe rejection needs caps sized for supported mods, not stock-only guesses.
 - Editor MOVE packets share existing writer entry points; runtime schema deletion must preserve mission/content codecs. One final release waits for full migration, Vulkan and editor workflow closure; interim broken saves are allowed, broken mod content is not.
 
-The kernel document's owner question 1 remains shared: deterministic script cue values or logged rejection for camera-reading mod scripts; the proposed wire records support cue values. Live player-camera reads stay banned. All other listed checks affect implementation readiness, not owner intent.
+Shared owner ruling: ABL camera getters return the last scripted camera value, retained by the wire records. Stock mc2_01, mc2_10 and tut_01 save and restore the camera around cutscenes; mc2_01's mid-mission read now restores the scripted rotation, an accepted difference. Live player-camera reads stay banned. All other listed checks affect implementation readiness, not owner intent.
 
 ## Design-task verification
 

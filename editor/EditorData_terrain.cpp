@@ -1,6 +1,7 @@
 // EditorData: terrain creation from PCV/TGA/generated recipes, height edits and the scaled colour map.
 // Declared in the class headers; shared names in EditorData_internal.h.
 #include "EditorData_internal.h"
+#include "mc2str.h"
 #include "mc2fmt.h"
 
 
@@ -40,6 +41,14 @@ static void EditorDataWarmTerrain(const char* where)
 bool EditorData::initTerrainFromPCV( const char* fileName )
 {
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
+	if (fileName && fileName[0])
+	{
+		auto fitPath = mc2::str::from_c(fileName);
+		const auto extension = fitPath.rfind('.');
+		if (extension != fitPath.npos) fitPath.replace(extension, fitPath.npos, ".fit");
+		if (!EditorFit::objectiveTextLengths(fitPath.c_str(), fileName)) return false;
+	}
+
 
 	bool bRetVal = true;
 	bIsLoading = true;

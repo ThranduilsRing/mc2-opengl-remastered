@@ -515,7 +515,7 @@ bool CObjective::refreshModelFromCatalog()
 	unsigned long group = 0, index = 0;
 	if (!EditorObjectMgr::instance()->getBuildingFromID(m_modelID, group, index, true))
 	{
-		fprintf(stderr, "[EDITOR_DOCUMENT] catalog refresh skipped unknown model %ld\n", m_modelID);
+		fprintf(stderr, "[EDITOR_DOCUMENT v1] catalog refresh skipped unknown model %ld\n", m_modelID);
 		return false;
 	}
 	const int id = EditorObjectMgr::instance()->getID(group, index);

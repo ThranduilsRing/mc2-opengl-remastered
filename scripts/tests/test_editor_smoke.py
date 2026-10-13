@@ -30,11 +30,26 @@ def scratch_directory():
 
 
 def panel_lines():
-    return "\n".join(f"[EDITOR_PANEL v1] workflow={w} panel={p} coverage={'model-only' if p in smoke.MODEL_ONLY else 'action-handler'} reached={0 if p in smoke.MODEL_ONLY else 1} ok=1 authored=1 undo=1 saved=1 reloaded=1"
+    panels = "\n".join(f"[EDITOR_PANEL v1] workflow={w} panel={p} coverage={'model-only' if p in smoke.MODEL_ONLY else 'action-handler'} reached={0 if p in smoke.MODEL_ONLY else 1} ok=1 authored=1 undo=1 saved=1 reloaded=1"
                      for p, w in smoke.WORKFLOW_PANELS.items())
+    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
+    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID"):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=oversized_text field={field} rejected=1 unchanged=1 ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.pak field=[team0objective0]/{field} length=2001 rejected=1"
+    return panels + "\n" + definitions
 
 
 class EditorSmokeTests(unittest.TestCase):
+    def test_review_probes_require_versioned_facts_and_single_rejection_diagnostic(self):
+        lines = panel_lines()
+        for changed in (lines.replace("[EDITOR_DEFINITIONS v1]", "[EDITOR_DEFINITIONS]"),
+                        lines.replace("[EDITOR_DOCUMENT v1]", "[EDITOR_DOCUMENT]"),
+                        lines.replace("unchanged=1", "unchanged=0"),
+                        lines.replace("duplicate_unit_refresh_undo_redo ok=1", "duplicate_unit_refresh_undo_redo ok=0"),
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.pak field=[team0objective0]/Title length=2001 rejected=1"):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
+
     def test_pinned_delta_uses_exact_input_and_reports_disappeared_classes(self):
         with scratch_directory() as directory:
             original = b'[Part1]\nul ControlDataType = 2\nst CSVFile = "Authored_CASE"\n[Cameras]\nf ZoomMax = 1.0\n'
@@ -97,7 +112,8 @@ class EditorSmokeTests(unittest.TestCase):
 
     def test_duplicate_ipc_facts_must_agree(self):
         lines = panel_lines()
-        self.assertEqual(smoke.grade_workflows(lines + "\n" + lines), "")
+        duplicate_panels = "\n".join(line for line in lines.splitlines() if line.startswith("[EDITOR_PANEL v1]"))
+        self.assertEqual(smoke.grade_workflows(lines + "\n" + duplicate_panels), "")
         self.assertIn("conflicting", smoke.grade_workflows(lines + "\n" + lines.replace("ok=1", "ok=0")))
 
     def test_workflow_report_lists_all_failures(self):

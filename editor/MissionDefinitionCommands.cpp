@@ -9,13 +9,10 @@ class RefreshDefinitionsAction final : public Action
 {
     struct UnitSnapshot
     {
-        float x, y;
-        long id;
-        unsigned long squad;
+        std::uint64_t instanceId;
         std::optional<PartDefinition> part;
         std::vector<std::optional<PartDefinition>> alternatives;
-        explicit UnitSnapshot(Unit& unit) : x(unit.getPosition().x), y(unit.getPosition().y),
-            id(unit.getID()), squad(unit.getSquad()), part(unit.partDefinition())
+        explicit UnitSnapshot(Unit& unit) : instanceId(unit.instanceId()), part(unit.partDefinition())
         {
             for (auto it = unit.pAlternativeInstances->Begin(); !it.IsDone(); it++) alternatives.push_back((*it).partDefinition());
         }
@@ -26,8 +23,7 @@ class RefreshDefinitionsAction final : public Action
     {
         const auto all = EditorObjectMgr::instance()->getUnits();
         for (auto it = all.Begin(); !it.IsDone(); it++)
-            if ((*it)->getID() == saved.id && (*it)->getSquad() == saved.squad
-                && (*it)->getPosition().x == saved.x && (*it)->getPosition().y == saved.y) return *it;
+            if ((*it)->instanceId() == saved.instanceId) return *it;
         return nullptr;
     }
 public:
@@ -39,8 +35,8 @@ public:
     }
     bool undo() override
     {
-        // Undo history can outlive a deleted instance. Resolve restored units by
-        // document position; changing definition state must not re-bake visuals.
+        // Undo history can outlive a deleted instance. Its stable ID prevents
+        // coincident units from receiving another instance's authored definition.
         for (auto& previous : units)
         {
             auto* unit = resolveUnit(previous);

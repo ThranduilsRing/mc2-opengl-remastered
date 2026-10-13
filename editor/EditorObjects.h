@@ -16,6 +16,7 @@ class FitIniFile;
 #include "ObjectAppearance.h"
 
 #include <vector>
+#include <cstdint>
 #include "AuthoredMissionState.h"
 #include <string.h> // PILOT-PROFILE-PRESERVE-1: strncpy in Pilot::syncRawProfile
 
@@ -52,6 +53,7 @@ public:
 	
 	unsigned long		getColor() const;
 	long				getID() const { return  id; }
+	std::uint64_t instanceId() const { return objectInstanceId; }
 
 	void				getCells( long& cellJ, long& cellI ) const;
 	
@@ -119,6 +121,8 @@ protected:
 	long	cellColumn;
 	long	cellRow;
 	long	id;
+	// Instance identity survives undo snapshots; catalog IDs identify types only.
+	std::uint64_t objectInstanceId;
 	AppearanceInfo* appearInfo;
 	long	forestId;
 	long	scale; // forest only
