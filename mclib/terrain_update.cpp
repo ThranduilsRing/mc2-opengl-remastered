@@ -156,15 +156,6 @@ long Terrain::update (void)
 			terrainTextures2->init(terrainName);
 	}
 
-	//----------------------------------------------------------------
-	// Nothing is ever visible.  We recalc every frame.  True LOS!
-//	Terrain::VisibleBits->resetAll(0);
-		
-	if (godMode)	
-	{
-//		Terrain::VisibleBits->resetAll(0xff);
-	}
-
 	if (turn > terrainLineChanged+10)
 	{
 		ZoneScopedN("Terrain::update debugHotkeys");

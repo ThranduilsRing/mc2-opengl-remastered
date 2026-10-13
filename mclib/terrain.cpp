@@ -900,96 +900,16 @@ Stuff::Vector3D Terrain::getTerrainNormal (const Stuff::Vector3D &position)
 // First value in range table!!
 void Terrain::markSeen (const Stuff::Vector3D &looker, byte who, float specialUnitExpand)
 {
+	// Visibility is exact line of sight (Team::lineOfSight): there is nothing to mark.
 	return;
-
-	/*		Not needed anymore.  Real LOS now.
-	//-----------------------------------------------------------
-	// This function marks vertices has being seen by a given side.
-	Stuff::Vector3D position = looker;
-	position.x -= mapTopLeft3d.x;
-	position.y = mapTopLeft3d.y - looker.y;
-	
-	Stuff::Vector2DOf<float> upperLeft;
-	upperLeft.x = floor(position.x * oneOverWorldUnitsPerVertex);
-	upperLeft.y = floor(position.y * oneOverWorldUnitsPerVertex);
-
-	Stuff::Vector2DOf<long> meshOffset;
-	meshOffset.x = float2long(upperLeft.x);
-	meshOffset.y = float2long(upperLeft.y);
-
-	unsigned long xCenter = meshOffset.x;
-	unsigned long yCenter = meshOffset.y;
-
-	//Figure out altitude above minimum terrain altitude and look up in table.
-	float baseElevation = MapData::waterDepth;
-	if (MapData::waterDepth < Terrain::userMin)
-		baseElevation = Terrain::userMin;
-
-	float altitude = position.z - baseElevation;
-	float altitudeIntegerRange = (Terrain::userMax - baseElevation) * 0.00390625f;
-	long altLevel = 0;
-	if (altitudeIntegerRange > Stuff::SMALL)
-		altLevel = altitude / altitudeIntegerRange;
-	
-	if (altLevel < 0)
-		altLevel = 0;
-
-	if (altLevel > 255)
-		altLevel = 255;
-
-	float radius = visualRangeTable[altLevel];
-	
-	radius += (radius * specialUnitExpand);
-
-	if (radius <= 0.0f)
-		return;
-
-	//-----------------------------------------------------
-	// Who is the shift value to create the mask
-	BYTE wer = (1 << who);
-
-	VisibleBits->setCircle(xCenter,yCenter,float2long(radius),wer);
-	*/
 }
 
 //---------------------------------------------------------------------------
 // Uses dist passed in as radius.
 void Terrain::markRadiusSeen (const Stuff::Vector3D &looker, float dist, byte who)
 {
+	// Visibility is exact line of sight (Team::lineOfSight): there is nothing to mark.
 	return;
-
-	//Not needed.  Real LOS now!
-	/*
-	if (dist <= 0.0f)
-		return;
-
-	//-----------------------------------------------------------
-	// This function marks vertices has being seen by
-	// a given side.
-	dist *= worldUnitsPerMeter;
-	dist *= Terrain::oneOverWorldUnitsPerVertex;
-	
-	Stuff::Vector3D position = looker;
-	position.x -= mapTopLeft3d.x;
-	position.y = mapTopLeft3d.y - looker.y;
-	
-	Stuff::Vector2DOf<float> upperLeft;
-	upperLeft.x = floor(position.x * oneOverWorldUnitsPerVertex);
-	upperLeft.y = floor(position.y * oneOverWorldUnitsPerVertex);
-
-	Stuff::Vector2DOf<long> meshOffset;
-	meshOffset.x = floor(upperLeft.x);
-	meshOffset.y = floor(upperLeft.y);
-
-	unsigned long xCenter = meshOffset.x;
-	unsigned long yCenter = meshOffset.y;
-
-	//-----------------------------------------------------
-	// Who is the shift value to create the mask
-	BYTE wer = (1 << who);
-
-	VisibleBits->setCircle(xCenter,yCenter,dist,wer);
-	*/
 }
 
 //---------------------------------------------------------------------------

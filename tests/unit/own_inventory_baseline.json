@@ -2700,23 +2700,17 @@
    ]
   },
   "HeapManager": {
-   "delete": 3,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "mclib/bitflag.cpp": {
-     "delete": 2,
-     "new": 2
-    },
     "mclib/crater.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "BitFlag",
-    "ByteFlag",
     "CraterManager"
    ]
   },
@@ -2854,10 +2848,10 @@
    "delete_array": 0,
    "files": {
     "code/team_los.cpp": {
-     "new": 4
+     "new": 2
     }
    },
-   "new": 4,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -4792,7 +4786,7 @@
    "owners": []
   },
   "PANE": {
-   "delete": 3,
+   "delete": 2,
    "delete_array": 0,
    "files": {
     "code/mechcmd2.cpp": {
@@ -4803,17 +4797,12 @@
     },
     "editor/Editor.cpp": {
      "delete": 1
-    },
-    "mclib/bitflag.cpp": {
-     "delete": 1,
-     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "",
-    "ByteFlag"
+    ""
    ]
   },
   "PacketFile": {
@@ -6790,7 +6779,7 @@
    ]
   },
   "WINDOW": {
-   "delete": 3,
+   "delete": 2,
    "delete_array": 0,
    "files": {
     "code/mechcmd2.cpp": {
@@ -6801,17 +6790,12 @@
     },
     "editor/Editor.cpp": {
      "delete": 1
-    },
-    "mclib/bitflag.cpp": {
-     "delete": 1,
-     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "",
-    "ByteFlag"
+    ""
    ]
   },
   "WatchManager": {

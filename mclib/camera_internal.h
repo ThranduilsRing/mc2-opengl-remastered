@@ -16,6 +16,11 @@
 #include"terrain.h"
 #endif
 
+// PANE and LONG for the AG_ draw declarations below (the camera pieces used to get vfx.h through bitflag.h).
+#ifndef VFX_H
+#include"vfx.h"
+#endif
+
 #ifndef VERTEX_H
 #include"vertex.h"
 #endif

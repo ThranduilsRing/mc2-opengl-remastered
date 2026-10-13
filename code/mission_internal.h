@@ -204,8 +204,6 @@ extern bool inViewMode;
 extern unsigned long viewObject;
 extern float loadProgress;
 extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
-extern ByteFlag *VisibleBits;
-extern ByteFlag *SeenBits;
 extern UserHeapPtr missionHeap;
 extern unsigned int MultiPlayTeamId;
 extern unsigned int MultiPlayCommanderId;

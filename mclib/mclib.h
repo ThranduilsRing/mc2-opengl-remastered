@@ -31,10 +31,6 @@
 #include"ffile.h"
 #endif
 
-#ifndef BITFLAG_H
-#include"bitflag.h"
-#endif
-
 #ifndef CIDENT_H
 #include"cident.h"
 #endif
