@@ -52,6 +52,12 @@ Objective.cpp			: Implementation of the Objective component.
 #include "platform_tchar.h"
 #include<assert.h>
 #include "mc2fmt.h"
+#include "mc2str.h"
+#include "objective_text.h"
+
+#include <format>
+#include <optional>
+#include <string>
 
 float CObjective::s_blinkLength = .5;
 float CObjective::s_lastBlinkTime = 0.f;
@@ -241,55 +247,6 @@ static long sReadIdLongInt(FitIniFile* missionFile, const char *varName, int &va
 	return result;
 }
 
-static int sReplace(EString &ECStr, const char *szOldSub, const char *szNewSub) {
-	if ((!szOldSub) || (0 >= strlen(szOldSub)) || (!szNewSub)) { return -1; }
-	int retval = 0;
-	EString newStr;
-	const int lengthOfOldSub = strlen(szOldSub);
-	int endIndexOfLastOldSub = -1;
-	int startIndexOfOldSub = ECStr.Find(szOldSub, endIndexOfLastOldSub + 1);
-	while ((EString::INVALID_INDEX != startIndexOfOldSub) && (0 <= startIndexOfOldSub) && (ECStr.Length() - lengthOfOldSub >= startIndexOfOldSub)) {
-		if (1 <= startIndexOfOldSub) {
-			newStr += ECStr.SubString(endIndexOfLastOldSub + 1, startIndexOfOldSub - 1);
-		}
-		newStr += szNewSub;
-		retval += 1;
-		endIndexOfLastOldSub = startIndexOfOldSub + lengthOfOldSub -1;
-		startIndexOfOldSub = ECStr.Find(szOldSub, endIndexOfLastOldSub + 1);
-	}
-	if (0 < retval) {
-		if (endIndexOfLastOldSub + 1 < ECStr.Length() - 1) {
-			newStr += ECStr.SubString(endIndexOfLastOldSub + 1, ECStr.Length() - 1);
-		}
-		ECStr = newStr;
-	}
-	return retval;
-}
-
-static long sReadIdString(FitIniFile* missionFile, const char *varName, EString &ECStr) {
-	long result = 0;
-	char buffer[2001/*buffer size*/]; buffer[0] = '\0';
-	result = missionFile->readIdString((char *)varName, buffer, 2001/*buffer size*/ -1);
-	if ((NO_ERR != result) && (BUFFER_TOO_SMALL != result)) {
-		//assert(false);
-	} else {
-		ECStr = buffer;
-		/*readIdString can't read in "\r\n"*/
-		sReplace(ECStr, "\n", "\r\n");
-	}
-	return result;
-}
-
-static long sWriteIdString(FitIniFile* missionFile, const char *varName, const char *szStr) {
-	if (!szStr) { return !(NO_ERR); }
-	long result = 0;
-	EString ECStr = szStr;
-	/*readIdString can't read in "\r\n"*/
-	sReplace(ECStr, "\r\n", "\n");
-	result = missionFile->writeIdString(varName, ECStr.Data());
-	return result;
-}
-
 static bool areCloseEnough(float f1, float f2)
 {
 	bool retval = false;
@@ -307,61 +264,6 @@ static bool areCloseEnough(float f1, float f2)
 	}
 	return retval;
 }
-
-void CBooleanArray::save (long alignment, FitIniFile *file)
-{
-	char blockID[256];
-	mc2::fmt::to_buf(blockID, "Team{:d}BooleanFlags", mc2::fmt::as_i32(alignment));
-	long result = file->writeBlock(blockID); (void)result;
-
-	CEStringList::EIterator flagIDListIter;
-	long count = 0;
-	for (flagIDListIter = m_FlagIDList.Begin(); !flagIDListIter.IsDone(); flagIDListIter++) 
-	{
-		char stringName[1024];
-		mc2::fmt::to_buf(stringName, "BooleanString{:d}", mc2::fmt::as_i32(count));
-		sWriteIdString(file,stringName,(*flagIDListIter).Data());
-
-		char booleanName[1024];
-		mc2::fmt::to_buf(booleanName, "BooleanValue{:d}", mc2::fmt::as_i32(count));
-		file->writeIdBoolean(booleanName,m_valueList[count]);
-
-		count++;
-	}
-}
-
-void CBooleanArray::load (long alignment, FitIniFile *file)
-{
-	char blockID[256];
-	mc2::fmt::to_buf(blockID, "Team{:d}BooleanFlags", mc2::fmt::as_i32(alignment));
-	long result = file->seekBlock(blockID);
-	if (result == NO_ERR)
-	{
-		EString tmpECStr;
-		EString element;
-		bool value;
-	
-		long count = 0;
-		char stringName[1024];
-		mc2::fmt::to_buf(stringName, "BooleanString{:d}", mc2::fmt::as_i32(count));
-		result = sReadIdString(file,stringName,tmpECStr);
-		while (result == NO_ERR)
-		{
-			char booleanName[1024];
-			mc2::fmt::to_buf(booleanName, "BooleanValue{:d}", mc2::fmt::as_i32(count));
-			result = file->readIdBoolean(booleanName,value);
-	
-			element = tmpECStr.Data();
-			m_FlagIDList.Append(element);
-			m_valueList.Append(value);
-	
-			count++;
-			mc2::fmt::to_buf(stringName, "BooleanString{:d}", mc2::fmt::as_i32(count));
-			result = sReadIdString(file,stringName,tmpECStr);
-		}
-	}
-}
-
 
 objective_status_type CDestroyAllEnemyUnits::Status() {
 	long numMovers = ObjectManager->getNumMovers();
@@ -386,12 +288,6 @@ bool CNumberOfUnitsObjectiveCondition::Read( FitIniFile* missionFile )
 	return true;
 }
 
-EString CNumberOfUnitsObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%d", m_num);
-	return tmpEStr;
-}
-
 objective_status_type CDestroyNumberOfEnemyUnits::Status() {
 	int numDestroyed = 0;
 	long numMovers = ObjectManager->getNumMovers();
@@ -410,14 +306,6 @@ objective_status_type CDestroyNumberOfEnemyUnits::Status() {
 	} else {
 		return OS_UNDETERMINED;
 	}
-}
-
-EString CSpecificUnitObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
-	long partId = m_pUnitWID;
-
-	tmpEStr.Format("partId: %ld", partId);
-	return tmpEStr;
 }
 
 bool CSpecificEnemyUnitObjectiveCondition::Read( FitIniFile* missionFile )
@@ -464,15 +352,6 @@ objective_status_type CDestroySpecificEnemyUnit::Status() {
 	} else {
 		return OS_UNDETERMINED;
 	}
-}
-
-EString CSpecificStructureObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
-	Building * m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
-	long partId = m_pBuilding->getPartId();
-
-	tmpEStr.Format("partId: %ld", partId);
-	return tmpEStr;
 }
 
 bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
@@ -877,12 +756,6 @@ bool CAreaObjectiveCondition::Read( FitIniFile* missionFile )
 	return true;
 }
 
-EString CAreaObjectiveCondition::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("x: %.3f, y: %.3f, radius: %.3f", m_targetCenterX, m_targetCenterY, m_targetRadius);
-	return tmpEStr;
-}
-
 objective_status_type CMoveAnyUnitToArea::Status() 
 {
 	long numMovers = ObjectManager->getNumMovers();
@@ -1109,16 +982,15 @@ objective_status_type CMoveAllSurvivingMechsToArea::Status()
 bool CBooleanFlagIsSet::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "FlagID", tmpECStr);
-	if (NO_ERR != result) {
+	std::optional<std::string> flagID = objective_text::read(*missionFile, "FlagID");
+	if (!flagID) {
 		/*for backward compatibility*/
 		int flagIndex = 0;
 		result = sReadIdWholeNum(missionFile, "FlagIndex", flagIndex);
 		if (NO_ERR != result) { return false; }
-		m_flagID.Format("%d", flagIndex);
+		m_flagID = std::to_string(flagIndex);
 	} else {
-		m_flagID = tmpECStr.Data();
+		m_flagID = std::move(*flagID);
 	}
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
@@ -1131,12 +1003,6 @@ objective_status_type CBooleanFlagIsSet::Status()
 		return OS_SUCCESSFUL;
 	}
 	return OS_UNDETERMINED;
-}
-
-EString CBooleanFlagIsSet::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("flag name: %s, value: %d", m_flagID.Data(), m_value);
-	return tmpEStr;
 }
 
 bool CElapsedMissionTime::Read( FitIniFile* missionFile )
@@ -1154,83 +1020,45 @@ objective_status_type CElapsedMissionTime::Status() {
 	return OS_UNDETERMINED;
 }
 
-EString CElapsedMissionTime::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%f seconds", m_time);
-	return tmpEStr;
-}
-
 bool CPlayBIK::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "AVIFileName", tmpECStr);
-	if (NO_ERR != result) { return false; }
-
-	EString tmpECStr2 = "./";
-	tmpECStr2 += tmpECStr;
-	m_pathname = tmpECStr2.Data();
-
+	std::optional<std::string> fileName = objective_text::read(*missionFile, "AVIFileName");
+	if (!fileName) { return false; }
+	m_pathname = "./" + *fileName;
 	return true;
-}
-
-EString CPlayBIK::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_pathname.Data());
-	return tmpEStr;
 }
 
 int CPlayBIK::Execute()
 {
-	ControlGui::instance->playMovie( m_pathname );
+	ControlGui::instance->playMovie( m_pathname.c_str() );
 	return true;
 }
 
 bool CPlayWAV::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "WAVFileName", tmpECStr);
-	if (NO_ERR != result) { return false; }
-
-	EString tmpECStr2 = "./";
-	tmpECStr2 += tmpECStr;
-	m_pathname = tmpECStr2.Data();
-
+	std::optional<std::string> fileName = objective_text::read(*missionFile, "WAVFileName");
+	if (!fileName) { return false; }
+	m_pathname = "./" + *fileName;
 	return true;
-}
-
-EString CPlayWAV::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_pathname.Data());
-	return tmpEStr;
 }
 
 int CPlayWAV::Execute()
 {
-	soundSystem->playDigitalStream(m_pathname.Data());
+	soundSystem->playDigitalStream(m_pathname.c_str());
 	return true;
 }
 
 bool CDisplayTextMessage::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "Message", tmpECStr);
-	if (NO_ERR != result) { return false; }
-	m_message = tmpECStr.Data();
+	std::optional<std::string> message = objective_text::read(*missionFile, "Message");
+	if (!message) { return false; }
+	m_message = std::move(*message);
 	return true;
-}
-
-EString CDisplayTextMessage::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_message.Data());
-	return tmpEStr;
 }
 
 int CDisplayTextMessage::Execute()
 {
-	ControlGui::instance->setChatText("", m_message.Data(), 0xf0000000, 0);
+	ControlGui::instance->setChatText("", m_message.c_str(), 0xf0000000, 0);
 	return true;
 }
 
@@ -1242,56 +1070,36 @@ bool CDisplayResourceTextMessage::Read( FitIniFile* missionFile )
 	return true;
 }
 
-static bool ESLoadString(int resourceID, EString &targetStr) {
+// The string-table text of a resource ID; the table's own "not defined" text when the ID is missing.
+static std::string loadResourceString(int resourceID) {
 	char szTmp[16384/*max string length*/];
+	szTmp[0] = '\0';
 	cLoadString( resourceID, szTmp, 16384/*max string length*/ );
-	targetStr = szTmp;
-	EString tmpStr;
-	tmpStr.Format("mc2res.dll:%d Not defined", resourceID);
-	if (0 == strcmp(tmpStr.Data(), szTmp)) {
-		return (0);
-	}
-	return (!0);
-}
-
-EString CDisplayResourceTextMessage::InstanceDescription() {
-	EString resourceText;
-	ESLoadString(m_resourceStringID, resourceText);
-	EString tmpEStr;
-	tmpEStr.Format("%d: %s", m_resourceStringID, resourceText.Data());
-	return tmpEStr;
+	return std::string(szTmp);
 }
 
 int CDisplayResourceTextMessage::Execute()
 {
-	EString resourceText;
-	ESLoadString(m_resourceStringID, resourceText);
-	ControlGui::instance->setChatText("", resourceText.Data(), 0xf0000000, 0);
+	const std::string resourceText = loadResourceString(m_resourceStringID);
+	ControlGui::instance->setChatText("", resourceText.c_str(), 0xf0000000, 0);
 	return true;
 }
 
 bool CSetBooleanFlag::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "FlagID", tmpECStr);
-	if (NO_ERR != result) {
+	std::optional<std::string> flagID = objective_text::read(*missionFile, "FlagID");
+	if (!flagID) {
 		/*for backward compatibility*/
 		int flagIndex = 0;
 		result = sReadIdWholeNum(missionFile, "FlagIndex", flagIndex);
 		if (NO_ERR != result) { return false; }
-		m_flagID.Format("%d", flagIndex);
+		m_flagID = std::to_string(flagIndex);
 	} else {
-		m_flagID = tmpECStr.Data();
+		m_flagID = std::move(*flagID);
 	}
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
-}
-
-EString CSetBooleanFlag::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("flag name: %s, value: %d", m_flagID.Data(), m_value);
-	return tmpEStr;
 }
 
 int CSetBooleanFlag::Execute()
@@ -1303,23 +1111,15 @@ int CSetBooleanFlag::Execute()
 
 bool CMakeNewTechnologyAvailable::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "PurchaseFileName", tmpECStr);
-	if (NO_ERR != result) { return false; }
-	m_purchaseFilePathname = tmpECStr.Data();
+	std::optional<std::string> fileName = objective_text::read(*missionFile, "PurchaseFileName");
+	if (!fileName) { return false; }
+	m_purchaseFilePathname = std::move(*fileName);
 	return true;
-}
-
-EString CMakeNewTechnologyAvailable::InstanceDescription() {
-	EString tmpEStr;
-	tmpEStr.Format("%s", m_purchaseFilePathname.Data());
-	return tmpEStr;
 }
 
 int CMakeNewTechnologyAvailable::Execute()
 {
-	LogisticsData::instance->addNewBonusPurchaseFile( m_purchaseFilePathname );
+	LogisticsData::instance->addNewBonusPurchaseFile( m_purchaseFilePathname.c_str() );
 	return true;
 }
 
@@ -1379,15 +1179,6 @@ bool C_RemoveStructure::Read( FitIniFile* missionFile )
 	return true;
 }
 
-EString C_RemoveStructure::InstanceDescription() {
-	EString tmpEStr;
-	Building * m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
-	long partId = m_pBuilding->getPartId();
-
-	tmpEStr.Format("partId: %ld", partId);
-	return tmpEStr;
-}
-
 CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment) {
 	CObjectiveCondition *retval = nullptr;
 	switch (conditionSpecies) {
@@ -1424,16 +1215,6 @@ CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type 
 	return retval;
 }
 
-EString CObjective::DescriptionOfConditionSpecies(condition_species_type conditionSpecies) {
-	EString retval = "<unimplemented condition>" /* needs to be put somewhere localizable */;
-	CObjectiveCondition *tmpCondition = new_CObjectiveCondition(conditionSpecies, 0/*dummy alignment*/);
-	if (nullptr != tmpCondition) {
-		retval = tmpCondition->Description();
-	}
-	delete tmpCondition;
-	return retval;
-}
-
 CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpecies, int alignment) {
 	CObjectiveAction *retval = nullptr;
 	switch (actionSpecies) {
@@ -1454,22 +1235,10 @@ CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpe
 	return retval;
 }
 
-EString CObjective::DescriptionOfActionSpecies(action_species_type actionSpecies) {
-	EString retval = "<unimplemented action>" /* needs to be put somewhere localizable */;
-	CObjectiveAction *tmpAction = new_CObjectiveAction(actionSpecies, 0/*dummy alignment*/);
-	if (nullptr != tmpAction) {
-		retval = tmpAction->Description();
-	}
-	delete tmpAction;
-	return retval;
-}
-
 CObjective::CObjective(int alignment) {
 	m_alignment = alignment;
-	Title(_TEXT(""));
 	m_titleUseResourceString = false;
 	m_titleResourceStringID = 0;
-	Description(_TEXT(""));
 	m_descriptionUseResourceString = false;
 	m_descriptionResourceStringID = 0;
 	m_priority = 1;
@@ -1482,10 +1251,8 @@ CObjective::CObjective(int alignment) {
 	m_isHiddenTrigger = false;
 	m_isActive = true;
 	m_activateOnFlag = false;
-	ActivateFlagID(_TEXT(""));
 	m_activationTime = -1.0;
 	m_resetStatusOnFlag = false;
-	ResetStatusFlagID(_TEXT(""));
 	m_resolved = false;
 	m_changedStatus = false;
 	m_resolvedStatus = OS_UNDETERMINED;
@@ -1495,10 +1262,9 @@ CObjective::CObjective(int alignment) {
 CObjective &CObjective::operator=(const CObjective &master) {
 	Clear();
 	m_alignment = master.m_alignment;
-	Title(master.Title());
+	m_text = master.m_text;
 	m_titleUseResourceString = master.m_titleUseResourceString;
 	m_titleResourceStringID = master.m_titleResourceStringID;
-	Description(master.Description());
 	m_descriptionUseResourceString = master.m_descriptionUseResourceString;
 	m_descriptionResourceStringID = master.m_descriptionResourceStringID;
 	m_priority = master.m_priority;
@@ -1511,11 +1277,8 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	m_isHiddenTrigger = master.m_isHiddenTrigger;
 	m_isActive = master.m_isActive;
 	m_activateOnFlag = master.m_activateOnFlag;
-	m_activateFlagID = master.m_activateFlagID;
 	m_activationTime = master.m_activationTime;
 	m_resetStatusOnFlag = master.m_resetStatusOnFlag;
-	m_resetStatusFlagID = master.m_resetStatusFlagID;
-	m_modelName = master.m_modelName;
 	m_modelType = master.m_modelType;
 	m_modelBaseColor = master.m_modelBaseColor;
 	m_modelHighlightColor = master.m_modelHighlightColor;
@@ -1696,13 +1459,9 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	}
 
 	long result = 0;
-	EString tmpECStr;
-	result = sReadIdString(missionFile, "Title", tmpECStr);
-	Title(_T(tmpECStr.Data()));
+	objective_text::readFields(*missionFile, m_text);
 	result = sReadIdBoolean(missionFile, "TitleUseResourceString", m_titleUseResourceString);
 	result = sReadIdWholeNum(missionFile, "TitleResourceStringID", m_titleResourceStringID);
-	result = sReadIdString(missionFile, "Description", tmpECStr);
-	Description(_T(tmpECStr.Data()));
 	result = sReadIdBoolean(missionFile, "DescriptionUseResourceString", m_descriptionUseResourceString);
 	result = sReadIdWholeNum(missionFile, "DescriptionResourceStringID", m_descriptionResourceStringID);
 
@@ -1731,25 +1490,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	result = sReadIdBoolean(missionFile, "HiddenTrigger", m_isHiddenTrigger);
 	result = sReadIdBoolean(missionFile, "ActivateOnFlag", m_activateOnFlag);
 	if (m_activateOnFlag) { m_isActive = false; }
-	result = sReadIdString(missionFile, "ActivateFlagID", tmpECStr);
-	if (NO_ERR != result) {
-		/*for backward compatibility*/
-		int flagIndex = 0;
-		result = sReadIdWholeNum(missionFile, "ActivateFlagIndex", flagIndex);
-		if (NO_ERR == result) {
-			m_activateFlagID.Format("%d", flagIndex);
-		}
-	} else {
-		m_activateFlagID = tmpECStr.Data();
-	}
 	result = sReadIdBoolean(missionFile, "ResetStatusOnFlag", m_resetStatusOnFlag);
-	result = sReadIdString(missionFile, "ResetStatusFlagID", tmpECStr);
-	if (NO_ERR == result) {
-		m_resetStatusFlagID = tmpECStr.Data();
-	}
-
-	result = sReadIdString(missionFile, "ObjectiveModel", tmpECStr);
-	ModelName(_T(tmpECStr.Data()));
 	result = sReadIdLongInt(missionFile, "ModelType", m_modelType);
 	result = sReadIdLongInt(missionFile, "BaseColor", m_modelBaseColor);
 	result = sReadIdLongInt(missionFile, "HighlightColor", m_modelHighlightColor);
@@ -1788,24 +1529,20 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	{
 		int i;
 		for (i = 0; i < numConditions; i += 1) {
-			EString tmpStr;
-			if (2 == version) {
-				tmpStr.Format("Objective%dCondition%d", objectiveNum, i);
-			} else {
-				tmpStr.Format("Team%dObjective%dCondition%d", Alignment(), objectiveNum, i);
-			}
-			result = missionFile->seekBlock(tmpStr.Data());
+			const std::string blockName = (2 == version) ? std::format("Objective{}Condition{}", objectiveNum, i)
+			                                             : std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i);
+			result = missionFile->seekBlock(blockName.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			condition_species_type species;
-			result = sReadIdString(missionFile, "ConditionSpeciesString", tmpECStr);
-			if (NO_ERR != result) {
+			std::optional<std::string> speciesText = objective_text::read(*missionFile, "ConditionSpeciesString");
+			if (!speciesText) {
 				/* this is just for backward compatibility, this entry is depricated */
 				int ispecies = 0;
 				result = sReadIdWholeNum(missionFile, "ConditionSpecies", ispecies);
 				if (NO_ERR != result) { continue; }
 				species = (condition_species_type)ispecies;
 			} else {
-				species = ConditionSpeciesMap(tmpECStr.Data());
+				species = ConditionSpeciesMap(speciesText->c_str());
 			}
 
 			CObjectiveCondition *pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
@@ -1819,14 +1556,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	{
 		int i;
 		for (i = 0; i < numActions; i += 1) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dAction%d", Alignment(), objectiveNum, i);
-			result = missionFile->seekBlock(tmpStr.Data());
+			result = missionFile->seekBlock(std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i).c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			action_species_type species;
-			result = sReadIdString(missionFile, "ActionSpeciesString", tmpECStr);
-			if (NO_ERR != result) { assert(false); continue; }
-			species = ActionSpeciesMap(tmpECStr.Data());
+			std::optional<std::string> speciesText = objective_text::read(*missionFile, "ActionSpeciesString");
+			if (!speciesText) { assert(false); continue; }
+			species = ActionSpeciesMap(speciesText->c_str());
 
 			CObjectiveAction *pNewObjectiveAction = new_CObjectiveAction(species, m_alignment);
 			if (!pNewObjectiveAction) { assert(false); delete pNewObjectiveAction; continue; }
@@ -1839,14 +1574,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	{
 		int i;
 		for (i = 0; i < numFailureConditions; i += 1) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureCondition%d", Alignment(), objectiveNum, i);
-			result = missionFile->seekBlock(tmpStr.Data());
+			result = missionFile->seekBlock(std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i).c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			condition_species_type species;
-			result = sReadIdString(missionFile, "FailureConditionSpeciesString", tmpECStr);
-			if (NO_ERR != result) { assert(false); continue; }
-			species = ConditionSpeciesMap(tmpECStr.Data());
+			std::optional<std::string> speciesText = objective_text::read(*missionFile, "FailureConditionSpeciesString");
+			if (!speciesText) { assert(false); continue; }
+			species = ConditionSpeciesMap(speciesText->c_str());
 
 			CObjectiveCondition *pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
 			if (!pNewObjectiveFailureCondition) { assert(false); delete pNewObjectiveFailureCondition; continue; }
@@ -1859,14 +1592,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	{
 		int i;
 		for (i = 0; i < numFailureActions; i += 1) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureAction%d", Alignment(), objectiveNum, i);
-			result = missionFile->seekBlock(tmpStr.Data());
+			result = missionFile->seekBlock(std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i).c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			action_species_type species;
-			result = sReadIdString(missionFile, "FailureActionSpeciesString", tmpECStr);
-			if (NO_ERR != result) { assert(false); continue; }
-			species = ActionSpeciesMap(tmpECStr.Data());
+			std::optional<std::string> speciesText = objective_text::read(*missionFile, "FailureActionSpeciesString");
+			if (!speciesText) { assert(false); continue; }
+			species = ActionSpeciesMap(speciesText->c_str());
 
 			CObjectiveAction *pNewObjectiveFailureAction = new_CObjectiveAction(species, m_alignment);
 			if (!pNewObjectiveFailureAction) { assert(false); delete pNewObjectiveFailureAction; continue; }
@@ -2046,28 +1777,12 @@ bool CObjective::StatusChangedFailed (void)
 	return false;
 }
 
-EString CObjective::LocalizedTitle() const {
-	EString retval;
-	if (TitleUseResourceString()) {
-		EString EStr;
-		ESLoadString(TitleResourceStringID(), EStr);
-		retval = EStr.Data();
-	} else {
-		retval = Title();
-	}
-	return retval;
+std::string CObjective::LocalizedTitle() const {
+	return TitleUseResourceString() ? loadResourceString(TitleResourceStringID()) : Title();
 }
 
-EString CObjective::LocalizedDescription() const {
-	EString retval;
-	if (DescriptionUseResourceString()) {
-		EString EStr;
-		ESLoadString(DescriptionResourceStringID(), EStr);
-		retval = EStr.Data();
-	} else {
-		retval = Description();
-	}
-	return retval;
+std::string CObjective::LocalizedDescription() const {
+	return DescriptionUseResourceString() ? loadResourceString(DescriptionResourceStringID()) : Description();
 }
 
 CObjectives &CObjectives::operator=(const CObjectives &master) {
@@ -2128,9 +1843,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 		} 
 		else 
 		{
-			EString tmpStr;
-			tmpStr.Format("Team%dObjectives", Alignment());
-			result = missionFile->seekBlock(tmpStr.Data());
+			result = missionFile->seekBlock(std::format("Team{}Objectives", Alignment()).c_str());
 		}
 
 		if (NO_ERR != result) 
@@ -2151,13 +1864,9 @@ bool CObjectives::Read( FitIniFile* missionFile )
 		int markerI = 1;
 		char secondaryMarkers = 'a';
 		for (i = 0; i < numObjectives; i += 1) {
-			EString tmpStr;
-			if (2 == objectivesVersion) {
-				tmpStr.Format("Objective%d", i);
-			} else {
-				tmpStr.Format("Team%dObjective%d", Alignment(), i);
-			}
-			result = missionFile->seekBlock(tmpStr.Data());
+			const std::string blockName = (2 == objectivesVersion) ? std::format("Objective{}", i)
+			                                                       : std::format("Team{}Objective{}", Alignment(), i);
+			result = missionFile->seekBlock(blockName.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
 			CObjective *pNewObjective = new CObjective(m_alignment);
 			bool bresult = pNewObjective->Read(missionFile, i, objectivesVersion, markerI, secondaryMarkers);
@@ -2375,15 +2084,11 @@ bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives )
 	if (NO_ERR != result) { return false; }
 	int i;
 	for (i = 0; i < numNavMarkers; i += 1) {
-		EString tmpStr;
-		tmpStr.Format("NavMarker%d", i);
-		result = missionFile->seekBlock(tmpStr.Data());
+		result = missionFile->seekBlock(std::format("NavMarker{}", i).c_str());
 		if (NO_ERR != result) { assert(false); continue; }
 		CObjective *pNewObjective = new CObjective(objectives.Alignment());
 
-		EString tmpECStr;
-		tmpECStr.Format("Nav Marker %d", i);
-		pNewObjective->Title(tmpECStr.Data());
+		pNewObjective->Title(std::format("Nav Marker {}", i));
 		pNewObjective->Priority(2);
 		pNewObjective->IsHiddenTrigger(true);
 		pNewObjective->DisplayMarker( 0 );
@@ -2472,7 +2177,7 @@ bool CAreaObjectiveCondition::Save( FitIniFile* file )
 
 bool CBooleanFlagIsSet::Save( FitIniFile* file )
 {
-	file->writeIdString("FlagID", m_flagID.Data());
+	objective_text::write(*file, "FlagID", m_flagID);
 	file->writeIdBoolean("Value", m_value);
 	return true;
 }
@@ -2485,19 +2190,19 @@ bool CElapsedMissionTime::Save( FitIniFile* file )
 
 bool CPlayBIK::Save( FitIniFile* file )
 {
-	file->writeIdString( "AVIFileName", m_pathname.Data());
+	objective_text::write(*file, "AVIFileName", m_pathname);
 	return true;
 }
 
 bool CPlayWAV::Save( FitIniFile* file )
 {
-	file->writeIdString( "WAVFileName", m_pathname.Data());
+	objective_text::write(*file, "WAVFileName", m_pathname);
 	return true;
 }
 
 bool CDisplayTextMessage::Save( FitIniFile* file )
 {
-	file->writeIdString( "Message", m_message.Data());
+	objective_text::write(*file, "Message", m_message);
 	return true;
 }
 
@@ -2509,23 +2214,23 @@ bool CDisplayResourceTextMessage::Save( FitIniFile* file )
 
 bool CSetBooleanFlag::Save( FitIniFile* file )
 {
-	file->writeIdString("FlagID", m_flagID.Data());
+	objective_text::write(*file, "FlagID", m_flagID);
 	file->writeIdBoolean("Value", m_value);
 	return true;
 }
 
 bool CMakeNewTechnologyAvailable::Save( FitIniFile* file )
 {
-	file->writeIdString( "PurchaseFileName", m_purchaseFilePathname.Data());
+	objective_text::write(*file, "PurchaseFileName", m_purchaseFilePathname);
 	return true;
 }
 
 bool CObjective::Save( FitIniFile* file, int objectiveNum )
 {
-	file->writeIdString( "Title", Title().Data());
+	objective_text::write(*file, "Title", m_text.title);
 	file->writeIdBoolean( "TitleUseResourceString", m_titleUseResourceString );
 	file->writeIdULong( "TitleResourceStringID", m_titleResourceStringID );
-	file->writeIdString( "Description", Description().Data());
+	objective_text::write(*file, "Description", m_text.description);
 	file->writeIdBoolean( "DescriptionUseResourceString", m_descriptionUseResourceString );
 	file->writeIdULong( "DescriptionResourceStringID", m_descriptionResourceStringID );
 	file->writeIdULong( "Priority", m_priority );
@@ -2537,17 +2242,16 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 	file->writeIdFloat( "MarkerY", m_markerY );
 	file->writeIdBoolean( "HiddenTrigger", m_isHiddenTrigger );
 	file->writeIdBoolean( "ActivateOnFlag", m_activateOnFlag );
-	file->writeIdString( "ActivateFlagID", m_activateFlagID.Data() );
+	objective_text::write(*file, "ActivateFlagID", m_text.activateFlagID);
 	file->writeIdBoolean( "ResetStatusOnFlag", m_resetStatusOnFlag );
-	file->writeIdString( "ResetStatusFlagID", m_resetStatusFlagID.Data() );
+	objective_text::write(*file, "ResetStatusFlagID", m_text.resetStatusFlagID);
 
 	file->writeIdULong( "NumConditions", Count() );
 	file->writeIdULong( "NumActions", m_actionList.Count() );
 	file->writeIdULong( "NumFailureConditions", m_failureConditionList.Count() );
 	file->writeIdULong( "NumFailureActions", m_failureActionList.Count() );
 
-	if (m_modelName.Data())
-		file->writeIdString( "ObjectiveModel", m_modelName.Data() );
+	objective_text::write(*file, "ObjectiveModel", m_text.modelName);
 
 	file->writeIdLong( "ModelType", m_modelType );
 	file->writeIdLong( "BaseColor", m_modelBaseColor );
@@ -2568,9 +2272,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		EIterator it = Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dCondition%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			file->writeBlock( std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i).c_str() );
 			file->writeIdULong( "ConditionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "ConditionSpeciesString", g_conditionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -2583,9 +2285,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		action_list_type::EIterator it = m_actionList.Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dAction%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			file->writeBlock( std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i).c_str() );
 			file->writeIdULong( "ActionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "ActionSpeciesString", g_actionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -2598,9 +2298,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		condition_list_type::EIterator it = m_failureConditionList.Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureCondition%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			file->writeBlock( std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i).c_str() );
 			file->writeIdULong( "FailureConditionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "FailureConditionSpeciesString", g_conditionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -2613,9 +2311,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		action_list_type::EIterator it = m_failureActionList.Begin();
 		while (!it.IsDone()) {
-			EString tmpStr;
-			tmpStr.Format("Team%dObjective%dFailureAction%d", Alignment(), objectiveNum, i);
-			file->writeBlock( tmpStr.Data() );
+			file->writeBlock( std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i).c_str() );
 			file->writeIdULong( "FailureActionSpecies", (unsigned long)(*it)->Species());
 			file->writeIdString( "FailureActionSpeciesString", g_actionSpeciesStringArray[(int)(*it)->Species()]);
 			(*it)->Save(file);
@@ -2632,9 +2328,7 @@ bool CObjectives::Save( FitIniFile* file )
  	file->writeBlock("Objectives Version");
 	file->writeIdULong("Version", 3);
 
-	EString tmpStr;
-	tmpStr.Format("Team%dObjectives", Alignment());
-	file->writeBlock( tmpStr.Data() );
+	file->writeBlock( std::format("Team{}Objectives", Alignment()).c_str() );
 	file->writeIdULong( "NumObjectives", Count() );
 	int i = 0;
 
@@ -2642,9 +2336,7 @@ bool CObjectives::Save( FitIniFile* file )
 
 	EIterator it = Begin();
 	while (!it.IsDone()) {
-		EString tmpStr;
-		tmpStr.Format("Team%dObjective%d", Alignment(), i);
-		file->writeBlock( tmpStr.Data() );
+		file->writeBlock( std::format("Team{}Objective{}", Alignment(), i).c_str() );
 		(*it)->Save(file, i);
 		i += 1;
 		it++;

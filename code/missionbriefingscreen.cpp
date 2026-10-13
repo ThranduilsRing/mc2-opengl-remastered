@@ -598,9 +598,9 @@ void MissionBriefingScreen::begin()
 							addItem( IDS_MN_DIVIDER, 0xff005392, -1 );
 					}
 
-					addLBItem( (pObjective->LocalizedDescription()).Data(), 0xffffffff, count );
+					addLBItem( pObjective->LocalizedDescription().c_str(), 0xffffffff, count );
 
-					objectiveModels[count] = (pObjective->ModelName()).Data();
+					objectiveModels[count] = pObjective->ModelName().c_str();
 					modelTypes[count] = pObjective->ModelType();
 
 					modelColors[count][0] = pObjective->ModelBaseColor();

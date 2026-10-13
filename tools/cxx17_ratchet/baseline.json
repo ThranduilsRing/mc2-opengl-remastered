@@ -141,13 +141,13 @@
   "code": {
    "LG01": 225,
    "LG02": 212,
-   "LG03": 957,
+   "LG03": 955,
    "LG04": 21,
-   "LG05": 206,
-   "LG06": 446,
+   "LG05": 204,
+   "LG06": 447,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2354,
+   "LG09": 2351,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -2762,16 +2762,22 @@
    "LG12b": 1
   },
   "code/objective.cpp": {
-   "LG03": 54,
-   "LG05": 2,
-   "LG06": 9,
-   "LG09": 34
+   "LG03": 52,
+   "LG05": 1,
+   "LG06": 6,
+   "LG09": 31
   },
   "code/objective.h": {
    "LG02": 4,
-   "LG05": 2,
+   "LG05": 1,
    "LG09": 1,
    "LG14": 4
+  },
+  "code/objective_text.cpp": {
+   "LG06": 2
+  },
+  "code/objective_text.h": {
+   "LG06": 2
   },
   "code/objmgr.cpp": {
    "LG01": 1,
@@ -5186,7 +5192,7 @@
    "LG20": 2
   }
  },
- "head": "de7e5008f",
+ "head": "641d62dc7",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

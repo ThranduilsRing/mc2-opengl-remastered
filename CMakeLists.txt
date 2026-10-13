@@ -488,6 +488,8 @@ set(SOURCES
     "code/mission2.cpp"
     "code/sim_identity.cpp"
     "code/objective.cpp"
+    "code/objective_flags.cpp"
+    "code/objective_text.cpp"
     "code/saveload.cpp"
     "code/saveload_load.cpp"
     "code/trigger.cpp"

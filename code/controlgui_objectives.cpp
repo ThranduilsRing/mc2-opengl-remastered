@@ -346,7 +346,7 @@ void ControlGui::renderObjectivesImGui()
 	// Same accumulation, totals reveal timing and kill-marker click as legacy.
 	auto DrawRow = [&]( const ObjectiveUiRow& row, long yPos, bool bTotal ){
 		char desc[256];
-		strncpy( desc, row.obj->LocalizedDescription(), 255 );
+		strncpy( desc, row.obj->LocalizedDescription().c_str(), 255 );
 		desc[255] = 0;
 
 		ShadowText( AX( OBJECTIVESLEFT + shiftX ), AY( (float)yPos ), (unsigned long)row.color, desc );
@@ -867,7 +867,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 	const long color = row.color;
 	gosASSERT(pObjective->IsActive());
 
-	drawShadowText( color, 0xff000000, guiFont.getTempHandle(), xPos, yPos, 1, pObjective->LocalizedDescription(), 0,
+	drawShadowText( color, 0xff000000, guiFont.getTempHandle(), xPos, yPos, 1, pObjective->LocalizedDescription().c_str(), 0,
 		guiFont.getSize() );
 	if ( bDrawTotal )
 	{
@@ -888,7 +888,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 
 		// draw .............
 		DWORD tmpULong1, tmpULong2;
-		gos_TextStringLength( &tmpULong1, &tmpULong2, pObjective->LocalizedDescription() );
+		gos_TextStringLength( &tmpULong1, &tmpULong2, pObjective->LocalizedDescription().c_str() );
 		descWidth = (int)tmpULong1;
 		height = (int)tmpULong2;
 		gos_TextStringLength( &tmpULong1, &tmpULong2, "...................." );
