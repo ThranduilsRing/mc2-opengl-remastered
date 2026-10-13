@@ -101,10 +101,10 @@ inline bool limitsOk(const DeviceCaps& c) {
 
 // Route of a facility that became core in `coreSince` and has an extension for older versions: "core" when the usable version has it AND the feature
 // bit is on, "ext" when the extension is listed AND the bit is on, else "-".
-inline const char* routeFor(const DeviceCaps& c, uint32_t coreSince, const char* ext, bool featureBit) {
+inline const char* routeFor(const DeviceCaps& c, uint32_t coreSince, std::string_view ext, bool featureBit) {
     if (!featureBit) return "-";
     if (c.usableApi() >= coreSince) return "core";
-    if (ext && c.hasExtension(ext)) return "ext";
+    if (!ext.empty() && c.hasExtension(ext)) return "ext";
     return "-";
 }
 
@@ -168,10 +168,10 @@ inline bool featureEnabled(const Evaluation& e, std::string_view name) {
     return false;
 }
 
-inline std::string joinOr(const std::vector<std::string>& v, const char* none = "-") {
+inline std::string joinOr(const std::vector<std::string>& v, std::string_view none = "-") {
     std::string out;
     for (const std::string& s : v) out += (out.empty() ? "" : ",") + s;
-    return out.empty() ? none : out;
+    return out.empty() ? std::string(none) : out;
 }
 
 inline std::string versionText(uint32_t v) {
@@ -180,11 +180,11 @@ inline std::string versionText(uint32_t v) {
 
 // `[VK_PROFILE v1] verdict=ok|refused device="..." api=1.4.3 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- items=id:route,...
 //  enabled=feature,... extensions=ext,...` (a "-" is "none"). Pure: no I/O.
-inline std::string formatLine(const std::string& deviceName, const DeviceCaps& c, const Evaluation& e) {
+inline std::string formatLine(std::string_view deviceName, const DeviceCaps& c, const Evaluation& e) {
     std::string items;
     for (const ItemResult& i : e.items)
         items += std::string(items.empty() ? "" : ",") + i.id + ":" + i.route;
-    return std::string("[VK_PROFILE v1] verdict=") + (e.accepted ? "ok" : "refused") + " device=\"" + deviceName + "\" api=" + versionText(c.deviceApi) +
+    return std::string("[VK_PROFILE v1] verdict=") + (e.accepted ? "ok" : "refused") + " device=\"" + std::string(deviceName) + "\" api=" + versionText(c.deviceApi) +
            " instance_api=" + versionText(c.instanceApi) + " floor=1.2 required_missing=" + joinOr(e.missingRequired) +
            " wanted_missing=" + joinOr(e.missingWanted) + " items=" + items + " enabled=" + joinOr(e.enabledFeatures) +
            " extensions=" + joinOr(e.deviceExtensions);

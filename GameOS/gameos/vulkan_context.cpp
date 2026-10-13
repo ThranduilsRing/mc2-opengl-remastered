@@ -52,8 +52,8 @@ void ctxlog(const char* fmt, ...) {
 }
 
 // The `[VK_PROFILE v1]` line goes to stderr beside the other [VK_ENGINE_CONTEXT] lines; the smoke parser grades a refused verdict red.
-void profileLog(const std::string& line) {
-    std::fprintf(stderr, "%s\n", line.c_str());
+void profileLog(std::string_view line) {
+    std::fprintf(stderr, "%.*s\n", static_cast<int>(line.size()), line.data());
     std::fflush(stderr);
 }
 
