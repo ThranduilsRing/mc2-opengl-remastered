@@ -194,8 +194,8 @@ extern const bool s_materialGpuSampleEnabled = mc2::gate::get<"MC2_MATERIAL_GPU_
 // V-AMBIENT-STATIC-1: hemisphere ambient fill. Default ON; the options.cfg key StaticPropAmbient = FALSE
 // turns it off, and then the uploaded strength is 0.0 so static_prop.vert's hemisphere term is a
 // bitwise no-op.
-// Read at first use, after CPrefs::applyPrefs() has published options.cfg: a namespace-scope initializer would
-// resolve it during static initialization, before that publish, and keep the default.
+// Read at first use, after the render options are published (gameosmain_init.cpp, before the window exists): a
+// namespace-scope initializer would resolve it during static initialization, before that publish, and keep the default.
 bool staticPropAmbientV1Enabled() {
     static const bool on = mc2::options::current().staticPropAmbient;
     return on;

@@ -149,9 +149,12 @@ def apply_override(values: "dict[str, object]", spec: str, rejected: "list[dict]
         if not item:
             continue
         key, eq, val = item.partition("=")
-        opt = by_lower.get(key.strip(" \t\r").lower()) if eq else None
+        opt = by_lower.get(key.strip(" \t\r").lower())
         if opt is None:
             rejected.append({"key": key.strip(), "value": val.strip(), "why": "unknown_key", "from": OVERRIDE_ENV})
+            continue
+        if not eq:
+            rejected.append({"key": opt.key, "value": "", "why": "garbage", "from": OVERRIDE_ENV})
             continue
         v, why = parse_value(opt, val)
         if why is None:

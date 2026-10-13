@@ -1286,6 +1286,8 @@ TEST_CASE("render option keys are unique and findable") {
         REQUIRE(mo::find(mo::kOptions[i].key) == &mo::kOptions[i]);
     }
     CHECK(mo::find("NotAnOption") == nullptr);
+    CHECK(mo::find("shadowcsm") == mo::find("ShadowCSM"));   // keys are case-insensitive like options.cfg
+    CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
     CHECK(mo::kOptionCount == 17);
 }
 
@@ -1318,7 +1320,7 @@ TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports eve
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     std::vector<mo::Reject> rej;
-    const int n = mo::applyOverrides(o, "ShadowCSM=0, StaticPropPbr=FALSE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
+    const int n = mo::applyOverrides(o, "shadowcsm=0, STATICPROPPBR=FALSE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
     CHECK(n == 2);
     CHECK_FALSE(o.shadowCsm);
     CHECK_FALSE(o.staticPropPbr);
@@ -1330,7 +1332,9 @@ TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports eve
     CHECK(rej[1].key == "TonemapMode");
     CHECK(rej[1].why == mo::Verdict::OutOfRange);
     CHECK(rej[2].key == "Bogus");
+    CHECK(rej[2].why == mo::Verdict::UnknownKey);   // an unknown key is named as such, not as garbage
     CHECK(rej[3].key == "SunAxisFix");
+    CHECK(rej[3].why == mo::Verdict::Garbage);      // a known key without a value
     CHECK(rej[4].key == "VfxLitParticles");
     std::vector<mo::Reject> none;
     CHECK(mo::applyOverrides(o, "", none) == 0);
@@ -1339,17 +1343,34 @@ TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports eve
 
 TEST_CASE("render options read before the publish are counted, and publish replaces the values") {
     namespace mo = mc2::options;
-    const int before = mo::earlyReads();
+    // Start from a process that has not published yet, whatever ran before, and put the shared state back afterwards.
+    const mo::RenderOptions savedCurrent = mo::g_current;
+    const bool savedPublished = mo::g_published, savedChanged = mo::g_publishChanged;
+    const int savedEarly = mo::g_earlyReads;
+    const char* const savedFile = mo::g_firstEarlyFile;
+    const unsigned savedLine = mo::g_firstEarlyLine;
+    mo::g_published = false;
+    mo::g_publishChanged = false;
+    mo::g_earlyReads = 0;
+
     (void)mo::current();
-    if (!mo::g_published) CHECK(mo::earlyReads() == before + 1);
+    CHECK(mo::earlyReads() == 1);
+    CHECK(std::string(mo::firstEarlyFile()).find("test_gate.cpp") != std::string::npos);
     mo::RenderOptions o{};
     o.sunAxisFix = true;
     mo::publish(o);
     CHECK(mo::current().sunAxisFix);
-    const int after = mo::earlyReads();
-    (void)mo::current();
-    CHECK(mo::earlyReads() == after);
-    mo::publish(mo::RenderOptions{});   // leave the process-wide values at the defaults for the other cases
+    CHECK(mo::earlyReads() == 1);                 // reads after the publish are not early
+    CHECK_FALSE(mo::publishChangedValues());      // the first publish is not a change
+    mo::publish(mo::RenderOptions{});
+    CHECK(mo::publishChangedValues());            // a second publish with other values is
+
+    mo::g_current = savedCurrent;
+    mo::g_published = savedPublished;
+    mo::g_publishChanged = savedChanged;
+    mo::g_earlyReads = savedEarly;
+    mo::g_firstEarlyFile = savedFile;
+    mo::g_firstEarlyLine = savedLine;
 }
 
 TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the [MechCommander2] block") {

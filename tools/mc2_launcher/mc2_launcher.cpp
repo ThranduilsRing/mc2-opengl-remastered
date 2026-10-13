@@ -821,14 +821,20 @@ static std::string ReadTextFile(const char* path) {
     return out;
 }
 
+// Replace the file in one step: a crash or a full disk mid-write must never leave the game a truncated options.cfg (the game would then boot at
+// its built-in resolution and drop every setting).
 static bool WriteTextFile(const char* path, const std::string& text) {
-    SetFileAttributesA(path, FILE_ATTRIBUTE_NORMAL);   // the game clears read-only itself before it saves; do the same
-    HANDLE fh = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    std::string tmp = std::string(path) + ".tmp";
+    HANDLE fh = CreateFileA(tmp.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fh == INVALID_HANDLE_VALUE) return false;
     DWORD wrote = 0;
     const BOOL ok = WriteFile(fh, text.data(), (DWORD)text.size(), &wrote, NULL);
+    const BOOL flushed = ok && FlushFileBuffers(fh);
     CloseHandle(fh);
-    return ok && wrote == text.size();
+    if (!ok || !flushed || wrote != text.size()) { DeleteFileA(tmp.c_str()); return false; }
+    SetFileAttributesA(path, FILE_ATTRIBUTE_NORMAL);   // the game clears read-only itself before it saves; do the same
+    if (!MoveFileExA(tmp.c_str(), path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { DeleteFileA(tmp.c_str()); return false; }
+    return true;
 }
 
 static void OptionsCfgPath(char* out, size_t outSz) {

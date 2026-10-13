@@ -3,7 +3,7 @@
 #include "gameosmain_internal.h"
 #include "mc2fmt.h"
 #include "Gates/gate_cold.h"   // str<>()
-#include "Gates/render_options_cfg.h"
+#include "Gates/render_options_publish.h"
 
 
 // Opt the process into per-monitor DPI awareness unless MC2_DPI_UNAWARE is set.
@@ -263,14 +263,10 @@ void initInstrBanner() {
 }
 
 // Publish the render options (options.cfg, then the MC2_OPTIONS_OVERRIDE test channel) before the window and the renderer exist: the
-// shader-define and pipeline readers run during renderer start-up, long before CPrefs loads the file. CPrefs::applyPrefs() publishes the
-// validated values again and reports anything this early pass skipped.
+// shader-define and pipeline readers run during renderer start-up, long before CPrefs loads the file. CPrefs::load() reports the file's rejected
+// entries and CPrefs::applyPrefs() publishes the validated values again and reports the override's, so this early pass logs nothing.
 void initRenderOptionsFromConfig() {
-    mc2::options::RenderOptions options;
-    mc2::options::cfg::loadFromText(options, mc2::options::cfg::readTextFile("options.cfg"));
-    std::vector<mc2::options::Reject> ignored;
-    mc2::options::applyOverrides(options, mc2::gate::str<"MC2_OPTIONS_OVERRIDE">(), ignored);
-    mc2::options::publish(options);
+    (void)mc2::options::publishFromInstall();
 }
 
 // Pick the pre-window resolution and fullscreen state from the environment or options.cfg.

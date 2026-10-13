@@ -14,31 +14,21 @@
 #include "mc2fmt.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
-#include "Gates/render_options_cfg.h"
+#include "Gates/render_options_publish.h"
 
 extern SoundSystem *sndSystem;
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
 
 namespace {
 
-// One log line per rejected value; the default (or the value the file had before) stays.
-void logRejectedOption(std::string_view key, std::string_view text, mc2::options::Verdict why, const mc2::options::Option* opt) {
-	if (opt && opt->kind != mc2::options::Kind::Bool)
-		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} want={:g}..{:g} kept=default\n", key, text,
-		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage", opt->lo, opt->hi);
-	else
-		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} kept=default\n", key, text,
-		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage");
-}
-
 void saveRenderOptions(FitIniFile& file, const mc2::options::RenderOptions& in) {
-	using namespace mc2::options;
-	for (const Option& opt : kOptions) {
-		switch (opt.kind) {
-		case Kind::Bool:  file.writeIdBoolean(opt.key, in.*(opt.b)); break;
-		case Kind::Long:  file.writeIdLong(opt.key, in.*(opt.l)); break;
-		case Kind::Float: file.writeIdFloat(opt.key, in.*(opt.f)); break;
-		}
+	for (const mc2::options::Option& opt : mc2::options::kOptions) {
+		mc2::options::withValue(in, opt, [&](const auto& field) {
+			using T = std::remove_cvref_t<decltype(field)>;
+			if constexpr (std::is_same_v<T, bool>) file.writeIdBoolean(opt.key, field);
+			else if constexpr (std::is_same_v<T, int>) file.writeIdLong(opt.key, field);
+			else file.writeIdFloat(opt.key, field);
+		});
 	}
 }
 
@@ -322,7 +312,7 @@ int CPrefs::load( const char* pFileName ) {
 			std::vector<mc2::options::Reject> rejects;
 			mc2::options::cfg::loadFromText( render, mc2::options::cfg::readTextFile( prefsPathname ), &rejects );
 			for ( const auto& r : rejects )
-				logRejectedOption( r.key, r.text, r.why, mc2::options::find( r.key ) );
+				mc2::options::logRejectedOption( r.key, r.text, r.why, mc2::options::find( r.key ) );
 
 		}
 
@@ -476,22 +466,24 @@ int CPrefs::applyPrefs(bool applyRes) {
 	// The effective options: the file's values, then the MC2_OPTIONS_OVERRIDE test channel on top (never written back by save()).
 	{
 		mc2::options::RenderOptions effective = this->render;
-		static bool s_reported = false;
+		// The log lines print once per process: applyPrefs() runs again when the player changes a setting.
+		static bool s_logged = false;
+		const bool report = !s_logged;
+		s_logged = true;
 		const std::string overrideSpec = mc2::gate::str<"MC2_OPTIONS_OVERRIDE">();
 		if (!overrideSpec.empty()) {
 			std::vector<mc2::options::Reject> rejects;
 			const int accepted = mc2::options::applyOverrides(effective, overrideSpec, rejects);
-			if (!s_reported)
+			if (report) {
 				mc2::fmt::print_err("[OPTIONS v1] event=override accepted={} rejected={} spec={}\n", accepted, rejects.size(), mc2::fmt::safe(overrideSpec.c_str()));
-			for (const auto& r : rejects)
-				if (!s_reported)
-					logRejectedOption(r.key, r.text, r.why, mc2::options::find(r.key));
+				for (const auto& r : rejects)
+					mc2::options::logRejectedOption(r.key, r.text, r.why, mc2::options::find(r.key));
+			}
 		}
 		mc2::options::publish(effective);
 		// Quiet when every reader saw the published values; a reader that cached its value before the publish names itself.
-		if (!s_reported && (mc2::options::earlyReads() > 0 || mc2::options::publishChangedValues()))
+		if (report && (mc2::options::earlyReads() > 0 || mc2::options::publishChangedValues()))
 			mc2::fmt::print_err("[OPTIONS v1] event=stale_reader early_reads={} first={}:{} changed_since_start={}\n", mc2::options::earlyReads(), mc2::fmt::safe(mc2::options::firstEarlyFile()), mc2::options::firstEarlyLine(), mc2::options::publishChangedValues() ? 1 : 0);
-		s_reported = true;
 		gos_SetPostFxOptions(effective.postCas ? 1 : 0, effective.postCasSharpness, effective.tonemapMode);
 	}
 

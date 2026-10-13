@@ -857,8 +857,8 @@ if(MC2_EDITOR)
 endif()
 
 # A class object (std::string, EString) passed through "..." compiles and prints garbage; C4840 is the diagnostic, kept an error so that a printf-style
-# call fed a string object fails the build (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md hazard H10). Applied to every first-party target that
-# holds printf-style logging callers.
+# call fed a string object fails the build (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md hazard H10). Applied to the first-party targets that
+# hold printf-style logging callers (the foreach below); the other first-party targets are not covered yet.
 if(MSVC)
     foreach(_t mc2 mclib gui EditRel gameos gameos_editor gameos_main)
         if(TARGET ${_t})

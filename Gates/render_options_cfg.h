@@ -17,6 +17,8 @@
 
 namespace mc2::options::cfg {
 
+namespace opt_detail = mc2::options::detail;   // trim / equalsNoCase of the options table; cfg::detail below would otherwise hide them
+
 namespace detail {
 
 struct Line {
@@ -40,16 +42,16 @@ inline Line lineAt(std::string_view text, std::size_t pos) {
 
 // "<type> <key> = <value>" -> true with the pieces; the key match is case-insensitive like the engine's reader.
 inline bool parseLine(std::string_view line, char& type, std::string_view& key, std::string_view& value) {
-    line = mc2::options::detail::trim(line);
+    line = opt_detail::trim(line);
     if (line.size() < 5 || (line[1] != ' ' && line[1] != '\t')) return false;
     type = line[0];
-    std::string_view rest = mc2::options::detail::trim(line.substr(2));
+    std::string_view rest = opt_detail::trim(line.substr(2));
     std::size_t k = 0;
     while (k < rest.size() && rest[k] != ' ' && rest[k] != '\t' && rest[k] != '=') ++k;
     key = rest.substr(0, k);
-    rest = mc2::options::detail::trim(rest.substr(k));
+    rest = opt_detail::trim(rest.substr(k));
     if (rest.empty() || rest[0] != '=') return false;
-    value = mc2::options::detail::trim(rest.substr(1));
+    value = opt_detail::trim(rest.substr(1));
     return !key.empty();
 }
 
@@ -61,26 +63,28 @@ inline std::optional<std::string> get(std::string_view text, std::string_view ke
     for (std::size_t pos = 0; pos < text.size();) {
         const detail::Line l = detail::lineAt(text, pos);
         pos = l.next;
-        const std::string_view line = mc2::options::detail::trim(text.substr(l.begin, l.end - l.begin));
+        const std::string_view line = opt_detail::trim(text.substr(l.begin, l.end - l.begin));
         if (!line.empty() && line[0] == '[') {
-            inBlock = mc2::options::detail::equalsNoCase(line, "[MechCommander2]");
+            inBlock = opt_detail::equalsNoCase(line, "[MechCommander2]");
             continue;
         }
         if (!inBlock) continue;
         char type = 0;
         std::string_view k, v;
-        if (detail::parseLine(line, type, k, v) && mc2::options::detail::equalsNoCase(k, key)) return std::string(v);
+        if (detail::parseLine(line, type, k, v) && opt_detail::equalsNoCase(k, key)) return std::string(v);
     }
     return std::nullopt;
 }
 
+// The type prefix of an options.cfg line ("b ShadowCSM = TRUE").
 inline char typeLetter(const Option& opt) {
-    switch (opt.kind) {
-    case Kind::Bool: return 'b';
-    case Kind::Long: return 'l';
-    case Kind::Float: return 'f';
-    }
-    return 'b';
+    static const RenderOptions kProbe{};
+    return withValue(kProbe, opt, [](const auto& field) -> char {
+        using T = std::remove_cvref_t<decltype(field)>;
+        if constexpr (std::is_same_v<T, bool>) return 'b';
+        else if constexpr (std::is_same_v<T, int>) return 'l';
+        else return 'f';
+    });
 }
 
 // `text` with the line of `opt` set to `value` (already validated by the caller, e.g. "TRUE", "1", "0.45"). An existing line is replaced in
@@ -95,16 +99,16 @@ inline std::string set(std::string text, const Option& opt, std::string_view val
     for (std::size_t pos = 0; pos < text.size();) {
         const detail::Line l = detail::lineAt(text, pos);
         pos = l.next;
-        const std::string_view line = mc2::options::detail::trim(std::string_view(text).substr(l.begin, l.end - l.begin));
+        const std::string_view line = opt_detail::trim(std::string_view(text).substr(l.begin, l.end - l.begin));
         if (!line.empty() && line[0] == '[') {
-            inBlock = mc2::options::detail::equalsNoCase(line, "[MechCommander2]");
+            inBlock = opt_detail::equalsNoCase(line, "[MechCommander2]");
             if (inBlock) { sawBlock = true; blockEnd = l.next; }
             continue;
         }
         if (!inBlock) continue;
         char type = 0;
         std::string_view k, v;
-        if (detail::parseLine(line, type, k, v) && mc2::options::detail::equalsNoCase(k, opt.key)) {
+        if (detail::parseLine(line, type, k, v) && opt_detail::equalsNoCase(k, opt.key)) {
             text.replace(l.begin, l.end - l.begin, newLine);
             return text;
         }

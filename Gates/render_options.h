@@ -13,6 +13,7 @@
 #include <source_location>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace mc2::options {
@@ -88,7 +89,7 @@ inline constexpr Option kOptions[] = {
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);
 
-enum class Verdict { Ok, Garbage, OutOfRange };
+enum class Verdict { Ok, Garbage, OutOfRange, UnknownKey };
 
 // The ways a typed value reaches the struct; a rejected value leaves the field untouched (the default or the earlier value stays).
 inline Verdict setLong(RenderOptions& o, const Option& opt, long v) {
@@ -103,12 +104,6 @@ inline Verdict setFloat(RenderOptions& o, const Option& opt, float v) {
     if (double(v) < opt.lo || double(v) > opt.hi) return Verdict::OutOfRange;
     o.*(opt.f) = v;
     return Verdict::Ok;
-}
-
-inline const Option* find(std::string_view key) {
-    for (const Option& opt : kOptions)
-        if (key == opt.key) return &opt;
-    return nullptr;
 }
 
 namespace detail {
@@ -126,28 +121,41 @@ inline std::string_view trim(std::string_view s) {
 }
 }  // namespace detail
 
-// Text form of a value (the override channel): booleans are TRUE/FALSE/1/0 in any case, numbers must parse in full.
+// Keys are case-insensitive, like the options.cfg reader and the launcher editor.
+inline const Option* find(std::string_view key) {
+    for (const Option& opt : kOptions)
+        if (detail::equalsNoCase(key, opt.key)) return &opt;
+    return nullptr;
+}
+
+// The one place that branches on an option's kind: calls `f` with the field of `o` that the option names (a bool, int or float, const when `o`
+// is), so each caller handles the three kinds with `if constexpr` on the field type instead of keeping its own switch.
+template <class Options, class F>
+decltype(auto) withValue(Options& o, const Option& opt, F&& f) {
+    switch (opt.kind) {
+    case Kind::Bool: return f(o.*(opt.b));
+    case Kind::Long: return f(o.*(opt.l));
+    default:         return f(o.*(opt.f));
+    }
+}
+
+// Text form of a value (the override channel and options.cfg): booleans are TRUE/FALSE/1/0 in any case, numbers must parse in full.
 inline Verdict setFromText(RenderOptions& o, const Option& opt, std::string_view text) {
     text = detail::trim(text);
-    switch (opt.kind) {
-    case Kind::Bool:
-        if (detail::equalsNoCase(text, "true") || text == "1")  { o.*(opt.b) = true;  return Verdict::Ok; }
-        if (detail::equalsNoCase(text, "false") || text == "0") { o.*(opt.b) = false; return Verdict::Ok; }
-        return Verdict::Garbage;
-    case Kind::Long: {
-        long v = 0;
-        const auto r = std::from_chars(text.data(), text.data() + text.size(), v);
-        if (text.empty() || r.ec != std::errc{} || r.ptr != text.data() + text.size()) return Verdict::Garbage;
-        return setLong(o, opt, v);
-    }
-    case Kind::Float: {
-        float v = 0.0f;
-        const auto r = std::from_chars(text.data(), text.data() + text.size(), v);
-        if (text.empty() || r.ec != std::errc{} || r.ptr != text.data() + text.size()) return Verdict::Garbage;
-        return setFloat(o, opt, v);
-    }
-    }
-    return Verdict::Garbage;
+    return withValue(o, opt, [&](auto& field) {
+        using T = std::remove_cvref_t<decltype(field)>;
+        if constexpr (std::is_same_v<T, bool>) {
+            if (detail::equalsNoCase(text, "true") || text == "1")  { field = true;  return Verdict::Ok; }
+            if (detail::equalsNoCase(text, "false") || text == "0") { field = false; return Verdict::Ok; }
+            return Verdict::Garbage;
+        } else {
+            T v{};
+            const auto r = std::from_chars(text.data(), text.data() + text.size(), v);
+            if (text.empty() || r.ec != std::errc{} || r.ptr != text.data() + text.size()) return Verdict::Garbage;
+            if constexpr (std::is_same_v<T, float>) return setFloat(o, opt, v);
+            else return setLong(o, opt, v);
+        }
+    });
 }
 
 // The values as one JSON object keyed by the options.cfg key names ({"PostCAS": false, "PostCASSharpness": 0.5, ...}), floats in their shortest
@@ -159,16 +167,18 @@ inline std::string toJson(const RenderOptions& o) {
         s += '"';
         s += opt.key;
         s += "\": ";
-        switch (opt.kind) {
-        case Kind::Bool: s += (o.*(opt.b)) ? "true" : "false"; break;
-        case Kind::Long: s += std::to_string(o.*(opt.l)); break;
-        case Kind::Float: {
-            char buf[32];
-            const auto r = std::to_chars(buf, buf + sizeof(buf), o.*(opt.f));
-            s.append(buf, r.ptr);
-            break;
-        }
-        }
+        withValue(o, opt, [&](const auto& v) {
+            using T = std::remove_cvref_t<decltype(v)>;
+            if constexpr (std::is_same_v<T, bool>) {
+                s += v ? "true" : "false";
+            } else if constexpr (std::is_same_v<T, int>) {
+                s += std::to_string(v);
+            } else {
+                char buf[32];
+                const auto r = std::to_chars(buf, buf + sizeof(buf), v);
+                s.append(buf, r.ptr);
+            }
+        });
     }
     s += "}";
     return s;
@@ -180,7 +190,7 @@ struct Reject {
     Verdict     why;
 };
 
-// MC2_OPTIONS_OVERRIDE grammar: "Key=Value,Key=Value" with the options.cfg key names. Used by the smoke matrices and capture drivers to run
+// MC2_OPTIONS_OVERRIDE grammar: "Key=Value,Key=Value" with the options.cfg key names (any case). Used by the smoke matrices and capture drivers to run
 // one setting differently without editing the install's options.cfg. Returns the number of accepted entries; each rejected entry (unknown
 // key, garbage, out of range) is appended to `rejects` and changes nothing.
 inline int applyOverrides(RenderOptions& o, std::string_view spec, std::vector<Reject>& rejects) {
@@ -193,11 +203,12 @@ inline int applyOverrides(RenderOptions& o, std::string_view spec, std::vector<R
         const std::size_t eq = item.find('=');
         const std::string_view key = detail::trim(item.substr(0, eq));
         const std::string_view val = (eq == std::string_view::npos) ? std::string_view{} : item.substr(eq + 1);
-        const Option* opt = (eq == std::string_view::npos) ? nullptr : find(key);
-        if (!opt) { rejects.push_back({std::string(key), std::string(val), Verdict::Garbage}); continue; }
+        const Option* opt = find(key);
+        if (!opt) { rejects.push_back({std::string(key), std::string(val), Verdict::UnknownKey}); continue; }
+        if (eq == std::string_view::npos) { rejects.push_back({opt->key, std::string(), Verdict::Garbage}); continue; }
         const Verdict v = setFromText(o, *opt, val);
         if (v == Verdict::Ok) ++accepted;
-        else rejects.push_back({std::string(key), std::string(detail::trim(val)), v});
+        else rejects.push_back({opt->key, std::string(detail::trim(val)), v});
     }
     return accepted;
 }
