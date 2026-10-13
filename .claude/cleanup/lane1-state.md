@@ -1,86 +1,70 @@
-<!-- doc-status: current | reviewed:2026-10-12 -->
+<!-- doc-status: current | reviewed:2026-10-13 -->
 # Lane 1 state (builder on A:/Games/mc2-main, branch claude/nifty-mendeleev). Hand-over file for the next agent; keep current at every report.
 
-Session 2026-10-12 evening (lane-1 Sonnet, cap 6 h, ~3.5 h used): step 4 batch B1 (EString -> std::string outside the gui widgets): the Opus before-review applied (R1-R12), B1.0 the harness batch,
-B1.1 runtime objectives, B1.2 the texture-cache static string (deleted). Never pushed. Install `mc2-win64-v0.4` (the editor from this HEAD is deployed there too). Lane 2 untouched: the one finding in
-its file (`GameOS/gameos/vulkan_context.cpp:109`) is reported below, not edited. No Opus after-review requested (it comes after B1.3, RA1).
-Previous session (review fixes F1-F6, ABL string safety): `git show afa99eaf6:.claude/cleanup/lane1-state.md`.
+Session 2026-10-12 night (lane-1 Sonnet): the cleanup-review fixes F1-F12, then step 4 batch B1.3 (logistics model A, split by header: variant+mech, then pilot). B1.4 was NOT started (design in
+`cxx23-step4-b1-notes.md` section 8b). Never pushed. Install `mc2-win64-v0.4` holds the exe of 45f39522a (B1.3b). Lane 2 untouched. No Opus after-review requested (the orchestrator calls RA1 after B1.3).
+Active work time about 3 h (the session clock jumped 7 h between two tool calls at 23:15 and 06:19, a suspended host, not work). Previous session: `git show 2b4e2f3f1:.claude/cleanup/lane1-state.md`.
 
 ## Commits this session (oldest first)
-- de7e5008f docs: R1-R12 applied to `cxx23-step4-b1-notes.md` (H1 restated, H13-H15 added, simulation sentence replaced, batches reordered: objectives first, logistics split A/B, mp screens to B6, the TGA cache deleted
-  not converted, the cap counts EDITED files, save proof = old exe twice + new exe + `save_inspect diff`, editor proof = `-mission` + `-smoke-save` .fit byte diff, no printf-template formatter, bridge as `const char*` +
-  `const std::string&` folded at B6, /analyze corrected, grouped after-reviews, the old-exe probe) and `cxx23-step4-b1-files.json` (67 files: 56 in B1.1-B1.7, 11 mp screens in B6).
-- db9b1d4fa B1.0a. `mclib/mc2str.h` (`mc2::str::from_c`, `iequals`, `icompare`, `ci_less`, `ci_equal`, `ci_total_less`, `ascii_lower/upper`); `tests/unit/test_estring.cpp` characterizes the old class
-  (H1-H14: null `Data()` only when never assigned / emptied, `""` non-null, `EString(nullptr)` empty, equality and order ignore case through lstrcmpi, MakeUpper code page, inclusive-end index conventions, COW
-  pointer outlives its source); `tests/unit/test_mc2str.cpp` + fixture `stock_names.txt` (7046 stock names): `iequals` agrees with the old compare on every name and case variant, 20 adjacent order differences
-  (digit/dot after underscore/hyphen: lstrcmpi is a word sort). LG06 +1 (`from_c`).
-- 432b4ae03 + f78ce17d8 B1.0c. `tests/analyze/analyze_dangling.py` + seeded `dangling_seed.cpp` / `dangling_clean.cpp` + board row `analyze_dangling` (10 s). Measured: `cl /analyze` lifetime rules catch NONE of the
-  `c_str()` shapes on this host; clang-cl catches all four seeded shapes (A `-Wdangling-gsl`, B/B2 `-Wreturn-stack-address`, C `-Wdangling-assignment-gsl`), clean twin silent. The fix commit routes the two spawns
-  through `console_child.child_kwargs` and registers the script in `scripts/background-launch-allow.json` (the first commit had left `background_launch` and `scripts_tests` red).
-- 5e02d2347 B1.0b. `.claude/cleanup/cxx23-step4-b1-callsites.txt`: 598 call sites in 76 files from a `[[deprecated]]` build of the old API (never committed); 419007717 drops the rows B1.1/B1.2 converted: **498 sites in 71 files now**
-  (operator ECHARPTR 207, Data 130, Format 70, Compare 35, operator== 13 ...; per batch B1.3 15, B1.4 99, B1.5 80, B1.6 135, B1.7 26, B6 50; 93 more sites in 19 includer / gui files).
-  `tests/analyze/estring_callsites.py` regenerates from a build log or removes rows (`--drop FILE[:LINE]...`).
-- 3a851f497 B1.0e. gui bridge: `aText::setText`, `aTextListItem::setText` and `aEdit::setEntry` take `const char*` and `const std::string&` next to the EString form, `aEdit::entry()` returns `std::string`;
-  `tests/unit/test_gui_bridge.cpp` checks the overload resolution at compile time (a literal, `const char*`, `std::string`, EString and `setText(0L)` each resolve to one overload; no `string_view` overload).
-- b3512f76a docs: B1.0 results (the probe, the call-site list, the gate verdict).
-- e5600b260 B1.1. `code/objective.{h,cpp}` have no EString: new leaf TUs `code/objective_text.{h,cpp}` (`read` optional, `write` always writes the key, `readFields` = the missing-key rule: no Description shows the
-  Title, no ObjectiveModel is empty, over-long values are cut and logged, the break conversion no longer drops a trailing character) and `code/objective_flags.{h,cpp}` (`CBooleanArray`, insertion order, `iequals`);
-  accessors return `const std::string&`; 46 dead virtuals deleted (`Description()` of 21+7 classes, 13 `InstanceDescription()`, `DescriptionOf*Species`; no caller in the repo); model fields initialised (they wrote stack
-  garbage); `tests/unit/test_objective_text.cpp` (8 cases). objective.cpp 2657 -> 2349 lines, objective.h 802 -> 615. Forced edits: controlgui_objectives (3), controlgui_update (1), missionbriefingscreen (2).
-- 5d640f3f5 B1.2. The TGA last-load cache and its `new EString` deleted (7 statics, the extern, the delete): EString new/delete 1/1 -> 0/0, own_inventory baseline rewritten.
-- 61d0bf3f2 B1.0f. `/we4840` for mc2, mclib, gui, EditRel (C4840 is off by default: with it on, the trees had one site in the editor, `EditorData_terrain.cpp:100`, an MFC CString through sprintf, now cast, and one
-  in gameos, below). c4bd334ba docs: B1.1/B1.2/B1.0f results and four findings in the notes.
+- ef9a9ab30 F1 `Team::Save` copies only `rosterSize` roster entries (the saved tail was uninitialised heap). TeamData confirmation below.
+- ea995215d F2 (`<string>` outside the ESTRING_H guard), F3 (dead includes in objective.cpp), F4 (`aEdit::entry` via `from_c`), F5 (`ci_equal` deleted), F8 (`objective_text::read` rejects an over-long value with a log line, tested),
+  F9 (`objective_text::readFlagID`, one FlagID-else-index rule, 3 copies -> 1, tested), F10 (history wording out of the comments). LG06 +2 (readFlagID key parameters), baseline rewritten with the reason.
+- 1266aa1a2 F6 (`analyze_dangling.py` lost the `cl /analyze` leg: 20 s -> 8 s; exact tag set; exit 2 for a file with no compile_commands entry or that did not parse), F7 (`estring_callsites.py --check` + board row
+  `estring_callsites`; gui/aedit.cpp and gui/asystem.cpp rows moved to their lines), F12 (`tests/callers.json` regenerated).
+- c1a283422 B1.3a: `LogisticsChassis` / `LogisticsVariant` / `LogisticsMech` on `std::string`, `const std::string&` accessors, `setName(std::string)`, every variant / mech / chassis-file lookup `iequals` on a `from_c` key, the two bare `==`
+  (inventory, modify) as `iequals`, mechlist variant order `ci_total_less`, `mc2::str::file_stem` (replaces the Find/Left/ReverseFind/Right chain at 3 sites; tested against it on the stock file names). 21 edited files. LG06 -2, LG09 -49.
+- 06ea51611 `mechbay_preview_harness.py`: `encyclopedia`, `encyclopedia_vehicles`, `encyclopedia_pilots` screens (boot from the main menu, no mission is played).
+- 45f39522a B1.3b: `LogisticsPilot` on `std::string`; the fold-only site (`PMWChopper` / `pmwchopper`, `updateAvailability` and `appendAvailability`) and every pilot lookup `iequals`; pilot list order `ci_total_less`; display upper-casing `ascii_upper`.
+  13 edited files. LG09 -3.
+- (this commit) docs: notes (B1.3 results, section 8b B1.4 design, F1 sentence corrected), this file, the call-site list regenerated from a fresh deprecation build (exact census).
 
-## Proof numbers (HEAD c4bd334ba plus the state-file commit)
-- doctest 2781 test cases passed / 0 failed / 1 skipped (2757 before; +24: 9 characterization cases, 6 mc2str, 1 gui bridge, 8 objective_text), plain and under ASan.
-- `tools/build_all_targets.py`: rc 0 (root tree incl. editor and mc2fx, three standalone projects, 16 harnesses, unit tier), zero C4840. `scripts/ninja_build.py` rc 0.
-- `tools/own_inventory.py --check`: ok (454 types, EString gone). `cxx17_ratchet --check`: OK after the baseline rewrites (LG06 +1 from_c, +1 objective_text key parameters; LG03 -4, LG05 -1, LG09 -7 in total).
-- `sim_determinism check` mc2_03 / mc2_10 / mc2_24 / mc2_16 (liveness): PASS on the final exe, first 1000 frames match the committed baselines in every digest (also after B1.1).
-- tier1 5/5 `2026-10-12T21-01-42` on exe `c4bd334ba` (mc2_01 135 fps, mc2_03 78, mc2_10 98, mc2_17 124, mc2_24 118). The earlier B1.1 run (dirty tree) `2026-10-12T20-29-56` was 5/5 too.
-- editor smoke `2026-10-12T21-24-54`: PASS 15/15. Board (`check-contracts.sh`): 170 passed, 1 failed (`script_callers`, stale after the CMakeLists line shift; regenerated and committed with this file).
-- Save proof B1.1 (mc2_01, render frame 1000; `/tmp/b1save` is scratch, the numbers are here): the noise set of the OLD exe (two runs) is TerrainObjectData byte 340 (191 packets), MechWarriorData 41, MechData 6 (offsets 3020-3035),
-  CommanderData 2, and the objective model fields. Old vs new differs by: text packet 2 = two added `st ObjectiveModel = ""` lines (the two nav-marker objectives) and four stack-garbage model fields now 0, nothing else; MechData 134 +
-  GroundVehicleData 151 = bytes 2953-2955/3001-3003 of every record, the saved vftable pointers of the embedded `MoverControl` (offset 2952) and `MoverDynamics` (offset 3000), which move with every link; everything else
-  (MechWarriorData, CommanderData, TeamData, TerrainObjectData byte 340) is inside classes that also differ between two runs of one exe. The new exe's objective text packet is identical run to run.
-- The old-exe probe (stock data): the only fold-only match is `LogisticsData::updateAvailability` (`logisticsdata_availability.cpp:245`, the pilot file name `Compare(pilotName, 0)`: `pmwchopper` against `PMWChopper`, 15 hits a
-  run): a bare `==` there leaves the stock PMW pilots unavailable. No ordering-only site reached; stale-reader hits only on quickload (`ObjectiveModel`, the nav-marker objectives). Full text: notes section 8.
+## TeamData confirmation (F1)
+`Team::Save` bug: the two sentences "TeamData differs in the old exe too" (notes section 8, this file) were false. Measured: old exe, two runs: 0 TeamData bytes differ. After ef9a9ab30 (exe 1266aa1a2), two clean runs `f_a` / `f_c`
+(`C:/Users/Joe/AppData/Local/Temp/b1save/`): 47 packets differ, MechWarriorData 39, MechData 6, CommanderData 2, no TeamData, no text packet. The same holds for the post-3a pair (`g_a` / `g_b`: 40 packets, MechWarriorData 38, CommanderData 2)
+and the post-3b pair (`h_a` / `h_b`: 42 packets, MechWarriorData 40, CommanderData 2). Notes corrected. (Runs `f_b`, first `g_a` / `g_b` died on a loaded host with `heartbeat_freeze_play`: the quickload frame was not reached
+within the 28 s window; the duration cap is 30 s, rerun when the host is quiet. A stale `save1.ims` from 2026-10-11 stays in a reused `--out` directory: always `rm -rf` it first.)
 
-## NEXT for the next owner, in order
-1. **B1.3 logistics model A** (`code/logisticsvariant.h`, `logisticsvariant_stats.cpp`, `logisticsmech.h`, `logisticsmechdisplay.cpp`, `logisticspilot.h`, `logisticspilotlistbox.cpp`; includers the compiler forces:
-   `logisticsvariant.cpp` 6, `logisticsmech.cpp` 3, `logisticspilot.cpp` 3, and `logisticsdata_availability.cpp` because the pilot header changes, 11 includers of `logisticspilot.h`, 10 of `logisticsmech.h`, 7 of
-   `logisticsvariant.h`). Rules C1-C14 of the notes. THE hazard: `(*pIter).getFileName().Compare(pilotName, 0)` in `logisticsdata_availability.cpp:245` must become `mc2::str::iequals` (the probe shows the stock PMW pilots depend
-   on the fold); the 35 `Compare(x, 0)` lookups -> `iequals`, sort sites (`logisticspilotlistbox.cpp:330`) -> `ci_total_less` with the order stated in a comment, the `MakeLower` file names (H12) -> `ascii_lower`, the
-   `getCurrent*` getters (C7). Proof: lifetime gate over the TUs (`py -3 tests/analyze/analyze_dangling.py --check <files> --compile-commands build64-ninja/compile_commands.json`), doctests of the converted lookups on a case-variant
-   fixture, `MC2_BOOT_TO_BAY` / `MC2_BOOT_TO_MECHLAB` captures viewed (`scripts/mechbay_preview_harness.py bay|purchase|loadout`; the BEFORE images (bay, purchase, loadout, 640x480 TGA, this HEAD
-   c4bd334ba) are in `A:/Games/mc2-capture-evidence/b1-before-B1.3/`; take the after images with the same harness command `MC2_CURSOR_GUARD_OFF=1 py -3 scripts/mechbay_preview_harness.py <screen> --timeout 60 --frame 600 --out <file>`), determinism check, `build_all_targets`, ASan doctest, tier1. After it: `py -3 tests/analyze/estring_callsites.py --drop <converted files>`.
-2. After B1.3: the grouped Opus after-review (RA1) is the orchestrator's call; do not request it from the lane.
-3. B1.4 (logistics model B + saveload + dialog; split at `logisticsdialog` past 40 edited files), B1.5 (screens), B1.6 / B1.7 (editor: `-mission=<stock> -smoke-save=<out>` byte diff old vs new editor), B1.8, then B6.
-4. For lane 2 / the orchestrator: `GameOS/gameos/vulkan_context.cpp:109` passes a `std::string` (`env`) to the printf-style `ctxlog("... '%s' ...", env)`: prints garbage on an unrecognised validation preset (`env.c_str()`);
-   then add `gameos` to the `/we4840` list in the root CMakeLists.txt.
-5. Findings outside B1 (notes section 8): `FitIniFile::readIdString` joins the first two lines of a multi-line value without a break; `CPlayBIK` / `CPlayWAV` prefix `"./"` on every load and save the prefixed path;
-   records are saved as raw images including vftable pointers (a byte diff of two builds is noisy by construction: mask or zero them in the save-format guard work); `readIdString` leaves a value of exactly the buffer length unterminated.
-6. Carried over from the previous session: ABL int/real out-array slice (the 16 `open` census rows), the 8 tight ABL debug strings (needs the owner), mc2_07 tier2 on an idle host, save round-trip baselines, the non-mover
-   zero-vector question for ABL.
+## B1.3 save-diff explanation (mc2_01, render frame 1000; pre-batch exe 1266aa1a2 vs 06ea51611 (3a) vs 45f39522a (3b))
+Between any two of the three exes: the mission text packet (packet 2) is byte-identical; MechData (134) and GroundVehicleData (151) differ ONLY at bytes 2953-2955 and 3001-3003 of every record (3a vs pre) / 2954-2955 and 3002-3003 (3b vs 3a): the
+saved vftable pointers of the embedded `MoverControl` (offset 2952) and `MoverDynamics` (offset 3000), which move with every link; plus 3020-3035 in one MechData packet (the known noise); MechWarriorData (38-41) and CommanderData (1-2) are
+the noise set (they differ between two runs of one exe). Nothing else differs: logistics state is not in the mission save, so the variant / mech / pilot writers (`LogisticsVariant::save`, `LogisticsMech::save`, `LogisticsPilot::save`)
+are covered only by reading (`c_str()` of the same text) until B1.4's campaign-save proof.
+
+## Proof numbers
+- Pre-commit, each of c1a283422 and 45f39522a: `scripts/ninja_build.py` rc 0; `tools/build_all_targets.py` rc 0 (every stage); `build_contract_harnesses --run --unit` 20 harnesses pass, doctest 2782 passed / 0 failed / 1 skipped (plain), 2782 under
+  `--asan`; `analyze_dangling --check` over the edited TUs (18, then 11): 0 diagnostics; `cxx17_ratchet --check --worktree` OK; `own_inventory --check` ok (454 types); `log_tag_census --check` OK; `estring_callsites --check` OK.
+- `sim_determinism check` PASS after both batches: mc2_03 (2372 frames), mc2_10, mc2_24, mc2_16 (liveness, 2414 frames), first 1000 frames equal the committed baselines in every digest.
+- Mechbay captures (frame 600, 640x480; before `A:/Games/mc2-capture-evidence/b1-before-B1.3/`, after `b1-after-B1.3a/`, `b1-after-B1.3b/`; viewed): bay, purchase, loadout, launch (pilot ready), encyclopedia (mechs), encyclopedia_pilots: same text,
+  same lists and order; pixel differences only the idle mech animation (bbox 294-349 x 290-344) and a fade of at most 15/255 on loadout and launch. `encyclopedia_vehicles` STOPs in the old and the new exe alike (`String Id 45208, bufferLen 255`).
+- tier1 5/5: `2026-10-12T22-57-34` on 06ea51611 (the first run `22-45-14` was 4/5, mc2_24 `heartbeat_freeze_play` with another lane's cl.exe running; mc2_24 had just passed determinism), `2026-10-13T06-42-35` on 45f39522a
+  (mc2_01 140 fps, mc2_03 80, mc2_10 99, mc2_17 125, mc2_24 120).
+- Idiom KPI (`cxx17_ratchet --report` TOTAL row, 21 idioms summed): 16,261 at the session start (baseline at 05011a47c) -> 16,236 now (LG09 6,627 -> 6,602; LG06 1,643 -> 1,643: -2 +2 from `readFlagID`'s key parameters).
+- Call-site census (fresh deprecation build, exact): 381 sites in 56 files (was 498 / 71 at the session start): ECHARPTR 136, Data 130, Format 70, Compare 13, `==` 10, MakeUpper 8, Remove 7, `!=` 3, MakeLower 2, Find 1, Insert 1.
+  Per batch: B1.4 60, B1.5 45, B1.6 (editor model) 135, B1.7 26, B6 50; includers / gui widgets the compiler forces: 65 in 13 files (gui/aanim 17, gui/aedit 13, editor/EditorData_save 9, ...). B1.3: 0 rows left.
+
+## NEXT, in order
+1. The grouped Opus after-review RA1 (B1.0-B1.3) is the orchestrator's call; do not request it from the lane.
+2. B1.4a per `cxx23-step4-b1-notes.md` section 8b (`logisticsmissioninfo{,_progress,_query}` + header, the `LogisticsData` pass-throughs, forced includers `logistics.cpp`, `missionbegin.cpp`, `missionselectionscreen.cpp`, `missionresults.cpp`,
+   `missionbriefingscreen.cpp`, `mainmenu.cpp`, `pausewindow.cpp`, `saveload.cpp`): the null-returning `const char*` getters return `std::string` by value (empty = none). Proof additionally: a campaign save before / after (`LogisticsMissionInfo::save/load`),
+   a campaign-start boot whose log shows no `""` playback, determinism, tier1. Then B1.4b (`logisticsdialog`, the rest of `logisticsdata*.cpp`: 22 + ... remaining rows), B1.5, B1.6 / B1.7 (editor), B6.
+   Per batch: build, `--drop`/`--remap` the call-site rows (`py -3 tests/analyze/estring_callsites.py --remap HEAD <edited files>`, then the board row), `cxx17_ratchet --write-baseline --worktree` with the reason, commit by pathspec.
+3. Outside B1 (notes sections 8 and 8b): `GameOS/gameos/vulkan_context.cpp:109` `ctxlog(... env)` passes a `std::string` (lane 2, then add `gameos` to the `/we4840` list); the Mechlopedia vehicles tab boot STOP; `LogisticsPilot::getAudio/getVideo/getIconFile`
+   have no caller; `FitIniFile::readIdString` joins the first two lines of a multi-line value; saves carry vftable pointers (byte diffs of two builds are noisy by construction).
+4. Carried over: ABL int/real out-array slice, the 8 tight ABL debug strings (needs the owner), mc2_07 tier2 on an idle host, save round-trip baselines, the non-mover zero-vector question for ABL.
 
 ## Tool notes
-- **Bash heredocs eat backslashes in Python too** (`"\\n"` became a real newline three more times this session, a bare `py -3 - <<EOF` with an empty body hangs on stdin). Write any script that carries an escape with the Write tool
-  or with the Edit tool; for byte-exact CRLF-aware edits a scratch helper (`eol_edit.edit(path, old, new)`: detects the file's own ending, refuses mixed files) worked well; `tools/dev/apply_edit.py` is the committed equivalent.
-- Deprecation census recipe (not committed, by design): mark `[[deprecated("B1")]]` on the public API of `mclib/estring.h` (conversion operator, `Data`, every comparison operator, `Compare`, `Make{Upper,Lower}`, the index functions,
-  `Format`; a byte-level regex over the class body, CRLF), `py -3 tools/build_all_targets.py --root-only -j16 --keep-going > log`, `py -3 tests/analyze/estring_callsites.py log`, `git checkout -- mclib/estring.h`. 850 steps, about 12 min.
-- Old-exe probe recipe (not committed): a patch applied by script to `mclib/estring.cpp` (`Compare` logs a fold-only match with `CaptureStackBackTrace` RVAs and the two strings) and `code/objective.cpp` (`sReadIdString` logs a miss and
-  the stale text), build, `deploy_payload.py --target game --ninja`, `run_smoke.py --mission X --duration 28 --deploy 0.4 --keep-logs`, resolve RVAs with `llvm-symbolizer --obj=build64-ninja/mc2.exe --relative-address`.
-- Save proof recipe: `py -3 tools/saveload_roundtrip.py resave --mission mc2_01 --out DIR` twice with the OLD exe (build it first and keep its saves) and once with the NEW exe, then `py -3 tools/save_inspect.py diff a/save1.ims b/save1.ims`;
-  per-offset analysis needs a few lines over `save_inspect.load` (the byte offsets inside a record class); `clang-cl -Xclang -fdump-record-layouts-complete` names the member at an offset.
-- `deploy_payload.py --target editor` needs `--build-dir <tree>/out/editor --build64-root build64-ninja --allow-stale-exe` when the editor was built by `build_all_targets` (it compares against the dev tree's objects).
-- `build_all_targets.py` rebuilds in 3 min when nothing but a few TUs changed; a global compile flag change rebuilds every tree (dev 3 min, all-targets 13 min).
-- Several `Monitor`/`until` waiters on one log all fire when it ends: start one.
-- `grep -c $'\r' file` matches every line here: use Python (`b.count(b"\r\n")`) or `git ls-files --eol`. Working copies of `.claude/cleanup/*.md` are CRLF only sometimes; `eol_edit` handles both.
-- `cxx17_ratchet --check` reads the COMMITTED tree by default: use `--worktree` / `--staged` before committing, rewrite the baseline with `--write-baseline --worktree` and say why in the message.
-- `git add -N` a new file before `log_tag_census.py --check` / `callers.py` (both read `git ls-files`); regenerate `tests/callers.json` (`py -3 tools/callers.py`) after ANY line shift in CMakeLists.txt or check-contracts.sh.
-- Fingerprint: committing code after the build makes the deployed exe stale against HEAD; doc commits do not (the runner reported the exe built from the previous doc commit as matching).
+- **Bash heredocs eat backslashes in Python too** (`"\\n"` became a real newline again twice; a `sed` with `\\b` silently did nothing and a census ran with the wrong regex). Write any script that carries an escape with the Write tool, use `chr(10)` in
+  a heredoc, and edit with `tools/dev/apply_edit.py edits.json` (the Write tool for the JSON; CRLF-aware, all-or-nothing).
+- A background build / run started with `run_in_background` and several `Monitor` waiters on one log all fire: start ONE waiter, or an `until grep -q ... ; do sleep 5; done` Bash with a timeout. Foreground `sleep` is blocked.
+- `tools/saveload_roundtrip.py resave --mission mc2_01 --out DIR` (no `--duration` above 30) twice per exe; `rm -rf DIR` first; `--deploy` builds and deploys HEAD. Per-offset analysis of differing records: a few lines over `save_inspect.load`.
+- Post-commit proof chain (about 45 min on an idle host): deploy (`py -3 -c "import sim_determinism as sd; sd.build_and_deploy()"` from tools/), saves x2, `sim_determinism check` mc2_03 / mc2_10 / mc2_24 and mc2_16 with `--env MC2_FIXTURE_ORDER_LIVENESS=1`,
+  `scripts/mechbay_preview_harness.py <screen> --timeout 60 --frame 600 --out F` (MC2_CURSOR_GUARD_OFF=1) for bay, purchase, loadout, launch, encyclopedia, encyclopedia_pilots, then tier1. Do not build or commit C++ while it runs (the fingerprint gate).
+- Exact census recipe (not committed): `[[deprecated("B1")]]` on the public API of `mclib/estring.h` (declarations only, no `friend` lines; the regex for the symbol operators must NOT end in `\b`), `py -3 tools/build_all_targets.py --root-only -j16 --keep-going > log`
+  (about 12 min), `py -3 tests/analyze/estring_callsites.py log`, `git checkout -- mclib/estring.h`. Touching estring.h rebuilds the dev tree afterwards (about 8 min).
+- `cxx17_ratchet --check` reads the COMMITTED tree by default: use `--worktree` / `--staged` before committing; `git add -N` a new file before `log_tag_census.py --check` / `callers.py`; regenerate `tests/callers.json` after ANY line shift in CMakeLists.txt or check-contracts.sh.
+- Fingerprint: committing code after the build makes the deployed exe stale against HEAD; doc commits do not.
 
 ## Rules (unchanged)
-- Commit by explicit pathspec after `git diff --cached --name-only`; `git commit -F <file>`; trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
-  Commit BEFORE build + deploy. Launches only through `scripts/run_smoke.py --deploy 0.4` / `tools/sim_determinism.py` / `tools/saveload_roundtrip.py` / `scripts/mechbay_preview_harness.py` / `scripts/run_editor_smoke.py`,
-  background-only, never `--no-lease`. Never kill cl/ninja by name (`tools/kill_build_tree.py`). Never contort code for a ratchet (rewrite the baseline with the reason). Never touch GameOS/, RenderCore/, shaders/, Gates/
-  beyond a task's need, nor tests/unit/test_gate.cpp, nor gos_static_prop*, nor code/multplyr*.
+- Commit by explicit pathspec after `git diff --cached --name-only`; `git commit -F <file>`; trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Commit BEFORE build + deploy. Launches only through `scripts/run_smoke.py --deploy 0.4` /
+  `tools/sim_determinism.py` / `tools/saveload_roundtrip.py` / `scripts/mechbay_preview_harness.py` / `scripts/run_editor_smoke.py`, background-only, never `--no-lease`. Never kill cl/ninja by name (`tools/kill_build_tree.py`). Never contort code
+  for a ratchet (rewrite the baseline with the reason). Never touch GameOS/, RenderCore/, shaders/, Gates/ beyond a task's need, nor tests/unit/test_gate.cpp, nor gos_static_prop*, nor code/multplyr*.

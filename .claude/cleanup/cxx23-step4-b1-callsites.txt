@@ -14,13 +14,13 @@
 #       1  EString::Insert
 # per batch (files that name the type, cxx23-step4-b1-files.json):
 #      60  B1.4
-#      46  B1.5
+#      45  B1.5
 #     135  B1.6
 #      26  B1.7
 #      50  B6
-# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 64 in 13 files
+# sites in files that do NOT name the type or are gui widgets (includers the compiler forces, or B6): 65 in 13 files
 #      17  gui/aanim.cpp
-#      12  gui/aedit.cpp
+#      13  gui/aedit.cpp
 #       9  editor/EditorData_save.cpp
 #       6  editor/EditorInterface_terrain.cpp
 #       6  gui/alistbox.cpp
@@ -41,8 +41,8 @@
 #      17  gui/aanim.cpp
 #      16  code/mpsetuparea.cpp
 #      15  editor/Objective_conditions.cpp
+#      13  gui/aedit.cpp
 #      12  code/logisticsmissioninfo_query.cpp
-#      12  gui/aedit.cpp
 #      10  code/mpgamebrowser.cpp
 #      10  editor/CampaignData.cpp
 #      10  editor/ObjectivesSummaryPanel.cpp
@@ -51,13 +51,13 @@
 #       7  code/logisticsdata_availability.cpp
 #       7  code/logisticsmissioninfo.cpp
 #       7  code/mpprefs.cpp
-#       6  code/mechlabscreen.cpp
 #       6  editor/EditorData_terrain.cpp
 #       6  editor/EditorInterface_terrain.cpp
 #       6  editor/Objective.h
 #       6  editor/TargetAreaDlg.cpp
 #       6  gui/alistbox.cpp
 #       5  code/infowindow.cpp
+#       5  code/mechlabscreen.cpp
 #       5  code/mpconnectiontype.cpp
 #       4  code/mainmenu.cpp
 #       4  code/missionbriefingscreen.cpp
@@ -165,7 +165,6 @@ code/mechlabscreen.cpp:424:operator ECHARPTR
 code/mechlabscreen.cpp:466:operator ECHARPTR
 code/mechlabscreen.cpp:554:Compare
 code/mechlabscreen.cpp:1155:operator ECHARPTR
-code/mechlabscreen.cpp:1160:operator ECHARPTR
 code/mechlabscreen.cpp:1194:operator ECHARPTR
 code/mechlistbox.cpp:598:Compare
 code/mechlistbox.cpp:603:Compare
@@ -450,6 +449,7 @@ gui/aanim.cpp:117:operator ECHARPTR
 gui/aanim.cpp:123:Format
 gui/aanim.cpp:124:operator ECHARPTR
 gui/aedit.cpp:286:Insert
+gui/aedit.cpp:440:operator ECHARPTR
 gui/aedit.cpp:527:Remove
 gui/aedit.cpp:550:operator ECHARPTR
 gui/aedit.cpp:551:operator ECHARPTR
@@ -467,7 +467,7 @@ gui/alistbox.cpp:1344:operator ECHARPTR
 gui/alistbox.cpp:1353:operator ECHARPTR
 gui/alistbox.cpp:1359:operator ECHARPTR
 gui/alistbox.cpp:1375:operator ECHARPTR
-gui/alistbox.h:130:operator ECHARPTR
+gui/alistbox.h:134:operator ECHARPTR
 gui/asystem.cpp:1071:operator ECHARPTR
 gui/asystem.cpp:1075:operator ECHARPTR
 gui/asystem.cpp:1130:operator ECHARPTR
