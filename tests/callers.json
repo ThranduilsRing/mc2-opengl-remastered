@@ -2314,6 +2314,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_contract_coverage.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 22,
           "evidence": "import",
@@ -5787,7 +5794,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_contract_coverage.py",
-          "line": 9,
+          "line": 10,
           "evidence": "import",
           "reference": "tools.callers",
           "text": "from tools import callers"

@@ -2,11 +2,13 @@
 import ast
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from tools import callers
+from scripts import console_child
 
 
 def entries(text, separator):
@@ -15,10 +17,17 @@ def entries(text, separator):
             for name, _separator, reason in [line.partition(separator)]}
 
 
-def coverage_problems(checks, inventory, manual, board, harnesses, registered, debt):
+def coverage_problems(checks, inventory, manual, board, harnesses, registered, debt, tracked=None):
     issues = []
     items = {item["path"]: item for item in inventory["scripts"]}
     rows = re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
+    if tracked is None:
+        tracked = items
+    for label, command in rows:
+        for path in re.findall(r'(?<![\w./-])((?:scripts|tools|tests)/[\w./+-]+\.(?:py|sh|ps1))(?![\w./-])',
+                               command):
+            if path not in tracked:
+                issues.append(f"board row {label} references untracked script: {path}")
     for column, label in ((0, "label"), (1, "command")):
         values = [row[column] for row in rows]
         if len(values) != len(set(values)):
@@ -78,6 +87,10 @@ def tier_problems(sources, cmakes, runners, pins=(6, 1)):
 def test_contract_and_test_tier_coverage():
     read = lambda path: (ROOT / path).read_text(encoding="utf-8")
     inventory = callers.build_inventory(ROOT)
+    # HEAD is the clone's ledger; staging and delivery-only inventory entries are insufficient.
+    tracked = set(subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD"], cwd=ROOT,
+                                capture_output=True, text=True, check=True,
+                                **console_child.child_kwargs(redirected=True)).stdout.splitlines())
     checks = [item["path"] for item in inventory["scripts"]
               if (ROOT / item["path"]).is_file() and (
                   re.fullmatch(r'scripts/check[-_].*\.(?:py|sh)', item["path"])
@@ -96,7 +109,7 @@ def test_contract_and_test_tier_coverage():
     harnesses = {path.parent.name for path in (ROOT / "tools").glob("*_harness/CMakeLists.txt")}
     issues = coverage_problems(checks, inventory, entries(read("scripts/manual-checks.allowlist"), ":"),
                                read("scripts/check-contracts.sh"), harnesses, registered,
-                               entries(read("scripts/unregistered-harness-debt.txt"), "#"))
+                               entries(read("scripts/unregistered-harness-debt.txt"), "#"), tracked)
     cmakes = {path: read(path) for path in ("tests/unit/CMakeLists.txt",
               "tests/model_override/CMakeLists.txt", "tests/static_natural_skip/CMakeLists.txt")}
     sources = {path.name: path.read_text(encoding="utf-8")
@@ -122,6 +135,27 @@ def test_duplicate_rows_and_harness_debt_fail():
     assert coverage_problems([], {"scripts": []}, {}, row * 2, set(), set(), {})
     assert coverage_problems([], {"scripts": []}, {}, "", {"lost_harness"}, set(), {})
     assert coverage_problems([], {"scripts": []}, {}, "", {"paid_harness"}, {"paid_harness"}, {"paid_harness": "old"})
+
+
+def test_board_missing_script_fails_and_tracked_twin_passes():
+    tracked = "scripts/check-present.py"
+    inventory = {"scripts": [{"path": tracked}]}
+    for runner in ("run_check", "run_check_tri"):
+        for missing in ("scripts/check-missing.py", "tools/nested/check_missing.py", "tests/check_missing.py"):
+            row = f'{runner} "fixture" "py -3 {tracked} && py -3 {missing}"\n'
+            assert coverage_problems([], inventory, {}, row, set(), set(), {}) == [
+                f"board row fixture references untracked script: {missing}"]
+            clean = row.replace(f" && py -3 {missing}", "")
+            assert coverage_problems([], inventory, {}, clean, set(), set(), {}) == []
+
+
+def test_inventory_entry_cannot_substitute_for_head_tracking():
+    path = "scripts/check-present.py"
+    inventory = {"scripts": [{"path": path}]}
+    row = f'run_check "fixture" "py -3 {path}"\n'
+    assert coverage_problems([], inventory, {}, row, set(), set(), {}, tracked=set()) == [
+        f"board row fixture references untracked script: {path}"]
+    assert coverage_problems([], inventory, {}, row, set(), set(), {}, tracked={path}) == []
 
 
 def test_orphan_source_and_undriven_target_fail():
