@@ -8,10 +8,11 @@ committed) and `index.md` is only its rendering, so deleting a set directory, or
 later description of the same set name can add one, never clear it.
 
 Usage:
-  py -3 tools/visual_verify/capture_index.py [--root DIR] [--ledger FILE] [--out FILE] [--refresh [NAME ...]] [--check]
+  py -3 tools/visual_verify/capture_index.py [--root DIR] [--ledger FILE] [--out FILE] [--refresh [NAME ...]] [--note NAME TEXT] [--check]
       adds every set directory under <root> that the ledger does not know, rewrites the ledger and the index. A set already in the ledger is not
       described again unless --refresh names it (no names = every set still on disk). --check exits 1 when a set on disk is missing from the ledger or
       the index is not the rendering of the ledger; on a clone with no set directories it checks the committed pair only.
+      --note NAME TEXT attaches a one-line note (what changed in the install under the set, a ruling) that the index shows after the set's line.
 Nothing in a line depends on the clock, and the ledger is sorted by name, so a second run changes nothing."""
 from __future__ import annotations
 
@@ -126,6 +127,7 @@ def render_line(name: str, row: dict) -> str:
     options = row["options"] + (" [vs HEAD defaults]" if row.get("options_base") == "head" and row["options"] not in ("defaults", "unrecorded") else "")
     flag = " **VOID**" if row.get("void") else ""
     reason = f" | {row['void_reason']}" if row.get("void") and row.get("void_reason") else ""
+    reason += f" | note: {row['note']}" if row.get("note") else ""
     return (f"{name}{flag} | {row['requested']} | {'+'.join(row['drew']) or 'unrecorded'} | {'+'.join(row['readback']) or 'unrecorded'} | {row['exe']} | "
             f"{options} | {row['animation']} | {row['poses_present']}/{row['poses_total']} | {row['date']}{reason}")
 
@@ -166,6 +168,8 @@ def merge(ledger: "dict[str, dict]", root: str, refresh: "list[str] | None") -> 
         old = out.get(name)
         if old and old.get("void") and not row["void"]:
             row["void"], row["void_reason"] = True, old.get("void_reason") or "flagged VOID earlier"
+        if old and old.get("note"):
+            row["note"] = old["note"]
         out[name] = row
     return out
 
@@ -182,6 +186,7 @@ def main(argv: "list[str] | None" = None) -> int:
     ap.add_argument("--ledger", default=None, help=f"default <root>/{LEDGER_NAME}")
     ap.add_argument("--out", default=None, help=f"default <root>/{INDEX_NAME}")
     ap.add_argument("--refresh", nargs="*", default=None, metavar="NAME", help="describe these sets again (none named = all on disk); VOID stays")
+    ap.add_argument("--note", nargs=2, action="append", default=[], metavar=("NAME", "TEXT"), help="attach a one-line note to a set already in the ledger")
     ap.add_argument("--check", action="store_true", help="exit 1 when a set on disk is not in the ledger or the index is not the ledger's rendering")
     args = ap.parse_args(argv)
     ledger_path = args.ledger or os.path.join(args.root, LEDGER_NAME)
@@ -199,6 +204,11 @@ def main(argv: "list[str] | None" = None) -> int:
         print("capture index: " + ("OK" if ok else "STALE (" + "; ".join(why or ["empty ledger"]) + "); run py -3 tools/visual_verify/capture_index.py"))
         return 0 if ok else 1
     merged = merge(ledger, args.root, args.refresh)
+    for name, text in args.note:
+        if name not in merged:
+            print(f"capture index: no set {name!r} in the ledger", file=sys.stderr)
+            return 1
+        merged[name]["note"] = " ".join(text.split()).replace("|", "/")
     write_ledger(ledger_path, merged)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write(render_index(merged))

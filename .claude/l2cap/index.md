@@ -5,7 +5,7 @@ A set listed here may no longer exist on disk: deleting a set directory never re
 VOID = the requested backend is not the one that drew it, or the set has no capture record: never cite the set as evidence for the requested backend. A VOID flag is sticky.
 unrecorded = the set predates that field. `[vs HEAD defaults]` = the exe's own option table could not be read, so the differences are against the defaults of the commit this index was written at.
 Add new sets with `py -3 tools/visual_verify/capture_index.py`.
-145 set(s), 23 VOID (counted from the ledger when this file was written).
+147 set(s), 23 VOID (counted from the ledger when this file was written).
 
 f21-after-vk **VOID** | vulkan | gl | gl_fbo | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 f21-after-vkarm | vulkan | vulkan | vk_present | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12
@@ -47,6 +47,8 @@ g1tip-vkarm | vulkan | vulkan | vk_present | 0d479ca9b915 | unrecorded | unfroze
 g1tip1-gl | gl | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 1/2 | 2026-10-12
 g1tip2-gl | gl | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 2/2 | 2026-10-12
 gold1080-ab-pbr1 | gl | gl | gl_fbo | e9e3f19d6f6e | StaticPropPbr=true | frozen | 10/10 | 2026-10-13
+gold1080-nocsv | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 9/10 | 2026-10-13 | note: install data/art/Buildings.csv (a May editor bring-up override listing vehicles as MECH) removed by owner ruling 2026-10-13; self-compare against golden-e9e3f19d6-1080p with the stock CSV loading: every blessed region of the nine captured poses PASS, 0.0 changed, no re-bless; the tenth pose (mc2_01_saved_205644) is the set gold1080-nocsv-01 because its first attempt spent its time budget waiting for another lane's host lease
+gold1080-nocsv-01 | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 1/1 | 2026-10-13 | note: mc2_01_saved_205644 re-run of gold1080-nocsv after the Buildings.csv removal: 7/7 regions PASS 0.0
 gold1080-r1 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 gold1080-r2 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 gold1080-r3 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13

@@ -128,3 +128,13 @@ def test_regeneration_is_stable_and_check_notices_a_stale_file(tmp_path):
     assert capture_index.main(["--root", str(tmp_path), "--check"]) == 1          # a set on disk the ledger does not know
     capture_index.main(["--root", str(tmp_path)])
     assert capture_index.main(["--root", str(tmp_path), "--check"]) == 0
+
+
+def test_a_note_is_shown_after_the_line_and_survives_a_refresh(tmp_path):
+    make_set(tmp_path, "n", "gl", {"backend": "gl", "readback_source": "gl_fbo"})
+    capture_index.main(["--root", str(tmp_path)])
+    assert capture_index.main(["--root", str(tmp_path), "--note", "n", "an install file | was removed"]) == 0
+    assert "| note: an install file / was removed" in (tmp_path / "index.md").read_text(encoding="utf-8")
+    capture_index.main(["--root", str(tmp_path), "--refresh"])
+    assert json.loads((tmp_path / "ledger.json").read_text(encoding="utf-8"))["sets"]["n"]["note"] == "an install file / was removed"
+    assert capture_index.main(["--root", str(tmp_path), "--note", "missing", "x"]) == 1
