@@ -267,14 +267,7 @@ void initInstrBanner() {
 // validated values again and reports anything this early pass skipped.
 void initRenderOptionsFromConfig() {
     mc2::options::RenderOptions options;
-    if (FILE* f = std::fopen("options.cfg", "rb")) {
-        std::string text;
-        char chunk[4096];
-        size_t got = 0;
-        while ((got = std::fread(chunk, 1, sizeof(chunk), f)) > 0) text.append(chunk, got);
-        std::fclose(f);
-        mc2::options::cfg::loadFromText(options, text);
-    }
+    mc2::options::cfg::loadFromText(options, mc2::options::cfg::readTextFile("options.cfg"));
     std::vector<mc2::options::Reject> ignored;
     mc2::options::applyOverrides(options, mc2::gate::str<"MC2_OPTIONS_OVERRIDE">(), ignored);
     mc2::options::publish(options);

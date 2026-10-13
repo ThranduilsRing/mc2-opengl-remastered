@@ -1402,3 +1402,69 @@ TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the 
     CHECK(mo::setFromText(o, sharp, *mo::cfg::get(withSharp, "PostCASSharpness")) == mo::Verdict::Ok);
     CHECK(o.postCasSharpness == 0.25f);
 }
+
+// One strict grammar for options.cfg: CPrefs::load and the pre-window publish both call cfg::loadFromText, so the values the early readers see and
+// the lines CPrefs logs come from the same call. Each case is one line of the [MechCommander2] block.
+TEST_CASE("options.cfg values follow one strict grammar and every reader sees the same result") {
+    namespace mo = mc2::options;
+    struct Case { const char* line; const char* key; mo::Verdict want; };
+    const Case cases[] = {
+        {"b ShadowCSM = banana",           "ShadowCSM",        mo::Verdict::Garbage},
+        {"b ShadowCSM = F",                "ShadowCSM",        mo::Verdict::Garbage},
+        {"b ShadowCSM = yes",              "ShadowCSM",        mo::Verdict::Garbage},
+        {"b ShadowCSM =",                  "ShadowCSM",        mo::Verdict::Garbage},
+        {"b ShadowCSM = FALSE ; off",      "ShadowCSM",        mo::Verdict::Garbage},
+        {"b ShadowCSM = TRUE TRUE",        "ShadowCSM",        mo::Verdict::Garbage},
+        {"l TonemapMode = abc",            "TonemapMode",      mo::Verdict::Garbage},
+        {"l TonemapMode = 2 ; AgX",        "TonemapMode",      mo::Verdict::Garbage},
+        {"l TonemapMode = 2 // AgX",       "TonemapMode",      mo::Verdict::Garbage},
+        {"l TonemapMode = 1.5",            "TonemapMode",      mo::Verdict::Garbage},
+        {"l TonemapMode = 0x2",            "TonemapMode",      mo::Verdict::Garbage},
+        {"l TonemapMode = 9",              "TonemapMode",      mo::Verdict::OutOfRange},
+        {"f PostCASSharpness = 0,45",      "PostCASSharpness", mo::Verdict::Garbage},
+        {"f PostCASSharpness = 0.5abc",    "PostCASSharpness", mo::Verdict::Garbage},
+        {"f PostCASSharpness = nan",       "PostCASSharpness", mo::Verdict::Garbage},
+        {"f PostCASSharpness = inf",       "PostCASSharpness", mo::Verdict::Garbage},
+        {"f PostCASSharpness = 7",         "PostCASSharpness", mo::Verdict::OutOfRange},
+    };
+    for (const Case& c : cases) {
+        CAPTURE(c.line);
+        const std::string text = std::string("[MechCommander2]\r\n") + c.line + "\r\n";
+        mo::RenderOptions viaCPrefs{};
+        std::vector<mo::Reject> rejects;
+        CHECK(mo::cfg::loadFromText(viaCPrefs, text, &rejects) == 0);
+        REQUIRE(rejects.size() == 1);
+        CHECK(rejects[0].key == c.key);
+        CHECK(rejects[0].why == c.want);
+        CHECK(viaCPrefs == mo::RenderOptions{});          // the default is kept
+        mo::RenderOptions viaEarlyReader{};               // the pre-window publish passes no reject list
+        CHECK(mo::cfg::loadFromText(viaEarlyReader, text) == 0);
+        CHECK(viaEarlyReader == viaCPrefs);
+    }
+
+    // the accepted spellings
+    mo::RenderOptions o{};
+    std::vector<mo::Reject> rejects;
+    const std::string good = "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nb VfxSoftParticles = 0\r\n"
+                             "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropPbr =   True  \r\n";
+    CHECK(mo::cfg::loadFromText(o, good, &rejects) == 7);
+    CHECK(rejects.empty());
+    CHECK_FALSE(o.shadowCsm);
+    CHECK(o.sunAxisFix);
+    CHECK(o.vfxLitParticles);
+    CHECK_FALSE(o.vfxSoftParticles);
+    CHECK(o.tonemapMode == 3);
+    CHECK(o.postCasSharpness == 0.25f);
+    CHECK(o.staticPropPbr);
+
+    // a duplicate key is read at its first line; a rejected value does not clobber a value the struct already holds
+    mo::RenderOptions dup{};
+    CHECK(mo::cfg::loadFromText(dup, "[MechCommander2]\nb ShadowCSM = FALSE\nb ShadowCSM = TRUE\n") == 1);
+    CHECK_FALSE(dup.shadowCsm);
+    mo::RenderOptions keep{};
+    keep.tonemapMode = 2;
+    std::vector<mo::Reject> keepRejects;
+    CHECK(mo::cfg::loadFromText(keep, "[MechCommander2]\nl TonemapMode = abc\n", &keepRejects) == 0);
+    CHECK(keep.tonemapMode == 2);
+    CHECK(keepRejects.size() == 1);
+}

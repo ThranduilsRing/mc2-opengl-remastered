@@ -14,6 +14,7 @@
 #include "mc2fmt.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "Gates/render_options_cfg.h"
 
 extern SoundSystem *sndSystem;
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
@@ -28,46 +29,6 @@ void logRejectedOption(std::string_view key, std::string_view text, mc2::options
 	else
 		mc2::fmt::print_err("[OPTIONS v1] event=rejected key={} value={} why={} kept=default\n", key, text,
 		        why == mc2::options::Verdict::OutOfRange ? "out_of_range" : "garbage");
-}
-
-// Reads every option of the table from the open [MechCommander2] block. A missing key keeps the default silently; a present key that is
-// garbage, not finite or outside its bounds is rejected with one log line and keeps the default.
-void loadRenderOptions(FitIniFile& file, mc2::options::RenderOptions& out) {
-	using namespace mc2::options;
-	for (const Option& opt : kOptions) {
-		switch (opt.kind) {
-		case Kind::Bool: {
-			bool v = false;
-			if (file.readIdBoolean(opt.key, v) == NO_ERR)
-				out.*(opt.b) = v;
-			break;
-		}
-		case Kind::Long: {
-			long v = 0;
-			if (file.readIdLong(opt.key, v) == NO_ERR) {
-				const Verdict why = setLong(out, opt, v);
-				if (why != Verdict::Ok) {
-					char text[32];
-					mc2::fmt::to_buf(text, "{}", v);
-					logRejectedOption(opt.key, text, why, &opt);
-				}
-			}
-			break;
-		}
-		case Kind::Float: {
-			float v = 0.0f;
-			if (file.readIdFloat(opt.key, v) == NO_ERR) {
-				const Verdict why = setFloat(out, opt, v);
-				if (why != Verdict::Ok) {
-					char text[32];
-					mc2::fmt::to_buf(text, "{:g}", v);
-					logRejectedOption(opt.key, text, why, &opt);
-				}
-			}
-			break;
-		}
-		}
-	}
 }
 
 void saveRenderOptions(FitIniFile& file, const mc2::options::RenderOptions& in) {
@@ -356,8 +317,12 @@ int CPrefs::load( const char* pFileName ) {
 			if ( result != NO_ERR )
 				zoomSpeedMult = 2.0f;
 
+			// The same strict reader the engine runs before the window exists; a rejected value is logged and keeps its default.
 			render = mc2::options::RenderOptions{};
-			loadRenderOptions( *prefsFile, render );
+			std::vector<mc2::options::Reject> rejects;
+			mc2::options::cfg::loadFromText( render, mc2::options::cfg::readTextFile( prefsPathname ), &rejects );
+			for ( const auto& r : rejects )
+				logRejectedOption( r.key, r.text, r.why, mc2::options::find( r.key ) );
 
 		}
 

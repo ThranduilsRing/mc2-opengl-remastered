@@ -9,9 +9,11 @@
 
 #include "render_options.h"
 
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace mc2::options::cfg {
 
@@ -116,14 +118,33 @@ inline std::string set(std::string text, const Option& opt, std::string_view val
     return text;
 }
 
-// Fill `o` from every key of the table that `text` has. A value that fails the table's validation is skipped (the caller that owns the log
-// reports it); returns how many keys were applied.
-inline int loadFromText(RenderOptions& o, std::string_view text) {
+// Fill `o` from every key of the table that `text` has, under the one strict value grammar of setFromText (booleans TRUE/FALSE/1/0 in any case,
+// integers and floats must be a whole number, nothing after the value). A value that fails is left at what `o` already holds and, when
+// `rejects` is given, appended to it so the caller that owns the log reports it; a key that appears twice is read at its first line.
+// Both the engine's pre-window publish and CPrefs::load go through here, so the two can never read the same file differently.
+// Returns how many keys were applied.
+inline int loadFromText(RenderOptions& o, std::string_view text, std::vector<Reject>* rejects = nullptr) {
     int applied = 0;
-    for (const Option& opt : kOptions)
-        if (const auto v = get(text, opt.key))
-            if (setFromText(o, opt, *v) == Verdict::Ok) ++applied;
+    for (const Option& opt : kOptions) {
+        const auto v = get(text, opt.key);
+        if (!v) continue;
+        const Verdict why = setFromText(o, opt, *v);
+        if (why == Verdict::Ok) ++applied;
+        else if (rejects) rejects->push_back({opt.key, *v, why});
+    }
     return applied;
+}
+
+// The whole file at `path`, or an empty string when it cannot be opened.
+inline std::string readTextFile(const char* path) {
+    std::string text;
+    if (std::FILE* f = std::fopen(path, "rb")) {
+        char chunk[4096];
+        std::size_t got = 0;
+        while ((got = std::fread(chunk, 1, sizeof(chunk), f)) > 0) text.append(chunk, got);
+        std::fclose(f);
+    }
+    return text;
 }
 
 }  // namespace mc2::options::cfg
