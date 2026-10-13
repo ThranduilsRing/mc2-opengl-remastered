@@ -91,6 +91,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import render_resolution  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
@@ -262,10 +263,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # mc2_env_pin, so they survive the scrub and are recorded under
     # `harness_control` in the sidecar.
     #
-    # MC2_WIDTH/MC2_HEIGHT are deliberately NOT forced here: capture output
-    # resolution is graded (check-capture-resolution.py) and goldens are
-    # sized by options.cfg ResolutionX/Y. Only the fullscreen->windowed
-    # switch and the cursor policy are applied.
+    # The drawable size is pinned (smoke_lib/render_resolution.py carries the
+    # reason): a capture is graded at one resolution on every install instead of
+    # at whatever options.cfg ResolutionX/Y says. A caller that declares
+    # MC2_WIDTH/MC2_HEIGHT (--env-declare) takes the size it asked for.
+    for _k, _v in render_resolution.pinned_env().items():
+        if _k not in (declared_env or {}):
+            harness_sets[_k] = _v
     for _k, _v in nofocus.NOFOCUS_ENV.items():
         harness_sets.setdefault(_k, _v)
 
@@ -275,10 +279,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # nofocus.apply_env(), env_pin is deny-by-default, and MC2_WINDOW_OFFSCREEN
     # was not in its HARNESS_CONTROL passthrough -- so the engine-side fix
     # arrived inert and the only thing left was the 250ms park poller, which
-    # cannot fire before the window exists. With MC2_WIDTH/MC2_HEIGHT
-    # deliberately unset here (goldens are graded at options.cfg resolution),
-    # that window comes up desktop-sized. This is the fix for the flash, not
-    # the backstop for it.
+    # cannot fire before the window exists. This is the fix for the
+    # flash, not the backstop for it.
     #
     # Free of pixel consequences: the GL drawable keeps its full size, and this
     # runner reads pixels via the engine's glReadPixels FBO readback, not the
@@ -312,8 +314,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # safe HERE (unlike the pyautogui/mss harnesses) because this runner reads
     # pixels via the engine's glReadPixels FBO readback -- the window
     # contributes nothing to the capture and the drawable keeps its full size.
-    # small_window=False: MC2_WIDTH/HEIGHT stay unset because goldens are graded
-    # at options.cfg ResolutionX/Y (check-capture-resolution.py).
+    # small_window=False: the pinned size above must not be replaced by the 640x480 smoke default.
     try:
         proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
                              cwd=str(exe.parent), env=env,

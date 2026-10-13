@@ -77,6 +77,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
 from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import render_resolution  # noqa: E402
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
@@ -259,6 +260,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         # so nothing about the run can be verified afterwards.
         "MC2_LOG": "1",
     })
+    # Every trace is taken at the pinned drawable size, not whatever options.cfg says
+    # (smoke_lib/render_resolution.py carries the reason); --env MC2_WIDTH=... overrides it below.
+    env.update(render_resolution.pinned_env())
     if fixed_timestep:
         env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
     if fps_cap is not None:
@@ -298,8 +302,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     print(f"[capture] recorder pid={recorder.pid} -> {out}")
     # nofocus.spawn owns the STARTUPINFO verb (show_window -> SW_SHOWNOACTIVATE,
     # else SW_SHOWMINNOACTIVE), the windowing env and the offscreen backstop.
-    # small_window=False: this is a perf measurement, so the drawable must keep
-    # options.cfg size; the window is still parked offscreen (see env above).
+    # small_window=False: the pinned size above must not be replaced by the 640x480 smoke default; the window is still parked offscreen.
     gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
                        cwd=str(install), env=env,
                        show_window=show_window, small_window=False)

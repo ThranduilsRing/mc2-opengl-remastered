@@ -32,6 +32,11 @@ Artifacts land in `tests/smoke/artifacts/<timestamp>/`.
 - `tier1`: pre-push confidence gate. Stable hand-picked 5 missions covering different biomes/content classes. Run isolated (one mission per process, between gate runs).
 - `tier2`: pre-PR / major-feature campaign sweep. Hand-maintained authoritative list of `mc2_01` through `mc2_24`. Runs back-to-back over ~30 minutes of sustained engine load.
 - `tier3`: reserved for broader curated content after tier2 is stable.
+- `resolution`: weekly resolution matrix, `py -3 scripts/run_smoke.py --tier resolution --deploy <name>`. One mission (`mc2_01`) once per drawable size from `scripts/smoke_lib/render_resolution.py`: 1920x1080 (the size captures and Tracy traces are pinned to) and 3840x2160 (the size a stock install's options.cfg asks for). The manifest rows are `resolution mc2_01 resolution=WxH`; the runner passes `MC2_WIDTH`/`MC2_HEIGHT` and fails the run when the engine log has no `[RESOLUTION] Pre-window: WxH (from MC2_WIDTH/MC2_HEIGHT env)` line, so a clamped or ignored request cannot read as green. Rows and logs are named `mc2_01@1920x1080`. The daily tier1 does not set a size: it takes options.cfg `ResolutionX/Y` of the install.
+
+### Where a size comes from
+
+The engine's drawable is options.cfg `ResolutionX/Y` unless `MC2_WIDTH`/`MC2_HEIGHT` are set. `nofocus.small_window` (640x480) is a default only for launches that do not opt out; the smoke runner, the capture runner and the Tracy driver all opt out. Captures (`tools/visual_verify/capture.py`, `capture_ab.py`, `scripts/run_visual_capture.py`) and Tracy traces (`tools/tracy_capture_compare.py`) are pinned to 1920x1080 through `render_resolution.pinned_env()`; `--env-declare MC2_WIDTH=... --env-declare MC2_HEIGHT=...` (capture) or `--env MC2_WIDTH=...` (Tracy) overrides it for one run.
 
 ## Measurement semantics (important)
 

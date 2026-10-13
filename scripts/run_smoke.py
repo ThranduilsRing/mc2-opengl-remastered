@@ -6,6 +6,7 @@ Examples:
   python scripts/run_smoke.py --tier tier1 --fail-fast
   python scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs
   python scripts/run_smoke.py --tier tier2
+  python scripts/run_smoke.py --tier resolution --deploy lane2    # weekly: one mission at 1920x1080 and 3840x2160
   python scripts/run_smoke.py --mission mc2_01 --mission mc2_24
   python scripts/run_smoke.py --menu-canary
 
@@ -39,7 +40,7 @@ def _smoke_passthrough_names() -> frozenset:
 
 _SMOKE_PASSTHROUGH = _smoke_passthrough_names()
 
-from scripts.smoke_lib import baselines, manifest, nofocus, report
+from scripts.smoke_lib import baselines, manifest, nofocus, render_resolution, report
 from scripts.smoke_lib import exe_guard as _exe_guard
 from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
@@ -554,7 +555,7 @@ def select_missions(entries, missions):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tier", choices=["tier1", "tier2", "tier3"])
+    ap.add_argument("--tier", choices=["tier1", "tier2", "tier3", "resolution"])
     ap.add_argument("--mission", action="append", default=[])
     ap.add_argument("--allow-any-mission", action="store_true",
                     help="allow --mission stems not present in "
@@ -1322,6 +1323,7 @@ def main():
     _order_liveness_failures: list[str] = []
 
     rows: list[report.Row] = []
+    _resolution_failures: list[str] = []
     # MC2_DIAGNOSTIC_TRACE_FILE: normalise to absolute once, outside the
     # per-mission loop.  The game launches with cwd=exe_dir (not the runner
     # cwd), so a relative path would land in the deploy dir rather than the
@@ -1363,6 +1365,8 @@ def main():
 
         duration = args.duration or e.duration or 120
         tier = args.tier or "adhoc"
+        # The `resolution` tier runs one stem once per size, so its rows, logs and baseline keys carry the size.
+        label = f"{e.stem}@{e.resolution}" if e.resolution else e.stem
         cfg = RunConfig(
             exe=[args.exe],
             profile=e.profile or args.profile,
@@ -1384,6 +1388,7 @@ def main():
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
+                **(render_resolution.size_env(*render_resolution.parse(e.resolution)) if e.resolution else {}),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).
                 **_mod_env,
@@ -1499,7 +1504,7 @@ def main():
         except Exception:
             pass
 
-        print(f"[runner] running {e.stem} (tier={tier} duration={duration})",
+        print(f"[runner] running {label} (tier={tier} duration={duration})",
               file=sys.stderr)
         result = run_one(cfg)
 
@@ -1541,14 +1546,19 @@ def main():
                 print(f"[runner] [CRASH_EVIDENCE] capture skipped: {_cee}",
                       file=sys.stderr)
 
-        key = baselines.key(cfg.profile, e.stem, tier, duration)
+        key = baselines.key(cfg.profile, label, tier, duration)
         delta = baselines.destroys_delta(baseline_data, key, result.summary.destroys)
 
-        rows.append(report.Row(stem=e.stem, verdict=result.verdict,
+        if e.resolution:
+            # The size must have reached the engine: a clamped or ignored request would make this tier green without testing the size.
+            _asked_w, _asked_h = render_resolution.parse(e.resolution)
+            if f"[RESOLUTION] Pre-window: {_asked_w}x{_asked_h} (from MC2_WIDTH/MC2_HEIGHT env)" not in result.stdout_text:
+                _resolution_failures.append(f"{label}: the engine log has no '[RESOLUTION] Pre-window: {_asked_w}x{_asked_h}' line")
+        rows.append(report.Row(stem=label, verdict=result.verdict,
                                summary=result.summary, destroys_delta=delta or 0))
 
         if not result.verdict.passed or args.keep_logs:
-            (artifact_dir / f"{e.stem}.log").write_text(result.stdout_text, encoding="utf-8", errors="replace")
+            (artifact_dir / f"{label}.log").write_text(result.stdout_text, encoding="utf-8", errors="replace")
             # Snapshot the probe file-sink alongside the regular log.  Survives
             # across runs (the per-mission unlink above resets it for next).
             try:
@@ -1654,6 +1664,8 @@ def main():
             "below were produced by a different binary and prove nothing about "
             "this commit.")
 
+    if _resolution_failures:
+        _run_failures.append("RESOLUTION: " + "; ".join(_resolution_failures))
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
                                  profile=args.profile, timestamp=timestamp,
                                  show_window=args.show_window,
@@ -1709,6 +1721,10 @@ def main():
               "/ built-from-dirty). Deploy your build first, or set "
               "MC2_SMOKE_REQUIRE_FINGERPRINT=0 to intentionally test an external "
               "exe.", file=sys.stderr)
+        passed = False
+
+    if _resolution_failures:
+        print(f"[runner] [RESOLUTION] HARD FAIL: {'; '.join(_resolution_failures)}", file=sys.stderr)
         passed = False
 
     # VISUAL advisory (S13+).  Summarises the most recent run_visual.py compare
