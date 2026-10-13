@@ -29,18 +29,29 @@ std::string toMemoryBreaks(std::string_view fileText) { return replaceAll(fileTe
 
 std::string toFileBreaks(std::string_view memoryText) { return replaceAll(memoryText, "\r\n", "\n"); }
 
-std::optional<std::string> read(FitIniFile& file, const char* key)
+ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value)
 {
+	value.clear();
 	char buffer[kMaxTextLength + 1] = {};
-	const long result = file.readIdString(key, buffer, kMaxTextLength);
+	const long result = file.readIdString(key, buffer, sizeof(buffer));
 	if (result == BUFFER_TOO_SMALL) {
 		MC2_LOG(Io, Warn, "objective: the value of '{}' is longer than {} characters and is ignored", key, kMaxTextLength);
-		return std::nullopt;
+		return ReadStatus::TooLong;
 	}
 	if (result != NO_ERR) {
+		return ReadStatus::Absent;
+	}
+	value = toMemoryBreaks(buffer);
+	return ReadStatus::Read;
+}
+
+std::optional<std::string> read(FitIniFile& file, const char* key)
+{
+	std::string value;
+	if (readChecked(file, key, value) != ReadStatus::Read) {
 		return std::nullopt;
 	}
-	return toMemoryBreaks(buffer);
+	return value;
 }
 
 std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey)

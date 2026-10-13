@@ -12,11 +12,17 @@ The deprecation itself is applied to mclib/estring.h by an uncommitted local edi
   py -3 tests/analyze/estring_callsites.py --drop code/objective.cpp code/x.cpp:42 ...   # remove converted rows from the committed list
   py -3 tests/analyze/estring_callsites.py --check                                       # every remaining row still names its kind on its line
   py -3 tests/analyze/estring_callsites.py --remap BASE code/x.cpp ...                   # move the rows of edited files to their new lines
+  py -3 tests/analyze/estring_callsites.py --seal                                        # record the current content of every file that has rows (only right after a census)
+
+The list records the SHA-1 of the bytes of every file that has rows (`# blob HASH PATH`). --check fails for a file whose content differs from its recorded
+hash: its rows were not verified against this text. The implicit conversion (`operator ECHARPTR`, 40% of the rows) leaves no token on its line, so the
+line check alone cannot see a shifted row of that kind; the hash can. --remap and --drop refresh the hash of the files they touch.
 """
 from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import json
 import os
 import re
@@ -24,6 +30,8 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import console_child  # noqa: E402
 DEFAULT_OUT = os.path.join(ROOT, ".claude", "cleanup", "cxx23-step4-b1-callsites.txt")
 _DIAG = re.compile(r"^(?P<file>[A-Za-z]:[^()]*?)\((?P<line>\d+)(?:,(?P<col>\d+))?\)\s*:\s*(?:warning|error)\s+C4996:\s*'(?P<kind>[^']*)'")
 #: Files whose own use of the API is the implementation, not a call site.
@@ -62,7 +70,33 @@ def batch_of() -> dict:
         return {}
 
 
-def render(rows) -> str:
+def blob_hashes(files) -> dict:
+    """path -> SHA-1 of the file's working-tree bytes (a file that cannot be read is left out)."""
+    out = {}
+    for path in files:
+        try:
+            with open(os.path.join(ROOT, path), "rb") as src:
+                out[path] = hashlib.sha1(src.read()).hexdigest()
+        except OSError:
+            pass
+    return out
+
+
+def recorded_blobs(path: str) -> dict:
+    """path -> hash from the `# blob HASH PATH` header lines of the committed list."""
+    found = {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            for ln in f:
+                m = re.match(r"# blob ([0-9a-f]{40}) (\S+)$", ln.rstrip())
+                if m:
+                    found[m[2]] = m[1]
+    except OSError:
+        pass
+    return found
+
+
+def render(rows, blobs=None) -> str:
     per_file = collections.Counter(r[0] for r in rows)
     batches = batch_of()
     per_batch = collections.Counter()
@@ -83,6 +117,7 @@ def render(rows) -> str:
     out += [f"#   {n:5d}  {p}" for p, n in sorted(unlisted.items(), key=lambda kv: (-kv[1], kv[0]))]
     out += ["# per file:"]
     out += [f"#   {n:5d}  {p}" for p, n in sorted(per_file.items(), key=lambda kv: (-kv[1], kv[0]))]
+    out += [f"# blob {h} {p}" for p, h in sorted((blobs or {}).items()) if p in per_file]
     out += ["# file:line:kind"]
     out += [f"{p}:{ln}:{k.replace('EString::', '')}" for p, ln, _col, k in rows]
     return "\n".join(out) + "\n"
@@ -102,7 +137,7 @@ def drop(path: str, targets: list[str]) -> int:
                 continue
             rows.append((file, int(line), "0", "EString::" + kind))
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(render(rows))
+        f.write(render(rows, recorded_blobs(path)))
     print(f"estring_callsites: {len(rows)} sites in {len({r[0] for r in rows})} files remain -> {path}")
     return 0
 
@@ -112,7 +147,7 @@ def remap(path: str, base: str, targets: list[str]) -> int:
     edited is dropped: the edit is the conversion, and the next full census (the deprecation build) settles what is left on that line."""
     hunks: dict[str, list[tuple[int, int, int]]] = {}
     for t in targets:
-        diff = subprocess.run(["git", "diff", "-U0", base, "--", t], capture_output=True, text=True, cwd=ROOT).stdout
+        diff = subprocess.run(["git", "diff", "-U0", base, "--", t], capture_output=True, text=True, cwd=ROOT, **console_child.child_kwargs(redirected=True)).stdout
         hunks[t] = [(int(m[1]), int(m[2]) if m[2] is not None else 1, int(m[4]) if m[4] is not None else 1)
                     for m in re.finditer(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", diff, re.M)]
 
@@ -151,8 +186,10 @@ def remap(path: str, base: str, targets: list[str]) -> int:
             continue
         file, line, kind = ln.split(":", 2)
         rows.append((file, int(line), "0", "EString::" + kind))
+    blobs = recorded_blobs(path)
+    blobs.update(blob_hashes(targets))
     with open(path, "w", encoding="utf-8", newline=chr(10)) as f:
-        f.write(render(rows))
+        f.write(render(rows, blobs))
     print(f"estring_callsites: {dropped} row(s) on edited lines dropped; {len(rows)} sites in {len({r[0] for r in rows})} files remain -> {path}")
     return 0
 
@@ -181,6 +218,13 @@ def check(path: str) -> int:
             file, line, kind = ln.rstrip().split(":", 2)
             rows.append((file, int(line), kind))
     problems = []
+    recorded = recorded_blobs(path)
+    current = blob_hashes({r[0] for r in rows})
+    for file in sorted({r[0] for r in rows}):
+        if file not in recorded:
+            problems.append(f"{file}: no recorded content hash (run --seal right after a census, or --remap BASE {file})")
+        elif current.get(file) != recorded[file]:
+            problems.append(f"{file}: edited since its rows were verified (run --remap BASE {file}, or --drop {file} when it is converted)")
     if (total, files) != (len(rows), len({r[0] for r in rows})):
         problems.append(f"header says {total} sites in {files} files, the rows are {len(rows)} in {len({r[0] for r in rows})}")
     cache: dict[str, list[str] | None] = {}
@@ -206,11 +250,28 @@ def check(path: str) -> int:
     return 1 if problems else 0
 
 
+def seal(path: str) -> int:
+    """Record the working-tree content hash of every file that has rows. Run it only when the rows are known to be true for the tree: the moment a
+    census was taken, or after reading the diff of the files that changed since."""
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for ln in f:
+            if ln.startswith("#") or not ln.strip():
+                continue
+            file, line, kind = ln.rstrip().split(":", 2)
+            rows.append((file, int(line), "0", "EString::" + kind))
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(render(rows, blob_hashes({r[0] for r in rows})))
+    print(f"estring_callsites: sealed {len({r[0] for r in rows})} files -> {path}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("log", nargs="?", help="the deprecation build's log (omit with --drop)")
     ap.add_argument("--drop", nargs="+", metavar="FILE[:LINE]", help="remove these rows from the committed list: a batch that converted them, proven by the build")
     ap.add_argument("--remap", nargs="+", metavar=("BASE", "FILE"), help="BASE commit, then edited files: move their rows to the new line numbers")
+    ap.add_argument("--seal", action="store_true", help="record the current content hash of every file that has rows (use only when the rows are known to match the tree)")
     ap.add_argument("--check", action="store_true", help="verify the committed list against the tree (exit 1 on a stale or converted row)")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--root", default=ROOT)
@@ -219,6 +280,8 @@ def main() -> int:
         if len(args.remap) < 2:
             ap.error("--remap needs a base commit and at least one file")
         return remap(args.out, args.remap[0], args.remap[1:])
+    if args.seal:
+        return seal(args.out)
     if args.check:
         return check(args.out)
     if args.drop:
@@ -230,7 +293,7 @@ def main() -> int:
         print("estring_callsites: no EString C4996 rows in the log (was the deprecation applied?)", file=sys.stderr)
         return 1
     with open(args.out, "w", encoding="utf-8", newline="\n") as f:
-        f.write(render(rows))
+        f.write(render(rows, blob_hashes({r[0] for r in rows})))
     print(f"estring_callsites: {len(rows)} sites in {len({r[0] for r in rows})} files -> {args.out}")
     return 0
 

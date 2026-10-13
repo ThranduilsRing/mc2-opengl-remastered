@@ -11,6 +11,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "team_internal.h"
 #include <algorithm>
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 char Team::relations[MAX_TEAMS][MAX_TEAMS] = {
@@ -501,7 +502,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 		data.id = teams[i]->getId();
 		data.rosterSize = teams[i]->rosterSize;
 		// Only the live entries are written: the rest of roster[] is never initialised, and copying it would put heap leftovers into the save.
-		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * std::min<long>(teams[i]->rosterSize, MAX_MOVERS_PER_TEAM));
+		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * std::clamp<long>(teams[i]->rosterSize, 0, MAX_MOVERS_PER_TEAM));
 
 		file->writePacket(packetNum,(MemoryPtr)&data,sizeof(TeamData),STORAGE_TYPE_RAW);
 		packetNum++;
@@ -535,6 +536,12 @@ long Team::Load (PacketFilePtr file, long packetNum)
 		numTeams--;
 
 		teams[i]->init(data.id);
+		// A roster size outside the array is malformed content: the team is loaded with an empty roster.
+		if (data.rosterSize < 0 || data.rosterSize > MAX_MOVERS_PER_TEAM)
+		{
+			MC2_LOG(Io, Warn, "team {}: saved roster size {} is outside 0..{}, loaded with an empty roster", data.id, data.rosterSize, MAX_MOVERS_PER_TEAM);
+			data.rosterSize = 0;
+		}
 		teams[i]->rosterSize = data.rosterSize;
 		memcpy(teams[i]->roster,data.roster,sizeof(GameObjectWatchID) * MAX_MOVERS_PER_TEAM);
 

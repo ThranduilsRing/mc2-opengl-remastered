@@ -1,0 +1,30 @@
+{
+  "what": "Byte ranges of mission-save record packets that differ between two saves of the same state although nothing in the state differs. tools/save_inspect.py diff --mask applies it; any differing byte outside it is a real difference.",
+  "why": "Records are written as raw memory images, so uninitialised bytes, padding and pointers reach the file. A class-level 'noisy record' list hid a regression inside a record; a byte mask does not.",
+  "format": "classes.<record class>.run = ranges [lo, hi] (inclusive byte offsets inside one record) that differ between two runs of ONE exe; .build = ranges that differ only between DIFFERENT exes (applied with --across-builds). Every class not listed here, and every FIT text packet, is compared byte for byte.",
+  "measured": "mc2_01 quicksave at render frame 1000, exes 1266aa1a2 (pair f_a/f_c), 06ea51611 (g_a/g_b) and 45f39522a (h_a/h_b), all with the Team::Save fix; `py -3 tools/save_inspect.py ranges A B` over each pair. The MechWarriorData and MechData ranges were identical in all three pairs (gaps under 16 bytes joined). CommanderData differed in different places in each pair (234, 341, 608 bytes), so it is masked from its first to its last noisy byte and is NOT a proof surface; the B1 batches write no commander.",
+  "pilot_text_fields": "MechWarriorData bytes 0-2167 (name, callsign, video, audio, brain strings, skills) were byte-identical in every run pair and across all three exes. They are the fields the logistics pilot text feeds; they are deliberately outside the mask.",
+  "known_writer_defects": [
+    "MechWarriorData 2192-2451, 3188-3447 and 3520-3779 (one pilot record, index 9 of 120 in the stock mc2_01 save): 24 four-byte words in the three TacticalOrder blocks (tacOrder, lastTacOrder, curTacOrder, 332 bytes each). They are never initialised by the order code, hold image-relative addresses that change with every link and are equal between two runs of one exe. A pre-existing save-writer defect for the save-format arc: initialise TacticalOrder and write records through a zeroed staging copy.",
+    "MechData and GroundVehicleData bytes 2952-2955 and 3000-3003 of every record: the vftable pointers of the embedded MoverControl (2952) and MoverDynamics (3000). Inert on load (mover_misc.cpp copy-assigns). Same defect class.",
+    "MechData 3020-3035 (one record): uninitialised bytes that differ between two runs of one exe."
+  ],
+  "classes": {
+    "MechWarriorData": {
+      "run": [[2168, 2181], [2224, 2269], [2304, 2317], [2369, 2371], [3164, 3177], [3220, 3265], [3300, 3313], [3365, 3367], [3496, 3509], [3552, 3597], [3632, 3645], [3697, 3699], [10072, 14871], [14920, 19719]],
+      "build": [[2192, 2451], [3188, 3447], [3520, 3779]]
+    },
+    "MechData": {
+      "run": [[3020, 3035]],
+      "build": [[2952, 2955], [3000, 3003]]
+    },
+    "GroundVehicleData": {
+      "run": [],
+      "build": [[2952, 2955], [3000, 3003]]
+    },
+    "CommanderData": {
+      "run": [[28, 1279]],
+      "build": []
+    }
+  }
+}

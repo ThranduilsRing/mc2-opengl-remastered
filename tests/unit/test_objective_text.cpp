@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <utility>
 #include <string>
 
@@ -87,6 +88,25 @@ TEST_CASE("a value longer than the reader's buffer is rejected, not cut")
 	std::optional<std::string> fits = objective_text::read(f.fit, "Fits");
 	REQUIRE(fits.has_value());
 	CHECK(*fits == "ok");
+}
+
+TEST_CASE("the length limit is inclusive: exactly kMaxTextLength characters are read, one more is rejected")
+{
+	const std::string atLimit(objective_text::kMaxTextLength, 'y');
+	const std::string overLimit(objective_text::kMaxTextLength + 1, 'z');
+	MemFit f("[Obj]\r\nst AtLimit = \"" + atLimit + "\"\r\nst OverLimit = \"" + overLimit + "\"\r\nul FlagIndex = 3\r\n");
+	REQUIRE(f.fit.seekBlock("Obj") == NO_ERR);
+	std::optional<std::string> value = objective_text::read(f.fit, "AtLimit");
+	REQUIRE(value.has_value());
+	CHECK(value->size() == objective_text::kMaxTextLength);
+	std::string checked = "stale";
+	CHECK(objective_text::readChecked(f.fit, "OverLimit", checked) == objective_text::ReadStatus::TooLong);
+	CHECK(checked.empty());
+	CHECK(objective_text::readChecked(f.fit, "Absent", checked) == objective_text::ReadStatus::Absent);
+	CHECK(objective_text::readChecked(f.fit, "AtLimit", checked) == objective_text::ReadStatus::Read);
+	CHECK(checked.size() == objective_text::kMaxTextLength);
+	// An over-long flag ID is read as absent, so the numeric index is the fallback.
+	CHECK(objective_text::readFlagID(f.fit, "OverLimit", "FlagIndex") == std::optional<std::string>("3"));
 }
 
 TEST_CASE("a flag reference is its ID, else its decimal index")
@@ -208,6 +228,18 @@ TEST_CASE("boolean flags: IDs match ignoring ASCII case, an unknown flag reads f
 	CHECK_FALSE(flags.getElementValue("bridge"));               // a prefix is not the flag
 	flags.Clear();
 	CHECK_FALSE(flags.getElementValue("other"));
+}
+
+TEST_CASE("boolean flags load: one over-long ID is skipped, the flags after it still load")
+{
+	const std::string tooLong(objective_text::kMaxTextLength + 1, 'x');
+	MemFit f("[Team1BooleanFlags]\r\nst BooleanString0 = \"first\"\r\nb BooleanValue0 = 1\r\n"
+	         "st BooleanString1 = \"" + tooLong + "\"\r\nb BooleanValue1 = 1\r\n"
+	         "st BooleanString2 = \"third\"\r\nb BooleanValue2 = 1\r\n");
+	CBooleanArray flags;
+	flags.load(1, &f.fit);
+	CHECK(flags.getElementValue("first"));
+	CHECK(flags.getElementValue("third"));
 }
 
 TEST_CASE("boolean flags save in insertion order and load back")

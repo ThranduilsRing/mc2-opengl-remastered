@@ -3,7 +3,9 @@
 
 WHAT: opens the PacketFile a Mission::save wrote, unpacks the zlib packets, and offers
   diff A B   the first differing packet and byte offset, the number of differing packets and bytes, and a per-record-class table of where the
-             differences sit (a class is named by the packet's byte size, which is how the loader tells the object records apart)
+             differences sit (a class is named by the packet's byte size, which is how the loader tells the object records apart);
+             --mask FILE [--across-builds] classifies every differing byte as inside or outside the known-noise mask (tools/save_noise_mask.json)
+  ranges A B the differing byte ranges per record class, coalesced over small gaps: how a mask entry is measured from two runs of one exe
   map A      one line per run of packets of one kind (kind, first index, count, bytes)
   digest A   a short digest of every run, the form tools/saveload_roundtrip.py stores as a baseline
 WHY: "the save is a function of the game state" is only checkable by comparing two files; a bare cmp says that they differ, not where. The
@@ -11,6 +13,7 @@ object records, the pilots and the ABL environment are raw structs and byte stri
 class names an uninitialised padding byte or an unsaved-but-derived field directly.
 
   py -3 tools/save_inspect.py diff a.ims b.ims
+  py -3 tools/save_inspect.py diff old.ims new.ims --mask tools/save_noise_mask.json --across-builds
   py -3 tools/save_inspect.py map a.ims
   py -3 tools/save_inspect.py selftest
 """
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import sys
 import tempfile
@@ -77,10 +81,29 @@ def first_diff(a: bytes, b: bytes) -> int:
     return -1 if len(a) == len(b) else n
 
 
-def compare(pa, pb) -> dict:
+def load_mask(path: str) -> dict:
+    """-> {record class: {"run": [(lo, hi)], "build": [(lo, hi)]}} from a noise-mask file (tools/save_noise_mask.json shows the format)."""
+    with open(path, encoding="utf-8") as f:
+        doc = json.load(f)
+    return {cls: {scope: [(int(lo), int(hi)) for lo, hi in e.get(scope, [])] for scope in ("run", "build")} for cls, e in doc["classes"].items()}
+
+
+def masked(mask: dict, k: str, off: int, across_builds: bool) -> bool:
+    """True when byte `off` of a record of class `k` lies in a mask range that applies: run-to-run ranges always, cross-build ranges on request."""
+    e = mask.get(k)
+    if not e:
+        return False
+    spans = e["run"] + (e["build"] if across_builds else [])
+    return any(lo <= off <= hi for lo, hi in spans)
+
+
+def compare(pa, pb, mask: dict | None = None, across_builds: bool = False) -> dict:
     """Compare two unpacked packet lists. -> {"equal", "packets_a", "packets_b", "differing", "first": (index, offset, kind, size_a, size_b) | None,
-    "first_binary": the same for the first packet that is not a FIT text file, "by_kind": {kind: [differing packets, differing bytes]}}."""
-    out = {"equal": True, "packets_a": len(pa), "packets_b": len(pb), "differing": 0, "first": None, "first_binary": None, "by_kind": {}}
+    "first_binary": the same for the first packet that is not a FIT text file, "by_kind": {kind: [differing packets, differing bytes]}}.
+    With a mask the result also has "masked" {kind: bytes inside the mask}, "outside" {kind: [packets, bytes]} and "first_outside" (index, offset, kind) | None;
+    a packet whose two sizes differ counts as wholly outside."""
+    out = {"equal": True, "packets_a": len(pa), "packets_b": len(pb), "differing": 0, "first": None, "first_binary": None, "by_kind": {},
+           "masked": {}, "outside": {}, "first_outside": None}
     for i in range(max(len(pa), len(pb))):
         ta, ra = pa[i] if i < len(pa) else (NUL, b"")
         tb, rb = pb[i] if i < len(pb) else (NUL, b"")
@@ -99,6 +122,21 @@ def compare(pa, pb) -> dict:
         row = out["by_kind"].setdefault(k, [0, 0])
         row[0] += 1
         row[1] += nbytes
+        if mask is not None:
+            if len(ra) != len(rb) or ta != tb:
+                bad, inside = [min(len(ra), len(rb))], 0
+            else:
+                offs = [o for o, (x, y) in enumerate(zip(ra, rb)) if x != y]
+                bad = [o for o in offs if not masked(mask, k, o, across_builds)]
+                inside = len(offs) - len(bad)
+            if inside:
+                out["masked"][k] = out["masked"].get(k, 0) + inside
+            if bad:
+                orow = out["outside"].setdefault(k, [0, 0])
+                orow[0] += 1
+                orow[1] += len(bad) if len(ra) == len(rb) and ta == tb else nbytes
+                if out["first_outside"] is None:
+                    out["first_outside"] = (i, bad[0], k)
     return out
 
 
@@ -113,7 +151,35 @@ def describe(res: dict) -> list:
         lines.append(f"first differing non-text packet: {i} ({k}, {sa} vs {sb} bytes) at offset {off}")
     for k2, (n, nb) in sorted(res["by_kind"].items(), key=lambda kv: -kv[1][0]):
         lines.append(f"  {k2}: {n} packet(s), {nb} byte(s) differ")
+    if res["masked"] or res["outside"]:
+        lines.append("with the noise mask: " + (", ".join(f"{k2} {nb} byte(s) masked" for k2, nb in sorted(res["masked"].items())) or "nothing masked"))
+        if res["first_outside"]:
+            i, off, k2 = res["first_outside"]
+            lines.append(f"OUTSIDE THE MASK: first at packet {i} ({k2}) offset {off}")
+            for k2, (n, nb) in sorted(res["outside"].items(), key=lambda kv: -kv[1][0]):
+                lines.append(f"  {k2}: {n} packet(s), {nb} byte(s) outside the mask")
+        else:
+            lines.append("every differing byte lies inside the mask")
     return lines
+
+
+def diff_ranges(pa, pb, gap: int = 16) -> dict:
+    """-> {record class: [(lo, hi)]}: the byte offsets at which any same-sized packet pair of that class differs, ranges less than `gap` bytes apart joined."""
+    seen: dict = {}
+    for (ta, ra), (tb, rb) in zip(pa, pb):
+        if ta != tb or len(ra) != len(rb) or ra == rb:
+            continue
+        seen.setdefault(packet_kind(ta, ra), set()).update(o for o, (x, y) in enumerate(zip(ra, rb)) if x != y)
+    out = {}
+    for k, offs in seen.items():
+        spans: list = []
+        for o in sorted(offs):
+            if spans and o - spans[-1][1] <= gap:
+                spans[-1][1] = o
+            else:
+                spans.append([o, o])
+        out[k] = [tuple(sp) for sp in spans]
+    return out
 
 
 def runs(pk) -> list:
@@ -203,6 +269,30 @@ def selftest() -> int:
         scs.write(p, [(0, b"ver"), (4, b"x" * 40), (NUL, b"")], False)
         first, pk = load(p)
         expect(len(pk) == 3 and pk[1] == (4, b"x" * 40), "load reads back what save_craft_stale wrote")
+    old = dict(RECORD_SIZES)
+    RECORD_SIZES.clear()
+    RECORD_SIZES[40] = "Rec40"
+    try:
+        a = [(0, b"ver"), (4, bytes(40)), (4, bytes(40))]
+        b = [(t, bytearray(r)) for t, r in a]
+        b[1][1][5] = 1                       # a run-to-run byte
+        b[2][1][30] = 1                      # a cross-build byte
+        b = [(t, bytes(r)) for t, r in b]
+        mask = {"Rec40": {"run": [(4, 6)], "build": [(28, 31)]}}
+        res = compare(a, b, mask)
+        expect(res["masked"] == {"Rec40": 1} and res["outside"]["Rec40"] == [1, 1] and res["first_outside"] == (2, 30, "Rec40"),
+               "a build-scope range is not applied without --across-builds")
+        res = compare(a, b, mask, across_builds=True)
+        expect(res["first_outside"] is None and res["masked"] == {"Rec40": 2}, "both scopes mask when comparing builds")
+        res = compare([(4, bytes(40))], [(4, bytes(41))], mask, True)
+        expect(res["first_outside"] is not None, "packets of different sizes are outside the mask")
+        res = compare([(0, b"abc")], [(0, b"abd")], mask, True)
+        expect(res["outside"].get("text") == [1, 1], "a class with no mask entry is never masked")
+        expect(diff_ranges(a, b, gap=2) == {"Rec40": [(5, 5), (30, 30)]} and diff_ranges(a, b, gap=40) == {"Rec40": [(5, 30)]},
+               "ranges join over the gap")
+    finally:
+        RECORD_SIZES.clear()
+        RECORD_SIZES.update(old)
     for f in fails:
         print("save_inspect selftest FAIL: " + f)
     print("save_inspect selftest: " + ("FAIL" if fails else "ok"))
@@ -215,6 +305,12 @@ def main(argv=None) -> int:
     d = sub.add_parser("diff")
     d.add_argument("a")
     d.add_argument("b")
+    d.add_argument("--mask", help="noise-mask JSON; the exit code is then 0 only when every differing byte is inside it")
+    d.add_argument("--across-builds", action="store_true", help="also apply the mask's cross-build ranges (the two saves come from different exes)")
+    r = sub.add_parser("ranges")
+    r.add_argument("a")
+    r.add_argument("b")
+    r.add_argument("--gap", type=int, default=16)
     m = sub.add_parser("map")
     m.add_argument("a")
     g = sub.add_parser("digest")
@@ -224,9 +320,16 @@ def main(argv=None) -> int:
     if args.cmd == "selftest":
         return selftest()
     if args.cmd == "diff":
-        res = compare(load(args.a)[1], load(args.b)[1])
+        mask = load_mask(args.mask) if args.mask else None
+        res = compare(load(args.a)[1], load(args.b)[1], mask, args.across_builds)
         print("\n".join(describe(res)))
+        if mask is not None:
+            return 1 if res["first_outside"] else 0
         return 0 if res["equal"] else 1
+    if args.cmd == "ranges":
+        for k, spans in sorted(diff_ranges(load(args.a)[1], load(args.b)[1], args.gap).items()):
+            print(f"{k}: " + " ".join(f"{lo}-{hi}" for lo, hi in spans))
+        return 0
     pk = load(args.a)[1]
     if args.cmd == "map":
         for k, i, n, total, dg in runs(pk):

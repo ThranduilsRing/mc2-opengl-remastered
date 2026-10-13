@@ -315,11 +315,12 @@ long	LogisticsData::load( FitIniFile& file )
 		}
 
 		file.readIdString( "FileName", tmp, 255 );
+		const std::string pilotKey = mc2::str::from_c( tmp );
 
 		// pilot should already exist
 		for ( PILOT_LIST::EIterator pIter = pilots.Begin(); !pIter.IsDone(); pIter++ )
 		{
-			if ( mc2::str::iequals( (*pIter).getFileName(), mc2::str::from_c( tmp ) ) )
+			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
 			{
 				(*pIter).load( file );
 			}
@@ -355,12 +356,13 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	char tmp[256];
 	
 	file.readIdString( "Chassis", tmp, 255 );
+	const std::string chassisKey = mc2::str::from_c( tmp );
 
 	const LogisticsChassis* pChassis  = nullptr;
 	// go out and find that chassis
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 	{
-		if ( mc2::str::iequals( (*vIter)->getFileName(), mc2::str::from_c( tmp ) ) )
+		if ( mc2::str::iequals( (*vIter)->getFileName(), chassisKey ) )
 		{
 			pChassis = (*vIter)->getChassis();
 		}

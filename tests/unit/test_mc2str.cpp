@@ -71,16 +71,8 @@ TEST_CASE("icompare orders by the folded bytes, a prefix first")
 	CHECK(icompare("ABC", "abc") == 0);
 }
 
-TEST_CASE("ci_less keys a container by name, ignoring case; ci_total_less gives case variants a fixed order")
+TEST_CASE("ci_total_less gives case variants a fixed order")
 {
-	std::map<std::string, int, mc2::str::ci_less> byName;
-	byName["Bushwacker"] = 1;
-	byName["BUSHWACKER"] = 2;                           // the same key
-	byName["hunchback"] = 3;
-	CHECK(byName.size() == 2);
-	CHECK(byName.find(std::string_view("bushwacker")) != byName.end());          // transparent lookup by view, no temporary string
-	CHECK(byName.find(std::string_view("BuShWaCkEr"))->second == 2);
-
 	std::vector<std::string> names{"b", "A", "a", "B", "Zeta", "alpha"};
 	std::ranges::sort(names, mc2::str::ci_total_less{});
 	CHECK(names == std::vector<std::string>{"A", "a", "alpha", "B", "b", "Zeta"});
@@ -144,7 +136,42 @@ TEST_CASE("corpus: iequals agrees with the old lstrcmpi-based equality on the st
 	CHECK(equalMismatch == 0);
 	CHECK(caseVariantMismatch == 0);
 	// The disagreements are not a failure (the old order was a locale word sort) but a jump means the fold changed.
-	CHECK(orderDisagree < 100);
+	CHECK(orderDisagree <= 20);           // measured: 20 adjacent pairs
+}
+
+// ci_total_less orders the pilot and mech lists, so it must be a strict total order: irreflexive, antisymmetric, transitive, and two names are
+// unordered in both directions only when they are the same bytes.
+TEST_CASE("corpus: ci_total_less is a strict total order over the stock identifiers")
+{
+	const std::vector<std::string> all = stockNames();
+	REQUIRE(all.size() > 5000);
+	std::vector<std::string> sample;
+	for (size_t i = 0; i < all.size(); i += 40)
+	{
+		sample.push_back(all[i]);
+		sample.push_back(mc2::str::ascii_upper(all[i]));        // a case variant of every sampled name
+	}
+	const mc2::str::ci_total_less less;
+	bool irreflexive = true, antisymmetric = true, total = true, transitive = true;
+	for (const std::string& a : sample)
+	{
+		irreflexive = irreflexive && !less(a, a);
+		for (const std::string& b : sample)
+		{
+			antisymmetric = antisymmetric && !(less(a, b) && less(b, a));
+			total = total && (less(a, b) || less(b, a) || a == b);
+		}
+	}
+	CHECK(irreflexive);
+	CHECK(antisymmetric);
+	CHECK(total);
+	for (size_t i = 0; i < sample.size() && transitive; i += 3)
+		for (const std::string& b : sample)
+			if (less(sample[i], b))
+				for (size_t k = 0; k < sample.size(); k += 5)
+					if (less(b, sample[k]) && !less(sample[i], sample[k]))
+						transitive = false;
+	CHECK(transitive);
 }
 
 TEST_CASE("file_stem is the name between the last path separator and the first dot")
@@ -156,6 +183,10 @@ TEST_CASE("file_stem is the name between the last path separator and the first d
 	CHECK(mc2::str::file_stem("a.b\\madcat.tar.gz") == "madcat");   // a dot in a directory does not cut the name
 	CHECK(mc2::str::file_stem("data\\objects\\").empty());
 	CHECK(mc2::str::file_stem("").empty());
+	CHECK(mc2::str::file_stem("data\\objects\\.hidden").empty());     // the dot starts the extension: nothing is left of it
+	CHECK(mc2::str::file_stem(".x").empty());
+	CHECK(mc2::str::file_stem("data/objects\\madcat.csv") == "madcat");   // mixed separators: the last one of either kind
+	CHECK(mc2::str::file_stem("data\\objects/madcat.csv") == "madcat");
 }
 
 // The three mech-camera call sites (logisticsmechdisplay, mechbayscreen_mechs, salvagemecharea) cut a chassis file name with

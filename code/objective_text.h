@@ -16,11 +16,18 @@ class FitIniFile;
 
 namespace objective_text {
 
-// Longest value read back. A longer one is malformed content: it is logged and read as absent, never cut, because a cut flag ID or
+// Longest value read back, in characters. A longer one is malformed content: it is logged and read as absent, never cut, because a cut flag ID or
 // file name would be a different name.
 inline constexpr unsigned long kMaxTextLength = 2000;
 
-// The value of `key` in the current block, line breaks converted to "\r\n"; empty when the key is absent or over-long.
+// The outcome of reading one value: read, the key is not in the block, or its value is over-long (malformed; the reader logs it).
+enum class ReadStatus { Read, Absent, TooLong };
+
+// Reads the value of `key` in the current block into `value`, line breaks converted to "\r\n". For callers that must tell an absent key (a normal
+// end, or a default) from a malformed one (skip that entry and go on). `value` is left empty unless the status is Read.
+ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value);
+
+// The value of `key`, or an empty optional when the key is absent or over-long.
 std::optional<std::string> read(FitIniFile& file, const char* key);
 
 // A flag reference: the text of `idKey`, else the decimal number stored under `indexKey` (files from before flags had names).

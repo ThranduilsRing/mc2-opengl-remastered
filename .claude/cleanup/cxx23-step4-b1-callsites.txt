@@ -89,6 +89,62 @@
 #       1  code/pausewindow.cpp
 #       1  editor/BeautySidecarPreview.cpp
 #       1  gui/alistbox.h
+# blob 18f0b43f4a98b0e76204f331646f896082b46088 code/chatwindow.cpp
+# blob d7d67e16a7e7b616f5aac9387afb6d237bd9bf6e code/controlgui_chat.cpp
+# blob e579290a260d5eaf51c183ae445891de989843d4 code/infowindow.cpp
+# blob 319f4f09dae60ef4ff99b4856d0c2e94f76914e8 code/logistics_begin.cpp
+# blob a3f62e754f6ae287f4d58c4d03fcac1639b88930 code/logisticsdata_availability.cpp
+# blob 780b5bf68932805527058b8cf85c2432f7aaa422 code/logisticsdata_init.cpp
+# blob 3380bf1ddebd28200275b297f3de8d596462e478 code/logisticsdata_save.cpp
+# blob b3d2b51dd0e0d0b5013bbe34f538545752663275 code/logisticsdialog.cpp
+# blob 4e6441e208124d64eb5d9736e405324f0b6277b1 code/logisticsmissioninfo.cpp
+# blob 58e16877674c38168be72aea8f1d9180a2cb35d7 code/logisticsmissioninfo_progress.cpp
+# blob dacddc86e57f257d0f127e0752c6d2b0cd80eea6 code/logisticsmissioninfo_query.cpp
+# blob 1ea34ed0f79bf692c4a9cb8e41751d7a5e41f307 code/mainmenu.cpp
+# blob ceadf86c0a3bb312e4b716d6bda6cfe0b36c21d0 code/mechlabscreen.cpp
+# blob 7d4701901cab16de6211e8f51f19423aaab6af38 code/mechlistbox.cpp
+# blob f7ae9dc18a26d09de50ecd67100c81f4ade09862 code/mechlopedia.cpp
+# blob 66a13e7b53f314178551f9f7c6f643db596af411 code/missionbegin.cpp
+# blob 22848d6034f8c95ce151a5f5c885362d82d7417f code/missionbriefingscreen.cpp
+# blob c3496a1d3b2077f274862df3498046f32f3cc642 code/missionresults.cpp
+# blob 4c53626e718a6fd8d0ec674d0b1144de35db4cab code/missionselectionscreen.cpp
+# blob c7f88a6b54b7065e91665c326c9dc1f896a6d3df code/mpconnectiontype.cpp
+# blob 762217b9881ad4ea3aa11292649d1039326f0a60 code/mpgamebrowser.cpp
+# blob 2d2e66c8c12ce7721c1da166f89ac8e63a678de4 code/mphostgame.cpp
+# blob c038513a3b89e0f59a43a024f03c3ee3e5a0da05 code/mploadmap.cpp
+# blob 51f94f2ed58e2bab22e9ffde0548e3f6f47b7975 code/mploadmap.h
+# blob 94a9f54c0d6f63a9220dbd1d145186c9ef5f7422 code/mpparameterscreen.cpp
+# blob 4210008d8e7a45e23f74259debcf37eab14f6243 code/mpprefs.cpp
+# blob 5f97af76284c6b7769d17a0c22d337cebaf16b8c code/mpprefs.h
+# blob c61aa6509b09432d347494cc98801db4f2a474ab code/mpsetuparea.cpp
+# blob a9515e46eeb744f4474b1a7d4cd12a5aa6838150 code/mpstats.cpp
+# blob 561e4373acd179aa8892a131dc32ecaf54b90e50 code/pausewindow.cpp
+# blob e1dce8225d9631ba08747d0a92dcc08cd46a8ebe code/pilotreadyscreen.cpp
+# blob ae172d4f1fb006db491cd233d4cdec9aebe2eee8 code/saveload.cpp
+# blob b821a247eb159f4405e7a74756f6b43faf936deb code/simplecomponentlistbox.cpp
+# blob 552aefbeb47c0f987f487b866a9560da5de8c5c4 editor/BeautySidecarPreview.cpp
+# blob 543c1c15a706761d1955bfcebaf0da94683963f1 editor/CampaignData.cpp
+# blob 8a780ac98796c2056e5ddaa7482f397fd0b74596 editor/ChooseBuildingDlg.cpp
+# blob 0bfc799a7e6630842b7e24aa9d124e6df83541ce editor/ChooseUnitDlg.cpp
+# blob 70bfd1fdf1f711454ed17257bf1766bab5b8e983 editor/EditorData_save.cpp
+# blob 02cf3aa6291a7f94c166b3a32331a57ac8468361 editor/EditorData_tacmap.cpp
+# blob f83847883e06dfd7980e19838377cd223801d56b editor/EditorData_terrain.cpp
+# blob 02adcddbec8f024ee4256184c4416e9f0acfdac1 editor/EditorInterface_terrain.cpp
+# blob 4e2a165a49ee29945f05065f26f3f90e01193063 editor/EditorObjectMgr_io.cpp
+# blob 26f1acdb691448171b6e81a2669df3f6857991d5 editor/Objective.cpp
+# blob 2c884fd8ca14e4e93ab59a51dcc6f42889b807b2 editor/Objective.h
+# blob 4cd596b8af25113587c74e6e4dfb7e293186c5b4 editor/ObjectiveDlg.cpp
+# blob a58321c4d336ed5d2d9a84ec16bb6278e3184e80 editor/Objective_actions.cpp
+# blob 7ce81a2a5e8f0dc6bc5a9b0222e8286e1b88f2c1 editor/Objective_conditions.cpp
+# blob 1fca2aed5d05598fe7546749771f6680915894e4 editor/Objective_internal.h
+# blob e6f8aa96c0b3c57d94ef9187cd76106592c17cfd editor/ObjectivesDlg.cpp
+# blob b33b4aab6eb42e7c8602b436cb8a0421ad8f14bb editor/ObjectivesSummaryPanel.cpp
+# blob 12aae1b12d52b249db35cab33239905f8b2b0ee4 editor/TargetAreaDlg.cpp
+# blob 30b73f95333869d6bd9bbe1d5bbc768cfbd43500 gui/aanim.cpp
+# blob f95ab0c845972e6e37e45e0a21e89afba56c4960 gui/aedit.cpp
+# blob f8b23b0e8cb88e3518228516d65405f8c533eedd gui/alistbox.cpp
+# blob 8844535ae394f37509d18d1366d00edecea92b82 gui/alistbox.h
+# blob 5a5e713d2e5f31ea7141f2fa6085aa7919399c62 gui/asystem.cpp
 # file:line:kind
 code/chatwindow.cpp:224:operator ECHARPTR
 code/controlgui_chat.cpp:200:operator ECHARPTR

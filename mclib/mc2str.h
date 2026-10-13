@@ -1,7 +1,7 @@
 // mc2str.h -- the string helpers that replace the behaviour EString gave for free (step 4 batch B1,
 // .claude/cleanup/cxx23-step4-b1-notes.md).
 //
-// WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare / ci_less compare names that
+// WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare compare names that
 // come from data (file names, mech / pilot / variant / mission names, flag IDs) ignoring ASCII case; ci_total_less is the
 // total order for sorted lists; ascii_lower / ascii_upper change case of ASCII letters only; file_stem cuts the directory and the extension
 // off a file name.
@@ -42,12 +42,6 @@ constexpr int icompare(std::string_view a, std::string_view b) noexcept {
 
 constexpr bool iequals(std::string_view a, std::string_view b) noexcept { return a.size() == b.size() && icompare(a, b) == 0; }
 
-// Strict weak ordering whose equivalence is iequals: the key order of a container keyed by names that match ignoring case.
-struct ci_less {
-    using is_transparent = void;
-    constexpr bool operator()(std::string_view a, std::string_view b) const noexcept { return icompare(a, b) < 0; }
-};
-
 // Total order for a sorted list: folded lexicographic, then the raw bytes, so two names that differ only in case keep a
 // defined order instead of the order the sort happened to see them in.
 struct ci_total_less {
@@ -71,7 +65,9 @@ inline std::string ascii_upper(std::string_view s) {
 }
 
 // The name of a file without its directory and extension: "data\objects\madcat.csv" -> "madcat". Either path separator counts; the
-// extension starts at the first '.' of the last path component, and a name without one is returned whole.
+// extension starts at the first '.' of the last path component, and a name without one is returned whole. Defined on every input: a path that
+// ends in a separator or is empty gives an empty name, and ".x" gives an empty name (the dot starts the extension). The call sites it replaced
+// cut at the first dot of the WHOLE path, so a dotted directory ("a.b\x.csv") gave "a"; that is a bug there and not reproduced here.
 inline std::string file_stem(std::string_view path) {
     const std::size_t sep = path.find_last_of("/\\");
     const std::string_view name = sep == std::string_view::npos ? path : path.substr(sep + 1);

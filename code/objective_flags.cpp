@@ -49,15 +49,20 @@ void CBooleanArray::load(long alignment, FitIniFile* file)
 	if (file->seekBlock(std::format("Team{}BooleanFlags", alignment).c_str()) != NO_ERR) {
 		return;
 	}
+	// The list ends at the first absent ID. An over-long ID is one malformed entry: it is skipped (the reader logs it) and the later flags still load.
 	for (size_t i = 0;; ++i) {
-		std::optional<std::string> id = objective_text::read(*file, std::format("BooleanString{}", i).c_str());
-		if (!id) {
+		std::string id;
+		const objective_text::ReadStatus status = objective_text::readChecked(*file, std::format("BooleanString{}", i).c_str(), id);
+		if (status == objective_text::ReadStatus::TooLong) {
+			continue;
+		}
+		if (status == objective_text::ReadStatus::Absent) {
 			return;
 		}
 		bool value = false;
 		if (file->readIdBoolean(std::format("BooleanValue{}", i).c_str(), value) != NO_ERR) {
-			MC2_LOG(Io, Warn, "objective: flag '{}' has no BooleanValue{}, read as false", *id, i);
+			MC2_LOG(Io, Warn, "objective: flag '{}' has no BooleanValue{}, read as false", id, i);
 		}
-		m_flags.push_back({std::move(*id), value});
+		m_flags.push_back({std::move(id), value});
 	}
 }

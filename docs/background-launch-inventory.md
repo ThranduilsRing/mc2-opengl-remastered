@@ -12,7 +12,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/camera_sweep_smoke.py` | 101 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 135 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 86 | `nofocus.spawn` | offscreen |
-| `scripts/mechbay_preview_harness.py` | 99 | `nofocus.spawn` | offscreen |
+| `scripts/mechbay_preview_harness.py` | 106 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 238 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
