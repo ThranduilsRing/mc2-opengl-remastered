@@ -1,8 +1,9 @@
 <!-- doc-status: current | reviewed:2026-10-12 -->
 # C++23 step 4, batch B1 (EString -> std::string): batch notes, revised after the Opus before-review
 
-STATUS: design notes with the before-review (`cxx23-step4-b1-review.md`, dbb25604a, APPROVE-WITH-CHANGES) applied as its changes R1-R12. B1.0 (harness) and the first code
-batches follow in the order of section 4. The review is the checklist; where this file and the review disagree, the review wins and this file is wrong.
+STATUS (2026-10-12 evening): the before-review (`cxx23-step4-b1-review.md`, dbb25604a, APPROVE-WITH-CHANGES) is applied as its changes R1-R12. DONE: B1.0 (harness: db9b1d4fa, 432b4ae03, 5e02d2347,
+3a851f497, the /we4840 flag), B1.1 (runtime objectives, e5600b260), B1.2 (texture cache deleted, 5d640f3f5). NEXT: B1.3 (logistics model A), then the grouped Opus after-review (R11). The review is the
+checklist; where this file and the review disagree, the review wins and this file is wrong.
 INPUTS: `cxx23-step4-ownership-plan.md` sections 5 and 10, `cxx23-step4-review.md` finding 10, `program-review-2026-10-12.md` section 8, the owner rulings in
 `ORCHESTRATOR-HANDOFF.md`. Owner rulings that bind B1: saves may break before the final release but every writer stays a defined format; readers reject malformed content
 with a log line and never crash; the bar is "how we would do it today" (redesign, never a wrapper around a quirk); comments say WHAT and WHY, never HOW; no static-duration
@@ -68,7 +69,7 @@ b. **The site list is a compiler list, not grep.** In an uncommitted local build
    `.claude/cleanup/cxx23-step4-b1-callsites.txt` with counts per file. It also catches `std::string == const char*`, which compiles silently, and files without the token. The
    deprecation itself is NEVER committed. Each batch commit removes its rows; the count only goes down.
 c. **The lifetime gate** (section 5): `tests/analyze/analyze_dangling.py` with a seeded negative test (a board row: it runs in 10 s). `/we4840` (a class object through `...`) is its own
-   commit, B1.0f: the whole all-targets build has zero C4840 today, so the flag is a single global line in the root CMakeLists.txt, at the price of one full rebuild of every tree.
+   commit, B1.0f (C4840 is off by default, so the earlier builds showed none; with the flag on the trees had one site in the editor and one in gameos): the flag is applied to mc2, mclib, gui and EditRel, not to gameos (lane 2).
 d. **A one-off probe on the OLD exe** (a diagnostic patch applied by script, NEVER committed): log every `Compare`/`==`/`<` where the fold matched and the bytes did not, by call site; log every
    `sReadIdString` miss whose caller then used the stale value. Run on stock data: tier2 missions mc2_01, mc2_03, mc2_10, mc2_24 (these boot into missions, so the logistics and campaign
    screens are NOT covered by them: `MC2_BOOT_TO_MECHLAB`, `MC2_BOOT_TO_BAY` and a campaign start are separate runs when the harness allows). The result (sites and counts on stock data)
@@ -179,6 +180,24 @@ first campaign mission with auto-win and then parks on the screen), `bay` with `
 (C26815/C26816 do not fire; it flagged only a returned local array, as C26847). clang-cl catches all four seeded shapes: A (local holds `make().c_str()`) `-Wdangling-gsl`, B (`return make().c_str()`)
 and B2 (`return local.c_str()`) `-Wreturn-stack-address`, C (member stores a pointer into a temporary) `-Wdangling-assignment-gsl`; the clean twin is silent in both. The gate is therefore clang-cl
 and covers exactly these shapes. It runs in about 10 s and is a board row (`analyze_dangling`).
+
+**B1.1 (runtime objectives, e5600b260).** `code/objective.{h,cpp}` have no EString left; two new leaf TUs hold the rules and are unit-tested (`code/objective_text.{h,cpp}`: `read` returns an optional,
+`write` always writes the key, `readFields` carries the missing-key rule for Title / Description / ActivateFlagID / ResetStatusFlagID / ObjectiveModel; `code/objective_flags.{h,cpp}`: the flag table on
+`iequals`). 46 dead virtuals (28 `Description()`, 13 `InstanceDescription()` overrides, the pure declarations, `DescriptionOf*Species`) were deleted after a repository-wide grep found no caller.
+The save proof on mc2_01 (old exe twice, new exe three times, all at render frame 1000): the objective text packet differs from the old exe by exactly two added `st ObjectiveModel = ""` lines (the
+two nav-marker objectives, whose model name the old writer omitted) and four model fields that were stack garbage and are now 0; it is identical from run to run in the new exe. The MoverData
+image in MechData (134) and GroundVehicleData (151) differs at bytes 2953-2955 and 3001-3003 of every record: those are the saved vftable pointers of the embedded `MoverControl` (offset 2952) and
+`MoverDynamics` (offset 3000), which change with every link (identical across the two old runs, different between any two builds). The rest (MechWarriorData, CommanderData, TeamData,
+TerrainObjectData) lies in classes that already differ run to run in the old exe. Gates: build_all_targets rc 0, doctest 2781 under ASan, own_inventory 0 rose, sim_determinism mc2_03 / mc2_10 /
+mc2_24 / mc2_16 (liveness) PASS against the committed baselines, tier1 5/5 (2026-10-12T20-29-56).
+**B1.2 (texture cache, 5d640f3f5).** EString new/delete 1/1 -> 0/0; the mc2_01 day capture and the mechbay screen viewed, unchanged.
+**/we4840** (B1.0f): the root CMakeLists makes C4840 an error for mc2, mclib, gui and EditRel; a probe TU passing a std::string to printf fails to compile with it. Found on the way: an MFC CString passed to
+`sprintf` at `editor/EditorData_terrain.cpp:100` (cast to LPCTSTR, the MFC idiom) and a REAL latent bug in lane 2's file, `GameOS/gameos/vulkan_context.cpp:109`, where `ctxlog("... '%s' ...", env)` passes a
+`std::string` and prints garbage on an unrecognised validation preset name; gameos joins the flag list when lane 2 fixes it (`env.c_str()`).
+**Findings for the editor and ABL arcs, not fixed here.** (1) `FitIniFile::readIdString` joins the first two lines of a multi-line quoted value without a break, so a multi-line Title or Description
+loses its first line break on every round trip (old and new code alike). (2) `CPlayBIK` / `CPlayWAV` read a path as `"./" + value` and save the prefixed value, so the prefix grows with every
+save and load. (3) Records are saved as raw memory images including vftable pointers (the finding above), which makes a byte diff of two builds noisy by construction; the save-format guard
+work should mask or zero them. (4) `FitIniFile::readIdString` returns BUFFER_TOO_SMALL for a value of exactly the buffer length and leaves it unterminated; `objective_text::read` supplies the terminator.
 
 ## 9. What the gates cannot see, and what a wrong conversion looks like
 
