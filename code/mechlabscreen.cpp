@@ -29,6 +29,7 @@ extern bool useUnlimitedAmmo;
 #include"prefs.h"
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
 LogisticsVariantDialog* MechLabScreen::saveDlg = nullptr;
@@ -274,8 +275,8 @@ void MechLabScreen::begin()
 			{
 				if ( pVar[i]->allComponentsAvailable() )
 				{
-					variantList.AddItem( pVar[i]->getName(), rects[1].getColor() );
-					if ( pVar[i]->getName().Compare( pVariant->getName() )  == 0 )
+					variantList.AddItem( pVar[i]->getName().c_str(), rects[1].getColor() );
+					if ( mc2::str::iequals( pVar[i]->getName(), pVariant->getName() ) )
 					{
 						variantList.SelectItem( i );
 						variantList.EditBox().setEntry( pVar[i]->getName() );
@@ -288,7 +289,7 @@ void MechLabScreen::begin()
 		}
 		if ( !addedCount ) // this is a mech we don't have access to yet
 		{
-			variantList.AddItem( pVariant->getName(), rects[1].getColor() );
+			variantList.AddItem( pVariant->getName().c_str(), rects[1].getColor() );
 			variantList.SelectItem( 0 );
 			variantList.EditBox().setEntry(pVariant->getName() );
 
@@ -337,8 +338,7 @@ void MechLabScreen::begin()
 		strcpy( path, artPath );
 		strcat( path, "MCL_MC_" );
 		char mechName[64];
-		EString fileName = pVariant->getFileName( );
-		_splitpath( fileName, nullptr, nullptr, mechName, nullptr );
+		_splitpath( pVariant->getFileName().c_str(), nullptr, nullptr, mechName, nullptr );
 		strcat( path, mechName );
 		strcat( path, "_B.tga" );
 		CharLower( path );
@@ -1155,7 +1155,7 @@ void MechLabScreen::swapVariant()
 	LogisticsVariant* pNewVariant = LogisticsData::instance->getVariant( varName );
 	if ( pVariant && pNewVariant)
 	{
-		EString oldName = pVariant->getName();
+		std::string oldName = pVariant->getName();
 		*pVariant = *pNewVariant;
 		pVariant->setName( oldName );
 	}
@@ -1194,7 +1194,7 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 					LogisticsVariant* pCurVar = LogisticsData::instance->getVariant( varName );
 					if ( pCurVar && *pCurVar == *pVariant )
 					{
-						LogisticsData::instance->acceptMechModificationsUseOldVariant( pCurVar->getName() );
+						LogisticsData::instance->acceptMechModificationsUseOldVariant( pCurVar->getName().c_str() );
 						status = UP;
 					}
 					else

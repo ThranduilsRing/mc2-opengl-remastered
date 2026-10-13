@@ -167,8 +167,8 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 				mechData.highlightColor1 = MPlayer->colors[MPlayer->playerInfo[MPlayer->commanderID].stripeColor];
 				mechData.highlightColor2 = MPlayer->colors[MPlayer->playerInfo[MPlayer->commanderID].stripeColor];
 				strcpy(mechData.pilotFile, (*iter)->getPilot()->getFileName());
-				strcpy(mechData.mechFile, (*iter)->getFileName());
-				strcpy(mechData.variantName, (*iter)->getName());
+				strcpy(mechData.mechFile, (*iter)->getFileName().c_str());
+				strcpy(mechData.variantName, (*iter)->getName().c_str());
 				mechData.variantNum = (*iter)->getVariant()->getFileID();
 				mechData.cBills = (*iter)->getVariant()->getCost();
 				mechData.pos[0] = dropZoneList[dropZoneIndex].x;
@@ -319,7 +319,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 			data.position.Add(dropZoneList[0], scaled);
 			//data.position = dropZoneList[dropZoneIndex++];
 			data.objNumber = (*iter)->getFitID();
-			strcpy( data.csvFileName, (*iter)->getFileName() );
+			strcpy( data.csvFileName, (*iter)->getFileName().c_str() );
 			if ( !(*iter)->getPilot() )
 				continue;
 			strcpy( data.pilotFileName, (*iter)->getPilot()->getFileName() );

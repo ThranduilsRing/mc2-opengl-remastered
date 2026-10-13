@@ -1140,7 +1140,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 								if ( ld->purchaseMech( variant ) != 0 )
 								{
 									printf("[SOAK] lance-add slot=%d FAILED purchase variant=%s\n",
-									    slot, (const char*)variant->getName());
+									    slot, variant->getName().c_str());
 									continue;
 								}
 								EList<LogisticsMech*, LogisticsMech*> inv;
@@ -1155,7 +1155,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 								if ( !mech )
 								{
 									printf("[SOAK] lance-add slot=%d WARN bought-not-found variant=%s\n",
-									    slot, (const char*)variant->getName());
+									    slot, variant->getName().c_str());
 									continue;
 								}
 							}
@@ -1165,14 +1165,14 @@ void MissionBegin::updateSoakAutoPurchase() {
 							if ( !pilot )
 							{
 								printf("[SOAK] lance-add slot=%d STOPPED no-pilot mech=%s\n",
-								    slot, (const char*)variant->getName());
+								    slot, variant->getName().c_str());
 								break;
 							}
 
 							if ( ld->addMechToForceGroup( mech, slot ) != 0 )
 							{
 								printf("[SOAK] lance-add slot=%d REJECTED addMechToForceGroup mech=%s\n",
-								    slot, (const char*)variant->getName());
+								    slot, variant->getName().c_str());
 								continue;
 							}
 							mech->setPilot( pilot );
@@ -1180,11 +1180,11 @@ void MissionBegin::updateSoakAutoPurchase() {
 							if ( deployed == 0 )
 							{
 								ld->setMechToModify( mech );
-								firstName = (const char*)variant->getName();
+								firstName = variant->getName().c_str();
 							}
 
 							printf("[SOAK] lance-add slot=%d mech=%s tons=%d src=%s\n",
-							    slot, (const char*)variant->getName(),
+							    slot, variant->getName().c_str(),
 							    (int)variant->getMaxWeight(), src);
 							++deployed;
 							if ( src[0] == 's' ) ++fromSalvage; else ++fromBuy;
@@ -1246,13 +1246,13 @@ void MissionBegin::updateSoakAutoPurchase() {
 									bought->setPilot( pilot );
 								ld->setMechToModify( bought );
 								printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot1 maxDrop=%d pool=%d\n",
-									(const char*)pick->getName(), (int)pick->getMaxWeight(),
+									pick->getName().c_str(), (int)pick->getMaxWeight(),
 									pilot ? 1 : 0, maxDrop, n);
 							}
 							else
 							{
 								printf("[SOAK] auto-purchase WARN bought-not-found variant=%s\n",
-									(const char*)pick->getName());
+									pick->getName().c_str());
 							}
 						}
 						else

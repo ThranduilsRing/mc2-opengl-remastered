@@ -3,7 +3,8 @@
 //
 // WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare / ci_less compare names that
 // come from data (file names, mech / pilot / variant / mission names, flag IDs) ignoring ASCII case; ci_total_less is the
-// total order for sorted lists; ascii_lower / ascii_upper change case of ASCII letters only.
+// total order for sorted lists; ascii_lower / ascii_upper change case of ASCII letters only; file_stem cuts the directory and the extension
+// off a file name.
 // WHY: std::string compares case-exactly and std::string(nullptr) is undefined, while names in the shipped data differ in case
 // from the names that look them up and legacy callers pass null for "no text". Identity is therefore case-insensitive, as a fixed
 // ASCII fold that gives the same answer on every host and locale (the Windows lstrcmpi collation is locale-dependent and absent
@@ -67,6 +68,14 @@ inline std::string ascii_upper(std::string_view s) {
     std::string r(s);
     std::ranges::transform(r, r.begin(), [](unsigned char c) { return static_cast<char>(detail::upper(c)); });
     return r;
+}
+
+// The name of a file without its directory and extension: "data\objects\madcat.csv" -> "madcat". Either path separator counts; the
+// extension starts at the first '.' of the last path component, and a name without one is returned whole.
+inline std::string file_stem(std::string_view path) {
+    const std::size_t sep = path.find_last_of("/\\");
+    const std::string_view name = sep == std::string_view::npos ? path : path.substr(sep + 1);
+    return std::string(name.substr(0, name.find('.')));
 }
 
 }  // namespace mc2::str

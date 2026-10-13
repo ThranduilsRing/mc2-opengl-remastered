@@ -11,6 +11,7 @@ The deprecation itself is applied to mclib/estring.h by an uncommitted local edi
   py -3 tests/analyze/estring_callsites.py BUILD.log [--out PATH] [--root A:/Games/mc2-main]
   py -3 tests/analyze/estring_callsites.py --drop code/objective.cpp code/x.cpp:42 ...   # remove converted rows from the committed list
   py -3 tests/analyze/estring_callsites.py --check                                       # every remaining row still names its kind on its line
+  py -3 tests/analyze/estring_callsites.py --remap BASE code/x.cpp ...                   # move the rows of edited files to their new lines
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ import collections
 import json
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
@@ -105,6 +107,56 @@ def drop(path: str, targets: list[str]) -> int:
     return 0
 
 
+def remap(path: str, base: str, targets: list[str]) -> int:
+    """Move the rows of `targets` from their line numbers at commit `base` to the working tree's (through `git diff -U0`). A row whose own line was
+    edited is dropped: the edit is the conversion, and the next full census (the deprecation build) settles what is left on that line."""
+    hunks: dict[str, list[tuple[int, int, int]]] = {}
+    for t in targets:
+        diff = subprocess.run(["git", "diff", "-U0", base, "--", t], capture_output=True, text=True, cwd=ROOT).stdout
+        hunks[t] = [(int(m[1]), int(m[2]) if m[2] is not None else 1, int(m[4]) if m[4] is not None else 1)
+                    for m in re.finditer(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", diff, re.M)]
+
+    def moved(file: str, old: int):
+        delta = 0
+        for old_start, old_count, new_count in hunks[file]:
+            if old_count == 0:                    # pure insertion after line old_start
+                if old_start < old:
+                    delta += new_count
+                continue
+            if old < old_start:
+                break
+            if old < old_start + old_count:
+                return None                       # the row's own line changed
+            delta += new_count - old_count
+        return old + delta
+
+    out, dropped = [], 0
+    with open(path, encoding="utf-8") as f:
+        lines = f.read().split(chr(10))
+    for ln in lines:
+        if ln.startswith("#") or not ln.strip():
+            out.append(ln)
+            continue
+        file, line, kind = ln.split(":", 2)
+        if file in hunks:
+            new = moved(file, int(line))
+            if new is None:
+                dropped += 1
+                continue
+            ln = f"{file}:{new}:{kind}"
+        out.append(ln)
+    rows = []
+    for ln in out:
+        if ln.startswith("#") or not ln.strip():
+            continue
+        file, line, kind = ln.split(":", 2)
+        rows.append((file, int(line), "0", "EString::" + kind))
+    with open(path, "w", encoding="utf-8", newline=chr(10)) as f:
+        f.write(render(rows))
+    print(f"estring_callsites: {dropped} row(s) on edited lines dropped; {len(rows)} sites in {len({r[0] for r in rows})} files remain -> {path}")
+    return 0
+
+
 def kind_token(kind: str) -> str | None:
     """The text a row's kind leaves on its source line; None for the implicit conversion, which leaves none."""
     if kind == "operator ECHARPTR":
@@ -158,10 +210,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("log", nargs="?", help="the deprecation build's log (omit with --drop)")
     ap.add_argument("--drop", nargs="+", metavar="FILE[:LINE]", help="remove these rows from the committed list: a batch that converted them, proven by the build")
+    ap.add_argument("--remap", nargs="+", metavar=("BASE", "FILE"), help="BASE commit, then edited files: move their rows to the new line numbers")
     ap.add_argument("--check", action="store_true", help="verify the committed list against the tree (exit 1 on a stale or converted row)")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--root", default=ROOT)
     args = ap.parse_args()
+    if args.remap:
+        if len(args.remap) < 2:
+            ap.error("--remap needs a base commit and at least one file")
+        return remap(args.out, args.remap[0], args.remap[1:])
     if args.check:
         return check(args.out)
     if args.drop:

@@ -212,7 +212,7 @@ int					LogisticsData::getPlayerVariantNames( const char** array, int& count )
 			{
 				if ( count < maxCount )
 				{
-					array[count] = (*iter)->getName();
+					array[count] = (*iter)->getName().c_str();   // points into the variant; the caller uses it before the variants change
 				}
 				else
 				{
@@ -232,7 +232,7 @@ int		LogisticsData::getEncyclopediaMechs( const LogisticsVariant** pChassis, int
 	count = 0;
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 	{
-		if ( (*vIter)->getName().Find( "Prime" ) != -1  && (*vIter)->isDesignerMech() )
+		if ( (*vIter)->getName().find( "Prime" ) != std::string::npos && (*vIter)->isDesignerMech() )
 		{
 			if ( count < maxCount )
 				pChassis[count] = (*vIter);
@@ -256,7 +256,7 @@ int	LogisticsData::getHelicopters( const LogisticsVariant** pChassis, int& count
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 	{
 		if ( (((*vIter)->getVariantID() >> 16 & 0xff) == 0) && 
-			(*vIter)->getName().Find( "Prime" ) == -1  && (*vIter)->isDesignerMech() )
+			(*vIter)->getName().find( "Prime" ) == std::string::npos && (*vIter)->isDesignerMech() )
 		{
 			if ( count < maxCount )
 				pChassis[count] = (*vIter);

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mechbayscreen_internal.h.
 #include "mechbayscreen_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 
 // Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
@@ -139,12 +140,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 	{
 		loadoutListBox.setMech( pMech->getVariant() );
 
-		EString fileName = pMech->getFileName();
-		int index = fileName.Find( '.' );
-		fileName = fileName.Left( index );
-		index = fileName.ReverseFind( PATH_SEPARATOR_AS_CHAR );
-		fileName = fileName.Right( fileName.Length() - index - 1 );
-		mechCamera->setMech( fileName, prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+		mechCamera->setMech( mc2::str::file_stem( pMech->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
 		mechCamera->setScale( pMech->getVariant()->getChassis()->getScale() );
 	}
 	else
@@ -165,7 +161,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 
 		// weight
 		cLoadString( IDS_MB_MECH_WEIGHT, tmpStr, 63 );
-		sprintf( str, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass() );
+		sprintf( str, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass().c_str() );
 		textObjects[7].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_tonnage", str );
 
@@ -206,7 +202,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		cLoadString( pCurMech->getChassisName(), chassisBuf, sizeof( chassisBuf ) - 1 );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", chassisBuf );
 		textObjects[12].setText( pCurMech->getName() );
-		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", (const char*)pCurMech->getName() );
+		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", pCurMech->getName().c_str() );
 	}
 	else
 	{

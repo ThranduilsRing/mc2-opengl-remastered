@@ -6,6 +6,7 @@
 #define LOGISTICSDATA_INTERNAL_H
 
 #include"logisticsdata.h"
+#include"mc2str.h"
 #include"file.h"
 #include"logisticserrors.h"
 #include"cmponent.h"

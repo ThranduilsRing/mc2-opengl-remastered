@@ -17,6 +17,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"logisticsdata.h"
 #include "../resource.h"
 #include"gamesound.h"
+#include"mc2str.h"
 #include<malloc.h>
 
 // Interactive cheat gates — read once at startup, default OFF
@@ -684,12 +685,7 @@ void SalvageMechArea::setMech( LogisticsVariant* pMech, long red, long green, lo
 	loadoutListBox.setMech( pMech );
 	if ( pMech )
 	{
-		EString fileName = pMech->getFileName();
-		int index = fileName.Find( '.' );
-		fileName = fileName.Left( index );
-		index = fileName.ReverseFind( PATH_SEPARATOR_AS_CHAR );
-		fileName = fileName.Right( fileName.Length() - index - 1 );
-		mechCamera.setMech( fileName, red, green, blue );
+		mechCamera.setMech( mc2::str::file_stem( pMech->getFileName() ).c_str(), red, green, blue );
 
 		textObjects[NAME_TEXTID].setText( pMech->getName() );
 		char text[256];

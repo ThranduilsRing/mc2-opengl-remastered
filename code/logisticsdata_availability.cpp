@@ -194,9 +194,9 @@ long LogisticsData::updateAvailability()
 		// go through each variant, if it has the same chassis, check and see if all of its components are valid
 		for (VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 		{
-			EString mechName = (*vIter)->getFileName();
+			const std::string& mechName = (*vIter)->getFileName();
 			char realName[1024];
-			_splitpath( mechName, nullptr, nullptr, realName, nullptr );
+			_splitpath( mechName.c_str(), nullptr, nullptr, realName, nullptr );
 			if ( S_stricmp( realName, chassisFileName ) == 0 )
 			{
 				componentCount = 255;
@@ -325,7 +325,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 		int lim = pc < 64 ? pc : 64;
 		for ( int i = 0; i < lim; ++i ) {
 			if ( i ) j += ",";
-			j += "\"" + esc( pv[i] ? (const char*)pv[i]->getName() : "" ) + "\"";
+			j += "\"" + esc( pv[i] ? pv[i]->getName().c_str() : "" ) + "\"";
 		}
 		j += "]";
 	}
@@ -348,7 +348,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 		for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
 		      !it.IsDone() && i < 64; it++, ++i ) {
 			if ( i ) j += ",";
-			j += "\"" + esc( (const char*)( *it )->getName() ) + "\"";
+			j += "\"" + esc( ( *it )->getName().c_str() ) + "\"";
 		}
 		j += "]";
 	}
@@ -363,7 +363,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 		for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = fg.Begin();
 		      !it.IsDone() && i < 24; it++, ++i ) {
 			if ( i ) j += ",";
-			j += "\"" + esc( (const char*)( *it )->getName() ) + "\"";
+			j += "\"" + esc( ( *it )->getName().c_str() ) + "\"";
 		}
 		j += "]";
 	}
@@ -483,9 +483,9 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		// go through each variant, if it has the same chassis, check and see if all of its components are valid
 		for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 		{
-			EString mechName = (*vIter)->getFileName();
+			const std::string& mechName = (*vIter)->getFileName();
 			char realName[255];
-			_splitpath( mechName, nullptr, nullptr, realName, nullptr );
+			_splitpath( mechName.c_str(), nullptr, nullptr, realName, nullptr );
 			if ( S_stricmp( realName, chassisFileName ) == 0 )
 			{
 				long componentCount = 255;

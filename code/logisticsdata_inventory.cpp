@@ -161,13 +161,14 @@ int LogisticsData::removeVariant( const char* varName )
 
 	LogisticsVariant* pVar = nullptr;
 
-	if ( currentlyModifiedMech->getName() == varName || oldVariant->getName() == varName )
+	const std::string wanted = mc2::str::from_c( varName );
+	if ( mc2::str::iequals( currentlyModifiedMech->getName(), wanted ) || mc2::str::iequals( oldVariant->getName(), wanted ) )
 		return -1;
 
     VARIANT_LIST::EIterator vIter = variants.Begin();
 	for ( ; !vIter.IsDone(); vIter++ )
 	{
-		if ( (*vIter)->getName().Compare( varName, 0 ) == 0 )
+		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
 			pVar = (*vIter );
 			break;
@@ -473,11 +474,10 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 
 LogisticsVariant* LogisticsData::getVariant( const char* pCSVFileName, int VariantNum )
 {
-	EString lowerCase = pCSVFileName;
-	lowerCase.MakeLower();
+	const std::string lowerCase = mc2::str::ascii_lower( mc2::str::from_c( pCSVFileName ) );
 	for( VARIANT_LIST::EIterator iter = variants.Begin(); !iter.IsDone(); iter++ )
 	{
-		if ( -1 !=( (*iter)->getFileName().Find( lowerCase, -1 ) )
+		if ( (*iter)->getFileName().find( lowerCase ) != std::string::npos
 			&& (((*iter)->getVariantID()>>16)&0xff) == VariantNum )
 		{
 			return *iter;

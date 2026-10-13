@@ -14,7 +14,7 @@ class LogisticsComponent;
 class CSVFile;
 class FitIniFile;
 
-#include"estring.h"
+#include <string>
 
 #pragma warning (disable:4514)
 
@@ -38,10 +38,10 @@ public:
 	// UI-PROFILE-1: prefer a resolved UIProfile string-id override, else legacy.
 	int				getNameID() const { return (int)( uiNameIDOverride != -1 ? uiNameIDOverride : chassisNameID ); }
 	int				getEncyclopediaID() const { return (int)( uiEncyclopediaIDOverride != -1 ? uiEncyclopediaIDOverride : encyclopediaID ); }
-	const EString& getFileName() const { return fileName; }
+	const std::string& getFileName() const { return fileName; }
 	int				getHouseID() const{ return houseID; }
 	float			getMaxWeight() const{ return maxWeight; }
-	const EString&	getMechClass() const  { return mechClass; }
+	const std::string&	getMechClass() const  { return mechClass; }
 	long			getArmor() const { return baseArmor; }
 	int				getArmorClass() const;
 	float			getSpeed() const { return speed; }
@@ -75,9 +75,9 @@ protected:
 
 	long				iconPictureIndex;
 	long				ID;
-	EString				fileName;
-	EString				mechClass;
-	EString				iconFileNames[3];
+	std::string			fileName;
+	std::string			mechClass;
+	std::string			iconFileNames[3];
 
 	long				componentAreaWidth;
 	long				componentAreaHeight;
@@ -99,11 +99,11 @@ protected:
 
 	// UI-PROFILE-1 (Phase-2 slice 6): optional data-owned UI overrides, resolved
 	// ONCE in init() from the additive-merge UIProfile registry (keyed by chassis
-	// filename). Empty EString / -1 == "no override" == the accessor keeps its
+	// filename). Empty string / -1 == "no override" == the accessor keeps its
 	// legacy iconFileNames[]/IDS_ value. Stock chassis have no registry entry, so
-	// all three EStrings stay empty and both ids stay -1 -> byte-identical stock UI.
+	// all three strings stay empty and both ids stay -1 -> byte-identical stock UI.
 	// Applied at getSmall/Medium/LargeIconFileName + getNameID/getEncyclopediaID.
-	EString				uiIconOverride[3];   // [0]=small(icon) [1]=medium(silhouette) [2]=large(portrait)
+	std::string			uiIconOverride[3];   // [0]=small(icon) [1]=medium(silhouette) [2]=large(portrait)
 	long				uiNameIDOverride;         // -1 == unset
 	long				uiEncyclopediaIDOverride; // -1 == unset
 
@@ -147,7 +147,7 @@ protected:
 		unsigned long	getID() const { return ID; }
 		float			getMaxWeight() const { return chassis->maxWeight; }
 		long			getChassisName() const { return chassis->chassisNameID; }
-		const EString&		getName() const { return variantName; }
+		const std::string&	getName() const { return variantName; }
 		long			getEncyclopediaID() const { return chassis->getEncyclopediaID(); }  // UI-PROFILE-1: via override-aware chassis accessor
 		long			getHelpID() const { return chassis->helpID; }
 		long			getBaseCost() const { return chassis->baseCost; }
@@ -155,7 +155,7 @@ protected:
 		int				canAddComponent( LogisticsComponent* pComponent, long& x, long& y ) const;
 		int				getCost() const;
 		int				getWeight() const;
-		const EString&		getMechClass() const;
+		const std::string&	getMechClass() const;
 		int				getChassisID() const { return chassis->ID; }
 		int				getArmor() const;
 		int				getArmorClass() { return chassis->getArmorClass(); }
@@ -168,9 +168,9 @@ protected:
 
 		int				getVariantID() const { return ID & 0x00ffffff; }
 		// UI-PROFILE-1: prefer a resolved UIProfile icon-file override, else legacy.
-		const EString&		getSmallIconFileName() const { return chassis->uiIconOverride[0].Length() ? chassis->uiIconOverride[0] : chassis->iconFileNames[0]; }
-		const EString&	getMediumIconFileName() const { return chassis->uiIconOverride[1].Length() ? chassis->uiIconOverride[1] : chassis->iconFileNames[1]; }
-		const EString&		getLargeIconFileName() const { return chassis->uiIconOverride[2].Length() ? chassis->uiIconOverride[2] : chassis->iconFileNames[2]; }
+		const std::string&	getSmallIconFileName() const { return chassis->uiIconOverride[0].empty() ? chassis->iconFileNames[0] : chassis->uiIconOverride[0]; }
+		const std::string&	getMediumIconFileName() const { return chassis->uiIconOverride[1].empty() ? chassis->iconFileNames[1] : chassis->uiIconOverride[1]; }
+		const std::string&	getLargeIconFileName() const { return chassis->uiIconOverride[2].empty() ? chassis->iconFileNames[2] : chassis->uiIconOverride[2]; }
 		int				getComponentsWithLocation( long& count, long* IDArray, long* xLocationArray, long* yLocationArray );
 		int				removeComponent( long xCoord, long yCoord );
 		int				addComponent( LogisticsComponent*, long& xCoord, long& yCoord );
@@ -184,13 +184,13 @@ protected:
 		LogisticsVariant& operator=( const LogisticsVariant&  );
 
 		bool			operator==( const LogisticsVariant& src ) const;
-		const EString&		getFileName(){ return chassis->fileName; }
+		const std::string&	getFileName() const { return chassis->fileName; }
 
 		long			save( FitIniFile& file, long counter );
 
 		const LogisticsChassis* getChassis() const { return chassis; }
 		bool			addComponent( int idFromFitFile, long& x, long& y );
-		void			setName( const char* name ); // will allocate for you
+		void			setName( std::string name );
 
 		void		setAvailable( bool available );
 
@@ -225,7 +225,7 @@ protected:
 		int					fileID; // in csv file
 		
 		LogisticsChassis*	chassis;
-		EString				variantName;	// in file
+		std::string			variantName;	// in file
 		
 		long				componentCount;
 		LogisticsChassis::ComponentInfo		components[54]; // I count a max of 54 components, might want to check though

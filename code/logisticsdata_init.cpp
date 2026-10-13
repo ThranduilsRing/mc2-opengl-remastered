@@ -481,9 +481,9 @@ void LogisticsData::initVariants()
 		bool shadowhawkFound = false;
 		for ( VARIANT_LIST::EIterator it = variants.Begin(); !it.IsDone(); it++ ) {
 			totalVariants++;
-			EString fn = (*it)->getFileName();
+			const std::string& fn = (*it)->getFileName();
 			char fnLow[1024];
-			strncpy(fnLow, (const char*)fn, sizeof(fnLow)-1);
+			strncpy(fnLow, fn.c_str(), sizeof(fnLow)-1);
 			fnLow[sizeof(fnLow)-1] = '\0';
 			S_strlwr(fnLow);
 			if ( strstr(fnLow, "shadowhawk") ) shadowhawkFound = true;

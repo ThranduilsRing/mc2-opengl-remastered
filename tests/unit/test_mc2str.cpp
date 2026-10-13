@@ -147,4 +147,42 @@ TEST_CASE("corpus: iequals agrees with the old lstrcmpi-based equality on the st
 	CHECK(orderDisagree < 100);
 }
 
+TEST_CASE("file_stem is the name between the last path separator and the first dot")
+{
+	CHECK(mc2::str::file_stem("data\\objects\\madcat.csv") == "madcat");
+	CHECK(mc2::str::file_stem("data/objects/madcat.csv") == "madcat");
+	CHECK(mc2::str::file_stem("madcat.csv") == "madcat");
+	CHECK(mc2::str::file_stem("madcat") == "madcat");
+	CHECK(mc2::str::file_stem("a.b\\madcat.tar.gz") == "madcat");   // a dot in a directory does not cut the name
+	CHECK(mc2::str::file_stem("data\\objects\\").empty());
+	CHECK(mc2::str::file_stem("").empty());
+}
+
+// The three mech-camera call sites (logisticsmechdisplay, mechbayscreen_mechs, salvagemecharea) cut a chassis file name with
+// Find('.') / Left / ReverseFind(separator) / Right on an EString. For every stock name that has an extension the helper gives the same text.
+TEST_CASE("corpus: file_stem agrees with the EString Find / Left / ReverseFind / Right chain on the stock file names")
+{
+	int compared = 0;
+	int differ = 0;
+	for (const std::string& name : stockNames())
+	{
+		const std::string path = "data\\objects\\" + name;
+		EString fileName(path.c_str());
+		int index = fileName.Find('.');
+		if (index < 0)
+			continue;
+		fileName = fileName.Left(index);
+		index = fileName.ReverseFind('\\');
+		fileName = fileName.Right(fileName.Length() - index - 1);
+		++compared;
+		if (std::string(static_cast<const char*>(fileName)) != mc2::str::file_stem(path))
+		{
+			++differ;
+			MESSAGE("stem differs: '", path, "'");
+		}
+	}
+	CHECK(compared > 3000);
+	CHECK(differ == 0);
+}
+
 }

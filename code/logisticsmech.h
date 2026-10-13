@@ -23,12 +23,12 @@ class LogisticsMech
 		inline LogisticsPilot* getPilot( ) { return pilot; }
 		inline int getForceGroup() { return forceGroup; }
 		inline void setForceGroup( int bInForceGroup ) { forceGroup = bInForceGroup; }
-		inline const char* getFileName(){ return pVariant->chassis->fileName; }
+		const std::string&	getFileName() const { return pVariant->chassis->fileName; }
 		inline bool		isAvailable() const { return pVariant->availableToUser; }
 		unsigned long	getID() const { return pVariant->ID; }
 		float			getMaxWeight() const { return pVariant->chassis->maxWeight; }
 		long			getChassisName() const { return pVariant->chassis->chassisNameID; }
-		const EString&		getName() const { return pVariant->variantName; }
+		const std::string&	getName() const { return pVariant->variantName; }
 		long			getEncyclopediaID() const { return pVariant->chassis->encyclopediaID; }
 		long			getHelpID() const { return pVariant->chassis->helpID; }
 		long			getBaseCost() const { return pVariant->chassis->baseCost; }
@@ -37,7 +37,7 @@ class LogisticsMech
 		{ return pVariant->canAddComponent( pComponent, x, y ); }
 		int				getCost() const { return pVariant->getCost(); }
 		int				getWeight() const { return pVariant->getWeight(); }
-		const char*		getMechClass() const { return pVariant->getMechClass(); }
+		const std::string&	getMechClass() const { return pVariant->getMechClass(); }
 		int				getChassisID() const { return pVariant->chassis->ID; }
 		int				getArmor() const { return pVariant->getArmor(); }
 		int				getJumpRange() const { return pVariant->getJumpRange(); }
@@ -45,9 +45,9 @@ class LogisticsMech
 		int				getDisplaySpeed() const { return pVariant->getDisplaySpeed(); }
 		int				getVariantID() const { return pVariant->ID; }
 		// UI-PROFILE-1: route through the variant's override-aware accessors.
-		const EString&		getSmallIconFileName() const { return pVariant->getSmallIconFileName(); }
-		const EString&		getMediumIconFileName() const { return pVariant->getMediumIconFileName(); }
-		const EString&		getLargeIconFileName() const { return pVariant->getLargeIconFileName(); }
+		const std::string&	getSmallIconFileName() const { return pVariant->getSmallIconFileName(); }
+		const std::string&	getMediumIconFileName() const { return pVariant->getMediumIconFileName(); }
+		const std::string&	getLargeIconFileName() const { return pVariant->getLargeIconFileName(); }
 		int				getComponentsWithLocation( long& count, long* IDArray, long* xLocationArray, long* yLocationArray )
 		{
 			return pVariant->getComponentsWithLocation( count, IDArray, xLocationArray, yLocationArray );

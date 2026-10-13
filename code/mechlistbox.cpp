@@ -28,6 +28,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"txmmgr.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 MechListBoxItem* MechListBoxItem::s_templateItem = nullptr;
 
@@ -204,7 +205,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 		cLoadString( pMech->getChassisName(), chassisBuf, sizeof(chassisBuf) );
 		FILE* mechListLog = fopen("logistics_debug.log", "a");
 		if ( mechListLog ) {
-			mc2::fmt::print(mechListLog, "[MECHLIST] item chassisNameID={:d} chassisText='{}' variantName='{}' cost={:d} weight={:.0f}\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::safe(chassisBuf), mc2::fmt::safe((const char*)pMech->getName()), mc2::fmt::as_i32(pMech->getCost()), pMech->getMaxWeight());
+			mc2::fmt::print(mechListLog, "[MECHLIST] item chassisNameID={:d} chassisText='{}' variantName='{}' cost={:d} weight={:.0f}\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::safe(chassisBuf), pMech->getName(), mc2::fmt::as_i32(pMech->getCost()), pMech->getMaxWeight());
 			fflush( mechListLog );
 			fclose( mechListLog );
 		}
@@ -549,9 +550,9 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	{
 		// getChassisName() returns a long string-table id, not a char* -- using it
 		// with %s dereferences the id value and crashes (READ at the id). Log the
-		// variant name (an EString) for the %s field instead.
+		// variant name for the %s field instead.
 		mc2::fmt::print_out("[mechicon-list] mech={} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n",
-		       mc2::fmt::safe((const char*)pMech->getName()), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex),
+		       pMech->getName(), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex),
 		       width, height,
 		       u, u2, v, v2,
 		       fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
@@ -600,14 +601,15 @@ long MechListBox::AddItem(aListItem* itemString)
 			}
 			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& chassisName.Compare( addedName ) == 0 
-				&& ((MechListBoxItem*)itemString)->pMech->getName().Find("Prime") != -1 )
+				&& ((MechListBoxItem*)itemString)->pMech->getName().find("Prime") != std::string::npos )
 			{
 				return InsertItem( itemString, i );
 			}
 			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& chassisName.Compare( addedName ) == 0 
-				&& ( ((MechListBoxItem*)items[i])->pMech->getName().Find("Prime" ) == -1 ) 
-				&& ((MechListBoxItem*)items[i])->pMech->getName().Compare( pItem->pMech->getName() ) > 0 )
+				&& ( ((MechListBoxItem*)items[i])->pMech->getName().find("Prime") == std::string::npos ) 
+				// variants of one chassis sort by name, ignoring ASCII case, then by raw bytes
+				&& mc2::str::ci_total_less{}( pItem->pMech->getName(), ((MechListBoxItem*)items[i])->pMech->getName() ) )
 			{
 				return InsertItem( itemString, i );
 			}

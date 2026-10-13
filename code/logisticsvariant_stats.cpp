@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in logisticsvariant_internal.h.
 #include "logisticsvariant_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 
 // Next discrete move-speed class up the 5/10/15/19/23/27/31/35 ladder.
@@ -40,9 +41,9 @@ int LogisticsVariant::getWeight() const
 	return baseWeight;
 }
 
-const EString& LogisticsVariant::getMechClass() const
+const std::string& LogisticsVariant::getMechClass() const
 {
-	return chassis->mechClass;   
+	return chassis->mechClass;
 }
 
 int			LogisticsVariant::getMaxJumpRange() const
@@ -414,8 +415,8 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 	mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(counter));
 	file.writeBlock( tmp );
 	
-	file.writeIdString( "Chassis", chassis->fileName );
-	file.writeIdString( "VariantName", variantName );
+	file.writeIdString( "Chassis", chassis->fileName.c_str() );
+	file.writeIdString( "VariantName", variantName.c_str() );
 	file.writeIdLong( "ComponentCount", componentCount );
 
 	for ( int i = 0; i < componentCount; i++ )
@@ -439,9 +440,9 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 	return 0;
 }
 
-void LogisticsVariant::setName( const char* pName )
+void LogisticsVariant::setName( std::string name )
 {
-	variantName = pName;
+	variantName = std::move( name );
 }
 
 int	LogisticsVariant::getComponents( long& count, LogisticsComponent** array )
@@ -547,7 +548,7 @@ bool		LogisticsVariant::allComponentsAvailable() const
 {
 
 	// 06/05/01 hack, we wan't to hide this atlas for the whole game.
-	if ( S_stricmp( "Renard's Atlas", variantName ) == 0 )
+	if ( mc2::str::iequals( variantName, "Renard's Atlas" ) )
 		return 0;
 
 	for ( int i = 0; i < componentCount; i++ )
@@ -563,7 +564,7 @@ bool		LogisticsVariant::allComponentsAvailable() const
 void		LogisticsVariant::setAvailable( bool available ) 
 { 
 	// 06/05/01 hack, we wan't to hide this atlas for the whole game.
-	if ( S_stricmp( "Renard's Atlas", variantName ) == 0 )
+	if ( mc2::str::iequals( variantName, "Renard's Atlas" ) )
 		availableToUser = 0;
 
 	else

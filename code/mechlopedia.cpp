@@ -8,6 +8,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 
 #include <cstdio>
 #include"mechlopedia.h"
+#include"mc2str.h"
 #include"inifile.h"
 #include"mclib.h"
 #include"logisticsdata.h"
@@ -467,12 +468,10 @@ void Mechlopedia::MechScreen::begin()
 		}
 		for (int i = 0; i < copterCount; i++ )
 		{
-			if ( mc2IsUndefinedName( pCopters[i]->getName() ) ) continue;
+			if ( mc2IsUndefinedName( pCopters[i]->getName().c_str() ) ) continue;
 			if ( mc2IsUndefinedDescription( pCopters[i]->getEncyclopediaID() ) ) continue;   // ENCYCLO-UNDEFINED-FILTER-2
 			MechlopediaListItem* pEntry = new MechlopediaListItem();
-			EString text = pCopters[i]->getName();
-			text.MakeUpper();
-			pEntry->setText( text );
+			pEntry->setText( mc2::str::ascii_upper( pCopters[i]->getName() ) );
 			pEntry->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18,
 				pEntry->height() );
 
@@ -480,7 +479,7 @@ void Mechlopedia::MechScreen::begin()
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
 				aTextListItem* pItem = (aTextListItem*)groupListBox->GetItem( j );
-				if ( S_stricmp( pCopters[i]->getName(), pItem->getText() ) < 0 )
+				if ( S_stricmp( pCopters[i]->getName().c_str(), pItem->getText() ) < 0 )
 				{
 					groupListBox->InsertItem( pEntry, j );
 					bFound = true;
@@ -505,7 +504,7 @@ void Mechlopedia::MechScreen::begin()
 			const LogisticsVariant* cur = pChassis[i];
 			for ( int j = 0; j <= i; ++j )
 			{
-				if ( S_stricmp( cur->getName(), pChassis[j]->getName() ) < 0  )
+				if ( S_stricmp( cur->getName().c_str(), pChassis[j]->getName().c_str() ) < 0  )
 				{
 					for ( int l = i-1; l >= j; l-- )
 					{
@@ -707,7 +706,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 		textObjects[0].setText( tmpStr );
 	}
 
-	camera.setVehicle( pVehicle->getFileName(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+	camera.setVehicle( pVehicle->getFileName().c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
 	camera.setScale( pVehicle->getScale() );
 
 	statsListBox.removeAllItems( true );
@@ -740,7 +739,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_CLASS, text, 255 );
-	sprintf( formatText, text, (const char*)pVehicle->getMechClass() );	
+	sprintf( formatText, text, pVehicle->getMechClass().c_str() );	
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -819,7 +818,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 		textObjects[0].setText( upper  );
 	}
 
-	camera.setMech( pChassis->getFileName(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+	camera.setMech( pChassis->getFileName().c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
 	// PREVIEW-FRAMING-FIX: the Mech Bay (mechbayscreen.cpp:777) follows setMech()
 	// with setScale(chassis scale). The encyclopedia omitted it for mechs, so
 	// shapeScale stayed 0.0f -> SimpleCamera::update() called pObject->scale(0)
@@ -841,7 +840,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 		{
 			fprintf(f,"[ENCYCLO] setMech '%s' chassisScale=%.3f file=%s\n",
 				name, pChassis->getChassis()->getScale(),
-				(const char*)pChassis->getFileName());
+				pChassis->getFileName().c_str());
 			fclose(f);
 		}
 	}
@@ -882,7 +881,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_CLASS, text, 255 );
-	sprintf( formatText, text, (const char*)pChassis->getMechClass() );	
+	sprintf( formatText, text, pChassis->getMechClass().c_str() );	
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );

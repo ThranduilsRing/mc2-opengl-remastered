@@ -300,7 +300,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 	{
 		VARIANT_LIST::EIterator vIter = variants.Find( oldVariant );
 		if ( vIter != VARIANT_LIST::INVALID_ITERATOR
-			&& oldVariant->getName().Compare( name ) == 0 )
+			&& mc2::str::iequals( oldVariant->getName(), mc2::str::from_c( name ) ) )
 		{
 			variants.Delete( vIter );
 			delete oldVariant;
@@ -320,9 +320,10 @@ int LogisticsData::acceptMechModifications( const char* name )
 	// Good Point.  As you can see, it was pretty late when I "fixed" this!
 	long numVariants = variants.Count();
 	long i=0;
+	const std::string wanted = mc2::str::from_c( name );
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone();  )
 	{
-		if ( (*vIter)->getName().Compare( name, 0 ) == 0 )
+		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
 			VARIANT_LIST::EIterator tmpIter = vIter;
 			vIter++;
@@ -333,7 +334,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 			vIter++;
 	}
 
-	currentlyModifiedMech->getVariant()->setName( name );
+	currentlyModifiedMech->getVariant()->setName( wanted );
 	variants.Append( currentlyModifiedMech->getVariant() );
 	missionInfo->decrementCBills( currentlyModifiedMech->getVariant()->getCost() );
 
@@ -361,7 +362,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 			if ( !(*vIter)->isDesignerMech() )
 			{
 				FullPathFileName mechFile;
-				mechFile.init("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR ,(*vIter)->getName(),".var");
+				mechFile.init("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR ,(*vIter)->getName().c_str(),".var");
 
 				FitIniFile file;
 				file.create(mechFile);
@@ -408,10 +409,11 @@ int LogisticsData::acceptMechModificationsUseOldVariant( const char* name )
 bool LogisticsData::canReplaceVariant( const char* name )
 {
 	int nameCount = 0;
+	const std::string wanted = mc2::str::from_c( name );
 	for ( MECH_LIST::EIterator iter = inventory.Begin();
 		!iter.IsDone(); iter++ )
 		{
-			if ( (*iter)->getName().Compare( name, 0 ) == 0 )
+			if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
 			{
 				nameCount++;
 				if ( (*iter)->getVariant() != oldVariant && (*iter) != currentlyModifiedMech )
@@ -427,7 +429,7 @@ bool LogisticsData::canReplaceVariant( const char* name )
 		for ( VARIANT_LIST::EIterator vIter = variants.Begin();
 		!vIter.IsDone(); vIter++ )
 		{
-			if ( (*vIter)->isDesignerMech() && (*vIter)->getName().Compare( name, 0 ) == 0 )
+			if ( (*vIter)->isDesignerMech() && mc2::str::iequals( (*vIter)->getName(), wanted ) )
 				return 0;
 		}
 
@@ -443,7 +445,8 @@ bool	LogisticsData::canDeleteVariant( const char* name )
 	if ( !canReplaceVariant(name) )
 		return 0;
 
-	if ( currentlyModifiedMech->getName() == name || oldVariant->getName() == name )
+	const std::string wanted = mc2::str::from_c( name );
+	if ( mc2::str::iequals( currentlyModifiedMech->getName(), wanted ) || mc2::str::iequals( oldVariant->getName(), wanted ) )
 		return 0;
 
 	return 1;

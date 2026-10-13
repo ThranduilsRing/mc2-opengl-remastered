@@ -11,7 +11,7 @@
 // mission end (getVariant would otherwise return NULL, silently losing the mech).
 struct DeployedMechSnapshot
 {
-	EString           variantName; // copy of LogisticsVariant::variantName (== BattleMech::variantName)
+	std::string       variantName; // copy of LogisticsVariant::variantName (== BattleMech::variantName)
 	LogisticsVariant* pVariant;    // raw ptr -- valid lifetime: variants list outlives this snapshot
 };
 static std::vector<DeployedMechSnapshot> s_deployedMechSnapshot;
@@ -28,7 +28,7 @@ void LogisticsData::removeMechsInForceGroup()
 		if ( (*si)->getForceGroup() )
 		{
 			DeployedMechSnapshot snap;
-			snap.variantName = (*si)->getName(); // EString copy -- variantName == LogisticsVariant::getName()
+			snap.variantName = (*si)->getName(); // a copy: variantName == LogisticsVariant::getName()
 			snap.pVariant    = (*si)->getVariant();
 			s_deployedMechSnapshot.push_back( snap );
 		}
@@ -360,7 +360,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	// go out and find that chassis
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 	{
-		if ( (*vIter)->getFileName().Compare(  tmp, 0 ) == 0 )
+		if ( mc2::str::iequals( (*vIter)->getFileName(), mc2::str::from_c( tmp ) ) )
 		{
 			pChassis = (*vIter)->getChassis();
 		}
@@ -421,7 +421,7 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 	file.readIdString( "Variant", tmp, 255 );
 	for ( VARIANT_LIST::EIterator mIter = variants.Begin(); !mIter.IsDone(); mIter++ )
 	{
-		if ( (*mIter)->getName().Compare( tmp, 0 ) == 0 )
+		if ( mc2::str::iequals( (*mIter)->getName(), mc2::str::from_c( tmp ) ) )
 		{
 			
 			LogisticsMech* pMech = new LogisticsMech( (*mIter), count );
@@ -545,11 +545,11 @@ void	LogisticsData::setMissionCompleted( )
 				{
 					if ( pMover->isDestroyed() || pMover->isDisabled() )
 					{
-						removeMechFromInventory( pMech->getName(), pMover->getPilot()->getName() );
+						removeMechFromInventory( pMech->getName().c_str(), pMover->getPilot()->getName() );
 					}
 					else
 					{
-						removeMechFromInventory( pMech->getName(), pMover->getPilot()->getName() );
+						removeMechFromInventory( pMech->getName().c_str(), pMover->getPilot()->getName() );
 						LogisticsVariant* pVar = getVariant( ((BattleMech*)pMover)->variantName );
 						addMechToInventory( pVar, ForceGroupCount++, pPilot, base, highlight1, highlight2 );
 						if ( pPilot )
@@ -574,9 +574,9 @@ void	LogisticsData::setMissionCompleted( )
 							// objects are owned by the variants list, not by LogisticsMech.
 							for ( const DeployedMechSnapshot& snap : s_deployedMechSnapshot )
 							{
-								// EString::Compare is case-sensitive; variantName case must match
-								// BattleMech::variantName (set from LogisticsVariant::getName() at deploy).
-								if ( snap.variantName.Compare( vname, 0 ) == 0 && snap.pVariant )
+								// Variant names match ignoring ASCII case, like every other variant lookup;
+								// BattleMech::variantName is set from LogisticsVariant::getName() at deploy.
+								if ( mc2::str::iequals( snap.variantName, mc2::str::from_c( vname ) ) && snap.pVariant )
 								{
 									pVariant = snap.pVariant;
 									break;
@@ -626,9 +626,10 @@ void	LogisticsData::setMissionCompleted( )
 
 LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotName )
 {
+	const std::string wanted = mc2::str::from_c( MechName );
 	for( MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
 	{
-		if ( (*iter)->getName().Compare( MechName, 0 ) == 0 )
+		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
 		{
 			if ( !pilotName )
 			{
@@ -687,9 +688,10 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 
 LogisticsVariant* LogisticsData::getVariant( const char* mechName )
 {
+	const std::string wanted = mc2::str::from_c( mechName );
 	for ( VARIANT_LIST::EIterator iter = variants.Begin(); !iter.IsDone(); iter++ )
 	{
-		if ( (*iter)->getName().Compare( mechName, 0 ) == 0 )
+		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
 			return (*iter);
 	}
 

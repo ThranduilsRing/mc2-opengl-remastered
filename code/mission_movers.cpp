@@ -411,7 +411,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	
 	strncpy(mData.pilotFileName,mechData->getPilot()->getFileName(),49);
 	strcpy(mData.brainFileName,"pbrain");
-	strncpy(mData.csvFileName,mechData->getFileName(),50);
+	strncpy(mData.csvFileName,mechData->getFileName().c_str(),50);
 	
 	mData.rosterIndex = 255;
 	mData.objNumber = mechData->getFitID();
@@ -454,7 +454,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 		return moverHandle;
 	}
 
-	strcpy( ((BattleMech*)mMech)->variantName, mechData->getName() );
+	strcpy( ((BattleMech*)mMech)->variantName, mechData->getName().c_str() );
 		
 	long totalComponents = mechData->getComponentCount();
 

@@ -8,6 +8,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 
 #include "logisticsvariant_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 
 
@@ -45,8 +46,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	ID = chassisID;
 	char buffer[256];
 	
-	fileName = file->getFilename();
-	fileName.MakeLower();
+	fileName = mc2::str::ascii_lower(mc2::str::from_c(file->getFilename()));
 
 	long result = file->readLong( 11, 5, baseCost );
 	gosASSERT( result == NO_ERR );
@@ -154,7 +154,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 					isVeh = true;
 			}
 		}
-		if ( !isVeh && strstr( (const char*)fileName, "copter" ) )
+		if ( !isVeh && fileName.find( "copter" ) != std::string::npos )
 			isVeh = true;
 		bIsVehicle = isVeh;
 	}
@@ -173,7 +173,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	// prior hand-inlined copy, but via ONE shared resolution point. Legacy accessor
 	// shape (uiIconOverride[]/id + iconFileNames[] fallback) is untouched: no atlas
 	// blit-math change (mechicon.cpp CANARY).
-	if (const UIProfile* reg = uiProfileForChassis((const char*)fileName)) {
+	if (const UIProfile* reg = uiProfileForChassis(fileName.c_str())) {
 		const UIProfile up = mergeUIProfile(/*base=*/nullptr, /*over=*/reg);
 		if (!up.icon.empty())       uiIconOverride[0] = up.icon.c_str();
 		if (!up.silhouette.empty()) uiIconOverride[1] = up.silhouette.c_str();
@@ -183,8 +183,8 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 		// REPORT-ONLY asset-resolve check (UPV_UI_ASSET_MISSING): a declared icon
 		// file that does not exist would silently fall back to the legacy slot.
 		for (int s = 0; s < 3; ++s) {
-			if (uiIconOverride[s].Length() && !fileExists((const char*)uiIconOverride[s]))
-				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", mc2::fmt::safe((const char*)fileName), mc2::fmt::safe((const char*)uiIconOverride[s]), mc2::fmt::as_i32((int)UPV_UI_ASSET_MISSING));
+			if (!uiIconOverride[s].empty() && !fileExists(uiIconOverride[s].c_str()))
+				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", fileName, uiIconOverride[s], mc2::fmt::as_i32((int)UPV_UI_ASSET_MISSING));
 		}
 	}
 
@@ -529,7 +529,7 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
  					if ( getComponentAtLocation( x +i, y + j ) )
 					{
 						char errorString[1024];
-						mc2::fmt::to_buf(errorString, "couldn't add component {} to variant {} because another object was in the specified location", mc2::fmt::safe(pComponent->getName()), mc2::fmt::safe((const char*)this->getName()));
+						mc2::fmt::to_buf(errorString, "couldn't add component {} to variant {} because another object was in the specified location", mc2::fmt::safe(pComponent->getName()), this->getName());
 		//				Assert( 0, 0, errorString );
 						return false; 
 					}

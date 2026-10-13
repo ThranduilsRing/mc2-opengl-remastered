@@ -12,6 +12,7 @@ LogisticsMechDisplay.cpp			: Implementation of the LogisticsMechDisplay componen
 #include "../resource.h"
 #include"prefs.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 // Mirror a populated component list into the defs GuiList, preserving the per-item
 // range colours -- so the Mech Loadout matches the Mech Bay screen 100% (defs-page
@@ -154,18 +155,18 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 			pCurMech = pMech;
 			if ( pCurMech )
 			{
-				// chassis name is a string-table ID; variant name is an EString.
+				// chassis name is a string-table ID; variant name is text.
 				textObjects[0].setText( pCurMech->getChassisName() );
 				textObjects[1].setText( pCurMech->getName() );
 				char chassisBuf[128];
 				cLoadString( pCurMech->getChassisName(), chassisBuf, sizeof( chassisBuf ) - 1 );
 				setDefsElementText( "game.mcl_mechinfo.text.mech_info_name_header_above_mech_animation", chassisBuf );
-				setDefsElementText( "game.mcl_mechinfo.text.variant_name_header_above_weapon_rect", (const char*)pCurMech->getName() );
+				setDefsElementText( "game.mcl_mechinfo.text.variant_name_header_above_weapon_rect", pCurMech->getName().c_str() );
 
 				char text[64];
 				char tmpStr[64];
 				cLoadString( IDS_MB_MECH_WEIGHT, tmpStr, 63 );
-				sprintf( text, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass() );
+				sprintf( text, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass().c_str() );
 				textObjects[3].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_weight", text );
 
@@ -194,12 +195,7 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 				attributeMeters[2].setValue( pCurMech->getJumpRange() * 25 / MAX_JUMP_RANGE);
 
 				
-				EString fileName = pMech->getFileName();
-				int index = fileName.Find( '.' );
-				fileName = fileName.Left( index );
-				index = fileName.ReverseFind( PATH_SEPARATOR_AS_CHAR );
-				fileName = fileName.Right( fileName.Length() - index - 1 );
-				mechCamera.setMech( fileName, prefs.baseColor, prefs.highlightColor, prefs.highlightColor );	
+				mechCamera.setMech( mc2::str::file_stem( pMech->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );	
 				mechCamera.setScale( pMech->getVariant()->getChassis()->getScale() );
 				
 				componentListBox.setMech( pCurMech->getVariant() );
