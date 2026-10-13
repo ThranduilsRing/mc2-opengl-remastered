@@ -64,6 +64,7 @@
 
 #include <string>
 #include "../../Gates/render_options_cfg.h"   // the options.cfg keys, types and bounds the engine reads, and the line editor
+#include "../../Gates/render_options_legacy_env.h"   // the retired MC2_* names of those options, for the one-time launcher_env.json migration
 
 #define IDC_MODLIST   1001
 #define IDC_LAUNCH    1002
@@ -891,6 +892,58 @@ static void SaveCfgRows() {
         text = mc2::options::cfg::set(text, *opt, value);
     }
     if (text != before) WriteTextFile(path, text);
+}
+
+// ---- One-time migration of the retired render-option keys in launcher_env.json ----------------------------------------------------------------
+
+// One line appended to launcher.log beside the launcher (a GUI program with no console); a failure to write it is not an error.
+static void LauncherLogLine(const std::string& line) {
+    OutputDebugStringA((line + "\n").c_str());
+    char path[MAX_PATH];
+    _snprintf(path, sizeof(path), "%slauncher.log", s_launcherDir);
+    path[sizeof(path) - 1] = '\0';
+    FILE* f = fopen(path, "a");
+    if (!f) return;
+    fprintf(f, "%s\n", line.c_str());
+    fclose(f);
+}
+
+// Before the render options moved into options.cfg, launcher_env.json held them under their environment names ("MC2_SHADOW_CSM": "0"). The
+// engine no longer reads those names, so a player's old choice would reset to the default without a word. Each such key is mapped to its options.cfg
+// row once, then the file is rewritten without it; a row the file already has under its new name keeps that value (the newer choice wins). Call it
+// after the rows are loaded and before the dialog or --sync-options use them.
+static void MigrateLegacyEnvKeys() {
+    if (!s_envJsonPath[0]) return;
+    const std::string json = ReadTextFile(s_envJsonPath);
+    int found = 0, applied = 0, keptNew = 0, unmapped = 0;
+    std::string detail;
+    for (const mc2::options::legacy::LegacyKey& lk : mc2::options::legacy::kLegacyKeys) {
+        char old[256] = "";
+        if (!JsonGetString(json.c_str(), lk.envName, old, sizeof(old))) continue;
+        ++found;
+        char probe[256] = "";
+        if (JsonGetString(json.c_str(), lk.option, probe, sizeof(probe))) { ++keptNew; continue; }
+        const mc2::options::Option* opt = mc2::options::find(lk.option);
+        const auto text = opt ? mc2::options::legacy::translate(*opt, old) : std::nullopt;
+        int row = -1;
+        for (int i = 0; i < k_envVarCount; i++)
+            if (k_envVars[i].cfg && strcmp(k_envVars[i].key, lk.option) == 0) { row = i; break; }
+        if (!text || row < 0) { ++unmapped; continue; }
+        const char* shown;
+        if (k_envVars[row].isBool) shown = (*text == "FALSE" || *text == "0") ? (k_envVars[row].offVal ? k_envVars[row].offVal : "") : "1";
+        else shown = text->c_str();
+        _snprintf(s_envVarValues[row], sizeof(s_envVarValues[row]), "%s", shown);
+        s_envVarValues[row][sizeof(s_envVarValues[row]) - 1] = '\0';
+        detail += (detail.empty() ? "" : ",") + std::string(lk.option) + "=" + *text;
+        ++applied;
+    }
+    if (!found) return;
+    // SaveEnvJson rewrites the whole file, so the graphics and main-page state it also holds must be loaded first (a headless run has not).
+    LoadGfxJson();
+    LoadMainPageJson();
+    SaveEnvJson();
+    LauncherLogLine("[LAUNCHER_ENV v1] event=migrated_legacy_keys found=" + std::to_string(found) + " applied=" + std::to_string(applied) +
+                    " kept_existing=" + std::to_string(keptNew) + " unmapped=" + std::to_string(unmapped) + " options=" + (detail.empty() ? "-" : detail));
 }
 
 // ---- Options dialog (in-process, no .rc file) --------------------------------
@@ -3060,6 +3113,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
         _snprintf(s_envJsonPath, sizeof(s_envJsonPath), "%slauncher_env.json", s_launcherDir);
         s_envJsonPath[sizeof(s_envJsonPath)-1] = '\0';
         LoadEnvJson();
+        MigrateLegacyEnvKeys();
         SaveCfgRows();
         return 0;
     }
@@ -3086,6 +3140,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
     GfxSetDefaults();
     LoadEnvJson();
     LoadCfgRows();
+    MigrateLegacyEnvKeys();
     LoadGfxJson();
     LoadMainPageJson();
 
