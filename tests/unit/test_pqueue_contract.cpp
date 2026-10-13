@@ -297,6 +297,27 @@ TEST_CASE("HP7 init(max) holds max + 1 nodes (indices 1 .. max + 1); the next in
 	CHECK(n.key == 5);
 }
 
+TEST_CASE("H18 change() takes a HEAP INDEX: handing it the item's id re-keys whichever node sits in that slot")
+{
+	// GlobalMap::propogateCost once passed the door id where it had to pass find(door). Door ids and heap positions agree only by chance, so a
+	// different node was re-keyed, a stale slot could enter the live heap, and an id above the buffer wrote past it. The contract is stated here.
+	auto popOrder = [](bool useIndex) {
+		OldHeap h(20);
+		h.insert(5, 3); // key 5, id 3 -> heap slot 1
+		h.insert(6, 1); // key 6, id 1 -> slot 2
+		h.insert(7, 2); // key 7, id 2 -> slot 3
+		// Intent: raise the key of the item with id 2 (slot 3) to 99.
+		h.change(useIndex ? h.find(2) : 2, 99);
+		std::vector<uint32_t> ids;
+		PQNode n;
+		while (h.pop(n))
+			ids.push_back(n.id);
+		return ids;
+	};
+	CHECK(popOrder(true) == std::vector<uint32_t>{3, 1, 2}); // the item that was meant is pushed down
+	CHECK(popOrder(false) == std::vector<uint32_t>{3, 2, 1}); // the node in slot 2 (id 1) was pushed down instead
+}
+
 TEST_CASE("HP6 golden scripts: 2000 random A*-shaped scripts reproduce the committed hashes")
 {
 	REQUIRE(sizeof(kHp6Hashes) / sizeof(kHp6Hashes[0]) == 2000);
