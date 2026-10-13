@@ -91,7 +91,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
-from smoke_lib import render_options_pin, render_resolution  # noqa: E402
+from smoke_lib import capture_backend, render_options_pin, render_resolution  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
@@ -391,6 +391,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 
     # Collect results per bookmark.
     bm_results = []
+    sidecars = []
     all_present = True
     any_nondet = False
     for m in marks:
@@ -407,6 +408,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         # like a real desync.
         simid = None
         engine_options = None
+        sc = None
         if side.exists():
             try:
                 sc = json.loads(side.read_text(encoding="utf-8"))
@@ -416,6 +418,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             except Exception:
                 det = None
                 simid = None
+                sc = None
+        sidecars.append((m["name"], sc))
         if det is False:
             any_nondet = True
         bm_results.append({
@@ -444,8 +448,17 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     for line in options_disagree:
         print(f"[viscap] FAIL render options: harness reading and engine report disagree: {line}", file=sys.stderr)
 
+    # The backend the capture asked for must be the one that drew it: a Vulkan request that fell back to GL is not a Vulkan capture.
+    want_backend = capture_backend.requested(env)
+    backend_disagree = capture_backend.check(want_backend, sidecars)
+    for line in backend_disagree:
+        print(f"[viscap] FAIL render backend: {line}", file=sys.stderr)
+
     return {
         "mission": mission_token,
+        "backend": {"requested": want_backend,
+                    "drew": next((capture_backend.drew(sc) for _n, sc in sidecars if sc), None),
+                    "disagree": backend_disagree},
         "render_options": {"values": engine_opts or options_rec["values"], "from": "engine" if engine_opts else "install",
                            "rejected": options_rec["rejected"], "disagree": options_disagree},
         "bookmarks_path": str(bookmarks_path),
@@ -465,6 +478,7 @@ def write_manifest(result: dict, exe: Path) -> Path:
     out_dir = Path(result["out_dir"])
     verdict = ("PASS" if result["all_present"] and result["engine_capture_fired"]
                and not (result.get("render_options") or {}).get("disagree")
+               and not (result.get("backend") or {}).get("disagree")
                else "FAIL")
     ident = ms.identity_block(
         generator="visual_capture",
@@ -704,7 +718,7 @@ def main() -> int:
                          det_clock, args.show_window, declared_env)
         man = write_manifest(result, exe)
         _print_result(result, man)
-        return 0 if (result["all_present"] and result["engine_capture_fired"]) else 1
+        return 0 if (result["all_present"] and result["engine_capture_fired"] and not result["backend"]["disagree"]) else 1
 
     # Multi-run stabilization mode.
     runs = []
@@ -731,6 +745,9 @@ def main() -> int:
         flag = "STABLE" if info["stable"] else "DRIFT"
         print(f"[viscap]   {name:20} {flag:7} {' '.join(shas)}")
     fired = all(r["engine_capture_fired"] for r in runs)
+    if any(r["backend"]["disagree"] for r in runs):
+        print("[viscap] FAIL: a run was not drawn by the requested render backend (see the log above); the stability result is void")
+        return 1
     if not fired:
         print("[viscap]   WARNING: engine capture path did not fire in some run "
               "-- RC may predate S9. Check the .log.")

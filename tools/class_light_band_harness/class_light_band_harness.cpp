@@ -23,15 +23,21 @@
 // feature registry description text, from docs, or from a relayed summary --
 // three inherited claims were found FALSE that way (see CLAIM CHECK below).
 //
-// DELIBERATELY *NOT* REGISTERED IN tools/run_contract_tests.py
-// REGISTERED_HARNESSES. This is an EXPLORATORY measurement harness, not a gate.
-// Every assertion here pins a CURRENT TUNING VALUE (0.35, 1.20, 0.5, +135), so
-// registering it would turn the contract suite red on every legitimate lighting
-// change -- and a lighting change is exactly what this measurement exists to
-// motivate. A sibling lane (ARCH-CONVERGE-S2) is building the intended drift
-// checker; duplicating that here would also trip the duplicate-row rule in
-// check-contract-coverage.py arm (d). Promote to a gate only after the class
-// bands are deliberately unified and the numbers stop being in flight.
+// This is a MEASUREMENT harness. Every assertion pins a CURRENT TUNING VALUE
+// (0.35, 1.20, 0.5, +135), so a legitimate lighting change turns it red on
+// purpose and the numbers are re-derived, not waved through.
+//
+// WHICH CONFIGURATION THE STATIC-PROP AND TREE MODELS DESCRIBE. They transcribe
+// static_prop.vert as it was when StaticPropAmbient (hemisphere fill) and the
+// base-light direction wrap were OFF. Both have since become shipped defaults:
+// StaticPropAmbient is ON in options.cfg (Gates/render_options.h) and the
+// base-light wrap (strength 0.45, alpha-test props such as trees excluded) is
+// always on. So Stage A's static-prop row, Stage C's prop column and the Stage
+// E/F/G prop numbers are the "both off" bands: exact for trees' direction term,
+// NOT the lit band a building gets today. test_models_describe_ambient_off_not_
+// the_shipped_default pins that gap so a lane that reads a number here as the
+// shipped band is contradicted by a red test the moment the models change.
+// The Stage G floor and the IBL-on default are read from the live option table.
 //
 // Build (standalone, no engine, no GL):
 //   cmake -S tools/class_light_band_harness -B build64-h-class_light_band_harness -A x64
@@ -69,6 +75,7 @@
 #include "contract_harness.h"
 #include "RenderCore/IblShCoeffs.h"     // header-only constexpr, no GL, no engine
 #include "RenderCore/IblShRegistry.h"   // ditto -- Stage F reads kMissionShMap itself
+#include "Gates/render_options.h"       // header-only: the shipped option defaults and the options.cfg value grammar the engine reads
 
 #include <algorithm>
 #include <cmath>
@@ -241,11 +248,10 @@ static double evalShL2(const V3& n, int channel)
          + 2.0 * c2 * sh2 * n.z;
 }
 
-// GameOS/gameos/gos_static_prop_batcher.cpp:325-333 -- env unset => 0.5f.
-// gos_static_prop_batcher.cpp:1008-1013 -- MC2_STATIC_PROP_IBL_SH default-ON
-// (only the literal "0" disables), so the default upload is 0.5f in daylight
-// (iblShStrengthNightScaled():1074-1082 returns g_iblShStrength exactly when
-// nFactor <= 0).
+// gos_static_prop_batcher.cpp g_iblShStrength starts at 0.5f. The StaticPropIblSh
+// option is ON by default (RenderOptions), so that is the daylight upload before
+// the per-mission profile overwrites it (iblShStrengthNightScaled() returns
+// g_iblShStrength exactly when the night factor is 0).
 static const double kIblStrengthDefault = 0.5;
 
 // TREE-SUN-RESTORE-1 CORRECTION -- 0.5f IS THE C++ LITERAL, NOT WHAT SHIPS.
@@ -255,11 +261,12 @@ static const double kIblStrengthDefault = 0.5;
 // env is a path override) and IS shipped:
 //   code/mission.cpp:3874             visualTuning_applyProfile(missionScriptName)
 //                                     -- unconditional, every mission load
-//   GameOS/gameos/visual_tuning_profile.cpp:294-333
+//   GameOS/gameos/visual_tuning_profile.cpp
 //                                     applies "defaults" then the per-mission
-//                                     block; :169-174 writes g_iblShStrength
-//                                     whenever MC2_STATIC_PROP_IBL_SH_STRENGTH
-//                                     is UNSET -- i.e. on a default launch.
+//                                     block and writes g_iblShStrength from
+//                                     staticPropIblStrength; nothing suppresses
+//                                     it (the strength env gate that used to is
+//                                     deleted).
 //   scripts/deploy_payload.py:118     ships data/visual_tuning.json
 //
 // data/visual_tuning.json (read verbatim):
@@ -269,9 +276,8 @@ static const double kIblStrengthDefault = 0.5;
 //   missions.mc2_10.staticPropIblStrength     = 0.6
 //   missions.mc2_24.staticPropIblStrength     = 0.6
 //
-// So the SHIPPED default is 0.55, and 0.60 on three of the 24. Setting
-// MC2_STATIC_PROP_IBL_SH_STRENGTH is what makes 0.5 (or anything else) apply
-// -- the env var SUPPRESSES the profile rather than layering on it.
+// So the SHIPPED default is 0.55, and 0.60 on three of the 24; 0.5 only
+// applies to a tool that never loads the profile.
 static const double kIblStrengthShippedDefault = 0.55;
 
 static double iblStrengthShipped(const char* missionName)
@@ -336,9 +342,12 @@ static double vehicleMulNoFloor(double seed, double A, double S, double ndl)
 }
 
 // shaders/static_prop.vert:823   lit = (seed + ambientTerm) * propDirFactor + sunColor * ndl;
-//   propDirFactor == 1.0 when MC2_PROP_BASE_LIGHT_DIR is off (:798-803)
-// shaders/static_prop.vert:836-839  ambient_v1 hemisphere fill, u_ambientV1Strength
-//   default 0.0 -> exact no-op, so it is omitted here (and asserted so).
+//   propDirFactor == 1.0 is the model's assumption. Since the wrap was promoted to
+//   always-on (strength 0.45) it holds for alpha-test props (trees) only; every
+//   other prop is multiplied by the wrap and this model omits it.
+// shaders/static_prop.vert:836-839  ambient_v1 hemisphere fill, u_ambientV1Strength.
+//   OMITTED here: that is the StaticPropAmbient=FALSE configuration. The option is
+//   ON by default now (see the header note and the pinning test).
 // shaders/static_prop.vert:845-848  if (u_iblShStrength > 0.0) lit += evalShL2(n) * strength;
 // The clamp lands LATER, at :906  lit = clamp(lit + inst.aRGBHighlight.rgb, 0, 1).
 static double propMulPreClamp(double seed, double A, double S, double ndl, double ibl)
@@ -383,9 +392,9 @@ static double propMul(double seed, double A, double S, double ndl, double ibl)
 // A tree row has no INFINITE, so sunColor == vec3(0) IDENTICALLY.
 //   static_prop.vert:823  lit = (seed + ambientTerm) * propDirFactor
 //                                                     + sunColor * ndl;
-// with propDirFactor == 1.0 for a tree on BOTH counts: MC2_PROP_BASE_LIGHT_DIR
-// defaults to 0.0f (gos_static_prop_batcher.cpp:786) AND :800 excludes
-// kFlagIsAlphaTest geometry, which trees are.
+// with propDirFactor == 1.0 for a tree because the base-light wrap excludes
+// kFlagIsAlphaTest geometry, which trees are (the wrap is always on for the
+// other props since PROP-BASE-LIGHT-DIR-1 was promoted).
 //   static_prop.vert:838  lit += ambient_v1 * u_ambientV1Strength -- OFF by
 //                                default (gos_static_prop_batcher.cpp:757-759,
 //                                opt-in idiom), exact no-op.
@@ -1795,7 +1804,7 @@ static bool test_head_ibl_pins_trees_that_stock_left_free(TestCtx& t)
     return t.failures == 0;
 }
 
-// E5. MC2_PROP_SHADOW_RECEIVE is an exact no-op on trees. THE VERDICT IS RIGHT
+// E5. The PropShadowReceive option is an exact no-op on trees. THE VERDICT IS RIGHT
 // BUT THE INHERITED REASON IS WRONG, and the difference decides whether
 // restoring a sun would "wake it up".
 //
@@ -1823,7 +1832,7 @@ static bool test_head_ibl_pins_trees_that_stock_left_free(TestCtx& t)
 // sun: the shadow depth pass has no alpha discard, so a card writes a solid
 // slab of depth and sampling it back self-shadows the whole card uniformly.
 // CONSEQUENCE: restoring a sun to the tree row would NOT make
-// MC2_PROP_SHADOW_RECEIVE live on trees. The exclusion is sun-independent.
+// PropShadowReceive live on trees. The exclusion is sun-independent.
 //
 // NOTE the documentation gap this exposes: render_contract.hglsl:43-44 calls
 // the 0.1875 class "alpha-test LATTICE prop (chain-link fence, railing,
@@ -1867,7 +1876,7 @@ static bool test_prop_shadow_receive_is_an_exact_no_op_on_trees(TestCtx& t)
 
 // E6. If a sun WERE restored to the tree row, the change would be invisible on
 // exactly the missions whose ambient slot already saturates -- the same
-// saturation trap MC2_SUN_AXIS_FIX hit. Name the missions where an A/B could
+// saturation trap the SunAxisFix option hit. Name the missions where an A/B could
 // actually show something, and assert the trap is real.
 static bool test_restoring_a_sun_would_be_invisible_where_S_saturates(TestCtx& t)
 {
@@ -1899,10 +1908,10 @@ static bool test_restoring_a_sun_would_be_invisible_where_S_saturates(TestCtx& t
 }
 
 // E6b. THE SHIPPED IBL STRENGTH IS NOT THE C++ LITERAL. Pin the gap so the
-// next lane that reads gos_static_prop_batcher.cpp:325-333 and concludes "the
-// default is 0.5" is contradicted by a red test. On a DEFAULT launch (no
-// MC2_STATIC_PROP_IBL_SH_STRENGTH set) the profile at
-// visual_tuning_profile.cpp:169-174 overwrites g_iblShStrength with the
+// next lane that reads the g_iblShStrength initialiser in
+// gos_static_prop_batcher.cpp and concludes "the default is 0.5" is
+// contradicted by a red test. On every launch the profile in
+// visual_tuning_profile.cpp overwrites g_iblShStrength with the
 // data/visual_tuning.json value on EVERY mission load.
 static bool test_shipped_ibl_strength_is_not_the_cpp_literal(TestCtx& t)
 {
@@ -2268,7 +2277,7 @@ static bool test_sun_align_rotation_aims_the_probe_at_the_sun(TestCtx& t)
 // change on mc2_10. For a probe ROTATION that recommendation is WRONG: mc2_10
 // carries ambient 192/255 AND sun byte 192/255, so 91% of wall azimuths are
 // already clamped and the rotation moves a mean of 0.004 -- one byte. The pose
-// earned its reputation from MC2_PROP_BASE_LIGHT_DIR, which is a MULTIPLICATIVE
+// earned its reputation from the base-light direction wrap, which is a MULTIPLICATIVE
 // darkening and therefore pulls pixels DOWN out of saturation; a rotation
 // mostly swaps one clamped state for another. Different term shape, different
 // trap.
@@ -2373,12 +2382,12 @@ static bool print_stage_f_probe_aim(TestCtx&)
 // that a later edit to the engine that changes the arithmetic breaks a test
 // here rather than silently diverging from the analysis that justified it.
 //
-// SHIPPED GATE : MC2_STATIC_PROP_IBL_SUN_ROTATE        (default OFF)
-// SHIPPED FLOOR: MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR  (default 0.45)
+// SHIPPED OPTION: StaticPropIblSunRotate       (options.cfg, default FALSE)
+// SHIPPED FLOOR : StaticPropIblSunRotateFloor  (options.cfg, default 0.45, range 0..2)
 //=============================================================================
 
-// gos_static_prop_batcher.cpp iblShCoeffsForUpload(): the DEFAULT floor value.
-static const double kShippedSunRotateFloor = 0.45;
+// The shipped default of the floor option, read from the live option table.
+static const double kShippedSunRotateFloor = double(mc2::options::RenderOptions{}.staticPropIblSunRotateFloor);
 
 // gos_static_prop_batcher.cpp iblShCoeffsForUpload(), the frame + angle block.
 // Input is the sun in the MC2 frame -- i.e. exactly what gos_GetTerrainLightDir
@@ -2484,7 +2493,7 @@ static bool test_shipped_transform_with_no_floor_is_the_bare_rotation(TestCtx& t
         const Mission& m = kMissions[i];
         // (a) EXACT: floor 0 must add nothing at all -- the transform is then
         //     the pure rotation at the shipped angle, bit for bit. This is the
-        //     "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR=0 gives the bare rotation"
+        //     "StaticPropIblSunRotateFloor = 0 gives the bare rotation"
         //     contract, and it must not hold merely to within an epsilon.
         const ShSet9 got  = shippedUploadSet(m, 0.0);
         const ShSet9 pure = rotateShAboutY(base,
@@ -2631,29 +2640,56 @@ static bool test_floor_cost_at_the_bright_end_is_bounded(TestCtx& t)
     return t.failures == 0;
 }
 
-// G8. Junk-value contract for the floor reader, transcribed from
-// gos_static_prop_batcher.cpp s_iblSunRotateFloor: unset -> 0.45; "0",
-// negative, NaN and non-numeric junk -> 0.0 (fail to the BARE ROTATION, never
-// to a silent giant lift); above 2.0 -> clamped to 2.0.
-static double shippedFloorFromEnv(const char* v)
+// G8. The floor as the engine reads it: an options.cfg value through the shared
+// grammar (Gates/render_options.h). A value that is not a whole in-range number
+// is REJECTED and the shipped default stays (it is not clamped and it does not
+// become 0, which is how the retired env reader behaved).
+static double shippedFloorFromCfg(const char* text)
 {
-    if (v == nullptr || v[0] == '\0') return 0.45;
-    const double d = std::atof(v);
-    if (!(d > 0.0)) return 0.0;
-    return (d > 2.0) ? 2.0 : d;
+    mc2::options::RenderOptions o;
+    if (text == nullptr) return double(o.staticPropIblSunRotateFloor);
+    const mc2::options::Option* opt = mc2::options::find("StaticPropIblSunRotateFloor");
+    if (opt == nullptr) return -1.0;
+    (void)mc2::options::setFromText(o, *opt, text);
+    return double(o.staticPropIblSunRotateFloor);
 }
-static bool test_floor_env_reader_junk_contract(TestCtx& t)
+static bool test_floor_option_grammar_contract(TestCtx& t)
 {
-    CH_CHECK(t, shippedFloorFromEnv(nullptr) == 0.45);
-    CH_CHECK(t, shippedFloorFromEnv("")      == 0.45);
-    CH_CHECK(t, shippedFloorFromEnv("0")     == 0.0);
-    CH_CHECK(t, shippedFloorFromEnv("0.0")   == 0.0);
-    CH_CHECK(t, shippedFloorFromEnv("-1")    == 0.0);
-    CH_CHECK(t, shippedFloorFromEnv("banana")== 0.0);
-    CH_CHECK(t, shippedFloorFromEnv("99")    == 2.0);
-    CH_CHECK(t, std::fabs(shippedFloorFromEnv("0.30") - 0.30) < 1e-12);
+    const double dflt = kShippedSunRotateFloor;
+    CH_CHECK(t, std::fabs(dflt - 0.45) < 1e-6);
+    CH_CHECK(t, shippedFloorFromCfg(nullptr) == dflt);
+    CH_CHECK(t, shippedFloorFromCfg("0")     == 0.0);
+    CH_CHECK(t, shippedFloorFromCfg("0.0")   == 0.0);
+    CH_CHECK(t, shippedFloorFromCfg("2")     == 2.0);
+    CH_CHECK(t, std::fabs(shippedFloorFromCfg("0.30") - 0.30) < 1e-6);
+    CH_CHECK(t, shippedFloorFromCfg("-1")     == dflt);   // out of range: rejected, default stays
+    CH_CHECK(t, shippedFloorFromCfg("99")     == dflt);
+    CH_CHECK(t, shippedFloorFromCfg("banana") == dflt);
+    CH_CHECK(t, shippedFloorFromCfg("0,3")    == dflt);
+    CH_CHECK(t, shippedFloorFromCfg("")       == dflt);
     // A zero floor must give back the bare rotation exactly (G2's contract).
-    CH_CHECK(t, shippedSunRotateLift(shippedShSet(), shippedFloorFromEnv("0")) == 0.0);
+    CH_CHECK(t, shippedSunRotateLift(shippedShSet(), shippedFloorFromCfg("0")) == 0.0);
+    return t.failures == 0;
+}
+
+// G8b. The option defaults this harness's Stage E-G models are written against.
+static bool test_live_option_defaults_the_models_assume(TestCtx& t)
+{
+    const mc2::options::RenderOptions d;
+    CH_CHECK(t, d.staticPropIblSh);                // the IBL term is in the prop band
+    CH_CHECK(t, !d.staticPropIblSunRotate);        // Stage G is the opt-in rotation
+    CH_CHECK(t, d.staticPropIblSunRotateFloor > 0.0f);
+    return t.failures == 0;
+}
+
+// G8c. The static-prop band models omit the hemisphere ambient fill (the options-off
+// configuration); the shipped default has it ON. This test pins that gap: when the
+// models are re-derived with the term (or the default changes) this goes red and the
+// header note above is rewritten.
+static bool test_models_describe_ambient_off_not_the_shipped_default(TestCtx& t)
+{
+    CH_CHECK(t, mc2::options::RenderOptions{}.staticPropAmbient);
+    CH_CHECK(t, propMulPreClamp(0.1, 0.2, 0.3, 0.5, 0.05) == 0.1 + 0.2 + 0.3 * 0.5 + 0.05);   // no ambient-fill term in the model
     return t.failures == 0;
 }
 
@@ -2758,7 +2794,7 @@ static bool test_after_the_fix_the_sunward_wall_is_the_bright_one(TestCtx& t)
 // G11. Perturbation sentinel for Stage G's own constants.
 static bool test_sentinel_ibl_sun_rotate_constants(TestCtx& t)
 {
-    CH_CHECK(t, kShippedSunRotateFloor == 0.45);
+    CH_CHECK(t, std::fabs(kShippedSunRotateFloor - 0.45) < 1e-6);
     // The baked spherical minimum per channel -- the floor's input.
     double lo[3] = { 1e30, 1e30, 1e30 };
     forEachNormal(96, [&](const V3& n) {
@@ -2794,7 +2830,7 @@ static bool print_stage_g_floor(TestCtx&)
 {
     const double lift = shippedSunRotateLift(shippedShSet(), kShippedSunRotateFloor);
     std::fprintf(stderr,
-        "\n=== STAGE G: the shipped fix (MC2_STATIC_PROP_IBL_SUN_ROTATE) ===\n"
+        "\n=== STAGE G: the shipped fix (StaticPropIblSunRotate) ===\n"
         "floor %.2f -> uniform L00 lift %.4f irradiance (%.4f coeff)\n"
         "terrain's own floor multiplier (the target) = %.4f\n\n"
         "%-8s %5s %8s | %8s %8s %8s | %s\n",
@@ -2930,7 +2966,9 @@ int main(int argc, char** argv)
           test_bare_rotation_puts_the_dark_missions_under_the_terrain_floor);
     h.add("floor_cost_at_the_bright_end_is_bounded",
           test_floor_cost_at_the_bright_end_is_bounded);
-    h.add("floor_env_reader_junk_contract",         test_floor_env_reader_junk_contract);
+    h.add("floor_option_grammar_contract",          test_floor_option_grammar_contract);
+    h.add("live_option_defaults_the_models_assume", test_live_option_defaults_the_models_assume);
+    h.add("models_describe_ambient_off_not_the_shipped_default", test_models_describe_ambient_off_not_the_shipped_default);
     h.add("rotation_does_not_create_a_new_darkest_wall",
           test_rotation_does_not_create_a_new_darkest_wall);
     h.add("after_the_fix_the_sunward_wall_is_the_bright_one",

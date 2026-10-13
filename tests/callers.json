@@ -107,7 +107,15 @@
       "path": "scripts/check-ab-kit.py",
       "basename": "check-ab-kit.py",
       "stem": "check-ab-kit",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_check_ab_kit.py",
+          "line": 30,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/check-ab-kit.py",
+          "text": "return subprocess.run([sys.executable, str(SCRIPT), str(tmp_path)], capture_output=True, text=True, **console_child.child_kwargs())"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -2495,6 +2503,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/tests/test_check_ab_kit.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)"
+        },
+        {
           "path": "scripts/tests/test_check_background_launch.py",
           "line": 14,
           "evidence": "import",
@@ -2577,6 +2592,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tests/smoke/test_launcher_legacy_env.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)"
         },
         {
           "path": "tests/smoke/test_preflight_cache.py",
@@ -4109,6 +4131,13 @@
           "text": "from scripts.smoke_lib import host_lease, nofocus  # noqa: E402"
         },
         {
+          "path": "tests/smoke/test_capture_backend.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import capture_backend as cb"
+        },
+        {
           "path": "tests/smoke/test_preflight_cache.py",
           "line": 15,
           "evidence": "import",
@@ -4193,6 +4222,21 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait, deploy_lease  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/capture_backend.py",
+      "basename": "capture_backend.py",
+      "stem": "capture_backend",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/smoke/test_capture_backend.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.capture_backend",
+          "text": "from scripts.smoke_lib import capture_backend as cb"
         }
       ]
     },
@@ -4946,6 +4990,13 @@
       "path": "scripts/tests/test_bounded_wait.py",
       "basename": "test_bounded_wait.py",
       "stem": "test_bounded_wait",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_check_ab_kit.py",
+      "basename": "test_check_ab_kit.py",
+      "stem": "test_check_ab_kit",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

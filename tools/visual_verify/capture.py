@@ -165,6 +165,9 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             "engine_capture_fired": result.get("engine_capture_fired"),
             "render_options": (result.get("render_options") or {}).get("values"),
             "render_options_disagree": (result.get("render_options") or {}).get("disagree") or [],
+            "backend_requested": (result.get("backend") or {}).get("requested"),
+            "backend_drew": (result.get("backend") or {}).get("drew"),
+            "backend_disagree": (result.get("backend") or {}).get("disagree") or [],
             "seconds": round(dt, 1),
             "log": result.get("log"),
         })
@@ -195,6 +198,9 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
         "poses": poses,
         # The options every pose of this sweep ran with (one install, one environment); capture_ab compares them between sets.
         "render_options": next((p["render_options"] for p in poses if p.get("render_options")), None),
+        # The backend the sweep asked for and the one that drew it; a mismatch fails the sweep (a Vulkan request that fell back to GL).
+        "backend": {"requested": next((p["backend_requested"] for p in poses if p.get("backend_requested")), None),
+                    "drew": next((p["backend_drew"] for p in poses if p.get("backend_drew")), None)},
         "n_captured": sum(1 for p in poses if p["primary_png"]),
         "n_requested": len(bookmark_files),
     }
@@ -207,6 +213,11 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
     (out_dir / "capture_run.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     return manifest
+
+
+def backend_failures(manifest: dict) -> "list[str]":
+    """Every pose whose sidecar is not from the render backend the sweep asked for (a Vulkan request that fell back to GL)."""
+    return [m for p in manifest["poses"] for m in p.get("backend_disagree") or []]
 
 
 def _exe_mtime(exe: Path) -> "str | None":
@@ -323,6 +334,12 @@ def main(argv=None) -> int:
     print(f"[vv-capture] manifest: {out_dir / 'capture_run.json'}")
     n_det = sum(1 for p in manifest["poses"] if p.get("engine_deterministic") is True)
     print(f"[vv-capture] deterministic poses: {n_det}/{manifest['n_captured']}")
+    bad_backend = backend_failures(manifest)
+    if bad_backend:
+        for m in bad_backend:
+            print(f"[vv-capture] FAIL render backend: {m}")
+        print("[vv-capture] FAIL: the sweep was not drawn by the requested render backend; its PNGs are not evidence for that backend")
+        return 1
     if any(p.get("render_options_disagree") for p in manifest["poses"]):
         print("[vv-capture] FAIL: the engine's render options differ from the harness reading of the install (see the log above)")
         return 1

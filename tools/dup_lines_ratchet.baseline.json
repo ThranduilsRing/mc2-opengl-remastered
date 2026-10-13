@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 14990,
+  "code": 14972,
   "mclib": 32412,
   "shaders": 2980
  },
@@ -175,10 +175,10 @@
   "code/logisticsdata_inventory.cpp": 8,
   "code/logisticsdata_modify.cpp": 8,
   "code/logisticsdata_save.cpp": 16,
-  "code/logisticsdialog.cpp": 425,
+  "code/logisticsdialog.cpp": 423,
   "code/logisticsmechdisplay.cpp": 20,
   "code/logisticsmechicon.cpp": 8,
-  "code/logisticsmissioninfo.cpp": 31,
+  "code/logisticsmissioninfo.cpp": 23,
   "code/logisticsmissioninfo.h": 9,
   "code/logisticsmissioninfo_progress.cpp": 47,
   "code/logisticsvariant.cpp": 33,
@@ -237,7 +237,7 @@
   "code/mpgamebrowser.h": 9,
   "code/mphostgame.cpp": 70,
   "code/mphostgame.h": 8,
-  "code/mploadmap.cpp": 120,
+  "code/mploadmap.cpp": 112,
   "code/mploadmap.h": 8,
   "code/mpparameterscreen.cpp": 122,
   "code/mpprefs.cpp": 10,
@@ -652,8 +652,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "d84de3318",
+ "head": "d24168a41",
  "n": 8,
- "total": 56691,
+ "total": 56673,
  "version": 1
 }

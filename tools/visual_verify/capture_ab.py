@@ -81,13 +81,20 @@ def compare(root: str, before: str, after: str, bookmarks: list[str]) -> list[st
     return out
 
 
-def run_capture(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze_anim: bool = True) -> int:
+def capture_cmd(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze_anim: bool = True) -> list[str]:
     cmd = [sys.executable, os.path.join(HERE, "capture.py"), "--install", install, "--bookmarks", bookmarks,
            "--out", out_dir, "--clean"]
     if freeze_anim:
         cmd += ["--env", "MC2_SMOKE_FREEZE_ANIM=1"]      # no animation-phase noise in the A/B (needs an exe built with the gate, on BOTH sets)
     if vulkan:
-        cmd += ["--env", "MC2_RENDER_BACKEND=vulkan"]
+        # The umbrella, not the bare selector: with MC2_RENDER_BACKEND=vulkan alone the engine finds the present image not VK-owned, forces GL
+        # for the session and the "Vulkan" arm is a GL capture (capture.py now refuses that).
+        cmd += ["--env", "MC2_RENDER_BACKEND=vulkan", "--env", "MC2_VK_SHARED_GBUFFER=1"]
+    return cmd
+
+
+def run_capture(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze_anim: bool = True) -> int:
+    cmd = capture_cmd(install, out_dir, bookmarks, vulkan, freeze_anim)
     env = dict(os.environ, MC2_CURSOR_NO_PARK="1")
     print("[capture_ab] " + " ".join(cmd[1:]), flush=True)
     return subprocess.run(cmd, cwd=REPO, env=env, **console_child.child_kwargs()).returncode

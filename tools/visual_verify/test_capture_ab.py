@@ -46,3 +46,11 @@ def test_missing_set_is_named(tmp_path):
     sets(tmp_path, False)
     lines = capture_ab.compare(str(tmp_path), "b", "nope", [BM])
     assert any("MISSING" in l for l in lines[1:])
+
+
+def test_the_vulkan_arm_asks_for_the_shared_gbuffer_umbrella():
+    # Without MC2_VK_SHARED_GBUFFER=1 the engine forces GL for the session and the Vulkan arm is a GL capture.
+    vk = capture_ab.capture_cmd("inst", "out", BM, vulkan=True)
+    gl = capture_ab.capture_cmd("inst", "out", BM, vulkan=False)
+    assert "MC2_RENDER_BACKEND=vulkan" in vk and "MC2_VK_SHARED_GBUFFER=1" in vk
+    assert not any("MC2_RENDER_BACKEND" in a or "MC2_VK_SHARED_GBUFFER" in a for a in gl)

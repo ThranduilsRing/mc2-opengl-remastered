@@ -21,11 +21,17 @@ checker passed it; only an external sha256 manifest caught the difference.
 import difflib
 import glob
 import hashlib
+import json
 import os
 import re
 import sys
 
 DST = sys.argv[1]
+
+# The gates the engine still reads (Gates/gate_table.json). A kit arm that sets any other MC2_* name sets nothing: the gate was deleted or
+# became an options.cfg entry, so the arm would silently A/B identical builds.
+_TABLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Gates", "gate_table.json")
+LIVE_GATES = {g["name"] for g in json.load(open(_TABLE, encoding="utf-8"))["gates"]}
 SET_RE = re.compile(r"^set\s+(MC2_[A-Z0-9_]+)=(.*)$", re.IGNORECASE)
 
 # Keys launcher_env.json can actually reach. A blank `set` is banned ONLY for
@@ -174,7 +180,7 @@ for f in files:
         del delta[k]        # reported separately; not a rendering claim
 
     # What does the FILENAME claim? Gate tokens appear as MC2_<NAME> minus the
-    # MC2_ prefix, e.g. "AB-3-SUN_AXIS_FIX-1-..." claims MC2_SUN_AXIS_FIX=1.
+    # MC2_ prefix, e.g. "AB-3-CLOUD_SHADOW-1-..." claims MC2_CLOUD_SHADOW=1.
     claimed = {}
     for gate in base:
         tok = gate[len("MC2_"):]
@@ -191,6 +197,10 @@ for f in files:
             ok = False
             print(f"FAIL {name}: filename says {g}={want}, file runs at "
                   f"{env.get(g)!r}")
+    retired = sorted(g for g in env if g not in LIVE_GATES)
+    if retired:
+        ok = False
+        print(f"FAIL {name}: sets {retired}, which Gates/gate_table.json no longer lists (deleted or moved to options.cfg: the engine ignores them)")
     undeclared = set(delta) - set(claimed)
     if undeclared and not name.startswith(("AB-0-", "AB-7-")):
         ok = False
@@ -202,9 +212,9 @@ for f in files:
             ok = False
             print(f"FAIL {name}: baseline must have no delta, got {delta}")
     elif name.startswith("AB-7-"):
-        # documented 4-gate bundle; filename cannot carry four tokens
-        expect = {"MC2_STATIC_PROP_AMBIENT_V1", "MC2_STATIC_PROP_PBR_V1",
-                  "MC2_CLOUD_SHADOW", "MC2_WATER_SKYTINT"}
+        # documented bundle; the filename cannot carry several tokens. The ambient and PBR members of the original four became always-on
+        # options.cfg entries (StaticPropAmbient, StaticPropPbr), so only the two env gates are left to set.
+        expect = {"MC2_CLOUD_SHADOW", "MC2_WATER_SKYTINT"}
         if set(delta) != expect or any(v[1] != "1" for v in delta.values()):
             ok = False
             print(f"FAIL {name}: expected exactly {sorted(expect)} ->1, got {delta}")
