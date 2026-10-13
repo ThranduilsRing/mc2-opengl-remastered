@@ -58,7 +58,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 			char dropZoneList[8];
 			char hqs[MAX_TEAMS];
 			if (MPlayer->missionSettings.missionType == MISSION_TYPE_OTHER) {
-				bool goodToLoad = mission->calcComplexDropZones((char*)(const char*)LogisticsData::instance->getCurrentMission(), dropZoneList);
+				bool goodToLoad = mission->calcComplexDropZones((char*)LogisticsData::instance->getCurrentMission().c_str(), dropZoneList);
 				if (!goodToLoad)
 					STOP(("Logisitics.beginMission: teams do not match up for complex mission"));
 				for (long i = 0; i < MAX_TEAMS; i++)
@@ -143,7 +143,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		useUnlimitedAmmo = MPlayer->missionSettings.unlimitedAmmo;
 	}
 
-	mission->init((char*)(const char*)LogisticsData::instance->getCurrentMission(), missionLoadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander[numPlayers - 1]);
+	mission->init((char*)LogisticsData::instance->getCurrentMission().c_str(), missionLoadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander[numPlayers - 1]);
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 3; // [GPUPROPS v1] post mission->init
 
 	LogisticsData::instance->rpJustAdded = 0;

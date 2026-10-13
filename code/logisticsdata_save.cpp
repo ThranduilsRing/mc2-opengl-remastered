@@ -455,7 +455,6 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 void	LogisticsData::setMissionCompleted( )
 {
 #ifndef VIEWER
-	const char* pMissionName = missionInfo->getCurrentMission();
 	missionInfo->setMissionComplete();
 
 	rpJustAdded = 0;

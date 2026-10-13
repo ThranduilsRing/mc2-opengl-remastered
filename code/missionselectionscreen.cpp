@@ -9,6 +9,7 @@ MissionSelectionScreen.cpp			: Implementation of the MissionSelectionScreen comp
 #include"missionselectionscreen.h"
 #include"mechbayscreen.h"
 #include"logisticsdata.h"
+#include "mc2str.h"
 #include "../resource.h"
 #include"missionbriefingscreen.h"
 #include"sounds.h"
@@ -228,10 +229,10 @@ void MissionSelectionScreen::begin()
 		operationScreen.beginFadeIn( fadeInTime );
 
 	// initialize the operation
-	const char* str = LogisticsData::instance->getCurrentOperationFileName();
+	const std::string operationFile = LogisticsData::instance->getCurrentOperationFileName();
 
 	FullPathFileName fileName;
-	fileName.init( artPath, str, ".fit" );
+	fileName.init( artPath, operationFile.c_str(), ".fit" );
 
 	FitIniFile file;
 	if ( NO_ERR != file.open( fileName ) )
@@ -249,11 +250,11 @@ void MissionSelectionScreen::begin()
 
 
 	
-	str = LogisticsData::instance->getCurrentVideoFileName();
-	if ( str && strlen( str ) )
+	const std::string videoFile = LogisticsData::instance->getCurrentVideoFileName();
+	if ( !videoFile.empty() )
 	{
 		FullPathFileName videoName;
-		videoName.init( moviePath, str, ".bik" );
+		videoName.init( moviePath, videoFile.c_str(), ".bik" );
 
 		if (fileExists(videoName) || fileExistsOnCD(videoName))
 		{
@@ -299,7 +300,7 @@ void MissionSelectionScreen::begin()
 	missionCount = MAX_MISSIONS_IN_GROUP;
 	int result = LogisticsData::instance->getCurrentMissions( missionNames, missionCount );
 
-	EString selMissionName = LogisticsData::instance->getCurrentMission();
+	const std::string selMissionName = LogisticsData::instance->getCurrentMission();
 	gosASSERT( result == NO_ERR );
 
 	bool bPressed = 0;
@@ -322,7 +323,7 @@ void MissionSelectionScreen::begin()
 			else
 			{
 				operationScreen.buttons[i].disable( false );
-				if ( selMissionName.Compare( missionNames[i], 0 ) == 0 )
+				if ( mc2::str::iequals( selMissionName, mc2::str::from_c( missionNames[i] ) ) )
 				{
 					operationScreen.buttons[i].press( true );
 					handleMessage( 0, MSG_FIRST_MISSION + i );
@@ -330,7 +331,7 @@ void MissionSelectionScreen::begin()
 					pressedButton = i;
 
 				}
-				if ( !bPressed && !selMissionName.Length()  )
+				if ( !bPressed && selMissionName.empty() )
 				{
 					bPressed = 1;
 					pressedButton = i;
@@ -441,10 +442,10 @@ void MissionSelectionScreen::updateListBox()
 
 	// Pure-ImGui path: route name + description into the converter's pre-generated
 	// runtime_text defs elements (runtimeTextBinding = mission.selection.descriptionList).
-	const char* mn = LogisticsData::instance->getCurrentMissionFriendlyName();
-	const char* md = LogisticsData::instance->getCurrentMissionDescription();
-	setDefsElementText( "game.mission_selection.runtime_text.current_mission_name", mn ? mn : "" );
-	setDefsElementText( "game.mission_selection.runtime_text.current_mission_blurb", md ? md : "" );
+	const std::string mn = LogisticsData::instance->getCurrentMissionFriendlyName();
+	const std::string md = LogisticsData::instance->getCurrentMissionDescription();
+	setDefsElementText( "game.mission_selection.runtime_text.current_mission_name", mn.c_str() );
+	setDefsElementText( "game.mission_selection.runtime_text.current_mission_blurb", md.c_str() );
 
 
 

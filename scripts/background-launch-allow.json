@@ -16,6 +16,7 @@
   "scripts/sweep_campaign.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/tests/test_harness_desktop_safety.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "tests/smoke/object_visual_diff.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
+  "tools/campaign_save_roundtrip.py": "engine launcher through nofocus.spawn (vetted by exe_guard); campaign-start save fixture for the B1 logistics proof, 2026-10-13",
   "tools/menu_oracle.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "tools/perf_snapshot.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "tools/renderdoc/capture.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",

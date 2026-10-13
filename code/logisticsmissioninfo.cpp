@@ -8,6 +8,13 @@ LogisticsMissionInfo.cpp			: Implementation of the LogisticsMissionInfo componen
 
 #include "logisticsmissioninfo_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
+#include "objective_text.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+
+#include <memory>
+#include <optional>
+
 
 
 
@@ -16,10 +23,10 @@ LogisticsMissionInfo::LogisticsMissionInfo()
 	currentMission = -1;
 	currentStage = 0;
 	groups = nullptr;
-	currentMissionName = missionName;
+	currentMissionName = mc2::str::from_c( missionName );
 	groupCount = 0;
 	CBills = 0;
-	if ( currentMissionName.Length() < 2 )
+	if ( currentMissionName.size() < 2 )
 		currentMissionName = "m0101";
 
 	bMultiplayer = 0;
@@ -37,7 +44,7 @@ void LogisticsMissionInfo::clear()
 	{
 		for ( int i = 0; i < groupCount; i++ )
 		{
-			for ( MISSION_LIST::EIterator iter = groups[i].infos.Begin(); 
+			for ( MISSION_LIST::EIterator iter = groups[i].infos.Begin();
 			!iter.IsDone(); iter++ )
 			{
 				delete (*iter);
@@ -60,7 +67,7 @@ void LogisticsMissionInfo::clear()
 	currentMission = -1;
 	currentStage = 0;
 	groups = nullptr;
-	currentMissionName = missionName;
+	currentMissionName = mc2::str::from_c( missionName );
 	groupCount = 0;
 	CBills = 0;
 
@@ -73,7 +80,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 	clear();
 
 	bMultiplayer = 0;
-	campaignName= file.getFilename();
+	campaignName = mc2::str::from_c( file.getFilename() );
 	// read the number of mission groups
 	file.seekBlock("Campaign" );
 
@@ -85,14 +92,14 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 	if ( result == NO_ERR )
 	{
 		cLoadString( lName, resultName, 255 );
+		campaignDisplayName = resultName;
 	}
 	else
 	{
-		result = file.readIdString( "CampaignName", resultName, 255 );
-		Assert( result == NO_ERR, 0, "couldn't find the missionName" );
+		const std::optional<std::string> displayName = objective_text::readPlain( file, "CampaignName" );
+		Assert( displayName.has_value(), 0, "couldn't find the missionName" );
+		campaignDisplayName = displayName.value_or( std::string() );
 	}
-
-	campaignDisplayName = resultName;
 
 
 	result = file.readIdLong( "GroupCount", groupCount );
@@ -104,13 +111,9 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 
 	result = file.readIdLong( "CBills", CBills );
 
-	char tmp[256];
-	if ( NO_ERR == file.readIdString( "FinalVideo", tmp, 255 ) )
-	{
-		finalVideoName = tmp;
-	}
+	finalVideoName = objective_text::readPlain( file, "FinalVideo" ).value_or( std::string() );
 
-	
+
 	// create storage for 'em
 	groups = new MissionGroup[groupCount];
 
@@ -132,92 +135,80 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 		file.readIdLong( "NumberToComplete", groups[i].numberToBeCompleted );
 		file.readIdLong( "Tune", groups[i].logisticsTuneId);
 
-		if ( NO_ERR != file.readIdString( "ABLScript", tmp, 255 ) )
-		{
-			//Perfectly valid to have no ABL brain for this group!
-			groups[i].ablBrainName = "NONE";
-		}
-		else
-		{
-			groups[i].ablBrainName = tmp;
-		}
+		//Perfectly valid to have no ABL brain for this group!
+		groups[i].ablBrainName = objective_text::readPlain( file, "ABLScript" ).value_or( "NONE" );
 
-		if ( NO_ERR != file.readIdString( "Video", tmp, 255 ) )
+		const std::optional<std::string> video = objective_text::readPlain( file, "Video" );
+		if ( !video )
 		{
 			char errorStr[256];
 			mc2::fmt::to_buf(errorStr, "couldn't find the video for operation {:d}", mc2::fmt::as_i32(i));
 			Assert( 0, 0, errorStr );
-			
+
 		}
-		groups[i].videoFileName = tmp;
+		groups[i].videoFileName = video.value_or( std::string() );
 		groups[i].videoShown = 0;
 
-		if ( NO_ERR == file.readIdString( "PreVideo", tmp, 255 ) )
+		// A group without a PreVideo key has no pre-video: the name stays empty.
+		if ( const std::optional<std::string> preVideo = objective_text::readPlain( file, "PreVideo" ) )
 		{
-			groups[i].bigVideoName = tmp;
+			groups[i].bigVideoName = *preVideo;
 			groups[i].bigVideoShown = 0;
 		}
 
-		if ( NO_ERR != file.readIdString( "OperationFile", tmp, 255  )
-			|| !strlen( tmp ) )
-		{
-			strcpy( tmp, "mcl_cm_opplayer.fit" );			
-		}
-		groups[i].operationFileName = tmp;
+		const std::optional<std::string> operationFile = objective_text::readPlain( file, "OperationFile" );
+		groups[i].operationFileName = ( operationFile && !operationFile->empty() ) ? *operationFile : std::string( "mcl_cm_opplayer.fit" );
 
-		long missionCount;
+		long missionCount = 0;
 		// read the number of missions in the group
 		file.readIdLong( "MissionCount", missionCount );
 
 		for ( int j = 0; j < missionCount; j++ )
 		{
-			MissionInfo* pInfo = new MissionInfo;
+			std::unique_ptr<MissionInfo> info = std::make_unique<MissionInfo>();
 
 			mc2::fmt::to_buf(blockName, "Group{:d}Mission{:d}", mc2::fmt::as_i32(i), mc2::fmt::as_i32(j));
 			if ( NO_ERR == file.seekBlock( blockName ) )
 			{
-				char fileName[1024];
-				if ( NO_ERR != file.readIdString( "FileName", fileName, 1023 ) )
-				{				
+				const std::optional<std::string> fileName = objective_text::readPlain( file, "FileName", 1023 );
+				if ( !fileName )
+				{
 					Assert( 0, j, "couldn't find a mission file name in the campaign file" );
 					continue;
 				}
 
+				MissionInfo* pInfo = info.release();
 				groups[i].infos.Append( pInfo );
 
-				EString path = missionPath;
-				path += fileName;
-				path += ".fit";
-				
-				pInfo->fileName = fileName;
-				
+				const std::string path = std::string( missionPath ) + *fileName + ".fit";
+
+				pInfo->fileName = *fileName;
+
 				pInfo->completed = 0;
-			
-				
+
+
 				FitIniFile missionFile;
-				
-				if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
+
+				if ( NO_ERR != missionFile.open( path.c_str() ) )
 				{
 					char errorStr[256];
-					mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(fileName));
+					mc2::fmt::to_buf(errorStr, "couldn't open file {}", *fileName);
 					Assert( 0, 0, errorStr );
 					continue;
 				}
 
 				readMissionInfo( missionFile, pInfo );
 
-				char videoFileName[255];
-				if ( NO_ERR == file.readIdString( "VideoOverride", videoFileName, 255 ) )
-					pInfo->videoName = videoFileName; 
+				pInfo->videoName = objective_text::readPlain( file, "VideoOverride", 254 ).value_or( std::string() );
 
-				file.readIdBoolean( "Mandatory", pInfo->mandatory );				
+				file.readIdBoolean( "Mandatory", pInfo->mandatory );
 
 				file.readIdBoolean( "CompletePrevious", pInfo->completePrevious );
-				
-				long result = file.readIdString( "PurchaseFile", fileName, 1023 );
-				if ((NO_ERR != result) || (0 == strcmp("", fileName)))
+
+				std::string purchaseFile = objective_text::readPlain( file, "PurchaseFile", 1023 ).value_or( std::string() );
+				if ( purchaseFile.empty() )
 				{
-					strcpy(fileName, "purchase_All");
+					purchaseFile = "purchase_All";
 				}
 
 				file.readIdBoolean( "Hidden", pInfo->hidden );
@@ -225,15 +216,15 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 				if ( NO_ERR != file.readIdBoolean( "PlayLogistics", pInfo->playLogistics ) )
 					pInfo->playLogistics = true;
 
-				
+
 				if ( NO_ERR != file.readIdBoolean( "PlaySalvage", pInfo->playSalvage ) )
 					pInfo->playSalvage = true;
 
-				
+
 				if ( NO_ERR != file.readIdBoolean( "PlayPilotPromotion", pInfo->playPilotPromotion ) )
 					pInfo->playPilotPromotion = true;
 
-	
+
 				if ( NO_ERR != file.readIdBoolean( "PlayPurchasing", pInfo->playPurchasing ) )
 					pInfo->playPurchasing = true;
 
@@ -242,9 +233,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 					pInfo->playMissionSelection = false;
 				}
 
-				pInfo->purchaseFileName = missionPath;
-				pInfo->purchaseFileName += fileName;
-				pInfo->purchaseFileName += ".fit";
+				pInfo->purchaseFileName = std::string( missionPath ) + purchaseFile + ".fit";
 			}
 		}
 
@@ -259,31 +248,29 @@ void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionIn
 	long result = file.seekBlock( "MissionSettings" );
 	Assert( result == NO_ERR, 0, "Coudln't find the mission settings block in the mission file" );
 
-	char missionName[256];
-	missionName[0] = 0;
 	bool bRes = 0;
 
 	result = file.readIdBoolean( "MissionNameUseResourceString", bRes );
 	//Assert( result == NO_ERR, 0, "couldn't find the MissionNameUseResourceString" );
 	if ( bRes )
 	{
-		unsigned long lRes;
+		char resourceName[256];
+		unsigned long lRes = 0;
 		result = file.readIdULong( "MissionNameResourceStringID", lRes );
 		Assert( result == NO_ERR, 0, "couldn't find the MissionNameResourceStringID" );
-		cLoadString( lRes, missionName, 255 );
+		cLoadString( lRes, resourceName, 255 );
+		pInfo->missionDescriptiveName = resourceName;
 	}
 	else
 	{
-		result = file.readIdString( "MissionName", missionName, 255 );
-		Assert( result == NO_ERR, 0, "couldn't find the missionName" );
+		const std::optional<std::string> friendlyName = objective_text::readPlain( file, "MissionName" );
+		Assert( friendlyName.has_value(), 0, "couldn't find the missionName" );
+		pInfo->missionDescriptiveName = friendlyName.value_or( std::string() );
 	}
-	
-	pInfo->missionDescriptiveName = missionName;
 
-	char blurb[4096];
-	
-	result = file.readIdString( "Blurb2", blurb, 4095 );
-	Assert( result == NO_ERR, 0, "couldn't find the mission blurb" );
+	const std::optional<std::string> blurb = objective_text::readPlain( file, "Blurb2", 4095 );
+	Assert( blurb.has_value(), 0, "couldn't find the mission blurb" );
+	pInfo->description = blurb.value_or( std::string() );
 
 	bool tmpBool = false;
 	result = file.readIdBoolean("Blurb2UseResourceString", tmpBool);
@@ -293,12 +280,12 @@ void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionIn
 		result = file.readIdULong("Blurb2ResourceStringID", tmpInt);
 		if (NO_ERR == result)
 		{
-			cLoadString( tmpInt, blurb, 2047 );
+			char resourceBlurb[2048];
+			cLoadString( tmpInt, resourceBlurb, 2047 );
+			pInfo->description = resourceBlurb;
 		}
 	}
 
-	pInfo->description = blurb;
-	
 	result = file.readIdLong( "ResourcePoints", pInfo->resourcePoints );
 	result = file.readIdLong("AdditionalCBills", pInfo->additionalCBills );
 	float fTmp;
@@ -308,7 +295,7 @@ void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionIn
 	else
 		pInfo->dropWeight = fTmp;
 
-	
+
 	if ( NO_ERR != file.readIdBoolean( "AirStrikesEnabledDefault", pInfo->enableAirStrike) )
 		pInfo->enableAirStrike = 1;
 
@@ -335,24 +322,26 @@ void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionIn
 long LogisticsMissionInfo::load( FitIniFile& file )
 {
 	// read the campaign file name
-	char path[1024];
-	char fileName[64];
 	long result = file.seekBlock( "General" );
 	Assert( result == NO_ERR, 0, "couldn't find general block in campaign file" );
 
-	result = file.readIdString( "CampaignFile", fileName, 63);
-
-
-	FitIniFile campaignFile;
-	if ( NO_ERR != campaignFile.open( fileName ) )
+	const std::optional<std::string> campaignFileName = objective_text::readPlain( file, "CampaignFile", 63 );
+	if ( !campaignFileName )
 	{
-		char errorStr[256];
-		mc2::fmt::to_buf(errorStr, "couldn't find file {}", mc2::fmt::safe(path));
+		MC2_LOG(Io, Warn, "campaign save: the General block has no usable CampaignFile, the save is not loaded");
 		return -1;
 	}
 
-	campaignName = fileName;
-	
+	FitIniFile campaignFile;
+	if ( NO_ERR != campaignFile.open( campaignFileName->c_str() ) )
+	{
+		char errorStr[256];
+		mc2::fmt::to_buf(errorStr, "couldn't find file {}", *campaignFileName);
+		return -1;
+	}
+
+	campaignName = *campaignFileName;
+
 	// initialize this with campaign info
 	if ( NO_ERR != init( campaignFile ) )
 	{
@@ -402,7 +391,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 		{
 			if ( (*iter)->hidden ) // use the hidden video file name for this
 			{
-				if ( (*iter)->videoName.Length() )
+				if ( !(*iter)->videoName.empty() )
 				{
 					pGroup->videoFileName = (*iter)->videoName;
 					pGroup->videoShown = 0;
@@ -412,16 +401,14 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 			iter++;
 		}
 	}
-		
-	
+
+
 
 	if ( count < pGroup->infos.Count() )
-		setNextMission( pGroup->infos[count]->fileName );
+		setNextMission( pGroup->infos[count]->fileName.c_str() );
 
 
-	char tmpPlayerName[64];
-	file.readIdString( "PlayerName", tmpPlayerName, 63 );
-	playerName = tmpPlayerName;
+	playerName = objective_text::readPlain( file, "PlayerName", MAX_PLAYER_NAME_LENGTH - 1 ).value_or( std::string() );
 
 	if ( NO_ERR == file.seekBlock( "AdditionalPurchaseFiles" ) )
 	{
@@ -441,24 +428,21 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 			else
 				break;
 		}
-			
-		
+
+
 	}
-	
+
 	return 0;
 
 }
 void LogisticsMissionInfo::save( FitIniFile& file )
 {
 	// save the campaign file name
-	file.writeIdString( "CampaignFile", campaignName );
-	file.writeIdString( "CampaignName", campaignDisplayName );
+	file.writeIdString( "CampaignFile", campaignName.c_str() );
+	file.writeIdString( "CampaignName", campaignDisplayName.c_str() );
 
 	// save the player name
-	if ( playerName.Length() )
-		file.writeIdString( "PlayerName", playerName );
-	else
-		file.writeIdString( "PlayerName", "" );
+	file.writeIdString( "PlayerName", playerName.c_str() );
 
 	// save the rp
 	file.writeIdLong( "CBills", CBills );
@@ -478,8 +462,8 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 
 		// write out the name of the mission, for ease of filling dialog
 		MissionInfo* pInfo = pGroup->infos[currentMission];
-		file.writeIdString( "MissionName", pInfo->missionDescriptiveName );
-		file.writeIdString( "MissionFileName", pInfo->fileName );
+		file.writeIdString( "MissionName", pInfo->missionDescriptiveName.c_str() );
+		file.writeIdString( "MissionFileName", pInfo->fileName.c_str() );
 
 		int curMission = 0;
 		for ( MISSION_LIST::EIterator iter = pGroup->infos.Begin(); !iter.IsDone(); iter++, curMission++ )

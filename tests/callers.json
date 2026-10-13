@@ -5934,6 +5934,13 @@
       ]
     },
     {
+      "path": "tools/campaign_save_roundtrip.py",
+      "basename": "campaign_save_roundtrip.py",
+      "stem": "campaign_save_roundtrip",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/check_ubo_layout.py",
       "basename": "check_ubo_layout.py",
       "stem": "check_ubo_layout",
@@ -8044,6 +8051,13 @@
       ],
       "callers_by_stem": [
         {
+          "path": "tools/campaign_save_roundtrip.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "save_inspect",
+          "text": "import save_inspect as si  # noqa: E402"
+        },
+        {
           "path": "tools/saveload_roundtrip.py",
           "line": 37,
           "evidence": "import",
@@ -8073,6 +8087,13 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "tools/campaign_save_roundtrip.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "savegame_backup",
+          "text": "import savegame_backup  # noqa: E402"
+        },
         {
           "path": "tools/saveload_roundtrip.py",
           "line": 38,

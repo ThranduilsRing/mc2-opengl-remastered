@@ -141,13 +141,13 @@
   "code": {
    "LG01": 225,
    "LG02": 212,
-   "LG03": 954,
+   "LG03": 953,
    "LG04": 21,
-   "LG05": 204,
-   "LG06": 449,
+   "LG05": 192,
+   "LG06": 451,
    "LG07": 0,
    "LG08": 14,
-   "LG09": 2326,
+   "LG09": 2316,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 100,
@@ -2163,14 +2163,14 @@
   },
   "code/logisticsdata_availability.cpp": {
    "LG06": 4,
-   "LG09": 10,
+   "LG09": 5,
    "LG11": 12,
    "LG12a": 2
   },
   "code/logisticsdata_init.cpp": {
    "LG03": 8,
    "LG06": 4,
-   "LG09": 9,
+   "LG09": 8,
    "LG12a": 4
   },
   "code/logisticsdata_inventory.cpp": {
@@ -2218,9 +2218,9 @@
    "LG09": 5
   },
   "code/logisticsmissioninfo.cpp": {
-   "LG03": 6,
-   "LG05": 3,
-   "LG09": 2
+   "LG03": 5,
+   "LG05": 4,
+   "LG09": 1
   },
   "code/logisticsmissioninfo.h": {
    "LG06": 8
@@ -2228,12 +2228,11 @@
   "code/logisticsmissioninfo_progress.cpp": {
    "LG03": 2,
    "LG05": 5,
-   "LG06": 3,
-   "LG09": 2
+   "LG06": 3
   },
   "code/logisticsmissioninfo_query.cpp": {
    "LG03": 3,
-   "LG05": 18,
+   "LG05": 5,
    "LG06": 4
   },
   "code/logisticspilot.cpp": {
@@ -2495,7 +2494,7 @@
    "LG01": 27,
    "LG03": 21,
    "LG06": 2,
-   "LG09": 13,
+   "LG09": 12,
    "LG11": 1,
    "LG12a": 17,
    "LG12b": 13
@@ -2769,10 +2768,10 @@
    "LG14": 4
   },
   "code/objective_text.cpp": {
-   "LG06": 4
+   "LG06": 5
   },
   "code/objective_text.h": {
-   "LG06": 4
+   "LG06": 5
   },
   "code/objmgr.cpp": {
    "LG01": 1,
@@ -5185,7 +5184,7 @@
    "LG20": 2
   }
  },
- "head": "9212e9251",
+ "head": "637793ab9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

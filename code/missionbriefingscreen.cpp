@@ -498,10 +498,10 @@ void MissionBriefingScreen::begin()
 		objMarkerFx[mi] = objMarkerFy[mi] = -1.f;
 	dropZoneFx = dropZoneFy = -1.f;
 	// need to set up all pertinent mission info
-	EString missionName = LogisticsData::instance->getCurrentMission();
+	const std::string missionName = LogisticsData::instance->getCurrentMission();
 
 
-	long tmpMapTextureHandle = getMissionTGA( missionName, true );
+	long tmpMapTextureHandle = getMissionTGA( missionName.c_str(), true );
 	statics[MAP_INDEX].setTexture( tmpMapTextureHandle );
 	statics[MAP_INDEX].setUVs( 0, 127, 127, 0 );
 	statics[MAP_INDEX].setColor( 0xffffffff );
@@ -515,7 +515,7 @@ void MissionBriefingScreen::begin()
 
 	// need to get all the objectives and stuff
 	FullPathFileName fitPath;
-	fitPath.init( missionPath, missionName, ".fit" );
+	fitPath.init( missionPath, missionName.c_str(), ".fit" );
 	FitIniFile fitFile;
 	fitFile.open( fitPath );
 

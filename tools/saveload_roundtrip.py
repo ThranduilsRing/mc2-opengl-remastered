@@ -185,8 +185,10 @@ def resave_env(save_at: int, load_at: int) -> dict:
     return dict(sd.GATES, MC2_SMOKE_FREEZE_ANIM="1", MC2_BOOT_QUICKSAVE_AT=str(save_at), MC2_BOOT_QUICKLOAD_AT=str(load_at))
 
 
-def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28):
+def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
+    With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
+    `save_at` should lie beyond the run, so the first save returned is the planted one.
     The owner's quicksave is backed up first and put back afterwards."""
     if deploy:
         sd.build_and_deploy()
@@ -198,6 +200,8 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     with savegame_backup.guarded(sdir):
         if os.path.exists(second_src):
             os.remove(second_src)
+        if plant:
+            shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
                             "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
@@ -264,9 +268,14 @@ def baseline_path(mission: str) -> str:
 
 
 def cmd_fixture(args) -> int:
-    dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration)
+    dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant)
     ok, lines = resave_verdict(first, second)
     print(f"files kept in {dest}")
+    if args.cmd == "resave" and args.mask and first and second:
+        # The planted save came from another exe: judge the re-save against the byte-offset noise mask instead of byte identity.
+        res = si.compare(si.load(first)[1], si.load(second)[1], si.load_mask(args.mask), across_builds=True)
+        ok = res["first_outside"] is None
+        lines = si.describe(res)
     if args.cmd == "resave":
         print(("saveload_roundtrip resave: PASS" if ok else "saveload_roundtrip resave: FAIL") + "\n" + "\n".join(lines))
         return 0 if ok else 1
@@ -308,6 +317,8 @@ def main(argv=None) -> int:
         p.add_argument("--duration", type=int, default=28)
         p.add_argument("--deploy", action="store_true")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
+        p.add_argument("--plant", help="resave: a save written by another exe, quickloaded instead of one this run writes (give --save-at beyond the run)")
+        p.add_argument("--mask", help="resave: a save-noise mask (tools/save_noise_mask.json); the verdict is then 'every differing byte lies inside it'")
     r = sub.add_parser("run")
     r.add_argument("--mission", default="mc2_16")
     r.add_argument("--frames", type=int, default=300, help="post-load frames that must match")

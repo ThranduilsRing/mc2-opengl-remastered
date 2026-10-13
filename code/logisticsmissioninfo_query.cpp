@@ -1,13 +1,14 @@
 // LogisticsMissionInfo: the per-mission accessors (purchase / operation files, videos, tune, flags) and the skip / multiplayer switches.
 // Declared in the class headers; shared names in logisticsmissioninfo_internal.h.
 #include "logisticsmissioninfo_internal.h"
+#include "mc2str.h"
 
 
 LogisticsMissionInfo::MissionInfo::~MissionInfo()
 {
 }
 
-const EString& LogisticsMissionInfo::getCurrentPurchaseFile() const
+const std::string& LogisticsMissionInfo::getCurrentPurchaseFile() const
 {
 	MissionGroup* pGroup = &groups[currentStage];
 
@@ -23,9 +24,10 @@ long LogisticsMissionInfo::getAllPurchaseFiles( const char** list, long& maxCoun
 		MISSION_LIST::EIterator iter = groups[g].infos.Begin();
 		while ( !iter.IsDone() )
 		{
-			const char* pf = (*iter)->purchaseFileName;
+			// The pointer is into a mission record that stays alive until clear().
+			const char* pf = (*iter)->purchaseFileName.c_str();
 			iter++;
-			if ( !pf || !pf[0] )
+			if ( !pf[0] )
 				continue;
 			bool dup = false;
 			for ( long k = 0; k < count && k < maxOut; k++ )
@@ -51,37 +53,28 @@ long LogisticsMissionInfo::getCurrentDropWeight() const
 		return 10000;
 }
 
-const char* LogisticsMissionInfo::getCurrentOperationFile() const
+std::string LogisticsMissionInfo::getCurrentOperationFile() const
 {
 	// Defense-in-depth: bg init (STARTUP-INIT-ASYNC-1) may not have populated
 	// groups yet. &groups[currentStage] is address-of an element, so the old
 	// `if (pGroup)` was dead-code-eliminated and the deref was unconditional UB.
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
-		return nullptr;
+		return std::string();
 
-	MissionGroup* pGroup = &groups[currentStage];
-	return pGroup->operationFileName;
+	return groups[currentStage].operationFileName;
 }
 
-const char* LogisticsMissionInfo::getCurrentVideo() const
+std::string LogisticsMissionInfo::getCurrentVideo() const
 {
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
-		return nullptr;
+		return std::string();
 
 	MissionGroup* pGroup = &groups[currentStage];
 
-	if ( pGroup )
-	{
-		MissionInfo* pInfo = pGroup->infos[currentMission];
-		if ( pInfo )
-		{
-			if ( pInfo->videoName.Length() )
-				return pInfo->videoName;
-		}
-		return pGroup->videoFileName;	
-	}
-
-	return nullptr;
+	MissionInfo* pInfo = pGroup->infos[currentMission];
+	if ( pInfo && !pInfo->videoName.empty() )
+		return pInfo->videoName;
+	return pGroup->videoFileName;
 }
 
 long LogisticsMissionInfo::getCurrentLogisticsTuneId()
@@ -98,18 +91,13 @@ long LogisticsMissionInfo::getCurrentLogisticsTuneId()
 	return -1;
 }
 
-const char*	LogisticsMissionInfo::getCurrentMissionDescription() const
+std::string LogisticsMissionInfo::getCurrentMissionDescription() const
 {
 	//sebi
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
-		return nullptr;
+		return std::string();
 
-	MissionGroup* pGroup = &groups[currentStage];
-
-	if ( pGroup )
-		return pGroup->infos[currentMission]->description;
-
-	return nullptr;
+	return groups[currentStage].infos[currentMission]->description;
 }
 
 bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
@@ -118,7 +106,7 @@ bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
 
 	for ( int i = 0; i < pGroup->infos.Count(); i++ )
 	{
-		if ( pGroup->infos[i]->fileName.Compare( missionName ) == 0 )
+		if ( mc2::str::iequals( pGroup->infos[i]->fileName, mc2::str::from_c( missionName ) ) )
 		{
 			return !pGroup->infos[i]->completed;
 		}
@@ -126,46 +114,37 @@ bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
 	return false;
 }
 
-const char* LogisticsMissionInfo::getCurrentMissionFriendlyName() const
+std::string LogisticsMissionInfo::getCurrentMissionFriendlyName() const
 {
 	if ( currentStage >= groupCount )
-		return nullptr;
-	MissionGroup* pGroup = &groups[currentStage];
+		return std::string();
 
-	if ( pGroup )
-		return pGroup->infos[currentMission]->missionDescriptiveName;	
-
-	return nullptr;
-
+	return groups[currentStage].infos[currentMission]->missionDescriptiveName;
 }
 
-const char* LogisticsMissionInfo::getCurrentABLScriptName() const
+std::string LogisticsMissionInfo::getCurrentABLScriptName() const
 {
 	if ( currentStage >= groupCount )
-		return nullptr;
+		return std::string();
 
-	MissionGroup* pGroup = &groups[currentStage];
-
-	if ( pGroup )
-		return pGroup->ablBrainName;
-
-	return nullptr;
+	return groups[currentStage].ablBrainName;
 }
 
-const char* LogisticsMissionInfo::getMissionFriendlyName( const char* missionName ) const
+std::string LogisticsMissionInfo::getMissionFriendlyName( const char* missionName ) const
 {
 	if ( currentStage >= groupCount )
-		return nullptr;
+		return std::string();
 	MissionGroup* pGroup = &groups[currentStage];
 
+	const std::string wanted = mc2::str::from_c( missionName );
 	for ( int i = 0; i < pGroup->infos.Count(); i++ )
 	{
-		if ( pGroup->infos[i]->fileName.Compare( missionName ) == 0 )
+		if ( mc2::str::iequals( pGroup->infos[i]->fileName, wanted ) )
 		{
 			return pGroup->infos[i]->missionDescriptiveName;
 		}
 	}
-	return nullptr;
+	return std::string();
 }
 
 int		LogisticsMissionInfo::getCurrentRP() const
@@ -179,21 +158,22 @@ int		LogisticsMissionInfo::getCurrentRP() const
 
 }
 
-const char*			LogisticsMissionInfo::getCurrentBigVideo() const
+std::string LogisticsMissionInfo::getCurrentBigVideo() const
 {
-	if ( currentStage == -1 )
-		return nullptr;
+	// WHAT: hands out the group's pre-video once and marks it shown. WHY: the screen that plays it asks on every frame and must play it once.
+	if ( !groups || currentStage < 0 || currentStage >= groupCount )
+		return std::string();
 	
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup->bigVideoShown )
-		return nullptr;
+		return std::string();
 
 	pGroup->bigVideoShown = true;
 	return pGroup->bigVideoName;
-		
 }
-const char*			LogisticsMissionInfo::getFinalVideo() const
+
+std::string LogisticsMissionInfo::getFinalVideo() const
 {
 	return finalVideoName;
 }
@@ -227,9 +207,7 @@ void		LogisticsMissionInfo::setPurchaseFile( const char* fileName )
 
 	MissionInfo* pInfo = groups[0].infos[0];
 
-	pInfo->purchaseFileName = missionPath;
-	pInfo->purchaseFileName += fileName;
-	pInfo->purchaseFileName += ".fit";
+	pInfo->purchaseFileName = std::string( missionPath ) + mc2::str::from_c( fileName ) + ".fit";
 }
 
 int			LogisticsMissionInfo::getAdditionalPurachaseFiles( const char** list, long& maxCount )

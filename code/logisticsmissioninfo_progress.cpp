@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in logisticsmissioninfo_internal.h.
 #include "logisticsmissioninfo_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 
 long LogisticsMissionInfo::getAvailableMissions( const char** missions, int& numberOfEm )
@@ -18,7 +19,8 @@ long LogisticsMissionInfo::getAvailableMissions( const char** missions, int& num
 		{
 			if ( count < maxOut )
 			{
-				missions[count] = (*iter)->fileName;
+				// A pointer into a mission record that stays alive until clear().
+				missions[count] = (*iter)->fileName.c_str();
 			}
 
 			count++;
@@ -51,7 +53,7 @@ long LogisticsMissionInfo::getCurrentMissions( const char** missions, int& numbe
 		{
 			if ( count < maxOut )
 			{
-				missions[count] = (*iter)->fileName;
+				missions[count] = (*iter)->fileName.c_str();
 			}
 
 			count++;
@@ -75,9 +77,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 		return -1;
 	if ( bMultiplayer )
 	{
-			EString path = missionPath;
-			path += missionName;
-			path += ".fit";
+			const std::string path = std::string( missionPath ) + missionName + ".fit";
 
 			currentMission = 0;
 			currentStage = 0;
@@ -92,7 +92,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 				
 			FitIniFile missionFile;
 			
-			if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
+			if ( NO_ERR != missionFile.open( path.c_str() ) )
 			{
 				char errorStr[256];
 				mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(missionName));
@@ -137,7 +137,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 		MISSION_LIST::EIterator iter = pGroup->infos.Begin();
 		while( !iter.IsDone() )
 		{
-			if ( S_stricmp( (*iter)->fileName, missionName ) == 0 )
+			if ( mc2::str::iequals( (*iter)->fileName, missionName ) )
 			{
 				bFound = 1;
 			
@@ -155,8 +155,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 					}
 		
 					currentMission = count;
-					currentMissionName = (*iter)->fileName;
-					currentMissionName.Remove( EString(".fit") );
+					currentMissionName = mc2::str::erase_first( (*iter)->fileName, ".fit" );
 					CBills += (*iter)->additionalCBills;
 				}
 
@@ -190,12 +189,11 @@ long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
 		long count = 0;
 		for ( MISSION_LIST::EIterator iter = pGroup->infos.Begin(); !iter.IsDone(); iter++ )
 		{
-			if ( S_stricmp( (*iter)->fileName, missionName ) == 0 )
+			if ( mc2::str::iequals( (*iter)->fileName, missionName ) )
 			{
 				currentStage = s;
 				currentMission = count;
-				currentMissionName = (*iter)->fileName;
-				currentMissionName.Remove( EString( ".fit" ) );
+				currentMissionName = mc2::str::erase_first( (*iter)->fileName, ".fit" );
 				return 0;
 			}
 			count++;
@@ -227,26 +225,24 @@ void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
 
 
 	
-	EString path = missionPath;
-	path += missionFileName;
-	path += ".fit";
+	const std::string path = std::string( missionPath ) + mc2::str::from_c( missionFileName ) + ".fit";
 
 	currentMission = 0;
 	currentStage = 0;
 		
-	pInfo->fileName = missionName;
+	pInfo->fileName = mc2::str::from_c( missionName );
 	pInfo->completed = 0;
 	pInfo->playMissionSelection = 0;
 	pInfo->playPurchasing = true;
 	pInfo->playSalvage = 0;
 	pInfo->playPilotPromotion = 0;
 
-	currentMissionName = missionFileName;
+	currentMissionName = mc2::str::from_c( missionFileName );
 	
 		
 	FitIniFile missionFile;
 	
-	if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
+	if ( NO_ERR != missionFile.open( path.c_str() ) )
 	{
 		char errorStr[256];
 		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(missionName));
@@ -357,7 +353,7 @@ void LogisticsMissionInfo::setMissionComplete( )
 			{
 				if ( (*iter)->hidden ) // use the hidden video file name for this
 				{
-					if ( (*iter)->videoName.Length() )
+					if ( !(*iter)->videoName.empty() )
 					{
 						pGroup->videoFileName = (*iter)->videoName;
 						pGroup->videoShown = 0;

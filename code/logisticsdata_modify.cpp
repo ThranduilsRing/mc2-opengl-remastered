@@ -3,21 +3,21 @@
 #include "logisticsdata_internal.h"
 
 
-const EString& LogisticsData::getCurrentMission() const
+const std::string& LogisticsData::getCurrentMission() const
 {
 	return missionInfo->getCurrentMission(); 
 }
 
-const EString& LogisticsData::getLastMission() const
+const std::string& LogisticsData::getLastMission() const
 {
 	return missionInfo->getLastMission(); 
 }
 
-const char * LogisticsData::getCurrentABLScript() const
+std::string LogisticsData::getCurrentABLScript() const
 {
-	// missionInfo may be null before bg init thread completes -- return null so
-	// the caller's `if (brainfile)` guard skips tutorial brain load safely.
-	return missionInfo ? missionInfo->getCurrentABLScriptName() : nullptr;
+	// missionInfo may be null before bg init thread completes -- return empty so
+	// the caller's `if (!brainfile.empty())` guard skips tutorial brain load safely.
+	return missionInfo ? missionInfo->getCurrentABLScriptName() : std::string();
 }
 
 long LogisticsData::getCurrentMissionTune()
@@ -470,27 +470,27 @@ int LogisticsData::cancelMechModfications()
 	return 0;
 }
 
-const char*			LogisticsData::getCurrentOperationFileName()
+std::string			LogisticsData::getCurrentOperationFileName()
 {
 	return missionInfo->getCurrentOperationFile();
 }
-const char*			LogisticsData::getCurrentVideoFileName()
+std::string			LogisticsData::getCurrentVideoFileName()
 {
 	return missionInfo->getCurrentVideo();
 }
 
-const char*			LogisticsData::getCurrentMissionDescription()
+std::string			LogisticsData::getCurrentMissionDescription()
 {
 	return missionInfo->getCurrentMissionDescription();
 }
 
 
-const char*				LogisticsData::getCurrentMissionFriendlyName( )
+std::string				LogisticsData::getCurrentMissionFriendlyName( )
 {
 	return missionInfo->getCurrentMissionFriendlyName();
 }
 
-const char*				LogisticsData::getMissionFriendlyName( const char* missionName )
+std::string				LogisticsData::getMissionFriendlyName( const char* missionName )
 {
 	return missionInfo->getMissionFriendlyName( missionName );
 }

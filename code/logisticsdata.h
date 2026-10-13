@@ -121,13 +121,13 @@ public:
 	// mission info). Self-gates on the LOGISTICS diag tag being enabled.
 	void				dumpFrontEndState( const char* screenName );
 
-	const EString&		getCurrentMission() const;
-	const EString&		getLastMission() const;
-	int					setCurrentMission( const EString& missionName );
+	const std::string&	getCurrentMission() const;
+	const std::string&	getLastMission() const;
 	void				setSingleMission( const char* pName );
 	bool				isSingleMission();
 	long				getCurrentMissionTune();
-	const char *		getCurrentABLScript() const;
+	// The text getters below return a copy; an empty string means "there is none" (logisticsmissioninfo.h).
+	std::string			getCurrentABLScript() const;
 	long 				getCurrentMissionId();
 
 	void				clearInventory();
@@ -155,20 +155,20 @@ public:
 
 	int					getAvailableComponents( LogisticsComponent** pComps, int& maxCount );
 	int					getAllComponents( LogisticsComponent** pComps, int& maxCount );
-	const char*			getCurrentOperationFileName();
-	const char*			getCurrentVideoFileName();
-	const char*			getCurrentMissionDescription();
+	std::string			getCurrentOperationFileName();
+	std::string			getCurrentVideoFileName();
+	std::string			getCurrentMissionDescription();
 	int					getAvailableMissions( const char** missionNames, long& count );
 	int					getCurrentMissions( const char** missionNames, long& count );
 	bool				getMissionAvailable( const char* missionName );
-	const char*			getCurrentMissionFriendlyName( );
-	const char*			getMissionFriendlyName( const char* missionName );
+	std::string			getCurrentMissionFriendlyName( );
+	std::string			getMissionFriendlyName( const char* missionName );
 	long				getMaxTeams() const;
 	long				getMaxPlayers() const;
 
 	int					acceptMechModificationsUseOldVariant( const char* name );
 
-	const EString&		getCampaignName() const;
+	const std::string&	getCampaignName() const;
 
 
 
@@ -186,8 +186,8 @@ public:
 	int					getBuildings( Building** bdgs, int& count );
 
 	bool				campaignOver();
-	const char*			getCurrentBigVideo() const;
-	const char*			getFinalVideo() const;
+	std::string			getCurrentBigVideo() const;
+	std::string			getFinalVideo() const;
 
 	bool				newMechsAvailable() { return bNewMechs; }
 	bool				newPilotsAvailable() { return bNewPilots; }

@@ -109,6 +109,17 @@ TEST_CASE("the length limit is inclusive: exactly kMaxTextLength characters are 
 	CHECK(objective_text::readFlagID(f.fit, "OverLimit", "FlagIndex") == std::optional<std::string>("3"));
 }
 
+TEST_CASE("readPlain: the value as stored, absent and over-long are empty optionals")
+{
+	MemFit f("[Obj]\r\nst Video = \"intro\"\r\nst Empty = \"\"\r\nst Long = \"0123456789\"\r\n");
+	REQUIRE(f.fit.seekBlock("Obj") == NO_ERR);
+	CHECK(objective_text::readPlain(f.fit, "Video") == std::optional<std::string>("intro"));
+	CHECK(objective_text::readPlain(f.fit, "Empty") == std::optional<std::string>(""));
+	CHECK_FALSE(objective_text::readPlain(f.fit, "Absent").has_value());
+	CHECK_FALSE(objective_text::readPlain(f.fit, "Long", 9).has_value());                     // 10 characters, limit 9
+	CHECK(objective_text::readPlain(f.fit, "Long", 10) == std::optional<std::string>("0123456789"));
+}
+
 TEST_CASE("a flag reference is its ID, else its decimal index")
 {
 	SUBCASE("the ID wins over an index")

@@ -93,8 +93,8 @@ void Mission::save (const char *saveFileName)
 	AsynFunc = ProgressTimer;
 
 	//Get the campaign name for the campaign we are currently playing.
-	EString campaignName = LogisticsData::instance->getCampaignName();
-	const char *cmpName = campaignName.Data();
+	const std::string campaignName = LogisticsData::instance->getCampaignName();
+	const char *cmpName = campaignName.c_str();
 
 	//Open the Save File.
 	// Assume path is correct when we get here.
@@ -499,8 +499,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	currentPacket++;
 
 	//Get the campaign name for the campaign we are currently playing.
-	EString campaignName = LogisticsData::instance->getCampaignName();
-	const char *cmpName = campaignName.Data();
+	const std::string campaignName = LogisticsData::instance->getCampaignName();
+	const char *cmpName = campaignName.c_str();
 
 	/*
 	if (stricmp(campName,cmpName) != 0)

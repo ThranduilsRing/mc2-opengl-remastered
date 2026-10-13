@@ -30,6 +30,11 @@ ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value);
 // The value of `key`, or an empty optional when the key is absent or over-long.
 std::optional<std::string> read(FitIniFile& file, const char* key);
 
+// The same reader for text that is not an objective's: the value exactly as stored (no line-break conversion), at most `maxLength` characters. The
+// campaign, mission-list and logistics readers use it so that a missing key is an empty optional and never the text of the key read before it. One
+// reader serves every FIT text value; there is no second copy.
+std::optional<std::string> readPlain(FitIniFile& file, const char* key, unsigned long maxLength = kMaxTextLength);
+
 // A flag reference: the text of `idKey`, else the decimal number stored under `indexKey` (files from before flags had names).
 // Empty when neither key is present.
 std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey);

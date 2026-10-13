@@ -635,7 +635,3 @@ void LogisticsData::removeDeadWeight()
 	}
 }
 
-int		LogisticsData::setCurrentMission( const EString& missionName )
-{
-	return setCurrentMission( (const char*)missionName );
-}

@@ -11,6 +11,9 @@
 
 #include "logistics_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include <string>
+#include <string_view>
 
 void DEBUGWINS_print (const char* s, long window = 0);
 
@@ -107,7 +110,7 @@ void Logistics::start (long startMode)
 						break; // skip final video + splash; clean exit
 					}
 					mission->destroy();
-					playFullScreenVideo( LogisticsData::instance->getFinalVideo() );
+					playFullScreenVideo( LogisticsData::instance->getFinalVideo().c_str() );
 					setLogisticsState(log_SPLASH);
 					missionBegin->beginSplash();
 					userInput->mouseOn();
@@ -343,11 +346,12 @@ long Logistics::update (void)
 					}
 					else
 					{
-						const char* videoName = LogisticsData::instance->getCurrentBigVideo();
+						const std::string videoName = LogisticsData::instance->getCurrentBigVideo();
+						MC2_LOG(Core, Info, "logistics: pre-video after a won mission: {}", videoName.empty() ? std::string_view( "none" ) : std::string_view( videoName ));
 
-						if ( videoName )
+						if ( !videoName.empty() )
 						{
-							playFullScreenVideo( videoName );
+							playFullScreenVideo( videoName.c_str() );
 						}
 					}
 				

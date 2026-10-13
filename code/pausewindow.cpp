@@ -296,9 +296,9 @@ void PauseWindow::update()
 
 	wasDragging = userInput->wasLeftDrag();
 
-	const char * campaignName = LogisticsData::instance->getCampaignName().Data();
+	const std::string campaignName = LogisticsData::instance->getCampaignName();
 	char campName[1024];
-	_splitpath(campaignName,nullptr,nullptr,campName,nullptr);
+	_splitpath(campaignName.c_str(),nullptr,nullptr,campName,nullptr);
 	if ( MPlayer || 
 		LogisticsData::instance->isSingleMission() ||
 		(S_stricmp("tutorial",campName) == 0))

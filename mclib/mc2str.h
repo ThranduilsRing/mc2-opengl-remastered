@@ -4,7 +4,7 @@
 // WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare compare names that
 // come from data (file names, mech / pilot / variant / mission names, flag IDs) ignoring ASCII case; ci_total_less is the
 // total order for sorted lists; ascii_lower / ascii_upper change case of ASCII letters only; file_stem cuts the directory and the extension
-// off a file name.
+// off a file name; erase_first cuts the first occurrence of a substring.
 // WHY: std::string compares case-exactly and std::string(nullptr) is undefined, while names in the shipped data differ in case
 // from the names that look them up and legacy callers pass null for "no text". Identity is therefore case-insensitive, as a fixed
 // ASCII fold that gives the same answer on every host and locale (the Windows lstrcmpi collation is locale-dependent and absent
@@ -61,6 +61,16 @@ inline std::string ascii_lower(std::string_view s) {
 inline std::string ascii_upper(std::string_view s) {
     std::string r(s);
     std::ranges::transform(r, r.begin(), [](unsigned char c) { return static_cast<char>(detail::upper(c)); });
+    return r;
+}
+
+// `s` without the first occurrence of `part` (compared exactly, case included); `s` itself when `part` is empty or absent. The campaign code
+// uses it to cut ".fit" out of a mission file name.
+inline std::string erase_first(std::string_view s, std::string_view part) {
+    const std::size_t at = part.empty() ? std::string_view::npos : s.find(part);
+    if (at == std::string_view::npos) return std::string(s);
+    std::string r(s);
+    r.erase(at, part.size());
     return r;
 }
 

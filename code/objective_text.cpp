@@ -54,6 +54,20 @@ std::optional<std::string> read(FitIniFile& file, const char* key)
 	return value;
 }
 
+std::optional<std::string> readPlain(FitIniFile& file, const char* key, unsigned long maxLength)
+{
+	std::string buffer(maxLength + 1, '\0');
+	const long result = file.readIdString(key, buffer.data(), static_cast<unsigned long>(buffer.size()));
+	if (result == BUFFER_TOO_SMALL) {
+		MC2_LOG(Io, Warn, "fit: the value of '{}' is longer than {} characters and is ignored", key, maxLength);
+		return std::nullopt;
+	}
+	if (result != NO_ERR) {
+		return std::nullopt;
+	}
+	return std::string(buffer.c_str());
+}
+
 std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey)
 {
 	if (std::optional<std::string> id = read(file, idKey)) {

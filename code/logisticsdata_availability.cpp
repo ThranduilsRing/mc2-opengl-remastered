@@ -2,6 +2,10 @@
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
+
+#include <format>
+#include <string>
 
 
 long LogisticsData::updateAvailability()
@@ -28,13 +32,11 @@ long LogisticsData::updateAvailability()
 	// available).
 	static const bool s_purchaseAll = mc2::gate::get<"MC2_PURCHASE_ALL">();
 
-	EString purchaseFileName = missionInfo->getCurrentPurchaseFile();
-	purchaseFileName.MakeLower();
+	std::string purchaseFileName = mc2::str::ascii_lower( missionInfo->getCurrentPurchaseFile() );
 
-	if ( purchaseFileName.Length() < 1 )
+	if ( purchaseFileName.empty() )
 	{
-		purchaseFileName = missionPath;
-		purchaseFileName += "purchase.fit";
+		purchaseFileName = std::string( missionPath ) + "purchase.fit";
 	}
 
 	int oldMechAvailableCount= 0;
@@ -49,16 +51,15 @@ long LogisticsData::updateAvailability()
 		(*pIter).setAvailable( 0 );
 	}
 
-	LOG_LOGISTICS_UA("updateAvailability: purchaseFile='%s'", (const char*)purchaseFileName);
+	LOG_LOGISTICS_UA("updateAvailability: purchaseFile='%s'", purchaseFileName.c_str());
 
 	// make sure its around and you can open it
 	FitIniFile file;
-	if ( NO_ERR != file.open( (char*)(const char*)purchaseFileName ) )
+	if ( NO_ERR != file.open( purchaseFileName.c_str() ) )
 	{
 		LOG_LOGISTICS_UA("updateAvailability: purchase file OPEN FAILED");
-		EString error;
-		error.Format( "Couldn't open %s", (char*)(const char*)purchaseFileName );
-		PAUSE(((char*)(const char*)error ));
+		const std::string error = std::format( "Couldn't open {}", purchaseFileName );
+		PAUSE(((char*)error.c_str() ));
 		return NO_PURCHASE_FILE;
 	}
 	LOG_LOGISTICS_UA("updateAvailability: purchase file open OK");
@@ -302,14 +303,14 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 
 	std::string j = "{";
 	j += "\"screen\":\"" + esc( screenName ) + "\"";
-	j += ",\"campaign\":\"" + esc( (const char*)getCampaignName() ) + "\"";
+	j += ",\"campaign\":\"" + esc( getCampaignName().c_str() ) + "\"";
 
 	// Mission name fields -- guard on a valid current mission (campaign-select
 	// screen may have none yet).
-	const EString& curMission = getCurrentMission();
-	if ( curMission.Length() > 0 ) {
-		j += ",\"mission\":\"" + esc( (const char*)curMission ) + "\"";
-		j += ",\"missionFriendly\":\"" + esc( getCurrentMissionFriendlyName() ) + "\"";
+	const std::string& curMission = getCurrentMission();
+	if ( !curMission.empty() ) {
+		j += ",\"mission\":\"" + esc( curMission.c_str() ) + "\"";
+		j += ",\"missionFriendly\":\"" + esc( getCurrentMissionFriendlyName().c_str() ) + "\"";
 		j += ",\"dropWeight\":" + std::to_string( getCurrentDropWeight() );
 		j += ",\"maxDropWeight\":" + std::to_string( getMaxDropWeight() );
 	}

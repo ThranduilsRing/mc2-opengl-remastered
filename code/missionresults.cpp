@@ -120,15 +120,15 @@ void MissionResults::end()
 {
 	//Need to save the game here so salvage and pilot promotion get saved as well!
 	// Pity we never call ::end!
-	const char* pMissionName = LogisticsData::instance->getLastMission();
+	const std::string pMissionName = LogisticsData::instance->getLastMission();
 
-	if ( pMissionName && !LogisticsData::instance->isSingleMission() && !LogisticsData::instance->campaignOver() && !MPlayer )
+	if ( !pMissionName.empty() && !LogisticsData::instance->isSingleMission() && !LogisticsData::instance->campaignOver() && !MPlayer )
 	{
 		FitIniFile file;
 		char name[256];
 		cLoadString( IDS_AUTOSAVE_NAME, name, 255 );
 		char fullName[256];
-		sprintf( fullName, name, pMissionName );
+		sprintf( fullName, name, pMissionName.c_str() );
 		FullPathFileName path;
 		path.init( savePath, fullName, ".fit" );
 		if ( NO_ERR == file.create( path ) )

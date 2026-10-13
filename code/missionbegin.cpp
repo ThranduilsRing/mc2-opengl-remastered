@@ -12,6 +12,8 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"logisticsvariant.h"
 #include"mechicon.h"
 #include"logisticsdata.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include <string_view>
 #include"logisticsmech.h"
 #include"logisticspilot.h"
 #include"missionselectionscreen.h"
@@ -322,11 +324,11 @@ void MissionBegin::begin()
 	//Load up the Logistics Brain for Tutorials.
 	// OK if brain file is NOT there!!
 	FullPathFileName brainFileName;
-	const char * brainfile = LogisticsData::instance->getCurrentABLScript();
-	if ( brainfile )
-		 brainFileName.init(missionPath, brainfile, ".abl");
+	const std::string brainfile = LogisticsData::instance->getCurrentABLScript();
+	if ( !brainfile.empty() )
+		 brainFileName.init(missionPath, brainfile.c_str(), ".abl");
 	
-	if (brainfile && fileExists(brainFileName))
+	if (!brainfile.empty() && fileExists(brainFileName))
 	{
 		ZoneScopedN("MissionBegin::begin tutorialBrain");
 		long numErrors, numLinesProcessed;
@@ -354,7 +356,7 @@ void MissionBegin::begin()
 	// found+loaded for the current mission. Cheap (one printf at screen
 	// entry); always emitted so it shows up regardless of soak gate.
 	printf("[SOAK] abl logistics brain=%s loaded=%d\n",
-		brainfile ? brainfile : "(none)",
+		brainfile.empty() ? "(none)" : brainfile.c_str(),
 		(logisticsBrain != NULL) ? 1 : 0);
 	fflush(stdout);
 
@@ -805,7 +807,10 @@ bool MissionBegin::updateSplash() {
 					screens[curScreenX][curScreenY]->beginFadeIn( 1.0 );
 					screens[curScreenX][curScreenY]->begin();
 				}
-				return LogisticsData::instance->getCurrentBigVideo();
+				// The campaign's pre-video is consumed here and not played: the function answers whether the splash is still running (a bool).
+				const std::string bigVideo = LogisticsData::instance->getCurrentBigVideo();
+				MC2_LOG(Core, Info, "missionbegin: campaign-start pre-video: {}", bigVideo.empty() ? std::string_view( "none" ) : std::string_view( bigVideo ));
+				return !bigVideo.empty();
 
 			}
 			else if ( LogisticsScreen::MULTIPLAYERRESTART == mainMenu->getStatus() )
@@ -1521,7 +1526,7 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					printf("[SOAK] advance screen=%d,%d\n", (int)curScreenX, (int)curScreenY);
 					if ( LogisticsData::instance )
 						printf("[SOAK] launch mission=%s stage=%d\n",
-							(const char*)LogisticsData::instance->getCurrentMission(),
+							LogisticsData::instance->getCurrentMission().c_str(),
 							(int)LogisticsData::instance->getCurrentMissionNum());
 					fflush(stdout);
 				}

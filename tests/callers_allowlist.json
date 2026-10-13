@@ -90,6 +90,7 @@
   "tools/build_all_targets.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/build_contract_harnesses.py": "Manual offline verification entry point, documented in CLAUDE.md:37.",
   "tools/build_quiet.py": "Manual build entry point named in AGENTS.md:12.",
+  "tools/campaign_save_roundtrip.py": "Manual proof tool for the step 4 B1 logistics batches (cxx23-step4-b1-notes.md section 8c); run by hand, no script names it.",
   "tools/classify_materials.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/conftest.py": "Implicit pytest configuration for descendant tests; pytest auto-loads this file, so no explicit script operand/import names it.",
   "tools/cook_bc6h_hdri.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",

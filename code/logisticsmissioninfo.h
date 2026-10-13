@@ -11,7 +11,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 #include"elist.h"
 #endif
 
-#include"estring.h"
+#include <string>
 
 inline constexpr int MAX_PLAYER_NAME_LENGTH = 64;
 
@@ -54,30 +54,33 @@ class LogisticsMissionInfo
 
 		long getCurrentMissionId();
 		
-		const EString& getCurrentPurchaseFile() const;
-		const EString& getCurrentMission() const { return currentMissionName; }
-		const EString& getLastMission() const { return lastMissionName; }
+		const std::string& getCurrentPurchaseFile() const;
+		const std::string& getCurrentMission() const { return currentMissionName; }
+		const std::string& getLastMission() const { return lastMissionName; }
 
+		// The text getters return a copy and an EMPTY string for "there is none" (no group, no key, nothing assigned): every caller only asks whether
+		// there is text, and a copy can never dangle after clear().
 		long				getCurrentDropWeight() const;
-		const char*			getCurrentVideo() const;
-		const char*			getCurrentOperationFile() const;
-		const char*			getCurrentMissionDescription() const;
-		const char*			getCurrentMissionFriendlyName() const;
-		const char*			getMissionFriendlyName( const char* missionName ) const;
-		const char*			getCurrentABLScriptName() const;
+		std::string			getCurrentVideo() const;
+		std::string			getCurrentOperationFile() const;
+		std::string			getCurrentMissionDescription() const;
+		std::string			getCurrentMissionFriendlyName() const;
+		std::string			getMissionFriendlyName( const char* missionName ) const;
+		std::string			getCurrentABLScriptName() const;
 
 		int					getCurrentRP() const;
 		int					getCBills() const { return CBills; }
 		void				incrementCBills(int amount) { CBills += amount; }
 		void				decrementCBills(int amount) { CBills -= amount; }
 
-		const EString& 		getCampaignName( ) const { return campaignName; }
-		const EString&		getCampaignDisplayName() const { return campaignDisplayName; }
+		const std::string& 	getCampaignName( ) const { return campaignName; }
+		const std::string&	getCampaignDisplayName() const { return campaignDisplayName; }
 
 		bool				campaignOver() const;
 
-		const char*			getCurrentBigVideo() const;
-		const char*			getFinalVideo() const;
+		// The group's pre-video, once: the first call after the group starts returns its name and every later call returns empty.
+		std::string			getCurrentBigVideo() const;
+		std::string			getFinalVideo() const;
 
 		void				setMultiplayer();
 		void				setPurchaseFile( const char* fileName );
@@ -131,30 +134,31 @@ class LogisticsMissionInfo
 		{
 		public:
 			~MissionInfo();
-			EString missionDescriptiveName;
-			EString fileName;
-			EString description;
-			EString purchaseFileName;
-			EString videoName;
-			bool mandatory;
-			bool completePrevious;
-			bool completed;
-			long resourcePoints;
-			long additionalCBills;
-			long dropWeight;
-			bool playLogistics;
-			bool playSalvage;
-			bool playPilotPromotion;
-			bool playPurchasing;
-			bool playMissionSelection;
-			bool hidden;
-			bool enableSalavageCraft;
-			bool enableRepairTruck;
-			bool enableScoutCopter;
-			bool enableArtilleryPiece;
-			bool enableAirStrike;
-			bool enableSensorStrike;
-			bool enableMineLayer;
+			std::string missionDescriptiveName;
+			std::string fileName;
+			std::string description;
+			std::string purchaseFileName;
+			std::string videoName;
+			// A flag the campaign file does not set is false; the readers apply the defaults of the keys they find missing.
+			bool mandatory = false;
+			bool completePrevious = false;
+			bool completed = false;
+			long resourcePoints = 0;
+			long additionalCBills = 0;
+			long dropWeight = 0;
+			bool playLogistics = false;
+			bool playSalvage = false;
+			bool playPilotPromotion = false;
+			bool playPurchasing = false;
+			bool playMissionSelection = false;
+			bool hidden = false;
+			bool enableSalavageCraft = false;
+			bool enableRepairTruck = false;
+			bool enableScoutCopter = false;
+			bool enableArtilleryPiece = false;
+			bool enableAirStrike = false;
+			bool enableSensorStrike = false;
+			bool enableMineLayer = false;
 		};	
 
 		using MISSION_LIST = EList<MissionInfo*, MissionInfo*>;
@@ -164,31 +168,31 @@ class LogisticsMissionInfo
 		class MissionGroup
 		{
 		public:
-			long numberToBeCompleted;
-			EString videoFileName;
-			EString operationFileName;
-			EString bigVideoName;
-			EString ablBrainName;
-			long logisticsTuneId;
+			long numberToBeCompleted = -1;
+			std::string videoFileName;
+			std::string operationFileName;
+			std::string bigVideoName;
+			std::string ablBrainName;
+			long logisticsTuneId = 0;
 			MISSION_LIST infos;
-			bool	bigVideoShown;
-			bool	videoShown;
+			bool	bigVideoShown = false;
+			bool	videoShown = false;
 		};
 
 
 		// DATA
 
-		EString					campaignName;
-		EString					campaignDisplayName;
-		EString					playerName;
-		EString					currentMissionName;
-		EString					finalVideoName;
+		std::string				campaignName;
+		std::string				campaignDisplayName;
+		std::string				playerName;
+		std::string				currentMissionName;
+		std::string				finalVideoName;
 		long					currentStage;
 		long					currentMission;
 
 		long					lastStage;
 		long					lastMission;
-		EString					lastMissionName;
+		std::string				lastMissionName;
 
 		MissionGroup*			groups;
 		long					groupCount;

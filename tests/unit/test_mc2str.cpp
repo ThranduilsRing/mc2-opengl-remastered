@@ -174,6 +174,19 @@ TEST_CASE("corpus: ci_total_less is a strict total order over the stock identifi
 	CHECK(transitive);
 }
 
+// The campaign code cut ".fit" out of a mission name with EString::Remove(EString): the FIRST occurrence, compared exactly.
+TEST_CASE("erase_first agrees with EString::Remove(EString) on mission-name shapes")
+{
+	const char* cases[] = {"m0101.fit", "m0101", "a.fit.fit", "A.FIT", "x.fitness", ".fit", "", "m.fi.fit", "fit"};
+	for (const char* text : cases)
+	{
+		EString old(text);
+		old.Remove(EString(".fit"));
+		CHECK(mc2::str::erase_first(text, ".fit") == std::string(old.Data() ? old.Data() : ""));
+	}
+	CHECK(mc2::str::erase_first("abc", "") == "abc");
+}
+
 TEST_CASE("file_stem is the name between the last path separator and the first dot")
 {
 	CHECK(mc2::str::file_stem("data\\objects\\madcat.csv") == "madcat");

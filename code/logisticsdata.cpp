@@ -434,7 +434,7 @@ int					LogisticsData::getBuildings( Building** bdgs, int& count )
 	
 }
 
-const EString&	LogisticsData::getCampaignName() const
+const std::string&	LogisticsData::getCampaignName() const
 { 
 	return missionInfo->getCampaignName();
 }
@@ -445,11 +445,11 @@ bool				LogisticsData::campaignOver()
 { 
 	return missionInfo->campaignOver();
 }
-const char*			LogisticsData::getCurrentBigVideo() const 
+std::string			LogisticsData::getCurrentBigVideo() const 
 { 
 	return missionInfo->getCurrentBigVideo(); 
 }
-const char*			LogisticsData::getFinalVideo() const
+std::string			LogisticsData::getFinalVideo() const
 { 
 	return missionInfo->getFinalVideo();
 }
