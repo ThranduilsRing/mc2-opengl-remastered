@@ -14,8 +14,8 @@ The deprecation itself is applied to mclib/estring.h by an uncommitted local edi
   py -3 tests/analyze/estring_callsites.py --remap BASE code/x.cpp ...                   # move the rows of edited files to their new lines
   py -3 tests/analyze/estring_callsites.py --seal                                        # record the current content of every file that has rows (only right after a census)
 
-The list records the SHA-1 of the bytes of every file that has rows (`# blob HASH PATH`). --check fails for a file whose content differs from its recorded
-hash: its rows were not verified against this text. The implicit conversion (`operator ECHARPTR`, 40% of the rows) leaves no token on its line, so the
+The list records the git blob id of every file that has rows, CR LF read as LF (`# blob HASH PATH`; the same in every checkout whatever its line-ending
+setting). --check fails for a file whose content differs from its recorded hash: its rows were not verified against this text. The implicit conversion (`operator ECHARPTR`, 40% of the rows) leaves no token on its line, so the
 line check alone cannot see a shifted row of that kind; the hash can. --remap and --drop refresh the hash of the files they touch.
 """
 from __future__ import annotations
@@ -71,14 +71,18 @@ def batch_of() -> dict:
 
 
 def blob_hashes(files) -> dict:
-    """path -> SHA-1 of the file's working-tree bytes (a file that cannot be read is left out)."""
+    """path -> the git blob id of the file's text with CR LF read as LF (a file that cannot be read is left out).
+    WHY not the bytes on disk: `core.autocrlf` makes one commit CRLF in one checkout and LF in another, and some listed files are CRLF in the index itself, so
+    the bytes differ between a worktree, a fresh clone and a `git archive` copy. `git hash-object` would not do either: its clean filter follows the machine's
+    autocrlf setting. Normalising here gives the id `git hash-object --no-filters` prints for the LF form of the file, in every checkout and without git."""
     out = {}
     for path in files:
         try:
             with open(os.path.join(ROOT, path), "rb") as src:
-                out[path] = hashlib.sha1(src.read()).hexdigest()
+                data = src.read().replace(b"\r\n", b"\n")
         except OSError:
-            pass
+            continue
+        out[path] = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
     return out
 
 

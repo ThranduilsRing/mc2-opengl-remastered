@@ -3042,6 +3042,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/test_estring_callsites.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/test_handoff_append.py",
           "line": 15,
           "evidence": "import",
@@ -9116,6 +9123,13 @@
           "text": "from test_comment_guard import make_obj  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/test_estring_callsites.py",
+      "basename": "test_estring_callsites.py",
+      "stem": "test_estring_callsites",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/test_git_util.py",
