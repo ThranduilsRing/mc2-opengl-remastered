@@ -73,6 +73,9 @@ struct DeviceCaps {
     uint32_t maxBoundDescriptorSets = 0;
     uint32_t maxPushConstantsSize = 0;
     uint64_t maxStorageBufferRange = 0;
+    // The Windows adapter identity of the device (VkPhysicalDeviceIDProperties::deviceLUID, the bytes of a LUID); valid only when the driver says so.
+    uint8_t deviceLuid[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    bool deviceLuidValid = false;
 
     bool hasExtension(std::string_view name) const {
         for (const std::string& e : extensions)

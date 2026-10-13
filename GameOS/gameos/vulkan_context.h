@@ -93,6 +93,14 @@ public:
     // device: the entry points to load differ) and whether an optional extension (memory budget) is on. Empty and not accepted before a device was
     // chosen, after a refusal and after destroy().
     const profile::Evaluation& profile() const { return profile_; }
+
+    // The Windows adapter LUID of the chosen device (8 bytes, the layout of a LUID), so a counter that is per DXGI adapter reads the adapter this device
+    // runs on and not a guess. False when the driver reports none or no device was chosen.
+    bool adapterLuid(uint8_t (&out)[8]) const {
+        if (!luidValid_) return false;
+        for (size_t i = 0; i < sizeof(out); ++i) out[i] = luid_[i];
+        return true;
+    }
     bool featureEnabled(std::string_view name) const { return profile::featureEnabled(profile_, name); }
     profile::Route route(std::string_view item) const { return profile::routeOf(profile_, item); }
 
@@ -118,6 +126,8 @@ private:
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
+    uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
+    bool             luidValid_         = false;
 
     EngineContextHealth health_;
 };

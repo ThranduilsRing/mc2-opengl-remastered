@@ -20,6 +20,17 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     c.maxPushConstantsSize = props.limits.maxPushConstantsSize;
     c.maxStorageBufferRange = props.limits.maxStorageBufferRange;
 
+    if (c.usableApi() >= makeApi(1, 1)) {             // physical-device properties2 is core from 1.1
+        VkPhysicalDeviceIDProperties id{};
+        id.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+        VkPhysicalDeviceProperties2 props2{};
+        props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        props2.pNext = &id;
+        vkGetPhysicalDeviceProperties2(pd, &props2);
+        c.deviceLuidValid = id.deviceLUIDValid == VK_TRUE;
+        for (size_t i = 0; i < sizeof(c.deviceLuid); ++i) c.deviceLuid[i] = id.deviceLUID[i];
+    }
+
     uint32_t extCount = 0;
     vkEnumerateDeviceExtensionProperties(pd, nullptr, &extCount, nullptr);
     std::vector<VkExtensionProperties> have(extCount);

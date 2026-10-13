@@ -12029,6 +12029,16 @@
    "count": 1
   },
   {
+   "tag": "VRAM_ADAPTER",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "rule",
+    "adapter_dedicated_mb"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VSYNC",
    "ver": -1,
    "stream": "stdout",
@@ -12602,6 +12612,7 @@
   "VEG_SUMMARY",
   "VISUAL_CAPTURE",
   "VK_PROFILE",
+  "VK_VALIDATION",
   "VRAM"
  ],
  "plain_tags": [

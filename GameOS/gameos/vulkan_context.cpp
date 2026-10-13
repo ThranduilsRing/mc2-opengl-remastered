@@ -295,6 +295,8 @@ bool VulkanContext::init(bool wantPresent) {
         phys_ = pick->pd;
         caps = pick->caps;
         profile_ = pick->ev;
+        luidValid_ = caps.deviceLuidValid;
+        for (size_t i = 0; i < sizeof(luid_); ++i) luid_[i] = caps.deviceLuid[i];
         std::strncpy(health_.deviceName, pick->name.c_str(), sizeof(health_.deviceName) - 1);
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
@@ -423,6 +425,7 @@ void VulkanContext::destroy() {
     if (g_cbContext == this) g_cbContext = nullptr;
     profile_ = profile::Evaluation{};
     profile_.accepted = false;
+    luidValid_ = false;
     health_.created = false;
 }
 
