@@ -34,6 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import configure_ninja as cn  # noqa: E402
+import console_child  # noqa: E402
 
 SEED = os.path.join(HERE, "dangling_seed.cpp")
 CLEAN = os.path.join(HERE, "dangling_clean.cpp")
@@ -55,7 +56,8 @@ def run_cl(src: str, extra: list[str] | None = None) -> tuple[list[tuple[str, in
     obj = tempfile.mkdtemp(prefix="mc2_an_")
     args = ["cl", "/nologo", "/c", "/std:c++latest", "/EHsc", "/W3", "/external:anglebrackets", "/external:W0", "/analyze:only",
             "/analyze:plugin", "EspXEngine.dll", f"/analyze:ruleset{RULESET}", f"/Fo{obj}\\", src] + (extra or [])
-    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {subprocess.list2cmdline(args)}', shell=True, capture_output=True, text=True, errors="replace")
+    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {subprocess.list2cmdline(args)}', shell=True, capture_output=True, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
     out = r.stdout + r.stderr
     hits = []
     for ln in out.splitlines():
@@ -68,7 +70,8 @@ def run_cl(src: str, extra: list[str] | None = None) -> tuple[list[tuple[str, in
 def run_clang(src: str, extra: list[str] | None = None) -> tuple[list[tuple[str, int, str]], str]:
     """clang-cl on one file with the dangling warnings -> ([(file, line, flag)], raw output)."""
     args = [CLANG_CL, "/nologo", "/c", "/std:c++latest", "/EHsc", "/clang:-fsyntax-only"] + CLANG_FLAGS + [src] + (extra or [])
-    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {subprocess.list2cmdline(args)}', shell=True, capture_output=True, text=True, errors="replace")
+    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {subprocess.list2cmdline(args)}', shell=True, capture_output=True, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
     out = r.stdout + r.stderr
     hits = []
     for ln in out.splitlines():

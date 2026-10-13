@@ -1583,7 +1583,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 887,
+          "line": 889,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -2563,6 +2563,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tests/analyze/analyze_dangling.py",
+          "line": 37,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
         },
         {
           "path": "tests/smoke/test_preflight_cache.py",
@@ -8013,7 +8020,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 865,
+          "line": 867,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
