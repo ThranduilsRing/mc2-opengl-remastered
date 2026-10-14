@@ -9,9 +9,9 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 \*************************************************************************************************/
 
 #include"stuff/stuff.hpp"
-#include<elist.h>
 #include <string>
 #include <vector>
+#include <deque>
 
 #include"logisticsmech.h"
 #include"logisticscomponent.h"
@@ -76,8 +76,10 @@ public:
 	// returns a shared, hidden-from-roster (setAvailable(false)) standard vehicle pilot.
 	bool				isVehicleUnit( class LogisticsMech* pMech );
 	LogisticsPilot*		getVehiclePilot();
-	void				getForceGroup( EList<LogisticsMech*, LogisticsMech*>& newList );
-	void				getInventory( EList<LogisticsMech*, LogisticsMech*>& newList );
+	// A snapshot of the pointers, taken by value: a caller may sell and delete from the live inventory while it walks its copy.
+	using MechList = std::vector<LogisticsMech*>;
+	MechList			getForceGroup();
+	MechList			getInventory();
 
 
 	void				removeMechsInForceGroup(); // takes mechs that are in the force group out of the inventory
@@ -241,12 +243,18 @@ private:
 	bool		bNewPilots;
 	bool		bNewWeapons;
 
-	typedef EList< LogisticsComponent, const LogisticsComponent& >	COMPONENT_LIST;
-	typedef EList< LogisticsPilot, const LogisticsPilot& >			PILOT_LIST;
-	typedef EList< LogisticsVariant*, LogisticsVariant* >			VARIANT_LIST;
-	typedef EList< LogisticsMech*, LogisticsMech* >					MECH_LIST;
-	typedef EList< LogisticsVehicle*, LogisticsVehicle* >			VEHICLE_LIST;
-	typedef EList< Building, const Building& >						BUILDING_LIST;
+	// The three by-value lists are APPEND-ONLY and filled once while the front-end data loads (initComponents, initPilots, addBuilding): an element address handed out
+	// by &(*it) (getFirstAvailablePilot, the component and building arrays, LogisticsMech::setPilot) stays valid because std::deque never relocates its elements
+	// on push_back / pop_back. Nothing erases from the middle. The only way to empty `pilots` is clearPilots(), which needs an empty inventory, because every mech
+	// holds a LogisticsPilot* into it. (B6 replaces the pointer by a pilot id.)
+	using COMPONENT_LIST = std::deque<LogisticsComponent>;
+	using PILOT_LIST = std::deque<LogisticsPilot>;
+	// Order is insertion order. variants and inventory lose elements through removeVariant / sellMech / the mech-list rewrites, which erase the pointer and delete the
+	// pointee themselves; vehicles are filled once at init.
+	using VARIANT_LIST = std::vector<LogisticsVariant*>;
+	using MECH_LIST = MechList;
+	using VEHICLE_LIST = std::vector<LogisticsVehicle*>;
+	using BUILDING_LIST = std::deque<Building>;
 	
 	VARIANT_LIST									variants;
 	MECH_LIST										inventory;
@@ -288,6 +296,7 @@ private:
 	// (second consumer). Called from initComponents + updateAvailability.
 	void appendEquipmentAddFillComponents();
 	void initPilots();
+	void clearPilots();   // empties `pilots`; the inventory must be empty first (see the list contract above)
 	void initVariants();
 	void initPhaseA();
 	bool m_phaseAComplete = false;

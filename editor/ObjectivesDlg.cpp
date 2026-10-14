@@ -48,13 +48,13 @@ void ObjectivesDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(ObjectivesDlg, CDialog)
 	//{{AFX_MSG_MAP(ObjectivesDlg)
-	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_BUTTON, OnObjectivesAddButton)
-	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_FROM_TEMPLATE_BUTTON, OnObjectivesAddFromTemplateButton)
-	ON_BN_CLICKED(IDC_OBJECTIVES_REMOVE_BUTTON, OnObjectivesRemoveButton)
-	ON_BN_CLICKED(IDC_OBJECTIVES_EDIT_BUTTON, OnObjectivesEditButton)
-	ON_BN_CLICKED(IDC_OBJECTIVES_COPY_BUTTON, OnObjectivesCopyButton)
-	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_UP_BUTTON, OnObjectivesMoveUpButton)
-	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_DOWN_BUTTON, OnObjectivesMoveDownButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_BUTTON, &ObjectivesDlg::OnObjectivesAddButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_FROM_TEMPLATE_BUTTON, &ObjectivesDlg::OnObjectivesAddFromTemplateButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_REMOVE_BUTTON, &ObjectivesDlg::OnObjectivesRemoveButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_EDIT_BUTTON, &ObjectivesDlg::OnObjectivesEditButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_COPY_BUTTON, &ObjectivesDlg::OnObjectivesCopyButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_UP_BUTTON, &ObjectivesDlg::OnObjectivesMoveUpButton)
+	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_DOWN_BUTTON, &ObjectivesDlg::OnObjectivesMoveDownButton)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -111,7 +111,7 @@ static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListB
 	CObjectives::EConstIterator it = pObjectives->Begin();
 	while (!it.IsDone())
 	{
-		EString tmpEStr;
+		std::string tmpEStr;
 		tmpEStr = _TEXT("[");
 		if (1 == (*it)->Priority()) {
 			tmpEStr += _TEXT("*");
@@ -136,7 +136,7 @@ static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListB
 		tmpEStr += _TEXT("] ");
 		tmpEStr += ((*it)->LocalizedTitle());
 		// At-a-glance validation warnings (data-only; read-only logic).
-		EString warnEStr;
+		std::string warnEStr;
 		bool firstWarn = true;
 		if ((*it)->Count() == 0) {
 			if (!firstWarn) { warnEStr += _TEXT("; "); }
@@ -149,16 +149,14 @@ static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListB
 			firstWarn = false;
 		}
 		if ((*it)->ActivateOnFlag()) {
-			const char *pActivateFlag = (*it)->ActivateFlagID().Data();
-			if ((0 == pActivateFlag) || (0 == pActivateFlag[0])) {
+			if ((*it)->ActivateFlagID().empty()) {
 				if (!firstWarn) { warnEStr += _TEXT("; "); }
 				warnEStr += _TEXT("unnamed activate flag");
 				firstWarn = false;
 			}
 		}
 		if ((*it)->ResetStatusOnFlag()) {
-			const char *pResetFlag = (*it)->ResetStatusFlagID().Data();
-			if ((0 == pResetFlag) || (0 == pResetFlag[0])) {
+			if ((*it)->ResetStatusFlagID().empty()) {
 				if (!firstWarn) { warnEStr += _TEXT("; "); }
 				warnEStr += _TEXT("unnamed reset flag");
 				firstWarn = false;
@@ -168,7 +166,7 @@ static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListB
 			tmpEStr += _TEXT("   <!> ");
 			tmpEStr += warnEStr;
 		}
-		pList->AddString(tmpEStr.Data());
+		pList->AddString(tmpEStr.c_str());
 		it++;
 	}
 }

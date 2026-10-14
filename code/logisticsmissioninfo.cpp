@@ -44,8 +44,7 @@ void LogisticsMissionInfo::clear()
 	{
 		for ( int i = 0; i < groupCount; i++ )
 		{
-			for ( MISSION_LIST::EIterator iter = groups[i].infos.Begin();
-			!iter.IsDone(); iter++ )
+			for ( auto iter = groups[i].infos.begin(); iter != groups[i].infos.end(); ++iter )
 			{
 				delete (*iter);
 			}
@@ -54,13 +53,12 @@ void LogisticsMissionInfo::clear()
 		delete [] groups;
 	}
 
-	for ( FILE_LIST::EIterator iter = additionalPurchaseFiles.Begin();
-	!iter.IsDone(); iter++ )
+	for ( auto iter = additionalPurchaseFiles.begin(); iter != additionalPurchaseFiles.end(); ++iter )
 	{
 		delete[] *iter;
 	}
 
-	additionalPurchaseFiles.Clear();
+	additionalPurchaseFiles.clear();
 
 
 
@@ -178,7 +176,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 				}
 
 				MissionInfo* pInfo = info.release();
-				groups[i].infos.Append( pInfo );
+				groups[i].infos.push_back( pInfo );
 
 				const std::string path = std::string( missionPath ) + *fileName + ".fit";
 
@@ -377,7 +375,13 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 		mc2::fmt::to_buf(header, "Mission{:d}", mc2::fmt::as_i32(i));
 		file.readIdLong( header, cnt );
 
-		MissionInfo* pInfo = pGroup->infos[(unsigned long)cnt];
+		MissionInfo* pInfo = pGroup->at( cnt );
+		if ( !pInfo )
+		{
+			// A save from another campaign, or a hand-edited one: the index names no mission of this group.
+			MC2_LOG(Io, Warn, "campaign save: completed mission index {} is not one of the {} missions of stage {}, skipped", cnt, std::ssize( pGroup->infos ), currentStage);
+			continue;
+		}
 
 		pInfo->completed = 1;
 		numberCompleted ++;
@@ -386,8 +390,8 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 
 	if ( numberCompleted >= pGroup->numberToBeCompleted  ) // unhide necessary missions
 	{
-		MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-		while( !iter.IsDone() )
+		auto iter = pGroup->infos.begin();
+		while ( iter != pGroup->infos.end() )
 		{
 			if ( (*iter)->hidden ) // use the hidden video file name for this
 			{
@@ -404,8 +408,8 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 
 
 
-	if ( count < pGroup->infos.Count() )
-		setNextMission( pGroup->infos[count]->fileName.c_str() );
+	if ( const MissionInfo* pNext = pGroup->at( count ) )
+		setNextMission( pNext->fileName.c_str() );
 
 
 	playerName = objective_text::readPlain( file, "PlayerName", MAX_PLAYER_NAME_LENGTH - 1 ).value_or( std::string() );
@@ -422,7 +426,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 			{
 				char* pfName = new char[strlen( tmp )+1 ];
 				strcpy( pfName, tmp );
-				additionalPurchaseFiles.Append( pfName );
+				additionalPurchaseFiles.push_back( pfName );
 				i++;
 			}
 			else
@@ -461,12 +465,12 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 		file.writeIdBoolean( "BigMoviePlayed", pGroup->bigVideoShown);
 
 		// write out the name of the mission, for ease of filling dialog
-		MissionInfo* pInfo = pGroup->infos[currentMission];
+		MissionInfo* pInfo = pGroup->mission(currentMission);
 		file.writeIdString( "MissionName", pInfo->missionDescriptiveName.c_str() );
 		file.writeIdString( "MissionFileName", pInfo->fileName.c_str() );
 
 		int curMission = 0;
-		for ( MISSION_LIST::EIterator iter = pGroup->infos.Begin(); !iter.IsDone(); iter++, curMission++ )
+		for ( auto iter = pGroup->infos.begin(); iter != pGroup->infos.end(); ++iter, curMission++ )
 		{
 			if ( (*iter)->completed )
 			{
@@ -482,7 +486,7 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 
 	file.writeBlock( "AdditionalPurchaseFiles" );
 	int i = 0;
-	for ( FILE_LIST::EIterator fIter = additionalPurchaseFiles.Begin(); !fIter.IsDone(); fIter++ )
+	for ( auto fIter = additionalPurchaseFiles.begin(); fIter != additionalPurchaseFiles.end(); ++fIter )
 	{
 		mc2::fmt::to_buf(header, "File{:d}", mc2::fmt::as_i32(i));
 

@@ -5413,7 +5413,7 @@
    ]
   },
   "SortList": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "code/ablmc2_camera.cpp": {
@@ -5425,19 +5425,11 @@
     },
     "code/mover_init.cpp": {
      "new": 1
-    },
-    "code/warrior.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/warrior_state.cpp": {
-     "new": 1
     }
    },
-   "new": 6,
+   "new": 4,
    "new_array": 0,
    "owners": [
-    "MechWarrior",
     "SensorSystem"
    ]
   },

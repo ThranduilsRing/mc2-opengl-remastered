@@ -27,6 +27,7 @@
 // True for automated launches (MC2_NO_ACTIVATE=1 or MC2_WINDOW_OFFSCREEN=1): the editor must come up
 // without taking the foreground or focus.
 bool EditorBackgroundLaunch();
+void EditorSmokePanelFact(const char* workflow, const char* panel, bool ok, bool modelOnly = false);
 
 /////////////////////////////////////////////////////////////////////////////
 // EditorMFCApp:

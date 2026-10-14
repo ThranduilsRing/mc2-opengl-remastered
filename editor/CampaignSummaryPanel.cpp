@@ -45,6 +45,21 @@ void CampaignSummaryPanel::Close()  { s_open = false; }
 void CampaignSummaryPanel::Toggle() { s_open = !s_open; }
 bool CampaignSummaryPanel::IsOpen() { return s_open; }
 
+bool CampaignSummaryPanel::Load(const char* path)
+{
+    CCampaignData fresh;
+    if (!fresh.Read(path))
+    {
+        std::snprintf(s_status, sizeof(s_status), "Failed to read: %s", path);
+        return false;
+    }
+    s_campaign = fresh;
+    s_loaded = true;
+    std::snprintf(s_loadedPath, sizeof(s_loadedPath), "%s", path);
+    std::snprintf(s_status, sizeof(s_status), "Loaded: %s", s_loadedPath);
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -154,20 +169,7 @@ void CampaignSummaryPanel::Draw()
         char path[1024] = "";
         if (campBrowseForFile("Campaign (*.fit)\0*.fit\0All\0*.*\0", path, sizeof(path)))
         {
-            // Fresh copy each load (Read appends groups onto m_GroupList).
-            CCampaignData fresh;
-            if (fresh.Read(path))
-            {
-                s_campaign = fresh;
-                s_loaded = true;
-                strncpy(s_loadedPath, path, sizeof(s_loadedPath) - 1);
-                s_loadedPath[sizeof(s_loadedPath) - 1] = '\0';
-                std::snprintf(s_status, sizeof(s_status), "Loaded: %s", s_loadedPath);
-            }
-            else
-            {
-                std::snprintf(s_status, sizeof(s_status), "Failed to read: %s", path);
-            }
+            Load(path);
         }
     }
     if (s_status[0])

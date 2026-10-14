@@ -1,0 +1,241 @@
+--- mc2_05.input.fit
++++ mc2_05.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 270.000000
+ f DayToNightTime = 864000.000000
+ f LightDirYaw = 15.000000
+-f NewScale = 0.596763
++f NewScale = 0.828624
+ f StartRotation = -176.750000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -340,9 +340,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 9
+ ul NumAlternatives = 0
+@@ -373,9 +373,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 10
+ ul NumAlternatives = 0
+@@ -406,9 +406,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 11
+ ul NumAlternatives = 0
+@@ -439,9 +439,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 12
+ ul NumAlternatives = 0
+@@ -472,8 +472,8 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 13
+@@ -505,9 +505,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 14
+ ul NumAlternatives = 0
+@@ -670,8 +670,8 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 20
+@@ -736,8 +736,8 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 22
+@@ -769,9 +769,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 23
+ ul NumAlternatives = 0
+@@ -802,8 +802,8 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 24
+@@ -868,9 +868,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 26
+ ul NumAlternatives = 0
+@@ -901,9 +901,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 27
+ ul NumAlternatives = 0
+@@ -967,8 +967,8 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 29
+@@ -1000,9 +1000,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 30
+ ul NumAlternatives = 0
+@@ -1033,9 +1033,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 31
+ ul NumAlternatives = 0
+@@ -1066,9 +1066,9 @@
+ ul HighlightColor1 = -736630
+ ul HighlightColor2 = -2199521
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 32
+ ul NumAlternatives = 0
+@@ -1892,7 +1892,7 @@
+ [Team0Objective0Condition0]
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+-f PositionX = 3776.000244
++f PositionX = 3776.000000
+ f PositionY = -3818.666992
+ ul CellX = 269
+ ul CellY = 268
+@@ -1975,7 +1975,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = -2368.000000
+-f PositionY = 2026.666626
++f PositionY = 2026.666504
+ ul CellX = 132
+ ul CellY = 124
+ ul Commander = 1
+@@ -2016,7 +2016,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = -4288.000000
+-f PositionY = -3562.666748
++f PositionY = -3562.666992
+ ul CellX = 263
+ ul CellY = 79
+ ul Commander = 1

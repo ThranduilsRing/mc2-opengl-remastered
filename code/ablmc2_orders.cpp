@@ -1,6 +1,19 @@
 // ABL native bindings: movement/attack orders and the core* tactical order bindings.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 
 
 void execGetObjects (void) {
@@ -12,15 +25,14 @@ void execGetObjects (void) {
 	//		RETURN: integer			num objects in unit
 
 	long criteria = ABLi_popInteger();
-	int* objList = ABLi_popIntegerPtr();
-
-	if (s_ablArgGuard && !objList) {
-		abl_arg_guard_log("execGetObjects", "objList");
-		ABLi_pushInteger(0);
-		return;
-	}
+	const auto output = ABLi_popIntBuf();
 
 	long numObjects = 0;
+	const auto append = [&](int id) {
+		if (static_cast<size_t>(numObjects) < output.size()) output[numObjects] = id;
+		++numObjects;
+	};
+	if (!ObjectManager) { ABLi_pushInteger(0); return; }
 	switch (criteria) {
 		case 0: {
 			// MOVERS
@@ -28,7 +40,7 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				MoverPtr mover = ObjectManager->getMover(i);
 				if (mover && mover->getExists())
-					objList[numObjects++] = mover->getPartId();
+					append(mover->getPartId());
 			}
 			}
 			break;
@@ -38,7 +50,7 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				TerrainObjectPtr terObj = ObjectManager->getTerrainObject(i);
 				if (terObj) {
-					objList[numObjects++] = terObj->getPartId();
+					append(terObj->getPartId());
 				}
 			}
 			}
@@ -49,7 +61,7 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				BuildingPtr building = ObjectManager->getBuilding(i);
 				if (building) {
-					objList[numObjects++] = building->getPartId();
+					append(building->getPartId());
 				}
 			}
 			}
@@ -60,7 +72,7 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				TurretPtr turret = ObjectManager->getTurret(i);
 				if (turret) {
-					objList[numObjects++] = turret->getPartId();
+					append(turret->getPartId());
 				}
 			}
 			}
@@ -71,7 +83,7 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				GatePtr gate = ObjectManager->getGate(i);
 				if (gate) {
-					objList[numObjects++] = gate->getPartId();
+					append(gate->getPartId());
 				}
 			}
 			}
@@ -82,35 +94,35 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				TerrainObjectPtr terObj = ObjectManager->getTerrainObject(i);
 				if (terObj) {
-					objList[numObjects++] = terObj->getPartId();
+					append(terObj->getPartId());
 				}
 			}
 			listSize = ObjectManager->getNumBuildings();
 			for (int i = 0; i < listSize; i++) {
 				BuildingPtr building = ObjectManager->getBuilding(i);
 				if (building) {
-					objList[numObjects++] = building->getPartId();
+					append(building->getPartId());
 				}
 			}
 			listSize = ObjectManager->getNumTurrets();
 			for (int i = 0; i < listSize; i++) {
 				TurretPtr turret = ObjectManager->getTurret(i);
 				if (turret) {
-					objList[numObjects++] = turret->getPartId();
+					append(turret->getPartId());
 				}
 			}
 			listSize = ObjectManager->getNumGates();
 			for (int i = 0; i < listSize; i++) {
 				GatePtr gate = ObjectManager->getGate(i);
 				if (gate) {
-					objList[numObjects++] = gate->getPartId();
+					append(gate->getPartId());
 				}
 			}
 			}
 			break;
 	}
 	
-	ABLi_pushInteger(numObjects);
+	ABLi_pushInteger(abl::clampArrayCount(numObjects, output.size(), "getobjects_truncated"));
 }
 
 void execOrderWait (void) {

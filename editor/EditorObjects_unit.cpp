@@ -36,6 +36,7 @@ Unit::Unit( const Unit& src ) : EditorObject( src )
 	if ( &src != this )
 	{
 		brain = src.brain;
+		authoredPart = src.authoredPart;
 		lance = src.lance;
 		lanceIndex = src.lanceIndex;
 		pilot = src.pilot;
@@ -55,8 +56,6 @@ Unit::Unit( const Unit& src ) : EditorObject( src )
 		strncpy( brainFsm, src.brainFsm, sizeof( brainFsm ) ); brainFsm[sizeof( brainFsm ) - 1] = 0;
 		brainBehavior = src.brainBehavior;
 	}
-
-	variant = 0;
 }
 
 void Unit::CastAndCopy(const EditorObject &master)
@@ -73,22 +72,22 @@ void Unit::CastAndCopy(const EditorObject &master)
 	}
 }
 
-bool Unit::save( FitIniFile* file, int WarriorNumber )
+void Unit::refreshPartFromCatalog()
 {
-	
-	bool bIsVehicle = dynamic_cast<GVAppearance*>(appearance()) ? true : false;
-	
-	if ( !bIsVehicle )
-		return Unit::save( file, WarriorNumber, 1, appearance()->teamId == EDITOR_TEAM1 ?
-		"PM207300" : "PM101100" );
-
-	else
-		return Unit::save( file, WarriorNumber, 2, 
-		appearance()->teamId == EDITOR_TEAM1 ? "pv20600" : "pv20500" );
+	const bool vehicle = dynamic_cast<GVAppearance*>(appearance()) != nullptr;
+	const bool player = appearance()->teamId == EDITOR_TEAM1;
+	const char* csv = EditorObjectMgr::instance()->getFileName(id);
+	authoredPart = PartDefinition{vehicle ? 2ul : 1ul,
+		vehicle ? (player ? "pv20600" : "pv20500") : (player ? "PM207300" : "PM101100"), csv ? csv : ""};
+	for (auto it = pAlternativeInstances->Begin(); !it.IsDone(); it++)
+		(*it).refreshPartFromCatalog();
 }
 
-bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const char* objectProfile )
+bool Unit::save( FitIniFile* file, int WarriorNumber )
 {
+	if (!authoredPart) return EditorFit::reject("Part definition missing");
+	const auto& definition = *authoredPart;
+	const char* objectProfile = definition.objectProfile.c_str();
 	if (mechAsset)
 	{
 		const char * iniFilename = EditorObjectMgr::instance()->getFileName( id );
@@ -114,22 +113,18 @@ bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const
 
 		mechAsset->AddProperty("Type", "Warrior");
 
-		strcpy(buf, "Data\\Missions\\Profiles\\");
-		strcat(buf, objectProfile);
-		strcat(buf, ".fit");
-		mechAsset->AddRelationship("ObjectProfile", buf);
+		const std::string profilePath = std::string("Data\\Missions\\Profiles\\") + objectProfile + ".fit";
+		mechAsset->AddRelationship("ObjectProfile", profilePath.c_str());
 
-		// iniFilename may be NULL for units whose type ID isn't in the editor
-		// object database (e.g. a mech type not present in the current mod
-		// config).  Guard both CSVFile and AppearanceFile relationships with
-		// the same null check that already guards the TGL block above.
+		// Asset links use the authored CSV identity too, so catalog refresh stays
+		// an explicit authoring decision even for asset-provider metadata.
+		if (!definition.csvFile.empty())
+		{
+			const std::string csvPath = std::string("Data\\Objects\\") + definition.csvFile + ".csv";
+			mechAsset->AddRelationship("CSVFile", csvPath.c_str());
+		}
 		if (iniFilename && iniFilename[0])
 		{
-			strcpy(buf, "Data\\Objects\\");
-			strcat(buf, iniFilename);
-			strcat(buf, ".cvs");
-			mechAsset->AddRelationship("CSVFile", buf);
-
 			strcpy(buf, "Data\\TGL\\");
 			strcat(buf, iniFilename);
 			strcat(buf, ".ini");
@@ -169,11 +164,9 @@ bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const
 	}
 	file->writeIdULong( "SelfRepairBehavior", tmpULong );
 
-	file->writeIdULong( "ControlDataType", controlDataType );
+	file->writeIdULong( "ControlDataType", definition.controlDataType );
 	file->writeIdString( "ObjectProfile", objectProfile );
-	// getFileName may return NULL for unknown object type IDs — write empty string rather than crash.
-	const char* csvFileName = EditorObjectMgr::instance()->getFileName( id );
-	file->writeIdString( "CSVFile", csvFileName ? csvFileName : "" );
+	file->writeIdString( "CSVFile", definition.csvFile.c_str() );
 	file->writeIdULong( "VariantNumber", variant );
 
 	file->writeIdULong( "SquadNum", getSquad() );
@@ -201,6 +194,14 @@ bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const
 
 bool Unit::load( FitIniFile* file, int warriorNumber )
 {
+	PartDefinition definition;
+	long control = 0;
+	if (!EditorFit::longValue(*file, "ControlDataType", control, true)
+		|| !EditorFit::stringValue(*file, "ObjectProfile", definition.objectProfile)
+		|| !EditorFit::stringValue(*file, "CSVFile", definition.csvFile))
+		return EditorFit::reject("Part control/profile/CSVFile");
+	definition.controlDataType = static_cast<unsigned long>(control);
+	authoredPart = std::move(definition);
 	long result = 0;
 	char tmp;
 	file->readIdChar( "CommanderID", tmp );
@@ -249,11 +250,17 @@ bool Unit::load( FitIniFile* file, int warriorNumber )
 	}
 
 	tmpNumAlternativeInstances = 0;
-	file->readIdULong( "NumAlternatives", tmpNumAlternativeInstances );
+	long alternatives = 0;
+	if (!EditorFit::longValue(*file, "NumAlternatives", alternatives, true) || alternatives > 15)
+		return EditorFit::reject("Part alternative count");
+	tmpNumAlternativeInstances = static_cast<unsigned long>(alternatives);
 	tmpAlternativeStartIndex = 0;
 	if (0 < tmpNumAlternativeInstances)
 	{
-		file->readIdULong( "AlternativeStartIndex", tmpAlternativeStartIndex );
+		long start = 0;
+		if (!EditorFit::longValue(*file, "AlternativeStartIndex", start, true) || start == 0)
+			return EditorFit::reject("Part alternative index");
+		tmpAlternativeStartIndex = static_cast<unsigned long>(start);
 	}
 
 	// Patrol/Move order authoring (additive — absent in stock missions; defaults
@@ -323,6 +330,7 @@ Unit& Unit::operator=( const Unit& src )
 	if ( &src != this )
 	{
 		brain = src.brain;
+		authoredPart = src.authoredPart;
 		lance = src.lance;
 		lanceIndex = src.lanceIndex;
 		pilot = src.pilot;

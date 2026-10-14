@@ -628,6 +628,7 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	gosASSERT((8 > alignment) && (-1 <= alignment));
     Stuff::Vector3D pos = bSnapToCell ? realPos : position;
 	info->appearance()->setObjectParameters( pos, 0, false, alignment,homeRelations[alignment+1]);
+	if (auto* unit = dynamic_cast<Unit*>(info)) unit->refreshPartFromCatalog();
 
 	eye->update();
 	info->appearance()->update();

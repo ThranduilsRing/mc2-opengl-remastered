@@ -19,6 +19,7 @@ public:
     static void Close();
     static void Toggle();
     static bool IsOpen();
+    static bool Load(const char* path);
 
     // Draw the floating panel each frame from renderToolbarImGui().
     // No-op cheaply when closed. Read-only.

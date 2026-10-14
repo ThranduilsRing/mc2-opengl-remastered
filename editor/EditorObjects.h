@@ -16,6 +16,8 @@ class FitIniFile;
 #include "ObjectAppearance.h"
 
 #include <vector>
+#include <cstdint>
+#include "AuthoredMissionState.h"
 #include <string.h> // PILOT-PROFILE-PRESERVE-1: strncpy in Pilot::syncRawProfile
 
 #ifndef HEAP_H
@@ -51,6 +53,7 @@ public:
 	
 	unsigned long		getColor() const;
 	long				getID() const { return  id; }
+	std::uint64_t instanceId() const { return objectInstanceId; }
 
 	void				getCells( long& cellJ, long& cellI ) const;
 	
@@ -118,6 +121,8 @@ protected:
 	long	cellColumn;
 	long	cellRow;
 	long	id;
+	// Instance identity survives undo snapshots; catalog IDs identify types only.
+	std::uint64_t objectInstanceId;
 	AppearanceInfo* appearInfo;
 	long	forestId;
 	long	scale; // forest only
@@ -248,6 +253,9 @@ public:
 
 	bool save( FitIniFile* file, int warriorNumber ) override;
 	bool load( FitIniFile* file, int warriorNumber ) override;
+	const std::optional<PartDefinition>& partDefinition() const { return authoredPart; }
+	void restorePartDefinition(std::optional<PartDefinition> definition) { authoredPart = std::move(definition); }
+	void refreshPartFromCatalog();
 
 	void getColors( unsigned long& base, unsigned long& color1, unsigned long& color2 ) const;
 	void setColors( unsigned long base, unsigned long color1, unsigned long color2 );
@@ -304,7 +312,7 @@ public:
 
 protected:
 
-	bool save( FitIniFile* file, int WarriorNumber, int controlDataType, const char* objectProfile );
+	std::optional<PartDefinition> authoredPart;
 
 	Brain brain;
 	bool selfRepairBehaviorEnabled;
@@ -356,6 +364,11 @@ class NavMarker : public EditorObject
 		NavMarker();
 		EditorObject *Clone() override { return(new NavMarker(*this)); }
 		bool save( FitIniFile* file, int number ) override;
+		bool readDefinition(FitIniFile& file);
+		void CastAndCopy(const EditorObject& master) override;
+	private:
+		AuthoredTargetPosition authoredPosition;
+		float radius = 256.0f;
 
 };
 

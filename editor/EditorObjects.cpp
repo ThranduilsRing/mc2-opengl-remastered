@@ -52,6 +52,8 @@ void EditorObject::operator delete (void *us)
 
 EditorObject::EditorObject()
 {
+	static std::uint64_t nextInstanceId = 0;
+	objectInstanceId = ++nextInstanceId;
 	appearInfo = new AppearanceInfo();
 	appearInfo->appearance = nullptr;
 	appearInfo->refCount = 1;
@@ -68,6 +70,7 @@ EditorObject::EditorObject( const EditorObject& src )
 		cellColumn = src.cellColumn;
 		cellRow = src.cellRow;
 		id = src.id;
+		objectInstanceId = src.objectInstanceId;
 		forestId = src.forestId;
 		scale = src.scale;
 	}
@@ -99,6 +102,7 @@ EditorObject& EditorObject::operator=( const EditorObject& src )
 		cellColumn = src.cellColumn;
 		cellRow = src.cellRow;
 		id = src.id;
+		objectInstanceId = src.objectInstanceId;
 		forestId = src.forestId;
 		scale = src.scale;
 	}

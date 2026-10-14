@@ -1439,7 +1439,7 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
 
     // A sleeping Sentry only engages once a detected enemy has woken it (WakeOnAttack).
     if (runtime->sentryAsleep && !runtime->sentryWoken) {
-        int wcl[8]; long wn = veh->getContacts(wcl, (1 | 64), 0);
+        int wcl[MAX_CONTACTS_PER_TEAM]; long wn = veh->getContacts(wcl, (1 | 64), 0);   // getContacts writes every valid contact
         if (wn <= 0) return false;                  // still asleep, nothing detected
         runtime->sentryWoken = true;
         std::fprintf(stderr, "[BRAIN_SENTRY_WAKE] wid=%d\n", wid);
@@ -1456,7 +1456,7 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     long teamContacts = 0;
     float tcNear = -1.0f;
     {
-        int cl[MAX_CONTACTS_PER_SENSOR];
+        int cl[MAX_CONTACTS_PER_TEAM];
         teamContacts = veh->getContacts(cl, (1 | 64), CONTACT_SORT_DISTANCE);  // ENEMY|NOT_DISABLED, nearest first
         if (teamContacts > 0) {
             GameObjectPtr c0 = ObjectManager->get(cl[0]);                       // contact list holds handles

@@ -8,8 +8,10 @@ Objective.h			: Interface for the Objective component.
 \*************************************************************************************************/
 
 #include "elist.h"
-#include "EString.h"
+#include <string>
+#include <utility>
 #include "tchar.h"
+#include "AuthoredMissionState.h"
 
 class EditorObject;
 class Unit;
@@ -104,8 +106,8 @@ public:
 	virtual bool Save( FitIniFile* file ) { return true; }
 	virtual bool EditDialog() { return true; }
 	virtual void WriteAbl() {}
-	virtual EString Description() = 0;
-	virtual EString InstanceDescription() { EString retval; return retval; }
+	virtual std::string Description() = 0;
+	virtual std::string InstanceDescription() { return {}; }
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*pMaster); }
 	virtual bool RefersTo(const EditorObject *pObj) { return false; }
 	virtual bool NoteThePositionsOfObjectsReferenced() { return true; }
@@ -116,7 +118,7 @@ class CDestroyAllEnemyUnits: public CObjectiveCondition {
 public:
 	CDestroyAllEnemyUnits(int alignment) : CObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DESTROY_ALL_ENEMY_UNITS; }
-	EString Description();
+	std::string Description();
 };
 
 class CNumberOfEnemyUnitsObjectiveCondition: public CObjectiveCondition { /*abstract class*/
@@ -128,7 +130,7 @@ public:
 	virtual bool Read( FitIniFile* missionFile );
 	virtual bool Save( FitIniFile* file );
 	virtual bool EditDialog();
-	virtual EString InstanceDescription();
+	virtual std::string InstanceDescription();
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CNumberOfEnemyUnitsObjectiveCondition *>(pMaster))); }
 	int Num() { return m_num; }   // readable-line accessor (additive)
 	void Num(int v) { m_num = v; }   // template-preset setter (additive)
@@ -138,11 +140,12 @@ class CDestroyNumberOfEnemyUnits: public CNumberOfEnemyUnitsObjectiveCondition {
 public:
 	CDestroyNumberOfEnemyUnits(int alignment) : CNumberOfEnemyUnitsObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DESTROY_NUMBER_OF_ENEMY_UNITS; }
-	EString Description();
+	std::string Description();
 };
 
 class CSpecificUnitObjectiveCondition: public CObjectiveCondition { /*abstract class*/
 protected:
+	AuthoredTargetPosition m_authoredPosition;
 	Unit *m_pUnit;
 	float m_LastNotedPositionX;
 	float m_LastNotedPositionY;
@@ -152,7 +155,7 @@ public:
 	virtual bool Read( FitIniFile* missionFile );
 	virtual bool Save( FitIniFile* file );
 	virtual bool EditDialog();
-	virtual EString InstanceDescription();
+	virtual std::string InstanceDescription();
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CSpecificUnitObjectiveCondition *>(pMaster))); }
 	virtual bool RefersTo(const EditorObject *pObj) { return (pObj == ((const EditorObject *)m_pUnit)); }
 	virtual bool NoteThePositionsOfObjectsReferenced();
@@ -161,7 +164,7 @@ public:
 	Unit *UnitPtr() { return m_pUnit; }
 	float NotedX() { return m_LastNotedPositionX; }
 	float NotedY() { return m_LastNotedPositionY; }
-	EString ReadableTarget();
+	std::string ReadableTarget();
 };
 
 class CSpecificEnemyUnitObjectiveCondition: public CSpecificUnitObjectiveCondition { /*abstract class*/
@@ -179,11 +182,12 @@ class CDestroySpecificEnemyUnit: public CSpecificEnemyUnitObjectiveCondition {
 public:
 	CDestroySpecificEnemyUnit(int alignment) : CSpecificEnemyUnitObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DESTROY_SPECIFIC_ENEMY_UNIT; }
-	EString Description();
+	std::string Description();
 };
 
 class CSpecificStructureObjectiveCondition: public CObjectiveCondition { /*abstract class*/
 protected:
+	AuthoredTargetPosition m_authoredPosition;
 	EditorObject *m_pBuilding;
 	float m_LastNotedPositionX;
 	float m_LastNotedPositionY;
@@ -193,7 +197,7 @@ public:
 	virtual bool Read( FitIniFile* missionFile );
 	virtual bool Save( FitIniFile* file );
 	virtual bool EditDialog();
-	virtual EString InstanceDescription();
+	virtual std::string InstanceDescription();
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CSpecificStructureObjectiveCondition *>(pMaster))); }
 	virtual bool RefersTo(const EditorObject *pObj) { return (pObj == m_pBuilding); }
 	virtual bool NoteThePositionsOfObjectsReferenced();
@@ -202,7 +206,7 @@ public:
 	EditorObject *BuildingPtr() { return m_pBuilding; }
 	float NotedX() { return m_LastNotedPositionX; }
 	float NotedY() { return m_LastNotedPositionY; }
-	EString ReadableTarget();
+	std::string ReadableTarget();
 };
 
 class CSpecificEnemyStructureObjectiveCondition: public CSpecificStructureObjectiveCondition { /*abstract class*/
@@ -219,7 +223,7 @@ class CDestroySpecificStructure: public CSpecificEnemyStructureObjectiveConditio
 public:
 	CDestroySpecificStructure(int alignment) : CSpecificEnemyStructureObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DESTROY_SPECIFIC_STRUCTURE; }
-	EString Description();
+	std::string Description();
 };
 
 class CCaptureOrDestroyAllEnemyUnits: public CObjectiveCondition {
@@ -228,7 +232,7 @@ class CCaptureOrDestroyAllEnemyUnits: public CObjectiveCondition {
 public:
 	CCaptureOrDestroyAllEnemyUnits(int alignment) : CObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS; }
-	EString Description();
+	std::string Description();
 };
 
 class CCaptureOrDestroyNumberOfEnemyUnits: public CNumberOfEnemyUnitsObjectiveCondition {
@@ -237,70 +241,70 @@ class CCaptureOrDestroyNumberOfEnemyUnits: public CNumberOfEnemyUnitsObjectiveCo
 public:
 	CCaptureOrDestroyNumberOfEnemyUnits(int alignment) : CNumberOfEnemyUnitsObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS; }
-	EString Description();
+	std::string Description();
 };
 
 class CCaptureOrDestroySpecificEnemyUnit: public CSpecificEnemyUnitObjectiveCondition {
 public:
 	CCaptureOrDestroySpecificEnemyUnit(int alignment) : CSpecificEnemyUnitObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT; }
-	EString Description();
+	std::string Description();
 };
 
 class CCaptureOrDestroySpecificStructure: public CSpecificEnemyStructureObjectiveCondition {
 public:
 	CCaptureOrDestroySpecificStructure(int alignment) : CSpecificEnemyStructureObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE; }
-	EString Description();
+	std::string Description();
 };
 
 class CDeadOrFledAllEnemyUnits: public CObjectiveCondition {
 public:
 	CDeadOrFledAllEnemyUnits(int alignment) : CObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DEAD_OR_FLED_ALL_ENEMY_UNITS; }
-	EString Description();
+	std::string Description();
 };
 
 class CDeadOrFledNumberOfEnemyUnits: public CNumberOfEnemyUnitsObjectiveCondition {
 public:
 	CDeadOrFledNumberOfEnemyUnits(int alignment) : CNumberOfEnemyUnitsObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS; }
-	EString Description();
+	std::string Description();
 };
 
 class CDeadOrFledSpecificEnemyUnit: public CSpecificEnemyUnitObjectiveCondition {
 public:
 	CDeadOrFledSpecificEnemyUnit(int alignment) : CSpecificEnemyUnitObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT; }
-	EString Description();
+	std::string Description();
 };
 
 class CCaptureUnit: public CSpecificEnemyUnitObjectiveCondition {
 public:
 	CCaptureUnit(int alignment) : CSpecificEnemyUnitObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return CAPTURE_UNIT; }
-	EString Description();
+	std::string Description();
 };
 
 class CCaptureStructure: public CSpecificEnemyStructureObjectiveCondition {
 public:
 	CCaptureStructure(int alignment) : CSpecificEnemyStructureObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return CAPTURE_STRUCTURE; }
-	EString Description();
+	std::string Description();
 };
 
 class CGuardSpecificUnit: public CSpecificAlliedUnitObjectiveCondition {
 public:
 	CGuardSpecificUnit(int alignment) : CSpecificAlliedUnitObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return GUARD_SPECIFIC_UNIT; }
-	EString Description();
+	std::string Description();
 };
 
 class CGuardSpecificStructure: public CSpecificAlliedStructureObjectiveCondition {
 public:
 	CGuardSpecificStructure(int alignment) : CSpecificAlliedStructureObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return GUARD_SPECIFIC_STRUCTURE; }
-	EString Description();
+	std::string Description();
 };
 
 class CAreaObjectiveCondition: public CObjectiveCondition { /*abstract class*/
@@ -314,7 +318,7 @@ public:
 	virtual bool Read( FitIniFile* missionFile );
 	virtual bool Save( FitIniFile* file );
 	virtual bool EditDialog();
-	virtual EString InstanceDescription();
+	virtual std::string InstanceDescription();
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CAreaObjectiveCondition *>(pMaster))); }
 	// readable-line + picker accessors (additive).
 	float TargetCenterX() { return m_targetCenterX; }
@@ -332,33 +336,33 @@ class CMoveAnyUnitToArea: public CAreaObjectiveCondition {
 public:
 	CMoveAnyUnitToArea(int alignment) : CAreaObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return MOVE_ANY_UNIT_TO_AREA; }
-	EString Description();
+	std::string Description();
 };
 
 class CMoveAllUnitsToArea: public CAreaObjectiveCondition {
 public:
 	CMoveAllUnitsToArea(int alignment) : CAreaObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return MOVE_ALL_UNITS_TO_AREA; }
-	EString Description();
+	std::string Description();
 };
 
 class CMoveAllSurvivingUnitsToArea: public CAreaObjectiveCondition {
 public:
 	CMoveAllSurvivingUnitsToArea(int alignment) : CAreaObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return MOVE_ALL_SURVIVING_UNITS_TO_AREA; }
-	EString Description();
+	std::string Description();
 };
 
 class CMoveAllSurvivingMechsToArea: public CAreaObjectiveCondition {
 public:
 	CMoveAllSurvivingMechsToArea(int alignment) : CAreaObjectiveCondition(alignment) {}
 	condition_species_type Species() const { return MOVE_ALL_SURVIVING_MECHS_TO_AREA; }
-	EString Description();
+	std::string Description();
 };
 
 class CBooleanFlagIsSet: public CObjectiveCondition {
 protected:
-	EString m_flagID;
+	std::string m_flagID;
 	bool m_value;
 public:
 	CBooleanFlagIsSet(int alignment) : CObjectiveCondition(alignment) { m_flagID = _TEXT("flag0"); m_value = true; }
@@ -367,10 +371,10 @@ public:
 	bool Read( FitIniFile* missionFile );
 	bool Save( FitIniFile* file );
 	bool EditDialog();
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CBooleanFlagIsSet *>(pMaster))); }
-	const char *FlagID() { return m_flagID.Data(); }   // readable-line accessors (additive)
+	const std::string& FlagID() const { return m_flagID; }
 	bool FlagValue() { return m_value; }
 };
 
@@ -384,8 +388,8 @@ public:
 	bool Read( FitIniFile* missionFile );
 	bool Save( FitIniFile* file );
 	bool EditDialog();
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CElapsedMissionTime *>(pMaster))); }
 	float Time() { return m_time; }   // readable-line accessor (additive)
 };
@@ -426,14 +430,14 @@ public:
 	virtual bool Save( FitIniFile* file ) = 0;
 	virtual bool EditDialog() = 0;
 	virtual void WriteAbl() = 0;
-	virtual EString Description() = 0;
-	virtual EString InstanceDescription() { EString retval; return retval; }
+	virtual std::string Description() = 0;
+	virtual std::string InstanceDescription() { return {}; }
 	virtual void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*pMaster); }
 };
 
 class CPlayBIK: public CObjectiveAction {
 private:
-	EString m_pathname;
+	std::string m_pathname;
 public:
 	CPlayBIK(int alignment) : CObjectiveAction(alignment) {}
 	bool operator==(const CObjectiveAction &rhs) const;
@@ -443,15 +447,15 @@ public:
 	bool Save( FitIniFile* file );
 	bool EditDialog();
 	void WriteAbl() {};
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*(dynamic_cast<const CPlayBIK *>(pMaster))); }
-	const char *Pathname() { return m_pathname.Data(); }   // readable-line accessor (additive)
+	const std::string& Pathname() const { return m_pathname; }
 };
 
 class CPlayWAV: public CObjectiveAction {
 private:
-	EString m_pathname;
+	std::string m_pathname;
 public:
 	CPlayWAV(int alignment) : CObjectiveAction(alignment) {}
 	bool operator==(const CObjectiveAction &rhs) const;
@@ -461,15 +465,15 @@ public:
 	bool Save( FitIniFile* file );
 	bool EditDialog();
 	void WriteAbl() {};
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*(dynamic_cast<const CPlayWAV *>(pMaster))); }
-	const char *Pathname() { return m_pathname.Data(); }   // readable-line accessor (additive)
+	const std::string& Pathname() const { return m_pathname; }
 };
 
 class CDisplayTextMessage: public CObjectiveAction {
 private:
-	EString m_message;
+	std::string m_message;
 public:
 	CDisplayTextMessage(int alignment) : CObjectiveAction(alignment) {}
 	bool operator==(const CObjectiveAction &rhs) const;
@@ -479,10 +483,10 @@ public:
 	bool Save( FitIniFile* file );
 	bool EditDialog();
 	void WriteAbl() {};
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*(dynamic_cast<const CDisplayTextMessage *>(pMaster))); }
-	const char *Message() { return m_message.Data(); }   // readable-line accessor (additive)
+	const std::string& Message() const { return m_message; }
 };
 
 class CDisplayResourceTextMessage: public CObjectiveAction {
@@ -497,15 +501,15 @@ public:
 	bool Save( FitIniFile* file );
 	bool EditDialog();
 	void WriteAbl() {};
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*(dynamic_cast<const CDisplayResourceTextMessage *>(pMaster))); }
 	int ResourceStringID() { return m_resourceStringID; }   // readable-line accessor (additive)
 };
 
 class CSetBooleanFlag: public CObjectiveAction {
 private:
-	EString m_flagID;
+	std::string m_flagID;
 	bool m_value;
 public:
 	CSetBooleanFlag(int alignment) : CObjectiveAction(alignment) { m_flagID = _TEXT("flag0"); m_value = true; }
@@ -516,16 +520,16 @@ public:
 	bool Save( FitIniFile* file );
 	bool EditDialog();
 	void WriteAbl() {};
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*(dynamic_cast<const CSetBooleanFlag *>(pMaster))); }
-	const char *FlagID() { return m_flagID.Data(); }   // readable-line accessors (additive)
+	const std::string& FlagID() const { return m_flagID; }
 	bool FlagValue() { return m_value; }
 };
 
 class CMakeNewTechnologyAvailable: public CObjectiveAction {
 private:
-	EString m_purchaseFilePathname;
+	std::string m_purchaseFilePathname;
 public:
 	CMakeNewTechnologyAvailable(int alignment) : CObjectiveAction(alignment) {}
 	bool operator==(const CObjectiveAction &rhs) const;
@@ -535,10 +539,10 @@ public:
 	bool Save( FitIniFile* file );
 	bool EditDialog();
 	void WriteAbl() {};
-	EString Description();
-	EString InstanceDescription();
+	std::string Description();
+	std::string InstanceDescription();
 	void CastAndCopy(const CObjectiveAction *pMaster) { (*this) = (*(dynamic_cast<const CMakeNewTechnologyAvailable *>(pMaster))); }
-	const char *PurchaseFile() { return m_purchaseFilePathname.Data(); }   // readable-line accessor (additive)
+	const std::string& PurchaseFile() const { return m_purchaseFilePathname; }
 };
 
 class  CObjectiveConditionList : public EList <CObjectiveCondition *, CObjectiveCondition *> {
@@ -561,10 +565,10 @@ class CObjective : public/*maybe protected*/ CObjectiveConditionList {
 private:
 	typedef CObjectiveConditionList inherited;
 	int m_alignment;
-	EString m_title;
+	std::string m_title;
 	bool m_titleUseResourceString;
 	int m_titleResourceStringID;
-	EString m_description;
+	std::string m_description;
 	bool m_descriptionUseResourceString;
 	int m_descriptionResourceStringID;
 	int m_priority;
@@ -576,19 +580,20 @@ private:
 	float m_markerY;
 	bool m_isHiddenTrigger;
 	bool m_activateOnFlag;
-	EString m_activateFlagID;
+	std::string m_activateFlagID;
 	bool m_resetStatusOnFlag;
-	EString m_resetStatusFlagID;
+	std::string m_resetStatusFlagID;
 	long	m_modelID;
+	ObjectiveModelDefinition m_modelDefinition;
 	long m_baseColor;
 	long m_highlightColor;
 	long m_highlightColor2;
 
 public: /* we could make this protected if only the editdialog is to acces these functions */
 	static CObjectiveCondition *new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment);
-	static EString DescriptionOfConditionSpecies(condition_species_type conditionSpecies);
+	static std::string DescriptionOfConditionSpecies(condition_species_type conditionSpecies);
 	static CObjectiveAction *new_CObjectiveAction(action_species_type actionSpecies, int alignment);
-	static EString DescriptionOfActionSpecies(action_species_type actionSpecies);
+	static std::string DescriptionOfActionSpecies(action_species_type actionSpecies);
 public:
 	typedef CObjectiveConditionList condition_list_type;
 	typedef CObjectiveActionList action_list_type;
@@ -613,20 +618,20 @@ public:
 	bool NoteThePositionsOfObjectsReferenced();
 	bool RestoreObjectPointerReferencesFromNotedPositions();
 	bool ThisObjectiveHasNoConditions() { return ((0 == Count()) && (0 == m_failureConditionList.Count())); }
-	EString Title() const { return m_title; }
-	void Title(EString title) { m_title = title; }
+	const std::string& Title() const { return m_title; }
+	void Title(std::string title) { m_title = std::move(title); }
 	bool TitleUseResourceString() const { return m_titleUseResourceString; }
 	void TitleUseResourceString(bool titleUseResourceString) { m_titleUseResourceString = titleUseResourceString; }
 	int TitleResourceStringID() const { return m_titleResourceStringID; }
 	void TitleResourceStringID(int titleResourceStringID) { m_titleResourceStringID = titleResourceStringID; }
-	EString LocalizedTitle() const;
-	EString Description() const { return m_description; }
-	void Description(EString description) { m_description = description; }
+	std::string LocalizedTitle() const;
+	const std::string& Description() const { return m_description; }
+	void Description(std::string description) { m_description = std::move(description); }
 	bool DescriptionUseResourceString() const { return m_descriptionUseResourceString; }
 	void DescriptionUseResourceString(bool descriptionUseResourceString) { m_descriptionUseResourceString = descriptionUseResourceString; }
 	int DescriptionResourceStringID() const { return m_descriptionResourceStringID; }
 	void DescriptionResourceStringID(int descriptionResourceStringID) { m_descriptionResourceStringID = descriptionResourceStringID; }
-	EString LocalizedDescription() const;
+	std::string LocalizedDescription() const;
 	int Priority() { return m_priority; }
 	void Priority(int priority) { m_priority = priority; }
 	int ResourcePoints() { return m_resourcePoints; }
@@ -645,12 +650,12 @@ public:
 	bool IsHiddenTrigger() { return m_isHiddenTrigger; }
 	void ActivateOnFlag(bool activateOnFlag) { m_activateOnFlag = activateOnFlag; }
 	bool ActivateOnFlag() { return m_activateOnFlag; }
-	void ActivateFlagID(EString activateFlagId) { m_activateFlagID = activateFlagId; }
-	EString ActivateFlagID() { return m_activateFlagID; }
+	void ActivateFlagID(std::string activateFlagId) { m_activateFlagID = std::move(activateFlagId); }
+	const std::string& ActivateFlagID() const { return m_activateFlagID; }
 	void ResetStatusOnFlag(bool resetStatusOnFlag) { m_resetStatusOnFlag = resetStatusOnFlag; }
 	bool ResetStatusOnFlag() { return m_resetStatusOnFlag; }
-	void ResetStatusFlagID(EString resetStatusFlagID) { m_resetStatusFlagID = resetStatusFlagID; }
-	EString ResetStatusFlagID() { return m_resetStatusFlagID; }
+	void ResetStatusFlagID(std::string resetStatusFlagID) { m_resetStatusFlagID = std::move(resetStatusFlagID); }
+	const std::string& ResetStatusFlagID() const { return m_resetStatusFlagID; }
 	int BaseColor( ) const { return m_baseColor; }
 	void BaseColor( int newColor ) { m_baseColor = newColor; }
 	int HighlightColor( ) const { return m_highlightColor; }
@@ -658,7 +663,9 @@ public:
 	int HighlightColor2( ) const { return m_highlightColor2; }
 	void HighlightColor2( int newColor ) { m_highlightColor2 = newColor; }
 	long ModelID() const { return m_modelID; }
-	void ModelID( int newID ) { m_modelID = newID; }
+	void ModelID(int newID);
+	bool refreshModelFromCatalog();
+	const ObjectiveModelDefinition& ModelDefinition() const { return m_modelDefinition; }
 };
 
 class CObjectives : public/*maybe protected*/ EList <CObjective *, CObjective *> {

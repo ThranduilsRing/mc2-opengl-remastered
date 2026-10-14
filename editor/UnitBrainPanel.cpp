@@ -176,6 +176,19 @@ void UnitBrainPanel::Close() { s_open = false; EndWaypointPlace(); }
 void UnitBrainPanel::Toggle(){ s_open = !s_open; if ( !s_open ) EndWaypointPlace(); }
 bool UnitBrainPanel::IsOpen(){ return s_open; }
 
+bool UnitBrainPanel::SmokeProbe()
+{
+	Unit* unit = dynamic_cast<Unit*>(firstSelected(nullptr));
+	if (!unit)
+		return false;
+	const auto count = unit->getWaypointCount();
+	BeginWaypointPlace(unit->getID());
+	const bool placed = HandlePlacementClick(32.0f, 48.0f, 0.0f);
+	EndWaypointPlace();
+	return placed && unit->isOrderAuthored() && unit->getWaypointCount() == count + 1
+		&& unit->getWaypoints().back().x == 32.0f && unit->getWaypoints().back().y == 48.0f;
+}
+
 bool UnitBrainPanel::WaypointPlaceActive()   { return s_placeActive; }
 long UnitBrainPanel::WaypointPlaceTargetId() { return s_placeTargetId; }
 void UnitBrainPanel::BeginWaypointPlace( long unitId ) { s_placeActive = true;  s_placeTargetId = unitId; }

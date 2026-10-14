@@ -1,0 +1,121 @@
+--- mc2_17.input.fit
++++ mc2_17.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 22.500000
+ f DayToNightTime = -1.000000
+ f LightDirYaw = -173.750000
+-f NewScale = 0.594124
++f NewScale = 0.827761
+ f StartRotation = 176.500000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -2065,9 +2065,9 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 39
+ ul NumAlternatives = 0
+@@ -2113,9 +2113,9 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 40
+ ul NumAlternatives = 0
+@@ -2161,9 +2161,9 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 41
+ ul NumAlternatives = 0
+@@ -2209,9 +2209,9 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
+-st CSVFile = "LRMC"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
++st CSVFile = "Lrmc"
+ ul VariantNumber = 0
+ ul SquadNum = 42
+ ul NumAlternatives = 0
+@@ -2257,8 +2257,8 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 49
+@@ -2305,8 +2305,8 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 50
+@@ -2353,8 +2353,8 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 51
+@@ -2401,8 +2401,8 @@
+ ul HighlightColor1 = -128
+ ul HighlightColor2 = -128
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 52
+@@ -2963,7 +2963,7 @@
+ 
+ [NavMarker0]
+ f xPos = -4544.000000
+-f yPos = -2837.333252
++f yPos = -2837.333008
+ f radius = 256.000000
+ 
+ [NavMarkers]

@@ -2,6 +2,19 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 
 
 void execDamageObject (void) {
@@ -318,7 +331,9 @@ void execObjectStatusCount (void) {
 	//		Returns: NONE
 
 	long objectId = ABLi_popInteger();
-	int* tallyList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
+	int tallyList[9] = {};
+	if (!output.empty()) std::copy_n(output.begin(), std::min(output.size(), std::size(tallyList)), tallyList);
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		if ((objectId >= PlayerLance0) && (objectId < PlayerLance0 + MAX_MOVERGROUPS))
@@ -335,9 +350,10 @@ void execObjectStatusCount (void) {
 		}
 	else {
 		GameObjectPtr object1 = getObject(objectId);
-		if (object1)
+		if (object1 && object1->getStatus() >= 0 && object1->getStatus() < 9)
 			tallyList[object1->getStatus()]++;
 	}
+	abl::copyIntArray(output, tallyList, "objectstatuscount_truncated");
 }
 			
 void execObjectVisible (void) {

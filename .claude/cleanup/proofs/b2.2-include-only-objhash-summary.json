@@ -1,0 +1,132 @@
+{
+ "what": "B2.2 include-only commit (D16): `#include <deque>` in code/logisticsdata.h, `<vector>` in logisticsmissioninfo.h, logisticspilot.h, componentlistbox.h, mechpurchasescreen.h; objhash per-symbol over every object of the dev tree (build64-ninja, `mc2` target), tests/analyze/objhash_all.py",
+ "before": "7b07e16d3 (clean objects)",
+ "after": "7b07e16d3 + the five include lines",
+ "objects": 1161,
+ "classes": {
+  "DIFF": 4,
+  "IDENTICAL": 107,
+  "LAYOUT-ONLY": 7,
+  "NOT-REBUILT": 1043
+ },
+ "diff_explained": "the four DIFF objects are the fingerprint-embedding translation units (build_fingerprint.h: git sha, dirty flag and build time in .rdata and in COMDAT string-literal names); they include none of the five headers. LAYOUT-ONLY is a strict class (symbol set, every non-data section, every static's bytes and relocation targets identical by name). code/missionbegin.cpp (pch_skip.cmake:105) is LAYOUT-ONLY; code/mechbayscreen_mechs.cpp and code/pilotreadyscreen.cpp (also skip-listed) are IDENTICAL or not rebuilt.",
+ "not_identical": [
+  {
+   "source": "GameOS/gameos/gameos_graphics.cpp",
+   "object": "build64-ninja/out/GameOS/gameos/CMakeFiles/gameos.dir/gameos_graphics.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .rdata",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_crashbundle.cpp",
+   "object": "build64-ninja/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_crashbundle.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_visual_capture.cpp",
+   "object": "build64-ninja/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_visual_capture.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "section .text$mn",
+    "section .xdata"
+   ]
+  },
+  {
+   "source": "code/bldng.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/bldng.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss",
+    "4:.data",
+    "5:.bss",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "code/mechcmd2.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/mechcmd2.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .pdata",
+    "section .rdata",
+    "section .text$mn",
+    "section .voltbl",
+    "section .xdata"
+   ]
+  },
+  {
+   "source": "code/mission.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/mission.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.data",
+    "5:.bss"
+   ]
+  },
+  {
+   "source": "code/missionbegin.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/missionbegin.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "code/missiongui.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/missiongui.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "19:.bss",
+    "3:.data",
+    "4:.bss",
+    "5:.bss",
+    "6:.data"
+   ]
+  },
+  {
+   "source": "code/missiongui_cursor.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/missiongui_cursor.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "code/objective.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/objective.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "35:.data",
+    "3:.bss",
+    "3:.data",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "code/pausewindow.cpp",
+   "object": "build64-ninja/CMakeFiles/mc2.dir/code/pausewindow.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  }
+ ]
+}

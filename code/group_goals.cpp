@@ -1,4 +1,4 @@
-// MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals, sortMovers) and their spiral tables.
+// MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals) and their spiral tables.
 // Declared in the class headers; shared names in group_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "group_internal.h"
@@ -101,31 +101,6 @@ char CellSpiralIncrement[JUMPMAP_CELL_DIM * JUMPMAP_CELL_DIM * 2] = {
 	-1, 0,
 	-1, 0
 };
-
-//---------------------------------------------------------------------------
-
-void MoverGroup::sortMovers (long numMoversInGroup, MoverPtr* moverList, Stuff::Vector3D destination) {
-
-	Mover::sortList->clear();
-	for (long i = 0; i < numMoversInGroup; i++) {
-		long index = -1;
-		float dist = (float)3.48E+37;
-		if (moverList[i]) {
-			index = i;
-			Stuff::Vector3D resultVector;
-			resultVector.Subtract(moverList[i]->getPosition(), destination);
-			dist = resultVector.GetLength();
-		}
-		Mover::sortList->setId(i, index);
-		Mover::sortList->setValue(i, dist);
-	}
-	Mover::sortList->sort(false);
-	for (int i = 0; i < numMoversInGroup; i++) {
-		long moverIndex = Mover::sortList->getId(i);
-		if (moverIndex != -1)
-			moverList[moverIndex]->selectionIndex = i;
-	}
-}
 
 //---------------------------------------------------------------------------
 

@@ -1,0 +1,89 @@
+--- mc2_08.input.fit
++++ mc2_08.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 37.500000
+ f DayToNightTime = -300.000000
+ f LightDirYaw = -196.250000
+-f NewScale = 0.362883
++f NewScale = 0.824884
+ f StartRotation = -1.125000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -2365,8 +2365,8 @@
+ ul HighlightColor1 = -2968202
+ ul HighlightColor2 = -10342144
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 143
+@@ -2413,8 +2413,8 @@
+ ul HighlightColor1 = -2968202
+ ul HighlightColor2 = -10342144
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 144
+@@ -2461,8 +2461,8 @@
+ ul HighlightColor1 = -2968202
+ ul HighlightColor2 = -10342144
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 145
+@@ -2509,8 +2509,8 @@
+ ul HighlightColor1 = -2968202
+ ul HighlightColor2 = -10342144
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "FuelTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 146
+@@ -2557,8 +2557,8 @@
+ ul HighlightColor1 = -2968202
+ ul HighlightColor2 = -10342144
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "CargoTruck"
+ ul VariantNumber = 0
+ ul SquadNum = 147
+@@ -3470,7 +3470,7 @@
+ [Team0Objective0Condition0]
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+-f PositionX = 362.666901
++f PositionX = 362.666504
+ f PositionY = 5141.333008
+ ul CellX = 59
+ ul CellY = 188
+@@ -3567,7 +3567,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 4800.000000
+-f PositionY = 5525.333496
++f PositionY = 5525.333008
+ ul CellX = 50
+ ul CellY = 292
+ ul Commander = 1

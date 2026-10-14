@@ -25,7 +25,9 @@ Objective.cpp			: Implementation of the Objective component.
 #include "EditorInterface.h"
 #include "../resource.h"/*this is mc2res.dll's header file*/
 
-#include "EString.h"
+#include "mc2str.h"
+#include "mc2fmt.h"
+#include "objective_text.h"
 
 #ifndef INIFILE_H
 #include "IniFile.h"
@@ -36,13 +38,13 @@ Objective.cpp			: Implementation of the Objective component.
 
 // Globals defined in Objective.cpp (or elsewhere in the engine) that the split pieces share.
 
-static bool ESLoadString(int resourceID, EString &targetStr) {
+static bool LoadObjectiveString(int resourceID, std::string &targetStr) {
 	char szTmp[16384/*max string length*/];
 	EditorSafeLoadString( resourceID, szTmp, 16384/*max string length*/ );
-	targetStr = szTmp;
-	EString tmpStr;
-	tmpStr.Format("mc2res.dll:%d Not defined", resourceID);
-	if (0 == strcmp(tmpStr.Data(), szTmp)) {
+	targetStr = mc2::str::from_c(szTmp);
+	std::string tmpStr;
+	tmpStr = std::format("mc2res.dll:{} Not defined", resourceID);
+	if (0 == strcmp(tmpStr.c_str(), szTmp)) {
 		return (0);
 	}
 	return (!0);
@@ -81,31 +83,6 @@ static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &v
 	} else {
 		value = tmpULong;
 	}
-	return result;
-}
-
-static long sReadIdString(FitIniFile* missionFile, const char *varName, EString &ECStr) {
-	long result = 0;
-	char buffer[2001/*buffer size*/]; buffer[0] = '\0';
-	result = missionFile->readIdString((char *)varName, buffer, 2001/*buffer size*/ - 1);
-	if ((NO_ERR != result) && (BUFFER_TOO_SMALL != result)) {
-		//assert(false);
-	} else {
-		CString CStr = buffer;
-		/*readIdString can't read in "\r\n"*/
-		CStr.Replace("\n", "\r\n");
-		ECStr = CStr.GetBuffer(0);
-	}
-	return result;
-}
-
-static long sWriteIdString(FitIniFile* missionFile, const char *varName, const char *szStr) {
-	if (!szStr) { return !(NO_ERR); }
-	long result = 0;
-	CString CStr = szStr;
-	/*readIdString can't read in "\r\n"*/
-	CStr.Replace("\r\n", "\n");
-	result = missionFile->writeIdString(varName, CStr.GetBuffer(0));
 	return result;
 }
 

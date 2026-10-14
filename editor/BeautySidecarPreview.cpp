@@ -35,15 +35,13 @@ namespace BeautySidecarPreview
 	static int  s_protSide      = 0;
 	static bool s_showProtected = false;
 
-	// Sidecar dirs are named by the mission FILE stem (mc2_01.beauty). Use the
-	// terrain/colormap name (Terrain::terrainName, set on load to the mission stem,
-	// terrain.cpp:640) — NOT EditorData::MissionName(), which returns the .fit
-	// display TITLE (e.g. "Operation ...") and never matches the sidecar filename.
+	// Sidecars are named by the mission file stem (mc2_01.beauty).
+	// The terrain name identifies that file; the mission display title does not.
 	static const char* missionStem()
 	{
 		if (Terrain::terrainName && Terrain::terrainName[0])
 			return Terrain::terrainName;
-		return EditorData::instance ? EditorData::instance->MissionName().Data() : "";
+		return EditorData::instance ? EditorData::instance->MissionName().c_str() : "";
 	}
 
 	static void retainDelta(const std::vector<float>& d, int side)

@@ -1527,6 +1527,12 @@ SymTableNodePtr functionHeader (void) {
 			if (typeIdPtr->defn.key != DFN_TYPE)
 				syntaxError(ABL_ERR_SYNTAX_INVALID_TYPE);
 
+			// A return slot holds one scalar cell, so an array result has no valid owning representation.
+			if (typeIdPtr->typePtr && typeIdPtr->typePtr->form == FRM_ARRAY) {
+				abl::reportBadArgument("routine", "arrayReturnType");
+				syntaxError(ABL_ERR_SYNTAX_INVALID_TYPE);
+			}
+
 			hasIntegerReturnValue = (typeIdPtr->typePtr == IntegerTypePtr);
 
 			if (!forwardFlag)

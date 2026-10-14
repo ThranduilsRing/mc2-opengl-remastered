@@ -271,7 +271,6 @@ const char *SpecialtySkillsTable[NUM_SPECIALTY_SKILLS] = {
 	"SharpShooter",					//Sharpshooter specialty
 };
 
-SortListPtr		MechWarrior::sortList = nullptr;
 int32_t			MechWarrior::numWarriors = 0;
 int32_t			MechWarrior::numWarriorsInCombat = 0;
 bool			MechWarrior::brainsEnabled[MAX_TEAMS] = {true, true, true, true, true, true, true, true};
@@ -532,14 +531,6 @@ void MechWarrior::init (bool create) {
 	oldPilot = 0;
 
     lastTargetConserveAmmo = false; // sebi: int to not contain garbage
-
-	// Static vars
-	if (!sortList) {
-		sortList = new SortList;
-		if (!sortList)
-			Fatal(0, " Unable to create Warrior::sortList ");
-		sortList->init(100);
-	}
 
 	numWarriors++;
 }
@@ -1024,13 +1015,6 @@ void MechWarrior::clear (void) {
 	//radio = NULL;
 	oldPilot = 0;
 
-	// Static vars
-	//if (!sortList) {
-	//	sortList = new SortList;
-	//	if (!sortList)
-	//		Fatal(0, " Unable to create Warrior::sortList ");
-	//	sortList->init(100);
-	//}
 }
 
 void MechWarrior::destroy (void) {
@@ -1052,10 +1036,6 @@ void MechWarrior::destroy (void) {
 		}
 
 	numWarriors--;
-	if (numWarriors == 0) {
-		delete sortList;
-		sortList = nullptr;
-	}
 }
 
 long MechWarrior::getAggressiveness (bool current) {

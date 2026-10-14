@@ -1,52 +1,50 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1539 sites in 115 files
+# total 1135 sites in 89 files
 # per kind:
-#     397  EList::Begin
-#     345  EList
-#     215  EList::Count
-#     154  EList::Append
-#      62  EList::operator[]
-#      47  EList::~EList
-#      45  EList::EList
-#      40  EList::Clear
-#      35  EList::Delete
+#     299  EList::Begin
+#     207  EList
+#     180  EList::Count
+#     131  EList::Append
+#      42  EList::~EList
+#      30  EList::operator[]
+#      28  EList::Delete
+#      26  EList::Clear
+#      25  EList::EList
 #      23  EList::Iterator
-#      18  EList::End
+#      13  EList::End
 #      10  PriorityQueue::insert
 #      10  EList::GetHead
-#       9  SortList::setId
-#       9  SortList::setValue
-#       8  SortList::getId
-#       7  SortList
-#       7  SortList::sort
+#       7  SortList::setId
+#       7  SortList::setValue
 #       7  PriorityQueue
-#       6  SortList::SortList
-#       6  SortList::init
-#       6  SortList::clear
-#       6  SortList::~SortList
+#       6  SortList::getId
 #       6  PriorityQueue::PriorityQueue
 #       6  PriorityQueue::init
 #       6  PriorityQueue::find
 #       6  PriorityQueue::change
+#       5  SortList::sort
+#       5  SortList::~SortList
 #       5  PriorityQueue::clear
 #       5  PriorityQueue::isEmpty
 #       5  PriorityQueue::remove
 #       5  SortList::getValue
-#       4  EList::DeleteTail
+#       4  SortList
+#       4  SortList::SortList
+#       4  SortList::init
+#       4  SortList::clear
 #       4  EList::Insert
-#       3  EList::GetTail
 #       3  PriorityQueue::getNumItems
-#       2  EList::Find
-#       2  EList::INVALID_ITERATOR
 #       2  EList::operator==
-#       1  EList::IsEmpty
 #       1  PriorityQueue::~PriorityQueue
+#       1  EList::DeleteTail
 #       1  EList::operator=
+#       1  EList::Find
+#       1  EList::INVALID_ITERATOR
 # per batch (cxx23-step4-b2-files.json):
-#     388  B2.2
+#       2  B2.2
 #      83  B2.3
 #      26  B2.4
-#      39  B2.4-pre
+#      21  B2.4-pre
 #      42  B2.5
 #      10  B2.5-pre
 #       6  B6
@@ -63,65 +61,44 @@
 #      59  editor/EditorObjectMgr_io.cpp
 #      58  editor/Action.cpp
 #      56  editor/Objective.cpp
-#      53  code/logisticsdata_save.cpp
 #      50  code/objective.cpp
 #      48  editor/UnitSettingsDlg.cpp
-#      44  code/logisticsdata_inventory.cpp
-#      40  code/logisticsmissioninfo_query.cpp
 #      39  editor/EditorObjectMgr.h
-#      36  code/logisticsdata_modify.cpp
-#      33  code/logisticsdata.cpp
 #      33  editor/EditorObjectMgr_render.cpp
-#      30  code/logisticsdata_availability.cpp
 #      27  editor/ObjectivesDlg.cpp
 #      26  editor/BuildingLink.cpp
 #      23  editor/BuildingSettingsDlg.cpp
 #      22  editor/EditorObjectMgr_pick.cpp
 #      22  mclib/move_movemap_path.cpp
-#      21  code/missionbegin.cpp
-#      20  code/logisticsdata_init.cpp
 #      20  code/mover_combat.cpp
 #      20  editor/CampaignDialog.cpp
 #      20  editor/ObjectivesSummaryPanel.cpp
-#      19  code/logisticsmissioninfo.cpp
-#      19  code/logisticsmissioninfo_progress.cpp
 #      18  editor/SceneOutliner.cpp
-#      14  code/mechpurchasescreen.cpp
 #      13  code/contact.cpp
-#      13  code/group_goals.cpp
 #      12  code/ablmc2_camera.cpp
 #      12  editor/MissionValidation.cpp
 #      11  editor/ChooseBuildingDlg.cpp
 #      11  editor/Objective.h
 #      11  mclib/move_movemap_escape.cpp
-#      10  code/logistics_begin.cpp
-#      10  code/logisticspilot.cpp
 #      10  code/mission.cpp
 #      10  editor/ChooseUnitDlg.cpp
 #      10  mclib/move_globalmap_path.cpp
 #       9  editor/CampaignSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
-#       8  code/logisticsdata.h
+#       8  code/group_goals.cpp
 #       8  editor/Action.h
 #       8  editor/CampaignData.cpp
 #       8  editor/EditorDebugOverlay.cpp
 #       8  editor/Objective_conditions.cpp
-#       7  code/componentlistbox.cpp
 #       7  code/objective.h
-#       7  code/pilotreviewarea.cpp
 #       7  editor/EditorInterface_wnd.cpp
 #       7  editor/GroupDialog.cpp
 #       7  editor/LinkBrush.cpp
 #       6  editor/MineBrush.cpp
 #       6  editor/OverlayBrush.cpp
 #       6  editor/ResourceStringSelectionDlg.cpp
-#       5  code/group_orders.cpp
 #       5  code/mpparameterscreen.cpp
 #       4  code/gametacmap.cpp
-#       4  code/mechbayscreen.cpp
-#       4  code/mechbayscreen_mechs.cpp
-#       4  code/pilotreadyscreen.cpp
-#       4  code/warrior.cpp
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
 #       4  editor/EditorInterface_mouse.cpp
@@ -130,14 +107,13 @@
 #       3  code/controlgui_objectives.cpp
 #       3  code/controlgui_render.cpp
 #       3  code/mover_init.cpp
-#       3  code/warrior_state.cpp
 #       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
 #       3  editor/TelemetryPanel.cpp
 #       3  editor/UnitBrainPanel.cpp
 #       3  editor/eraser.cpp
 #       2  code/controlgui_update.cpp
-#       2  code/logisticsmissioninfo.h
+#       2  code/logisticsdata_save.cpp
 #       2  code/missionbriefingscreen.cpp
 #       2  code/team.cpp
 #       2  editor/BuildingSettingsDlg.h
@@ -152,11 +128,7 @@
 #       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
 #       2  editor/campaignData.h
-#       1  code/componentlistbox.h
 #       1  code/controlgui_chat.cpp
-#       1  code/group.h
-#       1  code/logisticspilot.h
-#       1  code/mechpurchasescreen.h
 #       1  code/mission_update.cpp
 #       1  code/missiongui_support.cpp
 #       1  code/mpparameterscreen.h
@@ -173,38 +145,16 @@
 #       1  editor/ScatterBrush.cpp
 #       1  editor/StampBrush.cpp
 # blob 5a7a30319898fe33053a5250d927b51ab393f195 code/ablmc2_camera.cpp
-# blob 09074e0c98a03167be0ef854264528d26ce72ed9 code/componentlistbox.cpp
-# blob 9eddb819538aed58e6e9257a31b2d1d72e99eb46 code/componentlistbox.h
-# blob f1158cc8ad27580584db3bd9bc7067e714a53cda code/contact.cpp
+# blob d6158799855276bbebdb0e719ac317508b6240c6 code/contact.cpp
 # blob 3722da314d07cdd27f5514ea65711ee04e255e48 code/controlgui_chat.cpp
 # blob d10cadf8499b96a7f5eeb189ce058661d719cddc code/controlgui_objectives.cpp
 # blob ae50b024f49b340ee342a7da78ef380b6345ce0b code/controlgui_render.cpp
 # blob 0cd1469a3dcc86b12627da43a7f5e87b536d1363 code/controlgui_update.cpp
 # blob a6463b7e4d51bfd627e62f3e0d397083266e11f4 code/gametacmap.cpp
-# blob 2fcd3f04c5649c31717d0a4c4ea9792e951bacd6 code/group.h
-# blob 4ce8c22f5fb3c5197d602d4dafee2845671ef225 code/group_goals.cpp
-# blob ca6fa525ba3610d46bcc09be875902c1dee60a31 code/group_orders.cpp
-# blob 1f92f72d26aadd653a27c378f2467cef5b4dfdbb code/logistics_begin.cpp
-# blob af81fd347abe831a24b18a217efff76b6d105691 code/logisticsdata.cpp
-# blob 226630194f42d811043feb566241dbc61b388aab code/logisticsdata.h
-# blob acd817eed13a1ee62870d7c7ba82650ba8542851 code/logisticsdata_availability.cpp
-# blob 6dbe48017cd8f04fe2262a4beb50221fa0d3bf51 code/logisticsdata_init.cpp
-# blob acd8c8f17552b04caad502f069e731bdaac0929d code/logisticsdata_inventory.cpp
-# blob dc313325b71be7815512a59402d02c15f3988b95 code/logisticsdata_modify.cpp
-# blob 7a044938caeb104419e32dd38c8d936f59b55846 code/logisticsdata_save.cpp
-# blob 8fd3a3ef74d7942b8605f0d79ef65188da4b057d code/logisticsmissioninfo.cpp
-# blob e89cf7f0ad87ad546cb6b7ab95b6ef096c421125 code/logisticsmissioninfo.h
-# blob 24c8bdfde00c634025085ccebe892f7f5d3baad1 code/logisticsmissioninfo_progress.cpp
-# blob f33282475fddd45da85123d6ced21d1896207ffa code/logisticsmissioninfo_query.cpp
-# blob c39f07724a23b8fed7cff7864e4678addb3159de code/logisticspilot.cpp
-# blob 75aecb4568d0a827f1a3c285391ae70d9613d1ea code/logisticspilot.h
-# blob 4a242979ef08657e1c9e6c1e051c842032486fef code/mechbayscreen.cpp
-# blob e4d58fc989ac6a9aa7f3d52dc49ac062d2edf9a3 code/mechbayscreen_mechs.cpp
-# blob f7476284850fa26ea2383f33cb9affe49b3c9281 code/mechpurchasescreen.cpp
-# blob 4f3d2601eb34fb3c59ccedc114ec3b1cabb8715d code/mechpurchasescreen.h
+# blob fd9f18996de4c78e649e163af98ded8c17a0d1ce code/group_goals.cpp
+# blob 65020f7d74c9ddb65836d9c2e4fdcd661035b19e code/logisticsdata_save.cpp
 # blob e9927601b721b01b2470dedb17e35ddebdd73d1c code/mission.cpp
 # blob a88d8a6ee22d155d5076d0eb806bf585324d1948 code/mission_update.cpp
-# blob 85bd38e2830d57350581cc0b071271e3010ca46d code/missionbegin.cpp
 # blob b4e21bac7f99f4d93dc94039cea09b36e50f6a75 code/missionbriefingscreen.cpp
 # blob 36b4eb263d438567c0884d53dbe79995ac3d75e8 code/missiongui_support.cpp
 # blob 3ff5256bdbbf9c35d2b212d246db813038174209 code/mover_combat.cpp
@@ -213,12 +163,8 @@
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
 # blob 59c7504796c360ee717cc0b1f24bed82ae552f8c code/objective.cpp
 # blob b1c1da06675343869052ad1943ed8292e4df0dcb code/objective.h
-# blob 0cedbccb00470294d34931b5dddc43c5e34fb50d code/pilotreadyscreen.cpp
-# blob 54506ad442f25e740549ed384ec3556310931ccd code/pilotreviewarea.cpp
 # blob c35a58198029cd5efde1ce269c5a09b60f0795fb code/saveload_load.cpp
 # blob 50ca1b8e2c7618977f33e780a980ececa48cc4a6 code/team.cpp
-# blob ebd40c49efb61f5918013f254eb728413a2073fd code/warrior.cpp
-# blob 4b3a8dd6509142fda4673f5a728cffb6ed0e7b3e code/warrior_state.cpp
 # blob 203f0e44db92e2d5f3526feca15b32faa8a29fdf editor/Action.cpp
 # blob 4ec93ea4adfebad05779bf646f9598158c1d4c36 editor/Action.h
 # blob 3bb73f78efe7050a2464d40c8f5c56aa0adf36be editor/BuildingBrush.cpp
@@ -303,27 +249,19 @@ code/ablmc2_camera.cpp:60:SortList::setId
 code/ablmc2_camera.cpp:61:SortList::setValue
 code/ablmc2_camera.cpp:70:SortList::sort
 code/ablmc2_camera.cpp:72:SortList::getId
-code/componentlistbox.cpp:366:EList::Count
-code/componentlistbox.cpp:376:EList::Append
-code/componentlistbox.cpp:391:EList
-code/componentlistbox.cpp:391:EList::Begin
-code/componentlistbox.cpp:452:EList::EList
-code/componentlistbox.cpp:460:EList::~EList
-code/componentlistbox.cpp:461:EList::Clear
-code/componentlistbox.h:106:EList
 code/contact.cpp:133:SortList
 code/contact.cpp:133:SortList::SortList
 code/contact.cpp:136:SortList::init
 code/contact.cpp:146:SortList::~SortList
-code/contact.cpp:956:SortList
-code/contact.cpp:956:SortList::SortList
-code/contact.cpp:959:SortList::init
-code/contact.cpp:964:SortList::clear
-code/contact.cpp:966:SortList::setId
-code/contact.cpp:967:SortList::setValue
-code/contact.cpp:969:SortList::sort
-code/contact.cpp:971:SortList::getId
-code/contact.cpp:1309:SortList::~SortList
+code/contact.cpp:958:SortList
+code/contact.cpp:958:SortList::SortList
+code/contact.cpp:961:SortList::init
+code/contact.cpp:966:SortList::clear
+code/contact.cpp:968:SortList::setId
+code/contact.cpp:969:SortList::setValue
+code/contact.cpp:971:SortList::sort
+code/contact.cpp:973:SortList::getId
+code/contact.cpp:1311:SortList::~SortList
 code/controlgui_chat.cpp:124:EList::Count
 code/controlgui_objectives.cpp:129:EList::Count
 code/controlgui_objectives.cpp:165:EList
@@ -337,373 +275,16 @@ code/gametacmap.cpp:246:EList
 code/gametacmap.cpp:246:EList::Begin
 code/gametacmap.cpp:538:EList
 code/gametacmap.cpp:538:EList::Begin
-code/group.h:86:SortList
-code/group_goals.cpp:109:SortList::clear
-code/group_goals.cpp:119:SortList::setId
-code/group_goals.cpp:120:SortList::setValue
-code/group_goals.cpp:122:SortList::sort
-code/group_goals.cpp:124:SortList::getId
-code/group_goals.cpp:165:PriorityQueue
-code/group_goals.cpp:165:PriorityQueue::PriorityQueue
-code/group_goals.cpp:167:PriorityQueue::init
-code/group_goals.cpp:182:PriorityQueue::clear
-code/group_goals.cpp:183:PriorityQueue::insert
-code/group_goals.cpp:187:PriorityQueue::isEmpty
-code/group_goals.cpp:192:PriorityQueue::remove
-code/group_goals.cpp:253:PriorityQueue::insert
-code/group_orders.cpp:62:SortList::clear
-code/group_orders.cpp:68:SortList::setId
-code/group_orders.cpp:69:SortList::setValue
-code/group_orders.cpp:73:SortList::sort
-code/group_orders.cpp:88:SortList::getId
-code/logistics_begin.cpp:155:EList
-code/logistics_begin.cpp:155:EList::EList
-code/logistics_begin.cpp:160:EList
-code/logistics_begin.cpp:160:EList::Begin
-code/logistics_begin.cpp:165:EList::Count
-code/logistics_begin.cpp:288:EList
-code/logistics_begin.cpp:288:EList::EList
-code/logistics_begin.cpp:291:EList::Count
-code/logistics_begin.cpp:318:EList
-code/logistics_begin.cpp:318:EList::Begin
-code/logisticsdata.cpp:27:EList::EList
-code/logisticsdata.cpp:42:EList::~EList
-code/logisticsdata.cpp:43:EList
-code/logisticsdata.cpp:43:EList::Begin
-code/logisticsdata.cpp:48:EList
-code/logisticsdata.cpp:48:EList::Begin
-code/logisticsdata.cpp:53:EList
-code/logisticsdata.cpp:53:EList::Begin
-code/logisticsdata.cpp:58:EList::Clear
-code/logisticsdata.cpp:59:EList::Clear
-code/logisticsdata.cpp:85:EList::Clear
-code/logisticsdata.cpp:87:EList::Clear
-code/logisticsdata.cpp:115:EList::Clear
-code/logisticsdata.cpp:117:EList::Clear
-code/logisticsdata.cpp:208:EList
-code/logisticsdata.cpp:208:EList::Begin
-code/logisticsdata.cpp:233:EList
-code/logisticsdata.cpp:233:EList::Begin
-code/logisticsdata.cpp:256:EList
-code/logisticsdata.cpp:256:EList::Begin
-code/logisticsdata.cpp:281:EList
-code/logisticsdata.cpp:281:EList::Begin
-code/logisticsdata.cpp:301:EList
-code/logisticsdata.cpp:301:EList::Begin
-code/logisticsdata.cpp:377:EList::Append
-code/logisticsdata.cpp:388:EList
-code/logisticsdata.cpp:388:EList::Begin
-code/logisticsdata.cpp:401:EList
-code/logisticsdata.cpp:401:EList::Begin
-code/logisticsdata.cpp:419:EList
-code/logisticsdata.cpp:419:EList::Begin
-code/logisticsdata.cpp:562:EList
-code/logisticsdata.cpp:562:EList::Begin
-code/logisticsdata.h:79:EList
-code/logisticsdata.h:80:EList
-code/logisticsdata.h:244:EList
-code/logisticsdata.h:245:EList
-code/logisticsdata.h:246:EList
-code/logisticsdata.h:247:EList
-code/logisticsdata.h:248:EList
-code/logisticsdata.h:249:EList
-code/logisticsdata_availability.cpp:46:EList
-code/logisticsdata_availability.cpp:46:EList::Begin
-code/logisticsdata_availability.cpp:106:EList
-code/logisticsdata_availability.cpp:106:EList::Begin
-code/logisticsdata_availability.cpp:122:EList
-code/logisticsdata_availability.cpp:122:EList::Begin
-code/logisticsdata_availability.cpp:160:EList
-code/logisticsdata_availability.cpp:160:EList::Begin
-code/logisticsdata_availability.cpp:172:EList
-code/logisticsdata_availability.cpp:172:EList::Begin
-code/logisticsdata_availability.cpp:196:EList
-code/logisticsdata_availability.cpp:196:EList::Begin
-code/logisticsdata_availability.cpp:246:EList
-code/logisticsdata_availability.cpp:246:EList::Begin
-code/logisticsdata_availability.cpp:256:EList
-code/logisticsdata_availability.cpp:256:EList::Begin
-code/logisticsdata_availability.cpp:346:EList
-code/logisticsdata_availability.cpp:346:EList::EList
-code/logisticsdata_availability.cpp:348:EList::Count
-code/logisticsdata_availability.cpp:351:EList
-code/logisticsdata_availability.cpp:351:EList::Begin
-code/logisticsdata_availability.cpp:361:EList
-code/logisticsdata_availability.cpp:361:EList::EList
-code/logisticsdata_availability.cpp:363:EList::Count
-code/logisticsdata_availability.cpp:366:EList
-code/logisticsdata_availability.cpp:366:EList::Begin
-code/logisticsdata_availability.cpp:466:EList
-code/logisticsdata_availability.cpp:466:EList::Begin
-code/logisticsdata_availability.cpp:488:EList
-code/logisticsdata_availability.cpp:488:EList::Begin
-code/logisticsdata_init.cpp:31:EList::Count
-code/logisticsdata_init.cpp:166:EList::Append
-code/logisticsdata_init.cpp:168:EList::GetTail
-code/logisticsdata_init.cpp:173:EList::DeleteTail
-code/logisticsdata_init.cpp:180:EList
-code/logisticsdata_init.cpp:180:EList::Begin
-code/logisticsdata_init.cpp:216:EList
-code/logisticsdata_init.cpp:216:EList::Begin
-code/logisticsdata_init.cpp:228:EList::Append
-code/logisticsdata_init.cpp:229:EList::GetTail
-code/logisticsdata_init.cpp:236:EList::DeleteTail
-code/logisticsdata_init.cpp:257:EList::Clear
-code/logisticsdata_init.cpp:279:EList::Append
-code/logisticsdata_init.cpp:280:EList::GetTail
-code/logisticsdata_init.cpp:284:EList::DeleteTail
-code/logisticsdata_init.cpp:296:EList::Count
-code/logisticsdata_init.cpp:474:EList::Append
-code/logisticsdata_init.cpp:482:EList
-code/logisticsdata_init.cpp:482:EList::Begin
-code/logisticsdata_init.cpp:517:EList::Append
-code/logisticsdata_inventory.cpp:18:EList
-code/logisticsdata_inventory.cpp:18:EList::Begin
-code/logisticsdata_inventory.cpp:43:EList
-code/logisticsdata_inventory.cpp:43:EList::Begin
-code/logisticsdata_inventory.cpp:53:EList::Count
-code/logisticsdata_inventory.cpp:68:EList
-code/logisticsdata_inventory.cpp:68:EList::Begin
-code/logisticsdata_inventory.cpp:103:EList::Append
-code/logisticsdata_inventory.cpp:138:EList
-code/logisticsdata_inventory.cpp:138:EList::End
-code/logisticsdata_inventory.cpp:147:EList::Delete
-code/logisticsdata_inventory.cpp:168:EList
-code/logisticsdata_inventory.cpp:168:EList::Begin
-code/logisticsdata_inventory.cpp:184:EList
-code/logisticsdata_inventory.cpp:184:EList::End
-code/logisticsdata_inventory.cpp:193:EList::Delete
-code/logisticsdata_inventory.cpp:203:EList
-code/logisticsdata_inventory.cpp:203:EList::Begin
-code/logisticsdata_inventory.cpp:217:EList
-code/logisticsdata_inventory.cpp:217:EList::Begin
-code/logisticsdata_inventory.cpp:233:EList
-code/logisticsdata_inventory.cpp:233:EList::Begin
-code/logisticsdata_inventory.cpp:273:EList
-code/logisticsdata_inventory.cpp:273:EList::Begin
-code/logisticsdata_inventory.cpp:292:EList
-code/logisticsdata_inventory.cpp:292:EList::Begin
-code/logisticsdata_inventory.cpp:318:EList
-code/logisticsdata_inventory.cpp:318:EList::Begin
-code/logisticsdata_inventory.cpp:336:EList
-code/logisticsdata_inventory.cpp:336:EList::Begin
-code/logisticsdata_inventory.cpp:339:EList
-code/logisticsdata_inventory.cpp:339:EList::Begin
-code/logisticsdata_inventory.cpp:405:EList
-code/logisticsdata_inventory.cpp:410:EList
-code/logisticsdata_inventory.cpp:410:EList::Begin
-code/logisticsdata_inventory.cpp:417:EList::Append
-code/logisticsdata_inventory.cpp:423:EList
-code/logisticsdata_inventory.cpp:426:EList
-code/logisticsdata_inventory.cpp:426:EList::Begin
-code/logisticsdata_inventory.cpp:429:EList::Append
-code/logisticsdata_inventory.cpp:441:EList::Append
-code/logisticsdata_inventory.cpp:461:EList::Append
-code/logisticsdata_inventory.cpp:478:EList
-code/logisticsdata_inventory.cpp:478:EList::Begin
-code/logisticsdata_modify.cpp:35:EList
-code/logisticsdata_modify.cpp:35:EList::Begin
-code/logisticsdata_modify.cpp:41:EList::Clear
-code/logisticsdata_modify.cpp:46:EList::Count
-code/logisticsdata_modify.cpp:51:EList::Count
-code/logisticsdata_modify.cpp:58:EList
-code/logisticsdata_modify.cpp:58:EList::Begin
-code/logisticsdata_modify.cpp:74:EList
-code/logisticsdata_modify.cpp:74:EList::Begin
-code/logisticsdata_modify.cpp:108:EList
-code/logisticsdata_modify.cpp:108:EList::Begin
-code/logisticsdata_modify.cpp:129:EList
-code/logisticsdata_modify.cpp:129:EList::Begin
-code/logisticsdata_modify.cpp:152:EList
-code/logisticsdata_modify.cpp:152:EList::Begin
-code/logisticsdata_modify.cpp:289:EList
-code/logisticsdata_modify.cpp:289:EList::Begin
-code/logisticsdata_modify.cpp:301:EList
-code/logisticsdata_modify.cpp:301:EList::Find
-code/logisticsdata_modify.cpp:302:EList
-code/logisticsdata_modify.cpp:302:EList::INVALID_ITERATOR
-code/logisticsdata_modify.cpp:305:EList::Delete
-code/logisticsdata_modify.cpp:321:EList::Count
-code/logisticsdata_modify.cpp:324:EList
-code/logisticsdata_modify.cpp:324:EList::Begin
-code/logisticsdata_modify.cpp:328:EList
-code/logisticsdata_modify.cpp:331:EList::Delete
-code/logisticsdata_modify.cpp:338:EList::Append
-code/logisticsdata_modify.cpp:346:EList
-code/logisticsdata_modify.cpp:346:EList::Begin
-code/logisticsdata_modify.cpp:360:EList
-code/logisticsdata_modify.cpp:360:EList::Begin
-code/logisticsdata_modify.cpp:413:EList
-code/logisticsdata_modify.cpp:413:EList::Begin
-code/logisticsdata_modify.cpp:429:EList
-code/logisticsdata_modify.cpp:429:EList::Begin
-code/logisticsdata_save.cpp:19:EList
-code/logisticsdata_save.cpp:19:EList::Begin
-code/logisticsdata_save.cpp:30:EList::Count
-code/logisticsdata_save.cpp:32:EList
-code/logisticsdata_save.cpp:32:EList::End
-code/logisticsdata_save.cpp:36:EList
-code/logisticsdata_save.cpp:39:EList::Delete
-code/logisticsdata_save.cpp:50:EList::Count
-code/logisticsdata_save.cpp:51:EList::Count
-code/logisticsdata_save.cpp:55:EList
-code/logisticsdata_save.cpp:55:EList::Begin
-code/logisticsdata_save.cpp:101:EList::Count
-code/logisticsdata_save.cpp:102:EList::Count
-code/logisticsdata_save.cpp:108:EList
-code/logisticsdata_save.cpp:108:EList::Begin
-code/logisticsdata_save.cpp:138:EList
-code/logisticsdata_save.cpp:138:EList::Begin
-code/logisticsdata_save.cpp:182:EList
-code/logisticsdata_save.cpp:182:EList::Begin
-code/logisticsdata_save.cpp:198:EList::Count
-code/logisticsdata_save.cpp:199:EList::Count
-code/logisticsdata_save.cpp:207:EList
-code/logisticsdata_save.cpp:207:EList::Begin
-code/logisticsdata_save.cpp:215:EList
-code/logisticsdata_save.cpp:215:EList::Begin
-code/logisticsdata_save.cpp:226:EList
-code/logisticsdata_save.cpp:226:EList::End
-code/logisticsdata_save.cpp:230:EList
-code/logisticsdata_save.cpp:233:EList::Delete
-code/logisticsdata_save.cpp:246:EList::Clear
-code/logisticsdata_save.cpp:314:EList
-code/logisticsdata_save.cpp:314:EList::Begin
-code/logisticsdata_save.cpp:360:EList
-code/logisticsdata_save.cpp:360:EList::Begin
-code/logisticsdata_save.cpp:385:EList::Append
-code/logisticsdata_save.cpp:427:EList
-code/logisticsdata_save.cpp:427:EList::Begin
-code/logisticsdata_save.cpp:435:EList::Append
-code/logisticsdata_save.cpp:439:EList
-code/logisticsdata_save.cpp:439:EList::Begin
-code/logisticsdata_save.cpp:470:EList
-code/logisticsdata_save.cpp:470:EList::Begin
-code/logisticsdata_save.cpp:476:EList
-code/logisticsdata_save.cpp:476:EList::Begin
-code/logisticsdata_save.cpp:638:EList
-code/logisticsdata_save.cpp:638:EList::Begin
-code/logisticsdata_save.cpp:667:EList::Delete
-code/logisticsdata_save.cpp:676:EList
-code/logisticsdata_save.cpp:676:EList::Begin
-code/logisticsdata_save.cpp:687:EList
-code/logisticsdata_save.cpp:687:EList::Begin
-code/logisticsdata_save.cpp:701:EList
-code/logisticsdata_save.cpp:701:EList::Begin
-code/logisticsmissioninfo.cpp:22:EList::EList
-code/logisticsmissioninfo.cpp:37:EList::~EList
-code/logisticsmissioninfo.cpp:47:EList
-code/logisticsmissioninfo.cpp:47:EList::Begin
-code/logisticsmissioninfo.cpp:57:EList
-code/logisticsmissioninfo.cpp:57:EList::Begin
-code/logisticsmissioninfo.cpp:63:EList::Clear
-code/logisticsmissioninfo.cpp:181:EList::Append
-code/logisticsmissioninfo.cpp:380:EList::operator[]
-code/logisticsmissioninfo.cpp:389:EList
-code/logisticsmissioninfo.cpp:389:EList::Begin
-code/logisticsmissioninfo.cpp:407:EList::Count
-code/logisticsmissioninfo.cpp:408:EList::operator[]
-code/logisticsmissioninfo.cpp:425:EList::Append
-code/logisticsmissioninfo.cpp:464:EList::operator[]
-code/logisticsmissioninfo.cpp:469:EList
-code/logisticsmissioninfo.cpp:469:EList::Begin
-code/logisticsmissioninfo.cpp:485:EList
-code/logisticsmissioninfo.cpp:485:EList::Begin
-code/logisticsmissioninfo.h:164:EList
-code/logisticsmissioninfo.h:165:EList
-code/logisticsmissioninfo_progress.cpp:15:EList
-code/logisticsmissioninfo_progress.cpp:15:EList::Begin
-code/logisticsmissioninfo_progress.cpp:49:EList
-code/logisticsmissioninfo_progress.cpp:49:EList::Begin
-code/logisticsmissioninfo_progress.cpp:84:EList::operator[]
-code/logisticsmissioninfo_progress.cpp:137:EList
-code/logisticsmissioninfo_progress.cpp:137:EList::Begin
-code/logisticsmissioninfo_progress.cpp:152:EList::operator[]
-code/logisticsmissioninfo_progress.cpp:190:EList
-code/logisticsmissioninfo_progress.cpp:190:EList::Begin
-code/logisticsmissioninfo_progress.cpp:214:EList::Append
-code/logisticsmissioninfo_progress.cpp:281:EList
-code/logisticsmissioninfo_progress.cpp:281:EList::Begin
-code/logisticsmissioninfo_progress.cpp:310:EList::operator[]
-code/logisticsmissioninfo_progress.cpp:318:EList
-code/logisticsmissioninfo_progress.cpp:318:EList::Begin
-code/logisticsmissioninfo_progress.cpp:351:EList
-code/logisticsmissioninfo_progress.cpp:351:EList::Begin
-code/logisticsmissioninfo_progress.cpp:376:EList::operator[]
-code/logisticsmissioninfo_query.cpp:15:EList::operator[]
-code/logisticsmissioninfo_query.cpp:24:EList
-code/logisticsmissioninfo_query.cpp:24:EList::Begin
-code/logisticsmissioninfo_query.cpp:51:EList::operator[]
-code/logisticsmissioninfo_query.cpp:74:EList::operator[]
-code/logisticsmissioninfo_query.cpp:100:EList::operator[]
-code/logisticsmissioninfo_query.cpp:107:EList::Count
-code/logisticsmissioninfo_query.cpp:109:EList::operator[]
-code/logisticsmissioninfo_query.cpp:111:EList::operator[]
-code/logisticsmissioninfo_query.cpp:122:EList::operator[]
-code/logisticsmissioninfo_query.cpp:140:EList::Count
-code/logisticsmissioninfo_query.cpp:142:EList::operator[]
-code/logisticsmissioninfo_query.cpp:144:EList::operator[]
-code/logisticsmissioninfo_query.cpp:157:EList::operator[]
-code/logisticsmissioninfo_query.cpp:195:EList::Append
-code/logisticsmissioninfo_query.cpp:208:EList::operator[]
-code/logisticsmissioninfo_query.cpp:215:EList::Count
-code/logisticsmissioninfo_query.cpp:219:EList
-code/logisticsmissioninfo_query.cpp:219:EList::Begin
-code/logisticsmissioninfo_query.cpp:225:EList::Count
-code/logisticsmissioninfo_query.cpp:227:EList::Count
-code/logisticsmissioninfo_query.cpp:237:EList::Append
-code/logisticsmissioninfo_query.cpp:249:EList::operator[]
-code/logisticsmissioninfo_query.cpp:258:EList::IsEmpty
-code/logisticsmissioninfo_query.cpp:259:EList::operator[]
-code/logisticsmissioninfo_query.cpp:290:EList::operator[]
-code/logisticsmissioninfo_query.cpp:298:EList::operator[]
-code/logisticsmissioninfo_query.cpp:303:EList::Count
-code/logisticsmissioninfo_query.cpp:305:EList::operator[]
-code/logisticsmissioninfo_query.cpp:312:EList::Count
-code/logisticsmissioninfo_query.cpp:314:EList::operator[]
-code/logisticsmissioninfo_query.cpp:326:EList::Count
-code/logisticsmissioninfo_query.cpp:339:EList::operator[]
-code/logisticsmissioninfo_query.cpp:346:EList::operator[]
-code/logisticsmissioninfo_query.cpp:353:EList::operator[]
-code/logisticsmissioninfo_query.cpp:358:EList::operator[]
-code/logisticsmissioninfo_query.cpp:363:EList::operator[]
-code/logisticsmissioninfo_query.cpp:368:EList::operator[]
-code/logisticsmissioninfo_query.cpp:373:EList::operator[]
-code/logisticsmissioninfo_query.cpp:378:EList::operator[]
-code/logisticspilot.cpp:31:EList::EList
-code/logisticspilot.cpp:64:EList::~EList
-code/logisticspilot.cpp:252:EList
-code/logisticspilot.cpp:253:EList::Begin
-code/logisticspilot.cpp:258:EList::Clear
-code/logisticspilot.cpp:266:EList
-code/logisticspilot.cpp:267:EList::Begin
-code/logisticspilot.cpp:272:EList::Clear
-code/logisticspilot.cpp:333:EList::Append
-code/logisticspilot.cpp:343:EList::Append
-code/logisticspilot.h:122:EList
-code/mechbayscreen.cpp:158:EList
-code/mechbayscreen.cpp:158:EList::EList
-code/mechbayscreen.cpp:161:EList
-code/mechbayscreen.cpp:161:EList::Begin
-code/mechbayscreen_mechs.cpp:352:EList
-code/mechbayscreen_mechs.cpp:352:EList::EList
-code/mechbayscreen_mechs.cpp:356:EList
-code/mechbayscreen_mechs.cpp:356:EList::Begin
-code/mechpurchasescreen.cpp:37:EList::EList
-code/mechpurchasescreen.cpp:60:EList::~EList
-code/mechpurchasescreen.cpp:292:EList
-code/mechpurchasescreen.cpp:292:EList::EList
-code/mechpurchasescreen.cpp:294:EList::Clear
-code/mechpurchasescreen.cpp:301:EList
-code/mechpurchasescreen.cpp:301:EList::Begin
-code/mechpurchasescreen.cpp:307:EList::Append
-code/mechpurchasescreen.cpp:382:EList
-code/mechpurchasescreen.cpp:382:EList::EList
-code/mechpurchasescreen.cpp:384:EList
-code/mechpurchasescreen.cpp:384:EList::End
-code/mechpurchasescreen.cpp:391:EList
-code/mechpurchasescreen.cpp:391:EList::Begin
-code/mechpurchasescreen.h:68:EList
+code/group_goals.cpp:140:PriorityQueue
+code/group_goals.cpp:140:PriorityQueue::PriorityQueue
+code/group_goals.cpp:142:PriorityQueue::init
+code/group_goals.cpp:157:PriorityQueue::clear
+code/group_goals.cpp:158:PriorityQueue::insert
+code/group_goals.cpp:162:PriorityQueue::isEmpty
+code/group_goals.cpp:167:PriorityQueue::remove
+code/group_goals.cpp:228:PriorityQueue::insert
+code/logisticsdata_save.cpp:464:EList
+code/logisticsdata_save.cpp:464:EList::Begin
 code/mission.cpp:713:SortList::~SortList
 code/mission.cpp:719:SortList::~SortList
 code/mission.cpp:789:PriorityQueue::~PriorityQueue
@@ -715,27 +296,6 @@ code/mission.cpp:1000:EList::Begin
 code/mission.cpp:1015:EList::Count
 code/mission.cpp:1017:EList::Begin
 code/mission_update.cpp:623:EList::Count
-code/missionbegin.cpp:1020:EList
-code/missionbegin.cpp:1020:EList::EList
-code/missionbegin.cpp:1022:EList::Count
-code/missionbegin.cpp:1095:EList
-code/missionbegin.cpp:1095:EList::EList
-code/missionbegin.cpp:1097:EList
-code/missionbegin.cpp:1097:EList::Begin
-code/missionbegin.cpp:1152:EList
-code/missionbegin.cpp:1152:EList::EList
-code/missionbegin.cpp:1154:EList
-code/missionbegin.cpp:1154:EList::Begin
-code/missionbegin.cpp:1241:EList
-code/missionbegin.cpp:1241:EList::EList
-code/missionbegin.cpp:1243:EList
-code/missionbegin.cpp:1243:EList::Begin
-code/missionbegin.cpp:1388:EList
-code/missionbegin.cpp:1388:EList::EList
-code/missionbegin.cpp:1390:EList::Count
-code/missionbegin.cpp:1457:EList
-code/missionbegin.cpp:1457:EList::EList
-code/missionbegin.cpp:1459:EList::Count
 code/missionbriefingscreen.cpp:581:EList::Begin
 code/missionbriefingscreen.cpp:583:EList::Count
 code/missiongui_support.cpp:616:EList::Begin
@@ -825,27 +385,9 @@ code/objective.h:594:EList::EList
 code/objective.h:595:EList::EList
 code/objective.h:596:EList::~EList
 code/objective.h:607:EList
-code/pilotreadyscreen.cpp:174:EList
-code/pilotreadyscreen.cpp:174:EList::EList
-code/pilotreadyscreen.cpp:226:EList
-code/pilotreadyscreen.cpp:226:EList::Begin
-code/pilotreviewarea.cpp:751:EList::Count
-code/pilotreviewarea.cpp:752:EList::Count
-code/pilotreviewarea.cpp:864:EList::Count
-code/pilotreviewarea.cpp:869:EList
-code/pilotreviewarea.cpp:869:EList::Begin
-code/pilotreviewarea.cpp:928:EList::Count
-code/pilotreviewarea.cpp:1172:EList::Count
 code/saveload_load.cpp:449:EList::Begin
 code/team.cpp:80:EList::Begin
 code/team.cpp:100:EList::Begin
-code/warrior.cpp:538:SortList
-code/warrior.cpp:538:SortList::SortList
-code/warrior.cpp:541:SortList::init
-code/warrior.cpp:1056:SortList::~SortList
-code/warrior_state.cpp:889:SortList
-code/warrior_state.cpp:889:SortList::SortList
-code/warrior_state.cpp:892:SortList::init
 editor/Action.cpp:31:EList::EList
 editor/Action.cpp:39:EList::~EList
 editor/Action.cpp:47:EList::Count

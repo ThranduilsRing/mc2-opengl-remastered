@@ -3057,6 +3057,85 @@
    "count": 1
   },
   {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "preservation_commands_undo_reload_malformed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "field",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "field",
+    "rejected",
+    "unchanged",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "ok"
+   ],
+   "count": 6
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "field",
+    "length",
+    "rejected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_PANEL",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "workflow",
+    "panel",
+    "coverage",
+    "reached",
+    "ok",
+    "authored",
+    "undo",
+    "saved",
+    "reloaded"
+   ],
+   "count": 1
+  },
+  {
    "tag": "EDITOR_STATIC_PREWARM",
    "ver": -1,
    "stream": "stderr",
@@ -5649,13 +5728,6 @@
     "indirectBuffer",
     "fallback"
    ],
-   "count": 1
-  },
-  {
-   "tag": "MEASURE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
    "count": 1
   },
   {
@@ -12600,6 +12672,9 @@
   "DEPLOY_GUARD",
   "DESTROY",
   "DET_RNG",
+  "EDITOR_DEFINITIONS",
+  "EDITOR_DOCUMENT",
+  "EDITOR_PANEL",
   "ESMOKE",
   "GLP",
   "GL_ERROR",

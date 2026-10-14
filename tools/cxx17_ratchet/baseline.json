@@ -139,17 +139,17 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 223,
-   "LG02": 212,
-   "LG03": 951,
+   "LG01": 222,
+   "LG02": 206,
+   "LG03": 948,
    "LG04": 21,
    "LG05": 194,
    "LG06": 452,
-   "LG07": 0,
+   "LG07": 2,
    "LG08": 14,
-   "LG09": 2302,
+   "LG09": 2295,
    "LG10": 20,
-   "LG11": 101,
+   "LG11": 103,
    "LG12a": 100,
    "LG12b": 349,
    "LG13": 244,
@@ -194,7 +194,7 @@
    "LG07": 0,
    "LG08": 68,
    "LG09": 2177,
-   "LG10": 32,
+   "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
    "LG12b": 243,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 94,
-   "LG18": 8,
+   "LG18": 9,
    "LG19": 0,
    "LG20": 10
   },
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 12
+   "LG20": 14
   },
   "tools": {
    "LG01": 0,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 45
+   "LG20": 41
   }
  },
  "dirs": [
@@ -1580,7 +1580,7 @@
    "LG09": 1
   },
   "code/ablmc2_queries.cpp": {
-   "LG09": 21
+   "LG09": 16
   },
   "code/ablmc2_repro.cpp": {
    "LG09": 4
@@ -2010,13 +2010,13 @@
    "LG10": 2
   },
   "code/group.h": {
-   "LG01": 3,
+   "LG01": 2,
    "LG02": 2
   },
   "code/group_goals.cpp": {
    "LG01": 1,
    "LG03": 1,
-   "LG09": 2,
+   "LG09": 1,
    "LG12b": 2,
    "LG13": 2,
    "LG16": 4
@@ -2157,7 +2157,6 @@
    "LG11": 3
   },
   "code/logisticsdata.h": {
-   "LG02": 6,
    "LG05": 2,
    "LG06": 23
   },
@@ -2219,8 +2218,7 @@
   },
   "code/logisticsmissioninfo.cpp": {
    "LG03": 5,
-   "LG05": 4,
-   "LG09": 1
+   "LG05": 4
   },
   "code/logisticsmissioninfo.h": {
    "LG06": 8
@@ -2883,6 +2881,12 @@
    "LG12b": 8,
    "LG13": 7
   },
+  "code/save_archive.cpp": {
+   "LG11": 2
+  },
+  "code/save_archive.h": {
+   "LG07": 2
+  },
   "code/saveload.cpp": {
    "LG01": 5,
    "LG03": 4,
@@ -3022,7 +3026,7 @@
    "LG09": 1
   },
   "code/warrior.cpp": {
-   "LG03": 17,
+   "LG03": 15,
    "LG06": 1,
    "LG09": 24
   },
@@ -3060,7 +3064,7 @@
    "LG09": 3
   },
   "code/warrior_state.cpp": {
-   "LG03": 5,
+   "LG03": 4,
    "LG06": 1,
    "LG09": 14
   },
@@ -3245,10 +3249,12 @@
    "LG09": 5
   },
   "mclib/ablxstd_stack.cpp": {
-   "LG09": 13
+   "LG09": 13,
+   "LG18": 1
   },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 25
+   "LG09": 25,
+   "LG10": 1
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
@@ -5153,27 +5159,27 @@
    "LG05": 1,
    "LG06": 1
   },
+  "tests/unit/test_job_system_harness.cpp": {
+   "LG20": 1
+  },
   "tests/unit/test_path_permutations.cpp": {
    "LG20": 3
   },
   "tests/unit/test_paths_mod.cpp": {
    "LG20": 6
   },
+  "tests/unit/test_render_state_contract_harness.cpp": {
+   "LG20": 1
+  },
   "tests/unit/test_rendercore.cpp": {
    "LG20": 3
-  },
-  "tools/job_system_harness/job_system_harness.cpp": {
-   "LG20": 2
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
    "LG20": 41
-  },
-  "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
-   "LG20": 2
   }
  },
- "head": "01a1f866d",
+ "head": "ae00ad1fa",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

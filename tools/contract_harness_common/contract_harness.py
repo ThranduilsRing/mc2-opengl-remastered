@@ -1,9 +1,9 @@
 """SUBSYSTEM-HARNESS-ARC — Python harness framework.
 
-Python mirror of tools/contract_harness_common/contract_harness.h. Same contract:
+Shared contract for the retained Python suites:
 uniform CLI (--list / --test NAME / --json / --seed N), exit 0 = all selected
-tests pass / 1 = failure / 2 = usage, and the SAME JSON shape the C++ harnesses
-emit so tools/run_contract_tests.py can consume either kind identically:
+tests pass / 1 = failure / 2 = usage. tools/build_contract_harnesses.py runs
+these suites alongside the native doctest corpus and trusts their exit codes:
 
     {"harness": "...", "tests": [{"name": "...", "status": "PASS", "ms": 1}],
      "status": "PASS", "elapsed_ms": 1}

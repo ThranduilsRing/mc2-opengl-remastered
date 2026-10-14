@@ -184,8 +184,8 @@ Split commit: `f0d37de6c`.
 | Piece | What it holds |
 |---|---|
 | `group.cpp` | keeps the group membership and selection methods and the copy / init |
-| `group_goals.cpp` | MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals, sortMovers) and their spiral tables. |
-| `group_orders.cpp` | MoverGroup: handleTacticalOrder, the order* wrappers and the mate-event handlers. |
+| `group_goals.cpp` | MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals) and their spiral tables. |
+| `group_orders.cpp` | MoverGroup: the order* wrappers and the mate-event handlers. |
 | `group_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/gvehicl.cpp`
@@ -384,6 +384,14 @@ Split commit: `e7312b22b`.
 | `Objective_actions.cpp` | Objective: objective action classes (BIK/WAV/text/flag/technology): compare, read/save, edit dialogs and descriptions. |
 | `Objective_conditions.cpp` | Objective: objective condition classes: compare, read/save, edit dialogs and descriptions. |
 | `Objective_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `editor/ObjectiveDlg.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `ObjectiveDlg.cpp` | keeps what the pieces below did not take |
+| `ObjectiveDlg_text.cpp` | Objective dialog: readable condition/action sentences for lists and viewers. |
+| `ObjectiveDlg_text_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `gui/UiDefs.cpp`
 

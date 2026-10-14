@@ -102,6 +102,7 @@ EditorData::~EditorData()
 //-------------------------------------------------------------------------------------------------
 bool EditorData::clear()
 {
+	EditorResetMissionCamera();
 	gEditorDataMoveDataReadyForFullSave = false;
 	EditorDataTrace("EditorData::clear: move data marked not ready");
 

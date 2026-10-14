@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
@@ -28,7 +29,7 @@ void LogisticsData::init()
 		return;
 	}
 
-	if ( components.Count() ) // already been initialized
+	if ( std::ssize(components) ) // already been initialized
 	{
 		return;
 	}
@@ -163,21 +164,21 @@ void LogisticsData::initComponents()
 		if ( result < 2 || result == 0xBADF0008 || result > 1024  )
 			break;
 
-		components.Append( tmpComp );
+		components.push_back( tmpComp );
 
-		LogisticsComponent& tmp = components.GetTail();
+		LogisticsComponent& tmp = components.back();
 
 		if ( -1 == tmp.init( pLine ) ) // failure
 		{
 			Ammo[counter] = (long)tmp.getRecycleTime();
-			components.DeleteTail();
+			components.pop_back();
 		}
 
 		counter++;
 	}
 	
 	// fix up ammo
-	for ( COMPONENT_LIST::EIterator iter = components.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = components.begin(); iter != components.end(); ++iter )
 	{
 		if ((*iter).getAmmo() )
 		{
@@ -213,7 +214,7 @@ void LogisticsData::appendEquipmentAddFillComponents()
 		const EquipmentAddFillRow& r = rows[i];
 
 		bool present = false;
-		for ( COMPONENT_LIST::EIterator iter = components.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = components.begin(); iter != components.end(); ++iter )
 		{
 			if ( (*iter).getID() == r.ordinal ) { present = true; break; }
 		}
@@ -225,15 +226,15 @@ void LogisticsData::appendEquipmentAddFillComponents()
 		lineBuf[1023] = 0;
 
 		LogisticsComponent blank;
-		components.Append( blank );
-		LogisticsComponent& tmp = components.GetTail();
+		components.push_back( blank );
+		LogisticsComponent& tmp = components.back();
 		if ( -1 == tmp.init( lineBuf ) )
 		{
 			// icon column is validated by the ADD pass, so this is unexpected --
 			// surface it rather than half-materializing the item.
 			mc2::fmt::print_out( "[EQUIP-ADD] logistics consumer REJECTED synthesized row (id={} ordinal={:d}) -- item absent from mechlab\n",
 					r.qualifiedId.c_str(), mc2::fmt::as_i32(r.ordinal) );
-			components.DeleteTail();
+			components.pop_back();
 			continue;
 		}
 		tmp.setDisplayName( r.displayName.c_str() );
@@ -251,10 +252,24 @@ void LogisticsData::appendEquipmentAddFillComponents()
 }
 
 //*************************************************************************************************
+// WHAT: empties the pilot roster. WHY: every mech of the inventory holds a LogisticsPilot* into it, so the roster may only go once the inventory is empty; a caller
+// that breaks that order would leave the mechs pointing at freed elements, so the pointers are cleared first and the event is logged.
+void LogisticsData::clearPilots()
+{
+	if ( !inventory.empty() )
+	{
+		MC2_LOG(Io, Warn, "logistics: the pilot roster is cleared while the inventory holds {} mechs; their pilots are unassigned", std::ssize( inventory ));
+		for ( LogisticsMech* pMech : inventory )
+			pMech->setPilot( nullptr );
+	}
+	pilots.clear();
+}
+
+//*************************************************************************************************
 void LogisticsData::initPilots()
 {
 
-	pilots.Clear();
+	clearPilots();
 
 	char pilotPath[256];
 	strcpy( pilotPath, objectPath );
@@ -276,12 +291,12 @@ void LogisticsData::initPilots()
 			break;
 
 		LogisticsPilot tmpPilot;
-		pilots.Append( tmpPilot );
-		LogisticsPilot& pilot = pilots.GetTail();
+		pilots.push_back( tmpPilot );
+		LogisticsPilot& pilot = pilots.back();
 		pilot.id = id;
 
 		if ( -1 == pilot.init( (char*)pilotFileName ) )
-			pilots.DeleteTail();
+			pilots.pop_back();
 
 		id++;
 
@@ -293,7 +308,7 @@ void LogisticsData::initPilots()
 	// the campaign/compat roster won over base stock.
 	if ( mc2::gate::get<"MC2_LOG_PILOTS">() )
 	{
-		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32((int)pilots.Count()), mc2::fmt::safe(pilotPath));
+		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32((int)std::ssize(pilots)), mc2::fmt::safe(pilotPath));
 		fflush(stdout);
 	}
 }
@@ -471,7 +486,7 @@ void LogisticsData::initVariants()
 	for (auto& job : mechJobs) {
 		if (job.chassis) {
 			for (auto* v : job.varList)
-				variants.Append(v);
+				variants.push_back(v);
 		}
 	}
 
@@ -479,7 +494,7 @@ void LogisticsData::initVariants()
 	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		int totalVariants = 0;
 		bool shadowhawkFound = false;
-		for ( VARIANT_LIST::EIterator it = variants.Begin(); !it.IsDone(); it++ ) {
+		for ( auto it = variants.begin(); it != variants.end(); ++it ) {
 			totalVariants++;
 			const std::string& fn = (*it)->getFileName();
 			char fnLow[1024];
@@ -514,7 +529,7 @@ void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale,
 		pVehicle->init( file );
 		pVehicle->setScale( scale );
 			if ( nameID ) pVehicle->setNameID( nameID );
-		vehicles.Append( pVehicle );
+		vehicles.push_back( pVehicle );
 	}
 }
 

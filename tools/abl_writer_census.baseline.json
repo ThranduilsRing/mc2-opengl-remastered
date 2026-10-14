@@ -26,35 +26,65 @@
    "verdict": "engine",
    "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
   },
-  "code/ablmc2_camera.cpp::execGetCameraGoalPosition::ABLi_popRealPtr": {
+  "code/ablmc2_camera.cpp::execGetCameraGoalPosition::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_camera.cpp::execGetCameraGoalRotation::ABLi_popRealPtr": {
+  "code/ablmc2_camera.cpp::execGetCameraGoalPosition::copyRealArray": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_camera.cpp::execGetCameraGoalVelocity::ABLi_popRealPtr": {
+  "code/ablmc2_camera.cpp::execGetCameraGoalRotation::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_camera.cpp::execGetCameraPosition::ABLi_popRealPtr": {
+  "code/ablmc2_camera.cpp::execGetCameraGoalRotation::copyRealArray": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_camera.cpp::execGetCameraRotation::ABLi_popRealPtr": {
+  "code/ablmc2_camera.cpp::execGetCameraGoalVelocity::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_camera.cpp::execGetCameraVelocity::ABLi_popRealPtr": {
+  "code/ablmc2_camera.cpp::execGetCameraGoalVelocity::copyRealArray": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_camera.cpp::execGetCameraPosition::ABLi_popRealBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_camera.cpp::execGetCameraPosition::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_camera.cpp::execGetCameraRotation::ABLi_popRealBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_camera.cpp::execGetCameraRotation::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_camera.cpp::execGetCameraVelocity::ABLi_popRealBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_camera.cpp::execGetCameraVelocity::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
   "code/ablmc2_camera.cpp::execRequestHelp::ABLi_popRealPtr": {
    "count": 2,
@@ -96,20 +126,35 @@
    "verdict": "read",
    "why": "reads the 3 components of the script's real[3]"
   },
-  "code/ablmc2_misc.cpp::execConvertCoords::ABLi_popIntegerPtr": {
+  "code/ablmc2_misc.cpp::execConvertCoords::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "reads or writes the 2 cell coordinates of the script's int[2]; constant count"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_misc.cpp::execConvertCoords::ABLi_popRealPtr": {
+  "code/ablmc2_misc.cpp::execConvertCoords::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "reads the world point, or writes its 3 components for a cell-to-world conversion; constant count"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_misc.cpp::execGetNextPilotEvent::ABLi_popIntegerPtr": {
+  "code/ablmc2_misc.cpp::execConvertCoords::copyIntArray": {
    "count": 1,
-   "verdict": "open",
-   "why": "getNextEventHistory fills the event parameters of the script's int array; the count comes from the event, the declared size is trusted"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_misc.cpp::execConvertCoords::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_misc.cpp::execGetNextPilotEvent::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "MAX_ALARM_TRIGGERS engine storage contains the event history; the copied prefix is bounded by the declared extent. The result remains the event ID, not a count."
+  },
+  "code/ablmc2_misc.cpp::execGetNextPilotEvent::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "MAX_ALARM_TRIGGERS engine storage contains the event history; the copied prefix is bounded by the declared extent. The result remains the event ID, not a count."
   },
   "code/ablmc2_misc.cpp::execSetDebugString::ABLi_popCharPtr": {
    "count": 1,
@@ -121,10 +166,15 @@
    "verdict": "read",
    "why": "reads x and y of the script's real array"
   },
-  "code/ablmc2_objects.cpp::execObjectStatusCount::ABLi_popIntegerPtr": {
+  "code/ablmc2_objects.cpp::execObjectStatusCount::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "statusCount writes the 9 status tallies of the script's int[9]; constant count"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_objects.cpp::execObjectStatusCount::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
   "code/ablmc2_objects.cpp::execPlayVideo::ABLi_popCharPtr": {
    "count": 1,
@@ -136,35 +186,55 @@
    "verdict": "read",
    "why": "reads x and y of the script's real array"
   },
-  "code/ablmc2_orders.cpp::execGetObjects::ABLi_popIntegerPtr": {
+  "code/ablmc2_orders.cpp::execGetObjects::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "open",
-   "why": "writes one id per object found into the script's int array; the count is the number of objects, the declared size is trusted"
+   "verdict": "bounded",
+   "why": "Each appended object ID checks the declared extent; the total is clamped once for logging and the count returned."
   },
   "code/ablmc2_orders.cpp::execOrderMoveTo::ABLi_popRealPtr": {
    "count": 1,
    "verdict": "read",
    "why": "reads x and y of the script's real array"
   },
-  "code/ablmc2_position.cpp::execGetRelativePositionToObject::ABLi_popRealPtr": {
+  "code/ablmc2_position.cpp::execGetRelativePositionToObject::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3] (the zero vector for a non-mover); a null output is rejected with a bad_argument line"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_position.cpp::execGetRelativePositionToObject::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_position.cpp::execGetRelativePositionToPoint::ABLi_popRealBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
   "code/ablmc2_position.cpp::execGetRelativePositionToPoint::ABLi_popRealPtr": {
-   "count": 2,
-   "verdict": "fixed",
-   "why": "reads the point (x, y) and writes the 3 components of the script's real[3]; null outputs are skipped only behind MC2_ABL_ARG_GUARD"
-  },
-  "code/ablmc2_queries.cpp::execGetAlarmTriggers::ABLi_popIntegerPtr": {
    "count": 1,
-   "verdict": "open",
-   "why": "getEventHistory fills the script's int array with one entry per recorded event; the declared size is trusted"
+   "verdict": "read",
+   "why": "This pointer supplies the input point only; output uses ABLi_popRealBuf and copyRealArray."
   },
-  "code/ablmc2_queries.cpp::execGetAttackers::ABLi_popIntegerPtr": {
+  "code/ablmc2_position.cpp::execGetRelativePositionToPoint::copyRealArray": {
    "count": 1,
-   "verdict": "open",
-   "why": "one id per attacker is written into the script's int array; the declared size is trusted"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_queries.cpp::execGetAlarmTriggers::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "MAX_ALARM_TRIGGERS engine storage contains the event history; only the declared prefix is copied and its count returned."
+  },
+  "code/ablmc2_queries.cpp::execGetAlarmTriggers::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "MAX_ALARM_TRIGGERS engine storage contains the event history; only the declared prefix is copied and its count returned."
+  },
+  "code/ablmc2_queries.cpp::execGetAttackers::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "MAX_ATTACKERS engine storage contains the matching attacker IDs; the declared extent limits publication and the count returned."
   },
   "code/ablmc2_queries.cpp::execGetContactRelativePosition::ABLi_popRealPtr": {
    "count": 2,
@@ -176,70 +246,125 @@
    "verdict": "fixed",
    "why": "writes one integer through the pointer; constant count"
   },
-  "code/ablmc2_queries.cpp::execGetContacts::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetContacts::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "open",
-   "why": "getContacts fills the script's int array with one id per contact; the declared size is trusted"
+   "verdict": "bounded",
+   "why": "Engine contact handles are staged in MAX_CONTACTS_PER_TEAM storage; only the declared prefix is copied and its clamped count is returned. The contact producer internal 200-entry limit is a separate lane-1 dependency."
   },
-  "code/ablmc2_queries.cpp::execGetFireRanges::ABLi_popRealPtr": {
+  "code/ablmc2_queries.cpp::execGetContacts::copyIntArray": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 4 fire ranges of the script's real[4]; constant count"
+   "verdict": "bounded",
+   "why": "Engine contact handles are staged in MAX_CONTACTS_PER_TEAM storage; only the declared prefix is copied and its clamped count is returned. The contact producer internal 200-entry limit is a separate lane-1 dependency."
   },
-  "code/ablmc2_queries.cpp::execGetLastTacOrder::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetFireRanges::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "getParamData writes the fixed set of order parameters into the script's int array (the longest write is paramList[18] in getTacOrder)"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_queries.cpp::execGetFireRanges::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_queries.cpp::execGetLastTacOrder::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
   "code/ablmc2_queries.cpp::execGetLastTacOrder::ABLi_popRealPtr": {
    "count": 1,
    "verdict": "fixed",
    "why": "writes one real (the order time) through the pointer; constant count"
   },
-  "code/ablmc2_queries.cpp::execGetObjectPosition::ABLi_popRealPtr": {
+  "code/ablmc2_queries.cpp::execGetLastTacOrder::copyIntArray": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_queries.cpp::execGetTacOrder::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetObjectPosition::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "getParamData and the main-goal fields write paramList[0..18] of the script's int array; constant count"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_queries.cpp::execGetObjectPosition::copyRealArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_queries.cpp::execGetTacOrder::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
   "code/ablmc2_queries.cpp::execGetTacOrder::ABLi_popRealPtr": {
    "count": 1,
    "verdict": "fixed",
    "why": "writes one real (the order time) through the pointer; constant count"
   },
-  "code/ablmc2_queries.cpp::execGetUnitMates::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetTacOrder::copyIntArray": {
    "count": 1,
-   "verdict": "open",
-   "why": "one part id per unit member is written into the script's int array; the declared size is trusted"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_queries.cpp::execGetWeaponRanges::ABLi_popRealPtr": {
+  "code/ablmc2_queries.cpp::execGetUnitMates::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3]; the count is constant, the compiler checks only that an array of reals was passed"
+   "verdict": "bounded",
+   "why": "MAX_MOVERS engine storage contains the member IDs; only the declared prefix is copied and its count returned."
   },
-  "code/ablmc2_queries.cpp::execGetWeaponsInRange::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetUnitMates::copyIntArray": {
    "count": 1,
-   "verdict": "open",
-   "why": "the list size comes from the script's own listSize argument, not from the array's declared size"
+   "verdict": "bounded",
+   "why": "MAX_MOVERS engine storage contains the member IDs; only the declared prefix is copied and its count returned."
   },
-  "code/ablmc2_queries.cpp::execGetWeaponsLocked::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetWeaponRanges::ABLi_popRealBuf": {
    "count": 1,
-   "verdict": "open",
-   "why": "the list size comes from the script's own listSize argument, not from the array's declared size"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_queries.cpp::execGetWeaponsReady::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetWeaponRanges::copyRealArray": {
    "count": 1,
-   "verdict": "open",
-   "why": "the list size comes from the script's own listSize argument, not from the array's declared size"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_queries.cpp::execSortWeapons::ABLi_popIntegerPtr": {
+  "code/ablmc2_queries.cpp::execGetWeaponsInRange::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "open",
-   "why": "sorts listSize entries of the script's int array; listSize is a script argument, the declared size is trusted"
+   "verdict": "bounded",
+   "why": "The input count is limited to the declared extent, weapon indices are validated, and engine filtering uses owned storage; the copied count is returned."
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsInRange::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The input count is limited to the declared extent, weapon indices are validated, and engine filtering uses owned storage; the copied count is returned."
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsLocked::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The input count is limited to the declared extent, weapon indices are validated, and engine filtering uses owned storage; negative engine error codes remain error codes."
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsLocked::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The input count is limited to the declared extent, weapon indices are validated, and engine filtering uses owned storage; negative engine error codes remain error codes."
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsReady::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The input count is limited to the declared extent, weapon indices are validated, and engine filtering uses owned storage; the copied count is returned."
+  },
+  "code/ablmc2_queries.cpp::execGetWeaponsReady::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The input count is limited to the declared extent, weapon indices are validated, and engine filtering uses owned storage; the copied count is returned."
+  },
+  "code/ablmc2_queries.cpp::execSortWeapons::ABLi_popIntBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "Script count and indices are validated before sorting in MAX_WEAPONS_PER_MOVER storage; only the declared prefix is published. This builtin has no count result."
+  },
+  "code/ablmc2_queries.cpp::execSortWeapons::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "Script count and indices are validated before sorting in MAX_WEAPONS_PER_MOVER storage; only the declared prefix is published. This builtin has no count result."
   },
   "code/ablmc2_roster.cpp::execAblPrint::ABLi_popCharPtr": {
    "count": 1,
@@ -261,35 +386,55 @@
    "verdict": "read",
    "why": "the text is only read (printed, passed on as a name, or copied into a C++ member that bounds itself)"
   },
-  "code/ablmc2_roster.cpp::execGetMapInfo::ABLi_popIntegerPtr": {
+  "code/ablmc2_roster.cpp::execGetMapInfo::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the map height and width into the script's int[2]; constant count"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
-  "code/ablmc2_roster.cpp::execGetRelativePositionToTarget::ABLi_popRealPtr": {
+  "code/ablmc2_roster.cpp::execGetMapInfo::copyIntArray": {
    "count": 1,
-   "verdict": "fixed",
-   "why": "writes the 3 components of the script's real[3] after a null test; constant count"
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_roster.cpp::execGetRelativePositionToTarget::ABLi_popRealBuf": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
+  },
+  "code/ablmc2_roster.cpp::execGetRelativePositionToTarget::copyRealArray": {
+   "count": 3,
+   "verdict": "bounded",
+   "why": "The typed span accessor supplies the declared element count; the fixed engine output is staged and only its bounded prefix is copied through the shared clamp reporter."
   },
   "code/ablmc2_roster.cpp::execGetTargetRelativePosition::ABLi_popRealPtr": {
    "count": 2,
    "verdict": "fixed",
    "why": "writes element 0 of each of two real arrays after null tests; constant count"
   },
-  "code/ablmc2_roster.cpp::execGetWeapons::ABLi_popIntegerPtr": {
+  "code/ablmc2_roster.cpp::execGetWeapons::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "open",
-   "why": "one master id per functional weapon is written into the script's int array; the declared size is trusted"
+   "verdict": "bounded",
+   "why": "MAX_WEAPONS_PER_MOVER engine storage contains the matching master IDs; the declared extent limits publication and the count returned."
+  },
+  "code/ablmc2_roster.cpp::execGetWeapons::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "MAX_WEAPONS_PER_MOVER engine storage contains the matching master IDs; the declared extent limits publication and the count returned."
   },
   "code/ablmc2_roster.cpp::execGetWeapons::to_buf": {
    "count": 1,
    "verdict": "engine",
    "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
   },
-  "code/ablmc2_roster.cpp::execGetWeaponsStatus::ABLi_popIntegerPtr": {
+  "code/ablmc2_roster.cpp::execGetWeaponsStatus::ABLi_popIntBuf": {
    "count": 1,
-   "verdict": "open",
-   "why": "getWeaponsStatus writes one status per weapon into the script's int array; the declared size is trusted"
+   "verdict": "bounded",
+   "why": "The engine writes its full MAX_WEAPONS_PER_MOVER status block into owned storage; only the declared prefix is published. The result remains the status code, not a count."
+  },
+  "code/ablmc2_roster.cpp::execGetWeaponsStatus::copyIntArray": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "The engine writes its full MAX_WEAPONS_PER_MOVER status block into owned storage; only the declared prefix is published. The result remains the status code, not a count."
   },
   "code/ablmc2_roster.cpp::execHirePilot::ABLi_popCharPtr": {
    "count": 1,
@@ -376,10 +521,10 @@
    "verdict": "engine",
    "why": "fills a local MoverInitData with constant short names"
   },
-  "code/ablmc2_state.cpp::execGetSalvage::ABLi_popIntegerPtr": {
+  "code/ablmc2_state.cpp::execGetSalvage::ABLi_popIntBuf": {
    "count": 2,
-   "verdict": "open",
-   "why": "writes itemCount entries into each of two int arrays; itemCount is a script argument, the declared sizes are trusted"
+   "verdict": "bounded",
+   "why": "Both declared extents bound itemCount by their minimum; the paired outputs are initialized and filled only within that count, with one shared clamp report."
   },
   "code/ablmc2_state.cpp::execInArea::ABLi_popRealPtr": {
    "count": 1,
@@ -533,13 +678,13 @@
   },
   "mclib/ablxstd_std.cpp::execStdReturn::memcpy": {
    "count": 2,
-   "verdict": "open",
-   "why": "two copies: a returned array is copied by the declared result size without checking the returned expression's size (a smaller array would be read past its block; read side only), and the result StackItem is copied into returnValue"
+   "verdict": "bounded",
+   "why": "Array return types are rejected with a shared bad_argument report during preprocessing because the return slot is one scalar frame cell. The defensive array copy is limited by declared source bytes, declared target bytes and sizeof(StackItem); the other memcpy preserves exactly one frame cell."
   },
   "mclib/ablxstd_std.cpp::execStdReturn::memset": {
-   "count": 1,
+   "count": 2,
    "verdict": "frame",
-   "why": "clears the engine's returnValue StackItem"
+   "why": "Both clears target one interpreter frame cell: returnValue or the routine return slot."
   },
   "mclib/ablxstmt.cpp::execActualParams::memcpy": {
    "count": 1,

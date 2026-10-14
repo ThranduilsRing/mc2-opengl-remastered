@@ -1,0 +1,24 @@
+{
+  "byte_identical": false,
+  "diff_size": 37196,
+  "input_size": 55057,
+  "output_size": 55059,
+  "input_sha256": "7518d12bfa2d0493f7d691e40e235c61f914d7cba501ef566387f214c817e306",
+  "output_sha256": "3cd2e2e6cd6610260a5973d4aca4559e9964dafd6edde9e6c33793f11065856c",
+  "removed": [],
+  "added": [],
+  "changed": [
+    "Cameras/NewScale",
+    "Cameras/ZoomMax",
+    "Part14/CSVFile",
+    "Part14/ControlDataType",
+    "Part14/ObjectProfile",
+    "Part33/ControlDataType",
+    "Part33/ObjectProfile",
+    "Team0Objective2Condition0/PositionY",
+    "Team0Objective6Condition0/PositionY",
+    "Team0Objective7Condition0/PositionY",
+    "Team0Objective8Condition0/PositionY"
+  ],
+  "explanation": "FINDING: changed 11 fields in Cameras, Part14, Part33, Team0Objective2Condition0, Team0Objective6Condition0, Team0Objective7Condition0, Team0Objective8Condition0. Full keys and text diff in evidence."
+}

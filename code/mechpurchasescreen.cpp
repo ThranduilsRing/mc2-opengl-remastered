@@ -289,22 +289,20 @@ void MechPurchaseScreen::begin()
 	variantListBox.removeAllItems(true);
 	inventoryListBox.removeAllItems(true);
 	// initialize both the inventory and icon lists
-	EList< LogisticsMech*, LogisticsMech* > mechList;
-	LogisticsData::instance->getInventory( mechList );
-	prevInventory.Clear();
+	auto mechList = LogisticsData::instance->getInventory();
+	prevInventory.clear();
 
 	LogisticsMech* pSelMech = nullptr;
 
 	oldCBillsAmount = LogisticsData::instance->getCBills();
 
 
-	for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = mechList.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
 		{
 			if ( (*iter)->getForceGroup() )
 				continue;
 		
-			prevInventory.Append( *(*iter) );
+			prevInventory.push_back( *(*iter) );
 			
 	
 			bool bFound = 0;
@@ -379,16 +377,15 @@ void MechPurchaseScreen::end()
 	if ( !acceptPressed && status != MAINMENU )
 	{ 
 		// sell all current stuff
-		EList< LogisticsMech*, LogisticsMech* > list;
-		LogisticsData::instance->getInventory( list );
-		for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = list.End(); !iter.IsDone(); iter-- )
+		auto list = LogisticsData::instance->getInventory();
+		for ( auto iter = list.rbegin(); iter != list.rend(); ++iter )
 		{
 			LogisticsData::instance->sellMech( (*iter) );
 		}
 
 
 		unsigned long base, color1, color2;
-		for ( MECH_LIST::EIterator pIter = prevInventory.Begin(); !pIter.IsDone(); pIter++ )
+		for ( auto pIter = prevInventory.begin(); pIter != prevInventory.end(); ++pIter )
 		{
 			(*pIter).getColors(base, color1, color2);
 			LogisticsData::instance->addMechToInventory( (*pIter).getVariant(), (*pIter).getPilot(),

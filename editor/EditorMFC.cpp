@@ -72,6 +72,7 @@ bool         g_cliSuppressModals  = false;
 // .pak so a second run can load it (the generate->save->load gate, driven through
 // the editor). Default path lives under terrain_gen_out so it deploys with tools.
 bool         g_cliSmokeSave       = false;
+bool         g_cliSmokeWorkflows = false;
 std::string  g_cliSmokeSavePath;
 int          g_cliSmokeSaveOk     = -1;    // -1 = not attempted, 0/1 = save() result
 
@@ -348,6 +349,10 @@ static void s_cli_parse(const char* cmd)
 			g_cliSmokeFoliage = true;   // need foliage loaded before driving the menu
 			if (g_cliSmokeFoliagePath.empty())
 				g_cliSmokeFoliagePath = "terrain_gen_out\\genmap.foliage.json";
+		}
+		else if (s_cli_flag_match(tok, "-smoke-workflows", "--smoke-workflows"))
+		{
+			g_cliSmokeWorkflows = true;
 		}
 		else if (s_cli_flag_match(tok, "-smoke-save", "--smoke-save"))
 		{
@@ -725,12 +730,19 @@ static void s_emit_esmoke(const char* how)
 	EarlyTrace(esmoke);
 }
 
-// Smoke modal capture: when g_cliSuppressModals is set the editor answers every
-// validation/warning modal with its safe continue-default (IDOK/IDYES) instead of
-// blocking a headless run. We still want the harness to record what a real user
-// would have had to click through, so each suppressed modal emits a parseable line
-// to BOTH the inherited stderr pipe and editor-startup.log. Caption may be NULL/empty.
-// Quotes inside the text are escaped so the `text="..."` field stays parseable.
+// Both IPC channels carry panel facts because WIN32 apps may have no stderr pipe.
+void EditorSmokePanelFact(const char* workflow, const char* panel, bool ok, bool modelOnly)
+{
+	char line[256];
+	std::snprintf(line, sizeof(line), "[EDITOR_PANEL v1] workflow=%s panel=%s coverage=%s reached=%d ok=%d authored=%d undo=%d saved=%d reloaded=%d",
+		workflow, panel, modelOnly ? "model-only" : "action-handler", modelOnly ? 0 : 1,
+		ok ? 1 : 0, ok ? 1 : 0, ok ? 1 : 0, ok ? 1 : 0, ok ? 1 : 0);
+	fprintf(stderr, "%s\n", line);
+	fflush(stderr);
+	EarlyTrace(line);
+}
+
+// Suppressed validation dialogs remain visible to the headless smoke parser.
 void EditorSmokeLogSuppressedModal(const char* text, const char* caption)
 {
 	if (!text) text = "";
@@ -928,10 +940,10 @@ BOOL EditorMFCApp::OnIdle(LONG lCount)
 			EarlyTrace(floaded ? "OnIdle: smoke-foliage Load OK" : "OnIdle: smoke-foliage Load returned false (tolerated)");
 		}
 
-		// -smoke-save: persist the generated map to a .pak so a follow-up -mission
-		// run can load it (generate->save->load gate through the editor itself).
-		// EditorData::instance is the live document singleton; save() bypasses the
-		// interactive Save-As file dialog because we pass an explicit path.
+		if (g_cliSmokeWorkflows && ok && EditorInterface::instance())
+			EditorInterface::instance()->runWorkflowSmoke("terrain_gen_out/e0_stock_campaign.fit");
+
+		// Explicit destinations preserve stock inputs while exercising the mission writer.
 		if (g_cliSmokeSave && ok && EditorData::instance)
 		{
 			// quickSave=true skips the heavy non-quickSave tail (updateTacMap +

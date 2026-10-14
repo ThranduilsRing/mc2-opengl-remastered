@@ -8,12 +8,12 @@ MechPurchaseScreen.h			: Interface for the MechPurchaseScreen component.
 \*************************************************************************************************/
 
 #ifndef LOGISTICSSCREEN_H
+#include <vector>
 #include"logisticsscreen.h"
 #endif
 
 #include"mechlistbox.h"
 #include"logisticsmech.h"
-#include"elist.h"
 #include"logisticsmechdisplay.h"
 
 class LogisticsMech;
@@ -65,7 +65,8 @@ class MechPurchaseScreen: public LogisticsScreen
 		bool				dragStartLeft;
 
 		
-		using MECH_LIST = EList<LogisticsMech, LogisticsMech >;	
+		// Copies of the inventory taken in begin() and put back in end(); iterated only, no element address is kept.
+		using MECH_LIST = std::vector<LogisticsMech>;
 		MECH_LIST		prevInventory;
 
 		float				countDownTime;

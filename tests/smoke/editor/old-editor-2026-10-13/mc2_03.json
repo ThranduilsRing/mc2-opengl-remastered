@@ -1,0 +1,31 @@
+{
+  "byte_identical": false,
+  "diff_size": 38275,
+  "input_size": 54764,
+  "output_size": 54770,
+  "input_sha256": "e874277bc7a6de6ed4e682f07c2cbb471a0daa5d80fa753df9004b842446e1e5",
+  "output_sha256": "4ac3fa0fb689ffb9341b20484ea4b4cd99a18ee641d1c7e42052133c6d1b8afb",
+  "removed": [],
+  "added": [],
+  "changed": [
+    "Cameras/NewScale",
+    "Cameras/ZoomMax",
+    "Part14/ControlDataType",
+    "Part14/ObjectProfile",
+    "Part16/ControlDataType",
+    "Part16/ObjectProfile",
+    "Part27/CSVFile",
+    "Part27/ControlDataType",
+    "Part27/ObjectProfile",
+    "Part28/CSVFile",
+    "Part28/ControlDataType",
+    "Part28/ObjectProfile",
+    "Part34/CSVFile",
+    "Part34/ControlDataType",
+    "Part34/ObjectProfile",
+    "Part35/CSVFile",
+    "Part35/ControlDataType",
+    "Part35/ObjectProfile"
+  ],
+  "explanation": "FINDING: changed 18 fields in Cameras, Part14, Part16, Part27, Part28, Part34, Part35. Full keys and text diff in evidence."
+}

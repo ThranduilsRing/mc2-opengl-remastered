@@ -170,6 +170,7 @@ public:
 
 	bool		saveDropZones( FitIniFile& file );
 	bool		loadDropZones( FitIniFile& file );
+	bool        loadNavMarkers(FitIniFile& file);
 
 	bool		saveForests( FitIniFile& file );
 	bool		loadForests( FitIniFile& file );
@@ -300,8 +301,6 @@ public:
 			EList< Building, Building& >	buildings;
 		};
 
-		typedef EList< EditorObject*, EditorObject*>  BUILDING_LIST;	// buildings on the map
-		typedef EList< Unit*, Unit* > UNIT_LIST;
 		typedef EList< Group, Group& >	GROUP_LIST;
 		typedef EList< BuildingLink*, BuildingLink* > LINK_LIST;
 		typedef EList< DropZone*, DropZone* > DROP_LIST;

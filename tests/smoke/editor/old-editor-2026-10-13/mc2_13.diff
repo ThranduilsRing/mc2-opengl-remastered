@@ -1,0 +1,349 @@
+--- mc2_13.input.fit
++++ mc2_13.written.fit
+@@ -42,11 +42,11 @@
+ f DayLightPitch = 37.000000
+ f DayToNightTime = -1.000000
+ f LightDirYaw = 210.000000
+-f NewScale = 0.570067
++f NewScale = 0.820004
+ f StartRotation = -160.875000
+ f[3] LODScales = 1.00, 0.50, 0.30,
+ f ElevationAdjustFactor = 150.000000
+-f ZoomMax = 1.000000
++f ZoomMax = 2.000000
+ f ZoomMin = 0.100000
+ f FOVMax = 0.000000
+ f FOVMin = 0.000000
+@@ -337,8 +337,8 @@
+ ul HighlightColor1 = -1252666
+ ul HighlightColor2 = -11646908
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 8
+@@ -385,8 +385,8 @@
+ ul HighlightColor1 = -1252666
+ ul HighlightColor2 = -11646908
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 9
+@@ -481,8 +481,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 11
+@@ -529,8 +529,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 12
+@@ -577,8 +577,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 13
+@@ -625,8 +625,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 14
+@@ -673,8 +673,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 15
+@@ -721,8 +721,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 16
+@@ -769,8 +769,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 17
+@@ -817,8 +817,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 18
+@@ -865,8 +865,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 19
+@@ -913,8 +913,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 20
+@@ -1681,8 +1681,8 @@
+ ul HighlightColor1 = -1252666
+ ul HighlightColor2 = -11646908
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 37
+@@ -1729,8 +1729,8 @@
+ ul HighlightColor1 = -1252666
+ ul HighlightColor2 = -8355712
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 38
+@@ -1777,8 +1777,8 @@
+ ul HighlightColor1 = -1252666
+ ul HighlightColor2 = -11646908
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 39
+@@ -1825,8 +1825,8 @@
+ ul HighlightColor1 = -1252666
+ ul HighlightColor2 = -11646908
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "Storm"
+ ul VariantNumber = 0
+ ul SquadNum = 40
+@@ -1873,8 +1873,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 42
+@@ -1921,8 +1921,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 43
+@@ -1969,8 +1969,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 44
+@@ -2017,8 +2017,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 45
+@@ -2065,8 +2065,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 46
+@@ -2113,8 +2113,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 47
+@@ -2161,8 +2161,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 48
+@@ -2209,8 +2209,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 49
+@@ -2257,8 +2257,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 50
+@@ -2305,8 +2305,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 51
+@@ -2353,8 +2353,8 @@
+ ul HighlightColor1 = -79310
+ ul HighlightColor2 = -79310
+ ul SelfRepairBehavior = 1
+-ul ControlDataType = 2
+-st ObjectProfile = "pv20500"
++ul ControlDataType = 1
++st ObjectProfile = "PM101100"
+ st CSVFile = "PoweredArmor"
+ ul VariantNumber = 0
+ ul SquadNum = 52
+@@ -2484,7 +2484,7 @@
+ ul ConditionSpecies = 4
+ st ConditionSpeciesString = "DestroySpecificStructure"
+ f PositionX = 1728.000000
+-f PositionY = 1258.666626
++f PositionY = 1258.666504
+ ul CellX = 150
+ ul CellY = 220
+ ul Commander = 1
+@@ -2525,7 +2525,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = -1685.333496
+-f PositionY = 1429.333374
++f PositionY = 1429.333496
+ ul CellX = 146
+ ul CellY = 140
+ ul Commander = 1
+@@ -2565,7 +2565,7 @@
+ [Team0Objective2Condition0]
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+-f PositionX = 3520.000244
++f PositionX = 3520.000000
+ f PositionY = -1898.666992
+ ul CellX = 224
+ ul CellY = 262
+@@ -2607,7 +2607,7 @@
+ ul ConditionSpecies = 15
+ st ConditionSpeciesString = "CaptureSpecificStructure"
+ f PositionX = -2240.000000
+-f PositionY = -5354.666504
++f PositionY = -5354.666992
+ ul CellX = 305
+ ul CellY = 127
+ ul Commander = -1
