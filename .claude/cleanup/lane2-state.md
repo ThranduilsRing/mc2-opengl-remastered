@@ -1,5 +1,46 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## SEVENTEENTH session (2026-10-14 ~16:05 CDT start, cap 5 h) -- post_* owners, CSM layouts, VK parity rows 15 + 16 (+ the ambient arm of 22); nifty merged at the start (d109918d4), NOT merged back
+Every number below was printed by the tool named beside it in this session.
+
+### Commits (oldest first, after the merge d109918d4)
+- e1411ba4b TASK 1: `vkPostFogNative_`, `vkPostHzbNative_`, `vkPostSsaoNative_`, `vkPostScreenFx_` are `std::unique_ptr<T, TDeleter>` members of `gosPostProcess` (the deleter is defined next to each state, idles the GPU through `destroy_state`, then deletes); no static-duration owner, no raw delete left in the four TUs. `own_inventory` baseline rewritten (e1c4cf592: the four types left the raw-owner list, the deleter's delete is untyped), gated-layout doc and callers regenerated. Ledger regenerated: 0 manual tokens everywhere.
+- 71fd6181a TASK 2 (CSM layouts): the terrain descriptors for bindings 7/8/9 named SHADER_READ_ONLY while the shadow island hands its depth images over in DEPTH_STENCIL_READ_ONLY; they now name the layout the image is in (the island's own copies stay SHADER_READ_ONLY). It was a descriptor-layout mismatch, not a missing barrier.
+- cc9e1eda0 + 44b5dbf8d + 8d950fd8b TASK 3: VK parity row 15 (night tags + fixture emission: `ColorFrameUBO.isNight/nightFactor` in the former pad, per-type emission colours as set 0 binding 7 fed from `s_typeHotColors`, window nodes carry only their hot-colour light, port of `get_base_light`) and row 16 (base-light direction wrap 0.45). The first oracle result was NEGATIVE (the wrap alone moved the day poses AWAY from GL: 3.479 -> 3.623 mean abs pixel distance); the cause is the missing StaticPropAmbient hemisphere fill (row 22 arm), so 8d950fd8b feeds it (`ambientV1Strength`, UBO 256 -> 272 bytes) and the three together move VK toward GL.
+- 76fe86e69 islands4 review nits 2-5 (ScopedEnv comment, shadow re-stage capacity, throwing-scope doctest); nit 1 (protected ScopedEnv ctor) NOT done: the Sol files `tools/vfx_oracle/lifecycle_driver.cpp` and `tests/unit/test_vfx_frozen_clouds.cpp` use the untyped base.
+- c9bddde83 + 680c596d2 BUG found by the early-exit proof (BUGS row 28): the shutdown trace added last session crashed (access violation) in the atexit chain on an `exit()` while the presenter was alive: `tagRequested` read a function-local static set that was already destroyed. The default whitelist is now a constant array.
+- d41a0375e VK-PARITY-GAPS rows 15, 16 FIXED, 22 partly (montages committed).
+
+### Oracle (1080p, FREEZE_ANIM, VK carries the umbrella; GL = default path of the same exe, `.claude/l2cap/s7gl`)
+Mean absolute pixel distance to the GL capture, VK before (`s7before-vk`, exe d0e295e4f) -> after (`s8after-vk`, exe 8d950fd8b): day airbase region 3.479 -> 3.266, day hangar 1.905 -> 1.719, night compound 4.106 -> 3.408, night full frame 1.616 -> 1.565. The first port without the ambient arm (`s7after-vk`): day 3.623 (worse). VK noise: `s7after-vk` vs `s7after2-vk` identical. Montages viewed: `.claude/l2cap/montages/s7-day-hangar-gl-before-after.png`, `s8-night-compound-gl-before-after.png` (night buildings now as lit as GL; GL still shows tree-shadow streaks VK does not). The golden verify (`verify.py --golden current`) FAILs every region on VK before and after (VK differs from the GL golden everywhere); the region numbers did not move. The night poses are too high to show a lit window or runway fixture: the emission arm is proven by the shader port and by the by-day arm, NOT by a close-up capture (open 1).
+
+### Proof (final exe 8d950fd8b, docs commits after)
+| Evidence | Id |
+|---|---|
+| VK tier1 `MC2_VULKAN_VALIDATION=1`, 5/5, errors=0 warnings=0 on mc2_01/03/10/17/24, 133 / 111 / 130 / 129 / 121 fps | `tests/smoke/artifacts/2026-10-14T18-23-42/report.md` |
+| GL tier1, 5/5, 152 / 107 / 140 / 146 / 147 fps | `2026-10-14T18-34-33` |
+| post_ssao / post_screenfx live (`MC2_VK_POST_SSAO=1 MC2_VK_POST_SCREENFX=1 MC2_SSAO=1 MC2_CLOUD_SHADOW=1`, validation) mc2_01: used_vulkan=17556 for both, errors=0 warnings=0, PASS | `2026-10-14T18-21-31/mc2_01.log` |
+| EARLY-EXIT (`MC2_VISUAL_DIFF_FRAME_N=100000 MAX_FRAMES=20`, VK + validation): log ends `event=summary result=fail reason=early_exit stage=atexit`, no crash bundle; the run BEFORE c9bddde83 crashed (BUGS row 28) | `2026-10-14T18-20-36/mc2_01.log` (crash: `17-12-27`) |
+| TASK 2: `MC2_VK_SHADOW_INTEROP=1 MC2_VK_CSM_ARRAY_INTEROP=1 MC2_VK_CSM_FULLMAP_INTEROP=1` + validation mc2_01: array and full map produced and consumed directly (`used_vulkan=9144 direct_chain=1`), errors=0 warnings=0 (was 10 x VUID-vkCmdDraw-None-09600 for two sessions); day mc2_01 capture with the gates on viewed: terrain, props, mechs, shadows all drawn | `2026-10-14T17-06-31/mc2_01.log`; capture `.claude/l2cap/s7csm-vk`; re-run on the final exe: see Open 6 |
+| `build_all_targets` every stage built (exit 0); `build_contract_harnesses --run --unit` rc 0, doctest 3165 cases (the one aborting case is the intended `fatal_if_aborts` test); `check-contracts.sh` full board at the last commit: see Open 4 | this session's logs |
+
+### Tracy (task 4): NOT taken. The host was never quiet (lane 1 smokes held the lease most of the session; my own proof chains used it for ~2 h).
+
+### Open
+1. A close-up night bookmark on the mc2_10 runway / base to see lit windows and fixtures under VK.
+2. Rows 13, 14, 17-22 remain; row 22 StaticPropPbr (Schlick specular) is unported; the ambient fill is checked only with the option ON.
+3. Islands4 nit 1 (protected ScopedEnv ctor) waits for the Sol files.
+4. `container_callsites` and `doc_links` of `check-contracts.sh` are red and are not this lane's.
+5. Scratch to clean (mine): `scratch/proof_*.sh`, `scratch/cap*.sh`, `scratch/spv_before/`, `scratch/oldsh/`, `scratch/blogs/`, `scratch_*.log` in the worktree root, `.claude/l2cap/s7*` and `s8after-vk` (the two committed montages stay), older leftovers listed in session 16.
+6. The CSM interop run was re-run on the final exe only if the line in the Proof table says so (a lane 1 smoke held the lease at the end).
+
+### Lessons
+- A deploy fingerprint hard fail ends a proof chain: finish ALL code commits before the first smoke of a chain; two chains (about 1 h) were lost to commits made mid-chain.
+- A negative oracle result is a finding: a port of one term of a balanced lighting sum can move the picture away from GL; port the arm that balances it together with it.
+- Never run the contract board or a build during a tier1: the first VK tier1 of the session lost four missions to `heartbeat_freeze_play` because of my own check-contracts run.
+- Killing a smoke leaves a stale entry in `A:/Games/mc2-opengl/.smoke_leases.json` that blocks the next deploy of that install; when the owner pid is dead, remove only that entry.
+- Bash-tool quirks: `grep $'\r'` is unreliable (use python for byte checks); the commit hook regex trips on a hyphenated word starting with a in the message and on such text inside a heredoc.
+
 ## SIXTEENTH session (2026-10-14 ~12:50 CDT start, cap 5 h) -- review should-fix items, Gates work, harness, ownership slices 7-9 (shadow, present, terrain); nifty NOT merged (lane 1 mid-session), start tip cdce24359
 Every number below was printed by the tool named beside it in this session.
 

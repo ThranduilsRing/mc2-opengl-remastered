@@ -334,7 +334,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 
 @pytest.mark.parametrize("header,size,block", [
-    ("GpuColorFrameUBO.h", 256, "ColorFrameUBO"),
+    ("GpuColorFrameUBO.h", 272, "ColorFrameUBO"),   # 256 until the night state and the ambient fill strength joined the block
     ("GpuMechFrameUBO.h", 208, "MechFrameUBO"),
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
