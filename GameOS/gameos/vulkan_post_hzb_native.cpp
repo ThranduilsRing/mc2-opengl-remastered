@@ -146,7 +146,8 @@ struct gosPostProcess::VkPostHzbNative {
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostHzbNative* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) {
+                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size;
@@ -158,6 +159,7 @@ bool make_buffer(gosPostProcess::VkPostHzbNative* s, VkDeviceSize size,
         vlog("vmaCreateBuffer failed.");
         return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -327,6 +329,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
                 vlog("vmaCreateImage(level %d) failed.", level);
                 return false;
             }
+            mc2vk::nameObjectAt(s->device, lv.image, "posthzb.level", level);
 
             VkImageViewCreateInfo vci{};
             vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -355,7 +358,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             }
 
             if (!make_buffer(s, sizeof(HzbLevelParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                             &lv.ubo, &lv.uboAlloc)) {
+                             &lv.ubo, &lv.uboAlloc, "posthzb.levelUbo", level)) {
                 return false;
             }
 
@@ -531,6 +534,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         gp.renderPass = s->rpass;
         gp.subpass = 0;
         r = vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe);
+        mc2vk::nameObject(s->device, s->pipe, "posthzb.pipe");
         if (r != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines failed (%d).", (int)r);
             return false;

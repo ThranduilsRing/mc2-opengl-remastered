@@ -20,6 +20,7 @@ LINE_RE = re.compile(r'\[VK_VALIDATION v1\] severity=(?P<severity>\w+) id=(?P<id
 ERROR = "error"
 WARNING = "warning"
 INFO = "info"
+UNCONFIRMED = "Vulkan validation was requested (MC2_VULKAN_VALIDATION) and the run never confirmed the layer on: it was not validated"
 LAYER_ENABLED_ID = "layer_enabled"       # the engine's info line when the messenger is up: the proof that a clean run was actually validated
 
 
@@ -73,10 +74,23 @@ def layer_enabled(messages: "list[Message]") -> bool:
     return any(m.severity == INFO and m.id == LAYER_ENABLED_ID for m in messages)
 
 
-def grade(messages: "list[Message]") -> "list[str]":
-    """One message per distinct error id: why the run is red. Warnings never appear here."""
+def requested(environ) -> bool:
+    """True when the run's environment asks for the layer: `MC2_VULKAN_VALIDATION` set to anything but the engine's own "off" spellings (an empty value means the core preset)."""
+    value = environ.get("MC2_VULKAN_VALIDATION")
+    return value is not None and value.strip().lower() not in ("0", "off")
+
+
+def grade(messages: "list[Message]", asked: bool = False) -> "list[str]":
+    """One message per distinct error id, plus one when the run asked for validation and never confirmed the layer: why the run is red. Warnings never appear here.
+
+    A run that asks for validation and prints no `layer_enabled` line (a GL fallback without a refusal, a mission that never creates the Vulkan context) was not
+    validated at all; it must not look like a clean one.
+    """
     s = summarize(messages)
-    return [f"Vulkan validation error {i} x{n}" for i, n in sorted(s.error_ids.items())]
+    reasons = [f"Vulkan validation error {i} x{n}" for i, n in sorted(s.error_ids.items())]
+    if asked and not layer_enabled(messages):
+        reasons.append(UNCONFIRMED)
+    return reasons
 
 
 def describe(messages: "list[Message]") -> str:

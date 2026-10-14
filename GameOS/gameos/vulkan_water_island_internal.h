@@ -230,7 +230,8 @@ bool waterDirectChainRequested();
 std::string spv_dir();
 VkShaderModule load_spv(VkDevice device, std::string_view path);
 void destroy_island(WaterIsland* s);
-bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc);
+bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 std::string_view name, int i0 = -1, int i1 = -1);
 void write_descriptors(WaterIsland* s);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);

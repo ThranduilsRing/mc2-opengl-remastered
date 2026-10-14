@@ -83,6 +83,26 @@ class MarkerBucket:
     manifest_override_key: Optional[str] = None  # manifest key that downgrades
                                                  # red -> advisory per mission
 
+@dataclass(frozen=True)
+class PresenceRule:
+    """A line a mission MUST print: the run goes red when `pattern` never matches.
+
+    A MarkerBucket flags the presence of a bad line; this is the absence rule for a regression floor, a line whose disappearance is the failure.
+    """
+    stem: str                            # the smoke mission the rule applies to
+    pattern: "re.Pattern[str]"
+    bucket: str                          # verdict bucket when the line never appeared
+    why: str
+
+
+PRESENCE_RULES: tuple = (
+    # The in-mission video surface (owner ruling 2026-10-13, M1): mc2_10 requests its briefing movies through the ABL play-video call, and the request is
+    # logged before the frame-rate check, so the line appears whether or not the movie decodes. The October 10 split of MissionBegin::update once lost the
+    # campaign-start cinematic without any gate noticing; a vanished request line is the same regression for the in-mission calls.
+    PresenceRule("mc2_10", re.compile(r"\[VIDEO v1\] event=play_requested"), "video_floor_missing",
+                 "no [VIDEO v1] event=play_requested line: the in-mission video request path is gone"),
+)
+
 MARKER_BUCKETS: tuple = (
     # G4: a VK gate resolved before main() was read by a static initializer, i.e. ahead of the launcher's
     # environment apply, so it can disagree with the environment the game then runs under. The VK gates
@@ -190,6 +210,8 @@ class LogSummary:
     vk_profile: list = field(default_factory=list)
     # The `[VK_VALIDATION v1]` lines (Khronos validation layer messages), see smoke_lib/vk_validation.py.
     vk_validation: list = field(default_factory=list)
+    # Per PRESENCE_RULES row (keyed by its bucket): how many lines matched. The gate applies the rows of the mission under test.
+    presence_counts: dict = field(default_factory=dict)
 
 
 def parse_log(text: str,
@@ -258,6 +280,10 @@ def parse_log(text: str,
         for mb in MARKER_BUCKETS:
             if mb.pattern.search(line):
                 s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1
+
+        for rule in PRESENCE_RULES:
+            if rule.pattern.search(line):
+                s.presence_counts[rule.bucket] = s.presence_counts.get(rule.bucket, 0) + 1
 
         for p in CRASH_PATTERNS:
             if p.search(line): s.crash_handler_hit = True; break

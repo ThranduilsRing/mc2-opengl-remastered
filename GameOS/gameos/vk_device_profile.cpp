@@ -20,6 +20,11 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     c.maxPushConstantsSize = props.limits.maxPushConstantsSize;
     c.maxStorageBufferRange = props.limits.maxStorageBufferRange;
 
+    // A core 1.0 feature: read before the version early-out below so a pre-1.2 device is reported with the bit it really has.
+    VkPhysicalDeviceFeatures core10{};
+    vkGetPhysicalDeviceFeatures(pd, &core10);
+    c.independentBlend = core10.independentBlend == VK_TRUE;
+
     if (c.usableApi() >= makeApi(1, 1)) {             // physical-device properties2 is core from 1.1
         VkPhysicalDeviceIDProperties id{};
         id.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
@@ -71,7 +76,6 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     c.descriptorBindingPartiallyBound = f12.descriptorBindingPartiallyBound == VK_TRUE;
     c.dynamicRendering = (core13 ? f13.dynamicRendering : dr.dynamicRendering) == VK_TRUE;
     c.synchronization2 = (core13 ? f13.synchronization2 : s2.synchronization2) == VK_TRUE;
-    c.independentBlend = f2.features.independentBlend == VK_TRUE;
     return c;
 }
 

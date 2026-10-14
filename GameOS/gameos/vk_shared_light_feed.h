@@ -58,5 +58,9 @@ bool mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
                                  const void* cpuData, uint64_t cpuBytes,
                                  VkBuffer* outBuf);
 
+// Destroys the ring (after the GPU is idle). Engine teardown calls it ahead of the shared context so the three buffers are gone before the allocator
+// and the device; a later acquire builds a fresh ring. Safe when nothing was ever acquired.
+void mc2vkSharedLightFeedRelease();
+
 #endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_SHARED_LIGHT_FEED_H

@@ -383,7 +383,8 @@ bool terrainSkirtsRequested();
 bool terrainVisualDisplaceFarRequested();
 std::string spv_dir();
 VkShaderModule load_spv(VkDevice device, std::string_view path);
-bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc, bool hostVisible);
+bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+                 std::string_view name, int i0 = -1, int i1 = -1);
 const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep);
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep);
 void write_descriptors(TerrainIsland* s);

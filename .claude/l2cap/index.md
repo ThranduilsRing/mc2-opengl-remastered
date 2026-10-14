@@ -5,7 +5,7 @@ A set listed here may no longer exist on disk: deleting a set directory never re
 VOID = the requested backend is not the one that drew it, or the set has no capture record: never cite the set as evidence for the requested backend. A VOID flag is sticky.
 unrecorded = the set predates that field. `[vs HEAD defaults]` = the exe's own option table could not be read, so the differences are against the defaults of the commit this index was written at.
 Add new sets with `py -3 tools/visual_verify/capture_index.py`.
-147 set(s), 23 VOID (counted from the ledger when this file was written).
+154 set(s), 23 VOID (counted from the ledger when this file was written).
 
 f21-after-vk **VOID** | vulkan | gl | gl_fbo | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 f21-after-vkarm | vulkan | vulkan | vk_present | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12
@@ -47,8 +47,8 @@ g1tip-vkarm | vulkan | vulkan | vk_present | 0d479ca9b915 | unrecorded | unfroze
 g1tip1-gl | gl | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 1/2 | 2026-10-12
 g1tip2-gl | gl | gl | gl_fbo | 0d479ca9b915 | unrecorded | frozen | 2/2 | 2026-10-12
 gold1080-ab-pbr1 | gl | gl | gl_fbo | e9e3f19d6f6e | StaticPropPbr=true | frozen | 10/10 | 2026-10-13
-gold1080-nocsv | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 9/10 | 2026-10-13 | note: install data/art/Buildings.csv (a May editor bring-up override listing vehicles as MECH) removed by owner ruling 2026-10-13; self-compare against golden-e9e3f19d6-1080p with the stock CSV loading: every blessed region of the nine captured poses PASS, 0.0 changed, no re-bless; the tenth pose (mc2_01_saved_205644) is the set gold1080-nocsv-01 because its first attempt spent its time budget waiting for another lane's host lease
-gold1080-nocsv-01 | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 1/1 | 2026-10-13 | note: mc2_01_saved_205644 re-run of gold1080-nocsv after the Buildings.csv removal: 7/7 regions PASS 0.0
+gold1080-nocsv | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 9/10 | 2026-10-13 | note: install data/art/Buildings.csv (a May editor bring-up override listing vehicles as MECH) removed by owner ruling 2026-10-13; self-compare against golden-e9e3f19d6-1080p with the stock CSV loading: all 25 of the golden's 39 regions that are blessed (18 on the nine poses here + 7 on the tenth) PASS, 0.0 changed, no re-bless; the other 14 (13 unstable, 1 degenerate) are refused regions, exactly where a difference would be invisible, so nothing is claimed about them; the tenth pose (mc2_01_saved_205644) is the set gold1080-nocsv-01 because its first attempt spent its time budget waiting for another lane's host lease
+gold1080-nocsv-01 | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 1/1 | 2026-10-13 | note: mc2_01_saved_205644 re-run of gold1080-nocsv after the Buildings.csv removal: 7/7 blessed regions PASS 0.0 (the 25-of-39 total is in the note of gold1080-nocsv)
 gold1080-r1 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 gold1080-r2 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 gold1080-r3 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
@@ -108,6 +108,13 @@ t1-default-a-gl | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 2/2 | 20
 t1-default-b-gl | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 2/2 | 2026-10-13
 t1-oldexe-pbr0-gl | gl | gl | gl_fbo | 98fc6705ba79 | StaticPropPbr=false | frozen | 2/2 | 2026-10-13
 t1-pbr1-gl | gl | gl | gl_fbo | e9e3f19d6f6e | StaticPropPbr=true | frozen | 2/2 | 2026-10-13
+vfxown-after-vk | vulkan | vulkan | vk_present | 9bd8dd644bd6 | defaults | frozen | 2/2 | 2026-10-13 | note: VFX ownership slice, AFTER (HEAD fd000f067 code, exe 6e66a8bfe911): VK umbrella, day + night; night 0 px vs vfxown-before-vk, day 46 px (VK noise floor 77 px, vfxown-before2-vk)
+vfxown-after1-gl | gl | gl | gl_fbo | 9bd8dd644bd6 | defaults | frozen | 1/2 | 2026-10-13 | note: UNUSABLE: the mc2_01 pose lost its whole budget waiting for another lane's host lease; delete
+vfxown-after2-gl | gl | gl | gl_fbo | 9bd8dd644bd6 | defaults | frozen | 2/2 | 2026-10-13
+vfxown-before-vk | vulkan | vulkan | vk_present | 9bd8dd644bd6+dirty | defaults | frozen | 2/2 | 2026-10-13 | note: VFX ownership slice, BEFORE: the pre-conversion vfx island rebuilt as a scratch exe (mc2_before.exe, dirty), VK umbrella, day + night
+vfxown-before1-gl | gl | gl | gl_fbo | 9bd8dd644bd6+dirty | defaults | frozen | 2/2 | 2026-10-13
+vfxown-before2-gl | gl | gl | gl_fbo | 9bd8dd644bd6+dirty | defaults | frozen | 2/2 | 2026-10-13
+vfxown-before2-vk | vulkan | vulkan | vk_present | 9bd8dd644bd6+dirty | defaults | frozen | 1/1 | 2026-10-13 | note: VK noise set: a second capture of the BEFORE exe, mc2_01 only
 w1-after-vk **VOID** | vulkan | gl | gl_fbo | a7ddae10b9dc+dirty | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 w1-after-vkarm | vulkan | vulkan | vk_present | a7ddae10b9dc+dirty | unrecorded | frozen | 2/2 | 2026-10-12
 w1-after1-gl | gl | gl | gl_fbo | a7ddae10b9dc+dirty | unrecorded | frozen | 2/2 | 2026-10-12

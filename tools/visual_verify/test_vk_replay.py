@@ -2,6 +2,7 @@
 frames. No Vulkan, no engine and no GFXReconstruct is run: the argument building and the pixel comparison are the parts that can be wrong without a GPU.
 Why: the proof is only as good as its arguments (a layer that is not on the path captures nothing, a screenshot range that misses the frame compares nothing) and
 its hash (a comparison that ignores the size or the channel order would call two different frames equal)."""
+import json
 import os
 import sys
 from pathlib import Path
@@ -135,8 +136,10 @@ def test_dry_run_prints_the_commands_and_runs_nothing(tmp_path, capsys):
 
 
 def test_the_capture_file_is_found_under_the_name_the_layer_gave_it(tmp_path):
-    (tmp_path / "mc2_frames_440_through_470.gfxr").write_bytes(b"x" * 10)
-    (tmp_path / "stale.gfxr").write_bytes(b"x")
+    import os
+    (tmp_path / "mc2_frames_440_through_470.gfxr").write_bytes(b"x")
+    (tmp_path / "stale.gfxr").write_bytes(b"x" * 10)                          # bigger, but from an earlier run
+    os.utime(tmp_path / "stale.gfxr", (1000, 1000))
     assert vk_replay.captured_file(tmp_path).name == "mc2_frames_440_through_470.gfxr"
     with pytest.raises(FileNotFoundError):
         vk_replay.captured_file(tmp_path / "nothing")
@@ -152,3 +155,38 @@ def test_a_match_is_named_by_its_application_frame(tmp_path):
     result = vk_replay.compare(live, shots, first_app_frame=440)
     assert result["matches"] == ["replay_frame_23.png"] and result["app_frames"] == [462]     # replay frame 23 is application frame 440 + 22
     assert vk_replay.replay_frame_number("replay_frame_7.png") == 7 and vk_replay.replay_frame_number("x.png") is None
+
+
+def _sidecar(png, frame_no):
+    png.with_suffix(".json").write_text(json.dumps({"frame": frame_no}), encoding="utf-8")
+
+
+def test_a_hash_match_on_another_frame_than_the_live_one_is_not_equal(tmp_path):
+    live = tmp_path / "live.png"
+    write_png(live, frame(40))
+    _sidecar(live, 462)
+    shots = tmp_path / "shots"
+    shots.mkdir()
+    write_png(shots / "replay_frame_5.png", frame(40))                         # the same pixels, but application frame 444
+    result = vk_replay.compare(live, shots, first_app_frame=440)
+    assert result["app_frames"] == [444] and result["frame_ok"] is False and not result["equal"]
+    write_png(shots / "replay_frame_23.png", frame(40))                        # application frame 462 = the live sidecar's
+    assert vk_replay.compare(live, shots, first_app_frame=440)["equal"]
+
+
+def test_the_live_png_is_chosen_by_its_sidecar_not_by_name_order(tmp_path):
+    folder = tmp_path / "mc2_01_saved_1"
+    folder.mkdir()
+    for name, no in (("mc2_01_saved_1.png", 462), ("mc2_01_saved_1_dup.png", 463), ("a_extra.png", 400)):
+        write_png(folder / name, frame(1))
+    _sidecar(folder / "mc2_01_saved_1.png", 462)
+    _sidecar(folder / "mc2_01_saved_1_dup.png", 463)                           # a_extra.png has no sidecar and sorts first
+    assert vk_replay.find_live_png(tmp_path, "mc2_01_saved_1").name == "mc2_01_saved_1.png"
+    (folder / "mc2_01_saved_1.json").unlink()                                  # without the named PNG's sidecar the earliest framed PNG wins
+    assert vk_replay.find_live_png(tmp_path, "mc2_01_saved_1").name == "mc2_01_saved_1_dup.png"
+
+
+def test_the_proof_replays_the_frames_it_recorded(tmp_path, capsys):
+    rc = vk_replay.main(["proof", "--install", "A:/inst", "--bookmark", "mc2_01_saved_205644", "--out", str(tmp_path / "o"), "--frames", "440-500", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "1-61" in out

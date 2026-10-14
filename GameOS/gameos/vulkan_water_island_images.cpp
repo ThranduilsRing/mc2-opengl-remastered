@@ -137,6 +137,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
         if (vmaCreateImage(s->allocator, &ii, &aci, &s->hdriImage, &s->hdriAlloc, nullptr) != VK_SUCCESS) {
             vlog("hdri: vmaCreateImage failed."); return false;
         }
+        mc2vk::nameObject(s->device, s->hdriImage, "water.hdri");
         VkImageViewCreateInfo vi{};
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         vi.image = s->hdriImage; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
@@ -154,7 +155,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
         total += (VkDeviceSize)((levels[i].size() + 15) & ~size_t(15));
     }
     VkBuffer staging = VK_NULL_HANDLE; VmaAllocation stagingAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc)) return false;
+    if (!make_buffer(s, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc, "water.staging")) return false;
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, stagingAlloc, &p) != VK_SUCCESS) {
@@ -252,6 +253,7 @@ bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
     if (vmaCreateImage(s->allocator, &ii, &aci, img, alloc, nullptr) != VK_SUCCESS) {
         vlog("shore: vmaCreateImage failed."); return false;
     }
+    mc2vk::nameObject(s->device, *img, "water.shore");
     VkImageViewCreateInfo vi{};
     vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     vi.image = *img; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
@@ -260,7 +262,7 @@ bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
         vlog("shore: vkCreateImageView failed."); return false;
     }
     VkBuffer staging = VK_NULL_HANDLE; VmaAllocation stagingAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, (VkDeviceSize)bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc)) return false;
+    if (!make_buffer(s, (VkDeviceSize)bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc, "water.staging")) return false;
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, stagingAlloc, &p) != VK_SUCCESS) {

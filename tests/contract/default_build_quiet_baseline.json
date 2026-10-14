@@ -51,7 +51,7 @@
     },
     "VIDEO v1": {
       "status": "keep",
-      "reason": "Regression floor of the video surface (owner ruling 2026-10-13, M1): one line per movie request, skip or play (campaign-start and won-mission pre-videos in code/missionbegin.cpp / logistics.cpp / logistics_begin.cpp, in-mission videos in controlgui_chat.cpp as event=play_requested), a few lines per session. No harness parser yet: a MarkerBucket in scripts/smoke_lib/logparse.py flags the PRESENCE of a line and this floor needs the ABSENCE rule (pre_video after a campaign boot, play_requested in tier1 mc2_10); that file is being edited by the smoke owner, so the rule is routed to them (cxx23-step4-b1-notes.md 8e) and until it lands the proof procedure greps these lines."
+      "reason": "Regression floor of the video surface (owner ruling 2026-10-13, M1): one line per movie request, skip or play (campaign-start and won-mission pre-videos in code/missionbegin.cpp / logistics.cpp / logistics_begin.cpp, in-mission videos in controlgui_chat.cpp as event=play_requested), a few lines per session. Parsed by scripts/smoke_lib/logparse.py PRESENCE_RULES (an absence rule: tier1/tier2 mc2_10 must print an event=play_requested line or the row is red, bucket video_floor_missing; scripts/smoke_lib/gates.py applies it). The campaign-start pre_video line is not yet enforced: it needs a campaign-boot run, so until one exists the proof procedure greps it."
     },
     "WATER_SHORE_EDGE v1": {
       "status": "keep",

@@ -26,6 +26,7 @@
 
 #include "vk_device_profile.h"
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -43,7 +44,7 @@ struct EngineContextHealth {
     bool         attempted          = false; // init() was called at least once
     char         deviceName[256]    = {0};   // VkPhysicalDeviceProperties.deviceName
     bool         validationEnabled  = false;
-    unsigned long validationErrors  = 0;     // ERROR-severity validation msgs
+    std::atomic<unsigned long> validationErrors{0};   // ERROR-severity validation msgs; the layer calls back from any driver thread
     std::string  fallbackReason;             // empty == clean; set on any failure
     std::string  profileLine;                // the [VK_PROFILE v1] line of the device the profile chose (or refused); empty before device selection
 };
@@ -104,6 +105,13 @@ public:
     bool featureEnabled(std::string_view name) const { return profile::featureEnabled(profile_, name); }
     profile::Route route(std::string_view item) const { return profile::routeOf(profile_, item); }
 
+    // Records a synchronization2 barrier through the entry point of the device's route: the core 1.3 name, or the KHR name on a 1.2 device that has the
+    // extension. The ruling makes the facility required, so the device always has one of the two.
+    void cmdPipelineBarrier2(VkCommandBuffer cb, const VkDependencyInfo& dep) const {
+        if (route("synchronization2") == profile::Route::Core) vkCmdPipelineBarrier2(cb, &dep);
+        else vkCmdPipelineBarrier2KHR(cb, &dep);
+    }
+
     const EngineContextHealth& health() const { return health_; }
     EngineContextHealth&       mutableHealth() { return health_; }
 
@@ -131,6 +139,31 @@ private:
 
     EngineContextHealth health_;
 };
+
+// Object names for the validation layer and the capture tools: a message that says `VkImage 0x310000000031` is decoded by creation order, one that says
+// `shared.scene.normal` is not. The names are live only while the debug-utils messenger is (a validation run); otherwise every call returns at once.
+// `name` comes from the creating site and says what the object is for.
+bool debugNamesEnabled();
+void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name);
+constexpr VkObjectType objectTypeOf(VkImage)    { return VK_OBJECT_TYPE_IMAGE; }
+constexpr VkObjectType objectTypeOf(VkBuffer)   { return VK_OBJECT_TYPE_BUFFER; }
+constexpr VkObjectType objectTypeOf(VkPipeline) { return VK_OBJECT_TYPE_PIPELINE; }
+
+// `nameObject(device, image, "terrain.normal")`.
+template <class Handle>
+inline void nameObject(VkDevice device, Handle handle, std::string_view name) {
+    setObjectName(device, objectTypeOf(handle), reinterpret_cast<uint64_t>(handle), name);
+}
+
+// The same for an object that exists once per slot: `name[i0]` or `name[i0][i1]`; a negative index is left out.
+template <class Handle>
+inline void nameObjectAt(VkDevice device, Handle handle, std::string_view name, int i0 = -1, int i1 = -1) {
+    if (!debugNamesEnabled()) return;
+    std::string full(name);
+    if (i0 >= 0) full += "[" + std::to_string(i0) + "]";
+    if (i1 >= 0) full += "[" + std::to_string(i1) + "]";
+    nameObject(device, handle, full);
+}
 
 // Process-wide accessor for the shared engine context. Returns the same object
 // on every call. The first call does NOT auto-init -- call init() explicitly at

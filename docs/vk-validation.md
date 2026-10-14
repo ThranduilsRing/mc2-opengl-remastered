@@ -10,6 +10,8 @@ message ids per mission.
 WHY: until now the layer's messages went to stderr as free text that nothing graded, so a Vulkan mission could be green with validation errors in its log, and a
 requested-but-missing layer silently ran without coverage (best-practices review, "Validation test tier"). A validation tier that cannot fail on a missing layer
 looks green with no coverage, so a requested layer that the loader does not offer prints `severity=error id=layer_unavailable` and the mission goes red.
+The same holds for a run that asks (`MC2_VULKAN_VALIDATION` in the child's environment) and never prints `layer_enabled`, for example a GL fallback with no refusal or a mission that never
+creates the Vulkan context: the runner grades it red with the bucket `vk_validation_unconfirmed` (`scripts/smoke_lib/gates.py`).
 
 ## Running it
 

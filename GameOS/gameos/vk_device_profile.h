@@ -31,6 +31,9 @@ constexpr uint32_t apiMinor(uint32_t v) { return (v >> 12) & 0x3FF; }
 
 inline constexpr uint32_t kFloorApi = makeApi(1, 2);    // the minimum device and instance version
 inline constexpr uint32_t kUseApi13 = makeApi(1, 3);    // used when both the loader and the device have it (core dynamic rendering / sync2)
+// The instance is requested at min(loader, kUseApi13) because nothing in the engine uses 1.4: a floor above 1.3 could never be met by an instance the
+// engine creates, and every device would be refused. The item id "api_1_2" is a literal and must be renamed together with the floor.
+static_assert(kFloorApi <= kUseApi13, "the floor must not exceed the version the engine requests");
 
 // Limits the engine relies on. 8192 is the largest shadow map the engine offers; the others are the Vulkan minimums the islands assume.
 inline constexpr uint32_t kMinImageDimension2D = 8192;

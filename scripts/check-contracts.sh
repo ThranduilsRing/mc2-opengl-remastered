@@ -996,6 +996,9 @@ run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.
 # taken with NO output-affecting MC2_* env, and SKIPs (exit 0) when no such run
 # exists, so it is safe on a machine that has not smoked.
 run_check "default_build_quiet"    "py -3 scripts/check-default-build-quiet.py"
+# VK-OWNERSHIP-1: the ledger of hand-written Vulkan create/release code is the tool's rendering of the source; a converted island that grows manual code again, or a
+# ledger nobody regenerated, is stale.
+run_check "vk_ownership_ledger"    "py -3 tools/vk_ownership_ledger.py --check"
 # CAPTURE-DETERMINISM-1: two captures of the SAME arm must be identical, or
 # every pixel A/B taken across two launches is measuring noise. Measured on
 # mc2_10 (2026-07-26): up to 27.3% of pixels differed between byte-identical

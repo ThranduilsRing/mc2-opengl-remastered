@@ -301,7 +301,8 @@ struct ColorPropIsland {
 ColorPropIsland* g_island = nullptr;
 
 bool make_buffer(ColorPropIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
+                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -311,6 +312,7 @@ bool make_buffer(ColorPropIsland* s, VkDeviceSize size, VkBufferUsageFlags usage
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -393,7 +395,7 @@ bool ensure_light_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes)
         s->lightBuf[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lightBuf[par], &s->lightAlloc[par], true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lightBuf[par], &s->lightAlloc[par], true, "colorprop.lightBuf", static_cast<int>(par)))
         return false;
     s->lightCap[par] = cap;
     write_descriptors(s);
@@ -494,7 +496,7 @@ bool ensure_inst_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) 
         s->instBuf[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf[par], &s->instAlloc[par], true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf[par], &s->instAlloc[par], true, "colorprop.instBuf", static_cast<int>(par)))
         return false;
     s->instCapBytes[par] = cap;
     write_descriptors(s);
@@ -623,7 +625,7 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     (void)compressed;
 
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "colorprop.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
       std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
@@ -639,6 +641,7 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     if (vmaCreateImage(s->allocator, &ici, &aci, tgt.img, tgt.alloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
+    mc2vk::nameObject(s->device, *tgt.img, "colorprop.texture");
 
     VkCommandBuffer cb = cp_begin_oneshot(s);
     if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
@@ -788,7 +791,7 @@ bool cp_upload_layer_table_into(ColorPropIsland* s, VkBuffer* buf, VmaAllocation
         *buf = VK_NULL_HANDLE;
     }
     if (*buf == VK_NULL_HANDLE) {
-        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true))
+        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true, "colorprop.layerTable"))
             return false;
         *capBytes = bytes;
     }
@@ -909,8 +912,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // VK-PROP-FENCE-DEFER-1: per-parity instance SSBOs + frame UBOs.
     if (!ensure_inst_capacity(s, 0, 256 * 1024)) return false;
     if (!ensure_inst_capacity(s, 1, 256 * 1024)) return false;
-    if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[0], &s->uboAlloc[0], true)) return false;
-    if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[1], &s->uboAlloc[1], true)) return false;
+    if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[0], &s->uboAlloc[0], true, "colorprop.ubo", 0)) return false;
+    if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[1], &s->uboAlloc[1], true, "colorprop.ubo", 1)) return false;
 
     if (s->tier1) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
@@ -1174,6 +1177,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->t1_pipe) != VK_SUCCESS) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
+        mc2vk::nameObject(s->device, s->t1_pipe, "colorprop.tier1Pipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity). ----
@@ -1222,8 +1226,8 @@ bool upload_geometry_once(ColorPropIsland* s) {
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
 
-    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;
-    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true)) return false;
+    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true, "colorprop.vbo")) return false;
+    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true, "colorprop.ibo")) return false;
     std::vector<uint8_t> scratch;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {

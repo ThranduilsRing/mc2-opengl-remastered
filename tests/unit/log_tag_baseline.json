@@ -11406,6 +11406,15 @@
    "count": 1
   },
   {
+   "tag": "VK_FIRST_LAYOUT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "start"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_GL_LOST_DRAWS",
    "ver": 1,
    "stream": "stderr",
@@ -12699,6 +12708,7 @@
   "TGL_POOL",
   "TIMING",
   "VEG_SUMMARY",
+  "VIDEO",
   "VISUAL_CAPTURE",
   "VK_PROFILE",
   "VK_VALIDATION",

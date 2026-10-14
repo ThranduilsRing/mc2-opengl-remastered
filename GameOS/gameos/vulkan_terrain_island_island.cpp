@@ -8,7 +8,8 @@
 namespace vk_terrain_detail {
 
 bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
+                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+                 std::string_view name, int i0, int i1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -18,6 +19,7 @@ bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -72,8 +74,8 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
     pm.indexCount = (uint32_t)indices.size();
     const VkDeviceSize vboBytes = verts.size() * sizeof(LocalVertex);
     const VkDeviceSize iboBytes = indices.size() * sizeof(uint16_t);
-    if (!make_buffer(s, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &pm.vbo, &pm.vboAlloc, true)) return nullptr;
-    if (!make_buffer(s, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &pm.ibo, &pm.iboAlloc, true)) return nullptr;
+    if (!make_buffer(s, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &pm.vbo, &pm.vboAlloc, true, "terrain.patchMesh.vbo")) return nullptr;
+    if (!make_buffer(s, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &pm.ibo, &pm.iboAlloc, true, "terrain.patchMesh.ibo")) return nullptr;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, pm.vboAlloc, &p) == VK_SUCCESS) {
           std::memcpy(p, verts.data(), (size_t)vboBytes); vmaUnmapMemory(s->allocator, pm.vboAlloc); } }
@@ -139,8 +141,8 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
 
     const VkDeviceSize vboBytes = skirtVerts.size() * sizeof(SkirtVertex);
     const VkDeviceSize iboBytes = skirtIdx.size() * sizeof(uint16_t);
-    if (!make_buffer(s, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &sm.vbo, &sm.vboAlloc, true)) return nullptr;
-    if (!make_buffer(s, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &sm.ibo, &sm.iboAlloc, true)) return nullptr;
+    if (!make_buffer(s, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &sm.vbo, &sm.vboAlloc, true, "terrain.skirtMesh.vbo")) return nullptr;
+    if (!make_buffer(s, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &sm.ibo, &sm.iboAlloc, true, "terrain.skirtMesh.ibo")) return nullptr;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, sm.vboAlloc, &p) == VK_SUCCESS) {
           std::memcpy(p, skirtVerts.data(), (size_t)vboBytes); vmaUnmapMemory(s->allocator, sm.vboAlloc); } }
@@ -289,7 +291,7 @@ bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
         s->heightBuf = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 4 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->heightBuf, &s->heightAlloc, true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->heightBuf, &s->heightAlloc, true, "terrain.heightBuf"))
         return false;
     s->heightCapBytes = cap;
     s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -306,7 +308,7 @@ bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes) {
         s->ubo[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + sizeof(TerrainFrameUBO);
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[par], &s->uboAlloc[par], true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[par], &s->uboAlloc[par], true, "terrain.ubo", static_cast<int>(par)))
         return false;
     s->uboCapBytes[par] = cap;
     write_descriptors(s);
@@ -325,7 +327,7 @@ bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSi
         s->lpBuf[par][k] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 256;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lpBuf[par][k], &s->lpAlloc[par][k], true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lpBuf[par][k], &s->lpAlloc[par][k], true, "terrain.lpBuf", static_cast<int>(par), static_cast<int>(k)))
         return false;
     s->lpCap[par][k] = cap;
     write_descriptors(s);
@@ -569,7 +571,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // are ready -> FS ignores the cement branch -> colormap base, no hole).
     if (!ensure_dummy_cement(s)) { setFallback("cement_dummy_failed"); return false; }
     if (s->cementBuf == VK_NULL_HANDLE) {
-        if (!make_buffer(s, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true)) {
+        if (!make_buffer(s, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true, "terrain.cementBuf")) {
             setFallback("cement_dummy_ssbo_failed"); return false;
         }
         s->cementCapBytes = 16;
@@ -578,7 +580,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // valid descriptor from frame 1 (visualHeightReady stays false until the sub-gate is
     // on AND the fine bake snapshots -> UBO visualMode stays 0 -> VS never reads it).
     if (s->visualHeightBuf == VK_NULL_HANDLE) {
-        if (!make_buffer(s, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true)) {
+        if (!make_buffer(s, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true, "terrain.visualHeightBuf")) {
             setFallback("visual_height_dummy_ssbo_failed"); return false;
         }
         s->visualHeightCapBytes = 16;
@@ -606,7 +608,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
             for (int k = 0; k < 3; ++k)
                 if (s->lpBuf[i][k] == VK_NULL_HANDLE) {
                     if (!make_buffer(s, initBytes[k], VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                     &s->lpBuf[i][k], &s->lpAlloc[i][k], true)) {
+                                     &s->lpBuf[i][k], &s->lpAlloc[i][k], true, "terrain.lpBuf", i, k)) {
                         setFallback("lightpool_ssbo_failed"); return false;
                     }
                     s->lpCap[i][k] = initBytes[k];
@@ -763,6 +765,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
         }
+        mc2vk::nameObject(s->device, s->pipe, "terrain.pipe");
 
         // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
         // depth/blend state as above -- only the shader modules + vertex-input state
@@ -801,6 +804,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, &s->skirtPipe) != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false;
         }
+        mc2vk::nameObject(s->device, s->skirtPipe, "terrain.skirtPipe");
     }
 
     s->inited = true;

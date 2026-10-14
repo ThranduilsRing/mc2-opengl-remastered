@@ -130,7 +130,8 @@ int  g_initReachedBuild = 0;
 std::vector<Mc2LegacyMlrDraw> g_pending;
 
 bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf,
-                 VmaAllocation* alloc, bool hostVisible) {
+                 VmaAllocation* alloc, bool hostVisible,
+                 std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
@@ -140,6 +141,7 @@ bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffe
     if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -188,7 +190,7 @@ void cp_end(Island* s, VkCommandBuffer cb) {
 
 bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "legacyshape.staging")) return false;
     if (!upload_host(s, stgAlloc, bytes, (size_t)byteCount)) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
 
     VkImageCreateInfo ici{};
@@ -202,6 +204,7 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* by
     if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
+    mc2vk::nameObject(s->device, e.img, "legacyshape.texture");
     VkCommandBuffer cb = cp_begin(s);
     if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
     VkImageMemoryBarrier bar{};
@@ -335,9 +338,9 @@ bool init_island(Island* s, int w, int h) {
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
 
     for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true)) return false;
+        if (!make_buffer(s, sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "legacyshape.ubo", static_cast<int>(i))) return false;
         s->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true)) return false;
+        if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", static_cast<int>(i))) return false;
     }
 
     {   // command pool + per-parity command buffers
@@ -530,6 +533,7 @@ bool init_island(Island* s, int w, int h) {
             if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipes[k]) != VK_SUCCESS) {
                 setFallback("pipeline_failed"); return false;
             }
+            mc2vk::nameObjectAt(s->device, s->pipes[k], "legacyshape.pipe", static_cast<int>(k));
         }
     }
 
@@ -601,7 +605,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
             vmaDestroyBuffer(s->allocator, s->vtx[i], s->vtxAlloc[i]);
             s->vtx[i] = VK_NULL_HANDLE;
             s->vtxCap[i] = totalBytes + totalBytes / 2;
-            if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true)) {
+            if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", static_cast<int>(i))) {
                 s->disabled = true; setFallback("vtx_grow_failed"); return 0;
             }
         }

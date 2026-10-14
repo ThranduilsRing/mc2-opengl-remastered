@@ -33,6 +33,7 @@
 #include <volk.h>
 #include <GL/glew.h>
 
+#include "vk_first_layout.h"
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
 
@@ -75,6 +76,12 @@ VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
     return slot == MC2_SHARED_SCENE_OBJECT_ID
         ? VK_FORMAT_R32_UINT
         : VK_FORMAT_R16G16B16A16_SFLOAT;
+}
+
+const char* debugNameForSlot(Mc2SharedSceneColorSlot slot) {
+    if (slot == MC2_SHARED_SCENE_NORMAL) return "shared.scene.normal";
+    if (slot == MC2_SHARED_SCENE_OBJECT_ID) return "shared.scene.objectId";
+    return "shared.scene.color";
 }
 
 const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
@@ -127,6 +134,15 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
         return bail("vk_image_resource_create_failed");
     }
     c->resValid = true;
+    mc2vk::nameObject(device, c->res.image, debugNameForSlot(slot));
+
+    // Every island declares the attachment layout from its first frame, so the image must already be in it; the object-id image, which no island
+    // writes, also starts at "no object".
+    if (!mc2vkGiveSharedImageFirstLayout(ctx, c->res, slot == MC2_SHARED_SCENE_OBJECT_ID ? SharedImageStart::ColorAttachmentCleared
+                                                                                         : SharedImageStart::ColorAttachment)) {
+        mc2SharedSceneColorDestroy(c);
+        return bail("first_layout_failed");
+    }
 
     if (outReason) *outReason = "active_vk_only";
     g_activeBySlot[slot] = c;

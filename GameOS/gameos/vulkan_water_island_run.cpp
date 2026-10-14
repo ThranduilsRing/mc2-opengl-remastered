@@ -106,7 +106,7 @@ extern "C" int mc2_vk_water_island_run(
         if (need > s->recipeBytes) {
             vkDeviceWaitIdle(s->device);
             vmaDestroyBuffer(s->allocator, s->recipeBuf, s->recipeAlloc);
-            if (!make_buffer(s, need, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc)) { s->disabled = true; return 0; }
+            if (!make_buffer(s, need, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc, "water.recipeBuf")) { s->disabled = true; return 0; }
             s->recipeBytes = need;
             write_descriptors(s);
         }

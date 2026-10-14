@@ -129,9 +129,21 @@ def replay_frame_number(name: str) -> "int | None":
     return int(m.group(1)) if m else None
 
 
+def sidecar_frame(png: Path) -> "int | None":
+    """The application frame the engine recorded in the capture's sidecar (`<name>.json` beside `<name>.png`), None when there is no usable sidecar."""
+    try:
+        frame = json.loads(png.with_suffix(".json").read_text(encoding="utf-8")).get("frame")
+    except (OSError, ValueError):
+        return None
+    return frame if isinstance(frame, int) and not isinstance(frame, bool) else None
+
+
 def compare(live_png: Path, shot_dir: Path, first_app_frame: "int | None" = None) -> dict:
     """Hash the live frame and every screenshot in `shot_dir`; `matches` lists the screenshots whose hash equals the live one, and with `first_app_frame` (the
-    first frame GFXRECON_CAPTURE_FRAMES recorded) `app_frames` is the application frame each match is (replay frame k is application frame first + k - 1)."""
+    first frame GFXRECON_CAPTURE_FRAMES recorded) `app_frames` is the application frame each match is (replay frame k is application frame first + k - 1).
+
+    A hash match on a static scene can be a frame other than the live one, so when the live capture has a sidecar the frame it names must be one of
+    `app_frames`; otherwise the images are equal but the proof is not (`equal` False, `frame_ok` False)."""
     live = frame_hash(live_png)
     shots = []
     for p in sorted(shot_dir.glob("*.png")) + sorted(shot_dir.glob("*.bmp")):
@@ -140,22 +152,37 @@ def compare(live_png: Path, shot_dir: Path, first_app_frame: "int | None" = None
     out = {"live": str(live_png), "live_hash": live, "shots": shots, "matches": matches, "equal": bool(matches)}
     if first_app_frame is not None:
         out["app_frames"] = [first_app_frame + n - 1 for n in map(replay_frame_number, matches) if n is not None]
+        live_frame = sidecar_frame(live_png)
+        out["live_frame"] = live_frame
+        if live_frame is not None and matches:
+            out["frame_ok"] = live_frame in out["app_frames"]
+            out["equal"] = out["frame_ok"]
     return out
 
 
 def captured_file(out: Path) -> Path:
     """The capture file the layer wrote: with GFXRECON_CAPTURE_FRAMES it appends the frame range to the name (mc2.gfxr -> mc2_frames_440_through_470.gfxr)."""
-    files = sorted(out.glob("*.gfxr"), key=lambda p: p.stat().st_size, reverse=True)
+    files = sorted(out.glob("*.gfxr"), key=lambda p: p.stat().st_mtime, reverse=True)
     if not files:
         raise FileNotFoundError(f"the GFXReconstruct layer wrote no .gfxr under {out} (is the layer on VK_LAYER_PATH, and did the engine run on Vulkan?)")
     return files[0]
 
 
 def find_live_png(capture_dir: Path, bookmark: str) -> Path:
-    pngs = sorted((capture_dir / bookmark).glob("*.png"))
+    """The capture's own frame: of the PNGs with a sidecar naming a frame, the one called `<bookmark>.png`, else the earliest frame (a duplicate capture is
+    `<bookmark>_dup.png`, which sorts first by name in some sets and says nothing about which frame is the live one)."""
+    folder = capture_dir / bookmark
+    pngs = sorted(folder.glob("*.png"))
     if not pngs:
-        raise FileNotFoundError(f"the engine capture wrote no PNG under {capture_dir / bookmark}")
-    return pngs[0]
+        raise FileNotFoundError(f"the engine capture wrote no PNG under {folder}")
+    framed = [(sidecar_frame(p), p) for p in pngs]
+    framed = [(f, p) for f, p in framed if f is not None]
+    if not framed:
+        raise FileNotFoundError(f"no PNG under {folder} has a sidecar naming its frame, so the live frame cannot be told from a duplicate")
+    for _f, p in framed:
+        if p.stem == bookmark:
+            return p
+    return min(framed, key=lambda fp: (fp[0], fp[1].name))[1]
 
 
 def run_capture(args) -> int:
@@ -208,18 +235,21 @@ def run_compare(args) -> int:
     print(json.dumps(result, indent=1))
     distinct = len({s["hash"] for s in result["shots"]})
     where = f" = application frame(s) {result['app_frames']}" if result.get("app_frames") else ""
+    note = f" (the live sidecar says frame {result['live_frame']}, not a matched one)" if result.get("frame_ok") is False else ""
     print(f"[vk_replay] {'EQUAL' if result['equal'] else 'DIFFERENT'}: live {result['live_hash'][:16]} vs {len(result['shots'])} replayed frame(s) "
-          f"({distinct} distinct); matches {result['matches'] or 'none'}{where}")
+          f"({distinct} distinct); matches {result['matches'] or 'none'}{where}{note}")
     return 0 if result["equal"] else 1
 
 
 def run_proof(args) -> int:
     rc = run_capture(args)
     if args.dry_run:
-        return rc or run_replay(argparse.Namespace(out=args.out, capture=None, frames=None, dry_run=True))
+        first, last = parse_frames(args.frames)
+        return rc or run_replay(argparse.Namespace(out=args.out, capture=None, frames=f"1-{last - first + 1}", dry_run=True))
     if rc:
         return rc
-    rc = run_replay(argparse.Namespace(out=args.out, capture=None, frames=None, dry_run=False))
+    first, last = parse_frames(args.frames)
+    rc = run_replay(argparse.Namespace(out=args.out, capture=None, frames=f"1-{last - first + 1}", dry_run=False))     # replay frame 1 is the first recorded frame
     if rc:
         return rc
     return run_compare(argparse.Namespace(live=str(find_live_png(Path(args.out) / "live", args.bookmark)), shots=str(Path(args.out) / "replay"),

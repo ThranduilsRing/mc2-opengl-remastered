@@ -116,3 +116,21 @@ def test_changed_value_premain_line_alone_is_not_this_bucket():
     # warn=premain (value changed) is the registry's own warning; the bucket keys on the read itself
     s = parse_log("[CONFIG v1] warn=premain name=MC2_VK_MECH_TIER1 premain_value=0 env_now=1\n")
     assert s.marker_counts.get("config_premain_vk", 0) == 0
+
+
+def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
+    from scripts.smoke_lib.gates import GateConfig, evaluate
+    play = "[VIDEO v1] event=play_requested name=MC2_10A\n"
+
+    def run(stem, text):
+        s = parse_log(text)
+        s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
+        s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
+        s.perf = PerfRow(avg_fps=60)
+        cfg = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3, duration_s=30, stem=stem)
+        return evaluate(s, cfg, exit_code=0, walltime_s=31)
+
+    assert run("mc2_10", play).passed
+    gone = run("mc2_10", "")
+    assert not gone.passed and "video_floor_missing" in gone.buckets
+    assert run("mc2_01", "").passed                       # the rule belongs to mc2_10 only

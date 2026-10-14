@@ -138,3 +138,12 @@ def test_a_note_is_shown_after_the_line_and_survives_a_refresh(tmp_path):
     capture_index.main(["--root", str(tmp_path), "--refresh"])
     assert json.loads((tmp_path / "ledger.json").read_text(encoding="utf-8"))["sets"]["n"]["note"] == "an install file / was removed"
     assert capture_index.main(["--root", str(tmp_path), "--note", "missing", "x"]) == 1
+
+
+def test_a_refresh_after_the_pose_files_were_deleted_keeps_what_they_drew(tmp_path):
+    make_set(tmp_path, "s-vk", "vulkan", {"backend": "vulkan", "readback_source": "vk_present"})
+    capture_index.main(["--root", str(tmp_path)])
+    (tmp_path / "s-vk" / BM / (BM + ".json")).unlink()                           # the pose file goes, the set directory stays
+    assert capture_index.main(["--root", str(tmp_path), "--refresh", "s-vk"]) == 0
+    row = json.loads((tmp_path / "ledger.json").read_text(encoding="utf-8"))["sets"]["s-vk"]
+    assert row["drew"] == ["vulkan"] and row["readback"] == ["vk_present"] and row["poses_present"] == 0
