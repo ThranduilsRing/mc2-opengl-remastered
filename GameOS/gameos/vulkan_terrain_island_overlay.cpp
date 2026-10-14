@@ -24,47 +24,31 @@ uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // gameos_graphics.cpp
 
 namespace vk_terrain_detail {
 
-OvlState* g_ovl = nullptr;
 bool g_ovlDeclined = false;
 std::vector<OvlPending> g_ovlPending;
 
-void ovl_destroy_tex(TerrainIsland* s, OvlTex& t) {
-    if (t.view) vkDestroyImageView(s->device, t.view, nullptr);
-    if (t.img)  vmaDestroyImage(s->allocator, t.img, t.alloc);
-    t = OvlTex{};
+void ovl_destroy_tex(OvlTex& t) {
+    t.view.reset();   // the view goes before the image it covers
+    t.img.reset();
+    t.set = VK_NULL_HANDLE;   // freed with the pool
+    t.glTex = 0;
 }
 
+// Idles the GPU, then releases the overlay objects (the state's destructor does it, in reverse declaration order).
 void ovl_destroy(TerrainIsland* s) {
-    OvlState* o = g_ovl;
-    if (!o || o->owner != s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
-    for (int k = 0; k < 2; ++k) {
-        if (o->pipe[k]) vkDestroyPipeline(d, o->pipe[k], nullptr);
-        if (o->vert[k]) vkDestroyShaderModule(d, o->vert[k], nullptr);
-        if (o->frag[k]) vkDestroyShaderModule(d, o->frag[k], nullptr);
-        if (o->vtx[k])  vmaDestroyBuffer(s->allocator, o->vtx[k], o->vtxAlloc[k]);
-    }
-    if (o->stat)    vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc);
-    if (o->fb)      vkDestroyFramebuffer(d, o->fb, nullptr);
-    if (o->rpass)   vkDestroyRenderPass(d, o->rpass, nullptr);
-    if (o->playout) vkDestroyPipelineLayout(d, o->playout, nullptr);
-    for (auto& kv : o->texs) ovl_destroy_tex(s, kv.second);
-    ovl_destroy_tex(s, o->dummy);
-    if (o->texPool) vkDestroyDescriptorPool(d, o->texPool, nullptr);
-    if (o->texDsl)  vkDestroyDescriptorSetLayout(d, o->texDsl, nullptr);
-    if (o->samp)    vkDestroySampler(d, o->samp, nullptr);
-    delete o;
-    g_ovl = nullptr;
+    if (!s || !s->ovl) return;
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_destroy");
+    s->ovl.reset();
 }
 
 bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = o->texPool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &o->texDsl;
+    const VkDescriptorSetLayout texDslHandle = o->texDsl.get();
+    dsai.descriptorPool = o->texPool.get(); dsai.descriptorSetCount = 1; dsai.pSetLayouts = &texDslHandle;
     if (vkAllocateDescriptorSets(s->device, &dsai, &t.set) != VK_SUCCESS) { t.set = VK_NULL_HANDLE; return false; }
     VkDescriptorImageInfo ii{};
-    ii.sampler = o->samp; ii.imageView = t.view; ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    ii.sampler = o->samp.get(); ii.imageView = t.view.get(); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VkWriteDescriptorSet w{};
     w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = t.set; w.dstBinding = 0;
     w.descriptorCount = 1; w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &ii;
@@ -76,11 +60,11 @@ bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
 bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
     uint32_t mips = 1;
     { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
-    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "terrain.staging")) return false;
+    mc2vk::OwnedBuffer stg;
+    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+      if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -90,19 +74,16 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
-        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
-    }
-    mc2vk::nameObject(s->device, e.img, "terrain.overlayTexture");
+    if (!e.img.create(s->allocator, s->device, ici, aci, "terrain.overlayTexture")) return false;
     VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    if (cb == VK_NULL_HANDLE) return false;
 
     auto barrier = [&](uint32_t baseMip, uint32_t count, VkImageLayout oldL, VkImageLayout newL,
                        VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
         VkImageMemoryBarrier b{};
         b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.image = e.img;
+        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.image = e.img.get();
         b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, baseMip, count, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
@@ -112,7 +93,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
     VkBufferImageCopy rgn{};
     rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     rgn.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg, e.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, stg.get(), e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     int32_t mw = (int32_t)w, mh = (int32_t)h;
     for (uint32_t i = 1; i < mips; ++i) {
         barrier(i - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -124,7 +105,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
         blit.srcOffsets[1] = {mw, mh, 1};
         blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
         blit.dstOffsets[1] = {nw, nh, 1};
-        vkCmdBlitImage(cb, e.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, e.img,
+        vkCmdBlitImage(cb, e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, e.img.get(),
                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
         mw = nw; mh = nh;
     }
@@ -136,13 +117,12 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     end_oneshot(s, cb);
-    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-    return vkCreateImageView(s->device, &vci, nullptr, &e.view) == VK_SUCCESS;
+    return mc2vk::create(e.view, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
 
 // Resolve (importing copy-once on first sight) the texture for a gos handle. nullptr = not
@@ -155,8 +135,8 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (it != o->texs.end()) {
         if (it->second.glTex == glTex) return &it->second;
         // The GL texture behind this handle changed (reloaded): re-import.
-        vkDeviceWaitIdle(s->device);
-        ovl_destroy_tex(s, it->second);
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_texture_replace");
+        ovl_destroy_tex(it->second);
         o->texs.erase(it);
         // (the old descriptor set leaks in the pool until the next mission reset; rare)
     }
@@ -180,16 +160,16 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     t.glTex = glTex;
     if (!ovl_upload_tex(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
         !ovl_alloc_tex_set(s, o, t)) {
-        ovl_destroy_tex(s, t);
+        ovl_destroy_tex(t);
         return nullptr;
     }
     vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u glTex=%u %dx%d (%zu/%u).",
          gosHandle, glTex, (int)w, (int)h, o->texs.size() + 1, kOvlMaxTex);
-    return &o->texs.emplace(gosHandle, t).first->second;
+    return &o->texs.emplace(gosHandle, std::move(t)).first->second;
 }
 
 bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
-    o->owner = s; o->w = w; o->h = h;
+    o->w = w; o->h = h;
     VkImageResource* colorRes  = s->colorRes;
     VkImageResource* normalRes = s->normalRes;
     VkImageResource* depthRes  = s->depthRes;
@@ -232,13 +212,13 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         rpci.attachmentCount = 3; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (vkCreateRenderPass(s->device, &rpci, nullptr, &o->rpass) != VK_SUCCESS) return false;
+        if (!mc2vk::create(o->rpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) return false;
         VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = o->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = o->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
-        if (vkCreateFramebuffer(s->device, &fci, nullptr, &o->fb) != VK_SUCCESS) return false;
+        if (!mc2vk::create(o->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) return false;
     }
 
     {   // texture set layout / pool / sampler / dummy white
@@ -248,19 +228,19 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.minLod = 0.0f; sci.maxLod = 16.0f;
-        if (vkCreateSampler(s->device, &sci, nullptr, &o->samp) != VK_SUCCESS) return false;
+        if (!mc2vk::create(o->samp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
         VkDescriptorSetLayoutBinding b{};
         b.binding = 0; b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b.descriptorCount = 1; b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 1; lci.pBindings = &b;
-        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &o->texDsl) != VK_SUCCESS) return false;
+        if (!mc2vk::create(o->texDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) return false;
         VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kOvlMaxTex + 2};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = kOvlMaxTex + 2; pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
-        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &o->texPool) != VK_SUCCESS) return false;
+        if (!mc2vk::create(o->texPool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) return false;
         const uint8_t px[4] = {255, 255, 255, 255};
         if (!ovl_upload_tex(s, o->dummy, 1, 1, px, sizeof(px)) || !ovl_alloc_tex_set(s, o, o->dummy)) return false;
     }
@@ -268,7 +248,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
     {   // command buffers (own pair, from the island's pool)
         VkCommandBufferAllocateInfo cbi{};
         cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
+        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cbi, o->cbuf) != VK_SUCCESS) return false;
     }
 
@@ -278,16 +258,16 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         for (int k = 0; k < 2; ++k) {
             o->vert[k] = load_spv(s->device, spv_dir() + vn[k]);
             o->frag[k] = load_spv(s->device, spv_dir() + fn[k]);
-            if (o->vert[k] == VK_NULL_HANDLE || o->frag[k] == VK_NULL_HANDLE) return false;
+            if (!o->vert[k] || !o->frag[k]) return false;
         }
-        VkDescriptorSetLayout sets[2] = { s->dsl, o->texDsl };
+        VkDescriptorSetLayout sets[2] = { s->dsl.get(), o->texDsl.get() };
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = sizeof(OvlPC);
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         plci.setLayoutCount = 2; plci.pSetLayouts = sets;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
-        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &o->playout) != VK_SUCCESS) return false;
+        if (!mc2vk::create(o->playout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) return false;
 
         // WorldOverlayVert (28B): pos vec3@0, uv vec2@12, fog float@20, argb u8x4 unorm@24.
         VkVertexInputBindingDescription vib{};
@@ -342,9 +322,9 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             cb.attachmentCount = 2; cb.pAttachments = cba;
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = o->vert[k]; stages[0].pName = "main";
+            stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = o->vert[k].get(); stages[0].pName = "main";
             stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = o->frag[k]; stages[1].pName = "main";
+            stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = o->frag[k].get(); stages[1].pName = "main";
             VkGraphicsPipelineCreateInfo gp{};
             gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             gp.stageCount = 2; gp.pStages = stages;
@@ -352,14 +332,14 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             gp.pViewportState = &vps; gp.pRasterizationState = &rs;
             gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
             gp.pDynamicState = &dsci;
-            gp.layout = o->playout; gp.renderPass = o->rpass; gp.subpass = 0;
-            if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &o->pipe[k]) != VK_SUCCESS) return false;
-            mc2vk::nameObjectAt(s->device, o->pipe[k], "terrain.overlayPipe", static_cast<int>(k));
+            gp.layout = o->playout.get(); gp.renderPass = o->rpass.get(); gp.subpass = 0;
+            if (!mc2vk::create(o->pipe[k], s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+            mc2vk::nameObjectAt(s->device, o->pipe[k].get(), "terrain.overlayPipe", static_cast<int>(k));
         }
     }
     for (int i = 0; i < 2; ++i) {
         o->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true, "terrain.overlay.vtx", static_cast<int>(i))) return false;
+        if (!make_buffer(s, o->vtx[i], o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.vtx", static_cast<int>(i))) return false;
     }
     o->inited = true;
     vlog("[VK_TERRAIN_OVERLAY] island initialized %dx%d (cement/road overlays + decals -> shared GBuffer; GEQUAL reverse-Z).", w, h);
@@ -394,20 +374,20 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     std::vector<OvlPending> pending;
     pending.swap(g_ovlPending);                       // always consume
     if (pending.empty() || !mc2_vk_overlay_enabled() || w <= 0 || h <= 0) return 0;
-    TerrainIsland* s = g_island;
+    TerrainIsland* s = parkedIsland();
     if (!s || !s->inited || s->disabled) return 0;    // terrain island not up: nothing to share state with
 
-    if (g_ovl && g_ovl->owner == s && (g_ovl->w != w || g_ovl->h != h)) ovl_destroy(s);
-    if (!g_ovl) {
-        g_ovl = new OvlState();
-        if (!ovl_init(s, g_ovl, w, h)) {
+    if (s->ovl && (s->ovl->w != w || s->ovl->h != h)) ovl_destroy(s);
+    if (!s->ovl) {
+        s->ovl = std::make_unique<OvlState>();
+        if (!ovl_init(s, s->ovl.get(), w, h)) {
             vlog("[VK_TERRAIN_OVERLAY] init failed -- overlays/decals will not draw under VK (permanent for this session).");
             g_ovlDeclined = true;
             ovl_destroy(s);
             return 0;
         }
     }
-    OvlState* o = g_ovl;
+    OvlState* o = s->ovl.get();
     if (o->disabled) return 0;
 
     Mc2TerrainTier1Feed feed{};
@@ -423,26 +403,25 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     for (const OvlPending& p : pending) {
         if (!p.isStatic) continue;
         const VkDeviceSize bytes = (VkDeviceSize)p.vertCount * kOvlVertStride;
-        if (o->statVersion == p.version && o->stat != VK_NULL_HANDLE && bytes <= o->statCap) continue;
-        vkDeviceWaitIdle(s->device);
-        if (o->stat != VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc); o->stat = VK_NULL_HANDLE; }
+        if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_static_grow");
+        o->stat.reset();
         o->statCap = bytes + 256;
-        if (!make_buffer(s, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->stat, &o->statAlloc, true, "terrain.overlay.stat")) {
+        if (!make_buffer(s, o->stat, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) {
             o->disabled = true; return 0;
         }
         void* dst = nullptr;
-        if (vmaMapMemory(s->allocator, o->statAlloc, &dst) != VK_SUCCESS) { o->disabled = true; return 0; }
+        if (vmaMapMemory(s->allocator, o->stat.allocation(), &dst) != VK_SUCCESS) { o->disabled = true; return 0; }
         std::memcpy(dst, p.staticPtr, (size_t)bytes);
-        vmaUnmapMemory(s->allocator, o->statAlloc);
+        vmaUnmapMemory(s->allocator, o->stat.allocation());
         o->statVersion = p.version;
     }
     for (int i = 0; i < 2; ++i) {
         if (dynBytes > o->vtxCap[i]) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, o->vtx[i], o->vtxAlloc[i]);
-            o->vtx[i] = VK_NULL_HANDLE;
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_vertex_grow");
+            o->vtx[i].reset();
             o->vtxCap[i] = dynBytes + dynBytes / 2;
-            if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true, "terrain.overlay.vtx", static_cast<int>(i))) {
+            if (!make_buffer(s, o->vtx[i], o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.vtx", static_cast<int>(i))) {
                 o->disabled = true; return 0;
             }
         }
@@ -477,19 +456,19 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     stage_light_pool(s, par, feed, vkPoolLights, vkGridDim);
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc[par], &p) != VK_SUCCESS) { o->disabled = true; return 0; }
+        if (vmaMapMemory(s->allocator, s->ubo[par].allocation(), &p) != VK_SUCCESS) { o->disabled = true; return 0; }
         TerrainFrameUBO u{};
         fill_frame_ubo(s, feed, feed.patches[0], vkPoolLights, vkGridDim, u);
         std::memcpy(p, &u, sizeof(u));
-        vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
+        vmaUnmapMemory(s->allocator, s->ubo[par].allocation());
     }
     if (!dynRuns.empty()) {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, o->vtxAlloc[par], &p) != VK_SUCCESS) { o->disabled = true; return 0; }
+        if (vmaMapMemory(s->allocator, o->vtx[par].allocation(), &p) != VK_SUCCESS) { o->disabled = true; return 0; }
         for (const auto& r : dynRuns)
             std::memcpy((uint8_t*)p + (size_t)r.second * kOvlVertStride, r.first->verts.data(),
                         (size_t)r.first->vertCount * kOvlVertStride);
-        vmaUnmapMemory(s->allocator, o->vtxAlloc[par]);
+        vmaUnmapMemory(s->allocator, o->vtx[par].allocation());
     }
 
     VkCommandBuffer cb = o->cbuf[par];
@@ -500,7 +479,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { o->disabled = true; return 0; }
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = o->rpass; rbi.framebuffer = o->fb;
+    rbi.renderPass = o->rpass.get(); rbi.framebuffer = o->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
@@ -512,24 +491,24 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     for (int k = 0; k < 4; ++k) pc.fogColor[k] = fr.fogColor[k];
     pc.artFlatExempt = fr.artFlatExempt; pc.mapHalfExtent = fr.mapHalfExtent;
     pc.biasLegacy = fr.biasLegacy; pc.cementAdopt = fr.cementAdopt; pc.seamFix = fr.seamFix;
-    vkCmdPushConstants(cb, o->playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+    vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
     const uint32_t dynOffset0 = 0;
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout, 0, 1, &s->set[par], 1, &dynOffset0);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 0, 1, &s->set[par], 1, &dynOffset0);
 
     int boundKind = -1; int boundStatic = -1; VkDescriptorSet boundTex = VK_NULL_HANDLE;
     unsigned long drawn[2] = {0, 0}, verts = 0;
     for (const Item& it : items) {
         const int kind = (int)(it.kind & 1u);
         const int isStat = (it.kind & 2u) ? 1 : 0;
-        if (kind != boundKind) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind]); boundKind = kind; }
+        if (kind != boundKind) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
         if (isStat != boundStatic) {
-            VkBuffer vb = isStat ? o->stat : o->vtx[par];
+            VkBuffer vb = isStat ? o->stat.get() : o->vtx[par].get();
             VkDeviceSize zero = 0;
             vkCmdBindVertexBuffers(cb, 0, 1, &vb, &zero);
             boundStatic = isStat;
         }
         if (it.tex->set != boundTex) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout, 1, 1, &it.tex->set, 0, nullptr);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 1, 1, &it.tex->set, 0, nullptr);
             boundTex = it.tex->set;
         }
         vkCmdDraw(cb, it.count, 1, it.first, 0);
@@ -556,16 +535,16 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
 
 extern "C" void mc2_vk_overlay_reset() {
     g_ovlPending.clear();
-    OvlState* o = g_ovl;
-    TerrainIsland* s = g_island;
-    if (!o || !s || o->owner != s || !o->inited) return;
+    TerrainIsland* s = parkedIsland();
+    OvlState* o = s ? s->ovl.get() : nullptr;
+    if (!o || !o->inited) return;
     // gos texture handles are reused by the next mission: drop the copy-once cache + static bake.
-    vkDeviceWaitIdle(s->device);
-    for (auto& kv : o->texs) ovl_destroy_tex(s, kv.second);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_reset");
+    for (auto& kv : o->texs) ovl_destroy_tex(kv.second);
     o->texs.clear();
-    if (o->stat != VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc); o->stat = VK_NULL_HANDLE; }
+    o->stat.reset();
     o->statCap = 0; o->statVersion = UINT64_MAX;
-    if (o->texPool) vkResetDescriptorPool(s->device, o->texPool, 0);
+    if (o->texPool) vkResetDescriptorPool(s->device, o->texPool.get(), 0);
     o->dummy.set = VK_NULL_HANDLE;
     if (!ovl_alloc_tex_set(s, o, o->dummy)) { o->disabled = true; vlog("[VK_TERRAIN_OVERLAY] reset: dummy set failed -- disabled."); }
     vlog("[VK_TERRAIN_OVERLAY] texture cache + static bake reset on mission unload.");
@@ -581,19 +560,17 @@ extern "C" void mc2_vk_terrain_island_destroy() {
          g_health.stageUs, g_health.drawUs, g_health.totalUs);
     // VK-DRAW-PERF-1: GPU-timestamp segment breakdown (only when MC2_VK_GPU_TIMESTAMPS
     // armed and supported; gap1 = setup+clear/load, gap2 = patch+skirt draws).
-    if (g_island && g_island->gpuTimer.supported && g_island->gpuTimer.samples > 0) {
+    TerrainIsland* island = parkedIsland();
+    if (island && island->gpuTimer.supported && island->gpuTimer.samples > 0) {
         vlog("GPU_TIMESTAMPS samples=%llu gpu_pass_us=%.1f gpu_setup_us=%.1f gpu_draw_us=%.1f "
              "(cpu_draw_us=%.1f incl. record+submit+fence-wait)",
-             (unsigned long long)g_island->gpuTimer.samples,
-             g_island->gpuTimer.avgTotalUs(),
-             g_island->gpuTimer.avgGapUs(1),
-             g_island->gpuTimer.avgGapUs(2),
+             (unsigned long long)island->gpuTimer.samples,
+             island->gpuTimer.avgTotalUs(),
+             island->gpuTimer.avgGapUs(1),
+             island->gpuTimer.avgGapUs(2),
              g_health.drawUs);
     }
-    if (!g_island) return;
-    g_island->gpuTimer.destroy();
-    destroy_island(g_island);
-    delete g_island; g_island = nullptr;
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Terrain);
 }
 
 extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, float b, float a)

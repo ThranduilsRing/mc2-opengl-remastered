@@ -38,16 +38,17 @@ extern "C" int mc2_vk_terrain_visualdisplace_far_enabled() {
 // GL-draw-then-VK-takeover with no hole.
 extern "C" int mc2_vk_terrain_island_ready() {
     if (!terrainTier1Requested()) return 0;
-    if (!g_island) return 0;                 // not born yet -> GL owns LOD0 this frame
-    if (g_island->disabled) return 0;        // latched off by a prior fatal (spv/pipeline/device)
-    if (!g_island->inited) return 0;
-    if (g_island->vert == VK_NULL_HANDLE || g_island->frag == VK_NULL_HANDLE) return 0; // spv missing
-    if (g_island->pipe == VK_NULL_HANDLE) return 0;                                      // pipeline missing
+    const TerrainIsland* island = parkedIsland();
+    if (!island) return 0;                   // not born yet -> GL owns LOD0 this frame
+    if (island->disabled) return 0;          // latched off by a prior fatal (spv/pipeline/device)
+    if (!island->inited) return 0;
+    if (!island->vert || !island->frag) return 0; // spv missing
+    if (!island->pipe) return 0;                  // pipeline missing
     return 1;
 }
 
 // Birth/(re)init the island for the given scene target size, independent of any
-// per-frame feed. Returns true when g_island is live (inited, not disabled). Must run
+// per-frame feed. Returns true when the parked island is live (inited, not disabled). Must run
 // on the GL/render thread (init touches the shared VK context / GL interop). This is
 // FACTORED OUT of run() so the GL loop can PREPARE the island BEFORE deciding to skip
 // LOD0 — without this the skip would gate on ready, ready would gate on a born island,
@@ -59,14 +60,14 @@ bool ensure_island_ready(int w, int h) {
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
     // island for the whole session -> GL owns terrain, no per-frame re-init churn.
     if (g_terrainSessionDeclined) return false;
-    if (g_island && (g_island->w != w || g_island->h != h)) {
-        destroy_island(g_island); delete g_island; g_island = nullptr;
-    }
-    if (!g_island) {
-        g_island = new TerrainIsland();
-        if (!init_island(g_island, w, h)) {
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const TerrainIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Terrain);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<TerrainIsland>();
+        if (!init_island(fresh.get(), w, h)) {
             const bool permanent = (g_terrainInitReachedBuild != 0);
-            destroy_island(g_island); delete g_island; g_island = nullptr;
+            slotCtx.waitIdle("terrain_init_failure");   // objects made before the failure may have been submitted
+            fresh.reset();
             if (permanent) {
                 // Build-phase failure won't recover this session: latch decline + ONE
                 // receipt line (vs. logging + re-init'ing every frame). GL renders
@@ -87,8 +88,10 @@ bool ensure_island_ready(int w, int h) {
             }
             return false;
         }
+        islandSlot() = std::move(fresh);
     }
-    return g_island && g_island->inited && !g_island->disabled;
+    const TerrainIsland* island = parkedIsland();
+    return island && island->inited && !island->disabled;
 }
 
 // FAIL-SOFT prepare: the GL loop calls this at loop-top (GL context current) so the
@@ -110,10 +113,10 @@ void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed&
             if (!src || bytes == 0) return true;
             if (!ensure_lightpool_capacity(s, par, k, bytes)) return false;
             void* dst = nullptr;
-            if (vmaMapMemory(s->allocator, s->lpAlloc[par][k], &dst) != VK_SUCCESS) return false;
+            if (vmaMapMemory(s->allocator, s->lpBuf[par][k].allocation(), &dst) != VK_SUCCESS) return false;
             std::memcpy(dst, src, (size_t)bytes);
-            vmaUnmapMemory(s->allocator, s->lpAlloc[par][k]);
-            vmaFlushAllocation(s->allocator, s->lpAlloc[par][k], 0, VK_WHOLE_SIZE);
+            vmaUnmapMemory(s->allocator, s->lpBuf[par][k].allocation());
+            vmaFlushAllocation(s->allocator, s->lpBuf[par][k].allocation(), 0, VK_WHOLE_SIZE);
             return true;
         };
         if (vkPoolLights > 0 && feed.poolLights) {
@@ -295,8 +298,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (feed.mapSide <= 0) { setFallback("bad_mapside"); return 0; }
 
     if (!ensure_island_ready(w, h)) return 0;
-    TerrainIsland* s = g_island;
-    if (s->disabled || !s->inited) return 0;
+    TerrainIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited) return 0;
 
     const unsigned long f0b = g_forbidden.glGetTexImage;
     const unsigned long f0c = g_forbidden.glReadPixels;
@@ -373,16 +376,16 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // whatever was last written -- unlike the owned dynShadowView image, whose CONTENTS
     // change per-frame via copy_shadow_slot without needing a new descriptor write).
     {
-        const VkImageView wantView = s->dynShadowDirect ? s->dynShadowExternalView : s->dynShadowView;
-        const VkImageView wantCsmArrayView = s->csmArrayDirect ? s->csmArrayExternalView : s->csmArrayView;
-        const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView;
+        const VkImageView wantView = s->dynShadowDirect ? s->dynShadowExternalView : s->dynShadowView.get();
+        const VkImageView wantCsmArrayView = s->csmArrayDirect ? s->csmArrayExternalView : s->csmArrayView.get();
+        const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView.get();
         if (wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
             || wantCsmFullMapView != s->csmFullMapBoundView) {
             // VK-TERRAIN-FENCE-DEFER-1: a prior terrain submit may still be in flight
             // using these sets under the deferred retire (the old inline wait made
             // this rewrite safe for free). Bound-view switches are RARE (first frame
             // of a direct-consume switch / warmup transitions) — device-idle first.
-            vkDeviceWaitIdle(s->device);
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_bound_view_switch");
             write_descriptors(s);
             s->dynShadowBoundView = wantView;
             s->csmArrayBoundView = wantCsmArrayView;
@@ -440,14 +443,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     {
         ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc[par], &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->ubo[par].allocation(), &p) == VK_SUCCESS) {
             TerrainFrameUBO* slots = reinterpret_cast<TerrainFrameUBO*>(p);
             for (uint32_t i = 0; i < patchCount; ++i) {
                 TerrainFrameUBO u{};
                 fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
                 slots[i] = u;
             }
-            vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
+            vmaUnmapMemory(s->allocator, s->ubo[par].allocation());
         }
     }
     g_health.stageUs = usStagePre + usSince(tUboFill0);
@@ -489,7 +492,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
@@ -498,7 +501,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
     s->gpuTimer.write(cb, 1);
@@ -510,11 +513,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
         const uint32_t dynOff = i * (uint32_t)sizeof(TerrainFrameUBO);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set[par], 1, &dynOff);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 1, &dynOff);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkDeviceSize vboOff = 0;
-        vkCmdBindVertexBuffers(cb, 0, 1, &pm->vbo, &vboOff);
-        vkCmdBindIndexBuffer(cb, pm->ibo, 0, VK_INDEX_TYPE_UINT16);
+        { const VkBuffer vb = pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
+        vkCmdBindIndexBuffer(cb, pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
         vkCmdDrawIndexed(cb, pm->indexCount, 1, 0, 0, 0);
         ++drawn;
 
@@ -525,10 +528,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) {
             const SkirtMesh* sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
             if (sm) {
-                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe);
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
                 VkDeviceSize svboOff = 0;
-                vkCmdBindVertexBuffers(cb, 0, 1, &sm->vbo, &svboOff);
-                vkCmdBindIndexBuffer(cb, sm->ibo, 0, VK_INDEX_TYPE_UINT16);
+                { const VkBuffer vb = sm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &svboOff); }
+                vkCmdBindIndexBuffer(cb, sm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
                 for (int e = 0; e < 4; ++e) {
                     if (((pr.skirtEdgeMask >> e) & 1u) == 0u) continue;
                     if (sm->edgeCount[e] == 0) continue;
