@@ -5023,27 +5023,6 @@
     "MapData"
    ]
   },
-  "PriorityQueue": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/group_goals.cpp": {
-     "new": 1
-    },
-    "mclib/move_globalmap_path.cpp": {
-     "new": 1
-    },
-    "mclib/move_movemap_escape.cpp": {
-     "new": 1
-    },
-    "mclib/move_movemap_path.cpp": {
-     "new": 2
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
   "RGBAColor": {
    "delete": 0,
    "delete_array": 13,
@@ -7893,7 +7872,7 @@
   "code/mechcmd2_frame.cpp": 4,
   "code/mechicon.cpp": 5,
   "code/mechlistbox.cpp": 1,
-  "code/mission.cpp": 10,
+  "code/mission.cpp": 9,
   "code/mission2.cpp": 1,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,

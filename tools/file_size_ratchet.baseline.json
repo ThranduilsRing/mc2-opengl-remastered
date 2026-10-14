@@ -55,14 +55,14 @@
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1822,
+  "mclib/move.h": 1833,
   "mclib/render_contract.cpp": 1530,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1778,
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "510037a87",
+ "head": "8b9338005",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -101,7 +101,7 @@
    "max_lines": 2775
   },
   "editor": {
-   "files": 258,
+   "files": 267,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1427
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 591,
+   "files": 590,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -228,7 +228,7 @@
   },
   {
    "file": "mclib/move.h",
-   "lines": 1822
+   "lines": 1833
   },
   {
    "file": "code/artlry.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1867,
+  "files": 1875,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3753

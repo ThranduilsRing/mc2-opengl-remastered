@@ -1,5 +1,5 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1000 sites in 73 files
+# total 940 sites in 66 files
 # per kind:
 #     259  EList::Begin
 #     197  EList
@@ -12,29 +12,15 @@
 #      23  EList::Iterator
 #      21  EList::Clear
 #      13  EList::End
-#      10  PriorityQueue::insert
 #      10  EList::GetHead
-#       7  PriorityQueue
-#       6  PriorityQueue::PriorityQueue
-#       6  PriorityQueue::init
-#       6  PriorityQueue::find
-#       6  PriorityQueue::change
-#       5  PriorityQueue::clear
-#       5  PriorityQueue::isEmpty
-#       5  PriorityQueue::remove
 #       4  EList::Insert
-#       3  PriorityQueue::getNumItems
 #       2  EList::operator==
-#       1  PriorityQueue::~PriorityQueue
 #       1  EList::DeleteTail
 #       1  EList::operator=
 #       1  EList::Find
 #       1  EList::INVALID_ITERATOR
 # per batch (cxx23-step4-b2-files.json):
 #       1  B2.3
-#       8  B2.4-pre
-#      42  B2.5
-#      10  B2.5-pre
 #       6  B6
 #     295  E1
 #     447  E2
@@ -55,19 +41,15 @@
 #      26  editor/BuildingLink.cpp
 #      23  editor/BuildingSettingsDlg.cpp
 #      22  editor/EditorObjectMgr_pick.cpp
-#      22  mclib/move_movemap_path.cpp
 #      20  editor/CampaignDialog.cpp
 #      20  editor/ObjectivesSummaryPanel.cpp
 #      18  editor/SceneOutliner.cpp
 #      12  editor/MissionValidation.cpp
 #      11  editor/ChooseBuildingDlg.cpp
 #      11  editor/Objective.h
-#      11  mclib/move_movemap_escape.cpp
 #      10  editor/ChooseUnitDlg.cpp
-#      10  mclib/move_globalmap_path.cpp
 #       9  editor/CampaignSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
-#       8  code/group_goals.cpp
 #       8  editor/Action.h
 #       8  editor/CampaignData.cpp
 #       8  editor/EditorDebugOverlay.cpp
@@ -82,8 +64,6 @@
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
 #       4  editor/EditorInterface_mouse.cpp
-#       4  mclib/move_internal.h
-#       4  mclib/move_solvectx.h
 #       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
 #       3  editor/TelemetryPanel.cpp
@@ -101,7 +81,6 @@
 #       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
 #       2  editor/campaignData.h
-#       1  code/mission.cpp
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
 #       1  editor/BuildingLink.h
@@ -115,8 +94,6 @@
 #       1  editor/ResourceStringSelectionDlg.h
 #       1  editor/ScatterBrush.cpp
 #       1  editor/StampBrush.cpp
-# blob fd9f18996de4c78e649e163af98ded8c17a0d1ce code/group_goals.cpp
-# blob 3f14b3e1974a79a2d827c205ed5582307e01ba1c code/mission.cpp
 # blob a88d8a6ee22d155d5076d0eb806bf585324d1948 code/mission_update.cpp
 # blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
@@ -183,24 +160,10 @@
 # blob 74ef015b489c98a38a7b9d374e843fb92fbcabb9 editor/UnitSettingsDlg.h
 # blob 619210428008117dc1f29936615705e39b76bd39 editor/campaignData.h
 # blob c931869d1cfab7b3f3de2e51d23993c7a1c476cd editor/eraser.cpp
-# blob c7fed13624383d388188c9dc30f724eda6c10cfb mclib/move_globalmap_path.cpp
-# blob 4bf8e0d3cb198bbc3be48b7ae51b8864466a1d00 mclib/move_internal.h
-# blob 4d080d2c16290b54a1ccf14c08687a6fe505b4f1 mclib/move_movemap_escape.cpp
-# blob 47a9faa5eddfcd7e4f24ef8ba9b308aca83c179c mclib/move_movemap_path.cpp
-# blob 99e09e07f7c8586317c224a0ef8872141f21588b mclib/move_solvectx.h
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 2
 #   editor/EditorObjectMgr_select.cpp:174 (branch opened at 167): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 #   editor/EditorObjectMgr_select.cpp:198 (branch opened at 193): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 # file:line:kind
-code/group_goals.cpp:140:PriorityQueue
-code/group_goals.cpp:140:PriorityQueue::PriorityQueue
-code/group_goals.cpp:142:PriorityQueue::init
-code/group_goals.cpp:157:PriorityQueue::clear
-code/group_goals.cpp:158:PriorityQueue::insert
-code/group_goals.cpp:162:PriorityQueue::isEmpty
-code/group_goals.cpp:167:PriorityQueue::remove
-code/group_goals.cpp:228:PriorityQueue::insert
-code/mission.cpp:789:PriorityQueue::~PriorityQueue
 code/mission_update.cpp:623:EList::Count
 code/mpparameterscreen.cpp:2312:EList::Clear
 code/mpparameterscreen.cpp:2317:EList::Append
@@ -1141,54 +1104,3 @@ editor/campaignData.h:49:EList
 editor/eraser.cpp:44:EList::Count
 editor/eraser.cpp:184:EList::Begin
 editor/eraser.cpp:203:EList::Begin
-mclib/move_globalmap_path.cpp:13:PriorityQueue::find
-mclib/move_globalmap_path.cpp:23:PriorityQueue::change
-mclib/move_globalmap_path.cpp:296:PriorityQueue
-mclib/move_globalmap_path.cpp:296:PriorityQueue::PriorityQueue
-mclib/move_globalmap_path.cpp:298:PriorityQueue::init
-mclib/move_globalmap_path.cpp:373:PriorityQueue::clear
-mclib/move_globalmap_path.cpp:377:PriorityQueue::insert
-mclib/move_globalmap_path.cpp:384:PriorityQueue::isEmpty
-mclib/move_globalmap_path.cpp:386:PriorityQueue::remove
-mclib/move_globalmap_path.cpp:487:PriorityQueue::insert
-mclib/move_internal.h:177:PriorityQueue::find
-mclib/move_internal.h:184:PriorityQueue::change
-mclib/move_internal.h:245:PriorityQueue::find
-mclib/move_internal.h:252:PriorityQueue::change
-mclib/move_movemap_escape.cpp:48:PriorityQueue
-mclib/move_movemap_escape.cpp:48:PriorityQueue::PriorityQueue
-mclib/move_movemap_escape.cpp:50:PriorityQueue::init
-mclib/move_movemap_escape.cpp:68:PriorityQueue::clear
-mclib/move_movemap_escape.cpp:72:PriorityQueue::insert
-mclib/move_movemap_escape.cpp:85:PriorityQueue::isEmpty
-mclib/move_movemap_escape.cpp:104:PriorityQueue::getNumItems
-mclib/move_movemap_escape.cpp:109:PriorityQueue::remove
-mclib/move_movemap_escape.cpp:176:PriorityQueue::find
-mclib/move_movemap_escape.cpp:183:PriorityQueue::change
-mclib/move_movemap_escape.cpp:205:PriorityQueue::insert
-mclib/move_movemap_path.cpp:68:PriorityQueue
-mclib/move_movemap_path.cpp:68:PriorityQueue::PriorityQueue
-mclib/move_movemap_path.cpp:70:PriorityQueue::init
-mclib/move_movemap_path.cpp:89:PriorityQueue::clear
-mclib/move_movemap_path.cpp:93:PriorityQueue::insert
-mclib/move_movemap_path.cpp:106:PriorityQueue::isEmpty
-mclib/move_movemap_path.cpp:125:PriorityQueue::getNumItems
-mclib/move_movemap_path.cpp:130:PriorityQueue::remove
-mclib/move_movemap_path.cpp:224:PriorityQueue::find
-mclib/move_movemap_path.cpp:231:PriorityQueue::change
-mclib/move_movemap_path.cpp:253:PriorityQueue::insert
-mclib/move_movemap_path.cpp:539:PriorityQueue
-mclib/move_movemap_path.cpp:539:PriorityQueue::PriorityQueue
-mclib/move_movemap_path.cpp:541:PriorityQueue::init
-mclib/move_movemap_path.cpp:560:PriorityQueue::clear
-mclib/move_movemap_path.cpp:564:PriorityQueue::insert
-mclib/move_movemap_path.cpp:584:PriorityQueue::isEmpty
-mclib/move_movemap_path.cpp:603:PriorityQueue::getNumItems
-mclib/move_movemap_path.cpp:608:PriorityQueue::remove
-mclib/move_movemap_path.cpp:677:PriorityQueue::find
-mclib/move_movemap_path.cpp:684:PriorityQueue::change
-mclib/move_movemap_path.cpp:706:PriorityQueue::insert
-mclib/move_solvectx.h:64:PriorityQueue
-mclib/move_solvectx.h:71:PriorityQueue::PriorityQueue
-mclib/move_solvectx.h:73:PriorityQueue::init
-mclib/move_solvectx.h:82:PriorityQueue

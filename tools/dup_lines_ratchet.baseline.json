@@ -6,8 +6,8 @@
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 14822,
-  "mclib": 32021,
+  "code": 14830,
+  "mclib": 31982,
   "shaders": 2980
  },
  "dirs": [
@@ -157,6 +157,7 @@
   "code/gate.cpp": 63,
   "code/gate.h": 30,
   "code/ground_contact_blob.cpp": 8,
+  "code/group_goals.cpp": 8,
   "code/gvehicl.cpp": 92,
   "code/gvehicl.h": 66,
   "code/gvehicl_control.cpp": 59,
@@ -476,9 +477,9 @@
   "mclib/move_globalmap_build.cpp": 26,
   "mclib/move_globalmap_doors.cpp": 8,
   "mclib/move_globalmap_path.cpp": 25,
-  "mclib/move_movemap_escape.cpp": 213,
+  "mclib/move_movemap_escape.cpp": 211,
   "mclib/move_movemap_goals.cpp": 118,
-  "mclib/move_movemap_path.cpp": 511,
+  "mclib/move_movemap_path.cpp": 474,
   "mclib/msl_anim.cpp": 29,
   "mclib/msl_load.cpp": 91,
   "mclib/msl_shape.cpp": 93,
@@ -642,8 +643,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "510037a87",
+ "head": "8b9338005",
  "n": 8,
- "total": 55908,
+ "total": 55877,
  "version": 1
 }
