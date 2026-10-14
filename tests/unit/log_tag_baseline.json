@@ -3302,6 +3302,28 @@
    "count": 1
   },
   {
+   "tag": "EDITOR_LEGACY_PLACEMENT",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "family",
+    "fit_id",
+    "stem",
+    "x",
+    "y",
+    "z",
+    "input_team",
+    "team",
+    "painted",
+    "undo",
+    "redo",
+    "saved",
+    "removed",
+    "reopened"
+   ],
+   "count": 1
+  },
+  {
    "tag": "EDITOR_PANEL",
    "ver": 1,
    "stream": "buffer",

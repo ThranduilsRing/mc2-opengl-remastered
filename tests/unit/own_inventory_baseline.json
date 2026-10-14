@@ -525,9 +525,12 @@
    "files": {
     "editor/EditorInterface.cpp": {
      "new": 1
+    },
+    "editor/EditorWorkflowSmoke.cpp": {
+     "new": 1
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -1412,18 +1415,6 @@
    "owners": [
     "GameObjectManager"
    ]
-  },
-  "ColorPropIsland": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_color_prop_island.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "Commander": {
    "delete": 0,
@@ -2797,18 +2788,6 @@
     "ControlGui"
    ]
   },
-  "Island": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "KeyboardRef": {
    "delete": 1,
    "delete_array": 0,
@@ -3926,18 +3905,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MechIsland": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_mech_island.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "MechLabScreen": {
    "delete": 0,
    "delete_array": 0,
@@ -4766,18 +4733,6 @@
    "new_array": 0,
    "owners": []
   },
-  "OvlState": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "PANE": {
    "delete": 2,
    "delete_array": 0,
@@ -5360,18 +5315,6 @@
     }
    },
    "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "ShadowIsland": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -6079,18 +6022,6 @@
     "Terrain"
    ]
   },
-  "TerrainIsland": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_terrain_island_run.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "TerrainObject": {
    "delete": 1,
    "delete_array": 0,
@@ -6726,6 +6657,18 @@
     "gosPostProcess"
    ]
   },
+  "VulkanContext": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "GameOS/gameos/vulkan_context.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
   "WINDOW": {
    "delete": 2,
    "delete_array": 0,
@@ -6759,42 +6702,6 @@
    "new_array": 0,
    "owners": [
     "ABLModule"
-   ]
-  },
-  "WaterIsland": {
-   "delete": 18,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_color_prop_island.cpp": {
-     "delete": 3
-    },
-    "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
-     "delete": 3
-    },
-    "GameOS/gameos/vulkan_mech_island.cpp": {
-     "delete": 3
-    },
-    "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-     "delete": 3
-    },
-    "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-     "delete": 1
-    },
-    "GameOS/gameos/vulkan_terrain_island_run.cpp": {
-     "delete": 2
-    },
-    "GameOS/gameos/vulkan_water_island.cpp": {
-     "delete": 1
-    },
-    "GameOS/gameos/vulkan_water_island_run.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
    ]
   },
   "WeaponBolt": {
@@ -7964,7 +7871,6 @@
   "GameOS/gameos/utils/gl_utils.h": 4,
   "GameOS/gameos/utils/shader_builder.cpp": 12,
   "GameOS/gameos/utils/stream.cpp": 1,
-  "GameOS/gameos/vulkan_terrain_island_overlay.cpp": 1,
   "code/ablmc2.cpp": 1,
   "code/artlry.cpp": 8,
   "code/carnage.cpp": 3,

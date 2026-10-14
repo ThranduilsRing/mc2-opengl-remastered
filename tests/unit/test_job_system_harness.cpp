@@ -280,7 +280,9 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/fatal_if_aborts_and_traces") 
     CHECK(code != 0);
     std::ifstream input(trace);
     const std::string body{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
-    CAPTURE(code, trace.string(), body);
+    CAPTURE(code);
+    CAPTURE(trace.string());
+    CAPTURE(body);
     CHECK(body.find("JOBS_FATAL") != std::string::npos);
     CHECK(body.find("\"cond\":\"true\"") != std::string::npos);
 }

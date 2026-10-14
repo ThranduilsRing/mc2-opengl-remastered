@@ -144,14 +144,14 @@
    "LG03": 934,
    "LG04": 21,
    "LG05": 194,
-   "LG06": 451,
+   "LG06": 460,
    "LG07": 2,
    "LG08": 14,
-   "LG09": 2295,
+   "LG09": 2296,
    "LG10": 20,
-   "LG11": 103,
+   "LG11": 102,
    "LG12a": 100,
-   "LG12b": 349,
+   "LG12b": 348,
    "LG13": 244,
    "LG14": 123,
    "LG15": 0,
@@ -181,25 +181,25 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 10,
-   "LG20": 18
+   "LG19": 1,
+   "LG20": 9
   },
   "mclib": {
-   "LG01": 446,
-   "LG02": 283,
+   "LG01": 437,
+   "LG02": 282,
    "LG03": 1125,
    "LG04": 15,
-   "LG05": 136,
+   "LG05": 133,
    "LG06": 671,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2152,
+   "LG09": 2134,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
    "LG12b": 243,
-   "LG13": 481,
-   "LG14": 118,
+   "LG13": 449,
+   "LG14": 113,
    "LG15": 0,
    "LG16": 156,
    "LG17": 94,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 23
+   "LG20": 22
   },
   "tools": {
    "LG01": 0,
@@ -1685,13 +1685,15 @@
   "code/carnage.cpp": {
    "LG01": 1,
    "LG03": 5,
-   "LG09": 26,
+   "LG06": 2,
+   "LG09": 30,
    "LG13": 1
   },
   "code/carnage.h": {
    "LG01": 6,
    "LG02": 1,
    "LG04": 1,
+   "LG06": 2,
    "LG18": 1
   },
   "code/chatwindow.cpp": {
@@ -1713,6 +1715,9 @@
   },
   "code/collsn.h": {
    "LG13": 1
+  },
+  "code/combat_trace.h": {
+   "LG06": 1
   },
   "code/comndr.cpp": {
    "LG03": 3,
@@ -1862,11 +1867,6 @@
   },
   "code/dturret.h": {
    "LG02": 2
-  },
-  "code/dw.cpp": {
-   "LG09": 3,
-   "LG11": 1,
-   "LG12b": 1
   },
   "code/dwarrior.h": {
    "LG02": 2
@@ -3078,11 +3078,13 @@
   },
   "code/weaponbolt.cpp": {
    "LG03": 14,
+   "LG06": 2,
    "LG09": 12
   },
   "code/weaponbolt.h": {
    "LG01": 10,
    "LG02": 1,
+   "LG06": 2,
    "LG09": 7
   },
   "code/weaponbolt_render.cpp": {
@@ -3109,18 +3111,6 @@
   },
   "editor/ModPicker.cpp": {
    "LG20": 2
-  },
-  "editor/tests/test_files.cpp": {
-   "LG19": 5,
-   "LG20": 5
-  },
-  "editor/tests/test_panels.cpp": {
-   "LG19": 1,
-   "LG20": 1
-  },
-  "editor/tests/test_structure.cpp": {
-   "LG19": 3,
-   "LG20": 3
   },
   "mclib/abl.h": {
    "LG01": 9,
@@ -3413,17 +3403,6 @@
   },
   "mclib/cellip.cpp": {
    "LG09": 8
-  },
-  "mclib/cepoly.h": {
-   "LG01": 1,
-   "LG02": 1
-  },
-  "mclib/cevfx.cpp": {
-   "LG09": 13,
-   "LG13": 4
-  },
-  "mclib/cevfx.h": {
-   "LG01": 7
   },
   "mclib/cident.cpp": {
    "LG06": 2,
@@ -4413,10 +4392,6 @@
    "LG11": 1,
    "LG17": 2
   },
-  "mclib/msodw.h": {
-   "LG13": 21,
-   "LG14": 5
-  },
   "mclib/mstates.h": {
    "LG13": 2
   },
@@ -4562,14 +4537,6 @@
   },
   "mclib/routines.cpp": {
    "LG14": 1
-  },
-  "mclib/scale.cpp": {
-   "LG05": 3,
-   "LG09": 3,
-   "LG13": 2
-  },
-  "mclib/scale.h": {
-   "LG01": 1
   },
   "mclib/sim_identity.h": {
    "LG09": 13,
@@ -5106,13 +5073,6 @@
    "LG09": 7,
    "LG13": 3
   },
-  "mclib/vfx_transform.cpp": {
-   "LG09": 2,
-   "LG13": 4
-  },
-  "mclib/vfxtile.cpp": {
-   "LG13": 1
-  },
   "mclib/vis_semantics.cpp": {
    "LG06": 1,
    "LG09": 1
@@ -5148,7 +5108,7 @@
    "LG20": 3
   },
   "tests/unit/test_vfx_frozen_clouds.cpp": {
-   "LG20": 2
+   "LG20": 1
   },
   "tests/unit/test_vfx_frozen_driver.cpp": {
    "LG20": 7
@@ -5164,7 +5124,7 @@
    "LG20": 3
   }
  },
- "head": "3c3d21e6a",
+ "head": "e57d04501",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

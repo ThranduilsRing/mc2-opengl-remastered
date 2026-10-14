@@ -2213,6 +2213,13 @@
           "text": "import console_child"
         },
         {
+          "path": "editor/tests/run_catalog_proofs.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
           "path": "editor/tests/run_document_proofs.py",
           "line": 13,
           "evidence": "import",
@@ -2368,7 +2375,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 62,
+          "line": 63,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs  # noqa: E402"
@@ -3274,7 +3281,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 63,
+          "line": 64,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint  # noqa: E402"
@@ -3721,13 +3728,27 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_editor_smoke.py",
-          "line": 15,
+          "line": 17,
           "evidence": "load module",
           "reference": "A:\\Games\\mc2-main\\scripts/run_editor_smoke.py",
           "text": "spec = importlib.util.spec_from_file_location(\"editor_smoke\", SCRIPT)"
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "editor/tests/legacy_reference.py",
+          "line": 104,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/run_catalog_proofs.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import fit_fields"
+        },
         {
           "path": "editor/tests/run_document_proofs.py",
           "line": 14,
@@ -7633,8 +7654,22 @@
       ],
       "callers_by_stem": [
         {
+          "path": "editor/tests/legacy_reference.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry"
+        },
+        {
+          "path": "editor/tests/run_catalog_proofs.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry"
+        },
+        {
           "path": "scripts/run_editor_smoke.py",
-          "line": 66,
+          "line": 67,
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
@@ -11072,6 +11107,28 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/vfx_oracle/compare_combat_traces.py",
+      "basename": "compare_combat_traces.py",
+      "stem": "compare_combat_traces",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/vfx_oracle/test_compare_combat_traces.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.vfx_oracle.compare_combat_traces",
+          "text": "from tools.vfx_oracle.compare_combat_traces import ("
+        }
+      ]
+    },
+    {
+      "path": "tools/vfx_oracle/compare_frozen_snapshots.py",
+      "basename": "compare_frozen_snapshots.py",
+      "stem": "compare_frozen_snapshots",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/vfx_oracle/evidence.py",
       "basename": "evidence.py",
       "stem": "evidence",
@@ -11082,6 +11139,13 @@
       "path": "tools/vfx_oracle/probe_rng.py",
       "basename": "probe_rng.py",
       "stem": "probe_rng",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/vfx_oracle/test_compare_combat_traces.py",
+      "basename": "test_compare_combat_traces.py",
+      "stem": "test_compare_combat_traces",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
