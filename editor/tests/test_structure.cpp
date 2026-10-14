@@ -1,5 +1,6 @@
 #include "../../tests/unit/doctest.h"
 #include "CommandHistory.h"
+#include "../../code/brain_missionfit_oporbd.h"
 
 #include <algorithm>
 #include <bit>
@@ -133,6 +134,150 @@ TEST_CASE("document/explicit Pilot and scoped nested Brain identity")
     CHECK(doc.find(*unit.warrior, "NumCells") != nullptr);
     CHECK(doc.find(*unit.brain, "NumCells") == nullptr);
     CHECK(doc.fitBytes() == fit()); CHECK(bytes(doc) == pak());
+}
+
+TEST_CASE("document/panel commands change saved output and restore bytes through undo redo")
+{
+    auto input = fit(); input.insert(input.find("FITend"), "[Player0]\r\nul DefaultTeam = 0 // alignment\r\n");
+    for (const auto operation : {"unit-team", "building-team", "player-team", "brain-mode", "legacy-module"}) {
+        CAPTURE(operation);
+        auto loaded = MissionDocument::decode(input, pak(true, true), "panel-fixture", {}); REQUIRE(loaded);
+        auto& doc = *loaded; CommandHistory history(doc);
+        const auto unit = doc.entities()[2].id, building = doc.entities()[0].id;
+        const auto warrior = doc.entity(unit)->warrior, brain = doc.entity(unit)->brain;
+        const auto cells = doc.find("Warrior2Cell0", "Value")->id;
+        const auto originalPak = bytes(doc);
+        if (std::string_view(operation) == "unit-team") REQUIRE(history.setTeam(unit, 3));
+        if (std::string_view(operation) == "building-team") REQUIRE(history.setTeam(building, -1));
+        if (std::string_view(operation) == "player-team") {
+            NodeId player;
+            for (const auto& section : doc.syntax().sections) if (section.name == "Player0") player = section.id;
+            REQUIRE(history.setPlayerTeam(player, 3));
+        }
+        if (std::string_view(operation) == "brain-mode") REQUIRE(history.setBrainMode(unit, "Enhanced"));
+        if (std::string_view(operation) == "legacy-module") REQUIRE(history.setLegacyBrain(unit, "project_brain"));
+        const auto changedFit = doc.fitBytes(); const auto changedPak = bytes(doc);
+        CHECK((changedFit != input || changedPak != originalPak));
+        CHECK(doc.entity(unit)->warrior == warrior); CHECK(doc.entity(unit)->brain == brain);
+        CHECK(doc.find("Warrior2Cell0", "Value")->id == cells);
+        CHECK(changedFit.find("// hybrid comment retained exactly\r\n") != std::string::npos);
+        CHECK(changedFit.find("UnknownSwitch = strange;") != std::string::npos);
+        CHECK(changedFit.find("PrimaryOPORD { type = Patrol; compatibilityMode = \"Enhanced\"; }") != std::string::npos);
+        CHECK(changedFit.find("f Value = 17.500\r\n") != std::string::npos);
+        const auto dir = scratch(); REQUIRE(doc.save(dir / "panel-edited", {}));
+        auto reopen = MissionDocument::read(dir / "panel-edited.fit", dir / "panel-edited.pak", {}); REQUIRE(reopen);
+        CHECK(reopen->fitBytes() == changedFit); CHECK(bytes(*reopen) == changedPak);
+        if (std::string_view(operation) == "unit-team") CHECK(reopen->entities()[2].team == 3);
+        if (std::string_view(operation) == "building-team") CHECK(reopen->entities()[0].team == -1);
+        if (std::string_view(operation) == "player-team") CHECK(reopen->find("Player0", "DefaultTeam")->value == Value{std::int64_t{3}});
+        REQUIRE(history.undo()); REQUIRE(doc.save(dir / "panel-undone", {}));
+        CHECK(fileBytes(dir / "panel-undone.fit") == std::vector<std::byte>(reinterpret_cast<const std::byte*>(input.data()), reinterpret_cast<const std::byte*>(input.data() + input.size())));
+        CHECK(fileBytes(dir / "panel-undone.pak") == originalPak);
+        REQUIRE(history.redo()); CHECK(doc.fitBytes() == changedFit); CHECK(bytes(doc) == changedPak);
+        REQUIRE(history.undo()); CHECK(doc.fitBytes() == input);
+    }
+}
+
+TEST_CASE("document/three brain modes handle absent block and scoped field insertion losslessly")
+{
+    for (int absent = 0; absent < 3; ++absent) {
+        auto input = fit();
+        const auto p = input.find(" compatibilityMode = \"Hybrid\";");
+        if (absent == 1) input.erase(p, std::string(" compatibilityMode = \"Hybrid\";\r\n").size());
+        if (absent == 2) {
+            const auto begin = input.find("Brain {", input.find("[Warrior2]"));
+            input.erase(begin, input.find("[Warrior2Cell0]") - begin);
+        }
+        auto loaded = MissionDocument::decode(input, pak(), "brain-fixture", {}); REQUIRE(loaded);
+        CommandHistory history(*loaded); const auto id = loaded->entities()[2].id;
+        for (const auto* mode : {"Enhanced", "Hybrid", "Legacy"}) {
+            REQUIRE(history.setBrainMode(id, mode));
+            if (absent == 2 && std::string_view(mode) == "Legacy") { CHECK(loaded->fitBytes() == input); continue; }
+            const auto* entity = loaded->entity(id); REQUIRE(entity->brain);
+            CHECK(loaded->find(*entity->brain, "compatibilityMode")->value == Value{std::string(mode)});
+            CHECK(loaded->find(*entity->warrior, "Brain")->value == Value{std::string("legacy2")});
+            CHECK(loaded->fitBytes().find("f Value = 17.500") != std::string::npos);
+            const auto changed = loaded->fitBytes(); const auto dir = scratch(); REQUIRE(loaded->save(dir / "mode", {}));
+            auto reopened = MissionDocument::read(dir / "mode.fit", dir / "mode.pak", {}); REQUIRE(reopened);
+            CHECK(reopened->find(*reopened->entities()[2].brain, "compatibilityMode")->value == Value{std::string(mode)});
+            const auto hybridOriginal = reopened->fitBytes(); REQUIRE(reopened->save(dir / "mode-roundtrip", {}));
+            auto second = MissionDocument::read(dir / "mode-roundtrip.fit", dir / "mode-roundtrip.pak", {}); REQUIRE(second);
+            CHECK(second->fitBytes() == hybridOriginal); CHECK(bytes(*second) == pak());
+            CHECK(fileBytes(dir / "mode-roundtrip.fit") == fileBytes(dir / "mode.fit"));
+            CHECK(fileBytes(dir / "mode-roundtrip.pak") == fileBytes(dir / "mode.pak"));
+            if (changed == input) continue;
+            REQUIRE(history.undo()); CHECK(loaded->fitBytes() == input);
+            REQUIRE(history.redo()); CHECK(loaded->fitBytes() == changed);
+            REQUIRE(history.undo()); CHECK(loaded->fitBytes() == input);
+        }
+    }
+}
+
+TEST_CASE("document/saved brain switches are consumed by the game parser")
+{
+    for (const auto* nl : {"\n", "\r\n"}) {
+        for (const auto* mode : {"Legacy", "Hybrid", "Enhanced"}) {
+            CAPTURE(nl, mode);
+            auto input = fit();
+            const auto begin = input.find("Brain {", input.find("[Warrior2]"));
+            const auto end = input.find("[Warrior2Cell0]");
+            const std::string before = "Brain { UnknownSwitch = strange; ";
+            const std::string after = " PrimaryOPORD { type = Patrol; } }" + std::string(nl);
+            input.replace(begin, end - begin, before + "compatibilityMode = \"Legacy\";" + after);
+            if (std::string_view(nl) == "\n") std::erase(input, '\r');
+            auto loaded = MissionDocument::decode(input, pak(), "inline-brain", {}); REQUIRE(loaded);
+            CommandHistory history(*loaded);
+            REQUIRE(history.setBrainMode(loaded->entities()[2].id, mode));
+            const auto expected = before + nl + "compatibilityMode = \"" + mode + "\";" + nl + after;
+            CHECK(loaded->fitBytes().find(expected) != std::string::npos);
+            const auto dir = scratch(); REQUIRE(loaded->save(dir / "game-mode", {}));
+            const auto saved = fileBytes(dir / "game-mode.fit");
+            const std::string text(reinterpret_cast<const char*>(saved.data()), saved.size());
+            std::array<MissionFitBrain, 4> brains;
+            const auto count = parseMissionFitBrains(text.c_str(), brains.data(), static_cast<int>(brains.size()));
+            const auto brain = std::find_if(brains.begin(), brains.begin() + count,
+                [](const auto& record) { return record.warriorIndex == 2; });
+            REQUIRE(brain != brains.begin() + count);
+            CHECK(std::string(brain->compatibilityMode) == mode);
+            REQUIRE(history.undo()); CHECK(loaded->fitBytes() == input);
+        }
+    }
+}
+
+TEST_CASE("document/panel readers and invalid commands reject once without mutation")
+{
+    for (const auto* mode : {"Alien", "123", ""}) {
+        auto input = fit(); input.replace(input.find("\"Hybrid\""), 8, std::string("\"") + mode + "\"");
+        std::vector<std::string> logs;
+        CHECK_FALSE(MissionDocument::decode(input, pak(), "bad-mode", [&](const auto& line) { logs.push_back(line); }));
+        CHECK(logs.size() == 1);
+    }
+    for (const auto* value : {"ul DefaultTeam = 8", "st DefaultTeam = \"bad\"", "l DefaultTeam = -1"}) {
+        auto input = fit(); input.insert(input.find("FITend"), std::string("[Player0]\r\n") + value + "\r\n");
+        std::vector<std::string> logs;
+        CHECK_FALSE(MissionDocument::decode(input, pak(), "bad-player", [&](const auto& line) { logs.push_back(line); }));
+        CHECK(logs.size() == 1);
+    }
+    auto doc = document(); CommandHistory history(doc); const auto id = doc.entities()[2].id;
+    REQUIRE(history.setTeam(id, 2)); REQUIRE(history.undo());
+    const auto revision = doc.revision(), cost = history.bytesUsed();
+    CHECK_FALSE(history.setTeam(id, 8)); CHECK_FALSE(history.setTeam(EntityId{999}, 0));
+    CHECK_FALSE(history.setBrainMode(id, "Alien")); CHECK_FALSE(history.setLegacyBrain(id, "bad\"reference"));
+    CHECK_FALSE(history.setBrainMode(doc.entities()[0].id, "Hybrid"));
+    CHECK_FALSE(history.setPlayerTeam(*doc.entity(id)->warrior, 1));
+    CHECK(doc.revision() == revision); CHECK(history.bytesUsed() == cost); CHECK(history.canRedo());
+    CHECK(doc.fitBytes() == fit()); CHECK(bytes(doc) == pak());
+    auto unquoted = fit(); unquoted.replace(unquoted.find("\"Hybrid\""), 8, "Legacy");
+    std::vector<std::string> logs;
+    CHECK_FALSE(MissionDocument::decode(unquoted, pak(), "unquoted-mode", [&](const auto& line) { logs.push_back(line); }));
+    CHECK(logs.size() == 1);
+    auto extension = fit(); extension.insert(extension.find("FITend"),
+        "[WarriorExtension]\r\nl Brain = 42\r\nBrain { compatibilityMode = custom; }\r\n[Player0]\r\n");
+    auto loaded = MissionDocument::decode(extension, pak(), "extension", {}); REQUIRE(loaded);
+    CommandHistory absent(*loaded); NodeId player;
+    for (const auto& section : loaded->syntax().sections) if (section.name == "Player0") player = section.id;
+    REQUIRE(absent.setPlayerTeam(player, 3)); CHECK(loaded->find(player, "DefaultTeam")->value == Value{std::int64_t{3}});
+    REQUIRE(absent.undo()); CHECK(loaded->fitBytes() == extension); REQUIRE(absent.redo());
 }
 
 TEST_CASE("document/unit structural commands preserve coincident identities and undo bytes")

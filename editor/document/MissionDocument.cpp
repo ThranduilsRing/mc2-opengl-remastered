@@ -165,6 +165,30 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
         for (const auto& section : syntax_.sections) if (!section.parent && identifier(section.name) == identifier(block)) return section.id;
         return NodeId{};
     };
+    for (const auto& section : syntax_.sections) {
+        const auto name = identifier(section.name);
+        if (!section.parent && name.size() == 7 && name.starts_with("player") && name.back() >= '0' && name.back() <= '7') {
+            if (const auto* team = find(section.id, "DefaultTeam"); team &&
+                (team->value.size() != 1 || !std::holds_alternative<std::int64_t>(team->value[0]) ||
+                    std::get<std::int64_t>(team->value[0]) < 0 || std::get<std::int64_t>(team->value[0]) >= 8))
+                return reject(section.name + "/DefaultTeam", "invalid_team");
+        }
+        if (section.parent || !name.starts_with("warrior") || name.size() <= 7 ||
+            !std::ranges::all_of(std::string_view(name).substr(7), [](char c) { return c >= '0' && c <= '9'; })) continue;
+        if (const auto* legacy = find(section.id, "Brain"); legacy &&
+            (legacy->value.size() != 1 || !std::holds_alternative<std::string>(legacy->value[0]) || legacy->prefix != "st"))
+            return reject(section.name + "/Brain", "invalid_module_reference");
+        if (const auto* brain = childSection(section.id, "Brain")) {
+            if (const auto* mode = find(brain->id, "compatibilityMode")) {
+                if (mode->value.size() != 1 || !std::holds_alternative<std::string>(mode->value[0]) ||
+                    syntax_.originalBytes[mode->syntax.begin] != '"')
+                    return reject(section.name + "/Brain/compatibilityMode", "invalid_brain_mode");
+                const auto value = identifier(std::get<std::string>(mode->value[0]));
+                if (value != "legacy" && value != "hybrid" && value != "enhanced")
+                    return reject(section.name + "/Brain/compatibilityMode", "invalid_brain_mode");
+            }
+        }
+    }
     const auto version = number(find("Objectives Version", "Version"));
     if (!typed("Objectives Version", "Version", 0) || !version || (*version != 2 && *version != 3)) return reject("Objectives Version/Version", "unsupported_or_missing_version");
     const std::array<std::string_view, 24> conditions = {"DestroyAllEnemyUnits", "DestroyNumberOfEnemyUnits", "DestroyEnemyUnitGroup", "DestroySpecificEnemyUnit", "DestroySpecificStructure",

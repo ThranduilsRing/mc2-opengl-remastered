@@ -242,4 +242,98 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
     }
     return commitStructure(std::move(fit), std::move(placements), ids, "Delete entity", renamed);
 }
+
+std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_view key,
+    std::string_view prefix, Scalar value, std::string label)
+{
+    const auto* original = document_.section(id);
+    if (!original) return reject("missing_section");
+    if (key != "compatibilityMode")
+        if (const auto* old = document_.find(id, key); old && old->value == Value{value}) return {};
+    auto fit = document_.fitBytes();
+    auto syntax = decodeFit(fit);
+    if (!syntax) return std::unexpected(syntax.error());
+    const auto index = static_cast<std::size_t>(original - document_.syntax().sections.data());
+    const auto& section = syntax->sections[index];
+    Field spelling; spelling.prefix = prefix;
+    const auto text = formatValue(spelling, Value{std::move(value)});
+    if (const auto* field = find(*syntax, section, key)) {
+        std::vector<Edit> edits{{field->syntax, text}};
+        if (section.parent && key == "compatibilityMode") {
+            // The game skips Brain's opening line and treats sub-block lines separately.
+            // Only this declaration gains line boundaries; other authored bytes survive.
+            const auto begin = fit.rfind(field->name, field->syntax.begin);
+            auto end = field->syntax.end;
+            while (end < fit.size() && (fit[end] == ' ' || fit[end] == '\t')) ++end;
+            if (end < fit.size() && fit[end] == ';') ++end;
+            const auto line = fit.rfind('\n', begin);
+            const auto linePrefix = std::string_view(fit).substr(line == std::string::npos ? 0 : line + 1,
+                begin - (line == std::string::npos ? 0 : line + 1));
+            const auto nextLine = fit.find('\n', end);
+            const auto suffix = std::string_view(fit).substr(end, nextLine == std::string::npos ? fit.size() - end : nextLine - end);
+            if (linePrefix.find_first_not_of(" \t\r") != std::string_view::npos)
+                edits.push_back({{begin, begin}, newline(fit)});
+            if (suffix.find_first_not_of(" \t\r") != std::string_view::npos)
+                edits.push_back({{end, end}, newline(fit)});
+        }
+        fit = edited(std::move(fit), std::move(edits));
+        if (fit == document_.fitBytes()) return {};
+    }
+    else {
+        const auto point = section.syntax.end - (section.parent ? 1 : 0);
+        const auto nl = newline(fit);
+        const auto declaration = (section.parent ? " " : std::string(prefix) + " ") +
+            std::string(key) + " = " + text + (section.parent ? ";" : "") + nl;
+        fit.insert(point, nl + declaration);
+    }
+    return commitStructure(std::move(fit), document_.placements_, identities(document_), std::move(label));
+}
+
+std::expected<void, LoadError> CommandHistory::setTeam(EntityId id, std::int64_t team)
+{
+    const auto* entity = document_.entity(id);
+    if (!entity) return reject("missing_entity");
+    if (team < -1 || team >= 8) return reject("invalid_team");
+    if (entity->team == team) return {};
+    if (entity->section) return setScalar(*entity->section, "TeamID", "c", team, "Entity team");
+    auto placements = document_.placements_;
+    put(placements, 4 + *entity->packetRecord * 40 + 24, std::bit_cast<std::uint32_t>(static_cast<std::int32_t>(team)));
+    return commitStructure(document_.fitBytes(), std::move(placements), identities(document_), "Building team");
+}
+
+std::expected<void, LoadError> CommandHistory::setPlayerTeam(NodeId id, std::int64_t team)
+{
+    const auto* section = document_.section(id);
+    if (!section || section->parent) return reject("missing_player");
+    const auto name = identifier(section->name);
+    if (name.size() != 7 || !name.starts_with("player") || name.back() < '0' || name.back() > '7') return reject("missing_player");
+    if (team < 0 || team >= 8) return reject("invalid_team");
+    return setScalar(id, "DefaultTeam", "ul", team, "Player alignment");
+}
+
+std::expected<void, LoadError> CommandHistory::setLegacyBrain(EntityId id, std::string module)
+{
+    const auto* entity = document_.entity(id);
+    if (!entity || !entity->warrior) return reject("missing_warrior_assignment");
+    if (!validText(module)) return reject("invalid_module_reference");
+    return setScalar(*entity->warrior, "Brain", "st", std::move(module), "Legacy ABL module");
+}
+
+std::expected<void, LoadError> CommandHistory::setBrainMode(EntityId id, std::string_view mode)
+{
+    if (mode != "Legacy" && mode != "Hybrid" && mode != "Enhanced") return reject("invalid_brain_mode");
+    const auto* entity = document_.entity(id);
+    if (!entity || !entity->warrior) return reject("missing_warrior_assignment");
+    if (entity->brain) return setScalar(*entity->brain, "compatibilityMode", "", std::string(mode), "Brain compatibility");
+    // Absence means Legacy; choosing it preserves imported scalar brains and cells.
+    if (mode == "Legacy") return {};
+    auto fit = document_.fitBytes();
+    auto syntax = decodeFit(fit);
+    if (!syntax) return std::unexpected(syntax.error());
+    const auto* warrior = root(*syntax, document_.section(*entity->warrior)->name);
+    const auto nl = newline(fit);
+    fit.insert(warrior->syntax.end, nl + "Brain {" + nl + " compatibilityMode = \"" +
+        std::string(mode) + "\";" + nl + "}" + nl);
+    return commitStructure(std::move(fit), document_.placements_, identities(document_), "Brain compatibility");
+}
 }

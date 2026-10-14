@@ -2,7 +2,6 @@
 import importlib.util
 from pathlib import Path
 import sys
-import shutil
 import json
 import uuid
 from contextlib import contextmanager
@@ -22,11 +21,7 @@ spec.loader.exec_module(smoke)
 def scratch_directory():
     path = TEMP_ROOT / uuid.uuid4().hex
     path.mkdir()
-    try:
-        yield path
-    finally:
-        assert path.resolve().is_relative_to(TEMP_ROOT.resolve())
-        shutil.rmtree(path)
+    yield path
 
 
 def panel_lines():
@@ -587,6 +582,65 @@ class NewModelGateTests(unittest.TestCase):
         path.rename(path.with_suffix(".retained"))
         with self.assertRaises(FileNotFoundError):
             smoke.grade_new_model(self.rows, self.directory)
+
+
+class PanelGateTests(unittest.TestCase):
+    def fixture(self, name):
+        directory = TEMP_ROOT / ("e3b-panel-" + uuid.uuid4().hex)
+        directory.mkdir()
+        original = b'FITini\nfixture\nFITend\n'
+        hybrid = b'FITini\ncompatibilityMode = "Hybrid";\nFITend\n'
+        for stage, fit in (("fixture", original), ("existing-hybrid", hybrid), ("hybrid-roundtrip", hybrid)):
+            (directory / f"{stage}.fit").write_bytes(fit)
+            (directory / f"{stage}.pak").write_bytes(b"original pak")
+        (directory / "widget-save.fit").write_bytes(hybrid if name == "brain_modes" else original)
+        (directory / "widget-save.pak").write_bytes(b"original pak")
+        lines = [f"[EDITOR_PANEL v1] name={name} result=PASS widgets=1 saved_widget=1 reopened_widget=1 rendered=1"]
+        for operation in smoke.PANEL_OPERATIONS[name]:
+            before = hybrid if operation == "brain-Legacy" else original
+            edited = hybrid if operation == "brain-Hybrid" else before + b"authored change"
+            for stage, fit in (("edited", edited), ("undone", before), ("redone", edited)):
+                (directory / f"{operation}-{stage}.fit").write_bytes(fit)
+                (directory / f"{operation}-{stage}.pak").write_bytes(b"original pak")
+            lines.append(f"[EDITOR_PANEL_OPERATION v1] name={operation} changed=1 reopened=1 undo=1 redo=1 widgets=1")
+        (directory / "shell.log").write_text("\n".join(lines))
+        (directory / "panels.bmp").write_bytes(b"BM" + bytes(52) + (bytes(range(256)) * (1440 * 960 * 3 // 256)))
+        return directory
+
+    def test_each_new_row_requires_changed_output_and_widget_reach(self):
+        for name in smoke.PANEL_OPERATIONS:
+            directory = self.fixture(name)
+            smoke.grade_panel(name, directory, 0)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                smoke.grade_panel(name, directory, 2)
+            log = directory / "shell.log"
+            original = log.read_text()
+            log.write_text(original.replace("widgets=1", "widgets=0"))
+            with self.assertRaises(ValueError):
+                smoke.grade_panel(name, directory, 0)
+            log.write_text(original + "\n" + original.splitlines()[0])
+            with self.assertRaises(ValueError):
+                smoke.grade_panel(name, directory, 0)
+
+    def test_noop_undo_corruption_redo_corruption_and_empty_capture_fail(self):
+        directory = self.fixture("unit_panel")
+        for stage in ("edited", "undone", "redone"):
+            path = directory / f"unit-team-{stage}.fit"
+            original = path.read_bytes()
+            path.write_bytes((directory / "fixture.fit").read_bytes() if stage == "edited" else original + b"corrupt")
+            with self.subTest(stage=stage), self.assertRaises(ValueError):
+                smoke.grade_panel("unit_panel", directory, 0)
+            path.write_bytes(original)
+        (directory / "panels.bmp").write_bytes(b"BM" + bytes(52 + 1440 * 960 * 3))
+        with self.assertRaisesRegex(ValueError, "rendered panel"):
+            smoke.grade_panel("unit_panel", directory, 0)
+
+    def test_existing_hybrid_must_remain_byte_identical(self):
+        directory = self.fixture("brain_modes")
+        path = directory / "hybrid-roundtrip.fit"
+        path.write_bytes(path.read_bytes() + b"corrupt")
+        with self.assertRaisesRegex(ValueError, "Hybrid bytes"):
+            smoke.grade_panel("brain_modes", directory, 0)
 
 
 if __name__ == "__main__":

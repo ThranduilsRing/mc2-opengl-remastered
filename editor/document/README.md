@@ -1,4 +1,4 @@
-# Owned mission document: Q3 and E3-a
+# Owned mission document: Q3, E3-a and E3-b
 
 `editor_document` is independent of MFC, GameOS, catalogs, and private heaps. The
 SDL application owns one `MissionDocument` followed by its `CommandHistory`, so
@@ -112,7 +112,7 @@ py -3 editor/tests/run_document_proofs.py
 ```
 
 It copies and hashes exactly 24 fresh FIT/PAK pairs from lane3's stock archive,
-builds both doctest targets and EditorShell with a unique PDB endpoint and bounded
+builds both doctest targets, EditorShell and EditorShellSmoke with a unique PDB endpoint and bounded
 build timeouts, and runs both native variants. `MC2_EDITOR_STOCK_DIR` selects those
 copies; direct tests without it explicitly skip the corpus case. The corpus saves
 all 24 pairs, compares every byte and checks text edit/undo. Both native variants
@@ -122,11 +122,11 @@ outputs through the production smoke `compare_fit` byte grader and requires all
 undo saves, redo, coincident units/buildings, IDs after compaction, absent fields,
 raw/zlib/checksummed packets, nested scope and atomic rejection/eviction.
 
-After the orchestrator commits, deploy both editor executables to lane3 under the
+After the orchestrator commits, deploy EditRel, EditorShell and EditorShellSmoke to lane3 under the
 host lease. Repeat the unchanged Q3 runtime gate with explicit cases:
 
 ```
-py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --prepare-stock-scratch --case stock_roundtrip --case workflows --case new_model --keep-logs --exit-sec 3 --timeout 180
+py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --shell-exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor Smoke.exe" --prepare-stock-scratch --case stock_roundtrip --case workflows --case new_model --keep-logs --exit-sec 3 --timeout 180
 ```
 
 Existing cases and the frozen baseline remain unchanged. The additional gate runs
@@ -138,8 +138,56 @@ flaky or duplicate rows fail. Gate evidence includes executable SHA-256 and its
 embedded HEAD fingerprint. Final acceptance repeats these proofs after the
 orchestrator commits and deploys the clean build.
 
-The runtime/cook shared-codec migration needs lane 1; this claim changes no shared
-loader. E3-a adds document-command reach only: no inventory workflow gains panel
-or rendered-widget reach. Unit/building/player panels and the three-mode brain
-picker are E3-b. Brain-source authoring, terrain recooking and project dependency
-resolution belong to later workflow slices.
+E3-b adds SDL unit, building and player panels. Unit and building selection uses
+document IDs, including coincident placements. Placement defaults copy the selected
+object; Place creates a new entity, while Apply transform/Apply team edit only the
+selected ID. Player selection uses the stable PlayerN section ID; Apply alignment
+writes its DefaultTeam. Selection/drafts stay outside history. Every mutation has
+Undo/Redo reach, and the shell provides Save and Reopen saved mission.
+
+Brain compatibility offers Legacy, Hybrid and Enhanced. A Part's explicit Pilot
+selects its WarriorN, its direct Brain child receives compatibilityMode, and the
+Warrior's scalar Brain receives the legacy ABL module reference. Absent blocks or
+keys are inserted losslessly; edited switches occupy their own body line because
+the game parser skips the Brain opening line. Other block bytes remain unchanged. Legacy cells,
+comments, unknown switches and OPORD blocks survive. A one-line help message says
+runtime Hybrid arbitration is not implemented. The Enhanced OPORD summary is read
+only and displays the three authored slots, their types and waypoint counts.
+
+The shipping EditorShell has no fixture replacement, synthetic input, widget tracking
+or capture code. EditorShellSmoke is a separate test-only target; the runtime runner
+uses it for `new_model` and panel cases with the same nofocus and host lease.
+The offline runner checks proof markers are absent from the shipping binary and present
+in the smoke host. Saved inline Legacy/Hybrid/Enhanced switches are tested through
+the game's `parseMissionFitBrains`, and second round-trip FIT/PAK saves are read from disk.
+
+`run_document_proofs.py` also builds/runs `editor_panel_tests`: ordinary ImGui mouse
+and keyboard events click selection, transform/team apply, place/delete, all three
+brain choices, the module apply button, Undo, Redo, Save and Reopen. Every operation requires a
+changed FIT or PAK, a production save/read, original-byte undo saves and identical
+redo saves. This desktop-free test does not claim a rendered capture.
+
+Keep the Q3 command above unchanged. After the orchestrator commits, rebuilds and
+deploys the three editor executables to lane3, add these rows (no baseline replacement):
+
+```
+py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --shell-exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor Smoke.exe" --prepare-stock-scratch --case unit_panel --case building_panel --case player_panel --case brain_modes --case panel_render --keep-logs --exit-sec 3 --timeout 180
+```
+
+Each row uses isolated FIT/PAK copies and a small authored fixture with stock terrain.
+The brain fixture includes comments, unknown switches, OPORDs and legacy cells;
+Legacy -> Hybrid is saved/reopened, and an existing Hybrid fixture is saved without
+changing any bytes. The runner grades every edited/undone/redone pair and checks
+executable/input fingerprints. `panel_render` is separate evidence: the SDL/GL
+framebuffer is retained as `panels.bmp` (1440 x 960), for visual review. Widget and
+operation facts alone cannot substitute for changed output or that capture.
+
+Inventory panel reach now covers UnitSettingsDlg placement/team/transform and brain
+assignment, BuildingSettingsDlg placement/team/transform, and PlayerSettingsDlg
+identity/default-team selection. This is partial UnitSettings/BuildingSettings
+workflow reach: type/pilot/squad/repair editing and building damage/forest editing
+remain later work. ChooseUnitDlg/ChooseBuildingDlg objective-reference workflows
+remain unreplaced; entity list selection alone does not implement those dialogs.
+
+The runtime/cook shared-codec migration needs lane 1. Brain-source authoring,
+terrain recooking, catalog resolution and project dependencies remain later slices.
