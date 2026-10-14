@@ -1741,37 +1741,6 @@ def main():
         print(f"[runner] [RESOLUTION] HARD FAIL: {'; '.join(_resolution_failures)}", file=sys.stderr)
         passed = False
 
-    # VISUAL advisory (S13+).  Summarises the most recent run_visual.py compare
-    # report (zero engine cost -- it does NOT capture). Advisory by default:
-    # never changes the exit code. MC2_SMOKE_REQUIRE_VISUAL=1 promotes a non-PASS
-    # visual verdict to a hard fail (mirrors the DEPLOY_FINGERPRINT opt-in). Runs
-    # BEFORE the cockpit hook so any hard-fail is reflected in the cockpit result.
-    try:
-        _vis_report = os.environ.get(
-            "MC2_SMOKE_VISUAL_REPORT",
-            str(Path(__file__).resolve().parent.parent /
-                "tests" / "visual" / "compare" / "visual_compare_report.json"))
-        if os.path.isfile(_vis_report):
-            with open(_vis_report, "r", encoding="utf-8") as _vf:
-                _vrep = json.load(_vf)
-            _vverdict = str(_vrep.get("overall_verdict", "UNKNOWN"))
-            _vsets = len(_vrep.get("sets", []) or [])
-            _vwhen = _vrep.get("generated_utc", "?")
-            _vline = (f"[visual-advisory] last compare: {_vverdict} "
-                      f"({_vsets} sets) generated_utc={_vwhen}")
-            if os.environ.get("MC2_SMOKE_REQUIRE_VISUAL") == "1" and _vverdict != "PASS":
-                print(f"[runner] [VISUAL] HARD FAIL: visual verdict {_vverdict} and "
-                      "MC2_SMOKE_REQUIRE_VISUAL=1", file=sys.stderr)
-                passed = False
-        else:
-            _vline = ("[visual-advisory] no visual compare on record "
-                      "(scripts/run_visual.py is retired; nothing writes this report)")
-        print(_vline, file=sys.stderr)
-        with open(artifact_dir / "report.md", "a", encoding="utf-8") as _rf:
-            _rf.write("\n" + _vline + "\n")
-    except Exception as _vexc:  # noqa: BLE001  advisory must never break the gate
-        print(f"[runner] [visual-advisory] skipped ({_vexc})", file=sys.stderr)
-
     # SMOKE-GATE-GUARD-1: --require-gate assertion.
     # Gate → dotted counter path in latest_render_state.json["frame_graph"].
     # Counter must be > 0 to prove the gate reached the child and did work.
