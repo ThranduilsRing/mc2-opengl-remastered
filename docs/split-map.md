@@ -184,8 +184,8 @@ Split commit: `f0d37de6c`.
 | Piece | What it holds |
 |---|---|
 | `group.cpp` | keeps the group membership and selection methods and the copy / init |
-| `group_goals.cpp` | MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals, sortMovers) and their spiral tables. |
-| `group_orders.cpp` | MoverGroup: handleTacticalOrder, the order* wrappers and the mate-event handlers. |
+| `group_goals.cpp` | MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals) and their spiral tables. |
+| `group_orders.cpp` | MoverGroup: the order* wrappers and the mate-event handlers. |
 | `group_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/gvehicl.cpp`

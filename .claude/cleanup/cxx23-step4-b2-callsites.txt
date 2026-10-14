@@ -1,15 +1,15 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1151 sites in 99 files
+# total 1135 sites in 89 files
 # per kind:
 #     299  EList::Begin
-#     213  EList
+#     207  EList
 #     180  EList::Count
 #     131  EList::Append
-#      47  EList::~EList
-#      30  EList::EList
+#      42  EList::~EList
 #      30  EList::operator[]
 #      28  EList::Delete
 #      26  EList::Clear
+#      25  EList::EList
 #      23  EList::Iterator
 #      13  EList::End
 #      10  PriorityQueue::insert
@@ -41,7 +41,7 @@
 #       1  EList::Find
 #       1  EList::INVALID_ITERATOR
 # per batch (cxx23-step4-b2-files.json):
-#      18  B2.2
+#       2  B2.2
 #      83  B2.3
 #      26  B2.4
 #      21  B2.4-pre
@@ -112,14 +112,8 @@
 #       3  editor/TelemetryPanel.cpp
 #       3  editor/UnitBrainPanel.cpp
 #       3  editor/eraser.cpp
-#       2  code/componentlistbox.cpp
 #       2  code/controlgui_update.cpp
-#       2  code/logisticsdata.cpp
-#       2  code/logisticsdata.h
 #       2  code/logisticsdata_save.cpp
-#       2  code/logisticsmissioninfo.cpp
-#       2  code/logisticspilot.cpp
-#       2  code/mechpurchasescreen.cpp
 #       2  code/missionbriefingscreen.cpp
 #       2  code/team.cpp
 #       2  editor/BuildingSettingsDlg.h
@@ -134,11 +128,7 @@
 #       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
 #       2  editor/campaignData.h
-#       1  code/componentlistbox.h
 #       1  code/controlgui_chat.cpp
-#       1  code/logisticsmissioninfo.h
-#       1  code/logisticspilot.h
-#       1  code/mechpurchasescreen.h
 #       1  code/mission_update.cpp
 #       1  code/missiongui_support.cpp
 #       1  code/mpparameterscreen.h
@@ -155,8 +145,6 @@
 #       1  editor/ScatterBrush.cpp
 #       1  editor/StampBrush.cpp
 # blob 5a7a30319898fe33053a5250d927b51ab393f195 code/ablmc2_camera.cpp
-# blob 2d71f70c594619704ee0582fd1556f28eac4553e code/componentlistbox.cpp
-# blob 4116f57789fe1bef6829e798942e2865f013ddda code/componentlistbox.h
 # blob d6158799855276bbebdb0e719ac317508b6240c6 code/contact.cpp
 # blob 3722da314d07cdd27f5514ea65711ee04e255e48 code/controlgui_chat.cpp
 # blob d10cadf8499b96a7f5eeb189ce058661d719cddc code/controlgui_objectives.cpp
@@ -164,15 +152,7 @@
 # blob 0cd1469a3dcc86b12627da43a7f5e87b536d1363 code/controlgui_update.cpp
 # blob a6463b7e4d51bfd627e62f3e0d397083266e11f4 code/gametacmap.cpp
 # blob fd9f18996de4c78e649e163af98ded8c17a0d1ce code/group_goals.cpp
-# blob 6685b0e58db0a67d23f3e3d0cf578af6013a8711 code/logisticsdata.cpp
-# blob 2b50666d7da87f77e44de8cda11392d11ce63aa8 code/logisticsdata.h
 # blob 65020f7d74c9ddb65836d9c2e4fdcd661035b19e code/logisticsdata_save.cpp
-# blob 50f328ba5b8c4450bb9fb4da15c809401675e674 code/logisticsmissioninfo.cpp
-# blob 46aa3bfe04b4fb7acc9c7ee037944ea4493f8874 code/logisticsmissioninfo.h
-# blob b88f71c6091d20e4620dae9e55abaceb584cbe5c code/logisticspilot.cpp
-# blob 44503f8315d31ba56b27df953f64155fc058d230 code/logisticspilot.h
-# blob 520498419af91c055e775b189f5650735852aa8e code/mechpurchasescreen.cpp
-# blob c85a0ed6e2ecc1a99eb56520ee3131d76b1c556f code/mechpurchasescreen.h
 # blob e9927601b721b01b2470dedb17e35ddebdd73d1c code/mission.cpp
 # blob a88d8a6ee22d155d5076d0eb806bf585324d1948 code/mission_update.cpp
 # blob b4e21bac7f99f4d93dc94039cea09b36e50f6a75 code/missionbriefingscreen.cpp
@@ -269,9 +249,6 @@ code/ablmc2_camera.cpp:60:SortList::setId
 code/ablmc2_camera.cpp:61:SortList::setValue
 code/ablmc2_camera.cpp:70:SortList::sort
 code/ablmc2_camera.cpp:72:SortList::getId
-code/componentlistbox.cpp:451:EList::EList
-code/componentlistbox.cpp:459:EList::~EList
-code/componentlistbox.h:105:EList
 code/contact.cpp:133:SortList
 code/contact.cpp:133:SortList::SortList
 code/contact.cpp:136:SortList::init
@@ -306,21 +283,8 @@ code/group_goals.cpp:158:PriorityQueue::insert
 code/group_goals.cpp:162:PriorityQueue::isEmpty
 code/group_goals.cpp:167:PriorityQueue::remove
 code/group_goals.cpp:228:PriorityQueue::insert
-code/logisticsdata.cpp:27:EList::EList
-code/logisticsdata.cpp:42:EList::~EList
-code/logisticsdata.h:78:EList
-code/logisticsdata.h:245:EList
 code/logisticsdata_save.cpp:464:EList
 code/logisticsdata_save.cpp:464:EList::Begin
-code/logisticsmissioninfo.cpp:22:EList::EList
-code/logisticsmissioninfo.cpp:37:EList::~EList
-code/logisticsmissioninfo.h:163:EList
-code/logisticspilot.cpp:31:EList::EList
-code/logisticspilot.cpp:64:EList::~EList
-code/logisticspilot.h:121:EList
-code/mechpurchasescreen.cpp:37:EList::EList
-code/mechpurchasescreen.cpp:60:EList::~EList
-code/mechpurchasescreen.h:67:EList
 code/mission.cpp:713:SortList::~SortList
 code/mission.cpp:719:SortList::~SortList
 code/mission.cpp:789:PriorityQueue::~PriorityQueue

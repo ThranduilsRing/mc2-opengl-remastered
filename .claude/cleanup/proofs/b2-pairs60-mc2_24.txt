@@ -1,0 +1,6 @@
+pair 1: PASS 204s | start cpu=37% procs=mc2=1 | end cpu=29% procs=none | identical over 7446 sim frames (chain ebc7ade58dd4c39c; runs had 7446 and 7501)
+pair 2: PASS 157s | start cpu=41% procs=none | end cpu=27% procs=none | identical over 7427 sim frames (chain cb974a1140b30667; runs had 7427 and 7438)
+pair 3: PASS 144s | start cpu=36% procs=none | end cpu=23% procs=none | identical over 7504 sim frames (chain 37e23170965ecd50; runs had 7504 and 7556)
+pair 4: PASS 187s | start cpu=22% procs=none | end cpu=25% procs=none | identical over 7458 sim frames (chain 59a28d49586b67ba; runs had 7458 and 7481)
+pair 5: PASS 187s | start cpu=34% procs=none | end cpu=24% procs=none | identical over 7385 sim frames (chain 8408f605a3feddb9; runs had 7424 and 7385)
+pair 6: PASS 145s | start cpu=40% procs=none | end cpu=24% procs=none | identical over 6612 sim frames (chain ab61e015ca30aa4a; runs had 6639 and 6612)
