@@ -363,3 +363,15 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )
+# The Part fixtures compile the same leaf sources as the engine.
+target_sources(mc2_tests PRIVATE
+    test_part_archive.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_init_parts.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_parts_archive.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/cident.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/mathfunc.cpp
+)
+set_source_files_properties(test_part_archive.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_init_parts.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_parts_archive.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")

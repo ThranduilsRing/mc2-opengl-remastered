@@ -1019,6 +1019,8 @@ class MechWarrior {
 			return(index);
 		}
 
+		bool isUsed() const { return used; }
+
 		long getPaintScheme (void)
 		{
 			return paintScheme;

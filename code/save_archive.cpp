@@ -1,5 +1,5 @@
 // Save schema codec; design: .claude/cleanup/cxx23-step4-save-schema-design.md.
-// Not wired yet; explicit fields keep saves independent of runtime ownership and layout.
+// Private codecs precede the complete runtime cutover; fields are independent of native layout.
 #include "save_archive.h"
 
 #include <algorithm>

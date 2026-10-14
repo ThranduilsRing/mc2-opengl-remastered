@@ -149,18 +149,64 @@ def selftest() -> int:
             fails.append("a baseline that was re-save identical must refuse a run that is not")
         if json.loads(json.dumps(rec))["runs"] != rec["runs"]:
             fails.append("the baseline record must survive a JSON round trip")
+        mask_path = os.path.join(td, "mask.json")
+        with open(mask_path, "w", encoding="utf-8") as fh:
+            json.dump({"classes": {"MechData": {"run": [[77, 77]], "build": [[80, 80]]}}}, fh)
+        noise_pk = [(4, bytes(3992))]
+        nf = mkfile("noise.ims", noise_pk)
+        inside_pk = [(4, bytes(77) + b"\x55" + bytes(3992 - 78))]
+        ni = mkfile("inside.ims", inside_pk)
+        inside = baseline_record("m", 10, 20, ni, nf, fp, mask_path)
+        masked_base = baseline_record("m", 10, 20, nf, nf, fp, mask_path)
+        if not check_baseline_record(json.loads(json.dumps(masked_base)), inside)[0] or not inside["resave_matches_policy"] or inside["resave_identical"]:
+            fails.append("baseline/check and immediate resave must accept an inside-mask mutation")
+        outside_pk = [(4, bytes(76) + b"\x55" + bytes(3992 - 77))]
+        f4 = mkfile("outside.ims", outside_pk)
+        outside = baseline_record("m", 10, 20, f4, nf, fp, mask_path)
+        if check_baseline_record(masked_base, outside)[0] or outside["resave_matches_policy"]:
+            fails.append("baseline/check and immediate resave must reject an outside-mask mutation")
+        build_pk = [(4, bytes(80) + b"\x55" + bytes(3992 - 81))]
+        f5 = mkfile("build.ims", build_pk)
+        if not check_baseline_record(masked_base, baseline_record("m", 10, 20, f5, nf, fp, mask_path))[0]:
+            fails.append("the declared cross-build mask applies to canonical baseline hashes")
+        if check_baseline_record(rec, inside)[0]:
+            fails.append("historical unmasked hashes must never silently become masked baselines")
+        if fixture_verdict(f1, None, mask_path)[0]:
+            fails.append("a mask cannot excuse a missing resave")
+        if smoke_target("lane3") != ["--deploy", "lane3"] or smoke_target(sd.resolve_install("lane3")) != ["--deploy", "lane3"]:
+            fails.append("lane3 names and paths must route to lane3")
+        import contextlib
+        import io
+        from unittest.mock import patch
+        baseline_json = os.path.join(td, "baseline.json")
+        with open(baseline_json, "w", encoding="utf-8") as fh:
+            json.dump(masked_base, fh)
+        with patch(__name__ + ".baseline_path", return_value=baseline_json), contextlib.redirect_stdout(io.StringIO()):
+            for save, expected in ((ni, 0), (f4, 1)):
+                with patch(__name__ + ".run_fixture", return_value=(td, save, nf, fp)) as fixture:
+                    verdict = main(["--check", "--mission", "m", "--save-at", "10", "--load-at", "20", "--install", "lane3",
+                                    "--save-dir", td, "--mask", mask_path])
+                    if verdict != expected or fixture.call_args.args[-2:] != (sd.resolve_install("lane3"), td):
+                        fails.append("--check must apply --mask and route --install/--save-dir end to end")
     for f in fails:
         print("saveload_roundtrip selftest FAIL: " + f)
     print("saveload_roundtrip selftest: " + ("FAIL" if fails else "ok"))
     return 1 if fails else 0
 
 
-def run(mission: str, frames: int, deploy: bool, out: str | None):
+def smoke_target(install: str) -> list[str]:
+    install = sd.resolve_install(install)
+    lane = sd.lane_model.lane_for(install)
+    return ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe")]
+
+
+def run(mission: str, frames: int, deploy: bool, out: str | None, install: str = sd.INSTALL_DIR,
+        save_dir: str | None = None):
     if deploy:
-        sd.build_and_deploy()
+        sd.build_and_deploy(install)
     env = dict(os.environ, **ENV)
-    with savegame_backup.guarded():
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", "--deploy", "0.4",
+    with savegame_backup.guarded(save_dir):
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install),
                             "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
     arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
@@ -185,16 +231,17 @@ def resave_env(save_at: int, load_at: int) -> dict:
     return dict(sd.GATES, MC2_SMOKE_FREEZE_ANIM="1", MC2_BOOT_QUICKSAVE_AT=str(save_at), MC2_BOOT_QUICKLOAD_AT=str(load_at))
 
 
-def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None):
+def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None,
+                install: str = sd.INSTALL_DIR, save_dir: str | None = None):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
     `save_at` should lie beyond the run, so the first save returned is the planted one.
     The owner's quicksave is backed up first and put back afterwards."""
     if deploy:
-        sd.build_and_deploy()
+        sd.build_and_deploy(install)
     dest = out or tempfile.mkdtemp(prefix="resave_")
     os.makedirs(dest, exist_ok=True)
-    sdir = savegame_backup.default_dir()
+    sdir = save_dir or savegame_backup.default_dir()
     second_src = os.path.join(sdir, "testgame_resave.ims")
     env = dict(os.environ, **resave_env(save_at, load_at))
     with savegame_backup.guarded(sdir):
@@ -203,7 +250,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         if plant:
             shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
-                            "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            *smoke_target(install), "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -236,17 +283,58 @@ def resave_verdict(first: str | None, second: str | None):
     return res["equal"], lines
 
 
-def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None) -> dict:
+def mask_policy(mask_path: str | None) -> dict:
+    if not mask_path:
+        return {"mode": "exact"}
+    mask = si.load_mask(mask_path)
+    sizes = {kind: size for size, kind in si.RECORD_SIZES.items()}
+    for kind, scopes in mask.items():
+        if kind not in sizes:
+            raise ValueError("save-noise masks require a known record class: " + kind)
+        for lo, hi in scopes["run"] + scopes["build"]:
+            if lo < 0 or hi < lo or hi >= sizes[kind]:
+                raise ValueError("invalid save-noise mask range for " + kind)
+    return {"mode": "zero-masked-bytes-v1", "across_builds": True, "classes": mask}
+
+
+def masked_packets(pk, policy: dict):
+    """Canonical legacy payloads retain packet kinds and sizes; only declared noise bytes become zero."""
+    if policy["mode"] == "exact":
+        return pk
+    result = []
+    for typ, raw in pk:
+        kind = si.packet_kind(typ, raw)
+        data = bytearray(raw)
+        spans = policy["classes"].get(kind, {})
+        for lo, hi in spans.get("run", []) + spans.get("build", []):
+            if lo < 0 or hi < lo:
+                raise ValueError("invalid save-noise mask range")
+            end = min(hi + 1, len(data))
+            if lo < end:
+                data[lo:end] = bytes(end - lo)
+        result.append((typ, bytes(data)))
+    return result
+
+
+def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None,
+                    mask_path: str | None = None) -> dict:
     pk = si.load(first)[1]
-    ok, _ = resave_verdict(first, second)
+    policy = mask_policy(mask_path)
+    identical, _ = resave_verdict(first, second)
+    ok, _ = fixture_verdict(first, second, mask_path)
+    pk = masked_packets(pk, policy)
     return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
-            "packets": len(pk), "overall": si.overall(pk), "resave_identical": ok, "runs": [list(r) for r in si.runs(pk)],
+            "comparison": policy,
+            "packets": len(pk), "overall": si.overall(pk), "resave_identical": identical, "resave_matches_policy": ok,
+            "runs": [list(r) for r in si.runs(pk)],
             "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check"}
 
 
 def check_baseline_record(base: dict, cur: dict):
     """-> (ok, report lines): does a fresh round-trip save equal the recorded one, run for run?"""
     lines = []
+    if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
+        return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
     be, ce = base.get("exe") or {}, cur.get("exe") or {}
     lines.append(f"baseline exe {be.get('sha', '?')} dirty={be.get('dirty', '?')}; this run's exe {ce.get('sha', '?')} dirty={ce.get('dirty', '?')}")
     ok, msg = si.compare_runs(base["runs"], cur["runs"])
@@ -256,9 +344,9 @@ def check_baseline_record(base: dict, cur: dict):
     if base["overall"] != cur["overall"]:
         lines.append(f"runs match but the overall digest differs ({base['overall']} vs {cur['overall']})")
         return False, lines
-    lines.append(f"save equals the baseline: {cur['packets']} packets, digest {cur['overall']}")
-    if base.get("resave_identical") and not cur.get("resave_identical"):
-        lines.append("the re-save is no longer identical to the save")
+    lines.append(f"save matches the {cur.get('comparison', {'mode': 'exact'})['mode']} baseline: {cur['packets']} packets, digest {cur['overall']}")
+    if base.get("resave_matches_policy", base.get("resave_identical")) and not cur.get("resave_matches_policy", cur.get("resave_identical")):
+        lines.append("the re-save no longer matches the save's comparison policy")
         return False, lines
     return True, lines
 
@@ -274,26 +362,36 @@ def masked_resave_verdict(first: str, second: str, mask_path: str):
     return res["first_outside"] is None, si.describe(res)
 
 
-def cmd_fixture(args) -> int:
-    dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant)
+def fixture_verdict(first: str | None, second: str | None, mask_path: str | None = None):
     ok, lines = resave_verdict(first, second)
+    if mask_path and first and second and os.path.isfile(first) and os.path.isfile(second):
+        return masked_resave_verdict(first, second, mask_path)
+    return ok, lines
+
+
+def cmd_fixture(args) -> int:
+    mask_policy(args.mask)
+    dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
+                                        args.install, args.save_dir)
+    ok, lines = fixture_verdict(first, second, args.mask)
     print(f"files kept in {dest}")
-    if args.cmd == "resave" and args.mask and first and second:
-        ok, lines = masked_resave_verdict(first, second, args.mask)
     if args.cmd == "resave":
         print(("saveload_roundtrip resave: PASS" if ok else "saveload_roundtrip resave: FAIL") + "\n" + "\n".join(lines))
         return 0 if ok else 1
+    if args.mask and not ok:
+        print(f"saveload_roundtrip {args.cmd}: FAIL\n" + "\n".join(lines))
+        return 1
     if not first:
         print("saveload_roundtrip: " + lines[0])
         return 1
-    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp)
+    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask)
     path = baseline_path(args.mission)
     if args.cmd == "baseline":
         os.makedirs(BASELINE_DIR, exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(rec, fh, indent=1)
             fh.write("\n")
-        print(f"saveload_roundtrip: wrote {os.path.relpath(path, ROOT)} ({rec['packets']} packets, digest {rec['overall']}, re-save identical: {rec['resave_identical']})")
+        print(f"saveload_roundtrip: wrote {os.path.relpath(path, ROOT)} ({rec['packets']} packets, digest {rec['overall']}, re-save exact: {rec['resave_identical']}, policy match: {rec['resave_matches_policy']})")
         return 0
     if not os.path.exists(path):
         print(f"saveload_roundtrip check: no baseline for {args.mission} ({os.path.relpath(path, ROOT)}); record one with --baseline")
@@ -322,12 +420,16 @@ def main(argv=None) -> int:
         p.add_argument("--deploy", action="store_true")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
         p.add_argument("--plant", help="resave: a save written by another exe, quickloaded instead of one this run writes (give --save-at beyond the run)")
-        p.add_argument("--mask", help="resave: a save-noise mask (tools/save_noise_mask.json); the verdict is then 'every differing byte lies inside it'")
+        p.add_argument("--mask", help="legacy noise mask: resave ignores declared run/build bytes; baseline/check hash zeroed noise bytes and require the same mask policy (old hashes must be re-recorded)")
+        p.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH", help="launch/deploy install, e.g. lane3")
+        p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")
     r = sub.add_parser("run")
     r.add_argument("--mission", default="mc2_16")
     r.add_argument("--frames", type=int, default=300, help="post-load frames that must match")
     r.add_argument("--deploy", action="store_true")
     r.add_argument("--out")
+    r.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
+    r.add_argument("--save-dir", help="directory matching the engine's savePath")
     a = sub.add_parser("analyze")
     a.add_argument("log")
     a.add_argument("--frames", type=int, default=300)
@@ -341,7 +443,7 @@ def main(argv=None) -> int:
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
-        ok, rep = run(args.mission, args.frames, args.deploy, args.out)
+        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1
 

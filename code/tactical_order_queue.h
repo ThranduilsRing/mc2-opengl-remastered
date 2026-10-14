@@ -22,19 +22,6 @@ template<class E> void tag(Archive& a, E& value, std::underlying_type_t<E> first
     if (a.reading()) value = static_cast<E>(wire);
 }
 
-template<class T> void sequence(Archive& a, std::vector<T>& values, std::uint32_t cap) {
-    if (!a.good()) return;
-    if (!a.reading() && values.size() > cap) { a.reject("order_length"); return; }
-    auto count = static_cast<std::uint32_t>(values.size());
-    a(count);
-    if (!a.good()) return;
-    if (count > cap) { a.reject("order_length"); return; }
-    if (a.reading()) {
-        if (!a.allocate(count, sizeof(T))) return;
-        values.resize(count);
-    }
-    for (auto& value : values) { if (!a.good()) break; a(value); }
-}
 } // namespace orderCodec
 
 // Shared save/sim identity: watch IDs remain a separate mapping.
@@ -132,7 +119,7 @@ struct ReinforcementCommand {
     std::vector<RosterEntryId> rosterEntryIds;
     save::Vec3 worldPoint;
     void serialize(Archive& a) {
-        a(commanderId); orderCodec::sequence(a, rosterEntryIds, maxReinforcementRoster); a(worldPoint);
+        a(commanderId); a.sequence(rosterEntryIds, maxReinforcementRoster); a(worldPoint);
     }
     void validate(Archive& a) const;
     bool operator==(const ReinforcementCommand&) const = default;
@@ -221,7 +208,7 @@ struct OrderEnvelope {
     TacticalOrder payload;
     void serialize(Archive& a) {
         a(applyTick, sourceId, sequence, issuer);
-        orderCodec::sequence(a, recipients, maxOrderRecipients);
+        a.sequence(recipients, maxOrderRecipients);
         orderCodec::tag(a, queueMode, 1u, 3u); a(payload);
     }
     void validate(Archive& a) const;
@@ -261,7 +248,7 @@ struct OrderReceipt {
     void serialize(Archive& a) {
         a(receiptId, sourceId, sequence, applyTick);
         orderCodec::tag(a, admissionStatus, 1u, 1u); orderCodec::tag(a, applicationStatus, 0u, 3u);
-        orderCodec::sequence(a, results, maxOrderRecipients); a(commandResult, acknowledged);
+        a.sequence(results, maxOrderRecipients); a(commandResult, acknowledged);
     }
     void validate(Archive& a) const;
     bool operator==(const OrderReceipt&) const = default;
