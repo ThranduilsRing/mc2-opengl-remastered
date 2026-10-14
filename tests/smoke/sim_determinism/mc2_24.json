@@ -3,10 +3,10 @@
  "frames": 1000,
  "chain": "e34f04954e5a949c",
  "visible_chain": "d53d5ca617f23c7f",
- "sha": "6eef8e2b21ea",
+ "sha": "a11b0e5c55c6",
  "seed": "0x8777174C",
  "data_fingerprint": {
-  "digest": "17051a2e90619f97",
+  "digest": "3bd7216039fbcfbd",
   "inputs": [
    "mission.fst",
    "tgl.fst",
