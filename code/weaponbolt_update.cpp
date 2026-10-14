@@ -283,6 +283,7 @@ long WeaponBolt::update (void)
 			if (lastDistanceMoved >= distance)
 			{
 				hitTarget = TRUE;
+				if (target) traceCombat("impact", "hit");
 				hitLeft = ((WeaponBoltTypePtr)getObjectType())->afterHitTime;
 
 				// VFX-WEAPON-FX-RESTORE-OPUS-1: kill trail gosEffect immediately on impact.
@@ -346,6 +347,7 @@ long WeaponBolt::update (void)
 					land->worldToCell(hotSpot,cellR, cellC);
 					if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
 					{
+						traceCombat("impact", "water_miss");
 						if (waterMissEffect && waterMissEffect->IsExecuted())
 						{
 							Stuff::Point3D			tPosition;
@@ -372,6 +374,7 @@ long WeaponBolt::update (void)
 					}
 					else
 					{
+						traceCombat("impact", "miss");
 						if (missEffect && missEffect->IsExecuted())
 						{
 							Stuff::Point3D			tPosition;
@@ -470,10 +473,16 @@ long WeaponBolt::update (void)
 						if (MPlayer)
 						{
 							if (MPlayer->isServer())
+							{
+								traceCombat("damage", "server", target, &weaponShot);
 								target->handleWeaponHit(&weaponShot, true);
+							}
 						}
 						else
+						{
+							traceCombat("damage", "direct", target, &weaponShot);
 							target->handleWeaponHit(&weaponShot);
+						}
 					}
 				}
 				else if (targetPosition)
@@ -550,6 +559,7 @@ long WeaponBolt::update (void)
 			if (timeLeft < 0.0)
 			{
 				hitTarget = TRUE;
+				if (target) traceCombat("impact", "hit");
 
 					// VFX-WEAPON-FX-RESTORE-OPUS-1: kill gosEffect here too.
 					// The primary hit path (line 622) kills gosEffect, but this
@@ -609,6 +619,7 @@ long WeaponBolt::update (void)
 					land->worldToCell(hotSpot,cellR, cellC);
 					if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
 					{
+						traceCombat("impact", "water_miss");
 						if (waterMissEffect && waterMissEffect->IsExecuted())
 						{
 							Stuff::Point3D			tPosition;
@@ -635,6 +646,7 @@ long WeaponBolt::update (void)
 					}
 					else
 					{
+						traceCombat("impact", "miss");
 						if (missEffect && missEffect->IsExecuted())
 						{
 							Stuff::Point3D			tPosition;
@@ -730,10 +742,16 @@ long WeaponBolt::update (void)
 						if (MPlayer) 
 						{
 							if (MPlayer->isServer()) 
+							{
+								traceCombat("damage", "server", target, &weaponShot);
 								target->handleWeaponHit(&weaponShot, true);
+							}
 						}
 						else
+						{
+							traceCombat("damage", "direct", target, &weaponShot);
 							target->handleWeaponHit(&weaponShot);
+						}
 					}
 				}
 				else if (targetPosition) 

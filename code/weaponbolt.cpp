@@ -10,6 +10,9 @@
 
 #include "weaponbolt_internal.h"
 #include "mc2fmt.h"
+#include <bit>
+#include <cstring>
+#include "diagnostic_trace.h"
 
 
 //---------------------------------------------------------------------------
@@ -332,8 +335,54 @@ bool WeaponBolt::isVisible (void)
 }
 
 //---------------------------------------------------------------------------
+
+// G3-a observes submitted damage and lifecycle order; it owns no gameplay state.
+void WeaponBolt::traceCombat(const char* event, const char* reason,
+                              GameObjectPtr target, const WeaponShotInfo* shot)
+{
+    if (!combatTraceLive || !mc2_diag::tagEnabled("VFX_COMBAT"))
+        return;
+    char extra[256] = {};
+    if (std::strcmp(event, "birth") != 0 && !getFlag(OBJECT_FLAG_JUSTCREATED)) {
+        mc2::fmt::to_buf(extra, ",\"flight_bits\":[{},{},{}]",
+            std::bit_cast<uint32_t>(laserPosition.x), std::bit_cast<uint32_t>(laserPosition.y),
+            std::bit_cast<uint32_t>(laserPosition.z));
+    }
+    char snapshot[256] = {};
+    if (std::strcmp(event, "birth") != 0) {
+        mc2::fmt::to_buf(snapshot, ",\"position_bits\":[{},{},{}]",
+            std::bit_cast<uint32_t>(position.x), std::bit_cast<uint32_t>(position.y),
+            std::bit_cast<uint32_t>(position.z));
+    }
+    char damage[512] = {};
+    if (target && shot) {
+        const auto targetPosition = target->getPosition();
+        mc2::fmt::to_buf(damage,
+            ",\"target\":{},\"target_wid\":{},\"damage_bits\":{},\"location\":{},"
+            "\"master\":{},\"attacker\":{},\"entry_bits\":{},\"target_position_bits\":[{},{},{}]",
+            target->getHandle(), target->getWatchID(false), std::bit_cast<uint32_t>(shot->damage),
+            shot->hitLocation, shot->masterId, shot->attackerWID, std::bit_cast<uint32_t>(shot->entryAngle),
+            std::bit_cast<uint32_t>(targetPosition.x), std::bit_cast<uint32_t>(targetPosition.y),
+            std::bit_cast<uint32_t>(targetPosition.z));
+    }
+    char data[2048];
+    mc2::fmt::to_buf(data,
+        "{{\"kind\":\"bolt\",\"slot\":{},\"generation\":{},\"seq\":{},\"tick\":{},"
+        "\"event\":\"{}\",\"reason\":\"{}\",\"effect_id\":{},\"type\":{}{}{}{}}}",
+        getHandle(), combatTraceGeneration, combatTraceSequence++, turn, event, reason,
+        combatTraceEffect, combatTraceType, snapshot, extra, damage);
+    mc2_diag::writeEvent("VFX_COMBAT", 1, 0, data);
+}
+
+void WeaponBolt::traceCombatRetire(const char* reason)
+{
+    traceCombat("retire", reason);
+    combatTraceLive = false;
+}
+
 void WeaponBolt::destroy (void)
 {
+	traceCombatRetire("teardown");
 	if (targetPosition)
 	{
 		delete targetPosition;
@@ -435,6 +484,7 @@ static bool gpuTrailKindProven(mc2::particles::GpuTrailKind k)
 //---------------------------------------------------------------------------
 void WeaponBolt::init (bool create, ObjectTypePtr _type)
 {
+	traceCombatRetire("reinit");
 	GameObject::init(create, _type);
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
@@ -592,6 +642,12 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	// B3b-3: table-driven mapping from effects.csv effectName to GpuTrailKind.
 	// Unmapped weapons fall back to GpuTrailKind::None (CPU gosFX unchanged).
 	gpu_trail_kind = gpuTrailKindFromEffectId(effectId);
+    combatTraceType = _type->whatAmI();
+    combatTraceEffect = effectId;
+    ++combatTraceGeneration;
+    combatTraceSequence = 0;
+    combatTraceLive = true;
+    traceCombat("birth");
 }
 
 //---------------------------------------------------------------------------
@@ -711,6 +767,9 @@ void WeaponBolt::Load (WeaponBoltData *data)
 	hitLeft = data->hitLeft;
 	startUV = data->startUV;
 	goalHeight = data->goalHeight;
+	combatTraceEffect = effectId;
+	traceCombat("restore");
+	if (!getExists()) traceCombatRetire("loaded_inactive");
 }
 
 //---------------------------------------------------------------------------
@@ -738,6 +797,7 @@ bool WeaponBolt::deliverAimedAreaHit (void)
 	if (!aimedTarget || aimedTarget->isDestroyed())
 		return false;
 
+	traceCombat("damage", "aimed_area", aimedTarget, &weaponShot);
 	aimedTarget->handleWeaponHit(&weaponShot);
 	return true;
 }
@@ -802,10 +862,16 @@ void WeaponBolt::finishNow (void)
 			if (MPlayer)
 			{
 				if (MPlayer->isServer())
+				{
+					traceCombat("damage", "server", target, &weaponShot);
 					target->handleWeaponHit(&weaponShot, true);
+				}
 			}
 			else
+			{
+				traceCombat("damage", "direct", target, &weaponShot);
 				target->handleWeaponHit(&weaponShot);
+			}
 		}
 
 		if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
@@ -827,6 +893,7 @@ void WeaponBolt::finishNow (void)
 											((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 		}
 
+		traceCombatRetire("forced_finish");
 		MC2_DESTROY(this, "bolt_impact");
 	}
 }

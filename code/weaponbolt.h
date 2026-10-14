@@ -32,6 +32,7 @@
 
 #include<stuff/stuff.hpp>
 #include<gosfx/gosfxheaders.hpp>
+#include <cstdint>
 #include "particles/gpu_trail.h"
 //---------------------------------------------------------------------------
 // Macro Definitions
@@ -324,6 +325,7 @@ class WeaponBolt : public GameObject
 
 		virtual void setExists (bool set)
 		{
+			if (!set) traceCombatRetire("set_exists_false");
 			GameObject::setExists(set);
 
 			//If we are setting this effect to not existing, clean up its RAM!!
@@ -421,6 +423,17 @@ class WeaponBolt : public GameObject
 		void CopyTo (WeaponBoltData *data);
 
 		void finishNow (void);
+
+        // Slot generations distinguish pool reuse without changing combat or save records.
+        uint64_t combatTraceGeneration = 0;
+        uint64_t combatTraceSequence = 0;
+        bool combatTraceLive = false;
+        long combatTraceType = -1;
+        long combatTraceEffect = -1;
+        void traceCombat(const char* event, const char* reason = "",
+                         GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
+        void traceCombatRetire(const char* reason);
+
 };
 
 //---------------------------------------------------------------------------

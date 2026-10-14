@@ -816,6 +816,10 @@ the forbidden lane-owned engine surfaces prevent completing that part here.
 
 ## Rerun commands
 
+G3-a's combat clock, save/pool contract, VFX_COMBAT trace schema and lane3 capture
+commands are in [g3-combat-deadlines.md](g3-combat-deadlines.md). That slice adds
+instrumentation only; combat-owned deadlines and runtime acceptance remain pending.
+
 Use a fresh output directory so earlier evidence remains intact:
 
 ```powershell

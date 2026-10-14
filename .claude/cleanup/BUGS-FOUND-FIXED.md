@@ -25,6 +25,17 @@ WHAT: the durable record of the serious defects the rework surfaced, with the sy
 | 18 | 2026-10-13 | script builtins could fault the engine | `execGetRelativePositionToObject` left its output untouched for non-movers and accepted a null output; `execStdGetModule` copied unbounded; by-value array parameters read past a smaller actual | 180f6f4f9, 948d3ffbf, dd56665c4 (bounded, logged, zero vector) | doctests through the real exec functions; census of 178 writer sites; tests/unit/test_abl_outarrays.cpp pins every native write into a script-declared array (Codex F slice 38680d0a7, merged d1b437e79) | fixed |
 | 19 | 2026-10-13 | latent stack and static-memory overrun when a team holds many contacts: the contact query wrote up to 255 handles into 200-slot buffers, and the sentry wake check wrote them into an 8-int array (found by reading the code, RB2 H8; never reproduced, stock missions reach 6 contacts in P1: 2448 calls) | `TeamSensorSystem::getContacts` sized its handle list and a static value list to 200 although a team holds up to 255 (MAX_MOVERS), and `brain_special_dispatch.cpp` passed `int wcl[8]` to a call that writes every valid contact | d26dc8891 (buffers sized to MAX_CONTACTS_PER_TEAM with a static_assert, the static scratch array removed, std::array outputs) | static_assert; sim_determinism check on four missions equal the baselines; the rest of the same class (the 200-slot SortList, the ABL out-arrays) is listed for B2.4 and the Codex slice | fixed (latent, never reproduced) |
 
+## G3 retirement defect (open)
+
+WeaponBolt's effect-driven `inView` return and Carnage's gosFX Execute result
+control object retirement; pool reuse can submit bolt damage again, and an
+explosion can retire before its scheduled collision pass. Found by code inspection
+on 2026-10-14 (G3/Astra); runtime impact remains unmeasured. G3-a adds slot/generation
+and ordered damage/retirement observations, **not a fix**. The proposed clock,
+loader and pool contracts and remaining proof are in
+[g3-combat-deadlines.md](g3-combat-deadlines.md). Status: open; no fix sha or runtime
+acceptance claimed.
+
 ## Proof-infrastructure defects that invalidated earlier evidence (for the record)
 - The host engine lease was skipped whenever the cursor-guard test switch was set, so three lanes ran three engines at once and flaked tier1 (821690c2b).
 - Vulkan captures requested without the umbrella flag silently drew with GL; 22 earlier "VK" capture sets were void (c5b7e0843, c0158be25, index in `.claude/l2cap/index.md`).

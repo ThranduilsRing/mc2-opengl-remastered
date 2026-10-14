@@ -28,6 +28,7 @@
 #endif
 
 #include<gosfx/gosfxheaders.hpp>
+#include <cstdint>
 //***************************************************************************
 union _CarnageInfo {
 	struct {
@@ -106,6 +107,12 @@ class Carnage : public GameObject
 				effectId = fxId;
 			}
 
+            virtual void setExists(bool set) override
+            {
+                if (!set) traceCombatRetire("set_exists_false");
+                GameObject::setExists(set);
+            }
+
 			virtual void destroy (void);
 
 			virtual long kill (void) 
@@ -156,6 +163,17 @@ class Carnage : public GameObject
 			void addTimeLeft (float seconds);
 
 			void finishNow (void);
+
+        // Slot generations distinguish pool reuse without changing combat or save records.
+        uint64_t combatTraceGeneration = 0;
+        uint64_t combatTraceSequence = 0;
+        bool combatTraceLive = false;
+        long combatTraceType = -1;
+        long combatTraceEffect = -1;
+        void traceCombat(const char* event, const char* reason = "",
+                         GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
+        void traceCombatRetire(const char* reason);
+
 
 			virtual void Save (PacketFilePtr file, long packetNum);
 
