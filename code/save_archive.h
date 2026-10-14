@@ -1,7 +1,8 @@
 // Save schema codec; design: .claude/cleanup/cxx23-step4-save-schema-design.md.
-// Not wired yet; explicit fields keep saves independent of runtime ownership and layout.
+// Private codecs precede the complete runtime cutover; fields are independent of native layout.
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cmath>
@@ -43,6 +44,32 @@ public:
     void reject(std::string_view reason);
     void raw(std::span<std::uint8_t> value);
     bool allocate(std::size_t count, std::size_t width);
+
+    template<class T, class Codec>
+    void sequence(std::vector<T>& values, std::uint32_t cap, Codec codec) {
+        if (!good()) return;
+        cap = std::min(cap, maxSequenceLength);
+        if (!reading_ && values.size() > cap) { reject("sequence_count"); return; }
+        auto count = static_cast<std::uint32_t>(values.size());
+        (*this)(count);
+        if (!good()) return;
+        if (count > cap) { reject("sequence_count"); return; }
+        try {
+            if (reading_) {
+                if (!allocate(count, sizeof(T))) return;
+                values.resize(count);
+            }
+            for (auto& value : values) {
+                if (!good()) break;
+                std::invoke(codec, *this, value);
+            }
+        } catch (const std::bad_alloc&) { reject("allocation"); }
+          catch (const std::length_error&) { reject("length"); }
+    }
+
+    template<class T> void sequence(std::vector<T>& values, std::uint32_t cap) {
+        sequence(values, cap, [](Archive& a, T& value) { a(value); });
+    }
 
     template<class... T> void operator()(T&... fields) {
         try { (field(fields), ...); }
@@ -93,17 +120,7 @@ private:
         for (auto& value : values) { if (!good()) break; field(value); }
     }
     template<class T> void field(std::vector<T>& values) {
-        if (!good()) return;
-        if (!reading_ && values.size() > maxSequenceLength) { reject("sequence_count"); return; }
-        std::uint32_t count = static_cast<std::uint32_t>(values.size());
-        field(count);
-        if (!good()) return;
-        if (count > maxSequenceLength) { reject("sequence_count"); return; }
-        if (reading_) {
-            if (!allocate(count, sizeof(T))) return;
-            values.resize(count);
-        }
-        for (auto& value : values) { if (!good()) break; field(value); }
+        sequence(values, maxSequenceLength);
     }
     void field(std::vector<bool>& values) {
         if (!good()) return;
@@ -262,6 +279,14 @@ struct Part {
     void validate(Archive& a) const;
     bool operator==(const Part&) const = default;
 };
+
+namespace development {
+// A section-10 Part fragment, never a complete mission save or a default runtime writer.
+struct PartSection {
+    std::vector<Part> parts;
+    void serialize(Archive& a) { a.sequence(parts, maxSequenceLength); }
+};
+} // namespace development
 
 Digest sha256(std::span<const std::uint8_t> bytes);
 bool encode(Document document, Bytes& output, Diagnostic diagnostic = {});

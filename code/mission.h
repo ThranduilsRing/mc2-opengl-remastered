@@ -10,6 +10,7 @@
 
 #ifndef MISSION_H
 #define MISSION_H
+#include "save_archive.h"
 //----------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
@@ -83,6 +84,8 @@ struct Part
 
 	void Save (FitIniFilePtr file, long partNum);
 	void Load (FitIniFilePtr file, long partNum);
+	mc2::save::Part saveRecord() const;
+	bool restoreRecord(const mc2::save::Part& record, mc2::save::Diagnostic diagnostic = {});
 };
 
 typedef Part *PartPtr;
@@ -166,6 +169,7 @@ struct MissionLoadFrame;
 
 class Mission
 {
+	friend struct MissionPartArchiveTest;
 
 	//Data Members
 	//-------------
@@ -296,6 +300,10 @@ class Mission
 		bool calcComplexDropZones (char* missionName, char dropZoneList[MAX_MC_PLAYERS]);
 
 		void init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
+
+		// Explicit developer import of a Part fragment; the runtime save/load format remains legacy.
+		bool loadParts(const mc2::save::Section& section, std::uint32_t schemaVersion,
+			mc2::save::Diagnostic diagnostic = {});
 
 	// Mission::init phases (mission_init.cpp, mission_init_load.cpp); callers use init().
 	private:

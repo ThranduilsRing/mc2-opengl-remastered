@@ -80,6 +80,40 @@ std::string hex(const Digest& digest) {
 } // namespace
 
 TEST_SUITE("SaveArchive") {
+TEST_CASE("bounded sequence callable codec limits length before invoking elements") {
+    struct Value { std::uint32_t bits = 0; };
+    auto codec = [](Archive& a, Value& value) { a(value.bits); };
+    std::vector<Value> values{{7}, {0x01020304}};
+    Archive writer;
+    writer.sequence(values, 2, codec);
+    REQUIRE(writer.finish());
+    CHECK(writer.bytes() == Bytes{2,0,0,0,7,0,0,0,4,3,2,1});
+    std::vector<Value> restored;
+    Archive reader(writer.bytes());
+    reader.sequence(restored, 2, codec);
+    REQUIRE(reader.finish());
+    REQUIRE(restored.size() == 2);
+    CHECK(restored[1].bits == values[1].bits);
+    for (const auto& bytes : {Bytes{3,0,0,0}, Bytes{255,255,255,255}, Bytes{2,0,0,0,7}}) {
+        std::vector<std::string> logs;
+        std::vector<Value> candidate;
+        Archive bad(bytes, [&](std::string_view line) { logs.emplace_back(line); });
+        bad.sequence(candidate, 2, codec);
+        CHECK_FALSE(bad.finish());
+        CHECK(logs.size() == 1);
+    }
+    std::vector<std::string> logs;
+    Archive tooMany([&](std::string_view line) { logs.emplace_back(line); });
+    unsigned calls = 0;
+    tooMany.sequence(values, 1, [&](Archive&, Value&) { ++calls; });
+    CHECK_FALSE(tooMany.good());
+    CHECK(calls == 0);
+    CHECK(logs.size() == 1);
+    std::vector<Value> empty;
+    Archive zero;
+    zero.sequence(empty, 0, codec);
+    CHECK(zero.bytes() == Bytes{0,0,0,0});
+}
 TEST_CASE("SHA256 known wire digests and block boundaries") {
     CHECK(hex(sha256({})) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     CHECK(hex(sha256(Bytes{'a','b','c'})) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
