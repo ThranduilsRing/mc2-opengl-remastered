@@ -18,8 +18,13 @@ public:
         : document_(document), history_(history) {}
     void draw();
     void refresh();
-    void persistence(std::filesystem::path stem, document::Diagnostic log, std::function<void()> reopened = {}) {
-        saveStem_ = std::move(stem); log_ = std::move(log); reopened_ = std::move(reopened);
+    void resetDocument() {
+        unit_ = {}; building_ = {}; player_ = {}; unitDraft_ = {}; buildingDraft_ = {};
+        module_.clear(); status_.clear(); revision_ = ~std::uint64_t{};
+        refresh();
+    }
+    void persistence(std::function<void()> save, std::function<void()> reopen) {
+        save_ = std::move(save); reopen_ = std::move(reopen);
     }
 #ifdef MC2_EDITOR_SMOKE_HOST
     const std::map<std::string, Widget>& widgets() const { return widgets_; }
@@ -43,9 +48,7 @@ private:
 #ifdef MC2_EDITOR_SMOKE_HOST
     std::map<std::string, Widget> widgets_;
 #endif
-    std::filesystem::path saveStem_;
-    document::Diagnostic log_;
-    std::function<void()> reopened_;
+    std::function<void()> save_, reopen_;
     bool button(const char* key, const char* label);
     bool choice(const std::string& key, const char* label, bool selected);
     void record(const std::string& key, bool activated = false);

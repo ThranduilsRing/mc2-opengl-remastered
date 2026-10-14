@@ -1,7 +1,10 @@
 #include "CommandHistory.h"
 #include "EntityPanels.h"
+#include "FileWorkflow.h"
+#include "ShellFrame.h"
 #ifdef MC2_EDITOR_SMOKE_HOST
 #include "PanelProof.h"
+#include "FileProof.h"
 #endif
 #include "Gates/gate.h"
 #include "build_fingerprint.h"
@@ -22,10 +25,11 @@ namespace {
 using namespace editor::document;
 
 struct Options {
-    std::filesystem::path mission, output, log;
+    std::filesystem::path mission, output, log, recent;
 #ifdef MC2_EDITOR_SMOKE_HOST
     bool smoke{};
     std::string panelSmoke;
+    std::string fileSmoke;
 #endif
 };
 Options options(int argc, char** argv)
@@ -36,16 +40,18 @@ Options options(int argc, char** argv)
 #ifdef MC2_EDITOR_SMOKE_HOST
         if (key == "--smoke") result.smoke = true;
         else if (i + 1 < argc && key == "--panel-smoke") result.panelSmoke = argv[++i];
+        else if (i + 1 < argc && key == "--file-smoke") result.fileSmoke = argv[++i];
         else
 #endif
         if (i + 1 < argc && key == "--mission") result.mission = argv[++i];
         else if (i + 1 < argc && key == "--output") result.output = argv[++i];
         else if (i + 1 < argc && key == "--log") result.log = argv[++i];
+        else if (i + 1 < argc && key == "--recent-file") result.recent = argv[++i];
         else throw std::runtime_error("invalid_shell_argument");
     }
     if (result.mission.empty()) throw std::runtime_error("mission_required");
 #ifdef MC2_EDITOR_SMOKE_HOST
-    if ((result.smoke || !result.panelSmoke.empty()) && (result.output.empty() || result.log.empty())) throw std::runtime_error("smoke_output_and_log_required");
+    if ((result.smoke || !result.panelSmoke.empty() || !result.fileSmoke.empty()) && (result.output.empty() || result.log.empty())) throw std::runtime_error("smoke_output_and_log_required");
 #endif
     return result;
 }
@@ -70,11 +76,12 @@ public:
         document_ = std::move(*loaded);
         history_ = std::make_unique<CommandHistory>(*document_);
         panels_ = std::make_unique<editor::shell::EntityPanels>(*document_, *history_);
-        panels_->persistence(options_.output.empty() ? options_.mission : options_.output, logger(), [this] {
+        files_ = std::make_unique<editor::shell::FileWorkflow>(*document_, *history_, *panels_,
+            options_.output.empty() ? options_.mission : options_.output, logger(), [this] {
             if (const auto* title = document_->find("MissionSettings", "MissionName")) titleId_ = title->id;
             else titleId_ = {};
             resetDraft();
-        });
+        }, options_.recent.empty() ? std::filesystem::current_path() / "editor-recent.txt" : options_.recent);
 #ifdef MC2_EDITOR_SMOKE_HOST
         if (!options_.panelSmoke.empty()) {
             panelProof_ = std::make_unique<editor::shell::PanelProof>(*document_, *history_, *panels_, options_.output, options_.panelSmoke, logger());
@@ -94,7 +101,7 @@ public:
         // Harness runs never occupy the desktop or request pointer capture.
         const bool hidden = mc2::gate::get<"MC2_WINDOW_OFFSCREEN">()
 #ifdef MC2_EDITOR_SMOKE_HOST
-            || options_.smoke || !options_.panelSmoke.empty()
+            || options_.smoke || !options_.panelSmoke.empty() || !options_.fileSmoke.empty()
 #endif
             ;
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) return error("sdl_init_failed");
@@ -113,6 +120,15 @@ public:
         platformReady_ = ImGui_ImplSDL2_InitForOpenGL(window_, context_);
         rendererReady_ = ImGui_ImplOpenGL3_Init("#version 330");
         if (!platformReady_ || !rendererReady_) return error("imgui_backend_failed");
+#ifdef MC2_EDITOR_SMOKE_HOST
+        if (!options_.fileSmoke.empty()) {
+            fileProof_ = std::make_unique<editor::shell::FileProof>(*document_, *history_, *panels_, *files_,
+                options_.output, options_.fileSmoke, logger(), [this] {
+                    SDL_Event close{}; close.type = SDL_WINDOWEVENT; close.window.event = SDL_WINDOWEVENT_CLOSE;
+                    close.window.windowID = SDL_GetWindowID(window_); SDL_PushEvent(&close);
+                });
+        }
+#endif
         bool running = true;
 #ifdef MC2_EDITOR_SMOKE_HOST
         unsigned frames{};
@@ -122,15 +138,15 @@ public:
             while (SDL_PollEvent(&event)) {
                 // ImGui's SDL backend can capture the mouse; off-screen pumps do not enable input.
                 if (!hidden) ImGui_ImplSDL2_ProcessEvent(&event);
-                if (event.type == SDL_QUIT) running = false;
-                if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) running = false;
+                if (event.type == SDL_QUIT || (event.type == SDL_WINDOWEVENT &&
+                    event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window_)))
+                    files_->request(editor::shell::FileWorkflow::Action::Close);
             }
             ImGui_ImplOpenGL3_NewFrame();
             if (!hidden) ImGui_ImplSDL2_NewFrame();
             else { ImGui::GetIO().DisplaySize = ImVec2(1440, 960); ImGui::GetIO().DeltaTime = 1.0f / 60.0f; }
             ImGui::NewFrame();
-            showDocument();
-            panels_->draw();
+            running = editor::shell::drawWhileOpen(*files_, [this] { showDocument(); }, [this] { panels_->draw(); });
             ImGui::Render();
             int width{}, height{}; SDL_GL_GetDrawableSize(window_, &width, &height);
             glViewport(0, 0, width, height);
@@ -138,7 +154,8 @@ public:
             glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #ifdef MC2_EDITOR_SMOKE_HOST
-            if (panelProof_) running = panelProof_->tick();
+            if (panelProof_) { const bool more = panelProof_->tick(); running = running && more; }
+            if (fileProof_) { const bool more = fileProof_->tick(); running = running && more; }
 #endif
             SDL_GL_SwapWindow(window_);
 #ifdef MC2_EDITOR_SMOKE_HOST
@@ -150,6 +167,7 @@ public:
 #ifdef MC2_EDITOR_SMOKE_HOST
         if (options_.smoke) return smoke(frames);
         if (panelProof_) return panelProof_->passed() ? 0 : error("panel_proof_interrupted");
+        if (fileProof_) { fileProof_->finish(files_->closing()); return fileProof_->passed() ? 0 : error("file_proof_interrupted"); }
 #endif
         return 0;
     }
@@ -158,6 +176,7 @@ private:
     void log(const std::string& line) { if (logFile_) { logFile_ << line << '\n'; logFile_.flush(); } else std::cerr << line << '\n'; }
     int error(const char* reason) { log(std::string("[EDITOR_SHELL v1] result=FAIL reason=") + reason); return 2; }
     void resetDraft() {
+        draft_.clear();
         if (!document_->field(titleId_)) return;
         draft_ = std::get<std::string>(document_->field(titleId_)->value[0]);
     }
@@ -167,9 +186,10 @@ private:
 #endif
     void showDocument() {
         ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(ImVec2(1440, 190));
+        ImGui::SetNextWindowSize(ImVec2(1440, 230));
         ImGui::Begin("Mission", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-        ImGui::Text("%s", options_.mission.string().c_str());
+        files_->draw();
+        if (files_->closing()) { ImGui::End(); return; }
         ImGui::Text("Revision %llu | %s | undo bytes %zu | oldest commands evicted %zu",
             static_cast<unsigned long long>(document_->revision()), document_->modified() ? "Unsaved" : "Saved", history_->bytesUsed(), history_->evicted());
         ImGui::InputText("Stored mission name", &draft_);
@@ -183,11 +203,6 @@ private:
         if (ImGui::Button("Undo") && history_->undo()) resetDraft();
         ImGui::SameLine();
         if (ImGui::Button("Redo") && history_->redo()) resetDraft();
-        ImGui::SameLine();
-        if (ImGui::Button("Save")) {
-            auto result = document_->save(options_.output.empty() ? options_.mission : options_.output, logger());
-            status_ = result ? "Saved" : result.error().reason;
-        }
         ImGui::SameLine();
         ImGui::TextUnformatted(status_.c_str());
         ImGui::Text("Terrain: %zu x %zu | Entities: %zu | Packets: %zu", document_->terrainSide(), document_->terrainSide(), document_->entities().size(), document_->archive().packets.size());
@@ -227,8 +242,10 @@ private:
     std::optional<MissionDocument> document_;
     std::unique_ptr<CommandHistory> history_;
     std::unique_ptr<editor::shell::EntityPanels> panels_;
+    std::unique_ptr<editor::shell::FileWorkflow> files_;
 #ifdef MC2_EDITOR_SMOKE_HOST
     std::unique_ptr<editor::shell::PanelProof> panelProof_;
+    std::unique_ptr<editor::shell::FileProof> fileProof_;
 #endif
     NodeId titleId_;
     std::string draft_;

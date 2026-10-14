@@ -643,5 +643,79 @@ class PanelGateTests(unittest.TestCase):
             smoke.grade_panel("brain_modes", directory, 0)
 
 
+class FileGateTests(unittest.TestCase):
+    def fixture(self, name):
+        directory = TEMP_ROOT / ("e4-file-" + uuid.uuid4().hex)
+        directory.mkdir()
+        original = b'FITini\nst MissionName = "' + b'x' * 8192 + b' retained tail"\nul DefaultTeam = 0\nFITend\n'
+        edited = original.replace(b'ul DefaultTeam = 0', b'ul DefaultTeam = 3')
+        for ext in ("fit", "pak"):
+            before, after = (original, edited) if ext == "fit" else (b"unchanged pak", b"unchanged pak")
+            for stage, data in (("baseline", before), ("edited", after), ("undone", before), ("redone", after)):
+                (directory / f"{stage}.{ext}").write_bytes(data)
+            saved = after if name in ("file_save", "file_failures", "file_open_save", "file_reopen_save", "file_close_save") else before
+            (directory / f"first.{ext}").write_bytes(saved)
+            if name in ("file_save_as", "file_recent"):
+                (directory / ("mission with spaces Ω " + "p" * 100 + f" retained tail.{ext}")).write_bytes(after)
+        lines = [f"[EDITOR_FILE v1] name={name} result=PASS widgets=1 changed=1 undo=1 redo=1 reopened=1 state=1"]
+        closed = name in ("file_close_save", "file_close_discard")
+        lines.append(f"[EDITOR_FILE_LOOP v1] name={name} terminated={int(closed)} complete=1")
+        if name == "file_failures":
+            lines.extend(["[EDITOR_MODEL v1] reason=injected rejected=1"] * 5)
+        (directory / "shell.log").write_text("\n".join(lines))
+        return directory
+
+    def test_registered_cases_require_widget_and_state_proof(self):
+        for name in smoke.FILE_CASES:
+            with self.subTest(name=name):
+                directory = self.fixture(name)
+                smoke.grade_file(name, directory, 0)
+                log = directory / "shell.log"
+                original = log.read_text()
+                for key in ("widgets", "state", "undo", "redo", "reopened"):
+                    log.write_text(original.replace(f"{key}=1", f"{key}=0"))
+                    with self.assertRaises(ValueError):
+                        smoke.grade_file(name, directory, 0)
+                log.write_text(original + "\n" + original.splitlines()[0])
+                with self.assertRaises(ValueError):
+                    smoke.grade_file(name, directory, 0)
+
+    def test_wrong_save_target_noop_truncation_and_duplicate_diagnostic_fail(self):
+        directory = self.fixture("file_save_as")
+        for path in (directory / "first.fit", directory / "undone.pak", directory / "redone.fit",
+                     directory / ("mission with spaces Ω " + "p" * 100 + " retained tail.fit")):
+            original = path.read_bytes()
+            path.write_bytes(original + b"corruption")
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                smoke.grade_file("file_save_as", directory, 0)
+            path.write_bytes(original)
+        path = directory / "edited.fit"
+        original = path.read_bytes()
+        for bad in ((directory / "baseline.fit").read_bytes(), original.replace(b"x" * 8192, b"x" * 2000)):
+            path.write_bytes(bad)
+            with self.assertRaises(ValueError):
+                smoke.grade_file("file_save_as", directory, 0)
+        directory = self.fixture("file_failures")
+        log = directory / "shell.log"
+        log.write_text(log.read_text() + "\n[EDITOR_MODEL v1] reason=duplicate rejected=1")
+        with self.assertRaisesRegex(ValueError, "diagnostic count"):
+            smoke.grade_file("file_failures", directory, 0)
+
+    def test_close_completion_cannot_substitute_for_production_loop_termination(self):
+        for name in ("file_close_save", "file_close_discard", "file_close_cancel"):
+            directory = self.fixture(name)
+            log = directory / "shell.log"
+            original = log.read_text()
+            loop = original.splitlines()[1]
+            for bad in (original.splitlines()[0], original + "\n" + loop,
+                        original.replace("complete=1", "complete=0"),
+                        original.replace("terminated=1", "terminated=0") if name != "file_close_cancel"
+                        else original.replace("terminated=0", "terminated=1")):
+                with self.subTest(name=name, bad=bad):
+                    log.write_text(bad)
+                    with self.assertRaisesRegex(ValueError, "loop termination"):
+                        smoke.grade_file(name, directory, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

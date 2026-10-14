@@ -32,6 +32,7 @@ public:
     std::expected<void, LoadError> setLegacyBrain(EntityId unit, std::string module);
     std::expected<void, LoadError> replace(std::string fit, std::vector<std::byte> pak,
         std::string mission, const Diagnostic& log);
+    void adopt(MissionDocument document);
     bool undo();
     bool redo();
     bool canUndo() const { return cursor_ != 0; }

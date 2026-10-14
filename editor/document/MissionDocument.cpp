@@ -12,21 +12,37 @@ namespace editor::document {
 namespace {
 constexpr std::int64_t teamCount = 8;
 constexpr std::int64_t legacyFlagIndexMax = std::numeric_limits<std::int32_t>::max();
+std::string pathText(const std::filesystem::path& path)
+{
+    const auto text = path.generic_u8string();
+    return {text.begin(), text.end()};
+}
+std::string logText(std::string_view text)
+{
+    std::string result;
+    for (const auto c : text) {
+        if (c == '\n') result += "\\n";
+        else if (c == '\r') result += "\\r";
+        else if (c == '\0') result += "\\0";
+        else result += c;
+    }
+    return result;
+}
 void diagnostic(const Diagnostic& log, std::string_view mission, const LoadError& error)
 {
-    if (log) log(std::format("[EDITOR_MODEL v1] mission={} field={} offset={} reason={} rejected=1", mission, error.field, error.offset, error.reason));
+    if (log) log(std::format("[EDITOR_MODEL v1] mission={} field={} offset={} reason={} rejected=1", logText(mission), logText(error.field), error.offset, error.reason));
 }
 std::expected<std::vector<std::byte>, LoadError> readBytes(const std::filesystem::path& path, std::size_t limit)
 {
     std::ifstream input(path, std::ios::binary | std::ios::ate);
-    if (!input) return std::unexpected(LoadError{path.filename().string(), "open_failed", 0});
+    if (!input) return std::unexpected(LoadError{pathText(path.filename()), "open_failed", 0});
     const auto size = input.tellg();
-    if (size <= 0 || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{path.filename().string(), "file_size_limit", 0});
+    if (size <= 0 || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{pathText(path.filename()), "file_size_limit", 0});
     std::vector<std::byte> result(static_cast<std::size_t>(size));
     input.seekg(0);
     input.read(reinterpret_cast<char*>(result.data()), size);
     if (!input || input.gcount() != size || input.peek() != std::char_traits<char>::eof())
-        return std::unexpected(LoadError{path.filename().string(), "read_count_mismatch", 0});
+        return std::unexpected(LoadError{pathText(path.filename()), "read_count_mismatch", 0});
     return result;
 }
 std::uint32_t u32(std::span<const std::byte> bytes, std::size_t p)
@@ -56,9 +72,9 @@ std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 {
     std::error_code ec;
     const auto directory = fit.parent_path().empty() ? std::filesystem::path(".") : fit.parent_path();
-    const auto prefix = fit.stem().string() + ".transaction.";
+    const auto prefix = pathText(fit.stem()) + ".transaction.";
     for (std::filesystem::directory_iterator entry(directory, ec), end; !ec && entry != end; entry.increment(ec)) {
-        if (!entry->path().filename().string().starts_with(prefix)) continue;
+        if (!pathText(entry->path().filename()).starts_with(prefix)) continue;
         std::ifstream journal(entry->path());
         std::string state;
         std::getline(journal, state);
@@ -74,12 +90,12 @@ std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 std::expected<MissionDocument, LoadError> MissionDocument::read(const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log)
 {
     const auto recovery = recoveryState(fit);
-    if (!recovery) { diagnostic(log, fit.string(), recovery.error()); return std::unexpected(recovery.error()); }
+    if (!recovery) { diagnostic(log, pathText(fit), recovery.error()); return std::unexpected(recovery.error()); }
     auto source = readBytes(fit, fitByteLimit);
-    if (!source) { diagnostic(log, fit.string(), source.error()); return std::unexpected(source.error()); }
+    if (!source) { diagnostic(log, pathText(fit), source.error()); return std::unexpected(source.error()); }
     auto packets = readBytes(pak, pakByteLimit);
-    if (!packets) { diagnostic(log, fit.string(), packets.error()); return std::unexpected(packets.error()); }
-    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), fit.string(), log);
+    if (!packets) { diagnostic(log, pathText(fit), packets.error()); return std::unexpected(packets.error()); }
+    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), pathText(fit), log);
 }
 
 std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fit, std::vector<std::byte> pak, std::string mission, const Diagnostic& log)
@@ -379,7 +395,7 @@ std::expected<void, LoadError> MissionDocument::assign(NodeId id, Value value)
 std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path& stem, const Diagnostic& log)
 {
     const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
-        LoadError error{"save", std::move(reason), 0}; diagnostic(log, mission_, error); return std::unexpected(error);
+        LoadError error{"save", std::move(reason), 0}; diagnostic(log, pathText(stem), error); return std::unexpected(error);
     };
     auto fit = stem; fit.replace_extension(".fit");
     auto pak = stem; pak.replace_extension(".pak");
@@ -401,7 +417,7 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (ec) return reject("staging_directory_failed");
     const auto recovery = recoveryState(fit);
     if (!recovery) return reject(recovery.error().reason);
-    const std::string pending = "pending\nFIT=" + fit.string() + "\nPAK=" + pak.string() + "\nFIT_previous=" + fitBackup.string() + "\nPAK_previous=" + pakBackup.string() + "\n";
+    const std::string pending = "pending\nFIT=" + pathText(fit) + "\nPAK=" + pathText(pak) + "\nFIT_previous=" + pathText(fitBackup) + "\nPAK_previous=" + pathText(pakBackup) + "\n";
     // A single exclusive journal reserves this destination against another publisher.
     if (!writeBytes(journal, std::as_bytes(std::span(pending)), true)) return reject("journal_write_failed");
     const auto output = fitBytes();
@@ -439,6 +455,7 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (ec) return reject(rollback() ? "journal_archive_failed" : "rollback_failed");
     savedFit_ = output;
     savedPlacements_ = placements_;
+    mission_ = pathText(fit);
     return {};
 }
 }

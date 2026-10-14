@@ -45,10 +45,14 @@ std::expected<void, LoadError> CommandHistory::replace(std::string fit, std::vec
 {
     auto candidate = MissionDocument::decode(std::move(fit), std::move(pak), std::move(mission), log);
     if (!candidate) return std::unexpected(candidate.error());
-    document_ = std::move(*candidate);
+    adopt(std::move(*candidate));
+    return {};
+}
+void CommandHistory::adopt(MissionDocument document)
+{
+    document_ = std::move(document);
     commands_.clear();
     cursor_ = used_ = evicted_ = 0;
-    return {};
 }
 std::expected<void, LoadError> CommandHistory::setText(NodeId id, std::string text, std::string label)
 {

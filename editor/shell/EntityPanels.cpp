@@ -130,28 +130,15 @@ void EntityPanels::transform(const char* key, Transform& value)
 void EntityPanels::draw()
 {
     refresh();
-    ImGui::SetNextWindowPos(ImVec2(0, 190)); ImGui::SetNextWindowSize(ImVec2(1440, 770));
+    ImGui::SetNextWindowPos(ImVec2(0, 230)); ImGui::SetNextWindowSize(ImVec2(1440, 730));
     ImGui::Begin("Entities and players", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     if (button("undo", "Undo panel edit")) { history_.undo(); revision_ = ~std::uint64_t{}; }
     ImGui::SameLine();
     if (button("redo", "Redo panel edit")) { history_.redo(); revision_ = ~std::uint64_t{}; }
-    ImGui::SameLine(); ImGui::BeginDisabled(saveStem_.empty());
-    if (button("save", "Save mission")) report(document_.save(saveStem_, log_));
+    ImGui::SameLine(); ImGui::BeginDisabled(!save_);
+    if (button("save", "Save mission")) save_();
     ImGui::SameLine();
-    if (button("reopen", "Reopen saved mission")) {
-        auto fit = saveStem_; fit.replace_extension(".fit");
-        auto pak = saveStem_; pak.replace_extension(".pak");
-        auto loaded = MissionDocument::read(fit, pak, log_);
-        if (loaded) {
-            const auto bytes = loaded->pakBytes();
-            auto result = history_.replace(loaded->fitBytes(), {bytes.begin(), bytes.end()}, saveStem_.string(), log_);
-            report(result);
-            if (result) {
-                unit_ = {}; building_ = {}; player_ = {}; revision_ = ~std::uint64_t{};
-                if (reopened_) reopened_();
-            }
-        } else status_ = loaded.error().reason;
-    }
+    if (button("reopen", "Reopen saved mission") && reopen_) reopen_();
     ImGui::EndDisabled();
     ImGui::SameLine(); ImGui::TextUnformatted(status_.c_str());
     refresh();

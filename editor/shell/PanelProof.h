@@ -1,5 +1,7 @@
 #pragma once
 #include "EntityPanels.h"
+#include "FileWorkflow.h"
+#include <memory>
 #include <functional>
 
 namespace editor::shell {
@@ -26,6 +28,7 @@ private:
     unsigned phase_{}, frames_{}, priorActivations_{};
     bool passed_{};
     bool captureRendered_{};
+    std::unique_ptr<FileWorkflow> files_;
     void click(std::string key, std::function<void()> verify = {});
     void input(std::string key, std::string value);
     void operation(const std::string& name, const std::string& widget, std::function<void()> semantic);

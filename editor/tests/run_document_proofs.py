@@ -31,14 +31,14 @@ def grade_shipping_shell():
     shipping = (binaries / "Mission Editor Shell.exe").read_bytes()
     smoke = (binaries / "Mission Editor Smoke.exe").read_bytes()
     for marker in (b"--panel-smoke", b"panel_fixture_seed_failed", b"[EDITOR_PANEL_OPERATION v1]",
-                   b"Q3 long mission "):
+                   b"Q3 long mission ", b"--file-smoke", b"file_fixture_seed_failed", b"[EDITOR_FILE v1]"):
         if marker in shipping or marker not in smoke:
             raise ValueError(f"shipping/smoke isolation failed: {marker!r}")
     print("Shipping shell: proof markers absent; smoke host: proof markers present", flush=True)
 
 
 def main():
-    directory = ROOT / "scratch" / "e3b-proofs" / time.strftime("%Y-%m-%dT%H-%M-%S")
+    directory = ROOT / "scratch" / "e4-proofs" / time.strftime("%Y-%m-%dT%H-%M-%S")
     inputs = directory / "stock"
     inputs.mkdir(parents=True, exist_ok=False)
     stock = StockInputs(Path("A:/Games/mc2-opengl/mc2-win64-lane3"))
@@ -50,7 +50,7 @@ def main():
             (inputs / name).write_bytes(data)
             hashes[name] = hashlib.sha256(data).hexdigest()
     (directory / "inputs.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
-    env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-e3b-{os.getpid()}",
+    env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-e4-{os.getpid()}",
                MC2_EDITOR_STOCK_DIR=str(inputs), ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
     commands = []
     for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests"):

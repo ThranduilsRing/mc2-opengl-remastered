@@ -83,7 +83,7 @@ PanelProof::PanelProof(MissionDocument& doc, CommandHistory& history, EntityPane
     EntityId buildingId;
     for (const auto& e : doc.entities()) if (e.packetRecord) buildingId = e.id;
     saveCheck("fixture");
-    panels_.persistence(output_ / "widget-save", log_);
+    files_ = std::make_unique<FileWorkflow>(doc, history, panels, output_ / "widget-save", log_);
     click("unit.select"); click("unit.select." + std::to_string(unitId.value));
     click("building.select"); click("building.select." + std::to_string(buildingId.value));
     click("player.select"); click("player.select.player0");

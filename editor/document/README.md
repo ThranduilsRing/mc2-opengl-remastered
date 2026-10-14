@@ -1,4 +1,4 @@
-# Owned mission document: Q3, E3-a and E3-b
+# Owned mission document: Q3, E3-a, E3-b and E4
 
 `editor_document` is independent of MFC, GameOS, catalogs, and private heaps. The
 SDL application owns one `MissionDocument` followed by its `CommandHistory`, so
@@ -191,3 +191,155 @@ remain unreplaced; entity list selection alone does not implement those dialogs.
 
 The runtime/cook shared-codec migration needs lane 1. Brain-source authoring,
 terrain recooking, catalog resolution and project dependencies remain later slices.
+
+E4 is a **B2 file-lifecycle slice**, not completion of B2. E3-a (`112f03674`)
+supplies structural commands and stable identities; E3-b (`a91708219`) supplies
+entity/player/brain panels and their widget proofs. The SDL application still
+renders only ImGui panels through SDL/OpenGL 3.3. It has no map viewport, terrain
+or entity scene renderer, Vulkan renderer, or embedded runtime. Pixel variety is
+not evidence of displayed map correctness; Vulkan displayed results remain open.
+
+`FileWorkflow` owns the active FIT path, open/save-as path drafts, the pending
+transition and a bounded recent list. Open, Save, Save as, Reopen, Recent and Close
+use the owned document. FIT/PAK publication retains the document's transaction
+protocol. Save as changes the active destination only after success; subsequent
+Save/Reopen and the entity panel buttons share that destination. Save preserves
+undo/redo across the savepoint. A successful Open/Reopen adopts a validated
+candidate, empties history and resets entity/player IDs, placement drafts and the
+mission-name draft. Failed document I/O leaves live bytes, savepoint, history and path alone.
+Open validates the candidate before a requested Save so a bad target cannot alter
+the current savepoint. Save followed by Reopen of the active pair retains the
+just-saved values. A failed Save keeps the pending transition and prompt open.
+
+Dirty Open, Reopen, Recent and SDL window-close/quit requests offer Save, Discard
+and Cancel in ImGui panels, without an OS dialog or nested message pump. Cancel
+preserves edits and history. Discard adopts the target only after validation;
+close exits only after an accepted decision. Accepted close immediately suppresses
+editable document and entity UI, including queued input in that frame and a close
+accepted by the file controls inside the document window. The shell already owns its SDL
+window, GL context, ImGui context/backends and event loop; no HWND input forwarding
+was introduced. Legacy EditRel and its input/pump remain isolated and unchanged.
+Only applied document edits are dirty; panel drafts still require Apply.
+
+Recent paths persist as UTF-8 in `editor-recent.txt` in the working directory;
+`--recent-file` selects another store (the harness uses each case's scratch
+directory). It retains at most 12 absolute paths, only after successful opens or
+saves. Missing recent targets pass through the same dirty/failed-load handling.
+Persisted entries must already be absolute UTF-8 generic paths with the exact
+`.fit` extension; validation precedes lexical normalization. Relative paths,
+other extensions, embedded controls and oversized lists reject the entire list
+with one diagnostic. Growing strings preserve path
+and text tails; native Unicode filesystem paths also remain UTF-8 in diagnostics
+and transaction journals. Diagnostic path/control characters cannot create extra
+log lines. OS path-length failures reject rather than shortening input. Recent
+publication atomically replaces the store, then commits the candidate in memory.
+A failed recent write leaves the previous memory and disk list intact and emits
+exactly one `[EDITOR_FILES v1] recent_updated=0 reason=recent_write_failed` line
+per failed update. It appends `; recent list update failed` to the operation status.
+`save()` returns true exactly when document publication succeeds: it commits the
+active path and document savepoint independently of recent-list publication,
+preserves undo/redo, and never reports a recent failure as a document-save failure.
+Without a configured store, the recent list commits in memory. Failed staging
+files remain as proof artifacts; no `.previous` recent-list backups are created.
+
+The 13 registered smoke-host file cases exercise real widgets, changed FIT output,
+undo/redo, pair save/read checks, long stored names, Unicode/space-containing save-as
+paths, recent reopening, and Save/Discard/Cancel for Open, Reopen and window close.
+`file_failures` requires exactly five diagnostics: missing target, malformed FIT,
+failed save-as, an untruncated invalid 8 KiB path, and a failed close-time save.
+The last must keep the shell alive and the dirty prompt pending. Offline
+`editor_panel_tests` also reloads the recent store and rejects malformed lists.
+The smoke host posts a real SDL close event; the offline test requests the same
+transition without claiming SDL or framebuffer coverage. Proof completion and
+loop termination are separate assertions (`EDITOR_FILE_LOOP`), and close proofs
+cannot terminate the loop. An offline negative control deliberately ignores
+production close handling and must fail despite completed widget assertions.
+Queued-click and locked-store negative controls cover close-frame edits and
+recent-list publication failures without invalidating a successful document save.
+
+Proof checkpoint: `py -3 editor/tests/run_document_proofs.py` builds normal and
+ASan **document** targets plus shipping/smoke shells and the widget tests. The
+strict 24/24 FIT/PAK byte gate and deliberate corrupted-FIT rejection are unchanged.
+There is no shell ASan proof. The orchestrator commits this reviewed diff first,
+then builds/deploys that commit to lane3 and runs the existing Q3/E3 commands above
+plus this exact command under the harness lease (no baseline replacement):
+
+```
+py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --shell-exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor Smoke.exe" --prepare-stock-scratch --case file_save --case file_save_as --case file_recent --case file_open_save --case file_open_discard --case file_open_cancel --case file_reopen_save --case file_reopen_discard --case file_reopen_cancel --case file_close_save --case file_close_discard --case file_close_cancel --case file_failures --keep-logs --exit-sec 3 --timeout 180
+```
+
+Deferred: true New-map creation needs a validated new-mission/terrain/packet factory
+in the document, a fresh history/savepoint and cleared IDs/drafts in all panels.
+The current document only reads/decodes existing missions. The later catalog
+chooser needs an owned, mod-aware catalog reader and complete UnitPlacement or
+BuildingPlacement values passed to E3-a insert commands; EditorObjectMgr's
+singleton is not an acceptable catalog owner. Start/About, project dependencies,
+map viewport and lane-2 Vulkan integration, and legacy-pump/HWND-forwarding deletion
+remain later B2 slices. This slice has no lane-1/G2b overlap.
+
+Initial E4 checkpoint (2026-10-14, before review fixes):
+
+- `py -3 editor/tests/run_document_proofs.py`: PASS at
+  `scratch/e4-proofs/2026-10-14T08-41-34`; normal and document ASan each passed
+  21 cases/114080 assertions, all 24 original pairs and all 24 corrupted-output
+  negative controls. Both shell targets built; shipping proof-marker isolation passed.
+- After strengthening failure-state assertions and adding malformed recent-list
+  controls, `py -3 tools/build_quiet.py --target editor_panel_tests` and
+  `py -3 tools/build_quiet.py --target EditorShellSmoke`: PASS with unique
+  `_MSPDBSRV_ENDPOINT_` values (`sol-e4-final-<pid>`, `sol-e4-smoke-final-<pid>`).
+- With `MC2_EDITOR_STOCK_DIR=A:/Games/mc2-codex/scratch/e4-proofs/2026-10-14T08-41-34/stock`,
+  `build64/out/editor/RelWithDebInfo/editor_panel_tests.exe --no-breaks`: PASS,
+  3 cases/106 assertions, including the 13 workflow scripts. Production `grade_file`
+  also accepted all 13 real widget-test output directories. No desktop was used.
+- `py -3 -B -m pytest scripts/tests/test_editor_smoke.py --capture=sys -p no:tmpdir -p no:cacheprovider -q`:
+  PASS, 44 tests/162 subtests, including corrupted/no-op/truncated/missing-proof controls.
+- `py -3 scratch/e4_run_contracts.py` ran
+  `py -3 tools/build_contract_harnesses.py --run --unit` with a unique endpoint and
+  a 300-second outer bound: PASS, 3115 native cases (4 existing skips), four Python
+  suites. The release-tree suite explicitly did no deployment checks because no
+  release root was configured. No compiler timeout occurred.
+- `git diff --check`: PASS. Bash `scripts/check-contracts.sh`, clean committed
+  all-target build/deploy, and fingerprinted lane3 runtime rows were not run:
+  those remain the orchestrator's required commit/build/deploy checkpoint. No index
+  writes, commits, deployment, editor launch or game launch occurred here.
+
+Retained scratch: `scratch/e4_run_contracts.py`, `scratch/e4-contracts.log`,
+`scratch/e4-proofs/2026-10-14T08-34-39` (initial widget-driver failure) and
+`scratch/e4-proofs/2026-10-14T08-41-34` (PASS), plus test-created children of
+`scratch/e4-widget-tests`, `scratch/e4-recent-tests`, `scratch/e3b-widget-tests`,
+`scratch/e3a-document-tests`, `scratch/q3-document-tests` and
+`scratch/editor-smoke-tests`. Failed-publication/journal and recent-list backups
+are retained with their case artifacts. The contract harness also retains its
+normal generated test/build artifacts. No scratch cleanup was performed.
+
+E4 review-fix checkpoint (2026-10-14, uncommitted diff):
+
+- `py -3 editor/tests/run_document_proofs.py`: final PASS at
+  `scratch/e4-proofs/2026-10-14T08-58-19`; all five targets built with zero warnings.
+  Normal and document ASan each passed 21 cases/114080 assertions, strict 24/24
+  unchanged stock pairs and 24/24 corrupted-output controls. Widget/file tests
+  passed 6 cases/185 assertions, including queued-click and loop-termination
+  negative controls and a Windows sharing lock that prevents recent publication.
+  Shipping/smoke proof-marker isolation passed. The earlier review-fix run at
+  `scratch/e4-proofs/2026-10-14T08-55-38` also passed; one ignored-result warning
+  was then removed and the complete proof rerun. No timeout occurred.
+- `py -3 -B -c "import tempfile, pytest; tempfile.tempdir='A:/Games/mc2-codex/scratch'; raise SystemExit(pytest.main(['scripts/tests/test_editor_smoke.py','--capture=sys','-p','no:tmpdir','-p','no:cacheprovider','-q']))"`:
+  PASS, 45 tests/174 subtests, including missing, duplicate and contradictory
+  termination/completion evidence controls.
+- `py -3 scratch/e4_fixes_grade_files.py`: production `grade_file` accepted
+  13/13 actual widget-test output directories. The first direct grader invocation
+  was blocked by missing `shell.log`: offline tests write `widgets.log`. The
+  wrapper copies that unchanged evidence to `shell.log` before grading.
+- `py -3 scratch/e4_fixes_contracts.py` runs
+  `py -3 tools/build_contract_harnesses.py --run --unit` with a unique endpoint,
+  writable TEMP/TMP and a 300-second outer bound: PASS, 3115 native cases
+  (4 existing skips, deliberate expected-failure assertions) and all four Python
+  suites. Release-tree checks were explicitly no-ops without a configured root.
+- `git diff --check`: PASS. Bash check-contracts and the committed build/deploy/
+  fingerprinted lane3 runtime checkpoint remain the orchestrator's work.
+  No index writes, commits, deployment or engine/editor launches occurred here.
+
+Additional retained scratch: the two review-fix `e4-proofs` directories above,
+`scratch/e4_fixes_grade_files.py`, `scratch/e4_fixes_contracts.py`,
+`scratch/e4-fixes-contracts.log`, and new children of the previously listed test
+artifact roots (including the 13 copied `shell.log` files). Nothing was deleted.

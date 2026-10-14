@@ -992,6 +992,46 @@ PANEL_OPERATIONS = {
     "panel_render": (),
 }
 
+FILE_CASES = ("file_save", "file_save_as", "file_recent", "file_failures") + tuple(
+    f"file_{action}_{decision}" for action in ("open", "reopen", "close")
+    for decision in ("save", "discard", "cancel"))
+
+
+def grade_file(name: str, directory: Path, rc: int) -> None:
+    if rc != 0:
+        raise ValueError(f"file process failed: {name} rc={rc}")
+    lines = (directory / "shell.log").read_text(encoding="utf-8").splitlines()
+    summaries = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines if line.startswith("[EDITOR_FILE v1] ")]
+    expected = dict(name=name, result="PASS", **{key: "1" for key in ("widgets", "changed", "undo", "redo", "reopened", "state")})
+    if summaries != [expected]:
+        raise ValueError("file workflow widget/state evidence missing or duplicated")
+    loops = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines if line.startswith("[EDITOR_FILE_LOOP v1] ")]
+    closed = name in ("file_close_save", "file_close_discard")
+    if loops != [dict(name=name, terminated="1" if closed else "0", complete="1")]:
+        raise ValueError("file loop termination/completion evidence missing or duplicated")
+    diagnostics = [line for line in lines if "rejected=1" in line]
+    if len(diagnostics) != (5 if name == "file_failures" else 0):
+        raise ValueError("file failure diagnostic count differs")
+    for extension in ("fit", "pak"):
+        original = (directory / f"baseline.{extension}").read_bytes()
+        edited = (directory / f"edited.{extension}").read_bytes()
+        if (directory / f"undone.{extension}").read_bytes() != original or (directory / f"redone.{extension}").read_bytes() != edited:
+            raise ValueError("file workflow undo/redo bytes differ")
+        if extension == "fit":
+            if edited == original or b"x" * 8192 + b" retained tail" not in edited:
+                raise ValueError("file workflow output unchanged or text truncated")
+            if b"ul DefaultTeam = 3" not in edited or b"ul DefaultTeam = 0" not in original:
+                raise ValueError("file workflow authored alignment missing")
+        elif edited != original:
+            raise ValueError("file workflow unrelated PAK changed")
+        saved = edited if name in ("file_save", "file_failures", "file_open_save", "file_reopen_save", "file_close_save") else original
+        if (directory / f"first.{extension}").read_bytes() != saved:
+            raise ValueError("file lifecycle saved/discarded/cancelled bytes differ")
+        if name in ("file_save_as", "file_recent"):
+            destination = directory / ("mission with spaces Ω " + "p" * 100 + f" retained tail.{extension}")
+            if destination.read_bytes() != edited:
+                raise ValueError("file save-as destination or recent output differs")
+
 
 def grade_panel(name: str, directory: Path, rc: int) -> None:
     if rc != 0:
@@ -1055,8 +1095,9 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
             (directory / f"input.{extension}").write_bytes(data)
             provenance[f"input_{extension}_sha256"] = hashlib.sha256(data).hexdigest()
         host_lease.ensure_held("E3-b SDL panel widgets")
-        command = [str(exe), "--panel-smoke", name, "--mission", str(directory / "input.fit"),
-                   "--output", str(directory), "--log", str(directory / "shell.log")]
+        command = [str(exe), "--file-smoke" if name in FILE_CASES else "--panel-smoke", name,
+                   "--mission", str(directory / "input.fit"), "--output", str(directory),
+                   "--log", str(directory / "shell.log"), "--recent-file", str(directory / "recent.txt")]
         process = nofocus.spawn(command, cwd=str(exe.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, errors="replace")
         try:
@@ -1067,7 +1108,7 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
         finally:
             if process.poll() is not None:
                 (directory / "process.log").write_text(output or "", encoding="utf-8")
-        grade_panel(name, directory, process.returncode)
+        (grade_file if name in FILE_CASES else grade_panel)(name, directory, process.returncode)
         if hashlib.sha256(exe.read_bytes()).hexdigest() != provenance["exe_sha256"]:
             raise ValueError("panel executable changed during smoke")
         for extension in ("fit", "pak"):
@@ -1115,7 +1156,7 @@ def main() -> int:
         return 2
 
     suite = build_suite(deploy)
-    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"] + list(PANEL_OPERATIONS)
+    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"] + list(PANEL_OPERATIONS) + list(FILE_CASES)
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
@@ -1142,7 +1183,7 @@ def main() -> int:
     except (OSError, KeyError, ValueError, zlib.error) as exc:
         print(f"ERROR: stock dependency audit failed: {exc}")
         return 2
-    if any(c == "stock_roundtrip" or c in single_stock or c in PANEL_OPERATIONS for c in selected) or "workflows" in selected or "new_model" in selected:
+    if any(c == "stock_roundtrip" or c in single_stock or c in PANEL_OPERATIONS or c in FILE_CASES for c in selected) or "workflows" in selected or "new_model" in selected:
         try:
             stock = StockInputs(deploy)
             campaign = stock.read("data/campaign/campaign.fit")
@@ -1164,7 +1205,7 @@ def main() -> int:
 
     results = []
     for c in selected:
-        if c in PANEL_OPERATIONS:
+        if c in PANEL_OPERATIONS or c in FILE_CASES:
             results.append(run_panel(c, (args.shell_exe or deploy / "Mission Editor Smoke.exe").resolve(),
                                      stock, (rptdir / c).resolve(), args.timeout))
             continue
