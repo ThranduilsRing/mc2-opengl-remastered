@@ -73,6 +73,7 @@ bool         g_cliSuppressModals  = false;
 // the editor). Default path lives under terrain_gen_out so it deploys with tools.
 bool         g_cliSmokeSave       = false;
 bool         g_cliSmokeWorkflows = false;
+bool         g_cliSmokeCatalogReference = false;
 std::string  g_cliSmokeSavePath;
 int          g_cliSmokeSaveOk     = -1;    // -1 = not attempted, 0/1 = save() result
 
@@ -354,6 +355,10 @@ static void s_cli_parse(const char* cmd)
 		{
 			g_cliSmokeWorkflows = true;
 		}
+		else if (s_cli_flag_match(tok, "-smoke-catalog-reference", "--smoke-catalog-reference"))
+		{
+			g_cliSmokeCatalogReference = true;
+		}
 		else if (s_cli_flag_match(tok, "-smoke-save", "--smoke-save"))
 		{
 			g_cliSmokeSave = true;
@@ -417,7 +422,7 @@ static void s_cli_parse(const char* cmd)
 	                      || g_cliSmokeOutliner || g_cliSmokeInspector || g_cliSmokeValidate
 	                      || g_cliSmokeInspectorEdit || g_cliSmokeAssetBrowser
 	                      || g_cliSmokeGameplayDbgr || g_cliSmokeUndoHistory
-	                      || g_cliSmokePlaceOob || g_cliPlaytest;
+	                      || g_cliSmokePlaceOob || g_cliPlaytest || g_cliSmokeCatalogReference;
 }
 
 // Forward declaration — defined in EditorGameOS.cpp.
@@ -942,6 +947,8 @@ BOOL EditorMFCApp::OnIdle(LONG lCount)
 
 		if (g_cliSmokeWorkflows && ok && EditorInterface::instance())
 			EditorInterface::instance()->runWorkflowSmoke("terrain_gen_out/e0_stock_campaign.fit");
+		if (g_cliSmokeCatalogReference && ok && EditorInterface::instance())
+			EditorInterface::instance()->runCatalogReferenceSmoke();
 
 		// Explicit destinations preserve stock inputs while exercising the mission writer.
 		if (g_cliSmokeSave && ok && EditorData::instance)

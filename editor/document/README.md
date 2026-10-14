@@ -343,3 +343,195 @@ Additional retained scratch: the two review-fix `e4-proofs` directories above,
 `scratch/e4_fixes_grade_files.py`, `scratch/e4_fixes_contracts.py`,
 `scratch/e4-fixes-contracts.log`, and new children of the previously listed test
 artifact roots (including the 13 copied `shell.log` files). Nothing was deleted.
+
+E5a adds an instance-owned file resolver and object catalog. No chooser, placement
+policy, insert-command fields or shipping shell flow changes are included.
+
+- `FileResolver` mounts the active mod's `data/`, then its `mod.json` dependencies
+  in declared order, then launcher-supplied dependencies, then base loose files,
+  then the archives in base `system.cfg`'s `[FastFiles]` order. Keys fold case and
+  slashes. The first matching file replaces the entire lower-priority file.
+  Files under dot directories are excluded. Traversal keys are rejected.
+  Archive handles and decoding dictionaries are local; no engine VFS owner or
+  cache is imported. FST table bounds, stored hashes, raw/zlib/Microsoft LZW data
+  and decoded lengths are validated.
+- Enumeration is `data/art/Buildings.csv` (the production 12-column schema),
+  with FitID selecting a packet in `data/objects/object2.pak`.
+  `[ObjectClass] ObjectTypeNum` determines the runtime family; CSV appearance
+  type remains a separate fact. Bridge, spotlight and marker specializations are
+  retained. FitIDs can have multiple CSV identities (stock drop zone/streetlight
+  114); duplicate stems are rejected. The group, name ID, special type, tactical
+  map bitmask, scale, footprint, hover and line-of-fire facts are retained.
+- `data/objects/<stem>.csv` supplies variant names from row `23 + 97*i`, column 2,
+  for indices 0..15. Optional absence means no named variants. An unreadable or
+  malformed present variant file rejects that entry. Variant provenance is owned.
+- Resource names come from the owned en_us FIT string index and explicit
+  `LegacyTextAlias` mappings, with numeric legacy strings as fallback. The index
+  covers the install's text/debug/game-menu/viewer-menu roots through the resolver.
+  Escaped FIT strings are decoded; callbacks own their index. Missing text uses
+  the legacy stem/name-ID fallback. No resource DLL or MC2Strings static owner is
+  used. External `MC2_DEFS_ROOT` and other locale selection are outside this slice.
+- Catalog validation covers the facts consumed by the catalog, rather than
+  unrelated combat tuning. Each invalid row emits one `EDITOR_CATALOG_REJECT`
+  line and later valid rows continue. Packet damage is isolated per row.
+  Malformed string entries have separate `EDITOR_RESOURCE_REJECT` diagnostics.
+  Team/player profiles, pilot/brain selection, unit colors/damage/variant and
+  self-repair values remain placement policy for E5b.
+
+Offline proof commands (all builds are RelWithDebInfo; the runners bound children
+and use a unique `_MSPDBSRV_ENDPOINT_`):
+
+```
+py -3 editor/tests/run_document_proofs.py
+py -3 tools/build_quiet.py --target editor_catalog_probe
+py -3 editor/tests/run_catalog_proofs.py
+py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --case catalog_stock --case catalog_mod --catalog-mods A:/Games/mc2-opengl --catalog-mod MC2X-CVE-G --out scratch/e5-catalog-harness
+py -3 -c "import tempfile, pytest; tempfile.tempdir='A:/Games/mc2-codex/scratch'; raise SystemExit(pytest.main(['scripts/tests/test_editor_smoke.py','--capture=sys','-p','no:tmpdir','-p','no:cacheprovider','-q']))"
+py -3 tools/build_contract_harnesses.py --run --unit
+```
+
+`catalog_stock`/`catalog_mod` are distinct offline harness cases; they never launch
+an engine and never change the stock runtime cases' mod refusal/child clearing.
+The mod case mounts MC2X-CVE-G's existing data over lane3's stock install.
+The Python oracle independently indexes loose layers and decodes configured FSTs;
+every resolved CSV/PAK/variant file must match its bytes, source and layer.
+An archive-only fixture hard-links the stock FSTs into scratch and exercises
+Buildings.csv and variant fallback without loose shadows. Known mod assertions
+cover FitID 2's provenance and FitID 252's changed decoded definition/rejection;
+stock's malformed MilCheckPoint row must remain rejected. Counts are recomputed
+from entries, not trusted from the probe summary. These are catalog/resolution
+proofs, not new-placement or mod runtime placement proofs.
+
+The legacy reference case is separate from the existing `workflows` case. It
+uses the old BuildingBrush/action manager with requested team 0 to identify and place Anubis 53,
+APC 117, Barrels 263, AutoCannonCamo1 525, Birch1 252, D_HeavyGate 157, bridge 607,
+Spotlight 68 and Nav1 290, independently from one saved baseline. Every placement
+must undo, redo, save, disappear from memory and reopen at the identified position.
+Legacy non-alignable objects retain neutral team -1. New units are identified by
+ObjectNumber and XY because the legacy writer sorts Parts by player and squad.
+The grader requires exactly one changed unit/packet placement, complete unit
+fields and pilot/brain defaults, and exact identified object numbers. Ordinary
+building records encode forest ID -1 as integer 0 and scale as integer 0; these
+goldens do not claim a non-default forest-instance reference.
+
+After the orchestrator commits/builds/deploys the reviewed source to lane3, run
+these exact stock runtime commands (the harness owns the host lease; no bypass):
+
+```
+py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --shell-exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor Smoke.exe" --prepare-stock-scratch --case stock_roundtrip --case workflows --case new_model --keep-logs --exit-sec 3 --timeout 180
+py -3 scripts/run_editor_smoke.py --exe "A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe" --prepare-stock-scratch --case legacy_catalog_reference --freeze-legacy-reference editor/tests/goldens/e5a-stock --keep-logs --exit-sec 3 --timeout 180
+```
+
+The second command refuses an existing freeze directory. Commit its FIT/PAK pairs
+and `placements.json` before E5b changes any placement path. The comparison target
+is the instrumented, still-legacy editor, with semantic FIT fields and decoded
+packet-1 placement records. Whole edited PAK byte equality is not a parity claim:
+the owned writer deliberately stores edited placements raw. No new legacy runtime
+goldens have been produced in this uncommitted E5a checkpoint.
+
+E5a offline checkpoint (2026-10-14, uncommitted):
+
+| Family | Stock | MC2X-CVE-G overlay |
+|---|---:|---:|
+| Mech | 32 | 33 |
+| Vehicle | 32 | 31 |
+| Building | 282 | 318 |
+| Turret | 17 | 17 |
+| Tree | 42 | 4 |
+| Gate | 9 | 9 |
+| Bridge | 1 | 1 |
+| Light | 1 | 1 |
+| Marker | 2 | 2 |
+| Rejections | 2 | 4 |
+
+- Final document proof: `scratch/e4-proofs/2026-10-14T10-59-20`. Normal and ASan
+  each passed 31 cases/114187 assertions, strict 24/24 unchanged FIT/PAK pairs
+  and 24/24 corrupted FIT controls. Widget tests passed 6 cases/185 assertions;
+  shipping/smoke marker isolation passed. All five builds had zero warnings.
+- Catalog/resolver fixtures passed 10 cases/107 assertions. Real install oracle
+  comparisons passed stock 34/34, archived-stock 34/34 and MC2X-CVE-G 62/62.
+  Both standalone and distinct catalog harness commands passed; artifacts live
+  under `scratch/e5-catalog-proofs` and `scratch/e5-catalog-harness`.
+- Python smoke grading tests passed 48 tests/181 subtests, including immutable
+  reference, incomplete pilot/brain/unit data, reordered Parts, no-op outputs,
+  wrong identities, missing/duplicate/false operation facts and integer forest/
+  scale controls. The nine real reference outputs remain pending runtime proof.
+- `scratch/e5_build_final.py` built EditRel and the probe with 300-second bounds
+  and a unique PDB endpoint. EditRel had three existing resource macro warnings
+  (`IDI_ICON1`, `IDSAVE`, `IDC_DELETE`); the probe had zero. Raw warning evidence
+  is `scratch/e5-warning-details.log`. No compiler timeout occurred.
+- `scratch/e5_run_bounded.py` ran `tools/build_contract_harnesses.py --run --unit`:
+  PASS, 3115 native cases (4 existing skips and deliberate expected failures),
+  plus four Python suites. Release-tree deployment tests were explicitly no-ops
+  without a configured root. `git diff --check` passed.
+- Bash check-contracts, index writes/commits, deployment and fingerprinted engine/
+  editor runtime cases were not run, per the orchestrator checkpoint. No lane-owned
+  source files or generated baselines were edited; no scratch cleanup occurred.
+
+E5a pre-commit review fixes (2026-10-14, uncommitted):
+
+- The legacy grader removes the identified insertion and compares canonical
+  multisets of all existing Parts and Warriors, including pilot associations and
+  brain cells. Part/Warrior renumbering and alternative export references retain
+  their semantic identity. Building insertions must preserve the same unit state.
+  Replacement, field changes and missing existing units are rejected.
+- Saved units must carry the requested TeamID, CommanderID and PlayerPart values,
+  a nonblank pilot profile and the team-0 PBrain defaults (zero cells/static vars).
+  Empty/blank/wrong brains, wrong alignment and invalid defaults are rejected.
+- Resolver coverage derives required files from independently mounted inputs and
+  Buildings.csv stems. Every present enumerated variant is required even if the
+  probe omits it. Missing report entries, missing output files and byte corruption
+  fail the proof; its denominator comes from this independent expected set.
+- Catalog definitions accept storage type 1 (FWF) as raw, matching decodePak and
+  the legacy reader. Resource blocks use balanced braces outside quoted strings,
+  including escaped quotes, indented endings and multiple same-line entries.
+
+Proof commands and retained evidence:
+
+```
+py -3 -B scratch/e5a_fixes_proof.py negative
+py -3 -B scratch/e5a_fixes_proof.py verify
+py -3 -B scratch/e5a_fixes_proof.py contracts
+py -3 -B scratch/e5a_fixes_proof.py python-negative
+py -3 -B -c "import tempfile,pytest; tempfile.tempdir='A:/Games/mc2-codex/scratch'; raise SystemExit(pytest.main(['scripts/tests/test_editor_smoke.py','editor/tests/test_catalog_proofs.py','--capture=sys','-p','no:tmpdir','-p','no:cacheprovider','-q']))"
+git diff --check
+```
+
+- Removing each fix made its negative control fail. Native FWF and brace controls
+  exited 1 after successful zero-warning builds; source bytes were restored in
+  finally blocks. Independent Python mutations separately prove preservation,
+  saved alignment, empty-brain rejection, variant omission and byte corruption.
+  Evidence: `scratch/e5a-fixes/2026-10-14T11-14-42`,
+  `2026-10-14T11-18-31` and `2026-10-14T11-20-55`.
+- `verify` ran `py -3 editor/tests/run_document_proofs.py`: PASS, normal and ASan
+  each 33 cases/114200 assertions, 24/24 unchanged stock FIT/PAK pairs and 24/24
+  corrupted FIT controls. Widget tests passed 6 cases/185 assertions; shipping/
+  smoke marker isolation passed. All five target builds had zero warnings.
+  Document artifacts: `scratch/e4-proofs/2026-10-14T11-15-09`.
+- `verify` rebuilt `editor_catalog_probe` with zero warnings, then ran
+  `py -3 editor/tests/run_catalog_proofs.py --out scratch/e5a-fixes/2026-10-14T11-15-09/catalog`:
+  PASS, independently required stock 34/34, archive-only stock 34/34, mod 62/62
+  files identical in bytes and provenance. Family counts/rejections remain those
+  in the E5a table above. Logs/commands: `scratch/e5a-fixes/2026-10-14T11-15-09`.
+- Final Python suite: PASS, 51 tests/223 subtests, including reversed existing
+  Part/Warrior numbering, pilot reassignment/type changes and every new control.
+  An initial test run failed on a missing test-only `re` import; it was corrected.
+- `contracts` ran `py -3 tools/build_contract_harnesses.py --run --unit`: PASS,
+  3115 native cases (4 existing skips and deliberate expected-failure controls)
+  and four Python suites. Release-tree checks remained explicit no-ops without
+  a release root. Evidence: `scratch/e5a-fixes/2026-10-14T11-17-26`.
+- No compiler/test timeout occurred. Bash check-contracts and the committed
+  build/deploy/fingerprinted lane3 runtime checkpoint remain the orchestrator's
+  work. No index writes, commits, baseline regeneration or engine launches here.
+
+Additional retained scratch: `scratch/e5a_fixes_proof.py`, the evidence directories
+above, and new children of `scratch/e5a-fix-resolution-tests`,
+`scratch/editor-smoke-tests`, `scratch/e5-catalog-tests`,
+`scratch/q3-document-tests`, `scratch/e3a-document-tests`,
+`scratch/e3b-widget-tests`, `scratch/e4-widget-tests`, `scratch/e4-recent-tests`
+and `scratch/editor-reader-tests`, plus normal generated build/test artifacts.
+No scratch cleanup or tracked deletion occurred.
+`scratch/e5a-fixes-artifacts.json` lists retained scratch files created/updated;
+`scratch/e5a-fixes-reviewed.patch`, `scratch/e5a-fixes-changes.json`,
+`scratch/e5a-fixes-pathspec.txt` and `scratch/e5a-fixes-commit-message.txt` retain
+the reviewed diff and the single proposed commit. Scratch is excluded from it.
