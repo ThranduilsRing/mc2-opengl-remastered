@@ -10,7 +10,16 @@
 
 #define OBJECTIVE_CPP
 
+#include "stdafx.h"
 #include "Objective_internal.h"
+#include "ObjectiveDlg.h"
+#include "ObjectivesDlg.h"
+#include "EditorInterface.h"
+#include "EditorObjects.h"
+#include "EditorObjectMgr.h"
+#include "MCLibResource.h"
+#include "../resource.h"
+#include <cassert>
 
 
 
@@ -236,10 +245,10 @@ CObjective &CObjective::operator=(const CObjective &master) {
 bool CObjective::operator==(const CObjective &rhs) const {
 	bool retval = false;
 	if ((m_alignment == rhs.m_alignment) &&
-		(mc2::str::iequals(Title(), rhs.Title())) &&
+		(Title() == rhs.Title()) &&
 		(m_titleUseResourceString == rhs.m_titleUseResourceString) &&
 		(m_titleResourceStringID == rhs.m_titleResourceStringID) &&
-		(mc2::str::iequals(Description(), rhs.Description())) &&
+		(Description() == rhs.Description()) &&
 		(m_descriptionUseResourceString == rhs.m_descriptionUseResourceString) &&
 		(m_descriptionResourceStringID == rhs.m_descriptionResourceStringID) &&
 		(m_priority == rhs.m_priority) &&
@@ -311,39 +320,24 @@ void CObjective::Alignment(int alignment) {
 	}
 }
 
-static condition_species_type ConditionSpeciesMap(const char *speciesString) {
-	condition_species_type retval = DESTROY_ALL_ENEMY_UNITS;
-	int i;
-	for (i = 0; i < (int)NUM_CONDITION_SPECIES; i += 1) {
-		if (0 == strcmp(speciesString, g_conditionSpeciesStringArray[i])) {
-			retval = (condition_species_type)i;
-			break;
-		}
-	}
-	assert(i < (int)NUM_CONDITION_SPECIES);
-	return retval;
-}
-
-static action_species_type ActionSpeciesMap(const char *speciesString) {
-	action_species_type retval = PLAY_BIK;
-	int i;
-	for (i = 0; i < (int)NUM_ACTION_SPECIES; i += 1) {
-		if (0 == strcmp(speciesString, g_actionSpeciesStringArray[i])) {
-			retval = (action_species_type)i;
-			break;
-		}
-	}
-	assert(i < (int)NUM_ACTION_SPECIES);
-	return retval;
-}
-
 bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 {
 	long result = 0;
 	objective_text::Fields text;
+	text.title = m_title;
+	text.description = m_description;
 	text.activateFlagID = m_activateFlagID;
+	// C9: an absent activation ID preserves its value so existing flag references survive an edit.
 	text.resetStatusFlagID = m_resetStatusFlagID;
-	objective_text::readFields(*missionFile, text);
+	std::string value;
+	const auto titleStatus = EditorFit::readText(*missionFile, "Title", value);
+	if (titleStatus == EditorFit::TextStatus::Read) text.title = value;
+	else if (titleStatus == EditorFit::TextStatus::Absent) text.title.clear();
+	const auto descriptionStatus = EditorFit::readText(*missionFile, "Description", value);
+	if (descriptionStatus == EditorFit::TextStatus::Read) text.description = value;
+	else if (descriptionStatus == EditorFit::TextStatus::Absent) text.description = text.title;
+	if (auto flag = EditorFit::flagID(*missionFile, "ActivateFlagID", "ActivateFlagIndex")) text.activateFlagID = std::move(*flag);
+	EditorFit::readText(*missionFile, "ResetStatusFlagID", text.resetStatusFlagID);
 	Title(std::move(text.title));
 	result = sReadIdBoolean(missionFile, "TitleUseResourceString", m_titleUseResourceString);
 	result = sReadIdWholeNum(missionFile, "TitleResourceStringID", m_titleResourceStringID);
@@ -390,11 +384,9 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 
 
 	int numConditions = 0;
-	if (!EditorFit::stringValue(*missionFile, "ObjectiveModel", m_modelDefinition.name)
-		|| !EditorFit::longValue(*missionFile, "ModelType", m_modelDefinition.type)
-		|| !EditorFit::floatValue(*missionFile, "ModelScale", m_modelDefinition.scale)
-		|| m_modelDefinition.type < 0 || m_modelDefinition.type > 255 || m_modelDefinition.scale <= 0)
-		return EditorFit::reject("objective model");
+	auto* reader = dynamic_cast<EditorFit::MissionTextReader*>(missionFile);
+	if (!reader) return EditorFit::reject("objective model reader");
+	if (!EditorFit::readObjectiveModel(*reader, m_modelDefinition).accepted) return false;
 	result = sReadIdWholeNum(missionFile, "NumConditions", numConditions);
 	if (NO_ERR != result) { return false; }
 	int numActions = 0;
@@ -415,22 +407,18 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			}
 			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
-			condition_species_type species;
-			auto speciesText = objective_text::read(*missionFile, "ConditionSpeciesString");
-			if (!speciesText) {
-				/* this is just for backward compatibility, this entry is depricated */
-				int ispecies = 0;
-				result = sReadIdWholeNum(missionFile, "ConditionSpecies", ispecies);
-				if (NO_ERR != result) { continue; }
-				species = (condition_species_type)ispecies;
-			} else {
-				species = ConditionSpeciesMap(speciesText->c_str());
-			}
+			const auto speciesIndex = EditorFit::species(*missionFile, "ConditionSpeciesString", g_conditionSpeciesStringArray, "ConditionSpecies");
+			if (!speciesIndex) continue;
+			const auto species = static_cast<condition_species_type>(*speciesIndex);
 
 			CObjectiveCondition *pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
-			if (!pNewObjectiveCondition) { assert(false); delete pNewObjectiveCondition; continue; }
+			if (!pNewObjectiveCondition) { continue; }
 			bool bresult = pNewObjectiveCondition->Read(missionFile);
-			if (true != bresult) { delete pNewObjectiveCondition; return false; }
+			if (true != bresult) {
+				fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s block=%s species=%s reason=condition_read_failed rejected=1\n",
+					reader->missionName().c_str(), tmpStr.c_str(), g_conditionSpeciesStringArray[*speciesIndex]);
+				delete pNewObjectiveCondition; return false;
+			}
 			Append(pNewObjectiveCondition);
 		}
 	}
@@ -442,13 +430,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			tmpStr = std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i);
 			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
-			action_species_type species;
-			auto speciesText = objective_text::read(*missionFile, "ActionSpeciesString");
-			if (!speciesText) { assert(false); continue; }
-			species = ActionSpeciesMap(speciesText->c_str());
+			const auto speciesIndex = EditorFit::species(*missionFile, "ActionSpeciesString", g_actionSpeciesStringArray);
+			if (!speciesIndex) continue;
+			const auto species = static_cast<action_species_type>(*speciesIndex);
 
 			CObjectiveAction *pNewObjectiveAction = new_CObjectiveAction(species, m_alignment);
-			if (!pNewObjectiveAction) { assert(false); delete pNewObjectiveAction; continue; }
+			if (!pNewObjectiveAction) { continue; }
 			bool bresult = pNewObjectiveAction->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveAction; continue; }
 			m_actionList.Append(pNewObjectiveAction);
@@ -462,15 +449,18 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			tmpStr = std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i);
 			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
-			condition_species_type species;
-			auto speciesText = objective_text::read(*missionFile, "FailureConditionSpeciesString");
-			if (!speciesText) { assert(false); continue; }
-			species = ConditionSpeciesMap(speciesText->c_str());
+			const auto speciesIndex = EditorFit::species(*missionFile, "FailureConditionSpeciesString", g_conditionSpeciesStringArray);
+			if (!speciesIndex) continue;
+			const auto species = static_cast<condition_species_type>(*speciesIndex);
 
 			CObjectiveCondition *pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
-			if (!pNewObjectiveFailureCondition) { assert(false); delete pNewObjectiveFailureCondition; continue; }
+			if (!pNewObjectiveFailureCondition) { continue; }
 			bool bresult = pNewObjectiveFailureCondition->Read(missionFile);
-			if (true != bresult) { delete pNewObjectiveFailureCondition; return false; }
+			if (true != bresult) {
+				fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s block=%s species=%s reason=condition_read_failed rejected=1\n",
+					reader->missionName().c_str(), tmpStr.c_str(), g_conditionSpeciesStringArray[*speciesIndex]);
+				delete pNewObjectiveFailureCondition; return false;
+			}
 			m_failureConditionList.Append(pNewObjectiveFailureCondition);
 		}
 	}
@@ -482,13 +472,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			tmpStr = std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i);
 			result = missionFile->seekBlock(tmpStr.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
-			action_species_type species;
-			auto speciesText = objective_text::read(*missionFile, "FailureActionSpeciesString");
-			if (!speciesText) { assert(false); continue; }
-			species = ActionSpeciesMap(speciesText->c_str());
+			const auto speciesIndex = EditorFit::species(*missionFile, "FailureActionSpeciesString", g_actionSpeciesStringArray);
+			if (!speciesIndex) continue;
+			const auto species = static_cast<action_species_type>(*speciesIndex);
 
 			CObjectiveAction *pNewObjectiveFailureAction = new_CObjectiveAction(species, m_alignment);
-			if (!pNewObjectiveFailureAction) { assert(false); delete pNewObjectiveFailureAction; continue; }
+			if (!pNewObjectiveFailureAction) { continue; }
 			bool bresult = pNewObjectiveFailureAction->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveFailureAction; continue; }
 			m_failureActionList.Append(pNewObjectiveFailureAction);

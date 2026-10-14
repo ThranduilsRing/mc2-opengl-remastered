@@ -1,6 +1,16 @@
 // Objective: objective action classes (BIK/WAV/text/flag/technology): compare, read/save, edit dialogs and descriptions.
 // Declared in the class headers; shared names in Objective_internal.h.
+#include "stdafx.h"
 #include "Objective_internal.h"
+#include "resource.h"
+#include "paths.h"
+#include "ResourceStringSelectionDlg.h"
+#include "BooleanFlagIsSetDialog.h"
+#include "TextMessageDlg.h"
+#include "MCLibResource.h"
+#include "../resource.h"
+#include "mc2fmt.h"
+#include <cassert>
 
 
 bool CObjectiveAction::operator==(const CObjectiveAction &rhs) const {
@@ -24,10 +34,7 @@ bool CPlayBIK::operator==(const CObjectiveAction &rhs) const {
 
 bool CPlayBIK::Read( FitIniFile* missionFile )
 {
-	auto text = objective_text::read(*missionFile, "AVIFileName");
-	if (!text) { return false; }
-	m_pathname = std::move(*text);
-	return true;
+	return EditorFit::readText(*missionFile, "AVIFileName", m_pathname) != EditorFit::TextStatus::Absent;
 }
 
 bool CPlayBIK::Save( FitIniFile* file )
@@ -89,10 +96,7 @@ bool CPlayWAV::operator==(const CObjectiveAction &rhs) const {
 
 bool CPlayWAV::Read( FitIniFile* missionFile )
 {
-	auto text = objective_text::read(*missionFile, "WAVFileName");
-	if (!text) { return false; }
-	m_pathname = std::move(*text);
-	return true;
+	return EditorFit::readText(*missionFile, "WAVFileName", m_pathname) != EditorFit::TextStatus::Absent;
 }
 
 bool CPlayWAV::Save( FitIniFile* file )
@@ -145,7 +149,7 @@ bool CDisplayTextMessage::operator==(const CObjectiveAction &rhs) const {
 	bool retval = false;
 	const CDisplayTextMessage *pCastedRhs = dynamic_cast<const CDisplayTextMessage *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if (mc2::str::iequals(m_message, pCastedRhs->m_message)) {
+		if (m_message == pCastedRhs->m_message) {
 			retval = true;
 		}
 	}
@@ -154,10 +158,7 @@ bool CDisplayTextMessage::operator==(const CObjectiveAction &rhs) const {
 
 bool CDisplayTextMessage::Read( FitIniFile* missionFile )
 {
-	auto text = objective_text::read(*missionFile, "Message");
-	if (!text) { return false; }
-	m_message = std::move(*text);
-	return true;
+	return EditorFit::readText(*missionFile, "Message", m_message) != EditorFit::TextStatus::Absent;
 }
 
 bool CDisplayTextMessage::Save( FitIniFile* file )
@@ -252,9 +253,7 @@ bool CSetBooleanFlag::operator==(const CObjectiveAction &rhs) const {
 bool CSetBooleanFlag::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	auto flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
-	if (!flagID) { return false; }
-	m_flagID = std::move(*flagID);
+	if (auto flagID = EditorFit::flagID(*missionFile, "FlagID", "FlagIndex")) m_flagID = std::move(*flagID);
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }
@@ -306,10 +305,7 @@ bool CMakeNewTechnologyAvailable::operator==(const CObjectiveAction &rhs) const 
 
 bool CMakeNewTechnologyAvailable::Read( FitIniFile* missionFile )
 {
-	auto text = objective_text::read(*missionFile, "PurchaseFileName");
-	if (!text) { return false; }
-	m_purchaseFilePathname = std::move(*text);
-	return true;
+	return EditorFit::readText(*missionFile, "PurchaseFileName", m_purchaseFilePathname) != EditorFit::TextStatus::Absent;
 }
 
 bool CMakeNewTechnologyAvailable::Save( FitIniFile* file )

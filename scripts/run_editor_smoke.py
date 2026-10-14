@@ -58,7 +58,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from smoke_lib import nofocus  # noqa: E402
-from smoke_lib import host_lease  # noqa: E402
+from smoke_lib import host_lease, exe_guard  # noqa: E402
+from console_child import child_kwargs  # noqa: E402
+import exe_fingerprint  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402
@@ -83,6 +85,16 @@ WORKFLOW_PANELS = {
 MODEL_ONLY = {"ObjectivesSummary", "CampaignOverview"}
 BASELINE = REPO / "tests/smoke/editor/roundtrip-baseline.json"
 PINNED_BEFORE = REPO / "tests/smoke/editor/old-editor-2026-10-13"
+READER_PAYLOADS = {"bik": "AVIFileName", "wav": "WAVFileName", "message": "Message",
+                   "technology": "PurchaseFileName", "action_flag": "FlagID", "condition_flag": "FlagID"}
+READER_LITERALS = ("unterminated", "block_boundary", "trailing", "extra_quote", "nul", "unquoted", "cr")
+READER_SPECIES = ("condition", "action", "failure_condition", "failure_action", "negative",
+                  "out_of_range", "unsupported", "numeric_garbage", "literal_unterminated",
+                  "literal_trailing", "literal_nul", "literal_unquoted")
+READER_MISSING_PAYLOADS = {"legacy_num": "Num", "legacy_unit_watch": "PositionX",
+                           "legacy_structure_watch": "PositionY", "string_unit_watch": "PositionX",
+                           "string_structure_watch": "PositionY", "capture_unit": "PositionX",
+                           "capture_structure": "PositionY", "action_file": "AVIFileName"}
 
 
 def read_json_object(path: Path) -> dict:
@@ -122,19 +134,93 @@ def grade_workflows(text: str) -> str:
             failures.append(f"{workflow}/{panel}: missing or unsuccessful probe")
     definitions = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in text.splitlines()
                    if line.startswith("[EDITOR_DEFINITIONS v1] ")]
-    for stage in ("duplicate_unit_refresh_undo_redo",):
+    for stage in ("duplicate_unit_refresh_undo_redo", "script_boundary", "display_equality"):
         if not any(row.get("stage") == stage and row.get("ok") == "1" for row in definitions):
             failures.append(f"mission_definitions/{stage}: missing or unsuccessful probe")
     if not any(row.get("preservation_commands_undo_reload_malformed") == "1" for row in definitions):
         failures.append("mission_definitions: missing versioned summary")
-    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID"):
+    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel",
+                  "MissionName", "Author", "Blurb", "Blurb2", "AVIFilename", "DownloadURL", "ScenarioScript"):
+        limit = 1023 if field == "ScenarioScript" else 2000
         if not any(row.get("stage") == "oversized_text" and row.get("field") == field
+                   and all(row.get(key) == "1" for key in ("rejected", "continued", "ok")) for row in definitions):
+            failures.append(f"mission_definitions/{field}: missing rejected/continued proof")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/{field} " in line and f"length={limit + 1} limit={limit}" in line
+                       and "reason=too_long rejected=1" in line and "mission=" in line]
+        if len(diagnostics) != 1:
+            failures.append(f"mission_definitions/{field}: expected one mission/field/length/limit diagnostic")
+    for field in ("NumConditions", "NumObjectives", "Version", "scenarioTuneNum", "MissionName", "Blurb2",
+                  "ScenarioScript", "MissionNameResourceStringID"):
+        if not any(row.get("stage") == "missing_required" and row.get("field") == field
                    and all(row.get(key) == "1" for key in ("rejected", "unchanged", "ok")) for row in definitions):
             failures.append(f"mission_definitions/{field}: missing rejected/unchanged proof")
         diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
-                       and f"/{field} " in line and "length=2001 rejected=1" in line and "mission=" in line]
+                       and f"/{field} missing=1 rejected=1" in line and "mission=" in line]
         if len(diagnostics) != 1:
-            failures.append(f"mission_definitions/{field}: expected one mission/field/length diagnostic")
+            failures.append(f"mission_definitions/{field}: expected one missing-field diagnostic")
+    def reader_case(stage, case, filename, reason, flags, field=None):
+        if not any(row.get("stage") == stage and row.get("case") == case
+                   and (stage not in ("payload", "missing_payload") or row.get("field") == field)
+                   and all(row.get(key) == "1" for key in (*flags, "ok")) for row in definitions):
+            failures.append(f"mission_definitions/{stage}/{case}: missing or unsuccessful probe")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/{filename}.fit " in line and " rejected=1" in line]
+        expected = 0 if reason is None else 1
+        if len(diagnostics) != expected or (expected and (f"{reason} rejected=1" not in diagnostics[0]
+                or (field is not None and f"/{field} " not in diagnostics[0])
+                or (stage != "condition_failure" and reason.startswith("reason=")
+                    and not re.search(r" length=\d+ limit=\d+ reason=", diagnostics[0]))
+                or (stage == "payload" and case.endswith("_oversized")
+                    and "length=2001 limit=2000 reason=too_long" not in diagnostics[0]))):
+            failures.append(f"mission_definitions/{stage}/{case}: expected {expected} rejection diagnostic")
+
+    for kind, field in READER_PAYLOADS.items():
+        for mode in ("oversized", "unterminated", "trailing", "nul"):
+            case = f"{kind}_{mode}"
+            reader_case("payload", case, f"ew_payload_{case}",
+                        "reason=too_long" if mode == "oversized" else "reason=malformed_literal",
+                        ("retained", "following"), field)
+    for mode in READER_LITERALS:
+        reader_case("literal", mode, f"ew_literal_{mode}", None if mode == "cr" else "reason=malformed_literal",
+                    ("retained", "following"), "Title" if mode != "cr" else None)
+    for mode in ("unterminated", "trailing", "nul", "unquoted"):
+        reader_case("metadata_literal", mode, f"ew_metadata_{mode}", "reason=malformed_literal",
+                    ("retained", "following"), "Author")
+    for case in READER_SPECIES:
+        reader_case("species", case, f"ew_species_{case}",
+                    "reason=malformed_literal" if case.startswith("literal_") else "reason=invalid_species", ("following",))
+    for case, field in READER_MISSING_PAYLOADS.items():
+        reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", ("rejected", "unchanged"), field)
+    if not any(row.get("stage") == "reader_budget" and all(row.get(key) == "1" for key in ("rejected", "unchanged", "ok"))
+               for row in definitions):
+        failures.append("mission_definitions/reader_budget: missing unchanged-document rejection proof")
+    budget = [line for line in text.splitlines() if "/ew_reader_budget.fit " in line and "rejected=1" in line]
+    if len(budget) != 1 or " length=16777217 limit=16777216 reason=document_too_large" not in budget[0]:
+        failures.append("mission_definitions/reader_budget: expected one byte-limit diagnostic")
+    for field, value in (("ModelScale", "0"), ("ModelScale", "-1"), ("ModelScale", "1e100"),
+                         ("ModelScale", "1garbage"), ("ModelType", "256"), ("Num", "1garbage")):
+        if not any(row.get("stage") == "candidate_rejection" and row.get("field") == field and row.get("value") == value
+                   and all(row.get(key) == "1" for key in ("rejected", "unchanged", "history", "ok")) for row in definitions):
+            failures.append(f"mission_definitions/candidate/{field}/{value}: missing state/history preservation")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/cq_candidate_{field}_{value}.fit " in line and "rejected=1" in line]
+        reason = "condition_read_failed" if field == "Num" else "malformed_value"
+        if len(diagnostics) != 1 or f"reason={reason} rejected=1" not in diagnostics[0]:
+            failures.append(f"mission_definitions/candidate/{field}/{value}: expected one rejection diagnostic")
+    for case in ("ObjectiveModel", "ModelType", "ModelScale", "all"):
+        if not any(row.get("stage") == "model_default" and row.get("case") == case and row.get("ok") == "1" for row in definitions):
+            failures.append(f"mission_definitions/model_default/{case}: missing default proof")
+        defaults = [line for line in text.splitlines() if f"/ew_model_default_{case}.fit " in line and "defaulted=1" in line]
+        if len(defaults) != 1 or any(f"{key}={int(case in (key, 'all'))}" not in defaults[0]
+                                     for key in ("ObjectiveModel", "ModelType", "ModelScale")):
+            failures.append(f"mission_definitions/model_default/{case}: expected one default diagnostic")
+    for case in ("Condition", "FailureCondition"):
+        reader_case("condition_failure", case, f"ew_condition_failure_{case}", "reason=condition_read_failed", ())
+        contextual = [line for line in text.splitlines() if f"/ew_condition_failure_{case}.fit " in line
+                      and f"block=Team0Objective0{case}0 species=DestroyNumberOfEnemyUnits" in line]
+        if len(contextual) != 1:
+            failures.append(f"mission_definitions/condition_failure/{case}: missing block/species diagnostic")
     return "; ".join(failures)
 
 
@@ -326,8 +412,9 @@ def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> 
     scratch = (REPO / "scratch").resolve()
     deploy = deploy.resolve()
     data_root = (deploy / "data").resolve()
-    if not deploy.is_relative_to(scratch) or not data_root.is_relative_to(deploy):
-        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime")
+    lane3 = Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve()
+    if (not deploy.is_relative_to(scratch) and deploy != lane3) or not data_root.is_relative_to(deploy):
+        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime or lane3")
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
     stock, changes = {}, []
@@ -784,9 +871,123 @@ def build_suite(deploy: Path):
     return cases
 
 
+def grade_new_model(rows: list[dict], directory: Path) -> None:
+    """Exactly 24 new-document comparisons; facts never replace byte comparisons."""
+    if (len(rows) != 24 or {row.get("mission") for row in rows} != set(STOCK_MISSIONS)
+            or any(row.get("status") != "PASS" or row.get("rc") != 0 for row in rows)):
+        raise ValueError("new model requires exactly 24 fresh PASS rows")
+    for row in rows:
+        mission = row["mission"]
+        facts = row.get("facts", {})
+        if (facts.get("result") != "PASS" or facts.get("frames") != "3"
+                or any(facts.get(key) != "1" for key in ("roundtrip", "edited", "reopened", "undo", "redo", "malformed", "unchanged", "long_name"))):
+            raise ValueError(f"new model facts missing: {mission}")
+        for extension in ("fit", "pak"):
+            original = (directory / "input" / f"{mission}.{extension}").read_bytes()
+            if hashlib.sha256(original).hexdigest() != row.get(f"input_{extension}_sha256"):
+                raise ValueError(f"new model input changed: {mission}.{extension}")
+            for stage in ("roundtrip", "undone"):
+                written = (directory / mission / f"{stage}.{extension}").read_bytes()
+                if original != written:
+                    raise ValueError(f"new model byte mismatch: {mission}/{stage}.{extension}")
+            edited = (directory / mission / f"edited.{extension}").read_bytes()
+            if extension == "pak" and edited != original:
+                raise ValueError(f"new model edited PAK changed: {mission}")
+            if extension == "fit":
+                fields = fit_fields(edited)
+                if (edited == original or fields.get("MissionSettings/MissionName") != ['st "Q3 authored mission"']):
+                    raise ValueError(f"new model authored edit missing: {mission}")
+                long_fields = fit_fields((directory / mission / "long_name.fit").read_bytes())
+                expected = 'st "Q3 long mission ' + 'x' * 8192 + ' retained tail"'
+                if long_fields.get("MissionSettings/MissionName") != [expected]:
+                    raise ValueError(f"new model long name truncated: {mission}")
+            elif (directory / mission / "long_name.pak").read_bytes() != original:
+                raise ValueError(f"new model long-name PAK changed: {mission}")
+        log = (directory / mission / "shell.log").read_text(encoding="utf-8")
+        if sum(line.startswith("[EDITOR_MODEL v1] ") and "mission=malformed.fit " in line and "rejected=1" in line for line in log.splitlines()) != 1:
+            raise ValueError(f"new model malformed diagnostic missing: {mission}")
+
+
+def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) -> dict:
+    directory.mkdir(exist_ok=False)
+    (directory / "input").mkdir()
+    rows = []
+    provenance = {}
+    start = time.time()
+    try:
+        if not exe.exists():
+            raise ValueError(f"new shell executable missing: {exe}")
+        if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
+            raise ValueError("new shell smoke is restricted to lane3")
+        if not exe_guard.exe_has_offscreen(exe):
+            raise ValueError("new shell lacks background-window support")
+        fingerprint = exe_fingerprint.extract(exe)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
+                                       **child_kwargs(redirected=True)).strip()
+        if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12]:
+            raise ValueError("new shell build fingerprint does not match worktree HEAD")
+        provenance = dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
+        host_lease.ensure_held("Q3 document SDL shell smoke")
+        for mission in STOCK_MISSIONS:
+            row = dict(mission=mission, status="FAIL", rc=None, facts={})
+            for extension in ("fit", "pak"):
+                source = stock.read(f"data/missions/{mission}.{extension}")
+                (directory / "input" / f"{mission}.{extension}").write_bytes(source)
+                row[f"input_{extension}_sha256"] = hashlib.sha256(source).hexdigest()
+            output = directory / mission
+            output.mkdir()
+            command = [str(exe), "--smoke", "--mission", str(directory / "input" / f"{mission}.fit"),
+                       "--output", str(output), "--log", str(output / "shell.log")]
+            print(f"[new_model {mission}] fresh FIT + PAK", flush=True)
+            process = nofocus.spawn(command, cwd=str(exe.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, errors="replace")
+            try:
+                captured, _ = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                captured, _ = process.communicate()
+                row["status"] = "TIMEOUT"
+            (output / "process.log").write_text(captured or "", encoding="utf-8")
+            row["rc"] = process.returncode
+            if (output / "shell.log").exists():
+                lines = [line for line in (output / "shell.log").read_text(encoding="utf-8").splitlines()
+                         if line.startswith("[EDITOR_SHELL v1] ")]
+                if len(lines) == 1:
+                    row["facts"] = dict(re.findall(r"(\w+)=([^\s]+)", lines[0]))
+            if row["rc"] == 0 and row["facts"].get("result") == "PASS":
+                row["status"] = "PASS"
+            rows.append(row)
+        grade_new_model(rows, directory)
+        if hashlib.sha256(exe.read_bytes()).hexdigest() != provenance["exe_sha256"]:
+            raise ValueError("new shell executable changed during the gate")
+        # The same strict grader must reject real corrupted output, not a synthetic status.
+        corrupt = directory / STOCK_MISSIONS[0] / "roundtrip.fit"
+        original = corrupt.read_bytes()
+        retained = corrupt.with_suffix(".negative-control.fit")
+        retained.write_bytes(original + b"corrupted output")
+        corrupt.write_bytes(retained.read_bytes())
+        caught = False
+        try:
+            grade_new_model(rows, directory)
+        except ValueError as error:
+            caught = "byte mismatch" in str(error)
+        finally:
+            corrupt.write_bytes(original)
+        if not caught:
+            raise ValueError("new model corrupted-output negative control did not fail")
+        grade_new_model(rows, directory)
+        result = dict(name="new_model", passed=True, bucket="", detail="24/24 fresh FIT+PAK byte-identical; edit/reopen, undo/redo, malformed rejection, corrupted-output negative control PASS")
+    except (OSError, KeyError, ValueError, host_lease.HostLeaseBusy, nofocus.ExeRefused) as error:
+        result = dict(name="new_model", passed=False, bucket="new_model_gate", detail=str(error))
+    result["seconds"] = round(time.time() - start, 1)
+    (directory / "gate.json").write_text(json.dumps(dict(rows=rows, result=result, provenance=provenance), indent=2), encoding="utf-8")
+    return result
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="MC2 Mission Editor console smoke runner")
     ap.add_argument("--exe", default=DEFAULT_EXE, help="path to Mission Editor.exe")
+    ap.add_argument("--shell-exe", type=Path, help="separate SDL shell executable (default: beside Mission Editor.exe)")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -817,7 +1018,7 @@ def main() -> int:
         return 2
 
     suite = build_suite(deploy)
-    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load"]
+    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"]
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
@@ -844,7 +1045,7 @@ def main() -> int:
     except (OSError, KeyError, ValueError, zlib.error) as exc:
         print(f"ERROR: stock dependency audit failed: {exc}")
         return 2
-    if any(c == "stock_roundtrip" or c in single_stock for c in selected) or "workflows" in selected:
+    if any(c == "stock_roundtrip" or c in single_stock for c in selected) or "workflows" in selected or "new_model" in selected:
         try:
             stock = StockInputs(deploy)
             campaign = stock.read("data/campaign/campaign.fit")
@@ -866,6 +1067,10 @@ def main() -> int:
 
     results = []
     for c in selected:
+        if c == "new_model":
+            results.append(run_new_model((args.shell_exe or deploy / "Mission Editor Shell.exe").resolve(),
+                                         stock, (rptdir / "new-model").resolve(), args.timeout))
+            continue
         if c == "stock_roundtrip" or c in single_stock:
             missions = (single_stock[c],) if c in single_stock else STOCK_MISSIONS
             for mission in missions:

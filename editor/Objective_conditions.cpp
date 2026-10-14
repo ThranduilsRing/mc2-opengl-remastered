@@ -1,6 +1,33 @@
 // Objective: objective condition classes: compare, read/save, edit dialogs and descriptions.
 // Declared in the class headers; shared names in Objective_internal.h.
+#include "stdafx.h"
 #include "Objective_internal.h"
+#include "resource.h"
+#include "ChooseUnitDlg.h"
+#include "ChooseBuildingDlg.h"
+#include "SingleValueDlg.h"
+#include "BooleanFlagIsSetDialog.h"
+#include "TargetAreaDlg.h"
+#include "EditorObjectMgr.h"
+#include "EditorObjects.h"
+#include "MCLibResource.h"
+#include "../resource.h"
+#include "mc2fmt.h"
+#include <cassert>
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
+
+namespace
+{
+bool areCloseEnough(float f1, float f2)
+{
+	const float diff = std::fabs(f1 - f2);
+	const float bigger = std::max(std::fabs(f1), std::fabs(f2));
+	const float proportion = bigger != 0.0f ? diff / bigger : 0.0f;
+	return std::pow(10.0, -FLT_DIG) * 10.0 > proportion;
+}
+}
 
 
 bool CObjectiveCondition::operator==(const CObjectiveCondition &rhs) const {
@@ -30,10 +57,9 @@ bool CNumberOfEnemyUnitsObjectiveCondition::operator==(const CObjectiveCondition
 
 bool CNumberOfEnemyUnitsObjectiveCondition::Read( FitIniFile* missionFile )
 {
-	long result = 0;
-	result = sReadIdWholeNum(missionFile, "Num", m_num);
-	if (NO_ERR != result) { return false; }
-
+	long count = 0;
+	if (!EditorFit::longValue(*missionFile, "Num", count, true)) return false;
+	m_num = count;
 	return true;
 }
 
@@ -80,6 +106,14 @@ bool CSpecificUnitObjectiveCondition::Read( FitIniFile* missionFile )
 	if (!EditorFit::floatValue(*missionFile, "PositionX", positionX)
 		|| !EditorFit::floatValue(*missionFile, "PositionY", positionY))
 		return EditorFit::reject("objective unit coordinates");
+	if (auto* reader = dynamic_cast<EditorFit::MissionTextReader*>(missionFile); reader && reader->deferObjectReferences)
+	{
+		m_pUnit = nullptr;
+		m_LastNotedPositionX = positionX;
+		m_LastNotedPositionY = positionY;
+		m_authoredPosition.read(positionX, positionY, positionX, positionY);
+		return true;
+	}
 	EditorObjectMgr::UNIT_LIST units = EditorObjectMgr::instance()->getUnits();
 	EditorObjectMgr::UNIT_LIST::EConstIterator it = units.Begin();
 	while (!it.IsDone()) {
@@ -174,7 +208,9 @@ bool CSpecificUnitObjectiveCondition::RestoreObjectPointerReferencesFromNotedPos
 		}
 		it++;
 	}
-	if (it.IsDone()) { assert(false); return false; }
+	if (it.IsDone()) return EditorFit::reject("objective unit reference");
+	if (!m_pUnit)
+		m_authoredPosition.read(m_LastNotedPositionX, m_LastNotedPositionY, (*it)->getPosition().x, (*it)->getPosition().y);
 	m_pUnit = (*it);
 	return true;
 }
@@ -214,6 +250,14 @@ bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 	if (!EditorFit::floatValue(*missionFile, "PositionX", positionX)
 		|| !EditorFit::floatValue(*missionFile, "PositionY", positionY))
 		return EditorFit::reject("objective structure coordinates");
+	if (auto* reader = dynamic_cast<EditorFit::MissionTextReader*>(missionFile); reader && reader->deferObjectReferences)
+	{
+		m_pBuilding = nullptr;
+		m_LastNotedPositionX = positionX;
+		m_LastNotedPositionY = positionY;
+		m_authoredPosition.read(positionX, positionY, positionX, positionY);
+		return true;
+	}
 	EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
 	EditorObjectMgr::BUILDING_LIST::EConstIterator it = buildings.Begin();
 	while (!it.IsDone()) {
@@ -302,7 +346,9 @@ bool CSpecificStructureObjectiveCondition::RestoreObjectPointerReferencesFromNot
 		}
 		it++;
 	}
-	if (it.IsDone()) { assert(false); return false; }
+	if (it.IsDone()) return EditorFit::reject("objective structure reference");
+	if (!m_pBuilding)
+		m_authoredPosition.read(m_LastNotedPositionX, m_LastNotedPositionY, (*it)->getPosition().x, (*it)->getPosition().y);
 	m_pBuilding = (*it);
 	return true;
 }
@@ -463,9 +509,7 @@ bool CBooleanFlagIsSet::operator==(const CObjectiveCondition &rhs) const {
 bool CBooleanFlagIsSet::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	auto flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
-	if (!flagID) { return false; }
-	m_flagID = std::move(*flagID);
+	if (auto flagID = EditorFit::flagID(*missionFile, "FlagID", "FlagIndex")) m_flagID = std::move(*flagID);
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }

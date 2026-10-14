@@ -1,3 +1,56 @@
+# The owned document and SDL shell have no MFC or engine allocation dependencies.
+find_package(ZLIB REQUIRED)
+add_library(editor_document STATIC
+    document/MissionDocument.cpp
+    document/MissionSyntax.cpp
+    document/MissionPackets.cpp
+    document/CommandHistory.cpp
+)
+target_compile_features(editor_document PUBLIC cxx_std_23)
+target_include_directories(editor_document PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
+target_link_libraries(editor_document PRIVATE ZLIB::ZLIB)
+
+add_executable(EditorShell WIN32 shell/main.cpp
+    "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp"
+)
+add_dependencies(EditorShell build_fingerprint)
+target_compile_features(EditorShell PRIVATE cxx_std_23)
+target_compile_definitions(EditorShell PRIVATE SDL_MAIN_HANDLED)
+target_include_directories(EditorShell PRIVATE "${CMAKE_BINARY_DIR}/generated")
+target_link_libraries(EditorShell PRIVATE editor_document imgui SDL2::SDL2 OpenGL::GL)
+if(MSVC)
+    target_link_options(EditorShell PRIVATE /ENTRY:mainCRTStartup)
+endif()
+set_target_properties(EditorShell PROPERTIES OUTPUT_NAME "Mission Editor Shell")
+add_custom_command(TARGET EditorShell POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:EditorShell>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/zlib1.dll" "$<TARGET_FILE_DIR:EditorShell>"
+    VERBATIM
+)
+
+add_executable(editor_document_tests tests/test_document.cpp)
+target_compile_features(editor_document_tests PRIVATE cxx_std_23)
+target_link_libraries(editor_document_tests PRIVATE editor_document)
+
+if(MSVC)
+    add_library(editor_document_asan STATIC EXCLUDE_FROM_ALL $<TARGET_PROPERTY:editor_document,SOURCES>)
+    target_compile_features(editor_document_asan PUBLIC cxx_std_23)
+    target_include_directories(editor_document_asan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
+    target_compile_options(editor_document_asan PRIVATE /fsanitize=address)
+    target_link_libraries(editor_document_asan PRIVATE ZLIB::ZLIB)
+    add_executable(editor_document_tests_asan EXCLUDE_FROM_ALL tests/test_document.cpp)
+    target_compile_features(editor_document_tests_asan PRIVATE cxx_std_23)
+    target_compile_options(editor_document_tests_asan PRIVATE /fsanitize=address)
+    target_link_options(editor_document_tests_asan PRIVATE /INCREMENTAL:NO)
+    target_link_libraries(editor_document_tests_asan PRIVATE editor_document_asan)
+    get_filename_component(_document_msvc_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    add_custom_command(TARGET editor_document_tests_asan POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${_document_msvc_bin}/clang_rt.asan_dynamic-x86_64.dll" "$<TARGET_FILE_DIR:editor_document_tests_asan>"
+        VERBATIM
+    )
+endif()
+
 # EditRel / MC2 Mission Editor port staging target.
 # Windows-only for now because the original editor is MFC-based.
 

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <string>
+#include <utility>
 #include <optional>
 #include <cstdio>
 #include <cstdlib>
@@ -10,6 +11,7 @@
 #include "objective_text.h"
 #include <string_view>
 #include <cctype>
+#include "MissionTextReader.h"
 
 // Catalog identity and authored mission values have different lifetimes. Saves
 // consume these document values; only an authoring command consults the catalog.
@@ -47,59 +49,6 @@ struct AuthoredTargetPosition
 
 namespace EditorFit
 {
-// Validate the source before replacing the open document. The legacy FIT string
-// reader has a fixed line buffer, so it cannot safely measure oversized values.
-inline bool objectiveTextLengths(const char* fitPath, const char* mission)
-{
-    File file;
-    if (file.open(fitPath) != NO_ERR) return true; // The document loader reports missing files.
-    std::string source(file.getLength(), '\0');
-    file.read(reinterpret_cast<MemoryPtr>(source.data()), static_cast<long>(source.size()));
-    const std::string_view text(source);
-    std::string section;
-    for (size_t pos = 0; pos < text.size();)
-    {
-        const auto end = text.find('\n', pos);
-        auto line = text.substr(pos, end == text.npos ? text.size() - pos : end - pos);
-        const auto start = line.find_first_not_of(" \t\r");
-        if (start != line.npos) line.remove_prefix(start);
-        if (line.starts_with('['))
-        {
-            section = line.substr(0, line.find(']') + 1);
-            for (auto& c : section) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        }
-        if (section.find("objective") != section.npos && line.size() > 3
-            && (line[0] == 's' || line[0] == 'S') && (line[1] == 't' || line[1] == 'T')
-            && (line[2] == ' ' || line[2] == '\t'))
-        {
-            const auto equal = line.find('=');
-            const auto quote = equal == line.npos ? line.npos : line.find('"', equal);
-            if (quote != line.npos)
-            {
-                const auto first = pos + (line.data() - (text.data() + pos)) + quote + 1;
-                const auto last = text.find('"', first);
-                if (last != text.npos)
-                {
-                    size_t length = last - first;
-                    for (size_t i = first; i + 1 < last; ++i)
-                        if (text[i] == '\r' && text[i + 1] == '\n') --length;
-                    if (length > objective_text::kMaxTextLength)
-                    {
-                        auto field = line.substr(3, equal - 3);
-                        field = field.substr(0, field.find_last_not_of(" \t") + 1);
-                        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s field=%s/%.*s length=%zu rejected=1\n",
-                            mission, section.c_str(), static_cast<int>(field.size()), field.data(), length);
-                        return false;
-                    }
-                    pos = last + 1;
-                    continue;
-                }
-            }
-        }
-        pos = end == text.npos ? text.size() : end + 1;
-    }
-    return true;
-}
 inline bool reject(const char* field)
 {
     fprintf(stderr, "[EDITOR_DOCUMENT v1] rejected malformed %s\n", field);
@@ -150,6 +99,42 @@ inline bool longValue(FitIniFile& file, const char* key, long& value, bool unsig
     if (*end) return false;
     value = parsed;
     return true;
+}
+struct ModelReadResult
+{
+    bool accepted = true;
+    unsigned defaultedFields = 0, rejectedFields = 0;
+};
+
+// Missing model metadata uses the game's defaults, including on reused objects.
+// Rejected text preserves its field; invalid numeric metadata rejects the objective.
+inline ModelReadResult readObjectiveModel(MissionTextReader& file, ObjectiveModelDefinition& definition)
+{
+    auto parsed = definition;
+    ModelReadResult result;
+    const auto nameStatus = file.text("ObjectiveModel", parsed.name);
+    const bool missingName = nameStatus == TextStatus::Absent;
+    const bool missingType = !file.has("ModelType"), missingScale = !file.has("ModelScale");
+    if (missingName) parsed.name.clear();
+    if (missingType) parsed.type = 0;
+    if (missingScale) parsed.scale = 1.0f;
+    result.defaultedFields = (missingName ? 1u : 0u) | (missingType ? 2u : 0u) | (missingScale ? 4u : 0u);
+    if (result.defaultedFields)
+        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s block=%s defaulted=1 ObjectiveModel=%d ModelType=%d ModelScale=%d\n",
+            file.missionName().c_str(), file.blockName(), missingName, missingType, missingScale);
+    if (nameStatus == TextStatus::Rejected) result.rejectedFields |= 1u;
+    const auto rejectNumeric = [&](const char* key, unsigned mask) {
+        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s field=%s/%s reason=malformed_value rejected=1\n",
+            file.missionName().c_str(), file.blockName(), key);
+        result.accepted = false;
+        result.rejectedFields |= mask;
+    };
+    if (!missingType && (!longValue(file, "ModelType", parsed.type) || parsed.type < 0 || parsed.type > 255))
+    { rejectNumeric("ModelType", 2u); return result; }
+    if (!missingScale && (!floatValue(file, "ModelScale", parsed.scale) || parsed.scale <= 0))
+    { rejectNumeric("ModelScale", 4u); return result; }
+    definition = std::move(parsed);
+    return result;
 }
 inline bool stringValue(FitIniFile& file, const char* key, std::string& value)
 {

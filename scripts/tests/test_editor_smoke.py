@@ -32,21 +32,106 @@ def scratch_directory():
 def panel_lines():
     panels = "\n".join(f"[EDITOR_PANEL v1] workflow={w} panel={p} coverage={'model-only' if p in smoke.MODEL_ONLY else 'action-handler'} reached={0 if p in smoke.MODEL_ONLY else 1} ok=1 authored=1 undo=1 saved=1 reloaded=1"
                      for p, w in smoke.WORKFLOW_PANELS.items())
-    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
-    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID"):
-        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=oversized_text field={field} rejected=1 unchanged=1 ok=1"
-        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.pak field=[team0objective0]/{field} length=2001 rejected=1"
+    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] stage=script_boundary ok=1\n[EDITOR_DEFINITIONS v1] stage=display_equality ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
+    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel",
+                  "MissionName", "Author", "Blurb", "Blurb2", "AVIFilename", "DownloadURL", "ScenarioScript"):
+        limit = 1023 if field == "ScenarioScript" else 2000
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=oversized_text field={field} rejected=1 continued=1 ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/{field} length={limit + 1} limit={limit} reason=too_long rejected=1"
+    for field in ("NumConditions", "NumObjectives", "Version", "scenarioTuneNum", "MissionName", "Blurb2",
+                  "ScenarioScript", "MissionNameResourceStringID"):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=missing_required field={field} rejected=1 unchanged=1 ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/{field} missing=1 rejected=1"
+    def reader_case(stage, case, filename, reason, field, flags):
+        nonlocal definitions
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage={stage} case={case} field={field} {flags} ok=1"
+        if reason:
+            definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/{filename}.fit field=Block/{field} {reason} rejected=1"
+    for kind, field in smoke.READER_PAYLOADS.items():
+        for mode in ("oversized", "unterminated", "trailing", "nul"):
+            case = f"{kind}_{mode}"
+            reader_case("payload", case, f"ew_payload_{case}",
+                        "length=2001 limit=2000 reason=too_long" if mode == "oversized" else "length=10 limit=2000 reason=malformed_literal",
+                        field, "retained=1 following=1")
+    for mode in smoke.READER_LITERALS:
+        reader_case("literal", mode, f"ew_literal_{mode}", None if mode == "cr" else "length=10 limit=2000 reason=malformed_literal",
+                    "Title", "retained=1 following=1")
+    for mode in ("unterminated", "trailing", "nul", "unquoted"):
+        reader_case("metadata_literal", mode, f"ew_metadata_{mode}", "length=10 limit=2000 reason=malformed_literal",
+                    "Author", "retained=1 following=1")
+    for case in smoke.READER_SPECIES:
+        reader_case("species", case, f"ew_species_{case}",
+                    "length=10 limit=2000 reason=malformed_literal" if case.startswith("literal_") else "length=10 limit=23 reason=invalid_species",
+                    "ConditionSpecies", "following=1")
+    for case, field in smoke.READER_MISSING_PAYLOADS.items():
+        reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", field, "rejected=1 unchanged=1")
+    definitions += "\n[EDITOR_DEFINITIONS v1] stage=reader_budget rejected=1 unchanged=1 ok=1"
+    for field, value in (("ModelScale", "0"), ("ModelScale", "-1"), ("ModelScale", "1e100"),
+                         ("ModelScale", "1garbage"), ("ModelType", "256"), ("Num", "1garbage")):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=candidate_rejection field={field} value={value} rejected=1 unchanged=1 history=1 ok=1"
+        reason = "condition_read_failed" if field == "Num" else "malformed_value"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/cq_candidate_{field}_{value}.fit field=Team0Objective0/{field} reason={reason} rejected=1"
+    definitions += "\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_reader_budget.fit length=16777217 limit=16777216 reason=document_too_large rejected=1"
+    for case in ("ObjectiveModel", "ModelType", "ModelScale", "all"):
+        flags = ' '.join(f"{key}={int(case in (key, 'all'))}" for key in ("ObjectiveModel", "ModelType", "ModelScale"))
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=model_default case={case} ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_model_default_{case}.fit block=Probe defaulted=1 {flags}"
+    for case in ("Condition", "FailureCondition"):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=condition_failure case={case} ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_condition_failure_{case}.fit block=Team0Objective0{case}0 species=DestroyNumberOfEnemyUnits reason=condition_read_failed rejected=1"
     return panels + "\n" + definitions
 
 
 class EditorSmokeTests(unittest.TestCase):
+    def test_candidate_rejection_requires_executable_history_and_single_diagnostic(self):
+        lines = panel_lines()
+        self.assertEqual(smoke.grade_workflows(lines), "")
+        for changed in (lines.replace("history=1", "history=0"),
+                        lines.replace("stage=candidate_rejection", "stage=old_rejection"),
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/cq_candidate_ModelScale_0.fit reason=malformed_value rejected=1"):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
     def test_review_probes_require_versioned_facts_and_single_rejection_diagnostic(self):
         lines = panel_lines()
         for changed in (lines.replace("[EDITOR_DEFINITIONS v1]", "[EDITOR_DEFINITIONS]"),
                         lines.replace("[EDITOR_DOCUMENT v1]", "[EDITOR_DOCUMENT]"),
                         lines.replace("unchanged=1", "unchanged=0"),
+                        lines.replace("continued=1", "continued=0"),
+                        lines.replace("limit=2000", "limit=1999"),
+                        lines.replace(" missing=1", " missing=0"),
+                        lines.replace("script_boundary ok=1", "script_boundary ok=0"),
                         lines.replace("duplicate_unit_refresh_undo_redo ok=1", "duplicate_unit_refresh_undo_redo ok=0"),
-                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.pak field=[team0objective0]/Title length=2001 rejected=1"):
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/Title length=2001 limit=2000 reason=too_long rejected=1",
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/NumConditions missing=1 rejected=1"):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
+
+    def test_reader_review_cases_require_exact_preservation_and_one_diagnostic(self):
+        lines = panel_lines()
+        for changed in (lines.replace("retained=1", "retained=0"), lines.replace("following=1", "following=0"),
+                        lines.replace("reason=malformed_literal", "reason=accepted"),
+                        lines.replace("reason=invalid_species", "reason=accepted"),
+                        lines.replace("case=legacy_unit_watch", "case=missing_probe"),
+                        lines.replace("case=action_flag_oversized", "case=missing_probe")):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
+        for line in lines.splitlines():
+            if "mission=terrain_gen_out/ew_" in line:
+                with self.subTest(line=line):
+                    self.assertTrue(smoke.grade_workflows(lines.replace(line, "")))
+                    self.assertTrue(smoke.grade_workflows(lines + "\n" + line))
+                    if " length=" in line and " limit=" in line:
+                        self.assertTrue(smoke.grade_workflows(lines.replace(line, line.replace(" length=", " missing_length="))))
+                        self.assertTrue(smoke.grade_workflows(lines.replace(line, line.replace(" limit=", " missing_limit="))))
+
+    def test_merged_reader_review_requires_defaults_context_and_case_sensitive_edits(self):
+        lines = panel_lines()
+        for changed in (lines.replace("display_equality ok=1", "display_equality ok=0"),
+                        lines.replace("defaulted=1", "defaulted=0"),
+                        lines.replace("ObjectiveModel=1", "ObjectiveModel=0"),
+                        lines.replace("species=DestroyNumberOfEnemyUnits", "species=unknown"),
+                        lines.replace("block=Team0Objective0FailureCondition0", "block=unknown"),
+                        lines.replace("limit=16777216", "limit=16777215")):
             with self.subTest(changed=changed):
                 self.assertTrue(smoke.grade_workflows(changed))
 
@@ -424,6 +509,84 @@ class EditorSmokeTests(unittest.TestCase):
             file.write_text('{"missions": []}')
             with self.assertRaisesRegex(ValueError, "invalid baseline missions"):
                 smoke.gate_baseline([dict(name="stock_roundtrip:mc2_01", passed=True)], file, False, {})
+
+
+class NewModelGateTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = TEMP_ROOT / ("new-model-" + uuid.uuid4().hex)
+        self.directory.mkdir()
+        (self.directory / "input").mkdir()
+        self.rows = []
+        for mission in smoke.STOCK_MISSIONS:
+            original = b'FITini\n[MissionSettings]\nst MissionName = "original"\n[Tail]\nFITend\n'
+            edited = original.replace(b'"original"', b'"Q3 authored mission"')
+            packet = b"original packet encoding"
+            output = self.directory / mission
+            output.mkdir()
+            for ext, data in (("fit", original), ("pak", packet)):
+                (self.directory / "input" / f"{mission}.{ext}").write_bytes(data)
+                for stage in ("roundtrip", "undone", "edited", "long_name"):
+                    written = edited if stage == "edited" and ext == "fit" else data
+                    if stage == "long_name" and ext == "fit":
+                        written = original.replace(b'"original"', b'"Q3 long mission ' + b'x' * 8192 + b' retained tail"')
+                    (output / f"{stage}.{ext}").write_bytes(written)
+            (output / "shell.log").write_text("[EDITOR_MODEL v1] mission=malformed.fit field=syntax reason=embedded_nul rejected=1\n")
+            self.rows.append(dict(mission=mission, status="PASS", rc=0,
+                input_fit_sha256=smoke.hashlib.sha256(original).hexdigest(),
+                input_pak_sha256=smoke.hashlib.sha256(packet).hexdigest(),
+                facts=dict(result="PASS", frames="3", **{key: "1" for key in
+                    ("roundtrip", "edited", "reopened", "undo", "redo", "malformed", "unchanged", "long_name")})))
+
+    def test_truncated_long_name_fails(self):
+        path = self.directory / "mc2_01/long_name.fit"
+        path.write_bytes(path.read_bytes().replace(b'x' * 8192, b'x' * 2000))
+        with self.assertRaisesRegex(ValueError, "long name truncated"):
+            smoke.grade_new_model(self.rows, self.directory)
+
+    def test_exact_24_fit_and_pak_pass(self):
+        smoke.grade_new_model(self.rows, self.directory)
+
+    def test_missing_extra_duplicate_skipped_blocked_and_finding_fail(self):
+        for rows in (self.rows[:-1], self.rows + [self.rows[0]], self.rows[:-1] + [self.rows[0]]):
+            with self.assertRaises(ValueError):
+                smoke.grade_new_model(rows, self.directory)
+        for status in ("SKIP", "BLOCKED", "FINDING", "FLAKY_PASS", "TIMEOUT"):
+            with self.subTest(status=status), self.assertRaises(ValueError):
+                rows = [dict(row) for row in self.rows]
+                rows[0]["status"] = status
+                smoke.grade_new_model(rows, self.directory)
+
+    def test_corrupted_fit_pak_or_undo_output_fails(self):
+        for stage, ext in (("roundtrip", "fit"), ("roundtrip", "pak"), ("undone", "fit"), ("undone", "pak")):
+            path = self.directory / "mc2_01" / f"{stage}.{ext}"
+            original = path.read_bytes()
+            path.write_bytes(original + b"corrupt")
+            with self.subTest(stage=stage, ext=ext), self.assertRaisesRegex(ValueError, "byte mismatch"):
+                smoke.grade_new_model(self.rows, self.directory)
+            path.write_bytes(original)
+
+    def test_missing_fact_or_duplicate_malformed_diagnostic_fails(self):
+        for key in self.rows[0]["facts"]:
+            rows = [dict(row, facts=dict(row["facts"])) for row in self.rows]
+            del rows[0]["facts"][key]
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "facts missing"):
+                smoke.grade_new_model(rows, self.directory)
+        path = self.directory / "mc2_01/shell.log"
+        path.write_text(path.read_text() * 2)
+        with self.assertRaisesRegex(ValueError, "diagnostic missing"):
+            smoke.grade_new_model(self.rows, self.directory)
+
+    def test_changed_input_and_absent_output_fail(self):
+        path = self.directory / "input/mc2_01.fit"
+        original = path.read_bytes()
+        path.write_bytes(original + b"changed")
+        with self.assertRaisesRegex(ValueError, "input changed"):
+            smoke.grade_new_model(self.rows, self.directory)
+        path.write_bytes(original)
+        path = self.directory / "mc2_01/roundtrip.pak"
+        path.rename(path.with_suffix(".retained"))
+        with self.assertRaises(FileNotFoundError):
+            smoke.grade_new_model(self.rows, self.directory)
 
 
 if __name__ == "__main__":
