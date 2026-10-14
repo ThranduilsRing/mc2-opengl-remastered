@@ -8,6 +8,7 @@
 
 #include<gameos.hpp>
 #include<string.h>
+#include<string>
 
 //#include<stdio.h>
 
@@ -92,41 +93,27 @@ inline long reverseRGB( long oldVal )
 }
 
 
-//-------------------------------------------------------
-// Replaces the WINDOWS version because it is a lie!
-// There are cases where windows does NOT append a null.
-// THANKS!
-//
-// Replace with GOS String Resource get when available
-// Replaced.  Andy wants us to call everytime.  Will try and see if practical.
+// The resource subsystem owns this handle; explicit handles select other tables.
 extern HSTRRES gosResourceHandle;
 
 
 
 
-#if 1
-inline int cLoadString(
-  unsigned int uID,             // resource identifier
-  char* lpBuffer,      // pointer to buffer for resource
-  int nBufferMax,        // size of buffer
-  HSTRRES handle = gosResourceHandle
-  )
-{
-	memset(lpBuffer,0,nBufferMax);
-	const char * tmpBuffer = gos_GetResourceString(handle, uID);
-	int stringLength = (int)strlen(tmpBuffer);
-	if (stringLength >= nBufferMax)
-		STOP(("String too long for buffer.  String Id %u, bufferLen %d, StringLen %l",uID,nBufferMax,stringLength));
-	memcpy(lpBuffer,tmpBuffer,stringLength);
-	return stringLength;
-}
+// Owns the complete provider value, including valid empty strings and missing-ID
+// markers. The provider interface exposes no missing/valid-empty status.
+// A null handle or null provider result returns empty with one rejection line.
+// No fixed content limit, cache, or retained provider pointer.
+std::string loadResourceString(unsigned int id, HSTRRES handle = gosResourceHandle);
 
-#else
-
-inline char * cLoadString (unsigned int uID)
-{
-	return gos_GetResourceString(gosResourceHandle, uID);
-}
-#endif
+// Capacity includes the terminator. Returns the complete byte length or 0 on
+// rejection, so a prefix cannot be mistaken for a valid resource value.
+// Content length >= capacity is rejected with one line naming the ID, source
+// length and capacity. A writable positive-capacity destination is empty and
+// NUL-terminated on rejection; capacity 1 accepts only empty content.
+// Null destinations/nonpositive capacities, null handles and null provider
+// results return 0 with one rejection line.
+// The caller must supply capacity writable bytes; unused tail bytes are zeroed.
+int cLoadString(unsigned int id, char* destination, int capacity,
+                HSTRRES handle = gosResourceHandle);
 
 #endif
