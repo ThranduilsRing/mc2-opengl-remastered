@@ -1812,3 +1812,40 @@ TEST_CASE("owned handle: the owners are move-only") {
     static_assert(std::is_nothrow_move_assignable_v<IntOwner>);
     CHECK(true);
 }
+
+TEST_CASE("scoped gate override: sets the process environment, clears the cache, and restores the previous value") {
+    EnvVar guard("MC2_TERRAIN_LOD_CHUNK");   // returns the variable to its starting state whatever happens below
+    guard.set(nullptr);
+    gate::invalidate("MC2_TERRAIN_LOD_CHUNK");
+    REQUIRE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());            // default on
+    {
+        gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> off("0");
+        CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());    // the cached "on" was dropped
+        const char* env = std::getenv("MC2_TERRAIN_LOD_CHUNK");   // what a child process would inherit
+        REQUIRE(env != nullptr);
+        CHECK(std::string(env) == "0");
+        {
+            gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> on("1");   // nested: restores the outer value
+            CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+        }
+        CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+        CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
+    }
+    CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());              // default again
+    CHECK(std::getenv("MC2_TERRAIN_LOD_CHUNK") == nullptr);   // it was unset before, so it is unset again
+}
+
+TEST_CASE("scoped gate override: a nullptr value clears a variable that was set, and the old value comes back") {
+    EnvVar guard("MC2_TERRAIN_LOD_CHUNK");
+    guard.set("0");
+    gate::invalidate("MC2_TERRAIN_LOD_CHUNK");
+    REQUIRE_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+    {
+        gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> cleared(nullptr);
+        CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+        CHECK(std::getenv("MC2_TERRAIN_LOD_CHUNK") == nullptr);
+    }
+    CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+    CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
+    static_assert(!std::is_copy_constructible_v<gate::ScopedEnv>);
+}
