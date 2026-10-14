@@ -461,7 +461,7 @@ class CObjectives;
 
 // An ordered list that owns its elements, for the parts of an objective. Order is evaluation order and save order; elements are heap objects, so an element's address
 // never changes while the list grows. Nothing removes a single element: Clear() frees the whole list head to tail. Iterating yields the plain pointers the call sites
-// use; Append() takes ownership and rejects null. The list is not copyable: CObjective and CObjectives copy by building each element through the species factory.
+// use; Append() takes ownership and ignores null. The list is not copyable: CObjective and CObjectives copy by building each element through the species factory.
 template <class T>
 class CObjectiveOwnedList {
 	std::vector<std::unique_ptr<T>> m_items;
@@ -487,10 +487,8 @@ public:
 	CObjectiveOwnedList(const CObjectiveOwnedList &) = delete;
 	CObjectiveOwnedList &operator=(const CObjectiveOwnedList &) = delete;
 
-	bool Append(T *element) {
-		if (!element) { return false; }
-		m_items.emplace_back(element);
-		return true;
+	void Append(T *element) {
+		if (element) { m_items.emplace_back(element); }
 	}
 	unsigned long Count() const { return static_cast<unsigned long>(m_items.size()); }
 	void Clear() {
@@ -643,7 +641,7 @@ public:
 	const_iterator begin() const { return m_list.begin(); }
 	const_iterator end() const { return m_list.end(); }
 	unsigned long Count() const { return m_list.Count(); }
-	bool Append(CObjective *objective) { return m_list.Append(objective); }
+	void Append(CObjective *objective) { m_list.Append(objective); }
 	CObjectives(int alignment = 0) { m_alignment = alignment; }
 	CObjectives(const CObjectives &master) { (*this) = master; }
 	~CObjectives() { Clear(); }
