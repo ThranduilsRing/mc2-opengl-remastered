@@ -773,12 +773,6 @@ void Mission::destroy (bool initLogistics)
 		MoverGroup::goalMap = nullptr;
 	}
 
-	if (openList)
-	{
-		delete openList;
-		openList = nullptr;
-	}
-
 	closeABL();
 
 	//------------------------------------------------------------

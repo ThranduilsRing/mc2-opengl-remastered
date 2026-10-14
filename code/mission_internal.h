@@ -223,7 +223,6 @@ extern long NumDisableAtStart;
 extern long DisableAtStart[MAX_DISABLE_AT_START];
 extern bool showFrameRate;
 extern float OneOverProcessorSpeed;
-extern PriorityQueuePtr	openList;
 extern "C" void mission_phase_begin();
 extern "C" void mission_phase_mark(const char* name);
 extern "C" void mission_phase_report();

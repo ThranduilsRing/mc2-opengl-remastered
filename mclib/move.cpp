@@ -25,7 +25,6 @@ bool ClearBridgeTiles = false;
 
 long RamObjectWID = 0;
 
-PriorityQueuePtr openList = nullptr;
 bool JumpOnBlocked = false;
 bool FindingEscapePath = false;
 bool BlockWallTiles = true;

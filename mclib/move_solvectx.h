@@ -4,32 +4,28 @@
 //
 //	Per-solve context for the A* solver. Reentrant-shaping ONLY (single-
 //	threaded); NOT threading, NOT optimization. Under MC2_PATH_SOLVE_ISOLATED
-//	(default-OFF) each solve owns its OPEN list + solve flags in a stack-local
-//	SolveContext instead of the file-static globals (openList / JumpOnBlocked).
-//	OFF the solver keeps using those globals verbatim, so OFF is byte-identical
-//	to the pre-slice path.
+//	(default-OFF) each solve reads its solve flags from a stack-local SolveContext
+//	snapshot instead of the file-static globals (JumpOnBlocked / ...). OFF the
+//	solver keeps using those globals verbatim, so OFF is byte-identical to the
+//	pre-slice path. The OPEN list is no longer part of the context: every
+//	GlobalMap and MoveMap owns its own (openHeap, mclib/open_heap.h).
 //
 //	Usage in a solver body:
 //	    mc2_move::SolveContext ctx;                      // stack, at entry
-//	    if (!ctx.isolated && !openList) { openList = new PriorityQueue; ... }
-//	    PriorityQueue* const solveOpen = ctx.pq();       // global OFF, own ON
-//	    ... solveOpen->clear() / insert / remove ...     // body uses solveOpen
 //	    const bool jumpOnBlocked = ctx.jumpOnBlocked();  // snapshot ON, global OFF
 //
 //	HARD RULE: OFF must behave exactly as before. The gate is a cached bool;
-//	when OFF, ctx.pq() == ::openList and ctx.jumpOnBlocked() == ::JumpOnBlocked,
-//	so the solver resolves to the identical objects it did pre-slice.
+//	when OFF, ctx.jumpOnBlocked() == ::JumpOnBlocked, so the solver resolves to
+//	the identical objects it did pre-slice.
 //
 //***************************************************************************
 #pragma once
 
 #include <cstdlib>
-#include "pqueue.h"
 #include "Gates/gate.h"
 
 // The file-static solver globals live in move.cpp. Declared here so the
 // SolveContext can alias them when the gate is OFF.
-extern PriorityQueuePtr openList;   // shared OPEN list (OFF path)
 extern bool JumpOnBlocked;          // caller-staged solve flag
 extern bool FindingEscapePath;      // caller-staged bake flag
 extern long RamObjectWID;           // caller-staged bake input
@@ -44,14 +40,11 @@ inline bool pathSolveIsolated() {
 
 // Per-solve scratch container. Construct on the stack at solver entry.
 //
-//   OFF  : pq() returns the shared file-static ::openList; flags read globals.
-//   ON   : pq() returns &ownPQ (a private per-solve PriorityQueue); flags are
-//          SNAPSHOTTED from the globals at construction (the caller staged them
-//          into the globals immediately before the solve; single-threaded, so
-//          the snapshot is exact) and thereafter read only from the context.
-//
-// So during an ON solve NO file-static mutable solver state is read or written:
-// the OPEN list is ownPQ and the flags are the snapshots.
+//   OFF  : the flags read the globals.
+//   ON   : the flags are SNAPSHOTTED from the globals at construction (the
+//          caller staged them into the globals immediately before the solve;
+//          single-threaded, so the snapshot is exact) and thereafter read only
+//          from the context.
 struct SolveContext {
 	bool          isolated;
 
@@ -60,9 +53,6 @@ struct SolveContext {
 	bool          findingEscapePathSnap;
 	long          ramObjectWIDSnap;
 
-	// private per-solve OPEN list. Only touched when isolated.
-	PriorityQueue ownPQ;
-
 	SolveContext()
 		: isolated(pathSolveIsolated()),
 		  jumpOnBlockedSnap(false),
@@ -70,17 +60,10 @@ struct SolveContext {
 		  ramObjectWIDSnap(0)
 	{
 		if (isolated) {
-			ownPQ.init(5000);
 			jumpOnBlockedSnap     = JumpOnBlocked;
 			findingEscapePathSnap = FindingEscapePath;
 			ramObjectWIDSnap      = RamObjectWID;
 		}
-	}
-
-	// The OPEN list this solve must use. OFF => the shared global (identical
-	// to pre-slice); ON => the private per-solve queue.
-	inline PriorityQueue* pq() {
-		return isolated ? &ownPQ : openList;
 	}
 
 	// Solve flag: snapshot when isolated, live global otherwise.

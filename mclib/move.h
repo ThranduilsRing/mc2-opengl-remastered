@@ -1259,6 +1259,9 @@ class GlobalMap {
 		bool						badLoad;
 		bool						calcedPathCost;
 
+		// The OPEN list of every calcPath on this map (see MoveMap::openHeap).
+		mc2::OpenHeap				openHeap;
+
 		int						    numOffMapAreas;
 		short						offMapAreas[MAX_OFFMAP_AREAS];
 
@@ -1596,18 +1599,24 @@ class MoveMap {
 		void				(*placeStationaryMoversCallback) (MoveMapPtr map);
 
 		// PATHFINDING-SOLVER-ISOLATION-1: per-solve seam. Set at the top of each
-		// solve (calcPath/calcPathJUMP/calcEscapePath). OFF they mirror the file-
-		// static globals (::openList / ::JumpOnBlocked) so behavior is identical;
-		// ON they point at the SolveContext's private queue + flag snapshot, so
-		// the solve + its cost helpers touch NO file-static mutable solver state.
-		class PriorityQueue* solveOpen;   // OPEN list this solve uses
+		// solve (calcPath/calcPathJUMP/calcEscapePath): the flag snapshot the solve
+		// and its cost helpers read instead of the file-static global.
 		bool				solveJumpOnBlocked;
+
+		// The OPEN list of every solve this map runs. WHY a member: the list used to be one global shared by all solvers, so a solve could meet nodes another
+		// solve had left in it; each map now owns its list and a solve starts it empty.
+		mc2::OpenHeap		openHeap;
 
 		static float		distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 		static int			distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 		static int			forestCost;
 
 	protected:
+
+		// Gives the OPEN node of a map cell its new key; a cell flagged OPEN that the list does not hold is skipped (one log line per map, an assert in debug).
+		void reKeyOpen (long cellId, long newKey);
+		// First size of the OPEN list for a solve: the window, capped; the list grows past it when a search needs more.
+		int openHeapReserve (void) const;
 
 		bool adjacentCellOpen (long mapCellIndex, long dir);
 		bool adjacentCellOpenJUMP (long r, long c, long dir);
@@ -1656,7 +1665,6 @@ class MoveMap {
 			overlayWeightTable = NULL;
 			blockedDoorCallback = NULL;
 			placeStationaryMoversCallback = NULL;
-			solveOpen = NULL;               // PATHFINDING-SOLVER-ISOLATION-1
 			solveJumpOnBlocked = false;
 		}
 		

@@ -44,7 +44,6 @@
 // Globals defined in group.cpp (or elsewhere in the engine) that the split pieces share.
 extern float	DelayedOrderTime;
 extern long		tileMulMAPCELL_DIM[MAX_MAP_CELL_WIDTH];
-extern PriorityQueuePtr	openList;
 extern char OverlayIsBridge[NUM_OVERLAY_TYPES];
 
 #endif // GROUP_INTERNAL_H

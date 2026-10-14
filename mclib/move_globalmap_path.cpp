@@ -6,21 +6,14 @@
 namespace {
 
 // WHAT: gives the open-list entry of `door` its new key.
-// WHY: PriorityQueue::change() takes a heap POSITION, and find() answers 0 (the sentinel slot) for an id the heap does not hold; re-keying position 0 sifts
-// from the wrong place and breaks the heap order. A door flagged OPEN that the heap does not hold is therefore skipped. The first miss of the process logs one
-// line (later misses are silent); release builds compile the assert out.
-void reKeyOpenDoor(long door, long newKey) {
-	const long position = openList->find(door);
-	if (position == 0) {
-		gosASSERT(position != 0);
-		static bool reported = false;
-		if (!reported) {
-			reported = true;
-			mc2::fmt::print_err("[PATH v1] event=open_list_miss solver=globalmap id={:d}\n", mc2::fmt::as_i32(door));
-		}
+// WHY: a door flagged OPEN that the heap does not hold must not be re-keyed from a wrong slot (rekey() answers false and touches nothing), so the door is
+// skipped. The first miss of a map logs one line (later misses are silent); release builds compile the assert out.
+void reKeyOpenDoor(mc2::OpenHeap& open, long door, long newKey) {
+	if (open.rekey(static_cast<uint32_t>(door), static_cast<int32_t>(newKey)))
 		return;
-	}
-	openList->change(position, newKey);
+	gosASSERT(false);
+	if (open.rekeyMisses() == 1)
+		mc2::fmt::print_err("[PATH v1] event=open_list_miss solver=globalmap id={:d}\n", mc2::fmt::as_i32(door));
 }
 
 }  // namespace
@@ -215,7 +208,7 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 		curMapDoor->g = g + cost;
 		curMapDoor->fPrime = curMapDoor->g + curMapDoor->hPrime;
 		if (curMapDoor->flags & MOVEFLAG_OPEN) {
-			reKeyOpenDoor(door, curMapDoor->fPrime);
+			reKeyOpenDoor(openHeap, door, curMapDoor->fPrime);
 			}
 		else {
 			long toAreaIndex = 1 - fromAreaIndex;
@@ -292,11 +285,8 @@ long GlobalMap::calcPath (long startArea,
 	// that we'd WANT to limit the search. If so, time to change the sectorDim,
 	// etc...
 
-	if (!openList) {
-		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
-		openList->init(5000);
-	}
+	// The open list is this map's own: sized to the door graph, empty at the start of every solve.
+	openHeap.reserve(numDoors + NUM_DOOR_OFFSETS);
 
 	// NOTE: The last 6 doors are reserved for use by the pathfinder:
 	//			numDoors + 0 = startArea
@@ -370,20 +360,16 @@ long GlobalMap::calcPath (long startArea,
 	PQNode initialVertex;
 	initialVertex.key = 0;
 	initialVertex.id = startDoor;
-	openList->clear();
-#ifdef _DEBUG
-	long insertErr = 
-#endif
-		openList->insert(initialVertex);
-	gosASSERT(insertErr == NO_ERR);
+	openHeap.clear();
+	openHeap.insert(initialVertex);
 	doors[startDoor].flags |= MOVEFLAG_OPEN;
 
 
 	bool goalFound = false;
 
-	while (!openList->isEmpty()) {
+	while (!openHeap.isEmpty()) {
 		PQNode bestPQNode;
-		openList->remove(bestPQNode);
+		openHeap.popMin(bestPQNode);
 		if (g_moveReconEnabled) g_moveRecon_ag_nodesPopped++;
 		long bestDoor = bestPQNode.id;
 		GlobalMapDoorPtr bestMapDoor = &doors[bestDoor];
@@ -461,7 +447,7 @@ long GlobalMap::calcPath (long startArea,
 						succMapDoor->fromAreaIndex = succFromAreaIndex;
 						succMapDoor->g = succDoorG;
 						succMapDoor->fPrime = succDoorG + succMapDoor->hPrime;
-						reKeyOpenDoor(succDoor, succMapDoor->fPrime);
+						reKeyOpenDoor(openHeap, succDoor, succMapDoor->fPrime);
 					}
 					}
 				else if (succMapDoor->flags & MOVEFLAG_CLOSED) {
@@ -481,11 +467,7 @@ long GlobalMap::calcPath (long startArea,
 					PQNode succPQNode;
 					succPQNode.key = succMapDoor->fPrime;
 					succPQNode.id = succDoor;
-#ifdef _DEBUG
-					long insertErr = 
-#endif
-						openList->insert(succPQNode);
-					gosASSERT(insertErr == NO_ERR);
+					openHeap.insert(succPQNode);
 					succMapDoor->flags |= MOVEFLAG_OPEN;
 				}
 			}

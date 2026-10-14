@@ -11,7 +11,14 @@
 #include <cstdint>
 #include <vector>
 
-#include "pqueue.h" // PQNode: the node record the solvers already build
+// One entry of an open list: the sort key, the id of the map position it stands for, and the row and column the solver reads back when it pops it.
+struct PQNode
+{
+	int32_t key;
+	uint32_t id;
+	int32_t row;
+	int32_t col;
+};
 
 namespace mc2
 {
@@ -76,7 +83,10 @@ public:
 	{
 		const int position = find(id);
 		if (position == 0)
+		{
+			++rekeyMisses_;
 			return false;
+		}
 		changeAt(position, newKey);
 		return true;
 	}
@@ -96,6 +106,9 @@ public:
 			upHeap(position);
 		}
 	}
+
+	// How many rekey() calls found no node: a solver reports the first one (1) and ignores the rest.
+	int rekeyMisses() const { return rekeyMisses_; }
 
 	const PQNode& at(int position) const { return nodes_[static_cast<std::size_t>(position)]; }
 
@@ -128,6 +141,7 @@ private:
 		nodes_[static_cast<std::size_t>(index)] = start;
 	}
 
+	int rekeyMisses_ = 0;
 	std::vector<PQNode> nodes_; // [0] is the filler, [1 .. size()] the heap
 };
 

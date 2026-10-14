@@ -135,12 +135,8 @@ long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 		}
 
 	//-----------------------------------------------
-	// If we haven't already, create the OPEN list...
-	if (!openList) {
-		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
-		openList->init(5000);
-	}
+	// The OPEN list of this search: one node per goal-map cell at most.
+	mc2::OpenHeap openHeap(GOALMAP_DIM * GOALMAP_DIM);
 
 	int curRow = GOALMAP_DIM / 2;
 	int curCol = GOALMAP_DIM / 2;
@@ -154,17 +150,17 @@ long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 	initialVertex.id = curRow * GOALMAP_DIM + curCol;
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
-	openList->clear();
-	openList->insert(initialVertex);
+	openHeap.clear();
+	openHeap.insert(initialVertex);
 	curMapNode->setFlag(GOALFLAG_OPEN);
 
 	long numGoalsFound = 0;
-	while (!openList->isEmpty()) {
+	while (!openHeap.isEmpty()) {
 
 		//----------------------
 		// Grab the best node...
 		PQNode bestPQNode;
-		openList->remove(bestPQNode);
+		openHeap.popMin(bestPQNode);
 		curRow = bestPQNode.row;
 		curCol = bestPQNode.col;
 		GoalMapNode* bestMapNode = &goalMap[curRow * GOALMAP_DIM + curCol];
@@ -225,7 +221,7 @@ long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 						succPQNode.id = succRow * GOALMAP_DIM + succCol;
 						succPQNode.row = succRow;
 						succPQNode.col = succCol;
-						openList->insert(succPQNode);
+						openHeap.insert(succPQNode);
 						succMapNode->setFlag(MOVEFLAG_OPEN);
 					}
 				}

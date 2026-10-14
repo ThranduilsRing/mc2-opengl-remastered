@@ -47,10 +47,6 @@
 #include"paths.h"
 #endif
 
-#ifndef PQUEUE_H
-#include"pqueue.h"
-#endif
-
 #ifndef TGAINFO_H
 #include"tgainfo.h"
 #endif

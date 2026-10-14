@@ -19,7 +19,6 @@ set(SOURCES ${SOURCES}
     msl_transform.cpp
     msl_anim.cpp
     paths.cpp
-    pqueue.cpp
     routines.cpp
     appearance_rng.cpp
     sim_trace.cpp

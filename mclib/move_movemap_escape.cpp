@@ -41,15 +41,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
 	
-	// If we haven't already, create the OPEN list...
-	// PATHFINDING-SOLVER-ISOLATION-1: OFF owns/uses the shared global as before;
-	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
-	if (!ctx.isolated && !openList) {
-		openList = new PriorityQueue;
-		gosASSERT(openList != nullptr);
-		openList->init(5000);
-	}
-	solveOpen = ctx.isolated ? ctx.pq() : openList;
+	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
+	openHeap.reserve(openHeapReserve());
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
 
 	long curCol = startC;
@@ -65,12 +58,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	initialVertex.id = curRow * MAX_MAPWIDTH + curCol;
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
-	solveOpen->clear();
-#ifdef _DEBUG
-	long insertErr = 
-#endif
-		solveOpen->insert(initialVertex);
-	gosASSERT(insertErr == NO_ERR);
+	openHeap.clear();
+	openHeap.insert(initialVertex);
 	curMapNode->setFlag(MOVEFLAG_OPEN);
 
 	bool goalFound = false;
@@ -82,7 +71,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		numNodesVisited = 1;
 	#endif
 
-	while (!solveOpen->isEmpty()) {
+	while (!openHeap.isEmpty()) {
 
 		#ifdef DEBUG_MOVE_MAP
 			if (debugMoveMap) {
@@ -96,17 +85,17 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		#endif
 
 		#ifdef DEBUG_PATH
-			if (topOpenNodes < solveOpen->getNumItems())
-				topOpenNodes = solveOpen->getNumItems();
+			if (topOpenNodes < openHeap.size())
+				topOpenNodes = openHeap.size();
 		#endif
 
 		if (_pathTrace) {
-			long openN = solveOpen->getNumItems();
+			long openN = openHeap.size();
 			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
 		}
 
 		PQNode bestPQNode;
-		solveOpen->remove(bestPQNode);
+		openHeap.popMin(bestPQNode);
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;
@@ -173,14 +162,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
 								succMapNode->fPrime = succNodeG + succMapNode->hPrime;
-								long openIndex = solveOpen->find(succRow * MAX_MAPWIDTH + succCol);
-								if (!openIndex) {
-									char s[128];
-									mc2::fmt::to_buf(s, "MoveMap.calcEscapePath: Cannot find movemap node [{:d}, {:d}, {:d}, {:d}] for change\n", mc2::fmt::as_i32(succRow), mc2::fmt::as_i32(succCol), mc2::fmt::as_i32(succRow * MAX_MAPWIDTH + succCol), mc2::fmt::as_i32(dir));
-									gosASSERT(openIndex != 0);
-									}
-								else
-									solveOpen->change(openIndex, succMapNode->fPrime);
+								reKeyOpen(succRow * MAX_MAPWIDTH + succCol, succMapNode->fPrime);
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
@@ -199,11 +181,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 							succPQNode.id = succRow * MAX_MAPWIDTH + succCol;
 							succPQNode.row = succRow;
 							succPQNode.col = succCol;
-#ifdef _DEBUG
-							long insertErr = 
-#endif
-								solveOpen->insert(succPQNode);
-							gosASSERT(insertErr == NO_ERR);
+							openHeap.insert(succPQNode);
 							succMapNode->setFlag(MOVEFLAG_OPEN);
 						}
 					}

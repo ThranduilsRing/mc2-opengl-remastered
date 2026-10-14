@@ -55,7 +55,6 @@ extern bool CullPathAreas;
 extern bool debugMoveMap;
 extern bool ClearBridgeTiles;
 extern long RamObjectWID;
-extern PriorityQueuePtr openList;
 extern bool JumpOnBlocked;
 extern bool FindingEscapePath;
 extern bool BlockWallTiles;
@@ -174,14 +173,7 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 		curMapNode->g = g + cost;
 		curMapNode->fPrime = curMapNode->g + curMapNode->hPrime;
 		if (curMapNode->flags & MOVEFLAG_OPEN) {
-			long openIndex = solveOpen->find(mapCellIndex);
-			if (!openIndex) {
-				char s[128];
-				sprintf(s, "MoveMap.propogateCost: Cannot find movemap node [%d] for change\n", mapCellIndex);
-				gosASSERT(openIndex != 0);
-				}
-			else
-				solveOpen->change(openIndex, curMapNode->fPrime);
+			reKeyOpen(mapCellIndex, curMapNode->fPrime);
 			}
 		else {
 			for (long dir = 0; dir < numOffsets; dir++) {
@@ -242,14 +234,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 		curMapNode->g = g + cost;
 		curMapNode->fPrime = curMapNode->g + curMapNode->hPrime;
 		if (curMapNode->flags & MOVEFLAG_OPEN) {
-			long openIndex = solveOpen->find(r * MAX_MAPWIDTH + c);
-			if (!openIndex) {
-				char s[128];
-				sprintf(s, "MoveMap.propogateCost: Cannot find movemap node [%d, %d, %d] for change\n", r, c, r * MAX_MAPWIDTH + c);
-				gosASSERT(openIndex != 0);
-				}
-			else
-				solveOpen->change(openIndex, curMapNode->fPrime);
+			reKeyOpen(r * MAX_MAPWIDTH + c, curMapNode->fPrime);
 			}
 		else {
 			long cellOffsetIndex = 0;
