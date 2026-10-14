@@ -97,8 +97,13 @@ void execStdReturn (void) {
 			// Copy the array/record...
 			char* dest = (char*)targetPtr;
 			char* src = tos->address;
-			long size = targetTypePtr->size;
-			memcpy(dest, src, size);
+			const size_t capacity = std::min(static_cast<size_t>(std::max(0L, targetTypePtr->size)), sizeof(StackItem));
+			const size_t sourceSize = src && expressionTypePtr && expressionTypePtr->form == FRM_ARRAY
+			    ? static_cast<size_t>(std::max(0L, expressionTypePtr->size)) : 0;
+			const size_t size = std::min(capacity, sourceSize);
+			memset(dest, 0, sizeof(StackItem));
+			if (size) memcpy(dest, src, size);
+			if (sourceSize > size) abl::reportTruncated("return_truncated", capacity, sourceSize - size);
 			}
 		else if ((targetTypePtr == IntegerTypePtr) || (targetTypePtr->form == FRM_ENUM)) {
 			//------------------------------------------------------

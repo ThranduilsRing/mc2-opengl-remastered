@@ -1,6 +1,19 @@
 // ABL native bindings: text messages, teleport, roster/pilot operations, campaign globals, strike toggles, radius counts, omni stubs, trigger areas and off-map queries.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 #include "mc2fmt.h"
 
 
@@ -405,19 +418,15 @@ void execGetRelativePositionToTarget (void) {
 	long targetId = ABLi_popInteger();
 	float distance = ABLi_popReal();
 	long flag = ABLi_popInteger();
-	float* outPoint = ABLi_popRealPtr();
+	const auto output = ABLi_popRealBuf();
+	float outPoint[3] = {};
 	(void)flag;
 
-	if (outPoint) {
-		outPoint[0] = 0.0f;
-		outPoint[1] = 0.0f;
-		outPoint[2] = 0.0f;
-	}
-	if (!CurObject || !outPoint)
-		return;
+	if (!CurObject)
+		{ abl::copyRealArray(output, outPoint, "getrelativepositiontotarget_truncated"); return; }
 	GameObjectPtr tgt = getObject(targetId);
 	if (!tgt)
-		return;
+		{ abl::copyRealArray(output, outPoint, "getrelativepositiontotarget_truncated"); return; }
 
 	Stuff::Vector3D myPos = CurObject->getPosition();
 	Stuff::Vector3D tgtPos = tgt->getPosition();
@@ -436,6 +445,7 @@ void execGetRelativePositionToTarget (void) {
 		outPoint[1] = myPos.y;
 		outPoint[2] = myPos.z;
 	}
+	abl::copyRealArray(output, outPoint, "getrelativepositiontotarget_truncated");
 }
 
 void execNewDistanceToPosition (void) {
@@ -888,17 +898,12 @@ void execRemoveTriggerArea (void) {
 
 void execGetWeapons (void) {
 
-	int* weaponList = ABLi_popIntegerPtr();
+	const auto output = ABLi_popIntBuf();
+	int weaponList[MAX_WEAPONS_PER_MOVER] = {};
 	long infoType = ABLi_popInteger();
 
-	if (s_ablArgGuard && !weaponList) {
-		abl_arg_guard_log("execGetWeapons", "weaponList");
-		ABLi_pushInteger(0);
-		return;
-	}
-
 	long numWpns = 0;
-	if (CurObject->isMover()) {
+	if (CurObject && CurObject->isMover()) {
 		MoverPtr mover = (MoverPtr)CurObject;
 		switch (infoType) {
 			case 0: {
@@ -923,23 +928,21 @@ void execGetWeapons (void) {
 				break;
 		}
 	}
-	ABLi_pushInteger(numWpns);
+	ABLi_pushInteger(abl::copyIntArray(output, {weaponList, static_cast<size_t>(numWpns)}, "getweapons_truncated"));
 }
 
 void execGetWeaponsStatus (void) {
 
-	int* weaponList = ABLi_popIntegerPtr();
-
-	if (s_ablArgGuard && !weaponList) {
-		abl_arg_guard_log("execGetWeaponsStatus", "weaponList");
-		ABLi_pushInteger(0);
-		return;
-	}
+	const auto output = ABLi_popIntBuf();
+	int weaponList[MAX_WEAPONS_PER_MOVER] = {};
 
 	long status = 0;
 	if (CurObject && CurObject->isMover()) {
 		MoverPtr mover = (MoverPtr)CurObject;
-		status = mover->getPilot()->getWeaponsStatus(weaponList);
+		if (mover->getPilot()) {
+			status = mover->getPilot()->getWeaponsStatus(weaponList);
+			abl::copyIntArray(output, weaponList, "getweaponsstatus_truncated");
+		}
 	}
 	ABLi_pushInteger(status);
 }
@@ -1002,12 +1005,12 @@ void execGetLastScan (void) {
 
 void execGetMapInfo (void) {
 
-	int* mapInfo = ABLi_popIntegerPtr();
-
-	if (s_ablArgGuard && !mapInfo) { abl_arg_guard_log("execGetMapInfo", "mapInfo"); return; }
+	const auto output = ABLi_popIntBuf();
+	int mapInfo[2] = {};
 
 	mapInfo[0] = GameMap->getHeight();
 	mapInfo[1] = GameMap->getWidth();
+	abl::copyIntArray(output, mapInfo, "getmapinfo_truncated");
 }
 
 void execIsOffMap (void) {

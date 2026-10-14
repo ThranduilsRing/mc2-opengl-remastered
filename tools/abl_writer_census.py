@@ -37,7 +37,7 @@ VERDICTS = ("bounded", "fixed", "open", "read", "engine", "frame")
 
 #: calls that copy or format bytes
 COPIERS = ("strcpy", "strncpy", "strcat", "strncat", "memcpy", "memmove", "memset", "sprintf", "snprintf", "_snprintf", "_snprintf_s",
-           "to_buf", "to_buf_n", "copyBounded", "appendBounded")
+           "to_buf", "to_buf_n", "copyBounded", "appendBounded", "copyIntArray", "copyRealArray")
 #: calls that hand a script variable's address to C++
 FETCHERS = ("ABLi_popCharPtr", "ABLi_popCharBuf", "ABLi_popIntegerPtr", "ABLi_popRealPtr", "ABLi_popIntBuf", "ABLi_popRealBuf")
 #: a function header at column 0 with its brace on the same line ("void execFoo (void) {"): the anchor that re-syncs the brace tracker after an
