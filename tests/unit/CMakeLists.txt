@@ -90,6 +90,7 @@ add_executable(mc2_tests
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
     test_elist_contract.cpp     # step 4 B2.0: EList characterization (HE1-HE12), the properties std::vector/deque replace
     test_sortlist_contract.cpp  # step 4 B2.0: SortList characterization (HS1-HS6) + the CRT qsort tie table (golden/sortlist_ties.h)
+    test_score_sort.cpp         # step 4 B2.4: mc2::sort_scored, the ordering rule that replaces SortList (SS1-SS7)
     test_pqueue_contract.cpp    # step 4 B2.0: PriorityQueue characterization (HP1-HP7) + 2000 golden scripts (golden/pqueue_golden.h)
     test_gui_bridge.cpp     # widget text bridge: setText / setEntry overload resolution (compile-time, step 4 B1)
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
