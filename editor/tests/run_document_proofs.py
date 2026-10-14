@@ -50,16 +50,19 @@ def main():
             (inputs / name).write_bytes(data)
             hashes[name] = hashlib.sha256(data).hexdigest()
     (directory / "inputs.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
-    env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-e4-{os.getpid()}",
-               MC2_EDITOR_STOCK_DIR=str(inputs), ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
+    env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-egl-{os.getpid()}",
+               ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
     commands = []
     for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests"):
         commands.append(([sys.executable, "tools/build_quiet.py", "--target", target], 300, f"{target}-build"))
     for target in ("editor_document_tests", "editor_document_tests_asan", "editor_panel_tests"):
-        commands.append(([str(ROOT / "build64/out/editor/RelWithDebInfo" / (target + ".exe")), "--no-breaks"],
-                         120, f"{target}-run"))
+        label = f"{target}-run"
+        command = [str(ROOT / "build64/out/editor/RelWithDebInfo" / (target + ".exe")),
+                   "--no-breaks", "--stock-dir", str(inputs)]
+        if target != "editor_panel_tests":
+            command += ["--byte-grade-dir", str(directory / label), "--require-stock-corpus"]
+        commands.append((command, 120, label))
     for command, timeout, label in commands:
-        env["MC2_EDITOR_BYTE_GRADE_DIR"] = str(directory / label)
         print(subprocess.list2cmdline(command), flush=True)
         try:
             result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
@@ -72,7 +75,7 @@ def main():
         if result.returncode:
             return result.returncode
         if label.endswith("-run") and label != "editor_panel_tests-run":
-            grade_outputs(inputs, Path(env["MC2_EDITOR_BYTE_GRADE_DIR"]))
+            grade_outputs(inputs, directory / label)
     grade_shipping_shell()
     print(f"Proof artifacts: {directory}", flush=True)
     return 0

@@ -113,8 +113,10 @@ py -3 editor/tests/run_document_proofs.py
 
 It copies and hashes exactly 24 fresh FIT/PAK pairs from lane3's stock archive,
 builds both doctest targets, EditorShell and EditorShellSmoke with a unique PDB endpoint and bounded
-build timeouts, and runs both native variants. `MC2_EDITOR_STOCK_DIR` selects those
-copies; direct tests without it explicitly skip the corpus case. The corpus saves
+build timeouts, and runs both native variants. `--stock-dir PATH` selects those
+copies; direct tests without an accessible directory visibly skip the stock fixture
+suite. `--byte-grade-dir PATH` selects the retained output directory, and the runner
+passes `--require-stock-corpus` so missing inputs fail the strict proof. The corpus saves
 all 24 pairs, compares every byte and checks text edit/undo. Both native variants
 retain corrupted FIT output copies; the proof runner feeds unchanged and corrupted
 outputs through the production smoke `compare_fit` byte grader and requires all
@@ -287,7 +289,7 @@ Initial E4 checkpoint (2026-10-14, before review fixes):
   controls, `py -3 tools/build_quiet.py --target editor_panel_tests` and
   `py -3 tools/build_quiet.py --target EditorShellSmoke`: PASS with unique
   `_MSPDBSRV_ENDPOINT_` values (`sol-e4-final-<pid>`, `sol-e4-smoke-final-<pid>`).
-- With `MC2_EDITOR_STOCK_DIR=A:/Games/mc2-codex/scratch/e4-proofs/2026-10-14T08-41-34/stock`,
+- Using stock copies in `A:/Games/mc2-codex/scratch/e4-proofs/2026-10-14T08-41-34/stock`,
   `build64/out/editor/RelWithDebInfo/editor_panel_tests.exe --no-breaks`: PASS,
   3 cases/106 assertions, including the 13 workflow scripts. Production `grade_file`
   also accepted all 13 real widget-test output directories. No desktop was used.

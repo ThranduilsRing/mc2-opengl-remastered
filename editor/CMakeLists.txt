@@ -40,7 +40,7 @@ set_target_properties(EditorShellSmoke PROPERTIES EXCLUDE_FROM_ALL TRUE OUTPUT_N
 target_sources(EditorShellSmoke PRIVATE shell/PanelProof.cpp shell/FileProof.cpp)
 target_compile_definitions(EditorShellSmoke PRIVATE MC2_EDITOR_SMOKE_HOST=1)
 
-set(editor_document_test_sources tests/test_document.cpp tests/test_structure.cpp
+set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tests/test_structure.cpp
     tests/test_catalog.cpp
     "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
 add_executable(editor_document_tests ${editor_document_test_sources})
@@ -52,7 +52,7 @@ target_compile_features(editor_catalog_probe PRIVATE cxx_std_23)
 target_include_directories(editor_catalog_probe PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/include")
 target_link_libraries(editor_catalog_probe PRIVATE editor_document)
 
-add_executable(editor_panel_tests tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/PanelProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
+add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/PanelProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
     "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
 target_compile_features(editor_panel_tests PRIVATE cxx_std_23)
 target_compile_definitions(editor_panel_tests PRIVATE MC2_EDITOR_SMOKE_HOST=1)

@@ -1,8 +1,8 @@
 #include "../../tests/unit/doctest.h"
+#include "TestInputs.h"
 #include "FileProof.h"
 #include "ShellFrame.h"
 #include <chrono>
-#include <cstdlib>
 #include <fstream>
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -14,9 +14,9 @@
 using namespace editor::document;
 using namespace editor::shell;
 
-TEST_CASE("files/real widgets own lifecycle decisions and preserve failed transitions")
+TEST_CASE("files/real widgets own lifecycle decisions and preserve failed transitions" * doctest::test_suite("stock-fixture"))
 {
-    const auto* stock = std::getenv("MC2_EDITOR_STOCK_DIR"); REQUIRE(stock);
+    const auto& stock = editor::tests::inputs().stockDirectory;
     for (const auto* kind : {"file_save", "file_save_as", "file_recent", "file_failures",
         "file_open_save", "file_open_discard", "file_open_cancel",
         "file_reopen_save", "file_reopen_discard", "file_reopen_cancel",
@@ -63,9 +63,9 @@ TEST_CASE("files/real widgets own lifecycle decisions and preserve failed transi
     }
 }
 
-TEST_CASE("files/malformed recent lists reject once and preserve the live history")
+TEST_CASE("files/malformed recent lists reject once and preserve the live history" * doctest::test_suite("stock-fixture"))
 {
-    const auto* stock = std::getenv("MC2_EDITOR_STOCK_DIR"); REQUIRE(stock);
+    const auto& stock = editor::tests::inputs().stockDirectory;
     auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
     REQUIRE(doc);
     CommandHistory history(*doc); EntityPanels panels(*doc, history);
@@ -112,9 +112,9 @@ TEST_CASE("files/malformed recent lists reject once and preserve the live histor
     CHECK(files.active() == active);
 }
 
-TEST_CASE("files/recent publication failure preserves memory and disk while save commits")
+TEST_CASE("files/recent publication failure preserves memory and disk while save commits" * doctest::test_suite("stock-fixture"))
 {
-    const auto* stock = std::getenv("MC2_EDITOR_STOCK_DIR"); REQUIRE(stock);
+    const auto& stock = editor::tests::inputs().stockDirectory;
     auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
     REQUIRE(doc);
     const auto directory = std::filesystem::absolute(std::filesystem::path("scratch/e4-recent-tests") /
@@ -169,9 +169,9 @@ TEST_CASE("files/recent publication failure preserves memory and disk while save
     CHECK_FALSE(doc->modified());
 }
 
-TEST_CASE("files/accepted close suppresses a queued editable click with an unguarded negative control")
+TEST_CASE("files/accepted close suppresses a queued editable click with an unguarded negative control" * doctest::test_suite("stock-fixture"))
 {
-    const auto* stock = std::getenv("MC2_EDITOR_STOCK_DIR"); REQUIRE(stock);
+    const auto& stock = editor::tests::inputs().stockDirectory;
     for (bool guard : {true, false}) {
         auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
         REQUIRE(doc); CommandHistory history(*doc); EntityPanels panels(*doc, history);
@@ -208,9 +208,9 @@ TEST_CASE("files/accepted close suppresses a queued editable click with an ungua
     }
 }
 
-TEST_CASE("files/close proof cannot terminate a loop missing production close handling")
+TEST_CASE("files/close proof cannot terminate a loop missing production close handling" * doctest::test_suite("stock-fixture"))
 {
-    const auto* stock = std::getenv("MC2_EDITOR_STOCK_DIR"); REQUIRE(stock);
+    const auto& stock = editor::tests::inputs().stockDirectory;
     auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
     REQUIRE(doc); CommandHistory history(*doc); EntityPanels panels(*doc, history);
     const auto directory = std::filesystem::absolute(std::filesystem::path("scratch/e4-widget-tests") /
