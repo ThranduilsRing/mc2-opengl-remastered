@@ -10,7 +10,6 @@
 ## For modders
 
 - [docs/modding-guide.md](modding-guide.md)
-- [docs/beta/README_modder_beta.md](beta/README_modder_beta.md)
 - [docs/modding-effects.md](modding-effects.md)
 - [docs/modding-animations.md](modding-animations.md)
 - [docs/asset-pipeline.md](asset-pipeline.md)
@@ -40,7 +39,6 @@
 - [data-provenance.md](data-provenance.md) - Game Data Provenance
 - [toolchain-bom.md](toolchain-bom.md) - Toolchain bill-of-materials
 - [engine-standalone-seams.md](engine-standalone-seams.md) - Engine Standalone Seams - ENGINE-STANDALONE-SEAMS-RECON-1
-- [micro_scene_spec.md](micro_scene_spec.md) - MC2 Micro-Scene Regression Spec
 - [material-m0-contract.md](material-m0-contract.md) - Material M0 - GPU material contract pin
 - [lighting-divergence-map.md](lighting-divergence-map.md) - Lighting divergence map (ARCH-CONVERGE-S2)
 - [amd-driver-rules.md](amd-driver-rules.md) - AMD Driver Rules (RX 7900 XTX, driver 26.3.1)

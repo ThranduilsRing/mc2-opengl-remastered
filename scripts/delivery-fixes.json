@@ -20,8 +20,11 @@
     "                 name). Strongest evidence tier: it is read out of the",
     "                 binary's own bytes, so a revert, a failed compile or a",
     "                 stale copy cannot fake it.",
-    "  code_evidence  [{path, needle}] checked against `git show <embedded>:<path>`",
-    "                 for each install -- catches WITHDRAWN code, which ancestry",
+    "  code_evidence  [{path, needle, alternate_paths?}] checked against the embedded commit;",
+    "                 alternate_paths names audited relocations after a source split.",
+    "                 Each evidence item must match at least one path at that commit.",
+    "                 The original path is still checked at the introducing commit.",
+    "                 Per-install source checks catch WITHDRAWN code, which ancestry",
     "                 alone cannot (a revert leaves the introducing commit an",
     "                 ancestor forever).",
     "  data           [{kind, path|glob, needle?, min_count?}] the deploy-tree",
@@ -84,13 +87,14 @@
       "exe_needle": null,
       "code_evidence": [
         {"path": "mclib/msl.h", "needle": "CacheGpuLightDataAllLeaves"},
-        {"path": "mclib/gvactor.cpp", "needle": "CacheGpuLightDataAllLeaves"}
+        {"path": "mclib/gvactor.cpp", "needle": "gvShape->CacheGpuLightDataAllLeaves();",
+         "alternate_paths": ["mclib/gvactor_render.cpp"]}
       ],
       "data": [
         {"kind": "file", "path": "shaders/gos_tex_vertex_lighted.frag",
          "needle": "calcLightPools"}
       ],
-      "note": "Separate entry from VEHICLE-LIT-PATH-1 ON PURPOSE, because the two have different delivery: an install can carry the gather call and NOT this follow-up, in which case only the first SHAPE_NODE leaf gets a light row and every other leaf still renders at raw albedo. Its own commit message records that with only CacheGpuLightData(), deterministic A/B poses showed ZERO pixel change -- i.e. the first fix alone was user-invisible. exe_needle is null deliberately: the fix adds no new string literal, so the binary tier cannot speak and source@sha is the strongest available evidence. That is a weaker answer, and it is reported as such rather than upgraded."
+      "note": "Separate entry from VEHICLE-LIT-PATH-1 ON PURPOSE, because the two have different delivery: an install can carry the gather call and NOT this follow-up, in which case only the first SHAPE_NODE leaf gets a light row and every other leaf still renders at raw albedo. Its own commit message records that with only CacheGpuLightData(), deterministic A/B poses showed ZERO pixel change -- i.e. the first fix alone was user-invisible. exe_needle is null deliberately: the fix adds no new string literal, so the binary tier cannot speak and source@sha is the strongest available evidence. That is a weaker answer, and it is reported as such rather than upgraded. Split 6532c1ca9 moved the unchanged call to gvactor_render.cpp; both source locations are accepted, with the declaration and call still required at the embedded commit."
     },
     {
       "id": "OVERLAY-CEMENT-ADOPT-1",
