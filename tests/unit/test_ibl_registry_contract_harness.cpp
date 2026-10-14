@@ -183,7 +183,8 @@ TEST_CASE("ibl_registry_contract_harness/hdri_assets_exist_strict") {
     for (size_t i = 0; i < rc::kIblHdriSetCount; ++i) {
         std::string foundAs, path = rc::kIblHdriSets[i].exrPath;
         for (char& c : path) if (c == '\\') c = '/';
-        CAPTURE(path, strict);
+        CAPTURE(path);
+        CAPTURE(strict);
         CHECK((hdriAssetPresent(root, path, foundAs) || (!strict && declared.count(path))));
     }
 }
