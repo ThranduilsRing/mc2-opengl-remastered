@@ -152,6 +152,10 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
     return &res.first->second;
 }
 
+// The shadow island hands its depth images over in DEPTH_STENCIL_READ_ONLY (its render pass final layout); the descriptor must name the layout the image is in at
+// draw time, while the island's own copies are transitioned to SHADER_READ_ONLY.
+constexpr VkImageLayout kDirectShadowLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
 void write_descriptors(TerrainIsland* s) {
     // VK-TERRAIN-FENCE-DEFER-1: write BOTH parity sets (set[i] binds ubo[i]; every
     // other binding is identical single-instance state). Callers must guarantee no
@@ -231,7 +235,7 @@ void write_descriptors(TerrainIsland* s) {
         ? s->dynShadowExternalView : s->dynShadowView.get();
     if (dshView != VK_NULL_HANDLE && s->shadowSamp) {
         dshInfo.sampler = s->shadowSamp.get(); dshInfo.imageView = dshView;
-        dshInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        dshInfo.imageLayout = (s->dynShadowExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &dshInfo; ++n;
@@ -243,7 +247,7 @@ void write_descriptors(TerrainIsland* s) {
         ? s->csmArrayExternalView : s->csmArrayView.get();
     if (csmArrView != VK_NULL_HANDLE && s->shadowSamp) {
         csmArrInfo.sampler = s->shadowSamp.get(); csmArrInfo.imageView = csmArrView;
-        csmArrInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        csmArrInfo.imageLayout = (s->csmArrayExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 8; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmArrInfo; ++n;
@@ -253,7 +257,7 @@ void write_descriptors(TerrainIsland* s) {
         ? s->csmFullMapExternalView : s->csmFullMapView.get();
     if (csmFmView != VK_NULL_HANDLE && s->shadowSamp) {
         csmFmInfo.sampler = s->shadowSamp.get(); csmFmInfo.imageView = csmFmView;
-        csmFmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        csmFmInfo.imageLayout = (s->csmFullMapExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 9; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmFmInfo; ++n;
