@@ -18,7 +18,7 @@ code and the proof of a finished conversion, not a leak detector.
 | legacy_shape | 2 | 12 | 20 | -8 | 32 | Buffer 1/7, ShaderModule 0/2 |
 | mech | 2 | 12 | 25 | -13 | 37 | Buffer 1/12, ShaderModule 0/2 |
 | post_fog | 1 | 0 | 0 | +0 | 0 | - |
-| post_hzb | 1 | 13 | 15 | -2 | 28 | ShaderModule 0/2 |
+| post_hzb | 1 | 0 | 0 | +0 | 0 | - |
 | post_screenfx | 1 | 17 | 28 | -11 | 45 | Buffer 1/3, Fence 2/1, Pipeline 1/4, ShaderModule 0/7 |
 | post_ssao | 1 | 17 | 24 | -7 | 41 | Buffer 1/2, Pipeline 1/2, Sampler 1/2, ShaderModule 0/4 |
 | shadow | 2 | 16 | 33 | -17 | 49 | Buffer 1/9, Fence 1/2, Framebuffer 3/5, Image 1/2, ImageView 4/7, ShaderModule 0/2 |
@@ -32,7 +32,7 @@ code and the proof of a finished conversion, not a leak detector.
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 0 | 0 | +0 | 0 | - |
 
-Total over all islands: created 182, released 364, imbalance -182.
+Total over all islands: created 169, released 349, imbalance -180.
 
 ## Files
 
@@ -41,7 +41,6 @@ Total over all islands: created 182, released 364, imbalance -182.
 | `vulkan_color_prop_island.cpp` | 12 | 35 | -23 |
 | `vulkan_legacy_shape_island.cpp` | 12 | 20 | -8 |
 | `vulkan_mech_island.cpp` | 12 | 25 | -13 |
-| `vulkan_post_hzb_native.cpp` | 13 | 15 | -2 |
 | `vulkan_post_screenfx_native.cpp` | 17 | 28 | -11 |
 | `vulkan_post_ssao_native.cpp` | 17 | 24 | -7 |
 | `vulkan_shadow_island_live.cpp` | 16 | 33 | -17 |
@@ -56,18 +55,17 @@ Total over all islands: created 182, released 364, imbalance -182.
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): image_resource, light_feed, post_fog, shared_scene, sky, vfx. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): image_resource, light_feed, post_fog, post_hzb, shared_scene, sky, vfx. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
-1. post_hzb (28 manual tokens)
-2. legacy_shape (32 manual tokens)
-3. mech (37 manual tokens)
-4. post_ssao (41 manual tokens)
-5. post_screenfx (45 manual tokens)
-6. color_prop (47 manual tokens)
-7. water (47 manual tokens)
-8. shadow (49 manual tokens)
-9. present (103 manual tokens)
-10. terrain (117 manual tokens)
+1. legacy_shape (32 manual tokens)
+2. mech (37 manual tokens)
+3. post_ssao (41 manual tokens)
+4. post_screenfx (45 manual tokens)
+5. color_prop (47 manual tokens)
+6. water (47 manual tokens)
+7. shadow (49 manual tokens)
+8. present (103 manual tokens)
+9. terrain (117 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 

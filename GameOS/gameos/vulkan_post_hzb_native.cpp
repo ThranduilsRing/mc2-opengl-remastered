@@ -116,37 +116,37 @@ struct gosPostProcess::VkPostHzbNative {
     VkImageResource* depthRes = nullptr;
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
-    VkImageView   depthSampleView = VK_NULL_HANDLE;
-    VkSampler     depthSampler = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
 
+    // One reduction level: its image, view, framebuffer and UBO are owned (declared so the UBO goes first, the image last).
     struct Level {
         int w = 0, h = 0;
-        VkImage image = VK_NULL_HANDLE;
-        VmaAllocation alloc = VK_NULL_HANDLE;
-        VkImageView view = VK_NULL_HANDLE;
-        VkFramebuffer fb = VK_NULL_HANDLE;
-        VkBuffer ubo = VK_NULL_HANDLE;
-        VmaAllocation uboAlloc = VK_NULL_HANDLE;
-        VkDescriptorSet set = VK_NULL_HANDLE;
+        VkDescriptorSet set = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
+        mc2vk::OwnedImage image;
+        mc2vk::OwnedImageView view;
+        mc2vk::OwnedFramebuffer fb;
+        mc2vk::OwnedBuffer ubo;
     };
-    std::vector<Level> levels;
 
-    VkRenderPass  rpass = VK_NULL_HANDLE;
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
-    VkDescriptorPool pool = VK_NULL_HANDLE;
-    VkPipelineLayout playout = VK_NULL_HANDLE;
-    VkPipeline pipe = VK_NULL_HANDLE;
-    VkShaderModule vert = VK_NULL_HANDLE;
-    VkShaderModule frag = VK_NULL_HANDLE;
-    VkCommandPool cpool = VK_NULL_HANDLE;
-    VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkFence submitFence = VK_NULL_HANDLE; // VK-QWI-TO-FENCE-1: per-submit retire fence
+    // OWNED objects, declared in creation order: the destructor releases them in reverse (destroy_state idles the GPU first).
+    mc2vk::OwnedImageView depthSampleView;
+    mc2vk::OwnedSampler   depthSampler;
+    mc2vk::OwnedRenderPass rpass;
+    std::vector<Level> levels;   // framebuffers made against `rpass`, so released before it
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool pool;
+    mc2vk::OwnedShaderModule vert;
+    mc2vk::OwnedShaderModule frag;
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedPipeline pipe;
+    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedFence submitFence; // VK-QWI-TO-FENCE-1: per-submit retire fence
 };
 
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostHzbNative* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 VkBufferUsageFlags usage, mc2vk::OwnedBuffer& out,
                  std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -155,39 +155,17 @@ bool make_buffer(gosPostProcess::VkPostHzbNative* s, VkDeviceSize size,
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed.");
         return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
+// Releases the owned objects (the state's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostHzbNative* s) {
     if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(d);
-        if (s->pipe) vkDestroyPipeline(d, s->pipe, nullptr);
-        if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
-        if (s->vert) vkDestroyShaderModule(d, s->vert, nullptr);
-        if (s->frag) vkDestroyShaderModule(d, s->frag, nullptr);
-        if (s->pool) vkDestroyDescriptorPool(d, s->pool, nullptr);
-        if (s->dsl) vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
-        if (s->rpass) vkDestroyRenderPass(d, s->rpass, nullptr);
-        if (s->depthSampler) vkDestroySampler(d, s->depthSampler, nullptr);
-        if (s->depthSampleView) vkDestroyImageView(d, s->depthSampleView, nullptr);
-        if (s->submitFence) vkDestroyFence(d, s->submitFence, nullptr);   // VK-QWI-TO-FENCE-1
-        if (s->cpool) vkDestroyCommandPool(d, s->cpool, nullptr);
-        if (s->allocator != VK_NULL_HANDLE) {
-            for (auto& lv : s->levels) {
-                if (lv.ubo) vmaDestroyBuffer(s->allocator, lv.ubo, lv.uboAlloc);
-                if (lv.fb) vkDestroyFramebuffer(d, lv.fb, nullptr);
-                if (lv.view) vkDestroyImageView(d, lv.view, nullptr);
-                if (lv.image) vmaDestroyImage(s->allocator, lv.image, lv.alloc);
-            }
-        }
-    }
+    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostHzbNative{};
     s->disabled = disabled;
@@ -243,8 +221,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         vci.format = s->depthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-        r = vkCreateImageView(s->device, &vci, nullptr, &s->depthSampleView);
-        if (r != VK_SUCCESS) {
+        if (!mc2vk::create(s->depthSampleView, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
             vlog("depth sample view create failed (%d).", (int)r);
             return false;
         }
@@ -258,8 +235,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        r = vkCreateSampler(s->device, &sci, nullptr, &s->depthSampler);
-        if (r != VK_SUCCESS) {
+        if (!mc2vk::create(s->depthSampler, s->device, [&](VkSampler* h) { r = vkCreateSampler(s->device, &sci, nullptr, h); return r; })) {
             vlog("vkCreateSampler failed (%d).", (int)r);
             return false;
         }
@@ -296,8 +272,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         rpci.pSubpasses = &sub;
         rpci.dependencyCount = 1;
         rpci.pDependencies = &dep;
-        r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass);
-        if (r != VK_SUCCESS) {
+        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { r = vkCreateRenderPass(s->device, &rpci, nullptr, h); return r; })) {
             vlog("vkCreateRenderPass failed (%d).", (int)r);
             return false;
         }
@@ -325,40 +300,38 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             VmaAllocationCreateInfo aci{};
             aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-            if (vmaCreateImage(s->allocator, &ici, &aci, &lv.image, &lv.alloc, nullptr) != VK_SUCCESS) {
+            if (!lv.image.create(s->allocator, s->device, ici, aci, "posthzb.level", level)) {
                 vlog("vmaCreateImage(level %d) failed.", level);
                 return false;
             }
-            mc2vk::nameObjectAt(s->device, lv.image, "posthzb.level", level);
 
             VkImageViewCreateInfo vci{};
             vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            vci.image = lv.image;
+            vci.image = lv.image.get();
             vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
             vci.format = kLevelFmt;
             vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-            r = vkCreateImageView(s->device, &vci, nullptr, &lv.view);
-            if (r != VK_SUCCESS) {
+            if (!mc2vk::create(lv.view, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
                 vlog("vkCreateImageView(level %d) failed (%d).", level, (int)r);
                 return false;
             }
 
             VkFramebufferCreateInfo fci{};
             fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            fci.renderPass = s->rpass;
+            fci.renderPass = s->rpass.get();
             fci.attachmentCount = 1;
-            fci.pAttachments = &lv.view;
+            const VkImageView levelView = lv.view.get();
+            fci.pAttachments = &levelView;
             fci.width = static_cast<uint32_t>(lw);
             fci.height = static_cast<uint32_t>(lh);
             fci.layers = 1;
-            r = vkCreateFramebuffer(s->device, &fci, nullptr, &lv.fb);
-            if (r != VK_SUCCESS) {
+            if (!mc2vk::create(lv.fb, s->device, [&](VkFramebuffer* h) { r = vkCreateFramebuffer(s->device, &fci, nullptr, h); return r; })) {
                 vlog("vkCreateFramebuffer(level %d) failed (%d).", level, (int)r);
                 return false;
             }
 
             if (!make_buffer(s, sizeof(HzbLevelParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                             &lv.ubo, &lv.uboAlloc, "posthzb.levelUbo", level)) {
+                             lv.ubo, "posthzb.levelUbo", level)) {
                 return false;
             }
 
@@ -373,10 +346,9 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
                 params.srcTexel[1] = 1.0f / static_cast<float>(prev.h);
                 params.reduce = 1;
             }
-            void* p = nullptr;
-            if (vmaMapMemory(s->allocator, lv.uboAlloc, &p) == VK_SUCCESS) {
+            if (void* p = lv.ubo.map()) {
                 std::memcpy(p, &params, sizeof(params));
-                vmaUnmapMemory(s->allocator, lv.uboAlloc);
+                lv.ubo.unmap();
             } else {
                 vlog("vmaMapMemory(ubo level %d) failed.", level);
                 return false;
@@ -403,8 +375,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2;
         lci.pBindings = binds;
-        r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl);
-        if (r != VK_SUCCESS) {
+        if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorSetLayout failed (%d).", (int)r);
             return false;
         }
@@ -418,19 +389,19 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         pci.maxSets = static_cast<uint32_t>(mipCount);
         pci.poolSizeCount = 2;
         pci.pPoolSizes = sizes;
-        r = vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool);
-        if (r != VK_SUCCESS) {
+        if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorPool failed (%d).", (int)r);
             return false;
         }
 
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
         for (int level = 0; level < mipCount; ++level) {
             auto& lv = s->levels[static_cast<size_t>(level)];
             VkDescriptorSetAllocateInfo dsai{};
             dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            dsai.descriptorPool = s->pool;
+            dsai.descriptorPool = s->pool.get();
             dsai.descriptorSetCount = 1;
-            dsai.pSetLayouts = &s->dsl;
+            dsai.pSetLayouts = &dslHandle;
             r = vkAllocateDescriptorSets(s->device, &dsai, &lv.set);
             if (r != VK_SUCCESS) {
                 vlog("vkAllocateDescriptorSets(level %d) failed (%d).", level, (int)r);
@@ -438,11 +409,11 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             }
 
             VkDescriptorImageInfo srcInfo{};
-            srcInfo.sampler = s->depthSampler;
-            srcInfo.imageView = (level == 0) ? s->depthSampleView
-                                             : s->levels[static_cast<size_t>(level) - 1].view;
+            srcInfo.sampler = s->depthSampler.get();
+            srcInfo.imageView = (level == 0) ? s->depthSampleView.get()
+                                             : s->levels[static_cast<size_t>(level) - 1].view.get();
             srcInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            VkDescriptorBufferInfo uboInfo{lv.ubo, 0, VK_WHOLE_SIZE};
+            VkDescriptorBufferInfo uboInfo{lv.ubo.get(), 0, VK_WHOLE_SIZE};
             VkWriteDescriptorSet writes[2]{};
             writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writes[0].dstSet = lv.set;
@@ -460,9 +431,9 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         }
     }
 
-    s->vert = load_spv(s->device, spv_dir() + "hzb_reduce.vert.spv");
-    s->frag = load_spv(s->device, spv_dir() + "hzb_reduce.frag.spv");
-    if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) {
+    s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "hzb_reduce.vert.spv"));
+    s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "hzb_reduce.frag.spv"));
+    if (!s->vert || !s->frag) {
         setFallback("spv_load_failed");
         return false;
     }
@@ -470,10 +441,10 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
     {
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
         plci.setLayoutCount = 1;
-        plci.pSetLayouts = &s->dsl;
-        r = vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout);
-        if (r != VK_SUCCESS) {
+        plci.pSetLayouts = &dslHandle;
+        if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { r = vkCreatePipelineLayout(s->device, &plci, nullptr, h); return r; })) {
             vlog("vkCreatePipelineLayout failed (%d).", (int)r);
             return false;
         }
@@ -481,11 +452,11 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-        stages[0].module = s->vert;
+        stages[0].module = s->vert.get();
         stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        stages[1].module = s->frag;
+        stages[1].module = s->frag.get();
         stages[1].pName = "main";
 
         VkPipelineVertexInputStateCreateInfo vin{};
@@ -530,12 +501,12 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         gp.pMultisampleState = &ms;
         gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
-        gp.layout = s->playout;
-        gp.renderPass = s->rpass;
+        gp.layout = s->playout.get();
+        gp.renderPass = s->rpass.get();
         gp.subpass = 0;
-        r = vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe);
-        mc2vk::nameObject(s->device, s->pipe, "posthzb.pipe");
-        if (r != VK_SUCCESS) {
+        const bool pipeOk = mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { r = vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); return r; });
+        mc2vk::nameObject(s->device, s->pipe.get(), "posthzb.pipe");
+        if (!pipeOk) {
             vlog("vkCreateGraphicsPipelines failed (%d).", (int)r);
             return false;
         }
@@ -546,14 +517,13 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
-        r = vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool);
-        if (r != VK_SUCCESS) {
+        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
             vlog("vkCreateCommandPool failed (%d).", (int)r);
             return false;
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool;
+        cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 2;
         r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
@@ -687,17 +657,17 @@ bool gosPostProcess::runVkPostHzbNative()
         auto& lv = s->levels[static_cast<size_t>(level)];
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->rpass;
-        rbi.framebuffer = lv.fb;
+        rbi.renderPass = s->rpass.get();
+        rbi.framebuffer = lv.fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(lv.w), static_cast<uint32_t>(lv.h)}};
         rbi.clearValueCount = 0;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkViewport vp{0.0f, 0.0f, static_cast<float>(lv.w), static_cast<float>(lv.h), 0.0f, 1.0f};
         VkRect2D sc{{0, 0}, {static_cast<uint32_t>(lv.w), static_cast<uint32_t>(lv.h)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &sc);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &lv.set, 0, nullptr);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &lv.set, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdEndRenderPass(cb);
     }
@@ -719,17 +689,16 @@ bool gosPostProcess::runVkPostHzbNative()
     // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
     // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
     // fence creation ever fails.
-    if (s->submitFence == VK_NULL_HANDLE) {
+    if (!s->submitFence) {
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (vkCreateFence(s->device, &fci, nullptr, &s->submitFence) != VK_SUCCESS)
-            s->submitFence = VK_NULL_HANDLE;
+        mc2vk::create(s->submitFence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue drain below stands in
     }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed");
         s->disabled = true;
         return false;
@@ -739,14 +708,15 @@ bool gosPostProcess::runVkPostHzbNative()
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
     {
         const clk::time_point tWait0 = clk::now();
-        if (s->submitFence != VK_NULL_HANDLE) {
-            if (vkWaitForFences(s->device, 1, &s->submitFence, VK_TRUE,
+        if (s->submitFence) {
+            const VkFence submitFence = s->submitFence.get();
+            if (vkWaitForFences(s->device, 1, &submitFence, VK_TRUE,
                                 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
                 setFallback("fence_timeout");
                 s->disabled = true;
                 return false;
             }
-            vkResetFences(s->device, 1, &s->submitFence);
+            vkResetFences(s->device, 1, &submitFence);
         } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
             setFallback("queue_wait_idle_failed");
             s->disabled = true;
