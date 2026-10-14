@@ -461,12 +461,11 @@ void	LogisticsData::setMissionCompleted( )
 			(*iter).setUsed( 0 );
 		}
 
-	for ( EList< CObjective*, CObjective* >::EIterator oIter =  Team::home->objectives.Begin();
-			!oIter.IsDone(); oIter++ )
+	for ( CObjective* pObjective : Team::home->objectives )
 	{
-		if ( (*oIter)->Status(Team::home->objectives) == OS_SUCCESSFUL )
+		if ( pObjective->Status(Team::home->objectives) == OS_SUCCESSFUL )
 		{
-			addCBills( (*oIter)->ResourcePoints() );
+			addCBills( pObjective->ResourcePoints() );
 		}
 	}
 

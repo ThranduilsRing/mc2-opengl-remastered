@@ -446,15 +446,12 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 		Team::home->objectives.Read(&missionFile);
 
 		Team::home->numPrimaryObjectives = 0;
-		CObjectives::EIterator it = Team::home->objectives.Begin();
-		while (!it.IsDone())
+		for ( CObjective* pObjective : Team::home->objectives )
 		{
-			if (1 == (*it)->Priority())
+			if (1 == pObjective->Priority())
 			{
 				Team::home->numPrimaryObjectives += 1;
 			}
-
-			it++;
 		}
 	}
 

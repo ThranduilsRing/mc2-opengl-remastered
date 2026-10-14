@@ -7,7 +7,6 @@ Objective.h			: Interface for the Objective component.
 //===========================================================================//
 \*************************************************************************************************/
 
-#include"elist.h"
 #include"objective_flags.h"
 #include"objective_text.h"
 #include"platform_tchar.h"
@@ -459,12 +458,54 @@ public:
 };
 
 class CObjectives;
-class  CObjectiveConditionList : public EList <CObjectiveCondition *, CObjectiveCondition *> {};
-class  CObjectiveActionList : public EList <CObjectiveAction *, CObjectiveAction *> {};
 
-class CObjective : public/*maybe protected*/ CObjectiveConditionList {
+// An ordered list that owns its elements, for the parts of an objective. Order is evaluation order and save order; elements are heap objects, so an element's address
+// never changes while the list grows. Nothing removes a single element: Clear() frees the whole list head to tail. Iterating yields the plain pointers the call sites
+// use; Append() takes ownership and rejects null. The list is not copyable: CObjective and CObjectives copy by building each element through the species factory.
+template <class T>
+class CObjectiveOwnedList {
+	std::vector<std::unique_ptr<T>> m_items;
+public:
+	class const_iterator {
+		typename std::vector<std::unique_ptr<T>>::const_iterator m_it;
+	public:
+		using iterator_category = std::forward_iterator_tag;
+		using value_type = T *;
+		using difference_type = std::ptrdiff_t;
+		using pointer = T * const *;
+		using reference = T *;
+		const_iterator() = default;
+		explicit const_iterator(typename std::vector<std::unique_ptr<T>>::const_iterator it) : m_it(it) {}
+		T *operator*() const { return m_it->get(); }
+		const_iterator &operator++() { ++m_it; return *this; }
+		const_iterator operator++(int) { const_iterator before(*this); ++m_it; return before; }
+		friend bool operator==(const const_iterator &a, const const_iterator &b) { return a.m_it == b.m_it; }
+	};
+	using iterator = const_iterator;
+
+	CObjectiveOwnedList() = default;
+	CObjectiveOwnedList(const CObjectiveOwnedList &) = delete;
+	CObjectiveOwnedList &operator=(const CObjectiveOwnedList &) = delete;
+
+	bool Append(T *element) {
+		if (!element) { return false; }
+		m_items.emplace_back(element);
+		return true;
+	}
+	unsigned long Count() const { return static_cast<unsigned long>(m_items.size()); }
+	void Clear() {
+		for (auto &element : m_items) { element.reset(); }
+		m_items.clear();
+	}
+	const_iterator begin() const { return const_iterator(m_items.cbegin()); }
+	const_iterator end() const { return const_iterator(m_items.cend()); }
+};
+
+using CObjectiveConditionList = CObjectiveOwnedList<CObjectiveCondition>;
+using CObjectiveActionList = CObjectiveOwnedList<CObjectiveAction>;
+
+class CObjective {
 private:
-	typedef CObjectiveConditionList inherited;
 	int m_alignment;
 	objective_text::Fields m_text;
 	bool m_titleUseResourceString;
@@ -502,6 +543,8 @@ public: /* we could make this protected if only the editdialog is to access thes
 public:
 	typedef CObjectiveConditionList condition_list_type;
 	typedef CObjectiveActionList action_list_type;
+	/* The success conditions: every one must hold for the objective to succeed. */
+	condition_list_type m_conditionList;
 	action_list_type m_actionList;
 	condition_list_type m_failureConditionList;
 	action_list_type m_failureActionList;
@@ -593,8 +636,14 @@ public:
 	friend class Mission;
 };
 
-class CObjectives : public/*maybe protected*/ EList <CObjective *, CObjective *> {
+class CObjectives {
+	CObjectiveOwnedList<CObjective> m_list;
 public:
+	using const_iterator = CObjectiveOwnedList<CObjective>::const_iterator;
+	const_iterator begin() const { return m_list.begin(); }
+	const_iterator end() const { return m_list.end(); }
+	unsigned long Count() const { return m_list.Count(); }
+	bool Append(CObjective *objective) { return m_list.Append(objective); }
 	CObjectives(int alignment = 0) { m_alignment = alignment; }
 	CObjectives(const CObjectives &master) { (*this) = master; }
 	~CObjectives() { Clear(); }
@@ -608,7 +657,6 @@ public:
 	objective_status_type Status();
 	CBooleanArray boolFlags;
 private:
-	typedef EList <CObjective *, CObjective *> inherited;
 	int m_alignment;
 };
 

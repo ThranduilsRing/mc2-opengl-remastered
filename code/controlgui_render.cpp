@@ -638,9 +638,8 @@ void ControlGui::render( bool bPaused )
 			}
 			g_tacticalOverview.setCardHits( hits, nh );
 			if ( markerA > 0.01f && Team::home )
-				for ( EList< CObjective*, CObjective* >::EIterator it = Team::home->objectives.Begin();
-				      !it.IsDone(); it++ )
-					(*it)->RenderOverviewMarker( eye, markerA );
+				for ( CObjective* pObjective : Team::home->objectives )
+					pObjective->RenderOverviewMarker( eye, markerA );
 		}
 
 		// slice C site 1 (render dispatch): registry under MC2_HUD_IMGUI_TABS,

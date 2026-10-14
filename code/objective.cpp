@@ -1272,54 +1272,52 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	}
 
 	{
-		CObjective::EConstIterator it = master.Begin();
-		while (!it.IsDone()) {
-			condition_species_type conditionSpecies = (*it)->Species();
+		for (auto* const pItem : master.m_conditionList) {
+			condition_species_type conditionSpecies = pItem->Species();
 			CObjectiveCondition *pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
 			// CRASH-HARDEN-OBJECTIVE-ICON-1: factory returns null for unimplemented
 			// (bad/mod-asset) condition species -> skip instead of null-deref.
 			if (pTmpCondition) {
-				(*pTmpCondition).CastAndCopy(*it);
-				Append(pTmpCondition);
+				(*pTmpCondition).CastAndCopy(pItem);
+				m_conditionList.Append(pTmpCondition);
 			}
-			it++;
 		}
 	}
 
 	{
-		action_list_type::EConstIterator it = master.m_actionList.Begin();
-		while (!it.IsDone()) {
-			action_species_type actionSpecies = (*it)->Species();
+		for (auto* const pItem : master.m_actionList) {
+			action_species_type actionSpecies = pItem->Species();
 			CObjectiveAction *pTmpAction = new_CObjectiveAction(actionSpecies, m_alignment);
-			(*pTmpAction).CastAndCopy(*it);
-			m_actionList.Append(pTmpAction);
-			it++;
+			// An action species the factory does not implement yields null: skip it, as the condition copies do.
+			if (pTmpAction) {
+				(*pTmpAction).CastAndCopy(pItem);
+				m_actionList.Append(pTmpAction);
+			}
 		}
 	}
 
 	{
-		condition_list_type::EConstIterator it = master.m_failureConditionList.Begin();
-		while (!it.IsDone()) {
-			condition_species_type conditionSpecies = (*it)->Species();
+		for (auto* const pItem : master.m_failureConditionList) {
+			condition_species_type conditionSpecies = pItem->Species();
 			CObjectiveCondition *pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
 			// CRASH-HARDEN-OBJECTIVE-ICON-1: factory returns null for unimplemented
 			// (bad/mod-asset) condition species -> skip instead of null-deref.
 			if (pTmpCondition) {
-				(*pTmpCondition).CastAndCopy(*it);
+				(*pTmpCondition).CastAndCopy(pItem);
 				m_failureConditionList.Append(pTmpCondition);
 			}
-			it++;
 		}
 	}
 
 	{
-		action_list_type::EConstIterator it = master.m_failureActionList.Begin();
-		while (!it.IsDone()) {
-			action_species_type actionSpecies = (*it)->Species();
+		for (auto* const pItem : master.m_failureActionList) {
+			action_species_type actionSpecies = pItem->Species();
 			CObjectiveAction *pTmpAction = new_CObjectiveAction(actionSpecies, m_alignment);
-			(*pTmpAction).CastAndCopy(*it);
-			m_failureActionList.Append(pTmpAction);
-			it++;
+			// An action species the factory does not implement yields null: skip it, as the condition copies do.
+			if (pTmpAction) {
+				(*pTmpAction).CastAndCopy(pItem);
+				m_failureActionList.Append(pTmpAction);
+			}
 		}
 	}
 
@@ -1330,74 +1328,36 @@ void CObjective::Clear() {
 	m_resolved = false;
 	m_changedStatus = false;
 
-	{
-		EIterator it = Begin();
-		while (!it.IsDone()) {
-			delete (*it);
-			it++;
-		}
-		inherited::Clear();
-	}
-
-	{
-		action_list_type::EIterator it = m_actionList.Begin();
-		while (!it.IsDone()) {
-			delete (*it);
-			it++;
-		}
-		m_actionList.Clear();
-	}
-
-	{
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
-			delete (*it);
-			it++;
-		}
-		m_failureConditionList.Clear();
-	}
-
-	{
-		action_list_type::EIterator it = m_failureActionList.Begin();
-		while (!it.IsDone()) {
-			delete (*it);
-			it++;
-		}
-		m_failureActionList.Clear();
-	}
+	// The lists own their elements and free them head to tail, in the order the parts were declared.
+	m_conditionList.Clear();
+	m_actionList.Clear();
+	m_failureConditionList.Clear();
+	m_failureActionList.Clear();
 }
 
 void CObjective::Alignment(int alignment) {
 	m_alignment = alignment;
 	{
-		EIterator it = Begin();
-		while (!it.IsDone()) {
-			(*it)->Alignment(m_alignment);
-			it++;
+		for (auto* const pItem : m_conditionList) {
+			pItem->Alignment(m_alignment);
 		}
 	}
 
 	{
-		action_list_type::EIterator it = m_actionList.Begin();
-		while (!it.IsDone()) {
-			(*it)->Alignment(m_alignment);
-			it++;
+		for (auto* const pItem : m_actionList) {
+			pItem->Alignment(m_alignment);
 		}
 	}
 
 	{
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
-			(*it)->Alignment(m_alignment);
-			it++;
+		for (auto* const pItem : m_failureConditionList) {
+			pItem->Alignment(m_alignment);
 		}
 	}
 
 	{
-		action_list_type::EIterator it = m_failureActionList.Begin();
-		while (!it.IsDone()) {
-			(*it)->Alignment(m_alignment);
-			it++;
+		for (auto* const pItem : m_failureActionList) {
+			pItem->Alignment(m_alignment);
 		}
 	}
 }
@@ -1530,7 +1490,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 			if (!pNewObjectiveCondition) { assert(false); delete pNewObjectiveCondition; continue; }
 			bool bresult = pNewObjectiveCondition->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveCondition; continue; }
-			Append(pNewObjectiveCondition);
+			m_conditionList.Append(pNewObjectiveCondition);
 		}
 	}
 
@@ -1601,24 +1561,21 @@ objective_status_type CObjective::Status() {
 		objective_status_type objectiveStatus = OS_SUCCESSFUL;
 		{
 			/*evaluate the status of the success conditions*/
-			EIterator it = Begin();
-			while (!it.IsDone()) {
-				objective_status_type conditionStatus = (*it)->Status();
+			for (auto* const pItem : m_conditionList) {
+				objective_status_type conditionStatus = pItem->Status();
 				if (OS_FAILED == conditionStatus) {
 					objectiveStatus = OS_FAILED;
 					break;
 				} else if (OS_UNDETERMINED == conditionStatus) {
 					objectiveStatus = OS_UNDETERMINED;
 				}
-				it++;
 			}
 		}
 		if ((OS_FAILED != objectiveStatus) && (0 < m_failureConditionList.Count())) {
 			/*evaluate the status of the failure conditions*/
 			objective_status_type failureStatus = OS_SUCCESSFUL;
-			EIterator it = m_failureConditionList.Begin();
-			while (!it.IsDone()) {
-				objective_status_type conditionStatus = (*it)->Status();
+			for (auto* const pItem : m_failureConditionList) {
+				objective_status_type conditionStatus = pItem->Status();
 				if (OS_FAILED == conditionStatus) {
 					failureStatus = OS_FAILED;
 					break;
@@ -1626,7 +1583,6 @@ objective_status_type CObjective::Status() {
 					failureStatus = OS_UNDETERMINED;
 					break;
 				}
-				it++;
 			}
 			if (OS_SUCCESSFUL == failureStatus) {
 				/*the failure conditions are satisfied*/
@@ -1642,10 +1598,8 @@ objective_status_type CObjective::Status() {
 			if (!IsHiddenTrigger()) {
 				soundSystem->playBettySample(BETTY_CANNOT_COMP_OBJ);
 			}
-			action_list_type::EIterator it = m_failureActionList.Begin();
-			while (!it.IsDone()) {
-				(*it)->Execute();
-				it++;
+			for (auto* const pItem : m_failureActionList) {
+				pItem->Execute();
 			}
 			return m_resolvedStatus;
 		} else {
@@ -1655,10 +1609,8 @@ objective_status_type CObjective::Status() {
 			if (!IsHiddenTrigger()) {
 				soundSystem->playBettySample(BETTY_OBJECTIVE_COMPLETE);
 			}
-			action_list_type::EIterator it = m_actionList.Begin();
-			while (!it.IsDone()) {
-				(*it)->Execute();
-				it++;
+			for (auto* const pItem : m_actionList) {
+				pItem->Execute();
 			}
 			return m_resolvedStatus;
 		}
@@ -1678,23 +1630,22 @@ objective_status_type CObjective::Status(CObjectives &objectives) {
 	objective_status_type retval = OS_SUCCESSFUL;
 	objective_status_type statusOfPreviousPrimaryObjective = OS_SUCCESSFUL;
 	bool allPreviousPrimaryObjectivesHaveBeenCompleted = true;
-	CObjectives::EIterator it = objectives.Begin();
-	while (!it.IsDone()) {
+	for (auto* const pItem : objectives) {
 		objective_status_type status;
-		if (((*it)->AllPreviousPrimaryObjectivesMustBeComplete()) && (!allPreviousPrimaryObjectivesHaveBeenCompleted)) {
+		if ((pItem->AllPreviousPrimaryObjectivesMustBeComplete()) && (!allPreviousPrimaryObjectivesHaveBeenCompleted)) {
 			status = OS_UNDETERMINED;
-		} else if (((*it)->PreviousPrimaryObjectiveMustBeComplete()) && (OS_SUCCESSFUL != statusOfPreviousPrimaryObjective)) {
-			assert(!(*it)->AllPreviousPrimaryObjectivesMustBeComplete());
+		} else if ((pItem->PreviousPrimaryObjectiveMustBeComplete()) && (OS_SUCCESSFUL != statusOfPreviousPrimaryObjective)) {
+			assert(!pItem->AllPreviousPrimaryObjectivesMustBeComplete());
 			assert(OS_UNDETERMINED == statusOfPreviousPrimaryObjective);
 			status = statusOfPreviousPrimaryObjective;
 		} else {
-			status = (*it)->Status();
+			status = pItem->Status();
 		}
-		if (this == (*it)) {
+		if (this == pItem) {
 			return status;
 		}
 		assert (OS_FAILED != retval);
-		if (1 == (*it)->Priority()) {
+		if (1 == pItem->Priority()) {
 			if (OS_FAILED ==  status) {
 				allPreviousPrimaryObjectivesHaveBeenCompleted = false;
 				retval = OS_FAILED;
@@ -1706,7 +1657,6 @@ objective_status_type CObjective::Status(CObjectives &objectives) {
 			}
 			statusOfPreviousPrimaryObjective = status;
 		}
-		it++;
 	}
 	return retval;
 
@@ -1770,33 +1720,24 @@ CObjectives &CObjectives::operator=(const CObjectives &master) {
 	m_alignment = master.m_alignment;
 
 	Clear();
-	CObjectives::EConstIterator it = master.Begin();
-	while (!it.IsDone()) {
-		//CObjective *tmpObjective = new CObjective(*(*it));
+	for (auto* const pItem : master) {
+		//CObjective *tmpObjective = new CObjective(*pItem);
 		CObjective *tmpObjective = new CObjective(m_alignment);
-		(*tmpObjective) = (*(*it));
-		Append(tmpObjective);
-		it++;
+		(*tmpObjective) = (*pItem);
+		m_list.Append(tmpObjective);
 	}
 	return (*this);
 }
 
 void CObjectives::Clear() {
-	EIterator it = Begin();
-	while (!it.IsDone()) {
-		delete (*it);
-		it++;
-	}
-	inherited::Clear();
+	m_list.Clear();
 	boolFlags.Clear();
 }
 
 void CObjectives::Alignment(int alignment) {
 	m_alignment = alignment;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
-		(*it)->Alignment(m_alignment);
-		it++;
+	for (auto* const pItem : *this) {
+		pItem->Alignment(m_alignment);
 	}
 }
 
@@ -1858,7 +1799,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 				secondaryMarkers++;
 			
 			if (true != bresult) { assert(false); delete pNewObjective; continue; }
-			Append(pNewObjective);
+			m_list.Append(pNewObjective);
 		}
 	}
 	return true;
@@ -1868,29 +1809,28 @@ objective_status_type CObjectives::Status() {
 	objective_status_type retval = OS_SUCCESSFUL;
 	objective_status_type statusOfPreviousPrimaryObjective = OS_SUCCESSFUL;
 	bool allPreviousPrimaryObjectivesHaveBeenCompleted = true;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
-		if ((*it)->IsActive()) {
+	for (auto* const pItem : *this) {
+		if (pItem->IsActive()) {
 			/* check if objective status needs to be reset */
-			if ((*it)->ResetStatusOnFlag()) {
-				if (Team::teams[Alignment()]->objectives.boolFlags.getElementValue((*it)->ResetStatusFlagID())) {
-					Team::teams[Alignment()]->objectives.boolFlags.setElementValue((*it)->ResetStatusFlagID(), false);
-					(*it)->Status(OS_UNDETERMINED);
+			if (pItem->ResetStatusOnFlag()) {
+				if (Team::teams[Alignment()]->objectives.boolFlags.getElementValue(pItem->ResetStatusFlagID())) {
+					Team::teams[Alignment()]->objectives.boolFlags.setElementValue(pItem->ResetStatusFlagID(), false);
+					pItem->Status(OS_UNDETERMINED);
 					//mission->missionInterface->showObjectives(true);
 				}
 			}
 			objective_status_type status;
-			if (((*it)->AllPreviousPrimaryObjectivesMustBeComplete()) && (!allPreviousPrimaryObjectivesHaveBeenCompleted)) {
+			if ((pItem->AllPreviousPrimaryObjectivesMustBeComplete()) && (!allPreviousPrimaryObjectivesHaveBeenCompleted)) {
 				status = OS_UNDETERMINED;
-			} else if (((*it)->PreviousPrimaryObjectiveMustBeComplete()) && (OS_SUCCESSFUL != statusOfPreviousPrimaryObjective)) {
-				assert(!(*it)->AllPreviousPrimaryObjectivesMustBeComplete());
+			} else if ((pItem->PreviousPrimaryObjectiveMustBeComplete()) && (OS_SUCCESSFUL != statusOfPreviousPrimaryObjective)) {
+				assert(!pItem->AllPreviousPrimaryObjectivesMustBeComplete());
 				assert(OS_UNDETERMINED == statusOfPreviousPrimaryObjective);
 				status = statusOfPreviousPrimaryObjective;
 			} else {
-				status = (*it)->Status();
+				status = pItem->Status();
 			}
 			assert (OS_FAILED != retval);
-			if (1 == (*it)->Priority()) {
+			if (1 == pItem->Priority()) {
 				if (OS_FAILED ==  status) {
 					allPreviousPrimaryObjectivesHaveBeenCompleted = false;
 					retval = OS_FAILED;
@@ -1904,21 +1844,20 @@ objective_status_type CObjectives::Status() {
 			}
 		} else {
 			/* check if inactive objective needs to become active */
-			if ((*it)->ActivateOnFlag()) {
-				if (1 == (*it)->Priority()) {
+			if (pItem->ActivateOnFlag()) {
+				if (1 == pItem->Priority()) {
 					/* do not end the mission if a primary objective is still inactive */
 					retval = OS_UNDETERMINED;
 				}
-				//if (mission->missionObjectives.boolFlags.getElementValue((*it)->ActivateFlagID())) {
-				if (Team::teams[Alignment()]->objectives.boolFlags.getElementValue((*it)->ActivateFlagID())) {
-					(*it)->IsActive(true);
-					(*it)->ActivationTime(mission->actualTime);
+				//if (mission->missionObjectives.boolFlags.getElementValue(pItem->ActivateFlagID())) {
+				if (Team::teams[Alignment()]->objectives.boolFlags.getElementValue(pItem->ActivateFlagID())) {
+					pItem->IsActive(true);
+					pItem->ActivationTime(mission->actualTime);
 					mission->missionInterface->showObjectives(true);
 					//mission->missionInterface->controlGui.handleClick(OBJECTIVES_COMMAND);
 				}
 			}
 		}
-		it++;
 	}
 
 	return retval;
@@ -2086,7 +2025,7 @@ bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives )
 
 		CMoveAnyUnitToArea *pCondition = new CMoveAnyUnitToArea(pNewObjective->Alignment());
 		pCondition->SetParams(targetCenterX, targetCenterY, targetRadius);
-		pNewObjective->Append(pCondition);
+		pNewObjective->m_conditionList.Append(pCondition);
 
 		C_RemoveStructure *pAction = new C_RemoveStructure(pNewObjective->Alignment());
 		bool bresult = pAction->SetParams(targetCenterX, targetCenterY);
@@ -2227,7 +2166,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 	file->writeIdBoolean( "ResetStatusOnFlag", m_resetStatusOnFlag );
 	objective_text::write(*file, "ResetStatusFlagID", m_text.resetStatusFlagID);
 
-	file->writeIdULong( "NumConditions", Count() );
+	file->writeIdULong( "NumConditions", m_conditionList.Count() );
 	file->writeIdULong( "NumActions", m_actionList.Count() );
 	file->writeIdULong( "NumFailureConditions", m_failureConditionList.Count() );
 	file->writeIdULong( "NumFailureActions", m_failureActionList.Count() );
@@ -2251,53 +2190,45 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 
 	{
 		int i = 0;
-		EIterator it = Begin();
-		while (!it.IsDone()) {
+		for (auto* const pItem : m_conditionList) {
 			file->writeBlock( std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "ConditionSpecies", (unsigned long)(*it)->Species());
-			file->writeIdString( "ConditionSpeciesString", g_conditionSpeciesStringArray[(int)(*it)->Species()]);
-			(*it)->Save(file);
+			file->writeIdULong( "ConditionSpecies", (unsigned long)pItem->Species());
+			file->writeIdString( "ConditionSpeciesString", g_conditionSpeciesStringArray[(int)pItem->Species()]);
+			pItem->Save(file);
 			i += 1;
-			it++;
 		}
 	}
 
 	{
 		int i = 0;
-		action_list_type::EIterator it = m_actionList.Begin();
-		while (!it.IsDone()) {
+		for (auto* const pItem : m_actionList) {
 			file->writeBlock( std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "ActionSpecies", (unsigned long)(*it)->Species());
-			file->writeIdString( "ActionSpeciesString", g_actionSpeciesStringArray[(int)(*it)->Species()]);
-			(*it)->Save(file);
+			file->writeIdULong( "ActionSpecies", (unsigned long)pItem->Species());
+			file->writeIdString( "ActionSpeciesString", g_actionSpeciesStringArray[(int)pItem->Species()]);
+			pItem->Save(file);
 			i += 1;
-			it++;
 		}
 	}
 
 	{
 		int i = 0;
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
+		for (auto* const pItem : m_failureConditionList) {
 			file->writeBlock( std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "FailureConditionSpecies", (unsigned long)(*it)->Species());
-			file->writeIdString( "FailureConditionSpeciesString", g_conditionSpeciesStringArray[(int)(*it)->Species()]);
-			(*it)->Save(file);
+			file->writeIdULong( "FailureConditionSpecies", (unsigned long)pItem->Species());
+			file->writeIdString( "FailureConditionSpeciesString", g_conditionSpeciesStringArray[(int)pItem->Species()]);
+			pItem->Save(file);
 			i += 1;
-			it++;
 		}
 	}
 
 	{
 		int i = 0;
-		action_list_type::EIterator it = m_failureActionList.Begin();
-		while (!it.IsDone()) {
+		for (auto* const pItem : m_failureActionList) {
 			file->writeBlock( std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "FailureActionSpecies", (unsigned long)(*it)->Species());
-			file->writeIdString( "FailureActionSpeciesString", g_actionSpeciesStringArray[(int)(*it)->Species()]);
-			(*it)->Save(file);
+			file->writeIdULong( "FailureActionSpecies", (unsigned long)pItem->Species());
+			file->writeIdString( "FailureActionSpeciesString", g_actionSpeciesStringArray[(int)pItem->Species()]);
+			pItem->Save(file);
 			i += 1;
-			it++;
 		}
 	}
 
@@ -2315,12 +2246,10 @@ bool CObjectives::Save( FitIniFile* file )
 
 	boolFlags.save(Alignment(),file);
 
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	for (auto* const pItem : *this) {
 		file->writeBlock( std::format("Team{}Objective{}", Alignment(), i).c_str() );
-		(*it)->Save(file, i);
+		pItem->Save(file, i);
 		i += 1;
-		it++;
 	}
 
 	return true;

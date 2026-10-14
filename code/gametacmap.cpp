@@ -243,8 +243,7 @@ void GameTacMap::render()
 	//-----------------------------------------------------------
 	// Render the objective markers
 	long count = 0;
-	for ( EList< CObjective*, CObjective* >::EIterator iter =  Team::home->objectives.Begin();
-		!iter.IsDone(); iter++ )
+	for ( CObjective* pObjective : Team::home->objectives )
 	{
 		//We are there.  Start flashing.
 		if ((objectiveAnimationId == count) && objectiveNumFlashes)
@@ -257,7 +256,7 @@ void GameTacMap::render()
 			}
 			else if ( objectiveFlashTime > 0.25f)
 			{
-				(*iter)->RenderMarkers(this, 0);
+				pObjective->RenderMarkers(this, 0);
 			}
 
 			if (objectiveNumFlashes == 0)
@@ -268,7 +267,7 @@ void GameTacMap::render()
 		}
 		else
 		{
-			(*iter)->RenderMarkers(this, 0);
+			pObjective->RenderMarkers(this, 0);
 		}
 
 		count++;
@@ -535,8 +534,7 @@ bool GameTacMap::renderImGui()
 	//      incl. animate() flash windowing. Non-NAV = shadowed marker text at
 	//      worldToTacMap pos; NAV draws nothing on the tac map.
 	long objCount = 0;
-	for ( EList< CObjective*, CObjective* >::EIterator iter = Team::home->objectives.Begin();
-		!iter.IsDone(); iter++ )
+	for ( CObjective* o : Team::home->objectives )
 	{
 		bool draw = true;
 		if ( ( objectiveAnimationId == objCount ) && objectiveNumFlashes )
@@ -555,7 +553,6 @@ bool GameTacMap::renderImGui()
 		}
 		if ( draw )
 		{
-			CObjective* o = *iter;
 			if ( !o->IsResolved() && o->DisplayMarker() && o->IsActive()
 				 && o->DisplayMarker() != NAV )
 			{

@@ -979,10 +979,11 @@ bool Mission::checkObjectiveSuccess (void)
 	bool result = false;
 	if (Team::home->objectives.Count())
 	{
-		for ( CObjectives::EIterator iter = Team::home->objectives.Begin(); !iter.IsDone(); iter++, count++ )
+		for ( CObjective* pObjective : Team::home->objectives )
 		{
 			//Must iterate through ALL objectives and check.
-			result |= (*iter)->StatusChangedSuccess();
+			result |= pObjective->StatusChangedSuccess();
+			count++;
 		}
 	}
 	
@@ -997,10 +998,11 @@ bool Mission::checkObjectiveFailed (void)
 	bool result = false;
 	if (Team::home->objectives.Count())
 	{
-		for ( CObjectives::EIterator iter = Team::home->objectives.Begin(); !iter.IsDone(); iter++, count++ )
+		for ( CObjective* pObjective : Team::home->objectives )
 		{
 			//Must iterate through ALL objectives and check.
-			result |= (*iter)->StatusChangedFailed();
+			result |= pObjective->StatusChangedFailed();
+			count++;
 		}
 	}
 	
@@ -1014,12 +1016,13 @@ ObjectiveStatus Mission::checkObjectiveStatus (long objectiveNum)
 	long count = 0;
 	if (Team::home->objectives.Count())
 	{
-		for ( CObjectives::EIterator iter = Team::home->objectives.Begin(); !iter.IsDone(); iter++, count++ )
+		for ( CObjective* pObjective : Team::home->objectives )
 		{
 			if (count == objectiveNum)
 			{
-				return (*iter)->Status(Team::home->objectives);
+				return pObjective->Status(Team::home->objectives);
 			}
+			count++;
 		}
 	}
 	

@@ -77,11 +77,9 @@ long Team::init (long _id, FitIniFile *pMissionFile) {
 	if (pMissionFile) {
 		objectives.Read(pMissionFile);
 		numPrimaryObjectives = 0;
-		CObjectives::EIterator it = objectives.Begin();
-		while (!it.IsDone()) {
-			if (1 == (*it)->Priority())
+		for (CObjective* pObjective : objectives) {
+			if (1 == pObjective->Priority())
 				numPrimaryObjectives++;
-			it++;
 		}
 		ReadNavMarkers(pMissionFile, objectives);
 	}
@@ -97,11 +95,9 @@ long Team::loadObjectives (FitIniFile *pMissionFile) {
 	if (pMissionFile) {
 		objectives.Read(pMissionFile);
 		numPrimaryObjectives = 0;
-		CObjectives::EIterator it = objectives.Begin();
-		while (!it.IsDone()) {
-			if (1 == (*it)->Priority())
+		for (CObjective* pObjective : objectives) {
+			if (1 == pObjective->Priority())
 				numPrimaryObjectives++;
-			it++;
 		}
 		ReadNavMarkers(pMissionFile, objectives);
 	}

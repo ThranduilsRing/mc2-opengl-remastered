@@ -578,11 +578,10 @@ void MissionBriefingScreen::begin()
 
 	for ( int j = 1; j < 3; j++ )
 	{
-		CObjectives::EIterator it = Objectives.Begin();
 		buttonCount = 0;
-		for ( int i = 0; i < Objectives.Count(); i++, it++ )
+		int i = 0;
+		for ( CObjective *pObjective : Objectives )
 		{
-			CObjective *pObjective = (*it);
 			if ( (!pObjective->IsHiddenTrigger()) && (pObjective->IsActive()) )
 			{
 
@@ -612,6 +611,7 @@ void MissionBriefingScreen::begin()
 					buttonCount++;
 				}
 			}
+			i++;
 		}
 	}
 

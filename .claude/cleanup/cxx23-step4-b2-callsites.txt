@@ -1,16 +1,16 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1135 sites in 89 files
+# total 1051 sites in 77 files
 # per kind:
-#     299  EList::Begin
-#     207  EList
-#     180  EList::Count
-#     131  EList::Append
-#      42  EList::~EList
+#     259  EList::Begin
+#     197  EList
+#     167  EList::Count
+#     118  EList::Append
+#      41  EList::~EList
 #      30  EList::operator[]
 #      28  EList::Delete
-#      26  EList::Clear
-#      25  EList::EList
+#      23  EList::EList
 #      23  EList::Iterator
+#      21  EList::Clear
 #      13  EList::End
 #      10  PriorityQueue::insert
 #      10  EList::GetHead
@@ -41,8 +41,7 @@
 #       1  EList::Find
 #       1  EList::INVALID_ITERATOR
 # per batch (cxx23-step4-b2-files.json):
-#       2  B2.2
-#      83  B2.3
+#       1  B2.3
 #      26  B2.4
 #      21  B2.4-pre
 #      42  B2.5
@@ -61,7 +60,6 @@
 #      59  editor/EditorObjectMgr_io.cpp
 #      58  editor/Action.cpp
 #      56  editor/Objective.cpp
-#      50  code/objective.cpp
 #      48  editor/UnitSettingsDlg.cpp
 #      39  editor/EditorObjectMgr.h
 #      33  editor/EditorObjectMgr_render.cpp
@@ -80,7 +78,6 @@
 #      11  editor/ChooseBuildingDlg.cpp
 #      11  editor/Objective.h
 #      11  mclib/move_movemap_escape.cpp
-#      10  code/mission.cpp
 #      10  editor/ChooseUnitDlg.cpp
 #      10  mclib/move_globalmap_path.cpp
 #       9  editor/CampaignSummaryPanel.cpp
@@ -90,7 +87,6 @@
 #       8  editor/CampaignData.cpp
 #       8  editor/EditorDebugOverlay.cpp
 #       8  editor/Objective_conditions.cpp
-#       7  code/objective.h
 #       7  editor/EditorInterface_wnd.cpp
 #       7  editor/GroupDialog.cpp
 #       7  editor/LinkBrush.cpp
@@ -98,24 +94,18 @@
 #       6  editor/OverlayBrush.cpp
 #       6  editor/ResourceStringSelectionDlg.cpp
 #       5  code/mpparameterscreen.cpp
-#       4  code/gametacmap.cpp
+#       4  code/mission.cpp
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
 #       4  editor/EditorInterface_mouse.cpp
 #       4  mclib/move_internal.h
 #       4  mclib/move_solvectx.h
-#       3  code/controlgui_objectives.cpp
-#       3  code/controlgui_render.cpp
 #       3  code/mover_init.cpp
 #       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
 #       3  editor/TelemetryPanel.cpp
 #       3  editor/UnitBrainPanel.cpp
 #       3  editor/eraser.cpp
-#       2  code/controlgui_update.cpp
-#       2  code/logisticsdata_save.cpp
-#       2  code/missionbriefingscreen.cpp
-#       2  code/team.cpp
 #       2  editor/BuildingSettingsDlg.h
 #       2  editor/EditorData_terrain.cpp
 #       2  editor/EditorObjects_unit.cpp
@@ -128,11 +118,8 @@
 #       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
 #       2  editor/campaignData.h
-#       1  code/controlgui_chat.cpp
 #       1  code/mission_update.cpp
-#       1  code/missiongui_support.cpp
 #       1  code/mpparameterscreen.h
-#       1  code/saveload_load.cpp
 #       1  editor/BuildingLink.h
 #       1  editor/DamageBrush.cpp
 #       1  editor/EditorInterface.cpp
@@ -144,77 +131,65 @@
 #       1  editor/ResourceStringSelectionDlg.h
 #       1  editor/ScatterBrush.cpp
 #       1  editor/StampBrush.cpp
-# blob 5a7a30319898fe33053a5250d927b51ab393f195 code/ablmc2_camera.cpp
-# blob d6158799855276bbebdb0e719ac317508b6240c6 code/contact.cpp
-# blob 3722da314d07cdd27f5514ea65711ee04e255e48 code/controlgui_chat.cpp
-# blob d10cadf8499b96a7f5eeb189ce058661d719cddc code/controlgui_objectives.cpp
-# blob ae50b024f49b340ee342a7da78ef380b6345ce0b code/controlgui_render.cpp
-# blob 0cd1469a3dcc86b12627da43a7f5e87b536d1363 code/controlgui_update.cpp
-# blob a6463b7e4d51bfd627e62f3e0d397083266e11f4 code/gametacmap.cpp
+# blob a416d8716c65388000e1da010b49b3106107383d code/ablmc2_camera.cpp
+# blob 253d38e5b54dd6d49aedcc518c87dffee5453977 code/contact.cpp
 # blob fd9f18996de4c78e649e163af98ded8c17a0d1ce code/group_goals.cpp
-# blob 65020f7d74c9ddb65836d9c2e4fdcd661035b19e code/logisticsdata_save.cpp
-# blob e9927601b721b01b2470dedb17e35ddebdd73d1c code/mission.cpp
+# blob 3f14b3e1974a79a2d827c205ed5582307e01ba1c code/mission.cpp
 # blob a88d8a6ee22d155d5076d0eb806bf585324d1948 code/mission_update.cpp
-# blob b4e21bac7f99f4d93dc94039cea09b36e50f6a75 code/missionbriefingscreen.cpp
-# blob 36b4eb263d438567c0884d53dbe79995ac3d75e8 code/missiongui_support.cpp
 # blob 3ff5256bdbbf9c35d2b212d246db813038174209 code/mover_combat.cpp
 # blob 72d565f3c3f7112d6d093243dba22e86e110536b code/mover_init.cpp
 # blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
-# blob 59c7504796c360ee717cc0b1f24bed82ae552f8c code/objective.cpp
-# blob b1c1da06675343869052ad1943ed8292e4df0dcb code/objective.h
-# blob c35a58198029cd5efde1ce269c5a09b60f0795fb code/saveload_load.cpp
-# blob 50ca1b8e2c7618977f33e780a980ececa48cc4a6 code/team.cpp
-# blob 203f0e44db92e2d5f3526feca15b32faa8a29fdf editor/Action.cpp
-# blob 4ec93ea4adfebad05779bf646f9598158c1d4c36 editor/Action.h
+# blob 973998713a2f192ea86d2319e2985382a37b60ad editor/Action.cpp
+# blob b31494e4c1a6dde629f4314019849e47784999da editor/Action.h
 # blob 3bb73f78efe7050a2464d40c8f5c56aa0adf36be editor/BuildingBrush.cpp
 # blob ffba17cb457c4844b67e5b8344a8854efded1cf4 editor/BuildingBrush.h
 # blob 0f367c156e68b2e0b489b489b07251107cd5e304 editor/BuildingLink.cpp
 # blob 0781fb19e8c1c77b7295cea330b97a561bb42de0 editor/BuildingLink.h
 # blob a7df5ac1a2d8e07091214366b2e3b6996f1b28a6 editor/BuildingSettingsDlg.cpp
 # blob 1edc9812c84eab22d662e03a49b712b36ac952ac editor/BuildingSettingsDlg.h
-# blob 4a7384d4960d36bdb47b0784f3c6eb0312547086 editor/CampaignData.cpp
+# blob fe00343fdcd0a409f689a5a81b45cdcfef0e77c2 editor/CampaignData.cpp
 # blob 8e2fc2a729fc41566de064d518e5ff8783c8c584 editor/CampaignDialog.cpp
-# blob 05f2952edba0355c56df51c9c6eff7e44bcb4da6 editor/CampaignSummaryPanel.cpp
-# blob 32ba9b5f7f678c0864b2f95ebbcef00454d6dd97 editor/ChooseBuildingDlg.cpp
-# blob 72daa11b8cb3816dd3e1f44cd01d8998653d7b92 editor/ChooseUnitDlg.cpp
+# blob bf5524c22ef744917ec5c84d466151a70e631ad5 editor/CampaignSummaryPanel.cpp
+# blob a6f769cf0e1eb38edaddb4e103b56db8eccd6fff editor/ChooseBuildingDlg.cpp
+# blob ee159cbc3253a7f5ee1c8529e521c6cba717beb4 editor/ChooseUnitDlg.cpp
 # blob 43f0433708c4050d048d49c3335d54db38221f6f editor/DamageBrush.cpp
-# blob d3f4d29ccfbfaadb3f4e9e99cfbea28709067a7f editor/EditorData_save.cpp
-# blob bf8f38b46a048ef0ba523a60ce5a5a7abbebad44 editor/EditorData_terrain.cpp
+# blob f9650f9463f73fbbc72b21d6563bed4734b3736b editor/EditorData_save.cpp
+# blob edf0a3f5b95585f6371217a745051b07ff3f606f editor/EditorData_terrain.cpp
 # blob 29c714c6f11a513a38e844528206dc52f49c4768 editor/EditorDebugOverlay.cpp
 # blob 67f0776053071494af361e91f9ed592c1e1d1943 editor/EditorInterface.cpp
-# blob d61fa63ff7a78bf9051dc14318e0888340591b7b editor/EditorInterface_editor.cpp
+# blob e3a520b20d7589109381d6fa502797174089cdf0 editor/EditorInterface_editor.cpp
 # blob 94b98b1ca810253a88b7dfc72c0a1d990751d4fb editor/EditorInterface_imgui.cpp
 # blob 376032fca1beb7a3a47f8728df74c0520b3468f2 editor/EditorInterface_mouse.cpp
 # blob 514cc4bb4ea79056008c83ae564c1e67d3ee807f editor/EditorInterface_objects.cpp
 # blob f8c1010020c792f689c0127b9200143622429208 editor/EditorInterface_wnd.cpp
-# blob 1f003fbdaf553eb125a31eb8b6f1b6082ccaedf7 editor/EditorObjectMgr.cpp
-# blob 198d176e5bca944b62f986449bc0031d4cf2aa29 editor/EditorObjectMgr.h
-# blob 6156edc4b3342f8bc9642a9775b4d1f1361f7f96 editor/EditorObjectMgr_io.cpp
+# blob 5995a7b6cc76234e77b9305930ae42f517724fe0 editor/EditorObjectMgr.cpp
+# blob 7df72b0838cd9dad516ba2081ef25fcdc1b2ac95 editor/EditorObjectMgr.h
+# blob e35e6437039ae156a6ded06fc531efd9849a898d editor/EditorObjectMgr_io.cpp
 # blob db4ffcaeadbcee141d6d2140de70ddd55b97467a editor/EditorObjectMgr_pick.cpp
 # blob 38ccad41df2369d0c261b688f67d9ec8373a6afb editor/EditorObjectMgr_render.cpp
 # blob 06ad882fea0a5f7f0bd5ad8c14a2288f3269f4de editor/EditorObjectMgr_select.cpp
-# blob cd4d32c6ee01f72db0703a2a992716a5656980ac editor/EditorObjects.h
-# blob 1ee2475a2471bd540a47953923b4b34b21fe6743 editor/EditorObjects_unit.cpp
+# blob 4063c29b001fee029ae2c4a2847fe94978b3d001 editor/EditorObjects.h
+# blob 18734ac4e8ac5a3942f4c425aa1c4b7604868e22 editor/EditorObjects_unit.cpp
 # blob 3653e5921154cc44d905ee0622acc0e700f26d4b editor/FlattenBrush.cpp
 # blob ff740c13ca3709a3480c2c769ace041b33312484 editor/GameplayDebugger.cpp
 # blob 7fe708a411675e9db2c1f20f1b3e1bd1f0e3b512 editor/GroupDialog.cpp
 # blob cfccb98b3478c7f5cba34acacfb7fe73b8aee829 editor/HeightBrush.cpp
 # blob ce78979d26d339bc9bdaf034338fefc8e60e20b4 editor/InspectorPanel.cpp
 # blob acd57f65f4f2192d2fe1381d1a57c5d8ff16c543 editor/LinkBrush.cpp
-# blob 17f369e104e2b83dcaa812b79783b6a5fc47a17b editor/LinkBrush.h
+# blob 827751d68ba116ce91878f98d307f1b5219f4c61 editor/LinkBrush.h
 # blob 5054b74408d10ff3611196fa4909cc176d675a3a editor/MineBrush.cpp
 # blob 9b64c18b8fb2855c646481a8ecc1f96a5a977948 editor/MineBrush.h
 # blob 12d303e40ff570baf923ab693f5fb42761a867e4 editor/MissionValidation.cpp
 # blob f5bc0d48faff08df66c80bc4467224f71aeadccd editor/ObjectSelectionBrush.cpp
 # blob 60fc1db428d58d4068d0612e0a34840172e52047 editor/ObjectSelectionBrush.h
-# blob ee5ea4001facce3b95fe7e2292def925dfef543c editor/Objective.cpp
-# blob 527ea4a1c39bb1c7bb8094178eb75d8c772dc9bf editor/Objective.h
-# blob 1a27e886ba536e2dca3be1b956f28d74bb421fc2 editor/ObjectiveDlg.cpp
+# blob 1ed87ad1d854026d0cfe4055ddec68c11cafbba7 editor/Objective.cpp
+# blob e66ca41422e6bff99c5fcb9d38c9bbc7449bb722 editor/Objective.h
+# blob fa1d150b2b7f59978735b7d1b838144a693c754d editor/ObjectiveDlg.cpp
 # blob 8c315de081a2d42e719a056d2f992f8729b7a112 editor/ObjectiveDlg.h
-# blob 91558676440366af9e033d50adbfb6c208a89f8b editor/Objective_conditions.cpp
-# blob 4513fc97928c3b7309f7b8d57bd2fb66cefe9bab editor/ObjectivesDlg.cpp
-# blob c38f418d587fb30dbd0920655aaaf7938d00739e editor/ObjectivesSummaryPanel.cpp
+# blob af2eb82892266fc51e47ab1c33aec1f8b22934d3 editor/Objective_conditions.cpp
+# blob 945de4f932649474771b7eaacf9aedc6c6faa4a9 editor/ObjectivesDlg.cpp
+# blob 40a6e8664fb78547a7de3d2f8c722247ed94ea1f editor/ObjectivesSummaryPanel.cpp
 # blob c32ebc0551159bf1c213290bb115ef5e07e54140 editor/OverlayBrush.cpp
 # blob e586a810bdc2a5b14cb3894d1675283dc8201ae0 editor/ResourceStringSelectionDlg.cpp
 # blob a5093b7b8d59e75dfba41f0d5ba3a90497f642ef editor/ResourceStringSelectionDlg.h
@@ -223,7 +198,7 @@
 # blob b3c487752565c75a1004f5105a8c50c8ab37d2ef editor/SelectionBrush.cpp
 # blob 5ad8b4c641b201e16f14acfda67e77b745f8561d editor/StampBrush.cpp
 # blob 177b0e9d2e0f618dd81148126f87a8b99ee81a68 editor/TelemetryPanel.cpp
-# blob 81c4656d053e660c93b32eebbd4b44a9df2f15a4 editor/UnitBrainPanel.cpp
+# blob d86529592c91137c96c85a9dd6a7c07c0d21eeec editor/UnitBrainPanel.cpp
 # blob b557cf5e488f4035bb350b1edb2095ffe3282a01 editor/UnitSettingsDlg.cpp
 # blob 74ef015b489c98a38a7b9d374e843fb92fbcabb9 editor/UnitSettingsDlg.h
 # blob 619210428008117dc1f29936615705e39b76bd39 editor/campaignData.h
@@ -249,32 +224,19 @@ code/ablmc2_camera.cpp:60:SortList::setId
 code/ablmc2_camera.cpp:61:SortList::setValue
 code/ablmc2_camera.cpp:70:SortList::sort
 code/ablmc2_camera.cpp:72:SortList::getId
-code/contact.cpp:133:SortList
-code/contact.cpp:133:SortList::SortList
-code/contact.cpp:136:SortList::init
-code/contact.cpp:146:SortList::~SortList
-code/contact.cpp:958:SortList
-code/contact.cpp:958:SortList::SortList
-code/contact.cpp:961:SortList::init
-code/contact.cpp:966:SortList::clear
-code/contact.cpp:968:SortList::setId
-code/contact.cpp:969:SortList::setValue
-code/contact.cpp:971:SortList::sort
-code/contact.cpp:973:SortList::getId
-code/contact.cpp:1311:SortList::~SortList
-code/controlgui_chat.cpp:124:EList::Count
-code/controlgui_objectives.cpp:129:EList::Count
-code/controlgui_objectives.cpp:165:EList
-code/controlgui_objectives.cpp:165:EList::Begin
-code/controlgui_render.cpp:641:EList
-code/controlgui_render.cpp:641:EList::Begin
-code/controlgui_render.cpp:784:EList::Count
-code/controlgui_update.cpp:104:EList
-code/controlgui_update.cpp:104:EList::Begin
-code/gametacmap.cpp:246:EList
-code/gametacmap.cpp:246:EList::Begin
-code/gametacmap.cpp:538:EList
-code/gametacmap.cpp:538:EList::Begin
+code/contact.cpp:134:SortList
+code/contact.cpp:134:SortList::SortList
+code/contact.cpp:137:SortList::init
+code/contact.cpp:147:SortList::~SortList
+code/contact.cpp:961:SortList
+code/contact.cpp:961:SortList::SortList
+code/contact.cpp:964:SortList::init
+code/contact.cpp:969:SortList::clear
+code/contact.cpp:971:SortList::setId
+code/contact.cpp:972:SortList::setValue
+code/contact.cpp:974:SortList::sort
+code/contact.cpp:976:SortList::getId
+code/contact.cpp:1316:SortList::~SortList
 code/group_goals.cpp:140:PriorityQueue
 code/group_goals.cpp:140:PriorityQueue::PriorityQueue
 code/group_goals.cpp:142:PriorityQueue::init
@@ -283,22 +245,11 @@ code/group_goals.cpp:158:PriorityQueue::insert
 code/group_goals.cpp:162:PriorityQueue::isEmpty
 code/group_goals.cpp:167:PriorityQueue::remove
 code/group_goals.cpp:228:PriorityQueue::insert
-code/logisticsdata_save.cpp:464:EList
-code/logisticsdata_save.cpp:464:EList::Begin
 code/mission.cpp:713:SortList::~SortList
 code/mission.cpp:719:SortList::~SortList
 code/mission.cpp:789:PriorityQueue::~PriorityQueue
 code/mission.cpp:795:SortList::~SortList
-code/mission.cpp:980:EList::Count
-code/mission.cpp:982:EList::Begin
-code/mission.cpp:998:EList::Count
-code/mission.cpp:1000:EList::Begin
-code/mission.cpp:1015:EList::Count
-code/mission.cpp:1017:EList::Begin
 code/mission_update.cpp:623:EList::Count
-code/missionbriefingscreen.cpp:581:EList::Begin
-code/missionbriefingscreen.cpp:583:EList::Count
-code/missiongui_support.cpp:616:EList::Begin
 code/mover_combat.cpp:938:SortList::clear
 code/mover_combat.cpp:940:SortList::setId
 code/mover_combat.cpp:941:SortList::setValue
@@ -328,66 +279,6 @@ code/mpparameterscreen.cpp:2323:EList::Delete
 code/mpparameterscreen.cpp:2351:EList::Begin
 code/mpparameterscreen.cpp:2369:EList::Begin
 code/mpparameterscreen.h:102:EList
-code/objective.cpp:1275:EList::Begin
-code/objective.cpp:1283:EList::Append
-code/objective.cpp:1290:EList::Begin
-code/objective.cpp:1295:EList::Append
-code/objective.cpp:1301:EList::Begin
-code/objective.cpp:1309:EList::Append
-code/objective.cpp:1316:EList::Begin
-code/objective.cpp:1321:EList::Append
-code/objective.cpp:1334:EList::Begin
-code/objective.cpp:1339:EList::Clear
-code/objective.cpp:1343:EList::Begin
-code/objective.cpp:1348:EList::Clear
-code/objective.cpp:1352:EList::Begin
-code/objective.cpp:1357:EList::Clear
-code/objective.cpp:1361:EList::Begin
-code/objective.cpp:1366:EList::Clear
-code/objective.cpp:1373:EList::Begin
-code/objective.cpp:1381:EList::Begin
-code/objective.cpp:1389:EList::Begin
-code/objective.cpp:1397:EList::Begin
-code/objective.cpp:1533:EList::Append
-code/objective.cpp:1551:EList::Append
-code/objective.cpp:1569:EList::Append
-code/objective.cpp:1587:EList::Append
-code/objective.cpp:1604:EList::Begin
-code/objective.cpp:1616:EList::Count
-code/objective.cpp:1619:EList::Begin
-code/objective.cpp:1645:EList::Begin
-code/objective.cpp:1658:EList::Begin
-code/objective.cpp:1681:EList::Begin
-code/objective.cpp:1773:EList::Begin
-code/objective.cpp:1778:EList::Append
-code/objective.cpp:1785:EList::Begin
-code/objective.cpp:1790:EList::Clear
-code/objective.cpp:1796:EList::Begin
-code/objective.cpp:1861:EList::Append
-code/objective.cpp:1871:EList::Begin
-code/objective.cpp:2089:EList::Append
-code/objective.cpp:2094:EList::Append
-code/objective.cpp:2096:EList::Append
-code/objective.cpp:2230:EList::Count
-code/objective.cpp:2231:EList::Count
-code/objective.cpp:2232:EList::Count
-code/objective.cpp:2233:EList::Count
-code/objective.cpp:2254:EList::Begin
-code/objective.cpp:2267:EList::Begin
-code/objective.cpp:2280:EList::Begin
-code/objective.cpp:2293:EList::Begin
-code/objective.cpp:2313:EList::Count
-code/objective.cpp:2318:EList::Begin
-code/objective.h:458:EList
-code/objective.h:459:EList
-code/objective.h:592:EList
-code/objective.h:594:EList::EList
-code/objective.h:595:EList::EList
-code/objective.h:596:EList::~EList
-code/objective.h:607:EList
-code/saveload_load.cpp:449:EList::Begin
-code/team.cpp:80:EList::Begin
-code/team.cpp:100:EList::Begin
 editor/Action.cpp:31:EList::EList
 editor/Action.cpp:39:EList::~EList
 editor/Action.cpp:47:EList::Count

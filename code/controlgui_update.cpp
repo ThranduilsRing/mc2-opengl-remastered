@@ -101,10 +101,8 @@ void ControlGui::update( bool bPaused, bool bLOS )
 			if ( !s_objCompleteDone && (long)g_mc2FrameCounter >= s_bootObjComplete )
 			{
 				s_objCompleteDone = true;
-				for ( EList< CObjective*, CObjective* >::EIterator iter = Team::home->objectives.Begin();
-					!iter.IsDone(); iter++ )
+				for ( CObjective* pObjective : Team::home->objectives )
 				{
-					CObjective* pObjective = (*iter);
 					if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
 						continue;
 					pObjective->Status( OS_SUCCESSFUL );

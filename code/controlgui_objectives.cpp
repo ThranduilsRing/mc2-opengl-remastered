@@ -162,10 +162,8 @@ int ControlGui::gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows )
 	for ( int pass = 0; pass < 2; pass++ )
 	{
 		const bool wantPrimary = ( pass == 0 );
-		for ( EList< CObjective*, CObjective* >::EIterator iter = Team::home->objectives.Begin();
-			!iter.IsDone(); iter++ )
+		for ( CObjective* pObjective : Team::home->objectives )
 		{
-			CObjective* pObjective = (*iter);
 			if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
 				continue;
 			const bool primary = ( 1 == pObjective->Priority() );

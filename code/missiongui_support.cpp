@@ -613,14 +613,13 @@ int MissionInterfaceManager::sendLargeAirstrike()
 }
 int MissionInterfaceManager::gotoNextNavMarker()
 {
-	for ( CObjectives::EIterator iter = Team::home->objectives.Begin();
-		!iter.IsDone(); iter++ )
+	for ( CObjective* pObjective : Team::home->objectives )
 		{
-			if ( (*iter)->Status(Team::home->objectives) == OS_UNDETERMINED  && (*iter)->DisplayMarker() == NAV )
+			if ( pObjective->Status(Team::home->objectives) == OS_UNDETERMINED  && pObjective->DisplayMarker() == NAV )
 			{
 				Stuff::Vector3D pos;
-				pos.x = (*iter)->MarkerX();
-				pos.y = (*iter)->MarkerY();
+				pos.x = pObjective->MarkerX();
+				pos.y = pObjective->MarkerY();
 				if ( !pos.x && !pos.y )
 					continue;
 				pos.z = land->getTerrainElevation( pos );
