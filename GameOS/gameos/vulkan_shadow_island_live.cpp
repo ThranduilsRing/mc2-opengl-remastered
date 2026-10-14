@@ -50,6 +50,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_owned.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
 #include "vk_shared_gbuffer_gate.h"
@@ -64,6 +65,7 @@
 #include <cstdint>
 #include <cstddef>   // offsetof (M2 layout asserts)
 #include <vector>
+#include <memory>
 #include <string>
 #include <chrono>
 #include <algorithm>
@@ -182,8 +184,9 @@ struct TypeRun {
     uint32_t packetCount;
 };
 
-// The persistent island state.
-struct ShadowIsland {
+// The persistent island state. The engine context owns it while it is parked (see IslandSlot::Shadow), so the objects below are released by the
+// context ahead of the allocator and the device they were made on.
+struct ShadowIsland : mc2vk::IslandState {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
@@ -204,55 +207,66 @@ struct ShadowIsland {
     VkQueue          queue     = VK_NULL_HANDLE;
     VmaAllocator     allocator = VK_NULL_HANDLE; // borrowed from ctx
 
-    // VK-PRODUCED D32 depth (the shadow map). Non-exportable; consumed via VkImageView.
+    // VK-PRODUCED D32 depth (the shadow map). Non-exportable; consumed via VkImageView. The image resources release their image in the destructor below.
     VkImageResource depthResource{};   // D32, depth attachment + sampled
+    VkImageResource csmFullMapResource{};
+    int               csmFullMapSize = 0;
+    int               csmArraySize = 0;
+    uint32_t          csmArrayLayers = 0;
+    uint32_t          csmArrayRenderedMask = 0;
 
-    // Caster geometry (VK-owned copies of the shared static-prop VBO/IBO, P8a (B)).
-    VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
-    VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
     uint32_t      vertexStride = 0;
     bool          geomUploaded = false;
+    VkDeviceSize  instCapBytes = 0;
 
     // Per-type packets + type runs (copied once per map).
     std::vector<Mc2ShadowPacket> packets;  // firstIndex/indexCount/baseVertex per packet
     std::vector<TypeRun>         typeRuns;  // firstPacket/packetCount per typeID (indexed by typeID)
 
-    // Instance SSBO (per-frame, memcpy the GpuStaticPropInstance vector).
-    VkBuffer      instBuf = VK_NULL_HANDLE; VmaAllocation instAlloc = VK_NULL_HANDLE;
-    VkDeviceSize  instCapBytes = 0;
-    VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
-
-    VkRenderPass      rpass  = VK_NULL_HANDLE;
-    VkFramebuffer     fb     = VK_NULL_HANDLE;
-    VkImageView       depthAttView = VK_NULL_HANDLE;  // depth-attachment view of the shared image
-    int               csmFullMapSize = 0;
-    VkImageResource   csmFullMapResource{};
-    VkFramebuffer     csmFullMapFb = VK_NULL_HANDLE;
-    VkImageView       csmFullMapDepthAttView = VK_NULL_HANDLE;
-    int               csmArraySize = 0;
-    uint32_t          csmArrayLayers = 0;
-    VkImage           csmArrayImg = VK_NULL_HANDLE;
-    VmaAllocation     csmArrayAlloc = VK_NULL_HANDLE;
-    VkImageView       csmArrayView = VK_NULL_HANDLE;
-    std::vector<VkImageView> csmArrayLayerViews;
-    std::vector<VkFramebuffer> csmArrayFbs;
-    VkFence           csmArrayFence = VK_NULL_HANDLE;
-    uint32_t          csmArrayRenderedMask = 0;
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
-    VkDescriptorPool  pool   = VK_NULL_HANDLE;
-    VkDescriptorSet   set    = VK_NULL_HANDLE;
-    VkPipelineLayout  playout = VK_NULL_HANDLE;
-    VkPipeline        pipe   = VK_NULL_HANDLE;
-    VkShaderModule    vert   = VK_NULL_HANDLE;
-    VkShaderModule    frag   = VK_NULL_HANDLE;
-
-    VkCommandPool     cpool  = VK_NULL_HANDLE;
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-
+    VkDescriptorSet   set    = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
+    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
     bool descNeedsRewrite = true;
+
+    // OWNED objects, declared in creation order: the destructor releases them in reverse, so a framebuffer goes before the view and render pass it uses.
+    mc2vk::OwnedBuffer vbo;   // VK-owned copies of the shared static-prop VBO/IBO (P8a (B))
+    mc2vk::OwnedBuffer ibo;
+    mc2vk::OwnedBuffer instBuf;   // per-frame instance SSBO (memcpy of the GpuStaticPropInstance vector)
+    mc2vk::OwnedBuffer ubo;
+    mc2vk::OwnedImageView   depthAttView;   // depth-attachment view of the shared image
+    mc2vk::OwnedRenderPass  rpass;
+    mc2vk::OwnedFramebuffer fb;
+    mc2vk::OwnedImageView   csmFullMapDepthAttView;
+    mc2vk::OwnedFramebuffer csmFullMapFb;
+    mc2vk::OwnedImage       csmArrayImg;
+    mc2vk::OwnedImageView   csmArrayView;
+    std::vector<mc2vk::OwnedImageView>   csmArrayLayerViews;
+    std::vector<mc2vk::OwnedFramebuffer> csmArrayFbs;
+    mc2vk::OwnedFence       csmArrayFence;
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool      pool;
+    mc2vk::OwnedPipelineLayout      playout;
+    mc2vk::OwnedShaderModule        vert;
+    mc2vk::OwnedShaderModule        frag;
+    mc2vk::OwnedPipeline            pipe;
+    mc2vk::OwnedCommandPool         cpool;
+
+    ShadowIsland() = default;
+    // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
+    ~ShadowIsland() override {
+        fb.reset(); depthAttView.reset();
+        csmFullMapFb.reset(); csmFullMapDepthAttView.reset();
+        csmArrayFbs.clear(); csmArrayLayerViews.clear(); csmArrayView.reset();
+        if (device != VK_NULL_HANDLE) {
+            vkImageResourceDestroy(&depthResource, device);
+            vkImageResourceDestroy(&csmFullMapResource, device);
+        }
+    }
 };
 
-ShadowIsland* g_island = nullptr;
+std::unique_ptr<mc2vk::IslandState>& islandSlot() {
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Shadow);
+}
+ShadowIsland* parkedIsland() { return static_cast<ShadowIsland*>(islandSlot().get()); }
 
 // VK-RUNG8 item-2 (boot-level native-or-decline), mirrors the mech/terrain islands: a
 // PERMANENT init failure (spv/pipeline/renderpass/buffer creation past the context +
@@ -264,26 +278,24 @@ ShadowIsland* g_island = nullptr;
 bool g_shadowSessionDeclined  = false;
 int  g_shadowInitReachedBuild = 0;
 
-bool make_buffer(ShadowIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
+bool make_buffer(ShadowIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
+                 bool hostVisible, std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed."); return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
 void write_descriptors(ShadowIsland* s) {
     if (s->set == VK_NULL_HANDLE) return;
-    VkDescriptorBufferInfo uboInfo{ s->ubo, 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo instInfo{ s->instBuf, 0, VK_WHOLE_SIZE };
+    VkDescriptorBufferInfo uboInfo{ s->ubo.get(), 0, VK_WHOLE_SIZE };
+    VkDescriptorBufferInfo instInfo{ s->instBuf.get(), 0, VK_WHOLE_SIZE };
     VkWriteDescriptorSet w[2]{};
     w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set;
     w[0].dstBinding = 0; w[0].descriptorCount = 1;
@@ -295,52 +307,17 @@ void write_descriptors(ShadowIsland* s) {
 }
 
 bool ensure_inst_capacity(ShadowIsland* s, VkDeviceSize bytes) {
-    if (s->instBuf != VK_NULL_HANDLE && bytes <= s->instCapBytes) return true;
-    if (s->instBuf != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(s->device);
-        vmaDestroyBuffer(s->allocator, s->instBuf, s->instAlloc);
-        s->instBuf = VK_NULL_HANDLE;
+    if (s->instBuf && bytes <= s->instCapBytes) return true;
+    if (s->instBuf) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_inst_grow");
+        s->instBuf.reset();
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf, &s->instAlloc, true, "shadow.instBuf"))
+    if (!make_buffer(s, s->instBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "shadow.instBuf"))
         return false;
     s->instCapBytes = cap;
     write_descriptors(s);
     return true;
-}
-
-void destroy_island(ShadowIsland* s) {
-    if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
-    if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->depthResource, d);
-    if (s->depthAttView) vkDestroyImageView(d, s->depthAttView, nullptr);
-    if (s->csmFullMapFb) vkDestroyFramebuffer(d, s->csmFullMapFb, nullptr);
-    if (s->csmFullMapDepthAttView) vkDestroyImageView(d, s->csmFullMapDepthAttView, nullptr);
-    if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->csmFullMapResource, d);
-    for (VkFramebuffer fbLayer : s->csmArrayFbs) {
-        if (fbLayer) vkDestroyFramebuffer(d, fbLayer, nullptr);
-    }
-    for (VkImageView viewLayer : s->csmArrayLayerViews) {
-        if (viewLayer) vkDestroyImageView(d, viewLayer, nullptr);
-    }
-    if (s->csmArrayView) vkDestroyImageView(d, s->csmArrayView, nullptr);
-    if (s->csmArrayImg) vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc);
-    if (s->csmArrayFence) vkDestroyFence(d, s->csmArrayFence, nullptr);
-    if (s->pipe)    vkDestroyPipeline(d, s->pipe, nullptr);
-    if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
-    if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
-    if (s->frag)    vkDestroyShaderModule(d, s->frag, nullptr);
-    if (s->dsl)     vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
-    if (s->pool)    vkDestroyDescriptorPool(d, s->pool, nullptr);
-    if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
-    if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
-    if (s->vbo)     vmaDestroyBuffer(s->allocator, s->vbo, s->vboAlloc);
-    if (s->ibo)     vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc);
-    if (s->instBuf) vmaDestroyBuffer(s->allocator, s->instBuf, s->instAlloc);
-    if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
-    if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
-    // instance/phys/device/queue/allocator are BORROWED — never destroyed here.
 }
 
 // One-time init: borrow the shared device, build the exportable D32 shadow image +
@@ -409,14 +386,14 @@ bool init_island(ShadowIsland* s, int size) {
         vi.image = s->depthResource.image.get();
         vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = kDepthFmt;
         vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-        if (vkCreateImageView(s->device, &vi, nullptr, &s->depthAttView) != VK_SUCCESS) {
+        if (!mc2vk::create(s->depthAttView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) {
             vlog("depth attachment view failed."); return false;
         }
     }
 
     // ---- Instance SSBO + UBO. ----
     if (!ensure_inst_capacity(s, 256 * 1024)) return false;  // ~2340 instances to start
-    if (!make_buffer(s, sizeof(ShadowFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true, "shadow.ubo")) return false;
+    if (!make_buffer(s, s->ubo, sizeof(ShadowFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "shadow.ubo")) return false;
 
     // ---- Depth-only render pass (single depth attachment; CLEAR to 1.0 forward-Z,
     // STORE). Interop layout: GL never writes this image, VK is sole producer; we
@@ -460,14 +437,15 @@ bool init_island(ShadowIsland* s, int size) {
         rpci.attachmentCount = 1; rpci.pAttachments = &att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) {
+        if (!mc2vk::create(s->rpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
             vlog("vkCreateRenderPass failed."); return false;
         }
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass; fci.attachmentCount = 1; fci.pAttachments = &s->depthAttView;
+        const VkImageView attView = s->depthAttView.get();
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 1; fci.pAttachments = &attView;
         fci.width = (uint32_t)size; fci.height = (uint32_t)size; fci.layers = 1;
-        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb) != VK_SUCCESS) {
+        if (!mc2vk::create(s->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("vkCreateFramebuffer failed."); return false;
         }
     }
@@ -482,7 +460,7 @@ bool init_island(ShadowIsland* s, int size) {
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = b;
-        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
+        if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[2]{};
@@ -491,12 +469,13 @@ bool init_island(ShadowIsland* s, int size) {
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
-        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
+        if (!mc2vk::create(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1; dsai.pSetLayouts = &dslHandle;
         if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
@@ -506,14 +485,15 @@ bool init_island(ShadowIsland* s, int size) {
     // ---- Pipeline: depth-only, one vec3 position stream, instanced, LESS forward-Z,
     // depthBias set dynamically each frame (matches glPolygonOffset). ----
     {
-        s->vert = load_spv(s->device, spv_dir() + "shadow_prop.vert.spv");
-        s->frag = load_spv(s->device, spv_dir() + "shadow_prop.frag.spv");
-        if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) { setFallback("spv_load_failed"); return false; }
+        s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.vert.spv"));
+        s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.frag.spv"));
+        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
-        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) {
+        const VkDescriptorSetLayout setLayout = s->dsl.get();
+        plci.setLayoutCount = 1; plci.pSetLayouts = &setLayout;
+        if (!mc2vk::create(s->playout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("vkCreatePipelineLayout failed."); return false;
         }
 
@@ -569,9 +549,9 @@ bool init_island(ShadowIsland* s, int size) {
 
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert; stages[0].pName = "main";
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag; stages[1].pName = "main";
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;
@@ -579,11 +559,11 @@ bool init_island(ShadowIsland* s, int size) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
-        gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
-        if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
+        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        if (!mc2vk::create(s->pipe, s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
-        mc2vk::nameObject(s->device, s->pipe, "shadow.pipe");
+        mc2vk::nameObject(s->device, s->pipe.get(), "shadow.pipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity). ----
@@ -592,12 +572,12 @@ bool init_island(ShadowIsland* s, int size) {
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool) != VK_SUCCESS) {
+        if (!mc2vk::create(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
@@ -611,18 +591,16 @@ bool init_island(ShadowIsland* s, int size) {
 }
 
 bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
-    if (!s || size <= 0 || s->rpass == VK_NULL_HANDLE) return false;
+    if (!s || size <= 0 || !s->rpass) return false;
     if (s->csmFullMapResource.image.get() != VK_NULL_HANDLE && s->csmFullMapSize == size)
         return true;
 
-    vkDeviceWaitIdle(s->device);
-    if (s->csmFullMapFb) vkDestroyFramebuffer(s->device, s->csmFullMapFb, nullptr);
-    if (s->csmFullMapDepthAttView) vkDestroyImageView(s->device, s->csmFullMapDepthAttView, nullptr);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_csm_fullmap_rebuild");
+    s->csmFullMapFb.reset();   // the framebuffer and the view go before the image they cover
+    s->csmFullMapDepthAttView.reset();
     if (s->csmFullMapResource.image.get() != VK_NULL_HANDLE)
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
     s->csmFullMapResource = {};
-    s->csmFullMapDepthAttView = VK_NULL_HANDLE;
-    s->csmFullMapFb = VK_NULL_HANDLE;
     s->csmFullMapSize = 0;
 
     // VK-RUNG8-ITEM6: non-exportable; consumed via VkImageView (csmFullMapDepthAttView).
@@ -643,20 +621,21 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
     vi.format = kDepthFmt;
     vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-    if (vkCreateImageView(s->device, &vi, nullptr, &s->csmFullMapDepthAttView) != VK_SUCCESS) {
+    if (!mc2vk::create(s->csmFullMapDepthAttView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) {
         setFallback("csm_fullmap_att_view_failed");
         return false;
     }
 
     VkFramebufferCreateInfo fci{};
     fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    fci.renderPass = s->rpass;
+    const VkImageView fullMapView = s->csmFullMapDepthAttView.get();
+    fci.renderPass = s->rpass.get();
     fci.attachmentCount = 1;
-    fci.pAttachments = &s->csmFullMapDepthAttView;
+    fci.pAttachments = &fullMapView;
     fci.width = (uint32_t)size;
     fci.height = (uint32_t)size;
     fci.layers = 1;
-    if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->csmFullMapFb) != VK_SUCCESS) {
+    if (!mc2vk::create(s->csmFullMapFb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
         setFallback("csm_fullmap_framebuffer_failed");
         return false;
     }
@@ -667,22 +646,16 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
 }
 
 bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
-    if (!s || size <= 0 || layers == 0 || layers > 31 || s->rpass == VK_NULL_HANDLE) return false;
-    if (s->csmArrayImg != VK_NULL_HANDLE && s->csmArraySize == size && s->csmArrayLayers == layers)
+    if (!s || size <= 0 || layers == 0 || layers > 31 || !s->rpass) return false;
+    if (s->csmArrayImg && s->csmArraySize == size && s->csmArrayLayers == layers)
         return true;
 
-    vkDeviceWaitIdle(s->device);
-    for (VkFramebuffer fbLayer : s->csmArrayFbs) {
-        if (fbLayer) vkDestroyFramebuffer(s->device, fbLayer, nullptr);
-    }
-    for (VkImageView viewLayer : s->csmArrayLayerViews) {
-        if (viewLayer) vkDestroyImageView(s->device, viewLayer, nullptr);
-    }
-    s->csmArrayFbs.clear();
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_csm_array_rebuild");
+    s->csmArrayFbs.clear();   // framebuffers and views go before the image they cover
     s->csmArrayLayerViews.clear();
-    if (s->csmArrayView) { vkDestroyImageView(s->device, s->csmArrayView, nullptr); s->csmArrayView = VK_NULL_HANDLE; }
-    if (s->csmArrayImg) { vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc); s->csmArrayImg = VK_NULL_HANDLE; }
-    if (s->csmArrayFence) { vkDestroyFence(s->device, s->csmArrayFence, nullptr); s->csmArrayFence = VK_NULL_HANDLE; }
+    s->csmArrayView.reset();
+    s->csmArrayImg.reset();
+    s->csmArrayFence.reset();
     s->csmArraySize = 0;
     s->csmArrayLayers = 0;
     s->csmArrayRenderedMask = 0;
@@ -700,45 +673,45 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &s->csmArrayImg, &s->csmArrayAlloc, nullptr) != VK_SUCCESS) {
+    if (!s->csmArrayImg.create(s->allocator, s->device, ici, aci, "shadow.csmArray")) {
         setFallback("csm_array_image_failed");
         return false;
     }
-    mc2vk::nameObject(s->device, s->csmArrayImg, "shadow.csmArray");
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = s->csmArrayImg;
+    vci.image = s->csmArrayImg.get();
     vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     vci.format = kDepthFmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
-    if (vkCreateImageView(s->device, &vci, nullptr, &s->csmArrayView) != VK_SUCCESS) {
+    if (!mc2vk::create(s->csmArrayView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) {
         setFallback("csm_array_view_failed");
         return false;
     }
 
-    s->csmArrayLayerViews.resize(layers, VK_NULL_HANDLE);
-    s->csmArrayFbs.resize(layers, VK_NULL_HANDLE);
+    s->csmArrayLayerViews.resize(layers);
+    s->csmArrayFbs.resize(layers);
     for (uint32_t layer = 0; layer < layers; ++layer) {
         VkImageViewCreateInfo lvi{};
         lvi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        lvi.image = s->csmArrayImg;
+        lvi.image = s->csmArrayImg.get();
         lvi.viewType = VK_IMAGE_VIEW_TYPE_2D;
         lvi.format = kDepthFmt;
         lvi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, layer, 1};
-        if (vkCreateImageView(s->device, &lvi, nullptr, &s->csmArrayLayerViews[layer]) != VK_SUCCESS) {
+        if (!mc2vk::create(s->csmArrayLayerViews[layer], s->device, [&](auto* h) { return vkCreateImageView(s->device, &lvi, nullptr, h); })) {
             setFallback("csm_array_layer_view_failed");
             return false;
         }
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass;
+        const VkImageView layerView = s->csmArrayLayerViews[layer].get();
+        fci.renderPass = s->rpass.get();
         fci.attachmentCount = 1;
-        fci.pAttachments = &s->csmArrayLayerViews[layer];
+        fci.pAttachments = &layerView;
         fci.width = (uint32_t)size;
         fci.height = (uint32_t)size;
         fci.layers = 1;
-        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->csmArrayFbs[layer]) != VK_SUCCESS) {
+        if (!mc2vk::create(s->csmArrayFbs[layer], s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             setFallback("csm_array_framebuffer_failed");
             return false;
         }
@@ -746,7 +719,7 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
     VkFenceCreateInfo fci{};
     fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    if (vkCreateFence(s->device, &fci, nullptr, &s->csmArrayFence) != VK_SUCCESS) {
+    if (!mc2vk::create(s->csmArrayFence, s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
         setFallback("csm_array_fence_failed");
         return false;
     }
@@ -758,9 +731,9 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
 }
 
 void release_geometry(ShadowIsland* s) {
-    if (s->vbo || s->ibo) { if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device); }
-    if (s->vbo) { vmaDestroyBuffer(s->allocator, s->vbo, s->vboAlloc); s->vbo = VK_NULL_HANDLE; s->vboAlloc = VK_NULL_HANDLE; }
-    if (s->ibo) { vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc); s->ibo = VK_NULL_HANDLE; s->iboAlloc = VK_NULL_HANDLE; }
+    if (s->vbo || s->ibo) mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_geometry_release");
+    s->vbo.reset();
+    s->ibo.reset();
     s->geomUploaded = false;
     s->packets.clear();
     s->typeRuns.clear();
@@ -780,15 +753,15 @@ bool upload_geometry_once(ShadowIsland* s) {
     if (feed.vertexStride != mc2_static_prop_vertex_stride())
         vlog("ERROR: feed vertexStride %u != pipeline stride %u (shadow geometry will explode).", feed.vertexStride, mc2_static_prop_vertex_stride());
 
-    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true, "shadow.vbo")) return false;
-    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true, "shadow.ibo")) return false;
+    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "shadow.vbo")) return false;
+    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "shadow.ibo")) return false;
     // The CPU staging was freed at finalize; pull the immutable GL buffer bytes ONCE
     // (map-load, not per-frame) via glGetBufferSubData into a scratch, then memcpy
     // into the VK buffers. This one-time geometry copy is NOT the shadow-map surface,
     // so it does not touch the per-frame zero-copy shadow-map invariant.
     std::vector<uint8_t> scratch;
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {
+      if (vmaMapMemory(s->allocator, s->vbo.allocation(), &p) == VK_SUCCESS) {
           scratch.resize((size_t)feed.vboBytes);
           glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
           while (glGetError() != GL_NO_ERROR) {}
@@ -796,10 +769,10 @@ bool upload_geometry_once(ShadowIsland* s) {
           { GLenum ge = glGetError(); if (ge != GL_NO_ERROR) vlog("glGetBufferSubData(vbo) readback GL error 0x%x.", (unsigned)ge); }
           glBindBuffer(GL_ARRAY_BUFFER, 0);
           std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          vmaFlushAllocation(s->allocator, s->vboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->vboAlloc);
+          vmaFlushAllocation(s->allocator, s->vbo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->vbo.allocation());
       } }
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->iboAlloc, &p) == VK_SUCCESS) {
+      if (vmaMapMemory(s->allocator, s->ibo.allocation(), &p) == VK_SUCCESS) {
           scratch.resize((size_t)feed.iboBytes);
           glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
           while (glGetError() != GL_NO_ERROR) {}
@@ -807,7 +780,7 @@ bool upload_geometry_once(ShadowIsland* s) {
           { GLenum ge = glGetError(); if (ge != GL_NO_ERROR) vlog("glGetBufferSubData(ibo) readback GL error 0x%x.", (unsigned)ge); }
           glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
           std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          vmaFlushAllocation(s->allocator, s->iboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->iboAlloc);
+          vmaFlushAllocation(s->allocator, s->ibo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ibo.allocation());
       } }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
@@ -937,14 +910,15 @@ void diagGlRead(GLuint tex, int dim, int layer, std::vector<float>& out) {
 }
 // One-shot VK readback of a D32 image layer (layout READ_ONLY_OPTIMAL in/out).
 void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vector<float>& out) {
-    out.clear(); if (!s || !img || dim <= 0 || s->cpool == VK_NULL_HANDLE) return;
+    out.clear(); if (!s || !img || dim <= 0 || !s->cpool) return;
     const VkDeviceSize bytes = (VkDeviceSize)dim * dim * 4;
-    VkBuffer buf = VK_NULL_HANDLE; VmaAllocation al = VK_NULL_HANDLE;
-    if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &buf, &al, true, "shadow.diagReadback")) return;
+    mc2vk::OwnedBuffer staging;
+    if (!make_buffer(s, staging, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true, "shadow.diagReadback")) return;
+    const VkBuffer buf = staging.get(); const VmaAllocation al = staging.allocation();
     VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-    cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
-    if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, buf, al); return; }
+    if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return;
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(cb, &bi);
@@ -971,8 +945,7 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
             vmaUnmapMemory(s->allocator, al);
         }
     }
-    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
-    vmaDestroyBuffer(s->allocator, buf, al);
+    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
 } // namespace
@@ -1016,14 +989,14 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // island for the whole session -> GL owns the dynamic shadow pass, no per-frame churn.
     if (g_shadowSessionDeclined) return 0;
     // Lazy init / rebuild on size change.
-    if (g_island && g_island->size != size) {
-        destroy_island(g_island); delete g_island; g_island = nullptr;
-    }
-    if (!g_island) {
-        g_island = new ShadowIsland();
-        if (!init_island(g_island, size)) {
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const ShadowIsland* parked = parkedIsland(); parked && parked->size != size) slotCtx.retireIsland(mc2vk::IslandSlot::Shadow);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<ShadowIsland>();
+        if (!init_island(fresh.get(), size)) {
             const bool permanent = (g_shadowInitReachedBuild != 0);
-            destroy_island(g_island); delete g_island; g_island = nullptr;
+            slotCtx.waitIdle("shadow_init_failure");   // objects made before the failure may have been submitted
+            fresh.reset();
             if (permanent) {
                 // Build-phase failure won't recover this session: latch decline + ONE
                 // receipt line (vs. re-init'ing every frame). GL renders the shadow pass.
@@ -1041,8 +1014,9 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
             }
             return 0;
         }
+        islandSlot() = std::move(fresh);
     }
-    ShadowIsland* s = g_island;
+    ShadowIsland* s = parkedIsland();
     // VK-TERRAIN-STAGING-PERF-1: direct-chain mode has no GL interop machinery
     // (useInterop=false) but the VK producer must still run for direct consumers.
     if (s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
@@ -1064,9 +1038,9 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     {
         ZoneScopedN("VKIsl.Shadow.Feed");   // VK-ISLAND-TRACY-1: caster instance staging
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
             std::memcpy(p, instances, (size_t)instBytes);
-            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
     g_health.instRecords = instanceCount;
@@ -1083,8 +1057,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
         std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
         u.instBase = 0;
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
-            std::memcpy(p, &u, sizeof(u)); vmaFlushAllocation(s->allocator, s->uboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->uboAlloc);
+        if (vmaMapMemory(s->allocator, s->ubo.allocation(), &p) == VK_SUCCESS) {
+            std::memcpy(p, &u, sizeof(u)); vmaFlushAllocation(s->allocator, s->ubo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ubo.allocation());
         }
     }
     g_health.stageInstUs = usSince(tStage0);
@@ -1125,10 +1099,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // maps to the right transforms (firstInstance addresses the run start).
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
             GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
-            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Shadow.SortRestage
@@ -1146,7 +1120,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     clear.depthStencil = {1.0f, 0};   // forward-Z clear to 1.0 (GL glClearDepth(1.0))
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)size, (uint32_t)size}};
     rbi.clearValueCount = 1; rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
@@ -1160,11 +1134,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // maps to depthBiasConstantFactor and GL's `factor` maps to depthBiasSlopeFactor.
     vkCmdSetDepthBias(cb, biasUnits, 0.0f, biasFactor);
 
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set, 0, nullptr);
     VkDeviceSize vboOff = 0;
-    vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
-    vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+    { const VkBuffer vertexBuf = s->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff); }
+    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
 
     // Per-type run: walk the sorted instance order, group by typeID, and for each run
     // issue the type's packet draws with firstInstance=runStart (so gl_InstanceIndex
@@ -1251,9 +1225,9 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     g_csmFullMapReadyThisFrame = false;
     if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
-    if (!g_island || g_island->disabled || !g_island->inited
-        || !(g_island->useInterop || g_island->directChain)) return 0;
-    ShadowIsland* s = g_island;
+    ShadowIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited
+        || !(s->useInterop || s->directChain)) return 0;
     ZoneScopedN("VKIsl.Shadow.CsmFullMap");   // VK-ISLAND-TRACY-1 per-frame total (CPU; incl. inline fence wait)
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
     if (!ensure_csm_fullmap_target(s, size)) return 0;
@@ -1268,10 +1242,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         [insts](uint32_t a, uint32_t b){ return insts[a].typeID < insts[b].typeID; });
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
             GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
-            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
     {
@@ -1280,9 +1254,9 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
         u.instBase = 0;
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->ubo.allocation(), &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u));
-            vmaFlushAllocation(s->allocator, s->uboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->uboAlloc);
+            vmaFlushAllocation(s->allocator, s->ubo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ubo.allocation());
         }
     }
 
@@ -1298,8 +1272,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     clear.depthStencil = {1.0f, 0};
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass;
-    rbi.framebuffer = s->csmFullMapFb;
+    rbi.renderPass = s->rpass.get();
+    rbi.framebuffer = s->csmFullMapFb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)size, (uint32_t)size}};
     rbi.clearValueCount = 1;
     rbi.pClearValues = &clear;
@@ -1310,11 +1284,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdSetDepthBias(cb, biasUnits, 0.0f, biasFactor);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set, 0, nullptr);
     VkDeviceSize vboOff = 0;
-    vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
-    vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+    { const VkBuffer vertexBuf = s->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff); }
+    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
 
     unsigned long typeRuns = 0;
     uint32_t i = 0;
@@ -1370,14 +1344,14 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     float biasFactor, float biasUnits) {
     if (layerIndex == 0) {
         g_csmArrayReadyThisFrame = false;
-        if (g_island) g_island->csmArrayRenderedMask = 0;
+        if (ShadowIsland* parked = parkedIsland()) parked->csmArrayRenderedMask = 0;
     }
     if (!shadowInteropGateRequested() || !csmArrayInteropGateRequested()) return 0;
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
     if (!lightSpace16 || !instances || instanceCount == 0) return 0;
-    if (!g_island || g_island->disabled || !g_island->inited
-        || !(g_island->useInterop || g_island->directChain)) return 0;
-    ShadowIsland* s = g_island;
+    ShadowIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited
+        || !(s->useInterop || s->directChain)) return 0;
     ZoneScopedN("VKIsl.Shadow.CsmArrayLayer");   // VK-ISLAND-TRACY-1 per-layer total (CPU; incl. 2 inline fence waits)
     const uint32_t layerCount = (uint32_t)layers;
     const uint32_t layer = (uint32_t)layerIndex;
@@ -1394,10 +1368,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         [insts](uint32_t a, uint32_t b){ return insts[a].typeID < insts[b].typeID; });
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
             GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
-            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
     {
@@ -1406,17 +1380,18 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
         u.instBase = 0;
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->ubo.allocation(), &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u));
-            vmaFlushAllocation(s->allocator, s->uboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->uboAlloc);
+            vmaFlushAllocation(s->allocator, s->ubo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ubo.allocation());
         }
     }
 
     { ZoneScopedN("VKIsl.Shadow.CsmArrayPreWait");   // VK-ISLAND-TRACY-1: retire prior layer's submit (ALWAYS inline)
-      if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+      const VkFence arrayFence = s->csmArrayFence.get();
+      if (vkWaitForFences(s->device, 1, &arrayFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
           setFallback("csm_array_fence_wait_failed"); s->disabled = true; return 0;
       } }
-    vkResetFences(s->device, 1, &s->csmArrayFence);
+    { const VkFence arrayFence = s->csmArrayFence.get(); vkResetFences(s->device, 1, &arrayFence); }
     VkCommandBuffer cb = s->cbuf[layer & 1u];
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -1428,8 +1403,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     clear.depthStencil = {1.0f, 0};
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass;
-    rbi.framebuffer = s->csmArrayFbs[layer];
+    rbi.renderPass = s->rpass.get();
+    rbi.framebuffer = s->csmArrayFbs[layer].get();
     rbi.renderArea = {{0, 0}, {(uint32_t)size, (uint32_t)size}};
     rbi.clearValueCount = 1;
     rbi.pClearValues = &clear;
@@ -1444,11 +1419,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdSetDepthBias(cb, biasUnits, 0.0f, biasFactor);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set, 0, nullptr);
     VkDeviceSize vboOff = 0;
-    vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
-    vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+    { const VkBuffer vertexBuf = s->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff); }
+    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
 
     unsigned long typeRuns = 0;
     uint32_t i = 0;
@@ -1478,11 +1453,12 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->csmArrayFence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, s->csmArrayFence.get()) != VK_SUCCESS) {
         setFallback("csm_array_submit_failed"); s->disabled = true; return 0;
     }
     { ZoneScopedN("VKIsl.Shadow.CsmArrayWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire of this layer's submit
-      if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+      const VkFence arrayFence = s->csmArrayFence.get();
+      if (vkWaitForFences(s->device, 1, &arrayFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
           setFallback("csm_array_fence_timeout"); s->disabled = true; return 0;
       } }
 
@@ -1508,8 +1484,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
 // already complete) and reset false at the top of every call (including a failed/
 // declined one), so a stale prior-frame view is never reported ready this frame.
 extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_view() {
-    return (g_island && g_dynShadowReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->depthResource.view.get()) : nullptr;
+    return (parkedIsland() && g_dynShadowReadyThisFrame)
+        ? reinterpret_cast<void*>(parkedIsland()->depthResource.view.get()) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
     // The shadow island itself has no VkSampler (GL owned all sampling before this
@@ -1518,31 +1494,31 @@ extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
     return nullptr;
 }
 extern "C" int mc2_vk_shadow_island_dyn_shadow_ready() {
-    return (g_island && g_dynShadowReadyThisFrame) ? 1 : 0;
+    return (parkedIsland() && g_dynShadowReadyThisFrame) ? 1 : 0;
 }
 
 extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_view() {
-    return (g_island && g_csmFullMapReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->csmFullMapResource.view.get()) : nullptr;
+    return (parkedIsland() && g_csmFullMapReadyThisFrame)
+        ? reinterpret_cast<void*>(parkedIsland()->csmFullMapResource.view.get()) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_image() {
-    return (g_island && g_csmFullMapReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->csmFullMapResource.image.get()) : nullptr;
+    return (parkedIsland() && g_csmFullMapReadyThisFrame)
+        ? reinterpret_cast<void*>(parkedIsland()->csmFullMapResource.image.get()) : nullptr;
 }
 extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
-    return (g_island && g_csmFullMapReadyThisFrame) ? 1 : 0;
+    return (parkedIsland() && g_csmFullMapReadyThisFrame) ? 1 : 0;
 }
 
 extern "C" void* mc2_vk_shadow_island_get_csm_array_view() {
-    return (g_island && g_csmArrayReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->csmArrayView) : nullptr;
+    return (parkedIsland() && g_csmArrayReadyThisFrame)
+        ? reinterpret_cast<void*>(parkedIsland()->csmArrayView.get()) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_csm_array_image() {
-    return (g_island && g_csmArrayReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->csmArrayImg) : nullptr;
+    return (parkedIsland() && g_csmArrayReadyThisFrame)
+        ? reinterpret_cast<void*>(parkedIsland()->csmArrayImg.get()) : nullptr;
 }
 extern "C" int mc2_vk_shadow_island_csm_array_ready() {
-    return (g_island && g_csmArrayReadyThisFrame) ? 1 : 0;
+    return (parkedIsland() && g_csmArrayReadyThisFrame) ? 1 : 0;
 }
 
 // MC2_VK_SHADOW_MATRIX_DIAG public entries.
@@ -1577,14 +1553,14 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         diagPrintMat(tg, g_diagArr[i].m);
     }
     g_diagTerrainArm = true;   // terrain island prints its UBO sampling matrices next
-    if (dump && g_island && g_island->inited) {
-        ShadowIsland* s = g_island; std::vector<float> d;
+    if (ShadowIsland* parked = parkedIsland(); dump && parked && parked->inited) {
+        ShadowIsland* s = parked; std::vector<float> d;
         diagGlRead(glDynTex, dynSize, -1, d);       diagDumpDepth("dyn", "gl", d, dynSize);
         diagGlRead(glArrTex, arrSize, 0, d);        diagDumpDepth("csm0", "gl", d, arrSize);
         diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
         if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image.get(), 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not ready this frame\n");
-        if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg, 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
+        if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg.get(), 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not ready this frame\n");
         if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image.get(), 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not ready this frame\n");
@@ -1627,8 +1603,9 @@ extern "C" void mc2_render_backend_shadow_region_health(
 // Static-prop feed invalidated (map unload/load): drop VK-owned caster geometry so the
 // next map re-uploads instead of drawing stale/freed vertex data.
 extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
-    if (!g_island) return;
-    release_geometry(g_island);
+    ShadowIsland* parked = parkedIsland();
+    if (!parked) return;
+    release_geometry(parked);
     vlog("caster geometry invalidated (map boundary).");
 }
 
@@ -1643,9 +1620,7 @@ extern "C" void mc2_vk_shadow_island_destroy() {
          g_health.geomVerts, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.vkCmdCopyImageToBuffer, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageInstUs, g_health.drawUs, g_health.totalUs);
-    if (!g_island) return;
-    destroy_island(g_island);
-    delete g_island; g_island = nullptr;
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Shadow);
 }
 
 #endif // MC2_VULKAN_ISLAND
