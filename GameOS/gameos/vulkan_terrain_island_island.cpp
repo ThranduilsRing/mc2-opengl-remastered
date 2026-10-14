@@ -521,7 +521,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) {
             vlog("vkCreateRenderPass failed."); setFallback("renderpass_failed"); return false;
         }
-        VkImageView fbViews[3] = { s->colorRes->view, s->normalRes->view, s->depthRes->view };
+        VkImageView fbViews[3] = { s->colorRes->view.get(), s->normalRes->view.get(), s->depthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;

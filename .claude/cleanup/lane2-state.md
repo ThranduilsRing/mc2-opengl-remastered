@@ -1,5 +1,34 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## MORNING session (fourteenth session, 2026-10-14 ~06:15 CDT start, cap 5 h) -- review fixes + ownership slices 2 and 3; nifty merged at the start (fast-forward to ba6ba6f84; nifty NOT merged back)
+Every number below was printed by the tool named beside it in this session.
+
+### Commits (oldest first, after the fast-forward to ba6ba6f84)
+- d2bd1b7d5 the review's four should-fix items: (1) the light-feed ring is `mc2vk::SharedLightFeed` (OwnedBuffer slots), a MEMBER of the engine `VulkanContext`, freed by `VulkanContext::destroy()` ahead of the allocator and device: no static owner, no `mc2vkSharedLightFeedRelease`, the "allocator changed" branch is gone (handles that are not the context's are refused, caller keeps its own copy); (2) the release call is gone from gameosmain.cpp: one teardown path (the context's destroy); (3) the VFX island is parked in a context slot (`IslandState` / `IslandSlot::Vfx`, `retireIsland()`): no raw static pointer; destroy() retires every parked island before the light feed; (4) the first-layout fence timeout (see 944a64774). Log-tag census re-frozen (one line deleted).
+- (next) `mc2vkSharedLightFeedAcquire` returns the buffer (null = fail-soft): no bool + out-param (LG05).
+- post-merge regeneration: callers, `scripts/background-launch-allow.json` row for nifty's `tools/vfx_oracle/probe_rng.py`, cxx17 baseline rewritten (LG20 +8: nifty's `tools/vfx_oracle` drivers name MC2_ variables as literals).
+- 944a64774 ownership slice 2: shared_scene (`vk_first_layout.cpp`: OwnedCommandPool/OwnedFence; a fence that times out now waits for the device before release, never destroys live), image_resource (`VkImageResource` owns memory/image/view/semaphores/fences; 46 consumer sites `.get()`), sky (parked island `IslandSlot::Sky`, all objects owned, staging `OwnedBuffer`), post_fog (state objects owned).
+- ownership slice 3: post_hzb (state objects owned). cxx17 baseline tightened twice.
+
+### Proof (every island of slices 2 and 3 shares the same runs: they were converted as a batch, not one proof per island)
+| Evidence | Id |
+|---|---|
+| VK tier1, validation ON, exe of 944a64774 (light_feed, shared_scene, image_resource, sky, post_fog; VFX parked in slot), 5/5, errors=0 warnings=0 on mc2_01/03/10/17/24, VRAM run_end mc2_01 3207 MiB (identical to before) | `tests/smoke/artifacts/2026-10-14T07-27-28/report.md` |
+| VK tier1, validation ON, exe with post_hzb added, 5/5, errors=0 warnings=0 | `tests/smoke/artifacts/2026-10-14T07-46-19/report.md` |
+| Captures day mc2_01_saved_205644 / night mc2_10_saved_204523, before (the installed exe of the previous session, 2c0052240) vs after (944a64774): night 0 px on GL and VK; day VK 59 px (2 clusters, largest 42x4 at 1221,195) vs after-vs-beforeb 86 px; noise floors: GL before-vs-before2 19 and 40 px, VK before-vs-beforeb 27 px; the same shoreline cluster at 1221,195 sits in the GL noise pair; montage viewed (`.claude/l2cap/montages/lfsi-day-vk.png`): healthy, no artefact | `.claude/l2cap/lfsi-before{,b}{1,2}-gl`, `lfsi-before{,b}-vk`, `lfsi-after*` |
+| GL tier1, same exe as the second VK run (post_hzb included), 5/5 (150 / 103 / 132 / 115 / 97 fps) | `tests/smoke/artifacts/2026-10-14T08-49-46/report.md` |
+| Final-exe VK day capture (`lfsi-after4-vk`, sidecar `backend: vulkan`): 88 px (6 clusters) vs before, 61 px vs beforeb; montage viewed (`.claude/l2cap/montages/lfsi-day-vk-final.png`): the red boxes are shoreline pixels, no artefact. Night of the final exe was not re-taken (night 0 px on the 944a64774 exe; post_hzb only reduces depth for culling). |
+| `tools/build_all_targets.py`: every stage built; `build_contract_harnesses --run --unit` rc 0 (doctest green); `check-contracts.sh` 115 passed / 7 failed: container_callsites, gate_gen_check (+ scripts_tests `test_the_committed_table_is_consistent`, tools_tests `test_sim_determinism`), delivery_installs, doc_links are NOT this lane's (gate_gen --check fails identically in A:/Games/mc2-main: MC2_CONTRACT_REPO_ROOT and MC2_IBL_ASSET_STRICT marked verified with no reader); gated_layout_macros was mine and is regenerated | `scratch_cc.log` (scratch) |
+
+### Open
+1. Tracy before/after pair NOT taken: the host was busy (lane 3 smoke holding the host lease, 6 `cl.exe`) when checked at ~09:00 CDT. Re-take on a quiet host (recipe in the EVENING section). 2. Ledger order next: legacy_shape (32 manual), mech (37), post_ssao (41), post_screenfx (45), color_prop, water, shadow, present, terrain. The `vkPostFogNative_` / `vkPostHzbNative_` objects are still new/deleted by `gosPostProcess`; the engine context itself is still the file-static `g_engineContext` (the only static owner left in this area, it destroys itself in `destroy()` before the device goes). 3. No BUGS-FOUND-FIXED row: the four should-fix items had no player-visible symptom (static teardown order, a timed-out first-layout submit). 4. Scratch to clean (nothing deleted by me): `.claude/l2cap/lfsi-*` (17 sets, plus `lfsi-after3-vk`/`lfsi-after4*` partial sets), `scratch_*.log` in the worktree root, `scratch/` build leftovers. 5. nifty's gate-table failures above need the orchestrator.
+
+### Lessons
+- A capture's `--duration` budget includes the lease wait again (two day poses lost behind lane 1/3 smokes): rerun just the lost pose with `--bookmarks`.
+- The Bash tool turned `\n` in heredoc python into real newlines again (log strings in three files): build the character with `chr(92)` or write scripts with the Write tool; the line-range "fix by regex from compiler errors" script (`error C` lines -> `.get()`) converted 63 consumer sites safely because the compiler lists every one.
+- Static unique_ptr owners are not a fix for static-teardown order: park the object in an owner the context destroys (`IslandSlot`).
+
+
 ## EVENING session (thirteenth session, 2026-10-13 16:30 CDT start, cap 6 h) -- 7 task / checkpoint commits + the merge and its regeneration commit + this state commit; nifty merged at the start (tip d853bdfce, merge c336a1dca; nifty NOT merged back)
 Every number below was printed by the tool named beside it in this session; none is typed from an earlier note.
 

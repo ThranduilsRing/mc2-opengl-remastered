@@ -884,9 +884,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             VkImageResource* nR = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
             VkImageResource* dR = reinterpret_cast<VkImageResource*>(s->t1_depthRes);
             const bool ready =
-                cR->view != VK_NULL_HANDLE && cR->format != VK_FORMAT_UNDEFINED &&
-                nR->view != VK_NULL_HANDLE && nR->format != VK_FORMAT_UNDEFINED &&
-                dR->view != VK_NULL_HANDLE && dR->format != VK_FORMAT_UNDEFINED &&
+                cR->view.get() != VK_NULL_HANDLE && cR->format != VK_FORMAT_UNDEFINED &&
+                nR->view.get() != VK_NULL_HANDLE && nR->format != VK_FORMAT_UNDEFINED &&
+                dR->view.get() != VK_NULL_HANDLE && dR->format != VK_FORMAT_UNDEFINED &&
                 cR->w > 0 && cR->h > 0;
             if (!ready) {
                 setFallback("tier1_shared_gbuffer_images_not_realized");
@@ -974,7 +974,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->t1_rpass) != VK_SUCCESS) {
             vlog("TIER-1 vkCreateRenderPass failed."); setFallback("tier1_renderpass_failed"); return false;
         }
-        VkImageView fbViews[3] = { colorRes->view, normalRes->view, depthRes->view };
+        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->t1_rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
@@ -1448,10 +1448,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // the pre-slice per-island copy below (zone VKIsl.Props.LightFeed)
         // unchanged.
         const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataCpuBytes;
-        VkBuffer sharedLight = VK_NULL_HANDLE;
-        if (mc2vkSharedLightFeedAcquire(s->allocator, s->device,
-                                        lightFeed.lightDataCpu,
-                                        lightFeed.lightDataCpuBytes, &sharedLight)) {
+        if (const VkBuffer sharedLight = mc2vkSharedLightFeedAcquire(s->allocator, s->device,
+                                                                     lightFeed.lightDataCpu,
+                                                                     lightFeed.lightDataCpuBytes)) {
             bind_light_buffer(s, par, sharedLight);
             // Probe reads the CPU source -- byte-identical to the ring copy
             // (single-threaded copy of the same array this same frame).

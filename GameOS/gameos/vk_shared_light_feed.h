@@ -41,26 +41,53 @@
 #include <volk.h>
 #include <cstdint>
 
-// VMA allocator handle (forward-declared; the .cpp includes vk_mem_alloc.h).
-struct VmaAllocator_T;
-typedef struct VmaAllocator_T* VmaAllocator;
+#include "vk_owned.h"
+
+namespace mc2vk {
+
+// The ring of host-visible LightsData buffers and the one-copy-per-frame bookkeeping. The engine Vulkan context owns the single instance (as a member),
+// so the ring is released by the context's own destroy() ahead of the allocator and the device it was made on: there is no second teardown call to
+// forget and no static owner.
+class SharedLightFeed {
+public:
+    static constexpr int kSlots = 3;   // >= 3: reuse age always exceeds the 2-frames-in-flight bound
+
+    SharedLightFeed() = default;
+    ~SharedLightFeed() { release(); }
+    SharedLightFeed(const SharedLightFeed&) = delete;
+    SharedLightFeed& operator=(const SharedLightFeed&) = delete;
+
+    // Copy-once-per-frame acquire (see the file header). A null buffer is fail-soft: the caller runs its own copy path.
+    VkBuffer acquire(VmaAllocator allocator, VkDevice device, const void* cpuData, uint64_t cpuBytes);
+
+    // Frees every slot after the GPU is idle. Safe when nothing was acquired; a later acquire builds the slots again.
+    void release();
+
+private:
+    OwnedBuffer  slots_[kSlots];
+    VkDeviceSize caps_[kSlots] = {};
+    VkDevice     device_       = VK_NULL_HANDLE;   // the device the slots were made on; set by the first acquire
+    int          slot_         = -1;               // last written ring slot
+    uint32_t     frame_        = 0xFFFFFFFFu;      // g_mc2FrameCounter of the last copy attempt
+    bool         frameValid_   = false;            // the copy for frame_ landed
+    VkDeviceSize frameBytes_   = 0;                // bytes copied for frame_
+    unsigned long copies_ = 0, hits_ = 0, fallbacks_ = 0;
+};
+
+}  // namespace mc2vk
 
 // Killswitch resolver: MC2_VK_LIGHTFEED_DEDUP explicit "0" disables (twin
 // per-island copies restored); anything else = ON. Latched on first call.
 bool mc2vkSharedLightFeedEnabled();
 
-// Copy-once-per-frame acquire. On success *outBuf is a host-visible STORAGE
-// buffer holding cpuBytes of this frame's LightsData (copied by the first
-// caller this frame). Returns false fail-soft -- killswitch off, allocator or
-// buffer trouble, or the CPU array grew between two same-frame callers -- and
-// the caller must fall back to its own per-island copy path.
-bool mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
-                                 const void* cpuData, uint64_t cpuBytes,
-                                 VkBuffer* outBuf);
-
-// Destroys the ring (after the GPU is idle). Engine teardown calls it ahead of the shared context so the three buffers are gone before the allocator
-// and the device; a later acquire builds a fresh ring. Safe when nothing was ever acquired.
-void mc2vkSharedLightFeedRelease();
+// Copy-once-per-frame acquire. Returns a host-visible STORAGE buffer holding
+// cpuBytes of this frame's LightsData (copied by the first caller this frame).
+// Returns VK_NULL_HANDLE fail-soft -- killswitch off, allocator or buffer
+// trouble, handles that are not the engine context's, or the CPU array grew
+// between two same-frame callers -- and the caller must fall back to its own
+// per-island copy path.
+VkBuffer mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
+                                     const void* cpuData, uint64_t cpuBytes);
 
 #endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_SHARED_LIGHT_FEED_H

@@ -756,7 +756,7 @@ bool init_island(MechIsland* s, int w, int h) {
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[3] = { colorRes->view, normalRes->view, depthRes->view };
+        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
@@ -1109,10 +1109,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         // above). Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire fail-soft
         // (mid-frame light-count growth, ring alloc failure) runs the
         // pre-slice per-island copy below (zone VKIsl.Mech.LightFeed).
-        VkBuffer sharedLight = VK_NULL_HANDLE;
-        if (mc2vkSharedLightFeedAcquire(s->allocator, s->device,
-                                        feed.lightDataCpu,
-                                        feed.lightDataCpuBytes, &sharedLight)) {
+        if (const VkBuffer sharedLight = mc2vkSharedLightFeedAcquire(s->allocator, s->device,
+                                                                     feed.lightDataCpu,
+                                                                     feed.lightDataCpuBytes)) {
             bind_light_buffer_all(s, par, sharedLight);
             s->lightingReady = true;
             ++g_feedNative.nativeLightFrames;

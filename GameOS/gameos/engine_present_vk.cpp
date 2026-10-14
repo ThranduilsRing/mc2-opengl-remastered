@@ -695,7 +695,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         }
     }
     if (!s.compositeFramebuffer) {
-        VkImageView att[] = { s.sharedImg.view };
+        VkImageView att[] = { s.sharedImg.view.get() };
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fb.renderPass = s.compositeRenderPass;
         fb.attachmentCount = 1; fb.pAttachments = att;
@@ -736,10 +736,10 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     VkImageResource* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
     VkDescriptorImageInfo ii[2]{};
     ii[0].sampler = s.compositeSampler;
-    ii[0].imageView = scene->view;
+    ii[0].imageView = scene->view.get();
     ii[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     ii[1].sampler = s.compositeNearestSampler;                 // the shader reads the id with usampler2D: an exact texel, never a blend
-    ii[1].imageView = objectId && objectId->view ? objectId->view : scene->view;
+    ii[1].imageView = objectId && objectId->view.get() ? objectId->view.get() : scene->view.get();
     ii[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VkWriteDescriptorSet wr[2]{};
     for (uint32_t i = 0; i < 2; ++i) {
@@ -849,7 +849,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         }
     }
     if (!s.shadowDebugFramebuffer) {
-        VkImageView att[] = { s.sharedImg.view };
+        VkImageView att[] = { s.sharedImg.view.get() };
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fb.renderPass = s.shadowDebugRenderPass;
         fb.attachmentCount = 1; fb.pAttachments = att;
@@ -1063,7 +1063,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         }
     }
     if (!s.hudColorFramebuffer) {
-        VkImageView att[] = { s.sharedImg.view };
+        VkImageView att[] = { s.sharedImg.view.get() };
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fb.renderPass = s.hudColorRenderPass;
         fb.attachmentCount = 1; fb.pAttachments = att;
@@ -1379,7 +1379,7 @@ bool ensureImguiFramebuffer(EnginePresentVk::Impl& s) {
     if (!ensureImguiRenderPass(s) || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
 
-    VkImageView attachments[] = { s.sharedImg.view };
+    VkImageView attachments[] = { s.sharedImg.view.get() };
     VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     fb.renderPass = s.imguiRenderPass;
     fb.attachmentCount = 1;
@@ -1732,7 +1732,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
         reason = "vkImageResourceCreate(VK-only RGBA8) failed";
         return false;
     }
-    mc2vk::nameObject(s.dev, s.sharedImg.image, "present.sharedImage");
+    mc2vk::nameObject(s.dev, s.sharedImg.image.get(), "present.sharedImage");
     s.imgW = w; s.imgH = h;
     static bool loggedOnce = false;
     if (!loggedOnce) {
@@ -1902,7 +1902,7 @@ bool EnginePresentVk::presentDirectVkOnly() {
     // renders the present image instead. directFbo_ is a sentinel (1u == "native
     // present armed"), not a GL FBO name.
     if (!directFboGateEnabled() || !nativeCompositeGateEnabled() ||
-        !created_ || !impl_ || impl_->sharedImg.image == VK_NULL_HANDLE) {
+        !created_ || !impl_ || impl_->sharedImg.image.get() == VK_NULL_HANDLE) {
         directFbo_ = 0;
         presentImageVkOwned_ = false;
         return false;
@@ -1999,12 +1999,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
 
-    barrier(cc, scene->image,
+    barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     if (boundObjectId) {
-        barrier(cc, boundObjectId->image,
+        barrier(cc, boundObjectId->image.get(),
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -2051,12 +2051,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdDraw(cc, 3, 1, 0, 0);
     vkCmdEndRenderPass(cc);
 
-    barrier(cc, scene->image,
+    barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     if (boundObjectId) {
-        barrier(cc, boundObjectId->image,
+        barrier(cc, boundObjectId->image.get(),
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -2310,7 +2310,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // covered by its own COLOR_ATTACHMENT->TRANSFER_SRC barrier below.
     const bool tailWrites = tailHook || (s.pendingShadowDebugView != VK_NULL_HANDLE);
     if (tailWrites) {
-        barrier(s.cbuf, s.sharedImg.image,
+        barrier(s.cbuf, s.sharedImg.image.get(),
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -2374,7 +2374,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     }
 
     // shared image: GL left it in COLOR_ATTACHMENT layout -> TRANSFER_SRC for blit.
-    barrier(s.cbuf, s.sharedImg.image,
+    barrier(s.cbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -2398,7 +2398,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     region.dstOffsets[0] = {0, (int32_t)s.scExtent.height, 0};
     region.dstOffsets[1] = {(int32_t)s.scExtent.width, 0, 1};
     vkCmdBlitImage(s.cbuf,
-                   s.sharedImg.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   s.sharedImg.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                    scImg,             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                    1, &region, VK_FILTER_LINEAR);
 
@@ -2412,7 +2412,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     // Return the shared image to COLOR_ATTACHMENT for the next GL frame + the
     // VK->GL semaphore signal below.
-    barrier(s.cbuf, s.sharedImg.image,
+    barrier(s.cbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -2544,16 +2544,16 @@ void EnginePresentVk::verifyReadbackContent() {
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.readbackCbuf, &bi);
     // shared image is in COLOR_ATTACHMENT (post-present barrier) -> TRANSFER_SRC.
-    barrier(s.readbackCbuf, s.sharedImg.image,
+    barrier(s.readbackCbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     VkBufferImageCopy bic{};
     bic.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     bic.imageExtent = {rw, rh, 1};
-    vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image,
+    vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image.get(),
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s.readbackBuf, 1, &bic);
-    barrier(s.readbackCbuf, s.sharedImg.image,
+    barrier(s.readbackCbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);

@@ -351,7 +351,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     {
         VkImageViewCreateInfo vci{};
         vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vci.image = s->sDepthRes->image;
+        vci.image = s->sDepthRes->image.get();
         vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         vci.format = s->sDepthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
@@ -431,7 +431,8 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass;
-        fci.attachmentCount = 1; fci.pAttachments = &s->sColorRes->view;
+        const VkImageView colorAttachment = s->sColorRes->view.get();
+        fci.attachmentCount = 1; fci.pAttachments = &colorAttachment;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
         r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb);
         if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer failed (%d).", (int)r); return false; }
@@ -509,7 +510,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         depthInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo normalInfo{};
         normalInfo.sampler = s->gbufSampler;
-        normalInfo.imageView = s->sNormalRes->view;
+        normalInfo.imageView = s->sNormalRes->view.get();
         normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo staticShadowInfo{};
         staticShadowInfo.sampler = s->shadowCompareSampler;
@@ -845,11 +846,11 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
     };
-    barrier(s->sDepthRes->image, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+    barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    barrier(s->sNormalRes->image, VK_IMAGE_ASPECT_COLOR_BIT,
+    barrier(s->sNormalRes->image.get(), VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -892,11 +893,11 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
         }
     }
-    barrier(s->sDepthRes->image, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+    barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, 0,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-    barrier(s->sNormalRes->image, VK_IMAGE_ASPECT_COLOR_BIT,
+    barrier(s->sNormalRes->image.get(), VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, 0,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
@@ -1047,7 +1048,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         b.oldLayout = oldL; b.newLayout = newL;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sDepthRes->image;
+        b.image = s->sDepthRes->image.get();
         b.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
@@ -1060,7 +1061,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         b.oldLayout = oldL; b.newLayout = newL;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sNormalRes->image;
+        b.image = s->sNormalRes->image.get();
         b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);

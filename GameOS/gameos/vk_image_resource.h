@@ -18,12 +18,16 @@
 #include <volk.h>
 #include <cstdint>
 
-// The reusable, GL-free VK-owned image + its VK-side sync objects.
+#include "vk_owned.h"
+
+// The reusable, GL-free VK-owned image + its VK-side sync objects. The resource owns every handle: vkImageResourceDestroy (or the destructor)
+// releases them in the reverse of the order the members are declared, so the memory outlives the image bound to it and the fences go first. A
+// resource is move-only; islands hold it by pointer or by value.
 struct VkImageResource {
-    VkImage           image   = VK_NULL_HANDLE;
-    VkDeviceMemory    memory  = VK_NULL_HANDLE;   // raw vkAllocateMemory (dedicated)
+    mc2vk::OwnedDeviceMemory memory;               // raw vkAllocateMemory (dedicated); declared first, released last
+    mc2vk::OwnedRawImage     image;
     VkDeviceSize      memSize = 0;
-    VkImageView       view    = VK_NULL_HANDLE;
+    mc2vk::OwnedImageView    view;
     uint32_t          w = 0, h = 0;
     VkFormat          format  = VK_FORMAT_UNDEFINED;
     VkImageUsageFlags usage   = 0;
@@ -41,9 +45,9 @@ struct VkImageResource {
     // these semaphores anymore).
     //
     // glToVkSem == the GL->VK direction slot; vkToGlSem == the VK->GL direction slot.
-    VkSemaphore       glToVkSem[2]    = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkSemaphore       vkToGlSem[2]      = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkFence           frameFence[2]   = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    mc2vk::OwnedSemaphore glToVkSem[2];
+    mc2vk::OwnedSemaphore vkToGlSem[2];
+    mc2vk::OwnedFence     frameFence[2];
     uint32_t          frameParity     = 0;        // ^=1 each frame; picks [frameParity]
 
     // Cached device handle so vkImageResourceBeginFrame (which takes only the

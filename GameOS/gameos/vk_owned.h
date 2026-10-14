@@ -39,6 +39,8 @@ struct RenderPass { void operator()(VkDevice d, VkRenderPass h) const { vkDestro
 struct CommandPool { void operator()(VkDevice d, VkCommandPool h) const { vkDestroyCommandPool(d, h, nullptr); } };
 struct Fence { void operator()(VkDevice d, VkFence h) const { vkDestroyFence(d, h, nullptr); } };
 struct Semaphore { void operator()(VkDevice d, VkSemaphore h) const { vkDestroySemaphore(d, h, nullptr); } };
+struct RawImage { void operator()(VkDevice d, VkImage h) const { vkDestroyImage(d, h, nullptr); } };
+struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { vkFreeMemory(d, h, nullptr); } };
 }  // namespace release
 
 template <class Handle, class Release> using DeviceOwned = mc2::OwnedHandle<Handle, VkDevice, Release>;
@@ -54,6 +56,9 @@ using OwnedRenderPass = DeviceOwned<VkRenderPass, release::RenderPass>;
 using OwnedCommandPool = DeviceOwned<VkCommandPool, release::CommandPool>;
 using OwnedFence = DeviceOwned<VkFence, release::Fence>;
 using OwnedSemaphore = DeviceOwned<VkSemaphore, release::Semaphore>;
+// An image made by vkCreateImage whose memory the owner of the image allocates and binds itself (VMA images use OwnedImage).
+using OwnedRawImage = DeviceOwned<VkImage, release::RawImage>;
+using OwnedDeviceMemory = DeviceOwned<VkDeviceMemory, release::DeviceMemory>;
 
 // Creates through `call(Handle*) -> VkResult` (the `vkCreate*` expression) and hands the new handle to `owner`, releasing what it held. False, with `owner`
 // empty, when the call fails: the handle a failed call leaves behind is never adopted.

@@ -25,9 +25,15 @@
 #include <volk.h>
 
 #include "vk_device_profile.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_shared_light_feed.h"
+#endif
 
+#include <array>
+#include <cstddef>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -48,6 +54,17 @@ struct EngineContextHealth {
     std::string  fallbackReason;             // empty == clean; set on any failure
     std::string  profileLine;                // the [VK_PROFILE v1] line of the device the profile chose (or refused); empty before device selection
 };
+
+#ifdef MC2_VULKAN_ISLAND
+// The state an island keeps while its device objects exist. The context owns it (see VulkanContext::islandSlot), so an island's objects are released
+// by the context ahead of the allocator and the device they were made on, whatever path ends the process: no island needs a static owner or a teardown
+// call of its own for that.
+struct IslandState {
+    virtual ~IslandState() = default;
+};
+// One slot per island that has been moved under the context; the next converted island adds its name here.
+enum class IslandSlot : size_t { Vfx, Sky, Count };
+#endif
 
 // The standalone shared engine Vulkan context. Owns instance + physical device
 // + logical device + graphics queue + VMA allocator + volk device dispatch.
@@ -120,6 +137,17 @@ public:
     // it they are VMA's own estimate. False when no allocator is live.
     bool deviceLocalMemory(uint64_t& budgetBytes, uint64_t& usageBytes, uint64_t& allocatedBytes) const;
 
+#ifdef MC2_VULKAN_ISLAND
+    // The ring of per-frame LightsData buffers the mech and color-prop islands share. It lives here because it belongs to no island: destroy() frees it
+    // ahead of the allocator and the device it was made on.
+    SharedLightFeed& lightFeed() { return lightFeed_; }
+
+    // The slot an island parks its state in. The island creates and fills it; destroy() idles the GPU and releases every parked island, in slot order.
+    std::unique_ptr<IslandState>& islandSlot(IslandSlot slot) { return islands_[static_cast<size_t>(slot)]; }
+    // Idles the GPU, then releases one parked island (for an island that rebuilds itself, e.g. on a resize). Safe on an empty slot.
+    void retireIsland(IslandSlot slot);
+#endif
+
     // Emit the [VK_ENGINE_CONTEXT] health line (device_name / validation_errors
     // / created / fallback_reason) to stderr for the T5 device-birth proof.
     void logHealth() const;
@@ -138,6 +166,10 @@ private:
     bool             luidValid_         = false;
 
     EngineContextHealth health_;
+#ifdef MC2_VULKAN_ISLAND
+    SharedLightFeed lightFeed_;
+    std::array<std::unique_ptr<IslandState>, static_cast<size_t>(IslandSlot::Count)> islands_;
+#endif
 };
 
 // Object names for the validation layer and the capture tools: a message that says `VkImage 0x310000000031` is decoded by creation order, one that says

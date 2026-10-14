@@ -48,8 +48,8 @@
   },
   "GameOS": {
    "LG01": 10,
-   "LG02": 192,
-   "LG03": 299,
+   "LG02": 191,
+   "LG03": 293,
    "LG04": 6,
    "LG05": 118,
    "LG06": 497,
@@ -140,8 +140,8 @@
   },
   "code": {
    "LG01": 222,
-   "LG02": 204,
-   "LG03": 943,
+   "LG02": 206,
+   "LG03": 948,
    "LG04": 21,
    "LG05": 194,
    "LG06": 452,
@@ -1136,9 +1136,6 @@
   "GameOS/gameos/vk_shared_light_feed.cpp": {
    "LG09": 7
   },
-  "GameOS/gameos/vk_shared_light_feed.h": {
-   "LG02": 1
-  },
   "GameOS/gameos/vma_impl.cpp": {
    "LG13": 2
   },
@@ -1227,7 +1224,6 @@
    "LG09": 1
   },
   "GameOS/gameos/vulkan_sky_island.cpp": {
-   "LG03": 4,
    "LG06": 2,
    "LG08": 1,
    "LG09": 12,
@@ -1262,7 +1258,6 @@
    "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
-   "LG03": 2,
    "LG06": 2,
    "LG09": 8,
    "LG11": 1,
@@ -2754,13 +2749,13 @@
    "LG12b": 1
   },
   "code/objective.cpp": {
-   "LG03": 47,
+   "LG03": 52,
    "LG05": 1,
    "LG06": 6,
    "LG09": 31
   },
   "code/objective.h": {
-   "LG02": 2,
+   "LG02": 4,
    "LG05": 1,
    "LG09": 1,
    "LG14": 4
@@ -5162,7 +5157,7 @@
    "LG20": 3
   }
  },
- "head": "4580ba8d4",
+ "head": "29c9cde49",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

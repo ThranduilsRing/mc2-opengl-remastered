@@ -165,25 +165,26 @@ struct gosPostProcess::VkPostFogNative {
     VkImageResource* sDepthRes = nullptr;
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
-    // OWNED objects.
-    VkImageView   depthSampleView = VK_NULL_HANDLE; // depth-aspect view over sDepthRes->image
-    VkSampler     depthSampler = VK_NULL_HANDLE;    // NEAREST/CLAMP (matches GL fog sampling)
-    VkBuffer      edgeUbo = VK_NULL_HANDLE; VmaAllocation edgeUboAlloc = VK_NULL_HANDLE;
-    VkBuffer      oobUbo  = VK_NULL_HANDLE; VmaAllocation oobUboAlloc  = VK_NULL_HANDLE;
-    VkRenderPass  rpass = VK_NULL_HANDLE;
-    VkFramebuffer fb    = VK_NULL_HANDLE;
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
-    VkDescriptorPool pool = VK_NULL_HANDLE;
-    VkDescriptorSet  edgeSet = VK_NULL_HANDLE;
+    VkDescriptorSet  edgeSet = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
     VkDescriptorSet  oobSet  = VK_NULL_HANDLE;
-    VkPipelineLayout playout = VK_NULL_HANDLE;
-    VkPipeline       edgePipe = VK_NULL_HANDLE;
-    VkPipeline       oobPipe  = VK_NULL_HANDLE;
-    VkShaderModule   edgeVert = VK_NULL_HANDLE, edgeFrag = VK_NULL_HANDLE;
-    VkShaderModule   oobVert  = VK_NULL_HANDLE, oobFrag  = VK_NULL_HANDLE;
-    VkCommandPool    cpool = VK_NULL_HANDLE;
-    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot
-    VkFence          submitFence = VK_NULL_HANDLE; // VK-QWI-TO-FENCE-1: per-submit retire fence
+    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot; allocated from `cpool`, freed with it
+
+    // OWNED objects, declared in creation order: the destructor releases them in reverse (the owner idles the GPU first, see destroy_state).
+    mc2vk::OwnedImageView  depthSampleView; // depth-aspect view over sDepthRes->image
+    mc2vk::OwnedSampler    depthSampler;    // NEAREST/CLAMP (matches GL fog sampling)
+    mc2vk::OwnedBuffer     edgeUbo;
+    mc2vk::OwnedBuffer     oobUbo;
+    mc2vk::OwnedRenderPass rpass;
+    mc2vk::OwnedFramebuffer fb;
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool pool;
+    mc2vk::OwnedShaderModule edgeVert, edgeFrag;
+    mc2vk::OwnedShaderModule oobVert, oobFrag;
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedPipeline   edgePipe;
+    mc2vk::OwnedPipeline   oobPipe;
+    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedFence      submitFence; // VK-QWI-TO-FENCE-1: per-submit retire fence
 };
 
 static bool vkPostFogDirectChainEnabled();
@@ -191,7 +192,7 @@ static bool vkPostFogDirectChainEnabled();
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+                 VkBufferUsageFlags usage, mc2vk::OwnedBuffer& out,
                  std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -199,39 +200,16 @@ bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed."); return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
+// Releases the owned objects (the state's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostFogNative* s) {
     if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(d);
-        if (s->edgePipe) vkDestroyPipeline(d, s->edgePipe, nullptr);
-        if (s->oobPipe)  vkDestroyPipeline(d, s->oobPipe, nullptr);
-        if (s->playout)  vkDestroyPipelineLayout(d, s->playout, nullptr);
-        if (s->edgeVert) vkDestroyShaderModule(d, s->edgeVert, nullptr);
-        if (s->edgeFrag) vkDestroyShaderModule(d, s->edgeFrag, nullptr);
-        if (s->oobVert)  vkDestroyShaderModule(d, s->oobVert, nullptr);
-        if (s->oobFrag)  vkDestroyShaderModule(d, s->oobFrag, nullptr);
-        if (s->pool)     vkDestroyDescriptorPool(d, s->pool, nullptr);
-        if (s->dsl)      vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
-        if (s->fb)       vkDestroyFramebuffer(d, s->fb, nullptr);
-        if (s->rpass)    vkDestroyRenderPass(d, s->rpass, nullptr);
-        if (s->depthSampler)    vkDestroySampler(d, s->depthSampler, nullptr);
-        if (s->depthSampleView) vkDestroyImageView(d, s->depthSampleView, nullptr);
-        if (s->submitFence) vkDestroyFence(d, s->submitFence, nullptr);   // VK-QWI-TO-FENCE-1
-        if (s->cpool)    vkDestroyCommandPool(d, s->cpool, nullptr);
-        if (s->allocator != VK_NULL_HANDLE) {
-            if (s->edgeUbo) vmaDestroyBuffer(s->allocator, s->edgeUbo, s->edgeUboAlloc);
-            if (s->oobUbo)  vmaDestroyBuffer(s->allocator, s->oobUbo,  s->oobUboAlloc);
-        }
-    }
-    // Borrowed handles are NOT destroyed. Zero the owned ones.
+    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostFogNative{};
     s->disabled = disabled;
@@ -277,12 +255,13 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     {
         VkImageViewCreateInfo vci{};
         vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vci.image = s->sDepthRes->image;
+        vci.image = s->sDepthRes->image.get();
         vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         vci.format = s->sDepthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-        r = vkCreateImageView(s->device, &vci, nullptr, &s->depthSampleView);
-        if (r != VK_SUCCESS) { vlog("depth sample view create failed (%d).", (int)r); return false; }
+        if (!mc2vk::create(s->depthSampleView, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
+            vlog("depth sample view create failed (%d).", (int)r); return false;
+        }
     }
     {
         VkSamplerCreateInfo sci{};
@@ -292,12 +271,13 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        r = vkCreateSampler(s->device, &sci, nullptr, &s->depthSampler);
-        if (r != VK_SUCCESS) { vlog("vkCreateSampler failed (%d).", (int)r); return false; }
+        if (!mc2vk::create(s->depthSampler, s->device, [&](VkSampler* h) { r = vkCreateSampler(s->device, &sci, nullptr, h); return r; })) {
+            vlog("vkCreateSampler failed (%d).", (int)r); return false;
+        }
     }
 
-    if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->edgeUbo, &s->edgeUboAlloc, "postfog.edgeUbo")) return false;
-    if (!make_buffer(s, sizeof(FogOobParams),  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->oobUbo,  &s->oobUboAlloc, "postfog.oobUbo"))  return false;
+    if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, s->edgeUbo, "postfog.edgeUbo")) return false;
+    if (!make_buffer(s, sizeof(FogOobParams),  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, s->oobUbo, "postfog.oobUbo"))  return false;
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (fog blends OVER the
     // scene), STORE; layout-STABLE COLOR_ATTACHMENT both ends (GL hands it over /
@@ -334,16 +314,19 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         rpci.attachmentCount = 1; rpci.pAttachments = &att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass);
-        if (r != VK_SUCCESS) { vlog("vkCreateRenderPass failed (%d).", (int)r); return false; }
+        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { r = vkCreateRenderPass(s->device, &rpci, nullptr, h); return r; })) {
+            vlog("vkCreateRenderPass failed (%d).", (int)r); return false;
+        }
 
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass;
-        fci.attachmentCount = 1; fci.pAttachments = &s->sColorRes->view;
+        fci.renderPass = s->rpass.get();
+        const VkImageView colorAttachment = s->sColorRes->view.get();
+        fci.attachmentCount = 1; fci.pAttachments = &colorAttachment;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
-        r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb);
-        if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer failed (%d).", (int)r); return false; }
+        if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { r = vkCreateFramebuffer(s->device, &fci, nullptr, h); return r; })) {
+            vlog("vkCreateFramebuffer failed (%d).", (int)r); return false;
+        }
     }
 
     // Descriptor layout / pool / 2 sets (subgraph interface: 0=sampler, 1=UBO, frag).
@@ -356,31 +339,33 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = binds;
-        r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl);
-        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout failed (%d).", (int)r); return false; }
+        if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); return r; })) {
+            vlog("vkCreateDescriptorSetLayout failed (%d).", (int)r); return false;
+        }
         VkDescriptorPoolSize sizes[2]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 2;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
-        r = vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool);
-        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", (int)r); return false; }
-        VkDescriptorSetLayout layouts[2] = { s->dsl, s->dsl };
+        if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
+            vlog("vkCreateDescriptorPool failed (%d).", (int)r); return false;
+        }
+        VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
         VkDescriptorSet setsOut[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
         r = vkAllocateDescriptorSets(s->device, &dsai, setsOut);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", (int)r); return false; }
         s->edgeSet = setsOut[0]; s->oobSet = setsOut[1];
 
         VkDescriptorImageInfo imgInfo{};
-        imgInfo.sampler = s->depthSampler;
-        imgInfo.imageView = s->depthSampleView;
+        imgInfo.sampler = s->depthSampler.get();
+        imgInfo.imageView = s->depthSampleView.get();
         imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkDescriptorBufferInfo edgeUboInfo{ s->edgeUbo, 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo oobUboInfo { s->oobUbo,  0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo edgeUboInfo{ s->edgeUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo oobUboInfo { s->oobUbo.get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet writes[4]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = s->edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
@@ -405,19 +390,20 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     // tri, no vertex input, cull none, AlphaBlend SRC_ALPHA/ONE_MINUS_SRC_ALPHA,
     // no depth attachment). Shaders reused verbatim.
     {
-        s->edgeVert = load_spv(s->device, spv_dir() + "edge_fog.vert.spv");
-        s->edgeFrag = load_spv(s->device, spv_dir() + "edge_fog.frag.spv");
-        s->oobVert  = load_spv(s->device, spv_dir() + "fog_oob.vert.spv");
-        s->oobFrag  = load_spv(s->device, spv_dir() + "fog_oob.frag.spv");
-        if (s->edgeVert == VK_NULL_HANDLE || s->edgeFrag == VK_NULL_HANDLE ||
-            s->oobVert  == VK_NULL_HANDLE || s->oobFrag  == VK_NULL_HANDLE) {
+        s->edgeVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "edge_fog.vert.spv"));
+        s->edgeFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "edge_fog.frag.spv"));
+        s->oobVert  = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "fog_oob.vert.spv"));
+        s->oobFrag  = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "fog_oob.frag.spv"));
+        if (!s->edgeVert || !s->edgeFrag || !s->oobVert || !s->oobFrag) {
             setFallback("spv_load_failed"); return false;
         }
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
-        r = vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout);
-        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout failed (%d).", (int)r); return false; }
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
+        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
+        if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { r = vkCreatePipelineLayout(s->device, &plci, nullptr, h); return r; })) {
+            vlog("vkCreatePipelineLayout failed (%d).", (int)r); return false;
+        }
 
         VkPipelineVertexInputStateCreateInfo vin{};
         vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -452,7 +438,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         cb.attachmentCount = 1; cb.pAttachments = &cba;
 
-        auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod, VkPipeline* out, std::string_view name) -> bool {
+        auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod, mc2vk::OwnedPipeline& out, std::string_view name) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";
@@ -467,17 +453,17 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
             gp.pRasterizationState = &rs;
             gp.pMultisampleState = &ms;
             gp.pColorBlendState = &cb;
-            gp.layout = s->playout;
-            gp.renderPass = s->rpass;
+            gp.layout = s->playout.get();
+            gp.renderPass = s->rpass.get();
             gp.subpass = 0;
-            if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out) != VK_SUCCESS) {
+            if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
-            mc2vk::nameObject(s->device, *out, name);
+            mc2vk::nameObject(s->device, out.get(), name);
             return true;
         };
-        if (!make_pipeline(s->edgeVert, s->edgeFrag, &s->edgePipe, "postfog.edgePipe")) return false;
-        if (!make_pipeline(s->oobVert,  s->oobFrag,  &s->oobPipe, "postfog.oobPipe"))  return false;
+        if (!make_pipeline(s->edgeVert.get(), s->edgeFrag.get(), s->edgePipe, "postfog.edgePipe")) return false;
+        if (!make_pipeline(s->oobVert.get(), s->oobFrag.get(), s->oobPipe, "postfog.oobPipe")) return false;
     }
 
     {
@@ -485,11 +471,12 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
-        r = vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool);
-        if (r != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", (int)r); return false; }
+        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
+            vlog("vkCreateCommandPool failed (%d).", (int)r); return false;
+        }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool;
+        cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 2;
         r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
@@ -603,10 +590,9 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
         p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
-        void* m = nullptr;
-        if (vmaMapMemory(s->allocator, s->edgeUboAlloc, &m) == VK_SUCCESS) {
+        if (void* m = s->edgeUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
-            vmaUnmapMemory(s->allocator, s->edgeUboAlloc);
+            s->edgeUbo.unmap();
         }
     }
     {
@@ -622,10 +608,9 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_time = SmokeMode::fixedTimestepEnabled()
                      ? (float)SmokeMode::fixedClockSeconds()
                      : (float)SDL_GetTicks() / 1000.0f;
-        void* m = nullptr;
-        if (vmaMapMemory(s->allocator, s->oobUboAlloc, &m) == VK_SUCCESS) {
+        if (void* m = s->oobUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
-            vmaUnmapMemory(s->allocator, s->oobUboAlloc);
+            s->oobUbo.unmap();
         }
     }
 
@@ -655,7 +640,7 @@ bool gosPostProcess::runVkPostFogNative()
         b.oldLayout = oldL; b.newLayout = newL;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sDepthRes->image;
+        b.image = s->sDepthRes->image.get();
         b.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
@@ -667,15 +652,15 @@ bool gosPostProcess::runVkPostFogNative()
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
     rbi.clearValueCount = 0; // LOAD, no clear
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->edgePipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->edgeSet, 0, nullptr);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->edgePipe.get());
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->edgeSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->oobPipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->oobSet, 0, nullptr);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->oobPipe.get());
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->oobSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
 
@@ -697,16 +682,15 @@ bool gosPostProcess::runVkPostFogNative()
     // exactly (a vkQueueSubmit fence signal is also ordered after all earlier
     // submission-order work on the queue, so the wait is never WEAKER than the drain
     // it replaces). Fail-soft: if fence creation ever fails, keep the queue drain.
-    if (s->submitFence == VK_NULL_HANDLE) {
+    if (!s->submitFence) {
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (vkCreateFence(s->device, &fci, nullptr, &s->submitFence) != VK_SUCCESS)
-            s->submitFence = VK_NULL_HANDLE;
+        mc2vk::create(s->submitFence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue drain below stands in
     }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
 
@@ -714,12 +698,13 @@ bool gosPostProcess::runVkPostFogNative()
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
     {
         const clk::time_point tWait0 = clk::now();
-        if (s->submitFence != VK_NULL_HANDLE) {
-            if (vkWaitForFences(s->device, 1, &s->submitFence, VK_TRUE,
+        if (s->submitFence) {
+            const VkFence submitFence = s->submitFence.get();
+            if (vkWaitForFences(s->device, 1, &submitFence, VK_TRUE,
                                 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
                 setFallback("fence_timeout"); s->disabled = true; return false;
             }
-            vkResetFences(s->device, 1, &s->submitFence);
+            vkResetFences(s->device, 1, &submitFence);
         } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
             setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
         }
