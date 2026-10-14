@@ -88,23 +88,23 @@ struct EnginePresentVk::Impl {
     VkQueue          gfxQ  = VK_NULL_HANDLE;
     uint32_t         gfxFamily = UINT32_MAX;
 
-    VkSurfaceKHR     surface   = VK_NULL_HANDLE;
+    mc2vk::OwnedSurface surface;   // released with the instance it was made on (the engine context's), before the swapchain below
     uint32_t         presentFamily = UINT32_MAX;
     VkQueue          presentQ  = VK_NULL_HANDLE;
 
     // swapchain
-    VkSwapchainKHR           swapchain = VK_NULL_HANDLE;
+    mc2vk::OwnedSwapchain    swapchain;
     VkFormat                 scFormat  = VK_FORMAT_UNDEFINED;
     VkExtent2D               scExtent  = {0, 0};
     VkPresentModeKHR         presentMode = VK_PRESENT_MODE_FIFO_KHR;
     std::vector<VkImage>     scImages;
-    std::vector<VkSemaphore> renderSems;   // one per image (present-wait target)
+    std::vector<mc2vk::OwnedSemaphore> renderSems;   // one per image (present-wait target)
 
     // per-frame sync (1 frame in flight for the acquire/submit)
-    VkCommandPool   cpool     = VK_NULL_HANDLE;
+    mc2vk::OwnedCommandPool   cpool;
     VkCommandBuffer cbuf      = VK_NULL_HANDLE;   // present tail: overlay + HUD/ImGui + blit
-    VkSemaphore     acquireSem = VK_NULL_HANDLE;
-    VkFence         inFlight   = VK_NULL_HANDLE;
+    mc2vk::OwnedSemaphore     acquireSem;
+    mc2vk::OwnedFence         inFlight;
     // VK-PRESENT-SINGLESUBMIT-1: the native composite records into its OWN command
     // buffer at composite time (no submit, no drain) and presentGLFrame submits
     // {compositeCbuf, cbuf} in ONE vkQueueSubmit. compositePending marks a recorded-
@@ -131,18 +131,18 @@ struct EnginePresentVk::Impl {
     uint32_t        imgW = 0, imgH = 0;
 
     // readback (T5 content verification)
-    VkBuffer        readbackBuf = VK_NULL_HANDLE;
-    VkDeviceMemory  readbackMem = VK_NULL_HANDLE;
+    mc2vk::OwnedDeviceMemory  readbackMem; // declared before the buffer bound to it: released after it
+    mc2vk::OwnedRawBuffer        readbackBuf;
     VkDeviceSize    readbackSize = 0;
     VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;
-    VkFence         readbackFence = VK_NULL_HANDLE;
+    mc2vk::OwnedFence         readbackFence;
 
     // Rung 8.6 native ImGui renderer backend. GuiRuntime builds ImDrawData;
     // presentGLFrame records it here after GL->VK handoff and before copy-2.
     bool            imguiVkInited = false;
     bool            imguiVkFailed = false;
-    VkRenderPass    imguiRenderPass = VK_NULL_HANDLE;
-    VkFramebuffer   imguiFramebuffer = VK_NULL_HANDLE;
+    mc2vk::OwnedRenderPass    imguiRenderPass;
+    mc2vk::OwnedFramebuffer   imguiFramebuffer;
     ImDrawData*     pendingImguiDrawData = nullptr;
     // SINGLE-FRAME-IN-FLIGHT DEPENDENCY (VK-PRESENT-SINGLESUBMIT-1 audit note): the
     // HUD tail is race-free ONLY because exactly one present submission is in flight
@@ -163,38 +163,38 @@ struct EnginePresentVk::Impl {
     // top-left quadrant). Zero => fall back to imgW/imgH (identity when they match).
     uint32_t        hudCanvasW = 0, hudCanvasH = 0;
     bool            hudColorVkFailed = false;
-    VkRenderPass    hudColorRenderPass = VK_NULL_HANDLE;
-    VkFramebuffer   hudColorFramebuffer = VK_NULL_HANDLE;
-    VkPipelineLayout hudColorLayout = VK_NULL_HANDLE;
-    VkPipeline      hudColorTriPipe = VK_NULL_HANDLE;
-    VkPipeline      hudColorTriOneInvAlphaPipe = VK_NULL_HANDLE; // VK-FIELD-VFX-3: additive untextured effect ribbons
-    VkPipeline      hudColorTriOneOnePipe = VK_NULL_HANDLE;      // VK-FIELD-VFX-7: pure-additive (ONE,ONE) effect ribbons
-    VkPipeline      hudColorLinePipe = VK_NULL_HANDLE;
-    VkPipeline      hudColorTriOpaquePipe = VK_NULL_HANDLE;
-    VkPipeline      hudColorLineOpaquePipe = VK_NULL_HANDLE;
-    VkShaderModule  hudColorVert = VK_NULL_HANDLE;
-    VkShaderModule  hudColorFrag = VK_NULL_HANDLE;
-    VkBuffer        hudColorVertexBuf = VK_NULL_HANDLE;
-    VkDeviceMemory  hudColorVertexMem = VK_NULL_HANDLE;
+    mc2vk::OwnedRenderPass    hudColorRenderPass;
+    mc2vk::OwnedFramebuffer   hudColorFramebuffer;
+    mc2vk::OwnedPipelineLayout hudColorLayout;
+    mc2vk::OwnedPipeline      hudColorTriPipe;
+    mc2vk::OwnedPipeline      hudColorTriOneInvAlphaPipe; // VK-FIELD-VFX-3: additive untextured effect ribbons
+    mc2vk::OwnedPipeline      hudColorTriOneOnePipe;      // VK-FIELD-VFX-7: pure-additive (ONE,ONE) effect ribbons
+    mc2vk::OwnedPipeline      hudColorLinePipe;
+    mc2vk::OwnedPipeline      hudColorTriOpaquePipe;
+    mc2vk::OwnedPipeline      hudColorLineOpaquePipe;
+    mc2vk::OwnedShaderModule  hudColorVert;
+    mc2vk::OwnedShaderModule  hudColorFrag;
+    mc2vk::OwnedDeviceMemory  hudColorVertexMem; // declared before the buffer bound to it: released after it
+    mc2vk::OwnedRawBuffer        hudColorVertexBuf;
     VkDeviceSize    hudColorVertexBytes = 0;
-    VkDescriptorSetLayout hudTexDsl = VK_NULL_HANDLE;
-    VkDescriptorPool hudTexPool = VK_NULL_HANDLE;
-    VkPipelineLayout hudTexLayout = VK_NULL_HANDLE;
-    VkPipeline      hudTexPipe = VK_NULL_HANDLE;
-    VkPipeline      hudTexOpaquePipe = VK_NULL_HANDLE;
-    VkPipeline      hudTexOneInvAlphaPipe = VK_NULL_HANDLE; // VK-FIELD-VFX-3: GL OneInvAlpha (ONE,1-srcA) effect glow
-    VkPipeline      hudTexOneOnePipe = VK_NULL_HANDLE;      // VK-FIELD-VFX-7: GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
-    VkShaderModule  hudTexVert = VK_NULL_HANDLE;
-    VkShaderModule  hudTexFrag = VK_NULL_HANDLE;
-    VkBuffer        hudTexVertexBuf = VK_NULL_HANDLE;
-    VkDeviceMemory  hudTexVertexMem = VK_NULL_HANDLE;
+    mc2vk::OwnedDescriptorSetLayout hudTexDsl;
+    mc2vk::OwnedDescriptorPool hudTexPool;
+    mc2vk::OwnedPipelineLayout hudTexLayout;
+    mc2vk::OwnedPipeline      hudTexPipe;
+    mc2vk::OwnedPipeline      hudTexOpaquePipe;
+    mc2vk::OwnedPipeline      hudTexOneInvAlphaPipe; // VK-FIELD-VFX-3: GL OneInvAlpha (ONE,1-srcA) effect glow
+    mc2vk::OwnedPipeline      hudTexOneOnePipe;      // VK-FIELD-VFX-7: GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
+    mc2vk::OwnedShaderModule  hudTexVert;
+    mc2vk::OwnedShaderModule  hudTexFrag;
+    mc2vk::OwnedDeviceMemory  hudTexVertexMem; // declared before the buffer bound to it: released after it
+    mc2vk::OwnedRawBuffer        hudTexVertexBuf;
     VkDeviceSize    hudTexVertexBytes = 0;
     struct HudTextureMirror {
         uint32_t serial = 0;
         uint32_t width = 0;
         uint32_t height = 0;
-        VkBuffer buffer = VK_NULL_HANDLE;
-        VkDeviceMemory memory = VK_NULL_HANDLE;
+        mc2vk::OwnedDeviceMemory memory;   // declared first, released last: the buffer bound to it goes first
+        mc2vk::OwnedRawBuffer buffer;
         VkDeviceSize bytes = 0;
         VkDescriptorSet set = VK_NULL_HANDLE;
         uint64_t lastFrame = 0;      // VK-HUD-GLYPH-CORRUPTION: eviction watermark
@@ -212,29 +212,42 @@ struct EnginePresentVk::Impl {
     uint64_t hudMirrorFrameCounter = 0;
 
     bool            compositeVkFailed = false;
-    VkRenderPass    compositeRenderPass = VK_NULL_HANDLE;
-    VkFramebuffer   compositeFramebuffer = VK_NULL_HANDLE;
-    VkSampler       compositeSampler = VK_NULL_HANDLE;
-    VkSampler       compositeNearestSampler = VK_NULL_HANDLE;   // the R32_UINT object-id image cannot be filtered linearly
-    VkDescriptorSetLayout compositeDsl = VK_NULL_HANDLE;
-    VkDescriptorPool compositePool = VK_NULL_HANDLE;
+    mc2vk::OwnedRenderPass    compositeRenderPass;
+    mc2vk::OwnedFramebuffer   compositeFramebuffer;
+    mc2vk::OwnedSampler       compositeSampler;
+    mc2vk::OwnedSampler       compositeNearestSampler;   // the R32_UINT object-id image cannot be filtered linearly
+    mc2vk::OwnedDescriptorSetLayout compositeDsl;
+    mc2vk::OwnedDescriptorPool compositePool;
     VkDescriptorSet  compositeSet = VK_NULL_HANDLE;
-    VkPipelineLayout compositeLayout = VK_NULL_HANDLE;
-    VkPipeline       compositePipe = VK_NULL_HANDLE;
-    VkShaderModule   compositeVert = VK_NULL_HANDLE;
-    VkShaderModule   compositeFrag = VK_NULL_HANDLE;
+    mc2vk::OwnedPipelineLayout compositeLayout;
+    mc2vk::OwnedPipeline       compositePipe;
+    mc2vk::OwnedShaderModule   compositeVert;
+    mc2vk::OwnedShaderModule   compositeFrag;
 
     bool             shadowDebugVkFailed = false;
-    VkRenderPass     shadowDebugRenderPass = VK_NULL_HANDLE;
-    VkFramebuffer    shadowDebugFramebuffer = VK_NULL_HANDLE;
-    VkSampler        shadowDebugSampler = VK_NULL_HANDLE;
-    VkDescriptorSetLayout shadowDebugDsl = VK_NULL_HANDLE;
-    VkDescriptorPool shadowDebugPool = VK_NULL_HANDLE;
+    mc2vk::OwnedRenderPass     shadowDebugRenderPass;
+    mc2vk::OwnedFramebuffer    shadowDebugFramebuffer;
+    mc2vk::OwnedSampler        shadowDebugSampler;
+    mc2vk::OwnedDescriptorSetLayout shadowDebugDsl;
+    mc2vk::OwnedDescriptorPool shadowDebugPool;
     VkDescriptorSet  shadowDebugSet = VK_NULL_HANDLE;
-    VkPipelineLayout shadowDebugLayout = VK_NULL_HANDLE;
-    VkPipeline       shadowDebugPipe = VK_NULL_HANDLE;
-    VkShaderModule   shadowDebugVert = VK_NULL_HANDLE;
-    VkShaderModule   shadowDebugFrag = VK_NULL_HANDLE;
+    mc2vk::OwnedPipelineLayout shadowDebugLayout;
+    mc2vk::OwnedPipeline       shadowDebugPipe;
+    mc2vk::OwnedShaderModule   shadowDebugVert;
+    mc2vk::OwnedShaderModule   shadowDebugFrag;
+
+    Impl() = default;
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+    // The shared present image holds raw allocations that vkImageResourceDestroy releases (and counts); the framebuffers over its view go first. Every
+    // other member is an owner and follows in reverse declaration order.
+    ~Impl() {
+        imguiFramebuffer.reset();
+        hudColorFramebuffer.reset();
+        compositeFramebuffer.reset();
+        shadowDebugFramebuffer.reset();
+        if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&sharedImg, dev);
+    }
 };
 
 namespace {
@@ -337,23 +350,22 @@ std::string spv_dir() {
     return d;
 }
 
-VkShaderModule loadSpv(VkDevice device, const std::string& path) {
+mc2vk::OwnedShaderModule loadSpv(VkDevice device, const std::string& path) {
     std::FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f) { plog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
+    if (!f) { plog("cannot open spv '%s'.", path.c_str()); return {}; }
     std::fseek(f, 0, SEEK_END);
     long len = std::ftell(f);
     std::fseek(f, 0, SEEK_SET);
-    if (len <= 0 || (len % 4) != 0) { std::fclose(f); return VK_NULL_HANDLE; }
+    if (len <= 0 || (len % 4) != 0) { std::fclose(f); return {}; }
     std::vector<uint32_t> code((size_t)len / 4);
     size_t got = std::fread(code.data(), 1, (size_t)len, f);
     std::fclose(f);
-    if (got != (size_t)len) return VK_NULL_HANDLE;
+    if (got != (size_t)len) return {};
     VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     ci.codeSize = (size_t)len;
     ci.pCode = code.data();
-    VkShaderModule mod = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(device, &ci, nullptr, &mod) != VK_SUCCESS)
-        return VK_NULL_HANDLE;
+    mc2vk::OwnedShaderModule mod;
+    mc2vk::create(mod, device, [&](auto* h) { return vkCreateShaderModule(device, &ci, nullptr, h); });
     return mod;
 }
 
@@ -361,7 +373,7 @@ VkShaderModule loadSpv(VkDevice device, const std::string& path) {
 bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     // The shared context picked gfxFamily; confirm it can present to our surface.
     VkBool32 canPresent = VK_FALSE;
-    if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, s.gfxFamily, s.surface, &canPresent)
+    if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, s.gfxFamily, s.surface.get(), &canPresent)
             == VK_SUCCESS && canPresent == VK_TRUE) {
         s.presentFamily = s.gfxFamily;
     } else {
@@ -371,7 +383,7 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
         vkGetPhysicalDeviceQueueFamilyProperties(s.phys, &qfCount, nullptr);
         for (uint32_t q = 0; q < qfCount; ++q) {
             VkBool32 p = VK_FALSE;
-            if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, q, s.surface, &p) == VK_SUCCESS
+            if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, q, s.surface.get(), &p) == VK_SUCCESS
                     && p == VK_TRUE) { s.presentFamily = q; break; }
         }
         if (s.presentFamily == UINT32_MAX) {
@@ -394,9 +406,9 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     // matches the GL swap-interval), else MAILBOX if available else IMMEDIATE
     // (preserve today's uncapped GL default). FIFO is always supported.
     uint32_t pmCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface, &pmCount, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, nullptr);
     std::vector<VkPresentModeKHR> pms(pmCount);
-    if (pmCount) vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface, &pmCount, pms.data());
+    if (pmCount) vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, pms.data());
     bool haveMailbox = false, haveImmediate = false;
     for (auto m : pms) {
         if (m == VK_PRESENT_MODE_MAILBOX_KHR)   haveMailbox = true;
@@ -419,22 +431,21 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
 }
 
 void destroySwapchainOnly(EnginePresentVk::Impl& s) {
-    for (VkSemaphore sem : s.renderSems) if (sem) vkDestroySemaphore(s.dev, sem, nullptr);
-    s.renderSems.clear();
+    s.renderSems.clear();   // the per-image semaphores go before the swapchain they were made for
     s.scImages.clear();
-    if (s.swapchain) { vkDestroySwapchainKHR(s.dev, s.swapchain, nullptr); s.swapchain = VK_NULL_HANDLE; }
+    s.swapchain.reset();
 }
 
 bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
                     VkSwapchainKHR oldSwapchain, std::string& reason) {
     VkSurfaceCapabilitiesKHR caps{};
-    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s.phys, s.surface, &caps) != VK_SUCCESS) {
+    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s.phys, s.surface.get(), &caps) != VK_SUCCESS) {
         reason = "vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed"; return false;
     }
     uint32_t fmtCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface, &fmtCount, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &fmtCount, nullptr);
     std::vector<VkSurfaceFormatKHR> fmts(fmtCount);
-    if (fmtCount) vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface, &fmtCount, fmts.data());
+    if (fmtCount) vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &fmtCount, fmts.data());
     VkSurfaceFormatKHR chosen = fmts.empty()
         ? VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}
         : fmts[0];
@@ -457,7 +468,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     if (caps.maxImageCount > 0 && imgCount > caps.maxImageCount) imgCount = caps.maxImageCount;
 
     VkSwapchainCreateInfoKHR sci{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
-    sci.surface          = s.surface;
+    sci.surface          = s.surface.get();
     sci.minImageCount    = imgCount;
     sci.imageFormat      = chosen.format;
     sci.imageColorSpace  = chosen.colorSpace;
@@ -470,7 +481,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     sci.presentMode      = s.presentMode;
     sci.clipped          = VK_TRUE;
     sci.oldSwapchain     = oldSwapchain;
-    VkResult createResult = vkCreateSwapchainKHR(s.dev, &sci, nullptr, &s.swapchain);
+    const VkResult createResult = mc2vk::createChecked(s.swapchain, s.dev, [&](auto* h) { return vkCreateSwapchainKHR(s.dev, &sci, nullptr, h); });
     if (createResult != VK_SUCCESS) {
         reason = "vkCreateSwapchainKHR failed (VkResult=" + std::to_string((int)createResult) + ")";
         return false;
@@ -479,13 +490,13 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     s.scExtent = extent;
 
     uint32_t n = 0;
-    vkGetSwapchainImagesKHR(s.dev, s.swapchain, &n, nullptr);
+    vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, nullptr);
     s.scImages.resize(n);
-    vkGetSwapchainImagesKHR(s.dev, s.swapchain, &n, s.scImages.data());
-    s.renderSems.resize(n, VK_NULL_HANDLE);
+    vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, s.scImages.data());
+    s.renderSems.resize(n);
     for (uint32_t i = 0; i < n; ++i) {
         VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        if (vkCreateSemaphore(s.dev, &semci, nullptr, &s.renderSems[i]) != VK_SUCCESS) {
+        if (!mc2vk::create(s.renderSems[i], s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); })) {
             reason = "per-image render semaphore create failed"; return false;
         }
     }
@@ -512,13 +523,12 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
                       EnginePresentHealth& health, std::string& reason) {
     // Full quiesce: no present/blit submit may still reference the old swapchain
     // when we retire it, and the surface must be settled before recreate.
-    vkDeviceWaitIdle(s.dev);
+    s.ctx->waitIdle("present_swapchain_rebuild");
 
-    VkSwapchainKHR old = s.swapchain;
-    std::vector<VkSemaphore> oldSems = s.renderSems;
+    mc2vk::OwnedSwapchain old = std::move(s.swapchain);
+    std::vector<mc2vk::OwnedSemaphore> oldSems = std::move(s.renderSems);
     s.renderSems.clear();
     s.scImages.clear();
-    s.swapchain = VK_NULL_HANDLE;
 
     constexpr int kMaxAttempts = 3;
     bool ok = false;
@@ -528,7 +538,7 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
         // Retries run only AFTER `old` has been destroyed below, so they MUST pass
         // VK_NULL_HANDLE -- a second swapchain on a surface that still owns a live
         // one is exactly the NATIVE_WINDOW_IN_USE we are fixing.
-        VkSwapchainKHR chainArg = (attempt == 0) ? old : VK_NULL_HANDLE;
+        VkSwapchainKHR chainArg = (attempt == 0) ? old.get() : VK_NULL_HANDLE;
         ok = buildSwapchain(s, w, h, chainArg, reason);
         if (ok) {
             if (attempt > 0) ++health.resize_recreate_retries;
@@ -538,9 +548,8 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
             firstReason = reason;
             // Retire the old swapchain + its semaphores BEFORE any retry so the
             // surface is free of a live swapchain for the VK_NULL_HANDLE create.
-            for (VkSemaphore sem : oldSems) if (sem) vkDestroySemaphore(s.dev, sem, nullptr);
             oldSems.clear();
-            if (old) { vkDestroySwapchainKHR(s.dev, old, nullptr); old = VK_NULL_HANDLE; }
+            old.reset();
             plog("swapchain rebuild with oldSwapchain failed (%s); retired old chain, "
                  "retrying without oldSwapchain.", firstReason.c_str());
         } else {
@@ -550,13 +559,13 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
         // briefly hold the HWND): let the OS release it, then re-quiesce.
         if (!ok && attempt + 1 < kMaxAttempts) {
             SDL_Delay(4);
-            vkDeviceWaitIdle(s.dev);
+            s.ctx->waitIdle("present_swapchain_retry");
         }
     }
 
     // Retire any survivors (the retry path may already have destroyed `old`).
-    for (VkSemaphore sem : oldSems) if (sem) vkDestroySemaphore(s.dev, sem, nullptr);
-    if (old) vkDestroySwapchainKHR(s.dev, old, nullptr);
+    oldSems.clear();
+    old.reset();
 
     if (ok) {
         ++health.resize_recreate_ok;
@@ -612,36 +621,13 @@ struct HudTexPush {
     uint32_t foreground;
 };
 
-void destroyImguiFramebuffer(EnginePresentVk::Impl& s) {
-    if (s.imguiFramebuffer) {
-        vkDestroyFramebuffer(s.dev, s.imguiFramebuffer, nullptr);
-        s.imguiFramebuffer = VK_NULL_HANDLE;
-    }
-}
-
-void destroyHudColorFramebuffer(EnginePresentVk::Impl& s) {
-    if (s.hudColorFramebuffer) {
-        vkDestroyFramebuffer(s.dev, s.hudColorFramebuffer, nullptr);
-        s.hudColorFramebuffer = VK_NULL_HANDLE;
-    }
-}
-
-void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) {
-    if (s.compositeFramebuffer) {
-        vkDestroyFramebuffer(s.dev, s.compositeFramebuffer, nullptr);
-        s.compositeFramebuffer = VK_NULL_HANDLE;
-    }
-}
-
-void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) {
-    if (s.shadowDebugFramebuffer) {
-        vkDestroyFramebuffer(s.dev, s.shadowDebugFramebuffer, nullptr);
-        s.shadowDebugFramebuffer = VK_NULL_HANDLE;
-    }
-}
+void destroyImguiFramebuffer(EnginePresentVk::Impl& s) { s.imguiFramebuffer.reset(); }
+void destroyHudColorFramebuffer(EnginePresentVk::Impl& s) { s.hudColorFramebuffer.reset(); }
+void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) { s.compositeFramebuffer.reset(); }
+void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) { s.shadowDebugFramebuffer.reset(); }
 
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
-    if (s.compositePipe && s.compositeFramebuffer) return true;
+    if (s.compositePipe.get() && s.compositeFramebuffer.get()) return true;
     if (s.compositeVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
 
@@ -656,7 +642,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        if (vkCreateSampler(s.dev, &ci, nullptr, &s.compositeSampler) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositeSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &ci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -668,7 +654,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        if (vkCreateSampler(s.dev, &ci, nullptr, &s.compositeNearestSampler) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositeNearestSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &ci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -690,17 +676,17 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rp.attachmentCount = 1; rp.pAttachments = &color;
         rp.subpassCount = 1; rp.pSubpasses = &sub;
-        if (vkCreateRenderPass(s.dev, &rp, nullptr, &s.compositeRenderPass) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositeRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
     if (!s.compositeFramebuffer) {
         VkImageView att[] = { s.sharedImg.view.get() };
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fb.renderPass = s.compositeRenderPass;
+        fb.renderPass = s.compositeRenderPass.get();
         fb.attachmentCount = 1; fb.pAttachments = att;
         fb.width = s.imgW; fb.height = s.imgH; fb.layers = 1;
-        if (vkCreateFramebuffer(s.dev, &fb, nullptr, &s.compositeFramebuffer) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositeFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -714,7 +700,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         b[1].binding = 1;
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
         ci.bindingCount = 2; ci.pBindings = b;
-        if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.compositeDsl) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositeDsl, s.dev, [&](auto* h) { return vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -722,23 +708,24 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pci.maxSets = 1; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
-        if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.compositePool) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositePool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        ai.descriptorPool = s.compositePool;
+        ai.descriptorPool = s.compositePool.get();
         ai.descriptorSetCount = 1;
-        ai.pSetLayouts = &s.compositeDsl;
+        const VkDescriptorSetLayout compositeDslHandle = s.compositeDsl.get();
+        ai.pSetLayouts = &compositeDslHandle;
         if (vkAllocateDescriptorSets(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
     }
     VkImageResource* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
     VkDescriptorImageInfo ii[2]{};
-    ii[0].sampler = s.compositeSampler;
+    ii[0].sampler = s.compositeSampler.get();
     ii[0].imageView = scene->view.get();
     ii[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    ii[1].sampler = s.compositeNearestSampler;                 // the shader reads the id with usampler2D: an exact texel, never a blend
+    ii[1].sampler = s.compositeNearestSampler.get();                 // the shader reads the id with usampler2D: an exact texel, never a blend
     ii[1].imageView = objectId && objectId->view.get() ? objectId->view.get() : scene->view.get();
     ii[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VkWriteDescriptorSet wr[2]{};
@@ -757,22 +744,23 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         pc.size = sizeof(float) * 16;
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-        ci.setLayoutCount = 1; ci.pSetLayouts = &s.compositeDsl;
+        const VkDescriptorSetLayout compositeDslHandle = s.compositeDsl.get();
+        ci.setLayoutCount = 1; ci.pSetLayouts = &compositeDslHandle;
         ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
-        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.compositeLayout) != VK_SUCCESS) {
+        if (!mc2vk::create(s.compositeLayout, s.dev, [&](auto* h) { return vkCreatePipelineLayout(s.dev, &ci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
     if (!s.compositePipe) {
         s.compositeVert = loadSpv(s.dev, spv_dir() + "postprocess.vert.spv");
         s.compositeFrag = loadSpv(s.dev, spv_dir() + "postprocess_visual.frag.spv");
-        if (!s.compositeVert || !s.compositeFrag) { s.compositeVkFailed = true; return false; }
+        if (!s.compositeVert.get() || !s.compositeFrag.get()) { s.compositeVkFailed = true; return false; }
 
         VkPipelineShaderStageCreateInfo st[2]{};
         st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.compositeVert; st[0].pName = "main";
+        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.compositeVert.get(); st[0].pName = "main";
         st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.compositeFrag; st[1].pName = "main";
+        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.compositeFrag.get(); st[1].pName = "main";
         VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
         VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
         ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -796,18 +784,18 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
         gp.pViewportState = &vp; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
-        gp.pDynamicState = &dyn; gp.layout = s.compositeLayout;
-        gp.renderPass = s.compositeRenderPass;
-        if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.compositePipe) != VK_SUCCESS) {
+        gp.pDynamicState = &dyn; gp.layout = s.compositeLayout.get();
+        gp.renderPass = s.compositeRenderPass.get();
+        if (!mc2vk::create(s.compositePipe, s.dev, [&](auto* h) { return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
-        mc2vk::nameObject(s.dev, s.compositePipe, "present.compositePipe");
+        mc2vk::nameObject(s.dev, s.compositePipe.get(), "present.compositePipe");
     }
     return true;
 }
 
 bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmArrayView) {
-    if (s.shadowDebugPipe && s.shadowDebugFramebuffer && csmArrayView != VK_NULL_HANDLE)
+    if (s.shadowDebugPipe.get() && s.shadowDebugFramebuffer.get() && csmArrayView != VK_NULL_HANDLE)
         return true;
     if (s.shadowDebugVkFailed || !s.dev || !s.sharedImg.view || csmArrayView == VK_NULL_HANDLE ||
         s.imgW == 0 || s.imgH == 0)
@@ -822,7 +810,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.compareEnable = VK_FALSE;
-        if (vkCreateSampler(s.dev, &ci, nullptr, &s.shadowDebugSampler) != VK_SUCCESS) {
+        if (!mc2vk::create(s.shadowDebugSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &ci, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
@@ -844,17 +832,17 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rp.attachmentCount = 1; rp.pAttachments = &color;
         rp.subpassCount = 1; rp.pSubpasses = &sub;
-        if (vkCreateRenderPass(s.dev, &rp, nullptr, &s.shadowDebugRenderPass) != VK_SUCCESS) {
+        if (!mc2vk::create(s.shadowDebugRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
     if (!s.shadowDebugFramebuffer) {
         VkImageView att[] = { s.sharedImg.view.get() };
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fb.renderPass = s.shadowDebugRenderPass;
+        fb.renderPass = s.shadowDebugRenderPass.get();
         fb.attachmentCount = 1; fb.pAttachments = att;
         fb.width = s.imgW; fb.height = s.imgH; fb.layers = 1;
-        if (vkCreateFramebuffer(s.dev, &fb, nullptr, &s.shadowDebugFramebuffer) != VK_SUCCESS) {
+        if (!mc2vk::create(s.shadowDebugFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
@@ -866,7 +854,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
         ci.bindingCount = 1; ci.pBindings = &b;
-        if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.shadowDebugDsl) != VK_SUCCESS) {
+        if (!mc2vk::create(s.shadowDebugDsl, s.dev, [&](auto* h) { return vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
@@ -874,19 +862,20 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pci.maxSets = 1; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
-        if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.shadowDebugPool) != VK_SUCCESS) {
+        if (!mc2vk::create(s.shadowDebugPool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        ai.descriptorPool = s.shadowDebugPool;
+        ai.descriptorPool = s.shadowDebugPool.get();
         ai.descriptorSetCount = 1;
-        ai.pSetLayouts = &s.shadowDebugDsl;
+        const VkDescriptorSetLayout shadowDebugDslHandle = s.shadowDebugDsl.get();
+        ai.pSetLayouts = &shadowDebugDslHandle;
         if (vkAllocateDescriptorSets(s.dev, &ai, &s.shadowDebugSet) != VK_SUCCESS) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
     VkDescriptorImageInfo ii{};
-    ii.sampler = s.shadowDebugSampler;
+    ii.sampler = s.shadowDebugSampler.get();
     ii.imageView = csmArrayView;
     ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VkWriteDescriptorSet wr{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -902,22 +891,23 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         pc.size = sizeof(int) * 4;
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-        ci.setLayoutCount = 1; ci.pSetLayouts = &s.shadowDebugDsl;
+        const VkDescriptorSetLayout shadowDebugDslHandle = s.shadowDebugDsl.get();
+        ci.setLayoutCount = 1; ci.pSetLayouts = &shadowDebugDslHandle;
         ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
-        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.shadowDebugLayout) != VK_SUCCESS) {
+        if (!mc2vk::create(s.shadowDebugLayout, s.dev, [&](auto* h) { return vkCreatePipelineLayout(s.dev, &ci, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
     if (!s.shadowDebugPipe) {
         s.shadowDebugVert = loadSpv(s.dev, spv_dir() + "shadow_debug_overlay.vert.spv");
         s.shadowDebugFrag = loadSpv(s.dev, spv_dir() + "shadow_debug_overlay.frag.spv");
-        if (!s.shadowDebugVert || !s.shadowDebugFrag) { s.shadowDebugVkFailed = true; return false; }
+        if (!s.shadowDebugVert.get() || !s.shadowDebugFrag.get()) { s.shadowDebugVkFailed = true; return false; }
 
         VkPipelineShaderStageCreateInfo st[2]{};
         st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.shadowDebugVert; st[0].pName = "main";
+        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.shadowDebugVert.get(); st[0].pName = "main";
         st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.shadowDebugFrag; st[1].pName = "main";
+        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.shadowDebugFrag.get(); st[1].pName = "main";
         VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
         VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
         ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -941,101 +931,71 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
         gp.pViewportState = &vp; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
-        gp.pDynamicState = &dyn; gp.layout = s.shadowDebugLayout;
-        gp.renderPass = s.shadowDebugRenderPass;
-        if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.shadowDebugPipe) != VK_SUCCESS) {
+        gp.pDynamicState = &dyn; gp.layout = s.shadowDebugLayout.get();
+        gp.renderPass = s.shadowDebugRenderPass.get();
+        if (!mc2vk::create(s.shadowDebugPipe, s.dev, [&](auto* h) { return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
-        mc2vk::nameObject(s.dev, s.shadowDebugPipe, "present.shadowDebugPipe");
+        mc2vk::nameObject(s.dev, s.shadowDebugPipe.get(), "present.shadowDebugPipe");
     }
     return true;
+}
+
+// A HOST_VISIBLE | HOST_COHERENT buffer with its own bound memory. The owners are filled as the steps succeed, so a failure part-way leaves what was made
+// to be released with them (the buffer first: callers declare the memory owner before the buffer owner).
+bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsageFlags usage,
+                      mc2vk::OwnedRawBuffer& outBuf, mc2vk::OwnedDeviceMemory& outMem, std::string_view name) {
+    outBuf.reset();
+    outMem.reset();
+    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bci.size = bytes;
+    bci.usage = usage;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (!mc2vk::create(outBuf, s.dev, [&](auto* h) { return vkCreateBuffer(s.dev, &bci, nullptr, h); }))
+        return false;
+    mc2vk::nameObject(s.dev, outBuf.get(), name);
+    VkMemoryRequirements req{};
+    vkGetBufferMemoryRequirements(s.dev, outBuf.get(), &req);
+    const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
+                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (memType == UINT32_MAX)
+        return false;
+    VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = memType;
+    if (!mc2vk::create(outMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &ai, nullptr, h); }))
+        return false;
+    return vkBindBufferMemory(s.dev, outBuf.get(), outMem.get(), 0) == VK_SUCCESS;
 }
 
 bool ensureHudColorVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
     if (bytes == 0) return false;
     if (s.hudColorVertexBuf && s.hudColorVertexBytes >= bytes)
         return true;
-    if (s.hudColorVertexBuf) {
-        vkDestroyBuffer(s.dev, s.hudColorVertexBuf, nullptr);
-        s.hudColorVertexBuf = VK_NULL_HANDLE;
-    }
-    if (s.hudColorVertexMem) {
-        vkFreeMemory(s.dev, s.hudColorVertexMem, nullptr);
-        s.hudColorVertexMem = VK_NULL_HANDLE;
-    }
-    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bci.size = bytes;
-    bci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (vkCreateBuffer(s.dev, &bci, nullptr, &s.hudColorVertexBuf) != VK_SUCCESS)
-        return false;
-    mc2vk::nameObject(s.dev, s.hudColorVertexBuf, "present.hudColorVertex");
-    VkMemoryRequirements req{};
-    vkGetBufferMemoryRequirements(s.dev, s.hudColorVertexBuf, &req);
-    const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
-                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (memType == UINT32_MAX)
-        return false;
-    VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-    ai.allocationSize = req.size;
-    ai.memoryTypeIndex = memType;
-    if (vkAllocateMemory(s.dev, &ai, nullptr, &s.hudColorVertexMem) != VK_SUCCESS)
-        return false;
-    if (vkBindBufferMemory(s.dev, s.hudColorVertexBuf, s.hudColorVertexMem, 0) != VK_SUCCESS)
+    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          s.hudColorVertexBuf, s.hudColorVertexMem, "present.hudColorVertex"))
         return false;
     s.hudColorVertexBytes = bytes;
     return true;
-}
-
-bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsageFlags usage,
-                      VkBuffer* outBuf, VkDeviceMemory* outMem, std::string_view name) {
-    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bci.size = bytes;
-    bci.usage = usage;
-    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (vkCreateBuffer(s.dev, &bci, nullptr, outBuf) != VK_SUCCESS)
-        return false;
-    mc2vk::nameObject(s.dev, *outBuf, name);
-    VkMemoryRequirements req{};
-    vkGetBufferMemoryRequirements(s.dev, *outBuf, &req);
-    const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
-                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (memType == UINT32_MAX)
-        return false;
-    VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-    ai.allocationSize = req.size;
-    ai.memoryTypeIndex = memType;
-    if (vkAllocateMemory(s.dev, &ai, nullptr, outMem) != VK_SUCCESS)
-        return false;
-    return vkBindBufferMemory(s.dev, *outBuf, *outMem, 0) == VK_SUCCESS;
 }
 
 bool ensureHudTexVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
     if (bytes == 0) return false;
     if (s.hudTexVertexBuf && s.hudTexVertexBytes >= bytes)
         return true;
-    if (s.hudTexVertexBuf) {
-        vkDestroyBuffer(s.dev, s.hudTexVertexBuf, nullptr);
-        s.hudTexVertexBuf = VK_NULL_HANDLE;
-    }
-    if (s.hudTexVertexMem) {
-        vkFreeMemory(s.dev, s.hudTexVertexMem, nullptr);
-        s.hudTexVertexMem = VK_NULL_HANDLE;
-    }
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                          &s.hudTexVertexBuf, &s.hudTexVertexMem, "present.hudTexVertex"))
+                          s.hudTexVertexBuf, s.hudTexVertexMem, "present.hudTexVertex"))
         return false;
     s.hudTexVertexBytes = bytes;
     return true;
 }
 
 bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
-    if (s.hudColorTriPipe && s.hudColorLinePipe &&
-        s.hudColorTriOpaquePipe && s.hudColorLineOpaquePipe &&
-        s.hudColorTriOneInvAlphaPipe && s.hudColorTriOneOnePipe &&
-        s.hudColorFramebuffer)
+    if (s.hudColorTriPipe.get() && s.hudColorLinePipe.get() &&
+        s.hudColorTriOpaquePipe.get() && s.hudColorLineOpaquePipe.get() &&
+        s.hudColorTriOneInvAlphaPipe.get() && s.hudColorTriOneOnePipe.get() &&
+        s.hudColorFramebuffer.get())
         return true;
     if (s.hudColorVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
@@ -1058,17 +1018,17 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rp.attachmentCount = 1; rp.pAttachments = &color;
         rp.subpassCount = 1; rp.pSubpasses = &sub;
-        if (vkCreateRenderPass(s.dev, &rp, nullptr, &s.hudColorRenderPass) != VK_SUCCESS) {
+        if (!mc2vk::create(s.hudColorRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
     if (!s.hudColorFramebuffer) {
         VkImageView att[] = { s.sharedImg.view.get() };
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fb.renderPass = s.hudColorRenderPass;
+        fb.renderPass = s.hudColorRenderPass.get();
         fb.attachmentCount = 1; fb.pAttachments = att;
         fb.width = s.imgW; fb.height = s.imgH; fb.layers = 1;
-        if (vkCreateFramebuffer(s.dev, &fb, nullptr, &s.hudColorFramebuffer) != VK_SUCCESS) {
+        if (!mc2vk::create(s.hudColorFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
@@ -1078,24 +1038,24 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         pc.size = sizeof(float) * 2;
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
-        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.hudColorLayout) != VK_SUCCESS) {
+        if (!mc2vk::create(s.hudColorLayout, s.dev, [&](auto* h) { return vkCreatePipelineLayout(s.dev, &ci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
-    if (!s.hudColorVert || !s.hudColorFrag) {
+    if (!s.hudColorVert.get() || !s.hudColorFrag.get()) {
         s.hudColorVert = loadSpv(s.dev, spv_dir() + "hud_color.vert.spv");
         s.hudColorFrag = loadSpv(s.dev, spv_dir() + "hud_color.frag.spv");
-        if (!s.hudColorVert || !s.hudColorFrag) { s.hudColorVkFailed = true; return false; }
+        if (!s.hudColorVert.get() || !s.hudColorFrag.get()) { s.hudColorVkFailed = true; return false; }
     }
 
-    auto makePipe = [&](VkPrimitiveTopology topology, bool blend, VkBlendFactor srcColor, VkPipeline* out,
+    auto makePipe = [&](VkPrimitiveTopology topology, bool blend, VkBlendFactor srcColor, mc2vk::OwnedPipeline& out,
                         VkBlendFactor dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) -> bool {
-        if (*out) return true;
+        if (out) return true;
         VkPipelineShaderStageCreateInfo st[2]{};
         st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.hudColorVert; st[0].pName = "main";
+        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.hudColorVert.get(); st[0].pName = "main";
         st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.hudColorFrag; st[1].pName = "main";
+        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.hudColorFrag.get(); st[1].pName = "main";
         VkVertexInputBindingDescription bind{};
         bind.binding = 0; bind.stride = sizeof(HudColorGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription attr[2]{};
@@ -1136,36 +1096,36 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
         gp.pViewportState = &vp; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
-        gp.pDynamicState = &dyn; gp.layout = s.hudColorLayout;
-        gp.renderPass = s.hudColorRenderPass;
-        return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, out) == VK_SUCCESS;
+        gp.pDynamicState = &dyn; gp.layout = s.hudColorLayout.get();
+        gp.renderPass = s.hudColorRenderPass.get();
+        return mc2vk::create(out, s.dev, [&](auto* h) { return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
     };
 
-    if (!makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudColorTriPipe) ||
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, true, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudColorLinePipe) ||
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudColorTriOpaquePipe) ||
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, false, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudColorLineOpaquePipe) ||
+    if (!makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_SRC_ALPHA, s.hudColorTriPipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, true, VK_BLEND_FACTOR_SRC_ALPHA, s.hudColorLinePipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false, VK_BLEND_FACTOR_SRC_ALPHA, s.hudColorTriOpaquePipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, false, VK_BLEND_FACTOR_SRC_ALPHA, s.hudColorLineOpaquePipe) ||
         // VK-FIELD-VFX-3: additive (ONE,1-srcA) color-tri pipe for AlphaMode 4 untextured
         // effect ribbons (weapon beams whose sprite has no HUD mirror) -> GL OneInvAlpha parity.
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, &s.hudColorTriOneInvAlphaPipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, s.hudColorTriOneInvAlphaPipe) ||
         // VK-FIELD-VFX-7: pure-additive (ONE,ONE) color-tri pipe for AlphaMode 2 untextured
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, &s.hudColorTriOneOnePipe,
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, s.hudColorTriOneOnePipe,
                   VK_BLEND_FACTOR_ONE)) {
         s.hudColorVkFailed = true; return false;
     }
-    mc2vk::nameObject(s.dev, s.hudColorTriPipe, "present.hudColorTriPipe");
-    mc2vk::nameObject(s.dev, s.hudColorLinePipe, "present.hudColorLinePipe");
-    mc2vk::nameObject(s.dev, s.hudColorTriOpaquePipe, "present.hudColorTriOpaquePipe");
-    mc2vk::nameObject(s.dev, s.hudColorLineOpaquePipe, "present.hudColorLineOpaquePipe");
-    mc2vk::nameObject(s.dev, s.hudColorTriOneInvAlphaPipe, "present.hudColorTriOneInvAlphaPipe");
-    mc2vk::nameObject(s.dev, s.hudColorTriOneOnePipe, "present.hudColorTriOneOnePipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriPipe.get(), "present.hudColorTriPipe");
+    mc2vk::nameObject(s.dev, s.hudColorLinePipe.get(), "present.hudColorLinePipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriOpaquePipe.get(), "present.hudColorTriOpaquePipe");
+    mc2vk::nameObject(s.dev, s.hudColorLineOpaquePipe.get(), "present.hudColorLineOpaquePipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriOneInvAlphaPipe.get(), "present.hudColorTriOneInvAlphaPipe");
+    mc2vk::nameObject(s.dev, s.hudColorTriOneOnePipe.get(), "present.hudColorTriOneOnePipe");
     return true;
 }
 
 bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     if (!ensureHudColorObjects(s))
         return false;
-    if (s.hudTexPipe && s.hudTexOpaquePipe && s.hudTexOneInvAlphaPipe && s.hudTexOneOnePipe)
+    if (s.hudTexPipe.get() && s.hudTexOpaquePipe.get() && s.hudTexOneInvAlphaPipe.get() && s.hudTexOneOnePipe.get())
         return true;
     if (!s.hudTexDsl) {
         VkDescriptorSetLayoutBinding b{};
@@ -1175,7 +1135,7 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
         b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
         ci.bindingCount = 1; ci.pBindings = &b;
-        if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.hudTexDsl) != VK_SUCCESS) {
+        if (!mc2vk::create(s.hudTexDsl, s.dev, [&](auto* h) { return vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
@@ -1188,7 +1148,7 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
         // pool would exhaust as runtime string serials accumulate.
         pci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         pci.maxSets = 512; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
-        if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.hudTexPool) != VK_SUCCESS) {
+        if (!mc2vk::create(s.hudTexPool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
@@ -1197,21 +1157,22 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
         pc.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pc.size = sizeof(HudTexPush);
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-        ci.setLayoutCount = 1; ci.pSetLayouts = &s.hudTexDsl;
+        const VkDescriptorSetLayout hudTexDslHandle = s.hudTexDsl.get();
+        ci.setLayoutCount = 1; ci.pSetLayouts = &hudTexDslHandle;
         ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
-        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.hudTexLayout) != VK_SUCCESS) {
+        if (!mc2vk::create(s.hudTexLayout, s.dev, [&](auto* h) { return vkCreatePipelineLayout(s.dev, &ci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
     s.hudTexVert = loadSpv(s.dev, spv_dir() + "hud_tex.vert.spv");
     s.hudTexFrag = loadSpv(s.dev, spv_dir() + "hud_tex.frag.spv");
-    if (!s.hudTexVert || !s.hudTexFrag) { s.hudColorVkFailed = true; return false; }
+    if (!s.hudTexVert.get() || !s.hudTexFrag.get()) { s.hudColorVkFailed = true; return false; }
 
     VkPipelineShaderStageCreateInfo st[2]{};
     st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.hudTexVert; st[0].pName = "main";
+    st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.hudTexVert.get(); st[0].pName = "main";
     st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.hudTexFrag; st[1].pName = "main";
+    st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.hudTexFrag.get(); st[1].pName = "main";
     VkVertexInputBindingDescription bind{};
     bind.binding = 0; bind.stride = sizeof(HudTexGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription attr[3]{};
@@ -1230,9 +1191,9 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
     VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    auto makeTexPipe = [&](bool blend, VkBlendFactor srcColor, VkPipeline* out,
+    auto makeTexPipe = [&](bool blend, VkBlendFactor srcColor, mc2vk::OwnedPipeline& out,
                            VkBlendFactor dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) -> bool {
-        if (*out) return true;
+        if (out) return true;
         VkPipelineColorBlendAttachmentState cba{};
         cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
         cba.srcColorBlendFactor = srcColor;
@@ -1254,27 +1215,27 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
         gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
         gp.pViewportState = &vp; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
-        gp.pDynamicState = &dyn; gp.layout = s.hudTexLayout;
-        gp.renderPass = s.hudColorRenderPass;
-        return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, out) == VK_SUCCESS;
+        gp.pDynamicState = &dyn; gp.layout = s.hudTexLayout.get();
+        gp.renderPass = s.hudColorRenderPass.get();
+        return mc2vk::create(out, s.dev, [&](auto* h) { return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
     };
     // hudTexPipe: standard alpha (SRC_ALPHA,1-srcA) for AlphaMode 3 (AlphaInvAlpha).
     // hudTexOpaquePipe: no blend for AlphaMode 1 (OneZero).
     // hudTexOneInvAlphaPipe: (ONE,1-srcA) matching GL's gos_Alpha_OneInvAlpha (AlphaMode 4),
     //   the effect-sprite additive-glow blend used by weapon beams/tracers/explosions.
-    if (!makeTexPipe(true, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudTexPipe) ||
-        !makeTexPipe(false, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudTexOpaquePipe) ||
-        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, &s.hudTexOneInvAlphaPipe) ||
+    if (!makeTexPipe(true, VK_BLEND_FACTOR_SRC_ALPHA, s.hudTexPipe) ||
+        !makeTexPipe(false, VK_BLEND_FACTOR_SRC_ALPHA, s.hudTexOpaquePipe) ||
+        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, s.hudTexOneInvAlphaPipe) ||
         // VK-FIELD-VFX-7: pure-additive (ONE,ONE) textured pipe for AlphaMode 2 —
         // GL gos_Alpha_OneOne, the muzzle-flash / tracer sprite blend (black
         // sprite background adds nothing instead of rendering an opaque box).
-        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, &s.hudTexOneOnePipe, VK_BLEND_FACTOR_ONE)) {
+        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, s.hudTexOneOnePipe, VK_BLEND_FACTOR_ONE)) {
         s.hudColorVkFailed = true; return false;
     }
-    mc2vk::nameObject(s.dev, s.hudTexPipe, "present.hudTexPipe");
-    mc2vk::nameObject(s.dev, s.hudTexOpaquePipe, "present.hudTexOpaquePipe");
-    mc2vk::nameObject(s.dev, s.hudTexOneInvAlphaPipe, "present.hudTexOneInvAlphaPipe");
-    mc2vk::nameObject(s.dev, s.hudTexOneOnePipe, "present.hudTexOneOnePipe");
+    mc2vk::nameObject(s.dev, s.hudTexPipe.get(), "present.hudTexPipe");
+    mc2vk::nameObject(s.dev, s.hudTexOpaquePipe.get(), "present.hudTexOpaquePipe");
+    mc2vk::nameObject(s.dev, s.hudTexOneInvAlphaPipe.get(), "present.hudTexOneInvAlphaPipe");
+    mc2vk::nameObject(s.dev, s.hudTexOneOnePipe.get(), "present.hudTexOneOnePipe");
     return true;
 }
 
@@ -1299,9 +1260,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     // change — the >99.9% no-upload case never touches them.
     if (!d.textureRgba || d.textureRgba->size() < (size_t)bytes)
         return nullptr;
-    if (m.buffer) { vkDestroyBuffer(s.dev, m.buffer, nullptr); m.buffer = VK_NULL_HANDLE; }
-    if (m.memory) { vkFreeMemory(s.dev, m.memory, nullptr); m.memory = VK_NULL_HANDLE; }
-    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &m.buffer, &m.memory, "present.hudTextureMirror"))
+    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
     const std::vector<uint8_t>& rgba = *d.textureRgba;
     std::vector<uint32_t> packed((size_t)d.textureWidth * (size_t)d.textureHeight);
@@ -1313,20 +1272,21 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
                     ((uint32_t)rgba[b + 3] << 24);
     }
     void* mapped = nullptr;
-    if (vkMapMemory(s.dev, m.memory, 0, bytes, 0, &mapped) != VK_SUCCESS)
+    if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
     std::memcpy(mapped, packed.data(), (size_t)bytes);
-    vkUnmapMemory(s.dev, m.memory);
+    vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        ai.descriptorPool = s.hudTexPool;
+        ai.descriptorPool = s.hudTexPool.get();
         ai.descriptorSetCount = 1;
-        ai.pSetLayouts = &s.hudTexDsl;
+        const VkDescriptorSetLayout hudTexDslHandle = s.hudTexDsl.get();
+        ai.pSetLayouts = &hudTexDslHandle;
         if (vkAllocateDescriptorSets(s.dev, &ai, &m.set) != VK_SUCCESS)
             return nullptr;
     }
     VkDescriptorBufferInfo bi{};
-    bi.buffer = m.buffer;
+    bi.buffer = m.buffer.get();
     bi.offset = 0;
     bi.range = bytes;
     VkWriteDescriptorSet wr{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -1345,7 +1305,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
 }
 
 bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
-    if (s.imguiRenderPass) return true;
+    if (s.imguiRenderPass.get()) return true;
 
     VkAttachmentDescription color{};
     color.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -1371,23 +1331,23 @@ bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
     rp.pAttachments = &color;
     rp.subpassCount = 1;
     rp.pSubpasses = &sub;
-    return vkCreateRenderPass(s.dev, &rp, nullptr, &s.imguiRenderPass) == VK_SUCCESS;
+    return mc2vk::create(s.imguiRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); });
 }
 
 bool ensureImguiFramebuffer(EnginePresentVk::Impl& s) {
-    if (s.imguiFramebuffer) return true;
+    if (s.imguiFramebuffer.get()) return true;
     if (!ensureImguiRenderPass(s) || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
 
     VkImageView attachments[] = { s.sharedImg.view.get() };
     VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-    fb.renderPass = s.imguiRenderPass;
+    fb.renderPass = s.imguiRenderPass.get();
     fb.attachmentCount = 1;
     fb.pAttachments = attachments;
     fb.width = s.imgW;
     fb.height = s.imgH;
     fb.layers = 1;
-    return vkCreateFramebuffer(s.dev, &fb, nullptr, &s.imguiFramebuffer) == VK_SUCCESS;
+    return mc2vk::create(s.imguiFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); });
 }
 
 bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
@@ -1405,7 +1365,7 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     info.Device = s.dev;
     info.QueueFamily = s.gfxFamily;
     info.Queue = s.gfxQ;
-    info.RenderPass = s.imguiRenderPass;
+    info.RenderPass = s.imguiRenderPass.get();
     info.MinImageCount = 2;
     info.ImageCount = s.scImages.size() >= 2 ? (uint32_t)s.scImages.size() : 2;
     info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -1425,8 +1385,8 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         return false;
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rp.renderPass = s.imguiRenderPass;
-    rp.framebuffer = s.imguiFramebuffer;
+    rp.renderPass = s.imguiRenderPass.get();
+    rp.framebuffer = s.imguiFramebuffer.get();
     rp.renderArea.offset = {0, 0};
     rp.renderArea.extent = {s.imgW, s.imgH};
     vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
@@ -1461,10 +1421,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
             if (it->second.lastFrame + 4 < now) {
                 auto& m = it->second;
-                if (m.set)    vkFreeDescriptorSets(s.dev, s.hudTexPool, 1, &m.set);
-                if (m.buffer) vkDestroyBuffer(s.dev, m.buffer, nullptr);
-                if (m.memory) vkFreeMemory(s.dev, m.memory, nullptr);
-                it = s.hudTextureMirrors.erase(it);
+                if (m.set)    vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &m.set);
+                it = s.hudTextureMirrors.erase(it);   // the erase releases the buffer, then its memory
             } else {
                 ++it;
             }
@@ -1609,27 +1567,27 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     }
     if (colorBytes != 0) {
         void* mapped = nullptr;
-        if (vkMapMemory(s.dev, s.hudColorVertexMem, 0, colorBytes, 0, &mapped) != VK_SUCCESS) {
+        if (vkMapMemory(s.dev, s.hudColorVertexMem.get(), 0, colorBytes, 0, &mapped) != VK_SUCCESS) {
             s.pendingHudDraws.clear();
             return draws;
         }
         if (triBytes) std::memcpy(mapped, triVerts.data(), triBytes);
         if (lineBytes) std::memcpy((uint8_t*)mapped + triBytes, lineVerts.data(), lineBytes);
-        vkUnmapMemory(s.dev, s.hudColorVertexMem);
+        vkUnmapMemory(s.dev, s.hudColorVertexMem.get());
     }
     if (texBytes != 0) {
         void* mapped = nullptr;
-        if (vkMapMemory(s.dev, s.hudTexVertexMem, 0, (VkDeviceSize)texBytes, 0, &mapped) != VK_SUCCESS) {
+        if (vkMapMemory(s.dev, s.hudTexVertexMem.get(), 0, (VkDeviceSize)texBytes, 0, &mapped) != VK_SUCCESS) {
             s.pendingHudDraws.clear();
             return draws;
         }
         std::memcpy(mapped, texVerts.data(), texBytes);
-        vkUnmapMemory(s.dev, s.hudTexVertexMem);
+        vkUnmapMemory(s.dev, s.hudTexVertexMem.get());
     }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rp.renderPass = s.hudColorRenderPass;
-    rp.framebuffer = s.hudColorFramebuffer;
+    rp.renderPass = s.hudColorRenderPass.get();
+    rp.framebuffer = s.hudColorFramebuffer.get();
     rp.renderArea.offset = {0, 0};
     rp.renderArea.extent = {s.imgW, s.imgH};
     vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
@@ -1645,42 +1603,42 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     const float hudExW = s.hudCanvasW ? (float)s.hudCanvasW : (float)s.imgW;
     const float hudExH = s.hudCanvasH ? (float)s.hudCanvasH : (float)s.imgH;
     const float extent[2] = {hudExW, hudExH};
-    vkCmdPushConstants(cb, s.hudColorLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent), extent);
+    vkCmdPushConstants(cb, s.hudColorLayout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent), extent);
     VkDeviceSize offset = 0;
     VkPipeline boundPipe = VK_NULL_HANDLE;
     VkBuffer boundBuffer = VK_NULL_HANDLE;
     for (const HudNativeCmd& td : commands) {
         if (td.stream == 0 || td.stream == 1) {
             const VkPipeline pipe = (td.stream == 0)
-                ? (td.opaque ? s.hudColorTriOpaquePipe
-                             : (td.oneOne ? s.hudColorTriOneOnePipe
-                                          : (td.oneInvAlpha ? s.hudColorTriOneInvAlphaPipe : s.hudColorTriPipe)))
-                : (td.opaque ? s.hudColorLineOpaquePipe : s.hudColorLinePipe);
+                ? (td.opaque ? s.hudColorTriOpaquePipe.get()
+                             : (td.oneOne ? s.hudColorTriOneOnePipe.get()
+                                          : (td.oneInvAlpha ? s.hudColorTriOneInvAlphaPipe.get() : s.hudColorTriPipe.get())))
+                : (td.opaque ? s.hudColorLineOpaquePipe.get() : s.hudColorLinePipe.get());
             if (boundPipe != pipe) {
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
                 boundPipe = pipe;
             }
-            if (boundBuffer != s.hudColorVertexBuf) {
+            if (boundBuffer != s.hudColorVertexBuf.get()) {
                 offset = 0;
-                vkCmdBindVertexBuffers(cb, 0, 1, &s.hudColorVertexBuf, &offset);
-                boundBuffer = s.hudColorVertexBuf;
+                { const VkBuffer vb = s.hudColorVertexBuf.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &offset); }
+                boundBuffer = s.hudColorVertexBuf.get();
             }
             const uint32_t first = (td.stream == 1)
                 ? (uint32_t)triVerts.size() + td.first
                 : td.first;
             vkCmdDraw(cb, td.count, 1, first, 0);
         } else {
-            const VkPipeline pipe = td.opaque ? s.hudTexOpaquePipe
-                                  : (td.oneOne ? s.hudTexOneOnePipe
-                                               : (td.oneInvAlpha ? s.hudTexOneInvAlphaPipe : s.hudTexPipe));
+            const VkPipeline pipe = td.opaque ? s.hudTexOpaquePipe.get()
+                                  : (td.oneOne ? s.hudTexOneOnePipe.get()
+                                               : (td.oneInvAlpha ? s.hudTexOneInvAlphaPipe.get() : s.hudTexPipe.get()));
             if (boundPipe != pipe) {
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
                 boundPipe = pipe;
             }
-            if (boundBuffer != s.hudTexVertexBuf) {
+            if (boundBuffer != s.hudTexVertexBuf.get()) {
                 VkDeviceSize texOffset = 0;
-                vkCmdBindVertexBuffers(cb, 0, 1, &s.hudTexVertexBuf, &texOffset);
-                boundBuffer = s.hudTexVertexBuf;
+                { const VkBuffer vb = s.hudTexVertexBuf.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &texOffset); }
+                boundBuffer = s.hudTexVertexBuf.get();
             }
             HudTexPush pc{};
             pc.extent[0] = hudExW;   // HUD-CANVAS-EXTENT-FIX (see hudColor path above)
@@ -1689,9 +1647,9 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             pc.texH = td.height;
             pc.textMode = td.textMode;
             pc.foreground = td.foreground;
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexLayout,
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexLayout.get(),
                                     0, 1, &td.set, 0, nullptr);
-            vkCmdPushConstants(cb, s.hudTexLayout,
+            vkCmdPushConstants(cb, s.hudTexLayout.get(),
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(pc), &pc);
             vkCmdDraw(cb, td.count, 1, td.first, 0);
@@ -1811,7 +1769,9 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     VkWin32SurfaceCreateInfoKHR wsci{VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
     wsci.hinstance = hinst;
     wsci.hwnd      = hwnd;
-    VkResult sr = pfnCreateWin32Surface(s.inst, &wsci, nullptr, &s.surface);
+    VkSurfaceKHR rawSurface = VK_NULL_HANDLE;
+    const VkResult sr = pfnCreateWin32Surface(s.inst, &wsci, nullptr, &rawSurface);
+    if (sr == VK_SUCCESS) s.surface = mc2vk::OwnedSurface(s.inst, rawSurface);
     if (sr != VK_SUCCESS) {
         return fail("P13b: vkCreateWin32SurfaceKHR on the GL window's HWND failed ("
                     + std::to_string((int)sr) + ")");
@@ -1840,25 +1800,25 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
         VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s.gfxFamily;
-        if (vkCreateCommandPool(s.dev, &pci, nullptr, &s.cpool) != VK_SUCCESS)
+        if (!mc2vk::create(s.cpool, s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
             return fail("vkCreateCommandPool failed");
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai.commandPool = s.cpool;
+        cai.commandPool = s.cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 1;
         if (vkAllocateCommandBuffers(s.dev, &cai, &s.cbuf) != VK_SUCCESS)
             return fail("vkAllocateCommandBuffers failed");
         VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        if (vkCreateSemaphore(s.dev, &semci, nullptr, &s.acquireSem) != VK_SUCCESS)
+        if (!mc2vk::create(s.acquireSem, s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); }))
             return fail("vkCreateSemaphore(acquire) failed");
         VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        if (vkCreateFence(s.dev, &fci, nullptr, &s.inFlight) != VK_SUCCESS)
+        if (!mc2vk::create(s.inFlight, s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }))
             return fail("vkCreateFence(inFlight) failed");
         // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
         // composite time, submitted together with the tail cbuf in ONE submit).
         VkCommandBufferAllocateInfo cai2{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai2.commandPool = s.cpool;
+        cai2.commandPool = s.cpool.get();
         cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai2.commandBufferCount = 1;
         if (vkAllocateCommandBuffers(s.dev, &cai2, &s.compositeCbuf) != VK_SUCCESS)
@@ -1974,7 +1934,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         ZoneScopedN("VKIsl.Present.CompositeWait");   // VK-ISLAND-TRACY-1: retire prev frame's single submit (the ONLY present-path CPU wait)
         using clk = std::chrono::steady_clock;
         const clk::time_point tWait0 = clk::now();
-        if (vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE,
+        const VkFence inFlightFence = s.inFlight.get();
+        if (vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
                             5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
             return false;
         health_.composite_wait_us_last =
@@ -2011,8 +1972,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rp.renderPass = s.compositeRenderPass;
-    rp.framebuffer = s.compositeFramebuffer;
+    rp.renderPass = s.compositeRenderPass.get();
+    rp.framebuffer = s.compositeFramebuffer.get();
     rp.renderArea.offset = {0, 0};
     rp.renderArea.extent = {s.imgW, s.imgH};
     VkClearValue clear{};
@@ -2025,8 +1986,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkRect2D sc{{viewportX, viewportY}, {(uint32_t)viewportW, (uint32_t)viewportH}};
     vkCmdSetViewport(cc, 0, 1, &vp);
     vkCmdSetScissor(cc, 0, 1, &sc);
-    vkCmdBindPipeline(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe);
-    vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout,
+    vkCmdBindPipeline(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
+    vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
                             0, 1, &s.compositeSet, 0, nullptr);
     float pc[16] = {
         exposure,
@@ -2046,7 +2007,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         0.0f,
         0.0f
     };
-    vkCmdPushConstants(cc, s.compositeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+    vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);
     vkCmdDraw(cc, 3, 1, 0, 0);
     vkCmdEndRenderPass(cc);
@@ -2085,7 +2046,7 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
         return false;
 
     // VK-PRESENT-SINGLESUBMIT-1: the overlay used to be its OWN submit here (and it
-    // reset s.cbuf mid-frame and left s.inFlight unsignaled after its wait — a latent
+    // reset s.cbuf mid-frame and left s.inFlight.get() unsignaled after its wait — a latent
     // hang against the present tail's fence wait). It is now only STASHED; the
     // present tail records it into the single {compositeCbuf, cbuf} submission,
     // after the composite (correct paint order — with the composite no longer
@@ -2147,7 +2108,7 @@ bool EnginePresentVk::imguiVulkanReady() const {
 void EnginePresentVk::shutdownImguiVulkanRenderer() {
     if (!impl_) return;
     Impl& s = *impl_;
-    if (s.dev) vkDeviceWaitIdle(s.dev);
+    if (s.dev) s.ctx->waitIdle("present_imgui_shutdown");
     if (s.imguiVkInited) {
         // VK-IMGUI-SHUTDOWN-GUARD-1: this can be reached twice at teardown —
         // once from GuiRuntime::Shutdown() (which then calls ImGui::DestroyContext())
@@ -2204,7 +2165,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         // free when nothing is pending — fence stays SIGNALED, no reset). (b) DROP
         // the pending composite recording: it references the about-to-be-destroyed
         // shared image / framebuffers and must never be submitted.
-        vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        { const VkFence inFlightFence = s.inFlight.get(); vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE, 5ull * 1000 * 1000 * 1000); }
         s.compositePending = false;
         std::string r;
         if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
@@ -2267,14 +2228,14 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // ==== COPY-2 (VK): blit shared image -> swapchain + present =============
     // VK-PRESENT-SINGLESUBMIT-1: the previous frame's single submit was already
     // fence-waited at composite-record time (before either cbuf was reset), so
-    // there is NO CPU wait here. s.inFlight stays SIGNALED until immediately
+    // there is NO CPU wait here. s.inFlight.get() stays SIGNALED until immediately
     // before the submit below — any early return on this path (acquire
     // OUT_OF_DATE, decline) leaves it signaled, so the next composite's wait can
     // never hang and the pending composite is simply re-recorded next frame.
     uint32_t imageIndex = 0;
     VkResult r;
     { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
-      r = vkAcquireNextImageKHR(s.dev, s.swapchain, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &imageIndex); }
+      r = vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.acquireSem.get(), VK_NULL_HANDLE, &imageIndex); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // OS-driven resize/alt-tab invalidated the swapchain. Rebuild to the GL
         // game window's current drawable. If it's zero (minimized), skip the
@@ -2321,11 +2282,11 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // VK-PRESENT-SINGLESUBMIT-1: stashed CSM shadow-debug overlay (opt-in debug) —
     // recorded here so it lands AFTER the composite and BEFORE HUD/ImGui, matching
     // its pre-single-submit paint order.
-    if (s.pendingShadowDebugView != VK_NULL_HANDLE && s.shadowDebugRenderPass &&
-        s.shadowDebugFramebuffer && s.shadowDebugPipe) {
+    if (s.pendingShadowDebugView != VK_NULL_HANDLE && s.shadowDebugRenderPass.get() &&
+        s.shadowDebugFramebuffer.get() && s.shadowDebugPipe.get()) {
         VkRenderPassBeginInfo srp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-        srp.renderPass = s.shadowDebugRenderPass;
-        srp.framebuffer = s.shadowDebugFramebuffer;
+        srp.renderPass = s.shadowDebugRenderPass.get();
+        srp.framebuffer = s.shadowDebugFramebuffer.get();
         srp.renderArea.offset = {0, 0};
         srp.renderArea.extent = {s.imgW, s.imgH};
         vkCmdBeginRenderPass(s.cbuf, &srp, VK_SUBPASS_CONTENTS_INLINE);
@@ -2336,11 +2297,11 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                      {(uint32_t)quadSize, (uint32_t)quadSize}};
         vkCmdSetViewport(s.cbuf, 0, 1, &svp);
         vkCmdSetScissor(s.cbuf, 0, 1, &ssc);
-        vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugPipe);
-        vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugLayout,
+        vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugPipe.get());
+        vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugLayout.get(),
                                 0, 1, &s.shadowDebugSet, 0, nullptr);
         int spc[4] = { s.pendingShadowDebugLayer, 0, 0, 0 };
-        vkCmdPushConstants(s.cbuf, s.shadowDebugLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+        vkCmdPushConstants(s.cbuf, s.shadowDebugLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(spc), spc);
         vkCmdDraw(s.cbuf, 3, 1, 0, 0);
         vkCmdEndRenderPass(s.cbuf);
@@ -2428,8 +2389,8 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // and the inFlight fence, which the NEXT frame's composite-record waits. The
     // fence is reset HERE, immediately before the submit that will signal it —
     // never on a decline path (DISARM-2b hang guard).
-    VkSemaphore imgRenderSem = s.renderSems[imageIndex];
-    VkSemaphore waitSem      = s.acquireSem;
+    VkSemaphore imgRenderSem = s.renderSems[imageIndex].get();
+    VkSemaphore waitSem      = s.acquireSem.get();
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkCommandBuffer submitCbufs[2] = { s.compositeCbuf, s.cbuf };
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -2440,10 +2401,10 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     si.pCommandBuffers      = submitCbufs;
     si.signalSemaphoreCount = 1;
     si.pSignalSemaphores    = &imgRenderSem;
-    vkResetFences(s.dev, 1, &s.inFlight);
+    { const VkFence inFlightFence = s.inFlight.get(); vkResetFences(s.dev, 1, &inFlightFence); }
     s.compositePending = false;   // consumed by this submit (success or fail-soft)
     { ZoneScopedN("VKIsl.Present.Submit");   // VK-ISLAND-TRACY-1: THE single present-path vkQueueSubmit
-      r = vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight); }  // drives acquire/present cadence
+      r = vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight.get()); }  // drives acquire/present cadence
     if (r != VK_SUCCESS) {
         // The fence is now unsignaled with no submit to signal it; returning false
         // triggers the DISARM-2 present-failure path (vkpres.destroy() + deferred
@@ -2457,7 +2418,8 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     pi.waitSemaphoreCount = 1;
     pi.pWaitSemaphores    = &imgRenderSem;
     pi.swapchainCount     = 1;
-    pi.pSwapchains        = &s.swapchain;
+    const VkSwapchainKHR swapchainHandle = s.swapchain.get();
+    pi.pSwapchains        = &swapchainHandle;
     pi.pImageIndices      = &imageIndex;
     { ZoneScopedN("VKIsl.Present.QueuePresent");   // VK-ISLAND-TRACY-1: vkQueuePresentKHR (vsync/WSI block lands here)
       r = vkQueuePresentKHR(s.presentQ, &pi); }
@@ -2503,15 +2465,15 @@ void EnginePresentVk::verifyReadbackContent() {
 
     // (Re)allocate readback buffer if size changed.
     if (s.readbackSize != needed) {
-        if (s.readbackBuf) { vkDestroyBuffer(s.dev, s.readbackBuf, nullptr); s.readbackBuf = VK_NULL_HANDLE; }
-        if (s.readbackMem) { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
+        s.readbackBuf.reset();   // the buffer goes before the memory bound to it
+        s.readbackMem.reset();
         VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
         bci.size = needed;
         bci.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        if (vkCreateBuffer(s.dev, &bci, nullptr, &s.readbackBuf) != VK_SUCCESS) return;
-        mc2vk::nameObject(s.dev, s.readbackBuf, "present.readback");
-        VkMemoryRequirements mr{}; vkGetBufferMemoryRequirements(s.dev, s.readbackBuf, &mr);
+        if (!mc2vk::create(s.readbackBuf, s.dev, [&](auto* h) { return vkCreateBuffer(s.dev, &bci, nullptr, h); })) return;
+        mc2vk::nameObject(s.dev, s.readbackBuf.get(), "present.readback");
+        VkMemoryRequirements mr{}; vkGetBufferMemoryRequirements(s.dev, s.readbackBuf.get(), &mr);
         VkPhysicalDeviceMemoryProperties mp{}; vkGetPhysicalDeviceMemoryProperties(s.phys, &mp);
         uint32_t idx = UINT32_MAX;
         for (uint32_t i = 0; i < mp.memoryTypeCount; ++i) {
@@ -2525,18 +2487,18 @@ void EnginePresentVk::verifyReadbackContent() {
         if (idx == UINT32_MAX) return;
         VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
         mai.allocationSize = mr.size; mai.memoryTypeIndex = idx;
-        if (vkAllocateMemory(s.dev, &mai, nullptr, &s.readbackMem) != VK_SUCCESS) return;
-        vkBindBufferMemory(s.dev, s.readbackBuf, s.readbackMem, 0);
+        if (!mc2vk::create(s.readbackMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &mai, nullptr, h); })) return;
+        vkBindBufferMemory(s.dev, s.readbackBuf.get(), s.readbackMem.get(), 0);
         s.readbackSize = needed;
     }
     if (!s.readbackCbuf) {
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai.commandPool = s.cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+        cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
         if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) return;
     }
     if (!s.readbackFence) {
         VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        if (vkCreateFence(s.dev, &fci, nullptr, &s.readbackFence) != VK_SUCCESS) return;
+        if (!mc2vk::create(s.readbackFence, s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); })) return;
     }
 
     vkResetCommandBuffer(s.readbackCbuf, 0);
@@ -2552,21 +2514,22 @@ void EnginePresentVk::verifyReadbackContent() {
     bic.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     bic.imageExtent = {rw, rh, 1};
     vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image.get(),
-                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s.readbackBuf, 1, &bic);
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s.readbackBuf.get(), 1, &bic);
     barrier(s.readbackCbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s.readbackCbuf);
 
-    vkResetFences(s.dev, 1, &s.readbackFence);
+    const VkFence readbackFenceHandle = s.readbackFence.get();
+    vkResetFences(s.dev, 1, &readbackFenceHandle);
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &s.readbackCbuf;
-    if (vkQueueSubmit(s.gfxQ, 1, &si, s.readbackFence) != VK_SUCCESS) return;
-    vkWaitForFences(s.dev, 1, &s.readbackFence, VK_TRUE, UINT64_MAX);
+    if (vkQueueSubmit(s.gfxQ, 1, &si, s.readbackFence.get()) != VK_SUCCESS) return;
+    vkWaitForFences(s.dev, 1, &readbackFenceHandle, VK_TRUE, UINT64_MAX);
 
     void* mapped = nullptr;
-    if (vkMapMemory(s.dev, s.readbackMem, 0, needed, 0, &mapped) != VK_SUCCESS) return;
+    if (vkMapMemory(s.dev, s.readbackMem.get(), 0, needed, 0, &mapped) != VK_SUCCESS) return;
     const unsigned char* px = (const unsigned char*)mapped;
     // FNV-1a over a strided sample (every 257th byte) -- cheap, sensitive to change.
     unsigned long long h = 1469598103934665603ull;
@@ -2631,7 +2594,7 @@ void EnginePresentVk::verifyReadbackContent() {
     // VK-VISUAL-CAPTURE-1: hand the presented image to a pending visual capture.
     if (gos::visual_capture::vkCapturePending())
         gos::visual_capture::vkCaptureDeliver(rw, rh, px);
-    vkUnmapMemory(s.dev, s.readbackMem);
+    vkUnmapMemory(s.dev, s.readbackMem.get());
 
     health_.prev_readback_checksum = health_.last_readback_checksum;
     health_.last_readback_checksum = h;
@@ -2644,73 +2607,14 @@ void EnginePresentVk::verifyReadbackContent() {
 void EnginePresentVk::destroy() {
     if (impl_) {
         Impl& s = *impl_;
-        if (s.dev) vkDeviceWaitIdle(s.dev);
+        if (s.dev) s.ctx->waitIdle("present_destroy");
         shutdownImguiVulkanRenderer();
-        destroyImguiFramebuffer(s);
-        if (s.imguiRenderPass) { vkDestroyRenderPass(s.dev, s.imguiRenderPass, nullptr); s.imguiRenderPass = VK_NULL_HANDLE; }
-        destroyHudColorFramebuffer(s);
-        if (s.hudColorTriPipe) { vkDestroyPipeline(s.dev, s.hudColorTriPipe, nullptr); s.hudColorTriPipe = VK_NULL_HANDLE; }
-        if (s.hudColorTriOneInvAlphaPipe) { vkDestroyPipeline(s.dev, s.hudColorTriOneInvAlphaPipe, nullptr); s.hudColorTriOneInvAlphaPipe = VK_NULL_HANDLE; }
-        if (s.hudColorTriOneOnePipe) { vkDestroyPipeline(s.dev, s.hudColorTriOneOnePipe, nullptr); s.hudColorTriOneOnePipe = VK_NULL_HANDLE; }
-        if (s.hudColorLinePipe) { vkDestroyPipeline(s.dev, s.hudColorLinePipe, nullptr); s.hudColorLinePipe = VK_NULL_HANDLE; }
-        if (s.hudColorTriOpaquePipe) { vkDestroyPipeline(s.dev, s.hudColorTriOpaquePipe, nullptr); s.hudColorTriOpaquePipe = VK_NULL_HANDLE; }
-        if (s.hudColorLineOpaquePipe) { vkDestroyPipeline(s.dev, s.hudColorLineOpaquePipe, nullptr); s.hudColorLineOpaquePipe = VK_NULL_HANDLE; }
-        if (s.hudColorLayout) { vkDestroyPipelineLayout(s.dev, s.hudColorLayout, nullptr); s.hudColorLayout = VK_NULL_HANDLE; }
-        if (s.hudColorVert) { vkDestroyShaderModule(s.dev, s.hudColorVert, nullptr); s.hudColorVert = VK_NULL_HANDLE; }
-        if (s.hudColorFrag) { vkDestroyShaderModule(s.dev, s.hudColorFrag, nullptr); s.hudColorFrag = VK_NULL_HANDLE; }
-        if (s.hudColorVertexBuf) { vkDestroyBuffer(s.dev, s.hudColorVertexBuf, nullptr); s.hudColorVertexBuf = VK_NULL_HANDLE; }
-        if (s.hudColorVertexMem) { vkFreeMemory(s.dev, s.hudColorVertexMem, nullptr); s.hudColorVertexMem = VK_NULL_HANDLE; }
-        if (s.hudTexPipe) { vkDestroyPipeline(s.dev, s.hudTexPipe, nullptr); s.hudTexPipe = VK_NULL_HANDLE; }
-        if (s.hudTexOpaquePipe) { vkDestroyPipeline(s.dev, s.hudTexOpaquePipe, nullptr); s.hudTexOpaquePipe = VK_NULL_HANDLE; }
-        if (s.hudTexOneInvAlphaPipe) { vkDestroyPipeline(s.dev, s.hudTexOneInvAlphaPipe, nullptr); s.hudTexOneInvAlphaPipe = VK_NULL_HANDLE; }
-        if (s.hudTexOneOnePipe) { vkDestroyPipeline(s.dev, s.hudTexOneOnePipe, nullptr); s.hudTexOneOnePipe = VK_NULL_HANDLE; }
-        if (s.hudTexLayout) { vkDestroyPipelineLayout(s.dev, s.hudTexLayout, nullptr); s.hudTexLayout = VK_NULL_HANDLE; }
-        if (s.hudTexVert) { vkDestroyShaderModule(s.dev, s.hudTexVert, nullptr); s.hudTexVert = VK_NULL_HANDLE; }
-        if (s.hudTexFrag) { vkDestroyShaderModule(s.dev, s.hudTexFrag, nullptr); s.hudTexFrag = VK_NULL_HANDLE; }
-        if (s.hudTexVertexBuf) { vkDestroyBuffer(s.dev, s.hudTexVertexBuf, nullptr); s.hudTexVertexBuf = VK_NULL_HANDLE; }
-        if (s.hudTexVertexMem) { vkFreeMemory(s.dev, s.hudTexVertexMem, nullptr); s.hudTexVertexMem = VK_NULL_HANDLE; }
-        for (auto& kv : s.hudTextureMirrors) {
-            if (kv.second.buffer) vkDestroyBuffer(s.dev, kv.second.buffer, nullptr);
-            if (kv.second.memory) vkFreeMemory(s.dev, kv.second.memory, nullptr);
-        }
-        s.hudTextureMirrors.clear();
-        if (s.hudTexPool) { vkDestroyDescriptorPool(s.dev, s.hudTexPool, nullptr); s.hudTexPool = VK_NULL_HANDLE; }
-        if (s.hudTexDsl) { vkDestroyDescriptorSetLayout(s.dev, s.hudTexDsl, nullptr); s.hudTexDsl = VK_NULL_HANDLE; }
-        if (s.hudColorRenderPass) { vkDestroyRenderPass(s.dev, s.hudColorRenderPass, nullptr); s.hudColorRenderPass = VK_NULL_HANDLE; }
-        destroyCompositeFramebuffer(s);
-        if (s.compositePipe) { vkDestroyPipeline(s.dev, s.compositePipe, nullptr); s.compositePipe = VK_NULL_HANDLE; }
-        if (s.compositeLayout) { vkDestroyPipelineLayout(s.dev, s.compositeLayout, nullptr); s.compositeLayout = VK_NULL_HANDLE; }
-        if (s.compositeVert) { vkDestroyShaderModule(s.dev, s.compositeVert, nullptr); s.compositeVert = VK_NULL_HANDLE; }
-        if (s.compositeFrag) { vkDestroyShaderModule(s.dev, s.compositeFrag, nullptr); s.compositeFrag = VK_NULL_HANDLE; }
-        if (s.compositePool) { vkDestroyDescriptorPool(s.dev, s.compositePool, nullptr); s.compositePool = VK_NULL_HANDLE; }
-        if (s.compositeDsl) { vkDestroyDescriptorSetLayout(s.dev, s.compositeDsl, nullptr); s.compositeDsl = VK_NULL_HANDLE; }
-        if (s.compositeSampler) { vkDestroySampler(s.dev, s.compositeSampler, nullptr); s.compositeSampler = VK_NULL_HANDLE; }
-        if (s.compositeNearestSampler) { vkDestroySampler(s.dev, s.compositeNearestSampler, nullptr); s.compositeNearestSampler = VK_NULL_HANDLE; }
-        if (s.compositeRenderPass) { vkDestroyRenderPass(s.dev, s.compositeRenderPass, nullptr); s.compositeRenderPass = VK_NULL_HANDLE; }
-        destroyShadowDebugFramebuffer(s);
-        if (s.shadowDebugPipe) { vkDestroyPipeline(s.dev, s.shadowDebugPipe, nullptr); s.shadowDebugPipe = VK_NULL_HANDLE; }
-        if (s.shadowDebugLayout) { vkDestroyPipelineLayout(s.dev, s.shadowDebugLayout, nullptr); s.shadowDebugLayout = VK_NULL_HANDLE; }
-        if (s.shadowDebugVert) { vkDestroyShaderModule(s.dev, s.shadowDebugVert, nullptr); s.shadowDebugVert = VK_NULL_HANDLE; }
-        if (s.shadowDebugFrag) { vkDestroyShaderModule(s.dev, s.shadowDebugFrag, nullptr); s.shadowDebugFrag = VK_NULL_HANDLE; }
-        if (s.shadowDebugPool) { vkDestroyDescriptorPool(s.dev, s.shadowDebugPool, nullptr); s.shadowDebugPool = VK_NULL_HANDLE; }
-        if (s.shadowDebugDsl) { vkDestroyDescriptorSetLayout(s.dev, s.shadowDebugDsl, nullptr); s.shadowDebugDsl = VK_NULL_HANDLE; }
-        if (s.shadowDebugSampler) { vkDestroySampler(s.dev, s.shadowDebugSampler, nullptr); s.shadowDebugSampler = VK_NULL_HANDLE; }
-        if (s.shadowDebugRenderPass) { vkDestroyRenderPass(s.dev, s.shadowDebugRenderPass, nullptr); s.shadowDebugRenderPass = VK_NULL_HANDLE; }
-        if (s.readbackFence) { vkDestroyFence(s.dev, s.readbackFence, nullptr); s.readbackFence = VK_NULL_HANDLE; }
-        if (s.readbackBuf)   { vkDestroyBuffer(s.dev, s.readbackBuf, nullptr); s.readbackBuf = VK_NULL_HANDLE; }
-        if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
-        if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
-        if (s.inFlight)   { vkDestroyFence(s.dev, s.inFlight, nullptr); s.inFlight = VK_NULL_HANDLE; }
-        // VK-PRESENT-SINGLESUBMIT-1: compositeCbuf is pool-allocated (freed with the
-        // pool below); just drop the pending state.
+        // VK-PRESENT-SINGLESUBMIT-1: compositeCbuf is pool-allocated (freed with the pool); just drop the pending state.
         s.compositeCbuf = VK_NULL_HANDLE;
         s.compositePending = false;
         s.pendingShadowDebugView = VK_NULL_HANDLE;
-        if (s.acquireSem) { vkDestroySemaphore(s.dev, s.acquireSem, nullptr); s.acquireSem = VK_NULL_HANDLE; }
-        if (s.cpool)      { vkDestroyCommandPool(s.dev, s.cpool, nullptr); s.cpool = VK_NULL_HANDLE; s.cbuf = VK_NULL_HANDLE; s.readbackCbuf = VK_NULL_HANDLE; }
-        destroySwapchainOnly(s);
-        if (s.surface && s.inst) { vkDestroySurfaceKHR(s.inst, s.surface, nullptr); s.surface = VK_NULL_HANDLE; }
-        // Device/instance are OWNED BY THE T2 CONTEXT -- never destroyed here.
+        // Every owned object (pipelines, layouts, buffers and their memory, the swapchain, the surface, the command pool) is released by ~Impl, in
+        // reverse declaration order. The device and instance belong to the engine context and are never destroyed here.
         delete impl_;
         impl_ = nullptr;
     }
