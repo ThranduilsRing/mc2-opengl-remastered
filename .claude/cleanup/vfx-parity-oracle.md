@@ -405,8 +405,24 @@ py -3 tools/sim_determinism.py compare E:/mc2-archive-2026-10/vfx-g2ba/pre/camer
 ```
 
 Inspect every strict chain and camera comparison; `sim_determinism check` alone
-permits strict-bit drift with exit zero. Runtime acceptance is pending the orchestrator.
+permits strict-bit drift with exit zero. The orchestrator's runtime acceptance is recorded below.
 No oracle captures, seed migration or baseline regeneration are part of G2b-a.
+
+### G2b-a runtime acceptance (orchestrator, 2026-10-14)
+
+Accepted against the pre-change executable: pre = nifty `6dc7d078f`, lane3 exe
+SHA-256 prefix `27c9dcd1687a0522`; post = `e49b52dff`, prefix `8d85702ac2068de3`.
+Retained logs are under `E:/mc2-archive-2026-10/vfx-g2ba` (`pre` and `post`).
+All four strict chains (pre a/b and post a/b) are equal for each of `mc2_03`,
+`mc2_10`, `mc2_24` and `mc2_16`. The camera-park pair is identical pre/post,
+covering 4,019 frames for arm a and 5,275 frames for arm b.
+
+`sim_determinism check` refuses on lane3: installed data fingerprint `cf36e658`
+differs from the baselines' `17051a2e`. These baselines are stale; lane 1 owns
+the re-record item. The `mc2_24` and `mc2_16` strict chains differ from their
+baselines in both pre and post, so those differences predate G2b-a. Acceptance
+establishes pre/post runtime equivalence; it does not bless the stale baselines
+or claim visual parity.
 
 ## Files needing owners (not edited)
 
