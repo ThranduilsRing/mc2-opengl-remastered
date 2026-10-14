@@ -132,7 +132,7 @@ def grade_workflows(text: str) -> str:
             failures.append(f"{workflow}/{panel}: missing or unsuccessful probe")
     definitions = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in text.splitlines()
                    if line.startswith("[EDITOR_DEFINITIONS v1] ")]
-    for stage in ("duplicate_unit_refresh_undo_redo", "script_boundary"):
+    for stage in ("duplicate_unit_refresh_undo_redo", "script_boundary", "display_equality"):
         if not any(row.get("stage") == stage and row.get("ok") == "1" for row in definitions):
             failures.append(f"mission_definitions/{stage}: missing or unsuccessful probe")
     if not any(row.get("preservation_commands_undo_reload_malformed") == "1" for row in definitions):
@@ -163,11 +163,12 @@ def grade_workflows(text: str) -> str:
                    and all(row.get(key) == "1" for key in (*flags, "ok")) for row in definitions):
             failures.append(f"mission_definitions/{stage}/{case}: missing or unsuccessful probe")
         diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
-                       and f"/{filename}.fit " in line]
+                       and f"/{filename}.fit " in line and " rejected=1" in line]
         expected = 0 if reason is None else 1
         if len(diagnostics) != expected or (expected and (f"{reason} rejected=1" not in diagnostics[0]
                 or (field is not None and f"/{field} " not in diagnostics[0])
-                or (reason.startswith("reason=") and not re.search(r" length=\d+ limit=\d+ reason=", diagnostics[0]))
+                or (stage != "condition_failure" and reason.startswith("reason=")
+                    and not re.search(r" length=\d+ limit=\d+ reason=", diagnostics[0]))
                 or (stage == "payload" and case.endswith("_oversized")
                     and "length=2001 limit=2000 reason=too_long" not in diagnostics[0]))):
             failures.append(f"mission_definitions/{stage}/{case}: expected {expected} rejection diagnostic")
@@ -189,6 +190,25 @@ def grade_workflows(text: str) -> str:
                     "reason=malformed_literal" if case.startswith("literal_") else "reason=invalid_species", ("following",))
     for case, field in READER_MISSING_PAYLOADS.items():
         reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", ("rejected", "unchanged"), field)
+    if not any(row.get("stage") == "reader_budget" and all(row.get(key) == "1" for key in ("rejected", "unchanged", "ok"))
+               for row in definitions):
+        failures.append("mission_definitions/reader_budget: missing unchanged-document rejection proof")
+    budget = [line for line in text.splitlines() if "/ew_reader_budget.fit " in line and "rejected=1" in line]
+    if len(budget) != 1 or " length=16777217 limit=16777216 reason=document_too_large" not in budget[0]:
+        failures.append("mission_definitions/reader_budget: expected one byte-limit diagnostic")
+    for case in ("ObjectiveModel", "ModelType", "ModelScale", "all"):
+        if not any(row.get("stage") == "model_default" and row.get("case") == case and row.get("ok") == "1" for row in definitions):
+            failures.append(f"mission_definitions/model_default/{case}: missing default proof")
+        defaults = [line for line in text.splitlines() if f"/ew_model_default_{case}.fit " in line and "defaulted=1" in line]
+        if len(defaults) != 1 or any(f"{key}={int(case in (key, 'all'))}" not in defaults[0]
+                                     for key in ("ObjectiveModel", "ModelType", "ModelScale")):
+            failures.append(f"mission_definitions/model_default/{case}: expected one default diagnostic")
+    for case in ("Condition", "FailureCondition"):
+        reader_case("condition_failure", case, f"ew_condition_failure_{case}", "reason=condition_read_failed", ())
+        contextual = [line for line in text.splitlines() if f"/ew_condition_failure_{case}.fit " in line
+                      and f"block=Team0Objective0{case}0 species=DestroyNumberOfEnemyUnits" in line]
+        if len(contextual) != 1:
+            failures.append(f"mission_definitions/condition_failure/{case}: missing block/species diagnostic")
     return "; ".join(failures)
 
 

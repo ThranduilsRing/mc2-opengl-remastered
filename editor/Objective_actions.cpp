@@ -1,6 +1,16 @@
 // Objective: objective action classes (BIK/WAV/text/flag/technology): compare, read/save, edit dialogs and descriptions.
 // Declared in the class headers; shared names in Objective_internal.h.
+#include "stdafx.h"
 #include "Objective_internal.h"
+#include "resource.h"
+#include "paths.h"
+#include "ResourceStringSelectionDlg.h"
+#include "BooleanFlagIsSetDialog.h"
+#include "TextMessageDlg.h"
+#include "MCLibResource.h"
+#include "../resource.h"
+#include "mc2fmt.h"
+#include <cassert>
 
 
 bool CObjectiveAction::operator==(const CObjectiveAction &rhs) const {
@@ -139,7 +149,7 @@ bool CDisplayTextMessage::operator==(const CObjectiveAction &rhs) const {
 	bool retval = false;
 	const CDisplayTextMessage *pCastedRhs = dynamic_cast<const CDisplayTextMessage *>(&rhs);
 	if ((pCastedRhs) && (CObjectiveAction::operator==(rhs))) {
-		if (mc2::str::iequals(m_message, pCastedRhs->m_message)) {
+		if (m_message == pCastedRhs->m_message) {
 			retval = true;
 		}
 	}

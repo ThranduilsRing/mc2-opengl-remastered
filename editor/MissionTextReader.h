@@ -14,7 +14,27 @@
 
 namespace EditorFit
 {
+inline constexpr unsigned long kMaxMissionBytes = 16 * 1024 * 1024;
 enum class TextStatus { Absent, Read, Rejected };
+inline std::optional<std::string> readMissionSource(File& input, std::string_view mission)
+{
+    const auto length = input.getLength();
+    if (length > kMaxMissionBytes)
+    {
+        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%.*s length=%lu limit=%lu reason=document_too_large rejected=1\n",
+            static_cast<int>(mission.size()), mission.data(), length, kMaxMissionBytes);
+        return std::nullopt;
+    }
+    std::string source(length, '\0');
+    const auto count = input.read(0, reinterpret_cast<MemoryPtr>(source.data()), static_cast<long>(source.size()));
+    if (count != static_cast<long>(length))
+    {
+        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%.*s expected=%lu actual=%ld reason=short_read rejected=1\n",
+            static_cast<int>(mission.size()), mission.data(), length, count);
+        return std::nullopt;
+    }
+    return source;
+}
 // Text belongs to the document, rather than the FIT reader's fixed line buffer.
 // Required-field validation precedes any replacement of the live editor state.
 class MissionTextReader : public FitIniFile
@@ -135,18 +155,23 @@ class MissionTextReader : public FitIniFile
     }
 public:
     using FitIniFile::open;
+    const std::string& missionName() const { return mission; }
+    const char* blockName() const { return currentBlockId ? currentBlockId : ""; }
     bool has(const char* key) { return find(currentBlockId ? currentBlockId : "", key) != nullptr; }
     long open(const char* path, FileMode mode = READ, long children = 50, bool keepCase = false) override
     {
         fields.clear();
         mission = path;
-        const auto result = FitIniFile::open(path, mode, children, keepCase);
+        if (mode != READ) return FitIniFile::open(path, mode, children, keepCase);
+        File input;
+        auto result = input.open(path, mode, children, keepCase);
         if (result != NO_ERR) return result;
-        const auto position = getLogicalPosition();
-        std::string source(getLength(), '\0');
-        read(0, reinterpret_cast<MemoryPtr>(source.data()), static_cast<long>(source.size()));
-        seek(position);
-        const std::string_view text(source);
+        auto source = readMissionSource(input, mission);
+        if (!source) return READ_PAST_EOF_ERR;
+        input.close();
+        result = FitIniFile::open(path, mode, children, keepCase);
+        if (result != NO_ERR) return result;
+        const std::string_view text(*source);
         std::string block;
         for (size_t pos = 0; pos < text.size();)
         {

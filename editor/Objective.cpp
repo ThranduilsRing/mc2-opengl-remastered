@@ -10,7 +10,16 @@
 
 #define OBJECTIVE_CPP
 
+#include "stdafx.h"
 #include "Objective_internal.h"
+#include "ObjectiveDlg.h"
+#include "ObjectivesDlg.h"
+#include "EditorInterface.h"
+#include "EditorObjects.h"
+#include "EditorObjectMgr.h"
+#include "MCLibResource.h"
+#include "../resource.h"
+#include <cassert>
 
 
 
@@ -236,10 +245,10 @@ CObjective &CObjective::operator=(const CObjective &master) {
 bool CObjective::operator==(const CObjective &rhs) const {
 	bool retval = false;
 	if ((m_alignment == rhs.m_alignment) &&
-		(mc2::str::iequals(Title(), rhs.Title())) &&
+		(Title() == rhs.Title()) &&
 		(m_titleUseResourceString == rhs.m_titleUseResourceString) &&
 		(m_titleResourceStringID == rhs.m_titleResourceStringID) &&
-		(mc2::str::iequals(Description(), rhs.Description())) &&
+		(Description() == rhs.Description()) &&
 		(m_descriptionUseResourceString == rhs.m_descriptionUseResourceString) &&
 		(m_descriptionResourceStringID == rhs.m_descriptionResourceStringID) &&
 		(m_priority == rhs.m_priority) &&
@@ -318,6 +327,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	text.title = m_title;
 	text.description = m_description;
 	text.activateFlagID = m_activateFlagID;
+	// C9: an absent activation ID preserves its value so existing flag references survive an edit.
 	text.resetStatusFlagID = m_resetStatusFlagID;
 	std::string value;
 	const auto titleStatus = EditorFit::readText(*missionFile, "Title", value);
@@ -374,12 +384,9 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 
 
 	int numConditions = 0;
-	EditorFit::readText(*missionFile, "ObjectiveModel", m_modelDefinition.name);
 	auto* reader = dynamic_cast<EditorFit::MissionTextReader*>(missionFile);
-	if ((reader && reader->has("ModelType") && !EditorFit::longValue(*missionFile, "ModelType", m_modelDefinition.type))
-		|| (reader && reader->has("ModelScale") && !EditorFit::floatValue(*missionFile, "ModelScale", m_modelDefinition.scale))
-		|| m_modelDefinition.type < 0 || m_modelDefinition.type > 255 || m_modelDefinition.scale <= 0)
-		return EditorFit::reject("objective model");
+	if (!reader) return EditorFit::reject("objective model reader");
+	if (!EditorFit::readObjectiveModel(*reader, m_modelDefinition).accepted) return false;
 	result = sReadIdWholeNum(missionFile, "NumConditions", numConditions);
 	if (NO_ERR != result) { return false; }
 	int numActions = 0;
@@ -407,7 +414,11 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			CObjectiveCondition *pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
 			if (!pNewObjectiveCondition) { continue; }
 			bool bresult = pNewObjectiveCondition->Read(missionFile);
-			if (true != bresult) { delete pNewObjectiveCondition; return false; }
+			if (true != bresult) {
+				fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s block=%s species=%s reason=condition_read_failed rejected=1\n",
+					reader->missionName().c_str(), tmpStr.c_str(), g_conditionSpeciesStringArray[*speciesIndex]);
+				delete pNewObjectiveCondition; return false;
+			}
 			Append(pNewObjectiveCondition);
 		}
 	}
@@ -445,7 +456,11 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			CObjectiveCondition *pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
 			if (!pNewObjectiveFailureCondition) { continue; }
 			bool bresult = pNewObjectiveFailureCondition->Read(missionFile);
-			if (true != bresult) { delete pNewObjectiveFailureCondition; return false; }
+			if (true != bresult) {
+				fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s block=%s species=%s reason=condition_read_failed rejected=1\n",
+					reader->missionName().c_str(), tmpStr.c_str(), g_conditionSpeciesStringArray[*speciesIndex]);
+				delete pNewObjectiveFailureCondition; return false;
+			}
 			m_failureConditionList.Append(pNewObjectiveFailureCondition);
 		}
 	}

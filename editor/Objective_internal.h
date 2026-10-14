@@ -1,44 +1,16 @@
-// Shared surface of the Objective translation units (Objective*.cpp).
-//
-// Objective.cpp keeps the condition/action lists, CObjective and CObjectives; the condition and action classes are split out.
+// Shared scalar reads and localized strings keep objective defaults consistent
+// across the objective, condition and action translation units.
 #ifndef OBJECTIVE_INTERNAL_H
 #define OBJECTIVE_INTERNAL_H
 
-/*************************************************************************************************\
-Objective.cpp			: Implementation of the Objective component.
-\*************************************************************************************************/
-
-#include "stdafx.h"
-#include "terrain.h"
-
 #include "Objective.h"
-#include "ObjectiveDlg.h"
-#include "ObjectivesDlg.h"
-#include "ChooseUnitDlg.h"
-#include "ChooseBuildingDlg.h"
-#include "ResourceStringSelectionDlg.h"
-#include "SingleValueDlg.h"
-#include "BooleanFlagIsSetDialog.h"
-#include "TargetAreaDlg.h"
-#include "TextMessageDlg.h"
-#include "MCLibResource.h"
-#include "EditorInterface.h"
-#include "../resource.h"/*this is mc2res.dll's header file*/
-
 #include "mc2str.h"
-#include "mc2fmt.h"
-#include "objective_text.h"
-
-#ifndef INIFILE_H
-#include "IniFile.h"
-#endif
-
-#include <assert.h>
+#include "inifile.h"
+#include <cstring>
+#include <format>
 #include "EditorResourceFallback.h"
 
-// Globals defined in Objective.cpp (or elsewhere in the engine) that the split pieces share.
-
-static bool LoadObjectiveString(int resourceID, std::string &targetStr) {
+inline bool LoadObjectiveString(int resourceID, std::string &targetStr) {
 	char szTmp[16384/*max string length*/];
 	EditorSafeLoadString( resourceID, szTmp, 16384/*max string length*/ );
 	targetStr = mc2::str::from_c(szTmp);
@@ -50,7 +22,7 @@ static bool LoadObjectiveString(int resourceID, std::string &targetStr) {
 	return (!0);
 }
 
-static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &value) {
+inline long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &value) {
 	long result = 0;
 	float tmpFloat;
 	result = missionFile->readIdFloat((char *)varName, tmpFloat);
@@ -62,7 +34,7 @@ static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &va
 	return result;
 }
 
-static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &value) {
+inline long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &value) {
 	long result = 0;
 	bool tmpBool;
 	result = missionFile->readIdBoolean((char *)varName, tmpBool);
@@ -74,7 +46,7 @@ static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &v
 	return result;
 }
 
-static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &value) {
+inline long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &value) {
 	long result = 0;
 	unsigned long tmpULong;
 	result = missionFile->readIdULong((char *)varName, tmpULong);
@@ -84,24 +56,6 @@ static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &v
 		value = tmpULong;
 	}
 	return result;
-}
-
-static bool areCloseEnough(float f1, float f2)
-{
-	bool retval = false;
-	float diff = fabs(f1 - f2);
-	float bigger = fabs(f1);
-	if (fabs(f2) > bigger) {
-		bigger = fabs(f2);
-	}
-	float proportion_diff = 0.0;
-	if (0.0 != bigger) {
-		proportion_diff = diff / bigger;
-	}
-	if ((pow(10.0, -FLT_DIG) * 10.0/*arbitrary*/) > proportion_diff) {
-		retval = true;
-	}
-	return retval;
 }
 
 #endif // OBJECTIVE_INTERNAL_H

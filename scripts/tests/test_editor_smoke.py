@@ -32,7 +32,7 @@ def scratch_directory():
 def panel_lines():
     panels = "\n".join(f"[EDITOR_PANEL v1] workflow={w} panel={p} coverage={'model-only' if p in smoke.MODEL_ONLY else 'action-handler'} reached={0 if p in smoke.MODEL_ONLY else 1} ok=1 authored=1 undo=1 saved=1 reloaded=1"
                      for p, w in smoke.WORKFLOW_PANELS.items())
-    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] stage=script_boundary ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
+    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] stage=script_boundary ok=1\n[EDITOR_DEFINITIONS v1] stage=display_equality ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
     for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel",
                   "MissionName", "Author", "Blurb", "Blurb2", "AVIFilename", "DownloadURL", "ScenarioScript"):
         limit = 1023 if field == "ScenarioScript" else 2000
@@ -65,6 +65,15 @@ def panel_lines():
                     "ConditionSpecies", "following=1")
     for case, field in smoke.READER_MISSING_PAYLOADS.items():
         reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", field, "rejected=1 unchanged=1")
+    definitions += "\n[EDITOR_DEFINITIONS v1] stage=reader_budget rejected=1 unchanged=1 ok=1"
+    definitions += "\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_reader_budget.fit length=16777217 limit=16777216 reason=document_too_large rejected=1"
+    for case in ("ObjectiveModel", "ModelType", "ModelScale", "all"):
+        flags = ' '.join(f"{key}={int(case in (key, 'all'))}" for key in ("ObjectiveModel", "ModelType", "ModelScale"))
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=model_default case={case} ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_model_default_{case}.fit block=Probe defaulted=1 {flags}"
+    for case in ("Condition", "FailureCondition"):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=condition_failure case={case} ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_condition_failure_{case}.fit block=Team0Objective0{case}0 species=DestroyNumberOfEnemyUnits reason=condition_read_failed rejected=1"
     return panels + "\n" + definitions
 
 
@@ -98,9 +107,20 @@ class EditorSmokeTests(unittest.TestCase):
                 with self.subTest(line=line):
                     self.assertTrue(smoke.grade_workflows(lines.replace(line, "")))
                     self.assertTrue(smoke.grade_workflows(lines + "\n" + line))
-                    if "reason=" in line:
+                    if " length=" in line and " limit=" in line:
                         self.assertTrue(smoke.grade_workflows(lines.replace(line, line.replace(" length=", " missing_length="))))
                         self.assertTrue(smoke.grade_workflows(lines.replace(line, line.replace(" limit=", " missing_limit="))))
+
+    def test_merged_reader_review_requires_defaults_context_and_case_sensitive_edits(self):
+        lines = panel_lines()
+        for changed in (lines.replace("display_equality ok=1", "display_equality ok=0"),
+                        lines.replace("defaulted=1", "defaulted=0"),
+                        lines.replace("ObjectiveModel=1", "ObjectiveModel=0"),
+                        lines.replace("species=DestroyNumberOfEnemyUnits", "species=unknown"),
+                        lines.replace("block=Team0Objective0FailureCondition0", "block=unknown"),
+                        lines.replace("limit=16777216", "limit=16777215")):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
 
     def test_pinned_delta_uses_exact_input_and_reports_disappeared_classes(self):
         with scratch_directory() as directory:

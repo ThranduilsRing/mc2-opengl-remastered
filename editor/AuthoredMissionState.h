@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <string>
+#include <utility>
 #include <optional>
 #include <cstdio>
 #include <cstdlib>
@@ -98,6 +99,42 @@ inline bool longValue(FitIniFile& file, const char* key, long& value, bool unsig
     if (*end) return false;
     value = parsed;
     return true;
+}
+struct ModelReadResult
+{
+    bool accepted = true;
+    unsigned defaultedFields = 0, rejectedFields = 0;
+};
+
+// Missing model metadata uses the game's defaults, including on reused objects.
+// Rejected text preserves its field; invalid numeric metadata rejects the objective.
+inline ModelReadResult readObjectiveModel(MissionTextReader& file, ObjectiveModelDefinition& definition)
+{
+    auto parsed = definition;
+    ModelReadResult result;
+    const auto nameStatus = file.text("ObjectiveModel", parsed.name);
+    const bool missingName = nameStatus == TextStatus::Absent;
+    const bool missingType = !file.has("ModelType"), missingScale = !file.has("ModelScale");
+    if (missingName) parsed.name.clear();
+    if (missingType) parsed.type = 0;
+    if (missingScale) parsed.scale = 1.0f;
+    result.defaultedFields = (missingName ? 1u : 0u) | (missingType ? 2u : 0u) | (missingScale ? 4u : 0u);
+    if (result.defaultedFields)
+        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s block=%s defaulted=1 ObjectiveModel=%d ModelType=%d ModelScale=%d\n",
+            file.missionName().c_str(), file.blockName(), missingName, missingType, missingScale);
+    if (nameStatus == TextStatus::Rejected) result.rejectedFields |= 1u;
+    const auto rejectNumeric = [&](const char* key, unsigned mask) {
+        fprintf(stderr, "[EDITOR_DOCUMENT v1] mission=%s field=%s/%s reason=malformed_value rejected=1\n",
+            file.missionName().c_str(), file.blockName(), key);
+        result.accepted = false;
+        result.rejectedFields |= mask;
+    };
+    if (!missingType && (!longValue(file, "ModelType", parsed.type) || parsed.type < 0 || parsed.type > 255))
+    { rejectNumeric("ModelType", 2u); return result; }
+    if (!missingScale && (!floatValue(file, "ModelScale", parsed.scale) || parsed.scale <= 0))
+    { rejectNumeric("ModelScale", 4u); return result; }
+    definition = std::move(parsed);
+    return result;
 }
 inline bool stringValue(FitIniFile& file, const char* key, std::string& value)
 {

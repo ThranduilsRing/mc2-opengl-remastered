@@ -54,8 +54,8 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		auto fitPath = mc2::str::from_c(fileName);
 		const auto extension = fitPath.rfind('.');
 		if (extension != fitPath.npos) fitPath.replace(extension, fitPath.npos, ".fit");
-		if (file.open(fitPath.c_str()) == NO_ERR
-			&& !file.requiredFields(GAME_MAX_PLAYERS, g_conditionSpeciesStringArray, g_actionSpeciesStringArray)) return false;
+        if (file.open(fitPath.c_str()) != NO_ERR
+            || !file.requiredFields(GAME_MAX_PLAYERS, g_conditionSpeciesStringArray, g_actionSpeciesStringArray)) return false;
 	}
 
 	bool bRetVal = true;

@@ -383,6 +383,17 @@ bool EditorInterface::runDefinitionSmoke()
     auto* const previousUnit = getUnit();
     const bool previousDirty = EditorData::instance->MissionNeedsSaving();
     const bool previousUndo = undoMgr.HaveUndo(), previousRedo = undoMgr.HaveRedo();
+    const bool budgetRejected = writeFixture("terrain_gen_out/ew_reader_budget.pak", originalPak)
+        && writeFixture("terrain_gen_out/ew_reader_budget.fit", std::string(EditorFit::kMaxMissionBytes + 1, 'x'))
+        && !EditorData::initTerrainFromPCV("terrain_gen_out/ew_reader_budget.pak");
+    const bool budgetUnchanged = land == previousLand && getUnit() == previousUnit
+        && EditorData::instance->MissionNeedsSaving() == previousDirty
+        && undoMgr.HaveUndo() == previousUndo && undoMgr.HaveRedo() == previousRedo
+        && EditorData::instance->save("terrain_gen_out/ew_after_reject.pak", true)
+        && readFixture("terrain_gen_out/ew_after_reject.fit") == beforeReject;
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=reader_budget rejected=%d unchanged=%d ok=%d\n",
+        budgetRejected, budgetUnchanged, budgetRejected && budgetUnchanged);
+    if (!budgetRejected || !budgetUnchanged) return false;
     struct MissingPayload { const char* name; const char* species; const char* legacy; const char* present; const char* field; };
     for (const auto& probe : {
         MissingPayload{"legacy_num", "DestroyNumberOfEnemyUnits", "1", "", "Num"},
@@ -460,6 +471,59 @@ bool EditorInterface::runDefinitionSmoke()
             && !EditorData::initTerrainFromPCV(pak) && ok;
         fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=reject field=%s ok=%d\n", bad.field, ok);
     }
+    const std::string modelFixture = "FITini\n[Probe]\nst ObjectiveModel = \"keep_model\"\nl ModelType = 17\nf ModelScale = 1.75\nul NumConditions = 0\nFitEnd\n";
+    for (const auto field : {"ObjectiveModel", "ModelType", "ModelScale", "all"})
+    {
+        const auto path = std::format("terrain_gen_out/ew_model_default_{}.fit", field);
+        CObjective objective(0);
+        EditorFit::MissionTextReader reader;
+        bool passed = writeFixture(path.c_str(), modelFixture) && reader.open(path.c_str()) == NO_ERR
+            && reader.seekBlock("Probe") == NO_ERR && objective.Read(&reader, 0, 3);
+        reader.close();
+        std::string missing = modelFixture;
+        for (const auto key : {"ObjectiveModel", "ModelType", "ModelScale"})
+            if (std::string_view(field) == "all" || std::string_view(field) == key) passed = removeField(missing, "Probe", key) && passed;
+        passed = writeFixture(path.c_str(), missing) && reader.open(path.c_str()) == NO_ERR
+            && reader.seekBlock("Probe") == NO_ERR && objective.Read(&reader, 0, 3) && passed;
+        const auto model = objective.ModelDefinition();
+        passed = model.name == (std::string_view(field) == "all" || std::string_view(field) == "ObjectiveModel" ? "" : "keep_model")
+            && model.type == (std::string_view(field) == "all" || std::string_view(field) == "ModelType" ? 0 : 17)
+            && model.scale == (std::string_view(field) == "all" || std::string_view(field) == "ModelScale" ? 1.0f : 1.75f) && passed;
+        ok = passed && ok;
+        fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=model_default case=%s ok=%d\n", field, passed);
+    }
+    for (const auto suffix : {"Condition", "FailureCondition"})
+    {
+        const auto path = std::format("terrain_gen_out/ew_condition_failure_{}.fit", suffix);
+        std::string document = modelFixture;
+        bool prepared = std::string_view(suffix) == "Condition" ? replaceValue(document, "Probe", "NumConditions", "1") : true;
+        if (std::string_view(suffix) == "FailureCondition") addDeclaration(document, "Probe", "ul NumFailureConditions = 1");
+        const auto end = document.find("FitEnd");
+        document.insert(end, std::format("[Team0Objective0{}0]\nst {}SpeciesString = \"DestroyNumberOfEnemyUnits\"\n", suffix, suffix));
+        CObjective objective(0);
+        EditorFit::MissionTextReader reader;
+        const bool rejected = prepared && writeFixture(path.c_str(), document) && reader.open(path.c_str()) == NO_ERR
+            && reader.seekBlock("Probe") == NO_ERR && !objective.Read(&reader, 0, 3);
+        ok = rejected && ok;
+        fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=condition_failure case=%s ok=%d\n", suffix, rejected);
+    }
+    CObjective display(0);
+    display.Title("display_title"); display.Description("display_description");
+    CObjective displayCopy(display);
+    bool exact = display == displayCopy;
+    displayCopy.Title("Display_title"); exact = !(display == displayCopy) && exact;
+    displayCopy = display; displayCopy.Description("Display_description"); exact = !(display == displayCopy) && exact;
+    CDisplayTextMessage lower(0), upper(0);
+    EditorFit::MissionTextReader messageReader;
+    exact = writeFixture("terrain_gen_out/ew_message_lower.fit", "FITini\n[Probe]\nst Message = \"display_message\"\nFitEnd\n")
+        && messageReader.open("terrain_gen_out/ew_message_lower.fit") == NO_ERR
+        && messageReader.seekBlock("Probe") == NO_ERR && lower.Read(&messageReader) && exact;
+    messageReader.close();
+    exact = writeFixture("terrain_gen_out/ew_message_upper.fit", "FITini\n[Probe]\nst Message = \"Display_message\"\nFitEnd\n")
+        && messageReader.open("terrain_gen_out/ew_message_upper.fit") == NO_ERR
+        && messageReader.seekBlock("Probe") == NO_ERR && upper.Read(&messageReader) && !lower.operator==(upper) && exact;
+    ok = exact && ok;
+    fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=display_equality ok=%d\n", exact);
     const bool restored = writeFixture(fit, original) && EditorData::initTerrainFromPCV(pak);
     fprintf(stderr, "[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=%d\n", ok && restored);
     return ok && restored;

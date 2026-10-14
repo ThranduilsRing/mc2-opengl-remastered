@@ -1,6 +1,33 @@
 // Objective: objective condition classes: compare, read/save, edit dialogs and descriptions.
 // Declared in the class headers; shared names in Objective_internal.h.
+#include "stdafx.h"
 #include "Objective_internal.h"
+#include "resource.h"
+#include "ChooseUnitDlg.h"
+#include "ChooseBuildingDlg.h"
+#include "SingleValueDlg.h"
+#include "BooleanFlagIsSetDialog.h"
+#include "TargetAreaDlg.h"
+#include "EditorObjectMgr.h"
+#include "EditorObjects.h"
+#include "MCLibResource.h"
+#include "../resource.h"
+#include "mc2fmt.h"
+#include <cassert>
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
+
+namespace
+{
+bool areCloseEnough(float f1, float f2)
+{
+	const float diff = std::fabs(f1 - f2);
+	const float bigger = std::max(std::fabs(f1), std::fabs(f2));
+	const float proportion = bigger != 0.0f ? diff / bigger : 0.0f;
+	return std::pow(10.0, -FLT_DIG) * 10.0 > proportion;
+}
+}
 
 
 bool CObjectiveCondition::operator==(const CObjectiveCondition &rhs) const {
