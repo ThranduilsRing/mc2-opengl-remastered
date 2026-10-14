@@ -567,7 +567,10 @@ def marker_reload_provenance(exe):
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
         timeout=10, **child_kwargs(redirected=True)).strip()
     if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12] or fingerprint.get("dirty"):
-        raise ValueError("legacy editor requires a clean build fingerprint matching worktree HEAD")
+        raise ValueError("legacy editor requires a clean build fingerprint matching worktree HEAD; "
+                         f"exe={exe.as_posix()} expected_sha={head[:12]} "
+                         f"observed={json.dumps(fingerprint, sort_keys=True)}; "
+                         "rebuild EditRel and deploy the matching executable to lane3")
     return dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
 
 

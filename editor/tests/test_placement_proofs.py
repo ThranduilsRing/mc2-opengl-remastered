@@ -183,11 +183,17 @@ class FrozenParityTests(unittest.TestCase):
         exe = Path("A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe").resolve()
         head = "0123456789abcdef"
         with patch("scripts.run_editor_smoke.subprocess.check_output", return_value=head), patch.object(Path, "read_bytes", return_value=b"editor"):
-            for fingerprint in ({"present": False}, {"present": True, "sha12": "old"},
-                {"present": True, "sha12": head[:12], "dirty": True}):
+            for fingerprint, observed in (({"present": False, "reason": "banner-absent"}, '"reason": "banner-absent"'),
+                ({"present": True, "sha12": "old", "dirty": False}, '"sha12": "old"'),
+                ({"present": True, "sha12": head[:12], "dirty": True}, '"dirty": true')):
                 with patch("scripts.run_editor_smoke.exe_fingerprint.extract", return_value=fingerprint):
-                    with self.assertRaisesRegex(ValueError, "clean build fingerprint"):
+                    with self.assertRaisesRegex(ValueError, "clean build fingerprint") as failure:
                         marker_reload_provenance(exe)
+                    detail = str(failure.exception)
+                    self.assertIn(exe.as_posix(), detail)
+                    self.assertIn("expected_sha=" + head[:12], detail)
+                    self.assertIn(observed, detail)
+                    self.assertIn("rebuild EditRel", detail)
             with patch("scripts.run_editor_smoke.exe_fingerprint.extract", return_value={"present": True, "sha12": head[:12], "dirty": False}):
                 self.assertEqual(marker_reload_provenance(exe)["head"], head)
         with self.assertRaisesRegex(ValueError, "restricted to lane3"):
