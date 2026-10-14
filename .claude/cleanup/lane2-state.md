@@ -11,6 +11,11 @@ Every number below was printed by the tool named beside it in this session.
 - 5be71e04b regeneration: `scripts/check-vk-pipeline-layout.py` reads owner-created layouts (`mc2vk::create(s->dsl, ...)` and `{ s->dsl.get(), o->texDsl.get() }`: 26 false errors otherwise), ledger, background-launch inventory, gated-layout doc, callers allowlist row for nifty's `test_build_compiler_presets.py`.
 - 57ec9b574 FIX found by the live shadow run (below): the sorted caster re-stage copied `alignas(16)` instances through a typed pointer into a mapped allocation.
 
+### Pre-merge fixes (review islands4), tip after them: see git log
+- The shutdown trace now prints only under the `VK_SHUTDOWN` diag tag (registered in `knownTags()`; `mc2_diag::tagRequested(string_view)` reads MC2_DIAG_TAGS directly because the JSONL file is already closed at teardown): default log unchanged, `MC2_DIAG_TAGS=VK_SHUTDOWN` mc2_01 shows 11 lines (`2026-10-14T15-14-06`), the default VK run shows 0 and a live terrain (`2026-10-14T15-17-48/mc2_01.log`, `[VK_TERRAIN_TIER1] vulkan_available=1`). `log_tag_census` OK.
+- Terrain per-patch UBO slots are written with memcpy (`vulkan_terrain_island_run.cpp`), like the shadow fix.
+- Proof on that exe: VK tier1 validation 5/5 errors=0 warnings=0 (146 / 141 / 128 / 116 / 100 fps, `2026-10-14T15-17-48`; a first VK launch right after the deploy died silently on all 5 and the tag run seconds later passed: rerun clean, cause not found, probably the deploy's lease release racing the launch), `build_all_targets` exit 0, doctest 3143 / 3143, `cxx17_ratchet` / `dup_lines` / `file_size` / `gate_gen` green (the cxx17 ratchet scans the COMMITTED tree: commit before running it).
+
 ### Ledger (`py -3 tools/vk_ownership_ledger.py`): Manual tokens, before -> after
 shadow 49 -> 0, present 103 -> 0, terrain 117 -> 0. Every island is at 0 (total created 0 / released 0). Command buffers and descriptor sets are the pool-owned kinds the ledger lists apart.
 
