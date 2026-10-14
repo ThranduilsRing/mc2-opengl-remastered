@@ -58,7 +58,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from smoke_lib import nofocus  # noqa: E402
-from smoke_lib import host_lease  # noqa: E402
+from smoke_lib import host_lease, exe_guard  # noqa: E402
+from console_child import child_kwargs  # noqa: E402
+import exe_fingerprint  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402
@@ -859,9 +861,123 @@ def build_suite(deploy: Path):
     return cases
 
 
+def grade_new_model(rows: list[dict], directory: Path) -> None:
+    """Exactly 24 new-document comparisons; facts never replace byte comparisons."""
+    if (len(rows) != 24 or {row.get("mission") for row in rows} != set(STOCK_MISSIONS)
+            or any(row.get("status") != "PASS" or row.get("rc") != 0 for row in rows)):
+        raise ValueError("new model requires exactly 24 fresh PASS rows")
+    for row in rows:
+        mission = row["mission"]
+        facts = row.get("facts", {})
+        if (facts.get("result") != "PASS" or facts.get("frames") != "3"
+                or any(facts.get(key) != "1" for key in ("roundtrip", "edited", "reopened", "undo", "redo", "malformed", "unchanged", "long_name"))):
+            raise ValueError(f"new model facts missing: {mission}")
+        for extension in ("fit", "pak"):
+            original = (directory / "input" / f"{mission}.{extension}").read_bytes()
+            if hashlib.sha256(original).hexdigest() != row.get(f"input_{extension}_sha256"):
+                raise ValueError(f"new model input changed: {mission}.{extension}")
+            for stage in ("roundtrip", "undone"):
+                written = (directory / mission / f"{stage}.{extension}").read_bytes()
+                if original != written:
+                    raise ValueError(f"new model byte mismatch: {mission}/{stage}.{extension}")
+            edited = (directory / mission / f"edited.{extension}").read_bytes()
+            if extension == "pak" and edited != original:
+                raise ValueError(f"new model edited PAK changed: {mission}")
+            if extension == "fit":
+                fields = fit_fields(edited)
+                if (edited == original or fields.get("MissionSettings/MissionName") != ['st "Q3 authored mission"']):
+                    raise ValueError(f"new model authored edit missing: {mission}")
+                long_fields = fit_fields((directory / mission / "long_name.fit").read_bytes())
+                expected = 'st "Q3 long mission ' + 'x' * 8192 + ' retained tail"'
+                if long_fields.get("MissionSettings/MissionName") != [expected]:
+                    raise ValueError(f"new model long name truncated: {mission}")
+            elif (directory / mission / "long_name.pak").read_bytes() != original:
+                raise ValueError(f"new model long-name PAK changed: {mission}")
+        log = (directory / mission / "shell.log").read_text(encoding="utf-8")
+        if sum(line.startswith("[EDITOR_MODEL v1] ") and "mission=malformed.fit " in line and "rejected=1" in line for line in log.splitlines()) != 1:
+            raise ValueError(f"new model malformed diagnostic missing: {mission}")
+
+
+def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) -> dict:
+    directory.mkdir(exist_ok=False)
+    (directory / "input").mkdir()
+    rows = []
+    provenance = {}
+    start = time.time()
+    try:
+        if not exe.exists():
+            raise ValueError(f"new shell executable missing: {exe}")
+        if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
+            raise ValueError("new shell smoke is restricted to lane3")
+        if not exe_guard.exe_has_offscreen(exe):
+            raise ValueError("new shell lacks background-window support")
+        fingerprint = exe_fingerprint.extract(exe)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
+                                       **child_kwargs(redirected=True)).strip()
+        if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12]:
+            raise ValueError("new shell build fingerprint does not match worktree HEAD")
+        provenance = dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
+        host_lease.ensure_held("Q3 document SDL shell smoke")
+        for mission in STOCK_MISSIONS:
+            row = dict(mission=mission, status="FAIL", rc=None, facts={})
+            for extension in ("fit", "pak"):
+                source = stock.read(f"data/missions/{mission}.{extension}")
+                (directory / "input" / f"{mission}.{extension}").write_bytes(source)
+                row[f"input_{extension}_sha256"] = hashlib.sha256(source).hexdigest()
+            output = directory / mission
+            output.mkdir()
+            command = [str(exe), "--smoke", "--mission", str(directory / "input" / f"{mission}.fit"),
+                       "--output", str(output), "--log", str(output / "shell.log")]
+            print(f"[new_model {mission}] fresh FIT + PAK", flush=True)
+            process = nofocus.spawn(command, cwd=str(exe.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, errors="replace")
+            try:
+                captured, _ = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                captured, _ = process.communicate()
+                row["status"] = "TIMEOUT"
+            (output / "process.log").write_text(captured or "", encoding="utf-8")
+            row["rc"] = process.returncode
+            if (output / "shell.log").exists():
+                lines = [line for line in (output / "shell.log").read_text(encoding="utf-8").splitlines()
+                         if line.startswith("[EDITOR_SHELL v1] ")]
+                if len(lines) == 1:
+                    row["facts"] = dict(re.findall(r"(\w+)=([^\s]+)", lines[0]))
+            if row["rc"] == 0 and row["facts"].get("result") == "PASS":
+                row["status"] = "PASS"
+            rows.append(row)
+        grade_new_model(rows, directory)
+        if hashlib.sha256(exe.read_bytes()).hexdigest() != provenance["exe_sha256"]:
+            raise ValueError("new shell executable changed during the gate")
+        # The same strict grader must reject real corrupted output, not a synthetic status.
+        corrupt = directory / STOCK_MISSIONS[0] / "roundtrip.fit"
+        original = corrupt.read_bytes()
+        retained = corrupt.with_suffix(".negative-control.fit")
+        retained.write_bytes(original + b"corrupted output")
+        corrupt.write_bytes(retained.read_bytes())
+        caught = False
+        try:
+            grade_new_model(rows, directory)
+        except ValueError as error:
+            caught = "byte mismatch" in str(error)
+        finally:
+            corrupt.write_bytes(original)
+        if not caught:
+            raise ValueError("new model corrupted-output negative control did not fail")
+        grade_new_model(rows, directory)
+        result = dict(name="new_model", passed=True, bucket="", detail="24/24 fresh FIT+PAK byte-identical; edit/reopen, undo/redo, malformed rejection, corrupted-output negative control PASS")
+    except (OSError, KeyError, ValueError, host_lease.HostLeaseBusy, nofocus.ExeRefused) as error:
+        result = dict(name="new_model", passed=False, bucket="new_model_gate", detail=str(error))
+    result["seconds"] = round(time.time() - start, 1)
+    (directory / "gate.json").write_text(json.dumps(dict(rows=rows, result=result, provenance=provenance), indent=2), encoding="utf-8")
+    return result
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="MC2 Mission Editor console smoke runner")
     ap.add_argument("--exe", default=DEFAULT_EXE, help="path to Mission Editor.exe")
+    ap.add_argument("--shell-exe", type=Path, help="separate SDL shell executable (default: beside Mission Editor.exe)")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -892,7 +1008,7 @@ def main() -> int:
         return 2
 
     suite = build_suite(deploy)
-    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load"]
+    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"]
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
@@ -919,7 +1035,7 @@ def main() -> int:
     except (OSError, KeyError, ValueError, zlib.error) as exc:
         print(f"ERROR: stock dependency audit failed: {exc}")
         return 2
-    if any(c == "stock_roundtrip" or c in single_stock for c in selected) or "workflows" in selected:
+    if any(c == "stock_roundtrip" or c in single_stock for c in selected) or "workflows" in selected or "new_model" in selected:
         try:
             stock = StockInputs(deploy)
             campaign = stock.read("data/campaign/campaign.fit")
@@ -941,6 +1057,10 @@ def main() -> int:
 
     results = []
     for c in selected:
+        if c == "new_model":
+            results.append(run_new_model((args.shell_exe or deploy / "Mission Editor Shell.exe").resolve(),
+                                         stock, (rptdir / "new-model").resolve(), args.timeout))
+            continue
         if c == "stock_roundtrip" or c in single_stock:
             missions = (single_stock[c],) if c in single_stock else STOCK_MISSIONS
             for mission in missions:

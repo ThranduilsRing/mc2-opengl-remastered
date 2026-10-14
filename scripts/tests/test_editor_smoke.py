@@ -498,5 +498,83 @@ class EditorSmokeTests(unittest.TestCase):
                 smoke.gate_baseline([dict(name="stock_roundtrip:mc2_01", passed=True)], file, False, {})
 
 
+class NewModelGateTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = TEMP_ROOT / ("new-model-" + uuid.uuid4().hex)
+        self.directory.mkdir()
+        (self.directory / "input").mkdir()
+        self.rows = []
+        for mission in smoke.STOCK_MISSIONS:
+            original = b'FITini\n[MissionSettings]\nst MissionName = "original"\n[Tail]\nFITend\n'
+            edited = original.replace(b'"original"', b'"Q3 authored mission"')
+            packet = b"original packet encoding"
+            output = self.directory / mission
+            output.mkdir()
+            for ext, data in (("fit", original), ("pak", packet)):
+                (self.directory / "input" / f"{mission}.{ext}").write_bytes(data)
+                for stage in ("roundtrip", "undone", "edited", "long_name"):
+                    written = edited if stage == "edited" and ext == "fit" else data
+                    if stage == "long_name" and ext == "fit":
+                        written = original.replace(b'"original"', b'"Q3 long mission ' + b'x' * 8192 + b' retained tail"')
+                    (output / f"{stage}.{ext}").write_bytes(written)
+            (output / "shell.log").write_text("[EDITOR_MODEL v1] mission=malformed.fit field=syntax reason=embedded_nul rejected=1\n")
+            self.rows.append(dict(mission=mission, status="PASS", rc=0,
+                input_fit_sha256=smoke.hashlib.sha256(original).hexdigest(),
+                input_pak_sha256=smoke.hashlib.sha256(packet).hexdigest(),
+                facts=dict(result="PASS", frames="3", **{key: "1" for key in
+                    ("roundtrip", "edited", "reopened", "undo", "redo", "malformed", "unchanged", "long_name")})))
+
+    def test_truncated_long_name_fails(self):
+        path = self.directory / "mc2_01/long_name.fit"
+        path.write_bytes(path.read_bytes().replace(b'x' * 8192, b'x' * 2000))
+        with self.assertRaisesRegex(ValueError, "long name truncated"):
+            smoke.grade_new_model(self.rows, self.directory)
+
+    def test_exact_24_fit_and_pak_pass(self):
+        smoke.grade_new_model(self.rows, self.directory)
+
+    def test_missing_extra_duplicate_skipped_blocked_and_finding_fail(self):
+        for rows in (self.rows[:-1], self.rows + [self.rows[0]], self.rows[:-1] + [self.rows[0]]):
+            with self.assertRaises(ValueError):
+                smoke.grade_new_model(rows, self.directory)
+        for status in ("SKIP", "BLOCKED", "FINDING", "FLAKY_PASS", "TIMEOUT"):
+            with self.subTest(status=status), self.assertRaises(ValueError):
+                rows = [dict(row) for row in self.rows]
+                rows[0]["status"] = status
+                smoke.grade_new_model(rows, self.directory)
+
+    def test_corrupted_fit_pak_or_undo_output_fails(self):
+        for stage, ext in (("roundtrip", "fit"), ("roundtrip", "pak"), ("undone", "fit"), ("undone", "pak")):
+            path = self.directory / "mc2_01" / f"{stage}.{ext}"
+            original = path.read_bytes()
+            path.write_bytes(original + b"corrupt")
+            with self.subTest(stage=stage, ext=ext), self.assertRaisesRegex(ValueError, "byte mismatch"):
+                smoke.grade_new_model(self.rows, self.directory)
+            path.write_bytes(original)
+
+    def test_missing_fact_or_duplicate_malformed_diagnostic_fails(self):
+        for key in self.rows[0]["facts"]:
+            rows = [dict(row, facts=dict(row["facts"])) for row in self.rows]
+            del rows[0]["facts"][key]
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "facts missing"):
+                smoke.grade_new_model(rows, self.directory)
+        path = self.directory / "mc2_01/shell.log"
+        path.write_text(path.read_text() * 2)
+        with self.assertRaisesRegex(ValueError, "diagnostic missing"):
+            smoke.grade_new_model(self.rows, self.directory)
+
+    def test_changed_input_and_absent_output_fail(self):
+        path = self.directory / "input/mc2_01.fit"
+        original = path.read_bytes()
+        path.write_bytes(original + b"changed")
+        with self.assertRaisesRegex(ValueError, "input changed"):
+            smoke.grade_new_model(self.rows, self.directory)
+        path.write_bytes(original)
+        path = self.directory / "mc2_01/roundtrip.pak"
+        path.rename(path.with_suffix(".retained"))
+        with self.assertRaises(FileNotFoundError):
+            smoke.grade_new_model(self.rows, self.directory)
+
+
 if __name__ == "__main__":
     unittest.main()
