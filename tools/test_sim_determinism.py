@@ -78,7 +78,8 @@ def test_runner_passes_selected_install_to_both_mocked_launches(monkeypatch, ins
     assert len(sd.run_mission("mc2_03", "20", "unused", install=install)) == 2
     assert len(commands) == 2
     for cmd in commands:
-        assert cmd[-3:-1] == target
+        assert cmd[-4:-2] == target  # the install selector sits before --keep-logs --sim-determinism
+        assert cmd[-2:] == ["--keep-logs", "--sim-determinism"]
 
 
 def test_selected_install_reaches_pair_loop(monkeypatch):

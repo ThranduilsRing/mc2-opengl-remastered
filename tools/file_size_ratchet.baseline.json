@@ -36,14 +36,14 @@
   "code/mover.h": 1909,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
-  "code/objective.cpp": 2330,
+  "code/objective.cpp": 2259,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1844,
   "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1735,
   "code/turret.cpp": 2338,
   "code/warrior.cpp": 2685,
-  "code/warrior.h": 2170,
+  "code/warrior.h": 2171,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1582,
   "mclib/ablrtn.cpp": 1778,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "b12cecdee",
+ "head": "e5fd0205d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -95,10 +95,10 @@
    "max_lines": 1116
   },
   "code": {
-   "files": 397,
+   "files": 401,
    "files_over_1500": 22,
    "files_over_3000": 0,
-   "max_lines": 2772
+   "max_lines": 2775
   },
   "editor": {
    "files": 244,
@@ -172,7 +172,7 @@
   },
   {
    "file": "code/objective.cpp",
-   "lines": 2330
+   "lines": 2259
   },
   {
    "file": "shaders/terrain_lod_chunk.frag",
@@ -180,7 +180,7 @@
   },
   {
    "file": "code/warrior.h",
-   "lines": 2170
+   "lines": 2171
   },
   {
    "file": "code/missionbegin.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1855,
+  "files": 1859,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3753
