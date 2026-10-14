@@ -87,10 +87,6 @@
 #include"celine.h"
 #endif
 
-#ifndef CEPOLY_H
-#include"cepoly.h"
-#endif
-
 #ifndef CEVFX_H
 #include"cevfx.h"
 #endif
