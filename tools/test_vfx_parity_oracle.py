@@ -72,7 +72,7 @@ def test_four_distinct_sources_keep_arm_and_repeat_order():
 
 @pytest.fixture
 def parity_case(monkeypatch):
-    raw_log = b"[VFX_BIRTH v1] spec=PPC stream=56465852 initial=42 state=123 draws=9"
+    raw_log = logged_observations().encode()
     monkeypatch.setattr(Path, "read_bytes", lambda path: raw_log)
     stamp = {"fingerprint": "5636f22bc357", "bookmark": "visible-effect", "frame": 154}
     effect = {"class": "ppc", "rect": [0, 0, 8, 8],
@@ -142,15 +142,99 @@ def test_stable_but_wrong_gpu_fails_parity(parity_case):
 
 @pytest.mark.parametrize("field,value", [
     ("rng", {"owner": "Effect", "stream": "legacy"}),
-    ("rng", []), ("draw_probe", None), ("effect_age", 10**1000),
+    ("rng", []), ("effect_age", 10**1000),
     ("effect_age", float("nan")), ("assets", {}), ("birth_transcript", ""),
     ("backend", {"requested": "gl", "drawn": "vk", "readback": "gl_fbo"}),
-    ("gates", {}), ("draw_probe", {"scope": "CardCloud", "unchanged": True, "frozen_repeats": 2}),
+    ("gates", {}),
     ("process", "mlr-0"),
 ])
 def test_incomplete_or_false_runtime_evidence_is_diagnostic(parity_case, field, value):
     parity_case[0]["evidence"]["captures"]["gpu"][0]["runtime"][field] = value
     assert grade(parity_case)["status"] == "DIAGNOSTIC"
+
+
+def logged_observations():
+    birth = "[VFX_BIRTH v1] spec=PPC stream=56465852 initial=42 state=123 draws=9"
+    fields = ("scope=all owner=RenderWorld spec=PPC time=5 age=0.25 seed=0.2 initial=42 "
+              "stream=56465852 state_before=123 state_after=123 draws_before=9 draws_after=9 "
+              "legacy_before=10 legacy_after=10 legacy_state_before=" + "b" * 64
+              + " legacy_state_after=" + "b" * 64 + " unchanged=1")
+    return "\n".join([birth] + [f"[VFX_{phase}_RNG v1] {fields}"
+                              for _ in range(2) for phase in ("DRAW", "FLUSH", "CULL")])
+
+
+def bind_log(case, monkeypatch, log):
+    raw_log = log.encode()
+    monkeypatch.setattr(Path, "read_bytes", lambda path: raw_log)
+    evidence = case[0]["evidence"]
+    for arm in ("mlr", "gpu"):
+        for record in [*evidence["captures"][arm], evidence["effect_free"][arm], evidence["suppressed"][arm]]:
+            record["runtime"]["log_sha256"] = hashlib.sha256(raw_log).hexdigest()
+            record["runtime"]["birth_transcript"] = extract(log)["birth_transcript"]
+
+
+@pytest.mark.parametrize("missing", ["DRAW", "FLUSH", "CULL", "all"])
+def test_manifest_claim_cannot_replace_logged_phase_observations(parity_case, monkeypatch, missing):
+    lines = logged_observations().splitlines()
+    log = "\n".join(line for line in lines if "_RNG v1]" not in line
+                    or (missing != "all" and f"[VFX_{missing}_RNG v1]" not in line))
+    bind_log(parity_case, monkeypatch, log)
+    assert not grade(parity_case)["parity_accepted"]
+
+
+@pytest.mark.parametrize("claim", [None, {}, {"scope": "all_draw_flush_cull", "unchanged": False,
+                                           "frozen_repeats": 999}])
+def test_logged_observations_determine_proof_not_manifest_probe(parity_case, claim):
+    for arm in ("mlr", "gpu"):
+        for record in parity_case[0]["evidence"]["captures"][arm]:
+            record["runtime"]["draw_probe"] = claim
+    result = grade(parity_case)
+    assert result["parity_accepted"]
+    assert result["observed_draw_probes"]["gpu"][0]["phase_samples"] == {"draw": 2, "flush": 2, "cull": 2}
+
+
+@pytest.mark.parametrize("before,after", [
+    ("state_after=123", "state_after=124"), ("draws_after=9", "draws_after=10"),
+    ("legacy_after=10", "legacy_after=11"), ("unchanged=1", "unchanged=0"),
+    ("legacy_state_after=" + "b" * 64, "legacy_state_after=" + "c" * 64),
+    ("state_before=123 ", ""), ("draws_before=9", "draws_before=-1"),
+    ("state_after=123", "state_after=4294967296"),
+    ("legacy_state_before=" + "b" * 64 + " ", ""),
+    ("scope=all", "class=CardCloud"), ("owner=RenderWorld", "owner=Effect"),
+    ("initial=42", "initial=43"), ("age=0.25", "age=0.5"),
+])
+def test_logged_mutation_missing_snapshot_or_wrong_scope_rejects_claims(parity_case, monkeypatch, before, after):
+    # Valid hashes keep these cases focused on snapshot validation.
+    bind_log(parity_case, monkeypatch, logged_observations().replace(before, after))
+    assert not grade(parity_case)["parity_accepted"]
+
+
+def test_phases_must_repeat_the_same_frozen_state(parity_case, monkeypatch):
+    lines = logged_observations().splitlines()
+    log = "\n".join(line.replace("time=5", "time=6") if "VFX_CULL_RNG" in line else line for line in lines)
+    bind_log(parity_case, monkeypatch, log)
+    assert not grade(parity_case)["parity_accepted"]
+    bind_log(parity_case, monkeypatch, "\n".join(lines[:4]))
+    assert not grade(parity_case)["parity_accepted"]
+
+
+@pytest.mark.parametrize("phase", ["DRAW", "FLUSH", "CULL"])
+def test_valid_observations_cannot_hide_another_rng_mutation(parity_case, monkeypatch, phase):
+    log = logged_observations()
+    changed = next(line for line in log.splitlines() if f"[VFX_{phase}_RNG v1]" in line)
+    bind_log(parity_case, monkeypatch, log + "\n" + changed.replace("state_after=123", "state_after=124"))
+    assert not grade(parity_case)["parity_accepted"]
+
+
+def test_each_capture_needs_its_own_hash_bound_observations(parity_case, monkeypatch):
+    record = parity_case[0]["evidence"]["captures"]["gpu"][0]["runtime"]
+    log = "\n".join(line for line in logged_observations().splitlines() if "VFX_FLUSH_RNG" not in line).encode()
+    record["log_sha256"] = hashlib.sha256(log).hexdigest()
+    missing = Path(record["log"]).resolve()
+    monkeypatch.setattr(Path, "read_bytes", lambda path: log if path == missing else logged_observations().encode())
+    result = grade(parity_case)
+    assert not result["parity_accepted"]
+    assert any("logged zero-RNG" in failure for failure in result["parity_failures"])
 
 
 @pytest.mark.parametrize("field,value", [("effect_age", 0.5), ("birth_transcript", "d" * 64),

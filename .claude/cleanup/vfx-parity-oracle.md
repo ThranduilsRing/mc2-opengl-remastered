@@ -1,4 +1,81 @@
-# G2 mission-start crash repair after ff6ba111c
+# G2 quality review: findings 7 and 8 (2026-10-14)
+
+Finding 7: PARITY now derives draw/flush/cull proof from the exact engine-log bytes
+whose SHA256 was checked. `runtime.draw_probe` in the manifest is ignored. The
+accepted report includes `observed_draw_probes` extracted separately from each
+positive capture's bound log. Birth records alone cannot establish this proof.
+
+The log observation protocol extends the existing `[VFX_DRAW_RNG v1]` records with
+`[VFX_FLUSH_RNG v1]` and `[VFX_CULL_RNG v1]`. Full coverage requires each phase to
+record `scope=all owner=RenderWorld stream=56465852`, an identified spec, finite
+time/age/effect seed, `initial`, before/after u32 stream state, before/after u64
+stream draw counts, before/after u64 legacy draw counts, and SHA256 before/after
+digests of the full legacy table/index (`legacy_state_before/after`). The legacy
+digest protocol is SHA256 of 250 LE signed-i32 table entries followed by the LE
+signed-i32 index; the draw count is recorded separately. An `unchanged=1` flag
+cannot override differing or missing snapshots. An explicit unchanged=0 is a
+contradictory observation and rejects proof.
+
+Every phase must occur at least twice at the same frozen spec/time/age/effect seed
+and both RNG snapshots. The observed initial/state/draw count and age must match
+the capture's runtime identity. Missing phases, one observation per phase, mixed
+frozen states, malformed snapshots, counter/state/hash changes, and a mutation
+alongside an otherwise valid group all remain DIAGNOSTIC. CardCloud-only records
+cannot establish all-path coverage, even with a manifest claiming that coverage.
+No current production logger emits the full phase protocol: this change closes
+the acceptance hole, not the instrumentation/ownership gap. The positive tests
+are synthetic protocol fixtures, not new engine evidence or visual parity proof.
+
+Finding 8: the unused production `Stuff::Random::Stream` declaration and LCG
+implementation are removed. The probe retains its own `CandidateStream`, clearly
+labelled as a probe-only candidate. Production retains only the legacy RNG and
+its snapshot/count methods, which CardCloud's audit and lifecycle tests use.
+There is no new shared algorithm helper, session owner, gate or layout change.
+The probe's candidate sequence does not establish runtime VFX stream integration.
+
+Proof commands from A:/Games/mc2-s3:
+
+```powershell
+py -3 E:/mc2-archive-2026-10/g2-review-proof.py
+py -3 E:/mc2-archive-2026-10/g2-review-proof.py --asan
+py -3 E:/mc2-archive-2026-10/g2-review-lifecycle.py
+py -3 E:/mc2-archive-2026-10/g2-review-lifecycle.py --asan
+py -3 -B tools/vfx_oracle/probe_rng.py --out E:/mc2-archive-2026-10/g2-review-rng
+py -3 -c "import tempfile,pytest; tempfile.tempdir='E:/mc2-archive-2026-10'; raise SystemExit(pytest.main(['--capture=sys','-p','no:tmpdir','-p','no:cacheprovider','tools/test_capture_vfx_oracle.py','tools/test_vfx_rng_evidence.py','tools/test_vfx_parity_oracle.py']))"
+git -c core.whitespace=cr-at-eol diff --check
+```
+
+The proof wrapper invokes exactly `tools/build_contract_harnesses.py --run --unit`
+or `--run --unit-only --asan`, records the raw Python exit code, and supplies a
+fresh `_MSPDBSRV_ENDPOINT_` for each build. Native endpoint:
+`G2-review-54ab1f095dd84efc987b6236adb6b4e9`; ASan endpoint:
+`G2-review-5baa9576888b44f1828e377f365be057`.
+
+Native proof: rc=0, 3,113 doctest cases passed / 3 skipped (235s), all four Python
+contract harnesses passed. Installed release-tree validation remains unconfigured
+and is not established by its no-op checks. Both freshly rebuilt lifecycle arms
+pass natively and under strict ASan: 2 cases each, 31 CPU / 55 GPU assertions.
+Oracle pytest: 98 passed, including a manifest-only claim, individually missing
+phases, one bad capture among otherwise complete logs, and numeric mutations
+despite unchanged=1. RNG probe compile/run passed after removing the production
+type; it checks the probe candidate plus the real legacy snapshot/count API.
+The C++ reference search finds no remaining Random::Stream use in this worktree.
+Full ASan: rc=1, 3,112 passed / 1 failed / 3 skipped (377s). The sole failing case
+is the previously reported lighting pointer-identity assertion at
+`tests/unit/test_class_light_band_harness.cpp:1424` (24 assertions), outside this
+claim. It was not changed or suppressed. The VFX lifecycle driver and both direct
+ASan lifecycle arms pass. There were no C1041 errors or compiler timeouts. This is
+not a full-green ASan checkpoint; the lighting assertion still needs its owner.
+
+Retained scratch under E:/mc2-archive-2026-10: `g2-review-proof.py`,
+`g2-review-lifecycle.py`, `g2-review-{unit,asan,pytest}.log`,
+`g2-review-lifecycle-{native,asan}-arm{0,1}.log`, and
+`g2-review-rng/{compile-command.json,compile.log,run.log,rng_probe.exe,rng_probe.pdb}`.
+Existing build64-tests and build64-tests-asan outputs updated. No files deleted,
+index writes, commits, production build, deployment, capture or game launch.
+No visual approach was retried; the GPU and MLR routes remain unchanged.
+
+# Earlier G2 mission-start crash repair after ff6ba111c (historical)
 
 Root cause: **mixed gosFX C++ ABIs in the deployed executable**. G2 inserted an
 unused borrowed stream pointer into Effect and ExecuteInfo, enlarging every derived
@@ -185,12 +262,11 @@ The Q2 report below is historical evidence, not a post-change capture result.
 
 ## Current parity gap list (supersedes the historical Q2 list)
 
-1. **Session RNG ownership incomplete.** `Stuff::Random::Stream` is an instance value with
-   stream ID `0x56465852`, algorithm version 1, explicit seed/reset, state/restore and u64 draw count.
-   The design's Numerical Recipes LCG produces exactly representable 15-bit fractions
-   with u32 initial seed/state (`rootSeed XOR streamId`) without calling `gos_rand` or
-   the legacy Stuff table. The unused Effect/ExecuteInfo borrowing API was removed in the
-   crash repair above; no production birth uses this stream. The existing Stuff
+1. **Session RNG ownership incomplete.** The unused `Stuff::Random::Stream` type and its
+   production LCG have been removed by quality-review fix 8. Only the probe retains a
+   candidate sequence; it is not a runtime API or evidence of VFX integration.
+   The unused Effect/ExecuteInfo borrowing API was removed in the crash repair above.
+   No production birth uses the proposed owned stream. The existing Stuff
    table and its startup `gos_rand` seeding remain the default; only its count/snapshot are added.
    **There is no presentation env-seed hook or mission/restart/save-load reset yet.** Adding a
    new process-global owner to hide that gap was explicitly rejected by the binding review.

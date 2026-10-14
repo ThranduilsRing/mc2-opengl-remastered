@@ -30,6 +30,16 @@ def test_legacy_births_and_changing_ages_are_not_owned_or_frozen():
     assert result["draw_probe"]["frozen_repeats"] == 0
 
 
+@pytest.mark.parametrize("field,value", [("state_after", "124"), ("draws_after", "2"),
+                                        ("legacy_after", "11"), ("state_before", "missing")])
+def test_unchanged_log_flag_cannot_override_snapshot_observations(field, value):
+    line = ("[VFX_DRAW_RNG v1] class=CardCloud spec=PPC time=5 age=0.2 seed=0.2 "
+            "stream=56465852 state_before=123 state_after=123 draws_before=1 draws_after=1 "
+            "legacy_before=10 legacy_after=10 unchanged=1")
+    token = next(token for token in line.split() if token.startswith(field + "="))
+    assert not extract(line.replace(token, field + "=" + value))["draw_probe"]["unchanged"]
+
+
 def test_strict_bits_cannot_pass_on_matching_graded_chains():
     lines = [f"[SIMID v1] simframe={i} t=0 n=1 graded=aaaa visual=aaaa strict=aaaa" for i in range(310)]
     base = {"frames": 300, "chain": sim.chain(lines, 300)}

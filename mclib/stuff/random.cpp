@@ -7,15 +7,6 @@
 
 #include"stuffheaders.hpp"
 
-Scalar Random::Stream::GetFraction()
-{
-	// The VFX stream keeps its fixed LCG recipe independent of higher-layer RNG helpers.
-	m_state.value = m_state.value * 1664525u + 1013904223u;
-	const auto value = (m_state.value >> 17) & 0x7fffu;
-	++m_state.draws;
-	return static_cast<Scalar>(value) / 32768.0f;
-}
-
 std::uint64_t Random::GetDrawCount()
 {
 	return Instance ? Instance->m_drawCount : 0;

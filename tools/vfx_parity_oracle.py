@@ -107,11 +107,18 @@ def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, prim
     raw_log = log_path.read_bytes()
     if hashlib.sha256(raw_log).hexdigest() != runtime["log_sha256"]:
         raise ValueError("bound engine log hash differs")
-    births = extract(raw_log.decode("utf-8", errors="replace"))
-    if births["birth_transcript"] != runtime["birth_transcript"]:
+    observations = extract(raw_log.decode("utf-8", errors="replace"))
+    if observations["birth_transcript"] != runtime["birth_transcript"]:
         raise ValueError("birth transcript differs from the bound engine log")
-    if primary and not births["rng"]["injected_stream_seen"]:
+    if primary and not observations["rng"]["injected_stream_seen"]:
         raise ValueError("positive capture lacks births on the owned VFX stream")
+    probe = observations["draw_probe"]
+    if primary:
+        expected_rng = {key: rng[key] for key in ("seed", "state", "draw_count")}
+        if (probe["scope"] != "all_draw_flush_cull" or not probe["unchanged"]
+                or not any(state["frozen_repeats"] >= 2 and state["rng"] == expected_rng and state["age"] == age
+                           for state in probe["frozen_states"])):
+            raise ValueError("logged zero-RNG frozen draw/flush/cull observations absent or inconsistent")
     gates = runtime["gates"]
     if experiment not in {"master", "harvested"}:
         raise ValueError("name master or harvested experiment")
@@ -127,7 +134,7 @@ def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, prim
         raise ValueError("fresh-process identity absent")
     common = (rng["seed"], tuple(sorted(assets.items())))
     positive = (rng["state"], rng["draw_count"], age, runtime["birth_transcript"])
-    return common, positive, process, log_path
+    return common, positive, process, log_path, probe
 
 
 def acceptance(effect: dict, crops: list[Image.Image], base: Path,
@@ -148,21 +155,20 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
             stamps = []
             runtime_stamps, positive_stamps, processes, logs = [], [], [], []
             primary_counts, negative_counts = {}, {}
+            checks["observed_draw_probes"] = {}
             for arm, offset in (("mlr", 0), ("gpu", 2)):
                 records = evidence["captures"][arm]
                 if len(records) != 2:
                     raise ValueError(f"{arm}: provenance for two repeats required")
+                checks["observed_draw_probes"][arm] = []
                 for record in records:
                     stamps.append(provenance(record))
-                    common, positive, process, log = runtime_provenance(record, arm, evidence.get("experiment"), base, True)
+                    common, positive, process, log, probe = runtime_provenance(record, arm, evidence.get("experiment"), base, True)
                     runtime_stamps.append(common)
                     positive_stamps.append(positive)
                     processes.append(process)
                     logs.append(log)
-                    probe = record["runtime"].get("draw_probe", {})
-                    if (not isinstance(probe, dict) or probe.get("scope") != "all_draw_flush_cull" or probe.get("unchanged") is not True
-                            or type(probe.get("frozen_repeats")) is not int or probe["frozen_repeats"] < 2):
-                        raise ValueError("zero-RNG frozen draw/flush/cull proof absent")
+                    checks["observed_draw_probes"][arm].append(probe)
                     demonstration = record.get("demonstration")
                     if not isinstance(demonstration, str) or not demonstration.strip():
                         raise ValueError(f"{arm}: visible {effect['class']} demonstration required")
@@ -170,7 +176,7 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                 for kind in ("effect_free", "suppressed"):
                     record = evidence[kind][arm]
                     stamps.append(provenance(record))
-                    common, _, process, log = runtime_provenance(record, arm, evidence.get("experiment"), base)
+                    common, _, process, log, _ = runtime_provenance(record, arm, evidence.get("experiment"), base)
                     runtime_stamps.append(common)
                     processes.append(process)
                     logs.append(log)
