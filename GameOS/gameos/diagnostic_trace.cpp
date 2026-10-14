@@ -49,9 +49,10 @@ const std::unordered_set<std::string>& knownTags() {
     return tags;
 }
 
-// Default tag whitelist (used when MC2_DIAG_TAGS is unset)
+// Default tag whitelist (used when MC2_DIAG_TAGS is unset). Heap-allocated and never freed: tagRequested() is read by the Vulkan shutdown trace from the
+// destructors of other static-duration objects, which can run after a function-local static of this file would already be gone.
 const std::unordered_set<std::string>& defaultWhitelist() {
-    static const std::unordered_set<std::string> tags = {
+    static const auto* const tagsPtr = new std::unordered_set<std::string>{
         "GPU_CULL",
         "LIGHTBAKE_PROOF",
         "ANIM_GATE",
@@ -61,7 +62,7 @@ const std::unordered_set<std::string>& defaultWhitelist() {
         "DEVICE",
         "SHADER_COMPILE",
     };
-    return tags;
+    return *tagsPtr;
 }
 
 struct DiagState {
