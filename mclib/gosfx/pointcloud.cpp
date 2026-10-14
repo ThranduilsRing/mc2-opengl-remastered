@@ -1,4 +1,5 @@
 #include"gosfxheaders.hpp"
+#include "mlr_cloud_draw.hpp"
 #include<mlr/mlrpointcloud.hpp>
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
@@ -552,17 +553,11 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 
 	if (m_activeParticleCount)
 	{
-		MidLevelRenderer::DrawEffectInformation dInfo;
-		dInfo.effect = m_cloudImplementation;
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		dInfo.state.Combine(info->m_state, spec->m_state);
-		dInfo.clippingFlags = info->m_clippingFlags;
-		Stuff::LinearMatrix4D local_to_world;
-		local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
-		dInfo.effectToWorld = &local_to_world;
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
 	
-	 	info->m_clipper->DrawEffect(&dInfo);
+		submission.submit(info);
 	}
 	ParticleCloud::Draw(info);
 }

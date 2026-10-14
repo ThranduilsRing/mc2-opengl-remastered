@@ -9,6 +9,7 @@
 #include "mlr/mlrpointcloud.hpp"
 #include "mlr/mlrtrianglecloud.hpp"
 #include "mlr/mlrcardcloud.hpp"
+#include "mlr/mlrngoncloud.hpp"
 #include <cstdint>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,9 @@
 #include <span>
 #include <type_traits>
 #include <vector>
+#include <array>
+#include <cstdlib>
+#include <fstream>
 
 void vfx_test_bind_rng(std::uint32_t* state);
 extern "C" unsigned long long mc2_vfx_getEmitTotal();
@@ -26,8 +30,45 @@ using mc2::particles::GpuParticle;
 struct BridgeCapture {
     std::vector<GpuParticle> records;
     unsigned calls = 0;
+    std::ofstream snapshot;
 };
 BridgeCapture* borrowedCapture = nullptr;
+
+template<class T>
+void appendBytes(std::vector<char>& bytes, const T& value)
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    const auto* begin = reinterpret_cast<const char*>(&value);
+    bytes.insert(bytes.end(), begin, begin + sizeof(value));
+}
+
+// Capture the submitted geometry and state, because a vertex count cannot detect drift.
+class PayloadSorter final : public MidLevelRenderer::MLRSortByOrder {
+public:
+    using MLRSortByOrder::MLRSortByOrder;
+    std::vector<char> payload;
+    void AddEffect(MidLevelRenderer::MLREffect* effect,
+                   const MidLevelRenderer::MLRState& state) override
+    {
+        appendBytes(payload, state.GetRenderStateFlags());
+        appendBytes(payload, state.GetProcessStateFlags());
+        appendBytes(payload, state.GetRenderDeltaMask());
+        appendBytes(payload, state.GetProcessDeltaMask());
+        appendBytes(payload, state.GetRenderPermissionMask());
+        appendBytes(payload, state.GetProcessPermissionMask());
+        appendBytes(payload, effect->GetSortDataMode());
+        appendBytes(payload, effect->GetNumGOSVertices());
+        for (int i = 0; i < effect->GetNumGOSVertices(); ++i) {
+            const auto& v = effect->GetGOSVertices()[i];
+            for (float field : {v.x, v.y, v.z, v.rhw}) appendBytes(payload, field);
+            appendBytes(payload, v.argb);
+            appendBytes(payload, v.frgb);
+            appendBytes(payload, v.u);
+            appendBytes(payload, v.v);
+        }
+        MLRSortByOrder::AddEffect(effect, state);
+    }
+};
 
 bool payloadMatches(std::span<const GpuParticle> actual, std::span<const GpuParticle> expected)
 {
@@ -46,13 +87,17 @@ bool payloadMatches(std::span<const GpuParticle> actual, std::span<const GpuPart
 }
 
 struct FrozenPlatform {
-    ContractEnvironment deterministic{"MC2_DETERMINISTIC_RNG", "1"};
+    // Production MLR caches this setting; a typed scoped override is still required from Gates.
     ContractEnvironment mlrEnabled{"MC2_DISABLE_GOSFX", "0"};
     std::uint32_t seed = mc2_det_rng::hashMissionName("mc2_03");
     BridgeCapture capture;
     FrozenPlatform()
     {
         borrowedCapture = &capture;
+        if (const auto* path = std::getenv("VFX_FROZEN_SNAPSHOT_FILE")) {
+            capture.snapshot.open(path, std::ios::binary | std::ios::app);
+            REQUIRE(capture.snapshot.is_open());
+        }
         mc2::gate::markMainEntered();
         vfx_test_bind_rng(&seed);
         Stuff::InitializeClasses();
@@ -102,7 +147,7 @@ public:
                     p->m_radius = Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
                 }
             }
-            constexpr unsigned colorsPerParticle = std::is_same_v<Cloud, gosFX::ShardCloud> ? 3 : 1;
+            const unsigned colorsPerParticle = colorStride();
             for (unsigned vertex = 0; vertex < colorsPerParticle; ++vertex) {
                 const float offset = static_cast<float>(vertex) * 0.03125f;
                 this->m_P_color[slot * colorsPerParticle + vertex] =
@@ -110,6 +155,35 @@ public:
                                      n * 0.03125f + offset, 1.0f - n * 0.125f - offset);
             }
         }
+    }
+    unsigned colorStride()
+    {
+        if constexpr (std::is_same_v<Cloud, gosFX::PertCloud>) return 2;
+        return std::is_same_v<Cloud, gosFX::ShardCloud> ? 3 : 1;
+    }
+    std::vector<char> observedState()
+    {
+        std::vector<char> bytes;
+        appendBytes(bytes, active());
+        appendBytes(bytes, this->m_age);
+        appendBytes(bytes, this->m_seed);
+        appendBytes(bytes, this->m_lastRan);
+        for (unsigned slot = 0; slot < active(); ++slot) {
+            const auto* p = this->GetParticle(slot);
+            appendBytes(bytes, p->m_age);
+            appendBytes(bytes, p->m_seed);
+            appendBytes(bytes, p->m_ageRate);
+            appendBytes(bytes, this->m_cloudImplementation->IsOn(slot));
+            for (unsigned c = 0; c < colorStride(); ++c) {
+                const auto& color = this->m_P_color[slot * colorStride() + c];
+                for (float v : {color.red, color.green, color.blue, color.alpha}) appendBytes(bytes, v);
+            }
+        }
+        const auto rng = Stuff::Random::GetState();
+        appendBytes(bytes, rng.numbers);
+        appendBytes(bytes, rng.index);
+        appendBytes(bytes, rng.draws);
+        return bytes;
     }
     std::vector<GpuParticle> expectedPayload(const Stuff::LinearMatrix4D& parent)
     {
@@ -166,7 +240,7 @@ public:
         };
         for (unsigned slot = 0; slot < active(); ++slot)
             append(this->GetParticle(slot), 1);
-        constexpr unsigned colorsPerParticle = std::is_same_v<Cloud, gosFX::ShardCloud> ? 3 : 1;
+        const unsigned colorsPerParticle = colorStride();
         append(this->m_P_color, active() * colorsPerParticle);
         if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>)
             append(this->m_P_localTranslation, active());
@@ -178,9 +252,12 @@ public:
 };
 
 template<class Cloud>
-void checkFrozenCloud()
+void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides = 3)
 {
-    typename Cloud::Specification spec;
+    auto spec = [sides] {
+        if constexpr (std::is_same_v<Cloud, gosFX::PertCloud>) return typename Cloud::Specification(sides);
+        else return typename Cloud::Specification();
+    }();
     spec.BuildDefaults();
     spec.m_maxParticleCount = 4;
     spec.m_startingPopulation.SetCurve(4.0f);
@@ -194,8 +271,8 @@ void checkFrozenCloud()
     spec.m_state.SetTextureHandle(0);
     spec.m_state.SetAlphaMode(MidLevelRenderer::MLRState::OneZeroMode);
     if constexpr (!std::is_same_v<Cloud, gosFX::PointCloud>) {
-        spec.m_alignZUsingX = false;
-        spec.m_alignZUsingY = false;
+        spec.m_alignZUsingX = alignX;
+        spec.m_alignZUsingY = alignY;
     }
     Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
     transform.BuildTranslation(Stuff::Point3D(0.0f, 0.0f, 10.0f));
@@ -212,7 +289,8 @@ void checkFrozenCloud()
 
     // MLRTexturePool owns and deletes its image pool.
     MidLevelRenderer::MLRTexturePool textures(new MidLevelRenderer::TGAFilePool(""));
-    MidLevelRenderer::MLRClipper clipper(nullptr, new MidLevelRenderer::MLRSortByOrder(&textures));
+    auto* sorter = new PayloadSorter(&textures);
+    MidLevelRenderer::MLRClipper clipper(nullptr, sorter);
     Stuff::Matrix4D projection;
     projection.SetPerspective(1.0f, 100.0f, Stuff::Radian(1.2f), 1.0f);
     const Stuff::RGBAColor fog(0.0f, 0.0f, 0.0f, 1.0f);
@@ -220,16 +298,21 @@ void checkFrozenCloud()
     gosFX::Effect::DrawInfo draw{};
     draw.m_parentToWorld = &transform;
     draw.m_clipper = &clipper;
-    const bool gpu = mc2::particles::Batcher::is_enabled();
+    const bool gpu = mc2::particles::Batcher::is_enabled() && !std::is_same_v<Cloud, gosFX::PertCloud>;
     auto& batcher = mc2::particles::Batcher::Instance();
     batcher.Flush();
 
     auto repeatDraw = [&](unsigned live, bool outside) {
         const auto frozen = Stuff::Random::GetState();
         const auto particles = cloud.frozenState();
-        const auto expected = gpu ? cloud.expectedPayload(transform) : std::vector<GpuParticle>{};
+        const auto expected = [&] {
+            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
+                if (gpu) return cloud.expectedPayload(transform);
+            return std::vector<GpuParticle>{};
+        }();
         REQUIRE(expected.size() == (gpu ? live : 0));
         std::vector<GpuParticle> firstPayload;
+        std::array<std::vector<char>, 2> firstMlrPayload;
         Stuff::LinearMatrix4D camera = Stuff::LinearMatrix4D::Identity;
         if (outside) camera.BuildTranslation(Stuff::Point3D(1000.0f, 0.0f, 0.0f));
         for (int repeat = 0; repeat < 8; ++repeat) {
@@ -238,6 +321,7 @@ void checkFrozenCloud()
             CAPTURE(outside);
             CAPTURE(gpu);
             clipper.StartDraw(camera, projection, fog, nullptr, state, nullptr);
+            sorter->payload.clear();
             draw.m_clippingFlags = repeat % 2 ? 0x3f : 0;
             Stuff::Matrix4D worldToClip;
             worldToClip.Multiply(clipper.GetWorldToCameraMatrix(), projection);
@@ -256,6 +340,17 @@ void checkFrozenCloud()
             if (!gpu && live == 4) {
                 // MC2's legacy clouds bypass clip rejection, even with clipping flags set.
                 CHECK(cloud.clippedVertices() > 0);
+                REQUIRE_FALSE(sorter->payload.empty());
+            }
+            if (repeat < 2) firstMlrPayload[repeat] = sorter->payload;
+            CHECK(sorter->payload == firstMlrPayload[repeat % 2]);
+            if (borrowedCapture->snapshot.is_open()) {
+                auto bytes = cloud.observedState();
+                bytes.insert(bytes.end(), sorter->payload.begin(), sorter->payload.end());
+                const auto size = static_cast<std::uint64_t>(bytes.size());
+                borrowedCapture->snapshot.write(reinterpret_cast<const char*>(&size), sizeof(size));
+                borrowedCapture->snapshot.write(bytes.data(), bytes.size());
+                REQUIRE(borrowedCapture->snapshot.good());
             }
             clipper.RenderNow();
             CHECK(Stuff::Random::GetState() == frozen);
@@ -323,6 +418,9 @@ extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned c
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::CardCloud>();
+    if (!mc2::particles::Batcher::is_enabled())
+        for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
+            checkFrozenCloud<gosFX::CardCloud>(alignment.first, alignment.second);
 }
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PointCloud draw flush and clip leave RNG unchanged")
 {
@@ -331,4 +429,16 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PointCloud draw flush and clip lea
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/ShardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::ShardCloud>();
+    if (!mc2::particles::Batcher::is_enabled())
+        for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
+            checkFrozenCloud<gosFX::ShardCloud>(alignment.first, alignment.second);
+}
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preserve MLR payload and RNG")
+{
+    for (unsigned sides : {3u, 7u}) {
+        CAPTURE(sides);
+        for (const auto alignment : {std::pair{false, false}, std::pair{true, false},
+                                    std::pair{false, true}, std::pair{true, true}})
+            checkFrozenCloud<gosFX::PertCloud>(alignment.first, alignment.second, sides);
+    }
 }

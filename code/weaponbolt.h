@@ -14,6 +14,7 @@
 //---------------------------------------------------------------------------
 // Include Files
 
+#include "combat_trace.h"
 #ifndef DWEAPONBOLT_H
 #include"dweaponbolt.h"
 #endif
@@ -32,6 +33,7 @@
 
 #include<stuff/stuff.hpp>
 #include<gosfx/gosfxheaders.hpp>
+#include <cstdint>
 #include "particles/gpu_trail.h"
 //---------------------------------------------------------------------------
 // Macro Definitions
@@ -324,6 +326,7 @@ class WeaponBolt : public GameObject
 
 		virtual void setExists (bool set)
 		{
+			if (!set) traceCombatRetire("set_exists_false");
 			GameObject::setExists(set);
 
 			//If we are setting this effect to not existing, clean up its RAM!!
@@ -421,6 +424,14 @@ class WeaponBolt : public GameObject
 		void CopyTo (WeaponBoltData *data);
 
 		void finishNow (void);
+
+        // Slot generations distinguish pool reuse without changing combat or save records.
+        mc2::CombatTrace combatTrace;
+        void traceCombat(const char* event, const char* reason = "",
+                         GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
+        void traceCombatRetire(const char* reason);
+        void submitDamage(GameObjectPtr target);
+
 };
 
 //---------------------------------------------------------------------------

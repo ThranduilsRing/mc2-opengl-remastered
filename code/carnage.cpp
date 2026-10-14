@@ -16,6 +16,10 @@
 #ifndef CARNAGE_H
 #include"carnage.h"
 #endif
+#include <bit>
+#include <cstring>
+#include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -364,6 +368,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 			shot.init(0, -1, damageAmount, 0, 0);		 
 			while (damageLeft > 0.0) {
 				shot.hitLocation = collider->calcHitLocation(collidee,-1,ATTACKSOURCE_ARTILLERY,0);
+				((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
 				collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 				damageLeft -= ((CarnagePtr)collidee)->info.explosion.chunkSize;
 			}
@@ -392,6 +397,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					while (damageLeft > 0.0) 
 					{
 						shot.hitLocation = 0;
+						((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
 						collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 						damageLeft -= chunkSize;
 					}
@@ -421,6 +427,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					while (damageLeft > 0.0) 
 					{
 						shot.hitLocation = 0;
+						((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
 						collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 						damageLeft -= chunkSize;
 
@@ -433,6 +440,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 				{
 					WeaponShotInfo shot;
 					shot.init(0, -1, collidee->getExplDmg(), 0, 0);
+					((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
 					collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 				}
 			}
@@ -510,6 +518,7 @@ GameObjectPtr Carnage::getOwner (void)
 //---------------------------------------------------------------------------
 void Carnage::handleStaticCollision (void) 
 {
+	traceCombat("static_collision_pass");
 	if (getTangible()) 
 	{
 		//-----------------------------------------------------
@@ -614,6 +623,7 @@ void Carnage::finishNow (void)
 	}
 	else if (carnageType == CARNAGE_EXPLOSION) 
 	{
+		traceCombatRetire("forced_finish");
 		if (gosEffect)
 		{
 			gosEffect->Kill();		//Effect is over.
@@ -758,6 +768,7 @@ long Carnage::update (void)
 			if (info.explosion.timer <= 0.0f)
 			{
 				setFlag(OBJECT_FLAG_TANGIBLE, true);
+				traceCombat("collision_armed");
 			}
 		}
 
@@ -853,8 +864,24 @@ void Carnage::render (void)
 
 //---------------------------------------------------------------------------
 
+
+// Combat diagnostics retain object identity and event order without owning gameplay state.
+void Carnage::traceCombat(const char* event, const char* reason,
+                              GameObjectPtr target, const WeaponShotInfo* shot)
+{
+    combatTrace.write("carnage", getHandle(), turn, event, reason, position,
+        [] { return static_cast<const Stuff::Vector3D*>(nullptr); }, target, shot);
+}
+
+void Carnage::traceCombatRetire(const char* reason)
+{
+    traceCombat("retire", reason);
+    combatTrace.live = false;
+}
+
 void Carnage::destroy (void) 
 {
+	traceCombatRetire("teardown");
 	if (carnageType == CARNAGE_FIRE) 
 	{
 	}
@@ -881,6 +908,7 @@ void Carnage::destroy (void)
 
 void Carnage::init (bool create, ObjectTypePtr _type) 
 {
+	traceCombatRetire("reinit");
 	GameObject::init(true, _type);
 
 	gosEffect = nullptr;
@@ -914,6 +942,8 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 
 		setFlag(OBJECT_FLAG_TANGIBLE, false);
 	}
+    combatTrace.begin(_type->whatAmI(), effectId);
+    traceCombat("birth");
 }	
 
 //---------------------------------------------------------------------------
@@ -949,6 +979,9 @@ void Carnage::Load (CarnageData *data)
 	info = data->info;
 
 	effectId = data->effectId;
+	combatTrace.effect = effectId;
+	traceCombat("restore");
+	if (!getExists()) traceCombatRetire("loaded_inactive");
 }
 
 //---------------------------------------------------------------------------
