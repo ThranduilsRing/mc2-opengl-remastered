@@ -136,11 +136,9 @@ long copyRealArray(std::span<float> dest, std::span<const float> src, std::strin
 }
 
 
-#ifdef MC2_ABL_EVENTS_TEST
-void resetEventBudgetsForTest() {
+void resetEventBudgets() {
     linesPerEvent.fill(0);
 }
-#endif
 
 void reportTruncated(std::string_view event, size_t capacity, size_t dropped) {
 	if (!takeLine(eventKey(event)))

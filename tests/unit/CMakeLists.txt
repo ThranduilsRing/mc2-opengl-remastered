@@ -242,16 +242,8 @@ add_executable(test_render_contract_3
     test_render_contract_3.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
-    # DARK-TESTS-RUN-1: render_contract.cpp forwards two PUBLIC apply-state
-    # counters onto *_impl symbols defined one layer up in
-    # GameOS/gameos/gos_postprocess.cpp -- a ~7k-line TU with the whole
-    # renderer behind it. Any STANDALONE link of render_contract.cpp therefore
-    # died on LNK2019 x2. This target had carried that break for as long as
-    # nobody built it; gos_counter_stubs.cpp's own header NOTE predicted it
-    # ("currently green by omission ... building it will need this same stub")
-    # and this lane confirmed it by actually running the link. Same stub TU the
-    # render_state_contract_harness already uses -- no new stub, no fake.
-    ${MC2_WORKTREE_ROOT}/tools/render_state_contract_harness/gos_counter_stubs.cpp
+    # Both test targets use zero apply-state counters because neither links the renderer.
+    gos_counter_stubs.cpp
 )
 
 target_include_directories(test_render_contract_3 PRIVATE
@@ -328,7 +320,7 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
 )
 target_compile_features(mc2_tests PRIVATE cxx_std_23)
-target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}" MC2_ABL_EVENTS_TEST)
+target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}")
 target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils
     ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2

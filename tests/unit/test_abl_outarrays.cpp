@@ -75,19 +75,35 @@ std::span<float> ABLi_popRealBuf(void) {
 
 TEST_SUITE("ABL out arrays") {
 
-TEST_CASE("event budget reset permits a second log line after exhaustion") {
-    abl::resetEventBudgetsForTest();
-    const auto first = capture([] {
-        for (int i = 0; i < 17; ++i)
+TEST_CASE("session reset restores registered, fallback and bad-argument budgets") {
+    abl::resetEventBudgets();
+    const auto exhaust = [] {
+        for (int i = 0; i < 17; ++i) {
             abl::reportTruncated("getobjects_truncated", 1, 1);
-    });
-    CHECK(std::count(first.begin(), first.end(), '\n') == 16);
-    CHECK(capture([] { abl::reportTruncated("getobjects_truncated", 1, 1); }).empty());
-    abl::resetEventBudgetsForTest();
-    const auto second = capture([] { abl::reportTruncated("getobjects_truncated", 1, 1); });
+            abl::reportTruncated("unknown_first_truncated", 1, 1);
+            abl::reportBadArgument("first_builtin", "output");
+        }
+    };
+    const auto first = capture(exhaust);
+    CHECK(std::count(first.begin(), first.end(), '\n') == 48);
+    const auto suppressed = [] {
+        abl::reportTruncated("getobjects_truncated", 1, 1);
+        abl::reportTruncated("unknown_second_truncated", 1, 1);
+        abl::reportBadArgument("second_builtin", "output");
+    };
+    CHECK(capture(suppressed).empty());
+    const auto independent = capture([] { abl::reportTruncated("getcontacts_truncated", 1, 1); });
+    CHECK(std::count(independent.begin(), independent.end(), '\n') == 1);
+    abl::resetEventBudgets();
+    const auto second = capture(suppressed);
     CHECK(second.find("[ABL v1] event=getobjects_truncated ") == 0);
-    CHECK(std::count(second.begin(), second.end(), '\n') == 1);
-    abl::resetEventBudgetsForTest();
+    CHECK(second.find("event=unknown_second_truncated ") != std::string::npos);
+    CHECK(second.find("event=bad_argument builtin=second_builtin ") != std::string::npos);
+    CHECK(std::count(second.begin(), second.end(), '\n') == 3);
+    abl::resetEventBudgets();
+    const auto third = capture(exhaust);
+    CHECK(std::count(third.begin(), third.end(), '\n') == 48);
+    abl::resetEventBudgets();
 }
 
 TEST_CASE("integer output publishes the clamped count and one shared reporter line") {
