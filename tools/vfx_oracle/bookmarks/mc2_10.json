@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "Q2 fixture-authored missile/impact scene. Stock mission.fst mc2_10.fit Part1 places Zeus at (-4928,-5397.334), Part2 Highlander at (-5013.333,-5525.334). Camera includes the +150 X force-fire targets. No coverage is accepted without inspecting the populated region. Duplicate exposes render-state movement during the frozen sample.",
+  "bookmarks": [
+    {"name": "missile", "pos": [-4890.0, -5397.334, 0.0], "rot": 0.0, "proj": 85.0, "alt": 1600.0, "covers": []},
+    {"name": "missile_dup", "pos": [-4890.0, -5397.334, 0.0], "rot": 0.0, "proj": 85.0, "alt": 1600.0, "covers": []}
+  ]
+}

@@ -357,3 +357,4 @@ target_sources(mc2_tests PRIVATE
     test_abl_outarrays.cpp
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
+include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")

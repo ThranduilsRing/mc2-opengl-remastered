@@ -588,6 +588,14 @@ void
 	//-------------------------
 	//
 	m_event.First();
+	if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">())
+	{
+		mc2::fmt::print_err("[VFX_BIRTH v1] spec={} time={:.9f} age={:.9f} seed={:.9f} stream={} algorithm={} version={} initial={} state={} draws={} legacy_draws={}\n",
+			mc2::fmt::safe(static_cast<const char*>(m_specification->m_name)),
+			static_cast<double>(info->m_time), static_cast<double>(m_age), static_cast<double>(m_seed),
+			"legacy", "legacy-table", 0u, 0u, 0u, 0ull,
+			Stuff::Random::GetDrawCount());
+	}
 	gos_PopCurrentHeap();
 }
 

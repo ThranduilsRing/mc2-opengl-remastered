@@ -7,6 +7,19 @@
 
 #include"stuffheaders.hpp"
 
+std::uint64_t Random::GetDrawCount()
+{
+	return Instance ? Instance->m_drawCount : 0;
+}
+
+Random::State Random::GetState()
+{
+	State state{{}, Index, GetDrawCount()};
+	for (std::size_t i = 0; i < state.numbers.size(); ++i)
+		state.numbers[i] = Numbers[i];
+	return state;
+}
+
 int
 	Random::Numbers[250];
 int
@@ -83,6 +96,7 @@ void Random::Init()
 int
 	Random::GetRandomInt()
 {
+	++Instance->m_drawCount;
 	int
 		indent,
 		result;

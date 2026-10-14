@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <array>
 #include"stuff.hpp"
 #include"scalar.hpp"
 
@@ -20,6 +22,16 @@ namespace Stuff {
 		#endif
 	{
 	public:
+		static std::uint64_t GetDrawCount();
+		struct State
+		{
+			std::array<int, 250> numbers;
+			int index;
+			std::uint64_t draws;
+			bool operator==(const State&) const = default;
+		};
+		static State GetState();
+
 		static void
 			InitializeClass();
 		static void
@@ -42,6 +54,7 @@ namespace Stuff {
 
 		static Random
 			*Instance;
+		std::uint64_t m_drawCount = 0;
 
 		void
 			TestInstance() const {}
