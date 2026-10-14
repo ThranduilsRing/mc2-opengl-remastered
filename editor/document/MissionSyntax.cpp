@@ -140,13 +140,19 @@ public:
             if (separator()) continue;
             if (identifier(peek().value) == "fitini") { ++cursor_; continue; }
             if (peek().kind == TokenKind::openSquare) {
+                const auto start = peek().span.begin;
+                if (section) result_.sections[*section].syntax.end = start;
                 ++cursor_;
+                const auto nameStart = peek().span.begin;
                 if (peek().kind != TokenKind::word) return failure("invalid_block");
                 std::string name = tokens_[cursor_++].value;
                 while (peek().kind == TokenKind::word) { name += ' ' + peek().value; ++cursor_; }
                 if (peek().kind != TokenKind::closeSquare || !topNames_.insert(identifier(name)).second) return failure("invalid_or_duplicate_block");
+                const auto nameEnd = tokens_[cursor_ - 1].span.end;
                 ++cursor_;
                 section = addSection(name, std::nullopt);
+                result_.sections[*section].syntax.begin = start;
+                result_.sections[*section].nameSyntax = {nameStart, nameEnd};
             } else {
                 if (!section) return failure("field_without_block");
                 auto read = declaration(*section, 0);
@@ -154,6 +160,8 @@ public:
             }
         }
         if (identifier(peek().value) != "fitend") return failure("missing_FITend");
+        result_.endMarker = peek().span.begin;
+        if (section) result_.sections[*section].syntax.end = result_.endMarker;
         ++cursor_;
         while (separator()) {}
         if (peek().kind != TokenKind::end) return failure("trailing_document_garbage");
@@ -175,6 +183,7 @@ private:
     std::expected<void, LoadError> declaration(std::size_t section, std::size_t depth) {
         if (depth > nestingLimit || result_.fields.size() + result_.sections.size() >= nodeLimit) return failure("node_or_depth_limit");
         if (peek().kind != TokenKind::word) return failure("expected_declaration");
+        const auto start = peek().span.begin;
         std::string prefix, name = tokens_[cursor_++].value;
         std::size_t count = 1;
         bool array = false;
@@ -194,7 +203,13 @@ private:
         }
         if (peek().kind == TokenKind::openBrace) {
             const auto parent = result_.sections[section].id;
+            if (identifier(name) == "brain" && !result_.sections[section].parent &&
+                identifier(result_.sections[section].name).starts_with("warrior")) {
+                for (const auto& sibling : result_.sections)
+                    if (sibling.parent == parent && identifier(sibling.name) == "brain") return failure("duplicate_nested_block");
+            }
             auto child = addSection(name, parent);
+            result_.sections[child].syntax.begin = start;
             ++cursor_;
             while (peek().kind != TokenKind::closeBrace) {
                 if (peek().kind == TokenKind::end || peek().value == "FITend" || peek().kind == TokenKind::openSquare) return failure("unterminated_block");
@@ -202,6 +217,7 @@ private:
                 auto read = declaration(child, depth + 1);
                 if (!read) return read;
             }
+            result_.sections[child].syntax.end = peek().span.end;
             ++cursor_; return {};
         }
         if (peek().kind != TokenKind::equal) return failure("missing_equals");

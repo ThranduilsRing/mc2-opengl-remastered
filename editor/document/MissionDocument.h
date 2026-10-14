@@ -48,11 +48,13 @@ struct Section {
     std::string name;
     SectionKind kind = SectionKind::extension;
     std::vector<NodeId> fields;
+    Span syntax, nameSyntax;
 };
 struct Syntax {
     std::string originalBytes;
     std::vector<Section> sections;
     std::vector<Field> fields;
+    std::size_t endMarker{};
 };
 struct Packet {
     std::uint8_t storage{};
@@ -85,6 +87,26 @@ struct Entity {
     std::optional<std::uint32_t> controlType, controlDataType;
     std::optional<std::string> objectProfile, csvFile;
     std::optional<NodeId> brain;
+    std::optional<NodeId> warrior;
+};
+
+struct Transform {
+    std::array<double, 3> position{};
+    double rotation{};
+};
+struct UnitPlacement {
+    std::uint32_t objectNumber{}, controlType = 2, controlDataType = 1;
+    Transform transform;
+    std::int64_t team{};
+    std::int32_t commander{};
+    bool playerPart{};
+    std::string objectProfile, csvFile, warriorProfile, legacyBrain;
+};
+struct BuildingPlacement {
+    std::uint32_t objectNumber{};
+    Transform transform;
+    std::int32_t team{}, damage{};
+    std::uint32_t parentCell = 0xffffffffU, forest{}, scale{};
 };
 enum class ConditionSpecies : std::uint8_t {
     destroyAll, destroyNumber, destroyGroup, destroyUnit, destroyStructure,
@@ -101,6 +123,14 @@ struct Objective {
     std::array<std::vector<ObjectiveEntry>, 4> entries;
 };
 
+// Reversible authored state excludes terrain caches and unchanged encoded packets.
+struct StructuralState {
+    Syntax syntax;
+    std::vector<Entity> entities;
+    std::vector<Objective> objectives;
+    std::vector<std::byte> placements;
+};
+
 inline std::string identifier(std::string_view text) {
     std::string result(text);
     for (auto& c : result) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
@@ -109,6 +139,8 @@ inline std::string identifier(std::string_view text) {
 
 std::expected<Syntax, LoadError> decodeFit(std::string bytes);
 std::expected<PacketArchive, LoadError> decodePak(std::vector<std::byte> bytes);
+std::expected<std::vector<std::byte>, LoadError> encodePlacements(
+    const PacketArchive& source, std::span<const std::byte> placements);
 std::string formatValue(const Field& field, const Value& value);
 
 class CommandHistory;
@@ -127,9 +159,13 @@ public:
     const std::vector<Entity>& entities() const { return entities_; }
     const std::vector<Objective>& objectives() const { return objectives_; }
     const Field* field(NodeId id) const;
+    const Section* section(NodeId id) const;
+    const Section* childSection(NodeId parent, std::string_view name) const;
+    const Field* find(NodeId section, std::string_view name) const;
     const Field* find(std::string_view section, std::string_view name) const;
+    const Entity* entity(EntityId id) const;
     std::string fitBytes() const;
-    std::span<const std::byte> pakBytes() const { return pak_.originalBytes; }
+    std::span<const std::byte> pakBytes() const { return encodedPak_.empty() ? pak_.originalBytes : encodedPak_; }
     bool modified() const;
     std::uint64_t revision() const { return revision_; }
     std::expected<void, LoadError> save(const std::filesystem::path& stem, const Diagnostic& log);
@@ -141,11 +177,20 @@ private:
     std::vector<TerrainTile> terrain_;
     std::vector<Entity> entities_;
     std::vector<Objective> objectives_;
-    std::vector<Value> savepoint_;
+    std::string savedFit_;
+    std::vector<std::byte> savedPlacements_, placements_, encodedPak_;
     std::unordered_map<std::string, std::unordered_map<std::string, NodeId>> index_;
+    std::unordered_map<std::uint64_t, std::size_t> fieldIndex_;
     std::string mission_;
     std::size_t terrainSide_{};
     std::uint64_t revision_{};
+    std::uint64_t nextEntityId_ = 1, nextNodeId_ = 2 * nodeLimit + 1;
+    void rebuildIndex();
+    StructuralState structuralState() const;
+    std::expected<void, LoadError> restore(const StructuralState& state);
+    std::expected<StructuralState, LoadError> structuralCandidate(std::string fit,
+        std::vector<std::byte> placements, const std::vector<EntityId>& ids,
+        const std::unordered_map<std::string, std::string>& renamed = {});
     std::expected<void, LoadError> validateSemantics();
     std::expected<void, LoadError> assign(NodeId id, Value value);
 };

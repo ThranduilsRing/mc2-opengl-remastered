@@ -984,10 +984,148 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
     return result
 
 
+PANEL_OPERATIONS = {
+    "unit_panel": ("unit-transform", "unit-team", "unit-place", "unit-delete"),
+    "building_panel": ("building-transform", "building-team", "building-place", "building-delete"),
+    "player_panel": ("player-alignment",),
+    "brain_modes": ("brain-Hybrid", "brain-Enhanced", "brain-module", "brain-Legacy"),
+    "panel_render": (),
+}
+
+FILE_CASES = ("file_save", "file_save_as", "file_recent", "file_failures") + tuple(
+    f"file_{action}_{decision}" for action in ("open", "reopen", "close")
+    for decision in ("save", "discard", "cancel"))
+
+
+def grade_file(name: str, directory: Path, rc: int) -> None:
+    if rc != 0:
+        raise ValueError(f"file process failed: {name} rc={rc}")
+    lines = (directory / "shell.log").read_text(encoding="utf-8").splitlines()
+    summaries = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines if line.startswith("[EDITOR_FILE v1] ")]
+    expected = dict(name=name, result="PASS", **{key: "1" for key in ("widgets", "changed", "undo", "redo", "reopened", "state")})
+    if summaries != [expected]:
+        raise ValueError("file workflow widget/state evidence missing or duplicated")
+    loops = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines if line.startswith("[EDITOR_FILE_LOOP v1] ")]
+    closed = name in ("file_close_save", "file_close_discard")
+    if loops != [dict(name=name, terminated="1" if closed else "0", complete="1")]:
+        raise ValueError("file loop termination/completion evidence missing or duplicated")
+    diagnostics = [line for line in lines if "rejected=1" in line]
+    if len(diagnostics) != (5 if name == "file_failures" else 0):
+        raise ValueError("file failure diagnostic count differs")
+    for extension in ("fit", "pak"):
+        original = (directory / f"baseline.{extension}").read_bytes()
+        edited = (directory / f"edited.{extension}").read_bytes()
+        if (directory / f"undone.{extension}").read_bytes() != original or (directory / f"redone.{extension}").read_bytes() != edited:
+            raise ValueError("file workflow undo/redo bytes differ")
+        if extension == "fit":
+            if edited == original or b"x" * 8192 + b" retained tail" not in edited:
+                raise ValueError("file workflow output unchanged or text truncated")
+            if b"ul DefaultTeam = 3" not in edited or b"ul DefaultTeam = 0" not in original:
+                raise ValueError("file workflow authored alignment missing")
+        elif edited != original:
+            raise ValueError("file workflow unrelated PAK changed")
+        saved = edited if name in ("file_save", "file_failures", "file_open_save", "file_reopen_save", "file_close_save") else original
+        if (directory / f"first.{extension}").read_bytes() != saved:
+            raise ValueError("file lifecycle saved/discarded/cancelled bytes differ")
+        if name in ("file_save_as", "file_recent"):
+            destination = directory / ("mission with spaces Ω " + "p" * 100 + f" retained tail.{extension}")
+            if destination.read_bytes() != edited:
+                raise ValueError("file save-as destination or recent output differs")
+
+
+def grade_panel(name: str, directory: Path, rc: int) -> None:
+    if rc != 0:
+        raise ValueError(f"panel process failed: {name} rc={rc}")
+    lines = (directory / "shell.log").read_text(encoding="utf-8").splitlines()
+    summaries = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines
+                 if line.startswith("[EDITOR_PANEL v1] ")]
+    if summaries != [dict(name=name, result="PASS", widgets="1", rendered="1", saved_widget="1", reopened_widget="1")]:
+        raise ValueError(f"panel summary missing or duplicated: {name}")
+    operations = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines
+                  if line.startswith("[EDITOR_PANEL_OPERATION v1] ")]
+    expected = PANEL_OPERATIONS[name]
+    if (len(operations) != len(expected) or {row.get("name") for row in operations} != set(expected)
+            or any(any(row.get(key) != "1" for key in ("changed", "reopened", "undo", "redo", "widgets")) for row in operations)):
+        raise ValueError(f"panel operation reach missing: {name}")
+    for operation in expected:
+        baseline = "existing-hybrid" if operation == "brain-Legacy" else "fixture"
+        changed = False
+        for extension in ("fit", "pak"):
+            original = (directory / f"{baseline}.{extension}").read_bytes()
+            edited = (directory / f"{operation}-edited.{extension}").read_bytes()
+            undone = (directory / f"{operation}-undone.{extension}").read_bytes()
+            redone = (directory / f"{operation}-redone.{extension}").read_bytes()
+            if undone != original or redone != edited:
+                raise ValueError(f"panel undo/redo bytes differ: {operation}.{extension}")
+            changed |= original != edited
+            if extension == "pak" and not operation.startswith("building-") and edited != original:
+                raise ValueError(f"unrelated panel PAK changed: {operation}")
+        if not changed:
+            raise ValueError(f"panel changed output missing: {operation}")
+    if name == "brain_modes":
+        for extension in ("fit", "pak"):
+            if (directory / f"existing-hybrid.{extension}").read_bytes() != (directory / f"hybrid-roundtrip.{extension}").read_bytes():
+                raise ValueError("existing Hybrid bytes changed")
+        if b'compatibilityMode = "Hybrid";' not in (directory / "brain-Hybrid-edited.fit").read_bytes():
+            raise ValueError("Hybrid assignment missing")
+    saved_baseline = "existing-hybrid" if name == "brain_modes" else "fixture"
+    for extension in ("fit", "pak"):
+        if (directory / f"widget-save.{extension}").read_bytes() != (directory / f"{saved_baseline}.{extension}").read_bytes():
+            raise ValueError("save widget output differs")
+    capture = (directory / "panels.bmp").read_bytes()
+    if len(capture) != 54 + 1440 * 960 * 3 or capture[:2] != b"BM" or len(set(capture[54:])) < 10:
+        raise ValueError("rendered panel evidence missing or empty")
+
+
+def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout: int) -> dict:
+    directory.mkdir(exist_ok=False)
+    provenance = {}
+    start = time.time()
+    try:
+        if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve() or not exe.exists():
+            raise ValueError("panel smoke requires the lane3 smoke host executable")
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
+                                       **child_kwargs(redirected=True)).strip()
+        fingerprint = exe_fingerprint.extract(exe)
+        if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12] or not exe_guard.exe_has_offscreen(exe):
+            raise ValueError("panel shell fingerprint/background support does not match worktree HEAD")
+        provenance = dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
+        for extension in ("fit", "pak"):
+            data = stock.read(f"data/missions/mc2_01.{extension}")
+            (directory / f"input.{extension}").write_bytes(data)
+            provenance[f"input_{extension}_sha256"] = hashlib.sha256(data).hexdigest()
+        host_lease.ensure_held("E3-b SDL panel widgets")
+        command = [str(exe), "--file-smoke" if name in FILE_CASES else "--panel-smoke", name,
+                   "--mission", str(directory / "input.fit"), "--output", str(directory),
+                   "--log", str(directory / "shell.log"), "--recent-file", str(directory / "recent.txt")]
+        process = nofocus.spawn(command, cwd=str(exe.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, errors="replace")
+        try:
+            output, _ = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill(); output, _ = process.communicate()
+            raise ValueError(f"panel timeout: {name}")
+        finally:
+            if process.poll() is not None:
+                (directory / "process.log").write_text(output or "", encoding="utf-8")
+        (grade_file if name in FILE_CASES else grade_panel)(name, directory, process.returncode)
+        if hashlib.sha256(exe.read_bytes()).hexdigest() != provenance["exe_sha256"]:
+            raise ValueError("panel executable changed during smoke")
+        for extension in ("fit", "pak"):
+            if hashlib.sha256((directory / f"input.{extension}").read_bytes()).hexdigest() != provenance[f"input_{extension}_sha256"]:
+                raise ValueError("panel input copy changed")
+        result = dict(name=name, passed=True, bucket="", detail="rendered widgets, changed save/reopen, undo and redo bytes PASS")
+    except (OSError, ValueError, host_lease.HostLeaseBusy, nofocus.ExeRefused) as error:
+        result = dict(name=name, passed=False, bucket="panel_gate", detail=str(error))
+    result["seconds"] = round(time.time() - start, 1)
+    (directory / "gate.json").write_text(json.dumps(dict(result=result, provenance=provenance), indent=2), encoding="utf-8")
+    return result
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="MC2 Mission Editor console smoke runner")
     ap.add_argument("--exe", default=DEFAULT_EXE, help="path to Mission Editor.exe")
-    ap.add_argument("--shell-exe", type=Path, help="separate SDL shell executable (default: beside Mission Editor.exe)")
+    ap.add_argument("--shell-exe", type=Path, help="SDL smoke host executable (default: Mission Editor Smoke.exe beside Mission Editor.exe)")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -1018,7 +1156,7 @@ def main() -> int:
         return 2
 
     suite = build_suite(deploy)
-    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"]
+    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"] + list(PANEL_OPERATIONS) + list(FILE_CASES)
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
@@ -1045,7 +1183,7 @@ def main() -> int:
     except (OSError, KeyError, ValueError, zlib.error) as exc:
         print(f"ERROR: stock dependency audit failed: {exc}")
         return 2
-    if any(c == "stock_roundtrip" or c in single_stock for c in selected) or "workflows" in selected or "new_model" in selected:
+    if any(c == "stock_roundtrip" or c in single_stock or c in PANEL_OPERATIONS or c in FILE_CASES for c in selected) or "workflows" in selected or "new_model" in selected:
         try:
             stock = StockInputs(deploy)
             campaign = stock.read("data/campaign/campaign.fit")
@@ -1067,8 +1205,12 @@ def main() -> int:
 
     results = []
     for c in selected:
+        if c in PANEL_OPERATIONS or c in FILE_CASES:
+            results.append(run_panel(c, (args.shell_exe or deploy / "Mission Editor Smoke.exe").resolve(),
+                                     stock, (rptdir / c).resolve(), args.timeout))
+            continue
         if c == "new_model":
-            results.append(run_new_model((args.shell_exe or deploy / "Mission Editor Shell.exe").resolve(),
+            results.append(run_new_model((args.shell_exe or deploy / "Mission Editor Smoke.exe").resolve(),
                                          stock, (rptdir / "new-model").resolve(), args.timeout))
             continue
         if c == "stock_roundtrip" or c in single_stock:

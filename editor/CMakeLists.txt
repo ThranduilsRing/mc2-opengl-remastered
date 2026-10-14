@@ -4,33 +4,50 @@ add_library(editor_document STATIC
     document/MissionDocument.cpp
     document/MissionSyntax.cpp
     document/MissionPackets.cpp
+    document/MissionStructure.cpp
     document/CommandHistory.cpp
+    document/EntityCommands.cpp
 )
 target_compile_features(editor_document PUBLIC cxx_std_23)
 target_include_directories(editor_document PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
 target_link_libraries(editor_document PRIVATE ZLIB::ZLIB)
 
-add_executable(EditorShell WIN32 shell/main.cpp
-    "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp"
-)
-add_dependencies(EditorShell build_fingerprint)
-target_compile_features(EditorShell PRIVATE cxx_std_23)
-target_compile_definitions(EditorShell PRIVATE SDL_MAIN_HANDLED)
-target_include_directories(EditorShell PRIVATE "${CMAKE_BINARY_DIR}/generated")
-target_link_libraries(EditorShell PRIVATE editor_document mc2_gate imgui SDL2::SDL2 OpenGL::GL)
-if(MSVC)
-    target_link_options(EditorShell PRIVATE /ENTRY:mainCRTStartup)
-endif()
-set_target_properties(EditorShell PROPERTIES OUTPUT_NAME "Mission Editor Shell")
-add_custom_command(TARGET EditorShell POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:EditorShell>"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/zlib1.dll" "$<TARGET_FILE_DIR:EditorShell>"
-    VERBATIM
-)
+function(add_editor_shell target)
+    add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/FileWorkflow.cpp
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
+    add_dependencies(${target} build_fingerprint)
+    target_compile_features(${target} PRIVATE cxx_std_23)
+    target_compile_definitions(${target} PRIVATE SDL_MAIN_HANDLED)
+    target_include_directories(${target} PRIVATE "${CMAKE_BINARY_DIR}/generated")
+    target_link_libraries(${target} PRIVATE editor_document mc2_gate imgui SDL2::SDL2 OpenGL::GL)
+    if(MSVC)
+        target_link_options(${target} PRIVATE /ENTRY:mainCRTStartup)
+    endif()
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:${target}>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/zlib1.dll" "$<TARGET_FILE_DIR:${target}>"
+        VERBATIM)
+endfunction()
 
-add_executable(editor_document_tests tests/test_document.cpp)
+add_editor_shell(EditorShell)
+set_target_properties(EditorShell PROPERTIES OUTPUT_NAME "Mission Editor Shell")
+add_editor_shell(EditorShellSmoke)
+set_target_properties(EditorShellSmoke PROPERTIES EXCLUDE_FROM_ALL TRUE OUTPUT_NAME "Mission Editor Smoke")
+target_sources(EditorShellSmoke PRIVATE shell/PanelProof.cpp shell/FileProof.cpp)
+target_compile_definitions(EditorShellSmoke PRIVATE MC2_EDITOR_SMOKE_HOST=1)
+
+set(editor_document_test_sources tests/test_document.cpp tests/test_structure.cpp
+    "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
+add_executable(editor_document_tests ${editor_document_test_sources})
 target_compile_features(editor_document_tests PRIVATE cxx_std_23)
-target_link_libraries(editor_document_tests PRIVATE editor_document)
+target_link_libraries(editor_document_tests PRIVATE editor_document ZLIB::ZLIB)
+
+add_executable(editor_panel_tests tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/PanelProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
+    "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
+target_compile_features(editor_panel_tests PRIVATE cxx_std_23)
+target_compile_definitions(editor_panel_tests PRIVATE MC2_EDITOR_SMOKE_HOST=1)
+target_include_directories(editor_panel_tests PRIVATE shell)
+target_link_libraries(editor_panel_tests PRIVATE editor_document imgui SDL2::SDL2 OpenGL::GL)
 
 if(MSVC)
     add_library(editor_document_asan STATIC EXCLUDE_FROM_ALL $<TARGET_PROPERTY:editor_document,SOURCES>)
@@ -38,11 +55,11 @@ if(MSVC)
     target_include_directories(editor_document_asan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
     target_compile_options(editor_document_asan PRIVATE /fsanitize=address)
     target_link_libraries(editor_document_asan PRIVATE ZLIB::ZLIB)
-    add_executable(editor_document_tests_asan EXCLUDE_FROM_ALL tests/test_document.cpp)
+    add_executable(editor_document_tests_asan EXCLUDE_FROM_ALL ${editor_document_test_sources})
     target_compile_features(editor_document_tests_asan PRIVATE cxx_std_23)
     target_compile_options(editor_document_tests_asan PRIVATE /fsanitize=address)
     target_link_options(editor_document_tests_asan PRIVATE /INCREMENTAL:NO)
-    target_link_libraries(editor_document_tests_asan PRIVATE editor_document_asan)
+    target_link_libraries(editor_document_tests_asan PRIVATE editor_document_asan ZLIB::ZLIB)
     get_filename_component(_document_msvc_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_custom_command(TARGET editor_document_tests_asan POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
