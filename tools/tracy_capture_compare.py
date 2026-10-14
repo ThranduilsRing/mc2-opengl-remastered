@@ -59,7 +59,7 @@ MEASUREMENT HYGIENE (baseline/regress enforce this; capture opts in via flags):
     traces measure the same scene, and a regress re-run measures the same scene
     as its baseline.
 
-Safety: capture ABORTS if any mc2.exe is already running (the user may be playing).
+Safety: capture waits for the host lease before starting the recorder or game.
 Only processes spawned by this script are ever killed, by Popen handle.
 """
 
@@ -71,12 +71,13 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
-from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import host_lease, nofocus  # noqa: E402
 from smoke_lib import render_options_pin, render_resolution  # noqa: E402
 import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)
 
@@ -149,22 +150,14 @@ def git_head() -> str:
         return "unknown"
 
 
-def mc2_running() -> bool:
-    """True if any mc2.exe process exists. Windows-first (tasklist), psutil-free."""
-    try:
-        out = subprocess.run(
-            ["tasklist", "/FI", "IMAGENAME eq mc2.exe", "/NH", "/FO", "CSV"],
-            capture_output=True, text=True, timeout=15,
-            **nofocus.hidden_kwargs()
-        ).stdout
-        return "mc2.exe" in out.lower()
-    except FileNotFoundError:
-        # non-Windows fallback
-        out = subprocess.run(["pgrep", "-f", "mc2.exe"], capture_output=True, text=True, **nofocus.hidden_kwargs()).stdout
-        return bool(out.strip())
-
-
 # ---------------------------------------------------------------- capture ----
+
+def _stop_capture_child(child: subprocess.Popen) -> None:
+    """Reap our child before releasing the lease, including interrupted or failed captures."""
+    if child.poll() is None:
+        child.kill()
+    child.wait()
+
 
 def options_sidecar(trace: Path) -> Path:
     """Where capture_trace records the render options of a trace."""
@@ -295,83 +288,77 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     out.parent.mkdir(parents=True, exist_ok=True)
     cap_exe = tracy_exe("tracy-capture.exe")
 
-    if mc2_running():
-        sys.exit("ABORT: an mc2.exe is already running -- the user may be playing. "
-                 "Not launching another instance; nothing was touched.")
-
     env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env)   # before the recorder starts: a refused --env must leave nothing running
 
-    # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
-    cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
-               "-s", str(seconds), "-f", "-o", str(out)]
-    cap_log = out.with_suffix(".capture.log")
-    cap_lf = open(cap_log, "w", encoding="utf-8", errors="replace")
-    recorder = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
-                                **nofocus.hidden_kwargs())  # tracy-capture is a console tool
-    time.sleep(1.0)  # let it bind the port before the game boots
+    with ExitStack() as cleanup:
+        # The recorder must share the game's host lease so another lane cannot feed it a trace.
+        host_lease.acquire(f"Tracy capture {arm} {mission}")
+        cleanup.callback(host_lease.release)
 
-    # The render options are an input of the trace like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE. They are written
-    # next to the trace so a later compare can refuse two traces taken with different options.
-    options_rec = render_options_pin.record(install, env)
-    render_options_pin.write(options_sidecar(out), options_rec)
-    for rj in options_rec["rejected"]:
-        print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
+        # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
+        cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
+                   "-s", str(seconds), "-f", "-o", str(out)]
+        cap_log = out.with_suffix(".capture.log")
+        cap_lf = cleanup.enter_context(open(cap_log, "w", encoding="utf-8", errors="replace"))
+        # background-launch: allow Tracy recorder console tool, windowless via nofocus.hidden_kwargs.
+        recorder = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
+                                    **nofocus.hidden_kwargs())  # tracy-capture is a console tool
+        cleanup.callback(_stop_capture_child, recorder)
+        time.sleep(1.0)  # let it bind the port before the game boots
 
-    duration = seconds + 5  # game outlives the recorder window
-    game_cmd = [str(game), "--profile", "stock", "--mission", mission,
-                "--duration", str(duration)]
-    game_log = out.with_suffix(".game.log")
-    game_lf = open(game_log, "w", encoding="utf-8", errors="replace")
+        # Render options belong to the trace so comparisons can refuse mismatched inputs.
+        options_rec = render_options_pin.record(install, env)
+        render_options_pin.write(options_sidecar(out), options_rec)
+        for rj in options_rec["rejected"]:
+            print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
-    # PERF-HARNESS-TRUTH-1: SW_SHOWNOACTIVATE (4) keeps the window genuinely
-    # visible -- so the loop never enters the 10ms background throttle -- while
-    # still refusing to steal focus from whatever the user is doing.
-    # SW_SHOWMINNOACTIVE (7) is the old behaviour and is measurement-poison for
-    # anything fragment-bound; it stays reachable only for deliberate
-    # CPU-only captures via --no-show-window.
-    if not show_window:
-        print("WARN: --no-show-window: the game runs MINIMIZED, the loop takes "
-              "the 10ms/frame background throttle, and FRAGMENT-BOUND COSTS "
-              "ARE INVISIBLE. Valid only for CPU-zone work you have argued is "
-              "unaffected. The post-capture visibility assert will refuse to "
-              "grade this trace.", file=sys.stderr)
+        duration = seconds + 5  # game outlives the recorder window
+        game_cmd = [str(game), "--profile", "stock", "--mission", mission,
+                    "--duration", str(duration)]
+        game_log = out.with_suffix(".game.log")
+        game_lf = cleanup.enter_context(open(game_log, "w", encoding="utf-8", errors="replace"))
 
-    print(f"[capture] recorder pid={recorder.pid} -> {out}")
-    # nofocus.spawn owns the STARTUPINFO verb (show_window -> SW_SHOWNOACTIVATE,
-    # else SW_SHOWMINNOACTIVE), the windowing env and the offscreen backstop.
-    # small_window=False: the pinned size above must not be replaced by the 640x480 smoke default; the window is still parked offscreen.
-    gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
-                       cwd=str(install), env=env,
-                       show_window=show_window, small_window=False)
-    print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
-          f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
+        # A minimized window throttles the game, so only deliberate CPU-only captures use it.
+        if not show_window:
+            print("WARN: --no-show-window: the game runs MINIMIZED, the loop takes "
+                  "the 10ms/frame background throttle, and FRAGMENT-BOUND COSTS "
+                  "ARE INVISIBLE. Valid only for CPU-zone work you have argued is "
+                  "unaffected. The post-capture visibility assert will refuse to "
+                  "grade this trace.", file=sys.stderr)
 
-    rc = 0
-    try:
-        gp.wait(timeout=duration + 90)
-    except subprocess.TimeoutExpired:
-        print("WARN: game exceeded its duration budget -- killing OUR spawned pid "
-              f"{gp.pid} only", file=sys.stderr)
-        gp.kill()
-        rc = 1
-    try:
-        recorder.wait(timeout=60)
-    except subprocess.TimeoutExpired:
-        print(f"WARN: tracy-capture still running -- killing OUR spawned pid "
-              f"{recorder.pid} only", file=sys.stderr)
-        recorder.kill()
-        rc = 1
-    cap_lf.close()
-    game_lf.close()
+        print(f"[capture] recorder pid={recorder.pid} -> {out}")
+        # The pinned drawable size must survive the background launch for comparable measurements.
+        gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
+                           cwd=str(install), env=env,
+                           show_window=show_window, small_window=False)
+        cleanup.callback(_stop_capture_child, gp)
+        print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
+              f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
-    if not out.is_file() or out.stat().st_size < MIN_TRACE_BYTES:
-        size = out.stat().st_size if out.is_file() else 0
-        sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
-                 f"{MIN_TRACE_BYTES}); see {cap_log} / {game_log}")
+        rc = 0
+        try:
+            gp.wait(timeout=duration + 90)
+        except subprocess.TimeoutExpired:
+            print("WARN: game exceeded its duration budget -- killing OUR spawned pid "
+                  f"{gp.pid} only", file=sys.stderr)
+            gp.kill()
+            rc = 1
+        try:
+            recorder.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            print(f"WARN: tracy-capture still running -- killing OUR spawned pid "
+                  f"{recorder.pid} only", file=sys.stderr)
+            recorder.kill()
+            rc = 1
 
-    print(f"OK capture arm={arm} mission={mission} seconds={seconds} "
-          f"-> {out} ({out.stat().st_size / 1e6:.1f} MB)")
-    return rc
+        if not out.is_file() or out.stat().st_size < MIN_TRACE_BYTES:
+            size = out.stat().st_size if out.is_file() else 0
+            sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
+                     f"{MIN_TRACE_BYTES}); see {cap_log} / {game_log}")
+
+        print(f"OK capture arm={arm} mission={mission} seconds={seconds} "
+              f"-> {out} ({out.stat().st_size / 1e6:.1f} MB)")
+        return rc
 
 
 def cmd_capture(args: argparse.Namespace) -> int:
