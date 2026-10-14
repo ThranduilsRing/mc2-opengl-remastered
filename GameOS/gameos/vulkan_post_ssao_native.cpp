@@ -173,87 +173,57 @@ struct gosPostProcess::VkPostSsaoNative {
     VkImageResource* sDepthRes  = nullptr;
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
-    // OWNED objects.
-    VkImageView   depthSampleView = VK_NULL_HANDLE;  // depth-aspect view over sDepthRes->image
-    VkSampler     gbufSampler = VK_NULL_HANDLE;      // NEAREST/CLAMP (GL sceneDepthTex_/sceneNormalTex_ parity)
-    VkSampler     occSampler  = VK_NULL_HANDLE;      // LINEAR/CLAMP (GL ssaoColorTex_ GL_LINEAR — N0 BUG-2)
-    VkImage       occImage = VK_NULL_HANDLE; VmaAllocation occAlloc = VK_NULL_HANDLE;
-    VkImageView   occView  = VK_NULL_HANDLE;         // VK-owned half-res R16F intermediate
-    VkBuffer      occUbo   = VK_NULL_HANDLE; VmaAllocation occUboAlloc   = VK_NULL_HANDLE;
-    VkBuffer      applyUbo = VK_NULL_HANDLE; VmaAllocation applyUboAlloc = VK_NULL_HANDLE;
-    VkRenderPass  occRpass   = VK_NULL_HANDLE;   // gen: occ image, CLEAR/STORE -> SHADER_READ_ONLY
-    VkRenderPass  applyRpass = VK_NULL_HANDLE;   // apply: shared color0, LOAD/STORE layout-stable
-    VkFramebuffer occFb   = VK_NULL_HANDLE;
-    VkFramebuffer applyFb = VK_NULL_HANDLE;
-    VkDescriptorSetLayout occDsl   = VK_NULL_HANDLE;
-    VkDescriptorSetLayout applyDsl = VK_NULL_HANDLE;
-    VkDescriptorPool pool = VK_NULL_HANDLE;
-    VkDescriptorSet  occSet   = VK_NULL_HANDLE;
+    VkDescriptorSet  occSet   = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
     VkDescriptorSet  applySet = VK_NULL_HANDLE;
-    VkPipelineLayout occPlayout   = VK_NULL_HANDLE;
-    VkPipelineLayout applyPlayout = VK_NULL_HANDLE;
-    VkPipeline       occPipe   = VK_NULL_HANDLE;
-    VkPipeline       applyPipe = VK_NULL_HANDLE;
-    VkShaderModule   occVert = VK_NULL_HANDLE,  occFrag = VK_NULL_HANDLE;
-    VkShaderModule   applyVert = VK_NULL_HANDLE, applyFrag = VK_NULL_HANDLE;
-    VkCommandPool    cpool = VK_NULL_HANDLE;
-    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot
-    VkFence          submitFence = VK_NULL_HANDLE; // VK-QWI-TO-FENCE-1: per-submit retire fence
+    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot; allocated from `cpool`, freed with it
+
+    // OWNED objects, declared in creation order: the destructor releases them in reverse (the owner idles the GPU first, see destroy_state).
+    mc2vk::OwnedImageView   depthSampleView;  // depth-aspect view over sDepthRes->image
+    mc2vk::OwnedSampler     gbufSampler;      // NEAREST/CLAMP (GL sceneDepthTex_/sceneNormalTex_ parity)
+    mc2vk::OwnedSampler     occSampler;       // LINEAR/CLAMP (GL ssaoColorTex_ GL_LINEAR -- N0 BUG-2)
+    mc2vk::OwnedImage       occImage;         // VK-owned half-res R16F intermediate; declared before its view
+    mc2vk::OwnedImageView   occView;
+    mc2vk::OwnedBuffer      occUbo;
+    mc2vk::OwnedBuffer      applyUbo;
+    mc2vk::OwnedRenderPass  occRpass;         // gen: occ image, CLEAR/STORE -> SHADER_READ_ONLY
+    mc2vk::OwnedRenderPass  applyRpass;       // apply: shared color0, LOAD/STORE layout-stable
+    mc2vk::OwnedFramebuffer occFb;
+    mc2vk::OwnedFramebuffer applyFb;
+    mc2vk::OwnedDescriptorSetLayout occDsl;
+    mc2vk::OwnedDescriptorSetLayout applyDsl;
+    mc2vk::OwnedDescriptorPool pool;
+    mc2vk::OwnedPipelineLayout occPlayout;
+    mc2vk::OwnedPipelineLayout applyPlayout;
+    mc2vk::OwnedShaderModule occVert, occFrag;
+    mc2vk::OwnedShaderModule applyVert, applyFrag;
+    mc2vk::OwnedPipeline    occPipe;
+    mc2vk::OwnedPipeline    applyPipe;
+    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedFence       submitFence;      // VK-QWI-TO-FENCE-1: per-submit retire fence
 };
 
 static bool vkPostSsaoDirectChainEnabled();
 
 namespace {
 
-bool make_buffer(gosPostProcess::VkPostSsaoNative* s, VkDeviceSize size,
-                 VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
+bool make_buffer(gosPostProcess::VkPostSsaoNative* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
+                 VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
-        vlog("vmaCreateBuffer failed."); return false;
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
+        vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
+// Releases the owned objects (the state's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostSsaoNative* s) {
     if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(d);
-        if (s->occPipe)   vkDestroyPipeline(d, s->occPipe, nullptr);
-        if (s->applyPipe) vkDestroyPipeline(d, s->applyPipe, nullptr);
-        if (s->occPlayout)   vkDestroyPipelineLayout(d, s->occPlayout, nullptr);
-        if (s->applyPlayout) vkDestroyPipelineLayout(d, s->applyPlayout, nullptr);
-        if (s->occVert)   vkDestroyShaderModule(d, s->occVert, nullptr);
-        if (s->occFrag)   vkDestroyShaderModule(d, s->occFrag, nullptr);
-        if (s->applyVert) vkDestroyShaderModule(d, s->applyVert, nullptr);
-        if (s->applyFrag) vkDestroyShaderModule(d, s->applyFrag, nullptr);
-        if (s->pool)      vkDestroyDescriptorPool(d, s->pool, nullptr);
-        if (s->occDsl)    vkDestroyDescriptorSetLayout(d, s->occDsl, nullptr);
-        if (s->applyDsl)  vkDestroyDescriptorSetLayout(d, s->applyDsl, nullptr);
-        if (s->occFb)     vkDestroyFramebuffer(d, s->occFb, nullptr);
-        if (s->applyFb)   vkDestroyFramebuffer(d, s->applyFb, nullptr);
-        if (s->occRpass)   vkDestroyRenderPass(d, s->occRpass, nullptr);
-        if (s->applyRpass) vkDestroyRenderPass(d, s->applyRpass, nullptr);
-        if (s->gbufSampler) vkDestroySampler(d, s->gbufSampler, nullptr);
-        if (s->occSampler)  vkDestroySampler(d, s->occSampler, nullptr);
-        if (s->occView)          vkDestroyImageView(d, s->occView, nullptr);
-        if (s->depthSampleView)  vkDestroyImageView(d, s->depthSampleView, nullptr);
-        if (s->submitFence) vkDestroyFence(d, s->submitFence, nullptr);   // VK-QWI-TO-FENCE-1
-        if (s->cpool)     vkDestroyCommandPool(d, s->cpool, nullptr);
-        if (s->allocator != VK_NULL_HANDLE) {
-            if (s->occImage) vmaDestroyImage(s->allocator, s->occImage, s->occAlloc);
-            if (s->occUbo)   vmaDestroyBuffer(s->allocator, s->occUbo, s->occUboAlloc);
-            if (s->applyUbo) vmaDestroyBuffer(s->allocator, s->applyUbo, s->applyUboAlloc);
-        }
-    }
-    // Borrowed handles are NOT destroyed. Zero the owned ones.
+    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostSsaoNative{};
     s->disabled = disabled;
@@ -305,13 +275,13 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         vci.format = s->sDepthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-        r = vkCreateImageView(s->device, &vci, nullptr, &s->depthSampleView);
+        r = mc2vk::createChecked(s->depthSampleView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("depth sample view create failed (%d).", (int)r); return false; }
     }
     // Samplers: NEAREST for depth+normal (GL parity), LINEAR for the AO upsample
     // (N0 BUG-2 — GL's ssaoColorTex_ is GL_LINEAR; the 4-tap box relies on it).
     {
-        auto make_sampler = [&](VkSampler* samp, VkFilter filter) -> bool {
+        auto make_sampler = [&](mc2vk::OwnedSampler& samp, VkFilter filter) -> bool {
             VkSamplerCreateInfo sci{};
             sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
             sci.magFilter = filter; sci.minFilter = filter;
@@ -319,13 +289,13 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
             sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
             sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
             sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            if (vkCreateSampler(s->device, &sci, nullptr, samp) != VK_SUCCESS) {
+            if (!mc2vk::create(samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) {
                 vlog("vkCreateSampler failed."); return false;
             }
             return true;
         };
-        if (!make_sampler(&s->gbufSampler, VK_FILTER_NEAREST)) return false;
-        if (!make_sampler(&s->occSampler,  VK_FILTER_LINEAR))  return false;
+        if (!make_sampler(s->gbufSampler, VK_FILTER_NEAREST)) return false;
+        if (!make_sampler(s->occSampler,  VK_FILTER_LINEAR))  return false;
     }
 
     // VK-OWNED half-res occlusion image (device-local, non-shared, no interop).
@@ -342,22 +312,21 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-        if (vmaCreateImage(s->allocator, &ici, &aci, &s->occImage, &s->occAlloc, nullptr) != VK_SUCCESS) {
-            vlog("vmaCreateImage(occlusion) failed."); return false;
+        if (!s->occImage.create(s->allocator, s->device, ici, aci, "ssao.occlusion")) {
+            vlog("occlusion image creation failed."); return false;
         }
-        mc2vk::nameObject(s->device, s->occImage, "ssao.occlusion");
         VkImageViewCreateInfo vci{};
         vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vci.image = s->occImage;
+        vci.image = s->occImage.get();
         vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         vci.format = kOcclusionFmt;
         vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        r = vkCreateImageView(s->device, &vci, nullptr, &s->occView);
+        r = mc2vk::createChecked(s->occView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("occ view create failed (%d).", (int)r); return false; }
     }
 
-    if (!make_buffer(s, sizeof(SsaoNativeOcclusionParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->occUbo, &s->occUboAlloc, "ssao.occUbo")) return false;
-    if (!make_buffer(s, sizeof(SsaoNativeApplyParams),     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->applyUbo, &s->applyUboAlloc, "ssao.applyUbo")) return false;
+    if (!make_buffer(s, s->occUbo, sizeof(SsaoNativeOcclusionParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "ssao.occUbo")) return false;
+    if (!make_buffer(s, s->applyUbo, sizeof(SsaoNativeApplyParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "ssao.applyUbo")) return false;
 
     // Render pass 1 (gen): 1 attachment = the VK-owned occlusion image.
     // UNDEFINED -> CLEAR (GL glClear parity; fully overwritten anyway) -> STORE,
@@ -395,15 +364,16 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         rpci.attachmentCount = 1; rpci.pAttachments = &att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->occRpass);
+        r = mc2vk::createChecked(s->occRpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateRenderPass(occ) failed (%d).", (int)r); return false; }
 
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->occRpass;
-        fci.attachmentCount = 1; fci.pAttachments = &s->occView;
+        fci.renderPass = s->occRpass.get();
+        const VkImageView occViewHandle = s->occView.get();
+        fci.attachmentCount = 1; fci.pAttachments = &occViewHandle;
         fci.width = (uint32_t)halfW; fci.height = (uint32_t)halfH; fci.layers = 1;
-        r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->occFb);
+        r = mc2vk::createChecked(s->occFb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer(occ) failed (%d).", (int)r); return false; }
     }
 
@@ -440,16 +410,16 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         rpci.attachmentCount = 1; rpci.pAttachments = &att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->applyRpass);
+        r = mc2vk::createChecked(s->applyRpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateRenderPass(apply) failed (%d).", (int)r); return false; }
 
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->applyRpass;
+        fci.renderPass = s->applyRpass.get();
         const VkImageView colorAttachment = s->sColorRes->view.get();
         fci.attachmentCount = 1; fci.pAttachments = &colorAttachment;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
-        r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->applyFb);
+        r = mc2vk::createChecked(s->applyFb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer(apply) failed (%d).", (int)r); return false; }
     }
 
@@ -467,7 +437,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 3; lci.pBindings = occBinds;
-        r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->occDsl);
+        r = mc2vk::createChecked(s->occDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(occ) failed (%d).", (int)r); return false; }
 
         VkDescriptorSetLayoutBinding applyBinds[2]{};
@@ -476,7 +446,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         applyBinds[1].binding = 1; applyBinds[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         applyBinds[1].descriptorCount = 1; applyBinds[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         lci.bindingCount = 2; lci.pBindings = applyBinds;
-        r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->applyDsl);
+        r = mc2vk::createChecked(s->applyDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(apply) failed (%d).", (int)r); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
@@ -485,33 +455,35 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
-        r = vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool);
+        r = mc2vk::createChecked(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", (int)r); return false; }
 
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1;
-        dsai.pSetLayouts = &s->occDsl;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1;
+        const VkDescriptorSetLayout occDslHandle = s->occDsl.get();
+        const VkDescriptorSetLayout applyDslHandle = s->applyDsl.get();
+        dsai.pSetLayouts = &occDslHandle;
         r = vkAllocateDescriptorSets(s->device, &dsai, &s->occSet);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(occ) failed (%d).", (int)r); return false; }
-        dsai.pSetLayouts = &s->applyDsl;
+        dsai.pSetLayouts = &applyDslHandle;
         r = vkAllocateDescriptorSets(s->device, &dsai, &s->applySet);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(apply) failed (%d).", (int)r); return false; }
 
         VkDescriptorImageInfo depthInfo{};
-        depthInfo.sampler = s->gbufSampler;
-        depthInfo.imageView = s->depthSampleView;
+        depthInfo.sampler = s->gbufSampler.get();
+        depthInfo.imageView = s->depthSampleView.get();
         depthInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo normalInfo{};
-        normalInfo.sampler = s->gbufSampler;
+        normalInfo.sampler = s->gbufSampler.get();
         normalInfo.imageView = s->sNormalRes->view.get();
         normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo occInfo{};
-        occInfo.sampler = s->occSampler;
-        occInfo.imageView = s->occView;
+        occInfo.sampler = s->occSampler.get();
+        occInfo.imageView = s->occView.get();
         occInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkDescriptorBufferInfo occUboInfo{ s->occUbo, 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo applyUboInfo{ s->applyUbo, 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo occUboInfo{ s->occUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo applyUboInfo{ s->applyUbo.get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet writes[5]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = s->occSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
@@ -540,27 +512,28 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
     // Gen: NO blend (overwrite, GL parity). Apply: MULTIPLY (DST_COLOR/ZERO color,
     // DST_ALPHA/ZERO alpha — GL glBlendFunc(GL_DST_COLOR, GL_ZERO) semantics).
     {
-        s->occVert   = load_spv(s->device, spv_dir() + "ssao.vert.spv");
-        s->occFrag   = load_spv(s->device, spv_dir() + "ssao.frag.spv");
-        s->applyVert = load_spv(s->device, spv_dir() + "ssao_apply.vert.spv");
-        s->applyFrag = load_spv(s->device, spv_dir() + "ssao_apply.frag.spv");
-        if (s->occVert == VK_NULL_HANDLE || s->occFrag == VK_NULL_HANDLE ||
-            s->applyVert == VK_NULL_HANDLE || s->applyFrag == VK_NULL_HANDLE) {
+        s->occVert   = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "ssao.vert.spv"));
+        s->occFrag   = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "ssao.frag.spv"));
+        s->applyVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "ssao_apply.vert.spv"));
+        s->applyFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "ssao_apply.frag.spv"));
+        if (!s->occVert || !s->occFrag || !s->applyVert || !s->applyFrag) {
             setFallback("spv_load_failed"); return false;
         }
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 1; plci.pSetLayouts = &s->occDsl;
-        r = vkCreatePipelineLayout(s->device, &plci, nullptr, &s->occPlayout);
+        const VkDescriptorSetLayout occDslForLayout = s->occDsl.get();
+        const VkDescriptorSetLayout applyDslForLayout = s->applyDsl.get();
+        plci.setLayoutCount = 1; plci.pSetLayouts = &occDslForLayout;
+        r = mc2vk::createChecked(s->occPlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(occ) failed (%d).", (int)r); return false; }
-        plci.pSetLayouts = &s->applyDsl;
-        r = vkCreatePipelineLayout(s->device, &plci, nullptr, &s->applyPlayout);
+        plci.pSetLayouts = &applyDslForLayout;
+        r = mc2vk::createChecked(s->applyPlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(apply) failed (%d).", (int)r); return false; }
 
         auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod,
                                  VkPipelineLayout layout, VkRenderPass rpass,
                                  int vw, int vh, bool multiplyBlend,
-                                 VkPipeline* out, std::string_view name) -> bool {
+                                 mc2vk::OwnedPipeline& out, std::string_view name) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";
@@ -614,16 +587,16 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
             gp.layout = layout;
             gp.renderPass = rpass;
             gp.subpass = 0;
-            if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out) != VK_SUCCESS) {
+            if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
-            mc2vk::nameObject(s->device, *out, name);
+            mc2vk::nameObject(s->device, out.get(), name);
             return true;
         };
-        if (!make_pipeline(s->occVert, s->occFrag, s->occPlayout, s->occRpass,
-                           halfW, halfH, /*multiply*/false, &s->occPipe, "ssao.occPipe")) return false;
-        if (!make_pipeline(s->applyVert, s->applyFrag, s->applyPlayout, s->applyRpass,
-                           w, h, /*multiply*/true, &s->applyPipe, "ssao.applyPipe")) return false;
+        if (!make_pipeline(s->occVert.get(), s->occFrag.get(), s->occPlayout.get(), s->occRpass.get(),
+                           halfW, halfH, /*multiply*/false, s->occPipe, "ssao.occPipe")) return false;
+        if (!make_pipeline(s->applyVert.get(), s->applyFrag.get(), s->applyPlayout.get(), s->applyRpass.get(),
+                           w, h, /*multiply*/true, s->applyPipe, "ssao.applyPipe")) return false;
     }
 
     {
@@ -631,11 +604,11 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
-        r = vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool);
+        r = mc2vk::createChecked(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", (int)r); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool;
+        cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 2;
         r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
@@ -736,9 +709,9 @@ bool gosPostProcess::runVkPostSsaoNative()
         p.aoStrength = aoStrength_;
         p.aoPower    = aoPower_;
         void* m = nullptr;
-        if (vmaMapMemory(s->allocator, s->occUboAlloc, &m) == VK_SUCCESS) {
+        if ((m = s->occUbo.map()) != nullptr) {
             std::memcpy(m, &p, sizeof(p));
-            vmaUnmapMemory(s->allocator, s->occUboAlloc);
+            s->occUbo.unmap();
         }
     }
     {
@@ -747,9 +720,9 @@ bool gosPostProcess::runVkPostSsaoNative()
         p.ssaoTexel[1] = 1.0f / (float)ssaoH_;
         p.debugMode = 0;
         void* m = nullptr;
-        if (vmaMapMemory(s->allocator, s->applyUboAlloc, &m) == VK_SUCCESS) {
+        if ((m = s->applyUbo.map()) != nullptr) {
             std::memcpy(m, &p, sizeof(p));
-            vmaUnmapMemory(s->allocator, s->applyUboAlloc);
+            s->applyUbo.unmap();
         }
     }
 
@@ -810,12 +783,12 @@ bool gosPostProcess::runVkPostSsaoNative()
         clear.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->occRpass; rbi.framebuffer = s->occFb;
+        rbi.renderPass = s->occRpass.get(); rbi.framebuffer = s->occFb.get();
         rbi.renderArea = {{0, 0}, {(uint32_t)s->halfW, (uint32_t)s->halfH}};
         rbi.clearValueCount = 1; rbi.pClearValues = &clear;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->occPipe);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->occPlayout, 0, 1, &s->occSet, 0, nullptr);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->occPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->occPlayout.get(), 0, 1, &s->occSet, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdEndRenderPass(cb);
     }
@@ -835,12 +808,12 @@ bool gosPostProcess::runVkPostSsaoNative()
     {
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->applyRpass; rbi.framebuffer = s->applyFb;
+        rbi.renderPass = s->applyRpass.get(); rbi.framebuffer = s->applyFb.get();
         rbi.renderArea = {{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
         rbi.clearValueCount = 0; // LOAD, no clear
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->applyPipe);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->applyPlayout, 0, 1, &s->applySet, 0, nullptr);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->applyPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->applyPlayout.get(), 0, 1, &s->applySet, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdEndRenderPass(cb);
     }
@@ -854,16 +827,15 @@ bool gosPostProcess::runVkPostSsaoNative()
     // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
     // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
     // fence creation ever fails.
-    if (s->submitFence == VK_NULL_HANDLE) {
+    if (!s->submitFence) {
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (vkCreateFence(s->device, &fci, nullptr, &s->submitFence) != VK_SUCCESS)
-            s->submitFence = VK_NULL_HANDLE;
+        mc2vk::create(s->submitFence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle stands in
     }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
 
@@ -871,12 +843,13 @@ bool gosPostProcess::runVkPostSsaoNative()
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
     {
         const clk::time_point tWait0 = clk::now();
-        if (s->submitFence != VK_NULL_HANDLE) {
-            if (vkWaitForFences(s->device, 1, &s->submitFence, VK_TRUE,
+        if (s->submitFence) {
+            const VkFence submitFence = s->submitFence.get();
+            if (vkWaitForFences(s->device, 1, &submitFence, VK_TRUE,
                                 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
                 setFallback("fence_timeout"); s->disabled = true; return false;
             }
-            vkResetFences(s->device, 1, &s->submitFence);
+            vkResetFences(s->device, 1, &submitFence);
         } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
             setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
         }

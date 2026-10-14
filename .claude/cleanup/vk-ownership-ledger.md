@@ -15,12 +15,12 @@ code and the proof of a finished conversion, not a leak detector.
 | Island | Files | Created | Released | Imbalance | Manual | Kinds out of balance |
 |---|---:|---:|---:|---:|---:|---|
 | color_prop | 2 | 12 | 35 | -23 | 47 | Buffer 1/16, Image 1/3, ImageView 1/3, Sampler 1/3, ShaderModule 0/2 |
-| legacy_shape | 2 | 12 | 20 | -8 | 32 | Buffer 1/7, ShaderModule 0/2 |
-| mech | 2 | 12 | 25 | -13 | 37 | Buffer 1/12, ShaderModule 0/2 |
+| legacy_shape | 2 | 0 | 0 | +0 | 0 | - |
+| mech | 2 | 0 | 0 | +0 | 0 | - |
 | post_fog | 1 | 0 | 0 | +0 | 0 | - |
 | post_hzb | 1 | 0 | 0 | +0 | 0 | - |
-| post_screenfx | 1 | 17 | 28 | -11 | 45 | Buffer 1/3, Fence 2/1, Pipeline 1/4, ShaderModule 0/7 |
-| post_ssao | 1 | 17 | 24 | -7 | 41 | Buffer 1/2, Pipeline 1/2, Sampler 1/2, ShaderModule 0/4 |
+| post_screenfx | 1 | 0 | 0 | +0 | 0 | - |
+| post_ssao | 1 | 0 | 0 | +0 | 0 | - |
 | shadow | 2 | 16 | 33 | -17 | 49 | Buffer 1/9, Fence 1/2, Framebuffer 3/5, Image 1/2, ImageView 4/7, ShaderModule 0/2 |
 | sky | 2 | 0 | 0 | +0 | 0 | - |
 | terrain | 6 | 31 | 86 | -55 | 117 | Buffer 1/34, Image 5/14, ImageView 5/12, ShaderModule 0/6 |
@@ -32,17 +32,13 @@ code and the proof of a finished conversion, not a leak detector.
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 0 | 0 | +0 | 0 | - |
 
-Total over all islands: created 169, released 349, imbalance -180.
+Total over all islands: created 111, released 252, imbalance -141.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
 | `vulkan_color_prop_island.cpp` | 12 | 35 | -23 |
-| `vulkan_legacy_shape_island.cpp` | 12 | 20 | -8 |
-| `vulkan_mech_island.cpp` | 12 | 25 | -13 |
-| `vulkan_post_screenfx_native.cpp` | 17 | 28 | -11 |
-| `vulkan_post_ssao_native.cpp` | 17 | 24 | -7 |
 | `vulkan_shadow_island_live.cpp` | 16 | 33 | -17 |
 | `vulkan_terrain_island_images.cpp` | 13 | 22 | -9 |
 | `vulkan_terrain_island_island.cpp` | 9 | 44 | -35 |
@@ -55,17 +51,13 @@ Total over all islands: created 169, released 349, imbalance -180.
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): image_resource, light_feed, post_fog, post_hzb, shared_scene, sky, vfx. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, shared_scene, sky, vfx. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
-1. legacy_shape (32 manual tokens)
-2. mech (37 manual tokens)
-3. post_ssao (41 manual tokens)
-4. post_screenfx (45 manual tokens)
-5. color_prop (47 manual tokens)
-6. water (47 manual tokens)
-7. shadow (49 manual tokens)
-8. present (103 manual tokens)
-9. terrain (117 manual tokens)
+1. color_prop (47 manual tokens)
+2. water (47 manual tokens)
+3. shadow (49 manual tokens)
+4. present (103 manual tokens)
+5. terrain (117 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 

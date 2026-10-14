@@ -71,6 +71,14 @@ bool create(Owner& owner, VkDevice device, Call&& call) {
     return true;
 }
 
+// The same, returning the VkResult of the call (VK_ERROR_UNKNOWN when it returned a null handle) for a caller that logs it.
+template <class Owner, class Call>
+VkResult createChecked(Owner& owner, VkDevice device, Call&& call) {
+    VkResult result = VK_ERROR_UNKNOWN;
+    create(owner, device, [&](typename Owner::HandleType* handle) { result = call(handle); return result; });
+    return result;
+}
+
 // A VMA buffer and its allocation. `create` names the buffer for the validation layer (name, optional slot indices; see vulkan_context.h).
 class OwnedBuffer {
 public:
