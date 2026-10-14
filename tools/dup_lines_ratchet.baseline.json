@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 14861,
+  "code": 14857,
   "mclib": 32266,
   "shaders": 2980
  },
@@ -263,7 +263,7 @@
   "code/sim_identity.cpp": 20,
   "code/simplecamera.cpp": 72,
   "code/tacordr.cpp": 224,
-  "code/team.cpp": 85,
+  "code/team.cpp": 81,
   "code/team_los.cpp": 40,
   "code/terrobj.cpp": 113,
   "code/terrobj.h": 20,
@@ -646,8 +646,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "b12cecdee",
+ "head": "4580ba8d4",
  "n": 8,
- "total": 56402,
+ "total": 56398,
  "version": 1
 }
