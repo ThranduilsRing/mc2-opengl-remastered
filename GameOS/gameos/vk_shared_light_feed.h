@@ -57,8 +57,8 @@ public:
     SharedLightFeed(const SharedLightFeed&) = delete;
     SharedLightFeed& operator=(const SharedLightFeed&) = delete;
 
-    // Copy-once-per-frame acquire (see the file header). False is fail-soft: the caller runs its own copy path.
-    bool acquire(VmaAllocator allocator, VkDevice device, const void* cpuData, uint64_t cpuBytes, VkBuffer* outBuf);
+    // Copy-once-per-frame acquire (see the file header). A null buffer is fail-soft: the caller runs its own copy path.
+    VkBuffer acquire(VmaAllocator allocator, VkDevice device, const void* cpuData, uint64_t cpuBytes);
 
     // Frees every slot after the GPU is idle. Safe when nothing was acquired; a later acquire builds the slots again.
     void release();
@@ -80,15 +80,14 @@ private:
 // per-island copies restored); anything else = ON. Latched on first call.
 bool mc2vkSharedLightFeedEnabled();
 
-// Copy-once-per-frame acquire. On success *outBuf is a host-visible STORAGE
-// buffer holding cpuBytes of this frame's LightsData (copied by the first
-// caller this frame). Returns false fail-soft -- killswitch off, allocator or
-// buffer trouble, handles that are not the engine context's, or the CPU array
-// grew between two same-frame callers -- and the caller must fall back to its
-// own per-island copy path.
-bool mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
-                                 const void* cpuData, uint64_t cpuBytes,
-                                 VkBuffer* outBuf);
+// Copy-once-per-frame acquire. Returns a host-visible STORAGE buffer holding
+// cpuBytes of this frame's LightsData (copied by the first caller this frame).
+// Returns VK_NULL_HANDLE fail-soft -- killswitch off, allocator or buffer
+// trouble, handles that are not the engine context's, or the CPU array grew
+// between two same-frame callers -- and the caller must fall back to its own
+// per-island copy path.
+VkBuffer mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
+                                     const void* cpuData, uint64_t cpuBytes);
 
 #endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_SHARED_LIGHT_FEED_H

@@ -1448,10 +1448,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // the pre-slice per-island copy below (zone VKIsl.Props.LightFeed)
         // unchanged.
         const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataCpuBytes;
-        VkBuffer sharedLight = VK_NULL_HANDLE;
-        if (mc2vkSharedLightFeedAcquire(s->allocator, s->device,
-                                        lightFeed.lightDataCpu,
-                                        lightFeed.lightDataCpuBytes, &sharedLight)) {
+        if (const VkBuffer sharedLight = mc2vkSharedLightFeedAcquire(s->allocator, s->device,
+                                                                     lightFeed.lightDataCpu,
+                                                                     lightFeed.lightDataCpuBytes)) {
             bind_light_buffer(s, par, sharedLight);
             // Probe reads the CPU source -- byte-identical to the ring copy
             // (single-threaded copy of the same array this same frame).

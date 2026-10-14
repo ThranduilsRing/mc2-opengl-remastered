@@ -1109,10 +1109,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         // above). Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire fail-soft
         // (mid-frame light-count growth, ring alloc failure) runs the
         // pre-slice per-island copy below (zone VKIsl.Mech.LightFeed).
-        VkBuffer sharedLight = VK_NULL_HANDLE;
-        if (mc2vkSharedLightFeedAcquire(s->allocator, s->device,
-                                        feed.lightDataCpu,
-                                        feed.lightDataCpuBytes, &sharedLight)) {
+        if (const VkBuffer sharedLight = mc2vkSharedLightFeedAcquire(s->allocator, s->device,
+                                                                     feed.lightDataCpu,
+                                                                     feed.lightDataCpuBytes)) {
             bind_light_buffer_all(s, par, sharedLight);
             s->lightingReady = true;
             ++g_feedNative.nativeLightFrames;

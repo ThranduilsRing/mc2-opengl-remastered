@@ -26,25 +26,24 @@ bool mc2vkSharedLightFeedEnabled()
     return s_state == 1;
 }
 
-bool mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
-                                 const void* cpuData, uint64_t cpuBytes,
-                                 VkBuffer* outBuf)
+VkBuffer mc2vkSharedLightFeedAcquire(VmaAllocator allocator, VkDevice device,
+                                     const void* cpuData, uint64_t cpuBytes)
 {
-    if (!mc2vkSharedLightFeedEnabled()) return false;
+    if (!mc2vkSharedLightFeedEnabled()) return VK_NULL_HANDLE;
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     // The ring lives in the engine context; an island always passes that context's handles. Anything else would put buffers on a device the ring
     // does not release, so it is refused and the caller keeps its own copy.
-    if (!ctx.valid() || allocator != ctx.allocator() || device != ctx.device()) return false;
-    return ctx.lightFeed().acquire(allocator, device, cpuData, cpuBytes, outBuf);
+    if (!ctx.valid() || allocator != ctx.allocator() || device != ctx.device()) return VK_NULL_HANDLE;
+    return ctx.lightFeed().acquire(allocator, device, cpuData, cpuBytes);
 }
 
 namespace mc2vk {
 
-bool SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const void* cpuData, uint64_t cpuBytes, VkBuffer* outBuf)
+VkBuffer SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const void* cpuData, uint64_t cpuBytes)
 {
     if (allocator == VK_NULL_HANDLE || device == VK_NULL_HANDLE ||
-        cpuData == nullptr || outBuf == nullptr || cpuBytes < 3600ull)
-        return false;
+        cpuData == nullptr || cpuBytes < 3600ull)
+        return VK_NULL_HANDLE;
     device_ = device;
 
     const uint32_t frame = g_mc2FrameCounter;
@@ -53,10 +52,9 @@ bool SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const voi
         // CPU array GREW between two same-frame island flushes (mid-frame
         // dynamic-light append), fail soft: this caller does its own copy
         // (rare, content-safe; next frame's copy picks up the full array).
-        if (!frameValid_ || (VkDeviceSize)cpuBytes > frameBytes_) { ++fallbacks_; return false; }
+        if (!frameValid_ || (VkDeviceSize)cpuBytes > frameBytes_) { ++fallbacks_; return VK_NULL_HANDLE; }
         ++hits_;
-        *outBuf = slots_[slot_].get();
-        return true;
+        return slots_[slot_].get();
     }
     frame_ = frame;
     frameValid_ = false;
@@ -81,7 +79,7 @@ bool SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const voi
         aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
         if (!sl.create(allocator, device, bci, aci, "lightfeed.ring", slot)) {
             ++fallbacks_;
-            return false;   // fail-soft: caller runs its own copy path
+            return VK_NULL_HANDLE;   // fail-soft: caller runs its own copy path
         }
         caps_[slot] = cap;
     }
@@ -89,7 +87,7 @@ bool SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const voi
     {
         ZoneScopedN("VKIsl.Shared.LightFeed");   // VK-LIGHTFEED-DEDUP-1: the ONE per-frame LightsData CPU->VK copy
         void* p = sl.map();
-        if (!p) { ++fallbacks_; return false; }
+        if (!p) { ++fallbacks_; return VK_NULL_HANDLE; }
         std::memcpy(p, cpuData, (size_t)cpuBytes);
         sl.unmap();
     }
@@ -114,8 +112,7 @@ bool SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const voi
         std::fflush(stderr);
     }
 
-    *outBuf = sl.get();
-    return true;
+    return sl.get();
 }
 
 void SharedLightFeed::release()
