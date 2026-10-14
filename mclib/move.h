@@ -38,6 +38,9 @@
 #endif
 
 #include<gameos.hpp>
+#include<cstdint>
+#include<vector>
+#include"open_heap.h"	// B2.5: the per-solver open list (unused until the swap commit)
 
 // MC2_MOVE_RECON: lightweight OOB counter for pathlock calls (see move_recon.h).
 // Include is deferred to avoid pulling <chrono> into every TU that includes move.h;
