@@ -41,6 +41,7 @@ static void EditorDataWarmTerrain(const char* where)
 bool EditorData::initTerrainFromPCV( const char* fileName )
 {
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
+	if (!fileName || !fileName[0]) return false;
 	EditorFit::MissionTextReader file;
 	const auto previousMissionName = instance->MissionName();
 	const auto previousAuthor = instance->Author();
@@ -58,29 +59,11 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
             || !file.requiredFields(GAME_MAX_PLAYERS, g_conditionSpeciesStringArray, g_actionSpeciesStringArray)) return false;
 	}
 
-	bool bRetVal = true;
-	bIsLoading = true;
-
-	EditorInterface::instance()->SetBusyMode(false/*no redraw*/);
-
-	clear();
-	// A rejected document has no editable remnants that a subsequent save could
-	// accidentally bless. The inactive camera also protects an empty viewport.
-	const auto rejectDocument = [] {
-		clear();
-		if (eye) eye->active = false;
-		EditorInterface::instance()->UnsetBusyMode();
-		bIsLoading = false;
-		return false;
-	};
-
-	if (!fileName || !fileName[0])
-	{
-		EditorDataTrace("EditorData::initTerrainFromPCV: empty file name");
-		EditorInterface::instance()->UnsetBusyMode();
-		bIsLoading = false;
-		return false;
-	}
+	// Objective models and payloads belong to a candidate, so rejection retains the live map and history.
+	CTeams candidateTeams;
+	file.deferObjectReferences = true;
+	if (!candidateTeams.Read(&file)) return false;
+	file.deferObjectReferences = false;
 
 	char lowerFileName[1024];
 	strncpy(lowerFileName, fileName, sizeof(lowerFileName) - 1);
@@ -131,6 +114,17 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	}
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before new Terrain");
+	bool bRetVal = true;
+	bIsLoading = true;
+	EditorInterface::instance()->SetBusyMode(false/*no redraw*/);
+	clear();
+	const auto rejectDocument = [] {
+		clear();
+		if (eye) eye->active = false;
+		EditorInterface::instance()->UnsetBusyMode();
+		bIsLoading = false;
+		return false;
+	};
 	land = new Terrain( );
 	EditorDataTrace("EditorData::initTerrainFromPCV: after new Terrain land=%p", land);
 
@@ -551,8 +545,8 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		}
 	}
 
-	EditorData::instance->TeamsRef().Clear();
-	if (!EditorData::instance->TeamsRef().Read(&file))
+	EditorData::instance->TeamsRef() = candidateTeams;
+	if (!EditorData::instance->TeamsRef().RestoreObjectPointerReferencesFromNotedPositions())
 	{
 		return rejectDocument();
 	}

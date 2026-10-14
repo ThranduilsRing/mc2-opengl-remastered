@@ -154,6 +154,8 @@ class MissionTextReader : public FitIniFile
         return true;
     }
 public:
+    // Candidate objectives retain authored coordinates until the new world's objects exist.
+    bool deferObjectReferences = false;
     using FitIniFile::open;
     const std::string& missionName() const { return mission; }
     const char* blockName() const { return currentBlockId ? currentBlockId : ""; }

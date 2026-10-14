@@ -198,6 +198,16 @@ def grade_workflows(text: str) -> str:
     budget = [line for line in text.splitlines() if "/ew_reader_budget.fit " in line and "rejected=1" in line]
     if len(budget) != 1 or " length=16777217 limit=16777216 reason=document_too_large" not in budget[0]:
         failures.append("mission_definitions/reader_budget: expected one byte-limit diagnostic")
+    for field, value in (("ModelScale", "0"), ("ModelScale", "-1"), ("ModelScale", "1e100"),
+                         ("ModelScale", "1garbage"), ("ModelType", "256"), ("Num", "1garbage")):
+        if not any(row.get("stage") == "candidate_rejection" and row.get("field") == field and row.get("value") == value
+                   and all(row.get(key) == "1" for key in ("rejected", "unchanged", "history", "ok")) for row in definitions):
+            failures.append(f"mission_definitions/candidate/{field}/{value}: missing state/history preservation")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/cq_candidate_{field}_{value}.fit " in line and "rejected=1" in line]
+        reason = "condition_read_failed" if field == "Num" else "malformed_value"
+        if len(diagnostics) != 1 or f"reason={reason} rejected=1" not in diagnostics[0]:
+            failures.append(f"mission_definitions/candidate/{field}/{value}: expected one rejection diagnostic")
     for case in ("ObjectiveModel", "ModelType", "ModelScale", "all"):
         if not any(row.get("stage") == "model_default" and row.get("case") == case and row.get("ok") == "1" for row in definitions):
             failures.append(f"mission_definitions/model_default/{case}: missing default proof")

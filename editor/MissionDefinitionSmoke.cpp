@@ -453,6 +453,31 @@ bool EditorInterface::runDefinitionSmoke()
             required.field, rejected, unchanged, ok);
         if (!rejected || !unchanged) return false;
     }
+    for (const auto& [field, value] : {std::pair{"ModelScale", "0"}, {"ModelScale", "-1"},
+        {"ModelScale", "1e100"}, {"ModelScale", "1garbage"}, {"ModelType", "256"}, {"Num", "1garbage"}})
+    {
+        const auto path = std::format("terrain_gen_out/cq_candidate_{}_{}", field, value);
+        auto malformed = original;
+        const bool payload = std::string_view(field) == "Num";
+        const auto block = payload ? "Team0Objective0Condition0" : "Team0Objective0";
+        const bool prepared = !payload || replaceValue(malformed, block, "ConditionSpeciesString", "\"DestroyNumberOfEnemyUnits\"");
+        if (payload) {
+            removeField(malformed, block, "Num");
+            addDeclaration(malformed, block, "ul Num = 0");
+        }
+        const bool rejected = prepared && replaceValue(malformed, block, field, value)
+            && writeFixture((path + ".pak").c_str(), originalPak) && writeFixture((path + ".fit").c_str(), malformed)
+            && !EditorData::initTerrainFromPCV((path + ".pak").c_str());
+        const bool unchanged = land == previousLand && getUnit() == previousUnit
+            && EditorData::instance->MissionNeedsSaving() == previousDirty
+            && undoMgr.HaveUndo() == previousUndo && undoMgr.HaveRedo() == previousRedo
+            && EditorData::instance->save("terrain_gen_out/ew_after_reject.pak", true)
+            && readFixture("terrain_gen_out/ew_after_reject.fit") == beforeReject;
+        const bool history = rejected && unchanged && undoMgr.Redo() && undoMgr.Undo();
+        fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=candidate_rejection field=%s value=%s rejected=%d unchanged=%d history=%d ok=%d\n",
+            field, value, rejected, unchanged, history, rejected && unchanged && history);
+        if (!rejected || !unchanged || !history) return false;
+    }
     ok = undoMgr.Redo() && undoMgr.Undo() && ok;
 
     // Each malformed document must fail at its reader, before a save can bless it.

@@ -183,7 +183,7 @@ private:
         auto malformed = original;
         malformed.insert(malformed.size() / 2, 1, '\0');
         unsigned diagnostics{};
-        auto rejected = MissionDocument::decode(std::move(malformed), document_->archive().originalBytes, "malformed.fit", [&](const std::string& line) { ++diagnostics; log(line); });
+        auto rejected = history_->replace(std::move(malformed), document_->archive().originalBytes, "malformed.fit", [&](const std::string& line) { ++diagnostics; log(line); });
         if (rejected || diagnostics != 1 || document_->fitBytes() != original) return error("malformed_rejection_failed");
         log("[EDITOR_SHELL v1] result=PASS frames=" + std::to_string(frames) + " roundtrip=1 edited=1 reopened=1 undo=1 redo=1 malformed=1 unchanged=1 long_name=1");
         return 0;

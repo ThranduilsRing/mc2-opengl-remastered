@@ -12,6 +12,16 @@ std::size_t cost(const SetTextCommand& command)
     return size;
 }
 }
+std::expected<void, LoadError> CommandHistory::replace(std::string fit, std::vector<std::byte> pak,
+    std::string mission, const Diagnostic& log)
+{
+    auto candidate = MissionDocument::decode(std::move(fit), std::move(pak), std::move(mission), log);
+    if (!candidate) return std::unexpected(candidate.error());
+    document_ = std::move(*candidate);
+    commands_.clear();
+    cursor_ = used_ = evicted_ = 0;
+    return {};
+}
 std::expected<void, LoadError> CommandHistory::setText(NodeId id, std::string text, std::string label)
 {
     const auto* field = document_.field(id);

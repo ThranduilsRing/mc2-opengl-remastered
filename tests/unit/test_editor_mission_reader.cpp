@@ -120,8 +120,24 @@ TEST_CASE("editor objective model corpus" * doctest::skip())
         count.models += models;
         count.loaded += loaded;
     }
-    REQUIRE(totals.size() == 7);
+    const std::map<std::string, Counts> expected = {
+        {"stock", {24, 24, 173, 0, 0}}, {"MC2-Exodus", {62, 62, 397, 0, 0}},
+        {"MC2-MagicExpansion", {32, 32, 242, 0, 0}}, {"MC2X-CVE-G", {32, 32, 344, 0, 0}},
+        {"MC2X-REAP3", {33, 33, 376, 0, 0}}, {"MCO-Carver5", {24, 24, 173, 0, 0}},
+        {"MechCommanderOmnitech", {67, 67, 445, 0, 0}}
+    };
+    REQUIRE(totals.size() == expected.size());
     for (const auto& [group, count] : totals)
+    {
+        INFO(group);
+        REQUIRE(expected.contains(group));
+        const auto& baseline = expected.at(group);
+        CHECK(count.missions == baseline.missions);
+        CHECK(count.loaded == count.missions);
+        CHECK(count.models == baseline.models);
+        CHECK(count.defaults == baseline.defaults);
+        CHECK(count.rejected == baseline.rejected);
         fprintf(stderr, "[EDITOR_DOCUMENT v1] event=model_corpus group=%s scope=objective_model missions=%u loaded=%u models=%u fields_defaulted=%u fields_rejected=%u\n",
             group.c_str(), count.missions, count.loaded, count.models, count.defaults, count.rejected);
+    }
 }

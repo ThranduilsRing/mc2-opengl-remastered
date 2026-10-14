@@ -66,6 +66,11 @@ def panel_lines():
     for case, field in smoke.READER_MISSING_PAYLOADS.items():
         reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", field, "rejected=1 unchanged=1")
     definitions += "\n[EDITOR_DEFINITIONS v1] stage=reader_budget rejected=1 unchanged=1 ok=1"
+    for field, value in (("ModelScale", "0"), ("ModelScale", "-1"), ("ModelScale", "1e100"),
+                         ("ModelScale", "1garbage"), ("ModelType", "256"), ("Num", "1garbage")):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=candidate_rejection field={field} value={value} rejected=1 unchanged=1 history=1 ok=1"
+        reason = "condition_read_failed" if field == "Num" else "malformed_value"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/cq_candidate_{field}_{value}.fit field=Team0Objective0/{field} reason={reason} rejected=1"
     definitions += "\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/ew_reader_budget.fit length=16777217 limit=16777216 reason=document_too_large rejected=1"
     for case in ("ObjectiveModel", "ModelType", "ModelScale", "all"):
         flags = ' '.join(f"{key}={int(case in (key, 'all'))}" for key in ("ObjectiveModel", "ModelType", "ModelScale"))
@@ -78,6 +83,14 @@ def panel_lines():
 
 
 class EditorSmokeTests(unittest.TestCase):
+    def test_candidate_rejection_requires_executable_history_and_single_diagnostic(self):
+        lines = panel_lines()
+        self.assertEqual(smoke.grade_workflows(lines), "")
+        for changed in (lines.replace("history=1", "history=0"),
+                        lines.replace("stage=candidate_rejection", "stage=old_rejection"),
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/cq_candidate_ModelScale_0.fit reason=malformed_value rejected=1"):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
     def test_review_probes_require_versioned_facts_and_single_rejection_diagnostic(self):
         lines = panel_lines()
         for changed in (lines.replace("[EDITOR_DEFINITIONS v1]", "[EDITOR_DEFINITIONS]"),

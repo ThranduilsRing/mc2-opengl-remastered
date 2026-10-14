@@ -17,6 +17,8 @@ public:
     CommandHistory(const CommandHistory&) = delete;
     CommandHistory& operator=(const CommandHistory&) = delete;
     std::expected<void, LoadError> setText(NodeId field, std::string text, std::string label);
+    std::expected<void, LoadError> replace(std::string fit, std::vector<std::byte> pak,
+        std::string mission, const Diagnostic& log);
     bool undo();
     bool redo();
     bool canUndo() const { return cursor_ != 0; }

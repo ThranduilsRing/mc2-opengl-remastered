@@ -42,18 +42,16 @@ std::optional<double> number(const Field* field)
     if (const auto* value = std::get_if<std::int64_t>(&field->value[0])) return static_cast<double>(*value);
     return {};
 }
-bool writeBytes(const std::filesystem::path& path, std::span<const std::byte> bytes)
+bool writeBytes(const std::filesystem::path& path, std::span<const std::byte> bytes, bool exclusive = false)
 {
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    std::ofstream output(path, std::ios::binary | (exclusive ? std::ios::noreplace : std::ios::trunc));
     output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     output.flush();
     const bool wrote = static_cast<bool>(output);
     output.close();
     return wrote && static_cast<bool>(output);
 }
-}
-
-std::expected<MissionDocument, LoadError> MissionDocument::read(const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log)
+std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 {
     std::error_code ec;
     const auto directory = fit.parent_path().empty() ? std::filesystem::path(".") : fit.parent_path();
@@ -64,12 +62,18 @@ std::expected<MissionDocument, LoadError> MissionDocument::read(const std::files
         std::string state;
         std::getline(journal, state);
         if (state != "committed" && state != "rolled_back") {
-            LoadError error{"save", "recovery_required", 0};
-            diagnostic(log, fit.string(), error);
-            return std::unexpected(error);
+            return std::unexpected(LoadError{"save", "recovery_required", 0});
         }
     }
-    if (ec) { LoadError error{"save", "directory_query_failed", 0}; diagnostic(log, fit.string(), error); return std::unexpected(error); }
+    if (ec) return std::unexpected(LoadError{"save", "directory_query_failed", 0});
+    return {};
+}
+}
+
+std::expected<MissionDocument, LoadError> MissionDocument::read(const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log)
+{
+    const auto recovery = recoveryState(fit);
+    if (!recovery) { diagnostic(log, fit.string(), recovery.error()); return std::unexpected(recovery.error()); }
     auto source = readBytes(fit, fitByteLimit);
     if (!source) { diagnostic(log, fit.string(), source.error()); return std::unexpected(source.error()); }
     auto packets = readBytes(pak, pakByteLimit);
@@ -148,7 +152,9 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             if (!typed(name, "NumConditions", 0)) return reject(name + "/NumConditions", "missing_required");
             if (find(name, "ObjectiveModel") && !typed(name, "ObjectiveModel", 3)) return reject(name + "/ObjectiveModel", "malformed_value");
             if (const auto* modelType = find(name, "ModelType"); modelType && (!typed(name, "ModelType", 0) || number(modelType).value_or(-1) < 0 || number(modelType).value_or(256) > 255)) return reject(name + "/ModelType", "malformed_value");
-            if (const auto* scale = find(name, "ModelScale"); scale && (!typed(name, "ModelScale", 1) || number(scale).value_or(0) <= 0)) return reject(name + "/ModelScale", "malformed_value");
+            if (const auto* scale = find(name, "ModelScale"); scale && (!typed(name, "ModelScale", 1) ||
+                number(scale).value_or(0) < std::numeric_limits<float>::denorm_min() || number(scale).value_or(0) > std::numeric_limits<float>::max()))
+                return reject(name + "/ModelScale", "malformed_value");
             for (std::size_t list = 0; list < 4; ++list) {
                 const auto entries = number(find(name, counts[list])).value_or(0);
                 if (find(name, counts[list]) && !typed(name, counts[list], 0)) return reject(name + "/" + std::string(counts[list]), "malformed_count");
@@ -319,9 +325,10 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     auto pakStage = pak; pakStage += ".stage." + transaction;
     auto fitBackup = fit; fitBackup += ".previous." + transaction;
     auto pakBackup = pak; pakBackup += ".previous." + transaction;
-    auto journal = fit; journal.replace_extension(); journal += ".transaction." + transaction;
+    auto journal = fit; journal.replace_extension(); journal += ".transaction.active";
+    auto completedJournal = fit; completedJournal.replace_extension(); completedJournal += ".transaction." + transaction;
     std::error_code ec;
-    if (std::filesystem::exists(fitStage, ec) || std::filesystem::exists(pakStage, ec) || std::filesystem::exists(fitBackup, ec) || std::filesystem::exists(pakBackup, ec)) return reject("recovery_files_present");
+    if (std::filesystem::exists(fitStage, ec) || std::filesystem::exists(pakStage, ec) || std::filesystem::exists(fitBackup, ec) || std::filesystem::exists(pakBackup, ec) || std::filesystem::exists(completedJournal, ec)) return reject("recovery_files_present");
     if (ec) return reject("destination_query_failed");
     const bool hadFit = std::filesystem::exists(fit, ec);
     if (ec || (hadFit && !std::filesystem::is_regular_file(fit, ec))) return reject("destination_not_regular");
@@ -329,12 +336,15 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (ec || (hadPak && !std::filesystem::is_regular_file(pak, ec))) return reject("destination_not_regular");
     if (!fit.parent_path().empty()) std::filesystem::create_directories(fit.parent_path(), ec);
     if (ec) return reject("staging_directory_failed");
+    const auto recovery = recoveryState(fit);
+    if (!recovery) return reject(recovery.error().reason);
+    const std::string pending = "pending\nFIT=" + fit.string() + "\nPAK=" + pak.string() + "\nFIT_previous=" + fitBackup.string() + "\nPAK_previous=" + pakBackup.string() + "\n";
+    // A single exclusive journal reserves this destination against another publisher.
+    if (!writeBytes(journal, std::as_bytes(std::span(pending)), true)) return reject("journal_write_failed");
     const auto output = fitBytes();
-    if (!writeBytes(fitStage, std::as_bytes(std::span(output))) || !writeBytes(pakStage, pakBytes())) return reject("staging_write_failed");
+    if (!writeBytes(fitStage, std::as_bytes(std::span(output)), true) || !writeBytes(pakStage, pakBytes(), true)) return reject("staging_write_failed");
     auto verified = read(fitStage, pakStage, {});
     if (!verified || verified->fitBytes() != output || verified->pak_.originalBytes != pak_.originalBytes) return reject("staging_verification_failed");
-    const std::string pending = "pending\nFIT=" + fit.string() + "\nPAK=" + pak.string() + "\nFIT_previous=" + fitBackup.string() + "\nPAK_previous=" + pakBackup.string() + "\n";
-    if (!writeBytes(journal, std::as_bytes(std::span(pending)))) return reject("journal_write_failed");
     bool oldFit{}, oldPak{}, newFit{}, newPak{};
     auto rollback = [&] {
         bool ok = true;
@@ -348,6 +358,7 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
         if (ok) {
             const std::string rolledBack = "rolled_back\n" + pending.substr(8);
             ok = writeBytes(journal, std::as_bytes(std::span(rolledBack)));
+            if (ok) { std::error_code error; std::filesystem::rename(journal, completedJournal, error); ok = !error; }
         }
         return ok;
     };
@@ -361,6 +372,8 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     newPak = true;
     const std::string committed = "committed\n" + pending.substr(8);
     if (!writeBytes(journal, std::as_bytes(std::span(committed)))) return reject(rollback() ? "journal_commit_failed" : "rollback_failed");
+    std::filesystem::rename(journal, completedJournal, ec);
+    if (ec) return reject(rollback() ? "journal_archive_failed" : "rollback_failed");
     for (std::size_t i = 0; i < syntax_.fields.size(); ++i) savepoint_[i] = syntax_.fields[i].value;
     return {};
 }

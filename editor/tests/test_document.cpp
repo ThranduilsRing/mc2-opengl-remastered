@@ -73,6 +73,7 @@ int main()
         CommandHistory bounded(document, 500);
         for (int i = 0; i < 20; ++i) require(bounded.setText(title, std::to_string(i), "Name").has_value(), "budget_edits");
         require(bounded.evicted() > 0 && bounded.bytesUsed() <= 500, "history_eviction");
+        require(bounded.undo(), "replacement_retains_redo_setup");
         auto badFit = [&](std::string input, const char* name) {
             logs.clear(); auto result = MissionDocument::decode(std::move(input), fixturePak(), "bad", log);
             require(!result && logs.size() == 1 && logs[0].find("rejected=1") != std::string::npos, name);
@@ -80,11 +81,18 @@ int main()
         const auto rejectField = [&](std::string input, std::string_view field) {
             const auto before = document.fitBytes();
             const auto revision = document.revision();
+            const auto pak = document.archive().originalBytes;
+            const auto dirty = document.modified();
+            const auto used = bounded.bytesUsed(), evicted = bounded.evicted();
+            const auto undo = bounded.canUndo(), redo = bounded.canRedo();
             logs.clear();
-            auto result = MissionDocument::decode(std::move(input), fixturePak(), "bad", log);
+            auto result = bounded.replace(std::move(input), fixturePak(), "bad", log);
             require(!result && logs.size() == 1 && logs[0].find("field=" + std::string(field) + " ") != std::string::npos &&
-                logs[0].find("rejected=1") != std::string::npos && document.fitBytes() == before && document.revision() == revision,
+                logs[0].find("rejected=1") != std::string::npos && document.fitBytes() == before && document.revision() == revision &&
+                document.archive().originalBytes == pak && document.modified() == dirty && bounded.bytesUsed() == used &&
+                bounded.evicted() == evicted && bounded.canUndo() == undo && bounded.canRedo() == redo,
                 "malformed_field_single_log_unchanged");
+            require(bounded.redo() && bounded.undo() && document.fitBytes() == before, "replacement_retains_executable_history");
         };
         auto withPart = fixture;
         withPart.replace(withPart.find("NumParts = 0"), 12, "NumParts = 1");
@@ -140,6 +148,11 @@ int main()
         auto missingRadius = withObjective;
         missingRadius.erase(missingRadius.find("f TargetRadius"), 22);
         badFit(missingRadius, "missing_objective_payload");
+        for (const auto scale : {"0", "-1", "1e100"}) {
+            auto input = withObjective;
+            input.insert(input.find("[Objective0Condition0]"), "f ModelScale = " + std::string(scale) + "\r\n");
+            rejectField(std::move(input), "Objective0/ModelScale");
+        }
         auto invalidSpecies = withObjective;
         invalidSpecies.replace(invalidSpecies.find("MoveAnyUnitToArea"), 17, "UnknownSpecies");
         badFit(invalidSpecies, "invalid_species");
@@ -176,13 +189,48 @@ int main()
         logs.clear();
         require(!MissionDocument::read(directory / "mission.fit", directory / "mission.pak", log) && logs.size() == 1 &&
             logs[0].find("recovery_required") != std::string::npos, "interrupted_publication_not_loaded");
+        const auto savedBytes = reopened->fitBytes();
+        require(history.setText(title, "pending save", "Name").has_value(), "pending_save_edit");
+        const auto pendingBytes = document.fitBytes();
+        const auto pendingRevision = document.revision();
+        const auto filesBefore = std::distance(std::filesystem::directory_iterator(directory), std::filesystem::directory_iterator{});
+        logs.clear();
+        auto pendingSave = document.save(directory / "mission", log);
+        require(!pendingSave && pendingSave.error().reason == "recovery_required" && logs.size() == 1 &&
+            document.modified() && document.fitBytes() == pendingBytes && document.revision() == pendingRevision &&
+            filesBefore == std::distance(std::filesystem::directory_iterator(directory), std::filesystem::directory_iterator{}),
+            "pending_save_retains_state_and_files");
         std::filesystem::rename(journal, directory / "interrupted-journal.retained");
+        auto stillSaved = MissionDocument::read(directory / "mission.fit", directory / "mission.pak", log);
+        require(stillSaved && stillSaved->fitBytes() == savedBytes && history.undo(), "pending_save_preserves_published_pair_and_history");
+        const auto activeJournal = directory / "reserved.transaction.active";
+        { std::ofstream reserved(activeJournal); reserved << "committed\nexclusive sentinel\n"; }
+        logs.clear();
+        const auto reservedFiles = std::distance(std::filesystem::directory_iterator(directory), std::filesystem::directory_iterator{});
+        auto collision = document.save(directory / "reserved", log);
+        std::ifstream sentinel(activeJournal);
+        const std::string sentinelBytes{std::istreambuf_iterator<char>(sentinel), {}};
+        require(!collision && collision.error().reason == "journal_write_failed" && logs.size() == 1 &&
+            sentinelBytes == "committed\nexclusive sentinel\n" &&
+            reservedFiles == std::distance(std::filesystem::directory_iterator(directory), std::filesystem::directory_iterator{}),
+            "exclusive_create_preserves_existing_journal_and_creates_no_stages");
+        for (const auto state : {"", "unknown\n"}) {
+            const auto brokenJournal = directory / "broken.transaction.retained";
+            { std::ofstream broken(brokenJournal, std::ios::trunc); broken << state; }
+            logs.clear();
+            auto refused = document.save(directory / "broken", log);
+            require(!refused && refused.error().reason == "recovery_required" && logs.size() == 1 &&
+                !std::filesystem::exists(directory / "broken.fit"), "malformed_journal_blocks_save");
+        }
         require(history.undo() && document.modified(), "undo_past_savepoint");
         std::filesystem::create_directory(directory / "blocked.pak");
         logs.clear();
         const auto retained = document.fitBytes();
         require(!document.save(directory / "blocked", log) && logs.size() == 1 && document.modified() && document.fitBytes() == retained &&
             !std::filesystem::exists(directory / "blocked.fit"), "failed_save_retains_document_and_savepoint");
+        require(bounded.replace(fixture, fixturePak(), "replacement", log).has_value() && document.fitBytes() == fixture &&
+            !document.modified() && !bounded.canUndo() && !bounded.canRedo() && bounded.bytesUsed() == 0 && bounded.evicted() == 0,
+            "successful_replacement_resets_history_and_savepoint");
         std::cout << "editor_document_tests: PASS (syntax, ownership, typed values, commands, malformed input)\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << "editor_document_tests: FAIL " << error.what() << '\n'; return 1; }
