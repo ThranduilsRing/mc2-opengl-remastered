@@ -25,6 +25,9 @@
 #include "vulkan_context.h"
 #include "vk_device_profile.h"
 #include "vk_validation_line.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_image_resource.h"
+#endif
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -32,6 +35,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
 
+#include <cassert>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -58,8 +62,13 @@ void profileLog(std::string_view line) {
     std::fflush(stderr);
 }
 
-// The single process-wide shared context.
-VulkanContext g_engineContext;
+// The single process-wide shared context. It is heap-allocated and never freed: a static-duration object would run destroy() (island teardown, light
+// feed) during static destruction, when the other process-wide owners it depends on may already be gone. The explicit destroy() at engine shutdown is the
+// only teardown; a process that exits any other way leaves the device to the driver, as the OS reclaims it.
+VulkanContext& engineContext() {
+    static VulkanContext* const context = new VulkanContext;
+    return *context;
+}
 
 // True while the debug-utils messenger is up (a validation run); object names are only attached then.
 bool g_debugNames = false;
@@ -431,10 +440,17 @@ bool VulkanContext::init(bool wantPresent) {
 void VulkanContext::retireIsland(IslandSlot slot) {
     std::unique_ptr<IslandState>& parked = islandSlot(slot);
     if (!parked) return;
-    if (device_ != VK_NULL_HANDLE) vkDeviceWaitIdle(device_);
+    waitIdle("retire_island");
     parked.reset();
 }
 #endif
+
+void VulkanContext::waitIdle(const char* why) const {
+    if (device_ == VK_NULL_HANDLE) return;
+    const VkResult r = vkDeviceWaitIdle(device_);
+    // A lost device ends the wait with an error; the release that follows is still safe, but the log must say the GPU did not drain.
+    if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %s: VkResult=%d.", why, static_cast<int>(r));
+}
 
 void VulkanContext::destroy() {
     g_debugNames = false;
@@ -442,6 +458,13 @@ void VulkanContext::destroy() {
     // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     lightFeed_.release();
+    // PRECONDITION: the owners that live outside the context (the shared scene colour / depth / normal images, the present path's shared image, the
+    // shadow island's images) were destroyed by the engine shutdown ahead of this call. A resource still alive here would release its image on a device
+    // that is gone, so the count is checked and a violation is logged where the validation layer would otherwise report it far from its cause.
+    if (const int live = vkImageResourceLiveCount(); live != 0) {
+        ctxlog("destroy() with %d image resource(s) still alive: shutdown order violated.", live);
+        assert(live == 0 && "image resources must be destroyed before the engine Vulkan context");
+    }
 #endif
     if (allocator_) { vmaDestroyAllocator(allocator_); allocator_ = nullptr; }
     if (device_ != VK_NULL_HANDLE) {
@@ -509,11 +532,11 @@ void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::str
 }
 
 VulkanContext& getOrCreateEngineVulkanContext() {
-    return g_engineContext;
+    return engineContext();
 }
 
 bool engineVulkanContextValid() {
-    return g_engineContext.valid();
+    return engineContext().valid();
 }
 
 // On-demand shared-context birth, DECOUPLED from present. The shared engine
@@ -530,8 +553,8 @@ bool engineVulkanContextValid() {
 //     a repeated caller never thrashes. Fail-soft: returns false, caller falls back to GL.
 // VK-RUNG8-ITEM3: renamed from ensureEngineVulkanContext (no interop family).
 bool ensureEngineVulkanContext() {
-    if (g_engineContext.valid()) return true;               // already born (=vulkan or prior lazy)
-    return g_engineContext.init(/*wantPresent=*/false);
+    if (engineContext().valid()) return true;               // already born (=vulkan or prior lazy)
+    return engineContext().init(/*wantPresent=*/false);
 }
 
 }  // namespace mc2vk

@@ -424,7 +424,7 @@ extern "C" int mc2_vk_vfx_island_run(
         auto fresh = std::make_unique<VfxIsland>();
         if (!init_island(fresh.get(), w, h)) {
             vlog("init failed (%s) — VFX declined this frame.", g_health.fallbackReason);
-            if (fresh->device) vkDeviceWaitIdle(fresh->device);   // objects made before the failure may have been submitted
+            slotCtx.waitIdle("vfx_init_failure");   // objects made before the failure may have been submitted
             return 0;
         }
         slot = std::move(fresh);

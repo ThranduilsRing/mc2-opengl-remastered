@@ -311,7 +311,7 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { setFallback("sampler_failed"); return false; }
     }
     {   // render pass: LOAD color0 + depth (depth is read-only in use; stored unchanged)
-        VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
+        VkImageResource* colorRes = s->colorRes;
         VkImageResource* depthRes = reinterpret_cast<VkImageResource*>(s->depthRes);
         VkAttachmentDescription att[2]{};
         att[0].format = colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -445,7 +445,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
         auto fresh = std::make_unique<Island>();
         if (!init_island(fresh.get(), w, h)) {
             const bool permanent = (g_initReachedBuild != 0);
-            if (fresh->device) vkDeviceWaitIdle(fresh->device);   // objects made before the failure may have been submitted
+            slotCtx.waitIdle("sky_init_failure");   // objects made before the failure may have been submitted
             if (permanent) { g_sessionDeclined = true; vlog("permanent init failure (%s) -- flat clear sky.", g_health.fallbackReason); }
             return 0;
         }
@@ -455,7 +455,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     if (s->disabled || !s->inited) return 0;
     if (!ensure_hdri(s, p.tex) || !s->hdriView) { setFallback("hdri_import_failed"); return 0; }
 
-    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
+    VkImageResource* colorRes = s->colorRes;
     VkFrameSync fsC{};
     { ZoneScopedN("VKIsl.Sky.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;

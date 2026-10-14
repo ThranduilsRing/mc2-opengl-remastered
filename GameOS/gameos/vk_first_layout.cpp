@@ -104,7 +104,7 @@ bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkIm
         // The GPU may still be executing the submit, and the fence and the pool are destroyed when this function returns: wait for the device first. A
         // hung device is turned into a lost one by the driver, which ends the wait.
         std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout fence did not signal in time; waiting for the device before releasing it (start=%d)\n", static_cast<int>(start));
-        vkDeviceWaitIdle(device);
+        ctx.waitIdle("first_layout_timeout");
     }
     if (!ok) std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout submit failed (start=%d)\n", static_cast<int>(start));
     return ok;
