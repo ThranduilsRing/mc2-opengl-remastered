@@ -186,12 +186,13 @@ class LogisticsMissionInfo
 				return ( index >= 0 && index < std::ssize( infos ) ) ? infos[static_cast<size_t>( index )] : nullptr;
 			}
 
-			// The record at an index the campaign state itself holds (currentMission); it is always a position of this group.
-			MissionInfo* mission( long index ) const
-			{
-				gosASSERT( at( index ) != nullptr );
-				return infos[static_cast<size_t>( index )];
-			}
+			// The record at an index the campaign state itself holds (currentMission). currentMission is -1 before a mission is chosen, so the index is
+			// not always a position of this group: an out-of-range index logs once and yields an all-default record, never a read outside `infos`.
+			MissionInfo* mission( long index ) const;
+
+			// What mission() hands back for an index outside the group; writes to it are discarded with the group.
+			mutable MissionInfo outOfRange;
+			mutable bool outOfRangeLogged = false;
 		};
 
 

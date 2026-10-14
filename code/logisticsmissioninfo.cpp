@@ -38,6 +38,19 @@ LogisticsMissionInfo::~LogisticsMissionInfo()
 	clear();
 }
 
+LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::MissionGroup::mission( long index ) const
+{
+	if ( MissionInfo* found = at( index ) )
+		return found;
+	if ( !outOfRangeLogged )
+	{
+		outOfRangeLogged = true;
+		MC2_LOG(Io, Warn, "campaign: mission index {} is not one of the {} missions of the group, an empty record is used", index, std::ssize( infos ));
+	}
+	outOfRange = MissionInfo();
+	return &outOfRange;
+}
+
 void LogisticsMissionInfo::clear()
 {
 	if ( groups )
