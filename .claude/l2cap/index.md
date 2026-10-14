@@ -5,7 +5,7 @@ A set listed here may no longer exist on disk: deleting a set directory never re
 VOID = the requested backend is not the one that drew it, or the set has no capture record: never cite the set as evidence for the requested backend. A VOID flag is sticky.
 unrecorded = the set predates that field. `[vs HEAD defaults]` = the exe's own option table could not be read, so the differences are against the defaults of the commit this index was written at.
 Add new sets with `py -3 tools/visual_verify/capture_index.py`.
-147 set(s), 23 VOID (counted from the ledger when this file was written).
+154 set(s), 23 VOID (counted from the ledger when this file was written).
 
 f21-after-vk **VOID** | vulkan | gl | gl_fbo | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 f21-after-vkarm | vulkan | vulkan | vk_present | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12
@@ -108,6 +108,13 @@ t1-default-a-gl | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 2/2 | 20
 t1-default-b-gl | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 2/2 | 2026-10-13
 t1-oldexe-pbr0-gl | gl | gl | gl_fbo | 98fc6705ba79 | StaticPropPbr=false | frozen | 2/2 | 2026-10-13
 t1-pbr1-gl | gl | gl | gl_fbo | e9e3f19d6f6e | StaticPropPbr=true | frozen | 2/2 | 2026-10-13
+vfxown-after-vk | vulkan | vulkan | vk_present | 9bd8dd644bd6 | defaults | frozen | 2/2 | 2026-10-13 | note: VFX ownership slice, AFTER (HEAD fd000f067 code, exe 6e66a8bfe911): VK umbrella, day + night; night 0 px vs vfxown-before-vk, day 46 px (VK noise floor 77 px, vfxown-before2-vk)
+vfxown-after1-gl | gl | gl | gl_fbo | 9bd8dd644bd6 | defaults | frozen | 1/2 | 2026-10-13 | note: UNUSABLE: the mc2_01 pose lost its whole budget waiting for another lane's host lease; delete
+vfxown-after2-gl | gl | gl | gl_fbo | 9bd8dd644bd6 | defaults | frozen | 2/2 | 2026-10-13
+vfxown-before-vk | vulkan | vulkan | vk_present | 9bd8dd644bd6+dirty | defaults | frozen | 2/2 | 2026-10-13 | note: VFX ownership slice, BEFORE: the pre-conversion vfx island rebuilt as a scratch exe (mc2_before.exe, dirty), VK umbrella, day + night
+vfxown-before1-gl | gl | gl | gl_fbo | 9bd8dd644bd6+dirty | defaults | frozen | 2/2 | 2026-10-13
+vfxown-before2-gl | gl | gl | gl_fbo | 9bd8dd644bd6+dirty | defaults | frozen | 2/2 | 2026-10-13
+vfxown-before2-vk | vulkan | vulkan | vk_present | 9bd8dd644bd6+dirty | defaults | frozen | 1/1 | 2026-10-13 | note: VK noise set: a second capture of the BEFORE exe, mc2_01 only
 w1-after-vk **VOID** | vulkan | gl | gl_fbo | a7ddae10b9dc+dirty | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 w1-after-vkarm | vulkan | vulkan | vk_present | a7ddae10b9dc+dirty | unrecorded | frozen | 2/2 | 2026-10-12
 w1-after1-gl | gl | gl | gl_fbo | a7ddae10b9dc+dirty | unrecorded | frozen | 2/2 | 2026-10-12
