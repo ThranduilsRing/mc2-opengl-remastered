@@ -61,6 +61,7 @@ LEDGER = os.path.join(ROOT, "scripts", "tools_tests.known-failures")
 # would only double the cost.
 EXCLUDE = {
     "tools/cxx17_ratchet/test_cxx17_ratchet.py",  # row cxx17_ratchet_selftest
+    "tools/vfx_oracle/test_compare_combat_traces.py",  # collected by test_vfx_parity_oracle
     # Assembles release zips and launches a game smoke: needs artifacts + a
     # user-present session, never part of an offline contracts row.
     "scripts/test_release_zip_install.py",

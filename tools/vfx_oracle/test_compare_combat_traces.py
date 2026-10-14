@@ -1,11 +1,14 @@
 import copy
 import json
+import struct
+from pathlib import Path
 
 import pytest
 
 from tools.vfx_oracle.compare_combat_traces import (
     InvalidTrace, compare, main, read_trace,
 )
+from tools.vfx_oracle.compare_frozen_snapshots import main as compare_snapshots, records
 
 
 def fixture():
@@ -193,3 +196,40 @@ def test_exact_payload_cli_rejects_metadata_drift(monkeypatch):
     assert main(["a", "b"]) == 0
     assert main(["a", "a", "--exact-payload"]) == 0
     assert main(["a", "b", "--exact-payload"]) == 1
+
+
+@pytest.mark.parametrize("data,message", [
+    (b"", "empty snapshot"),
+    (b"short", "truncated record length"),
+    (struct.pack("<Q", 0), "empty or truncated record"),
+    (struct.pack("<Q", 2) + b"x", "empty or truncated record"),
+    (struct.pack("<Q", 1) + b"x" + b"short", "truncated record length"),
+])
+def test_frozen_snapshot_rejects_malformed_records(data, message):
+    with pytest.raises(ValueError, match=message):
+        records(data)
+
+
+def test_frozen_snapshot_cli_is_byte_exact(monkeypatch, capsys):
+    record = lambda payload: struct.pack("<Q", len(payload)) + payload
+    a = record(b"abc") + record(b"xyz")
+    payloads = {"a": a, "changed": record(b"abd") + record(b"xyz"),
+                "longer": a + record(b"x"), "invalid": b"bad"}
+    monkeypatch.setattr(Path, "read_bytes", lambda path: payloads[str(path)])
+    assert records(a) == 2
+    assert compare_snapshots(["a", "a"]) == 0
+    assert "identical: records=2" in capsys.readouterr().out
+    assert compare_snapshots(["a", "changed"]) == 1
+    assert "first byte=10" in capsys.readouterr().out
+    assert compare_snapshots(["a", "longer"]) == 1
+    assert "first byte=22" in capsys.readouterr().out
+    assert compare_snapshots(["a", "invalid"]) == 2
+    assert "invalid snapshot:" in capsys.readouterr().out
+
+
+def test_frozen_snapshot_cli_reports_unreadable_input(monkeypatch, capsys):
+    def unreadable(path):
+        raise OSError("unreadable snapshot")
+    monkeypatch.setattr(Path, "read_bytes", unreadable)
+    assert compare_snapshots(["missing", "other"]) == 2
+    assert "unreadable snapshot" in capsys.readouterr().out

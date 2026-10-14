@@ -8,6 +8,25 @@ from PIL import Image
 from vfx_oracle.evidence import extract
 import pytest
 import vfx_parity_oracle as oracle
+from tools.vfx_oracle.test_compare_combat_traces import (
+    test_capture_end_is_not_accepted_as_shifted_retirement,
+    test_cli_exit_codes_without_temp_files,
+    test_deadline_event_does_not_shift_observed_order,
+    test_earlier_damage_cannot_be_hidden_by_later_retirement_change,
+    test_earlier_extra_retirement_precedes_the_other_runs_later_damage,
+    test_empty_combat_is_not_a_pass,
+    test_equal_ignores_session_wall_clock_and_deadline_metadata,
+    test_exact_payload_cli_rejects_metadata_drift,
+    test_exact_payload_keeps_metadata_and_still_requires_coverage,
+    test_exact_payload_keeps_sequence_and_deadline_events,
+    test_frozen_snapshot_cli_is_byte_exact,
+    test_frozen_snapshot_cli_reports_unreadable_input,
+    test_frozen_snapshot_rejects_malformed_records,
+    test_invalid_traces_fail_closed,
+    test_negative_controls,
+    test_pool_generations_are_distinct,
+    test_truncated_or_post_retirement_events_rejected,
+)
 
 from vfx_parity_oracle import (acceptance, changed_pixels, compare, digest, montage,
                               region, source_paths, summarize)
