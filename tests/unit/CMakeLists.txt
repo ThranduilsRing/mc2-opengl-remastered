@@ -89,7 +89,7 @@ add_executable(mc2_tests
     test_estring.cpp        # EString::Format sizing (ll/z/j specs) via the CRT parser; step 4 B1 characterization of the class (H1-H14)
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
     test_elist_contract.cpp     # step 4 B2.0: EList characterization (HE1-HE12), the properties std::vector/deque replace
-    test_sortlist_contract.cpp  # step 4 B2.0: SortList characterization (HS1-HS6) + the CRT qsort tie table (golden/sortlist_ties.h)
+    test_score_sort_ties.cpp    # step 4 B2.4: the CRT qsort tie table recorded from the old SortList (golden/sortlist_ties.h) against the new rule
     test_score_sort.cpp         # step 4 B2.4: mc2::sort_scored, the ordering rule that replaces SortList (SS1-SS7)
     test_pqueue_contract.cpp    # step 4 B2.0: PriorityQueue characterization (HP1-HP7) + 2000 golden scripts (golden/pqueue_golden.h)
     test_gui_bridge.cpp     # widget text bridge: setText / setEntry overload resolution (compile-time, step 4 B1)
@@ -157,7 +157,6 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/estring.cpp                 # EString under test
     ${MC2_WORKTREE_ROOT}/code/objective_text.cpp           # objective string reader/writer (leaf: FitIniFile + log facade)
     ${MC2_WORKTREE_ROOT}/code/objective_flags.cpp          # objective boolean flag table (leaf)
-    ${MC2_WORKTREE_ROOT}/mclib/sortlist.cpp                # SortList under test (B2.0; removed with the class in B2.4)
     ${MC2_WORKTREE_ROOT}/mclib/pqueue.cpp                  # PriorityQueue under test (B2.0; replaced by the per-solver open list in B2.5)
     ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
 

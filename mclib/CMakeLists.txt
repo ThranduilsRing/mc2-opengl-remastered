@@ -25,7 +25,6 @@ set(SOURCES ${SOURCES}
     sim_trace.cpp
     alloc_probe.cpp
     scale.cpp
-    sortlist.cpp
     tgainfo.cpp
     tgl.cpp
     tgl_parse.cpp

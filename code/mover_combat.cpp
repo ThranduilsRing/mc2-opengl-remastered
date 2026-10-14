@@ -3,6 +3,11 @@
 #include "mover_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "score_sort.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include <algorithm>
+#include <cstdint>
+#include <span>
 
 
 long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool queuePlayerOrder) {
@@ -920,6 +925,7 @@ long Mover::calcFireRanges (void) {
 	}
 
 	float rangeTotals[NUM_WEAPON_RANGE_TYPES] = {0, 0, 0, 0, 0};
+	mc2::Scored ranked[NUM_WEAPON_RANGE_TYPES];
 	for (int curWeapon = numOther; curWeapon < (numOther + numWeapons); curWeapon++) {
 		MasterComponent* weapon = &MasterComponent::masterList[inventory[curWeapon].masterID];
 		if (!inventory[curWeapon].disabled && (getWeaponShots(curWeapon) > 0)) {
@@ -935,25 +941,24 @@ long Mover::calcFireRanges (void) {
 		return(optimalRange != lastOptimalRange);
 		}
 	else {
-		sortList->clear();
 		for (long i = 0; i < NUM_WEAPON_RANGE_TYPES; i++) {
-			sortList->setId(i, i);
-			sortList->setValue(i, rangeTotals[i]);
+			ranked[i].id = static_cast<std::int32_t>(i);
+			ranked[i].score = rangeTotals[i];
 		}
-		sortList->sort();
-		if (sortList->getValue(0) <= 0.0) {
+		mc2::sort_scored(ranked, mc2::SortOrder::Descending);
+		if (ranked[0].score <= 0.0) {
 			optimalRange = 0.0;
 			return(optimalRange != lastOptimalRange);
 		}
 	}
 
-	long optimalRangeType = sortList->getId(0);
-	if (sortList->getValue(0) == sortList->getValue(1)) {
-		// A tie, so pick one based upon the pre-set range priorities...
+	long optimalRangeType = ranked[0].id;
+	if (ranked[0].score == ranked[1].score) {
+		// A tie, so pick one based upon the pre-set range priorities. The tie set is read whole, so the order inside it does not matter.
 		unsigned char tieFlags = 0;
 		for (long i = 0; i < 5; i++)
-			if (sortList->getValue(i) == sortList->getValue(0))
-				tieFlags |= (1 << sortList->getId(i));
+			if (ranked[i].score == ranked[0].score)
+				tieFlags |= (1 << ranked[i].id);
 
 		optimalRangeType = OptimalRangeTieTable[tieFlags];
 		if (optimalRangeType == 255) {
@@ -1171,28 +1176,33 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 	long aimLocation = -1;
 	if (pilot && pilot->getCurTacOrder()->isCombatOrder())
 		aimLocation = pilot->getCurTacOrder()->attackParams.aimLocation;
-	// BIG ASSUMPTION HERE: That a mech will not have more than 100 weapons.
-	sortList->clear();
+	// Highest value first; weapons of equal value keep the order they were listed in (mc2::sort_scored). A mover carries at most MAX_WEAPONS_PER_MOVER weapons,
+	// and the caller's lists hold no more than that; a larger count is cut to it.
+	mc2::Scored scored[MAX_WEAPONS_PER_MOVER];
+	const long requested = (listSize == -1) ? static_cast<long>(numWeapons) : listSize;
+	const long count = std::clamp<long>(requested, 0, MAX_WEAPONS_PER_MOVER);
+	if (count < requested)
+		MC2_LOG_ONCE(Sim, Warn, "sortWeapons: {} weapons requested, only the first {} are sorted", requested, MAX_WEAPONS_PER_MOVER);
 	if (listSize == -1) {
-		for (long item = numOther; item < (numOther + numWeapons); item++) {
-			sortList->setId(item - numOther, item);
+		for (long item = numOther; item < (numOther + count); item++) {
+			scored[item - numOther].id = static_cast<std::int32_t>(item);
 			switch (sortType) {
 				case WEAPONSORT_ATTACKCHANCE:
-					sortList->setValue(item - numOther, calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, nullptr));
+					scored[item - numOther].score = calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, nullptr);
 					break;
 				default:
 					return(-3);
 			}
 		}
-		sortList->sort();
-		for (int item = 0; item < numWeapons; item++) {
-			weaponList[item] = sortList->getId(item);
-			valueList[item] = sortList->getValue(item);
+		mc2::sort_scored(std::span<mc2::Scored>(scored, count), mc2::SortOrder::Descending);
+		for (int item = 0; item < count; item++) {
+			weaponList[item] = scored[item].id;
+			valueList[item] = static_cast<long>(scored[item].score);
 		}
 		}
 	else {
-		for (long item = 0; item < listSize; item++) {
-			sortList->setId(item, weaponList[item]);
+		for (long item = 0; item < count; item++) {
+			scored[item].id = weaponList[item];
 			float sortValue = 0.0;
 			if (weaponList[item] == -1)
 				sortValue = -999.0;
@@ -1204,12 +1214,12 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 					default:
 						return(-3);
 				}
-			sortList->setValue(item, sortValue);
+			scored[item].score = sortValue;
 		}
-		sortList->sort();
-		for (int item = 0; item < listSize; item++) {
-			weaponList[item] = sortList->getId(item);
-			valueList[item] = sortList->getValue(item);
+		mc2::sort_scored(std::span<mc2::Scored>(scored, count), mc2::SortOrder::Descending);
+		for (int item = 0; item < count; item++) {
+			weaponList[item] = scored[item].id;
+			valueList[item] = static_cast<long>(scored[item].score);
 		}
 	}
 

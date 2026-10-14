@@ -3,7 +3,9 @@
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "score_sort.h"
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
 #include <span>
 
@@ -11,27 +13,24 @@
 
 long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {
 
-	// The shared sort list holds MAX_CONTACTS_PER_SENSOR slots and its qsort length decides the order of equal keys, so it keeps that size (B2.4 replaces it). A
-	// walk that finds more movers than that sorts the first MAX_CONTACTS_PER_SENSOR in scan order and appends the rest unsorted, as getContacts does.
-	long handleList[MAX_MOVERS];
-	if (!Team::sortList) {
-		Team::sortList = new SortList;
-		if (!Team::sortList)
-			Fatal(0, " Unable to create Team Contact sortList ");
-		Team::sortList->init(MAX_CONTACTS_PER_SENSOR);
-	}
-	Team::sortList->clear(sortDescending);
+	// Candidates in scan order, keyed by threat rating. The list is sorted in full; equal ratings keep scan order (mc2::sort_scored), so the first mover
+	// of an equal group is the first one the walk found.
+	mc2::Scored candidates[MAX_MOVERS];
 
 	TeamPtr team = nullptr;
 	if (teamID > -1)
 		team = Team::teams[teamID];
 
 	long numValidMovers = 0;
-	// Records one mover: its handle for the unsorted tail, and its handle and threat rating in the sort list slot of the same index.
+	// Records one mover: its threat rating and its handle. A walk never finds more movers than the object manager holds; the check keeps a corrupt count from
+	// writing past the list.
 	auto addMover = [&](MoverPtr mover) {
-		handleList[numValidMovers] = mover->getHandle();
-		Team::sortList->setId(numValidMovers, mover->getHandle());
-		Team::sortList->setValue(numValidMovers, mover->getThreatRating());
+		if (numValidMovers >= MAX_MOVERS) {
+			MC2_LOG_ONCE(Sim, Warn, "getMoversWithinRadius: more than {} movers found, the rest are ignored", MAX_MOVERS);
+			return;
+		}
+		candidates[numValidMovers].score = mover->getThreatRating();
+		candidates[numValidMovers].id = static_cast<std::int32_t>(mover->getHandle());
 		numValidMovers++;
 	};
 	if (getEnemies) {
@@ -74,14 +73,9 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 	}
 
 	if (numValidMovers > 0) {
-		const long sortCount = (numValidMovers < MAX_CONTACTS_PER_SENSOR) ? numValidMovers : MAX_CONTACTS_PER_SENSOR;
-		if (sortCount < numValidMovers)
-			MC2_LOG_ONCE(Sim, Warn, "getMoversWithinRadius: {} movers exceed the {} sortable, the rest are returned unsorted", numValidMovers, MAX_CONTACTS_PER_SENSOR);
-		Team::sortList->sort(sortDescending);
-		for (long i = 0; i < sortCount; i++)
-			moverList[i] = (MoverPtr)ObjectManager->get(Team::sortList->getId(i));
-		for (long i = sortCount; i < numValidMovers; i++)
-			moverList[i] = static_cast<MoverPtr>(ObjectManager->get(handleList[i]));
+		mc2::sort_scored(std::span<mc2::Scored>(candidates, numValidMovers), sortDescending ? mc2::SortOrder::Descending : mc2::SortOrder::Ascending);
+		for (long i = 0; i < numValidMovers; i++)
+			moverList[i] = (MoverPtr)ObjectManager->get(candidates[i].id);
 	}
 	return(numValidMovers);
 }

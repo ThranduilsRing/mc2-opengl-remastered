@@ -79,7 +79,6 @@ class Team {
 		static long			numTeams;
 		static TeamPtr		home;
 		static TeamPtr		teams[MAX_TEAMS];
-		static SortListPtr	sortList;
 		static char			relations[MAX_TEAMS][MAX_TEAMS];
 		static bool			noPain[MAX_TEAMS];
 

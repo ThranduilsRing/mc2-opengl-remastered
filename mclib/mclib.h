@@ -55,10 +55,6 @@
 #include"scale.h"
 #endif
 
-#ifndef SORTLIST_H
-#include"sortlist.h"
-#endif
-
 #ifndef TGAINFO_H
 #include"tgainfo.h"
 #endif
