@@ -68,12 +68,9 @@ set(SOURCES ${SOURCES}
     cellip.cpp
     cevfx.cpp
     cevfx_polys.cpp
-    vfx_ellipse.cpp
     vfx_transform.cpp
     vfx_translatedraw.cpp
     vfxtile.cpp
-    vfxtile_line.cpp
-    vfxtile_pixel.cpp
     abl_script_events.cpp
     abldbug.cpp
     abldbug_print.cpp

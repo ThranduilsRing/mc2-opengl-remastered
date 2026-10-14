@@ -322,8 +322,6 @@ extern BYTE * VFX_driver_name(void *VFXScanDLL);
 
 extern LONG  VFX_register_driver(void *DLLbase);
 
-extern LONG  VFX_line_draw (PANE *pane, LONG x0, LONG y0, 
-                                 LONG x1, LONG y1, LONG mode, void* parm);
 
 extern long  VFX_shape_draw (PANE *pane, void *shape_table,
                                   LONG shape_number, LONG hotX, LONG hotY);
@@ -366,8 +364,6 @@ extern LONG  VFX_shape_count(void *shape_table);
 extern LONG  VFX_shape_list(void *shape_table, ULONG *index_list);
 extern LONG  VFX_shape_palette_list(void *shape_table, ULONG *index_list);
 
-extern LONG  VFX_pixel_write (PANE *pane, LONG x, LONG y, ULONG color);
-extern LONG  VFX_pixel_read  (PANE *pane, LONG x, LONG y);
 
 extern LONG  VFX_rectangle_hash (PANE *pane, LONG x0, LONG y0,
                                       LONG x1, LONG y1, ULONG color);
