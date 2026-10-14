@@ -6,33 +6,6 @@
 #include <algorithm>
 #include <span>
 
-std::span<float> ABLi_popRealBuf(void);
-
-namespace abl {
-
-long clampArrayCount(long count, size_t capacity, std::string_view event) {
-	if (count <= 0) return 0;
-	const auto written = std::min(static_cast<size_t>(count), capacity);
-	if (written < static_cast<size_t>(count))
-		reportTruncated(event, capacity, static_cast<size_t>(count) - written);
-	return static_cast<long>(written);
-}
-
-long copyIntArray(std::span<int> dest, std::span<const int> src, std::string_view event) {
-	const auto written = clampArrayCount(static_cast<long>(src.size()), dest.size(), event);
-	if (written) std::copy_n(src.begin(), written, dest.begin());
-	return written;
-}
-
-long copyRealArray(std::span<float> dest, std::span<const float> src, std::string_view event) {
-	const auto written = clampArrayCount(static_cast<long>(src.size()), dest.size(), event);
-	if (written) std::copy_n(src.begin(), written, dest.begin());
-	return written;
-}
-
-}
-
-
 void execGetRelativePositionToPoint (void) {
 
 	//	Get Relative Position To Point function:

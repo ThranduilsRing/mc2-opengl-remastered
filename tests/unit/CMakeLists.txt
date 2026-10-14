@@ -242,16 +242,8 @@ add_executable(test_render_contract_3
     test_render_contract_3.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
-    # DARK-TESTS-RUN-1: render_contract.cpp forwards two PUBLIC apply-state
-    # counters onto *_impl symbols defined one layer up in
-    # GameOS/gameos/gos_postprocess.cpp -- a ~7k-line TU with the whole
-    # renderer behind it. Any STANDALONE link of render_contract.cpp therefore
-    # died on LNK2019 x2. This target had carried that break for as long as
-    # nobody built it; gos_counter_stubs.cpp's own header NOTE predicted it
-    # ("currently green by omission ... building it will need this same stub")
-    # and this lane confirmed it by actually running the link. Same stub TU the
-    # render_state_contract_harness already uses -- no new stub, no fake.
-    ${MC2_WORKTREE_ROOT}/tools/render_state_contract_harness/gos_counter_stubs.cpp
+    # Both test targets use zero apply-state counters because neither links the renderer.
+    gos_counter_stubs.cpp
 )
 
 target_include_directories(test_render_contract_3 PRIVATE
@@ -323,7 +315,7 @@ target_sources(mc2_tests PRIVATE
     test_class_light_band_harness.cpp
     test_glstate_guard_harness.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
-    ${MC2_WORKTREE_ROOT}/tools/render_state_contract_harness/gos_counter_stubs.cpp
+    gos_counter_stubs.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
 )
@@ -334,20 +326,34 @@ target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
 )
 find_package(Threads REQUIRED)
+list(PREPEND CMAKE_PREFIX_PATH "${MC2_WORKTREE_ROOT}/3rdparty" "${MC2_WORKTREE_ROOT}/3rdparty/cmake")
+if(WIN32)
+    list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
+endif()
+find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
+find_package(GLEW REQUIRED)
+find_package(OpenGL REQUIRED)
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/SDL2.lib
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
-    opengl32
+    SDL2::SDL2
+    GLEW::GLEW
+    OpenGL::GL
 )
-foreach(_contract_dll SDL2.dll glew32.dll)
+if(WIN32)
+    # GLEW's imported location is its import library; runtime DLLs are beside SDL2, like the root build.
     add_custom_command(TARGET mc2_tests POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/${_contract_dll}"
-            "$<TARGET_FILE_DIR:mc2_tests>/${_contract_dll}"
-        COMMENT "Copy ${_contract_dll} for hidden GL guard tests"
+            "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:SDL2::SDL2>/glew32.dll"
+            "$<TARGET_FILE_DIR:mc2_tests>"
+        COMMENT "Copy runtime libraries for hidden GL guard tests"
+        VERBATIM
     )
-endforeach()
-target_sources(mc2_tests PRIVATE test_save_archive.cpp ${MC2_WORKTREE_ROOT}/code/save_archive.cpp)
-target_sources(mc2_tests PRIVATE test_abl_outarrays.cpp)
+endif()
+
+# Save schema and ABL output bounds exercise their shared production helpers.
+target_sources(mc2_tests PRIVATE
+    test_save_archive.cpp
+    ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
+    test_abl_outarrays.cpp
+)
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)

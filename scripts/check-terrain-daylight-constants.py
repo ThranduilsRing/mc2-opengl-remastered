@@ -3,8 +3,7 @@
 
 GameOS/gameos/utils/terrain_daylight.h duplicates camera.cpp's NIGHT_LIGHT_PITCH
 and NIGHT_START_PITCH as constexpr floats. The duplication is deliberate (the
-header must stay engine-free so tools/terrain_daylight_harness can be a
-standalone build), but a silent duplicate is a drift bug waiting to happen: if
+header must stay engine-free for tests/unit/test_terrain_daylight_harness.cpp), but a silent duplicate is a drift bug waiting to happen: if
 someone retunes the engine's night band, the terrain ambient floor's daylight
 gate keeps using the old one and a night mission quietly starts taking a
 brightening term.

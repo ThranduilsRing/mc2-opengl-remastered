@@ -6,16 +6,6 @@
 #include <iterator>
 #include <span>
 
-std::span<int> ABLi_popIntBuf(void);
-std::span<float> ABLi_popRealBuf(void);
-namespace abl {
-long clampArrayCount(long, size_t, std::string_view);
-long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
-long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
-}
-
-
-
 // Target-plan helpers used by the strike and help-request bindings below.
 
 long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {

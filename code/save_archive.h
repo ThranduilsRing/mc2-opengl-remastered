@@ -1,3 +1,5 @@
+// Save schema codec; design: .claude/cleanup/cxx23-step4-save-schema-design.md.
+// Not wired yet; explicit fields keep saves independent of runtime ownership and layout.
 #pragma once
 
 #include <array>

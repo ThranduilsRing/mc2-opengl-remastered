@@ -5,7 +5,7 @@ WHY
 ---
 The typed gate registry (Gates/gate.h) needs class-type template parameters and consteval.
 The in-tree projects inherit MC2_CXX_STANDARD from the root; the standalone ones (tests/unit,
-tools/*_harness, tools/tg_import_dump, ...) own a project() and used to pin C++17. The day an
+tools/mech_import_harness, tools/tg_import_dump, ...) own a project() and used to pin C++17. The day an
 engine file they compile reads a gate they stop building, far from the commit that caused it.
 
 RULE

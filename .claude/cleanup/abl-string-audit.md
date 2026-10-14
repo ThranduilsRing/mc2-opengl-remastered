@@ -52,6 +52,21 @@ state or on a script argument: `getContacts`, `getWeaponsReady/Locked/InRange` a
 the builtin clamps its count to `span.size()` and logs `event=<name>_truncated`); it was not done because every site needs its own count rule and a stock-script
 check of the declared sizes. Queue it as its own slice; the census row for each builtin turns `open` into `bounded` when it lands.
 
+### F out-array review follow-up (2026-10-13)
+
+The F writer slice at 38680d0a7 bounds all 16 formerly open writer sites; the earlier open-class paragraph records the pre-slice state.
+The remaining unbounded READ-only real arrays are `ablmc2_camera.cpp` setCameraPosition, setCameraGoalPosition, setCameraRotation,
+setCameraGoalRotation, setCameraVelocity, setCameraGoalVelocity, requestHelp (two centers), and requestTarget;
+`ablmc2_objects.cpp` distanceToPosition; `ablmc2_state.cpp` inArea, createInfantry, and setRevealed;
+and `ablmc2_orders.cpp` orderMoveTo and coreMoveTo.
+These still use `ABLi_popRealPtr` with the optional argument guard; they are the next read-bounds slice, not safe output spans.
+
+The R4 array-return census includes loose `.abl/.abi/.abx` files and packed FST entries. Stock: 1,018 sources / 3,080 function declarations;
+CVE-G: 1,056 / 3,159; REAP3: 316 / 1,027; Exodus: 2,070 / 5,759; MagicExpansion: 1,825 / 5,299; Omnitech: 611 / 1,341;
+Carver5: 820 / 2,221. Each corpus except Carver5 has two array-return declarations: `orders.abi:1224` MyPosition and `:1276` CurrentPosition,
+returning the `position` alias (`real[3]`). The parser accepts these declarations; `execStdReturn` retains its bounded, zero-filled StackItem copy
+and `return_truncated` diagnostic. This preserves accepted syntax, while the scalar return slot remains a legacy limitation.
+
 ## 2. Runtime audit: `concat_truncated` / `getmodule_truncated` lines at HEAD 180f6f4f9
 
 tier2, exe 180f6f4f9968 (`run_smoke.py --tier tier2 --mission X --deploy 0.4 --keep-logs`), logs in `tests/smoke/artifacts/`:

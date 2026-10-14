@@ -229,3 +229,5 @@ Shared owner ruling: ABL camera getters return the last scripted camera value, r
 
 Read-only inspection covered the handoff rules/newest 20 log entries, canonical CLAUDE.md, all requested inputs, saved Data declarations and runtime gaps in this worktree only. No engine/editor launch, build, index operation or source edit was performed.
 Earlier design-task attempts at `py -3 -B tools/save_inspect.py selftest` and `py -3 -B tools/saveload_roundtrip.py selftest` failed with Temp PermissionError; those historical results are not this revision's proofs. This docs-only revision runs document line/reference/contract checks; engine proofs above remain proposed, not run.
+
+Archive staging uses a unique process/time/attempt suffix with exclusive creation, so crash leftovers cannot block saves; the POSIX directory flush is deferred for the Windows-only game.

@@ -9,6 +9,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<cassert>
+#include "abl_script_events.h"
 #include"platform_str.h"
 #include<math.h>
 #include<time.h>

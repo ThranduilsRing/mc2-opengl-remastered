@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <iterator>
 #include <string>
 #include <vector>
 #include "RenderCore/IblShCoeffs.h"
@@ -1421,7 +1422,13 @@ TEST_CASE("class_light_band_harness/mission_sh_map_is_functionally_but_not_liter
     for (int i = 0; i < kNumMissions; ++i) {
         const RenderCore::IblShSet& s = RenderCore::lookupShSet(kMissions[i].name);
         CHECK((std::string(s.name) == "default"));
-        CHECK((s.coeffs == &RenderCore::kIblShCoeffs[0]));
+        // Header constexpr arrays have per-TU identity; the fallback contract is their coefficient values.
+        REQUIRE(s.coeffs != nullptr);
+        for (std::size_t band = 0; band < std::size(RenderCore::kIblShCoeffs); ++band) {
+            for (std::size_t channel = 0; channel < std::size(RenderCore::kIblShCoeffs[band]); ++channel) {
+                CHECK(s.coeffs[band][channel] == RenderCore::kIblShCoeffs[band][channel]);
+            }
+        }
     }
     return;
 }

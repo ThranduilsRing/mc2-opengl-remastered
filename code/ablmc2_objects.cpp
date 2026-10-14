@@ -7,16 +7,6 @@
 #include <iterator>
 #include <span>
 
-std::span<int> ABLi_popIntBuf(void);
-std::span<float> ABLi_popRealBuf(void);
-namespace abl {
-long clampArrayCount(long, size_t, std::string_view);
-long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
-long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
-}
-
-
-
 void execDamageObject (void) {
 
 	//	DAMAGE OBJECT function:

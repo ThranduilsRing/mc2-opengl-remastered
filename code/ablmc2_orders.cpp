@@ -6,16 +6,6 @@
 #include <iterator>
 #include <span>
 
-std::span<int> ABLi_popIntBuf(void);
-std::span<float> ABLi_popRealBuf(void);
-namespace abl {
-long clampArrayCount(long, size_t, std::string_view);
-long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
-long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
-}
-
-
-
 void execGetObjects (void) {
 
 	//	GET OBJECTS function:
@@ -27,9 +17,9 @@ void execGetObjects (void) {
 	long criteria = ABLi_popInteger();
 	const auto output = ABLi_popIntBuf();
 
-	long numObjects = 0;
+	size_t numObjects = 0;
 	const auto append = [&](int id) {
-		if (static_cast<size_t>(numObjects) < output.size()) output[numObjects] = id;
+		if (numObjects < output.size()) output[numObjects] = id;
 		++numObjects;
 	};
 	if (!ObjectManager) { ABLi_pushInteger(0); return; }
@@ -122,7 +112,7 @@ void execGetObjects (void) {
 			break;
 	}
 	
-	ABLi_pushInteger(abl::clampArrayCount(numObjects, output.size(), "getobjects_truncated"));
+	ABLi_pushInteger(abl::clampArrayCount(static_cast<long>(numObjects), output.size(), "getobjects_truncated"));
 }
 
 void execOrderWait (void) {

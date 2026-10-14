@@ -7,16 +7,6 @@
 #include <span>
 #include <vector>
 
-std::span<int> ABLi_popIntBuf(void);
-std::span<float> ABLi_popRealBuf(void);
-namespace abl {
-long clampArrayCount(long, size_t, std::string_view);
-long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
-long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
-}
-
-
-
 void execGetId (void) {
 
 	//	GET ID function:
@@ -249,6 +239,11 @@ void execGetContactStatus (void) {
 
 	int* contactTagged = ABLi_popIntegerPtr();
 
+	if (!contactTagged) {
+		abl::reportBadArgument("getcontactstatus", "contactTagged");
+		ABLi_pushInteger(0);
+		return;
+	}
 	*contactTagged = 0;
 
 	long status = 0;
@@ -268,12 +263,14 @@ void execGetContactRelativePosition (void) {
 	float* range = ABLi_popRealPtr();
 	float* angle = ABLi_popRealPtr();
 
-	if (s_ablArgGuard && !range) {
-		abl_arg_guard_log("execGetContactRelativePosition", "range");
+	if (!range) {
+		abl::reportBadArgument("getcontactrelativeposition", "range");
+		ABLi_pushInteger(1);
 		return;
 	}
-	if (s_ablArgGuard && !angle) {
-		abl_arg_guard_log("execGetContactRelativePosition", "angle");
+	if (!angle) {
+		abl::reportBadArgument("getcontactrelativeposition", "angle");
+		ABLi_pushInteger(1);
 		return;
 	}
 

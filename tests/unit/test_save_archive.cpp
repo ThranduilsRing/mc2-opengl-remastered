@@ -309,6 +309,7 @@ TEST_CASE("section corruption is rejected even with a recomputed outer hash") {
 TEST_CASE("schema text limits and allocation budget reject before publishing") {
     auto part = samplePart();
     part.profileName.bytes = "123456789";
+    part.profileName.limit = maxTextBytes;
     std::vector<std::string> logs;
     Archive writer([&](std::string_view line) { logs.emplace_back(line); });
     writer(part);
@@ -321,6 +322,27 @@ TEST_CASE("schema text limits and allocation budget reject before publishing") {
     CHECK_FALSE(budget.allocate(std::numeric_limits<std::size_t>::max(), 2));
     REQUIRE(logs.size() == 1);
     CHECK(logs[0] == "[SAVE v1] reject reason=decoded_budget");
+}
+
+TEST_CASE("Part rejects an over-long profile name from the wire before publishing") {
+    auto part = samplePart();
+    part.profileName.bytes = "12345678";
+    Archive writer;
+    writer(part);
+    REQUIRE(writer.good());
+    Bytes wire = writer.bytes();
+    const Bytes name{2, 8, 0, 0, 0, '1', '2', '3', '4', '5', '6', '7', '8'};
+    const auto found = std::search(wire.begin(), wire.end(), name.begin(), name.end());
+    REQUIRE(found != wire.end());
+    const auto offset = static_cast<std::size_t>(found - wire.begin());
+    wire[offset + 1] = 9;
+    wire.insert(wire.begin() + offset + name.size(), '9');
+    const auto previous = part;
+    std::vector<std::string> logs;
+    CHECK_FALSE(decodeRecord(wire, part, [&](std::string_view line) { logs.emplace_back(line); }));
+    CHECK(part == previous);
+    REQUIRE(logs.size() == 1);
+    CHECK(logs[0] == "[SAVE v1] reject reason=text_length");
 }
 
 TEST_CASE("Part varied values and maximum sequence retain float bits and order") {
@@ -438,14 +460,17 @@ TEST_CASE("atomic file replacement and rejected read preserve previous save and 
     CHECK(preserved == replacement);
     {
         std::ofstream pending(files.directory / "save.pending");
-        pending << "another writer";
+        pending << "crashed writer";
     }
     logs.clear();
-    CHECK_FALSE(writeFile(path, doc, sink));
-    CHECK(logs.size() == 1);
+    doc.header.originBuildSha.bytes.assign(40, 'c');
+    REQUIRE(writeFile(path, doc, sink));
+    CHECK(logs.empty());
     CHECK(fs::file_size(files.directory / "save.pending") == 14);
     REQUIRE(readFile(path, compatibility(doc), preserved));
-    CHECK(preserved == replacement);
+    CHECK(preserved.header.originBuildSha.bytes == std::string(40, 'c'));
+    replacement = preserved;
+    CHECK(std::distance(fs::directory_iterator(files.directory), fs::directory_iterator{}) == 2);
     {
         std::ofstream truncated(path, std::ios::binary | std::ios::trunc);
         truncated << "MC2SAVE1";
