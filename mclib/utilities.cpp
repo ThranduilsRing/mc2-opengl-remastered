@@ -7,11 +7,6 @@ Utilities.cpp			: Implementation of the Utilities component.
 \*************************************************************************************************/
 #include"utilities.h"
 
-// NS3 boundary: the GOS string-resource handle belongs to the utilities
-// subsystem, not to whatever game/tool main links it. extern'd for all
-// consumers in utilities.h. Previously redefined in every main.
-HSTRRES gosResourceHandle = 0;
-
 #include"txmmgr.h"
 #include"inifile.h"
 #include"mclib.h"

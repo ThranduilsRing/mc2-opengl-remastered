@@ -163,6 +163,7 @@ set(SOURCES ${SOURCES}
     estring.cpp
     tacmap.cpp
     utilities.cpp
+    resource_strings.cpp
     model_override_registry.cpp
     anim_override_registry.cpp
     fx_def_registry.cpp

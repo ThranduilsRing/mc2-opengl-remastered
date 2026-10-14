@@ -7,6 +7,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 \*************************************************************************************************/
 
 #include <cstdio>
+#include <algorithm>
 #include"mechlopedia.h"
 #include"mc2str.h"
 #include"inifile.h"
@@ -139,16 +140,11 @@ static bool mc2IsUndefinedName( const char* n )
 // ENCYCLO-UNDEFINED-FILTER-2: mod content can carry a VALID display name but a
 // placeholder encyclopedia entry — the description string resolves to
 // "undefined". Hide those rows too (a list entry whose page is just
-// "undefined" is noise). Resolves the id through the same cLoadString path
-// the detail page uses.
+// "undefined" is noise).
 static bool mc2IsUndefinedDescription( int descID )
 {
-	// Large enough for the longest string of the catalog (2047 characters): cLoadString STOPs when a text does not fit, and the vehicle descriptions are
-	// longer than 255 (id 45208 has 349), which stopped the vehicles tab of the Mechlopedia at its first entry.
-	char desc[4096];
-	desc[0] = 0;
-	cLoadString( descID, desc, sizeof( desc ) - 1 );
-	return mc2IsUndefinedName( desc );
+	const std::string desc = loadResourceString( descID );
+	return mc2IsUndefinedName( desc.c_str() );
 }
 
 int			Mechlopedia::handleMessage( unsigned long, unsigned long who)
@@ -638,21 +634,12 @@ void Mechlopedia::MechScreen::render()
 
 namespace {
 
-// Legacy encyclopedia strings (resolved from mc2res) embed font-control
-// backslashes -- a stray '\' before every line break -- and use '/' as a line
-// separator. The OG text renderer consumed the '\' to switch fonts mid-string;
-// the ImGui text box would draw it literally, so strip the backslashes and
-// turn '/' into newlines.
-void cleanLegacyDescription( char* text )
+// Legacy font controls are invisible in the original renderer; defs pages need
+// plain text with the original line breaks.
+void cleanLegacyDescription( std::string& text )
 {
-	char* w = text;
-	for ( const char* p = text; *p; ++p )
-	{
-		if ( *p == '\\' )
-			continue;
-		*w++ = ( *p == '/' ) ? '\n' : *p;
-	}
-	*w = '\0';
+	std::erase( text, '\\' );
+	std::replace( text.begin(), text.end(), '/', '\n' );
 }
 
 // Mirror a populated weapon-loadout ComponentListBox into the ImGui defs-page
@@ -694,7 +681,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 		pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 		pItem->forceToTop( true );
 		pItem->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pItem->height() );
-		pItem->setText( descID );
+		pItem->setText( loadResourceString( descID ) );
 		pItem->sizeToText( );
 		pItem->setColor( 0xff005392 );
 
@@ -767,8 +754,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 
 	if ( hasDefsUiPage() )
 	{
-		char descText[4096] = {};
-		cLoadString( descID, descText, sizeof(descText) - 1 );
+		std::string descText = loadResourceString( descID );
 		cleanLegacyDescription( descText );
 		setDefsElementText( "game.mcl_en_mechs.text.description", descText );
 
@@ -804,7 +790,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 		pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 		pItem->resize( descriptionListBox.width()  - descriptionListBox.getScrollBarWidth()- 16, pItem->height() );
-		pItem->setText( descID );
+		pItem->setText( loadResourceString( descID ) );
 		pItem->sizeToText( );
 		pItem->setColor( 0xff005392 );
 
@@ -921,8 +907,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 	if ( hasDefsUiPage() )
 	{
-		char descText[4096] = {};
-		cLoadString( descID, descText, sizeof(descText) - 1 );
+		std::string descText = loadResourceString( descID );
 		cleanLegacyDescription( descText );
 		setDefsElementText( "game.mcl_en_mechs.text.description", descText );
 
@@ -1089,7 +1074,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		if ( addDesc )
 			pEntry->setText( addDesc );
 		else
-			pEntry->setText( pComponent->getHelpID() );
+			pEntry->setText( loadResourceString( pComponent->getHelpID() ) );
 		pEntry->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pEntry->height() );
 		pEntry->sizeToText();
 		pEntry->forceToTop( true );
@@ -1217,15 +1202,10 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 
 	if ( hasDefsUiPage() )
 	{
-		char descText[4096] = {};
-		// EQUIP-ADD-UI-NAME-1 (S3): def-sourced description for ADD rows.
+		// ADD rows own their description in the equipment definition.
 		const char* addDesc = equipmentAddUiTextForStringId( pComponent->getHelpID() );
-		if ( addDesc )
-		{
-			strncpy( descText, addDesc, sizeof(descText) - 1 );
-		}
-		else
-			cLoadString( pComponent->getHelpID(), descText, sizeof(descText) - 1 );
+		std::string descText = addDesc ? std::string( addDesc )
+			: loadResourceString( pComponent->getHelpID() );
 		cleanLegacyDescription( descText );
 		setDefsElementText( "game.mcl_en_wep.text.description", descText );
 
@@ -1359,7 +1339,7 @@ void Mechlopedia::PersonalityScreen::select( aTextListItem* pEntry )
 		aTextListItem* pItem = new aTextListItem( IDS_EN_WEAPON_FONT );
 		pItem->setColor( 0xff005392);
 		pItem->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pEntry->height() );
-		pItem->setText( DescriptionID + ID );
+		pItem->setText( loadResourceString( DescriptionID + ID ) );
 		pItem->sizeToText();
 		pItem->forceToTop( true );
 		descriptionListBox.AddItem( pItem );
@@ -1369,8 +1349,7 @@ void Mechlopedia::PersonalityScreen::select( aTextListItem* pEntry )
 
 	if ( hasDefsUiPage() )
 	{
-		char descText[4096] = {};
-		cLoadString( DescriptionID + ID, descText, sizeof(descText) - 1 );
+		std::string descText = loadResourceString( DescriptionID + ID );
 		cleanLegacyDescription( descText );
 		setDefsElementText( "game.mcl_en_person.text.description", descText );
 	}
@@ -1590,7 +1569,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 
 			aTextListItem* pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 			pItem->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pItem->height() );
-			pItem->setText( pBldg->encycloID );
+			pItem->setText( loadResourceString( pBldg->encycloID ) );
 			pItem->sizeToText( );
 			pItem->setColor( 0xff005392 );
 			pItem->forceToTop( true );
@@ -1621,8 +1600,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 
 		if ( hasDefsUiPage() )
 		{
-			char descText[4096] = {};
-			cLoadString( pBldg->encycloID, descText, sizeof(descText) - 1 );
+			std::string descText = loadResourceString( pBldg->encycloID );
 			cleanLegacyDescription( descText );
 			setDefsElementText( "game.mcl_en_bldg.text.description", descText );
 
