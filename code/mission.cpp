@@ -27,16 +27,20 @@ static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
 static_assert(ORDERSTATE_GENERAL == 0 && ORDERSTATE_PLAYER == 1);
 
 bool submitOrderFixture(const char*, std::string& data, std::string& error) {
-    if (!mission || !mission->runOrderIngressFixture()) {
-        error = "mission-content fixture admission failed";
+    const bool ok = mission && mission->runOrderIngressFixture();
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=submit ok={} mission={}\n", ok, mission != nullptr);
+    if (!ok) {
+        error = mission ? "mission-content fixture admission failed (see fixture admission log)" : "mission unavailable";
         return false;
     }
     data = "{}";
     return true;
 }
 bool checkOrderFixture(const char*, std::string& data, std::string& error) {
-    if (!mission || !mission->orderIngressFixtureApplied()) {
-        error = "mission-content fixture did not install and automatically retire every receipt";
+    const bool ok = mission && mission->orderIngressFixtureApplied();
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=check ok={} mission={}\n", ok, mission != nullptr);
+    if (!ok) {
+        error = mission ? "mission-content fixture did not install and automatically retire every receipt" : "mission unavailable";
         return false;
     }
     data = "{}";
@@ -63,6 +67,8 @@ void Mission::bindOrderRecipients() {
     }
     gos_dev_shell::registerCommand("order_ingress_fixture_submit", submitOrderFixture);
     gos_dev_shell::registerCommand("order_ingress_fixture_check", checkOrderFixture);
+    if (mc2::gate::get<"MC2_DEV_SHELL">())
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=registered recipients={}\n", orderRecipients.size());
 }
 MoverPtr Mission::resolveOrderRecipient(mc2::sim::ObjectRef ref) {
     if (!ref.slot || ref.slot > orderRecipients.size()) return nullptr;
@@ -121,9 +127,16 @@ void Mission::completeOrderSimulationTick() {
 }
 bool Mission::runOrderIngressFixture() {
     using namespace mc2::sim;
-    if (!active || (orderFixtureReceipt && !orderIngressFixtureApplied())) return false;
+    if (!active || (orderFixtureReceipt && !orderIngressFixtureApplied())) {
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=not_ready active={} submitted={} completed={} retained={}\n",
+            active != 0, orderFixtureSubmitted, orderFixtureCompleted, orderIngress.queue().receipts().size());
+        return false;
+    }
     const auto sequence = orderIngress.queue().sources().front().nextSequence;
-    if (sequence > maxOrderReceipts) return false;
+    if (sequence > maxOrderReceipts) {
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=sequence_exhausted sequence={}\n", sequence);
+        return false;
+    }
     for (const auto& binding : orderRecipients) {
         auto* mover = resolveOrderRecipient(binding.ref);
         if (!mover || mover->getCommanderId() < 0 || mover->isDisabled() || !mover->canMove()) continue;
@@ -144,12 +157,18 @@ bool Mission::runOrderIngressFixture() {
         for (std::uint64_t i = 0; i < count; ++i) {
             envelope.sequence = sequence + i;
             auto receipt = submitMissionOrder(orderSession(), envelope);
-            if (!receipt) { orderFixtureApplied = false; return false; }
+            if (!receipt) {
+                orderFixtureApplied = false;
+                mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=queue error={} submitted={} sequence={}\n",
+                    static_cast<int>(receipt.error()), orderFixtureSubmitted, envelope.sequence);
+                return false;
+            }
             orderFixtureReceipt = *receipt;
             ++orderFixtureSubmitted;
         }
         return true;
     }
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=no_eligible_recipient recipients={}\n", orderRecipients.size());
     return false;
 }
 

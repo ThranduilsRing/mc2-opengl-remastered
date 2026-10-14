@@ -107,6 +107,7 @@
  "tools/split/post_split.py": "runs git, python helper tools and Git bash for the contract board; never the engine",
  "tools/visual_verify/capture_ab.py": "python wrapper that starts tools/visual_verify/capture.py (lease, background-only); the engine launch downstream goes through nofocus.spawn",
  "tools/visual_verify/ab.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn",
+  "tools/mission_order_ingress_witness.py": "runs scripts/run_smoke.py with console_child.child_kwargs; the harness owns the host lease, lane3 fingerprint validation and background engine launch through nofocus.spawn",
   "tools/witness_smoke.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn"
  },
  "input_injection": {
