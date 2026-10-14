@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 import sys
 import json
+import re
+import struct
 import uuid
 from contextlib import contextmanager
 import unittest
@@ -715,6 +717,152 @@ class FileGateTests(unittest.TestCase):
                     log.write_text(bad)
                     with self.assertRaisesRegex(ValueError, "loop termination"):
                         smoke.grade_file(name, directory, 0)
+
+
+class LegacyCatalogReferenceTests(unittest.TestCase):
+    def fixture(self, directory):
+        from editor.tests.legacy_reference import PLACEMENTS, TEAMS
+        def pak(records):
+            payload = struct.pack("<I", len(records)) + b"".join(records)
+            return struct.pack("<IIIIIII", 0xfeedface, 28, 28 | 0xe0000000, 28, (28 + len(payload)) | 0xe0000000,
+                               (28 + len(payload)) | 0xe0000000, (28 + len(payload)) | 0xe0000000) + payload
+        baseline = b"FITini\n[Parts]\nul NumParts = 0\nFITend\n"
+        (directory / "e5_reference_before.fit").write_bytes(baseline)
+        (directory / "e5_reference_before.pak").write_bytes(pak([]))
+        evidence = []
+        for family, (object_id, stem) in PLACEMENTS.items():
+            fields = {"ObjectNumber": ("ul", object_id), "ControlType": ("ul", 2), "ControlDataType": ("ul", 1),
+                      "PlayerPart": ("b", "TRUE"), "MyIcon": ("c", 0), "TeamID": ("c", 0), "CommanderID": ("c", 0),
+                      "Pilot": ("ul", 1), "PositionX": ("f", 10), "PositionY": ("f", 20), "Rotation": ("f", 0),
+                      "Active": ("l", 1), "Exists": ("l", 1), "Damage": ("f", 0), "BaseColor": ("ul", 0xffffff),
+                      "HighlightColor1": ("ul", 0xc0c0c0), "HighlightColor2": ("ul", 0x808080), "SelfRepairBehavior": ("ul", 1),
+                      "ObjectProfile": ("st", '"PM207300"'), "CSVFile": ("st", f'"{stem}"'), "VariantNumber": ("ul", 0),
+                      "SquadNum": ("ul", 1), "NumAlternatives": ("ul", 0)}
+            if family in ("mech", "vehicle"):
+                text = "FITini\n[Parts]\nul NumParts = 1\n[Warrior1]\nst Profile = \"pilot\"\nst Brain = \"PBrain\"\nl NumCells = 0\nl NumStaticVars = 0\n[Part1]\n"
+                text += "".join(f"{kind} {name} = {value}\n" for name, (kind, value) in fields.items()) + "FITend\n"
+                records = []
+            else:
+                text = baseline.decode()
+                records = [struct.pack("<Iffffiiiii", object_id, 10, 20, 30, 0, 0, TEAMS[family], -1, 0, 0)]
+            (directory / f"e5_reference_{family}.fit").write_text(text)
+            (directory / f"e5_reference_{family}.pak").write_bytes(pak(records))
+            evidence.append(f"[EDITOR_LEGACY_PLACEMENT v1] family={family} fit_id={object_id} stem={stem} x=10 y=20 z=30 input_team=0 team={TEAMS[family]} painted=1 undo=1 redo=1 saved=1 removed=1 reopened=1")
+        return "\n".join(evidence)
+
+    def test_reference_rejects_noop_wrong_identity_incomplete_units_and_false_facts(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture(directory)
+            self.assertEqual(len(grade(directory, evidence)["placements"]), 9)
+            for bad in (evidence.splitlines()[0], evidence + "\n" + evidence.splitlines()[0],
+                        evidence.replace("fit_id=53", "fit_id=51"), evidence.replace("redo=1", "redo=0")):
+                with self.subTest(bad=bad), self.assertRaises(ValueError):
+                    grade(directory, bad)
+            for name, contents in (("building.pak", (directory / "e5_reference_before.pak").read_bytes()),
+                                   ("mech.fit", (directory / "e5_reference_mech.fit").read_bytes().replace(b"ul SelfRepairBehavior = 1", b"ul Missing = 1")),
+                                   ("mech.fit", (directory / "e5_reference_mech.fit").read_bytes().replace(b'st Profile = "pilot"', b'st Profile = ""'))):
+                path = directory / f"e5_reference_{name}"
+                original = path.read_bytes()
+                path.write_bytes(contents)
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    grade(directory, evidence)
+                path.write_bytes(original)
+
+    def test_reference_is_immutable_and_forest_scale_are_integer_words(self):
+        from editor.tests.legacy_reference import grade, retain, buildings
+        with scratch_directory() as directory:
+            result = grade(directory, self.fixture(directory))
+            retain(directory, directory / "frozen", result)
+            with self.assertRaises(FileExistsError):
+                retain(directory, directory / "frozen", result)
+            data = bytearray((directory / "e5_reference_tree.pak").read_bytes())
+            data[-8:] = struct.pack("<ii", 4, 125)
+            self.assertEqual(struct.unpack("<ii", buildings(data)[0][-8:]), (4, 125))
+            (directory / "e5_reference_tree.pak").write_bytes(data)
+            with self.assertRaisesRegex(ValueError, "forest/scale"):
+                grade(directory, self.fixture_facts(result))
+
+    def test_new_unit_identity_survives_legacy_part_reordering(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture_with_existing(directory)
+            self.assertEqual(len(grade(directory, evidence)["placements"]), 9)
+            for family in ("mech", "vehicle"):
+                path = directory / f"e5_reference_{family}.fit"
+                path.write_text(re.sub(r"(Part|Warrior|ul Pilot = )([23])", lambda match: match[1] + ("3" if match[2] == "2" else "2"), path.read_text()))
+            self.assertEqual(len(grade(directory, evidence)["placements"]), 9)
+
+    def fixture_with_existing(self, directory):
+        from editor.tests.legacy_reference import PLACEMENTS
+        evidence = self.fixture(directory)
+        def existing(first):
+            text = ""
+            for number, object_id in ((first, 51), (first + 1, 52)):
+                text += f'[Part{number}]\nul ObjectNumber = {object_id}\nf PositionX = 99\nf PositionY = 88\nul Pilot = {number}\n'
+                text += f'[Warrior{number}]\nst Profile = "existing{object_id}"\nst Brain = "DredAttack01"\nl NumCells = 1\nl NumStaticVars = 0\n'
+                text += f'[Warrior{number}Cell0]\nl Cell = 2\nl MemType = 1\nf Value = 150\n'
+            return text
+        baseline = "FITini\n[Parts]\nul NumParts = 2\n" + existing(1) + "FITend\n"
+        (directory / "e5_reference_before.fit").write_text(baseline)
+        for family in PLACEMENTS:
+            path = directory / f"e5_reference_{family}.fit"
+            if family in ("mech", "vehicle"):
+                text = path.read_text().replace("NumParts = 1", "NumParts = 3")
+                path.write_text(text.replace("FITend", existing(2) + "FITend"))
+            else:
+                path.write_text(baseline)
+        return evidence
+
+    def test_reference_rejects_replaced_modified_and_missing_existing_units(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture_with_existing(directory)
+            for family in ("mech", "vehicle", "building"):
+                path = directory / f"e5_reference_{family}.fit"
+                original = path.read_bytes()
+                changes = ((b"ObjectNumber = 51", b"ObjectNumber = 52"),
+                           (b"PositionX = 99", b"PositionX = 100"),
+                           (b'Profile = "existing51"', b'Profile = "replacement"'),
+                           (b'Brain = "DredAttack01"', b'Brain = "OtherBrain"'),
+                           (b"ul Pilot = 2", b"ul Pilot = 3" if family != "building" else b"ul Pilot = 1"),
+                           (b"ul Pilot = 2", b"l Pilot = 2"),
+                           (b"Value = 150", b"Value = 151"))
+                for before, after in changes:
+                    path.write_bytes(original.replace(before, after, 1))
+                    with self.subTest(family=family, field=before), self.assertRaisesRegex(ValueError, "pre-existing Parts or Warriors"):
+                        grade(directory, evidence)
+                number = 2 if family != "building" else 1
+                missing = re.sub(rb'\[Part' + str(number).encode() + rb'\].*?(?=\[Warrior)', b'', original, count=1, flags=re.S)
+                path.write_bytes(missing)
+                with self.subTest(family=family, field="missing Part"), self.assertRaises(ValueError):
+                    grade(directory, evidence)
+                path.write_bytes(original)
+
+    def test_reference_requires_saved_alignment_and_meaningful_pilot_brain_defaults(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture(directory)
+            for family in ("mech", "vehicle"):
+                path = directory / f"e5_reference_{family}.fit"
+                original = path.read_bytes()
+                for before, after, reason in ((b"c TeamID = 0", b"c TeamID = 1", "alignment"),
+                                             (b"c CommanderID = 0", b"c CommanderID = 1", "alignment"),
+                                             (b"b PlayerPart = TRUE", b"b PlayerPart = FALSE", "alignment"),
+                                             (b'st Brain = "PBrain"', b'st Brain = ""', "defaults"),
+                                             (b'st Brain = "PBrain"', b'st Brain = "   "', "defaults"),
+                                             (b'st Brain = "PBrain"', b'st Brain = "OtherBrain"', "defaults"),
+                                             (b'st Profile = "pilot"', b'st Profile = "   "', "defaults"),
+                                             (b"l NumCells = 0", b"l NumCells = -1", "defaults"),
+                                             (b"l NumStaticVars = 0", b"l NumStaticVars = -1", "defaults")):
+                    path.write_bytes(original.replace(before, after))
+                    with self.subTest(family=family, field=after), self.assertRaisesRegex(ValueError, reason):
+                        grade(directory, evidence)
+                path.write_bytes(original)
+
+    @staticmethod
+    def fixture_facts(result):
+        return "\n".join("[EDITOR_LEGACY_PLACEMENT v1] " + " ".join(f"{k}={v}" for k, v in p["facts"].items()) for p in result["placements"].values())
 
 
 if __name__ == "__main__":

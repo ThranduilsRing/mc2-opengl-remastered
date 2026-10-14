@@ -1,4 +1,3 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "../../tests/unit/doctest.h"
 #include "CommandHistory.h"
 

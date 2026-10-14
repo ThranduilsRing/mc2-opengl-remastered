@@ -49,6 +49,7 @@ import json
 import os
 import re
 import subprocess
+import struct
 import sys
 import time
 import zlib
@@ -613,6 +614,9 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
             destinations.append(flag.split("=", 1)[1].replace("\\", "/"))
     if "-smoke-workflows" in extra_flags:
         destinations += ["terrain_gen_out/e0_authored.pak", "terrain_gen_out/e0_objectives.fit", "terrain_gen_out/e0_campaign.fit"]
+    if "-smoke-catalog-reference" in extra_flags:
+        from editor.tests.legacy_reference import PLACEMENTS
+        destinations += [f"terrain_gen_out/e5_reference_{name}.pak" for name in ("before", *PLACEMENTS)]
     for destination in destinations:
         output = deploy / destination
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -1126,6 +1130,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="MC2 Mission Editor console smoke runner")
     ap.add_argument("--exe", default=DEFAULT_EXE, help="path to Mission Editor.exe")
     ap.add_argument("--shell-exe", type=Path, help="SDL smoke host executable (default: Mission Editor Smoke.exe beside Mission Editor.exe)")
+    ap.add_argument("--catalog-exe", type=Path, default=REPO / "build64/out/editor/RelWithDebInfo/editor_catalog_probe.exe")
+    ap.add_argument("--catalog-mods", type=Path, default=Path("A:/Games/mc2-opengl"))
+    ap.add_argument("--catalog-mod", default="MC2X-CVE-G")
+    ap.add_argument("--freeze-legacy-reference", type=Path, help="new immutable directory for legacy_catalog_reference outputs")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -1148,6 +1156,17 @@ def main() -> int:
 
     exe = Path(args.exe).resolve()
     deploy = exe.parent
+    if args.case and set(args.case) <= {"catalog_stock", "catalog_mod"}:
+        if "catalog_stock" in args.case and any(os.environ.get(key) for key in ("MC2_ACTIVE_MOD", "MC2_MOD_DEPS")):
+            print("ERROR: stock catalog proof refuses environment mod selection")
+            return 2
+        from editor.tests.run_catalog_proofs import prove
+        try:
+            return prove(args.catalog_exe, deploy, args.catalog_mods, args.catalog_mod,
+                         args.out / time.strftime("%Y-%m-%dT%H-%M-%S"), "catalog_mod" in args.case)
+        except (OSError, ValueError, KeyError, StopIteration, subprocess.TimeoutExpired) as error:
+            print(f"ERROR: catalog proof failed: {error}")
+            return 1
     if not exe.exists():
         print(f"ERROR: editor exe not found: {exe}\n  Build EditRel in RelWithDebInfo and deploy to a private runtime first.")
         return 2
@@ -1156,7 +1175,7 @@ def main() -> int:
         return 2
 
     suite = build_suite(deploy)
-    ALL = ["stock_roundtrip", "workflows"] + list(suite.keys()) + ["gen_save_load", "new_model"] + list(PANEL_OPERATIONS) + list(FILE_CASES)
+    ALL = ["stock_roundtrip", "workflows", "legacy_catalog_reference"] + list(suite.keys()) + ["gen_save_load", "new_model"] + list(PANEL_OPERATIONS) + list(FILE_CASES)
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
@@ -1183,7 +1202,7 @@ def main() -> int:
     except (OSError, KeyError, ValueError, zlib.error) as exc:
         print(f"ERROR: stock dependency audit failed: {exc}")
         return 2
-    if any(c == "stock_roundtrip" or c in single_stock or c in PANEL_OPERATIONS or c in FILE_CASES for c in selected) or "workflows" in selected or "new_model" in selected:
+    if any(c == "stock_roundtrip" or c in single_stock or c in PANEL_OPERATIONS or c in FILE_CASES for c in selected) or "workflows" in selected or "new_model" in selected or "legacy_catalog_reference" in selected:
         try:
             stock = StockInputs(deploy)
             campaign = stock.read("data/campaign/campaign.fit")
@@ -1246,6 +1265,19 @@ def main() -> int:
                 if original is not None:
                     row["input_sha256"] = hashlib.sha256(original).hexdigest()
                 results.append(row)
+        elif c == "legacy_catalog_reference":
+            from editor.tests.legacy_reference import grade, retain
+            row = run_case_with_retry(c, exe, deploy, args.exit_sec, args.timeout,
+                                      ["-mission=data/missions/mc2_01.pak", "-smoke-catalog-reference"], None)
+            if row["passed"]:
+                try:
+                    reference = grade(deploy / "terrain_gen_out", row["captured"])
+                    destination = args.freeze_legacy_reference or rptdir / "legacy-reference"
+                    retain(deploy / "terrain_gen_out", destination, reference)
+                    row["detail"] = f"9/9 identified placements changed output, undo/redo/save/reopen; retained {destination}"
+                except (OSError, ValueError, KeyError, struct.error) as error:
+                    row.update(passed=False, bucket="legacy_reference_failed", detail=str(error))
+            results.append(row)
         elif c == "workflows":
             row = run_case_with_retry("workflows", exe, deploy, args.exit_sec, args.timeout,
                                      ["-mission=data/missions/mc2_01.pak", "-smoke-workflows", "-smoke-save=terrain_gen_out/e0_workflows.pak"], "workflows")

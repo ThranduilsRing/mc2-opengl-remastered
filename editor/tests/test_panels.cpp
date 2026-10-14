@@ -1,14 +1,12 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "../../tests/unit/doctest.h"
+#include "TestInputs.h"
 #include "PanelProof.h"
 #include <chrono>
-#include <cstdlib>
 #include <fstream>
 
-TEST_CASE("panels/real ImGui input reaches every command and redo without a desktop")
+TEST_CASE("panels/real ImGui input reaches every command and redo without a desktop" * doctest::test_suite("stock-fixture"))
 {
-    const auto* stock = std::getenv("MC2_EDITOR_STOCK_DIR");
-    REQUIRE(stock != nullptr);
+    const auto& stock = editor::tests::inputs().stockDirectory;
     for (const auto* kind : {"unit_panel", "building_panel", "player_panel", "brain_modes", "panel_render"}) {
         CAPTURE(kind);
         const auto directory = std::filesystem::path("scratch/e3b-widget-tests") /

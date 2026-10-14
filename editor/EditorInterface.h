@@ -98,6 +98,7 @@ public:
 	// value (mclib/dmapdata.h); brushId/menuId use a synthetic-negative range.
 	void setPaintMaterialBrush( int terrainType );
 	void runWorkflowSmoke(const char* campaignPath);
+	void runCatalogReferenceSmoke();
 	void renderTerrainSelection();
 
 	// Editable Inspector v1: set one object's world XY + absolute yaw through the

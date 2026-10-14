@@ -1,11 +1,11 @@
 #include "../../tests/unit/doctest.h"
+#include "TestInputs.h"
 #include "CommandHistory.h"
 #include "../../code/brain_missionfit_oporbd.h"
 
 #include <algorithm>
 #include <bit>
 #include <chrono>
-#include <cstdlib>
 #include <fstream>
 #include <limits>
 #include <zlib.h>
@@ -622,12 +622,11 @@ TEST_CASE("document/case insensitive FIT Part lookup preserves stable handles")
     REQUIRE(history.undo()); CHECK(loaded->fitBytes() == input);
 }
 
-TEST_CASE("document/stock corpus requires exactly 24 unchanged pairs and a negative control" * doctest::skip(std::getenv("MC2_EDITOR_STOCK_DIR") == nullptr))
+TEST_CASE("document/stock corpus requires exactly 24 unchanged pairs and a negative control" * doctest::test_suite("stock-fixture"))
 {
-    const auto* directory = std::getenv("MC2_EDITOR_STOCK_DIR");
-    REQUIRE(directory);
-    const auto* gradingDirectory = std::getenv("MC2_EDITOR_BYTE_GRADE_DIR");
-    const auto output = gradingDirectory ? std::filesystem::path(gradingDirectory) : scratch();
+    const auto& directory = editor::tests::inputs().stockDirectory;
+    const auto& gradingDirectory = editor::tests::inputs().byteGradeDirectory;
+    const auto output = gradingDirectory.empty() ? scratch() : gradingDirectory;
     std::filesystem::create_directories(output);
     std::size_t count{};
     for (int i = 1; i <= 24; ++i) {
