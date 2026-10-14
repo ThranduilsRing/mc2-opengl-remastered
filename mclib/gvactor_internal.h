@@ -93,8 +93,6 @@ inline constexpr int MAX_FOOT_NODES = 2;
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
 extern bool		useFog;
-extern long 	mechRGBLookup[];
-extern long 	mechRGBLookup2[];
 extern bool 	useShadows;
 extern int		ObjectTextureSize;
 extern bool reloadBounds;

@@ -463,8 +463,7 @@ Split commit: `2d6c73efc`.
 
 | Piece | What it holds |
 |---|---|
-| `cevfx.cpp` | keeps the VFX shape element (VFXElement, VFXShapeElement) and the palette lookup tables |
-| `cevfx_polys.cpp` | VFX elements: TextureElement and the PolygonQuad / PolygonTri / TexturedPolygonQuad / TexturedPolygonTri elements. |
+| `cevfx_polys.cpp` | Polygon elements used by appearance bars and terrain decals. |
 | `cevfx_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/genactor.cpp`
@@ -611,6 +610,4 @@ Split commit: `16460b02e`.
 
 | Piece | What it holds |
 |---|---|
-| `vfxtile.cpp` | keeps the tile blit, its file-static scratch and the shape queries |
-| `vfxtile_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

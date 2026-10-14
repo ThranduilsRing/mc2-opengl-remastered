@@ -16,11 +16,6 @@
 #include"terrain.h"
 #endif
 
-// PANE and LONG for the AG_ draw declarations below (the camera pieces used to get vfx.h through bitflag.h).
-#ifndef VFX_H
-#include"vfx.h"
-#endif
-
 #ifndef VERTEX_H
 #include"vertex.h"
 #endif
@@ -65,9 +60,6 @@
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 
-extern void AG_shape_draw (PANE *pane, void *shape_table,LONG shape_number, LONG hotX, LONG hotY);
-extern void AG_shape_translate_draw (PANE *pane, void *shape_table,LONG shape_number, LONG hotX, LONG hotY);
-extern void AG_shape_lookaside(MemoryPtr palette);
 
 #pragma warning(disable:4305/*double to float truncation*/)
 

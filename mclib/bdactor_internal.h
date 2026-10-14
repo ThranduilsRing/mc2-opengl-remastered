@@ -116,8 +116,6 @@ extern uint32_t s_animStateToStateGesture;
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
 extern bool		useFog;
-extern long 	mechRGBLookup[];
-extern long 	mechRGBLookup2[];
 extern int ObjectTextureSize;
 extern bool reloadBounds;
 extern float	metersPerWorldUnit;

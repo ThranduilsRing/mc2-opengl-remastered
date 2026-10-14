@@ -51,10 +51,6 @@
 #include"pqueue.h"
 #endif
 
-#ifndef SCALE_H
-#include"scale.h"
-#endif
-
 #ifndef SORTLIST_H
 #include"sortlist.h"
 #endif

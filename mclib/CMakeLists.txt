@@ -24,7 +24,6 @@ set(SOURCES ${SOURCES}
     appearance_rng.cpp
     sim_trace.cpp
     alloc_probe.cpp
-    scale.cpp
     sortlist.cpp
     tgainfo.cpp
     tgl.cpp
@@ -65,11 +64,7 @@ set(SOURCES ${SOURCES}
     celement.cpp
     celine.cpp
     cellip.cpp
-    cevfx.cpp
     cevfx_polys.cpp
-    vfx_transform.cpp
-    vfx_translatedraw.cpp
-    vfxtile.cpp
     abl_script_events.cpp
     abldbug.cpp
     abldbug_print.cpp
