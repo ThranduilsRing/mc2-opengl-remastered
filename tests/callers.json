@@ -11011,6 +11011,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/vk_ownership_ledger.py",
+      "basename": "vk_ownership_ledger.py",
+      "stem": "vk_ownership_ledger",
+      "callers_by_basename": [
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 1000,
+          "evidence": "command",
+          "reference": "tools/vk_ownership_ledger.py",
+          "text": "run_check \"vk_ownership_ledger\"    \"py -3 tools/vk_ownership_ledger.py --check\""
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/witness_smoke.py",
       "basename": "witness_smoke.py",
       "stem": "witness_smoke",
