@@ -179,11 +179,11 @@ R_ENVREAD = re.compile(
     r"""|\bGetEnvironmentVariable[AW]?\s*\(\s*L?"MC2_"""
     r"""|\b_dupenv_s\b|\bgetenv_s\b|\b_wdupenv_s\b"""
     r"""|\b_environ\b|\bGetEnvironmentStrings[AW]?\b|\bSDL_getenv\b""")
-# LG20: every "MC2_NAME" literal that is not the first template argument of a typed reader. It is the net the
+# LG20: every "MC2_NAME" literal that is not the first template argument of a typed reader or override. It is the net the
 # getenv matcher (LG19) cannot cast: helper calls (subGate("MC2_X"), envFlag("MC2_X")), #define lines, putenv
 # writes, tool and test code.
 R_MC2LIT = re.compile(r'''L?"MC2_[A-Z0-9_]+"''')
-R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|isNonEmpty|armed|regionTier1Armed|str|is)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
+R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|isNonEmpty|armed|regionTier1Armed|str|is|gate::ScopedOverride)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
 R_LEGACY = re.compile(r"\b(?:auto_ptr|bind1st|bind2nd|ptr_fun|mem_fun|mem_fun_ref|unary_function|binary_function|"
                       r"random_shuffle|register)\b|\)\s*throw\s*\([^)]*\)\s*(?:[{;]|$)")
 

@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "contract_test_support.h"
+#include "Gates/gate_cold.h"
 #include <filesystem>
 #include <string>
 #define NOMINMAX
@@ -11,15 +12,17 @@ TEST_CASE("vfx_oracle/CardCloud lifecycle in an isolated platform")
     REQUIRE(GetModuleFileNameW(nullptr, module, 32768) != 0);
     const auto executable = std::filesystem::path(module).parent_path() / L"vfx_lifecycle_tests.exe";
     REQUIRE(std::filesystem::is_regular_file(executable));
-    ContractEnvironment oracle{"MC2_VFX_ORACLE_RENDER", "0"};
-    ContractEnvironment tube{"MC2_VFX_ORACLE_TUBE", "0"};
-    ContractEnvironment shape{"MC2_VFX_ORACLE_SHAPE", "0"};
-    ContractEnvironment gpuSim{"MC2_VFX_GPU_SIM_CARDCLOUD", "0"};
-    ContractEnvironment log{"MC2_GPU_PARTICLES_LOG", "0"};
+    mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_RENDER"> oracle{"0"};
+    mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_TUBE"> tube{"0"};
+    mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> shape{"0"};
+    mc2::gate::ScopedOverride<"MC2_VFX_GPU_SIM_CARDCLOUD"> gpuSim{"0"};
+    mc2::gate::ScopedOverride<"MC2_GPU_PARTICLES_LOG"> log{"0"};
+    // MLR retains its first value beyond the gate cache; every child must start enabled.
+    mc2::gate::ScopedOverride<"MC2_DISABLE_GOSFX"> mlrEnabled{"0"};
     ContractEnvironment sanitizer{"ASAN_OPTIONS", "detect_leaks=0:halt_on_error=1:print_stacktrace=1"};
     for (const auto* arm : {"0", "1"}) {
         CAPTURE(arm);
-        ContractEnvironment gpu{"MC2_GPU_PARTICLES", arm};
+        mc2::gate::ScopedOverride<"MC2_GPU_PARTICLES"> gpu{arm};
         std::wstring command = L"\"" + executable.wstring() + L"\" --no-breaks";
         STARTUPINFOW startup{};
         startup.cb = sizeof(startup);
