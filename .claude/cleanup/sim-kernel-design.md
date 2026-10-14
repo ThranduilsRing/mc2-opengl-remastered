@@ -333,6 +333,11 @@ The following previously unspecified values are frozen for these skeleton codecs
   Queue-mode tags are 1 replace/2 append/3 prepend. Admission status is 1 accepted;
   application status is 0 pending/1 applied/2 rejected/3 partial, recipient result 1 applied/2 rejected.
   Reason 0 means applied; nonzero means rejected. Application and recipients follow canonical batch/roster order.
+  Receipt wire fields after recipient results are optional commandResult, then acknowledged. Completed support
+  receipts carry commandResult `{result:u32:1 applied/2 rejected,reasonCode:u32}` and no recipient results;
+  pending receipts carry neither, and completed unit receipts carry only recipient results. Command validation
+  and support application rejection reasons persist across restore; invalid application outcomes reject with
+  reason 0xFFFFFFFF, matching recipient failures. The command result must agree with application status.
 - Caps are 256 sources, 4096 pending envelopes, 8192 retained receipts, 128 recipients/waypoints/roster entries,
   and 65536 ABL reseeds. Acknowledgement marks a completed receipt; explicit retirement releases acknowledged
   records through a chosen ID, retaining source sequence state. On restore, nextReceiptId must equal

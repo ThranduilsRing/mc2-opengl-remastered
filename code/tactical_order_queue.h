@@ -230,6 +230,13 @@ struct OrderEnvelope {
 enum class AdmissionStatus : std::uint32_t { Accepted = 1 };
 enum class ApplicationStatus : std::uint32_t { Pending = 0, Applied = 1, Rejected = 2, Partial = 3 };
 enum class RecipientStatus : std::uint32_t { Applied = 1, Rejected = 2 };
+struct ApplicationOutcome {
+    RecipientStatus result = RecipientStatus::Applied;
+    std::uint32_t reasonCode = 0;
+    void serialize(Archive& a) { orderCodec::tag(a, result, 1u, 2u); a(reasonCode); }
+    void validate(Archive& a) const;
+    bool operator==(const ApplicationOutcome&) const = default;
+};
 struct RecipientResult {
     ObjectRef recipient;
     std::uint32_t ordinal = 0;
@@ -249,11 +256,12 @@ struct OrderReceipt {
     AdmissionStatus admissionStatus = AdmissionStatus::Accepted;
     ApplicationStatus applicationStatus = ApplicationStatus::Pending;
     std::vector<RecipientResult> results;
+    std::optional<ApplicationOutcome> commandResult;
     bool acknowledged = false;
     void serialize(Archive& a) {
         a(receiptId, sourceId, sequence, applyTick);
         orderCodec::tag(a, admissionStatus, 1u, 1u); orderCodec::tag(a, applicationStatus, 0u, 3u);
-        orderCodec::sequence(a, results, maxOrderRecipients); a(acknowledged);
+        orderCodec::sequence(a, results, maxOrderRecipients); a(commandResult, acknowledged);
     }
     void validate(Archive& a) const;
     bool operator==(const OrderReceipt&) const = default;
@@ -268,10 +276,6 @@ enum class OrderError {
 struct OrderAdmissionValidator {
     virtual ~OrderAdmissionValidator() = default;
     virtual bool permitted(const OrderSource&, const OrderEnvelope&) const = 0;
-};
-struct ApplicationOutcome {
-    RecipientStatus result = RecipientStatus::Applied;
-    std::uint32_t reasonCode = 0;
 };
 struct OrderApplication {
     virtual ~OrderApplication() = default;

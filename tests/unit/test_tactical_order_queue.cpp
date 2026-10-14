@@ -14,6 +14,7 @@ struct Application : OrderApplication {
     std::uint32_t commandReason = 0, rejectedSlot = 999;
     std::vector<std::uint32_t> appliedSlots;
     std::size_t supportCalls = 0;
+    ApplicationOutcome supportOutcome;
     std::uint32_t validateCommand(const OrderEnvelope&) const override { return commandReason; }
     std::uint32_t validateRecipient(const OrderEnvelope&, ObjectRef recipient, std::uint32_t) const override {
         return recipient.slot == rejectedSlot ? 17 : 0;
@@ -21,7 +22,7 @@ struct Application : OrderApplication {
     ApplicationOutcome applyRecipient(const OrderEnvelope&, ObjectRef recipient, std::uint32_t) override {
         appliedSlots.push_back(recipient.slot); return {};
     }
-    ApplicationOutcome applySupport(const OrderEnvelope&) override { ++supportCalls; return {}; }
+    ApplicationOutcome applySupport(const OrderEnvelope&) override { ++supportCalls; return supportOutcome; }
 };
 OrderEnvelope order(std::uint32_t source = 1, std::uint64_t sequence = 0, Tick tick = 1) {
     OrderEnvelope e;
@@ -259,6 +260,87 @@ TEST_CASE("typed movement attack support and execution records round trip and re
     bad.payload.kind = OrderKind::Reinforcement;
     bad.payload.support = ReinforcementCommand{CommanderId{7},{{3},{3}},{1,2,3}};
     CHECK_FALSE(queue.submit(bad, permit));
+}
+
+TEST_CASE("support command outcomes and rejection reasons survive save restore and acknowledgement") {
+    const std::array<SupportCommand,3> commands{
+        AirstrikeCommand{CommanderId{7},{1,2,3},StrikeKind::Large},
+        ReinforcementCommand{CommanderId{7},{{3},{1}},{5,6,7}},
+        MissionControlCommand{MissionAction::SetResource,ResourceArgument{CommanderId{7},25}}
+    };
+    for (std::size_t i = 0; i < commands.size(); ++i) {
+        for (int scenario = 0; scenario < 6; ++scenario) {
+            Permit permit; Application application; TacticalOrderQueue queue;
+            REQUIRE(queue.registerSource({1,SourceKind::UI}));
+            auto e = order(); e.recipients.clear(); e.payload.support = commands[i];
+            e.payload.kind = static_cast<OrderKind>(27 + i);
+            if (scenario == 1) application.commandReason = 88;
+            if (scenario == 2) application.supportOutcome = {RecipientStatus::Rejected,17};
+            if (scenario == 3) application.supportOutcome = {RecipientStatus::Rejected,0};
+            if (scenario == 4) application.supportOutcome = {RecipientStatus::Applied,17};
+            if (scenario == 5) application.supportOutcome = {static_cast<RecipientStatus>(99),17};
+            REQUIRE(queue.submit(e, permit));
+            CHECK_FALSE(queue.receipts()[0].commandResult);
+            TacticalOrderQueue pending;
+            REQUIRE(pending.restore(wire(queue), 0));
+            CHECK_FALSE(pending.receipts()[0].commandResult);
+            drain(pending, 1, application);
+            REQUIRE(pending.receipts()[0].commandResult);
+            const ApplicationOutcome expected = scenario == 0 ? ApplicationOutcome{} :
+                ApplicationOutcome{RecipientStatus::Rejected,scenario == 1 ? 88u : scenario == 2 ? 17u : 0xffffffffu};
+            CHECK(*pending.receipts()[0].commandResult == expected);
+            CHECK(pending.receipts()[0].results.empty());
+            CHECK(pending.receipts()[0].applicationStatus ==
+                  (scenario == 0 ? ApplicationStatus::Applied : ApplicationStatus::Rejected));
+            CHECK(application.supportCalls == (scenario == 1 ? 0 : 1));
+            const auto saved = wire(pending);
+            TacticalOrderQueue restored;
+            REQUIRE(restored.restore(saved, 1));
+            CHECK(restored.receipts()[0] == pending.receipts()[0]);
+            CHECK(wire(restored) == saved);
+            REQUIRE(restored.acknowledge(1));
+            TacticalOrderQueue acknowledged;
+            REQUIRE(acknowledged.restore(wire(restored), 1));
+            CHECK(acknowledged.receipts()[0].acknowledged);
+            CHECK(acknowledged.receipts()[0].commandResult == expected);
+        }
+    }
+}
+
+TEST_CASE("malformed command outcomes and receipt result shapes reject once without replacing the destination") {
+    Permit permit; Application application; TacticalOrderQueue queue;
+    REQUIRE(queue.registerSource({1,SourceKind::UI}));
+    auto e = order(); e.recipients.clear(); e.payload.kind = OrderKind::Airstrike;
+    e.payload.support = AirstrikeCommand{CommanderId{7},{1,2,3},StrikeKind::Small};
+    REQUIRE(queue.submit(e, permit));
+    application.commandReason = 88;
+    drain(queue, 1, application);
+    const auto original = wire(queue);
+    const std::vector<OrderSource> sources(queue.sources().begin(), queue.sources().end());
+    const auto receipt = queue.receipts()[0];
+    std::vector<Bytes> malformed;
+    auto bad = receipt; bad.commandResult.reset(); malformed.push_back(ingress({},sources,{bad},2));
+    bad = receipt; bad.applicationStatus = ApplicationStatus::Applied;
+    malformed.push_back(ingress({},sources,{bad},2));
+    bad = receipt; bad.applicationStatus = ApplicationStatus::Partial;
+    malformed.push_back(ingress({},sources,{bad},2));
+    bad = receipt; bad.applicationStatus = ApplicationStatus::Pending;
+    malformed.push_back(ingress({e},sources,{bad},2));
+    bad = receipt; bad.results = {{{30,2},0,RecipientStatus::Rejected,88}};
+    malformed.push_back(ingress({},sources,{bad},2));
+    for (const auto& bytes : malformed) {
+        int logs = 0;
+        CHECK_FALSE(queue.restore(bytes, 1, [&](auto) { ++logs; }));
+        CHECK(logs == 1); CHECK(wire(queue) == original);
+    }
+    for (auto [result, reason] : {std::pair{1u,17u}, std::pair{2u,0u}, std::pair{99u,17u}}) {
+        mc2::save::Archive a; a(result, reason); REQUIRE(a.finish());
+        ApplicationOutcome destination{RecipientStatus::Rejected,88};
+        const auto before = destination;
+        int logs = 0;
+        CHECK_FALSE(mc2::save::decodeRecord(a.bytes(), destination, [&](auto) { ++logs; }));
+        CHECK(logs == 1); CHECK(destination == before);
+    }
 }
 
 TEST_CASE("malformed queue decode rejects once and preserves existing owner") {

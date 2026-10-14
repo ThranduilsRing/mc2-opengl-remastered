@@ -122,12 +122,23 @@ void OrderEnvelope::validate(Archive& a) const {
 void RecipientResult::validate(Archive& a) const {
     if ((result == RecipientStatus::Applied) != (reasonCode == 0)) a.reject("order_result_reason");
 }
+void ApplicationOutcome::validate(Archive& a) const {
+    if (!validOutcome(*this)) a.reject("order_command_reason");
+}
 void OrderReceipt::validate(Archive& a) const {
     if (receiptId == 0 || applyTick == 0 || results.size() > maxOrderRecipients) {
         a.reject("order_receipt_shape"); return;
     }
     if (applicationStatus == ApplicationStatus::Pending) {
-        if (acknowledged || !results.empty()) a.reject("order_pending_receipt");
+        if (acknowledged || !results.empty() || commandResult) a.reject("order_pending_receipt");
+        return;
+    }
+    // Support commands have no recipients; their result is the only durable explanation of failure.
+    if (results.empty() != commandResult.has_value()) { a.reject("order_receipt_result_shape"); return; }
+    if (commandResult) {
+        const auto status = commandResult->result == RecipientStatus::Applied
+            ? ApplicationStatus::Applied : ApplicationStatus::Rejected;
+        if (status != applicationStatus) a.reject("order_application_status");
         return;
     }
     std::size_t applied = 0;
@@ -137,11 +148,9 @@ void OrderReceipt::validate(Archive& a) const {
             if (results[j].recipient == results[i].recipient) { a.reject("order_result_recipient"); return; }
         if (results[i].result == RecipientStatus::Applied) ++applied;
     }
-    if (!results.empty()) {
-        const auto status = applied == results.size() ? ApplicationStatus::Applied :
-            applied == 0 ? ApplicationStatus::Rejected : ApplicationStatus::Partial;
-        if (status != applicationStatus) a.reject("order_application_status");
-    } else if (applicationStatus == ApplicationStatus::Partial) a.reject("order_application_status");
+    const auto status = applied == results.size() ? ApplicationStatus::Applied :
+        applied == 0 ? ApplicationStatus::Rejected : ApplicationStatus::Partial;
+    if (status != applicationStatus) a.reject("order_application_status");
 }
 
 std::expected<Tick, OrderError> TacticalOrderQueue::admissionBoundary() const {
@@ -232,14 +241,17 @@ std::expected<void, OrderError> TacticalOrderQueue::apply(std::uint64_t receiptI
         ~ActiveApplication() { active = false; }
     } active(applicationActive_);
     std::vector<RecipientResult> results;
+    std::optional<ApplicationOutcome> commandResult;
     results.reserve(envelope->recipients.size());
     const auto commandReason = application.validateCommand(*envelope);
     std::size_t applied = 0;
     ApplicationStatus status;
     if (supportKind(envelope->payload.kind)) {
-        const auto outcome = commandReason ? ApplicationOutcome{RecipientStatus::Rejected, commandReason}
+        auto outcome = commandReason ? ApplicationOutcome{RecipientStatus::Rejected, commandReason}
                                            : application.applySupport(*envelope);
-        status = validOutcome(outcome) && outcome.result == RecipientStatus::Applied
+        if (!validOutcome(outcome)) outcome = {RecipientStatus::Rejected, 0xffffffffu};
+        commandResult = outcome;
+        status = outcome.result == RecipientStatus::Applied
             ? ApplicationStatus::Applied : ApplicationStatus::Rejected;
     } else {
         for (std::size_t i = 0; i < envelope->recipients.size(); ++i) {
@@ -259,6 +271,7 @@ std::expected<void, OrderError> TacticalOrderQueue::apply(std::uint64_t receiptI
     receipt = std::ranges::lower_bound(receipts_, receiptId, {}, &OrderReceipt::receiptId);
     receipt->applicationStatus = status;
     receipt->results = std::move(results);
+    receipt->commandResult = commandResult;
     ++nextApplying_;
     return {};
 }
