@@ -154,7 +154,6 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
 #include "engine_present_vk.h"      // VK-P13-SELECTOR-1 / T3: GL->VK present intercept
-#include "vk_shared_light_feed.h"    // mc2vkSharedLightFeedRelease (engine teardown)
 #endif
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record
 #include "gos_rdoc_capture.h"  // Tier 5: env-gated in-process RenderDoc capture
@@ -1394,8 +1393,6 @@ int main(int argc, char** argv)
     // its VK CSM producer objects leaked at shutdown and its [VK_SHADOW_INTEROP] health
     // line, carrying the forbidden_* counters, never reached the log).
     mc2_vk_shadow_island_destroy();
-    // The shared light-feed ring is owned by no island; its buffers go before the allocator and the device they were made on.
-    mc2vkSharedLightFeedRelease();
 #endif
     // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
     // objects (copy-1 FBO / imported tex) and VK resources on the shared device,

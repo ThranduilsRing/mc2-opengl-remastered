@@ -45,6 +45,7 @@ bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkIm
     VkCommandPool pool = VK_NULL_HANDLE;
     VkFence fence = VK_NULL_HANDLE;
     bool ok = false;
+    bool submitted = false;   // the GPU owns the fence and the pool from the submit until the fence signals
     do {
         VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
         pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
@@ -93,9 +94,16 @@ bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkIm
         si.commandBufferCount = 1;
         si.pCommandBuffers = &cb;
         if (vkQueueSubmit(ctx.graphicsQueue(), 1, &si, fence) != VK_SUCCESS) break;
+        submitted = true;
         ok = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
     } while (false);
 
+    if (submitted && !ok) {
+        // The GPU may still be executing the submit: destroying the fence or the pool now is a use of a live object. Leaking both costs a few bytes
+        // once; the wait only times out on a hung or lost device, which the rest of the session will report anyway.
+        std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout fence did not signal; its fence and command pool are leaked (start=%d)\n", static_cast<int>(start));
+        return false;
+    }
     if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
     if (pool != VK_NULL_HANDLE) vkDestroyCommandPool(device, pool, nullptr);
     if (!ok) std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout submit failed (start=%d)\n", static_cast<int>(start));

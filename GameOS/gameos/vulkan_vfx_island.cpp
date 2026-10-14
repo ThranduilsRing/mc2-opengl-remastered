@@ -99,7 +99,7 @@ struct VfxVsParams {
 static_assert(sizeof(VfxVsParams) == 96, "VfxVsParams std140 size (vfx_particle.vert)");
 static_assert(offsetof(VfxVsParams, camRight) == 64 && offsetof(VfxVsParams, camUp) == 80, "VfxVsParams offsets");
 
-struct VfxIsland {
+struct VfxIsland : mc2vk::IslandState {
     VkInstance       instance = VK_NULL_HANDLE;
     VkPhysicalDevice phys     = VK_NULL_HANDLE;
     VkDevice         device   = VK_NULL_HANDLE;
@@ -133,7 +133,6 @@ struct VfxIsland {
     bool inited = false;
     bool disabled = false;
 };
-VfxIsland* g_island = nullptr;
 
 bool make_buffer(VfxIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, mc2vk::OwnedBuffer& out, std::string_view name) {
     VkBufferCreateInfo bci{};
@@ -236,14 +235,6 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive) {
     }
     mc2vk::nameObject(s->device, pipe.get(), additive ? "vfx.pipe.additive" : "vfx.pipe.alpha");
     return pipe;
-}
-
-// Releases the island: the GPU goes idle, then the destructor releases every owned object (reverse creation order) while the device and allocator are alive.
-void retire_island(VfxIsland*& s) {
-    if (!s) return;
-    if (s->device) vkDeviceWaitIdle(s->device);
-    delete s;
-    s = nullptr;
 }
 
 bool init_island(VfxIsland* s, int w, int h) {
@@ -422,18 +413,23 @@ extern "C" int mc2_vk_vfx_island_run(
     if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return 0;
     ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU; incl. ALWAYS-inline fence wait)
 
-    if (g_island && (g_island->w != w || g_island->h != h)) {
-        retire_island(g_island);
+    // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    std::unique_ptr<mc2vk::IslandState>& slot = slotCtx.islandSlot(mc2vk::IslandSlot::Vfx);
+    if (slot) {
+        const VfxIsland* parked = static_cast<const VfxIsland*>(slot.get());
+        if (parked->w != w || parked->h != h) slotCtx.retireIsland(mc2vk::IslandSlot::Vfx);
     }
-    if (!g_island) {
-        g_island = new VfxIsland();
-        if (!init_island(g_island, w, h)) {
+    if (!slot) {
+        auto fresh = std::make_unique<VfxIsland>();
+        if (!init_island(fresh.get(), w, h)) {
             vlog("init failed (%s) — VFX declined this frame.", g_health.fallbackReason);
-            retire_island(g_island);
+            if (fresh->device) vkDeviceWaitIdle(fresh->device);   // objects made before the failure may have been submitted
             return 0;
         }
+        slot = std::move(fresh);
     }
-    VfxIsland* s = g_island;
+    VfxIsland* s = static_cast<VfxIsland*>(slot.get());
     if (s->disabled || !s->inited) return 0;
 
     // Upload the whole particle array (64B/record) + frame constants.
@@ -520,7 +516,7 @@ extern "C" void mc2_vk_vfx_island_destroy() {
          "fallback_reason=\"%s\"",
          g_health.vulkanAvailable, g_health.usedVulkan, g_health.vkDraws,
          g_health.particles, g_health.groups, g_health.fallbackReason);
-    retire_island(g_island);
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Vfx);
 }
 
 #endif  // MC2_VULKAN_ISLAND

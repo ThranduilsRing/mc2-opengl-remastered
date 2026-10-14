@@ -11635,7 +11635,7 @@
    "keys": [
     "start"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_GL_LOST_DRAWS",
@@ -11757,13 +11757,6 @@
     "used_vulkan",
     "fallback_reason"
    ],
-   "count": 1
-  },
-  {
-   "tag": "VK_LIGHTFEED_DEDUP",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
    "count": 1
   },
   {

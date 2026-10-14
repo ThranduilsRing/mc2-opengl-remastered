@@ -427,8 +427,22 @@ bool VulkanContext::init(bool wantPresent) {
     return true;
 }
 
+#ifdef MC2_VULKAN_ISLAND
+void VulkanContext::retireIsland(IslandSlot slot) {
+    std::unique_ptr<IslandState>& parked = islandSlot(slot);
+    if (!parked) return;
+    if (device_ != VK_NULL_HANDLE) vkDeviceWaitIdle(device_);
+    parked.reset();
+}
+#endif
+
 void VulkanContext::destroy() {
     g_debugNames = false;
+#ifdef MC2_VULKAN_ISLAND
+    // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
+    for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
+    lightFeed_.release();
+#endif
     if (allocator_) { vmaDestroyAllocator(allocator_); allocator_ = nullptr; }
     if (device_ != VK_NULL_HANDLE) {
         vkDestroyDevice(device_, nullptr);
