@@ -51,8 +51,6 @@
 #include"pqueue.h"
 #endif
 
-#endif
-
 #ifndef TGAINFO_H
 #include"tgainfo.h"
 #endif
