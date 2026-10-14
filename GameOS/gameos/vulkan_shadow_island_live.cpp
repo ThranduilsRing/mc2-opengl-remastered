@@ -297,8 +297,8 @@ bool make_buffer(ShadowIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, Vk
 // 0xFFFF...) when the allocator hands out a 4- or 8-aligned offset, so the bytes go through memcpy. The caller names the buffer's capacity: a longer order is
 // refused (and logged) instead of writing past the allocation.
 void copy_sorted_instances(void* mapped, VkDeviceSize capBytes, const GpuStaticPropInstance* insts, const std::vector<uint32_t>& order) {
-    if ((VkDeviceSize)order.size() * sizeof(GpuStaticPropInstance) > capBytes) {
-        vlog("instance re-stage refused: %zu instances do not fit the %llu-byte buffer.", order.size(), (unsigned long long)capBytes);
+    if (static_cast<VkDeviceSize>(order.size()) * sizeof(GpuStaticPropInstance) > capBytes) {
+        vlog("instance re-stage refused: %zu instances do not fit the %llu-byte buffer.", order.size(), static_cast<unsigned long long>(capBytes));
         return;
     }
     uint8_t* dst = static_cast<uint8_t*>(mapped);

@@ -19,6 +19,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#include <span>
 #include <volk.h>
 #include <GL/glew.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
@@ -777,9 +778,9 @@ bool cp_upload_layer_table_on(ColorPropIsland* s, const int32_t* layers, uint32_
 
 // Uploads the per-type hot-colour table (12 floats per type); a null table with count 0 binds one zeroed entry, so the descriptor is always valid and an
 // unfed type simply has no night emission.
-bool cp_upload_hot_table(ColorPropIsland* s, const float* colours, uint32_t count) {
-    const uint32_t n = count ? count : 1u;
-    const VkDeviceSize bytes = (VkDeviceSize)n * 12u * sizeof(float);
+bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
+    const size_t n = colours.empty() ? 12u : colours.size();   // one zeroed entry when there is no table
+    const VkDeviceSize bytes = static_cast<VkDeviceSize>(n * sizeof(float));
     bool rebound = false;
     if (s->hotBuf && bytes > s->hotCapBytes) {
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");   // the old table may still be read by an in-flight submit
@@ -793,8 +794,8 @@ bool cp_upload_hot_table(ColorPropIsland* s, const float* colours, uint32_t coun
     }
     void* p = s->hotBuf.map();
     if (!p) return false;
-    if (count && colours) std::memcpy(p, colours, (size_t)bytes);
-    else std::memset(p, 0, (size_t)bytes);
+    if (!colours.empty()) std::memcpy(p, colours.data(), static_cast<size_t>(bytes));
+    else std::memset(p, 0, static_cast<size_t>(bytes));
     s->hotBuf.unmap();
     if (rebound && s->inited) write_descriptors(s);
     return true;
@@ -1203,7 +1204,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         int32_t neg = -1;
         if (!cp_upload_layer_table(s, &neg, 1))    { setFallback("material_layer_buf_failed"); return false; }
         if (!cp_upload_layer_table_on(s, &neg, 1)) { setFallback("material_on_layer_buf_failed"); return false; }
-        if (!cp_upload_hot_table(s, nullptr, 0))   { setFallback("material_hot_buf_failed"); return false; }
+        if (!cp_upload_hot_table(s, {}))   { setFallback("material_hot_buf_failed"); return false; }
         write_descriptors(s);  // now writes bindings 2/3 (alpha-OFF) + 5/6 (alpha-ON) dummies too
     }
 
@@ -1336,7 +1337,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             bool changed = false;
             // The night emission colours of the type table, once per map.
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
-                if (cp_upload_hot_table(s, mf.typeHotColors, mf.typeCount)) {
+                if (cp_upload_hot_table(s, std::span<const float>(mf.typeHotColors, static_cast<size_t>(mf.typeCount) * 12u))) {
                     s->hotReady = true;
                     changed = true;
                     vlog("hot-colour table active: %u types.", mf.typeCount);
