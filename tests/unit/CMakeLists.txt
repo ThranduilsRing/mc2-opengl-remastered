@@ -348,3 +348,4 @@ foreach(_contract_dll SDL2.dll glew32.dll)
         COMMENT "Copy ${_contract_dll} for hidden GL guard tests"
     )
 endforeach()
+target_sources(mc2_tests PRIVATE test_save_archive.cpp ${MC2_WORKTREE_ROOT}/code/save_archive.cpp)
