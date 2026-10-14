@@ -6,11 +6,12 @@
 //===========================================================================//
 
 #include"stuffheaders.hpp"
-#include"det_rng.h"
 
 Scalar Random::Stream::GetFraction()
 {
-	const auto value = mc2_det_rng::next15(m_state.value);
+	// The VFX stream keeps its fixed LCG recipe independent of higher-layer RNG helpers.
+	m_state.value = m_state.value * 1664525u + 1013904223u;
+	const auto value = (m_state.value >> 17) & 0x7fffu;
 	++m_state.draws;
 	return static_cast<Scalar>(value) / 32768.0f;
 }

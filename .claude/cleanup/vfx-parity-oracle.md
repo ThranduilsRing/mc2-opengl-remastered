@@ -1,4 +1,45 @@
-# G2 checkpoint: partial, runtime acceptance pending
+# G2 build repair after 91f45c0e1
+
+Source fix verified in the real VS Stuff project; full engine build remains **blocked by
+C1041 PDB locks** after the requested single serial retry. No deployment, capture or commit.
+
+`mclib/stuff/random.cpp` now contains the small VFX LCG directly: unsigned u32 recurrence
+`state = state * 1664525u + 1013904223u`, then `(state >> 17) & 0x7fff` divided by 32768.
+This preserves the existing sequence, reset/state/count and algorithm/version contract
+without a Stuff dependency on the higher-layer `mclib/det_rng.h`. No include paths changed
+in any production target. The standalone probe now includes `random.hpp` through
+`mclib/stuff`, excluding the parent `mclib` include path that masked the original defect.
+
+Proof commands from `A:/Games/mc2-s3`:
+
+```powershell
+& 'C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' --build build64 --config RelWithDebInfo --target build_fingerprint mc2 mc2_launcher
+& 'C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' --build build64 --config RelWithDebInfo --target build_fingerprint mc2 mc2_launcher -- /m:1
+py -3 tools/build_contract_harnesses.py --run --unit
+py -3 -B tools/vfx_oracle/probe_rng.py --out E:/mc2-archive-2026-10/g2-91f45-build-fix-rng
+git -c core.whitespace=cr-at-eol diff --check
+```
+
+Both VS commands returned 1 solely for C1041 on `mclib.pdb` and `gosfx.pdb` in other
+translation units. The first compiled random.cpp and produced stuff.lib; the retry also
+reported stuff.lib successfully. Neither reported C1083. The requested targets as a whole,
+including the launcher, are not proved built. No further build retry or process termination.
+
+Contracts returned 0: 3,112 doctest cases passed, 3 skipped (97 s), and all four Python
+harness commands returned 0. The release-tree harness explicitly skipped real installed-tree
+validation because no release root was configured. Intentional child-test failures in the
+doctest log are expected; the enclosing corpus ended SUCCESS. RNG probe compile/run returned
+0 with the narrowed includes, retaining the known 9340/32768 and 21221/32768 first draws
+for root seed 42, reset/restore, draw-count, range and legacy-stream isolation checks.
+Whitespace check passed; CRLF C++ and LF Python/report retained.
+
+Retained scratch: `E:/mc2-archive-2026-10/g2-91f45-build-fix-vs.log`,
+`g2-91f45-build-fix-vs-serial.log`, `g2-91f45-build-fix-contracts.log`, and
+`g2-91f45-build-fix-rng/{compile-command.json,compile.log,run.log,rng_probe.exe,rng_probe.pdb}`
+under that archive root. Existing build64/build64-tests outputs updated; no files deleted.
+The earlier part-1 checkpoint below retains its broader G2 ownership and runtime gaps.
+
+# G2 part-1 checkpoint (before 91f45c0e1): partial
 
 Worktree `A:/Games/mc2-s3`, branch `claude/vfx-oracle`, base `5563945e0`.
 No commits, index writes, deployments, game launches, particle-default changes or MLR deletion.
@@ -10,7 +51,7 @@ The Q2 report below is historical evidence, not a post-change capture result.
 
 1. **Session RNG ownership incomplete.** `Stuff::Random::Stream` is an instance value with
    stream ID `0x56465852`, algorithm version 1, explicit seed/reset, state/restore and u64 draw count.
-   The design's `mc2_det_rng::next15` LCG produces exactly representable 15-bit fractions
+   The design's Numerical Recipes LCG produces exactly representable 15-bit fractions
    with u32 initial seed/state (`rootSeed XOR streamId`) without calling `gos_rand` or
    the legacy Stuff table. `Effect::ExecuteInfo` can borrow that stream; root/child Event births
    and loop restarts propagate it. No production caller injects it yet. The existing Stuff

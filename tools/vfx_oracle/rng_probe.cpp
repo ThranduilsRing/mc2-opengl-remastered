@@ -1,4 +1,4 @@
-#include "stuff/random.hpp"
+#include "random.hpp"
 #include <cstdio>
 
 // The standalone probe supplies the engine seed source without a game process.

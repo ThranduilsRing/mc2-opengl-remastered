@@ -23,7 +23,8 @@ def main() -> int:
     command = [compiler, "-std=c++23", "-O2", "-g", "-DNDEBUG", "-fms-extensions",
                "-ffunction-sections", "-DPLATFORM_WINDOWS", "-DLINUX_BUILD",
                "-Wno-deprecated-declarations"]
-    for include in ("mclib", "GameOS/include", "GameOS/gameos", "."):
+    # Excluding Stuff's parent include directory exposes higher-layer dependency leaks.
+    for include in ("mclib/stuff", "GameOS/include", "GameOS/gameos", "."):
         command += ["-I", str(ROOT / include)]
     command += [str(ROOT / "tools/vfx_oracle/rng_probe.cpp"),
                 str(ROOT / "mclib/stuff/random.cpp"), "-Xlinker", "/OPT:REF", "-o", str(exe)]
