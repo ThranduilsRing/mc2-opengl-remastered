@@ -166,13 +166,14 @@ void __stdcall gos_CloseResourceDLL(HSTRRES handle)
     delete pstrres;
 }
 
-const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
-{
-    gosASSERT(handle);
-    gos_StringRes* pstrres = (gos_StringRes*)(handle);
+namespace {
 
+// The text the provider holds for `id`, or nullptr when it has none. Silent: the callers decide what a missing id costs.
+const char* lookupResourceString(HSTRRES handle, DWORD id)
+{
+    gos_StringRes* pstrres = (gos_StringRes*)(handle);
     if (!pstrres)
-        return MC2Strings::MissingResourceId(id);
+        return nullptr;
 
     /*
         mc2res.dll handles are represented by module == NULL. Those IDs must
@@ -181,20 +182,39 @@ const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
     if (!pstrres->module)
     {
         const char* fitText = MC2Strings::GetByLegacyId(static_cast<long>(id));
-        if (fitText && fitText[0])
-            return fitText;
-
-        return MC2Strings::MissingLegacyId(static_cast<long>(id));
+        return (fitText && fitText[0]) ? fitText : nullptr;
     }
 
     if (!pstrres->getStringByIdFptr)
+        return nullptr;
+
+    return pstrres->getStringByIdFptr(id);
+}
+
+}  // namespace
+
+const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
+{
+    gosASSERT(handle);
+
+    const char* str = lookupResourceString(handle, id);
+    if (str)
+        return str;
+
+    gos_StringRes* pstrres = (gos_StringRes*)(handle);
+    if (!pstrres)
         return MC2Strings::MissingResourceId(id);
-
-    const char* str = pstrres->getStringByIdFptr(id);
-
-    if(nullptr == str) {
+    if (!pstrres->module)
+        return MC2Strings::MissingLegacyId(static_cast<long>(id));
+    if (pstrres->getStringByIdFptr)
         mc2::fmt::print_err("Requested string id: {:d} not found, return missing marker\n", mc2::fmt::as_i32(id));
-        return MC2Strings::MissingResourceId(id);
-    }
-    return str;
+    return MC2Strings::MissingResourceId(id);
+}
+
+bool __stdcall gos_ResourceStringExists(HSTRRES handle, DWORD id, size_t* length)
+{
+    const char* str = lookupResourceString(handle, id);
+    if (length)
+        *length = str ? strlen(str) : 0;
+    return str != nullptr;
 }

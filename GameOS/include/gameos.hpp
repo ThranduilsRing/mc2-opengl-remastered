@@ -817,6 +817,10 @@ void __stdcall gos_CloseResourceDLL(HSTRRES Handle);
 //
 const char* __stdcall gos_GetResourceString(HSTRRES Handle, DWORD Id );
 
+// Whether the provider holds a string for `Id`, and its length in bytes when it does (*Length is 0 when not; Length may be null).
+// Never returns a missing marker and writes no log line, so a caller can tell a real string from the placeholder before it sizes a buffer.
+bool __stdcall gos_ResourceStringExists(HSTRRES Handle, DWORD Id, size_t* Length);
+
 //
 // Returns a void* to block of memory stored in the resource .dll. Resources
 // that are stored in this fashion must be a "custom" resource and their resource type
