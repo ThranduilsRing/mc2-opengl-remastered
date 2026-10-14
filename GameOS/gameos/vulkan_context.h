@@ -63,7 +63,7 @@ struct IslandState {
     virtual ~IslandState() = default;
 };
 // One slot per island that has been moved under the context; the next converted island adds its name here.
-enum class IslandSlot : size_t { Vfx, Sky, Count };
+enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Mech, ColorProp, Water, Shadow, Terrain, Count };
 #endif
 
 // The standalone shared engine Vulkan context. Owns instance + physical device
@@ -147,6 +147,9 @@ public:
     // Idles the GPU, then releases one parked island (for an island that rebuilds itself, e.g. on a resize). Safe on an empty slot.
     void retireIsland(IslandSlot slot);
 #endif
+
+    // Waits for the device to drain before the caller drops objects that may be in flight, and logs a failed wait (a lost device). A no-op without a device.
+    void waitIdle(std::string_view why) const;
 
     // Emit the [VK_ENGINE_CONTEXT] health line (device_name / validation_errors
     // / created / fallback_reason) to stderr for the T5 device-birth proof.

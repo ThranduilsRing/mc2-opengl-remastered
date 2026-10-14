@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string_view>
 
 // Diagnostic event JSONL writer.
 //
@@ -38,6 +39,9 @@ void shutdown();
 
 // Is JSONL output enabled and initialized?
 bool enabled();
+
+// Was the tag asked for in MC2_DIAG_TAGS? Needs no init() and survives shutdown(), for lines printed during engine teardown.
+bool tagRequested(std::string_view tag);
 
 // Is the given tag in the current whitelist?
 bool tagEnabled(const char* tag);

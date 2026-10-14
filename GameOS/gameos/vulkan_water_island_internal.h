@@ -45,6 +45,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstddef>   // offsetof (M2 layout asserts)
+#include <memory>
 #include <vector>
 #include <string>
 #include <functional>
@@ -122,7 +123,7 @@ static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) =
               offsetof(WaterFsParams, f7) == 160 && offsetof(WaterFsParams, f9) == 192, "WaterFsParams offsets");
 
 // The persistent island state.
-struct WaterIsland {
+struct WaterIsland : mc2vk::IslandState {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
@@ -155,16 +156,9 @@ struct WaterIsland {
     // buffers[p] are rewritten and before cbuf[p]/set[p] are reused. Recipe
     // (mission-static after upload) and HDRI (copy-once) stay single-instance:
     // their rare (re)writes are vkDeviceWaitIdle-guarded.
-    VkBuffer      recipeBuf = VK_NULL_HANDLE; VmaAllocation recipeAlloc = VK_NULL_HANDLE;
     VkDeviceSize  recipeBytes = 0;
     bool          recipeUploaded = false;
-    VkBuffer      thinBuf[2]   = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VmaAllocation thinAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkDeviceSize  thinCapBytes[2] = {0, 0};   // grows to high-water-mark
-    VkBuffer      vsUbo[2]     = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VmaAllocation vsUboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkBuffer      fsUbo[2]     = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VmaAllocation fsUboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     // RUNG-6.5 WATER-REFLECTION: copy-once HDRI equirect import (binding 2).
     // Copied ONCE from the GL HDRI texture (BC6H mip0 sidecar in the field
@@ -172,9 +166,6 @@ struct WaterIsland {
     // per-frame copy. hdriRealImported=false -> a 1x1 black dummy is bound and
     // the island patches fsParams' u_waterHdriLod slot to -1 (SH-L2 fallback,
     // same semantics GL uses when isHdriReady()==false).
-    VkImage       hdriImage = VK_NULL_HANDLE; VmaAllocation hdriAlloc = VK_NULL_HANDLE;
-    VkImageView   hdriView  = VK_NULL_HANDLE;
-    VkSampler     hdriSampler = VK_NULL_HANDLE;
     bool          hdriRealImported = false;   // real GL HDRI bytes present (not dummy)
     bool          hdriAttempted    = false;   // import tried once (success or fail)
     unsigned int  hdriGlTexId      = 0;       // GL tex id the import came from
@@ -184,29 +175,37 @@ struct WaterIsland {
     // Re-imported only when gos_TerrainLodChunk_WaterShoreDataGeneration() changes
     // (new mission). A 1x1 dummy keeps the statically-used binding valid when the
     // GL texture is absent; has*=false makes the FS degrade 2 -> 1 -> 0 like GL.
-    VkImage       shHImage = VK_NULL_HANDLE; VmaAllocation shHAlloc = VK_NULL_HANDLE;
-    VkImageView   shHView  = VK_NULL_HANDLE;
-    VkImage       shMImage = VK_NULL_HANDLE; VmaAllocation shMAlloc = VK_NULL_HANDLE;
-    VkImageView   shMView  = VK_NULL_HANDLE;
     bool          shHReal = false, shMReal = false;   // real data imported (not dummy)
     bool          shoreAttempted = false;
     unsigned int  shoreGen = 0;
 
-    VkRenderPass      rpass  = VK_NULL_HANDLE;
-    VkFramebuffer     fb     = VK_NULL_HANDLE;
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
-    VkDescriptorPool  pool   = VK_NULL_HANDLE;
-    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1)
-    VkPipelineLayout  playout = VK_NULL_HANDLE;
-    VkPipeline        pipe   = VK_NULL_HANDLE;
-    VkShaderModule    vert   = VK_NULL_HANDLE;
-    VkShaderModule    frag   = VK_NULL_HANDLE;
-
-    VkCommandPool     cpool  = VK_NULL_HANDLE;
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkFence           fence  = VK_NULL_HANDLE;
+    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1); allocated from `pool`, freed with it
+    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
+
+    // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
+    // parked island ahead of the device). An image is declared before its view so the view is released first.
+    mc2vk::OwnedBuffer vsUbo[2];
+    mc2vk::OwnedBuffer fsUbo[2];
+    mc2vk::OwnedBuffer recipeBuf;
+    mc2vk::OwnedBuffer thinBuf[2];
+    mc2vk::OwnedRenderPass rpass;
+    mc2vk::OwnedFramebuffer fb;
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool pool;
+    mc2vk::OwnedImage     hdriImage;
+    mc2vk::OwnedImageView hdriView;
+    mc2vk::OwnedSampler   hdriSampler;
+    mc2vk::OwnedImage     shHImage;
+    mc2vk::OwnedImageView shHView;
+    mc2vk::OwnedImage     shMImage;
+    mc2vk::OwnedImageView shMView;
+    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedPipeline pipe;
+    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedFence fence;
 };
 
 }  // namespace vk_water_detail
@@ -220,7 +219,9 @@ extern WaterIslandHealth g_health;
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
 extern unsigned long g_depthInCopyBufferToImage;
-extern WaterIsland* g_island;
+// The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
+std::unique_ptr<mc2vk::IslandState>& islandSlot();
+WaterIsland* parkedIsland();
 void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
 bool waterTier1Requested();
@@ -229,14 +230,13 @@ bool waterFenceDeferEnabled();
 bool waterDirectChainRequested();
 std::string spv_dir();
 VkShaderModule load_spv(VkDevice device, std::string_view path);
-void destroy_island(WaterIsland* s);
-bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc,
+bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
                  std::string_view name, int i0 = -1, int i1 = -1);
 void write_descriptors(WaterIsland* s);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);
 bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex);
-bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat, VkImage* img, VmaAllocation* alloc, VkImageView* view, bool* real);
+bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat, mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, bool* real);
 bool ensure_shore(WaterIsland* s);
 bool init_island(WaterIsland* s, int w, int h);
 }  // namespace vk_water_detail

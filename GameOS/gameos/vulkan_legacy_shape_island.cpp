@@ -92,45 +92,54 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 const uint32_t kVertexStride = 32;       // gos_VERTEX: x,y,z,rhw, argb, frgb, u, v
 const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 
+// The view is declared after the image so it is released first.
 struct TexEntry {
-    VkImage img = VK_NULL_HANDLE; VmaAllocation alloc = VK_NULL_HANDLE;
-    VkImageView view = VK_NULL_HANDLE;
-    VkDescriptorSet set[2] = {};
+    mc2vk::OwnedImage img;
+    mc2vk::OwnedImageView view;
+    VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
 
-struct Island {
+// Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
+// parked island ahead of the device).
+struct Island : mc2vk::IslandState {
     bool inited = false, disabled = false;
     int  w = 0, h = 0;
     VkInstance instance = VK_NULL_HANDLE; VkPhysicalDevice phys = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE; uint32_t gfxFamily = UINT32_MAX;
     VkQueue queue = VK_NULL_HANDLE; VmaAllocator allocator = VK_NULL_HANDLE;
 
-    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE;
-    VkPipeline pipes[MC2_LEGACY_PASS_COUNT] = {}; VkPipelineLayout playout = VK_NULL_HANDLE;
-    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
     struct VkImageResource* colorRes = nullptr;
     struct VkImageResource* normalRes = nullptr;
     struct VkImageResource* depthRes = nullptr;
 
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE; VkDescriptorPool pool = VK_NULL_HANDLE;
-    VkSampler samp = VK_NULL_HANDLE;
-    VkBuffer ubo[2] = {}; VmaAllocation uboAlloc[2] = {};
-    VkBuffer vtx[2] = {}; VmaAllocation vtxAlloc[2] = {}; VkDeviceSize vtxCap[2] = {};
+    VkDeviceSize vtxCap[2] = {};
+    VkCommandBuffer cbuf[2] = {};   // allocated from `cpool`, freed with it
 
+    mc2vk::OwnedBuffer ubo[2];
+    mc2vk::OwnedBuffer vtx[2];
+    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedSampler samp;
+    mc2vk::OwnedRenderPass rpass;
+    mc2vk::OwnedFramebuffer fb;
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool pool;
     TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
     std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
-
-    VkCommandPool cpool = VK_NULL_HANDLE;
-    VkCommandBuffer cbuf[2] = {};
+    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];
 };
 
-Island* g_island = nullptr;
+// The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
+std::unique_ptr<mc2vk::IslandState>& islandSlot() {
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::LegacyShape);
+}
+Island* parkedIsland() { return static_cast<Island*>(islandSlot().get()); }
 bool g_sessionDeclined = false;
 int  g_initReachedBuild = 0;
 std::vector<Mc2LegacyMlrDraw> g_pending;
 
-bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf,
-                 VmaAllocation* alloc, bool hostVisible,
+bool make_buffer(Island* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
                  std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -138,32 +147,25 @@ bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffe
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
-        vlog("vmaCreateBuffer failed."); return false;
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
+        vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
-bool upload_host(Island* s, VmaAllocation a, const void* data, size_t bytes) {
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, a, &p) != VK_SUCCESS) return false;
+bool upload_host(const mc2vk::OwnedBuffer& buffer, const void* data, size_t bytes) {
+    void* p = buffer.map();
+    if (!p) return false;
     std::memcpy(p, data, bytes);
-    vmaUnmapMemory(s->allocator, a);
+    buffer.unmap();
     return true;
-}
-
-void destroy_tex(Island* s, TexEntry& t) {
-    if (t.view) vkDestroyImageView(s->device, t.view, nullptr);
-    if (t.img)  vmaDestroyImage(s->allocator, t.img, t.alloc);
-    t = TexEntry{};
 }
 
 // --- one-shot command helpers (copy-once texture import) --------------------
 VkCommandBuffer cp_begin(Island* s) {
     VkCommandBufferAllocateInfo cbi{};
     cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
     VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -175,23 +177,23 @@ void cp_end(Island* s, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    VkFence f = VK_NULL_HANDLE;
+    mc2vk::OwnedFence fence;
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    if (vkCreateFence(s->device, &fci, nullptr, &f) != VK_SUCCESS) f = VK_NULL_HANDLE;
-    vkQueueSubmit(s->queue, 1, &si, f);
-    if (f != VK_NULL_HANDLE) {
+    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
+    vkQueueSubmit(s->queue, 1, &si, fence.get());
+    if (fence) {
+        const VkFence f = fence.get();
         vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-        vkDestroyFence(s->device, f, nullptr);
     } else {
         vkQueueWaitIdle(s->queue);
     }
-    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
 bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
-    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "legacyshape.staging")) return false;
-    if (!upload_host(s, stgAlloc, bytes, (size_t)byteCount)) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
+    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "legacyshape.staging")) return false;
+    if (!upload_host(stg, bytes, (size_t)byteCount)) return false;
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -201,16 +203,13 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* by
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
-        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
-    }
-    mc2vk::nameObject(s->device, e.img, "legacyshape.texture");
+    if (!e.img.create(s->allocator, s->device, ici, aci, "legacyshape.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
-    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = e.img;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = e.img.get();
     bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -218,32 +217,31 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* by
     VkBufferImageCopy r{};
     r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     r.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg, e.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
+    vkCmdCopyBufferToImage(cb, stg.get(), e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                          0, 0, nullptr, 0, nullptr, 1, &bar);
     cp_end(s, cb);
-    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    return vkCreateImageView(s->device, &vci, nullptr, &e.view) == VK_SUCCESS;
+    return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
 
 // Per-parity descriptor set for one texture: 0 = frame UBO, 1 = albedo.
 bool alloc_tex_sets(Island* s, TexEntry& t) {
-    VkDescriptorSetLayout layouts[2] = {s->dsl, s->dsl};
+    VkDescriptorSetLayout layouts[2] = {s->dsl.get(), s->dsl.get()};
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < 2; ++par) {
-        VkDescriptorBufferInfo ui{ s->ubo[par], 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo ui{ s->ubo[par].get(), 0, VK_WHOLE_SIZE };
         VkDescriptorImageInfo ii{};
-        ii.sampler = s->samp; ii.imageView = t.view; ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        ii.sampler = s->samp.get(); ii.imageView = t.view.get(); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkWriteDescriptorSet w[2]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 0;
         w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &ui;
@@ -281,38 +279,13 @@ TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     TexEntry t;
     if (!upload_image(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
         !alloc_tex_sets(s, t)) {
-        destroy_tex(s, t);
-        return &s->dummyTex;
+        return &s->dummyTex;   // `t` releases whatever it created
     }
     ++g_health.texUploads;
-    auto ins = s->texs.emplace(texNode, t);
+    auto ins = s->texs.emplace(texNode, std::move(t));
     vlog("texture cached: node=%u glTex=%u %dx%d (%zu/%u).", texNode, glTex, (int)w, (int)h,
          s->texs.size(), kMaxTextures);
     return &ins.first->second;
-}
-
-void destroy_island(Island* s) {
-    if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
-    for (int k = 0; k < MC2_LEGACY_PASS_COUNT; ++k)
-        if (s->pipes[k]) vkDestroyPipeline(d, s->pipes[k], nullptr);
-    if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
-    if (s->frag)    vkDestroyShaderModule(d, s->frag, nullptr);
-    if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
-    if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
-    if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
-    for (auto& kv : s->texs) destroy_tex(s, kv.second);
-    s->texs.clear();
-    destroy_tex(s, s->dummyTex);
-    if (s->pool)  vkDestroyDescriptorPool(d, s->pool, nullptr);   // frees the sets
-    if (s->dsl)   vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
-    for (int i = 0; i < 2; ++i) {
-        if (s->ubo[i]) vmaDestroyBuffer(s->allocator, s->ubo[i], s->uboAlloc[i]);
-        if (s->vtx[i]) vmaDestroyBuffer(s->allocator, s->vtx[i], s->vtxAlloc[i]);
-    }
-    if (s->samp)  vkDestroySampler(d, s->samp, nullptr);
-    if (s->cpool) vkDestroyCommandPool(d, s->cpool, nullptr);
 }
 
 bool init_island(Island* s, int w, int h) {
@@ -338,9 +311,9 @@ bool init_island(Island* s, int w, int h) {
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
 
     for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true, "legacyshape.ubo", static_cast<int>(i))) return false;
+        if (!make_buffer(s, s->ubo[i], sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "legacyshape.ubo", static_cast<int>(i))) return false;
         s->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", static_cast<int>(i))) return false;
+        if (!make_buffer(s, s->vtx[i], s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "legacyshape.vtx", static_cast<int>(i))) return false;
     }
 
     {   // command pool + per-parity command buffers
@@ -348,10 +321,10 @@ bool init_island(Island* s, int w, int h) {
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         cpi.queueFamilyIndex = s->gfxFamily;
-        if (vkCreateCommandPool(s->device, &cpi, nullptr, &s->cpool) != VK_SUCCESS) { setFallback("cmdpool_failed"); return false; }
+        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
         VkCommandBufferAllocateInfo cbi{};
         cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
+        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
     }
 
@@ -361,7 +334,7 @@ bool init_island(Island* s, int w, int h) {
         sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        if (vkCreateSampler(s->device, &sci, nullptr, &s->samp) != VK_SUCCESS) { setFallback("sampler_failed"); return false; }
+        if (!mc2vk::create(s->samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { setFallback("sampler_failed"); return false; }
     }
 
     {   // render pass + framebuffer: LOAD color0/normal/depth (same as the mech island)
@@ -407,13 +380,13 @@ bool init_island(Island* s, int w, int h) {
         rpci.attachmentCount = 3; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) { setFallback("renderpass_failed"); return false; }
+        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
         VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
-        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb) != VK_SUCCESS) { setFallback("framebuffer_failed"); return false; }
+        if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
     }
 
     {   // descriptor layout + pool, dummy white texture
@@ -425,7 +398,7 @@ bool init_island(Island* s, int w, int h) {
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = b;
-        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) { setFallback("dsl_failed"); return false; }
+        if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { setFallback("dsl_failed"); return false; }
         const uint32_t N = kMaxTextures + 1;   // + dummy
         VkDescriptorPoolSize sizes[2]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[0].descriptorCount = 2 * N;
@@ -433,7 +406,7 @@ bool init_island(Island* s, int w, int h) {
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2 * N; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
-        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) { setFallback("pool_failed"); return false; }
+        if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { setFallback("pool_failed"); return false; }
 
         const uint8_t px[4] = {255, 255, 255, 255};
         if (!upload_image(s, s->dummyTex, 1, 1, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
@@ -442,17 +415,18 @@ bool init_island(Island* s, int w, int h) {
     }
 
     {   // pipeline
-        s->vert = load_spv(s->device, spv_dir() + "legacy_shape_tier1.vert.spv");
-        s->frag = load_spv(s->device, spv_dir() + "legacy_shape_tier1.frag.spv");
-        if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) { setFallback("spv_load_failed"); return false; }
+        s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "legacy_shape_tier1.vert.spv"));
+        s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "legacy_shape_tier1.frag.spv"));
+        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
 
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = 4;
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
+        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
-        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) { setFallback("playout_failed"); return false; }
+        if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) { setFallback("playout_failed"); return false; }
 
         // gos_VERTEX (32B): pos vec4 (x,y,z,rhw)@0, argb u8x4 unorm@16, frgb u8x4 unorm@20, uv vec2@24.
         VkVertexInputBindingDescription vib{};
@@ -486,9 +460,9 @@ bool init_island(Island* s, int w, int h) {
         dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert; stages[0].pName = "main";
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag; stages[1].pName = "main";
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
 
         // One pipeline per legacy loop (gosRenderer state each loop sets in renderLists):
         //   SOLID : OneZero (no blend), depth write, ZCompare 1 = GEQUAL  (reverse-Z)
@@ -529,11 +503,11 @@ bool init_island(Island* s, int w, int h) {
             gp.pViewportState = &vps; gp.pRasterizationState = &rs;
             gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
             gp.pDynamicState = &dsci;
-            gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
-            if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipes[k]) != VK_SUCCESS) {
+            gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+            if (!mc2vk::create(s->pipes[k], s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 setFallback("pipeline_failed"); return false;
             }
-            mc2vk::nameObjectAt(s->device, s->pipes[k], "legacyshape.pipe", static_cast<int>(k));
+            mc2vk::nameObjectAt(s->device, s->pipes[k].get(), "legacyshape.pipe", static_cast<int>(k));
         }
     }
 
@@ -565,14 +539,13 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     if (!gateRequested() || g_sessionDeclined || !frame) return 0;
     if (draws.empty() || w <= 0 || h <= 0) return 0;
 
-    if (g_island && (g_island->w != w || g_island->h != h)) {
-        destroy_island(g_island); delete g_island; g_island = nullptr;
-    }
-    if (!g_island) {
-        g_island = new Island();
-        if (!init_island(g_island, w, h)) {
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::LegacyShape);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<Island>();
+        if (!init_island(fresh.get(), w, h)) {
             const bool permanent = (g_initReachedBuild != 0);
-            destroy_island(g_island); delete g_island; g_island = nullptr;
+            slotCtx.waitIdle("legacy_shape_init_failure");   // objects made before the failure may have been submitted
             if (permanent) {
                 g_sessionDeclined = true;
                 vlog("boot-level decline: permanent init failure (%s) -- legacy shapes will not draw under VK.",
@@ -583,8 +556,9 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
             }
             return 0;
         }
+        islandSlot() = std::move(fresh);
     }
-    Island* s = g_island;
+    Island* s = parkedIsland();
     if (s->disabled || !s->inited) return 0;
 
     // Resolve textures (GL calls) BEFORE recording; total the vertex bytes.
@@ -601,11 +575,11 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     // Grow both parity vertex buffers BEFORE beginFrame (growth after it could strand the fence).
     for (uint32_t i = 0; i < 2; ++i) {
         if (totalBytes > s->vtxCap[i]) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, s->vtx[i], s->vtxAlloc[i]);
-            s->vtx[i] = VK_NULL_HANDLE;
+            // Growth frees a buffer an in-flight submit may still read.
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_vtx_grow");
+            s->vtx[i].reset();
             s->vtxCap[i] = totalBytes + totalBytes / 2;
-            if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true, "legacyshape.vtx", static_cast<int>(i))) {
+            if (!make_buffer(s, s->vtx[i], s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "legacyshape.vtx", static_cast<int>(i))) {
                 s->disabled = true; setFallback("vtx_grow_failed"); return 0;
             }
         }
@@ -617,17 +591,17 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     const uint32_t par = fsC.parity & 1u;
 
     {   // per-frame vertex stream + UBO
-        void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->vtxAlloc[par], &p) != VK_SUCCESS) { setFallback("map_failed"); s->disabled = true; return 0; }
+        void* p = s->vtx[par].map();
+        if (!p) { setFallback("map_failed"); s->disabled = true; return 0; }
         for (const Resolved& r : list)
             std::memcpy((uint8_t*)p + r.byteOff, r.d->vertices, (size_t)r.d->vertexCount * kVertexStride);
-        vmaUnmapMemory(s->allocator, s->vtxAlloc[par]);
+        s->vtx[par].unmap();
 
         LegacyFrameUBO u{};
         const float* proj = gos_GetProj2ScreenMat4();
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
-        upload_host(s, s->uboAlloc[par], &u, sizeof(u));
+        upload_host(s->ubo[par], &u, sizeof(u));
     }
 
     VkCommandBuffer cb = s->cbuf[par];
@@ -639,7 +613,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
@@ -648,26 +622,27 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     vkCmdSetScissor(cb, 0, 1, &scissor);
     VkDeviceSize zeroOff = 0;
     uint32_t boundPass = 0xffffffffu;
-    vkCmdBindVertexBuffers(cb, 0, 1, &s->vtx[par], &zeroOff);
+    const VkBuffer vertexBuffer = s->vtx[par].get();
+    vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &zeroOff);
 
     VkDescriptorSet boundSet = VK_NULL_HANDLE;
     unsigned long drawn = 0, verts = 0;
     for (const Resolved& r : list) {
         VkDescriptorSet set = r.t->set[par];
         if (set != boundSet) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &set, 0, nullptr);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 0, nullptr);
             boundSet = set;
         }
         const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : (uint32_t)MC2_LEGACY_PASS_SOLID;
         if (pass != boundPass) {
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass]);
+            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass].get());
             boundPass = pass;
         }
         // FS flags: bit0 alpha test, bit1 fog off (additive loops clear gos_State_Fog), bit2 opaque alpha.
         const uint32_t pflags = (r.d->alphaTest ? 1u : 0u) |
                                 (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
                                 (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
-        vkCmdPushConstants(cb, s->playout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
+        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
         vkCmdDraw(cb, r.d->vertexCount, 1, (uint32_t)(r.byteOff / kVertexStride), 0);
         ++drawn; verts += r.d->vertexCount;
     }
@@ -693,14 +668,13 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
 
 extern "C" void mc2_vk_legacy_shape_island_reset() {
     g_pending.clear();
-    Island* s = g_island;
+    Island* s = parkedIsland();
     if (!s || !s->inited) return;
     // Texture node indices are reused by the next mission: drop the copy-once cache.
-    vkDeviceWaitIdle(s->device);
-    for (auto& kv : s->texs) destroy_tex(s, kv.second);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_reset");
     s->texs.clear();
     // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
-    if (s->pool) vkResetDescriptorPool(s->device, s->pool, 0);
+    if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
     s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;
     if (!alloc_tex_sets(s, s->dummyTex)) { s->disabled = true; vlog("reset: dummy sets failed -- island disabled."); }
     vlog("texture cache reset on mission unload.");
@@ -710,9 +684,7 @@ extern "C" void mc2_vk_legacy_shape_island_destroy() {
     vlog("used_vulkan=%lu nodes_drawn=%lu verts_drawn=%lu tex_uploads=%lu fallback_reason=\"%s\"",
          g_health.usedVulkan, g_health.nodesDrawn, g_health.vertsDrawn, g_health.texUploads,
          g_health.fallbackReason);
-    if (!g_island) return;
-    destroy_island(g_island);
-    delete g_island; g_island = nullptr;
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::LegacyShape);
 }
 
 #endif // MC2_VULKAN_ISLAND

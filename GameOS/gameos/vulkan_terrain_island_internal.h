@@ -20,6 +20,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_owned.h"
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"
@@ -41,6 +42,7 @@
 #include <string>
 #include <chrono>
 #include <unordered_map>
+#include <memory>
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 #ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
@@ -82,8 +84,8 @@ const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatibl
 
 // A cached LOD0 patch grid (VK-owned VBO/IBO), keyed by (quadCountX,quadCountY).
 struct PatchMesh {
-    VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
-    VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer vbo;
+    mc2vk::OwnedBuffer ibo;
     uint32_t      indexCount = 0;
 };
 
@@ -93,8 +95,8 @@ struct PatchMesh {
 // gos_terrain_lod_chunk.cpp:459-518). Per-edge offset/count (N,S,W,E) let the draw
 // loop honor the per-block skirt edge mask exactly like GL's mask-bit loop.
 struct SkirtMesh {
-    VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
-    VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer vbo;
+    mc2vk::OwnedBuffer ibo;
     uint32_t      edgeOffset[4] = {0,0,0,0};   // 0=N,1=S,2=W,3=E (index offsets, in indices)
     uint32_t      edgeCount[4]  = {0,0,0,0};
 };
@@ -102,7 +104,11 @@ struct SkirtMesh {
 // VK-TERRAIN-SKIRT vertex: mirrors GL's SkirtVertex { int16 lx, ly, isSkirt, _pad }.
 struct SkirtVertex { int16_t lx, ly, isSkirt, _pad; };
 
-struct TerrainIsland {
+struct OvlState;
+
+// The island state. The engine context owns it while it is parked (IslandSlot::Terrain), so the objects below are released by the context ahead of
+// the allocator and device they were made on. The owners are declared in creation order and released in reverse.
+struct TerrainIsland : mc2vk::IslandState {
     bool disabled = false;
     bool inited   = false;
 
@@ -124,17 +130,17 @@ struct TerrainIsland {
     // direct-chain first-owner; the former colorView/normalView/depthView are gone.
 
     // LOAD-preserve co-write renderpass + framebuffer (over the 3 shared views).
-    VkRenderPass  rpass = VK_NULL_HANDLE;
-    VkFramebuffer fb    = VK_NULL_HANDLE;
+    mc2vk::OwnedRenderPass  rpass;
+    mc2vk::OwnedFramebuffer fb;
 
     // Pipeline (2 GBuffer outputs, reverse-Z GEQUAL depth-write, cull NONE, no blend).
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
-    VkDescriptorPool  pool   = VK_NULL_HANDLE;
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool  pool;
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
-    VkPipelineLayout  playout = VK_NULL_HANDLE;
-    VkPipeline        pipe   = VK_NULL_HANDLE;
-    VkShaderModule    vert   = VK_NULL_HANDLE;
-    VkShaderModule    frag   = VK_NULL_HANDLE;
+    mc2vk::OwnedPipelineLayout  playout;
+    mc2vk::OwnedPipeline        pipe;
+    mc2vk::OwnedShaderModule    vert;
+    mc2vk::OwnedShaderModule    frag;
 
     // VK-TERRAIN-SKIRT (rung 4): second pipeline for skirt strips (2-attribute vertex
     // input: ivec2 localOffset + int isSkirtFlag, mirrors GL's skirt VAO). Shares the
@@ -142,19 +148,19 @@ struct TerrainIsland {
     // the vertex-input state + shader modules differ) -- cull/depth/blend state is
     // IDENTICAL (double-sided, reverse-Z GEQUAL, opaque), matching GL's skirt draw
     // which reuses the same terrain program + GL state, just a different VAO/attribs.
-    VkPipeline        skirtPipe = VK_NULL_HANDLE;
-    VkShaderModule    skirtVert = VK_NULL_HANDLE;
-    VkShaderModule    skirtFrag = VK_NULL_HANDLE;
+    mc2vk::OwnedPipeline        skirtPipe;
+    mc2vk::OwnedShaderModule    skirtVert;
+    mc2vk::OwnedShaderModule    skirtFrag;
 
     // VK-owned snapshot of the GL height SSBO (binding 23 -> here binding 1).
-    VkBuffer      heightBuf = VK_NULL_HANDLE; VmaAllocation heightAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer      heightBuf;
     VkDeviceSize  heightCapBytes = 0;
     uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): VK-owned snapshot of the GL 4x visual
     // heightfield bake (GL binding 26 -> here binding 10). Version-gated mission-load
     // copy, mirrors the cement-word SSBO snapshot machinery.
-    VkBuffer      visualHeightBuf = VK_NULL_HANDLE; VmaAllocation visualHeightAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer      visualHeightBuf;
     VkDeviceSize  visualHeightCapBytes = 0;
     uint64_t      visualHeightVersionCopied = UINT64_MAX;
     bool          visualHeightReady = false;        // a real bake snapshot is live
@@ -162,9 +168,9 @@ struct TerrainIsland {
     // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
     // name so a re-built atlas (per-mission) re-imports.
-    VkImage       colormapImg   = VK_NULL_HANDLE; VmaAllocation colormapAlloc = VK_NULL_HANDLE;
-    VkImageView   colormapView  = VK_NULL_HANDLE;
-    VkSampler     colormapSamp  = VK_NULL_HANDLE;
+    mc2vk::OwnedImage       colormapImg;
+    mc2vk::OwnedImageView   colormapView;
+    mc2vk::OwnedSampler     colormapSamp;
     uint32_t      colormapTexImported = 0;   // GL tex name last imported (0 = none yet)
     bool          colormapReady = false;     // set once the sampled image is live
 
@@ -172,12 +178,12 @@ struct TerrainIsland {
     // (g_cementAtlasGLTex, runtime RGBA8). Sampled image + view + REPEAT sampler; binding
     // 3. Keyed by the GL tex name so a per-mission rebuild re-imports. PLUS a VK-owned
     // snapshot of the GL per-vertex cement-word SSBO (binding 25 -> here binding 4).
-    VkImage       cementImg   = VK_NULL_HANDLE; VmaAllocation cementAlloc = VK_NULL_HANDLE;
-    VkImageView   cementView  = VK_NULL_HANDLE;
-    VkSampler     cementSamp  = VK_NULL_HANDLE;   // REPEAT/LINEAR (GL_REPEAT wrap)
+    mc2vk::OwnedImage       cementImg;
+    mc2vk::OwnedImageView   cementView;
+    mc2vk::OwnedSampler     cementSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint32_t      cementTexImported = 0;          // GL cement tex name last imported (0 = none)
     bool          cementReady = false;            // set once the cement image is live
-    VkBuffer      cementBuf = VK_NULL_HANDLE; VmaAllocation cementBufAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer      cementBuf;
     VkDeviceSize  cementCapBytes = 0;
     uint64_t      cementVersionCopied = UINT64_MAX; // last snapshotted cement-word version
     bool          cementWordsReady = false;       // set once the cement SSBO has a real snapshot
@@ -188,12 +194,12 @@ struct TerrainIsland {
     // Sampled through a depth-COMPARE sampler (compareOp=LESS_OR_EQUAL, LINEAR HW PCF,
     // CLAMP_TO_BORDER white=1.0) at binding 5, exactly like the GL sampler2DShadow. The
     // GL map is DEPTH_COMPONENT24 but the readback is normalized float, so D32 is exact.
-    VkImage       shadowImg   = VK_NULL_HANDLE; VmaAllocation shadowAlloc = VK_NULL_HANDLE;
-    VkImageView   shadowView  = VK_NULL_HANDLE;
-    VkSampler     shadowSamp  = VK_NULL_HANDLE;  // depth-compare, LESS_OR_EQUAL, LINEAR (shared)
+    mc2vk::OwnedImage       shadowImg;
+    mc2vk::OwnedImageView   shadowView;
+    mc2vk::OwnedSampler     shadowSamp;  // depth-compare, LESS_OR_EQUAL, LINEAR (shared)
     uint32_t      shadowDim   = 0;               // current VK shadow image edge (texels)
     bool          shadowReady = false;           // a real GL map was copied this frame
-    VkBuffer      shadowStage = VK_NULL_HANDLE; VmaAllocation shadowStageAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer      shadowStage;
     VkDeviceSize  shadowStageBytes = 0;
     // VK-SHADOW-COPY-ONCE-1: last feed.staticShadowGeneration actually copied. The GL
     // static map only changes when this generation bumps (mission load / re-arm), so we
@@ -202,11 +208,11 @@ struct TerrainIsland {
 
     // VK-TERRAIN-DYNSHADOW: second D32 depth-COMPARE image for the DYNAMIC (building/mech)
     // shadow map at binding 7 (shares shadowSamp). Same copy-per-frame mechanism as static.
-    VkImage       dynShadowImg  = VK_NULL_HANDLE; VmaAllocation dynShadowAlloc = VK_NULL_HANDLE;
-    VkImageView   dynShadowView = VK_NULL_HANDLE;
+    mc2vk::OwnedImage       dynShadowImg;
+    mc2vk::OwnedImageView   dynShadowView;
     uint32_t      dynShadowDim  = 0;
     bool          dynShadowReady = false;
-    VkBuffer      dynShadowStage = VK_NULL_HANDLE; VmaAllocation dynShadowStageAlloc = VK_NULL_HANDLE;
+    mc2vk::OwnedBuffer      dynShadowStage;
     VkDeviceSize  dynShadowStageBytes = 0;
 
     // VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island produced+fenced this
@@ -227,8 +233,8 @@ struct TerrainIsland {
     // produced under MC2_VK_CSM_ARRAY_INTEROP / MC2_VK_CSM_FULLMAP_INTEROP). The owned
     // images below are now only the 1x1 dummies (ensure_dummy_csm) that keep bindings 8/9
     // valid on warmup/decline frames (csmEnabled=0 -> frag on the legacy single-map path).
-    VkImage       csmArrayImg  = VK_NULL_HANDLE; VmaAllocation csmArrayAlloc = VK_NULL_HANDLE;
-    VkImageView   csmArrayView = VK_NULL_HANDLE;
+    mc2vk::OwnedImage       csmArrayImg;
+    mc2vk::OwnedImageView   csmArrayView;
     uint32_t      csmArrayDim  = 0;
     uint32_t      csmArrayLayers = 0;
     bool          csmArrayReady = false;
@@ -236,8 +242,8 @@ struct TerrainIsland {
     bool          csmArrayDirect = false;
     VkImageView   csmArrayBoundView = VK_NULL_HANDLE;
 
-    VkImage       csmFullMapImg  = VK_NULL_HANDLE; VmaAllocation csmFullMapAlloc = VK_NULL_HANDLE;
-    VkImageView   csmFullMapView = VK_NULL_HANDLE;
+    mc2vk::OwnedImage       csmFullMapImg;
+    mc2vk::OwnedImageView   csmFullMapView;
     uint32_t      csmFullMapDim  = 0;
     bool          csmFullMapReady = false;
     VkImageView   csmFullMapExternalView = VK_NULL_HANDLE;
@@ -248,9 +254,9 @@ struct TerrainIsland {
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
     // GL_REPEAT wrap). Sampled at binding 6 (sampler2DArray, REPEAT/LINEAR). Dummy 1x1
     // 1-layer until the real array imports (matNormalReady gates the FS sample).
-    VkImage       matNormalImg   = VK_NULL_HANDLE; VmaAllocation matNormalAlloc = VK_NULL_HANDLE;
-    VkImageView   matNormalView  = VK_NULL_HANDLE;
-    VkSampler     matNormalSamp  = VK_NULL_HANDLE;   // REPEAT/LINEAR (GL_REPEAT wrap)
+    mc2vk::OwnedImage       matNormalImg;
+    mc2vk::OwnedImageView   matNormalView;
+    mc2vk::OwnedSampler     matNormalSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint32_t      matNormalTexImported = 0;          // GL array tex name last imported (0 = none)
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
@@ -263,8 +269,7 @@ struct TerrainIsland {
     // Everything else the submit reads is either write-once (patch/skirt cache VBO/IBOs,
     // copy-once image imports), rare-write device-idle-guarded (height/cement/visual-
     // height snapshots), or synced by its own one-shot inline fence (shadow copies).
-    VkBuffer      ubo[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VmaAllocation uboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    mc2vk::OwnedBuffer ubo[2];
     VkDeviceSize  uboCapBytes[2] = {0, 0};
 
     // VK-PARITY-TERRAIN-2: per-parity host-visible copies of the GL terrain light pool
@@ -273,19 +278,24 @@ struct TerrainIsland {
     // the SAME CPU arrays the GL producer uploads each frame (pool <= 12 KB, header 32 KB
     // at the default 64x64 grid, indices = stamped count); staged [par] after the slot
     // fence like the UBO. Grow-only (device-idle on regrow, rare).
-    VkBuffer      lpBuf[2][3]   = {};
-    VmaAllocation lpAlloc[2][3] = {};
+    mc2vk::OwnedBuffer lpBuf[2][3];
     VkDeviceSize  lpCap[2][3]   = {};
 
     std::unordered_map<uint32_t, PatchMesh> patchCache;
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
 
-    VkCommandPool     cpool  = VK_NULL_HANDLE;
+    mc2vk::OwnedCommandPool     cpool;
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
     // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.
     mc2vkts::GpuTimer gpuTimer;
+
+    // The overlay / decal pass built on this island's pool and shared state; declared last, so it is released first.
+    std::unique_ptr<OvlState> ovl;
+
+    TerrainIsland() = default;
+    ~TerrainIsland() override { gpuTimer.destroy(); }
 };
 
 struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}
@@ -300,9 +310,9 @@ struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overl
 static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
 
 struct OvlTex {
-    VkImage img = VK_NULL_HANDLE; VmaAllocation alloc = VK_NULL_HANDLE;
-    VkImageView view = VK_NULL_HANDLE;
-    VkDescriptorSet set = VK_NULL_HANDLE;
+    mc2vk::OwnedImage img;
+    mc2vk::OwnedImageView view;   // declared after the image: released first
+    VkDescriptorSet set = VK_NULL_HANDLE;   // freed with the pool
     uint32_t glTex = 0;              // GL texture name this import came from
 };
 
@@ -317,19 +327,22 @@ struct OvlPending {
 };
 
 struct OvlState {
-    TerrainIsland* owner = nullptr;
     int w = 0, h = 0;
     bool inited = false, disabled = false;
-    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE;
-    VkShaderModule vert[2] = {}, frag[2] = {};
-    VkPipeline pipe[2] = {};
-    VkPipelineLayout playout = VK_NULL_HANDLE;
-    VkDescriptorSetLayout texDsl = VK_NULL_HANDLE; VkDescriptorPool texPool = VK_NULL_HANDLE;
-    VkSampler samp = VK_NULL_HANDLE;
-    VkBuffer vtx[2] = {}; VmaAllocation vtxAlloc[2] = {}; VkDeviceSize vtxCap[2] = {0, 0};
-    VkBuffer stat = VK_NULL_HANDLE; VmaAllocation statAlloc = VK_NULL_HANDLE;
+    // OWNED objects in creation order, released in reverse (pipelines before their layout, framebuffer before its render pass, textures first).
+    mc2vk::OwnedRenderPass rpass;
+    mc2vk::OwnedFramebuffer fb;
+    mc2vk::OwnedShaderModule vert[2], frag[2];
+    mc2vk::OwnedPipeline pipe[2];
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedDescriptorSetLayout texDsl;
+    mc2vk::OwnedDescriptorPool texPool;
+    mc2vk::OwnedSampler samp;
+    mc2vk::OwnedBuffer vtx[2];
+    VkDeviceSize vtxCap[2] = {0, 0};
+    mc2vk::OwnedBuffer stat;
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
-    VkCommandBuffer cbuf[2] = {};
+    VkCommandBuffer cbuf[2] = {};   // allocated from the island's pool
     OvlTex dummy;
     std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
 };
@@ -350,7 +363,7 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_csm(TerrainIsland* s);
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes,
+                      VkImage img, mc2vk::OwnedBuffer& stage, VkDeviceSize* stageBytes,
                       bool perFrame);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
@@ -365,10 +378,10 @@ namespace vk_terrain_detail {
 extern TerrainIslandHealth g_health;
 extern InteropForbidden g_forbidden;
 extern float g_prefixClearColor[4];
-extern TerrainIsland* g_island;
+std::unique_ptr<mc2vk::IslandState>& islandSlot();   // the engine context's slot the island is parked in
+TerrainIsland* parkedIsland();                       // null until the island is born
 extern bool g_terrainSessionDeclined;
 extern int  g_terrainInitReachedBuild;
-extern OvlState* g_ovl;
 extern bool g_ovlDeclined;
 extern std::vector<OvlPending> g_ovlPending;
 void setFallback(std::string_view reason);
@@ -382,8 +395,8 @@ bool terrainAllLodsRequested();
 bool terrainSkirtsRequested();
 bool terrainVisualDisplaceFarRequested();
 std::string spv_dir();
-VkShaderModule load_spv(VkDevice device, std::string_view path);
-bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+mc2vk::OwnedShaderModule load_spv(VkDevice device, std::string_view path);
+bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
                  std::string_view name, int i0 = -1, int i1 = -1);
 const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep);
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep);
@@ -391,22 +404,21 @@ void write_descriptors(TerrainIsland* s);
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes);
 bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes);
 bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSize bytes);
-void destroy_island(TerrainIsland* s);
 bool init_island(TerrainIsland* s, int w, int h);
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 VkCommandBuffer begin_oneshot(TerrainIsland* s);
 void end_oneshot(TerrainIsland* s, VkCommandBuffer cb);
 bool create_colormap_sampler(TerrainIsland* s);
-bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outAlloc, VkImageView* outView, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
+bool upload_sampled_image(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
 bool create_cement_sampler(TerrainIsland* s);
-bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation* outAlloc, VkImageView* outView, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);
+bool upload_sampled_image_array(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);
 bool create_matnormal_sampler(TerrainIsland* s);
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim, VkImage* img, VmaAllocation* alloc, VkImageView* view, uint32_t* curDim);
+bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim, mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, uint32_t* curDim);
 bool ensure_shadow_image(TerrainIsland* s, uint32_t dim);
 bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers);
-void ovl_destroy_tex(TerrainIsland* s, OvlTex& t);
+void ovl_destroy_tex(OvlTex& t);
 void ovl_destroy(TerrainIsland* s);
 bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t);
 bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount);

@@ -17,15 +17,15 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // rare rewrite: mission load / crater deform). Under the deferred retire a prior
     // terrain submit may still be reading it — device-idle before rewriting in place.
     // (The old inline post-submit fence wait used to provide this guarantee for free.)
-    vkDeviceWaitIdle(s->device);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
     std::vector<uint8_t> scratch((size_t)feed.heightBytes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, scratch.data());
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->heightAlloc, &p) != VK_SUCCESS) return false;
+    if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, scratch.data(), (size_t)feed.heightBytes);
-    vmaUnmapMemory(s->allocator, s->heightAlloc);
+    vmaUnmapMemory(s->allocator, s->heightBuf.allocation());
     s->heightVersionCopied = feed.heightVersion;
     ++g_health.heightSnapshots;
     return true;
@@ -44,7 +44,7 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 VkCommandBuffer begin_oneshot(TerrainIsland* s) {
     VkCommandBufferAllocateInfo cbi{};
     cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
     VkCommandBufferBeginInfo bi{};
@@ -59,47 +59,47 @@ void end_oneshot(TerrainIsland* s, VkCommandBuffer cb) {
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     // VK-QWI-TO-FENCE-1: transient per-submit fence instead of a queue-wide drain
     // (copy-once helper, not per-frame; fail-soft to QWI if fence creation fails).
-    VkFence f = VK_NULL_HANDLE;
+    mc2vk::OwnedFence fence;
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    if (vkCreateFence(s->device, &fci, nullptr, &f) != VK_SUCCESS) f = VK_NULL_HANDLE;
+    mc2vk::create(fence, s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); });
+    const VkFence f = fence.get();
     vkQueueSubmit(s->queue, 1, &si, f);
     if (f != VK_NULL_HANDLE) {
         vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-        vkDestroyFence(s->device, f, nullptr);
     } else {
         vkQueueWaitIdle(s->queue);
     }
-    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
 bool create_colormap_sampler(TerrainIsland* s) {
-    if (s->colormapSamp != VK_NULL_HANDLE) return true;
+    if (s->colormapSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; // GL_CLAMP_TO_EDGE
     sci.maxLod = 0.25f;
-    return vkCreateSampler(s->device, &sci, nullptr, &s->colormapSamp) == VK_SUCCESS;
+    return mc2vk::create(s->colormapSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
 // Generic: build a VK sampled image from raw bytes (staging -> copy -> SHADER_READ).
 // Frees the previous image/view (passed by ref). Reused by BOTH the colormap and cement
 // copy-once imports. Match `fmt` to the GL upload's channel order (RGBA8 storage read
 // back as GL_RGBA -> R8G8B8A8_UNORM; do NOT double-encode sRGB).
-bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outAlloc,
-                          VkImageView* outView, VkFormat fmt, uint32_t width, uint32_t height,
+bool upload_sampled_image(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView,
+                          VkFormat fmt, uint32_t width, uint32_t height,
                           const void* bytes, VkDeviceSize byteCount) {
-    // Free any prior import (idempotent re-import on a per-mission atlas rebuild).
-    if (*outView) { vkDestroyImageView(s->device, *outView, nullptr); *outView = VK_NULL_HANDLE; }
-    if (*outImg)  { vmaDestroyImage(s->allocator, *outImg, *outAlloc); *outImg = VK_NULL_HANDLE; }
+    // Free any prior import (idempotent re-import on a per-mission atlas rebuild): the view goes before the image it covers.
+    outView.reset();
+    outImg.reset();
 
-    // Staging buffer (host-visible).
-    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "terrain.staging")) return false;
+    // Staging buffer (host-visible), released at the end of the import whatever the path.
+    mc2vk::OwnedBuffer stg;
+    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+      if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
 
     // Device-local sampled image.
     VkImageCreateInfo ici{};
@@ -110,18 +110,15 @@ bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outA
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, outImg, outAlloc, nullptr) != VK_SUCCESS) {
-        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
-    }
-    mc2vk::nameObject(s->device, *outImg, "terrain.texture");
+    if (!outImg.create(s->allocator, s->device, ici, aci, "terrain.texture")) return false;
 
     // Copy staging -> image, transition UNDEFINED -> TRANSFER_DST -> SHADER_READ.
     VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *outImg;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = outImg.get();
     bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -129,27 +126,25 @@ bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outA
     VkBufferImageCopy rgn{};
     rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     rgn.imageExtent = {width, height, 1};
-    vkCmdCopyBufferToImage(cb, stg, *outImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, stg.get(), outImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                          0, 0, nullptr, 0, nullptr, 1, &bar);
     end_oneshot(s, cb);
-    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
 
     // Image view.
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = *outImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
+    vci.image = outImg.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    if (vkCreateImageView(s->device, &vci, nullptr, outView) != VK_SUCCESS) return false;
-    return true;
+    return mc2vk::create(outView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
 
 // Colormap-atlas wrapper over the generic uploader.
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height,
                            const void* bytes, VkDeviceSize byteCount) {
-    return upload_sampled_image(s, &s->colormapImg, &s->colormapAlloc, &s->colormapView,
+    return upload_sampled_image(s, s->colormapImg, s->colormapView,
                                 fmt, width, height, bytes, byteCount);
 }
 
@@ -157,7 +152,7 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
 // before/without the real atlas (colormapReady stays false -> FS uses olive).
 bool ensure_dummy_colormap(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
-    if (s->colormapView != VK_NULL_HANDLE) return true; // something already bound
+    if (s->colormapView) return true; // something already bound
     const uint8_t px[4] = {107, 102, 71, 255}; // ~olive, RGBA8; irrelevant (flag=0)
     if (!upload_colormap_image(s, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
     s->colormapReady = false;
@@ -229,7 +224,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // ---------------------------------------------------------------------------
 
 bool create_cement_sampler(TerrainIsland* s) {
-    if (s->cementSamp != VK_NULL_HANDLE) return true;
+    if (s->cementSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
@@ -237,16 +232,16 @@ bool create_cement_sampler(TerrainIsland* s) {
     // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     sci.maxLod = 0.25f;
-    return vkCreateSampler(s->device, &sci, nullptr, &s->cementSamp) == VK_SUCCESS;
+    return mc2vk::create(s->cementSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
 // 1x1 placeholder so binding 3 is ALWAYS a valid descriptor before the real atlas
 // imports (cementReady stays false -> FS ignores the cement branch -> colormap base).
 bool ensure_dummy_cement(TerrainIsland* s) {
     if (!create_cement_sampler(s)) return false;
-    if (s->cementView != VK_NULL_HANDLE) return true; // already bound
+    if (s->cementView) return true; // already bound
     const uint8_t px[4] = {128, 128, 128, 255}; // neutral grey; irrelevant (useCement=0)
-    if (!upload_sampled_image(s, &s->cementImg, &s->cementAlloc, &s->cementView,
+    if (!upload_sampled_image(s, s->cementImg, s->cementView,
                               VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
     s->cementReady = false;
     return true;
@@ -271,7 +266,7 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    if (upload_sampled_image(s, &s->cementImg, &s->cementAlloc, &s->cementView,
+    if (upload_sampled_image(s, s->cementImg, s->cementView,
                              VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
                              px.data(), (VkDeviceSize)px.size())) {
         s->cementTexImported = glTex;
@@ -292,18 +287,18 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // Mirrors upload_sampled_image but with arrayLayers=layerCount and a 2D_ARRAY view.
 // `bytes` is tightly packed layer-major (layer0 WxH RGBA8, then layer1, ...), exactly
 // what glGetTexImage(GL_TEXTURE_2D_ARRAY, level0) returns.
-bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation* outAlloc,
-                                VkImageView* outView, VkFormat fmt, uint32_t width,
+bool upload_sampled_image_array(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView,
+                                VkFormat fmt, uint32_t width,
                                 uint32_t height, uint32_t layers,
                                 const void* bytes, VkDeviceSize byteCount) {
-    if (*outView) { vkDestroyImageView(s->device, *outView, nullptr); *outView = VK_NULL_HANDLE; }
-    if (*outImg)  { vmaDestroyImage(s->allocator, *outImg, *outAlloc); *outImg = VK_NULL_HANDLE; }
+    outView.reset();
+    outImg.reset();
 
-    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "terrain.staging")) return false;
+    mc2vk::OwnedBuffer stg;
+    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+      if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -313,17 +308,14 @@ bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, outImg, outAlloc, nullptr) != VK_SUCCESS) {
-        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
-    }
-    mc2vk::nameObject(s->device, *outImg, "terrain.texture");
+    if (!outImg.create(s->allocator, s->device, ici, aci, "terrain.texture")) return false;
 
     VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *outImg;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = outImg.get();
     bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
     bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -332,24 +324,22 @@ bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation
     VkBufferImageCopy rgn{};
     rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers};
     rgn.imageExtent = {width, height, 1};
-    vkCmdCopyBufferToImage(cb, stg, *outImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, stg.get(), outImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                          0, 0, nullptr, 0, nullptr, 1, &bar);
     end_oneshot(s, cb);
-    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = *outImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
+    vci.image = outImg.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
-    if (vkCreateImageView(s->device, &vci, nullptr, outView) != VK_SUCCESS) return false;
-    return true;
+    return mc2vk::create(outView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
 
 bool create_matnormal_sampler(TerrainIsland* s) {
-    if (s->matNormalSamp != VK_NULL_HANDLE) return true;
+    if (s->matNormalSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR (mag)
@@ -357,16 +347,16 @@ bool create_matnormal_sampler(TerrainIsland* s) {
     // GL_REPEAT wrap (gameos_graphics.cpp:2174-2175) — material detail normals tile.
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     sci.maxLod = 0.25f;  // base level only (VK detail port samples level 0, no anti-tile mips)
-    return vkCreateSampler(s->device, &sci, nullptr, &s->matNormalSamp) == VK_SUCCESS;
+    return mc2vk::create(s->matNormalSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
 // 1x1x1 flat-normal placeholder so binding 6 is ALWAYS a valid descriptor before the
 // real array imports (matNormalReady stays false -> FS uses macro-slope-only normal).
 bool ensure_dummy_matnormal(TerrainIsland* s) {
     if (!create_matnormal_sampler(s)) return false;
-    if (s->matNormalView != VK_NULL_HANDLE) return true;
+    if (s->matNormalView) return true;
     const uint8_t px[4] = {128, 128, 255, 255}; // (0,0,1) tangent-space flat normal
-    if (!upload_sampled_image_array(s, &s->matNormalImg, &s->matNormalAlloc, &s->matNormalView,
+    if (!upload_sampled_image_array(s, s->matNormalImg, s->matNormalView,
                                     VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, px, sizeof(px))) return false;
     s->matNormalReady = false;
     s->matNormalLayers = 1;
@@ -395,7 +385,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
-    if (upload_sampled_image_array(s, &s->matNormalImg, &s->matNormalAlloc, &s->matNormalView,
+    if (upload_sampled_image_array(s, s->matNormalImg, s->matNormalView,
                                    VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
                                    (uint32_t)layers, px.data(), (VkDeviceSize)px.size())) {
         s->matNormalTexImported = glTex;
@@ -419,14 +409,13 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.glCementSsbo == 0 || feed.cementBytes == 0) return false;  // not live yet
     if (feed.cementVersion == s->cementVersionCopied && s->cementWordsReady) return true;
     // Ensure capacity (grow-only, like the height buffer).
-    if (s->cementBuf == VK_NULL_HANDLE || (VkDeviceSize)feed.cementBytes > s->cementCapBytes) {
-        if (s->cementBuf != VK_NULL_HANDLE) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, s->cementBuf, s->cementBufAlloc);
-            s->cementBuf = VK_NULL_HANDLE;
+    if (!s->cementBuf || (VkDeviceSize)feed.cementBytes > s->cementCapBytes) {
+        if (s->cementBuf) {
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_grow");
+            s->cementBuf.reset();
         }
         VkDeviceSize cap = (VkDeviceSize)feed.cementBytes + feed.cementBytes / 4 + 4096;
-        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true, "terrain.cementBuf"))
+        if (!make_buffer(s, s->cementBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.cementBuf"))
             return false;
         s->cementCapBytes = cap;
         s->cementVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -434,15 +423,15 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     }
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (map-load version bump)
     // — device-idle before writing in place (see snapshot_height).
-    vkDeviceWaitIdle(s->device);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_snapshot");
     std::vector<uint8_t> scratch((size_t)feed.cementBytes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glCementSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.cementBytes, scratch.data());
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->cementBufAlloc, &p) != VK_SUCCESS) return false;
+    if (vmaMapMemory(s->allocator, s->cementBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, scratch.data(), (size_t)feed.cementBytes);
-    vmaUnmapMemory(s->allocator, s->cementBufAlloc);
+    vmaUnmapMemory(s->allocator, s->cementBuf.allocation());
     s->cementVersionCopied = feed.cementVersion;
     s->cementWordsReady = true;
     return true;
@@ -458,14 +447,13 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.glVisualHeightSsbo == 0 || feed.visualHeightBytes == 0) return false;  // bake not live
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
-    if (s->visualHeightBuf == VK_NULL_HANDLE || (VkDeviceSize)feed.visualHeightBytes > s->visualHeightCapBytes) {
-        if (s->visualHeightBuf != VK_NULL_HANDLE) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, s->visualHeightBuf, s->visualHeightAlloc);
-            s->visualHeightBuf = VK_NULL_HANDLE;
+    if (!s->visualHeightBuf || (VkDeviceSize)feed.visualHeightBytes > s->visualHeightCapBytes) {
+        if (s->visualHeightBuf) {
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_grow");
+            s->visualHeightBuf.reset();
         }
         VkDeviceSize cap = (VkDeviceSize)feed.visualHeightBytes + feed.visualHeightBytes / 4 + 4096;
-        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true, "terrain.visualHeightBuf"))
+        if (!make_buffer(s, s->visualHeightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.visualHeightBuf"))
             return false;
         s->visualHeightCapBytes = cap;
         s->visualHeightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -473,15 +461,15 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     }
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (once-per-mission bake)
     // — device-idle before writing in place (see snapshot_height).
-    vkDeviceWaitIdle(s->device);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_snapshot");
     std::vector<uint8_t> scratch((size_t)feed.visualHeightBytes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glVisualHeightSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.visualHeightBytes, scratch.data());
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->visualHeightAlloc, &p) != VK_SUCCESS) return false;
+    if (vmaMapMemory(s->allocator, s->visualHeightBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, scratch.data(), (size_t)feed.visualHeightBytes);
-    vmaUnmapMemory(s->allocator, s->visualHeightAlloc);
+    vmaUnmapMemory(s->allocator, s->visualHeightBuf.allocation());
     s->visualHeightVersionCopied = feed.visualHeightVersion;
     s->visualHeightReady = true;
     static bool s_first = false;
@@ -511,7 +499,7 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // Depth-COMPARE sampler: compareOp=LESS_OR_EQUAL, LINEAR HW PCF, CLAMP_TO_BORDER
 // white=1.0 (out-of-map -> lit). Mirrors GL sampler2DShadow.
 bool ensure_shadow_sampler(TerrainIsland* s) {
-    if (s->shadowSamp != VK_NULL_HANDLE) return true;
+    if (s->shadowSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // HW LINEAR PCF (2x2)
@@ -521,7 +509,7 @@ bool ensure_shadow_sampler(TerrainIsland* s) {
     sci.compareEnable = VK_TRUE;
     sci.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;            // ref <= stored ? 1 : 0 (proven by spike)
     sci.maxLod = 0.25f;
-    return vkCreateSampler(s->device, &sci, nullptr, &s->shadowSamp) == VK_SUCCESS;
+    return mc2vk::create(s->shadowSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
 // (Re)create the VK D32 depth image at `dim` texels (idempotent when unchanged).
@@ -530,11 +518,11 @@ bool ensure_shadow_sampler(TerrainIsland* s) {
 // Slot-parameterized D32 depth-compare image ensure (static uses shadowImg/View/Dim,
 // dynamic uses dynShadow*). Leaves DEPTH SHADER_READ so the binding is always valid.
 bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
-                              VkImage* img, VmaAllocation* alloc, VkImageView* view, uint32_t* curDim) {
+                              mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, uint32_t* curDim) {
     if (dim == 0) dim = 1;
-    if (*img != VK_NULL_HANDLE && *curDim == dim) return true;
-    if (*view) { vkDestroyImageView(s->device, *view, nullptr); *view = VK_NULL_HANDLE; }
-    if (*img)  { vmaDestroyImage(s->allocator, *img, *alloc); *img = VK_NULL_HANDLE; }
+    if (img && *curDim == dim) return true;
+    view.reset();   // the view goes before the image it covers
+    img.reset();
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -544,17 +532,14 @@ bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, img, alloc, nullptr) != VK_SUCCESS) {
-        *img = VK_NULL_HANDLE; return false;
-    }
-    mc2vk::nameObject(s->device, *img, "terrain.shadowDepth");
+    if (!img.create(s->allocator, s->device, ici, aci, "terrain.shadowDepth")) return false;
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = *img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_D32_SFLOAT;
+    vci.image = img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_D32_SFLOAT;
     vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-    if (vkCreateImageView(s->device, &vci, nullptr, view) != VK_SUCCESS) {
-        vmaDestroyImage(s->allocator, *img, *alloc); *img = VK_NULL_HANDLE;
-        *view = VK_NULL_HANDLE; return false;
+    if (!mc2vk::create(view, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) {
+        img.reset();
+        return false;
     }
     *curDim = dim;
     VkCommandBuffer cb = begin_oneshot(s);
@@ -562,7 +547,7 @@ bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
         VkImageMemoryBarrier bar{};
         bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *img;
+        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = img.get();
         bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -574,7 +559,7 @@ bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
 }
 
 bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
-    return ensure_shadow_image_slot(s, dim, &s->shadowImg, &s->shadowAlloc, &s->shadowView, &s->shadowDim);
+    return ensure_shadow_image_slot(s, dim, s->shadowImg, s->shadowView, &s->shadowDim);
 }
 
 // VK-TERRAIN-CSM-NEAR-1: (Re)create a D32 depth-COMPARE ARRAY image at dim x layers
@@ -583,10 +568,10 @@ bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
 bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers) {
     if (dim == 0) dim = 1;
     if (layers == 0) layers = 1;
-    if (s->csmArrayImg != VK_NULL_HANDLE && s->csmArrayDim == dim && s->csmArrayLayers == layers)
+    if (s->csmArrayImg && s->csmArrayDim == dim && s->csmArrayLayers == layers)
         return true;
-    if (s->csmArrayView) { vkDestroyImageView(s->device, s->csmArrayView, nullptr); s->csmArrayView = VK_NULL_HANDLE; }
-    if (s->csmArrayImg)  { vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc); s->csmArrayImg = VK_NULL_HANDLE; }
+    s->csmArrayView.reset();   // the view goes before the image it covers
+    s->csmArrayImg.reset();
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -596,17 +581,14 @@ bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers) {
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &s->csmArrayImg, &s->csmArrayAlloc, nullptr) != VK_SUCCESS) {
-        s->csmArrayImg = VK_NULL_HANDLE; return false;
-    }
-    mc2vk::nameObject(s->device, s->csmArrayImg, "terrain.csmArray");
+    if (!s->csmArrayImg.create(s->allocator, s->device, ici, aci, "terrain.csmArray")) return false;
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = s->csmArrayImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = VK_FORMAT_D32_SFLOAT;
+    vci.image = s->csmArrayImg.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = VK_FORMAT_D32_SFLOAT;
     vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
-    if (vkCreateImageView(s->device, &vci, nullptr, &s->csmArrayView) != VK_SUCCESS) {
-        vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc); s->csmArrayImg = VK_NULL_HANDLE;
-        s->csmArrayView = VK_NULL_HANDLE; return false;
+    if (!mc2vk::create(s->csmArrayView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) {
+        s->csmArrayImg.reset();
+        return false;
     }
     s->csmArrayDim = dim; s->csmArrayLayers = layers;
     VkCommandBuffer cb = begin_oneshot(s);
@@ -614,7 +596,7 @@ bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers) {
         VkImageMemoryBarrier bar{};
         bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->csmArrayImg;
+        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->csmArrayImg.get();
         bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
         bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -627,13 +609,12 @@ bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers) {
 
 bool ensure_dummy_csm(TerrainIsland* s) {
     if (!ensure_shadow_sampler(s)) return false;
-    if (s->csmArrayView == VK_NULL_HANDLE) {
+    if (!s->csmArrayView) {
         if (!ensure_csm_array_image(s, 1, 1)) return false;
         s->csmArrayReady = false;
     }
-    if (s->csmFullMapView == VK_NULL_HANDLE) {
-        if (!ensure_shadow_image_slot(s, 1, &s->csmFullMapImg, &s->csmFullMapAlloc,
-                                      &s->csmFullMapView, &s->csmFullMapDim)) return false;
+    if (!s->csmFullMapView) {
+        if (!ensure_shadow_image_slot(s, 1, s->csmFullMapImg, s->csmFullMapView, &s->csmFullMapDim)) return false;
         s->csmFullMapReady = false;
     }
     return true;
@@ -685,13 +666,12 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // 1x1 dummies so bindings 5 (static) and 7 (dynamic) are valid from frame 1.
 bool ensure_dummy_shadow(TerrainIsland* s) {
     if (!ensure_shadow_sampler(s)) return false;
-    if (s->shadowView == VK_NULL_HANDLE) {
+    if (!s->shadowView) {
         if (!ensure_shadow_image(s, 1)) return false;
         s->shadowReady = false;
     }
-    if (s->dynShadowView == VK_NULL_HANDLE) {
-        if (!ensure_shadow_image_slot(s, 1, &s->dynShadowImg, &s->dynShadowAlloc,
-                                      &s->dynShadowView, &s->dynShadowDim)) return false;
+    if (!s->dynShadowView) {
+        if (!ensure_shadow_image_slot(s, 1, s->dynShadowImg, s->dynShadowView, &s->dynShadowDim)) return false;
         s->dynShadowReady = false;
     }
     return true;
@@ -701,25 +681,24 @@ bool ensure_dummy_shadow(TerrainIsland* s) {
 // D32 image. Shared by static (binding 5) and dynamic (binding 7) shadow maps. glGetTexImage
 // depth readback -> forbidden color counters untouched.
 bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes,
+                      VkImage img, mc2vk::OwnedBuffer& stage, VkDeviceSize* stageBytes,
                       bool perFrame) {
     // Strict no-interop: never do the per-frame GL depth readback fallback (fail-soft
     // to unshadowed for this frame). Copy-once static-shadow imports (perFrame=false)
     // are still allowed.
     if (perFrame && terrainNoInteropStrict()) return false;
     const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * 4u;  // float32 per texel
-    if (*stage == VK_NULL_HANDLE || bytes > *stageBytes) {
-        if (*stage != VK_NULL_HANDLE) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, *stage, *stageAlloc);
-            *stage = VK_NULL_HANDLE;
+    if (!stage || bytes > *stageBytes) {
+        if (stage) {
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shadow_stage_grow");
+            stage.reset();
         }
-        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stage, stageAlloc, true, "terrain.staging"))
+        if (!make_buffer(s, stage, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging"))
             return false;
         *stageBytes = bytes;
     }
     void* p = nullptr;
-    if (vmaMapMemory(s->allocator, *stageAlloc, &p) != VK_SUCCESS) return false;
+    if (vmaMapMemory(s->allocator, stage.allocation(), &p) != VK_SUCCESS) return false;
     // CSM-BLACKOUT-RECON-1 FIX (same GL depth-readback hazard class): save/restore the
     // active unit's GL_TEXTURE_2D binding instead of stomping it to 0 mid-frame.
     GLint prev2DBind = 0;
@@ -728,7 +707,7 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
     if (perFrame) terrainPerFrameReadback("copy_shadow_slot");  // H2b: dynamic/csm-fullmap fallback only
     glBindTexture(GL_TEXTURE_2D, (GLuint)prev2DBind);
-    vmaUnmapMemory(s->allocator, *stageAlloc);
+    vmaUnmapMemory(s->allocator, stage.allocation());
 
     VkCommandBuffer cb = begin_oneshot(s);
     if (cb == VK_NULL_HANDLE) return false;
@@ -743,7 +722,7 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
     VkBufferImageCopy rgn{};
     rgn.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
     rgn.imageExtent = {dim, dim, 1};
-    vkCmdCopyBufferToImage(cb, *stage, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, stage.get(), img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -770,8 +749,8 @@ bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (s->shadowReady && s->shadowGenCopied == feed.staticShadowGeneration && s->shadowDim == dim)
         return true;
 
-    if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg,
-                          &s->shadowStage, &s->shadowStageAlloc, &s->shadowStageBytes,
+    if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg.get(),
+                          s->shadowStage, &s->shadowStageBytes,
                           /*perFrame=*/false)) {  // copy-once per generation (guarded above)
         s->shadowReady = false;
         return false;
@@ -812,10 +791,9 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // Fallback: existing GL-copy mechanism (unchanged).
     if (feed.glDynamicShadowTex == 0 || feed.dynamicShadowSize <= 0) return false;
     const uint32_t dim = (uint32_t)feed.dynamicShadowSize;
-    if (!ensure_shadow_image_slot(s, dim, &s->dynShadowImg, &s->dynShadowAlloc,
-                                  &s->dynShadowView, &s->dynShadowDim)) return false;
-    if (!copy_shadow_slot(s, feed.glDynamicShadowTex, dim, s->dynShadowImg,
-                          &s->dynShadowStage, &s->dynShadowStageAlloc, &s->dynShadowStageBytes,
+    if (!ensure_shadow_image_slot(s, dim, s->dynShadowImg, s->dynShadowView, &s->dynShadowDim)) return false;
+    if (!copy_shadow_slot(s, feed.glDynamicShadowTex, dim, s->dynShadowImg.get(),
+                          s->dynShadowStage, &s->dynShadowStageBytes,
                           /*perFrame=*/true)) return false;  // H2b: per-frame fallback (direct-chain declined)
     s->dynShadowReady = true;
     return true;

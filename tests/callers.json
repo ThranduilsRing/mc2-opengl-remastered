@@ -2879,7 +2879,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -8640,7 +8640,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 37,
+          "line": 38,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -8677,7 +8677,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
@@ -8782,7 +8782,7 @@
       "callers_by_stem": [
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 39,
+          "line": 40,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"

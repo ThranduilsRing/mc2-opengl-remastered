@@ -41,6 +41,9 @@ struct Fence { void operator()(VkDevice d, VkFence h) const { vkDestroyFence(d, 
 struct Semaphore { void operator()(VkDevice d, VkSemaphore h) const { vkDestroySemaphore(d, h, nullptr); } };
 struct RawImage { void operator()(VkDevice d, VkImage h) const { vkDestroyImage(d, h, nullptr); } };
 struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { vkFreeMemory(d, h, nullptr); } };
+struct RawBuffer { void operator()(VkDevice d, VkBuffer h) const { vkDestroyBuffer(d, h, nullptr); } };
+struct Swapchain { void operator()(VkDevice d, VkSwapchainKHR h) const { vkDestroySwapchainKHR(d, h, nullptr); } };
+struct Surface { void operator()(VkInstance i, VkSurfaceKHR h) const { vkDestroySurfaceKHR(i, h, nullptr); } };
 }  // namespace release
 
 template <class Handle, class Release> using DeviceOwned = mc2::OwnedHandle<Handle, VkDevice, Release>;
@@ -59,6 +62,11 @@ using OwnedSemaphore = DeviceOwned<VkSemaphore, release::Semaphore>;
 // An image made by vkCreateImage whose memory the owner of the image allocates and binds itself (VMA images use OwnedImage).
 using OwnedRawImage = DeviceOwned<VkImage, release::RawImage>;
 using OwnedDeviceMemory = DeviceOwned<VkDeviceMemory, release::DeviceMemory>;
+// A buffer made by vkCreateBuffer whose memory the owner of the buffer allocates and binds itself (VMA buffers use OwnedBuffer). Declare the memory owner before it.
+using OwnedRawBuffer = DeviceOwned<VkBuffer, release::RawBuffer>;
+using OwnedSwapchain = DeviceOwned<VkSwapchainKHR, release::Swapchain>;
+// The surface belongs to the instance, not the device: it must be released before the instance (the engine context destroys that last).
+using OwnedSurface = mc2::OwnedHandle<VkSurfaceKHR, VkInstance, release::Surface>;
 
 // Creates through `call(Handle*) -> VkResult` (the `vkCreate*` expression) and hands the new handle to `owner`, releasing what it held. False, with `owner`
 // empty, when the call fails: the handle a failed call leaves behind is never adopted.
@@ -69,6 +77,14 @@ bool create(Owner& owner, VkDevice device, Call&& call) {
     if (call(&handle) != VK_SUCCESS || handle == typename Owner::HandleType{}) return false;
     owner = Owner(device, handle);
     return true;
+}
+
+// The same, returning the VkResult of the call (VK_ERROR_UNKNOWN when it returned a null handle) for a caller that logs it.
+template <class Owner, class Call>
+VkResult createChecked(Owner& owner, VkDevice device, Call&& call) {
+    VkResult result = VK_ERROR_UNKNOWN;
+    create(owner, device, [&](typename Owner::HandleType* handle) { result = call(handle); return result; });
+    return result;
 }
 
 // A VMA buffer and its allocation. `create` names the buffer for the validation layer (name, optional slot indices; see vulkan_context.h).

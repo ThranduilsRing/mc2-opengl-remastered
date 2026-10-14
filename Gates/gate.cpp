@@ -415,6 +415,34 @@ void invalidateAll() noexcept {
     }
 }
 
+namespace {
+// The process environment, written the way each platform's CRT reads it back (getenv sees the change and
+// a child process started afterwards inherits it).
+void writeEnv(const std::string& name, const char* value) noexcept {
+    const bool clear = value == nullptr || value[0] == '\0';
+#if defined(_WIN32)
+    _putenv_s(name.c_str(), clear ? "" : value);  // "" removes the variable
+#else
+    if (clear) unsetenv(name.c_str());
+    else setenv(name.c_str(), value, 1);
+#endif
+}
+}  // namespace
+
+ScopedEnv::ScopedEnv(std::string_view name, const char* value) : name_(name) {
+    if (const char* old = std::getenv(name_.c_str())) {
+        hadPrevious_ = true;
+        previous_ = old;
+    }
+    writeEnv(name_, value);
+    invalidate(name_);
+}
+
+ScopedEnv::~ScopedEnv() {
+    writeEnv(name_, hadPrevious_ ? previous_.c_str() : nullptr);
+    invalidate(name_);
+}
+
 void markMainEntered() noexcept { detail::g_mainEntered.store(true, std::memory_order_relaxed); }
 
 DumpOptions dumpOptionsFromEnv() noexcept {

@@ -196,11 +196,14 @@ std::string spv_dir() {
     return d;
 }
 
-VkShaderModule load_spv(VkDevice device, std::string_view path) {
-    return vk_island_util::loadSpv(device, path, vlog);
+mc2vk::OwnedShaderModule load_spv(VkDevice device, std::string_view path) {
+    return mc2vk::OwnedShaderModule(device, vk_island_util::loadSpv(device, path, vlog));
 }
 
-TerrainIsland* g_island = nullptr;
+std::unique_ptr<mc2vk::IslandState>& islandSlot() {
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Terrain);
+}
+TerrainIsland* parkedIsland() { return static_cast<TerrainIsland*>(islandSlot().get()); }
 
 // VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 item-2 (boot-level native-or-decline):
 // distinguish a PERMANENT init failure (spv/pipeline/renderpass/resource creation --

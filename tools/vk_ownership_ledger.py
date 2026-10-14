@@ -89,7 +89,7 @@ def kind_of(name: str) -> str:
     return name
 
 
-ADOPT_RE = re.compile(r"\bmc2vk::create\s*\(")
+ADOPT_RE = re.compile(r"\bmc2vk::create(?:Checked)?\s*\(")
 
 
 def adopted_spans(text: str) -> "list[tuple[int, int]]":

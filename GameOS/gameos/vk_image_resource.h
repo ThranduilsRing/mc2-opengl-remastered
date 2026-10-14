@@ -72,6 +72,10 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
 
 void vkImageResourceDestroy(VkImageResource* r, VkDevice device);
 
+// How many image resources hold a live image right now. The engine context checks it is zero when it tears the device down: a resource still alive then
+// would release its image on a destroyed device.
+int vkImageResourceLiveCount();
+
 // Advance to the frame's parity slot; wait+reset its fence; return the sync trio.
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r);
 

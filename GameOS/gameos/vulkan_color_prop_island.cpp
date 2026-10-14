@@ -183,7 +183,7 @@ struct TypeRun {
     uint32_t packetCount;
 };
 
-struct ColorPropIsland {
+struct ColorPropIsland : mc2vk::IslandState {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
@@ -191,11 +191,6 @@ struct ColorPropIsland {
 
     // ---- TIER-1: shared-GBuffer co-write objects (built over the SAME shared
     // color/normal/depth images the GL scene renders terrain into). ----
-    VkRenderPass  t1_rpass = VK_NULL_HANDLE;   // 2 color LOAD + depth LOAD
-    VkFramebuffer t1_fb    = VK_NULL_HANDLE;   // over the 3 shared image views
-    VkPipeline    t1_pipe  = VK_NULL_HANDLE;   // depthWrite ON GEQUAL, 2 outputs, no blend
-    VkShaderModule t1_vert = VK_NULL_HANDLE;
-    VkShaderModule t1_frag = VK_NULL_HANDLE;
     // Borrowed (NOT owned) shared-image resources/views, fetched per-frame from the
     // shared-scene-color/-depth registries. Cached at init for the framebuffer build.
     struct VkImageResource* t1_colorRes  = nullptr;
@@ -215,8 +210,6 @@ struct ColorPropIsland {
     VmaAllocator     allocator = VK_NULL_HANDLE;
 
     // Caster/color geometry (VK-owned copies of the shared static-prop VBO/IBO).
-    VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
-    VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
     uint32_t      vertexStride = 0;
     bool          geomUploaded = false;
 
@@ -241,11 +234,7 @@ struct ColorPropIsland {
     // layer tables + albedo arrays are map-load writes that run right after a
     // cp_end_oneshot inline fence wait (which retires ALL earlier submission-order
     // work on the queue) — safe by construction.
-    VkBuffer      instBuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VmaAllocation instAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkDeviceSize  instCapBytes[2] = {0, 0};
-    VkBuffer      ubo[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VmaAllocation uboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     // VK-PROP-AMBIENT-IBL-1: per-frame copy of the live GL LightsData SSBO (binding 4,
     // Tier-1 only) so the vert shader's calc_light-style ambient sum reads the same
@@ -253,8 +242,6 @@ struct ColorPropIsland {
     // this is a parity FIX, not a new opt-in feature).
     bool          wantLighting  = false;
     bool          lightingReady = false;   // LightsData copied this frame
-    VkBuffer      lightBuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1)
-    VmaAllocation lightAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkDeviceSize  lightCap[2] = {0, 0};
     // VK-LIGHTFEED-DEDUP-1: what set[i]'s binding-4 descriptor currently points
     // at -- the shared ring slot (changes every frame) or the island's own
@@ -267,11 +254,7 @@ struct ColorPropIsland {
     bool          wantMaterial   = false;   // MC2_VK_PROP_MATERIAL armed
     bool          materialReady  = false;   // albedo array imported this map
     uint32_t      albedoGlTexImported = 0;  // GL name last imported (re-import guard)
-    VkImage       albedoImg   = VK_NULL_HANDLE; VmaAllocation albedoAlloc = VK_NULL_HANDLE;
-    VkImageView   albedoView  = VK_NULL_HANDLE;
-    VkSampler     albedoSamp  = VK_NULL_HANDLE;
     uint32_t      albedoLayers = 0;
-    VkBuffer      layerBuf = VK_NULL_HANDLE; VmaAllocation layerAlloc = VK_NULL_HANDLE; // per-type int layer SSBO
     VkDeviceSize  layerCapBytes = 0;
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
@@ -281,27 +264,44 @@ struct ColorPropIsland {
     // teal when unavailable (materialReadyOn stays false).
     bool          materialReadyOn = false;  // alpha-ON array imported this map
     uint32_t      albedoOnGlTexImported = 0;
-    VkImage       albedoOnImg  = VK_NULL_HANDLE; VmaAllocation albedoOnAlloc = VK_NULL_HANDLE;
-    VkImageView   albedoOnView = VK_NULL_HANDLE;
-    VkSampler     albedoOnSamp = VK_NULL_HANDLE;
     uint32_t      albedoOnLayers = 0;
-    VkBuffer      layerOnBuf = VK_NULL_HANDLE; VmaAllocation layerOnAlloc = VK_NULL_HANDLE; // per-type int layer SSBO (class 1)
     VkDeviceSize  layerOnCapBytes = 0;
 
-    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
-    VkDescriptorPool  pool   = VK_NULL_HANDLE;
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
-    VkPipelineLayout  playout = VK_NULL_HANDLE;
+    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
 
-    VkCommandPool     cpool  = VK_NULL_HANDLE;
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-
+    // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
+    // parked island ahead of the device). An image is declared before its view so the view is released first.
+    mc2vk::OwnedBuffer ubo[2];
+    mc2vk::OwnedBuffer instBuf[2];
+    mc2vk::OwnedBuffer lightBuf[2];       // per parity slot (VK-PROP-FENCE-DEFER-1)
+    mc2vk::OwnedBuffer vbo, ibo;
+    mc2vk::OwnedRenderPass t1_rpass;      // 2 color LOAD + depth LOAD
+    mc2vk::OwnedFramebuffer t1_fb;        // over the 3 shared image views
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool pool;
+    mc2vk::OwnedImage   albedoImg;
+    mc2vk::OwnedImageView albedoView;
+    mc2vk::OwnedSampler albedoSamp;
+    mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
+    mc2vk::OwnedImage   albedoOnImg;
+    mc2vk::OwnedImageView albedoOnView;
+    mc2vk::OwnedSampler albedoOnSamp;
+    mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
+    mc2vk::OwnedShaderModule t1_vert, t1_frag;
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
+    mc2vk::OwnedCommandPool cpool;
 };
 
-ColorPropIsland* g_island = nullptr;
+// The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
+std::unique_ptr<mc2vk::IslandState>& islandSlot() {
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::ColorProp);
+}
+ColorPropIsland* parkedIsland() { return static_cast<ColorPropIsland*>(islandSlot().get()); }
 
-bool make_buffer(ColorPropIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible,
+
+bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
                  std::string_view name, int i0 = -1, int i1 = -1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -309,10 +309,9 @@ bool make_buffer(ColorPropIsland* s, VkDeviceSize size, VkBufferUsageFlags usage
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
-        vlog("vmaCreateBuffer failed."); return false;
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
+        vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -325,8 +324,8 @@ void write_descriptors(ColorPropIsland* s) {
     // submission-order work on the queue).
     for (int i = 0; i < 2; ++i) {
     if (s->set[i] == VK_NULL_HANDLE) continue;
-    VkDescriptorBufferInfo uboInfo{ s->ubo[i], 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo instInfo{ s->instBuf[i], 0, VK_WHOLE_SIZE };
+    VkDescriptorBufferInfo uboInfo{ s->ubo[i].get(), 0, VK_WHOLE_SIZE };
+    VkDescriptorBufferInfo instInfo{ s->instBuf[i].get(), 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo lightInfo{};
     VkWriteDescriptorSet w[5]{};
     uint32_t n = 0;
@@ -338,12 +337,12 @@ void write_descriptors(ColorPropIsland* s) {
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &instInfo; ++n;
     // VK-PROP-AMBIENT-IBL-1: binding4 LightsData SSBO (Tier-1 only, valid dummy-or-real
     // buffer required whenever the DSL declared it -- see wantLighting bindingCount).
-    if (s->tier1 && s->wantLighting && s->lightBuf[i] != VK_NULL_HANDLE) {
-        lightInfo = VkDescriptorBufferInfo{ s->lightBuf[i], 0, VK_WHOLE_SIZE };
+    if (s->tier1 && s->wantLighting && s->lightBuf[i]) {
+        lightInfo = VkDescriptorBufferInfo{ s->lightBuf[i].get(), 0, VK_WHOLE_SIZE };
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 4; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
-        s->boundLightBuf[i] = s->lightBuf[i];   // VK-LIGHTFEED-DEDUP-1 rebind tracker
+        s->boundLightBuf[i] = s->lightBuf[i].get();   // VK-LIGHTFEED-DEDUP-1 rebind tracker
     }
     // VK-P11 STATIC-PROP MATERIAL: binding2 layer SSBO (VS) + binding3 albedo array (FS).
     // Only written when the layout declared them (wantMaterial) AND the objects exist
@@ -354,25 +353,25 @@ void write_descriptors(ColorPropIsland* s) {
     VkDescriptorImageInfo  albOnInfo{};
     VkWriteDescriptorSet   wm[4]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
     uint32_t m = 0;
-    if (s->wantMaterial && s->tier1 && s->layerBuf != VK_NULL_HANDLE &&
-        s->albedoView != VK_NULL_HANDLE && s->albedoSamp != VK_NULL_HANDLE &&
-        s->layerOnBuf != VK_NULL_HANDLE &&
-        s->albedoOnView != VK_NULL_HANDLE && s->albedoOnSamp != VK_NULL_HANDLE) {
-        layerInfo = VkDescriptorBufferInfo{ s->layerBuf, 0, VK_WHOLE_SIZE };
+    if (s->wantMaterial && s->tier1 && s->layerBuf &&
+        s->albedoView && s->albedoSamp &&
+        s->layerOnBuf &&
+        s->albedoOnView && s->albedoOnSamp) {
+        layerInfo = VkDescriptorBufferInfo{ s->layerBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerInfo; ++m;
-        albInfo.sampler = s->albedoSamp; albInfo.imageView = s->albedoView;
+        albInfo.sampler = s->albedoSamp.get(); albInfo.imageView = s->albedoView.get();
         albInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 3; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albInfo; ++m;
         // alpha-ON group: binding5 layer SSBO (VS) + binding6 albedo array (FS).
-        layerOnInfo = VkDescriptorBufferInfo{ s->layerOnBuf, 0, VK_WHOLE_SIZE };
+        layerOnInfo = VkDescriptorBufferInfo{ s->layerOnBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 5; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerOnInfo; ++m;
-        albOnInfo.sampler = s->albedoOnSamp; albOnInfo.imageView = s->albedoOnView;
+        albOnInfo.sampler = s->albedoOnSamp.get(); albOnInfo.imageView = s->albedoOnView.get();
         albOnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 6; wm[m].descriptorCount = 1;
@@ -388,14 +387,13 @@ void write_descriptors(ColorPropIsland* s) {
 // caller decides -- the binding4 descriptor is written once at init from the dummy
 // size, same convention as the mech island's lightBuf).
 bool ensure_light_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) {
-    if (s->lightBuf[par] != VK_NULL_HANDLE && bytes <= s->lightCap[par]) return true;
-    if (s->lightBuf[par] != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(s->device);
-        vmaDestroyBuffer(s->allocator, s->lightBuf[par], s->lightAlloc[par]);
-        s->lightBuf[par] = VK_NULL_HANDLE;
+    if (s->lightBuf[par] && bytes <= s->lightCap[par]) return true;
+    if (s->lightBuf[par]) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_light_grow");   // the old buffer may still be read by an in-flight submit
+        s->lightBuf[par].reset();
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lightBuf[par], &s->lightAlloc[par], true, "colorprop.lightBuf", static_cast<int>(par)))
+    if (!make_buffer(s, s->lightBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.lightBuf", static_cast<int>(par)))
         return false;
     s->lightCap[par] = cap;
     write_descriptors(s);
@@ -489,54 +487,19 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
 }
 
 bool ensure_inst_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) {
-    if (s->instBuf[par] != VK_NULL_HANDLE && bytes <= s->instCapBytes[par]) return true;
-    if (s->instBuf[par] != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(s->device);
-        vmaDestroyBuffer(s->allocator, s->instBuf[par], s->instAlloc[par]);
-        s->instBuf[par] = VK_NULL_HANDLE;
+    if (s->instBuf[par] && bytes <= s->instCapBytes[par]) return true;
+    if (s->instBuf[par]) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_inst_grow");   // the old buffer may still be read by an in-flight submit
+        s->instBuf[par].reset();
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->instBuf[par], &s->instAlloc[par], true, "colorprop.instBuf", static_cast<int>(par)))
+    if (!make_buffer(s, s->instBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.instBuf", static_cast<int>(par)))
         return false;
     s->instCapBytes[par] = cap;
     write_descriptors(s);
     return true;
 }
 
-void destroy_island(ColorPropIsland* s) {
-    if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
-    // TIER-1 objects (own the render pass/framebuffer/pipeline/shaders; the shared
-    // color/normal/depth images are BORROWED — owned by the postprocess registries).
-    if (s->t1_pipe)  vkDestroyPipeline(d, s->t1_pipe, nullptr);
-    if (s->t1_vert)  vkDestroyShaderModule(d, s->t1_vert, nullptr);
-    if (s->t1_frag)  vkDestroyShaderModule(d, s->t1_frag, nullptr);
-    if (s->t1_fb)    vkDestroyFramebuffer(d, s->t1_fb, nullptr);
-    if (s->t1_rpass) vkDestroyRenderPass(d, s->t1_rpass, nullptr);
-    if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
-    if (s->dsl)     vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
-    if (s->pool)    vkDestroyDescriptorPool(d, s->pool, nullptr);
-    if (s->vbo)     vmaDestroyBuffer(s->allocator, s->vbo, s->vboAlloc);
-    if (s->ibo)     vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc);
-    for (int i = 0; i < 2; ++i) {   // VK-PROP-FENCE-DEFER-1: per-parity pairs
-        if (s->instBuf[i]) vmaDestroyBuffer(s->allocator, s->instBuf[i], s->instAlloc[i]);
-        if (s->ubo[i])     vmaDestroyBuffer(s->allocator, s->ubo[i], s->uboAlloc[i]);
-        if (s->lightBuf[i]) vmaDestroyBuffer(s->allocator, s->lightBuf[i], s->lightAlloc[i]);  // VK-PROP-AMBIENT-IBL-1
-    }
-    // VK-P11 STATIC-PROP MATERIAL: copy-once albedo array + per-type layer SSBO.
-    if (s->albedoView)  vkDestroyImageView(d, s->albedoView, nullptr);
-    if (s->albedoImg)   vmaDestroyImage(s->allocator, s->albedoImg, s->albedoAlloc);
-    if (s->albedoSamp)  vkDestroySampler(d, s->albedoSamp, nullptr);
-    if (s->layerBuf)    vmaDestroyBuffer(s->allocator, s->layerBuf, s->layerAlloc);
-    // alpha-ON group.
-    if (s->albedoOnView)  vkDestroyImageView(d, s->albedoOnView, nullptr);
-    if (s->albedoOnImg)   vmaDestroyImage(s->allocator, s->albedoOnImg, s->albedoOnAlloc);
-    if (s->albedoOnSamp)  vkDestroySampler(d, s->albedoOnSamp, nullptr);
-    if (s->layerOnBuf)    vmaDestroyBuffer(s->allocator, s->layerOnBuf, s->layerOnAlloc);
-    if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
-    // instance/phys/device/queue/allocator are BORROWED — never destroyed here.
-}
 
 // VK-P11 STATIC-PROP MATERIAL ------------------------------------------------
 // Copy-once import of the GL alpha-OFF albedo GL_TEXTURE_2D_ARRAY into a VK sampled
@@ -551,7 +514,7 @@ void destroy_island(ColorPropIsland* s) {
 VkCommandBuffer cp_begin_oneshot(ColorPropIsland* s) {
     VkCommandBufferAllocateInfo cbi{};
     cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
     VkCommandBufferBeginInfo bi{};
@@ -566,49 +529,48 @@ void cp_end_oneshot(ColorPropIsland* s, VkCommandBuffer cb) {
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     // VK-QWI-TO-FENCE-1: transient per-submit fence instead of a queue-wide drain
     // (copy-once helper, not per-frame; fail-soft to QWI if fence creation fails).
-    VkFence f = VK_NULL_HANDLE;
+    mc2vk::OwnedFence fence;
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    if (vkCreateFence(s->device, &fci, nullptr, &f) != VK_SUCCESS) f = VK_NULL_HANDLE;
-    vkQueueSubmit(s->queue, 1, &si, f);
-    if (f != VK_NULL_HANDLE) {
+    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
+    vkQueueSubmit(s->queue, 1, &si, fence.get());
+    if (fence) {
+        const VkFence f = fence.get();
         vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-        vkDestroyFence(s->device, f, nullptr);
     } else {
         vkQueueWaitIdle(s->queue);
     }
-    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
 // VK-P11 STATIC-PROP MATERIAL: a single array-import target (alpha-OFF or alpha-ON).
 // Both albedo groups share the same import code via this indirection.
 struct AlbedoTarget {
-    VkImage*       img;
-    VmaAllocation* alloc;
-    VkImageView*   view;
-    VkSampler*     samp;
+    mc2vk::OwnedImage*     img;
+    mc2vk::OwnedImageView* view;
+    mc2vk::OwnedSampler*   samp;
     uint32_t*      layers;
     uint32_t*      importedGlName;
     bool*          ready;
     const char*    tag;   // "alpha-OFF" / "alpha-ON" for logs
 };
 AlbedoTarget cp_target_off(ColorPropIsland* s) {
-    return AlbedoTarget{ &s->albedoImg, &s->albedoAlloc, &s->albedoView, &s->albedoSamp,
+    return AlbedoTarget{ &s->albedoImg, &s->albedoView, &s->albedoSamp,
                          &s->albedoLayers, &s->albedoGlTexImported, &s->materialReady, "alpha-OFF" };
 }
 AlbedoTarget cp_target_on(ColorPropIsland* s) {
-    return AlbedoTarget{ &s->albedoOnImg, &s->albedoOnAlloc, &s->albedoOnView, &s->albedoOnSamp,
+    return AlbedoTarget{ &s->albedoOnImg, &s->albedoOnView, &s->albedoOnSamp,
                          &s->albedoOnLayers, &s->albedoOnGlTexImported, &s->materialReadyOn, "alpha-ON" };
 }
 
-bool cp_make_albedo_sampler(ColorPropIsland* s, VkSampler* samp, uint32_t mipLevels) {
-    if (*samp != VK_NULL_HANDLE) return true;
+bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint32_t mipLevels) {
+    if (*samp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     sci.maxLod = (mipLevels > 0) ? (float)(mipLevels - 1) : 0.0f;
-    return vkCreateSampler(s->device, &sci, nullptr, samp) == VK_SUCCESS;
+    return mc2vk::create(*samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
 // Build a VK sampled 2D_ARRAY image from a contiguous byte blob laid out
@@ -620,15 +582,15 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
                             uint32_t layers, uint32_t mips, bool compressed,
                             const void* bytes, VkDeviceSize byteCount,
                             const std::vector<VkBufferImageCopy>& regions) {
-    if (*tgt.view) { vkDestroyImageView(s->device, *tgt.view, nullptr); *tgt.view = VK_NULL_HANDLE; }
-    if (*tgt.img)  { vmaDestroyImage(s->allocator, *tgt.img, *tgt.alloc); *tgt.img = VK_NULL_HANDLE; }
+    tgt.view->reset();
+    tgt.img->reset();
     (void)compressed;
 
-    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
-    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true, "colorprop.staging")) return false;
-    { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+    mc2vk::OwnedBuffer stg;   // released on return; cp_end_oneshot has waited for the copy by then
+    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "colorprop.staging")) return false;
+    { void* p = stg.map();
+      if (!p) return false;
+      std::memcpy(p, bytes, (size_t)byteCount); stg.unmap(); }
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -638,35 +600,31 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, tgt.img, tgt.alloc, nullptr) != VK_SUCCESS) {
-        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
-    }
-    mc2vk::nameObject(s->device, *tgt.img, "colorprop.texture");
+    if (!tgt.img->create(s->allocator, s->device, ici, aci, "colorprop.texture")) return false;
 
     VkCommandBuffer cb = cp_begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *tgt.img;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = tgt.img->get();
     bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, layers};
     bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                          0, 0, nullptr, 0, nullptr, 1, &bar);
-    vkCmdCopyBufferToImage(cb, stg, *tgt.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    vkCmdCopyBufferToImage(cb, stg.get(), tgt.img->get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                            (uint32_t)regions.size(), regions.data());
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                          0, 0, nullptr, 0, nullptr, 1, &bar);
     cp_end_oneshot(s, cb);
-    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = *tgt.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
+    vci.image = tgt.img->get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, layers};
-    if (vkCreateImageView(s->device, &vci, nullptr, tgt.view) != VK_SUCCESS) return false;
+    if (!mc2vk::create(*tgt.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) return false;
     *tgt.layers = layers;
     return true;
 }
@@ -676,7 +634,7 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
 // keeps flat teal (never samples the dummy).
 bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
     if (!cp_make_albedo_sampler(s, tgt.samp, 1)) return false;
-    if (*tgt.view != VK_NULL_HANDLE) return true;
+    if (*tgt.view) return true;
     const uint8_t px[4] = {255, 0, 255, 255};
     std::vector<VkBufferImageCopy> rgn(1);
     rgn[0].bufferOffset = 0;
@@ -766,7 +724,7 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     if (!ok || regions.empty()) return false;
 
     // (Re)create sampler with the real mip count.
-    if (*tgt.samp) { vkDestroySampler(s->device, *tgt.samp, nullptr); *tgt.samp = VK_NULL_HANDLE; }
+    tgt.samp->reset();
     if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
 
     if (!cp_upload_albedo_array(s, tgt, vkFmt, (uint32_t)w, (uint32_t)h, (uint32_t)layers,
@@ -782,31 +740,30 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
 
 // Upload the per-type albedo-layer table (int32 per type) into a layer SSBO
 // (alpha-OFF binding2, or alpha-ON binding5).
-bool cp_upload_layer_table_into(ColorPropIsland* s, VkBuffer* buf, VmaAllocation* alloc,
+bool cp_upload_layer_table_into(ColorPropIsland* s, mc2vk::OwnedBuffer& buf,
                                 VkDeviceSize* capBytes, const int32_t* layers, uint32_t count) {
     const VkDeviceSize bytes = (VkDeviceSize)(count ? count : 1) * sizeof(int32_t);
-    if (*buf != VK_NULL_HANDLE && bytes > *capBytes) {
-        vkDeviceWaitIdle(s->device);
-        vmaDestroyBuffer(s->allocator, *buf, *alloc);
-        *buf = VK_NULL_HANDLE;
+    if (buf && bytes > *capBytes) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_layer_grow");   // the old table may still be read by an in-flight submit
+        buf.reset();
     }
-    if (*buf == VK_NULL_HANDLE) {
-        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true, "colorprop.layerTable"))
+    if (!buf) {
+        if (!make_buffer(s, buf, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.layerTable"))
             return false;
         *capBytes = bytes;
     }
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, *alloc, &p) != VK_SUCCESS) return false;
+    void* p = buf.map();
+    if (!p) return false;
     if (count && layers) std::memcpy(p, layers, (size_t)count * sizeof(int32_t));
     else { int32_t neg = -1; std::memcpy(p, &neg, sizeof(neg)); }
-    vmaUnmapMemory(s->allocator, *alloc);
+    buf.unmap();
     return true;
 }
 bool cp_upload_layer_table(ColorPropIsland* s, const int32_t* layers, uint32_t count) {
-    return cp_upload_layer_table_into(s, &s->layerBuf, &s->layerAlloc, &s->layerCapBytes, layers, count);
+    return cp_upload_layer_table_into(s, s->layerBuf, &s->layerCapBytes, layers, count);
 }
 bool cp_upload_layer_table_on(ColorPropIsland* s, const int32_t* layers, uint32_t count) {
-    return cp_upload_layer_table_into(s, &s->layerOnBuf, &s->layerOnAlloc, &s->layerOnCapBytes, layers, count);
+    return cp_upload_layer_table_into(s, s->layerOnBuf, &s->layerOnCapBytes, layers, count);
 }
 
 // One-time init.
@@ -912,8 +869,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // VK-PROP-FENCE-DEFER-1: per-parity instance SSBOs + frame UBOs.
     if (!ensure_inst_capacity(s, 0, 256 * 1024)) return false;
     if (!ensure_inst_capacity(s, 1, 256 * 1024)) return false;
-    if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[0], &s->uboAlloc[0], true, "colorprop.ubo", 0)) return false;
-    if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[1], &s->uboAlloc[1], true, "colorprop.ubo", 1)) return false;
+    if (!make_buffer(s, s->ubo[0], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 0)) return false;
+    if (!make_buffer(s, s->ubo[1], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 1)) return false;
 
     if (s->tier1) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
@@ -971,15 +928,15 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         rpci.attachmentCount = 3; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->t1_rpass) != VK_SUCCESS) {
+        if (!mc2vk::create(s->t1_rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
             vlog("TIER-1 vkCreateRenderPass failed."); setFallback("tier1_renderpass_failed"); return false;
         }
         VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->t1_rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->t1_rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
-        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->t1_fb) != VK_SUCCESS) {
+        if (!mc2vk::create(s->t1_fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("TIER-1 vkCreateFramebuffer failed."); setFallback("tier1_framebuffer_failed"); return false;
         }
     }
@@ -1023,7 +980,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = nb; lci.pBindings = b;
-        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
+        if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-PROP-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
@@ -1035,13 +992,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = materialBindings ? 3u : 2u; pci.pPoolSizes = sizes;
-        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
+        if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
-        VkDescriptorSetLayout layouts[2] = { s->dsl, s->dsl };
+        VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
@@ -1059,9 +1016,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // cull NONE, and NO blend on either attachment (opaque in-place overwrite — a
     // winning prop fragment fully replaces the terrain GBuffer pixel, matching GL). ----
     if (s->tier1) {
-        s->t1_vert = load_spv(s->device, spv_dir() + "color_prop_tier1.vert.spv");
-        s->t1_frag = load_spv(s->device, spv_dir() + "color_prop_tier1.frag.spv");
-        if (s->t1_vert == VK_NULL_HANDLE || s->t1_frag == VK_NULL_HANDLE) { setFallback("tier1_spv_load_failed"); return false; }
+        s->t1_vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "color_prop_tier1.vert.spv"));
+        s->t1_frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "color_prop_tier1.frag.spv"));
+        if (!s->t1_vert || !s->t1_frag) { setFallback("tier1_spv_load_failed"); return false; }
 
         // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET albedo layer push constant
         // (2x int32 = layerOff, layerOn). GL's coalesce path samples texArrayLayer per
@@ -1084,9 +1041,10 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
+        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
-        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) {
+        if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("TIER-1 vkCreatePipelineLayout failed."); return false;
         }
 
@@ -1163,9 +1121,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->t1_vert; stages[0].pName = "main";
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->t1_vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag; stages[1].pName = "main";
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag.get(); stages[1].pName = "main";
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;
@@ -1173,11 +1131,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
-        gp.layout = s->playout; gp.renderPass = s->t1_rpass; gp.subpass = 0;
-        if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->t1_pipe) != VK_SUCCESS) {
+        gp.layout = s->playout.get(); gp.renderPass = s->t1_rpass.get(); gp.subpass = 0;
+        if (!mc2vk::create(s->t1_pipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
-        mc2vk::nameObject(s->device, s->t1_pipe, "colorprop.tier1Pipe");
+        mc2vk::nameObject(s->device, s->t1_pipe.get(), "colorprop.tier1Pipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity). ----
@@ -1186,12 +1144,12 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool) != VK_SUCCESS) {
+        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
@@ -1226,26 +1184,26 @@ bool upload_geometry_once(ColorPropIsland* s) {
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
 
-    if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true, "colorprop.vbo")) return false;
-    if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true, "colorprop.ibo")) return false;
+    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
+    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
     std::vector<uint8_t> scratch;
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {
+      if ((p = s->vbo.map()) != nullptr) {
           scratch.resize((size_t)feed.vboBytes);
           glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
           glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
           glBindBuffer(GL_ARRAY_BUFFER, 0);
           std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          vmaUnmapMemory(s->allocator, s->vboAlloc);
+          s->vbo.unmap();
       } }
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->iboAlloc, &p) == VK_SUCCESS) {
+      if ((p = s->ibo.map()) != nullptr) {
           scratch.resize((size_t)feed.iboBytes);
           glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
           glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
           glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
           std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          vmaUnmapMemory(s->allocator, s->iboAlloc);
+          s->ibo.unmap();
       } }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
@@ -1275,11 +1233,11 @@ bool upload_geometry_once(ColorPropIsland* s) {
 
 // currently-bound draw FBO (MainColor at flush() time). Reused water-island shape.
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
-    ColorPropIsland* s = g_island;
+    ColorPropIsland* s = parkedIsland();
     if (!s) return;
-    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
-    if (s->vbo) { vmaDestroyBuffer(s->allocator, s->vbo, s->vboAlloc); s->vbo = VK_NULL_HANDLE; s->vboAlloc = nullptr; }
-    if (s->ibo) { vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc); s->ibo = VK_NULL_HANDLE; s->iboAlloc = nullptr; }
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_invalidate_geometry");
+    s->vbo.reset();
+    s->ibo.reset();
     s->geomUploaded = false;
     s->packets.clear();
     s->typeRuns.clear();
@@ -1307,18 +1265,18 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
 
     // Lazy init / rebuild on size change.
-    if (g_island && (g_island->w != w || g_island->h != h)) {
-        destroy_island(g_island); delete g_island; g_island = nullptr;
-    }
-    if (!g_island) {
-        g_island = new ColorPropIsland();
-        if (!init_island(g_island, w, h)) {
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<ColorPropIsland>();
+        if (!init_island(fresh.get(), w, h)) {
             vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
-            destroy_island(g_island); delete g_island; g_island = nullptr;
+            slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
             return 0;
         }
+        islandSlot() = std::move(fresh);
     }
-    ColorPropIsland* s = g_island;
+    ColorPropIsland* s = parkedIsland();
     // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
     // (init:781) but the old guard '|| !s->useInterop' then bailed here, so under the
     // strict umbrella the island returned 0 and GL silently drew props into the
@@ -1460,12 +1418,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (twin-copy path)
             if (ensure_light_capacity(s, par, lbytes)) {
                 void* p = nullptr;
-                if (vmaMapMemory(s->allocator, s->lightAlloc[par], &p) == VK_SUCCESS) {
+                if ((p = s->lightBuf[par].map()) != nullptr) {
                     std::memcpy(p, lightFeed.lightDataCpu, (size_t)lbytes);
                     prop_light_vertex_probe((const uint8_t*)p, lbytes, feed);
-                    vmaUnmapMemory(s->allocator, s->lightAlloc[par]);
+                    s->lightBuf[par].unmap();
                     // Restore the own-buffer binding after any shared frames.
-                    bind_light_buffer(s, par, s->lightBuf[par]);
+                    bind_light_buffer(s, par, s->lightBuf[par].get());
                     s->lightingReady = true;
                 }
             }
@@ -1484,9 +1442,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     {
         ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->instAlloc[par], &p) == VK_SUCCESS) {
+        if ((p = s->instBuf[par].map()) != nullptr) {
             std::memcpy(p, feed.instances112, (size_t)instBytes);
-            vmaUnmapMemory(s->allocator, s->instAlloc[par]);
+            s->instBuf[par].unmap();
         }
     }
     g_health.instRecords = instanceCount;
@@ -1545,8 +1503,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             }
         }
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc[par], &p) == VK_SUCCESS) {
-            std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
+        if ((p = s->ubo[par].map()) != nullptr) {
+            std::memcpy(p, &u, sizeof(u)); s->ubo[par].unmap();
         }
     }
     g_health.stageInstUs = usSince(tStage0);
@@ -1583,7 +1541,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // Begin the LOAD renderpass — NO clear values (all attachments loadOp=LOAD).
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->t1_rpass; rbi.framebuffer = s->t1_fb;
+        rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
         rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
         rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
@@ -1593,11 +1551,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &scissor);
 
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set[par], 0, nullptr);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 0, nullptr);
         VkDeviceSize vboOff = 0;
-        vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
-        vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+        const VkBuffer vertexBuffer = s->vbo.get();
+        vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
+        vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
 
         // ADJUDICATION-1 draw-level dump: env-gated one-shot CSV of every packet's
         // draw parameters + push-constant layers. This is the fence-fix ground truth
@@ -1649,7 +1608,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                                      tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
                                      pkt.indexCount, pkt.firstIndex,
                                      (int32_t)pkt.baseVertex, instCount, i);
-                    vkCmdPushConstants(cb, s->playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                         0, sizeof(pc), &pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, (int32_t)pkt.baseVertex, i);
@@ -1772,9 +1731,7 @@ extern "C" void mc2_vk_color_prop_island_destroy() {
          g_health.geomVerts, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.vkCmdCopyImageToBuffer, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageInstUs, g_health.drawUs, g_health.totalUs);
-    if (!g_island) return;
-    destroy_island(g_island);
-    delete g_island; g_island = nullptr;
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::ColorProp);
 }
 
 }

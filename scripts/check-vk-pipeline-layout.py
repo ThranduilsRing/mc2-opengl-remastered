@@ -505,6 +505,11 @@ def _dsl_groups(clean, dsl_decls):
             e["stage"] = sm.group(1) if sm else None
         cm = re.search(r"vkCreateDescriptorSetLayout\s*\([^;]*?&\s*([\w>.\-]+?)\s*\)", clean[d.start() + (m.start() if m else 0):d.start() + (m.start() if m else 0) + 600])
         ident = re.split(r"->|\.", cm.group(1))[-1] if cm else None
+        if ident is None:
+            # The owner-creating form: mc2vk::create(<owner>, device, [&](auto* h) { return vkCreateDescriptorSetLayout(..., h); }) names the layout by its owner.
+            base = d.start() + (m.start() if m else 0)
+            lam = re.search(r"create\(\s*([\w>.\-]+?)\s*,[^;]*?vkCreateDescriptorSetLayout", clean[base:base + 600])
+            ident = re.split(r"->|\.", lam.group(1))[-1] if lam else None
         groups.append({"pos": d.start(), "entries": entries, "ident": ident,
                        "wild": any(e["bindings"] is None for e in entries)})
     return groups
@@ -529,7 +534,7 @@ def _nearest_dsl(clean, groups, before):
             else:
                 am = re.search(r"VkDescriptorSetLayout\s+" + re.escape(ref) + r"\s*\[[^\]]*\]\s*=\s*\{([^}]*)\}", clean[:before])
                 if am:
-                    names = [re.split(r"->|\.", x.strip())[-1] for x in am.group(1).split(",") if x.strip()]
+                    names = [re.split(r"->|\.", re.sub(r"\.get\(\)$", "", x.strip()))[-1] for x in am.group(1).split(",") if x.strip()]   # an owner is named by its member, with or without .get()
             if names:
                 out = []
                 for n in names:

@@ -49,12 +49,12 @@
   "GameOS": {
    "LG01": 10,
    "LG02": 191,
-   "LG03": 293,
+   "LG03": 268,
    "LG04": 6,
    "LG05": 118,
    "LG06": 497,
    "LG07": 0,
-   "LG08": 266,
+   "LG08": 257,
    "LG09": 1996,
    "LG10": 39,
    "LG11": 102,
@@ -331,7 +331,7 @@
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
    "LG06": 4,
-   "LG08": 10,
+   "LG08": 8,
    "LG09": 59,
    "LG10": 2,
    "LG11": 1
@@ -463,7 +463,7 @@
   "GameOS/gameos/gameos_res.cpp": {
    "LG03": 4,
    "LG06": 6,
-   "LG09": 3
+   "LG09": 2
   },
   "GameOS/gameos/gameos_sound.cpp": {
    "LG03": 11,
@@ -1140,7 +1140,6 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
-   "LG03": 4,
    "LG06": 2,
    "LG09": 39,
    "LG10": 1,
@@ -1149,6 +1148,7 @@
    "LG17": 2
   },
   "GameOS/gameos/vulkan_context.cpp": {
+   "LG03": 1,
    "LG06": 3,
    "LG09": 1,
    "LG13": 2
@@ -1157,9 +1157,8 @@
    "LG02": 1
   },
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
-   "LG03": 4,
    "LG06": 2,
-   "LG08": 4,
+   "LG08": 2,
    "LG09": 12,
    "LG11": 1,
    "LG13": 2
@@ -1168,7 +1167,6 @@
    "LG14": 1
   },
   "GameOS/gameos/vulkan_mech_island.cpp": {
-   "LG03": 4,
    "LG06": 2,
    "LG09": 31,
    "LG11": 1,
@@ -1203,7 +1201,6 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-   "LG03": 4,
    "LG06": 5,
    "LG09": 50,
    "LG11": 1,
@@ -1243,18 +1240,16 @@
   },
   "GameOS/gameos/vulkan_terrain_island_island.cpp": {
    "LG05": 7,
-   "LG08": 8,
+   "LG08": 4,
    "LG09": 30
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-   "LG03": 3,
-   "LG08": 8,
+   "LG08": 7,
    "LG09": 18
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
-   "LG03": 3,
    "LG06": 1,
-   "LG09": 13,
+   "LG09": 14,
    "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
@@ -1264,7 +1259,6 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_water_island.cpp": {
-   "LG03": 1,
    "LG06": 1,
    "LG11": 1
   },
@@ -1280,7 +1274,6 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_water_island_run.cpp": {
-   "LG03": 3,
    "LG09": 7
   },
   "GameOS/include/fileio.hpp": {
@@ -5171,7 +5164,7 @@
    "LG20": 3
   }
  },
- "head": "29f95649a",
+ "head": "3c3d21e6a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

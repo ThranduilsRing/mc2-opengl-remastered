@@ -115,40 +115,13 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 }
 
 
-void destroy_island(WaterIsland* s) {
-    if (!s) return;
-    VkDevice d = s->device;
-    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
-    if (s->pipe)    vkDestroyPipeline(d, s->pipe, nullptr);
-    if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
-    if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
-    if (s->frag)    vkDestroyShaderModule(d, s->frag, nullptr);
-    if (s->dsl)     vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
-    if (s->pool)    vkDestroyDescriptorPool(d, s->pool, nullptr);
-    if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
-    if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
-    if (s->shHView)  vkDestroyImageView(d, s->shHView, nullptr);
-    if (s->shHImage) vmaDestroyImage(s->allocator, s->shHImage, s->shHAlloc);
-    if (s->shMView)  vkDestroyImageView(d, s->shMView, nullptr);
-    if (s->shMImage) vmaDestroyImage(s->allocator, s->shMImage, s->shMAlloc);
-    if (s->hdriSampler) vkDestroySampler(d, s->hdriSampler, nullptr);
-    if (s->hdriView)   vkDestroyImageView(d, s->hdriView, nullptr);
-    if (s->hdriImage)  vmaDestroyImage(s->allocator, s->hdriImage, s->hdriAlloc);
-    if (s->recipeBuf) vmaDestroyBuffer(s->allocator, s->recipeBuf, s->recipeAlloc);
-    for (int i = 0; i < 2; ++i) {   // VK-WATER-FENCE-DEFER-1: per-parity pairs
-        if (s->thinBuf[i]) vmaDestroyBuffer(s->allocator, s->thinBuf[i], s->thinAlloc[i]);
-        if (s->vsUbo[i])   vmaDestroyBuffer(s->allocator, s->vsUbo[i], s->vsUboAlloc[i]);
-        if (s->fsUbo[i])   vmaDestroyBuffer(s->allocator, s->fsUbo[i], s->fsUboAlloc[i]);
-    }
-    if (s->cpool)     vkDestroyCommandPool(d, s->cpool, nullptr);
-    if (s->fence)     vkDestroyFence(d, s->fence, nullptr);
-    // NOTE: instance/phys/device/queue/allocator are BORROWED — never destroyed here.
+
+std::unique_ptr<mc2vk::IslandState>& islandSlot() {
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Water);
 }
+WaterIsland* parkedIsland() { return static_cast<WaterIsland*>(islandSlot().get()); }
 
-WaterIsland* g_island = nullptr;
-
-bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
-                 VkBuffer* buf, VmaAllocation* alloc,
+bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
                  std::string_view name, int i0, int i1) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -156,10 +129,9 @@ bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
-        vlog("vmaCreateBuffer failed."); return false;
+    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
+        vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
-    mc2vk::nameObjectAt(s->device, *buf, name, i0, i1);
     return true;
 }
 
@@ -175,10 +147,10 @@ void write_descriptors(WaterIsland* s) {
     // in-flight command buffer can be using either set during the update.
     for (int i = 0; i < 2; ++i) {
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
-        VkDescriptorBufferInfo vsInfo{ s->vsUbo[i], 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo fsInfo{ s->fsUbo[i], 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo recInfo{ s->recipeBuf, 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo thinInfo{ s->thinBuf[i], 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo vsInfo{ s->vsUbo[i].get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo fsInfo{ s->fsUbo[i].get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo recInfo{ s->recipeBuf.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo thinInfo{ s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet w[4]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
         w[0].dstBinding = 0; w[0].descriptorCount = 1;
@@ -196,8 +168,8 @@ void write_descriptors(WaterIsland* s) {
         // image exists — it may not yet at init time (write of a NULL view is invalid).
         VkDescriptorImageInfo hdriInfo{};
         VkWriteDescriptorSet w4{};
-        if (s->hdriView != VK_NULL_HANDLE && s->hdriSampler != VK_NULL_HANDLE) {
-            hdriInfo = { s->hdriSampler, s->hdriView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        if (s->hdriView && s->hdriSampler) {
+            hdriInfo = { s->hdriSampler.get(), s->hdriView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
             w4.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w4.dstSet = s->set[i];
             w4.dstBinding = 2; w4.descriptorCount = 1;
             w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
@@ -205,11 +177,10 @@ void write_descriptors(WaterIsland* s) {
         }
         vkUpdateDescriptorSets(s->device, 4, w, 0, nullptr);
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
-        if (s->shHView != VK_NULL_HANDLE && s->shMView != VK_NULL_HANDLE &&
-            s->hdriSampler != VK_NULL_HANDLE) {
+        if (s->shHView && s->shMView && s->hdriSampler) {
             VkDescriptorImageInfo shInfo[2] = {
-                { s->hdriSampler, s->shHView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
-                { s->hdriSampler, s->shMView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+                { s->hdriSampler.get(), s->shHView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+                { s->hdriSampler.get(), s->shMView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
             VkWriteDescriptorSet ws[2]{};
             for (int k = 0; k < 2; ++k) {
                 ws[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; ws[k].dstSet = s->set[i];
@@ -224,14 +195,13 @@ void write_descriptors(WaterIsland* s) {
 
 // Grow slot `par`'s thin SSBO to at least `bytes`; rewrite descriptors on realloc.
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
-    if (s->thinBuf[par] != VK_NULL_HANDLE && bytes <= s->thinCapBytes[par]) return true;
-    if (s->thinBuf[par] != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(s->device); // simple + safe for a realloc (rare, grows once)
-        vmaDestroyBuffer(s->allocator, s->thinBuf[par], s->thinAlloc[par]);
-        s->thinBuf[par] = VK_NULL_HANDLE;
+    if (s->thinBuf[par] && bytes <= s->thinCapBytes[par]) return true;
+    if (s->thinBuf[par]) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_thin_grow");   // simple + safe for a realloc (rare, grows once)
+        s->thinBuf[par].reset();
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096; // headroom
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->thinBuf[par], &s->thinAlloc[par], "water.thinBuf", static_cast<int>(par)))
+    if (!make_buffer(s, s->thinBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.thinBuf", static_cast<int>(par)))
         return false;
     s->thinCapBytes[par] = cap;
     write_descriptors(s);
@@ -242,7 +212,7 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record) {
     VkCommandBufferAllocateInfo cai{};
     cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return false;
     VkCommandBufferBeginInfo bi{};
@@ -252,17 +222,17 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
     if (ok) { record(cb); ok = (vkEndCommandBuffer(cb) == VK_SUCCESS); }
     if (ok) {
         VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        VkFence f = VK_NULL_HANDLE;
-        ok = (vkCreateFence(s->device, &fci, nullptr, &f) == VK_SUCCESS);
+        mc2vk::OwnedFence fence;
+        ok = mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });
         if (ok) {
             VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+            const VkFence f = fence.get();
             ok = (vkQueueSubmit(s->queue, 1, &si, f) == VK_SUCCESS) &&
                  (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
-            vkDestroyFence(s->device, f, nullptr);
         }
     }
-    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
     return ok;
 }
 
@@ -330,9 +300,7 @@ extern "C" void mc2_vk_water_island_destroy() {
          g_forbidden.glGetTexImage, g_forbidden.glTexSubImage2D,
          g_depthInGetTexImage, g_depthInCopyBufferToImage,
          g_health.copyColorInUs, g_health.copyDepthInUs, g_health.drawUs, g_health.colorOutUs, g_health.totalUs);
-    if (!g_island) return;
-    destroy_island(g_island);
-    delete g_island; g_island = nullptr;
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Water);
 }
 
 #endif // MC2_VULKAN_ISLAND

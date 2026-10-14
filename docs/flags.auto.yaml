@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 980
 registry_entry_count: 204
-verified_count: 973
+verified_count: 971
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -891,7 +891,6 @@ flags:
     rule: Std
     owner: unclassified
     doc: ""
-    verified: true
   - name: MC2_CPU_PROJ_COST_SPLIT
     kind: Bool
     default: false
@@ -2375,7 +2374,6 @@ flags:
     rule: Lead1
     owner: unclassified
     doc: ""
-    verified: true
   - name: MC2_ICON_FAILLOUD
     kind: Bool
     default: false

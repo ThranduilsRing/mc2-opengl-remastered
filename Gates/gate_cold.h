@@ -76,6 +76,39 @@ template <Name n>
 void invalidate(std::string_view name) noexcept;
 void invalidateAll() noexcept;
 
+// Sets (or, with nullptr, clears) one gate's environment variable for the lifetime of the object, then puts
+// the previous value back and clears the gate cache. It exists so test drivers and tools set a gate by its
+// registered name instead of a string literal that no registry check sees: a misspelt name is a compile
+// error. The change is made in the process environment, so child processes started inside the scope inherit
+// it. An empty string clears the variable too (the Windows CRT cannot hold an empty value).
+// Single-threaded phases only (the same contract as invalidate()): do not nest one across threads.
+//   { gate::ScopedOverride<"MC2_SSAO"> on("1"); child = spawn(...); }   // MC2_SSAO restored here
+class ScopedEnv {
+public:
+    ScopedEnv(std::string_view name, const char* value);
+    ~ScopedEnv();
+    ScopedEnv(const ScopedEnv&) = delete;
+    ScopedEnv& operator=(const ScopedEnv&) = delete;
+
+private:
+    std::string name_;
+    std::string previous_;
+    bool hadPrevious_ = false;
+};
+
+template <Name n>
+class ScopedOverride : public ScopedEnv {
+public:
+    explicit ScopedOverride(const char* value) : ScopedEnv(checkedName(), value) {}
+
+private:
+    static constexpr std::string_view checkedName() noexcept {
+        constexpr std::size_t idx = detail::indexOf(n.sv());
+        static_assert(idx != detail::kNpos, "gate::ScopedOverride<>: name is not in the gate table (Gates/gate_table.cpp)");
+        return n.sv();
+    }
+};
+
 // First line of main()/InitInstance: reads resolved after this are not "pre-main".
 void markMainEntered() noexcept;
 

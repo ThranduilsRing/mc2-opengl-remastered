@@ -5,10 +5,12 @@
 // binary; only the non-exportable dedicated allocation survives.
 
 #include "vk_image_resource.h"
+#include "diagnostic_trace.h"
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
+#include <atomic>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -16,6 +18,9 @@
 #include <vector>
 
 namespace {
+
+// Resources whose image is alive; see vkImageResourceLiveCount().
+std::atomic<int> g_liveImages{0};
 
 void ilog(const char* fmt, ...) {
     char buf[512];
@@ -53,6 +58,7 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
                            uint32_t w, uint32_t h, VkFormat format,
                            VkImageUsageFlags usage) {
     if (!r) return false;
+    if (r->image) g_liveImages.fetch_sub(1, std::memory_order_relaxed);   // an overwritten live resource is released here
     *r = VkImageResource{};
     r->device = device;
     r->w = w; r->h = h; r->format = format; r->usage = usage;
@@ -77,6 +83,7 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     if (!mc2vk::create(r->image, device, [&](VkImage* out) { return vkCreateImage(device, &ci, nullptr, out); })) return fail("vkCreateImage");
+    g_liveImages.fetch_add(1, std::memory_order_relaxed);
 
     VkMemoryRequirements mr{};
     vkGetImageMemoryRequirements(device, r->image.get(), &mr);
@@ -126,8 +133,17 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
 // argument is not read; it stays so the islands' teardown call sites are unchanged.
 void vkImageResourceDestroy(VkImageResource* r, VkDevice) {
     if (!r) return;
+    if (r->image) {
+        const int live = g_liveImages.fetch_sub(1, std::memory_order_relaxed) - 1;
+        if (mc2_diag::tagRequested("VK_SHUTDOWN")) ilog("destroy image owner %ux%u fmt=%d; %d alive after.", r->w, r->h, static_cast<int>(r->format), live);
+    }
+    // Moved into a local, so the destructor releases the owners in reverse declaration order (a member-wise move-assignment would release forward:
+    // the memory before the image bound to it).
+    { auto dying = std::move(*r); (void)dying; }
     *r = VkImageResource{};
 }
+
+int vkImageResourceLiveCount() { return g_liveImages.load(std::memory_order_relaxed); }
 
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
     const uint32_t p = r->frameParity;

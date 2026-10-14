@@ -319,7 +319,6 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     print(f"[viscap] mission={mission_token} bookmarks={len(marks)} "
           f"trigger={trigger_frame} settle={settle} dur={duration}s "
           f"fixed_clock={deterministic_clock}")
-    t0 = time.time()
     # OWNER RULE: the engine is launched through nofocus.spawn ONLY. spawn()
     # supplies the non-activating STARTUPINFO (SW_SHOWNOACTIVATE for
     # --show-window, else SW_SHOWMINNOACTIVE), re-applies the windowing env on
@@ -334,6 +333,9 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
                              cwd=str(exe.parent), env=env,
                              show_window=show_window, small_window=False)
         _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
+        # The budget starts once the engine is running: spawn() blocks on the host-wide game lease, and a wait
+        # behind another lane's smoke must not eat the poses' time (it did, twice).
+        t0 = time.time()
 
         # Poll for all expected PNGs, or process exit, or timeout. Re-park the
         # cursor every iteration so it stays pinned center through the ENTIRE sweep
