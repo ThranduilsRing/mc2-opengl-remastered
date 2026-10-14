@@ -1,6 +1,7 @@
 #include "gameos.hpp"
 #include "strres.h"
 #include "MC2Strings.h"
+#include "gameos_resource.hpp"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -168,12 +169,12 @@ void __stdcall gos_CloseResourceDLL(HSTRRES handle)
 
 namespace {
 
-// The text the provider holds for `id`, or nullptr when it has none. Silent: the callers decide what a missing id costs.
-const char* lookupResourceString(HSTRRES handle, DWORD id)
+// The text the provider holds for `id`, or nothing when it has none. Silent: the callers decide what a missing id costs.
+std::optional<std::string_view> lookupResourceString(HSTRRES handle, DWORD id)
 {
-    gos_StringRes* pstrres = (gos_StringRes*)(handle);
+    gos_StringRes* pstrres = handle;
     if (!pstrres)
-        return nullptr;
+        return std::nullopt;
 
     /*
         mc2res.dll handles are represented by module == NULL. Those IDs must
@@ -182,13 +183,18 @@ const char* lookupResourceString(HSTRRES handle, DWORD id)
     if (!pstrres->module)
     {
         const char* fitText = MC2Strings::GetByLegacyId(static_cast<long>(id));
-        return (fitText && fitText[0]) ? fitText : nullptr;
+        if (fitText && fitText[0])
+            return std::string_view(fitText);
+        return std::nullopt;
     }
 
     if (!pstrres->getStringByIdFptr)
-        return nullptr;
+        return std::nullopt;
 
-    return pstrres->getStringByIdFptr(id);
+    const char* text = pstrres->getStringByIdFptr(id);
+    if (!text)
+        return std::nullopt;
+    return std::string_view(text);
 }
 
 }  // namespace
@@ -197,11 +203,10 @@ const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
 {
     gosASSERT(handle);
 
-    const char* str = lookupResourceString(handle, id);
-    if (str)
-        return str;
+    if (const std::optional<std::string_view> text = lookupResourceString(handle, id))
+        return text->data();   // a view over the provider's NUL-terminated string
 
-    gos_StringRes* pstrres = (gos_StringRes*)(handle);
+    gos_StringRes* pstrres = handle;
     if (!pstrres)
         return MC2Strings::MissingResourceId(id);
     if (!pstrres->module)
@@ -211,10 +216,9 @@ const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
     return MC2Strings::MissingResourceId(id);
 }
 
-bool __stdcall gos_ResourceStringExists(HSTRRES handle, DWORD id, size_t* length)
+std::optional<std::size_t> gos_ResourceStringLength(HSTRRES handle, DWORD id)
 {
-    const char* str = lookupResourceString(handle, id);
-    if (length)
-        *length = str ? strlen(str) : 0;
-    return str != nullptr;
+    if (const std::optional<std::string_view> text = lookupResourceString(handle, id))
+        return text->size();
+    return std::nullopt;
 }
