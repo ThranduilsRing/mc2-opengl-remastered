@@ -63,9 +63,9 @@ VkBuffer SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const
     OwnedBuffer& sl = slots_[slot];
     if (!sl || (VkDeviceSize)cpuBytes > caps_[slot]) {
         if (sl) {
-            // Growth destroys a handle a prior frame's submit may reference:
-            // full idle first (mirrors the islands' ensure_*_capacity shape;
-            // rare -- a few times around mission start as light count ramps).
+            // Growth frees a buffer an in-flight submit may still read, so the
+            // device idles first. Rare: a few times around mission start as the
+            // light count ramps.
             vkDeviceWaitIdle(device);
             sl.reset();
         }
