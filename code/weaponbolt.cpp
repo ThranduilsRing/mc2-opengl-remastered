@@ -337,14 +337,14 @@ bool WeaponBolt::isVisible (void)
 //---------------------------------------------------------------------------
 
 // Combat diagnostics retain object identity and event order without owning gameplay state.
-void WeaponBolt::traceCombat(const char* event, const char* reason,
+void WeaponBolt::traceCombat(std::string_view event, std::string_view reason,
                               GameObjectPtr target, const WeaponShotInfo* shot)
 {
     combatTrace.write("bolt", getHandle(), turn, event, reason, position,
         [this] { return getFlag(OBJECT_FLAG_JUSTCREATED) ? nullptr : &laserPosition; }, target, shot);
 }
 
-void WeaponBolt::traceCombatRetire(const char* reason)
+void WeaponBolt::traceCombatRetire(std::string_view reason)
 {
     traceCombat("retire", reason);
     combatTrace.live = false;

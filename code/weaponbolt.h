@@ -427,9 +427,9 @@ class WeaponBolt : public GameObject
 
         // Slot generations distinguish pool reuse without changing combat or save records.
         mc2::CombatTrace combatTrace;
-        void traceCombat(const char* event, const char* reason = "",
+        void traceCombat(std::string_view event, std::string_view reason = "",
                          GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
-        void traceCombatRetire(const char* reason);
+        void traceCombatRetire(std::string_view reason);
         void submitDamage(GameObjectPtr target);
 
 };

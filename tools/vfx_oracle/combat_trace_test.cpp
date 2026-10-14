@@ -106,3 +106,22 @@ TEST_CASE_FIXTURE(Capture, "vfx_trace/formatting is complete beyond the former f
     CHECK(payloads.front().find(reason) != std::string::npos);
     CHECK(payloads.front().ends_with(",\"position_bits\":[0,0,0]}"));
 }
+
+TEST_CASE_FIXTURE(Capture, "vfx_trace/text views respect their bounds and empty reasons")
+{
+    mc2::CombatTrace trace;
+    trace.begin(12, 8);
+    const Vector position{};
+    unsigned flightReads = 0;
+    auto getFlight = [&] { ++flightReads; return &position; };
+    trace.write(std::string_view("bolt_tail", 4), 3, 0, std::string_view("birth_tail", 5), {},
+                position, getFlight, static_cast<Target*>(nullptr), static_cast<const Shot*>(nullptr));
+    REQUIRE(payloads.size() == 1);
+    CHECK(payloads.back() == R"({"kind":"bolt","slot":3,"generation":1,"seq":0,"tick":0,"event":"birth","reason":"","effect_id":8,"type":12})");
+    CHECK(flightReads == 0);
+    trace.write("bolt", 3, 1, "retire", std::string_view("deadline_tail", 8), position,
+                getFlight, static_cast<Target*>(nullptr), static_cast<const Shot*>(nullptr));
+    CHECK(payloads.back().find(R"("reason":"deadline")") != std::string::npos);
+    CHECK(payloads.back().find("_tail") == std::string::npos);
+    CHECK(flightReads == 1);
+}
