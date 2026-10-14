@@ -326,7 +326,6 @@ extern LONG  VFX_register_driver(void *DLLbase);
 extern long  VFX_shape_draw (PANE *pane, void *shape_table,
                                   LONG shape_number, LONG hotX, LONG hotY);
 
-extern long VFX_nTile_draw (PANE* pane, void *tile, LONG hotX, LONG hotY, unsigned char *fadeTable = 0);
 
 extern long VFX_newShape_count (void *shape);
 
@@ -350,17 +349,12 @@ extern long VFX_deltaShape_scan (PANE *shapePane, UBYTE xparentColor, UBYTE Hsx,
 
 extern long VFX_tile_scan (PANE *shapePane, UBYTE xparentColor, UBYTE Hsx, UBYTE Hsy, unsigned char* *shapeBuffer);
 								  
-extern int VFX_shape_bounds(void *shape_table, LONG shape_num);
-extern LONG  VFX_shape_origin(void *shape_table, LONG shape_num);
-extern LONG  VFX_shape_resolution(void *shape_table, LONG shape_num);
-extern LONG  VFX_shape_minxy(void *shape_table, LONG shape_num);
 extern void  VFX_shape_palette(void *shape_table, LONG shape_num,
                                     VFX_RGB *palette);
 extern LONG  VFX_shape_colors(void *shape_table, LONG shape_num,
                                    VFX_CRGB *colors);
 extern LONG  VFX_shape_set_colors(void *shape_table, LONG shape_number,
                                        VFX_CRGB *colors);
-extern LONG  VFX_shape_count(void *shape_table);
 extern LONG  VFX_shape_list(void *shape_table, ULONG *index_list);
 extern LONG  VFX_shape_palette_list(void *shape_table, ULONG *index_list);
 

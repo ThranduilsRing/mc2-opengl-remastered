@@ -47,7 +47,6 @@ set(SOURCES ${SOURCES}
     note.cpp
     page.cpp
     stuff.cpp
-    stuffheaders.cpp
     )
 
 include_directories(${COMMON_INCLUDE_DIRS})
