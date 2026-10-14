@@ -48,8 +48,8 @@
   },
   "GameOS": {
    "LG01": 10,
-   "LG02": 192,
-   "LG03": 299,
+   "LG02": 191,
+   "LG03": 297,
    "LG04": 6,
    "LG05": 118,
    "LG06": 497,
@@ -181,25 +181,25 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 2,
-   "LG20": 10
+   "LG19": 1,
+   "LG20": 9
   },
   "mclib": {
-   "LG01": 454,
+   "LG01": 447,
    "LG02": 285,
-   "LG03": 1130,
+   "LG03": 1125,
    "LG04": 15,
    "LG05": 136,
    "LG06": 670,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2177,
+   "LG09": 2162,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
    "LG12b": 243,
-   "LG13": 483,
-   "LG14": 119,
+   "LG13": 481,
+   "LG14": 118,
    "LG15": 0,
    "LG16": 156,
    "LG17": 94,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 41
+   "LG20": 50
   }
  },
  "dirs": [
@@ -1136,9 +1136,6 @@
   "GameOS/gameos/vk_shared_light_feed.cpp": {
    "LG09": 7
   },
-  "GameOS/gameos/vk_shared_light_feed.h": {
-   "LG02": 1
-  },
   "GameOS/gameos/vma_impl.cpp": {
    "LG13": 2
   },
@@ -1262,7 +1259,6 @@
    "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
-   "LG03": 2,
    "LG06": 2,
    "LG09": 8,
    "LG11": 1,
@@ -3119,10 +3115,6 @@
   "editor/ModPicker.cpp": {
    "LG20": 2
   },
-  "editor/shell/main.cpp": {
-   "LG19": 1,
-   "LG20": 1
-  },
   "mclib/abl.h": {
    "LG01": 9,
    "LG06": 9,
@@ -3266,11 +3258,6 @@
   },
   "mclib/alloc_probe.cpp": {
    "LG18": 2
-  },
-  "mclib/alphapalette.cpp": {
-   "LG03": 2,
-   "LG09": 7,
-   "LG14": 1
   },
   "mclib/anim_override_registry.cpp": {
    "LG05": 3,
@@ -3419,13 +3406,6 @@
   },
   "mclib/cellip.cpp": {
    "LG09": 8
-  },
-  "mclib/cepane.cpp": {
-   "LG09": 1,
-   "LG13": 2
-  },
-  "mclib/cepane.h": {
-   "LG01": 4
   },
   "mclib/cepoly.h": {
    "LG01": 1,
@@ -3736,7 +3716,7 @@
   },
   "mclib/gosfx/cardcloud.cpp": {
    "LG03": 6,
-   "LG09": 3
+   "LG09": 2
   },
   "mclib/gosfx/cardcloud.hpp": {
    "LG02": 2,
@@ -4638,11 +4618,6 @@
    "LG01": 1,
    "LG12a": 1
   },
-  "mclib/stuff/average.hpp": {
-   "LG01": 3,
-   "LG03": 3,
-   "LG09": 1
-  },
   "mclib/stuff/chain.cpp": {
    "LG03": 6
   },
@@ -5131,12 +5106,6 @@
    "LG09": 7,
    "LG13": 3
   },
-  "mclib/vfx_ellipse.cpp": {
-   "LG09": 2
-  },
-  "mclib/vfx_map_polygon.cpp": {
-   "LG09": 3
-  },
   "mclib/vfx_transform.cpp": {
    "LG09": 2,
    "LG13": 4
@@ -5181,9 +5150,15 @@
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
    "LG20": 41
+  },
+  "tools/vfx_oracle/lifecycle_driver.cpp": {
+   "LG20": 6
+  },
+  "tools/vfx_oracle/lifecycle_test.cpp": {
+   "LG20": 3
   }
  },
- "head": "86d12485d",
+ "head": "349eee765",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
