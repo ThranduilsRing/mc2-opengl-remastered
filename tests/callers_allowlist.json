@@ -281,5 +281,6 @@
   "scripts/tests/test_manifest_schema_check.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_tracy_capture_compare.py": "Pytest-discovered module through the scripts_tests board row.",
   "tools/vfx_oracle/compare_frozen_snapshots.py": "VFX parity oracle diagnostic, run by hand from the Sol G lane (DIAGNOSTIC status, no board row yet).",
-  "tools/vfx_oracle/test_compare_combat_traces.py": "Pytest-discovered module through the scripts_tests board row."
+  "tools/vfx_oracle/test_compare_combat_traces.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row."
 }

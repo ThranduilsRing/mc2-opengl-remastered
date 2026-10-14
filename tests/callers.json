@@ -2221,7 +2221,7 @@
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 13,
+          "line": 15,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs"
@@ -2375,7 +2375,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 63,
+          "line": 64,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs  # noqa: E402"
@@ -2850,6 +2850,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/mission_order_ingress_witness.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/phase/asm_dead_strip.py",
           "line": 22,
           "evidence": "import",
@@ -3281,7 +3288,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 64,
+          "line": 65,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint  # noqa: E402"
@@ -3737,7 +3744,7 @@
       "callers_by_stem": [
         {
           "path": "editor/tests/legacy_reference.py",
-          "line": 104,
+          "line": 222,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import fit_fields"
@@ -3751,10 +3758,45 @@
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 14,
+          "line": 16,
           "evidence": "import",
           "reference": "run_editor_smoke",
           "text": "from run_editor_smoke import StockInputs, STOCK_MISSIONS, compare_fit"
+        },
+        {
+          "path": "editor/tests/run_document_proofs.py",
+          "line": 56,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/run_document_proofs.py",
+          "line": 182,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import grade_panel, panel_negative_controls"
+        },
+        {
+          "path": "editor/tests/test_placement_proofs.py",
+          "line": 132,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import main"
+        },
+        {
+          "path": "editor/tests/test_placement_proofs.py",
+          "line": 151,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import run_owned_marker_reload"
+        },
+        {
+          "path": "editor/tests/test_placement_proofs.py",
+          "line": 182,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import marker_reload_provenance"
         }
       ]
     },
@@ -3790,6 +3832,13 @@
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
+        },
+        {
+          "path": "tools/mission_order_ingress_witness.py",
+          "line": 98,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
         }
       ],
       "callers_by_stem": [
@@ -5589,6 +5638,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_mission_order_ingress_witness.py",
+      "basename": "test_mission_order_ingress_witness.py",
+      "stem": "test_mission_order_ingress_witness",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_nofocus_env.py",
       "basename": "test_nofocus_env.py",
       "stem": "test_nofocus_env",
@@ -6754,8 +6810,22 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_mission_order_ingress_witness.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "mc2_cmd",
+          "text": "import mc2_cmd"
+        },
+        {
           "path": "tools/dev_shell/watch.py",
           "line": 22,
+          "evidence": "import",
+          "reference": "mc2_cmd",
+          "text": "from mc2_cmd import send_command"
+        },
+        {
+          "path": "tools/mission_order_ingress_witness.py",
+          "line": 19,
           "evidence": "import",
           "reference": "mc2_cmd",
           "text": "from mc2_cmd import send_command"
@@ -7655,7 +7725,7 @@
       "callers_by_stem": [
         {
           "path": "editor/tests/legacy_reference.py",
-          "line": 8,
+          "line": 10,
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import decompress_entry"
@@ -7669,7 +7739,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 67,
+          "line": 68,
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
@@ -7849,6 +7919,21 @@
       "stem": "menu_oracle",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/mission_order_ingress_witness.py",
+      "basename": "mission_order_ingress_witness.py",
+      "stem": "mission_order_ingress_witness",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_mission_order_ingress_witness.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "mission_order_ingress_witness",
+          "text": "import mission_order_ingress_witness as subject"
+        }
+      ]
     },
     {
       "path": "tools/mod_install/fst_listing.py",
@@ -8742,7 +8827,7 @@
       "callers_by_stem": [
         {
           "path": "tools/test_saveload_roundtrip.py",
-          "line": 7,
+          "line": 8,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt  # noqa: E402"

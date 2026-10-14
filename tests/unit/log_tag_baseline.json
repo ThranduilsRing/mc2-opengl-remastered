@@ -7077,6 +7077,144 @@
    "count": 2
   },
   {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "acknowledgement_error"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "begin_error"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "completion_error"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "source",
+    "sequence",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "ok",
+    "mission"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "part",
+    "actor_part",
+    "commander",
+    "simulation_time"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "active",
+    "submitted",
+    "completed",
+    "retained"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "error",
+    "submitted",
+    "sequence"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "recipients",
+    "unresolved",
+    "unowned",
+    "disabled",
+    "immobile",
+    "simulation_time"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "sequence"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "recipients"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS_FIXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "status",
+    "completed",
+    "retained",
+    "sequence"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ORDER_LIVENESS_SUMMARY",
    "ver": -1,
    "stream": "stdout",
@@ -12933,6 +13071,7 @@
   "DEPLOY_GUARD",
   "DESTROY",
   "DET_RNG",
+  "EDITOR_CHOOSER_VIEW",
   "EDITOR_DEFINITIONS",
   "EDITOR_DOCUMENT",
   "EDITOR_FILE",
