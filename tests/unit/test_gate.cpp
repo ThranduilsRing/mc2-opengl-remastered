@@ -8,6 +8,7 @@
 //   * live   -- the real table: slot caching, invalidate/invalidateAll, lookupName, the
 //               per-site Rule override, dumpConfigWith() output.
 #include "doctest.h"
+#include <stdexcept>
 
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -1833,6 +1834,20 @@ TEST_CASE("scoped gate override: sets the process environment, clears the cache,
     }
     CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());              // default again
     CHECK(std::getenv("MC2_TERRAIN_LOD_CHUNK") == nullptr);   // it was unset before, so it is unset again
+}
+
+TEST_CASE("scoped gate override: an exception leaving the scope still restores the previous value") {
+    EnvVar guard("MC2_TERRAIN_LOD_CHUNK");
+    guard.set("0");
+    gate::invalidate("MC2_TERRAIN_LOD_CHUNK");
+    try {
+        gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> on("1");
+        REQUIRE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+        throw std::runtime_error("leave the scope");
+    } catch (const std::runtime_error&) {
+    }
+    CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+    CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
 }
 
 TEST_CASE("scoped gate override: a nullptr value clears a variable that was set, and the old value comes back") {
