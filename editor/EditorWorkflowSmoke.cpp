@@ -8,6 +8,78 @@
 #include "AssetBrowser.h"
 #include "campaignData.h"
 #include <memory>
+#include <array>
+#include <cstdio>
+
+void EditorInterface::runCatalogReferenceSmoke()
+{
+	if (!land || !EditorData::instance || !EditorObjectMgr::instance()) return;
+	struct Placement { const char* family; long fitId; const char* stem; };
+	constexpr std::array placements{
+		Placement{"mech", 53, "Anubis"}, Placement{"vehicle", 117, "APC"},
+		Placement{"building", 263, "Barrels"}, Placement{"turret", 525, "AutoCannonCamo1"},
+		Placement{"tree", 252, "Birch1"}, Placement{"gate", 157, "D_HeavyGate"},
+		Placement{"bridge", 607, "bridge"}, Placement{"light", 68, "Spotlight"},
+		Placement{"marker", 290, "Nav1"}};
+	const char* before = "terrain_gen_out/e5_reference_before.pak";
+	const bool baseline = EditorData::instance->save(before, true);
+	const int mid = (land->realVerticesMapSide - 1) / 2;
+	for (const auto& spec : placements)
+	{
+		auto* mgr = EditorObjectMgr::instance();
+		unsigned long group{}, index{};
+		const bool identified = mgr->getBuildingFromID(spec.fitId, group, index, true)
+			&& _stricmp(mgr->getFileName(mgr->getID(group, index)), spec.stem) == 0;
+		const int expectedTeam = identified && mgr->isAlignable(mgr->getID(group, index)) ? 0 : -1;
+		// The fixed team and ordinary brush isolate reference values from UI selection state.
+		if (identified) setActiveBrush(new BuildingBrush(group, index, 0), -500, -500);
+		auto* brush = identified ? dynamic_cast<BuildingBrush*>(curBrush) : nullptr;
+		const auto count = mgr->getBuildings().Count() + mgr->getUnits().Count();
+		EditorObject* placed{};
+		Stuff::Vector3D position{};
+		bool painted{}, undone{}, redone{}, saved{}, removed{}, reloaded{};
+		for (int row = mid; brush && row < mid + 24 && !placed; ++row)
+			for (int col = mid; col < mid + 24 && !placed; ++col)
+			{
+				land->cellToWorld(row, col, position);
+				position.z = land->getTerrainElevation(position);
+				if (!brush->canPaint(position, 0, 0, 0)) continue;
+				brush->beginPaint();
+				painted = brush->paint(position, 0, 0);
+				undoMgr.AddAction(brush->endPaint());
+				placed = painted ? mgr->getObjectAtLocation(position.x, position.y) : nullptr;
+			}
+		const auto objectId = placed ? placed->getID() : -1;
+		if (placed) {
+			position = placed->getPosition();
+			painted = painted && mgr->getFitID(objectId) == spec.fitId
+				&& mgr->getBuildings().Count() + mgr->getUnits().Count() == count + 1;
+			undone = undoMgr.Undo() && !mgr->getObjectAtLocation(position.x, position.y)
+				&& mgr->getBuildings().Count() + mgr->getUnits().Count() == count;
+			redone = undoMgr.Redo() && mgr->getObjectAtLocation(position.x, position.y)
+				&& mgr->getBuildings().Count() + mgr->getUnits().Count() == count + 1;
+		}
+		char path[128];
+		snprintf(path, sizeof(path), "terrain_gen_out/e5_reference_%s.pak", spec.family);
+		if (painted && undone && redone) saved = EditorData::instance->save(path, true);
+		if (saved) removed = undoMgr.Undo() && !mgr->getObjectAtLocation(position.x, position.y);
+		if (removed) {
+			undoMgr.Reset();
+			reloaded = EditorData::initTerrainFromPCV(path);
+			mgr = EditorObjectMgr::instance();
+			auto* loaded = reloaded ? mgr->getObjectAtLocation(position.x, position.y) : nullptr;
+			reloaded = loaded && loaded->getID() == objectId && mgr->getFitID(loaded->getID()) == spec.fitId
+				&& loaded->getAlignment() == expectedTeam && mgr->getBuildings().Count() + mgr->getUnits().Count() == count + 1;
+		}
+		if (auto* log = fopen("editor-startup.log", "a")) {
+			fprintf(log, "[EDITOR_LEGACY_PLACEMENT v1] family=%s fit_id=%ld stem=%s x=%.9g y=%.9g z=%.9g input_team=0 team=%d painted=%d undo=%d redo=%d saved=%d removed=%d reopened=%d\n",
+				spec.family, spec.fitId, spec.stem, position.x, position.y, position.z, expectedTeam, painted, undone, redone, saved, removed, reloaded);
+			fclose(log);
+		}
+		undoMgr.Reset();
+		if (!baseline || !EditorData::initTerrainFromPCV(before)) break;
+	}
+}
 
 void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 {

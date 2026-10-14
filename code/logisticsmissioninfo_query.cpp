@@ -256,7 +256,9 @@ void LogisticsMissionInfo::setSkipLogistics(bool skip)
 	// on the currently-selected mission info. Safe to call only after
 	// setSingleMission() / setNextMission() has populated groups[currentStage].
 	if (currentStage < groupCount && !groups[currentStage].infos.empty()) {
-		groups[currentStage].mission(currentMission)->playLogistics = !skip;
+		// at(), not mission(): with no mission chosen (currentMission -1) there is no record to change, and the default record mission() returns would swallow the write.
+		if (MissionInfo* info = groups[currentStage].at(currentMission))
+			info->playLogistics = !skip;
 	}
 }
 bool	LogisticsMissionInfo::skipPilotReview()

@@ -89,10 +89,12 @@ add_executable(mc2_tests
     test_estring.cpp        # EString::Format sizing (ll/z/j specs) via the CRT parser; step 4 B1 characterization of the class (H1-H14)
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
     test_elist_contract.cpp     # step 4 B2.0: EList characterization (HE1-HE12), the properties std::vector/deque replace
-    test_sortlist_contract.cpp  # step 4 B2.0: SortList characterization (HS1-HS6) + the CRT qsort tie table (golden/sortlist_ties.h)
+    test_score_sort_ties.cpp    # step 4 B2.4: the CRT qsort tie table recorded from the old SortList (golden/sortlist_ties.h) against the new rule
+    test_score_sort.cpp         # step 4 B2.4: mc2::sort_scored, the ordering rule that replaces SortList (SS1-SS7)
     test_pqueue_contract.cpp    # step 4 B2.0: PriorityQueue characterization (HP1-HP7) + 2000 golden scripts (golden/pqueue_golden.h)
     test_gui_bridge.cpp     # widget text bridge: setText / setEntry overload resolution (compile-time, step 4 B1)
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
+    test_resource_strings.cpp
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
     abl_exec_shim.cpp       # the interpreter stack / object table the position bindings read, answered from the scripted queue
@@ -120,6 +122,7 @@ add_executable(mc2_tests
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
     ${MC2_WORKTREE_ROOT}/mclib/appearance_rng.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/resource_strings.cpp
     ${MC2_WORKTREE_ROOT}/mclib/alloc_probe.cpp       # allocation accounting seam (portable, proof builds + this tier)
     ${MC2_WORKTREE_ROOT}/mclib/xform_conventions.cpp  # XFORM-CONVENTION-HARNESS-1: GL-free leaf TU
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
@@ -154,7 +157,6 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/estring.cpp                 # EString under test
     ${MC2_WORKTREE_ROOT}/code/objective_text.cpp           # objective string reader/writer (leaf: FitIniFile + log facade)
     ${MC2_WORKTREE_ROOT}/code/objective_flags.cpp          # objective boolean flag table (leaf)
-    ${MC2_WORKTREE_ROOT}/mclib/sortlist.cpp                # SortList under test (B2.0; removed with the class in B2.4)
     ${MC2_WORKTREE_ROOT}/mclib/pqueue.cpp                  # PriorityQueue under test (B2.0; replaced by the per-solver open list in B2.5)
     ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
 
@@ -358,8 +360,25 @@ target_sources(mc2_tests PRIVATE
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
+target_sources(vfx_lifecycle_tests PRIVATE test_vfx_frozen_clouds.cpp)
+# The frozen-cloud tests own the particle bridge capture instead of the platform sink.
+set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_platform.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")
+target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_sources(mc2_tests PRIVATE
     test_sim_rng.cpp test_tactical_order_queue.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )
+# The Part fixtures compile the same leaf sources as the engine.
+target_sources(mc2_tests PRIVATE
+    test_part_archive.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_init_parts.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_parts_archive.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/cident.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/mathfunc.cpp
+)
+set_source_files_properties(test_part_archive.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_init_parts.cpp
+    ${MC2_WORKTREE_ROOT}/code/mission_parts_archive.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")

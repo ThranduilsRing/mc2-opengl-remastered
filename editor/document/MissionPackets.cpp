@@ -1,6 +1,7 @@
 #include "MissionDocument.h"
 
 #include <array>
+#include <algorithm>
 #include <zlib.h>
 
 namespace editor::document {
@@ -119,5 +120,35 @@ std::expected<PacketArchive, LoadError> decodePak(std::vector<std::byte> bytes)
     }
     archive.originalBytes = std::move(bytes);
     return archive;
+}
+
+std::expected<std::vector<std::byte>, LoadError> encodePlacements(
+    const PacketArchive& source, std::span<const std::byte> placements)
+{
+    const auto fail = [](std::string reason) { return std::unexpected(LoadError{"Packet1", std::move(reason), 0}); };
+    if (source.packets.size() < 2 || placements.size() > packetByteLimit) return fail("packet_size_limit");
+    if (!placements.empty() && (placements.size() < 4 || u32(placements, 0) > nodeLimit ||
+        placements.size() != 4 + static_cast<std::size_t>(u32(placements, 0)) * 40)) return fail("placement_count_mismatch");
+    if (std::ranges::equal(placements, source.packets[1].decoded)) return source.originalBytes;
+    const auto tableEnd = u32(source.originalBytes, 4);
+    std::vector<std::byte> output(source.originalBytes.begin(), source.originalBytes.begin() + tableEnd);
+    const auto put = [&](std::size_t offset, std::uint32_t value) {
+        for (unsigned j = 0; j < 4; ++j) output[offset + j] = static_cast<std::byte>(value >> (j * 8));
+    };
+    for (std::size_t i = 0; i < source.packets.size(); ++i) {
+        const auto& packet = source.packets[i];
+        const auto bytes = i == 1 ? placements : std::span(source.originalBytes).subspan(packet.encoded.begin, packet.encoded.end - packet.encoded.begin);
+        if (bytes.size() > pakByteLimit - output.size()) return fail("file_size_limit");
+        // Edited placements use raw storage; other packets retain their exact compression payloads.
+        const auto storage = i == 1 ? (bytes.empty() ? 7U : 0U) : packet.storage;
+        put(8 + i * 4, static_cast<std::uint32_t>(output.size()) | (storage << 29));
+        output.insert(output.end(), bytes.begin(), bytes.end());
+    }
+    if (u32(source.originalBytes, 0) != 0xfeedfaceU) {
+        std::uint32_t checksum{};
+        for (std::size_t i = 4; i < output.size(); ++i) checksum += std::to_integer<unsigned>(output[i]);
+        put(0, checksum);
+    }
+    return output;
 }
 }

@@ -2,7 +2,10 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "score_sort.h"
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
 #include <span>
 
@@ -10,20 +13,26 @@
 
 long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {
 
-	static float sortValues[MAX_MOVERS];
-	if (!Team::sortList) {
-		Team::sortList = new SortList;
-		if (!Team::sortList)
-			Fatal(0, " Unable to create Team Contact sortList ");
-		Team::sortList->init(MAX_CONTACTS_PER_SENSOR);
-	}
-	Team::sortList->clear(sortDescending);
+	// Candidates in scan order, keyed by threat rating. The list is sorted in full; equal ratings keep scan order (mc2::sort_scored), so the first mover
+	// of an equal group is the first one the walk found.
+	mc2::Scored candidates[MAX_MOVERS];
 
 	TeamPtr team = nullptr;
 	if (teamID > -1)
 		team = Team::teams[teamID];
 
 	long numValidMovers = 0;
+	// Records one mover: its threat rating and its handle. A walk never finds more movers than the object manager holds; the check keeps a corrupt count from
+	// writing past the list.
+	auto addMover = [&](MoverPtr mover) {
+		if (numValidMovers >= MAX_MOVERS) {
+			MC2_LOG_ONCE(Sim, Warn, "getMoversWithinRadius: more than {} movers found, the rest are ignored", MAX_MOVERS);
+			return;
+		}
+		candidates[numValidMovers].score = mover->getThreatRating();
+		candidates[numValidMovers].id = static_cast<std::int32_t>(mover->getHandle());
+		numValidMovers++;
+	};
 	if (getEnemies) {
 		for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
 			MoverPtr mover = ObjectManager->getMover(i);
@@ -31,9 +40,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 				if (mover->numFunctionalWeapons > 0)
 					if (mover->distanceFrom(center) < radius) {
 						if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
-							Team::sortList->setId(numValidMovers, mover->getHandle());
-							Team::sortList->setValue(numValidMovers, mover->getThreatRating());
-							numValidMovers++;
+							addMover(mover);
 						}
 					}
 		}
@@ -46,9 +53,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 					if (mover->distanceFrom(center) < radius) {
 						if (mover->getPilot()->getWillHelp()) {
 							if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
-								Team::sortList->setId(numValidMovers, mover->getHandle());
-								Team::sortList->setValue(numValidMovers, mover->getThreatRating());
-								numValidMovers++;
+								addMover(mover);
 							}
 						}
 					}
@@ -60,9 +65,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 					if (mover->distanceFrom(center) < radius) {
 						if (mover->getPilot()->getWillHelp()) {
 							if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
-								Team::sortList->setId(numValidMovers, mover->getHandle());
-								Team::sortList->setValue(numValidMovers, mover->getThreatRating());
-								numValidMovers++;
+								addMover(mover);
 							}
 						}
 					}
@@ -70,9 +73,9 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 	}
 
 	if (numValidMovers > 0) {
-		Team::sortList->sort(sortDescending);
+		mc2::sort_scored(std::span<mc2::Scored>(candidates, numValidMovers), sortDescending ? mc2::SortOrder::Descending : mc2::SortOrder::Ascending);
 		for (long i = 0; i < numValidMovers; i++)
-			moverList[i] = (MoverPtr)ObjectManager->get(Team::sortList->getId(i));
+			moverList[i] = (MoverPtr)ObjectManager->get(candidates[i].id);
 	}
 	return(numValidMovers);
 }

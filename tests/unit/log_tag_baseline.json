@@ -3302,6 +3302,28 @@
    "count": 1
   },
   {
+   "tag": "EDITOR_LEGACY_PLACEMENT",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "family",
+    "fit_id",
+    "stem",
+    "x",
+    "y",
+    "z",
+    "input_team",
+    "team",
+    "painted",
+    "undo",
+    "redo",
+    "saved",
+    "removed",
+    "reopened"
+   ],
+   "count": 1
+  },
+  {
    "tag": "EDITOR_PANEL",
    "ver": 1,
    "stream": "buffer",
@@ -8299,6 +8321,19 @@
    "count": 1
   },
   {
+   "tag": "RESOURCE_STRING",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "id",
+    "source_length",
+    "capacity",
+    "copied"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RES_DIAG",
    "ver": -1,
    "stream": "stdout",
@@ -12894,13 +12929,17 @@
   "CRASH",
   "CRASHBUNDLE",
   "DEPLOY_COHERENCE",
+  "DEPLOY_FINGERPRINT",
   "DEPLOY_GUARD",
   "DESTROY",
   "DET_RNG",
   "EDITOR_DEFINITIONS",
   "EDITOR_DOCUMENT",
+  "EDITOR_FILE",
+  "EDITOR_FILE_LOOP",
   "EDITOR_MODEL",
   "EDITOR_PANEL",
+  "EDITOR_PANEL_OPERATION",
   "EDITOR_SHELL",
   "ESMOKE",
   "GLP",

@@ -76,7 +76,8 @@ def _resolution_line(tier: str) -> str:
 
 def render_markdown(rows: list[Row], *, tier: str, profile: str,
                     timestamp: str, show_window: bool = False,
-                    run_failures: Optional[list[str]] = None) -> str:
+                    run_failures: Optional[list[str]] = None,
+                    fingerprint: Optional[dict] = None) -> str:
     """Render the smoke report.
 
     SMOKE-DEPLOY-TRAP-1: `run_failures` carries RUN-LEVEL failures that are not
@@ -106,6 +107,15 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
     if run_failures:
         head += ("> **RUN INVALID — the missions' results do not count.**\n>\n"
                  + "".join(f"> - {f}\n" for f in run_failures) + "\n")
+    if fingerprint is not None:
+        head += f"> **Fingerprint reference:** {fingerprint['description']}\n\n"
+        status = ("FAIL" if fingerprint["hard_fail"] else
+                  "PASS" if fingerprint["checks"] else "NOT VERIFIED")
+        enforcement = "required" if fingerprint["required"] else "gate disabled"
+        head += f"> **DEPLOY_FINGERPRINT:** {status} ({enforcement})\n\n"
+        for check in fingerprint["checks"]:
+            head += "".join(f"> {check['mission']}: {line}\n" for line in check["lines"])
+        head += "\n"
     head += _options_line(rows)
     head += _resolution_line(tier)
     head += _vram_line(rows)
@@ -139,7 +149,8 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
 
 def render_json(rows: list[Row], *, tier: str, profile: str,
                 timestamp: str, show_window: bool = False,
-                run_failures: Optional[list[str]] = None) -> dict:
+                run_failures: Optional[list[str]] = None,
+                fingerprint: Optional[dict] = None) -> dict:
     run_failures = list(run_failures or [])
     _all_missions_passed = all(r.verdict.passed for r in rows) and bool(rows)
     return {
@@ -152,6 +163,7 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
         # green report got quoted for a run that smoked the wrong binary.
         "overall_result": "PASS" if (_all_missions_passed and not run_failures) else "FAIL",
         "run_failures": run_failures,
+        "fingerprint": fingerprint,
         "fps_note": ("window visible; fps reflects foreground throughput subject to MC2_FPS_CAP/MC2_VSYNC"
                      if show_window else
                      "window minimized; SDL throttles rendering; fps reflects ~100fps cap not GPU throughput"),

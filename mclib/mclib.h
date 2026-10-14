@@ -51,14 +51,6 @@
 #include"pqueue.h"
 #endif
 
-#ifndef SCALE_H
-#include"scale.h"
-#endif
-
-#ifndef SORTLIST_H
-#include"sortlist.h"
-#endif
-
 #ifndef TGAINFO_H
 #include"tgainfo.h"
 #endif
@@ -85,10 +77,6 @@
 
 #ifndef CELINE_H
 #include"celine.h"
-#endif
-
-#ifndef CEPOLY_H
-#include"cepoly.h"
 #endif
 
 #ifndef CEVFX_H

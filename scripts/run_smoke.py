@@ -608,6 +608,11 @@ def main():
     ap.add_argument("--exe", default=None,
                     help="explicit path to mc2.exe; skips auto-selection but still "
                          "leases the folder (use --no-lease to bypass leasing)")
+    ref = ap.add_mutually_exclusive_group()
+    ref.add_argument("--ref-commit", metavar="SHA",
+                     help="fingerprint reference: a clean git commit SHA; default is HEAD")
+    ref.add_argument("--ref-exe", metavar="PATH",
+                     help="fingerprint reference: require SHA-256 byte identity with this executable")
     # Deploy-folder lease / checkout system (scripts/smoke_lib/deploy_lease.py).
     # --deploy <name>: request a specific folder by short name (0.4/0.4c/0.4d-rc1/
     #   0.5.0/0.5-testing). Error if that folder is busy-and-fresh.
@@ -669,6 +674,23 @@ def main():
                          "shader tree + HEAD are unchanged since the last "
                          "cached run; the staleness check always runs fresh)")
     args = ap.parse_args()
+    _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") != "0"
+    _fp_reference = None
+    if _fingerprint is not None:
+        try:
+            _fp_reference = _fingerprint.resolve_reference(
+                ROOT, ref_commit=args.ref_commit, ref_exe=args.ref_exe)
+        except ValueError as exc:
+            if _fp_require or args.ref_commit is not None or args.ref_exe is not None:
+                ap.error(str(exc))
+            print(f"[runner] [DEPLOY_FINGERPRINT] HEAD unavailable ({exc}) and "
+                  "MC2_SMOKE_REQUIRE_FINGERPRINT=0 -- exe identity is NOT verified "
+                  "for this run.", file=sys.stderr)
+        if _fp_reference is not None:
+            print("[runner] [DEPLOY_FINGERPRINT] reference: "
+                  + _fingerprint.describe_reference(_fp_reference), file=sys.stderr)
+    elif args.ref_commit is not None or args.ref_exe is not None:
+        ap.error("fingerprint module unavailable; cannot verify a reference override")
     if args.lite:
         if args.tier or args.mission:
             ap.error("--lite selects its own missions; it cannot be combined "
@@ -1233,16 +1255,15 @@ def main():
             print("[runner] --fail-fast: stopping after menu canary failure", file=sys.stderr)
             sys.exit(menu_canary_rc)
 
-    # Deploy-fingerprint: expected sha = HEAD of the worktree this runner
-    # lives in. Computed once; compared against the exe's startup banner.
-    _fp_expected_sha = None
+    # The pinned reference keeps every mission's verdict attributable to one build.
+    _fp_expected_sha = _fp_reference.get("sha") if _fp_reference else None
+    _fp_checks = []
     _fp_hard_fail = False
     # DEPLOY-FINGERPRINT-DEFAULT-ON-1 (Truth-First arc): default ON (opt-OUT via
     # MC2_SMOKE_REQUIRE_FINGERPRINT=0). A smoke that ran a stale/wrong-lane exe
     # (fingerprint mismatch) must NOT be allowed to report PASS — that is exactly
     # the "passed on the wrong binary" failure this arc exists to kill. Escape
     # hatch preserved for intentionally running a pre-built external exe.
-    _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") != "0"
     # SMOKE-DEPLOY-TRAP-1: no fingerprint module => no way to tell which exe we
     # smoked. Refuse to start rather than run the missions and print a verdict
     # that cannot be attributed to a binary.
@@ -1251,7 +1272,7 @@ def main():
             print(
                 f"\n[runner] [DEPLOY_FINGERPRINT] FATAL: the fingerprint module "
                 f"could not be imported ({_fingerprint_import_error!r}), so the "
-                f"smoked exe cannot be verified against this worktree HEAD.\n"
+                f"smoked exe cannot be verified against the selected reference.\n"
                 f"[runner] Refusing to run -- a PASS here would be unattributable "
                 f"to any binary (this is exactly the stale/wrong-lane exe trap).\n"
                 f"[runner] Fix scripts/smoke_lib/fingerprint.py, or set "
@@ -1263,13 +1284,10 @@ def main():
               f"({_fingerprint_import_error!r}) and MC2_SMOKE_REQUIRE_FINGERPRINT=0 "
               f"-- exe identity is NOT verified for this run.", file=sys.stderr)
     if _fingerprint is not None:
-        try:
-            _fp_expected_sha = subprocess.check_output(
-                ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                text=True, stderr=subprocess.DEVNULL, timeout=15,
-                **nofocus.hidden_kwargs()).strip()
-        except Exception:
-            _fp_expected_sha = None
+        _fp_reference_text = (_fingerprint.describe_reference(_fp_reference)
+                              if _fp_reference is not None else "worktree HEAD (unavailable)")
+    else:
+        _fp_reference_text = "worktree HEAD (fingerprint module unavailable)"
 
     # SMOKE-FINGERPRINT-FULL-COVERAGE-1: the exe fingerprint only covers the exe
     # sha; a STALE shader or PDB in the deploy target (NaN frame -> fake green)
@@ -1520,7 +1538,10 @@ def main():
             try:
                 _fp = _fingerprint.parse_fingerprint(result.stdout_text)
                 _fp_lines, _fp_bad = _fingerprint.check_fingerprint(
-                    _fp, _fp_expected_sha, repo_root=ROOT)
+                    _fp, _fp_expected_sha, repo_root=ROOT,
+                    reference=_fp_reference, exe_path=args.exe)
+                _fp_checks.append({"mission": label, "hard_fail": _fp_bad,
+                                   "lines": _fp_lines})
                 _fp_hard_fail = _fp_hard_fail or _fp_bad
                 for _l in _fp_lines:
                     print(f"[runner] {_l}", file=sys.stderr)
@@ -1530,6 +1551,8 @@ def main():
                 # PASS on an unverified exe -- the same lie as a silent
                 # mismatch. An unverifiable exe is a failed verification.
                 _fp_hard_fail = True
+                _fp_checks.append({"mission": label, "hard_fail": True,
+                                   "lines": [f"DEPLOY_FINGERPRINT: check FAILED: {_fpe!r}"]})
                 print(f"[runner] [DEPLOY_FINGERPRINT] check FAILED (treated as "
                       f"mismatch): {_fpe!r}", file=sys.stderr)
 
@@ -1568,7 +1591,11 @@ def main():
                                render_options=_options["values"]))
 
         if not result.verdict.passed or args.keep_logs:
-            (artifact_dir / f"{label}.log").write_text(result.stdout_text, encoding="utf-8", errors="replace")
+            _kept_log = (f"[runner] [DEPLOY_FINGERPRINT] reference: {_fp_reference_text}\n"
+                         + result.stdout_text)
+            if _fp_checks and _fp_checks[-1]["mission"] == label:
+                _kept_log += "\n" + "\n".join(_fp_checks[-1]["lines"]) + "\n"
+            (artifact_dir / f"{label}.log").write_text(_kept_log, encoding="utf-8", errors="replace")
             # Snapshot the probe file-sink alongside the regular log.  Survives
             # across runs (the per-mission unlink above resets it for next).
             try:
@@ -1673,22 +1700,23 @@ def main():
     _run_failures: list[str] = []
     if _fp_require and _fp_hard_fail:
         _run_failures.append(
-            "DEPLOY_FINGERPRINT: the smoked exe does not match this worktree "
-            "HEAD (stale / wrong-lane / built-from-dirty). The mission results "
-            "below were produced by a different binary and prove nothing about "
-            "this commit.")
+            f"DEPLOY_FINGERPRINT: the smoked exe failed verification against "
+            f"{_fp_reference_text}. The mission results do not verify that reference.")
 
     if _resolution_failures:
         _run_failures.append("RESOLUTION: " + "; ".join(_resolution_failures))
+    _fp_record = {"reference": _fp_reference, "description": _fp_reference_text,
+                  "required": _fp_require, "hard_fail": _fp_hard_fail,
+                  "checks": _fp_checks}
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
                                  profile=args.profile, timestamp=timestamp,
                                  show_window=args.show_window,
-                                 run_failures=_run_failures)
+                                 run_failures=_run_failures, fingerprint=_fp_record)
     (artifact_dir / "report.md").write_text(md, encoding="utf-8")
     _report_json = report.render_json(rows, tier=args.tier or "adhoc",
                                       profile=args.profile, timestamp=timestamp,
                                       show_window=args.show_window,
-                                      run_failures=_run_failures)
+                                      run_failures=_run_failures, fingerprint=_fp_record)
     # HARNESS-HYGIENE-3: record the env the run actually executed under, so a
     # deliberate ambient gate is auditable after the fact instead of refused
     # up front. Always present (empty dict = shipped default configuration).
@@ -1731,10 +1759,7 @@ def main():
     # the default without updating that contract check.
     if _fp_require and _fp_hard_fail:
         print("[runner] [DEPLOY_FINGERPRINT] HARD FAIL: smoke ran an exe whose "
-              "fingerprint does not match this worktree HEAD (stale / wrong-lane "
-              "/ built-from-dirty). Deploy your build first, or set "
-              "MC2_SMOKE_REQUIRE_FINGERPRINT=0 to intentionally test an external "
-              "exe.", file=sys.stderr)
+              f"identity failed verification against {_fp_reference_text}.", file=sys.stderr)
         passed = False
 
     if _resolution_failures:

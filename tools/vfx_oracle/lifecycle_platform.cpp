@@ -4,7 +4,6 @@
 #include "tools/mc2fx/mc2fx_stubs.cpp"
 #undef gos_rand
 #undef InternalFunctionStop
-#include "Gates/gate.h"
 #include "mclib/det_rng.h"
 
 namespace {
@@ -13,7 +12,8 @@ std::uint32_t* borrowedRngState = nullptr;
 void vfx_test_bind_rng(std::uint32_t* state) { borrowedRngState = state; }
 int __stdcall gos_rand()
 {
-    if (!borrowedRngState || !mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) std::abort();
+    // The test owns the bound RNG state, so production gate configuration cannot affect its stream.
+    if (!borrowedRngState) std::abort();
     return static_cast<int>(mc2_det_rng::next15(*borrowedRngState));
 }
 int InternalFunctionStop(const char* format, ...)

@@ -31,6 +31,7 @@ def main() -> int:
     (args.out / "compile-command.json").write_text(json.dumps(command, indent=2) + "\n", encoding="utf-8")
     for name, argv, timeout in (("compile", command, 30), ("run", [str(exe)], 10)):
         try:
+            # Rule 10: clang and the standalone RNG probe are console helpers without an engine window.
             result = subprocess.run(argv, capture_output=True, text=True, cwd=ROOT, timeout=timeout,
                                     **console_child.child_kwargs(redirected=True))
         except subprocess.TimeoutExpired:

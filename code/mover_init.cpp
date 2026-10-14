@@ -560,13 +560,6 @@ void Mover::init (bool create) {
 	setTangible(true);
 	setFlag(OBJECT_FLAG_SENSOR, true);
 
-	if (!sortList) {
-		sortList = new SortList;
-		if (!sortList)
-			Fatal(0, " Unable to create Mover::sortList ");
-		sortList->init(4000);
-	}
-
 	teleportPosition.x = -999999.0;
 	teleportPosition.y = -999999.0;
 	teleportPosition.z = -999999.0;

@@ -24,8 +24,6 @@ set(SOURCES ${SOURCES}
     appearance_rng.cpp
     sim_trace.cpp
     alloc_probe.cpp
-    scale.cpp
-    sortlist.cpp
     tgainfo.cpp
     tgl.cpp
     tgl_parse.cpp
@@ -65,11 +63,7 @@ set(SOURCES ${SOURCES}
     celement.cpp
     celine.cpp
     cellip.cpp
-    cevfx.cpp
     cevfx_polys.cpp
-    vfx_transform.cpp
-    vfx_translatedraw.cpp
-    vfxtile.cpp
     abl_script_events.cpp
     abldbug.cpp
     abldbug_print.cpp
@@ -163,6 +157,7 @@ set(SOURCES ${SOURCES}
     estring.cpp
     tacmap.cpp
     utilities.cpp
+    resource_strings.cpp
     model_override_registry.cpp
     anim_override_registry.cpp
     fx_def_registry.cpp

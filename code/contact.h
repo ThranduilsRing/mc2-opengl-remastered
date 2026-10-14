@@ -159,7 +159,6 @@ class SensorSystem {
 
 		static long				numSensors;
 		static float			scanFrequency;
-		static SortListPtr		sortList;
 
 	public:
 
@@ -325,6 +324,9 @@ class TeamSensorSystem {
 
 		bool hasSensorContact (long teamID);
 
+		// Fills contactList with the valid contacts of the team and returns how many: in scan order for CONTACT_SORT_NONE, else nearest first (distance) or strongest
+		// first (value). Contacts with an equal key keep scan order (mc2::sort_scored), and every valid contact is sorted, so element 0 is the best one for the
+		// consumers that take it as such (tickEngageNearest, warrior_target.cpp, the ABL GetContacts builtin). contactList must hold MAX_CONTACTS_PER_TEAM entries.
 		long getContacts (GameObjectPtr looker, int* contactList, int contactCriteria, int sortType);
 
 		long getContactStatus (MoverPtr mover, bool includingAllies);

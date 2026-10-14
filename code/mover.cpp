@@ -21,7 +21,6 @@ long						goalMapRowStart[GOALMAP_CELL_DIM] = {
 							};
 char						goalMapRowCol[GOALMAP_CELL_DIM * GOALMAP_CELL_DIM][2];
 long						Mover::numMovers = 0;
-SortListPtr					Mover::sortList = nullptr;
 
 #ifdef LAB_ONLY
 extern __int64 MCTimeCalcGoal1Update;

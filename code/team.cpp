@@ -29,7 +29,6 @@ bool Team::noPain[MAX_TEAMS] = {false, false, false, false, false, false, false,
 long			Team::numTeams = 0;
 TeamPtr			Team::home = nullptr;
 TeamPtr			Team::teams[MAX_TEAMS] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-SortListPtr		Team::sortList = nullptr;
 
 bool			useRealLOS = true;
 

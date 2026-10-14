@@ -280,7 +280,8 @@ static void logAblFunctionTableCapacity (void)
 
 void initABL (void) {
 
-	// A new run of scripts gets a fresh per-event log budget, so a truncation in one mission is reported again in the next.
+	// Every ABL session start (mission begin, mission load, save restore) gets a fresh per-event log budget, so a truncation in one mission is reported again in the
+	// next. One load may start two sessions and reset it twice, which only repeats a log line.
 	abl::resetEventBudgets();
 
 	// Heaps bumped 8x for mod content (Omnitech/Carver5O ABL scripts are far

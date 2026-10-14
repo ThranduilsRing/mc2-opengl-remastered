@@ -146,9 +146,7 @@ namespace gosFX
 			DestroyParticle(unsigned index);
 
 	public:
-		// B1 Stage 2' C8: override Start to route to mc2::particles::Spawn
-		// under MC2_GPU_PARTICLES=1; otherwise falls through to the
-		// inherited ParticleCloud::Start path.
+		// Both render arms use the same CPU particle births and lifetimes.
 		void
 			Start(ExecuteInfo *info);
 		bool

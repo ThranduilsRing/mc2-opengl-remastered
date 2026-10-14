@@ -35,3 +35,6 @@ private:
 	};
 	std::vector<Flag> m_flags;
 };
+
+// Logs once per run that a null part was handed to an objective list and dropped (a failed factory build reaches Append as null).
+void logDroppedObjectivePart();

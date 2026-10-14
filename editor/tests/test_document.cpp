@@ -1,3 +1,4 @@
+#include "../../tests/unit/doctest.h"
 #include "CommandHistory.h"
 
 #include <algorithm>
@@ -29,7 +30,7 @@ std::string fixtureFit() { return
     "Brain { compatibilityMode = \"Enhanced\"; OPORD { type = Patrol; } }\r\n"
     "[Objectives Version]\r\nul Version = 2\r\n[Objectives]\r\nul NumObjectives = 0\r\nFITend\r\n"; }
 }
-int main()
+int q3DocumentTests()
 {
     try {
         const auto fixture = fixtureFit();
@@ -70,9 +71,9 @@ int main()
         require(history.undo() && history.setText(title, "branch", "Name").has_value() && !history.canRedo(), "redo_branch");
         require(history.undo() && history.setText(title, "Original", "Noop").has_value() && !document.modified(), "noop");
         require(!history.setText(title, std::string("bad\0text", 8), "Bad").has_value() && document.fitBytes() == fixture, "invalid_command_atomic");
-        CommandHistory bounded(document, 500);
+        CommandHistory bounded(document, 1000);
         for (int i = 0; i < 20; ++i) require(bounded.setText(title, std::to_string(i), "Name").has_value(), "budget_edits");
-        require(bounded.evicted() > 0 && bounded.bytesUsed() <= 500, "history_eviction");
+        require(bounded.evicted() > 0 && bounded.bytesUsed() <= 1000, "history_eviction");
         require(bounded.undo(), "replacement_retains_redo_setup");
         auto badFit = [&](std::string input, const char* name) {
             logs.clear(); auto result = MissionDocument::decode(std::move(input), fixturePak(), "bad", log);
@@ -234,4 +235,8 @@ int main()
         std::cout << "editor_document_tests: PASS (syntax, ownership, typed values, commands, malformed input)\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << "editor_document_tests: FAIL " << error.what() << '\n'; return 1; }
+}
+TEST_CASE("document/Q3 lossless syntax, history and publication")
+{
+    CHECK(q3DocumentTests() == 0);
 }

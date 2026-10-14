@@ -978,6 +978,8 @@ run_check "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
 # engine, an env policy that STRIPS the windowing vars before they reach the
 # child (how the capture path silently regressed), and raw focus/cursor Win32.
 run_check "background_launch"      "py -3 scripts/check-background-launch.py --quiet"
+# Committed branch changes keep this row meaningful after the index is clean.
+run_check "staged_hygiene"         "py -3 scripts/check-staged-hygiene.py --range --quiet"
 # CURSOR-GRAB-FIX-1: the ENGINE-side half of the same policy. background_launch
 # above guards the harness (Python) side, and it was fully green while the exe it
 # launched clipped the user's physical pointer to a rect at (-32000,-32000):

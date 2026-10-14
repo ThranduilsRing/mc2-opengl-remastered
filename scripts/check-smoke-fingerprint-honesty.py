@@ -19,7 +19,8 @@ paths that could re-open the trap is reintroduced:
   fp_import_fatal    a broken fingerprint import aborts instead of skipping
   fp_docs_honest     no source comment/docstring claims "advisory by default"
   fp_behaviour       the compare function really returns hard_fail for
-                     mismatch / absent, and not for a match
+                     mismatch / absent / dirty commit / differing exe bytes
+  fp_reference_wired the selected reference reaches logs, comparison and reports
 
 Every static check is proven to FIRE by `--selftest`, which mutates a copy of
 the source back to the pre-fix shape and asserts the check reports FAIL. A guard
@@ -35,6 +36,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 RUN_SMOKE = ROOT / "scripts" / "run_smoke.py"
@@ -60,6 +62,9 @@ FP_LIB = ROOT / "scripts" / "smoke_lib" / "fingerprint.py"
 OPT_IN_FRAMING = re.compile(r"MC2_SMOKE_REQUIRE_FINGERPRINT\s*=\s*[\"']?1")
 ADVISORY_WORD = re.compile(r"advisory", re.I)
 FP_KNOB = "MC2_SMOKE_REQUIRE_FINGERPRINT"
+REFERENCE_PRINT_RE = re.compile(
+    r'print\(\s*"\[runner\] \[DEPLOY_FINGERPRINT\] reference: "\s*'
+    r'\+\s*_fingerprint\.describe_reference\(_fp_reference\)\s*,\s*file=sys\.stderr\s*\)')
 
 
 def _check_default_on(smoke_src: str) -> str | None:
@@ -151,11 +156,26 @@ def _check_report_wired(smoke_src: str) -> str | None:
         if not m or "run_failures" not in m.group("args"):
             return (f"report.{fn}(...) is called without run_failures -- the "
                     f"written report ignores the fingerprint verdict")
+        if "fingerprint=_fp_record" not in m.group("args"):
+            return f"report.{fn}(...) drops the selected fingerprint reference and verdict text"
     # Ordering: the failure list must be built BEFORE the report is rendered.
     if smoke_src.index("_run_failures.append") > smoke_src.index("report.render_markdown("):
         return ("_run_failures is populated AFTER report.render_markdown() -- "
                 "the report is rendered before the verdict exists, which is "
                 "the original defect")
+    return None
+
+
+def _check_reference_wired(smoke_src: str) -> str | None:
+    """An override must reach the compare, log and report without changing the gate."""
+    if not re.search(r"reference=_fp_reference,\s*exe_path=args\.exe", smoke_src):
+        return "fingerprint comparison drops the selected reference or deployed exe path"
+    if not REFERENCE_PRINT_RE.search(smoke_src):
+        return "runner log omits the selected fingerprint reference"
+    if "reference: {_fp_reference_text}" not in smoke_src:
+        return "kept mission log omits the selected fingerprint reference"
+    if not re.search(r'"reference": _fp_reference.*?"checks": _fp_checks', smoke_src, re.S):
+        return "report record omits the selected reference or per-mission verdict text"
     return None
 
 
@@ -224,6 +244,22 @@ def _check_behaviour() -> str | None:
         if bool(hard) is not want_hard:
             return (f"check_fingerprint({label}) returned hard_fail={hard!r}, "
                     f"expected {want_hard!r}")
+    commit = {"mode": "commit", "requested": good, "sha": good + "0" * 28}
+    for parsed, want in (({"sha": good, "dirty": 0}, False),
+                         ({"sha": "0" * 12, "dirty": 0}, True),
+                         ({"sha": good, "dirty": 1}, True), (None, True)):
+        _lines, hard = fp.check_fingerprint(parsed, None, reference=commit)
+        if hard != want:
+            return f"commit reference hard_fail={hard!r}, expected {want!r} for {parsed!r}"
+    exe = {"mode": "exe", "path": "reference.exe", "sha256": "a" * 64}
+    for digest, parsed, want in (("a" * 64, {"sha": good, "dirty": 0}, False),
+                                 ("b" * 64, {"sha": good, "dirty": 0}, True),
+                                 ("a" * 64, None, True)):
+        with patch.object(fp, "sha256_file", return_value=digest):
+            _lines, hard = fp.check_fingerprint(parsed, None, reference=exe,
+                                                exe_path="deployed.exe")
+        if hard != want:
+            return f"exe byte reference hard_fail={hard!r}, expected {want!r}"
     return None
 
 
@@ -270,6 +306,17 @@ def _check_report_honest() -> str | None:
     if "result=PASS" not in md_ok:
         return ("a clean run no longer renders result=PASS -- the honesty fix "
                 "over-fires and would mark good runs invalid")
+    reference = {"mode": "exe", "path": "pre.exe", "sha256": "a" * 64}
+    record = {"reference": reference, "description": "--ref-exe pre.exe sha256=" + "a" * 64,
+              "required": True, "hard_fail": True,
+              "checks": [{"mission": "mc2_01", "hard_fail": True,
+                          "lines": ["[DEPLOY_FINGERPRINT] MISMATCH: byte identity"]}]}
+    md = rep.render_markdown([row], run_failures=fail, fingerprint=record, **kw)
+    js = rep.render_json([row], run_failures=fail, fingerprint=record, **kw)
+    if record["description"] not in md or record["checks"][0]["lines"][0] not in md:
+        return "report.md drops the fingerprint reference or verdict text"
+    if js.get("fingerprint") != record:
+        return "report.json drops the fingerprint reference or verdict text"
     return None
 
 
@@ -281,6 +328,7 @@ def run_checks(smoke_src: str, fp_src: str, with_behaviour: bool = True):
         ("fp_exc_is_failure", _check_exc_is_failure(smoke_src)),
         ("fp_import_fatal", _check_import_fatal(smoke_src)),
         ("fp_report_wired", _check_report_wired(smoke_src)),
+        ("fp_reference_wired", _check_reference_wired(smoke_src)),
         ("fp_docs_honest", _check_docs_honest(
             {"run_smoke.py": smoke_src, "smoke_lib/fingerprint.py": fp_src})),
     ]
@@ -342,7 +390,25 @@ def _mut_report_unwired(src: str) -> str:
     return re.sub(r",?\s*\n\s*run_failures=_run_failures", "", src)
 
 
+def _mut_reference_unwired(src: str) -> str:
+    return src.replace("reference=_fp_reference, exe_path=args.exe", "exe_path=args.exe")
+
+
+def _mut_reference_print_removed(src: str) -> str:
+    return REFERENCE_PRINT_RE.sub("pass", src, count=1)
+
+
+def _mut_report_reference_dropped(src: str) -> str:
+    return src.replace(", fingerprint=_fp_record", "")
+
+
 SELFTEST_CASES = [
+    ("fp_reference_wired", "remove the runner's reference print but keep report description",
+     _mut_reference_print_removed, "smoke"),
+    ("fp_report_wired", "drop the reference and verdict text from reports",
+     _mut_report_reference_dropped, "smoke"),
+    ("fp_reference_wired", "drop the fingerprint reference override",
+     _mut_reference_unwired, "smoke"),
     ("fp_report_wired", "stop feeding the verdict to the report",
      _mut_report_unwired, "smoke"),
     ("fp_default_on", "flip the gate back to opt-in", _mut_default_off, "smoke"),

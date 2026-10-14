@@ -44,6 +44,9 @@
 
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
 #include "sim_trace.h"
+#include "score_sort.h"
+#include <cstdint>
+#include <span>
 #include "../GameOS/gameos/utils/mc2log.h"
 
 //***************************************************************************
@@ -54,7 +57,6 @@ namespace mc2_sensor_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 SensorSystemManagerPtr		SensorManager = nullptr;
 
 long						SensorSystem::numSensors = 0;
-SortListPtr					SensorSystem::sortList = nullptr;
 float						SensorSystem::scanFrequency = 0.5;
 
 bool						TeamSensorSystem::homeTeamInContact = false;
@@ -129,13 +131,6 @@ void SensorSystem::init (void) {
 
 	numExclusives = 0;
 	totalContacts = 0;
-
-	if (!sortList) {
-		sortList = new SortList;
-		if (!sortList)
-			Fatal(0, " Unable to create Contact::sortList ");
-		sortList->init(MAX_CONTACTS_PER_SENSOR);
-	}
 }
 
 //---------------------------------------------------------------------------
@@ -143,10 +138,6 @@ void SensorSystem::init (void) {
 void SensorSystem::destroy (void) {
 
 	numSensors--;
-	if (numSensors == 0) {
-		delete sortList;
-		sortList = nullptr;
-	}
 }
 
 //---------------------------------------------------------------------------
@@ -926,60 +917,38 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 
 	// A team can hold MAX_CONTACTS_PER_TEAM contacts and every one may pass the criteria, so the buffers are that long; the caller's contactList must be too.
 	static_assert(sizeof(TeamSensorSystem::contacts) / sizeof(long) == MAX_CONTACTS_PER_TEAM, "getContacts buffers follow the team contact list");
-	float sortValues[MAX_CONTACTS_PER_TEAM];
+	mc2::Scored scored[MAX_CONTACTS_PER_TEAM];
 
 	float CV = 0;
 	long numValidContacts = 0;
-	long handleList[MAX_CONTACTS_PER_TEAM];
 	for (long i = 0; i < numContacts; i++) {
 		MoverPtr mover = (MoverPtr)ObjectManager->get(contacts[i]);
 		if (!meetsCriteria(looker, mover, contactCriteria))
 			continue;
-		handleList[numValidContacts] = mover->getHandle();
+		scored[numValidContacts].id = static_cast<std::int32_t>(mover->getHandle());
 		switch (sortType) {
 			case CONTACT_SORT_NONE:
-				sortValues[numValidContacts] = 0.0;
+				scored[numValidContacts].score = 0.0;
 				break;
 			case CONTACT_SORT_CV:
 				CV = (float)mover->getCurCV();
-				sortValues[numValidContacts] = CV;
+				scored[numValidContacts].score = CV;
 				break;
 			case CONTACT_SORT_DISTANCE:
-				sortValues[numValidContacts] = looker->distanceFrom(mover->getPosition());
+				scored[numValidContacts].score = looker->distanceFrom(mover->getPosition());
 				break;
 		}
 		numValidContacts++;
 	}
 
-	if ((numValidContacts > 0) && (sortType != CONTACT_SORT_NONE)) {
-		// The shared sort list holds MAX_CONTACTS_PER_SENSOR slots and its qsort length decides the order of equal keys, so it keeps that size. A team
-		// that holds more valid contacts than that has the first MAX_CONTACTS_PER_SENSOR (scan order) sorted and the rest appended unsorted.
-		const long sortCount = (numValidContacts < MAX_CONTACTS_PER_SENSOR) ? numValidContacts : MAX_CONTACTS_PER_SENSOR;
-		if (sortCount < numValidContacts)
-			MC2_LOG(Sim, Warn, "getContacts: {} valid contacts exceed the {} sortable, the rest are returned unsorted", numValidContacts, MAX_CONTACTS_PER_SENSOR);
-		if (!SensorSystem::sortList) {
-			SensorSystem::sortList = new SortList;
-			if (!SensorSystem::sortList)
-				Fatal(0, " Unable to create Contact sortList ");
-			SensorSystem::sortList->init(MAX_CONTACTS_PER_SENSOR);
-		}
-		bool descendSort = true;
-		if (sortType == CONTACT_SORT_DISTANCE)
-			descendSort = false;
-		SensorSystem::sortList->clear(descendSort);
-		for (long contact = 0; contact < sortCount; contact++) {
-			SensorSystem::sortList->setId(contact, handleList[contact]);
-			SensorSystem::sortList->setValue(contact, sortValues[contact]);
-		}
-		SensorSystem::sortList->sort(descendSort);
-		for (int contact = 0; contact < sortCount; contact++)
-			contactList[contact] = SensorSystem::sortList->getId(contact);
-		for (int contact = sortCount; contact < numValidContacts; contact++)
-			contactList[contact] = handleList[contact];
-		}
-	else if (contactList)
+	// Distance is nearest first, value strongest first; equal keys keep scan order. All valid contacts are sorted: the team list never holds more than the buffer.
+	if (contactList) {
+		if ((numValidContacts > 0) && (sortType != CONTACT_SORT_NONE))
+			mc2::sort_scored(std::span<mc2::Scored>(scored, numValidContacts),
+				(sortType == CONTACT_SORT_DISTANCE) ? mc2::SortOrder::Ascending : mc2::SortOrder::Descending);
 		for (long contact = 0; contact < numValidContacts; contact++)
-			contactList[contact] = handleList[contact];
+			contactList[contact] = scored[contact].id;
+	}
 
 
 	return(numValidContacts);
@@ -1309,12 +1278,6 @@ void SensorSystemManager::destroy (void) {
 	{
 		delete teamSensors[i];
 		teamSensors[i] = nullptr;
-	}
-
-	if (SensorSystem::sortList)
-	{
-		delete SensorSystem::sortList;
-		SensorSystem::sortList = nullptr;
 	}
 }
 

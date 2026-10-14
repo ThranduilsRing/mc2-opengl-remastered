@@ -917,7 +917,6 @@ class Mover : public GameObject {
 		float				lastHustleTime;					// last time we had to hustle (on bridge, etc.)
 
 		static long			numMovers;
-		static SortListPtr	sortList;
 
 		bool				salvageVehicle;
 		

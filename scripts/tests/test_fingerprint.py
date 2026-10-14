@@ -2,7 +2,7 @@
 # scripts/tests/test_fingerprint.py
 """Tests for scripts/smoke_lib/fingerprint.py (deploy-fingerprint parse/compare).
 
-Pure functions only -- no game launch, no git, no filesystem.
+No game launch or git; executable hashing uses in-memory byte streams.
 
 Run:
   py -3 -m pytest scripts/tests/test_fingerprint.py -v
@@ -10,12 +10,18 @@ Run:
 from __future__ import annotations
 
 import sys
+import hashlib
+from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from scripts.smoke_lib.fingerprint import parse_fingerprint, check_fingerprint
+from scripts.smoke_lib.fingerprint import (parse_fingerprint, check_fingerprint,
+                                          resolve_reference, describe_reference)
 
 BANNER = ("[BUILD_FINGERPRINT v1] sha=0123456789ab dirty=0 "
           "branch=claude/sp-deploy-fingerprint-1 built=2026-06-11T12:00:00 "
@@ -74,7 +80,7 @@ def test_check_dirty_warning_passthrough():
 def test_check_no_expected_sha():
     fp = parse_fingerprint(LOG)
     lines, hard_fail = check_fingerprint(fp, None)
-    assert not hard_fail
+    assert hard_fail
     assert any("expected sha unavailable" in l for l in lines)
 
 
@@ -156,3 +162,126 @@ def test_shared_build_inputs_file_loads():
     assert "CMakeLists.txt" in files and "tools/gpu_abi_gen.py" in files
     assert not any(p.startswith("#") for p in prefixes + files)
     assert not any(p.startswith(("docs/", ".claude/", "scripts/")) for p in prefixes + files)
+
+
+COMMIT = "0123456789ab" + "c" * 28
+
+
+def test_default_reference_resolves_head():
+    with patch("scripts.smoke_lib.fingerprint._git", return_value=COMMIT) as git:
+        ref = resolve_reference(".", git=git)
+    git.assert_called_once_with(".", "rev-parse", "--verify", "HEAD^{commit}")
+    assert ref == {"mode": "head", "requested": "HEAD", "sha": COMMIT}
+    assert "worktree HEAD" in describe_reference(ref)
+
+
+def test_commit_reference_resolves_and_matches_old_build():
+    with patch("scripts.smoke_lib.fingerprint._git", return_value=COMMIT) as git:
+        ref = resolve_reference(".", ref_commit="0123456789ab", git=git)
+    git.assert_called_once_with(".", "rev-parse", "--verify", "0123456789ab^{commit}")
+    lines, bad = check_fingerprint(parse_fingerprint(LOG), HEAD, reference=ref)
+    assert not bad
+    assert "--ref-commit 0123456789ab" in lines[-1]
+    assert "worktree HEAD" not in lines[-1]
+
+
+@pytest.mark.parametrize("parsed", [None, {"sha": "0" * 12, "dirty": 0},
+                                   {"sha": COMMIT[:12], "dirty": 1}])
+def test_commit_reference_rejects_absent_wrong_or_dirty(parsed):
+    ref = {"mode": "commit", "requested": COMMIT, "sha": COMMIT}
+    _lines, bad = check_fingerprint(parsed, None, reference=ref)
+    assert bad
+
+
+@pytest.mark.parametrize("changed", [["docs/a.md"], ["code/a.cpp"]])
+def test_commit_reference_rejects_different_ancestors(changed):
+    ref = {"mode": "commit", "requested": HEAD, "sha": HEAD}
+    with patch("scripts.smoke_lib.fingerprint._git", wraps=_fake_git(changed)) as git:
+        lines, bad = check_fingerprint(parse_fingerprint(LOG), None, reference=ref,
+                                       repo_root=".", git=git)
+    assert bad
+    assert "MISMATCH" in lines[-1]
+    git.assert_not_called()
+
+
+def test_head_reference_keeps_build_equivalent_ancestors():
+    ref = {"mode": "head", "requested": "HEAD", "sha": HEAD}
+    _lines, bad = check_fingerprint(parse_fingerprint(LOG), None, reference=ref,
+                                   repo_root=".", git=_fake_git(["docs/a.md"]))
+    assert not bad
+    _lines, bad = check_fingerprint(parse_fingerprint(LOG), None, reference=ref,
+                                   repo_root=".", git=_fake_git(["code/a.cpp"]))
+    assert bad
+
+
+@pytest.mark.parametrize("value", ["HEAD", "", "-option", "abcd", "a" * 41])
+def test_commit_reference_rejects_non_sha(value):
+    with pytest.raises(ValueError, match="commit SHA"):
+        resolve_reference(".", ref_commit=value)
+
+
+def test_commit_reference_must_exist():
+    with pytest.raises(ValueError, match="cannot resolve"):
+        resolve_reference(".", ref_commit="deadbeef", git=lambda *_: None)
+
+
+def test_reference_modes_are_mutually_exclusive():
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        resolve_reference(".", ref_commit=COMMIT, ref_exe="pre.exe")
+
+
+def test_byte_identical_exe_reference_passes():
+    payload = b"deliberately older executable bytes"
+    with patch.object(Path, "open", side_effect=lambda *_: BytesIO(payload)):
+        ref = resolve_reference(".", ref_exe="pre.exe")
+        lines, bad = check_fingerprint(parse_fingerprint(LOG), HEAD,
+                                       reference=ref, exe_path="deployed.exe")
+    assert not bad
+    assert ref["sha256"] == hashlib.sha256(payload).hexdigest()
+    assert "--ref-exe" in lines[-1] and "byte identity" in lines[-1]
+
+
+def test_different_bytes_same_embedded_commit_fails():
+    with patch.object(Path, "open", side_effect=[BytesIO(b"pre"), BytesIO(b"post")]):
+        ref = resolve_reference(".", ref_exe="pre.exe")
+        lines, bad = check_fingerprint(parse_fingerprint(LOG), None,
+                                       reference=ref, exe_path="deployed.exe")
+    assert bad
+    assert "MISMATCH" in lines[-1] and "sha256=" in lines[-1]
+
+
+def test_exe_reference_still_requires_fingerprint():
+    with patch.object(Path, "open", return_value=BytesIO(b"pre")):
+        ref = resolve_reference(".", ref_exe="pre.exe")
+    _lines, bad = check_fingerprint(None, None, reference=ref, exe_path="pre.exe")
+    assert bad
+
+
+def test_missing_reference_exe_aborts():
+    with patch.object(Path, "open", side_effect=FileNotFoundError("missing")):
+        with pytest.raises(ValueError, match="cannot read --ref-exe"):
+            resolve_reference(".", ref_exe="pre.exe")
+
+
+def test_unreadable_deployed_exe_fails():
+    ref = {"mode": "exe", "path": "pre.exe", "sha256": "a" * 64}
+    with patch.object(Path, "open", side_effect=PermissionError("denied")):
+        lines, bad = check_fingerprint(parse_fingerprint(LOG), None,
+                                       reference=ref, exe_path="deployed.exe")
+    assert bad and "cannot hash deployed exe" in lines[-1]
+
+
+def test_exe_reference_pins_bytes_even_if_reference_changes():
+    with patch.object(Path, "open", side_effect=[BytesIO(b"pre"), BytesIO(b"post")]):
+        ref = resolve_reference(".", ref_exe="pre.exe")
+        _lines, bad = check_fingerprint(parse_fingerprint(LOG), None,
+                                        reference=ref, exe_path="pre.exe")
+    assert bad
+
+
+def test_exe_reference_can_identify_dirty_build_by_bytes():
+    with patch.object(Path, "open", side_effect=lambda *_: BytesIO(b"dirty build")):
+        ref = resolve_reference(".", ref_exe="pre.exe")
+        _lines, bad = check_fingerprint(parse_fingerprint(LOG.replace("dirty=0", "dirty=1")),
+                                        None, reference=ref, exe_path="deployed.exe")
+    assert not bad

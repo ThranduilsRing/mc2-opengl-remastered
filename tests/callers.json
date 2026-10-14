@@ -134,7 +134,7 @@
           "path": "scripts/tests/test_check_ab_kit.py",
           "line": 30,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-ab-kit.py",
+          "reference": "A:/Games/mc2-main/scripts/check-ab-kit.py",
           "text": "return subprocess.run([sys.executable, str(SCRIPT), str(tmp_path)], capture_output=True, text=True, **console_child.child_kwargs())"
         }
       ],
@@ -147,7 +147,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1396,
+          "line": 1398,
           "evidence": "command",
           "reference": "scripts/check-agents-md.sh",
           "text": "run_check \"agents_md\"                  \"sh scripts/check-agents-md.sh\""
@@ -177,7 +177,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1397,
+          "line": 1399,
           "evidence": "command",
           "reference": "scripts/check-asset-manifest-fixtures.py",
           "text": "run_check \"asset_manifest_fixtures\"    \"py -3 scripts/check-asset-manifest-fixtures.py\""
@@ -192,7 +192,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1430,
+          "line": 1432,
           "evidence": "command",
           "reference": "scripts/check-asset-manifests.py",
           "text": "run_check \"asset_manifests\"            \"py -3 scripts/check-asset-manifests.py --quiet\""
@@ -207,7 +207,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1398,
+          "line": 1400,
           "evidence": "command",
           "reference": "scripts/check-asset-pipeline-doc.sh",
           "text": "run_check \"asset_pipeline_doc\"         \"sh scripts/check-asset-pipeline-doc.sh\""
@@ -222,7 +222,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1431,
+          "line": 1433,
           "evidence": "command",
           "reference": "scripts/check-asset-scale-callers.sh",
           "text": "run_check \"asset_scale_callers\"        \"sh scripts/check-asset-scale-callers.sh\""
@@ -246,7 +246,7 @@
           "path": "scripts/tests/test_check_background_launch.py",
           "line": 20,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-background-launch.py",
+          "reference": "A:/Games/mc2-main/scripts/check-background-launch.py",
           "text": "return subprocess.run([sys.executable, str(SCRIPT), *args],"
         }
       ],
@@ -259,7 +259,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1255,
+          "line": 1257,
           "evidence": "command",
           "reference": "scripts/check-beauty-sidecars.py",
           "text": "run_check \"beauty_sidecars\"          \"py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet\""
@@ -296,7 +296,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1063,
+          "line": 1065,
           "evidence": "command",
           "reference": "scripts/check-brain-fit-schema.py",
           "text": "run_check \"brain_fit_schema\"       \"py -3 scripts/check-brain-fit-schema.py --quiet\""
@@ -326,7 +326,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1008,
+          "line": 1010,
           "evidence": "command",
           "reference": "scripts/check-capture-determinism.py",
           "text": "run_check \"capture_determinism\"    \"py -3 scripts/check-capture-determinism.py --quiet\""
@@ -348,7 +348,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1037,
+          "line": 1039,
           "evidence": "command",
           "reference": "scripts/check-capture-env-declared.py",
           "text": "run_check \"capture_env_declared\"   \"py -3 scripts/check-capture-env-declared.py\""
@@ -370,7 +370,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1342,
+          "line": 1344,
           "evidence": "command",
           "reference": "scripts/check-capture-provenance.py",
           "text": "run_check_tri \"capture_provenance\"      \"py -3 scripts/check-capture-provenance.py --quiet\""
@@ -401,7 +401,7 @@
           "path": "tools/visual_verify/verify.py",
           "line": 263,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/scripts/check-capture-resolution.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-capture-resolution.py",
           "text": "_spec = _ilu.spec_from_file_location("
         }
       ],
@@ -414,7 +414,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1399,
+          "line": 1401,
           "evidence": "command",
           "reference": "scripts/check-claude-md-pointer.sh",
           "text": "run_check \"claude_md_pointer\"          \"sh scripts/check-claude-md-pointer.sh\""
@@ -451,7 +451,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1194,
+          "line": 1196,
           "evidence": "command",
           "reference": "scripts/check-counter-honesty.py",
           "text": "run_check \"counter_honesty\"          \"py -3 scripts/check-counter-honesty.py --quiet\""
@@ -510,7 +510,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 998,
+          "line": 1000,
           "evidence": "command",
           "reference": "scripts/check-default-build-quiet.py",
           "text": "run_check \"default_build_quiet\"    \"py -3 scripts/check-default-build-quiet.py\""
@@ -525,14 +525,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1092,
+          "line": 1094,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_manifest\"      \"py -3 scripts/check-delivery.py --contract --quiet\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1136,
+          "line": 1138,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_installs\"      \"py -3 scripts/check-delivery.py --quiet\""
@@ -545,10 +545,17 @@
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-delivery.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
         },
         {
+          "path": "scripts/tests/test_delivery_code_evidence.py",
+          "line": 6,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-delivery.py",
+          "text": "spec = importlib.util.spec_from_file_location("
+        },
+        {
           "path": "scripts/tests/test_delivery_gate_defaults.py",
           "line": 11,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/scripts/check-delivery.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-delivery.py",
           "text": "spec = importlib.util.spec_from_file_location(\"delivery_gate_defaults\", ROOT / \"scripts/check-delivery.py\")"
         }
       ],
@@ -561,44 +568,44 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 998,
+          "line": 1020,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 114,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 124,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 352,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "assert subprocess.run(argv, capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0"
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 353,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run(argv + [\"--strict\"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))"
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 359,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         }
       ],
@@ -611,7 +618,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1067,
+          "line": 1069,
           "evidence": "command",
           "reference": "scripts/check-deploy-data-parity.py",
           "text": "run_check \"deploy_data_parity\"     \"py -3 scripts/check-deploy-data-parity.py --quiet\""
@@ -628,7 +635,7 @@
           "path": "scripts/deploy_payload.py",
           "line": 1492,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-hygiene.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
         }
       ],
@@ -641,7 +648,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1061,
+          "line": 1063,
           "evidence": "command",
           "reference": "scripts/check-deploy-lane-parity.py",
           "text": "run_check \"deploy_lane_parity\"     \"py -3 scripts/check-deploy-lane-parity.py --allow-unresolved\""
@@ -663,9 +670,9 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 932,
+          "line": 954,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-deploy-target.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
         }
       ],
@@ -695,21 +702,21 @@
           "path": "scripts/make-isolated-deploy.py",
           "line": 281,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
         },
         {
           "path": "scripts/renderdoc_capture.py",
           "line": 155,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
         },
         {
           "path": "scripts/run_visual_capture.py",
           "line": 157,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
         }
       ],
@@ -722,7 +729,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1145,
+          "line": 1147,
           "evidence": "command",
           "reference": "scripts/check-doc-links.py",
           "text": "run_check \"doc_links\"             \"py -3 scripts/check-doc-links.py --quiet\""
@@ -752,7 +759,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1138,
+          "line": 1140,
           "evidence": "command",
           "reference": "scripts/check-editor-game-render-context-parity.py",
           "text": "run_check \"render_ctx_parity\"      \"py -3 scripts/check-editor-game-render-context-parity.py --quiet\""
@@ -767,7 +774,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1139,
+          "line": 1141,
           "evidence": "command",
           "reference": "scripts/check-editor-pass-contract-parity.py",
           "text": "run_check \"editor_pass_parity\"     \"py -3 scripts/check-editor-pass-contract-parity.py --quiet\""
@@ -782,7 +789,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1053,
+          "line": 1055,
           "evidence": "command",
           "reference": "scripts/check-env-drive-guard.py",
           "text": "run_check \"env_drive_guard\"        \"py -3 scripts/check-env-drive-guard.py --quiet\""
@@ -841,7 +848,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1140,
+          "line": 1142,
           "evidence": "command",
           "reference": "scripts/check-gated-layout-macros.py",
           "text": "run_check \"gated_layout_macros\"    \"py -3 scripts/check-gated-layout-macros.py --quiet\""
@@ -865,7 +872,7 @@
           "path": "scripts/test_gl_shader_variants.py",
           "line": 23,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2\\scripts/check-gl-shader-variants.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-gl-shader-variants.py",
           "text": "_spec = importlib.util.spec_from_file_location(\"check_glsv\", HERE / \"check-gl-shader-variants.py\")"
         }
       ],
@@ -917,7 +924,7 @@
           "path": "scripts/make-isolated-deploy.py",
           "line": 126,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2\\scripts/check-hardlink-isolation.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-hardlink-isolation.py",
           "text": "spec = importlib.util.spec_from_file_location(\"check_hardlink_isolation\","
         },
         {
@@ -952,7 +959,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 989,
+          "line": 991,
           "evidence": "command",
           "reference": "scripts/check-input-capture-visibility.py",
           "text": "run_check \"input_capture_visibility\"          \"py -3 scripts/check-input-capture-visibility.py --quiet\""
@@ -974,7 +981,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1400,
+          "line": 1402,
           "evidence": "command",
           "reference": "scripts/check-json-isolation.sh",
           "text": "run_check \"json_isolation\"             \"sh scripts/check-json-isolation.sh\""
@@ -989,7 +996,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1163,
+          "line": 1165,
           "evidence": "command",
           "reference": "scripts/check-launcher-ascii.py",
           "text": "run_check \"launcher_ascii\"         \"py -3 scripts/check-launcher-ascii.py --quiet\""
@@ -1063,10 +1070,17 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1438,
+          "line": 1440,
           "evidence": "command",
           "reference": "scripts/check-manifest-schema.py",
           "text": "run_check \"manifest_schema\"            \"py -3 scripts/check-manifest-schema.py --strict\""
+        },
+        {
+          "path": "scripts/tests/test_manifest_schema_check.py",
+          "line": 9,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-main/scripts/check-manifest-schema.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"manifest_schema_check\", ROOT / \"scripts/check-manifest-schema.py\")"
         }
       ],
       "callers_by_stem": []
@@ -1108,7 +1122,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1401,
+          "line": 1403,
           "evidence": "command",
           "reference": "scripts/check-memory-size.py",
           "text": "run_check \"memory_size\"                \"py -3 scripts/check-memory-size.py\""
@@ -1123,7 +1137,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1402,
+          "line": 1404,
           "evidence": "command",
           "reference": "scripts/check-mlr-leaves-gated.sh",
           "text": "run_check \"mlr_leaves_gated\"           \"sh scripts/check-mlr-leaves-gated.sh\""
@@ -1138,7 +1152,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1175,
+          "line": 1177,
           "evidence": "command",
           "reference": "scripts/check-mover-registry-coherence.sh",
           "text": "run_check \"mover_registry_coherence\" \"sh scripts/check-mover-registry-coherence.sh\""
@@ -1190,7 +1204,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1403,
+          "line": 1405,
           "evidence": "command",
           "reference": "scripts/check-object-mvp-currency.py",
           "text": "run_check \"object_mvp_currency\"        \"py -3 scripts/check-object-mvp-currency.py\""
@@ -1212,7 +1226,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1414,
+          "line": 1416,
           "evidence": "command",
           "reference": "scripts/check-oracle-registry.py",
           "text": "run_check \"oracle_registry\"            \"py -3 scripts/check-oracle-registry.py --allow-missing-artifacts\""
@@ -1227,7 +1241,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1168,
+          "line": 1170,
           "evidence": "command",
           "reference": "scripts/check-order-gate-coverage.py",
           "text": "run_check \"order_gate_coverage\"    \"py -3 scripts/check-order-gate-coverage.py --quiet\""
@@ -1249,7 +1263,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1404,
+          "line": 1406,
           "evidence": "command",
           "reference": "scripts/check-particles-no-cpu-projection.sh",
           "text": "run_check \"particles_no_cpu_projection\" \"sh scripts/check-particles-no-cpu-projection.sh\""
@@ -1279,7 +1293,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1137,
+          "line": 1139,
           "evidence": "command",
           "reference": "scripts/check-pass-coverage.py",
           "text": "run_check \"pass_coverage\"          \"py -3 scripts/check-pass-coverage.py --quiet\""
@@ -1294,7 +1308,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1153,
+          "line": 1155,
           "evidence": "command",
           "reference": "scripts/check-path-normalization.sh",
           "text": "run_check \"path_normalization\"     \"sh scripts/check-path-normalization.sh\""
@@ -1398,7 +1412,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1158,
+          "line": 1160,
           "evidence": "command",
           "reference": "scripts/check-res-aspect-contract.py",
           "text": "run_check \"res_aspect_contract\"    \"py -3 scripts/check-res-aspect-contract.py --quiet\""
@@ -1420,7 +1434,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1363,
+          "line": 1365,
           "evidence": "command",
           "reference": "scripts/check-review-anchor-stability.py",
           "text": "run_check \"review_anchor_stability\"          \"py -3 scripts/check-review-anchor-stability.py --quiet\""
@@ -1466,7 +1480,7 @@
           "path": "scripts/check-sampler-bindings-selftest.py",
           "line": 75,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check-sampler-bindings.py",
+          "reference": "A:/Games/mc2-main/scripts/check-sampler-bindings.py",
           "text": "subprocess.run([sys.executable, str(CHECKER), \"--root\", str(root),"
         }
       ],
@@ -1509,7 +1523,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 900,
+          "line": 902,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -1576,7 +1590,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1024,
+          "line": 1026,
           "evidence": "command",
           "reference": "scripts/check-smoke-fingerprint-honesty.py",
           "text": "run_check \"smoke_fingerprint_honesty\" \"py -3 scripts/check-smoke-fingerprint-honesty.py --quiet\""
@@ -1598,7 +1612,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1432,
+          "line": 1434,
           "evidence": "command",
           "reference": "scripts/check-smoke-matrices.py",
           "text": "run_check \"smoke_matrices\"             \"py -3 scripts/check-smoke-matrices.py --quiet\""
@@ -1643,7 +1657,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1150,
+          "line": 1152,
           "evidence": "command",
           "reference": "scripts/check-split-path-contracts.py",
           "text": "run_check \"split_path_contracts\"   \"py -3 scripts/check-split-path-contracts.py --quiet\""
@@ -1654,6 +1668,35 @@
           "evidence": "command",
           "reference": "scripts/check-split-path-contracts.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-split-path-contracts.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/check-staged-hygiene.py",
+      "basename": "check-staged-hygiene.py",
+      "stem": "check-staged-hygiene",
+      "callers_by_basename": [
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 982,
+          "evidence": "command",
+          "reference": "scripts/check-staged-hygiene.py",
+          "text": "run_check \"staged_hygiene\"         \"py -3 scripts/check-staged-hygiene.py --range --quiet\""
+        },
+        {
+          "path": "scripts/tests/test_check_staged_hygiene.py",
+          "line": 23,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-staged-hygiene.py",
+          "text": "SPEC = importlib.util.spec_from_file_location(\"check_staged_hygiene\", SCRIPTS / \"check-staged-hygiene.py\")"
+        },
+        {
+          "path": "scripts/tests/test_check_staged_hygiene.py",
+          "line": 387,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/check-staged-hygiene.py",
+          "text": "result = subprocess.run("
         }
       ],
       "callers_by_stem": []
@@ -1680,7 +1723,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1278,
+          "line": 1280,
           "evidence": "command",
           "reference": "scripts/check-stock-mission-data.py",
           "text": "run_check \"stock_mission_data\"          \"py -3 scripts/check-stock-mission-data.py --no-data --quiet\""
@@ -1702,7 +1745,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1144,
+          "line": 1146,
           "evidence": "command",
           "reference": "scripts/check-terrain-daylight-constants.py",
           "text": "run_check \"terrain_daylight_consts\"  \"py -3 scripts/check-terrain-daylight-constants.py --quiet\""
@@ -1739,7 +1782,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1180,
+          "line": 1182,
           "evidence": "command",
           "reference": "scripts/check-tgl-load-callers.sh",
           "text": "run_check \"tgl_load_callers\"   \"sh scripts/check-tgl-load-callers.sh\""
@@ -1761,7 +1804,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1405,
+          "line": 1407,
           "evidence": "command",
           "reference": "scripts/check-toolchain-bom.py",
           "text": "run_check \"toolchain_bom\"              \"py -3 scripts/check-toolchain-bom.py\""
@@ -1776,7 +1819,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1406,
+          "line": 1408,
           "evidence": "command",
           "reference": "scripts/check-unified-projection-retirement.sh",
           "text": "run_check \"unified_projection_retirement\" \"sh scripts/check-unified-projection-retirement.sh\""
@@ -1836,7 +1879,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 990,
+          "line": 992,
           "evidence": "command",
           "reference": "scripts/check-visual-bookmark-honesty.py",
           "text": "run_check \"bookmark_honesty\"       \"py -3 scripts/check-visual-bookmark-honesty.py\""
@@ -1917,7 +1960,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1065,
+          "line": 1067,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_deploy_sync.py",
           "text": "run_check \"brain_fixture_deploy\"   \"py -3 scripts/check_brain_fixture_deploy_sync.py --quiet\""
@@ -1932,7 +1975,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1064,
+          "line": 1066,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_manifest.py",
           "text": "run_check \"brain_fixture_manifest\" \"py -3 scripts/check_brain_fixture_manifest.py --quiet\""
@@ -1947,7 +1990,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1066,
+          "line": 1068,
           "evidence": "command",
           "reference": "scripts/check_brain_relaxed_guard_doc.py",
           "text": "run_check \"brain_relaxed_guard\"    \"py -3 scripts/check_brain_relaxed_guard_doc.py --quiet\""
@@ -1962,9 +2005,9 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1016,
+          "line": 1038,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/check_shader_bom.py",
+          "reference": "A:/Games/mc2-main/scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
         }
       ],
@@ -1977,7 +2020,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1495,
+          "line": 1497,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2170,6 +2213,20 @@
           "text": "import console_child"
         },
         {
+          "path": "editor/tests/run_catalog_proofs.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
+          "path": "editor/tests/run_document_proofs.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
           "path": "scripts/bake_colormap_ktx2.py",
           "line": 51,
           "evidence": "import",
@@ -2254,6 +2311,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/check-staged-hygiene.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/check-visual-bookmark-honesty.py",
           "line": 55,
           "evidence": "import",
@@ -2311,7 +2375,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 62,
+          "line": 63,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs  # noqa: E402"
@@ -2385,6 +2449,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "scripts/tests/test_check_staged_hygiene.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_console_child.py",
@@ -2815,7 +2886,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3095,9 +3166,9 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 874,
+          "line": 896,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/deploy_payload.py",
+          "reference": "A:/Games/mc2-main/scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
         }
       ],
@@ -3111,7 +3182,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1292,
+          "line": 1310,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -3210,7 +3281,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 63,
+          "line": 64,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint  # noqa: E402"
@@ -3276,7 +3347,7 @@
           "path": "scripts/run_smoke.py",
           "line": 393,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/game_auto.py",
+          "reference": "A:/Games/mc2-main/scripts/game_auto.py",
           "text": "auto = subprocess.run("
         }
       ],
@@ -3391,7 +3462,7 @@
         },
         {
           "path": "scripts/check-manifest-schema.py",
-          "line": 35,
+          "line": 36,
           "evidence": "import",
           "reference": "manifest_schema",
           "text": "import manifest_schema  # noqa: E402"
@@ -3616,14 +3687,14 @@
           "path": "scripts/sweep_campaign.py",
           "line": 24,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/resolve_campaign_config.py",
+          "reference": "A:/Games/mc2-main/scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
         },
         {
           "path": "scripts/verify_campaign_assets.py",
           "line": 43,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/resolve_campaign_config.py",
+          "reference": "A:/Games/mc2-main/scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
         }
       ],
@@ -3657,13 +3728,35 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_editor_smoke.py",
-          "line": 16,
+          "line": 17,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2\\scripts/run_editor_smoke.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/run_editor_smoke.py",
           "text": "spec = importlib.util.spec_from_file_location(\"editor_smoke\", SCRIPT)"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "editor/tests/legacy_reference.py",
+          "line": 104,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/run_catalog_proofs.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/run_document_proofs.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import StockInputs, STOCK_MISSIONS, compare_fit"
+        }
+      ]
     },
     {
       "path": "scripts/run_smoke.py",
@@ -3674,32 +3767,39 @@
           "path": "scripts/mcp/mc2_render_state_server.py",
           "line": 737,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "result = subprocess.run("
         },
         {
           "path": "scripts/test_release_zip_install.py",
           "line": 238,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, **console_child.child_kwargs())"
         },
         {
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 187,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "return subprocess.run([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *args],"
         },
         {
           "path": "scripts/verify_background_launch.py",
           "line": 152,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_fingerprint_cli.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "scripts.run_smoke",
+          "text": "from scripts import run_smoke"
+        },
         {
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 441,
@@ -3744,7 +3844,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1494,
+          "line": 1496,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
@@ -3761,7 +3861,7 @@
           "path": "scripts/check-capture-determinism.py",
           "line": 217,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/run_visual_capture.py",
+          "reference": "A:/Games/mc2-main/scripts/run_visual_capture.py",
           "text": "subprocess.run(cmd, check=False, **console_child.child_kwargs())"
         }
       ],
@@ -3833,14 +3933,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-smoke-fingerprint-honesty.py",
-          "line": 213,
+          "line": 233,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import fingerprint as fp"
         },
         {
           "path": "scripts/check-smoke-fingerprint-honesty.py",
-          "line": 240,
+          "line": 276,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import report as rep"
@@ -3903,28 +4003,28 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 741,
+          "line": 763,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 771,
+          "line": 793,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 961,
+          "line": 983,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1147,
+          "line": 1169,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -3973,7 +4073,7 @@
         },
         {
           "path": "scripts/smoke_lib/fingerprint.py",
-          "line": 24,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"
@@ -4096,6 +4196,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait, deploy_lease  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_fingerprint_cli.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import host_lease"
         },
         {
           "path": "scripts/tests/test_harness_desktop_safety.py",
@@ -4257,7 +4364,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1147,
+          "line": 1169,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -4365,7 +4472,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 741,
+          "line": 763,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -4430,7 +4537,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-smoke-fingerprint-honesty.py",
-          "line": 213,
+          "line": 233,
           "evidence": "import",
           "reference": "scripts.smoke_lib.fingerprint",
           "text": "from scripts.smoke_lib import fingerprint as fp"
@@ -4444,21 +4551,21 @@
         },
         {
           "path": "scripts/tests/test_fingerprint.py",
-          "line": 18,
+          "line": 23,
           "evidence": "import",
           "reference": "scripts.smoke_lib.fingerprint",
-          "text": "from scripts.smoke_lib.fingerprint import parse_fingerprint, check_fingerprint"
+          "text": "from scripts.smoke_lib.fingerprint import (parse_fingerprint, check_fingerprint,"
         },
         {
           "path": "scripts/tests/test_fingerprint.py",
-          "line": 89,
+          "line": 95,
           "evidence": "import",
           "reference": "scripts.smoke_lib.fingerprint",
           "text": "from scripts.smoke_lib.fingerprint import is_build_input"
         },
         {
           "path": "scripts/tests/test_fingerprint.py",
-          "line": 153,
+          "line": 159,
           "evidence": "import",
           "reference": "scripts.smoke_lib.fingerprint",
           "text": "from scripts.smoke_lib.fingerprint import load_build_inputs"
@@ -4473,7 +4580,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-smoke-fingerprint-honesty.py",
-          "line": 241,
+          "line": 277,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -4565,7 +4672,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 771,
+          "line": 793,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -4576,6 +4683,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
+        },
+        {
+          "path": "scripts/tests/test_fingerprint_cli.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from scripts.smoke_lib import host_lease"
         },
         {
           "path": "scripts/tests/test_host_lease.py",
@@ -4601,7 +4715,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-smoke-fingerprint-honesty.py",
-          "line": 242,
+          "line": 278,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -4813,7 +4927,7 @@
         },
         {
           "path": "scripts/smoke_lib/fingerprint.py",
-          "line": 24,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib.nofocus",
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"
@@ -4849,7 +4963,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 961,
+          "line": 983,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -4936,7 +5050,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-smoke-fingerprint-honesty.py",
-          "line": 240,
+          "line": 276,
           "evidence": "import",
           "reference": "scripts.smoke_lib.report",
           "text": "from scripts.smoke_lib import report as rep"
@@ -5293,6 +5407,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_check_staged_hygiene.py",
+      "basename": "test_check_staged_hygiene.py",
+      "stem": "test_check_staged_hygiene",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_check_vk_pipeline_layout.py",
       "basename": "test_check_vk_pipeline_layout.py",
       "stem": "test_check_vk_pipeline_layout",
@@ -5317,6 +5438,13 @@
       "path": "scripts/tests/test_contract_harness_migration.py",
       "basename": "test_contract_harness_migration.py",
       "stem": "test_contract_harness_migration",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_delivery_code_evidence.py",
+      "basename": "test_delivery_code_evidence.py",
+      "stem": "test_delivery_code_evidence",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -5398,6 +5526,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_fingerprint_cli.py",
+      "basename": "test_fingerprint_cli.py",
+      "stem": "test_fingerprint_cli",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_gate_table_gen.py",
       "basename": "test_gate_table_gen.py",
       "stem": "test_gate_table_gen",
@@ -5447,6 +5582,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_manifest_schema_check.py",
+      "basename": "test_manifest_schema_check.py",
+      "stem": "test_manifest_schema_check",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_nofocus_env.py",
       "basename": "test_nofocus_env.py",
       "stem": "test_nofocus_env",
@@ -5481,12 +5623,19 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1495,
+          "line": 1497,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
         }
       ],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_tracy_capture_compare.py",
+      "basename": "test_tracy_capture_compare.py",
+      "stem": "test_tracy_capture_compare",
+      "callers_by_basename": [],
       "callers_by_stem": []
     },
     {
@@ -5534,14 +5683,14 @@
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 137,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/write-deploy-manifest.py",
+          "reference": "A:/Games/mc2-main/scripts/write-deploy-manifest.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 153,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/scripts/write-deploy-manifest.py",
+          "reference": "A:/Games/mc2-main/scripts/write-deploy-manifest.py",
           "text": "r = subprocess.run("
         }
       ],
@@ -5615,7 +5764,7 @@
           "path": "tools/blender_pipeline/asset_edit.py",
           "line": 348,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/ase_to_glb.py",
+          "reference": "A:/Games/mc2-main/tools/ase_to_glb.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True,"
         }
       ],
@@ -5752,14 +5901,14 @@
           "path": "tools/asset_cook/tests/test_g1_stage.py",
           "line": 50,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/asset_cook/trackg_cook.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/trackg_cook.py",
           "text": "proc = subprocess.run("
         },
         {
           "path": "tools/asset_cook/tests/test_g2_textures.py",
           "line": 65,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/asset_cook/trackg_cook.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/trackg_cook.py",
           "text": "proc = subprocess.run("
         }
       ],
@@ -5789,21 +5938,21 @@
           "path": "scripts/check-asset-manifest-fixtures.py",
           "line": 40,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
           "text": "proc = subprocess.run("
         },
         {
           "path": "scripts/check-asset-manifests.py",
           "line": 33,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
           "text": "return subprocess.run(cmd, **console_child.child_kwargs()).returncode == 0"
         },
         {
           "path": "tools/asset_cook/tests/run_tests.py",
           "line": 53,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
           "text": "proc = subprocess.run("
         }
       ],
@@ -6333,7 +6482,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1290,
+          "line": 1292,
           "evidence": "command",
           "reference": "tools/callers.py",
           "text": "run_check \"script_callers\"              \"py -3 tools/callers.py --check\""
@@ -7499,14 +7648,28 @@
           "path": "scripts/verify_campaign_assets.py",
           "line": 32,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/tools/mc2x_import/fst.py",
+          "reference": "A:\\Games\\mc2-main/tools/mc2x_import/fst.py",
           "text": "spec = importlib.util.spec_from_file_location(\"fst\", str(p))"
         }
       ],
       "callers_by_stem": [
         {
+          "path": "editor/tests/legacy_reference.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry"
+        },
+        {
+          "path": "editor/tests/run_catalog_proofs.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry"
+        },
+        {
           "path": "scripts/run_editor_smoke.py",
-          "line": 66,
+          "line": 67,
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
@@ -7844,7 +8007,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1287,
+          "line": 1289,
           "evidence": "command",
           "reference": "tools/own_inventory.py",
           "text": "run_check \"own_inventory\"               \"py -3 tools/own_inventory.py --check\""
@@ -7934,14 +8097,14 @@
           "path": "tests/smoke/test_perf_baseline_vram.py",
           "line": 6,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/tools/perf_baseline_report.py",
+          "reference": "A:\\Games\\mc2-main/tools/perf_baseline_report.py",
           "text": "spec = importlib.util.spec_from_file_location(\"perf_baseline_report_under_test\", ROOT / \"tools\" / \"perf_baseline_report.py\")"
         }
       ],
       "callers_by_stem": [
         {
           "path": "tools/tracy_capture_compare.py",
-          "line": 81,
+          "line": 82,
           "evidence": "import",
           "reference": "perf_baseline_report",
           "text": "import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)"
@@ -8025,7 +8188,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1288,
+          "line": 1290,
           "evidence": "command",
           "reference": "tools/pointer_order_scan.py",
           "text": "run_check \"pointer_order_scan\"          \"py -3 tools/pointer_order_scan.py --check\""
@@ -8496,7 +8659,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1284,
+          "line": 1286,
           "evidence": "command",
           "reference": "tools/save_inspect.py",
           "text": "run_check \"save_inspect\"                \"py -3 tools/save_inspect.py selftest\""
@@ -8512,7 +8675,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 37,
+          "line": 38,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -8533,7 +8696,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1291,
+          "line": 1293,
           "evidence": "command",
           "reference": "tools/savegame_backup.py",
           "text": "run_check \"savegame_backup\"             \"py -3 tools/savegame_backup.py selftest\""
@@ -8549,7 +8712,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
@@ -8570,7 +8733,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1283,
+          "line": 1285,
           "evidence": "command",
           "reference": "tools/saveload_roundtrip.py",
           "text": "run_check \"saveload_roundtrip\"          \"py -3 tools/saveload_roundtrip.py selftest\""
@@ -8608,7 +8771,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 878,
+          "line": 880,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -8645,7 +8808,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1281,
+          "line": 1283,
           "evidence": "command",
           "reference": "tools/sim_determinism.py",
           "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest\""
@@ -8654,7 +8817,7 @@
       "callers_by_stem": [
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 39,
+          "line": 40,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
@@ -8858,7 +9021,7 @@
           "path": "tools/terrain_beautify/test_control_map_tool.py",
           "line": 45,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/control_map_tool.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/control_map_tool.py",
           "text": "return subprocess.run("
         }
       ],
@@ -8888,7 +9051,7 @@
           "path": "tools/terrain_beautify/test_cook_markings.py",
           "line": 67,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/cook_markings.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/cook_markings.py",
           "text": "return subprocess.run("
         }
       ],
@@ -8911,7 +9074,7 @@
           "path": "tools/terrain_beautify/test_cook_shoreline.py",
           "line": 51,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/cook_shoreline.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/cook_shoreline.py",
           "text": "return subprocess.run("
         }
       ],
@@ -9113,7 +9276,7 @@
           "path": "tools/terrain_beautify/test_overlay_extract.py",
           "line": 40,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/overlay_extract.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/overlay_extract.py",
           "text": "return subprocess.run("
         }
       ],
@@ -9143,7 +9306,7 @@
           "path": "tools/terrain_beautify/test_scatter_tool.py",
           "line": 56,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/terrain_beautify/scatter_tool.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/scatter_tool.py",
           "text": "return subprocess.run("
         }
       ],
@@ -10464,11 +10627,19 @@
           "path": "tests/smoke/test_render_options_pin.py",
           "line": 121,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/tools/tracy_capture_compare.py",
+          "reference": "A:\\Games\\mc2-main/tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_tracy_capture_compare.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tracy_capture_compare",
+          "text": "import tracy_capture_compare as capture  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/ui_art_reconstruct.py",
@@ -10912,7 +11083,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1289,
+          "line": 1291,
           "evidence": "command",
           "reference": "tools/verified.py",
           "text": "run_check \"verified_ledger\"             \"py -3 tools/verified.py check\""
@@ -10936,6 +11107,28 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/vfx_oracle/compare_combat_traces.py",
+      "basename": "compare_combat_traces.py",
+      "stem": "compare_combat_traces",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/vfx_oracle/test_compare_combat_traces.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.vfx_oracle.compare_combat_traces",
+          "text": "from tools.vfx_oracle.compare_combat_traces import ("
+        }
+      ]
+    },
+    {
+      "path": "tools/vfx_oracle/compare_frozen_snapshots.py",
+      "basename": "compare_frozen_snapshots.py",
+      "stem": "compare_frozen_snapshots",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/vfx_oracle/evidence.py",
       "basename": "evidence.py",
       "stem": "evidence",
@@ -10946,6 +11139,13 @@
       "path": "tools/vfx_oracle/probe_rng.py",
       "basename": "probe_rng.py",
       "stem": "probe_rng",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/vfx_oracle/test_compare_combat_traces.py",
+      "basename": "test_compare_combat_traces.py",
+      "stem": "test_compare_combat_traces",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -11110,14 +11310,14 @@
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 225,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/visual_verify/capture.py",
+          "reference": "A:/Games/mc2-main/tools/visual_verify/capture.py",
           "text": "r = subprocess.run([sys.executable, str(ROOT / \"tools\" / \"visual_verify\" / \"capture.py\"),"
         },
         {
           "path": "tools/visual_verify/ab.py",
           "line": 38,
           "evidence": "command",
-          "reference": "A:/Games/mc2-lane2/tools/visual_verify/capture.py",
+          "reference": "A:/Games/mc2-main/tools/visual_verify/capture.py",
           "text": "rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK=\"1\"))"
         }
       ],
@@ -11283,7 +11483,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1001,
+          "line": 1003,
           "evidence": "command",
           "reference": "tools/vk_ownership_ledger.py",
           "text": "run_check \"vk_ownership_ledger\"    \"py -3 tools/vk_ownership_ledger.py --check\""

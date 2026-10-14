@@ -271,17 +271,22 @@ The Q2 report below is historical evidence, not a post-change capture result.
    **There is no presentation env-seed hook or mission/restart/save-load reset yet.** Adding a
    new process-global owner to hide that gap was explicitly rejected by the binding review.
    The transcript covers Effect starts, not a complete legacy particle/profile birth-random tape.
-2. **Draw RNG partially removed, not globally proved.** CardCloud now always reads its live
-   CPU particles under `MC2_GPU_PARTICLES=1`, including an empty-cloud no-emission case. It
-   no longer calls `SpawnCardCloud` or rerolls placeholder offsets/velocities while drawing.
-   Birth random values already reside in the live particle state. This changes the opt-in
-   master arm's CardCloud appearance; it does not flip the shipped master default.
+2. **Draw RNG removed for the three billboard cloud classes; whole-system proof pending.**
+   CardCloud, PointCloud and ShardCloud read their live CPU particles under
+   `MC2_GPU_PARTICLES=1`, including expired-slot filtering and empty-cloud no-emission.
+   Their draws no longer call placeholder Spawn or reroll particle seeds, offsets or
+   velocities. Birth randomness stays in the existing particle state; no RNG ownership,
+   birth sequence or effect lifetime changes in G2b-a. The opt-in master arm's PointCloud
+   and ShardCloud appearance now uses the same harvest as the oracle-render arm.
+   The shipped master default remains unchanged.
    `[VFX_DRAW_RNG v1]`, under existing `MC2_GPU_PARTICLES_LOG=1`, compares the full legacy
    table/index/count before/after CardCloud plus its children. The game-free regression
-   above exercises frozen GPU-harvest draws and producer Flush; runtime/GL proof,
-   culling and other leaf classes remain outside its scope. PointCloud/ShardCloud still call
-   their random-consuming placeholder helpers. PointCloud's harvested branch also falls
-   through to placeholder Spawn when its active count is zero, even with oracle-render ON.
+   above exercises frozen CardCloud GPU-harvest draws and producer Flush. The new
+   G2b-a doctests exercise all three real cloud classes and real MLR draw/clip/sorter flush,
+   producer texture resolution/Flush, expired slots and compacted empty clouds.
+   Legacy cloud Clip rejection is bypassed in MC2; that existing behavior is unchanged.
+   Device bridges are platform sinks in this offline tier, so native GPU culling/flush and
+   runtime sim invariance remain unproved. Other gosFX leaf classes remain outside scope.
 3. **Fixture remains the existing force-fire fixture.** It fires at `nullptr` and +150 world X
    (`code/warrior.cpp:2104`, `:2155`), not at quonsets. The prior 30 m versus approximately
    48 m minimum-range analysis still applies. No legal-range three-player-mech fixture or
@@ -299,6 +304,125 @@ The Q2 report below is historical evidence, not a post-change capture result.
    invariance. Four baseline checks and pre/post camera-park pairs must still pass strict
    equality. No baseline was written or regenerated. The new read-only strict checker
    rejects strict-bit drift even when graded chains agree.
+
+## G2b-a checkpoint (2026-10-14, CODEX-G2B-VFX)
+
+This run changes only PointCloud/ShardCloud draw routing and the frozen-cloud doctests.
+It introduces no owner, RNG algorithm, seed hook, fixture, gate or combat deadline.
+G3 combat retirement must land before session-stream migration, because Carnage still
+reads gosFX completion. The later stream/fixture/oracle scope and Astra corrections in
+the task brief remain binding. No scope=all or visual-parity acceptance is claimed here.
+
+`tests/unit/test_vfx_frozen_clouds.cpp` runs against the real gosFX/MLR/particle libraries
+in `vfx_lifecycle_tests`, with the existing isolated platform sinks. The new driver uses
+fresh processes for `(GPU,oracle,log,GPU-sim)` = `(0,0,0,0)`, `(1,0,0,0)`, `(1,1,1,0)`,
+and `(1,0,0,1)`. Each cloud births four particles using the existing legacy RNG, then
+draws a frozen state eight times per case: visible, outside the frustum, one expired slot,
+all slots expired and compacted empty. The authored starting population stays four,
+so an empty-state placeholder fallback fails the emission assertion. Each draw, MLR
+sorter flush, texture resolution and producer Flush must leave the full legacy table,
+index and draw count unchanged; particle/channel state must remain unchanged too.
+The real clip classifier must reject an offscreen center without consuming RNG.
+Legacy cloud Clip paths run with clipping flags set, plus no-clip draws, but MC2 bypasses
+rejection: `mlrcardcloud.cpp:309` and `mlrtrianglecloud.cpp:266` force the clip masks to
+zero, while PointCloud's rejection checks are commented out. No MLR culling repair is included.
+The particle bridge captures records in this tier; device-side culling remains a runtime proof.
+
+G2b-a P2 test fix: the frozen-cloud fixture now captures the real Batcher Flush payload
+and compares every record with the frozen live particles, including world position,
+RGBA, radius, normalized age and packed size/rotation. Distinct per-slot/channel values,
+card half-extents, shard vertex colors and nonzero spins expose zero-fill, swapped
+fields, wrong color stride and dead-slot packing. PointCloud expects zero rotation.
+Each eight-draw sequence requires an identical byte payload, unchanged particle state
+and unchanged RNG table/index/draw count. Same-count zeroed records, corruption of
+each position/color/size/age/rotation component and reordered records must fail the
+same comparison helper. The capture belongs to the fixture; CMake renames only the
+isolated platform's empty bridge sink. No production code changed for this test fix.
+
+Test-fix proof (2026-10-14): `py -3 tools/build_contract_harnesses.py --run --unit`
+passed 3,142 cases (four skipped) and all four Python contract suites in 125.3 s.
+`py -3 tools/build_contract_harnesses.py --asan` built successfully in 6.6 s;
+`build64-tests-asan/RelWithDebInfo/mc2_tests.exe --no-breaks --test-case=vfx_frozen/*`
+passed all four fresh-process arms in 4.5 s (1,761 MLR assertions, 2,793 per GPU
+arm, 18 driver assertions). The focused native driver passed the same counts.
+All builds used unique `_MSPDBSRV_ENDPOINT_` values and `/Z7`; no timeout occurred.
+The bounded runner and retained logs are `E:/mc2-archive-2026-10/g2ba-testfix-proof.py`
+and `g2ba-testfix-{unit,asan-build,asan}.log` in that directory. An initial ASan runner
+attempt could not resolve a relative executable path; the absolute-path rerun passed.
+
+Offline commands (all RelWithDebInfo, unique compiler endpoint):
+
+```powershell
+$env:_MSPDBSRV_ENDPOINT_ = 'sol-g2ba-proof-' + $PID
+py -3 tools/build_quiet.py --target mc2
+py -3 tools/build_contract_harnesses.py --run --unit
+py -3 tools/build_contract_harnesses.py --asan
+& build64-tests-asan/RelWithDebInfo/mc2_tests.exe --no-breaks '--test-case=vfx_frozen/*'
+```
+
+The existing compiler PDB hit C1041 despite a unique endpoint. Local verification
+retries use `$env:_CL_ = '/Z7'` for embedded compiler debug information, without
+changing configuration, optimization or another lane's PDB server.
+Full commands/results and retained diagnostic logs belong in the final checkpoint reply.
+
+Offline result on the uncommitted G2b-a diff: VS mc2 build passed (256.4 s, 161 warnings,
+zero errors); `--run --unit` passed all 3,142 cases (four skipped) and all four Python
+contract suites. The new ASan driver passed all four fresh-process gate vectors: three
+cloud tests per arm, 1,266 assertions in MLR and 1,218 in each GPU arm, plus 18 driver
+assertions. The full ASan corpus was built; only the new doctest tier was executed.
+Evidence: `g2ba-engine-proof.log`, `g2ba-unit-accepted-proof.log`,
+`g2ba-asan-accepted-build.log`, `g2ba-asan-accepted-proof.log` in the worktree root.
+Early fixture probes failed because an owning MLRTexturePool received a stack image
+pool and because the fixture assumed legacy clip rejection; both fixture mistakes are
+corrected and the diagnostic logs are retained. No compiler probe timed out.
+`git -c core.whitespace=cr-at-eol diff --check` passed; existing CRLF/LF styles are preserved.
+The optional background-launch checker still reports the existing unregistered
+`tools/vfx_oracle/probe_rng.py` direct spawn; no allowlist or generated baseline was changed.
+Bash contracts, commit/deploy and fingerprinted runtime proofs remain the orchestrator's work.
+
+Orchestrator runtime only: retain pre/post fingerprints and both process logs at the
+new root `E:/mc2-archive-2026-10/vfx-g2ba`. Before deployment and again afterward,
+set `$stage` to `pre` or `post` and run this exact set. Do not write baselines.
+
+```powershell
+foreach ($mission in @('mc2_03','mc2_10','mc2_24','mc2_16')) {
+  py -3 tools/sim_determinism.py check $mission --install lane3 --duration 60 --out "E:/mc2-archive-2026-10/vfx-g2ba/$stage/$mission"
+}
+py -3 tools/sim_determinism.py run mc2_24 --install lane3 --duration 60 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300 --out "E:/mc2-archive-2026-10/vfx-g2ba/$stage/camera"
+```
+
+After the orchestrator's pathspec commit, build that commit with a unique endpoint,
+then deploy only to lane3:
+
+```powershell
+& 'C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' --build build64 --config RelWithDebInfo --target build_fingerprint mc2 mc2_launcher
+py -3 scripts/deploy_payload.py A:/Games/mc2-opengl/mc2-win64-lane3 --allow-new-target
+foreach ($mission in @('mc2_03','mc2_10','mc2_24','mc2_16')) {
+  py -3 -B tools/vfx_oracle/check_strict_sim.py "tests/smoke/sim_determinism/$mission.json" "E:/mc2-archive-2026-10/vfx-g2ba/pre/$mission/a/$mission.log" "E:/mc2-archive-2026-10/vfx-g2ba/pre/$mission/b/$mission.log" "E:/mc2-archive-2026-10/vfx-g2ba/post/$mission/a/$mission.log" "E:/mc2-archive-2026-10/vfx-g2ba/post/$mission/b/$mission.log" --install lane3
+}
+py -3 tools/sim_determinism.py compare E:/mc2-archive-2026-10/vfx-g2ba/pre/camera/a/mc2_24.log E:/mc2-archive-2026-10/vfx-g2ba/post/camera/a/mc2_24.log
+py -3 tools/sim_determinism.py compare E:/mc2-archive-2026-10/vfx-g2ba/pre/camera/b/mc2_24.log E:/mc2-archive-2026-10/vfx-g2ba/post/camera/b/mc2_24.log
+```
+
+Inspect every strict chain and camera comparison; `sim_determinism check` alone
+permits strict-bit drift with exit zero. The orchestrator's runtime acceptance is recorded below.
+No oracle captures, seed migration or baseline regeneration are part of G2b-a.
+
+### G2b-a runtime acceptance (orchestrator, 2026-10-14)
+
+Accepted against the pre-change executable: pre = nifty `6dc7d078f`, lane3 exe
+SHA-256 prefix `27c9dcd1687a0522`; post = `e49b52dff`, prefix `8d85702ac2068de3`.
+Retained logs are under `E:/mc2-archive-2026-10/vfx-g2ba` (`pre` and `post`).
+All four strict chains (pre a/b and post a/b) are equal for each of `mc2_03`,
+`mc2_10`, `mc2_24` and `mc2_16`. The camera-park pair is identical pre/post,
+covering 4,019 frames for arm a and 5,275 frames for arm b.
+
+`sim_determinism check` refuses on lane3: installed data fingerprint `cf36e658`
+differs from the baselines' `17051a2e`. These baselines are stale; lane 1 owns
+the re-record item. The `mc2_24` and `mc2_16` strict chains differ from their
+baselines in both pre and post, so those differences predate G2b-a. Acceptance
+establishes pre/post runtime equivalence; it does not bless the stale baselines
+or claim visual parity.
 
 ## Files needing owners (not edited)
 
@@ -318,11 +442,11 @@ The Q2 report below is historical evidence, not a post-change capture result.
   `mclib/bdactor_update.cpp`, `mclib/mech3d.cpp`, `mclib/mech3d_update.cpp`,
   `mclib/gvactor_geometry.cpp` and `mclib/gvactor_update.cpp`; inventory all remaining
   ExecuteInfo callers before declaring ownership complete.
-- **Remaining draw RNG:** needs lane 1 for `mclib/gosfx/pointcloud.cpp:483,583` and
-  `mclib/gosfx/shardcloud.cpp:326,454`. Reuse the live harvest and make empty clouds emit
-  nothing. Their claimed `mclib/particles/spawn_point.cpp` / `spawn_shard.cpp` files cannot
-  receive per-instance birth state through the current spec/transform/seed/age interface.
-  They and `spawn_cardcloud.cpp` are left intact, not replaced by a seeded RNG in Draw.
+- **Other draw routes:** G2b-a removes PointCloud/ShardCloud's placeholder callers.
+  `mclib/gosfx/card.cpp:597` still calls the generic Spawn dispatcher for its own Card
+  specification. `mclib/particles/spawn.cpp:89,93` retains the Point/Shard dispatch entries;
+  their helper bodies and `spawn_cardcloud.cpp` stay intact as legacy APIs, with no live
+  PointCloud/ShardCloud Draw caller. Do not replace them with a seeded RNG in Draw.
 - **Real fixture, minimum engine patch:** needs lane 1 for `code/warrior.cpp`. Reuse an
   explicit value of existing `MC2_FX_FORCE_SPAWN` for a separate quonset-order recipe;
   select only the three home-team players and stable quonset object IDs, schedule normal
@@ -365,7 +489,7 @@ VFX_GPU_SIM_CARDCLOUD, VFX_GPU_SIM_COMPARE)`; all names have `MC2_` prefixes.
 | Experiment | MLR | GPU | Meaning |
 |---|---|---|---|
 | `--experiment master` (default) | `(0,0,0,0,0,0)` | `(1,0,0,0,0,0)` | Historical master toggle; this diff changes CardCloud alone to live harvesting. Other placeholder/hybrid routes remain. |
-| `--experiment harvested` | `(0,0,0,0,0,0)` | `(1,1,1,1,0,0)` | Retirement design's candidate; still hybrid/unproven and PointCloud empty-state fallback remains. |
+| `--experiment harvested` | `(0,0,0,0,0,0)` | `(1,1,1,1,0,0)` | Retirement design's candidate; still hybrid/unproven. G2b-a removes PointCloud's empty-state fallback. |
 
 The wrapper explicitly pins every gate, records it in fingerprint checks and emits one
 `<arm>-r<N>-runtime.json` per fresh process. Those diagnostic files bind raw birth records
@@ -691,6 +815,10 @@ An isolated presentation seed hook and a frozen live effect-state/packet source 
 the forbidden lane-owned engine surfaces prevent completing that part here.
 
 ## Rerun commands
+
+G3-a's combat clock, save/pool contract, VFX_COMBAT trace schema and lane3 capture
+commands are in [g3-combat-deadlines.md](g3-combat-deadlines.md). That slice adds
+instrumentation only; combat-owned deadlines and runtime acceptance remain pending.
 
 Use a fresh output directory so earlier evidence remains intact:
 

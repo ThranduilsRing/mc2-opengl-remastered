@@ -708,17 +708,6 @@ void Mission::destroy (bool initLogistics)
 		ObjectManager = nullptr;
 	}
 	
-	if (Mover::sortList)
-	{
-		delete Mover::sortList;
-		Mover::sortList = nullptr;
-	}
-
-	if (SensorSystem::sortList)
-	{
-		delete SensorSystem::sortList;
-		SensorSystem::sortList = nullptr;
-	}
 
 	if (GVAppearanceType::SensorTriangleShape)
 	{
@@ -788,12 +777,6 @@ void Mission::destroy (bool initLogistics)
 	{
 		delete openList;
 		openList = nullptr;
-	}
-
-	if (Team::sortList)
-	{
-		delete Team::sortList;
-		Team::sortList = nullptr;
 	}
 
 	closeABL();

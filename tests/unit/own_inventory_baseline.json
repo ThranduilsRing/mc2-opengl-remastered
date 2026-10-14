@@ -525,9 +525,12 @@
    "files": {
     "editor/EditorInterface.cpp": {
      "new": 1
+    },
+    "editor/EditorWorkflowSmoke.cpp": {
+     "new": 1
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -4730,18 +4733,6 @@
    "new_array": 0,
    "owners": []
   },
-  "OvlState": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "PANE": {
    "delete": 2,
    "delete_array": 0,
@@ -5327,18 +5318,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ShadowIsland": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "SimpleCamera": {
    "delete": 1,
    "delete_array": 0,
@@ -5367,27 +5346,6 @@
    "new_array": 0,
    "owners": [
     "MLRSortByOrder"
-   ]
-  },
-  "SortList": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_camera.cpp": {
-     "new": 1
-    },
-    "code/contact.cpp": {
-     "delete": 1,
-     "new": 2
-    },
-    "code/mover_init.cpp": {
-     "new": 1
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": [
-    "SensorSystem"
    ]
   },
   "SortedChain": {
@@ -6062,27 +6020,6 @@
    "new_array": 0,
    "owners": [
     "Terrain"
-   ]
-  },
-  "TerrainIsland": {
-   "delete": 6,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-     "delete": 3
-    },
-    "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-     "delete": 1
-    },
-    "GameOS/gameos/vulkan_terrain_island_run.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
    ]
   },
   "TerrainObject": {
@@ -7934,12 +7871,10 @@
   "GameOS/gameos/utils/gl_utils.h": 4,
   "GameOS/gameos/utils/shader_builder.cpp": 12,
   "GameOS/gameos/utils/stream.cpp": 1,
-  "GameOS/gameos/vulkan_terrain_island_overlay.cpp": 1,
   "code/ablmc2.cpp": 1,
   "code/artlry.cpp": 8,
   "code/carnage.cpp": 3,
   "code/componentlistbox.cpp": 1,
-  "code/contact.cpp": 1,
   "code/forcegroupbar.cpp": 5,
   "code/gamesound.cpp": 3,
   "code/gametacmap.h": 1,
@@ -7958,7 +7893,7 @@
   "code/mechcmd2_frame.cpp": 4,
   "code/mechicon.cpp": 5,
   "code/mechlistbox.cpp": 1,
-  "code/mission.cpp": 13,
+  "code/mission.cpp": 10,
   "code/mission2.cpp": 1,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,

@@ -896,14 +896,6 @@ Stuff::Vector3D Terrain::getTerrainNormal (const Stuff::Vector3D &position)
 }
 
 //---------------------------------------------------------------------------
-// Uses dist passed in as radius.
-void Terrain::markRadiusSeen (const Stuff::Vector3D &looker, float dist, byte who)
-{
-	// Visibility is exact line of sight (Team::lineOfSight): there is nothing to mark.
-	return;
-}
-
-//---------------------------------------------------------------------------
 void Terrain::setObjBlockActive (long blockNum, bool active)
 {
 	if ((blockNum >= 0) && (blockNum < numObjBlocks))

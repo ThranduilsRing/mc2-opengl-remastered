@@ -667,17 +667,10 @@ void execSetRevealed (void) {
 	//		PARAMS:	integer, real, real[2]
 	//		Returns: nothing
 	
-	long teamID = ABLi_popInteger();
-	float distance = ABLi_popReal();
-	float* coordList = ABLi_popRealPtr();
-	
-	Stuff::Vector3D position2;
-	position2.x = coordList[0];
-	position2.y = coordList[1];
-	position2.z = 0.0;
-	
-	if (teamID > -1)
-		land->markRadiusSeen(position2,distance,teamID);
+	// Visibility is exact line of sight, so there is no revealed-area state to set; the arguments are still consumed so the script stack stays balanced.
+	ABLi_popInteger();
+	ABLi_popReal();
+	ABLi_popRealPtr();
 
 	// This is sloppy, and we need a better way to update their scans...
 	for (long i = 0; i < Team::numTeams; i++)

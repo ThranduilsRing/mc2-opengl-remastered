@@ -2,8 +2,9 @@
 import importlib.util
 from pathlib import Path
 import sys
-import shutil
 import json
+import re
+import struct
 import uuid
 from contextlib import contextmanager
 import unittest
@@ -22,11 +23,7 @@ spec.loader.exec_module(smoke)
 def scratch_directory():
     path = TEMP_ROOT / uuid.uuid4().hex
     path.mkdir()
-    try:
-        yield path
-    finally:
-        assert path.resolve().is_relative_to(TEMP_ROOT.resolve())
-        shutil.rmtree(path)
+    yield path
 
 
 def panel_lines():
@@ -587,6 +584,285 @@ class NewModelGateTests(unittest.TestCase):
         path.rename(path.with_suffix(".retained"))
         with self.assertRaises(FileNotFoundError):
             smoke.grade_new_model(self.rows, self.directory)
+
+
+class PanelGateTests(unittest.TestCase):
+    def fixture(self, name):
+        directory = TEMP_ROOT / ("e3b-panel-" + uuid.uuid4().hex)
+        directory.mkdir()
+        original = b'FITini\nfixture\nFITend\n'
+        hybrid = b'FITini\ncompatibilityMode = "Hybrid";\nFITend\n'
+        for stage, fit in (("fixture", original), ("existing-hybrid", hybrid), ("hybrid-roundtrip", hybrid)):
+            (directory / f"{stage}.fit").write_bytes(fit)
+            (directory / f"{stage}.pak").write_bytes(b"original pak")
+        (directory / "widget-save.fit").write_bytes(hybrid if name == "brain_modes" else original)
+        (directory / "widget-save.pak").write_bytes(b"original pak")
+        lines = [f"[EDITOR_PANEL v1] name={name} result=PASS widgets=1 saved_widget=1 reopened_widget=1 rendered=1"]
+        for operation in smoke.PANEL_OPERATIONS[name]:
+            before = hybrid if operation == "brain-Legacy" else original
+            edited = hybrid if operation == "brain-Hybrid" else before + b"authored change"
+            for stage, fit in (("edited", edited), ("undone", before), ("redone", edited)):
+                (directory / f"{operation}-{stage}.fit").write_bytes(fit)
+                (directory / f"{operation}-{stage}.pak").write_bytes(b"original pak")
+            lines.append(f"[EDITOR_PANEL_OPERATION v1] name={operation} changed=1 reopened=1 undo=1 redo=1 widgets=1")
+        (directory / "shell.log").write_text("\n".join(lines))
+        (directory / "panels.bmp").write_bytes(b"BM" + bytes(52) + (bytes(range(256)) * (1440 * 960 * 3 // 256)))
+        return directory
+
+    def test_each_new_row_requires_changed_output_and_widget_reach(self):
+        for name in smoke.PANEL_OPERATIONS:
+            directory = self.fixture(name)
+            smoke.grade_panel(name, directory, 0)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                smoke.grade_panel(name, directory, 2)
+            log = directory / "shell.log"
+            original = log.read_text()
+            log.write_text(original.replace("widgets=1", "widgets=0"))
+            with self.assertRaises(ValueError):
+                smoke.grade_panel(name, directory, 0)
+            log.write_text(original + "\n" + original.splitlines()[0])
+            with self.assertRaises(ValueError):
+                smoke.grade_panel(name, directory, 0)
+
+    def test_noop_undo_corruption_redo_corruption_and_empty_capture_fail(self):
+        directory = self.fixture("unit_panel")
+        for stage in ("edited", "undone", "redone"):
+            path = directory / f"unit-team-{stage}.fit"
+            original = path.read_bytes()
+            path.write_bytes((directory / "fixture.fit").read_bytes() if stage == "edited" else original + b"corrupt")
+            with self.subTest(stage=stage), self.assertRaises(ValueError):
+                smoke.grade_panel("unit_panel", directory, 0)
+            path.write_bytes(original)
+        (directory / "panels.bmp").write_bytes(b"BM" + bytes(52 + 1440 * 960 * 3))
+        with self.assertRaisesRegex(ValueError, "rendered panel"):
+            smoke.grade_panel("unit_panel", directory, 0)
+
+    def test_existing_hybrid_must_remain_byte_identical(self):
+        directory = self.fixture("brain_modes")
+        path = directory / "hybrid-roundtrip.fit"
+        path.write_bytes(path.read_bytes() + b"corrupt")
+        with self.assertRaisesRegex(ValueError, "Hybrid bytes"):
+            smoke.grade_panel("brain_modes", directory, 0)
+
+
+class FileGateTests(unittest.TestCase):
+    def fixture(self, name):
+        directory = TEMP_ROOT / ("e4-file-" + uuid.uuid4().hex)
+        directory.mkdir()
+        original = b'FITini\nst MissionName = "' + b'x' * 8192 + b' retained tail"\nul DefaultTeam = 0\nFITend\n'
+        edited = original.replace(b'ul DefaultTeam = 0', b'ul DefaultTeam = 3')
+        for ext in ("fit", "pak"):
+            before, after = (original, edited) if ext == "fit" else (b"unchanged pak", b"unchanged pak")
+            for stage, data in (("baseline", before), ("edited", after), ("undone", before), ("redone", after)):
+                (directory / f"{stage}.{ext}").write_bytes(data)
+            saved = after if name in ("file_save", "file_failures", "file_open_save", "file_reopen_save", "file_close_save") else before
+            (directory / f"first.{ext}").write_bytes(saved)
+            if name in ("file_save_as", "file_recent"):
+                (directory / ("mission with spaces Ω " + "p" * 100 + f" retained tail.{ext}")).write_bytes(after)
+        lines = [f"[EDITOR_FILE v1] name={name} result=PASS widgets=1 changed=1 undo=1 redo=1 reopened=1 state=1"]
+        closed = name in ("file_close_save", "file_close_discard")
+        lines.append(f"[EDITOR_FILE_LOOP v1] name={name} terminated={int(closed)} complete=1")
+        if name == "file_failures":
+            lines.extend(["[EDITOR_MODEL v1] reason=injected rejected=1"] * 5)
+        (directory / "shell.log").write_text("\n".join(lines))
+        return directory
+
+    def test_registered_cases_require_widget_and_state_proof(self):
+        for name in smoke.FILE_CASES:
+            with self.subTest(name=name):
+                directory = self.fixture(name)
+                smoke.grade_file(name, directory, 0)
+                log = directory / "shell.log"
+                original = log.read_text()
+                for key in ("widgets", "state", "undo", "redo", "reopened"):
+                    log.write_text(original.replace(f"{key}=1", f"{key}=0"))
+                    with self.assertRaises(ValueError):
+                        smoke.grade_file(name, directory, 0)
+                log.write_text(original + "\n" + original.splitlines()[0])
+                with self.assertRaises(ValueError):
+                    smoke.grade_file(name, directory, 0)
+
+    def test_wrong_save_target_noop_truncation_and_duplicate_diagnostic_fail(self):
+        directory = self.fixture("file_save_as")
+        for path in (directory / "first.fit", directory / "undone.pak", directory / "redone.fit",
+                     directory / ("mission with spaces Ω " + "p" * 100 + " retained tail.fit")):
+            original = path.read_bytes()
+            path.write_bytes(original + b"corruption")
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                smoke.grade_file("file_save_as", directory, 0)
+            path.write_bytes(original)
+        path = directory / "edited.fit"
+        original = path.read_bytes()
+        for bad in ((directory / "baseline.fit").read_bytes(), original.replace(b"x" * 8192, b"x" * 2000)):
+            path.write_bytes(bad)
+            with self.assertRaises(ValueError):
+                smoke.grade_file("file_save_as", directory, 0)
+        directory = self.fixture("file_failures")
+        log = directory / "shell.log"
+        log.write_text(log.read_text() + "\n[EDITOR_MODEL v1] reason=duplicate rejected=1")
+        with self.assertRaisesRegex(ValueError, "diagnostic count"):
+            smoke.grade_file("file_failures", directory, 0)
+
+    def test_close_completion_cannot_substitute_for_production_loop_termination(self):
+        for name in ("file_close_save", "file_close_discard", "file_close_cancel"):
+            directory = self.fixture(name)
+            log = directory / "shell.log"
+            original = log.read_text()
+            loop = original.splitlines()[1]
+            for bad in (original.splitlines()[0], original + "\n" + loop,
+                        original.replace("complete=1", "complete=0"),
+                        original.replace("terminated=1", "terminated=0") if name != "file_close_cancel"
+                        else original.replace("terminated=0", "terminated=1")):
+                with self.subTest(name=name, bad=bad):
+                    log.write_text(bad)
+                    with self.assertRaisesRegex(ValueError, "loop termination"):
+                        smoke.grade_file(name, directory, 0)
+
+
+class LegacyCatalogReferenceTests(unittest.TestCase):
+    def fixture(self, directory):
+        from editor.tests.legacy_reference import PLACEMENTS, TEAMS
+        def pak(records):
+            payload = struct.pack("<I", len(records)) + b"".join(records)
+            return struct.pack("<IIIIIII", 0xfeedface, 28, 28 | 0xe0000000, 28, (28 + len(payload)) | 0xe0000000,
+                               (28 + len(payload)) | 0xe0000000, (28 + len(payload)) | 0xe0000000) + payload
+        baseline = b"FITini\n[Parts]\nul NumParts = 0\nFITend\n"
+        (directory / "e5_reference_before.fit").write_bytes(baseline)
+        (directory / "e5_reference_before.pak").write_bytes(pak([]))
+        evidence = []
+        for family, (object_id, stem) in PLACEMENTS.items():
+            fields = {"ObjectNumber": ("ul", object_id), "ControlType": ("ul", 2), "ControlDataType": ("ul", 1),
+                      "PlayerPart": ("b", "TRUE"), "MyIcon": ("c", 0), "TeamID": ("c", 0), "CommanderID": ("c", 0),
+                      "Pilot": ("ul", 1), "PositionX": ("f", 10), "PositionY": ("f", 20), "Rotation": ("f", 0),
+                      "Active": ("l", 1), "Exists": ("l", 1), "Damage": ("f", 0), "BaseColor": ("ul", 0xffffff),
+                      "HighlightColor1": ("ul", 0xc0c0c0), "HighlightColor2": ("ul", 0x808080), "SelfRepairBehavior": ("ul", 1),
+                      "ObjectProfile": ("st", '"PM207300"'), "CSVFile": ("st", f'"{stem}"'), "VariantNumber": ("ul", 0),
+                      "SquadNum": ("ul", 1), "NumAlternatives": ("ul", 0)}
+            if family in ("mech", "vehicle"):
+                text = "FITini\n[Parts]\nul NumParts = 1\n[Warrior1]\nst Profile = \"pilot\"\nst Brain = \"PBrain\"\nl NumCells = 0\nl NumStaticVars = 0\n[Part1]\n"
+                text += "".join(f"{kind} {name} = {value}\n" for name, (kind, value) in fields.items()) + "FITend\n"
+                records = []
+            else:
+                text = baseline.decode()
+                records = [struct.pack("<Iffffiiiii", object_id, 10, 20, 30, 0, 0, TEAMS[family], -1, 0, 0)]
+            (directory / f"e5_reference_{family}.fit").write_text(text)
+            (directory / f"e5_reference_{family}.pak").write_bytes(pak(records))
+            evidence.append(f"[EDITOR_LEGACY_PLACEMENT v1] family={family} fit_id={object_id} stem={stem} x=10 y=20 z=30 input_team=0 team={TEAMS[family]} painted=1 undo=1 redo=1 saved=1 removed=1 reopened=1")
+        return "\n".join(evidence)
+
+    def test_reference_rejects_noop_wrong_identity_incomplete_units_and_false_facts(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture(directory)
+            self.assertEqual(len(grade(directory, evidence)["placements"]), 9)
+            for bad in (evidence.splitlines()[0], evidence + "\n" + evidence.splitlines()[0],
+                        evidence.replace("fit_id=53", "fit_id=51"), evidence.replace("redo=1", "redo=0")):
+                with self.subTest(bad=bad), self.assertRaises(ValueError):
+                    grade(directory, bad)
+            for name, contents in (("building.pak", (directory / "e5_reference_before.pak").read_bytes()),
+                                   ("mech.fit", (directory / "e5_reference_mech.fit").read_bytes().replace(b"ul SelfRepairBehavior = 1", b"ul Missing = 1")),
+                                   ("mech.fit", (directory / "e5_reference_mech.fit").read_bytes().replace(b'st Profile = "pilot"', b'st Profile = ""'))):
+                path = directory / f"e5_reference_{name}"
+                original = path.read_bytes()
+                path.write_bytes(contents)
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    grade(directory, evidence)
+                path.write_bytes(original)
+
+    def test_reference_is_immutable_and_forest_scale_are_integer_words(self):
+        from editor.tests.legacy_reference import grade, retain, buildings
+        with scratch_directory() as directory:
+            result = grade(directory, self.fixture(directory))
+            retain(directory, directory / "frozen", result)
+            with self.assertRaises(FileExistsError):
+                retain(directory, directory / "frozen", result)
+            data = bytearray((directory / "e5_reference_tree.pak").read_bytes())
+            data[-8:] = struct.pack("<ii", 4, 125)
+            self.assertEqual(struct.unpack("<ii", buildings(data)[0][-8:]), (4, 125))
+            (directory / "e5_reference_tree.pak").write_bytes(data)
+            with self.assertRaisesRegex(ValueError, "forest/scale"):
+                grade(directory, self.fixture_facts(result))
+
+    def test_new_unit_identity_survives_legacy_part_reordering(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture_with_existing(directory)
+            self.assertEqual(len(grade(directory, evidence)["placements"]), 9)
+            for family in ("mech", "vehicle"):
+                path = directory / f"e5_reference_{family}.fit"
+                path.write_text(re.sub(r"(Part|Warrior|ul Pilot = )([23])", lambda match: match[1] + ("3" if match[2] == "2" else "2"), path.read_text()))
+            self.assertEqual(len(grade(directory, evidence)["placements"]), 9)
+
+    def fixture_with_existing(self, directory):
+        from editor.tests.legacy_reference import PLACEMENTS
+        evidence = self.fixture(directory)
+        def existing(first):
+            text = ""
+            for number, object_id in ((first, 51), (first + 1, 52)):
+                text += f'[Part{number}]\nul ObjectNumber = {object_id}\nf PositionX = 99\nf PositionY = 88\nul Pilot = {number}\n'
+                text += f'[Warrior{number}]\nst Profile = "existing{object_id}"\nst Brain = "DredAttack01"\nl NumCells = 1\nl NumStaticVars = 0\n'
+                text += f'[Warrior{number}Cell0]\nl Cell = 2\nl MemType = 1\nf Value = 150\n'
+            return text
+        baseline = "FITini\n[Parts]\nul NumParts = 2\n" + existing(1) + "FITend\n"
+        (directory / "e5_reference_before.fit").write_text(baseline)
+        for family in PLACEMENTS:
+            path = directory / f"e5_reference_{family}.fit"
+            if family in ("mech", "vehicle"):
+                text = path.read_text().replace("NumParts = 1", "NumParts = 3")
+                path.write_text(text.replace("FITend", existing(2) + "FITend"))
+            else:
+                path.write_text(baseline)
+        return evidence
+
+    def test_reference_rejects_replaced_modified_and_missing_existing_units(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture_with_existing(directory)
+            for family in ("mech", "vehicle", "building"):
+                path = directory / f"e5_reference_{family}.fit"
+                original = path.read_bytes()
+                changes = ((b"ObjectNumber = 51", b"ObjectNumber = 52"),
+                           (b"PositionX = 99", b"PositionX = 100"),
+                           (b'Profile = "existing51"', b'Profile = "replacement"'),
+                           (b'Brain = "DredAttack01"', b'Brain = "OtherBrain"'),
+                           (b"ul Pilot = 2", b"ul Pilot = 3" if family != "building" else b"ul Pilot = 1"),
+                           (b"ul Pilot = 2", b"l Pilot = 2"),
+                           (b"Value = 150", b"Value = 151"))
+                for before, after in changes:
+                    path.write_bytes(original.replace(before, after, 1))
+                    with self.subTest(family=family, field=before), self.assertRaisesRegex(ValueError, "pre-existing Parts or Warriors"):
+                        grade(directory, evidence)
+                number = 2 if family != "building" else 1
+                missing = re.sub(rb'\[Part' + str(number).encode() + rb'\].*?(?=\[Warrior)', b'', original, count=1, flags=re.S)
+                path.write_bytes(missing)
+                with self.subTest(family=family, field="missing Part"), self.assertRaises(ValueError):
+                    grade(directory, evidence)
+                path.write_bytes(original)
+
+    def test_reference_requires_saved_alignment_and_meaningful_pilot_brain_defaults(self):
+        from editor.tests.legacy_reference import grade
+        with scratch_directory() as directory:
+            evidence = self.fixture(directory)
+            for family in ("mech", "vehicle"):
+                path = directory / f"e5_reference_{family}.fit"
+                original = path.read_bytes()
+                for before, after, reason in ((b"c TeamID = 0", b"c TeamID = 1", "alignment"),
+                                             (b"c CommanderID = 0", b"c CommanderID = 1", "alignment"),
+                                             (b"b PlayerPart = TRUE", b"b PlayerPart = FALSE", "alignment"),
+                                             (b'st Brain = "PBrain"', b'st Brain = ""', "defaults"),
+                                             (b'st Brain = "PBrain"', b'st Brain = "   "', "defaults"),
+                                             (b'st Brain = "PBrain"', b'st Brain = "OtherBrain"', "defaults"),
+                                             (b'st Profile = "pilot"', b'st Profile = "   "', "defaults"),
+                                             (b"l NumCells = 0", b"l NumCells = -1", "defaults"),
+                                             (b"l NumStaticVars = 0", b"l NumStaticVars = -1", "defaults")):
+                    path.write_bytes(original.replace(before, after))
+                    with self.subTest(family=family, field=after), self.assertRaisesRegex(ValueError, reason):
+                        grade(directory, evidence)
+                path.write_bytes(original)
+
+    @staticmethod
+    def fixture_facts(result):
+        return "\n".join("[EDITOR_LEGACY_PLACEMENT v1] " + " ".join(f"{k}={v}" for k, v in p["facts"].items()) for p in result["placements"].values())
 
 
 if __name__ == "__main__":

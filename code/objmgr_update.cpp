@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 
 // ---------------------------------------------------------------------------
@@ -1285,6 +1286,7 @@ void GameObjectManager::updateBrainCommit() {
 
 // Update turrets, weapons, carnage, lights and artillery.
 void GameObjectManager::updateOtherFx() {
+	const bool combatTraceEnabled = mc2_diag::tagEnabled("VFX_COMBAT");
 	//---------------------------------------
 	// All other objects should be updated...
 
@@ -1312,8 +1314,14 @@ void GameObjectManager::updateOtherFx() {
 			if (weapons[i] && weapons[i]->getExists()) {
 				long updateRet_instr = weapons[i]->update();
 				weapons[i]->lastUpdateRet = (int32_t)updateRet_instr;
-				if (!updateRet_instr)
+				if (combatTraceEnabled) {
+					weapons[i]->traceCombat("position", "post_update");
+					if (!updateRet_instr)
+						weapons[i]->traceCombatRetire("update_false");
+				}
+				if (!updateRet_instr) {
 					MC2_DESTROY(weapons[i], "update_false");
+				}
 			}
 		}
 	}
@@ -1323,8 +1331,14 @@ void GameObjectManager::updateOtherFx() {
 			if (carnage[i] && carnage[i]->getExists()) {
 				long updateRet_instr = carnage[i]->update();
 				carnage[i]->lastUpdateRet = (int32_t)updateRet_instr;
-				if (!updateRet_instr)
+				if (combatTraceEnabled) {
+					carnage[i]->traceCombat("position", "post_update");
+					if (!updateRet_instr)
+						carnage[i]->traceCombatRetire("update_false");
+				}
+				if (!updateRet_instr) {
 					MC2_DESTROY(carnage[i], "update_false");
+				}
 			}
 		}
 	}

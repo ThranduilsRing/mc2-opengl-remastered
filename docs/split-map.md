@@ -274,7 +274,9 @@ Split commit: `e8aaccaa1`.
 | `mission.cpp` | keeps the mission globals, render, difficulty setup, start/destroy and the objective timers |
 | `mission_init.cpp` | Mission: Mission::init, the mission load sequence. |
 | `mission_init_load.cpp` | Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts, terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp. |
+| `mission_init_parts.cpp` | Mission Part initialization shared by the engine and offline fixtures. |
 | `mission_movers.cpp` | Mission: createPartObject, addMover, removeMover, tradeMover, drop zones and gate queries. |
+| `mission_parts_archive.cpp` | Part archives stage validated records before publishing mission state. |
 | `mission_update.cpp` | Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit. |
 | `mission_update_audit.cpp` | Mission: the runtime-bridge mover.state emitter and the mover-registry coherence audit that Mission::update calls once per frame. Declared in mission_internal.h. |
 | `mission_internal.h` | shared include bundle, extern globals and declarations of the pieces |
@@ -463,8 +465,7 @@ Split commit: `2d6c73efc`.
 
 | Piece | What it holds |
 |---|---|
-| `cevfx.cpp` | keeps the VFX shape element (VFXElement, VFXShapeElement) and the palette lookup tables |
-| `cevfx_polys.cpp` | VFX elements: TextureElement and the PolygonQuad / PolygonTri / TexturedPolygonQuad / TexturedPolygonTri elements. |
+| `cevfx_polys.cpp` | Polygon elements used by appearance bars and terrain decals. |
 | `cevfx_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/genactor.cpp`
@@ -611,6 +612,4 @@ Split commit: `16460b02e`.
 
 | Piece | What it holds |
 |---|---|
-| `vfxtile.cpp` | keeps the tile blit, its file-static scratch and the shape queries |
-| `vfxtile_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

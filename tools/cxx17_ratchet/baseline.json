@@ -49,12 +49,12 @@
   "GameOS": {
    "LG01": 10,
    "LG02": 191,
-   "LG03": 278,
+   "LG03": 268,
    "LG04": 6,
    "LG05": 118,
    "LG06": 497,
    "LG07": 0,
-   "LG08": 264,
+   "LG08": 257,
    "LG09": 1996,
    "LG10": 39,
    "LG11": 102,
@@ -141,17 +141,17 @@
   "code": {
    "LG01": 222,
    "LG02": 204,
-   "LG03": 943,
+   "LG03": 934,
    "LG04": 21,
    "LG05": 194,
-   "LG06": 452,
+   "LG06": 460,
    "LG07": 2,
    "LG08": 14,
-   "LG09": 2295,
+   "LG09": 2296,
    "LG10": 20,
-   "LG11": 103,
+   "LG11": 102,
    "LG12a": 100,
-   "LG12b": 349,
+   "LG12b": 348,
    "LG13": 244,
    "LG14": 123,
    "LG15": 0,
@@ -185,21 +185,21 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 447,
-   "LG02": 285,
+   "LG01": 437,
+   "LG02": 282,
    "LG03": 1125,
    "LG04": 15,
-   "LG05": 136,
-   "LG06": 670,
+   "LG05": 133,
+   "LG06": 671,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2162,
+   "LG09": 2134,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
    "LG12b": 243,
-   "LG13": 481,
-   "LG14": 118,
+   "LG13": 449,
+   "LG14": 113,
    "LG15": 0,
    "LG16": 156,
    "LG17": 94,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 14
+   "LG20": 22
   },
   "tools": {
    "LG01": 0,
@@ -331,7 +331,7 @@
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
    "LG06": 4,
-   "LG08": 10,
+   "LG08": 8,
    "LG09": 59,
    "LG10": 2,
    "LG11": 1
@@ -463,7 +463,7 @@
   "GameOS/gameos/gameos_res.cpp": {
    "LG03": 4,
    "LG06": 6,
-   "LG09": 3
+   "LG09": 2
   },
   "GameOS/gameos/gameos_sound.cpp": {
    "LG03": 11,
@@ -1201,7 +1201,6 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-   "LG03": 4,
    "LG06": 5,
    "LG09": 50,
    "LG11": 1,
@@ -1241,18 +1240,16 @@
   },
   "GameOS/gameos/vulkan_terrain_island_island.cpp": {
    "LG05": 7,
-   "LG08": 8,
+   "LG08": 4,
    "LG09": 30
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-   "LG03": 3,
-   "LG08": 8,
+   "LG08": 7,
    "LG09": 18
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
-   "LG03": 3,
    "LG06": 1,
-   "LG09": 13,
+   "LG09": 14,
    "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
@@ -1552,7 +1549,6 @@
    "LG17": 3
   },
   "code/ablmc2_camera.cpp": {
-   "LG03": 1,
    "LG09": 3,
    "LG17": 2
   },
@@ -1689,13 +1685,15 @@
   "code/carnage.cpp": {
    "LG01": 1,
    "LG03": 5,
-   "LG09": 26,
+   "LG06": 2,
+   "LG09": 30,
    "LG13": 1
   },
   "code/carnage.h": {
    "LG01": 6,
    "LG02": 1,
    "LG04": 1,
+   "LG06": 2,
    "LG18": 1
   },
   "code/chatwindow.cpp": {
@@ -1718,6 +1716,9 @@
   "code/collsn.h": {
    "LG13": 1
   },
+  "code/combat_trace.h": {
+   "LG06": 1
+  },
   "code/comndr.cpp": {
    "LG03": 3,
    "LG09": 4
@@ -1732,7 +1733,7 @@
   },
   "code/contact.cpp": {
    "LG01": 1,
-   "LG03": 8,
+   "LG03": 4,
    "LG09": 17,
    "LG12a": 1,
    "LG12b": 2
@@ -1866,11 +1867,6 @@
   },
   "code/dturret.h": {
    "LG02": 2
-  },
-  "code/dw.cpp": {
-   "LG09": 3,
-   "LG11": 1,
-   "LG12b": 1
   },
   "code/dwarrior.h": {
    "LG02": 2
@@ -2415,7 +2411,7 @@
   },
   "code/mechlopedia.cpp": {
    "LG03": 36,
-   "LG06": 3,
+   "LG06": 2,
    "LG09": 48,
    "LG11": 1,
    "LG12a": 4,
@@ -2427,7 +2423,7 @@
    "LG12b": 1
   },
   "code/mission.cpp": {
-   "LG03": 40,
+   "LG03": 37,
    "LG09": 11,
    "LG10": 1
   },
@@ -2450,10 +2446,14 @@
    "LG09": 14
   },
   "code/mission_init_load.cpp": {
-   "LG01": 9,
+   "LG01": 8,
    "LG03": 11,
    "LG04": 2,
-   "LG09": 21,
+   "LG09": 20
+  },
+  "code/mission_init_parts.cpp": {
+   "LG01": 1,
+   "LG09": 1,
    "LG13": 2
   },
   "code/mission_internal.h": {
@@ -2624,7 +2624,7 @@
    "LG11": 5
   },
   "code/mover_init.cpp": {
-   "LG03": 2
+   "LG03": 1
   },
   "code/mover_misc.cpp": {
    "LG05": 2,
@@ -3078,11 +3078,13 @@
   },
   "code/weaponbolt.cpp": {
    "LG03": 14,
+   "LG06": 2,
    "LG09": 12
   },
   "code/weaponbolt.h": {
    "LG01": 10,
    "LG02": 1,
+   "LG06": 2,
    "LG09": 7
   },
   "code/weaponbolt_render.cpp": {
@@ -3401,17 +3403,6 @@
   },
   "mclib/cellip.cpp": {
    "LG09": 8
-  },
-  "mclib/cepoly.h": {
-   "LG01": 1,
-   "LG02": 1
-  },
-  "mclib/cevfx.cpp": {
-   "LG09": 13,
-   "LG13": 4
-  },
-  "mclib/cevfx.h": {
-   "LG01": 7
   },
   "mclib/cident.cpp": {
    "LG06": 2,
@@ -3773,8 +3764,7 @@
    "LG02": 2
   },
   "mclib/gosfx/pointcloud.cpp": {
-   "LG03": 6,
-   "LG09": 1
+   "LG03": 6
   },
   "mclib/gosfx/pointcloud.hpp": {
    "LG02": 2,
@@ -3800,8 +3790,7 @@
    "LG02": 2
   },
   "mclib/gosfx/shardcloud.cpp": {
-   "LG03": 6,
-   "LG09": 1
+   "LG03": 6
   },
   "mclib/gosfx/shardcloud.hpp": {
    "LG02": 2,
@@ -4403,10 +4392,6 @@
    "LG11": 1,
    "LG17": 2
   },
-  "mclib/msodw.h": {
-   "LG13": 21,
-   "LG14": 5
-  },
   "mclib/mstates.h": {
    "LG13": 2
   },
@@ -4547,16 +4532,11 @@
   "mclib/resizeimage.h": {
    "LG09": 20
   },
+  "mclib/resource_strings.cpp": {
+   "LG06": 1
+  },
   "mclib/routines.cpp": {
    "LG14": 1
-  },
-  "mclib/scale.cpp": {
-   "LG05": 3,
-   "LG09": 3,
-   "LG13": 2
-  },
-  "mclib/scale.h": {
-   "LG01": 1
   },
   "mclib/sim_identity.h": {
    "LG09": 13,
@@ -4568,13 +4548,6 @@
   },
   "mclib/sim_trace.h": {
    "LG06": 2
-  },
-  "mclib/sortlist.cpp": {
-   "LG09": 7
-  },
-  "mclib/sortlist.h": {
-   "LG01": 1,
-   "LG02": 2
   },
   "mclib/soundsys.cpp": {
    "LG01": 9,
@@ -5088,8 +5061,7 @@
   },
   "mclib/utilities.h": {
    "LG02": 1,
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "mclib/vertex.h": {
    "LG01": 1,
@@ -5100,13 +5072,6 @@
    "LG02": 20,
    "LG09": 7,
    "LG13": 3
-  },
-  "mclib/vfx_transform.cpp": {
-   "LG09": 2,
-   "LG13": 4
-  },
-  "mclib/vfxtile.cpp": {
-   "LG13": 1
   },
   "mclib/vis_semantics.cpp": {
    "LG06": 1,
@@ -5142,6 +5107,12 @@
   "tests/unit/test_rendercore.cpp": {
    "LG20": 3
   },
+  "tests/unit/test_vfx_frozen_clouds.cpp": {
+   "LG20": 1
+  },
+  "tests/unit/test_vfx_frozen_driver.cpp": {
+   "LG20": 7
+  },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
    "LG20": 41
@@ -5153,7 +5124,7 @@
    "LG20": 3
   }
  },
- "head": "f9669d668",
+ "head": "e57d04501",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

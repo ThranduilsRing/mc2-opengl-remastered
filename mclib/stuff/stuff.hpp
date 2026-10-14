@@ -211,7 +211,6 @@ namespace Stuff {
 #include"marray.hpp"
 #include"matrix.hpp"
 #include"linearmatrix.hpp"
-#include"noncopyable.hpp"
 #include"motion.hpp"
 #include"notationfile.hpp"
 #include"page.hpp"

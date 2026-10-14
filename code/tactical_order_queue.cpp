@@ -46,7 +46,7 @@ bool validOutcome(const ApplicationOutcome& result) {
 } // namespace
 
 void WayPath::serialize(Archive& a) {
-    orderCodec::sequence(a, points, maxOrderWaypoints);
+    a.sequence(points, maxOrderWaypoints);
     a(curPoint);
     if (!a.good()) return;
     if (a.reading()) {
@@ -300,9 +300,9 @@ void TacticalOrderQueue::retireAcknowledged(std::uint64_t throughReceiptId) {
 }
 
 void TacticalOrderQueue::fields(Archive& a) {
-    orderCodec::sequence(a, pending_, maxPendingOrders);
-    orderCodec::sequence(a, sources_, maxOrderSources);
-    orderCodec::sequence(a, receipts_, maxOrderReceipts);
+    a.sequence(pending_, maxPendingOrders);
+    a.sequence(sources_, maxOrderSources);
+    a.sequence(receipts_, maxOrderReceipts);
     a(nextReceiptId_);
 }
 void TacticalOrderQueue::validate(Archive& a) const {

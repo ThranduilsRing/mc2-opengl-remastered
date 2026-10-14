@@ -10,6 +10,9 @@
 
 #include "weaponbolt_internal.h"
 #include "mc2fmt.h"
+#include <bit>
+#include <cstring>
+#include "diagnostic_trace.h"
 
 
 //---------------------------------------------------------------------------
@@ -332,8 +335,38 @@ bool WeaponBolt::isVisible (void)
 }
 
 //---------------------------------------------------------------------------
+
+// Combat diagnostics retain object identity and event order without owning gameplay state.
+void WeaponBolt::traceCombat(const char* event, const char* reason,
+                              GameObjectPtr target, const WeaponShotInfo* shot)
+{
+    combatTrace.write("bolt", getHandle(), turn, event, reason, position,
+        [this] { return getFlag(OBJECT_FLAG_JUSTCREATED) ? nullptr : &laserPosition; }, target, shot);
+}
+
+void WeaponBolt::traceCombatRetire(const char* reason)
+{
+    traceCombat("retire", reason);
+    combatTrace.live = false;
+}
+
+// Only the authoritative side submits damage; its trace must precede the target's response.
+void WeaponBolt::submitDamage(GameObjectPtr target)
+{
+    if (MPlayer) {
+        if (MPlayer->isServer()) {
+            traceCombat("damage", "server", target, &weaponShot);
+            target->handleWeaponHit(&weaponShot, true);
+        }
+    } else {
+        traceCombat("damage", "direct", target, &weaponShot);
+        target->handleWeaponHit(&weaponShot);
+    }
+}
+
 void WeaponBolt::destroy (void)
 {
+	traceCombatRetire("teardown");
 	if (targetPosition)
 	{
 		delete targetPosition;
@@ -435,6 +468,7 @@ static bool gpuTrailKindProven(mc2::particles::GpuTrailKind k)
 //---------------------------------------------------------------------------
 void WeaponBolt::init (bool create, ObjectTypePtr _type)
 {
+	traceCombatRetire("reinit");
 	GameObject::init(create, _type);
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
@@ -592,6 +626,8 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	// B3b-3: table-driven mapping from effects.csv effectName to GpuTrailKind.
 	// Unmapped weapons fall back to GpuTrailKind::None (CPU gosFX unchanged).
 	gpu_trail_kind = gpuTrailKindFromEffectId(effectId);
+    combatTrace.begin(_type->whatAmI(), effectId);
+    traceCombat("birth");
 }
 
 //---------------------------------------------------------------------------
@@ -711,6 +747,9 @@ void WeaponBolt::Load (WeaponBoltData *data)
 	hitLeft = data->hitLeft;
 	startUV = data->startUV;
 	goalHeight = data->goalHeight;
+	combatTrace.effect = effectId;
+	traceCombat("restore");
+	if (!getExists()) traceCombatRetire("loaded_inactive");
 }
 
 //---------------------------------------------------------------------------
@@ -738,6 +777,7 @@ bool WeaponBolt::deliverAimedAreaHit (void)
 	if (!aimedTarget || aimedTarget->isDestroyed())
 		return false;
 
+	traceCombat("damage", "aimed_area", aimedTarget, &weaponShot);
 	aimedTarget->handleWeaponHit(&weaponShot);
 	return true;
 }
@@ -799,13 +839,7 @@ void WeaponBolt::finishNow (void)
 		GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 		if (target)
 		{
-			if (MPlayer)
-			{
-				if (MPlayer->isServer())
-					target->handleWeaponHit(&weaponShot, true);
-			}
-			else
-				target->handleWeaponHit(&weaponShot);
+			submitDamage(target);
 		}
 
 		if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
@@ -827,6 +861,7 @@ void WeaponBolt::finishNow (void)
 											((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 		}
 
+		traceCombatRetire("forced_finish");
 		MC2_DESTROY(this, "bolt_impact");
 	}
 }

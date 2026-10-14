@@ -1,5 +1,6 @@
 #include "MissionDocument.h"
 
+#include <algorithm>
 #include <bit>
 #include <chrono>
 #include <cmath>
@@ -11,21 +12,37 @@ namespace editor::document {
 namespace {
 constexpr std::int64_t teamCount = 8;
 constexpr std::int64_t legacyFlagIndexMax = std::numeric_limits<std::int32_t>::max();
+std::string pathText(const std::filesystem::path& path)
+{
+    const auto text = path.generic_u8string();
+    return {text.begin(), text.end()};
+}
+std::string logText(std::string_view text)
+{
+    std::string result;
+    for (const auto c : text) {
+        if (c == '\n') result += "\\n";
+        else if (c == '\r') result += "\\r";
+        else if (c == '\0') result += "\\0";
+        else result += c;
+    }
+    return result;
+}
 void diagnostic(const Diagnostic& log, std::string_view mission, const LoadError& error)
 {
-    if (log) log(std::format("[EDITOR_MODEL v1] mission={} field={} offset={} reason={} rejected=1", mission, error.field, error.offset, error.reason));
+    if (log) log(std::format("[EDITOR_MODEL v1] mission={} field={} offset={} reason={} rejected=1", logText(mission), logText(error.field), error.offset, error.reason));
 }
 std::expected<std::vector<std::byte>, LoadError> readBytes(const std::filesystem::path& path, std::size_t limit)
 {
     std::ifstream input(path, std::ios::binary | std::ios::ate);
-    if (!input) return std::unexpected(LoadError{path.filename().string(), "open_failed", 0});
+    if (!input) return std::unexpected(LoadError{pathText(path.filename()), "open_failed", 0});
     const auto size = input.tellg();
-    if (size <= 0 || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{path.filename().string(), "file_size_limit", 0});
+    if (size <= 0 || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{pathText(path.filename()), "file_size_limit", 0});
     std::vector<std::byte> result(static_cast<std::size_t>(size));
     input.seekg(0);
     input.read(reinterpret_cast<char*>(result.data()), size);
     if (!input || input.gcount() != size || input.peek() != std::char_traits<char>::eof())
-        return std::unexpected(LoadError{path.filename().string(), "read_count_mismatch", 0});
+        return std::unexpected(LoadError{pathText(path.filename()), "read_count_mismatch", 0});
     return result;
 }
 std::uint32_t u32(std::span<const std::byte> bytes, std::size_t p)
@@ -55,9 +72,9 @@ std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 {
     std::error_code ec;
     const auto directory = fit.parent_path().empty() ? std::filesystem::path(".") : fit.parent_path();
-    const auto prefix = fit.stem().string() + ".transaction.";
+    const auto prefix = pathText(fit.stem()) + ".transaction.";
     for (std::filesystem::directory_iterator entry(directory, ec), end; !ec && entry != end; entry.increment(ec)) {
-        if (!entry->path().filename().string().starts_with(prefix)) continue;
+        if (!pathText(entry->path().filename()).starts_with(prefix)) continue;
         std::ifstream journal(entry->path());
         std::string state;
         std::getline(journal, state);
@@ -73,12 +90,12 @@ std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 std::expected<MissionDocument, LoadError> MissionDocument::read(const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log)
 {
     const auto recovery = recoveryState(fit);
-    if (!recovery) { diagnostic(log, fit.string(), recovery.error()); return std::unexpected(recovery.error()); }
+    if (!recovery) { diagnostic(log, pathText(fit), recovery.error()); return std::unexpected(recovery.error()); }
     auto source = readBytes(fit, fitByteLimit);
-    if (!source) { diagnostic(log, fit.string(), source.error()); return std::unexpected(source.error()); }
+    if (!source) { diagnostic(log, pathText(fit), source.error()); return std::unexpected(source.error()); }
     auto packets = readBytes(pak, pakByteLimit);
-    if (!packets) { diagnostic(log, fit.string(), packets.error()); return std::unexpected(packets.error()); }
-    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), fit.string(), log);
+    if (!packets) { diagnostic(log, pathText(fit), packets.error()); return std::unexpected(packets.error()); }
+    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), pathText(fit), log);
 }
 
 std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fit, std::vector<std::byte> pak, std::string mission, const Diagnostic& log)
@@ -91,21 +108,52 @@ std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fi
     document.syntax_ = std::move(*syntax);
     document.pak_ = std::move(*archive);
     document.mission_ = std::move(mission);
-    for (const auto& section : document.syntax_.sections) {
-        if (section.parent) continue;
-        auto& fields = document.index_[identifier(section.name)];
-        for (auto id : section.fields) fields.emplace(identifier(document.field(id)->name), id);
-    }
+    document.rebuildIndex();
     auto valid = document.validateSemantics();
     if (!valid) { diagnostic(log, document.mission_, valid.error()); return std::unexpected(valid.error()); }
-    for (const auto& field : document.syntax_.fields) document.savepoint_.push_back(field.value);
+    document.savedFit_ = document.syntax_.originalBytes;
+    document.savedPlacements_ = document.placements_ = document.pak_.packets[1].decoded;
+    document.nextEntityId_ = document.entities_.size() + 1;
     return document;
 }
 
 const Field* MissionDocument::field(NodeId id) const
 {
-    if (id.value == 0 || id.value > syntax_.fields.size()) return nullptr;
-    return &syntax_.fields[static_cast<std::size_t>(id.value - 1)];
+    const auto found = fieldIndex_.find(id.value);
+    return found == fieldIndex_.end() ? nullptr : &syntax_.fields[found->second];
+}
+const Section* MissionDocument::section(NodeId id) const
+{
+    for (const auto& value : syntax_.sections) if (value.id == id) return &value;
+    return nullptr;
+}
+const Section* MissionDocument::childSection(NodeId parent, std::string_view name) const
+{
+    for (const auto& value : syntax_.sections)
+        if (value.parent == parent && identifier(value.name) == identifier(name)) return &value;
+    return nullptr;
+}
+const Field* MissionDocument::find(NodeId block, std::string_view name) const
+{
+    if (const auto* s = section(block)) for (auto id : s->fields)
+        if (const auto* value = field(id); value && identifier(value->name) == identifier(name)) return value;
+    return nullptr;
+}
+const Entity* MissionDocument::entity(EntityId id) const
+{
+    for (const auto& value : entities_) if (value.id == id) return &value;
+    return nullptr;
+}
+void MissionDocument::rebuildIndex()
+{
+    fieldIndex_.clear();
+    for (std::size_t i = 0; i < syntax_.fields.size(); ++i) fieldIndex_.emplace(syntax_.fields[i].id.value, i);
+    index_.clear();
+    for (const auto& section : syntax_.sections) {
+        if (section.parent) continue;
+        auto& fields = index_[identifier(section.name)];
+        for (auto id : section.fields) fields.emplace(identifier(field(id)->name), id);
+    }
 }
 const Field* MissionDocument::find(std::string_view section, std::string_view name) const
 {
@@ -133,6 +181,30 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
         for (const auto& section : syntax_.sections) if (!section.parent && identifier(section.name) == identifier(block)) return section.id;
         return NodeId{};
     };
+    for (const auto& section : syntax_.sections) {
+        const auto name = identifier(section.name);
+        if (!section.parent && name.size() == 7 && name.starts_with("player") && name.back() >= '0' && name.back() <= '7') {
+            if (const auto* team = find(section.id, "DefaultTeam"); team &&
+                (team->value.size() != 1 || !std::holds_alternative<std::int64_t>(team->value[0]) ||
+                    std::get<std::int64_t>(team->value[0]) < 0 || std::get<std::int64_t>(team->value[0]) >= 8))
+                return reject(section.name + "/DefaultTeam", "invalid_team");
+        }
+        if (section.parent || !name.starts_with("warrior") || name.size() <= 7 ||
+            !std::ranges::all_of(std::string_view(name).substr(7), [](char c) { return c >= '0' && c <= '9'; })) continue;
+        if (const auto* legacy = find(section.id, "Brain"); legacy &&
+            (legacy->value.size() != 1 || !std::holds_alternative<std::string>(legacy->value[0]) || legacy->prefix != "st"))
+            return reject(section.name + "/Brain", "invalid_module_reference");
+        if (const auto* brain = childSection(section.id, "Brain")) {
+            if (const auto* mode = find(brain->id, "compatibilityMode")) {
+                if (mode->value.size() != 1 || !std::holds_alternative<std::string>(mode->value[0]) ||
+                    syntax_.originalBytes[mode->syntax.begin] != '"')
+                    return reject(section.name + "/Brain/compatibilityMode", "invalid_brain_mode");
+                const auto value = identifier(std::get<std::string>(mode->value[0]));
+                if (value != "legacy" && value != "hybrid" && value != "enhanced")
+                    return reject(section.name + "/Brain/compatibilityMode", "invalid_brain_mode");
+            }
+        }
+    }
     const auto version = number(find("Objectives Version", "Version"));
     if (!typed("Objectives Version", "Version", 0) || !version || (*version != 2 && *version != 3)) return reject("Objectives Version/Version", "unsupported_or_missing_version");
     const std::array<std::string_view, 24> conditions = {"DestroyAllEnemyUnits", "DestroyNumberOfEnemyUnits", "DestroyEnemyUnitGroup", "DestroySpecificEnemyUnit", "DestroySpecificStructure",
@@ -233,6 +305,7 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             Entity entity{EntityId{entities_.size() + 1}, {}, {}, i, u32(placements, p), {}, f32(placements, p + 16), std::bit_cast<std::int32_t>(u32(placements, p + 24))};
             for (std::size_t j = 0; j < 3; ++j) entity.position[j] = f32(placements, p + 4 + j * 4);
             if (!std::isfinite(entity.rotation) || !std::isfinite(entity.position[0]) || !std::isfinite(entity.position[1]) || !std::isfinite(entity.position[2])) return reject("Packet1", "nonfinite_placement");
+            if (entity.team < -1 || entity.team >= teamCount) return reject("Packet1/TeamID", "out_of_range");
             entities_.push_back(entity);
         }
     }
@@ -251,8 +324,7 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             team = std::get<std::int64_t>(value->value[0]);
             if (team < -1 || team >= teamCount) return reject(section + "/TeamID", "out_of_range");
         }
-        std::optional<NodeId> block;
-        for (const auto& s : syntax_.sections) if (s.name == section && !s.parent) block = s.id;
+        const std::optional<NodeId> block = sectionId(section);
         Entity entity{EntityId{entities_.size() + 1}, i, block, {}, static_cast<std::uint32_t>(*object),
             {*x, *y, number(find(section, "PositionZ")).value_or(0)}, number(find(section, "Rotation")).value_or(0),
             team};
@@ -269,8 +341,16 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                 *target = std::get<std::string>(value->value[0]);
             }
         }
-        const auto brain = sectionId("Warrior" + std::to_string(i));
-        if (brain.value) entity.brain = brain;
+        if (const auto* pilot = find(section, "Pilot")) {
+            const auto value = number(pilot);
+            if (!typed(section, "Pilot", 0) || !value || *value < 0 || *value > 65535) return reject(section + "/Pilot", "invalid_reference");
+            if (*value != 0) {
+                const auto warrior = sectionId("Warrior" + std::to_string(static_cast<std::uint32_t>(*value)));
+                if (!warrior.value) return reject(section + "/Pilot", "missing_warrior");
+                entity.warrior = warrior;
+                if (const auto* brain = childSection(warrior, "Brain")) entity.brain = brain->id;
+            }
+        }
         entities_.push_back(std::move(entity));
     }
     return {};
@@ -291,8 +371,7 @@ std::string MissionDocument::fitBytes() const
 }
 bool MissionDocument::modified() const
 {
-    for (std::size_t i = 0; i < syntax_.fields.size(); ++i) if (syntax_.fields[i].value != savepoint_[i]) return true;
-    return false;
+    return placements_ != savedPlacements_ || fitBytes() != savedFit_;
 }
 
 std::expected<void, LoadError> MissionDocument::assign(NodeId id, Value value)
@@ -305,10 +384,10 @@ std::expected<void, LoadError> MissionDocument::assign(NodeId id, Value value)
             return std::unexpected(LoadError{target->name, "invalid_text", 0});
         if (auto* n = std::get_if<double>(&value[i]); n && !std::isfinite(*n)) return std::unexpected(LoadError{target->name, "nonfinite_value", 0});
     }
-    // The first shell slice exposes authored text only; numeric schema edits arrive with their tools.
+    // Generic field assignment is limited to metadata; entity edits use validated structural commands.
     if (target->prefix != "st" || (target != find("MissionSettings", "MissionName") && target != find("MissionSettings", "Author")))
         return std::unexpected(LoadError{target->name, "unsupported_edit", 0});
-    syntax_.fields[static_cast<std::size_t>(id.value - 1)].value = std::move(value);
+    for (auto& field : syntax_.fields) if (field.id == id) { field.value = std::move(value); break; }
     ++revision_;
     return {};
 }
@@ -316,7 +395,7 @@ std::expected<void, LoadError> MissionDocument::assign(NodeId id, Value value)
 std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path& stem, const Diagnostic& log)
 {
     const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
-        LoadError error{"save", std::move(reason), 0}; diagnostic(log, mission_, error); return std::unexpected(error);
+        LoadError error{"save", std::move(reason), 0}; diagnostic(log, pathText(stem), error); return std::unexpected(error);
     };
     auto fit = stem; fit.replace_extension(".fit");
     auto pak = stem; pak.replace_extension(".pak");
@@ -338,13 +417,13 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (ec) return reject("staging_directory_failed");
     const auto recovery = recoveryState(fit);
     if (!recovery) return reject(recovery.error().reason);
-    const std::string pending = "pending\nFIT=" + fit.string() + "\nPAK=" + pak.string() + "\nFIT_previous=" + fitBackup.string() + "\nPAK_previous=" + pakBackup.string() + "\n";
+    const std::string pending = "pending\nFIT=" + pathText(fit) + "\nPAK=" + pathText(pak) + "\nFIT_previous=" + pathText(fitBackup) + "\nPAK_previous=" + pathText(pakBackup) + "\n";
     // A single exclusive journal reserves this destination against another publisher.
     if (!writeBytes(journal, std::as_bytes(std::span(pending)), true)) return reject("journal_write_failed");
     const auto output = fitBytes();
     if (!writeBytes(fitStage, std::as_bytes(std::span(output)), true) || !writeBytes(pakStage, pakBytes(), true)) return reject("staging_write_failed");
     auto verified = read(fitStage, pakStage, {});
-    if (!verified || verified->fitBytes() != output || verified->pak_.originalBytes != pak_.originalBytes) return reject("staging_verification_failed");
+    if (!verified || verified->fitBytes() != output || !std::ranges::equal(verified->pakBytes(), pakBytes())) return reject("staging_verification_failed");
     bool oldFit{}, oldPak{}, newFit{}, newPak{};
     auto rollback = [&] {
         bool ok = true;
@@ -374,7 +453,9 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (!writeBytes(journal, std::as_bytes(std::span(committed)))) return reject(rollback() ? "journal_commit_failed" : "rollback_failed");
     std::filesystem::rename(journal, completedJournal, ec);
     if (ec) return reject(rollback() ? "journal_archive_failed" : "rollback_failed");
-    for (std::size_t i = 0; i < syntax_.fields.size(); ++i) savepoint_[i] = syntax_.fields[i].value;
+    savedFit_ = output;
+    savedPlacements_ = placements_;
+    mission_ = pathText(fit);
     return {};
 }
 }
