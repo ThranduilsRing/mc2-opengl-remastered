@@ -231,13 +231,14 @@ bool tagEnabled(const char* tag) {
     return s.enabledTags.count(tag) > 0;
 }
 
-bool tagRequested(const char* tag) {
-    if (!tag) return false;
+bool tagRequested(std::string_view tag) {
     // Read from the environment, not from the open file: the shutdown trace runs after shutdown() closed the JSONL file.
     std::unordered_set<std::string> tags;
     bool disabled = false;
     if (parseTagsEnv(tags, disabled)) return true;
-    return !disabled && tags.count(tag) > 0;
+    if (disabled) return false;
+    for (const auto& t : tags) if (t == tag) return true;
+    return false;
 }
 
 bool writeEvent(const char* tag, int version, uint64_t frame, const char* dataJson) {
