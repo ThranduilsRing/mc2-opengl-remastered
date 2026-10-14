@@ -640,8 +640,8 @@ def grade_code(fix, inst) -> dict:
     dirty = bool(fp.get("dirty"))
     if sha:
         for ev in fix.get("code_evidence") or []:
-            body = show(sha, ev["path"])
-            st = NO if body is None else (YES if ev["needle"] in body else NO)
+            paths = [ev["path"], *ev.get("alternate_paths", [])]
+            st = YES if any(ev["needle"] in (show(sha, p) or "") for p in paths) else NO
             tiers["source@sha"] = st if tiers.get("source@sha") != NO else NO
         anc = is_ancestor(fix["commit"], sha)
         tiers["ancestry"] = UNK if anc is None else (YES if anc else NO)
