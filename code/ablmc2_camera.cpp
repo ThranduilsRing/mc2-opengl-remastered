@@ -16,6 +16,10 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 	// Candidates in scan order, keyed by threat rating. The list is sorted in full; equal ratings keep scan order (mc2::sort_scored), so the first mover
 	// of an equal group is the first one the walk found.
 	mc2::Scored candidates[MAX_MOVERS];
+	if (!moverList) {
+		MC2_LOG_ONCE(Sim, Warn, "getMoversWithinRadius: no output list, nothing is searched");
+		return(0);
+	}
 
 	TeamPtr team = nullptr;
 	if (teamID > -1)

@@ -6,6 +6,7 @@
 #include "score_sort.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <span>
 
@@ -1167,6 +1168,11 @@ void Mover::deductWeaponShot (long weaponIndex, long ammoAmount) {
 		reduceAmmo(MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoMasterId(), ammoAmount);
 }
 
+// The caller's value list holds whole numbers. A NaN or infinite score has no whole-number value (the plain cast is undefined), so it reads as 0.
+static long scoreToValue (float score) {
+	return std::isfinite(score) ? static_cast<long>(score) : 0L;
+}
+
 long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long sortType, bool skillCheck) {
 
 	GameObjectPtr target = pilot->getCurrentTarget();
@@ -1181,7 +1187,9 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 	mc2::Scored scored[MAX_WEAPONS_PER_MOVER];
 	const long requested = (listSize == -1) ? static_cast<long>(numWeapons) : listSize;
 	const long count = std::clamp<long>(requested, 0, MAX_WEAPONS_PER_MOVER);
-	if (count < requested)
+	if (requested < 0)
+		MC2_LOG_ONCE(Sim, Warn, "sortWeapons: negative weapon count {}, nothing is sorted", requested);
+	else if (count < requested)
 		MC2_LOG_ONCE(Sim, Warn, "sortWeapons: {} weapons requested, only the first {} are sorted", requested, MAX_WEAPONS_PER_MOVER);
 	if (listSize == -1) {
 		for (long item = numOther; item < (numOther + count); item++) {
@@ -1197,7 +1205,7 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 		mc2::sort_scored(std::span<mc2::Scored>(scored, count), mc2::SortOrder::Descending);
 		for (int item = 0; item < count; item++) {
 			weaponList[item] = scored[item].id;
-			valueList[item] = static_cast<long>(scored[item].score);
+			valueList[item] = scoreToValue(scored[item].score);
 		}
 		}
 	else {
@@ -1219,7 +1227,7 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 		mc2::sort_scored(std::span<mc2::Scored>(scored, count), mc2::SortOrder::Descending);
 		for (int item = 0; item < count; item++) {
 			weaponList[item] = scored[item].id;
-			valueList[item] = static_cast<long>(scored[item].score);
+			valueList[item] = scoreToValue(scored[item].score);
 		}
 	}
 

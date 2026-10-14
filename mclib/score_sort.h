@@ -19,7 +19,8 @@
 //
 // The rule, in order of precedence: (1) a NaN score sorts after every number in BOTH directions; (2) the score in the requested direction;
 // (3) equal scores (-0 equals +0, an infinity equals itself) keep the order in which the items were filled. Only the items of the span are
-// ordered: there are no padding slots and the span length carries no meaning.
+// ordered: there are no padding slots and the span length carries no meaning. The sort works in place on the caller's span and allocates nothing,
+// so a hot-path caller sizes a local buffer to its domain bound and pays no heap cost.
 namespace mc2
 {
 

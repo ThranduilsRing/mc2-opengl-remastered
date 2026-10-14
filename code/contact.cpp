@@ -942,6 +942,8 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 	}
 
 	// Distance is nearest first, value strongest first; equal keys keep scan order. All valid contacts are sorted: the team list never holds more than the buffer.
+	if (!contactList)
+		MC2_LOG_ONCE(Sim, Warn, "getContacts: no output list, {} valid contacts counted but none returned", numValidContacts);
 	if (contactList) {
 		if ((numValidContacts > 0) && (sortType != CONTACT_SORT_NONE))
 			mc2::sort_scored(std::span<mc2::Scored>(scored, numValidContacts),

@@ -143,3 +143,14 @@ TEST_CASE("SS7 random lists with many ties equal a stable sort on the same key")
 }
 
 } // TEST_SUITE
+
+TEST_CASE("SS8 a list longer than 200 sorts in full: the best item at index 250 comes first")
+{
+	// The old 200-slot list ignored everything past slot 200; the whole-list rule must not.
+	std::vector<float> scores(255, 1.0f);
+	scores[250] = 7.0f;
+	scores[3] = 5.0f;
+	const std::string got = order(scores, mc2::SortOrder::Descending);
+	CHECK(got.rfind("250,3,0,1,2,4,", 0) == 0);
+	CHECK(order(scores, mc2::SortOrder::Ascending).rfind("0,1,2,4,5,", 0) == 0);
+}
