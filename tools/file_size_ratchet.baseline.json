@@ -31,7 +31,7 @@
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
-  "code/mechlopedia.cpp": 1648,
+  "code/mechlopedia.cpp": 1626,
   "code/missionbegin.cpp": 2163,
   "code/mover.h": 1909,
   "code/mpparameterscreen.cpp": 2415,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "dfdce9289",
+ "head": "3de2eb7e0",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 601,
+   "files": 602,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1859,
+  "files": 1860,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3753
