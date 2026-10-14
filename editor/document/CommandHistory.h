@@ -17,8 +17,8 @@ using DocumentCommand = std::variant<SetTextCommand, StructuralCommand>;
 
 class CommandHistory {
 public:
-    explicit CommandHistory(MissionDocument& document, std::size_t budget = 32 * 1024 * 1024)
-        : document_(document), budget_(budget) {}
+    explicit CommandHistory(MissionDocument& document, std::size_t budget = 32 * 1024 * 1024, Diagnostic log = {})
+        : document_(document), budget_(budget), log_(std::move(log)) {}
     CommandHistory(const CommandHistory&) = delete;
     CommandHistory& operator=(const CommandHistory&) = delete;
     std::expected<void, LoadError> setText(NodeId field, std::string text, std::string label);
@@ -43,6 +43,7 @@ private:
     MissionDocument& document_;
     std::deque<DocumentCommand> commands_;
     std::size_t cursor_{}, used_{}, evicted_{}, budget_;
+    Diagnostic log_;
     std::expected<void, LoadError> commit(DocumentCommand command);
     std::expected<void, LoadError> apply(const DocumentCommand& command, bool forward);
     std::expected<void, LoadError> setScalar(NodeId section, std::string_view key,

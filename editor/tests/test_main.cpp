@@ -23,10 +23,17 @@ int run(int argc, char** argv)
         const std::string_view argument(argv[i]);
         std::filesystem::path* destination{};
         std::string_view option;
-        for (const auto name : {std::string_view("--stock-dir"), std::string_view("--byte-grade-dir")}) {
+        for (const auto name : {std::string_view("--stock-dir"), std::string_view("--byte-grade-dir"),
+            std::string_view("--placement-base"), std::string_view("--placement-mods"),
+            std::string_view("--placement-goldens"), std::string_view("--placement-output")}) {
             if (argument == name || argument.starts_with(std::string(name) + '=')) {
                 option = name;
-                destination = name == "--stock-dir" ? &fixtures.stockDirectory : &fixtures.byteGradeDirectory;
+                if (name == "--stock-dir") destination = &fixtures.stockDirectory;
+                else if (name == "--byte-grade-dir") destination = &fixtures.byteGradeDirectory;
+                else if (name == "--placement-base") destination = &fixtures.placementBase;
+                else if (name == "--placement-mods") destination = &fixtures.placementMods;
+                else if (name == "--placement-goldens") destination = &fixtures.placementGoldens;
+                else destination = &fixtures.placementOutput;
                 break;
             }
         }
@@ -63,6 +70,10 @@ int run(int argc, char** argv)
     }
 
     doctest::Context context(static_cast<int>(arguments.size()), arguments.data());
+    if (fixtures.placementBase.empty()) context.addFilter("test-suite-exclude", "placement-live");
+    else if (fixtures.placementMods.empty() || fixtures.placementGoldens.empty() || fixtures.placementOutput.empty()) {
+        std::cerr << "Placement proof requires --placement-base/mods/goldens/output\n"; return 2;
+    }
     if (!haveStock) {
         std::cout << "SKIPPED stock-fixture tests: --stock-dir was not supplied or is not an accessible directory\n";
         context.addFilter("test-suite-exclude", "stock-fixture");

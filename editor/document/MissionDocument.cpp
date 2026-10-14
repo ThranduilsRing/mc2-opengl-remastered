@@ -144,6 +144,22 @@ const Entity* MissionDocument::entity(EntityId id) const
     for (const auto& value : entities_) if (value.id == id) return &value;
     return nullptr;
 }
+bool MissionDocument::hasMarkerReference(EntityId id) const
+{
+    const auto* selected = entity(id);
+    if (!selected || !selected->packetRecord) return false;
+    // FIT marker references have only XY identity. Ambiguous coincident packets stay protected.
+    for (const auto& section : syntax_.sections) {
+        const auto name = identifier(section.name);
+        if (section.parent || !name.starts_with("navmarker")) continue;
+        const auto suffix = std::string_view(name).substr(9);
+        if (suffix.empty() || !std::ranges::all_of(suffix, [](char c) { return c >= '0' && c <= '9'; })) continue;
+        const auto x = number(find(section.id, "xPos")), y = number(find(section.id, "yPos"));
+        if (x && y && std::abs(selected->position[0] - *x) < 1.0 &&
+            std::abs(selected->position[1] - *y) < 1.0) return true;
+    }
+    return false;
+}
 void MissionDocument::rebuildIndex()
 {
     fieldIndex_.clear();

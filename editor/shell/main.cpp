@@ -26,6 +26,8 @@ using namespace editor::document;
 
 struct Options {
     std::filesystem::path mission, output, log, recent;
+    ResolverConfig resolver{std::filesystem::current_path()};
+    bool resolverRequested{};
 #ifdef MC2_EDITOR_SMOKE_HOST
     bool smoke{};
     std::string panelSmoke;
@@ -47,6 +49,9 @@ Options options(int argc, char** argv)
         else if (i + 1 < argc && key == "--output") result.output = argv[++i];
         else if (i + 1 < argc && key == "--log") result.log = argv[++i];
         else if (i + 1 < argc && key == "--recent-file") result.recent = argv[++i];
+        else if (i + 1 < argc && key == "--base") { result.resolver.base = argv[++i]; result.resolverRequested = true; }
+        else if (i + 1 < argc && key == "--mods") { result.resolver.mods = argv[++i]; result.resolverRequested = true; }
+        else if (i + 1 < argc && key == "--mod") { result.resolver.activeMod = argv[++i]; result.resolverRequested = true; }
         else throw std::runtime_error("invalid_shell_argument");
     }
     if (result.mission.empty()) throw std::runtime_error("mission_required");
@@ -74,8 +79,22 @@ public:
         auto loaded = MissionDocument::read(fit, pak, logger());
         if (!loaded) return 2;
         document_ = std::move(*loaded);
-        history_ = std::make_unique<CommandHistory>(*document_);
+        history_ = std::make_unique<CommandHistory>(*document_, 32 * 1024 * 1024, logger());
         panels_ = std::make_unique<editor::shell::EntityPanels>(*document_, *history_);
+        bool fixtures{};
+#ifdef MC2_EDITOR_SMOKE_HOST
+        fixtures = !options_.panelSmoke.empty() || !options_.fileSmoke.empty();
+#endif
+        if (!fixtures && (options_.resolverRequested || std::filesystem::exists(options_.resolver.base / "system.cfg"))) {
+            auto resolver = FileResolver::mount(options_.resolver);
+            if (!resolver) return error(resolver.error().reason.c_str());
+            resolver_ = std::move(*resolver);
+            catalog_ = ObjectCatalog::load(*resolver_, logger(), resourceNames(*resolver_, logger()));
+            auto policy = PlacementPolicy::load(*resolver_, logger());
+            if (!policy) return error(policy.error().reason.c_str());
+            policy_ = std::move(*policy);
+            panels_->placementPolicy(*catalog_, *policy_, logger());
+        }
         files_ = std::make_unique<editor::shell::FileWorkflow>(*document_, *history_, *panels_,
             options_.output.empty() ? options_.mission : options_.output, logger(), [this] {
             if (const auto* title = document_->find("MissionSettings", "MissionName")) titleId_ = title->id;
@@ -240,6 +259,9 @@ private:
     Options options_;
     std::ofstream logFile_;
     std::optional<MissionDocument> document_;
+    std::optional<FileResolver> resolver_;
+    std::optional<ObjectCatalog> catalog_;
+    std::optional<PlacementPolicy> policy_;
     std::unique_ptr<CommandHistory> history_;
     std::unique_ptr<editor::shell::EntityPanels> panels_;
     std::unique_ptr<editor::shell::FileWorkflow> files_;

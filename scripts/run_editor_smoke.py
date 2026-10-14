@@ -53,6 +53,7 @@ import struct
 import sys
 import time
 import zlib
+from collections import Counter
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -557,6 +558,58 @@ def write_roundtrip_ledger(path: Path, results: list, groups: dict, evidence: Pa
                          f"{', '.join(delta.get('remaining', []) + delta.get('introduced', [])) or '-'} |")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(("\n".join(lines) + "\n" + notes).encode("utf-8"))
+
+
+def marker_reload_provenance(exe):
+    if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
+        raise ValueError("owned marker reload is restricted to lane3")
+    fingerprint = exe_fingerprint.extract(exe)
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
+        timeout=10, **child_kwargs(redirected=True)).strip()
+    if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12] or fingerprint.get("dirty"):
+        raise ValueError("legacy editor requires a clean build fingerprint matching worktree HEAD")
+    return dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
+
+
+def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout):
+    """The legacy reader must accept the owned writer's identified marker placement."""
+    from editor.tests.legacy_reference import FROZEN, buildings, marker_values, verify_frozen
+    verify_frozen()
+    before_fit = source.with_suffix(".fit").read_bytes()
+    before_pak = source.with_suffix(".pak").read_bytes()
+    before_fields = fit_fields(before_fit)
+    baseline = fit_fields((FROZEN / "e5_reference_before.fit").read_bytes())
+    source_markers, baseline_markers = marker_values(before_fields), marker_values(baseline)
+    source_records = Counter(buildings(before_pak))
+    baseline_records = Counter(buildings((FROZEN / "e5_reference_before.pak").read_bytes()))
+    added, records = source_markers - baseline_markers, source_records - baseline_records
+    if sum(added.values()) != 1 or sum(records.values()) != 1 or baseline_markers - source_markers or baseline_records - source_records:
+        raise ValueError("owned marker control requires one inserted FIT and packet record")
+    record = next(iter(records))
+    object_id, x, y = struct.unpack_from("<Iff", record)
+    values = dict(next(iter(added)))
+    if object_id != 290 or values.get("xPos") != (("f", (x,)),) or values.get("yPos") != (("f", (y,)),):
+        raise ValueError("owned marker control FIT and packet identities differ")
+    directory = deploy / "terrain_gen_out/owned_marker_reload"
+    directory.mkdir(parents=True, exist_ok=True)
+    for extension, data in (("fit", before_fit), ("pak", before_pak)):
+        (directory / f"input.{extension}").write_bytes(data)
+        (report / f"input.{extension}").write_bytes(data)
+    row = run_case_with_retry("owned_marker_reload", exe, deploy, exit_sec, timeout,
+        ["-mission=terrain_gen_out/owned_marker_reload/input.pak", "-smoke-save=terrain_gen_out/owned_marker_reload/reloaded.pak"], "saved")
+    row["input_sha256"] = {"fit": hashlib.sha256(before_fit).hexdigest(), "pak": hashlib.sha256(before_pak).hexdigest()}
+    if row["passed"]:
+        try:
+            after_fit = (directory / "reloaded.fit").read_bytes()
+            after_pak = (directory / "reloaded.pak").read_bytes()
+            if marker_values(fit_fields(after_fit)) != marker_values(before_fields) or Counter(buildings(after_pak)) != Counter(buildings(before_pak)):
+                raise ValueError("legacy reload changed marker FIT values or packet placements")
+            for extension, data in (("fit", after_fit), ("pak", after_pak)):
+                (report / f"reloaded.{extension}").write_bytes(data)
+            row["detail"] = "Owned Nav1 save accepted by legacy loader; re-saved marker FIT and packet placements equal."
+        except (OSError, ValueError, KeyError, struct.error) as error:
+            row.update(passed=False, bucket="owned_marker_reload_changed", detail=str(error))
+    return row
 
 
 def _gen_foliage_json(deploy: Path, instances: bool) -> bool:
@@ -1134,6 +1187,8 @@ def main() -> int:
     ap.add_argument("--catalog-mods", type=Path, default=Path("A:/Games/mc2-opengl"))
     ap.add_argument("--catalog-mod", default="MC2X-CVE-G")
     ap.add_argument("--freeze-legacy-reference", type=Path, help="new immutable directory for legacy_catalog_reference outputs")
+    ap.add_argument("--compare-legacy-reference", type=Path, help="compare complete placement values with an existing frozen corpus")
+    ap.add_argument("--owned-marker-placement", type=Path, help="owned marker save stem for the explicit owned_marker_reload case")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -1150,6 +1205,18 @@ def main() -> int:
     ap.add_argument("--no-minimized", dest="minimized", action="store_false",
                     help="launch the editor with a normal visible window")
     args = ap.parse_args()
+    if args.case and "owned_marker_reload" in args.case and not args.owned_marker_placement:
+        ap.error("owned_marker_reload requires --owned-marker-placement from run_document_proofs.py")
+    if args.freeze_legacy_reference and args.freeze_legacy_reference.exists():
+        ap.error("freeze directory already exists; frozen placement references are immutable")
+    if args.freeze_legacy_reference and args.compare_legacy_reference:
+        ap.error("freeze and acceptance comparison are separate commands")
+    if args.compare_legacy_reference:
+        from editor.tests.legacy_reference import verify_frozen
+        try:
+            verify_frozen(args.compare_legacy_reference)
+        except (OSError, ValueError, KeyError) as error:
+            ap.error(str(error))
 
     global MINIMIZED
     MINIMIZED = args.minimized
@@ -1179,7 +1246,7 @@ def main() -> int:
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
-        if c not in ALL and c not in single_stock:
+        if c not in ALL and c not in single_stock and c != "owned_marker_reload":
             print(f"ERROR: unknown case '{c}'. Valid: {', '.join(ALL)}")
             return 2
 
@@ -1224,6 +1291,17 @@ def main() -> int:
 
     results = []
     for c in selected:
+        if c == "owned_marker_reload":
+            control = rptdir / c
+            control.mkdir()
+            try:
+                provenance = marker_reload_provenance(exe)
+                row = run_owned_marker_reload(exe, deploy, args.owned_marker_placement, control, args.exit_sec, args.timeout)
+                row["provenance"] = provenance
+            except (OSError, ValueError, KeyError, struct.error) as error:
+                row = dict(name=c, passed=False, bucket="owned_marker_control_invalid", detail=str(error), esmoke={})
+            results.append(row)
+            continue
         if c in PANEL_OPERATIONS or c in FILE_CASES:
             results.append(run_panel(c, (args.shell_exe or deploy / "Mission Editor Smoke.exe").resolve(),
                                      stock, (rptdir / c).resolve(), args.timeout))
@@ -1266,12 +1344,13 @@ def main() -> int:
                     row["input_sha256"] = hashlib.sha256(original).hexdigest()
                 results.append(row)
         elif c == "legacy_catalog_reference":
-            from editor.tests.legacy_reference import grade, retain
+            from editor.tests.legacy_reference import grade, retain, compare_frozen
             row = run_case_with_retry(c, exe, deploy, args.exit_sec, args.timeout,
                                       ["-mission=data/missions/mc2_01.pak", "-smoke-catalog-reference"], None)
             if row["passed"]:
                 try:
-                    reference = grade(deploy / "terrain_gen_out", row["captured"])
+                    reference = (compare_frozen(deploy / "terrain_gen_out", row["captured"], args.compare_legacy_reference)
+                                 if args.compare_legacy_reference else grade(deploy / "terrain_gen_out", row["captured"]))
                     destination = args.freeze_legacy_reference or rptdir / "legacy-reference"
                     retain(deploy / "terrain_gen_out", destination, reference)
                     row["detail"] = f"9/9 identified placements changed output, undo/redo/save/reopen; retained {destination}"

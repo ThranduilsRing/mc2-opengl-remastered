@@ -1,6 +1,7 @@
 #include "EntityPanels.h"
 #include <misc/cpp/imgui_stdlib.h>
 #include <format>
+#include <algorithm>
 
 namespace editor::shell {
 using namespace document;
@@ -127,6 +128,28 @@ void EntityPanels::transform(const char* key, Transform& value)
     ImGui::InputDouble("Z", &value.position[2]);
     ImGui::InputDouble("Rotation", &value.rotation);
 }
+std::expected<EntityId, LoadError> EntityPanels::place(bool building)
+{
+    if (!policy_) return building ? history_.insertBuilding(buildingDraft_) : history_.insertUnit(unitDraft_);
+    const auto reject = [&](std::string reason) {
+        if (placementLog_) placementLog_("[EDITOR_PLACEMENT_REJECT v1] reason=" + reason);
+        return std::unexpected(LoadError{"placement", std::move(reason), 0});
+    };
+    const auto found = std::ranges::find_if(catalog_->entries(), [&](const auto& entry) {
+        const bool unit = entry.family == ObjectFamily::mech || entry.family == ObjectFamily::vehicle;
+        return unit != building && entry.id == (building ? buildingDraft_.objectNumber : unitDraft_.objectNumber) &&
+            (building || identifier(entry.stem) == identifier(unitDraft_.csvFile));
+    });
+    if (found == catalog_->entries().end()) return reject("catalog_identity_missing");
+    const auto* mapped = document_.find("Player" + std::to_string(placementPlayer_), "DefaultTeam");
+    if (!mapped || mapped->value.size() != 1 || !std::holds_alternative<std::int64_t>(mapped->value[0]))
+        return reject("player_mapping_missing");
+    PlacementChoice choice{placementPlayer_, static_cast<std::int32_t>(std::get<std::int64_t>(mapped->value[0])),
+        building ? buildingDraft_.transform : unitDraft_.transform, building ? 0 : unitDraft_.variant};
+    auto plan = policy_->make(document_, *found, choice, placementLog_);
+    if (!plan) return std::unexpected(plan.error());
+    return plan->insert(history_);
+}
 void EntityPanels::draw()
 {
     refresh();
@@ -143,18 +166,22 @@ void EntityPanels::draw()
     ImGui::SameLine(); ImGui::TextUnformatted(status_.c_str());
     refresh();
     ImGui::Columns(3, "panels", true);
+    if (policy_) ImGui::InputInt("Placement player (0..7)", &placementPlayer_);
     ImGui::PushID("unit"); ImGui::TextUnformatted("Unit"); selector(false); refresh();
-    ImGui::TextUnformatted("Placement defaults (copied from selection)");
+    ImGui::TextUnformatted(policy_ ? "Catalog placement uses the selected player defaults" : "Placement defaults (copied from selection)");
     ImGui::InputScalar("Object number", ImGuiDataType_U32, &unitDraft_.objectNumber);
+    ImGui::BeginDisabled(policy_ != nullptr);
     ImGui::InputText("Object profile", &unitDraft_.objectProfile);
-    ImGui::InputText("CSV file", &unitDraft_.csvFile);
     ImGui::InputText("Pilot profile", &unitDraft_.warriorProfile);
+    ImGui::EndDisabled();
+    ImGui::InputText("CSV file", &unitDraft_.csvFile);
+    if (policy_) ImGui::InputScalar("Variant", ImGuiDataType_U32, &unitDraft_.variant);
     transform("unit.transform", unitDraft_.transform); team("unit.team", unitTeam_, true);
     if (button("unit.transform.apply", "Apply transform")) report(history_.transform(unit_, unitDraft_.transform));
     ImGui::SameLine(); if (button("unit.team.apply", "Apply team")) report(history_.setTeam(unit_, unitTeam_));
     if (button("unit.place", "Place unit")) {
         unitDraft_.team = unitTeam_; unitDraft_.legacyBrain = module_;
-        auto result = history_.insertUnit(unitDraft_);
+        auto result = place(false);
         if (result) { unit_ = *result; status_ = "Unit placed"; } else status_ = result.error().reason;
     }
     ImGui::SameLine(); if (button("unit.delete", "Delete unit")) report(history_.erase(unit_));
@@ -182,14 +209,20 @@ void EntityPanels::draw()
     ImGui::TextUnformatted("Placement defaults (copied from selection)");
     ImGui::InputScalar("Object number", ImGuiDataType_U32, &buildingDraft_.objectNumber);
     transform("building.transform", buildingDraft_.transform); team("building.team", buildingTeam_, true);
+    const bool marker = document_.hasMarkerReference(building_);
+    ImGui::BeginDisabled(marker);
     if (button("building.transform.apply", "Apply transform")) report(history_.transform(building_, buildingDraft_.transform));
+    ImGui::EndDisabled();
     ImGui::SameLine(); if (button("building.team.apply", "Apply team")) report(history_.setTeam(building_, buildingTeam_));
     if (button("building.place", "Place building")) {
         buildingDraft_.team = buildingTeam_;
-        auto result = history_.insertBuilding(buildingDraft_);
+        auto result = place(true);
         if (result) { building_ = *result; status_ = "Building placed"; } else status_ = result.error().reason;
     }
-    ImGui::SameLine(); if (button("building.delete", "Delete building")) report(history_.erase(building_));
+    ImGui::SameLine(); ImGui::BeginDisabled(marker);
+    if (button("building.delete", "Delete building")) report(history_.erase(building_));
+    ImGui::EndDisabled();
+    if (marker) ImGui::TextWrapped("Marker transform and delete are unavailable.");
     ImGui::PopID(); ImGui::NextColumn();
     ImGui::PushID("player"); ImGui::TextUnformatted("Player");
     const auto* p = document_.section(player_);

@@ -1,5 +1,6 @@
 #pragma once
 #include "CommandHistory.h"
+#include "PlacementPolicy.h"
 #include <imgui.h>
 #include <map>
 
@@ -18,6 +19,10 @@ public:
         : document_(document), history_(history) {}
     void draw();
     void refresh();
+    void placementPolicy(const document::ObjectCatalog& catalog, const document::PlacementPolicy& policy,
+        document::Diagnostic log = {}) {
+        catalog_ = &catalog; policy_ = &policy; placementLog_ = std::move(log);
+    }
     void resetDocument() {
         unit_ = {}; building_ = {}; player_ = {}; unitDraft_ = {}; buildingDraft_ = {};
         module_.clear(); status_.clear(); revision_ = ~std::uint64_t{};
@@ -42,6 +47,10 @@ private:
     document::NodeId player_;
     document::UnitPlacement unitDraft_;
     document::BuildingPlacement buildingDraft_;
+    const document::ObjectCatalog* catalog_{};
+    const document::PlacementPolicy* policy_{};
+    document::Diagnostic placementLog_;
+    int placementPlayer_{};
     std::string module_, status_;
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};
     std::uint64_t revision_ = ~std::uint64_t{};
@@ -56,5 +65,6 @@ private:
     void team(const char* key, int& value, bool neutral);
     void transform(const char* key, document::Transform& value);
     void report(std::expected<void, document::LoadError> result);
+    std::expected<document::EntityId, document::LoadError> place(bool building);
 };
 }

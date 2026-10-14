@@ -101,12 +101,23 @@ struct UnitPlacement {
     std::int32_t commander{};
     bool playerPart{};
     std::string objectProfile, csvFile, warriorProfile, legacyBrain;
+    std::uint32_t variant{}, baseColor = 0x00ffffff, highlightColor1 = 0x00c0c0c0,
+        highlightColor2 = 0x00808080;
+    std::int32_t damage{};
+    bool selfRepair = true;
+    bool writeElevation = true;
+    std::optional<std::uint32_t> squad;
+    struct Cell { std::int32_t number{}, type{}; double value{}; };
+    std::vector<Cell> cells;
+    std::int32_t staticVars{};
 };
 struct BuildingPlacement {
     std::uint32_t objectNumber{};
     Transform transform;
     std::int32_t team{}, damage{};
-    std::uint32_t parentCell = 0xffffffffU, forest{}, scale{};
+    std::uint32_t parentCell = 0xffffffffU;
+    std::int32_t forestInstance = -1, scale{};
+    std::optional<double> markerRadius;
 };
 enum class ConditionSpecies : std::uint8_t {
     destroyAll, destroyNumber, destroyGroup, destroyUnit, destroyStructure,
@@ -164,6 +175,7 @@ public:
     const Field* find(NodeId section, std::string_view name) const;
     const Field* find(std::string_view section, std::string_view name) const;
     const Entity* entity(EntityId id) const;
+    bool hasMarkerReference(EntityId id) const;
     std::string fitBytes() const;
     std::span<const std::byte> pakBytes() const { return encodedPak_.empty() ? pak_.originalBytes : encodedPak_; }
     bool modified() const;

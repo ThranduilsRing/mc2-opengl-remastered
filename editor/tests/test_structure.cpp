@@ -217,7 +217,7 @@ TEST_CASE("document/saved brain switches are consumed by the game parser")
 {
     for (const auto* nl : {"\n", "\r\n"}) {
         for (const auto* mode : {"Legacy", "Hybrid", "Enhanced"}) {
-            CAPTURE(nl, mode);
+            CAPTURE(nl); CAPTURE(mode);
             auto input = fit();
             const auto begin = input.find("Brain {", input.find("[Warrior2]"));
             const auto end = input.find("[Warrior2Cell0]");
@@ -434,7 +434,7 @@ TEST_CASE("document/malformed commander groups reject deletion atomically")
 TEST_CASE("document/building packet encoding transforms insert delete undo and redo")
 {
     for (bool checksum : {false, true}) for (bool compressPlacements : {false, true}) {
-        CAPTURE(checksum, compressPlacements);
+        CAPTURE(checksum); CAPTURE(compressPlacements);
         auto doc = document(checksum, compressPlacements); CommandHistory history(doc);
         const auto original = bytes(doc);
         const auto originalFit = doc.fitBytes();
@@ -456,7 +456,7 @@ TEST_CASE("document/building packet encoding transforms insert delete undo and r
         REQUIRE(history.undo()); CHECK(bytes(doc) == transformed); CHECK(doc.entity(two)->packetRecord == 1);
         REQUIRE(history.redo()); CHECK(bytes(doc) == deleted);
         BuildingPlacement building; building.objectNumber = 999; building.transform = {{8.5, 9, 10}, 270};
-        building.team = 3; building.damage = 1; building.parentCell = 0x12345678; building.forest = 7; building.scale = 12;
+        building.team = 3; building.damage = 1; building.parentCell = 0x12345678; building.forestInstance = 6; building.scale = 12;
         const auto inserted = history.insertBuilding(building); REQUIRE(inserted);
         CHECK(doc.entity(two)->packetRecord == 0); CHECK(doc.entity(*inserted)->packetRecord == 1);
         CHECK(doc.entity(*inserted)->position == building.transform.position); CHECK(doc.entity(*inserted)->team == 3);
