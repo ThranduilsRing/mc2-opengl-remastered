@@ -865,42 +865,18 @@ void Carnage::render (void)
 //---------------------------------------------------------------------------
 
 
-// G3-a observes submitted damage and lifecycle order; it owns no gameplay state.
+// Combat diagnostics retain object identity and event order without owning gameplay state.
 void Carnage::traceCombat(const char* event, const char* reason,
                               GameObjectPtr target, const WeaponShotInfo* shot)
 {
-    if (!combatTraceLive || !mc2_diag::tagEnabled("VFX_COMBAT"))
-        return;
-    char snapshot[256] = {};
-    if (std::strcmp(event, "birth") != 0) {
-        mc2::fmt::to_buf(snapshot, ",\"position_bits\":[{},{},{}]",
-            std::bit_cast<uint32_t>(position.x), std::bit_cast<uint32_t>(position.y),
-            std::bit_cast<uint32_t>(position.z));
-    }
-    char damage[512] = {};
-    if (target && shot) {
-        const auto targetPosition = target->getPosition();
-        mc2::fmt::to_buf(damage,
-            ",\"target\":{},\"target_wid\":{},\"damage_bits\":{},\"location\":{},"
-            "\"master\":{},\"attacker\":{},\"entry_bits\":{},\"target_position_bits\":[{},{},{}]",
-            target->getHandle(), target->getWatchID(false), std::bit_cast<uint32_t>(shot->damage),
-            shot->hitLocation, shot->masterId, shot->attackerWID, std::bit_cast<uint32_t>(shot->entryAngle),
-            std::bit_cast<uint32_t>(targetPosition.x), std::bit_cast<uint32_t>(targetPosition.y),
-            std::bit_cast<uint32_t>(targetPosition.z));
-    }
-    char data[2048];
-    mc2::fmt::to_buf(data,
-        "{{\"kind\":\"carnage\",\"slot\":{},\"generation\":{},\"seq\":{},\"tick\":{},"
-        "\"event\":\"{}\",\"reason\":\"{}\",\"effect_id\":{},\"type\":{}{}{}}}",
-        getHandle(), combatTraceGeneration, combatTraceSequence++, turn, event, reason,
-        combatTraceEffect, combatTraceType, snapshot, damage);
-    mc2_diag::writeEvent("VFX_COMBAT", 1, 0, data);
+    combatTrace.write("carnage", getHandle(), turn, event, reason, position,
+        [] { return static_cast<const Stuff::Vector3D*>(nullptr); }, target, shot);
 }
 
 void Carnage::traceCombatRetire(const char* reason)
 {
     traceCombat("retire", reason);
-    combatTraceLive = false;
+    combatTrace.live = false;
 }
 
 void Carnage::destroy (void) 
@@ -966,11 +942,7 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 
 		setFlag(OBJECT_FLAG_TANGIBLE, false);
 	}
-    combatTraceType = _type->whatAmI();
-    combatTraceEffect = effectId;
-    ++combatTraceGeneration;
-    combatTraceSequence = 0;
-    combatTraceLive = true;
+    combatTrace.begin(_type->whatAmI(), effectId);
     traceCombat("birth");
 }	
 
@@ -1007,7 +979,7 @@ void Carnage::Load (CarnageData *data)
 	info = data->info;
 
 	effectId = data->effectId;
-	combatTraceEffect = effectId;
+	combatTrace.effect = effectId;
 	traceCombat("restore");
 	if (!getExists()) traceCombatRetire("loaded_inactive");
 }

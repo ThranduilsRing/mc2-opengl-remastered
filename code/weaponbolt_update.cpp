@@ -470,19 +470,7 @@ long WeaponBolt::update (void)
 					}
 					else
 					{
-						if (MPlayer)
-						{
-							if (MPlayer->isServer())
-							{
-								traceCombat("damage", "server", target, &weaponShot);
-								target->handleWeaponHit(&weaponShot, true);
-							}
-						}
-						else
-						{
-							traceCombat("damage", "direct", target, &weaponShot);
-							target->handleWeaponHit(&weaponShot);
-						}
+						submitDamage(target);
 					}
 				}
 				else if (targetPosition)
@@ -739,19 +727,7 @@ long WeaponBolt::update (void)
 					}
 					else
 					{
-						if (MPlayer) 
-						{
-							if (MPlayer->isServer()) 
-							{
-								traceCombat("damage", "server", target, &weaponShot);
-								target->handleWeaponHit(&weaponShot, true);
-							}
-						}
-						else
-						{
-							traceCombat("damage", "direct", target, &weaponShot);
-							target->handleWeaponHit(&weaponShot);
-						}
+						submitDamage(target);
 					}
 				}
 				else if (targetPosition) 

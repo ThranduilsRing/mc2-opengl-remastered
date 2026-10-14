@@ -28,7 +28,7 @@ def _integer(value, minimum=0, maximum=None):
             and (maximum is None or value <= maximum))
 
 
-def read_trace(lines: Iterable[str]) -> list[dict]:
+def read_trace(lines: Iterable[str], *, exact_payload: bool = False) -> list[dict]:
     """Validate one engine session; ignore unrelated diagnostic events."""
     events = []
     session = None
@@ -96,8 +96,9 @@ def read_trace(lines: Iterable[str]) -> list[dict]:
                 or "target_position_bits" not in data
                 or not _integer(data.get("location"), -2147483648)):
             raise InvalidTrace(f"line {number}: incomplete damage submission")
-        if data["event"] != "deadline":
-            events.append({k: v for k, v in data.items() if k not in METADATA})
+        if exact_payload or data["event"] != "deadline":
+            events.append(dict(data) if exact_payload else
+                          {k: v for k, v in data.items() if k not in METADATA})
     if not events:
         raise InvalidTrace("no VFX_COMBAT events")
     return events
@@ -155,10 +156,14 @@ def main(argv=None) -> int:
     parser.add_argument("--require", action="append", default=[], metavar="KIND:EVENT[:REASON]",
                         help="additional nonzero path coverage required in BOTH traces")
     parser.add_argument("--expect", choices=("equal", "retire"), default="equal")
+    parser.add_argument("--exact-payload", action="store_true",
+                        help="also retain sequence and policy fields and deadline events")
     args = parser.parse_args(argv)
     try:
         with args.left.open(encoding="utf-8") as a, args.right.open(encoding="utf-8") as b:
-            result = compare(read_trace(a), read_trace(b), (*DEFAULT_COVERAGE, *args.require))
+            result = compare(read_trace(a, exact_payload=args.exact_payload),
+                             read_trace(b, exact_payload=args.exact_payload),
+                             (*DEFAULT_COVERAGE, *args.require))
     except (OSError, InvalidTrace) as exc:
         print(json.dumps({"status": "invalid_trace", "error": str(exc)}))
         return 2

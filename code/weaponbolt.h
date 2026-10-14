@@ -14,6 +14,7 @@
 //---------------------------------------------------------------------------
 // Include Files
 
+#include "combat_trace.h"
 #ifndef DWEAPONBOLT_H
 #include"dweaponbolt.h"
 #endif
@@ -425,14 +426,11 @@ class WeaponBolt : public GameObject
 		void finishNow (void);
 
         // Slot generations distinguish pool reuse without changing combat or save records.
-        uint64_t combatTraceGeneration = 0;
-        uint64_t combatTraceSequence = 0;
-        bool combatTraceLive = false;
-        long combatTraceType = -1;
-        long combatTraceEffect = -1;
+        mc2::CombatTrace combatTrace;
         void traceCombat(const char* event, const char* reason = "",
                          GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
         void traceCombatRetire(const char* reason);
+        void submitDamage(GameObjectPtr target);
 
 };
 

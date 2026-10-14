@@ -153,3 +153,43 @@ def test_cli_exit_codes_without_temp_files(monkeypatch, capsys):
     assert main(["a", "b", "--expect", "retire"]) == 0
     assert main(["a", "empty", "--expect", "retire"]) == 2
     assert '"invalid_trace"' in capsys.readouterr().out
+
+
+def test_exact_payload_keeps_sequence_and_deadline_events():
+    a = fixture()
+    b = copy.deepcopy(a)
+    deadline = copy.deepcopy(b[0])
+    deadline["data"].update(event="deadline", seq=1)
+    b.insert(2, deadline)
+    for row in b:
+        if row["data"]["slot"] == 3 and row["data"]["event"] not in {"birth", "deadline"}:
+            row["data"]["seq"] += 1
+    assert compare(read(a), read(b))["status"] == "equal"
+    exact = lambda rows: read_trace((json.dumps(row) for row in rows), exact_payload=True)
+    assert exact(b)[2]["seq"] == 1
+    assert compare(exact(a), exact(b))["status"] == "diverged"
+    assert compare(exact(a), exact(a))["status"] == "equal"
+
+
+def test_exact_payload_keeps_metadata_and_still_requires_coverage():
+    a = fixture()
+    b = copy.deepcopy(a)
+    b[2]["data"]["remaining_ticks"] = 33
+    exact = lambda rows: read_trace((json.dumps(row) for row in rows), exact_payload=True)
+    assert compare(read(a), read(b))["status"] == "equal"
+    assert compare(exact(a), exact(b))["status"] == "diverged"
+    assert compare(exact(a[:2]), exact(a[:2]))["status"] == "insufficient_coverage"
+
+
+def test_exact_payload_cli_rejects_metadata_drift(monkeypatch):
+    import io
+    from pathlib import Path
+    a = fixture()
+    b = copy.deepcopy(a)
+    b[2]["data"]["remaining_ticks"] = 33
+    payloads = {"a": a, "b": b}
+    monkeypatch.setattr(Path, "open", lambda path, **kw: io.StringIO(
+        "\n".join(json.dumps(row) for row in payloads[str(path)])))
+    assert main(["a", "b"]) == 0
+    assert main(["a", "a", "--exact-payload"]) == 0
+    assert main(["a", "b", "--exact-payload"]) == 1
