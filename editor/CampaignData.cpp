@@ -5,7 +5,7 @@
 #include "StdAfx.h"
 #include "CampaignData.h"
 
-#include "EString.h"
+#include "mc2fmt.h"
 
 #include "assert.h"
 
@@ -131,9 +131,9 @@ bool CGroupData::Save(FitIniFile &fitFile, const char *groupName) {
 	CMissionList::EIterator it;
 	int index;
 	for (it = m_MissionList.Begin(), index = 0; !it.IsDone(); it++, index+=1) {
-		EString blockName;
-		blockName.Format("%sMission%d", groupName, index);
-		fitFile.writeBlock(blockName.Data());
+		std::string blockName;
+		blockName = std::format("{}Mission{}", mc2::fmt::safe(groupName), index);
+		fitFile.writeBlock(blockName.c_str());
 		(*it).Save(fitFile);
 	}
 	return true;
@@ -154,9 +154,9 @@ bool CGroupData::Read(FitIniFile &fitFile, const char *groupName) {
 
 	int index;
 	for (index = 0; missionCount > index; index+=1) {
-		EString blockName;
-		blockName.Format("%sMission%d", groupName, index);
-		result = fitFile.seekBlock(blockName.Data());
+		std::string blockName;
+		blockName = std::format("{}Mission{}", mc2::fmt::safe(groupName), index);
+		result = fitFile.seekBlock(blockName.c_str());
 		if (NO_ERR != result) { assert(false); continue; }
 		CMissionData missionData;
 		bool bresult = missionData.Read(fitFile);
@@ -208,10 +208,10 @@ bool CCampaignData::Save(CString pathName) {
 	CGroupList::EIterator it;
 	int index;
 	for (it = m_GroupList.Begin(), index = 0; !it.IsDone(); it++, index+=1) {
-		EString blockName;
-		blockName.Format("Group%d", index);
-		fitFile.writeBlock(blockName.Data());
-		(*it).Save(fitFile, blockName.Data());
+		std::string blockName;
+		blockName = std::format("Group{}", index);
+		fitFile.writeBlock(blockName.c_str());
+		(*it).Save(fitFile, blockName.c_str());
 	}
 
 	fitFile.close();
@@ -238,12 +238,12 @@ bool CCampaignData::Read(CString pathName) {
 
 	int index;
 	for (index = 0; groupCount > index; index+=1) {
-		EString blockName;
-		blockName.Format("Group%d", index);
-		result = fitFile.seekBlock(blockName.Data());
+		std::string blockName;
+		blockName = std::format("Group{}", index);
+		result = fitFile.seekBlock(blockName.c_str());
 		if (NO_ERR != result) { assert(false); continue; }
 		CGroupData groupData;
-		bool bresult = groupData.Read(fitFile, blockName.Data());
+		bool bresult = groupData.Read(fitFile, blockName.c_str());
 		if (true != bresult) { assert(false); continue; }
 		m_GroupList.Append(groupData);
 	}

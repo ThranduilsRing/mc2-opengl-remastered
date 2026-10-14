@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in EditorData_internal.h.
 #include "EditorData_internal.h"
 #include "mc2fmt.h"
+#include "mc2str.h"
 
 
 static void EditorDataWarmTerrain(const char* where)
@@ -40,6 +41,13 @@ static void EditorDataWarmTerrain(const char* where)
 bool EditorData::initTerrainFromPCV( const char* fileName )
 {
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
+	if (fileName && fileName[0])
+	{
+		auto fitPath = mc2::str::from_c(fileName);
+		const auto extension = fitPath.rfind('.');
+		if (extension != fitPath.npos) fitPath.replace(extension, fitPath.npos, ".fit");
+		if (!EditorFit::objectiveTextLengths(fitPath.c_str(), fileName)) return false;
+	}
 
 	bool bRetVal = true;
 	bIsLoading = true;
@@ -47,6 +55,15 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorInterface::instance()->SetBusyMode(false/*no redraw*/);
 
 	clear();
+	// A rejected document has no editable remnants that a subsequent save could
+	// accidentally bless. The inactive camera also protects an empty viewport.
+	const auto rejectDocument = [] {
+		clear();
+		if (eye) eye->active = false;
+		EditorInterface::instance()->UnsetBusyMode();
+		bIsLoading = false;
+		return false;
+	};
 
 	if (!fileName || !fileName[0])
 	{
@@ -126,6 +143,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: after land->init realVerticesMapSide=%ld", land->realVerticesMapSide);
 	EditorDataTrace("EditorData::initTerrainFromPCV: before eye init");
 	eye->init();
+	if (!EditorReadMissionCamera(file))
+	{
+		return rejectDocument();
+	}
 	eye->init( &file );
 	EditorDataTrace("EditorData::initTerrainFromPCV: after eye init");
 
@@ -170,7 +191,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: gpu_cull substrate/compute/readback + terrain_lighting + shadow priming initialized");
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadMechs");
-	EditorObjectMgr::instance()->loadMechs( file );
+	if (!EditorObjectMgr::instance()->loadMechs(file))
+	{
+		return rejectDocument();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadDropZones");
 	EditorObjectMgr::instance()->loadDropZones( file );
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadForests");
@@ -196,6 +220,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: before EditorObjectMgr::load");
 	// Step 10 — editor's only inserted step (actor spawn).
 	EditorObjectMgr::instance()->load( pFile, 1 );
+	if (!EditorObjectMgr::instance()->loadNavMarkers(file))
+	{
+		return rejectDocument();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: after EditorObjectMgr::load");
 
 	// Pull in existing patrols for EVERY loaded unit on mission open: parse each
@@ -239,11 +267,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		result = file.seekBlock("MissionSettings");
 		if (NO_ERR == result)
 		{
-			EString tmpECStr = "";
-			result = sReadIdString(&file, "MissionName", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "MissionName"))
 			{
-				EditorData::instance->MissionName(_T(tmpECStr.Data()));
+				EditorData::instance->MissionName(std::move(*text));
 			}
 
 			bool tmpBool = false;
@@ -260,18 +286,14 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->MissionNameResourceStringID(tmpInt);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "Author", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "Author"))
 			{
-				EditorData::instance->Author(_T(tmpECStr.Data()));
+				EditorData::instance->Author(std::move(*text));
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "Blurb", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "Blurb"))
 			{
-				EditorData::instance->Blurb(_T(tmpECStr.Data()));
+				EditorData::instance->Blurb(std::move(*text));
 			}
 
 			tmpBool = false;
@@ -288,11 +310,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->BlurbResourceStringID(tmpInt);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "Blurb2", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "Blurb2"))
 			{
-				EditorData::instance->Blurb2(_T(tmpECStr.Data()));
+				EditorData::instance->Blurb2(std::move(*text));
 			}
 
 			tmpBool = false;
@@ -366,11 +386,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->ScenarioTune(tmpUChar);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "AVIFilename", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "AVIFilename"))
 			{
-				EditorData::instance->VideoFilename(_T(tmpECStr.Data()));
+				EditorData::instance->VideoFilename(std::move(*text));
 			}
 
 			tmpULong = 0;
@@ -380,11 +398,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->NumRandomRPbuildings(tmpULong);
 			}
 
-			tmpECStr = "";
-			result = sReadIdString(&file, "DownloadURL", tmpECStr);
-			if (NO_ERR == result)
+			if (auto text = objective_text::read(file, "DownloadURL"))
 			{
-				EditorData::instance->DownloadURL(_T(tmpECStr.Data()));
+				EditorData::instance->DownloadURL(std::move(*text));
 			}
 
 			tmpULong = 0;
@@ -539,7 +555,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	}
 
 	EditorData::instance->TeamsRef().Clear();
-	EditorData::instance->TeamsRef().Read( &file );
+	if (!EditorData::instance->TeamsRef().Read(&file))
+	{
+		return rejectDocument();
+	}
 	EditorData::instance->PlayersRef().Clear();
 	EditorData::instance->PlayersRef().Read( &file );
 

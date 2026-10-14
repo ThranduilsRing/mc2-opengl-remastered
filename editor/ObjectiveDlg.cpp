@@ -14,6 +14,8 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "ObjectiveDlg.h"
+#include "mc2str.h"
+#include "ObjectiveDlg_text_internal.h"
 
 #include "assert.h"
 #include "EditorInterface.h"
@@ -97,229 +99,54 @@ void ObjectiveDlg::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(ObjectiveDlg, CDialog)
-	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_CONDITION_BUTTON, OnObjectiveAddConditionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_CONDITION_BUTTON, OnObjectiveRemoveConditionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_ACTION_BUTTON, OnObjectiveAddActionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_ACTION_BUTTON, OnObjectiveRemoveActionButton)
-	ON_CBN_SELCHANGE(IDC_OBJECTIVEGROUP, OnSelchangeGroup)
-	ON_BN_CLICKED(IDC_BASEEDIT2, OnBaseedit2)
-	ON_BN_CLICKED(IDC_HIGHILIGHT2EDIT2, OnHighilight2edit2)
-	ON_BN_CLICKED(IDC_HIGHLIGHT1EDIT, OnHighlight1edit)
-	ON_EN_CHANGE(IDC_HIGHLIGHT1, OnChangeHighlight1)
-	ON_EN_CHANGE(IDC_HIGHLIGHT2, OnChangeHighlight2)
-	ON_EN_CHANGE(IDC_BASE2, OnChangeBase2)
+	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveAddConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveRemoveConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_ACTION_BUTTON, &ObjectiveDlg::OnObjectiveAddActionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_ACTION_BUTTON, &ObjectiveDlg::OnObjectiveRemoveActionButton)
+	ON_CBN_SELCHANGE(IDC_OBJECTIVEGROUP, &ObjectiveDlg::OnSelchangeGroup)
+	ON_BN_CLICKED(IDC_BASEEDIT2, &ObjectiveDlg::OnBaseedit2)
+	ON_BN_CLICKED(IDC_HIGHILIGHT2EDIT2, &ObjectiveDlg::OnHighilight2edit2)
+	ON_BN_CLICKED(IDC_HIGHLIGHT1EDIT, &ObjectiveDlg::OnHighlight1edit)
+	ON_EN_CHANGE(IDC_HIGHLIGHT1, &ObjectiveDlg::OnChangeHighlight1)
+	ON_EN_CHANGE(IDC_HIGHLIGHT2, &ObjectiveDlg::OnChangeHighlight2)
+	ON_EN_CHANGE(IDC_BASE2, &ObjectiveDlg::OnChangeBase2)
 	ON_WM_CTLCOLOR()
-	ON_BN_CLICKED(IDC_OBJECTIVE_TITLE_EDIT_BUTTON, OnObjectiveTitleEditButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_DESCRIPTION_EDIT_BUTTON, OnObjectiveDescriptionEditButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_FAILURE_CONDITION_BUTTON, OnObjectiveAddFailureConditionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_FAILURE_CONDITION_BUTTON, OnObjectiveRemoveFailureConditionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_FAILURE_ACTION_BUTTON, OnObjectiveAddFailureActionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_FAILURE_ACTION_BUTTON, OnObjectiveRemoveFailureActionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_CONDITION_BUTTON, OnObjectiveViewConditionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_ACTION_BUTTON, OnObjectiveViewActionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_FAILURE_CONDITION_BUTTON, OnObjectiveViewFailureConditionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_FAILURE_ACTION_BUTTON, OnObjectiveViewFailureActionButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_CLEAR_LOGISTICS_MODEL_BUTTON, OnObjectiveClearLogisticsModelButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_PICK_MARKER_BUTTON, OnObjectivePickMarkerButton)
-	ON_BN_CLICKED(IDC_OBJECTIVE_LOCATE_CONDITION_BUTTON, OnObjectiveLocateConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_TITLE_EDIT_BUTTON, &ObjectiveDlg::OnObjectiveTitleEditButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_DESCRIPTION_EDIT_BUTTON, &ObjectiveDlg::OnObjectiveDescriptionEditButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_FAILURE_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveAddFailureConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_FAILURE_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveRemoveFailureConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_FAILURE_ACTION_BUTTON, &ObjectiveDlg::OnObjectiveAddFailureActionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_FAILURE_ACTION_BUTTON, &ObjectiveDlg::OnObjectiveRemoveFailureActionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveViewConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_ACTION_BUTTON, &ObjectiveDlg::OnObjectiveViewActionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_FAILURE_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveViewFailureConditionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_FAILURE_ACTION_BUTTON, &ObjectiveDlg::OnObjectiveViewFailureActionButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_CLEAR_LOGISTICS_MODEL_BUTTON, &ObjectiveDlg::OnObjectiveClearLogisticsModelButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_PICK_MARKER_BUTTON, &ObjectiveDlg::OnObjectivePickMarkerButton)
+	ON_BN_CLICKED(IDC_OBJECTIVE_LOCATE_CONDITION_BUTTON, &ObjectiveDlg::OnObjectiveLocateConditionButton)
 END_MESSAGE_MAP()
 
 
-// --- Readable WHEN/THEN line formatting -------------------------------------
-// Build a plain-English sentence for one condition/action, keyed on Species().
-// Replaces the old "TypeLabel  rawParams" dump. Object-ref species (specific
-// unit/structure) read coordinates from the SAFE noted-position accessors
-// (NotedX/NotedY) and NEVER deref the live object pointer -- the engine
-// InstanceDescription() for those species derefs m_pUnit/m_pBuilding unguarded
-// and asserts the display name, which is unsafe from the editor list.
-EString objReadableCondition(CObjectiveCondition *cond) {
-	EString out;
-	if (!cond) { out = "(empty condition)"; return out; }
-
-	switch (cond->Species())
-	{
-	case DESTROY_ALL_ENEMY_UNITS:               out = "Destroy all enemy units"; break;
-	case CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS:    out = "Capture or destroy all enemy units"; break;
-	case DEAD_OR_FLED_ALL_ENEMY_UNITS:          out = "All enemy units dead or fled"; break;
-	case DESTROY_ENEMY_UNIT_GROUP:              out = "Destroy an enemy unit group"; break;
-	case CAPTURE_OR_DESTROY_ENEMY_UNIT_GROUP:   out = "Capture or destroy an enemy unit group"; break;
-	case DEAD_OR_FLED_ENEMY_UNIT_GROUP:         out = "An enemy unit group is dead or fled"; break;
-
-	case DESTROY_NUMBER_OF_ENEMY_UNITS:
-	case CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS:
-	case DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS:
-	{
-		int n = 0;
-		if (CNumberOfEnemyUnitsObjectiveCondition *p =
-				dynamic_cast<CNumberOfEnemyUnitsObjectiveCondition *>(cond))
-			n = p->Num();
-		const char *verb =
-			(cond->Species() == DESTROY_NUMBER_OF_ENEMY_UNITS) ? "Destroy" :
-			(cond->Species() == CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS) ? "Capture or destroy" :
-			"Disable (dead or fled)";
-		out.Format("%s %d enemy unit%s", verb, n, (n == 1) ? "" : "s");
-		break;
-	}
-
-	case DESTROY_SPECIFIC_ENEMY_UNIT:
-	case CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT:
-	case DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT:
-	case CAPTURE_UNIT:
-	case GUARD_SPECIFIC_UNIT:
-	{
-		EString tgt;
-		if (CSpecificUnitObjectiveCondition *p =
-				dynamic_cast<CSpecificUnitObjectiveCondition *>(cond))
-			tgt = p->ReadableTarget();
-		else
-			tgt = "(unresolved)";
-		const char *verb =
-			(cond->Species() == DESTROY_SPECIFIC_ENEMY_UNIT) ? "Destroy" :
-			(cond->Species() == CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT) ? "Capture or destroy" :
-			(cond->Species() == DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT) ? "Disable (dead or fled)" :
-			(cond->Species() == CAPTURE_UNIT) ? "Capture" : "Guard";
-		const char *noun = (cond->Species() == GUARD_SPECIFIC_UNIT) ? "friendly unit" : "enemy unit";
-		out.Format("%s %s: %s", verb, noun, tgt.Data());
-		break;
-	}
-
-	case DESTROY_SPECIFIC_STRUCTURE:
-	case CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE:
-	case CAPTURE_STRUCTURE:
-	case GUARD_SPECIFIC_STRUCTURE:
-	{
-		EString tgt;
-		if (CSpecificStructureObjectiveCondition *p =
-				dynamic_cast<CSpecificStructureObjectiveCondition *>(cond))
-			tgt = p->ReadableTarget();
-		else
-			tgt = "(unresolved)";
-		const char *verb =
-			(cond->Species() == DESTROY_SPECIFIC_STRUCTURE) ? "Destroy" :
-			(cond->Species() == CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE) ? "Capture or destroy" :
-			(cond->Species() == CAPTURE_STRUCTURE) ? "Capture" : "Guard";
-		const char *noun = (cond->Species() == GUARD_SPECIFIC_STRUCTURE) ? "friendly structure" : "structure";
-		out.Format("%s %s: %s", verb, noun, tgt.Data());
-		break;
-	}
-
-	case MOVE_ANY_UNIT_TO_AREA:
-	case MOVE_ALL_UNITS_TO_AREA:
-	case MOVE_ALL_SURVIVING_UNITS_TO_AREA:
-	case MOVE_ALL_SURVIVING_MECHS_TO_AREA:
-	{
-		float x = 0.f, y = 0.f, r = 0.f;
-		if (CAreaObjectiveCondition *p = dynamic_cast<CAreaObjectiveCondition *>(cond))
-		{ x = p->TargetCenterX(); y = p->TargetCenterY(); r = p->TargetRadius(); }
-		const char *who =
-			(cond->Species() == MOVE_ANY_UNIT_TO_AREA) ? "any unit" :
-			(cond->Species() == MOVE_ALL_UNITS_TO_AREA) ? "all units" :
-			(cond->Species() == MOVE_ALL_SURVIVING_UNITS_TO_AREA) ? "all surviving units" :
-			"all surviving 'Mechs";
-		out.Format("Move %s into area (%.0f, %.0f) radius %.0f", who, x, y, r);
-		break;
-	}
-
-	case BOOLEAN_FLAG_IS_SET:
-	{
-		const char *flag = "flag"; bool val = true;
-		if (CBooleanFlagIsSet *p = dynamic_cast<CBooleanFlagIsSet *>(cond))
-		{ const char *f = p->FlagID(); if (f && f[0]) flag = f; val = p->FlagValue(); }
-		out.Format("When flag '%s' is %s", flag, val ? "set" : "clear");
-		break;
-	}
-
-	case ELAPSED_MISSION_TIME:
-	{
-		float t = 0.f;
-		if (CElapsedMissionTime *p = dynamic_cast<CElapsedMissionTime *>(cond))
-			t = p->Time();
-		out.Format("After %.0f seconds of mission time", t);
-		break;
-	}
-
-	default:
-		out = cond->Description();   // unknown species -> engine label fallback
-		break;
-	}
-	return out;
-}
-
-EString objReadableAction(CObjectiveAction *act) {
-	EString out;
-	if (!act) { out = "(empty action)"; return out; }
-
-	switch (act->Species())
-	{
-	case PLAY_BIK:
-	{
-		const char *p = "(movie)";
-		if (CPlayBIK *a = dynamic_cast<CPlayBIK *>(act)) { const char *s = a->Pathname(); if (s && s[0]) p = s; }
-		out.Format("Play movie %s", p);
-		break;
-	}
-	case PLAY_WAV:
-	{
-		const char *p = "(sound)";
-		if (CPlayWAV *a = dynamic_cast<CPlayWAV *>(act)) { const char *s = a->Pathname(); if (s && s[0]) p = s; }
-		out.Format("Play sound %s", p);
-		break;
-	}
-	case DISPLAY_TEXT_MESSAGE:
-	{
-		const char *m = "";
-		if (CDisplayTextMessage *a = dynamic_cast<CDisplayTextMessage *>(act)) { const char *s = a->Message(); if (s) m = s; }
-		out.Format("Show message: \"%s\"", m);
-		break;
-	}
-	case DISPLAY_RESOURCE_TEXT_MESSAGE:
-	{
-		int id = 0;
-		if (CDisplayResourceTextMessage *a = dynamic_cast<CDisplayResourceTextMessage *>(act)) id = a->ResourceStringID();
-		out.Format("Show message (resource string #%d)", id);
-		break;
-	}
-	case SET_BOOLEAN_FLAG:
-	{
-		const char *flag = "flag"; bool val = true;
-		if (CSetBooleanFlag *a = dynamic_cast<CSetBooleanFlag *>(act)) { const char *f = a->FlagID(); if (f && f[0]) flag = f; val = a->FlagValue(); }
-		out.Format("Set flag '%s' to %s", flag, val ? "set" : "clear");
-		break;
-	}
-	case MAKE_NEW_TECHNOLOGY_AVAILABLE:
-	{
-		const char *p = "(file)";
-		if (CMakeNewTechnologyAvailable *a = dynamic_cast<CMakeNewTechnologyAvailable *>(act)) { const char *s = a->PurchaseFile(); if (s && s[0]) p = s; }
-		out.Format("Unlock technology from %s", p);
-		break;
-	}
-	default:
-		out = act->Description();
-		break;
-	}
-	return out;
-}
-
 static void syncConditionsListWithListBox(const CObjective::condition_list_type *pConditionList, CListBox *pList) {
 	pList->ResetContent();
-	EString tmpStr;
+	std::string tmpStr;
 	CObjective::condition_list_type::EConstIterator it = pConditionList->Begin();
 	while (!it.IsDone())
 	{
 		tmpStr = objReadableCondition(*it);
-		pList->AddString(tmpStr.Data());
+		pList->AddString(tmpStr.c_str());
 		it++;
 	}
 }
 
 static void syncActionsListWithListBox(const CObjective::action_list_type *pActionList, CListBox *pList) {
 	pList->ResetContent();
-	EString tmpStr;
+	std::string tmpStr;
 	CObjective::action_list_type::EConstIterator it = pActionList->Begin();
 	while (!it.IsDone())
 	{
 		tmpStr = objReadableAction(*it);
-		pList->AddString(tmpStr.Data());
+		pList->AddString(tmpStr.c_str());
 		it++;
 	}
 }
@@ -372,12 +199,12 @@ void ObjectiveDlg::LoadDialogValues() {
 	(&m_FailureConditionComboBox)->SetCurSel(nFailureConditionSpeciesSelectionIndex);
 	(&m_FailureActionComboBox)->SetCurSel(nFailureActionSpeciesSelectionIndex);
 
-	m_TitleUnlocalizedText = m_ModifiedObjective.Title().Data();
+	m_TitleUnlocalizedText = m_ModifiedObjective.Title().c_str();
 	m_TitleUseResourceString = m_ModifiedObjective.TitleUseResourceString();
 	m_TitleResourceStringID = m_ModifiedObjective.TitleResourceStringID();
 	UpdateTitleDisplay();
 
-	m_DescriptionUnlocalizedText = m_ModifiedObjective.Description().Data();
+	m_DescriptionUnlocalizedText = m_ModifiedObjective.Description().c_str();
 	m_DescriptionUseResourceString = m_ModifiedObjective.DescriptionUseResourceString();
 	m_DescriptionResourceStringID = m_ModifiedObjective.DescriptionResourceStringID();
 	UpdateDescriptionDisplay();
@@ -422,14 +249,14 @@ void ObjectiveDlg::LoadDialogValues() {
 	} else {
 		m_ActivateOnFlagCheckButton = FALSE;
 	}
-	m_ActivateFlagIDEdit = m_ModifiedObjective.ActivateFlagID().Data();
+	m_ActivateFlagIDEdit = m_ModifiedObjective.ActivateFlagID().c_str();
 
 	if (m_ModifiedObjective.ResetStatusOnFlag()) {
 		m_ResetStatusOnFlagCheckButton = TRUE;
 	} else {
 		m_ResetStatusOnFlagCheckButton = FALSE;
 	}
-	m_ResetStatusFlagIDEdit = m_ModifiedObjective.ResetStatusFlagID().Data();
+	m_ResetStatusFlagIDEdit = m_ModifiedObjective.ResetStatusFlagID().c_str();
 
 	syncConditionsListWithListBox((&m_ModifiedObjective), (&m_List));
 	// BUG B fix: pre-select the first success condition so "Locate" (which acts on
@@ -474,11 +301,11 @@ void ObjectiveDlg::LoadDialogValues() {
 void ObjectiveDlg::SaveDialogValues() {
 	UpdateData(TRUE);
 
-	m_ModifiedObjective.Title(m_TitleUnlocalizedText.GetBuffer(0));
+	m_ModifiedObjective.Title(mc2::str::from_c(m_TitleUnlocalizedText.GetBuffer(0)));
 	m_ModifiedObjective.TitleUseResourceString(TRUE == m_TitleUseResourceString);
 	m_ModifiedObjective.TitleResourceStringID(m_TitleResourceStringID);
 
-	m_ModifiedObjective.Description(m_DescriptionUnlocalizedText.GetBuffer(0));
+	m_ModifiedObjective.Description(mc2::str::from_c(m_DescriptionUnlocalizedText.GetBuffer(0)));
 	m_ModifiedObjective.DescriptionUseResourceString(TRUE == m_DescriptionUseResourceString);
 	m_ModifiedObjective.DescriptionResourceStringID(m_DescriptionResourceStringID);
 
@@ -522,14 +349,14 @@ void ObjectiveDlg::SaveDialogValues() {
 	} else {
 		m_ModifiedObjective.ActivateOnFlag(false);
 	}
-	m_ModifiedObjective.ActivateFlagID(m_ActivateFlagIDEdit.GetBuffer(0));
+	m_ModifiedObjective.ActivateFlagID(mc2::str::from_c(m_ActivateFlagIDEdit.GetBuffer(0)));
 
 	if (m_ResetStatusOnFlagCheckButton) {
 		m_ModifiedObjective.ResetStatusOnFlag(true);
 	} else {
 		m_ModifiedObjective.ResetStatusOnFlag(false);
 	}
-	m_ModifiedObjective.ResetStatusFlagID(m_ResetStatusFlagIDEdit.GetBuffer(0));
+	m_ModifiedObjective.ResetStatusFlagID(mc2::str::from_c(m_ResetStatusFlagIDEdit.GetBuffer(0)));
 
 	long base, highlight1, highlight2;
 
@@ -642,11 +469,11 @@ BOOL ObjectiveDlg::OnInitDialog()
 			comboBoxItems.Append(MOVE_ALL_SURVIVING_MECHS_TO_AREA);
 			comboBoxItems.Append(BOOLEAN_FLAG_IS_SET);
 			comboBoxItems.Append(ELAPSED_MISSION_TIME);
-			EString tmpEStr;
+			std::string tmpEStr;
 			CConditionSpeciesList::EConstIterator it = comboBoxItems.Begin();
 			while (!it.IsDone()) {
 				tmpEStr = m_ModifiedObjective.DescriptionOfConditionSpecies(*it);
-				(&m_ComboBox)->AddString(tmpEStr.Data());
+				(&m_ComboBox)->AddString(tmpEStr.c_str());
 				it++;
 			}
 			(&m_ComboBox)->SetCurSel(0);
@@ -660,11 +487,11 @@ BOOL ObjectiveDlg::OnInitDialog()
 			actionComboBoxItems.Append(DISPLAY_RESOURCE_TEXT_MESSAGE);
 			actionComboBoxItems.Append(SET_BOOLEAN_FLAG);
 			actionComboBoxItems.Append(MAKE_NEW_TECHNOLOGY_AVAILABLE);
-			EString tmpEStr;
+			std::string tmpEStr;
 			CActionSpeciesList::EConstIterator it = actionComboBoxItems.Begin();
 			while (!it.IsDone()) {
 				tmpEStr = m_ModifiedObjective.DescriptionOfActionSpecies(*it);
-				(&m_ActionComboBox)->AddString(tmpEStr.Data());
+				(&m_ActionComboBox)->AddString(tmpEStr.c_str());
 				it++;
 			}
 			(&m_ActionComboBox)->SetCurSel(0);
@@ -693,11 +520,11 @@ BOOL ObjectiveDlg::OnInitDialog()
 			failureConditionComboBoxItems.Append(MOVE_ALL_SURVIVING_MECHS_TO_AREA);
 			failureConditionComboBoxItems.Append(BOOLEAN_FLAG_IS_SET);
 			failureConditionComboBoxItems.Append(ELAPSED_MISSION_TIME);
-			EString tmpEStr;
+			std::string tmpEStr;
 			CConditionSpeciesList::EConstIterator it = failureConditionComboBoxItems.Begin();
 			while (!it.IsDone()) {
 				tmpEStr = m_ModifiedObjective.DescriptionOfConditionSpecies(*it);
-				(&m_FailureConditionComboBox)->AddString(tmpEStr.Data());
+				(&m_FailureConditionComboBox)->AddString(tmpEStr.c_str());
 				it++;
 			}
 			(&m_FailureConditionComboBox)->SetCurSel(0);
@@ -711,11 +538,11 @@ BOOL ObjectiveDlg::OnInitDialog()
 			failureActionComboBoxItems.Append(DISPLAY_RESOURCE_TEXT_MESSAGE);
 			failureActionComboBoxItems.Append(SET_BOOLEAN_FLAG);
 			failureActionComboBoxItems.Append(MAKE_NEW_TECHNOLOGY_AVAILABLE);
-			EString tmpEStr;
+			std::string tmpEStr;
 			CActionSpeciesList::EConstIterator it = failureActionComboBoxItems.Begin();
 			while (!it.IsDone()) {
 				tmpEStr = m_ModifiedObjective.DescriptionOfActionSpecies(*it);
-				(&m_FailureActionComboBox)->AddString(tmpEStr.Data());
+				(&m_FailureActionComboBox)->AddString(tmpEStr.c_str());
 				it++;
 			}
 			(&m_FailureActionComboBox)->SetCurSel(0);
@@ -1442,9 +1269,9 @@ void ObjectiveDlg::OnObjectiveViewConditionButton()
 		CObjective::condition_list_type::EConstIterator it = m_ModifiedObjective.Begin();
 		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
 		if (!it.IsDone()) {
-			EString tmpEStr = objReadableCondition(*it);
+			std::string tmpEStr = objReadableCondition(*it);
 			ViewConditionOrActionDlg viewDlg;
-			viewDlg.m_Edit = tmpEStr.Data();
+			viewDlg.m_Edit = tmpEStr.c_str();
 			viewDlg.DoModal();
 		}
 	}
@@ -1457,9 +1284,9 @@ void ObjectiveDlg::OnObjectiveViewActionButton()
 		CObjective::action_list_type::EConstIterator it = m_ModifiedObjective.m_actionList.Begin();
 		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
 		if (!it.IsDone()) {
-			EString tmpEStr = objReadableAction(*it);
+			std::string tmpEStr = objReadableAction(*it);
 			ViewConditionOrActionDlg viewDlg;
-			viewDlg.m_Edit = tmpEStr.Data();
+			viewDlg.m_Edit = tmpEStr.c_str();
 			viewDlg.DoModal();
 		}
 	}
@@ -1472,9 +1299,9 @@ void ObjectiveDlg::OnObjectiveViewFailureConditionButton()
 		CObjective::condition_list_type::EConstIterator it = m_ModifiedObjective.m_failureConditionList.Begin();
 		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
 		if (!it.IsDone()) {
-			EString tmpEStr = objReadableCondition(*it);
+			std::string tmpEStr = objReadableCondition(*it);
 			ViewConditionOrActionDlg viewDlg;
-			viewDlg.m_Edit = tmpEStr.Data();
+			viewDlg.m_Edit = tmpEStr.c_str();
 			viewDlg.DoModal();
 		}
 	}
@@ -1487,9 +1314,9 @@ void ObjectiveDlg::OnObjectiveViewFailureActionButton()
 		CObjective::action_list_type::EConstIterator it = m_ModifiedObjective.m_failureActionList.Begin();
 		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
 		if (!it.IsDone()) {
-			EString tmpEStr = objReadableAction(*it);
+			std::string tmpEStr = objReadableAction(*it);
 			ViewConditionOrActionDlg viewDlg;
-			viewDlg.m_Edit = tmpEStr.Data();
+			viewDlg.m_Edit = tmpEStr.c_str();
 			viewDlg.DoModal();
 		}
 	}

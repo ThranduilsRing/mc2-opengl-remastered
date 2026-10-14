@@ -139,9 +139,9 @@ Weather today changes lights, sound and camera-local drops; the consumer scan fi
 Give authored weather progression a deterministic Environment timeline; emit lighting/rain/thunder cues, with drops in RenderWeather.
 Environment runs in both modes independently of the effects option. Any discovered gameplay weather consumer reads Environment, never camera lighting.
 Music/voice/video logical requests and completion use tick deadlines plus validated content durations, never device end callbacks.
-ABL camera getters/setters, forceMovieEnd and callout/voice queries (`code/ablmc2_camera.cpp:223`, `:245`, `:706`, `:734`) require a host audit.
-Proposal: script cue queries return tick-driven script request/timeline state; setters emit presentation cues; player camera motion never flows back.
-The scripted cue host exposes core values rather than Camera types; physical camera state is unavailable to the kernel (owner question 1).
+Owner ruling: ABL camera getters return the last scripted camera value; setters emit presentation cues. Player camera motion never flows back.
+Stock mc2_01, mc2_10 and tut_01 save and restore the camera around cutscenes. mc2_01's mid-mission read now restores the scripted rotation, an accepted difference.
+The scripted cue host exposes core values rather than Camera types; physical camera state is unavailable to the kernel. forceMovieEnd and callout/voice queries (`code/ablmc2_camera.cpp:706`, `:734`) still require a host audit.
 Headless evaluates those logical completions and records cues. Windowed retains cinematic and in-mission video playback.
 Changing these bindings also requires windowed proof of campaign-start, won-mission and in-mission videos with `[VIDEO v1] play` controls.
 
@@ -297,4 +297,4 @@ Strict cross-platform floating identity is unproven; pin compiler/FP policy now 
 S3/B7's wire catalogue implements the shared table above. No raw struct/vtable dumps, pointers, wall accumulator or physical camera state enters authoritative saves.
 Readers reject malformed records/content with a log line and never crash; optional presentation cannot change authoritative equality.
 
-Owner question 1. Should camera-reading mod scripts receive deterministic script cue trajectory/request values (proposed default), or be rejected with a reason log? This changes ABL compatibility; live player-camera reads remain banned.
+Owner ruling: camera-reading scripts receive the last scripted camera value. Live player-camera reads remain banned; mc2_01 restoring scripted rotation at its mid-mission read is an accepted compatibility difference.

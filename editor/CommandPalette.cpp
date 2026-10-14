@@ -79,6 +79,8 @@ static const PaletteCommand s_commands[] =
 
     // Mission
     { ID_MISSION_SETTINGS,   "Mission Settings",     "Mission", "" },
+    { ID_MISSION_REFRESH_DEFINITIONS, "Refresh mission definitions from catalog", "Mission", "" },
+    { ID_MISSION_AUTHOR_CAMERA_ZOOM, "Use current zoom for mission camera", "Mission", "" },
     { ID_CAMPAIGN_EDITOR,    "Campaign Editor",      "Mission", "" },
 
     // Foliage

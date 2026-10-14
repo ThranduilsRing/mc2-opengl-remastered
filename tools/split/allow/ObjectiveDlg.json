@@ -1,0 +1,13 @@
+{
+  "base": "c14b6fbb7",
+  "src": "editor/ObjectiveDlg.cpp",
+  "stem": "ObjectiveDlg",
+  "add": [
+    "#include \"stdafx.h\"",
+    "#include \"Objective.h\"",
+    "#pragma once",
+    "#include <string>",
+    "class CObjectiveCondition;",
+    "class CObjectiveAction;"
+  ]
+}

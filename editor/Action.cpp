@@ -644,6 +644,7 @@ void ModifyUnitOrderAction::capture( Unit* unit )
 		return;
 	m_unitId = unit->getID();
 	EditorOrderSnapFromUnit( unit, m_before.orderType, m_before.stance, m_before.waypoints );
+	m_before.authored = unit->isOrderAuthored();
 }
 
 void ModifyUnitOrderAction::commit( Unit* unit )
@@ -651,6 +652,7 @@ void ModifyUnitOrderAction::commit( Unit* unit )
 	if ( !unit )
 		return;
 	EditorOrderSnapFromUnit( unit, m_after.orderType, m_after.stance, m_after.waypoints );
+	m_after.authored = unit->isOrderAuthored();
 }
 
 bool ModifyUnitOrderAction::apply( const Snap& s )
@@ -671,6 +673,8 @@ bool ModifyUnitOrderAction::apply( const Snap& s )
 		u->clearWaypoints();
 		for ( size_t i = 0; i < s.waypoints.size(); ++i )
 			u->addWaypoint( s.waypoints[i] );
+		// Undo must return ownership to the brain importer when the order was not authored.
+		u->setOrderAuthored( s.authored );
 		return true;
 	}
 	return false;

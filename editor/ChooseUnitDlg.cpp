@@ -12,7 +12,7 @@ ChooseUnitDlg.cpp			: Implementation of the ChooseUnitDlg component.
 
 #include <stdlib.h>
 #include <assert.h>
-#include "EString.h"
+#include "mc2fmt.h"
 
 #include "ChooseUnitDlg.h"
 #include "PointerSelectObjectDlg.h"
@@ -69,12 +69,12 @@ BOOL ChooseUnitDlg::OnInitDialog()
 	{
 		EditorObjectMgr::UNIT_LIST::EConstIterator it = m_unitList.Begin();
 		while (!it.IsDone()) {
-			EString tmpEStr;
+			std::string tmpEStr;
 			Stuff::Vector3D pos = (*it)->getPosition();
 			const char *szDisplayName = (*it)->getDisplayName(); // nb: localization
 			assert(szDisplayName);
-			tmpEStr.Format("(pos: %.3f, %.3f) %s", pos.x, pos.y, szDisplayName);
-			m_pComboBox->AddString(tmpEStr.Data());
+			tmpEStr = std::format("(pos: {:.3f}, {:.3f}) {}", pos.x, pos.y, mc2::fmt::safe(szDisplayName));
+			m_pComboBox->AddString(tmpEStr.c_str());
 			it++;
 		}
 	}
