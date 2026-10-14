@@ -14,6 +14,7 @@
 #include "objmgr.h"    // ObjectManager (global) — DISPATCH-EFFECT-COREATTACK-1
 #include "mover.h"     // Mover::getContacts / getVehicle MoverPtr — BRAIN-ENGAGE-1
 #include "dcontact.h"  // CONTACT_SORT_DISTANCE, MAX_CONTACTS_PER_SENSOR — BRAIN-ENGAGE-1
+#include "dteam.h"     // MAX_CONTACTS_PER_TEAM: the length of every getContacts output array
 #include "contact.h"   // SensorSystem::getEffectiveRange — BRAIN-ENGAGE-1 detection range
 #include <cmath>
 #include <cstdio>
