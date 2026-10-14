@@ -1017,10 +1017,10 @@ initPartsHeader(f);
 	initObjectCounts(loadType, f);
 	initGpuAndLighting();
 	initSpawnActors(loadType);
-	bindOrderRecipients(); // Recipient identity requires the spawned Part actors.
 	initTerrainObjectsLoad(commandersToLoad, f);
 	initDisableAndObjectives(f);
 	initCommanders(commandersToLoad, f);
+	bindOrderRecipients(); // Commander groups finalize the actors' runtime roster IDs.
 	initWeatherCamera(f);
 	initInterface(f);
 initLabTimingAndClose();

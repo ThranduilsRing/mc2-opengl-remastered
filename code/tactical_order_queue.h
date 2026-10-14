@@ -318,13 +318,15 @@ template<class Actor, class Pilot> struct MissionRecipientBinding {
     Actor* mover = nullptr;
     Pilot* pilot = nullptr;
     bool retired = false;
+    // FIT Part indices and runtime roster IDs occupy different namespaces.
+    std::int64_t actorPartId = mover ? mover->getPartId() : 0;
 
     template<class Lookup> Actor* resolve(ObjectRef requested, Lookup lookup, std::uint32_t partWatch) {
         if (ref != requested || retired) return nullptr;
         auto* object = lookup(watchId);
         // The original forward and reverse mappings must agree; pool reuse cannot inherit the slot.
         if (object != mover || !object || !object->getExists() || object->isDestroyed() ||
-            object->getWatchID(false) != watchId || object->getPartId() != partId ||
+            object->getWatchID(false) != watchId || object->getPartId() != actorPartId ||
             object->getPilot() != pilot || partWatch != watchId) {
             retired = true;
             return nullptr;

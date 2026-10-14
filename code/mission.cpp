@@ -137,9 +137,15 @@ bool Mission::runOrderIngressFixture() {
         mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=sequence_exhausted sequence={}\n", sequence);
         return false;
     }
+    std::uint32_t unresolved = 0, unowned = 0, disabled = 0, immobile = 0;
     for (const auto& binding : orderRecipients) {
         auto* mover = resolveOrderRecipient(binding.ref);
-        if (!mover || mover->getCommanderId() < 0 || mover->isDisabled() || !mover->canMove()) continue;
+        if (!mover) { ++unresolved; continue; }
+        if (mover->getCommanderId() < 0) { ++unowned; continue; }
+        if (mover->isDisabled()) { ++disabled; continue; }
+        if (!mover->canMove()) { ++immobile; continue; }
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=eligible part={} actor_part={} commander={} simulation_time={}\n",
+            binding.partId, binding.actorPartId, mover->getCommanderId(), scenarioTime);
         OrderEnvelope envelope;
         envelope.sourceId = 1;
         envelope.issuer = CommanderId{static_cast<std::uint32_t>(mover->getCommanderId())};
@@ -168,7 +174,8 @@ bool Mission::runOrderIngressFixture() {
         }
         return true;
     }
-    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=no_eligible_recipient recipients={}\n", orderRecipients.size());
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=no_eligible_recipient recipients={} unresolved={} unowned={} disabled={} immobile={} simulation_time={}\n",
+        orderRecipients.size(), unresolved, unowned, disabled, immobile, scenarioTime);
     return false;
 }
 

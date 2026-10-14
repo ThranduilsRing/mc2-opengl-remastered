@@ -27,7 +27,7 @@ def witness(smoke, send, now=time.monotonic, sleep=time.sleep, startup_timeout=3
     last_report = None
     next_report = started
 
-    def request(command, batch):
+    def request(command, batch, attempt=0):
         nonlocal last_report, next_report
         try:
             reply = send(command)
@@ -38,9 +38,9 @@ def witness(smoke, send, now=time.monotonic, sleep=time.sleep, startup_timeout=3
             reply = None
             report = f"{type(error).__name__}: {error}"
         identity = (command, batch, report)
-        if identity != last_report or now() >= next_report:
+        if attempt or identity != last_report or now() >= next_report:
             print(f"mission ingress elapsed={now() - started:.2f}s batch={batch} "
-                  f"command={command} response={report}", flush=True)
+                  f"attempt={attempt} command={command} response={report}", flush=True)
             last_report = identity
             next_report = now() + 30
         return reply
@@ -59,12 +59,20 @@ def witness(smoke, send, now=time.monotonic, sleep=time.sleep, startup_timeout=3
 
     deadline = now() + runtime_timeout
     for batch in range(3):
-        if smoke.poll() is not None or now() >= deadline:
-            print("mission ingress submission failed: harness exited or play deadline expired", flush=True)
-            return False
-        # A lost admission reply is ambiguous: replay could submit the next batch twice.
-        reply = request("order_ingress_fixture_submit", batch + 1)
-        if reply is None or not reply["ok"]:
+        attempt = 0
+        while smoke.poll() is None and now() < deadline:
+            attempt += 1
+            reply = request("order_ingress_fixture_submit", batch + 1, attempt)
+            # A lost admission reply is ambiguous: replay could submit the next batch twice.
+            if reply is None:
+                print("mission ingress submission ambiguous: not replaying", flush=True)
+                return False
+            if reply["ok"]:
+                break
+            sleep(min(0.25, max(0, deadline - now())))
+        else:
+            print(f"mission ingress batch {batch + 1}/3 submission failed: "
+                  "harness exited or play deadline expired", flush=True)
             return False
         while smoke.poll() is None and now() < deadline:
             reply = request("order_ingress_fixture_check", batch + 1)

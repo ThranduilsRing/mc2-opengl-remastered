@@ -66,8 +66,8 @@ def test_readiness_has_a_deadline_and_reports_transport_errors(capsys):
     assert "socket unavailable" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("result", [reply(False, "unknown command"), None, "not json"])
-def test_submit_rejection_or_ambiguous_transport_is_never_replayed(result, capsys):
+@pytest.mark.parametrize("result", [None, "not json", {"ok": False, "version": 2}])
+def test_ambiguous_transport_is_never_replayed(result, capsys):
     clock = Clock()
     commands = []
 
@@ -82,7 +82,87 @@ def test_submit_rejection_or_ambiguous_transport_is_never_replayed(result, capsy
     assert not subject.witness(Smoke(clock), send, clock.now, clock.sleep)
     assert commands == ["ping", "order_ingress_fixture_submit"]
     output = capsys.readouterr().out
-    assert "unknown command" in output or "reply lost" in output or "invalid dev-shell" in output
+    assert "reply lost" in output or "invalid dev-shell" in output
+    assert "submission ambiguous: not replaying" in output
+
+
+def test_explicit_rejections_retry_until_eligible_and_log_every_attempt(capsys):
+    clock = Clock()
+    submissions = 0
+
+    def send(command):
+        nonlocal submissions
+        if command.endswith("_submit"):
+            submissions += 1
+            if submissions <= 3:
+                return reply(False, "no eligible recipient")
+        return reply()
+
+    assert subject.witness(Smoke(clock), send, clock.now, clock.sleep)
+    assert submissions == 6
+    assert clock.now() == 0.75
+    output = capsys.readouterr().out
+    attempts = [line for line in output.splitlines() if "command=order_ingress_fixture_submit" in line]
+    assert len(attempts) == 6
+    assert all(f"batch=1 attempt={i + 1}" in attempts[i] for i in range(4))
+    assert "batch 3/3 installed and automatically retired" in output
+
+
+@pytest.mark.parametrize("exit_at, expected_time, expected_attempts", [(float("inf"), 1, 4), (0.5, 0.5, 2)])
+def test_explicit_rejections_stop_at_deadline_or_harness_exit(exit_at, expected_time, expected_attempts, capsys):
+    clock = Clock()
+    commands = []
+
+    def send(command):
+        commands.append(command)
+        return reply() if command == "ping" else reply(False, "no eligible recipient")
+
+    assert not subject.witness(Smoke(clock, exit_at), send, clock.now, clock.sleep, runtime_timeout=1)
+    assert clock.now() == expected_time
+    assert commands.count("order_ingress_fixture_submit") == expected_attempts
+    assert "order_ingress_fixture_check" not in commands
+    output = capsys.readouterr().out
+    assert output.count("command=order_ingress_fixture_submit") == expected_attempts
+    assert "submission failed: harness exited or play deadline expired" in output
+
+
+def test_rejection_then_lost_reply_is_not_replayed(capsys):
+    clock = Clock()
+    submissions = 0
+
+    def send(command):
+        nonlocal submissions
+        if command.endswith("_submit"):
+            submissions += 1
+            if submissions == 1:
+                return reply(False, "not ready")
+            raise TimeoutError("reply lost")
+        return reply()
+
+    assert not subject.witness(Smoke(clock), send, clock.now, clock.sleep)
+    assert submissions == 2
+    assert "submission ambiguous: not replaying" in capsys.readouterr().out
+
+
+def test_retry_uses_time_remaining_after_previous_batch(capsys):
+    clock = Clock()
+    submissions = 0
+
+    def send(command):
+        nonlocal submissions
+        if command.endswith("_submit"):
+            submissions += 1
+            return reply(submissions == 1, "no eligible recipient")
+        if command.endswith("_check"):
+            clock.sleep(0.9)
+        return reply()
+
+    assert not subject.witness(Smoke(clock), send, clock.now, clock.sleep, runtime_timeout=1)
+    assert clock.now() == 1
+    assert submissions == 2
+    output = capsys.readouterr().out
+    assert "batch 1/3 installed" in output
+    assert "batch 2/3 submission failed" in output
 
 
 @pytest.mark.parametrize("error", ["receipts Pending", "receipts retained", "completion suppressed"])
