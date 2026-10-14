@@ -380,7 +380,7 @@ Split commit: `e7312b22b`.
 
 | Piece | What it holds |
 |---|---|
-| `Objective.cpp` | keeps the condition/action lists, CObjective and CObjectives |
+| `Objective.cpp` | keeps what the pieces below did not take |
 | `Objective_actions.cpp` | Objective: objective action classes (BIK/WAV/text/flag/technology): compare, read/save, edit dialogs and descriptions. |
 | `Objective_conditions.cpp` | Objective: objective condition classes: compare, read/save, edit dialogs and descriptions. |
 | `Objective_internal.h` | shared include bundle, extern globals and declarations of the pieces |

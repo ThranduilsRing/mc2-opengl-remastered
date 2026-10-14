@@ -181,8 +181,8 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 1,
-   "LG20": 9
+   "LG19": 2,
+   "LG20": 10
   },
   "mclib": {
    "LG01": 454,
@@ -3119,6 +3119,10 @@
   "editor/ModPicker.cpp": {
    "LG20": 2
   },
+  "editor/shell/main.cpp": {
+   "LG19": 1,
+   "LG20": 1
+  },
   "mclib/abl.h": {
    "LG01": 9,
    "LG06": 9,
@@ -5179,7 +5183,7 @@
    "LG20": 41
   }
  },
- "head": "3445d656f",
+ "head": "86d12485d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
