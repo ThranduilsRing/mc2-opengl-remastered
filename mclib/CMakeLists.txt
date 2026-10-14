@@ -2,7 +2,6 @@ cmake_minimum_required (VERSION 3.10)
 project(mclib)
 
 set(SOURCES ${SOURCES}
-    alphapalette.cpp
     cident.cpp
     cmponent.cpp
     color.cpp
