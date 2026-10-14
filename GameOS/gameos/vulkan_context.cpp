@@ -23,6 +23,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "diagnostic_trace.h"
 #include "vk_device_profile.h"
 #include "vk_validation_line.h"
 #ifdef MC2_VULKAN_ISLAND
@@ -443,7 +444,7 @@ void VulkanContext::retireIsland(IslandSlot slot) {
     // The order of these lines is the shutdown order: with the image-owner lines of vk_image_resource.cpp they let a log show the destroy() precondition.
     static constexpr const char* kSlotNames[] = {"Vfx", "Sky", "LegacyShape", "Mech", "ColorProp", "Water", "Shadow", "Terrain"};
     static_assert(sizeof(kSlotNames) / sizeof(kSlotNames[0]) == static_cast<size_t>(IslandSlot::Count), "name every island slot");
-    ctxlog("retire island slot=%s.", kSlotNames[static_cast<size_t>(slot)]);
+    if (mc2_diag::tagRequested("VK_SHUTDOWN")) ctxlog("retire island slot=%s.", kSlotNames[static_cast<size_t>(slot)]);
     waitIdle("retire_island");
     parked.reset();
 }

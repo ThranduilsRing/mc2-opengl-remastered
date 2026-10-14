@@ -5,6 +5,7 @@
 // binary; only the non-exportable dedicated allocation survives.
 
 #include "vk_image_resource.h"
+#include "diagnostic_trace.h"
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -134,7 +135,7 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice) {
     if (!r) return;
     if (r->image) {
         const int live = g_liveImages.fetch_sub(1, std::memory_order_relaxed) - 1;
-        ilog("destroy image owner %ux%u fmt=%d; %d alive after.", r->w, r->h, static_cast<int>(r->format), live);
+        if (mc2_diag::tagRequested("VK_SHUTDOWN")) ilog("destroy image owner %ux%u fmt=%d; %d alive after.", r->w, r->h, static_cast<int>(r->format), live);
     }
     // Moved into a local, so the destructor releases the owners in reverse declaration order (a member-wise move-assignment would release forward:
     // the memory before the image bound to it).

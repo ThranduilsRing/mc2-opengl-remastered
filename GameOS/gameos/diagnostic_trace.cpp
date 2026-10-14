@@ -42,6 +42,7 @@ const std::unordered_set<std::string>& knownTags() {
         "ANIM_CADENCE",
         "TARGETING",
         "COMBAT",   // COMBAT-TRACE-1: weapon-fire events (attacker/target wid+team). Opt-in.
+        "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.
         "VFX_COMBAT", // VFX combat-event trace the VFX oracle (Sol G3) reads to line effects up with weapon fire. Opt-in.
     };
@@ -228,6 +229,15 @@ bool tagEnabled(const char* tag) {
     if (!enabled()) return false;
     if (s.allTags) return true;
     return s.enabledTags.count(tag) > 0;
+}
+
+bool tagRequested(const char* tag) {
+    if (!tag) return false;
+    // Read from the environment, not from the open file: the shutdown trace runs after shutdown() closed the JSONL file.
+    std::unordered_set<std::string> tags;
+    bool disabled = false;
+    if (parseTagsEnv(tags, disabled)) return true;
+    return !disabled && tags.count(tag) > 0;
 }
 
 bool writeEvent(const char* tag, int version, uint64_t frame, const char* dataJson) {

@@ -39,6 +39,9 @@ void shutdown();
 // Is JSONL output enabled and initialized?
 bool enabled();
 
+// Was the tag asked for in MC2_DIAG_TAGS? Needs no init() and survives shutdown(), for lines printed during engine teardown.
+bool tagRequested(const char* tag);
+
 // Is the given tag in the current whitelist?
 bool tagEnabled(const char* tag);
 

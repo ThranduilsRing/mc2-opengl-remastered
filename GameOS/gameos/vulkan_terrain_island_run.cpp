@@ -444,11 +444,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->ubo[par].allocation(), &p) == VK_SUCCESS) {
-            TerrainFrameUBO* slots = reinterpret_cast<TerrainFrameUBO*>(p);
+            uint8_t* slots = static_cast<uint8_t*>(p);   // memcpy, not a typed store: the mapped offset is not guaranteed to match the struct's alignment
             for (uint32_t i = 0; i < patchCount; ++i) {
                 TerrainFrameUBO u{};
                 fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
-                slots[i] = u;
+                std::memcpy(slots + (size_t)i * sizeof(TerrainFrameUBO), &u, sizeof(TerrainFrameUBO));
             }
             vmaUnmapMemory(s->allocator, s->ubo[par].allocation());
         }
