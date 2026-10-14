@@ -44,6 +44,7 @@
 
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
 #include "sim_trace.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 //***************************************************************************
 
@@ -951,9 +952,11 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 	}
 
 	if ((numValidContacts > 0) && (sortType != CONTACT_SORT_NONE)) {
-		//---------------------------------------------------------
-		// BIG ASSUMPTION HERE: That a mech will not have more than
-		// MAX_CONTACTS_PER_SENSOR contacts.
+		// The shared sort list holds MAX_CONTACTS_PER_SENSOR slots and its qsort length decides the order of equal keys, so it keeps that size. A team
+		// that holds more valid contacts than that has the first MAX_CONTACTS_PER_SENSOR (scan order) sorted and the rest appended unsorted.
+		const long sortCount = (numValidContacts < MAX_CONTACTS_PER_SENSOR) ? numValidContacts : MAX_CONTACTS_PER_SENSOR;
+		if (sortCount < numValidContacts)
+			MC2_LOG(Sim, Warn, "getContacts: {} valid contacts exceed the {} sortable, the rest are returned unsorted", numValidContacts, MAX_CONTACTS_PER_SENSOR);
 		if (!SensorSystem::sortList) {
 			SensorSystem::sortList = new SortList;
 			if (!SensorSystem::sortList)
@@ -964,13 +967,15 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 		if (sortType == CONTACT_SORT_DISTANCE)
 			descendSort = false;
 		SensorSystem::sortList->clear(descendSort);
-		for (long contact = 0; contact < numValidContacts; contact++) {
+		for (long contact = 0; contact < sortCount; contact++) {
 			SensorSystem::sortList->setId(contact, handleList[contact]);
 			SensorSystem::sortList->setValue(contact, sortValues[contact]);
 		}
 		SensorSystem::sortList->sort(descendSort);
-		for (int contact = 0; contact < numValidContacts; contact++)
+		for (int contact = 0; contact < sortCount; contact++)
 			contactList[contact] = SensorSystem::sortList->getId(contact);
+		for (int contact = sortCount; contact < numValidContacts; contact++)
+			contactList[contact] = handleList[contact];
 		}
 	else if (contactList)
 		for (long contact = 0; contact < numValidContacts; contact++)
