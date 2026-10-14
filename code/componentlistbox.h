@@ -16,9 +16,6 @@ ComponentListBox.h			: Interface for the ComponentListBox component.
 #include <vector>
 #endif
 
-#ifndef ELIST_H
-#endif
-
 class LogisticsVariant;
 class LogisticsComponent;
 class LogisticsVehicle;

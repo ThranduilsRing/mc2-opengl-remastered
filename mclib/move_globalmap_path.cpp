@@ -6,9 +6,9 @@
 namespace {
 
 // WHAT: gives the open-list entry of `door` its new key.
-// WHY: PriorityQueue::change() takes a heap POSITION; find() returns the position of an id and 0 for "not in the heap", and position 0 is the sentinel slot.
-// Passing a door id, or the 0 of a miss, re-keys an unrelated slot and sifts from the wrong place (the A* open-list corruption, B2.5-pre). A door flagged
-// OPEN that the heap does not hold is skipped, so the heap stays valid, and one line per run says it happened: release builds compile the assert out.
+// WHY: PriorityQueue::change() takes a heap POSITION, and find() answers 0 (the sentinel slot) for an id the heap does not hold; re-keying position 0 sifts
+// from the wrong place and breaks the heap order. A door flagged OPEN that the heap does not hold is therefore skipped. The first miss of the process logs one
+// line (later misses are silent); release builds compile the assert out.
 void reKeyOpenDoor(long door, long newKey) {
 	const long position = openList->find(door);
 	if (position == 0) {
