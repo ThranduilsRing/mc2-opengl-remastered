@@ -18,6 +18,7 @@ Recognized manifest filenames (the five species + new tools):
     package.json             mod package (mc2mod)        [legacy-allowed]
     cook.json                cook sidecar (asset_cook)   [legacy-allowed]
     *_capture_manifest.json  visual-capture sidecar (S9 runner)
+    golden.json              visual golden record
 
 Usage:
     py -3 scripts/check-manifest-schema.py [ROOT ...]
@@ -41,6 +42,7 @@ KNOWN = {
     "package.json": dict(legacy_ok=True, species="mod package"),
     "cook.json": dict(legacy_ok=True, species="cook sidecar"),
     "set.json": dict(legacy_ok=False, species="golden set record"),
+    "golden.json": dict(legacy_ok=False, species="visual golden record"),
     "release_install_report.json": dict(legacy_ok=False, species="release install report"),
 }
 SUFFIX_KNOWN = {
@@ -137,12 +139,8 @@ def main() -> int:
 
     print(f"\n[manifest-check] scanned={scanned} conformant={conformant} "
           f"legacy={legacy} broken={broken}")
-    # Blindness floor (UNWIRED-CHECKS-CLOSE-1). Every manifest this walk grades
-    # is found by rglob under tests/ and run/. Rename or move either and the
-    # walk finds nothing and prints a confident OK over an empty corpus -- a
-    # full-credit pass from a check that opened zero files. The repo tracks 13
-    # qualifying fixtures under tests/, so a floor of 1 cannot be met by
-    # accident and cannot be tripped by the absence of machine-local run/.
+    # Tracked visual goldens provide a corpus even without local run artifacts.
+    # An empty scan cannot establish schema conformance.
     if args.strict and scanned == 0:
         print("[manifest-check] FAIL: scanned 0 manifests -- the corpus is "
               "missing or the scan roots moved. An OK over an empty corpus is "
