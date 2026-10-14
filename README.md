@@ -44,7 +44,6 @@ mc2.exe -mission mc2_01     # skip menus, load directly into a mission
 
 - [docs/modding-guide.md](docs/modding-guide.md) — start here for modding
 - `mods/` — four shipped example mods ([magic-ballistic-weapons](mods/magic-ballistic-weapons), [magic-gamesys-tweaks](mods/magic-gamesys-tweaks), [modern-tree-pack-v1](mods/modern-tree-pack-v1), [my-explosions](mods/my-explosions)) — see the "Example mods" section of the modding guide
-- [docs/beta/README_modder_beta.md](docs/beta/README_modder_beta.md) — modder beta notes
 - [docs/modding-effects.md](docs/modding-effects.md) — VFX/effects authoring
 - [docs/modding-animations.md](docs/modding-animations.md) — animation authoring
 - [tools/mc2weapon/README.md](tools/mc2weapon/README.md) — weapon data tool
