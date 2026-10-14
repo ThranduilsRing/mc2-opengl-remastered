@@ -1,5 +1,5 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 1051 sites in 77 files
+# total 1000 sites in 73 files
 # per kind:
 #     259  EList::Begin
 #     197  EList
@@ -14,24 +14,14 @@
 #      13  EList::End
 #      10  PriorityQueue::insert
 #      10  EList::GetHead
-#       7  SortList::setId
-#       7  SortList::setValue
 #       7  PriorityQueue
-#       6  SortList::getId
 #       6  PriorityQueue::PriorityQueue
 #       6  PriorityQueue::init
 #       6  PriorityQueue::find
 #       6  PriorityQueue::change
-#       5  SortList::sort
-#       5  SortList::~SortList
 #       5  PriorityQueue::clear
 #       5  PriorityQueue::isEmpty
 #       5  PriorityQueue::remove
-#       5  SortList::getValue
-#       4  SortList
-#       4  SortList::SortList
-#       4  SortList::init
-#       4  SortList::clear
 #       4  EList::Insert
 #       3  PriorityQueue::getNumItems
 #       2  EList::operator==
@@ -42,8 +32,7 @@
 #       1  EList::INVALID_ITERATOR
 # per batch (cxx23-step4-b2-files.json):
 #       1  B2.3
-#      26  B2.4
-#      21  B2.4-pre
+#       8  B2.4-pre
 #      42  B2.5
 #      10  B2.5-pre
 #       6  B6
@@ -51,8 +40,7 @@
 #     447  E2
 #      43  E3
 #     148  E4
-# sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 12 in 1 files
-#      12  code/ablmc2_camera.cpp
+# sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
 #     119  editor/EditorObjectMgr.cpp
 #      98  editor/ObjectiveDlg.cpp
@@ -68,12 +56,9 @@
 #      23  editor/BuildingSettingsDlg.cpp
 #      22  editor/EditorObjectMgr_pick.cpp
 #      22  mclib/move_movemap_path.cpp
-#      20  code/mover_combat.cpp
 #      20  editor/CampaignDialog.cpp
 #      20  editor/ObjectivesSummaryPanel.cpp
 #      18  editor/SceneOutliner.cpp
-#      13  code/contact.cpp
-#      12  code/ablmc2_camera.cpp
 #      12  editor/MissionValidation.cpp
 #      11  editor/ChooseBuildingDlg.cpp
 #      11  editor/Objective.h
@@ -94,13 +79,11 @@
 #       6  editor/OverlayBrush.cpp
 #       6  editor/ResourceStringSelectionDlg.cpp
 #       5  code/mpparameterscreen.cpp
-#       4  code/mission.cpp
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
 #       4  editor/EditorInterface_mouse.cpp
 #       4  mclib/move_internal.h
 #       4  mclib/move_solvectx.h
-#       3  code/mover_init.cpp
 #       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
 #       3  editor/TelemetryPanel.cpp
@@ -118,6 +101,7 @@
 #       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
 #       2  editor/campaignData.h
+#       1  code/mission.cpp
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
 #       1  editor/BuildingLink.h
@@ -131,13 +115,9 @@
 #       1  editor/ResourceStringSelectionDlg.h
 #       1  editor/ScatterBrush.cpp
 #       1  editor/StampBrush.cpp
-# blob a416d8716c65388000e1da010b49b3106107383d code/ablmc2_camera.cpp
-# blob 253d38e5b54dd6d49aedcc518c87dffee5453977 code/contact.cpp
 # blob fd9f18996de4c78e649e163af98ded8c17a0d1ce code/group_goals.cpp
 # blob 3f14b3e1974a79a2d827c205ed5582307e01ba1c code/mission.cpp
 # blob a88d8a6ee22d155d5076d0eb806bf585324d1948 code/mission_update.cpp
-# blob 3ff5256bdbbf9c35d2b212d246db813038174209 code/mover_combat.cpp
-# blob 72d565f3c3f7112d6d093243dba22e86e110536b code/mover_init.cpp
 # blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
 # blob 973998713a2f192ea86d2319e2985382a37b60ad editor/Action.cpp
@@ -212,31 +192,6 @@
 #   editor/EditorObjectMgr_select.cpp:174 (branch opened at 167): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 #   editor/EditorObjectMgr_select.cpp:198 (branch opened at 193): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 # file:line:kind
-code/ablmc2_camera.cpp:12:SortList
-code/ablmc2_camera.cpp:12:SortList::SortList
-code/ablmc2_camera.cpp:15:SortList::init
-code/ablmc2_camera.cpp:17:SortList::clear
-code/ablmc2_camera.cpp:31:SortList::setId
-code/ablmc2_camera.cpp:32:SortList::setValue
-code/ablmc2_camera.cpp:46:SortList::setId
-code/ablmc2_camera.cpp:47:SortList::setValue
-code/ablmc2_camera.cpp:60:SortList::setId
-code/ablmc2_camera.cpp:61:SortList::setValue
-code/ablmc2_camera.cpp:70:SortList::sort
-code/ablmc2_camera.cpp:72:SortList::getId
-code/contact.cpp:134:SortList
-code/contact.cpp:134:SortList::SortList
-code/contact.cpp:137:SortList::init
-code/contact.cpp:147:SortList::~SortList
-code/contact.cpp:961:SortList
-code/contact.cpp:961:SortList::SortList
-code/contact.cpp:964:SortList::init
-code/contact.cpp:969:SortList::clear
-code/contact.cpp:971:SortList::setId
-code/contact.cpp:972:SortList::setValue
-code/contact.cpp:974:SortList::sort
-code/contact.cpp:976:SortList::getId
-code/contact.cpp:1316:SortList::~SortList
 code/group_goals.cpp:140:PriorityQueue
 code/group_goals.cpp:140:PriorityQueue::PriorityQueue
 code/group_goals.cpp:142:PriorityQueue::init
@@ -245,34 +200,8 @@ code/group_goals.cpp:158:PriorityQueue::insert
 code/group_goals.cpp:162:PriorityQueue::isEmpty
 code/group_goals.cpp:167:PriorityQueue::remove
 code/group_goals.cpp:228:PriorityQueue::insert
-code/mission.cpp:713:SortList::~SortList
-code/mission.cpp:719:SortList::~SortList
 code/mission.cpp:789:PriorityQueue::~PriorityQueue
-code/mission.cpp:795:SortList::~SortList
 code/mission_update.cpp:623:EList::Count
-code/mover_combat.cpp:938:SortList::clear
-code/mover_combat.cpp:940:SortList::setId
-code/mover_combat.cpp:941:SortList::setValue
-code/mover_combat.cpp:943:SortList::sort
-code/mover_combat.cpp:944:SortList::getValue
-code/mover_combat.cpp:950:SortList::getId
-code/mover_combat.cpp:951:SortList::getValue
-code/mover_combat.cpp:955:SortList::getValue
-code/mover_combat.cpp:956:SortList::getId
-code/mover_combat.cpp:1175:SortList::clear
-code/mover_combat.cpp:1178:SortList::setId
-code/mover_combat.cpp:1181:SortList::setValue
-code/mover_combat.cpp:1187:SortList::sort
-code/mover_combat.cpp:1189:SortList::getId
-code/mover_combat.cpp:1190:SortList::getValue
-code/mover_combat.cpp:1195:SortList::setId
-code/mover_combat.cpp:1207:SortList::setValue
-code/mover_combat.cpp:1209:SortList::sort
-code/mover_combat.cpp:1211:SortList::getId
-code/mover_combat.cpp:1212:SortList::getValue
-code/mover_init.cpp:564:SortList
-code/mover_init.cpp:564:SortList::SortList
-code/mover_init.cpp:567:SortList::init
 code/mpparameterscreen.cpp:2312:EList::Clear
 code/mpparameterscreen.cpp:2317:EList::Append
 code/mpparameterscreen.cpp:2323:EList::Delete

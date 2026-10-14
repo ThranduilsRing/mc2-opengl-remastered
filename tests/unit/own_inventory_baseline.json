@@ -5405,27 +5405,6 @@
     "MLRSortByOrder"
    ]
   },
-  "SortList": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/ablmc2_camera.cpp": {
-     "new": 1
-    },
-    "code/contact.cpp": {
-     "delete": 1,
-     "new": 2
-    },
-    "code/mover_init.cpp": {
-     "new": 1
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": [
-    "SensorSystem"
-   ]
-  },
   "SortedChain": {
    "delete": 0,
    "delete_array": 1,
@@ -7990,7 +7969,6 @@
   "code/artlry.cpp": 8,
   "code/carnage.cpp": 3,
   "code/componentlistbox.cpp": 1,
-  "code/contact.cpp": 1,
   "code/forcegroupbar.cpp": 5,
   "code/gamesound.cpp": 3,
   "code/gametacmap.h": 1,
@@ -8009,7 +7987,7 @@
   "code/mechcmd2_frame.cpp": 4,
   "code/mechicon.cpp": 5,
   "code/mechlistbox.cpp": 1,
-  "code/mission.cpp": 13,
+  "code/mission.cpp": 10,
   "code/mission2.cpp": 1,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,
