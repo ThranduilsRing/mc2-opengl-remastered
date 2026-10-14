@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 14857,
+  "code": 14845,
   "mclib": 32266,
   "shaders": 2980
  },
@@ -122,7 +122,7 @@
   "RenderCore/render_state_desc.h": 24,
   "RenderCore/terrain_subpass_contract.h": 30,
   "RenderCore/vulkan_layout_chain.h": 16,
-  "code/ablmc2_camera.cpp": 28,
+  "code/ablmc2_camera.cpp": 16,
   "code/ablmc2_objects.cpp": 32,
   "code/ablmc2_orders.cpp": 63,
   "code/ablmc2_queries.cpp": 50,
@@ -646,8 +646,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "dfdce9289",
+ "head": "d0a911924",
  "n": 8,
- "total": 56236,
+ "total": 56224,
  "version": 1
 }
