@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Q2 fixture-authored pose around the existing mc2_01_combat player_werewolf location (2496,-1941). MC2_FX_FORCE_SPAWN=loop fires at +150 world X. Require visually populated regions before assigning effect coverage. Duplicate tests settle-window motion.",
+  "bookmarks": [
+    {"name": "volley", "pos": [2546.0, -1941.0, 0.0], "rot": 0.0, "proj": 85.0, "alt": 1600.0, "covers": []},
+    {"name": "volley_dup", "pos": [2546.0, -1941.0, 0.0], "rot": 0.0, "proj": 85.0, "alt": 1600.0, "covers": []}
+  ]
+}

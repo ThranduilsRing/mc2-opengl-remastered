@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_24",
+  "_note": "Q2 diagnostic PPC poses from the historical force-fire lance location (-1216,-6150) in .claude/VK-ARC-STATE.md. These are fixture-authored, not user bookmarks. Require a visible PPC before accepting coverage. Fixed capture frame and MC2_FX_FORCE_SPAWN=loop; animation frozen. Two identical poses expose settle-window motion.",
+  "bookmarks": [
+    {"name": "ppc", "pos": [-1131.0, -6251.0, 0.0], "rot": 0.0, "proj": 85.0, "alt": 1600.0, "covers": []},
+    {"name": "ppc_dup", "pos": [-1131.0, -6251.0, 0.0], "rot": 0.0, "proj": 85.0, "alt": 1600.0, "covers": []}
+  ]
+}

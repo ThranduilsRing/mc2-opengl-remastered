@@ -1,0 +1,7 @@
+{
+  "scenes": [
+    {"id": "ppc", "bookmarks": "bookmarks/mc2_24.json", "frame": 154, "fixture": "1"},
+    {"id": "flight", "bookmarks": "bookmarks/mc2_10.json", "frame": 156, "fixture": "1"},
+    {"id": "impact", "bookmarks": "bookmarks/mc2_10.json", "frame": 184, "fixture": "1"}
+  ]
+}

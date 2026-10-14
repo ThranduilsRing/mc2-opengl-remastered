@@ -1,0 +1,37 @@
+{
+  "coverage_note": "Intended family regions, not accepted coverage. PPC beam and missile trail remain unproven in these stock force-fire fixtures; the frame-184 impact regions show opaque black cloud geometry. See the reviewed report before interpreting digests.",
+  "effects": [
+    {
+      "class": "ppc",
+      "rect": [650, 230, 1300, 600],
+      "images": {
+        "mlr": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/ppc/mlr/r1/mc2_24_ppc.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/ppc/mlr/r2/mc2_24_ppc.png"],
+        "gpu": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/ppc/gpu/r1/mc2_24_ppc.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/ppc/gpu/r2/mc2_24_ppc.png"]
+      }
+    },
+    {
+      "class": "missile",
+      "rect": [700, 180, 1250, 590],
+      "images": {
+        "mlr": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/flight/mlr/r1/mc2_10_missile.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/flight/mlr/r2/mc2_10_missile.png"],
+        "gpu": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/flight/gpu/r1/mc2_10_missile.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/flight/gpu/r2/mc2_10_missile.png"]
+      }
+    },
+    {
+      "class": "explosion",
+      "rect": [680, 470, 850, 620],
+      "images": {
+        "mlr": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/mlr/r1/mc2_10_missile.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/mlr/r2/mc2_10_missile.png"],
+        "gpu": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/gpu/r1/mc2_10_missile.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/gpu/r2/mc2_10_missile.png"]
+      }
+    },
+    {
+      "class": "smoke",
+      "rect": [850, 240, 1000, 400],
+      "images": {
+        "mlr": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/mlr/r1/mc2_10_missile.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/mlr/r2/mc2_10_missile.png"],
+        "gpu": ["E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/gpu/r1/mc2_10_missile.png", "E:/mc2-archive-2026-10/vfx-oracle-q2/final/impact/gpu/r2/mc2_10_missile.png"]
+      }
+    }
+  ]
+}
