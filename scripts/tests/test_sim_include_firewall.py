@@ -240,5 +240,64 @@ def test_committed_baseline_matches_current_tree():
     assert firewall.delta(current, baseline["violations"]) == ([], [])
 
 
+@pytest.mark.parametrize("declaration", [
+    "",
+    '# set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)',
+    'set(UNUSED "\nset_source_files_properties(Sim/kernel.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n")',
+    '#[[\nset_source_files_properties(Sim/kernel.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n]]',
+    'set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS OFF)',
+    'if(FALSE)\nset_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\nendif()',
+    'function(unused)\nset_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\nendfunction()',
+    'set_source_files_properties("Sim/other.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)',
+    'set_source_files_properties("Sim/kernel.cpp" "Sim/other.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)',
+    'set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n'
+    'set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS OFF)',
+    'set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n'
+    'set_property(SOURCE "Sim/kernel.cpp" PROPERTY SKIP_PRECOMPILE_HEADERS OFF)',
+    'set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n'
+    'set_property(SOURCE ${sim_sources} PROPERTY SKIP_PRECOMPILE_HEADERS OFF)',
+    'set_source_files_properties("Sim/kernel.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n'
+    'set_source_files_properties(${sim_sources} PROPERTIES SKIP_PRECOMPILE_HEADERS OFF)',
+])
+def test_explicit_pch_exclusion_requires_matching_actual_cmake(declaration):
+    config = scope("Core/pch.h")
+    config["pch_excluded"] = ["Sim/kernel.cpp"]
+    files = {"Sim/kernel.cpp": "void step() {}", "Core/pch.h": "#include <chrono>\n",
+             "CMakeLists.txt": declaration}
+    with pytest.raises(firewall.InputError):
+        firewall.scan(firewall.Sources(ROOT, files), config)
+
+
+@pytest.mark.parametrize("path", ["Sim/kernel.cpp", "./Sim/kernel.cpp", "Sim/../Sim/kernel.cpp",
+                                  "Sim\\kernel.cpp", (ROOT / "Sim/kernel.cpp").as_posix()])
+@pytest.mark.parametrize("command", ["set_source_files_properties", "set_property"])
+def test_equivalent_source_path_cannot_override_pch_exclusion(path, command):
+    config = scope("Core/pch.h")
+    config["pch_excluded"] = ["Sim/kernel.cpp"]
+    override = (f'{command}("{path}" PROPERTIES SKIP_PRECOMPILE_HEADERS OFF)' if
+                command == "set_source_files_properties" else
+                f'{command}(SOURCE "{path}" PROPERTY SKIP_PRECOMPILE_HEADERS OFF)')
+    files = {"Sim/kernel.cpp": "void step() {}", "Core/pch.h": "#include <chrono>\n",
+             "CMakeLists.txt": 'set_source_files_properties("Sim/kernel.cpp" '
+                               'PROPERTIES SKIP_PRECOMPILE_HEADERS ON)\n' + override}
+    with pytest.raises(firewall.InputError):
+        firewall.scan(firewall.Sources(ROOT, files), config)
+
+
+@pytest.mark.parametrize("path", ["Sim/kernel.cpp", "./Sim/kernel.cpp", "Sim/../Sim/kernel.cpp"])
+def test_explicit_pch_exclusion_passes_only_for_exact_unconditional_source_properties(path):
+    config = scope("Core/pch.h")
+    config["pch_excluded"] = ["Sim/kernel.cpp"]
+    files = {"Sim/kernel.cpp": "void step() {}", "Core/pch.h": "#include <chrono>\n",
+             "CMakeLists.txt": f'set_source_files_properties(\n "{path}"\n'
+                               ' PROPERTIES SKIP_PRECOMPILE_HEADERS ON\n)\n'}
+    assert not firewall.scan(firewall.Sources(ROOT, files), config)
+    files["Sim/kernel.cpp"] = "timeGetTime();"
+    assert {f["rule"] for f in firewall.scan(firewall.Sources(ROOT, files), config)} == {"wall-clock"}
+    config["pch_excluded"].append("Sim/kernel.cpp")
+    with pytest.raises(firewall.InputError):
+        firewall.scan(firewall.Sources(ROOT, files), config)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q", "-p", "no:cacheprovider", "-p", "no:tmpdir"]))

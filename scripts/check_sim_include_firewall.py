@@ -11,6 +11,7 @@ import argparse
 from collections import Counter, deque
 import heapq
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import sys
@@ -123,6 +124,71 @@ class Sources:
         return None
 
 
+def explicit_pch_exclusions(sources, scope):
+    excluded = scope.get("pch_excluded", [])
+    if not isinstance(excluded, list) or any(not isinstance(tu, str) for tu in excluded):
+        raise InputError("PCH exclusions require translation unit paths")
+    if len(excluded) != len(set(excluded)) or not set(excluded) <= set(scope["translation_units"]):
+        raise InputError("PCH exclusions must be distinct scoped translation units")
+    if not excluded:
+        return set()
+    def source_key(path):
+        return os.path.normcase(sources.normalize(path))
+
+    excluded_keys = {source_key(path) for path in excluded}
+    # Only unconditional literal declarations are evidence; dynamic CMake needs a new proof mechanism.
+    text = sources.read("CMakeLists.txt")
+    text = re.sub(r"#\[(=*)\[[\s\S]*?\]\1\]", "", text)
+    text = re.sub(r'"(?:\\.|[^"\\])*"|#[^\n]*',
+                  lambda m: m[0] if m[0].startswith('"') else "", text)
+    nesting = []
+    declarations = []
+    previous_end = 0
+    for command in re.finditer(r"(?im)^[ \t]*([a-z_]\w*)\s*\(", text):
+        if command.start() < previous_end:
+            continue
+        name = command[1].lower()
+        cursor, depth, quoted = command.end(), 1, False
+        end = cursor
+        while end < len(text) and depth:
+            char = text[end]
+            if char == '"' and (end == 0 or text[end - 1] != "\\"):
+                quoted = not quoted
+            if not quoted:
+                if char == "(": depth += 1
+                if char == ")": depth -= 1
+            end += 1
+        if depth:
+            raise InputError("unterminated CMake command in PCH proof")
+        previous_end = end
+        args = [token.strip('"') for token in re.findall(r'"[^"\n]*"|[^\s]+', text[cursor:end - 1])]
+        if name in {"if", "foreach", "while", "function", "macro", "block"}:
+            nesting.append(name)
+        elif name in {"endif", "endforeach", "endwhile", "endfunction", "endmacro", "endblock"}:
+            if not nesting or name != "end" + nesting.pop():
+                raise InputError("unbalanced CMake control block in PCH proof")
+        elif name in {"set_source_files_properties", "set_property"} and "SKIP_PRECOMPILE_HEADERS" in args:
+            property_index = args.index("SKIP_PRECOMPILE_HEADERS")
+            value = args[property_index + 1:property_index + 2]
+            if any("$" in arg for arg in args[:property_index]) and value != ["ON"]:
+                raise InputError("opaque CMake PCH override cannot prove exclusions")
+            if name != "set_source_files_properties" or "PROPERTIES" not in args:
+                paths = args[1:args.index("PROPERTY")] if args[:1] == ["SOURCE"] and "PROPERTY" in args else []
+                if {source_key(path) for path in paths if "$" not in path} & excluded_keys:
+                    raise InputError("unsupported explicit PCH property declaration")
+                continue
+            split = args.index("PROPERTIES")
+            paths = [source_key(path) if "$" not in path else path for path in args[:split]]
+            properties = args[split + 1:]
+            if set(paths) & excluded_keys:
+                if nesting or properties != ["SKIP_PRECOMPILE_HEADERS", "ON"]:
+                    raise InputError("PCH exclusions require unconditional SKIP_PRECOMPILE_HEADERS ON")
+                declarations.append(paths)
+    if nesting or len(declarations) != 1 or sorted(declarations[0]) != sorted(excluded_keys):
+        raise InputError("PCH exclusions differ from root CMake source properties")
+    return set(excluded)
+
+
 def scan(sources, scope):
     if scope.get("schema_version") != 1:
         raise InputError("unsupported scope schema")
@@ -138,6 +204,7 @@ def scan(sources, scope):
     if scope.get("pch_skip"):
         text = re.sub(r"#[^\n]*", "", sources.read(scope["pch_skip"]))
         skipped = set(re.findall(r'"([^"\n]+\.cpp)"', text))
+    skipped.update(explicit_pch_exclusions(sources, scope))
     findings = []
     for tu in sorted(tus):
         queue = deque([(tu, [tu])])
