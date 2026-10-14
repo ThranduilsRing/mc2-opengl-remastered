@@ -27,6 +27,13 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 		team = Team::teams[teamID];
 
 	long numValidMovers = 0;
+	// Records one mover: its handle for the unsorted tail, and its handle and threat rating in the sort list slot of the same index.
+	auto addMover = [&](MoverPtr mover) {
+		handleList[numValidMovers] = mover->getHandle();
+		Team::sortList->setId(numValidMovers, mover->getHandle());
+		Team::sortList->setValue(numValidMovers, mover->getThreatRating());
+		numValidMovers++;
+	};
 	if (getEnemies) {
 		for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
 			MoverPtr mover = ObjectManager->getMover(i);
@@ -34,10 +41,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 				if (mover->numFunctionalWeapons > 0)
 					if (mover->distanceFrom(center) < radius) {
 						if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
-							handleList[numValidMovers] = mover->getHandle();
-							Team::sortList->setId(numValidMovers, mover->getHandle());
-							Team::sortList->setValue(numValidMovers, mover->getThreatRating());
-							numValidMovers++;
+							addMover(mover);
 						}
 					}
 		}
@@ -50,10 +54,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 					if (mover->distanceFrom(center) < radius) {
 						if (mover->getPilot()->getWillHelp()) {
 							if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
-								handleList[numValidMovers] = mover->getHandle();
-								Team::sortList->setId(numValidMovers, mover->getHandle());
-								Team::sortList->setValue(numValidMovers, mover->getThreatRating());
-								numValidMovers++;
+								addMover(mover);
 							}
 						}
 					}
@@ -65,10 +66,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 					if (mover->distanceFrom(center) < radius) {
 						if (mover->getPilot()->getWillHelp()) {
 							if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
-								handleList[numValidMovers] = mover->getHandle();
-								Team::sortList->setId(numValidMovers, mover->getHandle());
-								Team::sortList->setValue(numValidMovers, mover->getThreatRating());
-								numValidMovers++;
+								addMover(mover);
 							}
 						}
 					}
