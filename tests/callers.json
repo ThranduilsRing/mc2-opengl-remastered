@@ -104,6 +104,28 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/capture_vfx_oracle.py",
+      "basename": "capture_vfx_oracle.py",
+      "stem": "capture_vfx_oracle",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_capture_vfx_oracle.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "capture_vfx_oracle",
+          "text": "from capture_vfx_oracle import command"
+        },
+        {
+          "path": "tools/test_capture_vfx_oracle.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "capture_vfx_oracle",
+          "text": "import capture_vfx_oracle as runner"
+        }
+      ]
+    },
+    {
       "path": "scripts/check-ab-kit.py",
       "basename": "check-ab-kit.py",
       "stem": "check-ab-kit",
@@ -2148,6 +2170,13 @@
           "text": "import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)"
         },
         {
+          "path": "scripts/capture_vfx_oracle.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/check-asset-manifest-fixtures.py",
           "line": 29,
           "evidence": "import",
@@ -2265,6 +2294,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "scripts/run_editor_smoke.py",
+          "line": 62,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs  # noqa: E402"
         },
         {
           "path": "scripts/run_tools_tests.py",
@@ -2981,6 +3017,13 @@
           "text": "from scripts import console_child"
         },
         {
+          "path": "tools/vfx_oracle/probe_rng.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/visual_verify/capture_ab.py",
           "line": 29,
           "evidence": "import",
@@ -3150,6 +3193,13 @@
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as ef  # noqa: E402"
+        },
+        {
+          "path": "scripts/run_editor_smoke.py",
+          "line": 63,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "import exe_fingerprint  # noqa: E402"
         },
         {
           "path": "scripts/smoke_lib/exe_guard.py",
@@ -3702,6 +3752,13 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/capture_vfx_oracle.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "run_visual_capture",
+          "text": "import run_visual_capture"
+        },
         {
           "path": "tools/visual_verify/capture.py",
           "line": 57,
@@ -7413,7 +7470,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 64,
+          "line": 66,
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
@@ -8572,6 +8629,20 @@
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
+        },
+        {
+          "path": "tools/test_vfx_rng_evidence.py",
+          "line": 3,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sim"
+        },
+        {
+          "path": "tools/vfx_oracle/check_strict_sim.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sim"
         }
       ]
     },
@@ -9412,6 +9483,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/test_capture_vfx_oracle.py",
+      "basename": "test_capture_vfx_oracle.py",
+      "stem": "test_capture_vfx_oracle",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/test_cite_guard.py",
       "basename": "test_cite_guard.py",
       "stem": "test_cite_guard",
@@ -9557,6 +9635,20 @@
       "path": "tools/test_sim_determinism.py",
       "basename": "test_sim_determinism.py",
       "stem": "test_sim_determinism",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_vfx_parity_oracle.py",
+      "basename": "test_vfx_parity_oracle.py",
+      "stem": "test_vfx_parity_oracle",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_vfx_rng_evidence.py",
+      "basename": "test_vfx_rng_evidence.py",
+      "stem": "test_vfx_rng_evidence",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -10797,6 +10889,49 @@
           "evidence": "import",
           "reference": "tools.verified",
           "text": "from tools import verified"
+        }
+      ]
+    },
+    {
+      "path": "tools/vfx_oracle/check_strict_sim.py",
+      "basename": "check_strict_sim.py",
+      "stem": "check_strict_sim",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/vfx_oracle/evidence.py",
+      "basename": "evidence.py",
+      "stem": "evidence",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/vfx_oracle/probe_rng.py",
+      "basename": "probe_rng.py",
+      "stem": "probe_rng",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/vfx_parity_oracle.py",
+      "basename": "vfx_parity_oracle.py",
+      "stem": "vfx_parity_oracle",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_vfx_parity_oracle.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "vfx_parity_oracle",
+          "text": "import vfx_parity_oracle as oracle"
+        },
+        {
+          "path": "tools/test_vfx_parity_oracle.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "vfx_parity_oracle",
+          "text": "from vfx_parity_oracle import (acceptance, changed_pixels, compare, digest, montage,"
         }
       ]
     },

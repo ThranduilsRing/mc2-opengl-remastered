@@ -267,5 +267,11 @@
   "scripts/tests/test_delivery_gate_defaults.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_board_selftests.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_contract_harness_migration.py": "Pytest-discovered module through the scripts_tests board row.",
-  "scripts/tests/test_deploy_folder_lease.py": "Pytest-discovered module through the scripts_tests board row."
+  "scripts/tests/test_deploy_folder_lease.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/test_capture_vfx_oracle.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/test_vfx_parity_oracle.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/test_vfx_rng_evidence.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/vfx_oracle/check_strict_sim.py": "VFX parity oracle diagnostic, run by hand from the Sol G lane (DIAGNOSTIC status, no board row yet).",
+  "tools/vfx_oracle/evidence.py": "VFX parity oracle diagnostic, run by hand from the Sol G lane (DIAGNOSTIC status, no board row yet).",
+  "tools/vfx_oracle/probe_rng.py": "VFX parity oracle diagnostic, run by hand from the Sol G lane (DIAGNOSTIC status, no board row yet)."
 }

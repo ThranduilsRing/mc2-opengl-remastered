@@ -3071,10 +3071,87 @@
    "stream": "stderr",
    "keys": [
     "stage",
+    "case",
+    "field",
+    "rejected",
+    "unchanged",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "case",
+    "field",
+    "retained",
+    "following",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "case",
+    "following",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "case",
+    "ok"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "case",
+    "retained",
+    "following",
+    "ok"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
     "field",
     "ok"
    ],
    "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "field",
+    "rejected",
+    "continued",
+    "ok"
+   ],
+   "count": 2
   },
   {
    "tag": "EDITOR_DEFINITIONS",
@@ -3095,9 +3172,36 @@
    "stream": "stderr",
    "keys": [
     "stage",
+    "field",
+    "value",
+    "rejected",
+    "unchanged",
+    "history",
     "ok"
    ],
-   "count": 6
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "ok"
+   ],
+   "count": 8
+  },
+  {
+   "tag": "EDITOR_DEFINITIONS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "rejected",
+    "unchanged",
+    "ok"
+   ],
+   "count": 1
   },
   {
    "tag": "EDITOR_DOCUMENT",
@@ -3112,8 +3216,87 @@
    "stream": "stderr",
    "keys": [
     "mission",
+    "block",
+    "defaulted",
+    "ObjectiveModel",
+    "ModelType",
+    "ModelScale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "block",
+    "species",
+    "reason",
+    "rejected"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "expected",
+    "actual",
+    "reason",
+    "rejected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
     "field",
     "length",
+    "limit",
+    "reason",
+    "rejected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "field",
+    "missing",
+    "rejected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "field",
+    "reason",
+    "rejected"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_DOCUMENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "length",
+    "limit",
+    "reason",
     "rejected"
    ],
    "count": 1
@@ -10783,6 +10966,46 @@
    "count": 1
   },
   {
+   "tag": "VFX_BIRTH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "spec",
+    "time",
+    "age",
+    "seed",
+    "stream",
+    "algorithm",
+    "version",
+    "initial",
+    "state",
+    "draws",
+    "legacy_draws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_DRAW_RNG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "spec",
+    "time",
+    "age",
+    "seed",
+    "stream",
+    "state_before",
+    "state_after",
+    "draws_before",
+    "draws_after",
+    "legacy_before",
+    "legacy_after",
+    "unchanged"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VFX_GPU_SIM",
    "ver": 2,
    "stream": "stderr",
@@ -12683,7 +12906,9 @@
   "DET_RNG",
   "EDITOR_DEFINITIONS",
   "EDITOR_DOCUMENT",
+  "EDITOR_MODEL",
   "EDITOR_PANEL",
+  "EDITOR_SHELL",
   "ESMOKE",
   "GLP",
   "GL_ERROR",
@@ -12708,6 +12933,8 @@
   "TGL_POOL",
   "TIMING",
   "VEG_SUMMARY",
+  "VFX_",
+  "VFX_BIRTH",
   "VIDEO",
   "VISUAL_CAPTURE",
   "VK_PROFILE",
