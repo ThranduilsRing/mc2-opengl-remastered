@@ -4,7 +4,9 @@ add_library(editor_document STATIC
     document/MissionDocument.cpp
     document/MissionSyntax.cpp
     document/MissionPackets.cpp
+    document/MissionStructure.cpp
     document/CommandHistory.cpp
+    document/EntityCommands.cpp
 )
 target_compile_features(editor_document PUBLIC cxx_std_23)
 target_include_directories(editor_document PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
@@ -28,9 +30,9 @@ add_custom_command(TARGET EditorShell POST_BUILD
     VERBATIM
 )
 
-add_executable(editor_document_tests tests/test_document.cpp)
+add_executable(editor_document_tests tests/test_document.cpp tests/test_structure.cpp)
 target_compile_features(editor_document_tests PRIVATE cxx_std_23)
-target_link_libraries(editor_document_tests PRIVATE editor_document)
+target_link_libraries(editor_document_tests PRIVATE editor_document ZLIB::ZLIB)
 
 if(MSVC)
     add_library(editor_document_asan STATIC EXCLUDE_FROM_ALL $<TARGET_PROPERTY:editor_document,SOURCES>)
@@ -38,11 +40,11 @@ if(MSVC)
     target_include_directories(editor_document_asan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
     target_compile_options(editor_document_asan PRIVATE /fsanitize=address)
     target_link_libraries(editor_document_asan PRIVATE ZLIB::ZLIB)
-    add_executable(editor_document_tests_asan EXCLUDE_FROM_ALL tests/test_document.cpp)
+    add_executable(editor_document_tests_asan EXCLUDE_FROM_ALL tests/test_document.cpp tests/test_structure.cpp)
     target_compile_features(editor_document_tests_asan PRIVATE cxx_std_23)
     target_compile_options(editor_document_tests_asan PRIVATE /fsanitize=address)
     target_link_options(editor_document_tests_asan PRIVATE /INCREMENTAL:NO)
-    target_link_libraries(editor_document_tests_asan PRIVATE editor_document_asan)
+    target_link_libraries(editor_document_tests_asan PRIVATE editor_document_asan ZLIB::ZLIB)
     get_filename_component(_document_msvc_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_custom_command(TARGET editor_document_tests_asan POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different

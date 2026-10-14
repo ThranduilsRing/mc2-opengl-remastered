@@ -9,6 +9,11 @@ struct SetTextCommand {
     Value before, after;
     std::string label;
 };
+struct StructuralCommand {
+    StructuralState before, after;
+    std::string label;
+};
+using DocumentCommand = std::variant<SetTextCommand, StructuralCommand>;
 
 class CommandHistory {
 public:
@@ -17,6 +22,10 @@ public:
     CommandHistory(const CommandHistory&) = delete;
     CommandHistory& operator=(const CommandHistory&) = delete;
     std::expected<void, LoadError> setText(NodeId field, std::string text, std::string label);
+    std::expected<EntityId, LoadError> insertUnit(const UnitPlacement& unit);
+    std::expected<EntityId, LoadError> insertBuilding(const BuildingPlacement& building);
+    std::expected<void, LoadError> erase(EntityId entity);
+    std::expected<void, LoadError> transform(EntityId entity, const Transform& transform);
     std::expected<void, LoadError> replace(std::string fit, std::vector<std::byte> pak,
         std::string mission, const Diagnostic& log);
     bool undo();
@@ -27,7 +36,12 @@ public:
     std::size_t bytesUsed() const { return used_; }
 private:
     MissionDocument& document_;
-    std::deque<SetTextCommand> commands_;
+    std::deque<DocumentCommand> commands_;
     std::size_t cursor_{}, used_{}, evicted_{}, budget_;
+    std::expected<void, LoadError> commit(DocumentCommand command);
+    std::expected<void, LoadError> apply(const DocumentCommand& command, bool forward);
+    std::expected<void, LoadError> commitStructure(std::string fit, std::vector<std::byte> placements,
+        const std::vector<EntityId>& ids, std::string label,
+        const std::unordered_map<std::string, std::string>& renamed = {});
 };
 }
