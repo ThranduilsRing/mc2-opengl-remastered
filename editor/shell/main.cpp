@@ -76,20 +76,23 @@ public:
         log(MC2_BUILD_FP_LITERAL);
         auto fit = options_.mission; fit.replace_extension(".fit");
         auto pak = options_.mission; pak.replace_extension(".pak");
-        auto loaded = MissionDocument::read(fit, pak, logger());
+        if (options_.resolverRequested || std::filesystem::exists(options_.resolver.base / "system.cfg")) {
+            auto resolver = FileResolver::mount(options_.resolver);
+            if (!resolver) return error(resolver.error().reason.c_str());
+            resolver_ = std::move(*resolver);
+            catalog_ = ObjectCatalog::load(*resolver_, logger(), resourceNames(*resolver_, logger()));
+        }
+        const auto markerObjects = catalog_ ? catalog_->navMarkerObjects() : std::vector<std::uint32_t>{};
+        auto loaded = MissionDocument::read(fit, pak, logger(), markerObjects);
         if (!loaded) return 2;
         document_ = std::move(*loaded);
         history_ = std::make_unique<CommandHistory>(*document_, 32 * 1024 * 1024, logger());
         panels_ = std::make_unique<editor::shell::EntityPanels>(*document_, *history_);
         bool fixtures{};
 #ifdef MC2_EDITOR_SMOKE_HOST
-        fixtures = !options_.panelSmoke.empty() || !options_.fileSmoke.empty();
+        fixtures = (!options_.panelSmoke.empty() && !options_.panelSmoke.starts_with("chooser")) || !options_.fileSmoke.empty();
 #endif
-        if (!fixtures && (options_.resolverRequested || std::filesystem::exists(options_.resolver.base / "system.cfg"))) {
-            auto resolver = FileResolver::mount(options_.resolver);
-            if (!resolver) return error(resolver.error().reason.c_str());
-            resolver_ = std::move(*resolver);
-            catalog_ = ObjectCatalog::load(*resolver_, logger(), resourceNames(*resolver_, logger()));
+        if (!fixtures && resolver_) {
             auto policy = PlacementPolicy::load(*resolver_, logger());
             if (!policy) return error(policy.error().reason.c_str());
             policy_ = std::move(*policy);
@@ -207,6 +210,9 @@ private:
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImVec2(1440, 230));
         ImGui::Begin("Mission", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+#ifdef MC2_EDITOR_SMOKE_HOST
+        if (panelProof_) panelProof_->drawFiles(); else
+#endif
         files_->draw();
         if (files_->closing()) { ImGui::End(); return; }
         ImGui::Text("Revision %llu | %s | undo bytes %zu | oldest commands evicted %zu",
@@ -231,7 +237,7 @@ private:
     int smoke(unsigned frames) {
         if (!applyDraft() || draft_ != longSmokeName()) return error("long_name_apply_failed");
         if (!document_->save(options_.output / "long_name", logger())) return error("long_name_save_failed");
-        auto longName = MissionDocument::read(options_.output / "long_name.fit", options_.output / "long_name.pak", logger());
+        auto longName = MissionDocument::read(options_.output / "long_name.fit", options_.output / "long_name.pak", logger(), document_->markerObjects());
         if (!longName || std::get<std::string>(longName->find("MissionSettings", "MissionName")->value[0]) != longSmokeName())
             return error("long_name_reopen_failed");
         if (!history_->undo()) return error("long_name_undo_failed");
@@ -241,7 +247,7 @@ private:
         const std::string changed = "Q3 authored mission";
         if (!history_->setText(titleId_, changed, "Mission name")) return error("edit_failed");
         if (!document_->save(options_.output / "edited", logger())) return error("edit_save_failed");
-        auto reopen = MissionDocument::read(options_.output / "edited.fit", options_.output / "edited.pak", logger());
+        auto reopen = MissionDocument::read(options_.output / "edited.fit", options_.output / "edited.pak", logger(), document_->markerObjects());
         if (!reopen || std::get<std::string>(reopen->find("MissionSettings", "MissionName")->value[0]) != changed || reopen->fitBytes() == original)
             return error("edit_reopen_failed");
         if (!history_->undo() || document_->fitBytes() != original) return error("undo_failed");

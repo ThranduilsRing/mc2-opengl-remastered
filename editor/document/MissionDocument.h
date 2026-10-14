@@ -160,14 +160,17 @@ class CommandHistory;
 class MissionDocument {
 public:
     static std::expected<MissionDocument, LoadError> read(
-        const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log);
+        const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log,
+        std::span<const std::uint32_t> markerObjects = {});
     static std::expected<MissionDocument, LoadError> decode(
-        std::string fit, std::vector<std::byte> pak, std::string mission, const Diagnostic& log);
+        std::string fit, std::vector<std::byte> pak, std::string mission, const Diagnostic& log,
+        std::span<const std::uint32_t> markerObjects = {});
     const Syntax& syntax() const { return syntax_; }
     const PacketArchive& archive() const { return pak_; }
     const std::vector<TerrainTile>& terrain() const { return terrain_; }
     std::size_t terrainSide() const { return terrainSide_; }
     const std::vector<Entity>& entities() const { return entities_; }
+    std::span<const std::uint32_t> markerObjects() const { return markerObjects_; }
     const std::vector<Objective>& objectives() const { return objectives_; }
     const Field* field(NodeId id) const;
     const Section* section(NodeId id) const;
@@ -176,6 +179,7 @@ public:
     const Field* find(std::string_view section, std::string_view name) const;
     const Entity* entity(EntityId id) const;
     bool hasMarkerReference(EntityId id) const;
+    std::expected<std::optional<NodeId>, LoadError> markerReference(EntityId id) const;
     std::string fitBytes() const;
     std::span<const std::byte> pakBytes() const { return encodedPak_.empty() ? pak_.originalBytes : encodedPak_; }
     bool modified() const;
@@ -188,6 +192,7 @@ private:
     PacketArchive pak_;
     std::vector<TerrainTile> terrain_;
     std::vector<Entity> entities_;
+    std::vector<std::uint32_t> markerObjects_;
     std::vector<Objective> objectives_;
     std::string savedFit_;
     std::vector<std::byte> savedPlacements_, placements_, encodedPak_;
@@ -198,6 +203,7 @@ private:
     std::uint64_t revision_{};
     std::uint64_t nextEntityId_ = 1, nextNodeId_ = 2 * nodeLimit + 1;
     void rebuildIndex();
+    bool isMarkerPacket(const Entity& entity) const;
     StructuralState structuralState() const;
     std::expected<void, LoadError> restore(const StructuralState& state);
     std::expected<StructuralState, LoadError> structuralCandidate(std::string fit,

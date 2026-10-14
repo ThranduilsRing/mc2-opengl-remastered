@@ -87,7 +87,8 @@ std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 }
 }
 
-std::expected<MissionDocument, LoadError> MissionDocument::read(const std::filesystem::path& fit, const std::filesystem::path& pak, const Diagnostic& log)
+std::expected<MissionDocument, LoadError> MissionDocument::read(const std::filesystem::path& fit, const std::filesystem::path& pak,
+    const Diagnostic& log, std::span<const std::uint32_t> markerObjects)
 {
     const auto recovery = recoveryState(fit);
     if (!recovery) { diagnostic(log, pathText(fit), recovery.error()); return std::unexpected(recovery.error()); }
@@ -95,10 +96,11 @@ std::expected<MissionDocument, LoadError> MissionDocument::read(const std::files
     if (!source) { diagnostic(log, pathText(fit), source.error()); return std::unexpected(source.error()); }
     auto packets = readBytes(pak, pakByteLimit);
     if (!packets) { diagnostic(log, pathText(fit), packets.error()); return std::unexpected(packets.error()); }
-    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), pathText(fit), log);
+    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), pathText(fit), log, markerObjects);
 }
 
-std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fit, std::vector<std::byte> pak, std::string mission, const Diagnostic& log)
+std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fit, std::vector<std::byte> pak, std::string mission,
+    const Diagnostic& log, std::span<const std::uint32_t> markerObjects)
 {
     auto syntax = decodeFit(std::move(fit));
     if (!syntax) { diagnostic(log, mission, syntax.error()); return std::unexpected(syntax.error()); }
@@ -108,6 +110,7 @@ std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fi
     document.syntax_ = std::move(*syntax);
     document.pak_ = std::move(*archive);
     document.mission_ = std::move(mission);
+    document.markerObjects_.assign(markerObjects.begin(), markerObjects.end());
     document.rebuildIndex();
     auto valid = document.validateSemantics();
     if (!valid) { diagnostic(log, document.mission_, valid.error()); return std::unexpected(valid.error()); }
@@ -146,19 +149,35 @@ const Entity* MissionDocument::entity(EntityId id) const
 }
 bool MissionDocument::hasMarkerReference(EntityId id) const
 {
+    const auto reference = markerReference(id);
+    return !reference || reference->has_value();
+}
+bool MissionDocument::isMarkerPacket(const Entity& entity) const
+{
+    return entity.packetRecord && std::ranges::find(markerObjects_, entity.objectNumber) != markerObjects_.end();
+}
+std::expected<std::optional<NodeId>, LoadError> MissionDocument::markerReference(EntityId id) const
+{
     const auto* selected = entity(id);
-    if (!selected || !selected->packetRecord) return false;
-    // FIT marker references have only XY identity. Ambiguous coincident packets stay protected.
+    if (!selected || !isMarkerPacket(*selected)) return std::optional<NodeId>{};
+    std::optional<NodeId> result;
     for (const auto& section : syntax_.sections) {
         const auto name = identifier(section.name);
-        if (section.parent || !name.starts_with("navmarker")) continue;
-        const auto suffix = std::string_view(name).substr(9);
-        if (suffix.empty() || !std::ranges::all_of(suffix, [](char c) { return c >= '0' && c <= '9'; })) continue;
+        const auto suffix = std::string_view(name).substr(std::min(name.size(), std::size_t{9}));
+        if (section.parent || !name.starts_with("navmarker") || suffix.empty() ||
+            !std::ranges::all_of(suffix, [](char c) { return c >= '0' && c <= '9'; })) continue;
         const auto x = number(find(section.id, "xPos")), y = number(find(section.id, "yPos"));
-        if (x && y && std::abs(selected->position[0] - *x) < 1.0 &&
-            std::abs(selected->position[1] - *y) < 1.0) return true;
+        if (!x || !y || std::abs(selected->position[0] - static_cast<float>(*x)) >= 1.0 ||
+            std::abs(selected->position[1] - static_cast<float>(*y)) >= 1.0) continue;
+        // FIT has no packet ID; ambiguous XY references cannot safely choose a radius owner.
+        const auto matches = std::ranges::count_if(entities_, [&](const Entity& e) {
+            return isMarkerPacket(e) && std::abs(e.position[0] - static_cast<float>(*x)) < 1.0 &&
+                std::abs(e.position[1] - static_cast<float>(*y)) < 1.0;
+        });
+        if (result || matches != 1) return std::unexpected(LoadError{"NavMarkers", "ambiguous_marker_reference", 0});
+        result = section.id;
     }
-    return false;
+    return result;
 }
 void MissionDocument::rebuildIndex()
 {
@@ -325,6 +344,37 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             entities_.push_back(entity);
         }
     }
+    const auto markerCount = number(find("NavMarkers", "NumNavMarkers"));
+    if (index_.contains("navmarkers") && (!typed("NavMarkers", "NumNavMarkers", 0) || !markerCount ||
+        *markerCount < 0 || *markerCount > entities_.size())) return reject("NavMarkers", "invalid_marker_count");
+    std::vector<EntityId> matchedMarkers;
+    std::size_t markerSections{};
+    for (const auto& section : syntax_.sections) {
+        const auto name = identifier(section.name);
+        const auto suffix = std::string_view(name).substr(std::min(name.size(), std::size_t{9}));
+        if (!section.parent && name.starts_with("navmarker") && !suffix.empty() &&
+            std::ranges::all_of(suffix, [](char c) { return c >= '0' && c <= '9'; })) ++markerSections;
+    }
+    const auto packetMarkers = std::ranges::count_if(entities_, [&](const Entity& e) { return isMarkerPacket(e); });
+    if (markerSections != markerCount.value_or(0) || markerSections != packetMarkers)
+        return reject("NavMarkers", "marker_count_mismatch");
+    for (std::size_t i = 0; i < markerSections; ++i) {
+        const auto block = "NavMarker" + std::to_string(i);
+        const auto x = number(find(block, "xPos")), y = number(find(block, "yPos")), radius = number(find(block, "radius"));
+        if (!typed(block, "xPos", 1) || !typed(block, "yPos", 1) || !typed(block, "radius", 1) ||
+            !x || !y || !radius || *radius < 0 || *radius > std::numeric_limits<float>::max() ||
+            std::abs(*x) > std::numeric_limits<float>::max() || std::abs(*y) > std::numeric_limits<float>::max())
+            return reject(block, "invalid_marker_payload");
+        const auto matches = [&](const Entity& e) {
+            return isMarkerPacket(e) &&
+                std::abs(e.position[0] - static_cast<float>(*x)) < 1.0 && std::abs(e.position[1] - static_cast<float>(*y)) < 1.0;
+        };
+        const auto match = std::ranges::find_if(entities_, matches);
+        if (match == entities_.end()) return reject(block, "marker_packet_desync");
+        if (std::ranges::count_if(entities_, matches) != 1 || std::ranges::find(matchedMarkers, match->id) != matchedMarkers.end())
+            return reject(block, "ambiguous_marker_reference");
+        matchedMarkers.push_back(match->id);
+    }
     const auto partCount = number(find("Parts", "NumParts"));
     if (!typed("Parts", "NumParts", 0) || !partCount || *partCount < 0 || *partCount > 65535 || std::floor(*partCount) != *partCount) return reject("Parts/NumParts", "invalid_or_missing_count");
     for (std::uint32_t i = 1; i <= static_cast<std::uint32_t>(*partCount); ++i) {
@@ -438,7 +488,7 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (!writeBytes(journal, std::as_bytes(std::span(pending)), true)) return reject("journal_write_failed");
     const auto output = fitBytes();
     if (!writeBytes(fitStage, std::as_bytes(std::span(output)), true) || !writeBytes(pakStage, pakBytes(), true)) return reject("staging_write_failed");
-    auto verified = read(fitStage, pakStage, {});
+    auto verified = read(fitStage, pakStage, {}, markerObjects_);
     if (!verified || verified->fitBytes() != output || !std::ranges::equal(verified->pakBytes(), pakBytes())) return reject("staging_verification_failed");
     bool oldFit{}, oldPak{}, newFit{}, newPak{};
     auto rollback = [&] {

@@ -43,7 +43,7 @@ std::size_t cost(const DocumentCommand& command)
 std::expected<void, LoadError> CommandHistory::replace(std::string fit, std::vector<std::byte> pak,
     std::string mission, const Diagnostic& log)
 {
-    auto candidate = MissionDocument::decode(std::move(fit), std::move(pak), std::move(mission), log);
+    auto candidate = MissionDocument::decode(std::move(fit), std::move(pak), std::move(mission), log, document_.markerObjects());
     if (!candidate) return std::unexpected(candidate.error());
     adopt(std::move(*candidate));
     return {};
@@ -87,7 +87,10 @@ std::expected<void, LoadError> CommandHistory::commitStructure(std::string fit, 
     const std::unordered_map<std::string, std::string>& renamed)
 {
     auto candidate = document_.structuralCandidate(std::move(fit), std::move(placements), ids, renamed);
-    if (!candidate) return std::unexpected(candidate.error());
+    if (!candidate) {
+        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=structure reason=" + candidate.error().reason);
+        return std::unexpected(candidate.error());
+    }
     return commit(StructuralCommand{document_.structuralState(), std::move(*candidate), std::move(label)});
 }
 bool CommandHistory::undo()

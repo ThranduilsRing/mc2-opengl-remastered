@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import zlib
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -119,7 +120,8 @@ def grade_shipping_shell():
     shipping = (binaries / "Mission Editor Shell.exe").read_bytes()
     smoke = (binaries / "Mission Editor Smoke.exe").read_bytes()
     for marker in (b"--panel-smoke", b"panel_fixture_seed_failed", b"[EDITOR_PANEL_OPERATION v1]",
-                   b"Q3 long mission ", b"--file-smoke", b"file_fixture_seed_failed", b"[EDITOR_FILE v1]"):
+                   b"Q3 long mission ", b"--file-smoke", b"file_fixture_seed_failed", b"[EDITOR_FILE v1]",
+                   b"chooser_catalog_missing", b"[EDITOR_CHOOSER_VIEW v1]", b"marker_fixture_replace_failed"):
         if marker in shipping or marker not in smoke:
             raise ValueError(f"shipping/smoke isolation failed: {marker!r}")
     print("Shipping shell: proof markers absent; smoke host: proof markers present", flush=True)
@@ -157,6 +159,9 @@ def main():
                 (output / f"e5_reference_before.{extension}").write_bytes((FROZEN / f"e5_reference_before.{extension}").read_bytes())
             command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
                         "--placement-goldens", str(FROZEN), "--placement-output", str(output)]
+        else:
+            command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
+                        "--placement-goldens", str(FROZEN), "--placement-output", str(directory / "panel-placements")]
         commands.append((command, 120, label))
     for command, timeout, label in commands:
         print(subprocess.list2cmdline(command), flush=True)
@@ -173,6 +178,15 @@ def main():
         if label.endswith("-run") and label != "editor_panel_tests-run":
             grade_outputs(inputs, directory / label)
             grade_placements(directory / (label + "-placements"), result.stdout)
+        elif label == "editor_panel_tests-run":
+            from scripts.run_editor_smoke import grade_panel, panel_negative_controls
+            rows = re.findall(r"\[EDITOR_WIDGET_ARTIFACT v1\] name=(\S+) directory=(\S+)", result.stdout)
+            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel"]:
+                raise ValueError("chooser/marker native widget artifacts missing or duplicated")
+            for name, path in rows:
+                grade_panel(name, ROOT / path, 0, require_render=False)
+                panel_negative_controls(name, ROOT / path)
+            print("Chooser widget grader: 9/9 frozen placement fields, mod provenance, current player, marker edits PASS; render capture awaits smoke host", flush=True)
     grade_shipping_shell()
     print(f"Proof artifacts: {directory}", flush=True)
     return 0

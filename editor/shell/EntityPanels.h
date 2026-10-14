@@ -38,6 +38,9 @@ public:
     document::EntityId unit() const { return unit_; }
     document::EntityId building() const { return building_; }
     document::NodeId player() const { return player_; }
+    std::vector<const document::CatalogEntry*> chooserEntries() const;
+    const document::CatalogEntry* chooserSelection() const;
+    const std::vector<document::CatalogSource>& placementSources() const { return placementSources_; }
     static std::string mode(const document::MissionDocument& document, document::EntityId unit);
     static std::string opordSummary(const document::MissionDocument& document, document::EntityId unit);
 private:
@@ -51,6 +54,13 @@ private:
     const document::PlacementPolicy* policy_{};
     document::Diagnostic placementLog_;
     int placementPlayer_{};
+    int chooserFamily_ = -1;
+    std::string chooserSearch_;
+    const document::CatalogEntry* chooserSelected_{};
+    document::Transform chooserTransform_;
+    unsigned chooserVariant_{};
+    bool showChooser_ = true;
+    std::vector<document::CatalogSource> placementSources_;
     std::string module_, status_;
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};
     std::uint64_t revision_ = ~std::uint64_t{};
@@ -66,5 +76,8 @@ private:
     void transform(const char* key, document::Transform& value);
     void report(std::expected<void, document::LoadError> result);
     std::expected<document::EntityId, document::LoadError> place(bool building);
+    std::expected<document::EntityId, document::LoadError> place(const document::CatalogEntry& entry,
+        const document::Transform& transform, unsigned variant);
+    void chooser();
 };
 }

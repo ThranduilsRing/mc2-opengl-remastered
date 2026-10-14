@@ -465,7 +465,7 @@ E5b-1 placement policy and proofs:
   those inputs; player identity has its own placement input. Synthetic panel/file
   smoke fixtures retain their primitive insert path. The chooser, browse/search
   UI and its rendered interaction proofs belong to E5b-2.
-  Marker transform/delete buttons are disabled. Document commands reject them
+  At the E5b-1 checkpoint, marker transform/delete buttons were disabled (superseded by E5b-2 below). Document commands rejected them
   before any mutation with one `[EDITOR_ENTITY_REJECT v1]` diagnostic per attempt
   and reason `marker_fit_sync_required`, including unchanged or invalid transforms.
   FIT XY references protect imported/reopened markers without a catalog; coincident
@@ -631,6 +631,123 @@ above, and new children of `scratch/e5a-fix-resolution-tests`,
 and `scratch/editor-reader-tests`, plus normal generated build/test artifacts.
 No scratch cleanup or tracked deletion occurred.
 `scratch/e5a-fixes-artifacts.json` lists retained scratch files created/updated;
+
+## E5b-2: marker synchronization and the SDL chooser
+
+Marker transform and delete are enabled. A structural command publishes FIT and
+packet changes together; undo and redo restore both exact byte streams. Transform
+retains radius and changes the packet's full transform plus FIT XY. Delete removes
+both records, decrements both counts, renumbers surviving FIT blocks and preserves
+their stable node IDs and unknown fields. The document owns NavMarker object IDs
+from the resolved catalog; ordinary buildings and DropZone entries cannot own a
+NavMarker FIT record. Initial loads, structural candidates, staged save verification
+and file reloads retain that classification. FIT block count, NumNavMarkers and
+catalog-classified packet marker count must agree exactly. The owned reader rejects
+missing blocks, malformed counts/radii, unmatched XY and ambiguous marker matches
+atomically with one diagnostic.
+Ambiguous XY ownership and moves onto another marker reject before mutation; FIT
+contains no packet ID with which to choose a radius owner safely.
+
+The chooser uses the E5a catalog and the E5b-1 placement policy. It filters by family
+and case-insensitive display name or stem, previews ID/family and enumeration,
+definition and variant provenance, and places using the current player's DefaultTeam.
+Its drafts and selection belong to EntityPanels; authored changes belong to history.
+The Entity properties button switches back to the unit/building/player panels.
+
+`chooser`, `chooser_mod`, `chooser_player`, `chooser_render` and `marker_panel` are
+smoke-host cases. They reach ordinary ImGui widgets using input events, grade saved
+undo/redo bytes, grade changed browse/search results, save through the file workflow
+and reopen a changed in-memory mission through the discard dialog. The nine stock
+chooser placements compare complete fields with the immutable E5a corpus. Every
+case requires byte equality of edited/redone FIT and PAK with its same-placement
+e5_reference artifacts, and of the final widget-save pair with its last placement.
+The fixture pair also equals the same-baseline e5_reference_before pair. The mod
+case grades FitID 2 and independently required source layers/paths; player 2 proves
+enemy defaults despite DefaultTeam 0. Native widget tests run the same cases without
+GL and are explicitly graded as rendered=0. `chooser_render/panels.bmp` is separate
+runtime visual evidence, never a substitute for the changed-output proof.
+
+Comparison rules per chooser case:
+- `chooser`: widget/reference bytes equal for all nine families; complete typed
+  unit/Warrior/cell fields, marker FIT values and decoded placements equal the
+  frozen legacy corpus semantically (export formatting and compression may differ).
+- `chooser_render`: widget/reference bytes equal; the widget's complete inserted
+  unit fields equal the frozen stock mech semantically.
+- `chooser_mod`: widget/reference bytes equal; the widget's complete inserted unit
+  fields equal the frozen mech semantically with catalog FitID/CSV identity replaced
+  by the independently resolved mod identity; resolved source layers/paths must agree.
+- `chooser_player`: widget/reference bytes equal; widget output retains authored
+  units and satisfies independently resolved player 2 pilot/brain/cell/team defaults.
+  The frozen player 0 placement is not the same semantic placement.
+
+The proof runner and smoke harness retain a corrupted VariantNumber in edited and
+redone widget FITs for every chooser case, also corrupting the final widget save
+for single-placement cases. References stay clean, and matching edited/redone bytes
+cannot satisfy the widget/reference grade. A marker FIT-only position change must
+also fail its semantic grade before the original files are restored.
+Reader desync, ambiguous references,
+destination collisions, count changes and exact history are also native tests.
+No frozen golden, generated baseline, index or lane-owned source is changed.
+
+Offline proof commands (the document runner builds all five targets with bounded
+compiler probes and a unique PDB endpoint, then runs normal and ASan):
+
+```powershell
+py -3 editor/tests/run_document_proofs.py
+py -3 editor/tests/run_catalog_proofs.py
+py -3 -m pytest scripts/tests/test_editor_smoke.py editor/tests/test_placement_proofs.py editor/tests/test_catalog_proofs.py --capture=sys -p no:tmpdir -p no:cacheprovider -q
+$env:_MSPDBSRV_ENDPOINT_ = 'sol-e5b2-contract-' + $PID
+py -3 tools/build_contract_harnesses.py --run --unit
+git diff --check
+```
+
+After the orchestrator commits, builds and deploys EditRel, EditorShell and
+EditorShellSmoke into lane3, these are the exact smoke-host commands. Bash
+check-contracts remains the orchestrator's command. Run the first command to create
+the artifacts consumed by the two independent legacy reload controls; none replaces
+or regenerates a frozen reference. Inspect the separate chooser render capture.
+
+```powershell
+$e5b2Editor = 'A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe'
+$e5b2Host = 'A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor Smoke.exe'
+py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --shell-exe $e5b2Host --prepare-stock-scratch --case stock_roundtrip --case new_model --case legacy_catalog_reference --compare-legacy-reference editor/tests/goldens/e5a-stock --case chooser --case chooser_mod --case chooser_player --case marker_panel --case chooser_render --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-runtime
+$e5b2Artifacts = (Get-ChildItem scratch/e5b2-runtime -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --case owned_marker_reload --owned-marker-action moved --owned-marker-placement "$e5b2Artifacts/marker_panel/marker-transform-edited" --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-moved-reload
+py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --case owned_marker_reload --owned-marker-action deleted --owned-marker-placement "$e5b2Artifacts/marker_panel/marker-delete-edited" --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-deleted-reload
+```
+
+Runtime execution, legacy reload and visual capture are pending the required
+committed build/deploy checkpoint. Scratch is retained under `scratch/e4-proofs`,
+`scratch/e5b2-widget-tests`, `scratch/e5-catalog-proofs`, `scratch/e5b1-negative`,
+`scratch/e5-catalog-tests`, `scratch/editor-smoke-tests`, the existing document/file/
+widget test scratch roots and `scratch/editor-reader-tests`; the contract log is
+`scratch/e5b2-contract.log`. No files were deleted. The marker save-corruption bug
+row belongs in the orchestrator's BUGS-FOUND-FIXED.md after the commit SHA is known.
+
+Offline checkpoint: `scratch/e4-proofs/2026-10-14T15-44-58` passes normal and
+ASan (40 cases/114736 assertions each), 24/24 stock pairs, 9/9 frozen placements,
+all five real widget cases (7 panel/file cases/199 assertions overall), mod/current
+player grading and both actual-output negative controls. Shipping proof isolation
+passes; all five builds have zero warnings. Python passes 64 tests/349 subtests.
+Catalog resolution matches 34/34 stock, 34/34 archive-only and 62/62 mod inputs.
+Contract --run --unit passes 3115 native cases (four existing skips and deliberate
+negative controls) plus four Python suites; release-tree checks remain explicit
+no-ops without a configured root. Intermediate compiler/widget/grader failures
+were corrected; no compiler timeout occurred. `scratch/e5b2-artifacts.json` lists
+retained scratch files created or updated in this task; no scratch was deleted.
 `scratch/e5a-fixes-reviewed.patch`, `scratch/e5a-fixes-changes.json`,
 `scratch/e5a-fixes-pathspec.txt` and `scratch/e5a-fixes-commit-message.txt` retain
 the reviewed diff and the single proposed commit. Scratch is excluded from it.
+
+Review-fix checkpoint: `scratch/e4-proofs/2026-10-14T16-08-13` passes normal and
+ASan (40 cases/114766 assertions each), all five native widget cases, 24 stock
+pairs, nine frozen placements and all four chooser widget-output corruption
+controls plus the marker desync control. Python passes 66 tests/351 subtests;
+catalog resolution remains 34/34 stock, 34/34 archive-only and 62/62 mod inputs.
+All six editor target builds have zero warnings. Shared contracts pass 3115 native
+cases (four existing skips and deliberate negative controls) and four Python
+suites; release-tree checks remain no-ops without a configured root. No compiler
+timeout occurred. `scratch/e5b2-review-proof.txt` records commands and pending
+orchestrator proofs; `scratch/e5b2-review-reviewed.patch`, `-pathspec.txt`,
+`-commit-message.txt` and `-changes.json` retain the single reviewed commit package.
+`scratch/e5b2-review-artifacts.json` lists retained scratch files. None were deleted.

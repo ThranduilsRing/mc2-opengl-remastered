@@ -165,7 +165,7 @@ TEST_CASE("document/panel commands change saved output and restore bytes through
         CHECK(changedFit.find("PrimaryOPORD { type = Patrol; compatibilityMode = \"Enhanced\"; }") != std::string::npos);
         CHECK(changedFit.find("f Value = 17.500\r\n") != std::string::npos);
         const auto dir = scratch(); REQUIRE(doc.save(dir / "panel-edited", {}));
-        auto reopen = MissionDocument::read(dir / "panel-edited.fit", dir / "panel-edited.pak", {}); REQUIRE(reopen);
+        auto reopen = MissionDocument::read(dir / "panel-edited.fit", dir / "panel-edited.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopen);
         CHECK(reopen->fitBytes() == changedFit); CHECK(bytes(*reopen) == changedPak);
         if (std::string_view(operation) == "unit-team") CHECK(reopen->entities()[2].team == 3);
         if (std::string_view(operation) == "building-team") CHECK(reopen->entities()[0].team == -1);
@@ -198,10 +198,10 @@ TEST_CASE("document/three brain modes handle absent block and scoped field inser
             CHECK(loaded->find(*entity->warrior, "Brain")->value == Value{std::string("legacy2")});
             CHECK(loaded->fitBytes().find("f Value = 17.500") != std::string::npos);
             const auto changed = loaded->fitBytes(); const auto dir = scratch(); REQUIRE(loaded->save(dir / "mode", {}));
-            auto reopened = MissionDocument::read(dir / "mode.fit", dir / "mode.pak", {}); REQUIRE(reopened);
+            auto reopened = MissionDocument::read(dir / "mode.fit", dir / "mode.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
             CHECK(reopened->find(*reopened->entities()[2].brain, "compatibilityMode")->value == Value{std::string(mode)});
             const auto hybridOriginal = reopened->fitBytes(); REQUIRE(reopened->save(dir / "mode-roundtrip", {}));
-            auto second = MissionDocument::read(dir / "mode-roundtrip.fit", dir / "mode-roundtrip.pak", {}); REQUIRE(second);
+            auto second = MissionDocument::read(dir / "mode-roundtrip.fit", dir / "mode-roundtrip.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(second);
             CHECK(second->fitBytes() == hybridOriginal); CHECK(bytes(*second) == pak());
             CHECK(fileBytes(dir / "mode-roundtrip.fit") == fileBytes(dir / "mode.fit"));
             CHECK(fileBytes(dir / "mode-roundtrip.pak") == fileBytes(dir / "mode.pak"));
@@ -299,7 +299,7 @@ TEST_CASE("document/unit structural commands preserve coincident identities and 
     const auto changed = doc.fitBytes();
     const auto dir = scratch();
     REQUIRE(doc.save(dir / "moved", {})); CHECK_FALSE(doc.modified());
-    const auto reopened = MissionDocument::read(dir / "moved.fit", dir / "moved.pak", {});
+    const auto reopened = MissionDocument::read(dir / "moved.fit", dir / "moved.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(reopened); CHECK(reopened->fitBytes() == changed);
     CHECK(reopened->entities()[2].position == moved.position);
     REQUIRE(history.undo()); CHECK(doc.fitBytes() == fit()); CHECK(doc.modified());
@@ -335,13 +335,13 @@ TEST_CASE("document/unit insertion deletion and export compaction retain other I
     CHECK(doc.entity(two)->section == section); CHECK(doc.entity(two)->brain == brain);
     const auto placed = doc.fitBytes(); CHECK(placed != deleted); CHECK(bytes(doc) == pak());
     const auto dir = scratch(); REQUIRE(doc.save(dir / "placed", {}));
-    const auto reopened = MissionDocument::read(dir / "placed.fit", dir / "placed.pak", {});
+    const auto reopened = MissionDocument::read(dir / "placed.fit", dir / "placed.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(reopened); CHECK(reopened->entities().back().position == newUnit().transform.position);
     REQUIRE(history.undo()); CHECK(doc.fitBytes() == deleted); CHECK(doc.entity(*inserted) == nullptr);
     REQUIRE(history.redo()); CHECK(doc.fitBytes() == placed); CHECK(doc.entity(*inserted)->id == *inserted);
     REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(doc.fitBytes() == fit());
     REQUIRE(doc.save(dir / "original", {}));
-    auto original = MissionDocument::read(dir / "original.fit", dir / "original.pak", {});
+    auto original = MissionDocument::read(dir / "original.fit", dir / "original.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(original); CHECK(original->fitBytes() == fit()); CHECK(bytes(*original) == pak());
     const auto branch = history.insertUnit(newUnit()); REQUIRE(branch); CHECK(*branch != *inserted); CHECK_FALSE(history.canRedo());
 }
@@ -363,7 +363,7 @@ TEST_CASE("document/inserted Part supplies every required runtime field")
     }
     CHECK(doc.find(section, "MyIcon")->value == Value{std::int64_t{0}});
     const auto dir = scratch(); REQUIRE(doc.save(dir / "payload", {}));
-    auto reopened = MissionDocument::read(dir / "payload.fit", dir / "payload.pak", {}); REQUIRE(reopened);
+    auto reopened = MissionDocument::read(dir / "payload.fit", dir / "payload.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
     CHECK(reopened->fitBytes() == doc.fitBytes());
 }
 
@@ -391,7 +391,7 @@ TEST_CASE("document/group members retain unit identity after delete and export")
         }
         REQUIRE(history.erase(removed)); CHECK(loaded->field(matesId)->value == expected);
         const auto dir = scratch(); REQUIRE(loaded->save(dir / "groups", {}));
-        auto exported = MissionDocument::read(dir / "groups.fit", dir / "groups.pak", {}); REQUIRE(exported);
+        auto exported = MissionDocument::read(dir / "groups.fit", dir / "groups.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(exported);
         CHECK(exported->find("Commander0Group:0", "Mates")->value == expected);
         const auto& remaining = exported->find("cOMMANDER1gROUP:0", "Mates")->value;
         CHECK(remaining[0] == Scalar{std::int64_t{deleted == 0 ? 1 : deleted == 1 ? 0 : 2}});
@@ -463,14 +463,14 @@ TEST_CASE("document/building packet encoding transforms insert delete undo and r
         CHECK(doc.entity(unit)->exportedPart == 1); unchangedPackets(doc.archive(), bytes(doc));
         const auto placed = bytes(doc);
         const auto dir = scratch(); REQUIRE(doc.save(dir / "placed", {}));
-        const auto reopened = MissionDocument::read(dir / "placed.fit", dir / "placed.pak", {});
+        const auto reopened = MissionDocument::read(dir / "placed.fit", dir / "placed.pak", {}, editor::tests::inputs().markerObjects);
         REQUIRE(reopened); CHECK(bytes(*reopened) == placed); CHECK(reopened->entities()[1].objectNumber == 999);
         CHECK(reopened->entities()[1].position == building.transform.position);
         REQUIRE(history.undo()); CHECK(bytes(doc) == deleted); REQUIRE(history.redo()); CHECK(bytes(doc) == placed);
         REQUIRE(history.undo()); REQUIRE(history.undo()); REQUIRE(history.undo());
         CHECK(bytes(doc) == original); CHECK(doc.fitBytes() == originalFit);
         REQUIRE(doc.save(dir / "original", {}));
-        auto restored = MissionDocument::read(dir / "original.fit", dir / "original.pak", {});
+        auto restored = MissionDocument::read(dir / "original.fit", dir / "original.pak", {}, editor::tests::inputs().markerObjects);
         REQUIRE(restored); CHECK(bytes(*restored) == original); CHECK(restored->fitBytes() == originalFit);
         REQUIRE(history.erase(one)); REQUIRE(history.erase(two));
         CHECK(doc.entities().size() == 2); REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(bytes(doc) == original);
@@ -632,7 +632,7 @@ TEST_CASE("document/stock corpus requires exactly 24 unchanged pairs and a negat
     for (int i = 1; i <= 24; ++i) {
         const auto name = std::string("mc2_") + (i < 10 ? "0" : "") + std::to_string(i);
         const auto stem = std::filesystem::path(directory) / name;
-        auto doc = MissionDocument::read(stem.string() + ".fit", stem.string() + ".pak", {});
+        auto doc = MissionDocument::read(stem.string() + ".fit", stem.string() + ".pak", {}, editor::tests::inputs().markerObjects);
         REQUIRE(doc);
         std::ifstream input(stem.string() + ".fit", std::ios::binary);
         const std::string original{std::istreambuf_iterator<char>(input), {}};
@@ -664,7 +664,7 @@ TEST_CASE("document/stock corpus requires exactly 24 unchanged pairs and a negat
             for (std::size_t n = 0; n < originalIds.size(); ++n) CHECK(doc->entities()[n].id == originalIds[n]);
             const auto changedStem = output / (name + (building ? "-building" : "-unit"));
             REQUIRE(doc->save(changedStem, {}));
-            auto reopened = MissionDocument::read(changedStem.string() + ".fit", changedStem.string() + ".pak", {});
+            auto reopened = MissionDocument::read(changedStem.string() + ".fit", changedStem.string() + ".pak", {}, editor::tests::inputs().markerObjects);
             REQUIRE(reopened); CHECK(reopened->fitBytes() == doc->fitBytes()); CHECK(bytes(*reopened) == bytes(*doc));
             REQUIRE(history.undo()); CHECK(doc->fitBytes() == original); CHECK(bytes(*doc) == originalPak);
         }

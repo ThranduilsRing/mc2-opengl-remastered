@@ -136,7 +136,7 @@ void FileWorkflow::perform(bool saveFirst)
         if (!validText(pathText(target_))) { reject("invalid_path"); action_ = Action::None; return; }
         const auto fit = fitPath(target_);
         auto pak = fit; pak.replace_extension(".pak");
-        auto loaded = MissionDocument::read(fit, pak, log_);
+        auto loaded = MissionDocument::read(fit, pak, log_, document_.markerObjects());
         if (!loaded) { status_ = loaded.error().reason; action_ = Action::None; return; }
         if (saveFirst) {
             if (!save()) return;

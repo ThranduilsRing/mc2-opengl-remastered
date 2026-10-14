@@ -14,7 +14,7 @@ void FileProof::disk(const std::filesystem::path& stem, const std::string& fit)
 {
     auto fitPath = stem; fitPath.replace_extension(".fit");
     auto pakPath = stem; pakPath.replace_extension(".pak");
-    auto loaded = MissionDocument::read(fitPath, pakPath, log_);
+    auto loaded = MissionDocument::read(fitPath, pakPath, log_, document_.markerObjects());
     require(loaded && loaded->fitBytes() == fit && pak(*loaded) == originalPak_, "file_saved_pair_differs");
 }
 void FileProof::unchanged()

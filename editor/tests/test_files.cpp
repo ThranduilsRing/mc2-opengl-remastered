@@ -31,7 +31,7 @@ TEST_CASE("files/real widgets own lifecycle decisions and preserve failed transi
             if (line.find("rejected=1") != std::string::npos) ++diagnostics;
             log << line << '\n'; log.flush();
         };
-        auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", logger);
+        auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", logger, editor::tests::inputs().markerObjects);
         REQUIRE(doc);
         CommandHistory history(*doc); EntityPanels panels(*doc, history);
         FileWorkflow files(*doc, history, panels, directory / "initial", logger, {}, directory / "recent.txt");
@@ -66,7 +66,7 @@ TEST_CASE("files/real widgets own lifecycle decisions and preserve failed transi
 TEST_CASE("files/malformed recent lists reject once and preserve the live history" * doctest::test_suite("stock-fixture"))
 {
     const auto& stock = editor::tests::inputs().stockDirectory;
-    auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
+    auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(doc);
     CommandHistory history(*doc); EntityPanels panels(*doc, history);
     REQUIRE(history.setText(doc->find("MissionSettings", "MissionName")->id, "retained edit", "Name"));
@@ -115,7 +115,7 @@ TEST_CASE("files/malformed recent lists reject once and preserve the live histor
 TEST_CASE("files/recent publication failure preserves memory and disk while save commits" * doctest::test_suite("stock-fixture"))
 {
     const auto& stock = editor::tests::inputs().stockDirectory;
-    auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
+    auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(doc);
     const auto directory = std::filesystem::absolute(std::filesystem::path("scratch/e4-recent-tests") /
         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -147,7 +147,7 @@ TEST_CASE("files/recent publication failure preserves memory and disk while save
     CHECK(doc->fitBytes() == bytes);
     CHECK_FALSE(doc->modified());
     CHECK(history.canUndo());
-    auto reopened = MissionDocument::read(directory / "saved.fit", directory / "saved.pak", {});
+    auto reopened = MissionDocument::read(directory / "saved.fit", directory / "saved.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(reopened); CHECK(reopened->fitBytes() == bytes);
     REQUIRE(history.undo()); CHECK(doc->modified());
     REQUIRE(history.redo()); CHECK_FALSE(doc->modified());
@@ -173,7 +173,7 @@ TEST_CASE("files/accepted close suppresses a queued editable click with an ungua
 {
     const auto& stock = editor::tests::inputs().stockDirectory;
     for (bool guard : {true, false}) {
-        auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
+        auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {}, editor::tests::inputs().markerObjects);
         REQUIRE(doc); CommandHistory history(*doc); EntityPanels panels(*doc, history);
         FileWorkflow files(*doc, history, panels, std::filesystem::path(stock) / "mc2_01.fit", {});
         const auto before = doc->fitBytes(); const auto revision = doc->revision();
@@ -211,7 +211,7 @@ TEST_CASE("files/accepted close suppresses a queued editable click with an ungua
 TEST_CASE("files/close proof cannot terminate a loop missing production close handling" * doctest::test_suite("stock-fixture"))
 {
     const auto& stock = editor::tests::inputs().stockDirectory;
-    auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {});
+    auto doc = MissionDocument::read(std::filesystem::path(stock) / "mc2_01.fit", std::filesystem::path(stock) / "mc2_01.pak", {}, editor::tests::inputs().markerObjects);
     REQUIRE(doc); CommandHistory history(*doc); EntityPanels panels(*doc, history);
     const auto directory = std::filesystem::absolute(std::filesystem::path("scratch/e4-widget-tests") /
         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) / "close-negative");

@@ -571,17 +571,24 @@ def marker_reload_provenance(exe):
     return dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
 
 
-def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout):
-    """The legacy reader must accept the owned writer's identified marker placement."""
-    from editor.tests.legacy_reference import FROZEN, buildings, marker_values, verify_frozen
+def placement_fields(data):
+    return fit_fields(b"\n".join(line for line in data.splitlines() if line.strip().lower() not in (b"fitini", b"fitend")))
+
+
+def grade_marker_source(before_fit, before_pak, action="inserted"):
+    from editor.tests.legacy_reference import FROZEN, buildings, marker_values, verify_frozen, canonical_units
     verify_frozen()
-    before_fit = source.with_suffix(".fit").read_bytes()
-    before_pak = source.with_suffix(".pak").read_bytes()
-    before_fields = fit_fields(before_fit)
-    baseline = fit_fields((FROZEN / "e5_reference_before.fit").read_bytes())
+    before_fields = placement_fields(before_fit)
+    baseline = placement_fields((FROZEN / "e5_reference_before.fit").read_bytes())
     source_markers, baseline_markers = marker_values(before_fields), marker_values(baseline)
     source_records = Counter(buildings(before_pak))
     baseline_records = Counter(buildings((FROZEN / "e5_reference_before.pak").read_bytes()))
+    if canonical_units(before_fields) != canonical_units(baseline):
+        raise ValueError("marker control changed authored units")
+    if action == "deleted":
+        if source_markers != baseline_markers or source_records != baseline_records:
+            raise ValueError("deleted marker control must remove the identified frozen marker only")
+        return
     added, records = source_markers - baseline_markers, source_records - baseline_records
     if sum(added.values()) != 1 or sum(records.values()) != 1 or baseline_markers - source_markers or baseline_records - source_records:
         raise ValueError("owned marker control requires one inserted FIT and packet record")
@@ -590,6 +597,20 @@ def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout):
     values = dict(next(iter(added)))
     if object_id != 290 or values.get("xPos") != (("f", (x,)),) or values.get("yPos") != (("f", (y,)),):
         raise ValueError("owned marker control FIT and packet identities differ")
+    if action == "moved":
+        original = Counter(buildings((FROZEN / "e5_reference_marker.pak").read_bytes())) - baseline_records
+        previous = next(iter(original))
+        if records == original or values.get("radius") != (("f", (256.0,)),) or record[:4] != previous[:4] or record[20:] != previous[20:]:
+            raise ValueError("moved marker control did not change the identified marker")
+
+
+def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout, action="inserted"):
+    """The legacy reader must accept the owned writer's identified marker placement."""
+    from editor.tests.legacy_reference import buildings, marker_values
+    before_fit = source.with_suffix(".fit").read_bytes()
+    before_pak = source.with_suffix(".pak").read_bytes()
+    before_fields = placement_fields(before_fit)
+    grade_marker_source(before_fit, before_pak, action)
     directory = deploy / "terrain_gen_out/owned_marker_reload"
     directory.mkdir(parents=True, exist_ok=True)
     for extension, data in (("fit", before_fit), ("pak", before_pak)):
@@ -602,7 +623,7 @@ def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout):
         try:
             after_fit = (directory / "reloaded.fit").read_bytes()
             after_pak = (directory / "reloaded.pak").read_bytes()
-            if marker_values(fit_fields(after_fit)) != marker_values(before_fields) or Counter(buildings(after_pak)) != Counter(buildings(before_pak)):
+            if marker_values(placement_fields(after_fit)) != marker_values(before_fields) or Counter(buildings(after_pak)) != Counter(buildings(before_pak)):
                 raise ValueError("legacy reload changed marker FIT values or packet placements")
             for extension, data in (("fit", after_fit), ("pak", after_pak)):
                 (report / f"reloaded.{extension}").write_bytes(data)
@@ -1047,6 +1068,11 @@ PANEL_OPERATIONS = {
     "player_panel": ("player-alignment",),
     "brain_modes": ("brain-Hybrid", "brain-Enhanced", "brain-module", "brain-Legacy"),
     "panel_render": (),
+    "marker_panel": ("marker-transform", "marker-delete"),
+    "chooser": tuple("chooser-" + family for family in ("mech", "vehicle", "building", "turret", "tree", "gate", "bridge", "light", "marker")),
+    "chooser_mod": ("chooser-mech",),
+    "chooser_player": ("chooser-mech",),
+    "chooser_render": ("chooser-mech",),
 }
 
 FILE_CASES = ("file_save", "file_save_as", "file_recent", "file_failures") + tuple(
@@ -1090,13 +1116,13 @@ def grade_file(name: str, directory: Path, rc: int) -> None:
                 raise ValueError("file save-as destination or recent output differs")
 
 
-def grade_panel(name: str, directory: Path, rc: int) -> None:
+def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> None:
     if rc != 0:
         raise ValueError(f"panel process failed: {name} rc={rc}")
     lines = (directory / "shell.log").read_text(encoding="utf-8").splitlines()
     summaries = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines
                  if line.startswith("[EDITOR_PANEL v1] ")]
-    if summaries != [dict(name=name, result="PASS", widgets="1", rendered="1", saved_widget="1", reopened_widget="1")]:
+    if summaries != [dict(name=name, result="PASS", widgets="1", rendered="1" if require_render else "0", saved_widget="1", reopened_widget="1")]:
         raise ValueError(f"panel summary missing or duplicated: {name}")
     operations = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines
                   if line.startswith("[EDITOR_PANEL_OPERATION v1] ")]
@@ -1115,7 +1141,7 @@ def grade_panel(name: str, directory: Path, rc: int) -> None:
             if undone != original or redone != edited:
                 raise ValueError(f"panel undo/redo bytes differ: {operation}.{extension}")
             changed |= original != edited
-            if extension == "pak" and not operation.startswith("building-") and edited != original:
+            if extension == "pak" and not operation.startswith(("building-", "marker-", "chooser-")) and edited != original:
                 raise ValueError(f"unrelated panel PAK changed: {operation}")
         if not changed:
             raise ValueError(f"panel changed output missing: {operation}")
@@ -1125,13 +1151,193 @@ def grade_panel(name: str, directory: Path, rc: int) -> None:
                 raise ValueError("existing Hybrid bytes changed")
         if b'compatibilityMode = "Hybrid";' not in (directory / "brain-Hybrid-edited.fit").read_bytes():
             raise ValueError("Hybrid assignment missing")
-    saved_baseline = "existing-hybrid" if name == "brain_modes" else "fixture"
+    saved_baseline = (expected[-1] + "-edited" if name.startswith("chooser") else
+                      "existing-hybrid" if name == "brain_modes" else "fixture")
     for extension in ("fit", "pak"):
         if (directory / f"widget-save.{extension}").read_bytes() != (directory / f"{saved_baseline}.{extension}").read_bytes():
             raise ValueError("save widget output differs")
-    capture = (directory / "panels.bmp").read_bytes()
-    if len(capture) != 54 + 1440 * 960 * 3 or capture[:2] != b"BM" or len(set(capture[54:])) < 10:
-        raise ValueError("rendered panel evidence missing or empty")
+    if require_render:
+        capture = (directory / "panels.bmp").read_bytes()
+        if len(capture) != 54 + 1440 * 960 * 3 or capture[:2] != b"BM" or len(set(capture[54:])) < 10:
+            raise ValueError("rendered panel evidence missing or empty")
+    if name.startswith("chooser"):
+        grade_chooser(name, directory, lines)
+    elif name == "marker_panel":
+        grade_marker_edits(directory)
+
+
+def grade_marker_edits(directory):
+    from editor.tests.legacy_reference import buildings, marker_values
+    grade_marker_source((directory / "marker-transform-edited.fit").read_bytes(),
+                        (directory / "marker-transform-edited.pak").read_bytes(), "moved")
+    grade_marker_source((directory / "marker-delete-edited.fit").read_bytes(),
+                        (directory / "marker-delete-edited.pak").read_bytes(), "deleted")
+    original = placement_fields((directory / "fixture.fit").read_bytes())
+    moved = placement_fields((directory / "marker-transform-edited.fit").read_bytes())
+    deleted = placement_fields((directory / "marker-delete-edited.fit").read_bytes())
+    before_records = Counter(buildings((directory / "fixture.pak").read_bytes()))
+    move_records = Counter(buildings((directory / "marker-transform-edited.pak").read_bytes()))
+    delete_records = Counter(buildings((directory / "marker-delete-edited.pak").read_bytes()))
+    added = list((move_records - before_records).elements())
+    removed = list((before_records - delete_records).elements())
+    if len(added) != 1 or len(removed) != 1 or before_records - move_records != Counter(removed) or delete_records - before_records:
+        raise ValueError("marker packet edit changed unrelated records")
+    changed_markers = marker_values(moved) - marker_values(original)
+    if sum(changed_markers.values()) != 1:
+        raise ValueError("marker move did not change one FIT record")
+    marker = dict(next(iter(changed_markers.elements())))
+    object_id, x, y = struct.unpack_from("<Iff", added[0])
+    if object_id != 290 or x != -4000 or marker.get("xPos") != (("f", (x,)),) or marker.get("yPos") != (("f", (y,)),):
+        raise ValueError("marker desync negative control: FIT and packet positions differ")
+    if sum(marker_values(original).values()) != sum(marker_values(deleted).values()) + 1:
+        raise ValueError("marker delete FIT count differs")
+    if sum(marker_values(original).values()) != sum(marker_values(moved).values()):
+        raise ValueError("marker move FIT count differs")
+
+
+def grade_chooser(name, directory, lines):
+    from editor.tests.legacy_reference import PLACEMENTS, compare_frozen, inserted_unit, typed_fields, verify_frozen
+    from editor.tests.run_catalog_proofs import oracle
+    families = [operation.removeprefix("chooser-") for operation in PANEL_OPERATIONS[name]]
+    # These references save the very same placement; widget artifacts must match both byte streams.
+    # Frozen stock references are legacy exports and retain the existing semantic parity grade.
+    for extension in ("fit", "pak"):
+        if (directory / f"fixture.{extension}").read_bytes() != (directory / f"e5_reference_before.{extension}").read_bytes():
+            raise ValueError(f"chooser widget/reference baseline bytes differ: {extension}")
+    for family in families:
+        for extension in ("fit", "pak"):
+            reference = (directory / f"e5_reference_{family}.{extension}").read_bytes()
+            for stage in ("edited", "redone"):
+                if (directory / f"chooser-{family}-{stage}.{extension}").read_bytes() != reference:
+                    raise ValueError(f"chooser widget/reference bytes differ: {family}-{stage}.{extension}")
+            if family == families[-1] and (directory / f"widget-save.{extension}").read_bytes() != reference:
+                raise ValueError(f"chooser widget/reference bytes differ: widget-save.{extension}")
+    views = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines if line.startswith("[EDITOR_CHOOSER_VIEW v1] ")]
+    if views != [dict(family=family, stage=stage, changed="1", widgets="1") for family in families for stage in ("browse", "search")]:
+        raise ValueError("chooser browse/search widget evidence missing or duplicated")
+    independent = oracle(Path("A:/Games/mc2-opengl/mc2-win64-lane3"), Path("A:/Games/mc2-opengl"),
+                         "MC2X-CVE-G" if name == "chooser_mod" else "")
+    for family in families:
+        preview = (directory / f"{family}-preview.tsv").read_text().strip().split("\t")
+        if len(preview) != 5: raise ValueError("chooser preview identity incomplete")
+        expected_id, stem = (2, preview[1]) if name == "chooser_mod" else PLACEMENTS[family]
+        if len(preview) != 5 or preview[:3] != [str(expected_id), stem, family]:
+            raise ValueError("chooser preview identity differs")
+        for stage in ("browse", "search"):
+            before = (directory / f"{family}-{stage}-before.tsv").read_bytes()
+            after = (directory / f"{family}-{stage}-after.tsv").read_bytes()
+            rows = [row.split("\t") for row in after.decode().splitlines()]
+            if before == after or not rows or any(len(row) != 5 or row[2] != family for row in rows):
+                raise ValueError("chooser filter changed-output missing")
+            if stage == "search" and (any(stem.lower() not in row[1].lower() for row in rows) or preview not in rows):
+                raise ValueError("chooser search output differs")
+        sources = [row.split("\t") for row in (directory / f"{family}-sources.tsv").read_text().splitlines()]
+        if not sources or any(len(row) != 3 for row in sources) or len({row[0] for row in sources}) != len(sources):
+            raise ValueError("chooser resolved sources missing or duplicated")
+        for key, layer, source in sources:
+            _, wanted_layer, wanted_source = independent(key)
+            if layer != wanted_layer or Path(source).resolve() != wanted_source.resolve():
+                raise ValueError("chooser resolved provenance differs")
+        definition = next((row for row in sources if row[0] == "data/objects/object2.pak"), None)
+        if not definition or preview[3:] != definition[1:] or (name == "chooser_mod" and preview[3] != "mod:MC2X-CVE-G"):
+            raise ValueError("chooser overridden preview provenance differs")
+        required = {"data/art/buildings.csv", "data/objects/object2.pak"}
+        variant_key = "data/objects/" + stem.lower() + ".csv"
+        if _oracle_exists(independent, variant_key): required.add(variant_key)
+        if family in ("mech", "vehicle"):
+            fields = placement_fields((directory / f"chooser-{family}-edited.fit").read_bytes())
+            prefix = chooser_unit_prefix(fields, expected_id)
+            pilot = int(fields[prefix + "Pilot"][0].split(" ", 1)[1])
+            profile = fields[f"Warrior{pilot}/Profile"][0][4:-1]
+            required.update({"data/objects/badpilots.csv" if name == "chooser_player" else "data/objects/pilots.csv",
+                             "data/missions/warriors/" + profile.lower() + ".fit"})
+        if {row[0] for row in sources} != required:
+            raise ValueError("chooser consumed provenance coverage differs")
+    if name == "chooser":
+        result = compare_frozen(directory, "\n".join(lines))
+        (directory / "frozen-grade.json").write_text(json.dumps(result, indent=2))
+    elif name == "chooser_player":
+        from editor.tests.run_document_proofs import grade_player_defaults
+        from editor.tests.legacy_reference import preserve_authored_units, canonical_units
+        table = independent("data/objects/badpilots.csv")[0]
+        if table.startswith(b"\x78"): table = zlib.decompress(table)
+        profile = next(profile for profile in table.decode("ascii").splitlines() if profile and
+                       _oracle_exists(independent, "data/missions/warriors/" + profile.lower() + ".fit"))
+        fields = placement_fields((directory / "chooser-mech-edited.fit").read_bytes())
+        before = placement_fields((directory / "fixture.fit").read_bytes())
+        grade_player_defaults(fields, 2, 53, profile)
+        preserve_authored_units(before, fields)
+        if canonical_units(fields, 30, 30) != canonical_units(before):
+            raise ValueError("chooser player insertion changed authored units")
+    else:
+        fields = placement_fields((directory / "chooser-mech-edited.fit").read_bytes())
+        reference = verify_frozen()["placements"]["mech"]
+        prefix = chooser_unit_prefix(fields, expected_id)
+        row = dict(part={key: value for key, value in fields.items() if key.startswith(prefix)}, fitFields=fields)
+        actual, expected = inserted_unit(row), inserted_unit(reference)
+        if name == "chooser_mod":
+            expected["Part/ObjectNumber"] = typed_fields({"x": ["ul 2"]})["x"]
+            expected["Part/CSVFile"] = typed_fields({"x": [f'st "{stem}"']})["x"]
+        if actual != expected:
+            raise ValueError("chooser complete placement fields differ")
+
+
+def chooser_unit_prefix(fields, object_id):
+    prefixes = [key.removesuffix("ObjectNumber") for key, values in fields.items() if key.endswith("/ObjectNumber") and
+                values == [f"ul {object_id}"] and fields.get(key.removesuffix("ObjectNumber") + "PositionX") and
+                fields.get(key.removesuffix("ObjectNumber") + "PositionY") and
+                float(fields[key.removesuffix("ObjectNumber") + "PositionX"][0].split(" ", 1)[1]) == -4288 and
+                float(fields[key.removesuffix("ObjectNumber") + "PositionY"][0].split(" ", 1)[1]) == 4288]
+    if len(prefixes) != 1: raise ValueError("chooser inserted unit identity missing or ambiguous")
+    return prefixes[0]
+
+
+def panel_negative_controls(name, directory):
+    if not name.startswith("chooser") and name != "marker_panel": return
+    if name.startswith("chooser"):
+        path = directory / "chooser-mech-edited.fit"
+        original = path.read_bytes()
+        prefix = chooser_unit_prefix(placement_fields(original), 2 if name == "chooser_mod" else 53)
+        start = original.index(("[" + prefix[:-1] + "]").encode())
+        end = original.find(b"\n[", start + 1)
+        if end < 0: end = len(original)
+        body = original[start:end]
+        corrupted, count = re.subn(rb"(?m)^(ul\s+VariantNumber\s*=\s*)0", lambda match: match[1] + b"1", body)
+        if count != 1: raise ValueError("chooser corruption control did not alter one placed field")
+        corrupted = original[:start] + corrupted + original[end:]
+        # Corrupt matching history saves together so byte history facts alone still pass.
+        paths = [path, directory / "chooser-mech-redone.fit"]
+        if len(PANEL_OPERATIONS[name]) == 1: paths.append(directory / "widget-save.fit")
+        lines = (directory / "shell.log").read_text().splitlines()
+        rendered = any(line.startswith("[EDITOR_PANEL v1] ") and " rendered=1" in line for line in lines)
+        grader = lambda: grade_panel(name, directory, 0, require_render=rendered)
+    else:
+        path = directory / "marker-transform-edited.fit"
+        original = path.read_bytes()
+        corrupted = original.replace(b"xPos = -4000", b"xPos = -2000")
+        paths = [path]
+        grader = lambda: grade_marker_edits(directory)
+    if corrupted == original: raise ValueError("panel corruption control did not change output")
+    originals = {target: target.read_bytes() for target in paths}
+    for target in paths: target.with_suffix(".negative-control.fit").write_bytes(corrupted)
+    caught = None
+    try:
+        for target in paths: target.write_bytes(corrupted)
+        try: grader()
+        except ValueError as error: caught = str(error)
+    finally:
+        for target, contents in originals.items(): target.write_bytes(contents)
+    if not caught: raise ValueError("panel corrupted-output negative control was accepted")
+    grader()
+    (directory / "negative-control.json").write_text(json.dumps(dict(name=name, rejected=True, reason=caught), indent=2))
+
+
+def _oracle_exists(independent, key):
+    try:
+        independent(key)
+        return True
+    except KeyError:
+        return False
 
 
 def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout: int) -> dict:
@@ -1148,13 +1354,22 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
             raise ValueError("panel shell fingerprint/background support does not match worktree HEAD")
         provenance = dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
         for extension in ("fit", "pak"):
-            data = stock.read(f"data/missions/mc2_01.{extension}")
+            if name.startswith("chooser") or name == "marker_panel":
+                from editor.tests.legacy_reference import FROZEN, verify_frozen
+                verify_frozen()
+                seed = "marker" if name == "marker_panel" else "before"
+                data = (FROZEN / f"e5_reference_{seed}.{extension}").read_bytes()
+            else:
+                data = stock.read(f"data/missions/mc2_01.{extension}")
             (directory / f"input.{extension}").write_bytes(data)
             provenance[f"input_{extension}_sha256"] = hashlib.sha256(data).hexdigest()
         host_lease.ensure_held("E3-b SDL panel widgets")
         command = [str(exe), "--file-smoke" if name in FILE_CASES else "--panel-smoke", name,
                    "--mission", str(directory / "input.fit"), "--output", str(directory),
                    "--log", str(directory / "shell.log"), "--recent-file", str(directory / "recent.txt")]
+        if name.startswith("chooser"):
+            command += ["--base", str(exe.parent)]
+            if name == "chooser_mod": command += ["--mods", "A:/Games/mc2-opengl", "--mod", "MC2X-CVE-G"]
         process = nofocus.spawn(command, cwd=str(exe.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, errors="replace")
         try:
@@ -1166,6 +1381,7 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
             if process.poll() is not None:
                 (directory / "process.log").write_text(output or "", encoding="utf-8")
         (grade_file if name in FILE_CASES else grade_panel)(name, directory, process.returncode)
+        if name in PANEL_OPERATIONS: panel_negative_controls(name, directory)
         if hashlib.sha256(exe.read_bytes()).hexdigest() != provenance["exe_sha256"]:
             raise ValueError("panel executable changed during smoke")
         for extension in ("fit", "pak"):
@@ -1189,6 +1405,7 @@ def main() -> int:
     ap.add_argument("--freeze-legacy-reference", type=Path, help="new immutable directory for legacy_catalog_reference outputs")
     ap.add_argument("--compare-legacy-reference", type=Path, help="compare complete placement values with an existing frozen corpus")
     ap.add_argument("--owned-marker-placement", type=Path, help="owned marker save stem for the explicit owned_marker_reload case")
+    ap.add_argument("--owned-marker-action", choices=("inserted", "moved", "deleted"), default="inserted")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -1296,7 +1513,7 @@ def main() -> int:
             control.mkdir()
             try:
                 provenance = marker_reload_provenance(exe)
-                row = run_owned_marker_reload(exe, deploy, args.owned_marker_placement, control, args.exit_sec, args.timeout)
+                row = run_owned_marker_reload(exe, deploy, args.owned_marker_placement, control, args.exit_sec, args.timeout, args.owned_marker_action)
                 row["provenance"] = provenance
             except (OSError, ValueError, KeyError, struct.error) as error:
                 row = dict(name=c, passed=False, bucket="owned_marker_control_invalid", detail=str(error), esmoke={})

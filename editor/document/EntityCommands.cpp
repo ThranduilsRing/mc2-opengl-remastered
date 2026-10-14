@@ -117,11 +117,12 @@ std::expected<EntityId, LoadError> CommandHistory::insertBuilding(const Building
     put(placements, offset + 28, building.parentCell);
     put(placements, offset + 32, static_cast<std::uint32_t>(building.forestInstance + 1));
     put(placements, offset + 36, building.forestInstance == -1 ? 0 : static_cast<std::uint32_t>(building.scale));
-    const EntityId id{document_.nextEntityId_++};
+    const EntityId id{document_.nextEntityId_};
     auto ids = identities(document_);
     ids.insert(ids.begin() + count, id);
     auto applied = commitStructure(std::move(fit), std::move(placements), ids, "Place building");
     if (!applied) return std::unexpected(applied.error());
+    ++document_.nextEntityId_;
     return id;
 }
 
@@ -231,15 +232,36 @@ std::expected<void, LoadError> CommandHistory::transform(EntityId id, const Tran
 {
     const auto* entity = document_.entity(id);
     if (!entity) return reject("missing_entity");
-    if (document_.hasMarkerReference(id)) {
-        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=transform reason=marker_fit_sync_required");
-        return reject("marker_fit_sync_required");
+    if (!valid(transform)) {
+        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=transform reason=invalid_transform");
+        return reject("invalid_transform");
     }
-    if (!valid(transform)) return reject("invalid_transform");
     if (entity->position == transform.position && entity->rotation == transform.rotation) return {};
+    const auto marker = document_.markerReference(id);
+    if (!marker) {
+        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=transform reason=" + marker.error().reason);
+        return std::unexpected(marker.error());
+    }
+    if (*marker && std::ranges::any_of(document_.entities(), [&](const Entity& other) {
+        return other.id != id && document_.isMarkerPacket(other) &&
+            std::abs(other.position[0] - static_cast<float>(transform.position[0])) < 1.0 &&
+            std::abs(other.position[1] - static_cast<float>(transform.position[1])) < 1.0;
+    })) {
+        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=transform reason=marker_position_collision");
+        return reject("marker_position_collision");
+    }
     auto placements = document_.placements_;
     auto fit = document_.fitBytes();
-    if (entity->packetRecord) putTransform(placements, 4 + *entity->packetRecord * 40, transform);
+    if (entity->packetRecord) {
+        putTransform(placements, 4 + *entity->packetRecord * 40, transform);
+        if (*marker) {
+            auto syntax = decodeFit(fit);
+            if (!syntax) return std::unexpected(syntax.error());
+            const auto* section = root(*syntax, document_.section(**marker)->name);
+            fit = edited(std::move(fit), {{find(*syntax, *section, "xPos")->syntax, real(transform.position[0])},
+                {find(*syntax, *section, "yPos")->syntax, real(transform.position[1])}});
+        }
+    }
     else {
         auto syntax = decodeFit(fit);
         if (!syntax) return std::unexpected(syntax.error());
@@ -265,9 +287,10 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
 {
     const auto* entity = document_.entity(id);
     if (!entity) return reject("missing_entity");
-    if (document_.hasMarkerReference(id)) {
-        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=delete reason=marker_fit_sync_required");
-        return reject("marker_fit_sync_required");
+    const auto marker = document_.markerReference(id);
+    if (!marker) {
+        if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=delete reason=" + marker.error().reason);
+        return std::unexpected(marker.error());
     }
     auto ids = identities(document_);
     std::erase(ids, id);
@@ -278,6 +301,26 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
         const auto offset = 4 + *entity->packetRecord * 40;
         placements.erase(placements.begin() + offset, placements.begin() + offset + 40);
         put(placements, 0, static_cast<std::uint32_t>((placements.size() - 4) / 40));
+        if (*marker) {
+            auto syntax = decodeFit(fit);
+            if (!syntax) return std::unexpected(syntax.error());
+            const auto* removed = root(*syntax, document_.section(**marker)->name);
+            const auto* count = find(*syntax, *root(*syntax, "NavMarkers"), "NumNavMarkers");
+            const auto total = std::get<std::int64_t>(count->value[0]);
+            std::vector<Edit> edits{{removed->syntax, ""}, {count->syntax, std::to_string(total - 1)}};
+            renamed.emplace(identifier(removed->name), "");
+            bool following{};
+            for (std::int64_t i = 0; i < total; ++i) {
+                const auto* section = root(*syntax, "NavMarker" + std::to_string(i));
+                if (section == removed) { following = true; continue; }
+                if (!following) continue;
+                // Surviving blocks retain their stable IDs and unknown fields after export renumbering.
+                const auto name = "NavMarker" + std::to_string(i - 1);
+                edits.push_back({section->nameSyntax, name});
+                renamed.emplace(identifier(section->name), identifier(name));
+            }
+            fit = edited(std::move(fit), std::move(edits));
+        }
     } else {
         auto syntax = decodeFit(fit);
         if (!syntax) return std::unexpected(syntax.error());

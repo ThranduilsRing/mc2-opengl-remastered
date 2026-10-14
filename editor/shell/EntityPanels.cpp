@@ -123,10 +123,10 @@ void EntityPanels::team(const char* key, int& value, bool neutral)
 }
 void EntityPanels::transform(const char* key, Transform& value)
 {
-    const auto changed = ImGui::InputDouble("X", &value.position[0]); record(std::string(key) + ".x", changed);
-    ImGui::InputDouble("Y", &value.position[1]);
-    ImGui::InputDouble("Z", &value.position[2]);
-    ImGui::InputDouble("Rotation", &value.rotation);
+    const auto changed = ImGui::InputDouble("X", &value.position[0]); record(std::string(key) + ".x", changed || ImGui::IsItemActivated());
+    const auto y = ImGui::InputDouble("Y", &value.position[1]); record(std::string(key) + ".y", y || ImGui::IsItemActivated());
+    const auto z = ImGui::InputDouble("Z", &value.position[2]); record(std::string(key) + ".z", z || ImGui::IsItemActivated());
+    const auto r = ImGui::InputDouble("Rotation", &value.rotation); record(std::string(key) + ".rotation", r || ImGui::IsItemActivated());
 }
 std::expected<EntityId, LoadError> EntityPanels::place(bool building)
 {
@@ -141,14 +141,91 @@ std::expected<EntityId, LoadError> EntityPanels::place(bool building)
             (building || identifier(entry.stem) == identifier(unitDraft_.csvFile));
     });
     if (found == catalog_->entries().end()) return reject("catalog_identity_missing");
+    return place(*found, building ? buildingDraft_.transform : unitDraft_.transform, building ? 0 : unitDraft_.variant);
+}
+std::expected<EntityId, LoadError> EntityPanels::place(const CatalogEntry& entry, const Transform& transform, unsigned variant)
+{
     const auto* mapped = document_.find("Player" + std::to_string(placementPlayer_), "DefaultTeam");
     if (!mapped || mapped->value.size() != 1 || !std::holds_alternative<std::int64_t>(mapped->value[0]))
-        return reject("player_mapping_missing");
+    {
+        if (placementLog_) placementLog_("[EDITOR_PLACEMENT_REJECT v1] reason=player_mapping_missing");
+        return std::unexpected(LoadError{"placement", "player_mapping_missing", 0});
+    }
     PlacementChoice choice{placementPlayer_, static_cast<std::int32_t>(std::get<std::int64_t>(mapped->value[0])),
-        building ? buildingDraft_.transform : unitDraft_.transform, building ? 0 : unitDraft_.variant};
-    auto plan = policy_->make(document_, *found, choice, placementLog_);
+        transform, variant};
+    auto plan = policy_->make(document_, entry, choice, placementLog_);
     if (!plan) return std::unexpected(plan.error());
-    return plan->insert(history_);
+    auto inserted = plan->insert(history_);
+    if (inserted) placementSources_ = plan->sources;
+    return inserted;
+}
+std::vector<const CatalogEntry*> EntityPanels::chooserEntries() const
+{
+    std::vector<const CatalogEntry*> entries;
+    if (!catalog_) return entries;
+    auto search = identifier(chooserSearch_);
+    const auto first = search.find_first_not_of(" \t");
+    search = first == search.npos ? "" : search.substr(first, search.find_last_not_of(" \t") - first + 1);
+    for (const auto& entry : catalog_->entries()) {
+        if (chooserFamily_ >= 0 && static_cast<int>(entry.family) != chooserFamily_) continue;
+        if (!search.empty() && identifier(entry.displayName).find(search) == std::string::npos &&
+            identifier(entry.stem).find(search) == std::string::npos) continue;
+        entries.push_back(&entry);
+    }
+    return entries;
+}
+const CatalogEntry* EntityPanels::chooserSelection() const { return chooserSelected_; }
+void EntityPanels::chooser()
+{
+    ImGui::PushID("chooser"); ImGui::TextUnformatted("Object chooser");
+    if (!catalog_ || !policy_) {
+        ImGui::TextWrapped("Open with a game data root to load the object catalog."); ImGui::PopID(); return;
+    }
+    ImGui::Columns(2, "chooser-columns", true);
+    const bool open = ImGui::BeginCombo("Family", chooserFamily_ < 0 ? "All families" : familyName(static_cast<ObjectFamily>(chooserFamily_)).data(), ImGuiComboFlags_HeightLargest);
+    record("chooser.family", open);
+    if (open) {
+        for (int i = -1; i < 9; ++i) {
+            const auto label = i < 0 ? "All families" : familyName(static_cast<ObjectFamily>(i)).data();
+            if (choice("chooser.family." + std::to_string(i), label, chooserFamily_ == i)) {
+                chooserFamily_ = i; chooserSelected_ = nullptr;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    const auto changed = ImGui::InputText("Search name", &chooserSearch_); record("chooser.search", changed);
+    if (changed) chooserSelected_ = nullptr;
+    const auto entries = chooserEntries();
+    ImGui::Text("%zu matching objects", entries.size());
+    ImGui::BeginChild("catalog", ImVec2(0, 155), true);
+    for (const auto* entry : entries) {
+        const auto key = std::format("chooser.entry.{}.{}", entry->id, entry->stem);
+        const auto label = std::format("{} / {}##{}", entry->displayName, entry->id, entry->stem);
+        if (choice(key, label.c_str(), chooserSelected_ == entry)) { chooserSelected_ = entry; chooserVariant_ = 0; }
+    }
+    ImGui::EndChild();
+    ImGui::NextColumn();
+    if (chooserSelected_) {
+        ImGui::Text("ID %u / %s", chooserSelected_->id, familyName(chooserSelected_->family).data());
+        const auto source = [](const char* label, const CatalogSource& source) {
+            ImGui::TextWrapped("%s: %s\n%s\n%s", label, source.layer.c_str(), source.key.c_str(), source.source.generic_string().c_str());
+        };
+        source("Enumeration", chooserSelected_->enumeration);
+        source("Definition", chooserSelected_->definition);
+        if (chooserSelected_->variantFile) source("Variants", *chooserSelected_->variantFile);
+    }
+    const auto playerChanged = ImGui::InputInt("Current player (0..7)", &placementPlayer_); record("chooser.player", playerChanged);
+    transform("chooser.transform", chooserTransform_);
+    ImGui::InputScalar("Variant", ImGuiDataType_U32, &chooserVariant_);
+    ImGui::BeginDisabled(!chooserSelected_);
+    if (button("chooser.place", "Place selected object")) {
+        auto result = place(*chooserSelected_, chooserTransform_, chooserVariant_);
+        if (result) {
+            if (document_.entity(*result)->packetRecord) building_ = *result; else unit_ = *result;
+            status_ = "Object placed";
+        } else status_ = result.error().reason;
+    }
+    ImGui::EndDisabled(); ImGui::Columns(1); ImGui::PopID();
 }
 void EntityPanels::draw()
 {
@@ -164,9 +241,12 @@ void EntityPanels::draw()
     if (button("reopen", "Reopen saved mission") && reopen_) reopen_();
     ImGui::EndDisabled();
     ImGui::SameLine(); ImGui::TextUnformatted(status_.c_str());
+    if (policy_) {
+        if (button("chooser.toggle", showChooser_ ? "Entity properties" : "Object chooser")) showChooser_ = !showChooser_;
+        if (showChooser_) { chooser(); ImGui::End(); return; }
+    }
     refresh();
     ImGui::Columns(3, "panels", true);
-    if (policy_) ImGui::InputInt("Placement player (0..7)", &placementPlayer_);
     ImGui::PushID("unit"); ImGui::TextUnformatted("Unit"); selector(false); refresh();
     ImGui::TextUnformatted(policy_ ? "Catalog placement uses the selected player defaults" : "Placement defaults (copied from selection)");
     ImGui::InputScalar("Object number", ImGuiDataType_U32, &unitDraft_.objectNumber);
@@ -209,20 +289,15 @@ void EntityPanels::draw()
     ImGui::TextUnformatted("Placement defaults (copied from selection)");
     ImGui::InputScalar("Object number", ImGuiDataType_U32, &buildingDraft_.objectNumber);
     transform("building.transform", buildingDraft_.transform); team("building.team", buildingTeam_, true);
-    const bool marker = document_.hasMarkerReference(building_);
-    ImGui::BeginDisabled(marker);
     if (button("building.transform.apply", "Apply transform")) report(history_.transform(building_, buildingDraft_.transform));
-    ImGui::EndDisabled();
     ImGui::SameLine(); if (button("building.team.apply", "Apply team")) report(history_.setTeam(building_, buildingTeam_));
     if (button("building.place", "Place building")) {
         buildingDraft_.team = buildingTeam_;
         auto result = place(true);
         if (result) { building_ = *result; status_ = "Building placed"; } else status_ = result.error().reason;
     }
-    ImGui::SameLine(); ImGui::BeginDisabled(marker);
+    ImGui::SameLine();
     if (button("building.delete", "Delete building")) report(history_.erase(building_));
-    ImGui::EndDisabled();
-    if (marker) ImGui::TextWrapped("Marker transform and delete are unavailable.");
     ImGui::PopID(); ImGui::NextColumn();
     ImGui::PushID("player"); ImGui::TextUnformatted("Player");
     const auto* p = document_.section(player_);
@@ -240,6 +315,7 @@ void EntityPanels::draw()
     if (button("player.team.apply", "Apply player alignment")) report(history_.setPlayerTeam(player_, playerTeam_));
     ImGui::EndDisabled();
     ImGui::TextWrapped("Player identity is the authored PlayerN section. Alignment sets DefaultTeam.");
-    ImGui::PopID(); ImGui::Columns(1); ImGui::End();
+    ImGui::PopID();
+    ImGui::Columns(1); ImGui::End();
 }
 }

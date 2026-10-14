@@ -13,6 +13,7 @@ public:
         bool captureRendered = true);
     bool tick();
     bool passed() const { return passed_; }
+    void drawFiles() { if (files_) files_->draw(); }
 private:
     struct Step { std::string widget, input; std::function<void()> verify; };
     document::MissionDocument& document_;
@@ -33,5 +34,9 @@ private:
     void input(std::string key, std::string value);
     void operation(const std::string& name, const std::string& widget, std::function<void()> semantic);
     void saveCheck(const std::string& stem);
+    void chooserProof();
+    std::string chooserView() const;
+    void viewCheck(const std::string& family, const std::string& stage);
+    std::string beforeView_;
 };
 }

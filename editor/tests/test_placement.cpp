@@ -14,7 +14,7 @@ using namespace editor::document;
 namespace {
 auto baseline() {
     const auto stem = editor::tests::inputs().placementGoldens / "e5_reference_before";
-    return MissionDocument::read(stem.string() + ".fit", stem.string() + ".pak", [](const auto& s) { std::cout << s << '\n'; });
+    return MissionDocument::read(stem.string() + ".fit", stem.string() + ".pak", [](const auto& s) { std::cout << s << '\n'; }, editor::tests::inputs().markerObjects);
 }
 const CatalogEntry& entry(const ObjectCatalog& catalog, unsigned id, std::string_view name) {
     const auto found = std::ranges::find_if(catalog.entries(), [&](const auto& e) { return e.id == id && e.stem == name; });
@@ -31,7 +31,7 @@ void cycle(MissionDocument& doc, const PlacementPlan& plan, const std::filesyste
     REQUIRE(history.redo()); CHECK(doc.fitBytes() == inserted); CHECK(std::ranges::equal(doc.pakBytes(), changedPak));
     REQUIRE(doc.save(output, {}));
     REQUIRE(history.undo()); CHECK(doc.entity(*id) == nullptr);
-    auto reopened = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}); REQUIRE(reopened);
+    auto reopened = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
     CHECK(reopened->fitBytes() == inserted); CHECK(std::ranges::equal(reopened->pakBytes(), changedPak));
 }
 }
@@ -115,7 +115,7 @@ TEST_CASE("placement/player identity and remapped DefaultTeam retain separate de
         CHECK(plan->sources.back().key == "data/missions/warriors/" + identifier(unit.warriorProfile) + ".fit");
         const auto output = paths.placementOutput / ("player" + std::to_string(player) + "-" + std::to_string(id));
         cycle(*doc, *plan, output);
-        auto reopened = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}); REQUIRE(reopened);
+        auto reopened = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
         const auto* cells = reopened->find("Warrior30", "NumCells"); REQUIRE(cells);
         CHECK(std::get<std::int64_t>(cells->value[0]) == (player == 0 ? 0 : 3));
         if (player != 0) {
@@ -127,50 +127,113 @@ TEST_CASE("placement/player identity and remapped DefaultTeam retain separate de
     }
 }
 
-TEST_CASE("placement/marker transform and delete reject atomically before and after reopen") {
+TEST_CASE("placement/marker transform delete and renumber have exact atomic history") {
     const auto& paths = editor::tests::inputs();
-    auto resolver = FileResolver::mount({paths.placementBase}); REQUIRE(resolver);
-    auto policy = PlacementPolicy::load(*resolver); REQUIRE(policy);
-    const auto catalog = ObjectCatalog::load(*resolver, {});
     auto doc = baseline(); REQUIRE(doc);
-    auto plan = policy->make(*doc, entry(catalog, 290, "Nav1"), {0, 0, {{-4288, 4288, 200}, 4.5}}); REQUIRE(plan);
-    CommandHistory placement(*doc);
-    const auto id = plan->insert(placement); REQUIRE(id);
-    const auto output = paths.placementOutput / "marker-rejected";
-    REQUIRE(doc->save(output, {}));
-    auto reopened = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}); REQUIRE(reopened);
-    for (auto* current : {&*doc, &*reopened}) {
-        EntityId marker;
-        for (const auto& e : current->entities())
-            if (e.objectNumber == 290 && e.position[0] == -4288 && e.position[1] == 4288) marker = e.id;
-        REQUIRE(marker.value != 0); CHECK(current->hasMarkerReference(marker));
-        const auto fit = current->fitBytes();
-        const auto pak = std::vector<std::byte>(current->pakBytes().begin(), current->pakBytes().end());
-        const auto revision = current->revision();
-        const auto modified = current->modified();
-        std::vector<std::string> logs;
-        CommandHistory history(*current, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
-        // Rejections must retain an existing redo branch as well as document bytes.
-        BuildingPlacement ordinary; ordinary.objectNumber = 263; ordinary.transform = {{100, 200, 200}, 0};
-        REQUIRE(history.insertBuilding(ordinary)); REQUIRE(history.undo());
-        const auto rejectedRevision = current->revision(), budget = history.bytesUsed();
-        for (int attempt = 0; attempt < 4; ++attempt) {
-            auto transform = Transform{current->entity(marker)->position, current->entity(marker)->rotation};
-            if (attempt == 0) transform.position[0] += 100;
-            if (attempt == 2) transform.rotation = std::numeric_limits<double>::infinity();
-            const auto result = attempt == 3 ? history.erase(marker) : history.transform(marker, transform);
-            REQUIRE_FALSE(result); CHECK(result.error().reason == "marker_fit_sync_required");
-            REQUIRE(logs.size() == static_cast<std::size_t>(attempt + 1));
-            CHECK(logs.back() == std::string("[EDITOR_ENTITY_REJECT v1] action=") +
-                (attempt == 3 ? "delete" : "transform") + " reason=marker_fit_sync_required");
-            CHECK(current->fitBytes() == fit); CHECK(std::ranges::equal(current->pakBytes(), pak));
-            CHECK(current->revision() == rejectedRevision); CHECK(current->modified() == modified);
-            CHECK(history.bytesUsed() == budget); CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
-        }
-        CHECK(current->revision() > revision);
-        REQUIRE(history.redo()); REQUIRE(history.undo());
-        CHECK(current->fitBytes() == fit); CHECK(std::ranges::equal(current->pakBytes(), pak));
+    std::vector<std::string> synchronizationLogs;
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { synchronizationLogs.push_back(line); });
+    const auto baseCount = std::get<std::int64_t>(doc->find("NavMarkers", "NumNavMarkers")->value[0]);
+    BuildingPlacement value; value.objectNumber = 290; value.markerRadius = 256;
+    value.transform = {{-4288, 4288, 200}, 4.5};
+    const auto one = history.insertBuilding(value); REQUIRE(one);
+    value.transform.position[0] = -3000; value.markerRadius = 512;
+    const auto two = history.insertBuilding(value); REQUIRE(two);
+    const auto secondBlock = doc->markerReference(*two); REQUIRE(secondBlock); REQUIRE(*secondBlock);
+    const auto secondRadius = doc->find(**secondBlock, "radius")->id;
+    const auto fit = doc->fitBytes();
+    const auto pak = std::vector<std::byte>(doc->pakBytes().begin(), doc->pakBytes().end());
+    const auto revision = doc->revision(), budget = history.bytesUsed();
+    CHECK_FALSE(history.transform(*one, value.transform));
+    auto invalid = value.transform; invalid.rotation = std::numeric_limits<double>::infinity();
+    CHECK_FALSE(history.transform(*one, invalid));
+    CHECK(synchronizationLogs.size() == 2);
+    CHECK(doc->fitBytes() == fit); CHECK(std::ranges::equal(doc->pakBytes(), pak));
+    CHECK(doc->revision() == revision); CHECK(history.bytesUsed() == budget);
+    const Transform moved{{-4000, 4000, 250}, 25};
+    REQUIRE(history.transform(*one, moved));
+    const auto block = "NavMarker" + std::to_string(baseCount);
+    CHECK(doc->find(block, "xPos")->value == Value{double{-4000}});
+    CHECK(doc->find(block, "yPos")->value == Value{double{4000}});
+    CHECK(doc->find(block, "radius")->value == Value{double{256}});
+    REQUIRE(doc->save(paths.placementOutput / "marker-moved", {}));
+    const auto movedFit = doc->fitBytes();
+    const auto movedPak = std::vector<std::byte>(doc->pakBytes().begin(), doc->pakBytes().end());
+    const auto secondRecord = *doc->entity(*two)->packetRecord;
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit); CHECK(std::ranges::equal(doc->pakBytes(), pak));
+    REQUIRE(history.redo()); CHECK(doc->fitBytes() == movedFit); CHECK(std::ranges::equal(doc->pakBytes(), movedPak));
+    REQUIRE(history.erase(*one));
+    CHECK(doc->find("NavMarkers", "NumNavMarkers")->value == Value{baseCount + 1});
+    CHECK(doc->find(block, "radius")->id == secondRadius);
+    const auto remainingBlock = doc->markerReference(*two); REQUIRE(remainingBlock);
+    CHECK(*remainingBlock == *secondBlock);
+    REQUIRE(doc->save(paths.placementOutput / "marker-deleted", {}));
+    const auto deletedFit = doc->fitBytes();
+    const auto deletedPak = std::vector<std::byte>(doc->pakBytes().begin(), doc->pakBytes().end());
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == movedFit); CHECK(std::ranges::equal(doc->pakBytes(), movedPak));
+    REQUIRE(history.redo()); CHECK(doc->fitBytes() == deletedFit); CHECK(std::ranges::equal(doc->pakBytes(), deletedPak));
+    auto reopened = MissionDocument::read(paths.placementOutput / "marker-deleted.fit", paths.placementOutput / "marker-deleted.pak", {}, editor::tests::inputs().markerObjects);
+    REQUIRE(reopened);
+    CommandHistory reopenedHistory(*reopened);
+    std::vector<EntityId> markers;
+    for (const auto& e : reopened->entities()) if (reopened->hasMarkerReference(e.id)) markers.push_back(e.id);
+    REQUIRE(!markers.empty());
+    for (const auto id : markers) REQUIRE(reopenedHistory.erase(id));
+    CHECK(reopened->find("NavMarkers", "NumNavMarkers")->value == Value{std::int64_t{0}});
+    REQUIRE(reopened->save(paths.placementOutput / "marker-empty", {}));
+    REQUIRE(reopenedHistory.undo()); REQUIRE(reopenedHistory.redo());
+    // A packet-only move must fail the same reader boundary as a malformed external mission.
+    auto corrupted = movedFit;
+    const auto field = corrupted.find("f xPos = -4000"); REQUIRE(field != corrupted.npos);
+    corrupted.replace(field, std::string("f xPos = -4000").size(), "f xPos = -2000");
+    std::vector<std::string> logs;
+    CHECK_FALSE(MissionDocument::decode(corrupted, movedPak, "marker-desync", [&](const auto& s) { logs.push_back(s); }, doc->markerObjects()));
+    REQUIRE(logs.size() == 1); CHECK(logs[0].find("marker_packet_desync") != std::string::npos);
+    auto guardedDocument = baseline(); REQUIRE(guardedDocument);
+    std::vector<std::string> rejected;
+    CommandHistory guarded(*guardedDocument, 32 * 1024 * 1024, [&](const auto& s) { rejected.push_back(s); });
+    value.markerRadius = 256;
+    const auto marker = guarded.insertBuilding(value); REQUIRE(marker);
+    // Ordinary buildings at the same XY cannot acquire a marker's FIT radius.
+    BuildingPlacement coincident; coincident.objectNumber = 263; coincident.transform = value.transform;
+    const auto building = guarded.insertBuilding(coincident); REQUIRE(building);
+    CHECK_FALSE(guardedDocument->hasMarkerReference(*building));
+    REQUIRE(guardedDocument->markerReference(*marker));
+    REQUIRE(guarded.transform(*marker, moved));
+    REQUIRE(guarded.transform(*marker, coincident.transform));
+    REQUIRE(guarded.transform(*marker, moved));
+    BuildingPlacement extra; extra.objectNumber = 263;
+    const auto reserved = guarded.insertBuilding(extra); REQUIRE(reserved); REQUIRE(guarded.undo());
+    const auto before = guardedDocument->fitBytes();
+    const auto beforePak = std::vector<std::byte>(guardedDocument->pakBytes().begin(), guardedDocument->pakBytes().end());
+    const auto guardedRevision = guardedDocument->revision(), guardedBudget = guarded.bytesUsed();
+    const auto modified = guardedDocument->modified();
+    value.markerRadius.reset();
+    for (const auto position : {moved.position, value.transform.position}) {
+        value.transform.position = position;
+        rejected.clear();
+        CHECK_FALSE(guarded.insertBuilding(value));
+        REQUIRE(rejected.size() == 1); CHECK(rejected[0].find("marker_count_mismatch") != std::string::npos);
+        CHECK(guardedDocument->fitBytes() == before); CHECK(std::ranges::equal(guardedDocument->pakBytes(), beforePak));
+        CHECK(guardedDocument->revision() == guardedRevision); CHECK(guardedDocument->modified() == modified);
+        CHECK(guarded.bytesUsed() == guardedBudget); CHECK(guarded.canRedo());
     }
+    // Two catalog markers at the same XY are ambiguous even when both FIT counts agree.
+    auto movedArchive = decodePak(movedPak); REQUIRE(movedArchive);
+    auto placements = movedArchive->packets[1].decoded;
+    const auto record = 4 + secondRecord * 40;
+    for (std::size_t axis = 0; axis < 2; ++axis) {
+        const auto bits = std::bit_cast<std::uint32_t>(static_cast<float>(moved.position[axis]));
+        for (unsigned byte = 0; byte < 4; ++byte) placements[record + 4 + axis * 4 + byte] = static_cast<std::byte>(bits >> (8 * byte));
+    }
+    auto ambiguousPak = encodePlacements(*movedArchive, placements); REQUIRE(ambiguousPak);
+    rejected.clear();
+    CHECK_FALSE(guarded.replace(movedFit, *ambiguousPak, "marker-ambiguity", [&](const auto& s) { rejected.push_back(s); }));
+    REQUIRE(rejected.size() == 1); CHECK(rejected[0].find("ambiguous_marker_reference") != std::string::npos);
+    CHECK(guardedDocument->fitBytes() == before); CHECK(std::ranges::equal(guardedDocument->pakBytes(), beforePak));
+    CHECK(guardedDocument->revision() == guardedRevision); CHECK(guardedDocument->modified() == modified);
+    CHECK(guarded.bytesUsed() == guardedBudget); CHECK(guarded.canRedo());
+    const auto next = guarded.insertBuilding(extra); REQUIRE(next);
+    CHECK(next->value == reserved->value + 1);
 }
 
 TEST_CASE("placement/mod override is inserted and keeps resolved provenance") {
@@ -183,7 +246,7 @@ TEST_CASE("placement/mod override is inserted and keeps resolved provenance") {
     auto doc = baseline(); REQUIRE(doc);
     auto plan = policy->make(*doc, *found, {0, 0, {{-100, 100, 200}, 0}}); REQUIRE(plan);
     cycle(*doc, *plan, paths.placementOutput / "mod-placement");
-    auto reopened = MissionDocument::read(paths.placementOutput / "mod-placement.fit", paths.placementOutput / "mod-placement.pak", {}); REQUIRE(reopened);
+    auto reopened = MissionDocument::read(paths.placementOutput / "mod-placement.fit", paths.placementOutput / "mod-placement.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
     CHECK(reopened->entities().back().objectNumber == 2);
     nlohmann::json report{{"id", found->id}, {"stem", found->stem}, {"appearance", found->appearance}, {"sources", nlohmann::json::array()}};
     for (const auto& source : plan->sources) {
@@ -208,7 +271,7 @@ TEST_CASE("placement/authored unit values and forest instance encoding survive s
     unit.damage = 2; unit.baseColor = 0x123456; unit.highlightColor1 = 0x654321; unit.highlightColor2 = 0xffffff;
     unit.selfRepair = false;
     cycle(*doc, *plan, paths.placementOutput / "authored-unit");
-    auto reopened = MissionDocument::read(paths.placementOutput / "authored-unit.fit", paths.placementOutput / "authored-unit.pak", {}); REQUIRE(reopened);
+    auto reopened = MissionDocument::read(paths.placementOutput / "authored-unit.fit", paths.placementOutput / "authored-unit.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
     for (const auto& [key, value] : std::vector<std::pair<std::string, std::int64_t>>{
         {"VariantNumber", 3}, {"BaseColor", 0x123456}, {"HighlightColor1", 0x654321}, {"HighlightColor2", 0xffffff}, {"SelfRepairBehavior", 0}})
         CHECK(std::get<std::int64_t>(reopened->find("Part30", key)->value[0]) == value);
@@ -222,7 +285,7 @@ TEST_CASE("placement/authored unit values and forest instance encoding survive s
         CHECK(std::get<BuildingPlacement>(buildingPlan->value).team == 0);
         const auto output = paths.placementOutput / ("forest" + std::to_string(instance));
         cycle(*buildingDoc, *buildingPlan, output);
-        auto saved = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}); REQUIRE(saved);
+        auto saved = MissionDocument::read(output.string() + ".fit", output.string() + ".pak", {}, editor::tests::inputs().markerObjects); REQUIRE(saved);
         const auto& bytes = saved->archive().packets[1].decoded;
         const auto word = [&](std::size_t p) {
             std::uint32_t value{}; for (unsigned i = 0; i < 4; ++i) value |= std::to_integer<std::uint32_t>(bytes[p + i]) << (8 * i); return value;

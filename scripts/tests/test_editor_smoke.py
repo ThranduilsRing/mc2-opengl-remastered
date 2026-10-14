@@ -611,6 +611,7 @@ class PanelGateTests(unittest.TestCase):
 
     def test_each_new_row_requires_changed_output_and_widget_reach(self):
         for name in smoke.PANEL_OPERATIONS:
+            if name.startswith("chooser") or name == "marker_panel": continue
             directory = self.fixture(name)
             smoke.grade_panel(name, directory, 0)
             with self.subTest(name=name), self.assertRaises(ValueError):
@@ -643,6 +644,155 @@ class PanelGateTests(unittest.TestCase):
         path.write_bytes(path.read_bytes() + b"corrupt")
         with self.assertRaisesRegex(ValueError, "Hybrid bytes"):
             smoke.grade_panel("brain_modes", directory, 0)
+
+
+class ChooserGateTests(unittest.TestCase):
+    def fixture(self):
+        from editor.tests.legacy_reference import FROZEN, reference_evidence, verify_frozen
+        import shutil
+        directory = TEMP_ROOT / ("e5b2-chooser-" + uuid.uuid4().hex)
+        directory.mkdir()
+        for path in FROZEN.iterdir(): shutil.copyfile(path, directory / path.name)
+        lines = ["[EDITOR_PANEL v1] name=chooser result=PASS widgets=1 saved_widget=1 reopened_widget=1 rendered=1"]
+        for family, row in verify_frozen()["placements"].items():
+            for extension in ("fit", "pak"):
+                before = (FROZEN / f"e5_reference_before.{extension}").read_bytes()
+                after = (FROZEN / f"e5_reference_{family}.{extension}").read_bytes()
+                (directory / f"fixture.{extension}").write_bytes(before)
+                for stage, data in (("edited", after), ("undone", before), ("redone", after)):
+                    (directory / f"chooser-{family}-{stage}.{extension}").write_bytes(data)
+                (directory / f"widget-save.{extension}").write_bytes((FROZEN / f"e5_reference_marker.{extension}").read_bytes())
+            fact = row["facts"]
+            source = (directory / "object2.pak").as_posix()
+            preview = f'{fact["fit_id"]}\t{fact["stem"]}\t{family}\tfastfile\t{source}\n'
+            other = f'9999\tother\t{family}\tfastfile\t{source}\n'
+            (directory / f"{family}-preview.tsv").write_text(preview)
+            keys = {"data/art/buildings.csv", "data/objects/object2.pak", f'data/objects/{fact["stem"].lower()}.csv'}
+            if row["part"]:
+                prefix = next(iter(row["part"])).split("/", 1)[0] + "/"
+                pilot = row["part"][prefix + "Pilot"][0].split(" ", 1)[1]
+                profile = row["fitFields"][f"Warrior{pilot}/Profile"][0][4:-1]
+                keys.update({"data/objects/pilots.csv", "data/missions/warriors/" + profile.lower() + ".fit"})
+            (directory / f"{family}-sources.tsv").write_text("".join(f"{key}\tfastfile\t{source}\n" for key in sorted(keys)))
+            for stage, before, after in (("browse", preview + "other family\n", preview + other), ("search", preview + other, preview)):
+                (directory / f"{family}-{stage}-before.tsv").write_text(before)
+                (directory / f"{family}-{stage}-after.tsv").write_text(after)
+            lines.append(f"[EDITOR_PANEL_OPERATION v1] name=chooser-{family} changed=1 reopened=1 undo=1 redo=1 widgets=1")
+        for operation in smoke.PANEL_OPERATIONS["chooser"]:
+            family = operation.removeprefix("chooser-")
+            lines.extend(f"[EDITOR_CHOOSER_VIEW v1] family={family} stage={stage} changed=1 widgets=1" for stage in ("browse", "search"))
+        lines.append(reference_evidence(verify_frozen()))
+        (directory / "shell.log").write_text("\n".join(lines))
+        (directory / "panels.bmp").write_bytes(b"BM" + bytes(52) + bytes(range(256)) * (1440 * 960 * 3 // 256))
+        return directory
+
+    def grade(self, directory):
+        with patch("editor.tests.run_catalog_proofs.oracle", return_value=lambda key: (b"", "fastfile", directory / "object2.pak")):
+            smoke.grade_panel("chooser", directory, 0)
+
+    def test_corrupted_placement_field_cannot_pass_widget_or_count_evidence(self):
+        directory = self.fixture()
+        self.grade(directory)
+        path = directory / "e5_reference_mech.fit"
+        from editor.tests.legacy_reference import verify_frozen
+        original = path.read_bytes()
+        part = next(iter(verify_frozen()["placements"]["mech"]["part"])).split("/", 1)[0]
+        start = original.index(f"[{part}]".encode())
+        end = original.find(b"\n[", start + 1)
+        body = original[start:end]
+        changed = body.replace(b"VariantNumber = 0", b"VariantNumber = 1")
+        self.assertNotEqual(body, changed)
+        path.write_bytes(original[:start] + changed + original[end:])
+        with self.assertRaisesRegex(ValueError, "widget/reference bytes"):
+            self.grade(directory)
+
+    def test_widget_outputs_cannot_hide_behind_clean_reference_saves(self):
+        directory = self.fixture()
+        self.grade(directory)
+        from editor.tests.legacy_reference import verify_frozen
+        part = next(iter(verify_frozen()["placements"]["mech"]["part"])).split("/", 1)[0]
+        for extension in ("fit", "pak"):
+            paths = [directory / f"chooser-mech-{stage}.{extension}" for stage in ("edited", "redone")]
+            originals = {path: path.read_bytes() for path in paths}
+            if extension == "fit":
+                original = originals[paths[0]]
+                start = original.index(f"[{part}]".encode())
+                end = original.find(b"\n[", start + 1)
+                body = original[start:end]
+                changed = body.replace(b"VariantNumber = 0", b"VariantNumber = 1")
+                self.assertNotEqual(body, changed)
+                corrupted = original[:start] + changed + original[end:]
+            else:
+                corrupted = originals[paths[0]] + b"corrupt packet"
+            for path in paths: path.write_bytes(corrupted)
+            self.assertEqual(paths[0].read_bytes(), paths[1].read_bytes())
+            with self.subTest(extension=extension), self.assertRaisesRegex(ValueError, "widget/reference bytes"):
+                self.grade(directory)
+            for path, contents in originals.items(): path.write_bytes(contents)
+        path = directory / "widget-save.fit"
+        original = path.read_bytes()
+        edited = directory / "chooser-marker-edited.fit"
+        redone = directory / "chooser-marker-redone.fit"
+        for target in (path, edited, redone): target.write_bytes(original + b"corrupt")
+        with self.assertRaisesRegex(ValueError, "widget/reference bytes"):
+            self.grade(directory)
+
+    def test_runtime_negative_control_corrupts_widget_history_and_restores_it(self):
+        directory = self.fixture()
+        paths = [directory / f"chooser-mech-{stage}.fit" for stage in ("edited", "redone")]
+        originals = {path: path.read_bytes() for path in paths}
+        with patch("editor.tests.run_catalog_proofs.oracle", return_value=lambda key: (b"", "fastfile", directory / "object2.pak")):
+            smoke.panel_negative_controls("chooser", directory)
+        for path, original in originals.items():
+            self.assertEqual(path.read_bytes(), original)
+            self.assertNotEqual(path.with_suffix(".negative-control.fit").read_bytes(), original)
+        self.assertIn("widget/reference bytes", json.loads((directory / "negative-control.json").read_text())["reason"])
+
+    def test_filters_preview_provenance_and_each_widget_fact_are_required(self):
+        directory = self.fixture()
+        for name in ("mech-browse-after.tsv", "mech-search-after.tsv", "mech-preview.tsv", "mech-sources.tsv", "shell.log"):
+            path = directory / name
+            original = path.read_bytes()
+            if "-after" in name:
+                path.write_bytes(path.with_name(name.replace("-after", "-before")).read_bytes())
+            elif name == "shell.log": path.write_bytes(original.replace(b"stage=search changed=1", b"stage=search changed=0"))
+            else: path.write_bytes(original.replace(b"fastfile", b"unknown-source"))
+            with self.subTest(name=name), self.assertRaises(ValueError): self.grade(directory)
+            path.write_bytes(original)
+        original = (directory / "shell.log").read_text()
+        for fact in ("undo", "redo", "saved_widget", "reopened_widget", "widgets"):
+            (directory / "shell.log").write_text(original.replace(f"{fact}=1", f"{fact}=0"))
+            with self.subTest(fact=fact), self.assertRaises(ValueError): self.grade(directory)
+
+
+class MarkerGateTests(unittest.TestCase):
+    def test_moved_deleted_and_desync_controls_keep_exact_counts(self):
+        from editor.tests.legacy_reference import FROZEN, buildings, packet
+        with scratch_directory() as directory:
+            before_fit = (FROZEN / "e5_reference_marker.fit").read_bytes()
+            before_pak = (FROZEN / "e5_reference_marker.pak").read_bytes()
+            moved_fit = before_fit.replace(b"xPos = -4288.000000", b"xPos = -4000.000000")
+            self.assertNotEqual(moved_fit, before_fit)
+            table = struct.unpack_from("<I", before_pak, 4)[0]
+            raw = bytearray(packet(before_pak, 1))
+            struct.pack_into("<f", raw, 4 + (len(buildings(before_pak)) - 1) * 40 + 4, -4000)
+            moved_pak = bytearray(before_pak[:table])
+            struct.pack_into("<I", moved_pak, 0, 0xfeedface)
+            for index in range(table // 4 - 2):
+                struct.pack_into("<I", moved_pak, 8 + 4 * index, len(moved_pak))
+                moved_pak.extend(raw if index == 1 else packet(before_pak, index))
+            moved_pak = bytes(moved_pak)
+            deleted_fit = (FROZEN / "e5_reference_before.fit").read_bytes()
+            deleted_pak = (FROZEN / "e5_reference_before.pak").read_bytes()
+            for extension, original, moved, deleted in (("fit", before_fit, moved_fit, deleted_fit), ("pak", before_pak, moved_pak, deleted_pak)):
+                for stem, data in (("fixture", original), ("marker-transform-edited", moved), ("marker-delete-edited", deleted)):
+                    (directory / f"{stem}.{extension}").write_bytes(data)
+            smoke.grade_marker_edits(directory)
+            smoke.grade_marker_source(moved_fit, moved_pak, "moved")
+            smoke.grade_marker_source(deleted_fit, deleted_pak, "deleted")
+            with self.assertRaises(ValueError): smoke.grade_marker_source(before_fit, moved_pak, "moved")
+            (directory / "marker-transform-edited.fit").write_bytes(before_fit)
+            with self.assertRaises(ValueError): smoke.grade_marker_edits(directory)
 
 
 class FileGateTests(unittest.TestCase):

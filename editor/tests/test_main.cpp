@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "../../tests/unit/doctest.h"
 #include "TestInputs.h"
+#include "ObjectCatalog.h"
 
 #include <iostream>
 #include <string_view>
@@ -70,6 +71,11 @@ int run(int argc, char** argv)
     }
 
     doctest::Context context(static_cast<int>(arguments.size()), arguments.data());
+    if (!fixtures.placementBase.empty()) {
+        auto resolver = document::FileResolver::mount({fixtures.placementBase});
+        if (!resolver) { std::cerr << "Marker catalog mount failed\n"; return 2; }
+        fixtures.markerObjects = document::ObjectCatalog::load(*resolver, {}).navMarkerObjects();
+    }
     if (fixtures.placementBase.empty()) context.addFilter("test-suite-exclude", "placement-live");
     else if (fixtures.placementMods.empty() || fixtures.placementGoldens.empty() || fixtures.placementOutput.empty()) {
         std::cerr << "Placement proof requires --placement-base/mods/goldens/output\n"; return 2;
