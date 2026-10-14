@@ -13,13 +13,13 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2761,
+  "GameOS/gameos/engine_present_vk.cpp": 2665,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1696,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2332,
   "GameOS/gameos/gpu_cull_compute.cpp": 1510,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1782,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1651,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1739,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1632,
   "GameOS/include/gameos.hpp": 3753,
   "RenderCore/RendererFeatureRegistry.h": 1741,
   "code/artlry.cpp": 1818,
@@ -33,7 +33,7 @@
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1626,
   "code/missionbegin.cpp": 2163,
-  "code/mover.h": 1909,
+  "code/mover.h": 1908,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2259,
@@ -43,7 +43,7 @@
   "code/terrobj.cpp": 1735,
   "code/turret.cpp": 2338,
   "code/warrior.cpp": 2685,
-  "code/warrior.h": 2171,
+  "code/warrior.h": 2173,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1582,
   "mclib/ablrtn.cpp": 1778,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "3de2eb7e0",
+ "head": "510037a87",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -71,7 +71,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 333,
+   "files": 334,
    "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
@@ -95,13 +95,13 @@
    "max_lines": 1116
   },
   "code": {
-   "files": 401,
+   "files": 404,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2775
   },
   "editor": {
-   "files": 244,
+   "files": 258,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1427
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 602,
+   "files": 591,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -139,16 +139,16 @@
    "lines": 2775
   },
   {
-   "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2761
-  },
-  {
    "file": "code/warrior.cpp",
    "lines": 2685
   },
   {
    "file": "mclib/file.cpp",
    "lines": 2685
+  },
+  {
+   "file": "GameOS/gameos/engine_present_vk.cpp",
+   "lines": 2665
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -180,7 +180,7 @@
   },
   {
    "file": "code/warrior.h",
-   "lines": 2171
+   "lines": 2173
   },
   {
    "file": "code/missionbegin.cpp",
@@ -212,7 +212,7 @@
   },
   {
    "file": "code/mover.h",
-   "lines": 1909
+   "lines": 1908
   },
   {
    "file": "code/multplyr.h",
@@ -239,20 +239,20 @@
    "lines": 1812
   },
   {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1782
-  },
-  {
    "file": "mclib/ablrtn.cpp",
    "lines": 1778
   },
   {
    "file": "mclib/terrtxm.cpp",
    "lines": 1778
+  },
+  {
+   "file": "RenderCore/RendererFeatureRegistry.h",
+   "lines": 1741
   }
  ],
  "total": {
-  "files": 1860,
+  "files": 1867,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3753
