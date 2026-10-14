@@ -32,6 +32,7 @@
   "scripts/tests/conftest.py": "Implicit pytest configuration for descendant tests; pytest auto-loads this file, so no explicit script operand/import names it.",
   "scripts/tests/test_axis_swizzle_ratchet.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_bounded_wait.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_build_compiler_presets.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_check_ab_kit.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_check_background_launch.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_editor_smoke.py": "Pytest-discovered module through scripts/check-contracts.sh (scripts_tests); the executable command names the directory.",

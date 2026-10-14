@@ -21,36 +21,28 @@ code and the proof of a finished conversion, not a leak detector.
 | post_hzb | 1 | 0 | 0 | +0 | 0 | - |
 | post_screenfx | 1 | 0 | 0 | +0 | 0 | - |
 | post_ssao | 1 | 0 | 0 | +0 | 0 | - |
-| shadow | 2 | 16 | 33 | -17 | 49 | Buffer 1/9, Fence 1/2, Framebuffer 3/5, Image 1/2, ImageView 4/7, ShaderModule 0/2 |
+| shadow | 2 | 0 | 0 | +0 | 0 | - |
 | sky | 2 | 0 | 0 | +0 | 0 | - |
-| terrain | 6 | 31 | 86 | -55 | 117 | Buffer 1/34, Image 5/14, ImageView 5/12, ShaderModule 0/6 |
+| terrain | 6 | 0 | 0 | +0 | 0 | - |
 | vfx | 2 | 0 | 0 | +0 | 0 | - |
 | water | 4 | 0 | 0 | +0 | 0 | - |
-| present | 2 | 37 | 66 | -29 | 103 | Buffer 3/9, Memory 3/9, Pipeline 4/12, Semaphore 2/4, ShaderModule 1/8 |
+| present | 2 | 0 | 0 | +0 | 0 | - |
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 0 | 0 | +0 | 0 | - |
 
-Total over all islands: created 84, released 185, imbalance -101.
+Total over all islands: created 0, released 0, imbalance +0.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
-| `vulkan_shadow_island_live.cpp` | 16 | 33 | -17 |
-| `vulkan_terrain_island_images.cpp` | 13 | 22 | -9 |
-| `vulkan_terrain_island_island.cpp` | 9 | 44 | -35 |
-| `vulkan_terrain_island_overlay.cpp` | 9 | 20 | -11 |
-| `engine_present_vk.cpp` | 37 | 66 | -29 |
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, shared_scene, sky, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, present, shadow, shared_scene, sky, terrain, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
-1. shadow (49 manual tokens)
-2. present (103 manual tokens)
-3. terrain (117 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 
@@ -58,7 +50,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 
 | Kind | Release tokens |
 |---|---:|
-| Buffer | 1 |
+| Buffer | 2 |
 | CommandPool | 1 |
 | DescriptorPool | 1 |
 | DescriptorSetLayout | 1 |
@@ -73,6 +65,8 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | Sampler | 1 |
 | Semaphore | 1 |
 | ShaderModule | 1 |
+| SurfaceKHR | 1 |
+| SwapchainKHR | 1 |
 
 ## Parent-owned kinds (not part of the balance)
 
@@ -104,8 +98,6 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | water | DescriptorSets | 1 | 0 |
 | present | CommandBuffers | 3 | 0 |
 | present | DescriptorSets | 3 | 1 |
-| present | SurfaceKHR | 0 | 1 |
-| present | SwapchainKHR | 1 | 3 |
 | shared_scene | CommandBuffers | 1 | 0 |
 | context | Allocator | 1 | 1 |
 | context | Device | 1 | 1 |
