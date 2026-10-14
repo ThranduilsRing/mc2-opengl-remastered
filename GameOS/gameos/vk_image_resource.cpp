@@ -132,7 +132,13 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
 // argument is not read; it stays so the islands' teardown call sites are unchanged.
 void vkImageResourceDestroy(VkImageResource* r, VkDevice) {
     if (!r) return;
-    if (r->image) g_liveImages.fetch_sub(1, std::memory_order_relaxed);
+    if (r->image) {
+        const int live = g_liveImages.fetch_sub(1, std::memory_order_relaxed) - 1;
+        ilog("destroy image owner %ux%u fmt=%d; %d alive after.", r->w, r->h, static_cast<int>(r->format), live);
+    }
+    // Moved into a local, so the destructor releases the owners in reverse declaration order (a member-wise move-assignment would release forward:
+    // the memory before the image bound to it).
+    { auto dying = std::move(*r); (void)dying; }
     *r = VkImageResource{};
 }
 
