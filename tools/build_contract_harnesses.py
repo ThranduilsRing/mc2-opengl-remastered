@@ -1,40 +1,46 @@
 #!/usr/bin/env python3
-"""DEV-EFFICIENCY-BOOTSTRAP-1 #3 — one-command contract-harness builder.
+"""Build the shared doctest corpus and run the retained Python contract suites.
 
-Builds every registered C++ contract harness into a CONSISTENT canonical dir and
-(optionally) runs the suite. Eliminates the recurring "MISSING because I built
-into the wrong build dir / forgot a harness / used build64-contract_smoke" class.
-
-Zero registry duplication: the harness set comes from run_contract_tests.py's
-REGISTERED_HARNESSES, and every harness lives at tools/<exe_name>/, so the source
-dir is derived (tools/<name>) and each builds into build64-h-<name>. The suite is
-then run with --build-dir pointed at exactly those dirs (no reliance on the
-runner's irregular default dir names).
-
-Usage:
-  py -3 tools/build_contract_harnesses.py            # build all harnesses
-  py -3 tools/build_contract_harnesses.py --run      # build then run the suite
-  py -3 tools/build_contract_harnesses.py --run --only icon_atlas_harness
-  py -3 tools/build_contract_harnesses.py --config RelWithDebInfo
-  py -3 tools/build_contract_harnesses.py --unit-only --run   # doctest unit tier only
-  py -3 tools/build_contract_harnesses.py --run --unit        # both tiers
-  py -3 tools/build_contract_harnesses.py --unit-only --run --asan   # the doctest tier under MSVC AddressSanitizer (build64-tests-asan)
-
-Exit 0 iff every selected harness built (and, with --run, the suite passed).
-CLI-only by design (writes build dirs / runs slow builds) — never wired into MCP.
+Native contracts live in tests/unit/mc2_tests. --only selects their doctest
+case prefixes. --unit remains compatible with callers; --unit-only and --asan
+omit the Python suites. RelWithDebInfo preserves the release fatal-path proof.
 """
-
 import argparse
 import os
+from pathlib import Path
 import subprocess
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
-import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
+import time
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUNNER = os.path.join(REPO_ROOT, "tools", "run_contract_tests.py")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+import console_child
 
-# Canonical VS CMake (matches the project rails); fall back to PATH cmake.
+# This migration index preserves named selection and coverage of all sixteen contracts.
+REGISTERED_HARNESSES = [
+    "contract_smoke_harness",
+    "shader_contract_harness",
+    "render_state_contract_harness",
+    "objmgr_contract_harness",
+    "ibl_registry_contract_harness",
+    "render_pass_table_harness",
+    "logistics_csv_harness",
+    "camera_frustum_harness",
+    "mech_texname_harness",
+    "icon_atlas_harness",
+    "timing_math_harness",
+    "job_system_harness",
+    "terrain_daylight_harness",
+    "object_light_row_harness",
+    "class_light_band_harness",
+    "glstate_guard_harness",
+]
+PY_HARNESSES = [
+    "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
+    "tools/deploy_release_tree_contract_harness/deploy_release_tree_contract_harness.py",
+    "tools/mech_glb_pack_contract_harness/mech_glb_pack_contract_harness.py",
+    "tools/shader_variant_matrix_harness/shader_variant_matrix_harness.py",
+]
 _VS_CMAKE = ("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/"
              "Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe")
 
@@ -43,135 +49,73 @@ def cmake_exe():
     return _VS_CMAKE if os.path.isfile(_VS_CMAKE) else "cmake"
 
 
-def registered_harnesses():
-    """Import the runner and read its explicit C++ registry (single source)."""
-    sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
-    import run_contract_tests as rct  # noqa: E402
-    return list(rct.REGISTERED_HARNESSES)
-
-
-def build_one(name, config):
-    src = os.path.join(REPO_ROOT, "tools", name)
-    bdir = os.path.join(REPO_ROOT, f"build64-h-{name}")
-    if not os.path.isdir(src):
-        return False, f"no source dir tools/{name}/ (not a standalone C++ harness?)"
+def build_and_run_unit_tests(config, run, asan=False, only=None):
+    started = time.monotonic()
+    bdir = REPO_ROOT / ("build64-tests-asan" if asan else "build64-tests")
     cm = cmake_exe()
-    cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64"],
-                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
-    if cfg.returncode != 0:
-        return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
-    bld = subprocess.run([cm, "--build", bdir, "--config", config],
-                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
-    if bld.returncode != 0:
-        tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
-        return False, "build failed:\n" + "\n".join(tail)
-    return True, bdir
-
-
-# The doctest unit tier (tests/unit/mc2_tests) is a DIFFERENT shape from the
-# tools/<name>/ contract harnesses above: one doctest binary, no per-harness
-# --json/status contract, source at tests/unit/ (not tools/<name>/). It is the
-# cheaper tier for GL-free engine logic under test (MINIMAL-VIABLE-HARNESS-1/2).
-# Wired here so a single command covers both tiers; kept on its own path so it
-# never pollutes REGISTERED_HARNESSES (which would report MISSING/FAIL for it by
-# construction). Exit code is authoritative: doctest returns non-zero on any
-# failed assertion.
-def build_and_run_unit_tests(config, run, asan=False):
-    """`asan` builds and runs the tier in build64-tests-asan under MSVC AddressSanitizer (cmake/Mc2Standalone.cmake MC2_ASAN); the
-    result line carries the wall time of build and run so the cost stays visible."""
-    import time
-    t0 = time.time()
-    src = os.path.join(REPO_ROOT, "tests", "unit")
-    bdir = os.path.join(REPO_ROOT, "build64-tests-asan" if asan else "build64-tests")
-    cm = cmake_exe()
-    cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64", "-DMC2_ASAN=" + ("ON" if asan else "OFF")],
-                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
-    if cfg.returncode != 0:
-        return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
-    bld = subprocess.run([cm, "--build", bdir, "--config", config,
-                          "--target", "mc2_tests"],
-                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
-    if bld.returncode != 0:
-        tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
-        return False, "build failed:\n" + "\n".join(tail)
+    commands = [
+        [cm, "-S", str(REPO_ROOT / "tests/unit"), "-B", str(bdir), "-A", "x64",
+         "-DMC2_ASAN=" + ("ON" if asan else "OFF")],
+        [cm, "--build", str(bdir), "--config", config, "--target", "mc2_tests"],
+    ]
+    for stage, command in zip(("configure", "build"), commands):
+        result = subprocess.run(command, capture_output=True, text=True, cwd=REPO_ROOT,
+                                **console_child.child_kwargs(redirected=True))
+        if result.returncode:
+            lines = (result.stdout + result.stderr).strip().splitlines()
+            errors = [line for line in lines if " error " in line or "fatal error" in line]
+            detail = "\n".join(errors + lines[-12:])
+            return False, f"{stage} failed:\n{detail}"
     if not run:
-        return True, f"built (not run; pass --run to execute) in {time.time() - t0:.0f}s"
-    exe = os.path.join(bdir, config, "mc2_tests" + (".exe" if os.name == "nt" else ""))
-    if not os.path.isfile(exe):
-        exe = os.path.join(bdir, "mc2_tests" + (".exe" if os.name == "nt" else ""))
+        return True, f"built in {time.monotonic() - started:.0f}s"
+    suffix = ".exe" if os.name == "nt" else ""
+    exe = bdir / config / ("mc2_tests" + suffix)
+    if not exe.is_file():
+        exe = bdir / ("mc2_tests" + suffix)
+    command = [str(exe), "--no-breaks"]
+    if only:
+        command += ["--test-case=" + ",".join(name + "/*" for name in only)]
     env = dict(os.environ)
     if asan:
-        # Leak detection is the probe's job (mclib/alloc_probe.h); ASan reports bounds and lifetime errors and keeps going.
+        # The allocation probe owns leak checks; ASan supplies bounds and lifetime evidence.
         env.setdefault("ASAN_OPTIONS", "detect_leaks=0:halt_on_error=0:print_stacktrace=1")
-    rc = subprocess.run([exe], cwd=REPO_ROOT, env=env, **console_child.child_kwargs()).returncode
+    result = subprocess.run(command, cwd=REPO_ROOT, env=env, **console_child.child_kwargs())
     tag = "asan " if asan else ""
-    return (rc == 0), (f"{tag}doctest passed" if rc == 0 else f"{tag}doctest failed (rc={rc})") + f" in {time.time() - t0:.0f}s"
+    verdict = "passed" if result.returncode == 0 else f"failed (rc={result.returncode})"
+    return result.returncode == 0, f"{tag}doctest {verdict} in {time.monotonic() - started:.0f}s"
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Build (and optionally run) contract harnesses.")
-    ap.add_argument("--run", action="store_true", help="run the suite after building")
-    ap.add_argument("--only", action="append", default=None,
-                    help="build only the named harness(es) (repeatable)")
-    ap.add_argument("--config", default="RelWithDebInfo")
-    ap.add_argument("--unit", action="store_true",
-                    help="also build the doctest unit tier (tests/unit/mc2_tests); "
-                         "with --run, execute it too")
-    ap.add_argument("--unit-only", action="store_true",
-                    help="build/run ONLY the doctest unit tier, skip the C++ harnesses")
-    ap.add_argument("--asan", action="store_true",
-                    help="the doctest tier under MSVC AddressSanitizer (build64-tests-asan); implies --unit-only")
-    args = ap.parse_args()
+def run_python_harnesses():
+    passed = True
+    for path in PY_HARNESSES:
+        result = subprocess.run([sys.executable, str(REPO_ROOT / path)], cwd=REPO_ROOT,
+                                **console_child.child_kwargs())
+        ok = result.returncode == 0
+        print(f"  [{'PASS' if ok else 'FAIL'}] {path} (rc={result.returncode})")
+        passed = ok and passed
+    return passed
 
-    # --unit-only: the cheap doctest tier by itself (MINIMAL-VIABLE-HARNESS-*).
-    if args.unit_only or args.asan:
-        ok, info = build_and_run_unit_tests(args.config, args.run, args.asan)
-        print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests (doctest unit tier): {info}")
-        return 0 if ok else 1
 
-    names = registered_harnesses()
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Build and optionally run doctest and Python contracts.")
+    ap.add_argument("--run", action="store_true")
+    ap.add_argument("--only", action="append", help="select a migrated native contract (repeatable)")
+    ap.add_argument("--config", default="RelWithDebInfo", choices=("RelWithDebInfo",))
+    ap.add_argument("--unit", action="store_true", help="compatibility flag; native contracts now use doctest")
+    ap.add_argument("--unit-only", action="store_true", help="omit Python contract suites")
+    ap.add_argument("--asan", action="store_true", help="MSVC AddressSanitizer; implies --unit-only")
+    args = ap.parse_args(argv)
     if args.only:
-        names = [n for n in names if n in set(args.only)]
-        if not names:
-            print(f"[build-harnesses] none of {args.only} are registered", file=sys.stderr)
-            return 2
-
-    build_dirs = []
-    failures = []
-    for n in names:
-        ok, info = build_one(n, args.config)
-        if ok:
-            build_dirs.append(info)
-            print(f"  [BUILT] {n}")
-        else:
-            failures.append((n, info))
-            print(f"  [FAIL ] {n}: {info.splitlines()[0]}", file=sys.stderr)
-            if "glew32.lib" in info or "3rdparty" in info:
-                print("          (hint: unzip 3rdparty.zip in this worktree for "
-                      "harnesses that link glew, e.g. render_state)", file=sys.stderr)
-
-    print(f"\n[build-harnesses] built {len(build_dirs)}/{len(names)}; "
-          f"{len(failures)} failed")
-
-    # Optional doctest unit tier alongside the C++ harnesses.
-    unit_ok = True
-    if args.unit:
-        u_ok, u_info = build_and_run_unit_tests(args.config, args.run)
-        unit_ok = u_ok
-        print(f"  [{'PASS' if u_ok else 'FAIL'}] mc2_tests (doctest unit tier): {u_info}")
-
-    if failures and not args.run:
+        unknown = set(args.only) - set(REGISTERED_HARNESSES)
+        if unknown:
+            ap.error("unregistered harness: " + ", ".join(sorted(unknown)))
+    ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only)
+    print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
+    if not ok:
         return 1
-
-    if args.run:
-        cmd = [sys.executable, RUNNER]
-        for bd in build_dirs:
-            cmd += ["--build-dir", os.path.basename(bd)]
-        print("\n[build-harnesses] running suite...")
-        rc = subprocess.run(cmd, cwd=REPO_ROOT, **console_child.child_kwargs()).returncode
-        return 1 if (failures or rc != 0 or not unit_ok) else 0
-
-    return 1 if (failures or not unit_ok) else 0
+    if args.run and not (args.unit_only or args.asan or args.only):
+        ok = run_python_harnesses()
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

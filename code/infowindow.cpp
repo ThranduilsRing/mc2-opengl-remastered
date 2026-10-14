@@ -13,7 +13,6 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"mechicon.h"
 #include"team.h"
 #include"txmmgr.h"
-#include"estring.h"
 #include"gameos.hpp"        // INFO-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
 #include"imgui.h"           // INFO-IMGUI-SLICE-1: ImGui info panel
 #include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text
@@ -1250,7 +1249,6 @@ void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 
 	int count = gatherWeaponRows( names, disabledCount, ammo, ranges, bDraw );
 
-	EString rowText;
 	for ( int j = 0; j < 3; j++ )
 	{
 		if ( !bDraw[j] )
@@ -1265,8 +1263,7 @@ void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 
 			char tmpName[256];
 			cLoadString( IDS_COMP_ABBR0 + names[k], tmpName, 255 );
-			rowText.Format( "%ld/%ld  %s", disabledCount[k][0], disabledCount[k][1], tmpName );
-			out.push_back( { std::string( rowText.Data() ), textColors[j] } );
+			out.push_back( { std::format( "{:d}/{:d}  {}", mc2::fmt::as_i32( disabledCount[k][0] ), mc2::fmt::as_i32( disabledCount[k][1] ), mc2::fmt::safe( tmpName ) ), textColors[j] } );
 
 			if ( ammo[k] != -1 )
 			{
@@ -1406,7 +1403,7 @@ void InfoWindow::drawScrollingStuff()
 	// removing headers for now
 //	long stringIDs[4] = { IDS_SHORT, IDS_MEDIUM, IDS_LONG, IDS_COMPONENT};
 //	long headerColors[4] = { 0xFFC8E100, 0xff0091FF, 0xFFFF0000, 0xffFF8A00 };
-	EString capHeader;
+	std::string capHeader;
 
 
 
@@ -1445,8 +1442,8 @@ void InfoWindow::drawScrollingStuff()
 					}
 					else
 						cLoadString( IDS_COMP_ABBR0 + names[i], tmpName, 255 );
-					capHeader.Format( "%ld/%ld  %s", disabledCount[i][0], disabledCount[i][1], tmpName );
-					componentFont.render( capHeader, COMPONENTLEFT, curY, SCROLLLEFT - COMPONENTLEFT, height, textColors[j], 0, 0 );
+					capHeader = std::format( "{:d}/{:d}  {}", mc2::fmt::as_i32( disabledCount[i][0] ), mc2::fmt::as_i32( disabledCount[i][1] ), mc2::fmt::safe( tmpName ) );
+					componentFont.render( capHeader.c_str(), COMPONENTLEFT, curY, SCROLLLEFT - COMPONENTLEFT, height, textColors[j], 0, 0 );
 				}
 				curY += height;	
 
@@ -1558,8 +1555,8 @@ void InfoWindow::drawScrollingStuff()
 				float top = curY + PILOTHEIGHT/2 - height/2;
 				float bottom = top + height;
 				// draw the name of the pilot
-				capHeader = pilotRows.name.c_str();
-				componentFont.render( capHeader, PILOTNAMELEFT, top, right - PILOTNAMELEFT, bottom - top, 0xff005392, 0, 0 );
+				capHeader = pilotRows.name;
+				componentFont.render( capHeader.c_str(), PILOTNAMELEFT, top, right - PILOTNAMELEFT, bottom - top, 0xff005392, 0, 0 );
 
 			}
 

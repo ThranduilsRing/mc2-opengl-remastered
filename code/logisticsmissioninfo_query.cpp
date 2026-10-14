@@ -12,7 +12,7 @@ const std::string& LogisticsMissionInfo::getCurrentPurchaseFile() const
 {
 	MissionGroup* pGroup = &groups[currentStage];
 
-	return pGroup->infos[currentMission]->purchaseFileName;
+	return pGroup->mission(currentMission)->purchaseFileName;
 }
 
 long LogisticsMissionInfo::getAllPurchaseFiles( const char** list, long& maxCount )
@@ -21,8 +21,8 @@ long LogisticsMissionInfo::getAllPurchaseFiles( const char** list, long& maxCoun
 	long maxOut = maxCount;
 	for ( long g = 0; g < groupCount; g++ )
 	{
-		MISSION_LIST::EIterator iter = groups[g].infos.Begin();
-		while ( !iter.IsDone() )
+		auto iter = groups[g].infos.begin();
+		while ( iter != groups[g].infos.end() )
 		{
 			// The pointer is into a mission record that stays alive until clear().
 			const char* pf = (*iter)->purchaseFileName.c_str();
@@ -48,7 +48,7 @@ long LogisticsMissionInfo::getCurrentDropWeight() const
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( currentMission != -1 )	
-		return pGroup->infos[currentMission]->dropWeight;
+		return pGroup->mission(currentMission)->dropWeight;
 	else
 		return 10000;
 }
@@ -71,7 +71,7 @@ std::string LogisticsMissionInfo::getCurrentVideo() const
 
 	MissionGroup* pGroup = &groups[currentStage];
 
-	MissionInfo* pInfo = pGroup->infos[currentMission];
+	MissionInfo* pInfo = pGroup->mission(currentMission);
 	if ( pInfo && !pInfo->videoName.empty() )
 		return pInfo->videoName;
 	return pGroup->videoFileName;
@@ -97,18 +97,18 @@ std::string LogisticsMissionInfo::getCurrentMissionDescription() const
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
 		return std::string();
 
-	return groups[currentStage].infos[currentMission]->description;
+	return groups[currentStage].mission(currentMission)->description;
 }
 
 bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
 {
 	MissionGroup* pGroup = &groups[currentStage];
 
-	for ( int i = 0; i < pGroup->infos.Count(); i++ )
+	for ( int i = 0; i < std::ssize(pGroup->infos); i++ )
 	{
-		if ( mc2::str::iequals( pGroup->infos[i]->fileName, mc2::str::from_c( missionName ) ) )
+		if ( mc2::str::iequals( pGroup->mission(i)->fileName, mc2::str::from_c( missionName ) ) )
 		{
-			return !pGroup->infos[i]->completed;
+			return !pGroup->mission(i)->completed;
 		}
 	}
 	return false;
@@ -119,7 +119,7 @@ std::string LogisticsMissionInfo::getCurrentMissionFriendlyName() const
 	if ( currentStage >= groupCount )
 		return std::string();
 
-	return groups[currentStage].infos[currentMission]->missionDescriptiveName;
+	return groups[currentStage].mission(currentMission)->missionDescriptiveName;
 }
 
 std::string LogisticsMissionInfo::getCurrentABLScriptName() const
@@ -137,11 +137,11 @@ std::string LogisticsMissionInfo::getMissionFriendlyName( const char* missionNam
 	MissionGroup* pGroup = &groups[currentStage];
 
 	const std::string wanted = mc2::str::from_c( missionName );
-	for ( int i = 0; i < pGroup->infos.Count(); i++ )
+	for ( int i = 0; i < std::ssize(pGroup->infos); i++ )
 	{
-		if ( mc2::str::iequals( pGroup->infos[i]->fileName, wanted ) )
+		if ( mc2::str::iequals( pGroup->mission(i)->fileName, wanted ) )
 		{
-			return pGroup->infos[i]->missionDescriptiveName;
+			return pGroup->mission(i)->missionDescriptiveName;
 		}
 	}
 	return std::string();
@@ -154,7 +154,7 @@ int		LogisticsMissionInfo::getCurrentRP() const
 
 	
 	MissionGroup* pGroup = &groups[currentStage];
-	return pGroup->infos[currentMission]->resourcePoints;
+	return pGroup->mission(currentMission)->resourcePoints;
 
 }
 
@@ -192,7 +192,7 @@ void		LogisticsMissionInfo::setMultiplayer()
 	currentStage = 0;
 
 	MissionInfo* pInfo = new MissionInfo;
-	groups[0].infos.Append( pInfo );
+	groups[0].infos.push_back( pInfo );
 
 	currentMission = 0;
 	groupCount = 1;
@@ -205,26 +205,26 @@ void		LogisticsMissionInfo::setPurchaseFile( const char* fileName )
 {
 	gosASSERT( bMultiplayer) ;
 
-	MissionInfo* pInfo = groups[0].infos[0];
+	MissionInfo* pInfo = groups[0].mission(0);
 
 	pInfo->purchaseFileName = std::string( missionPath ) + mc2::str::from_c( fileName ) + ".fit";
 }
 
 int			LogisticsMissionInfo::getAdditionalPurachaseFiles( const char** list, long& maxCount )
 {
-	if ( maxCount >=  additionalPurchaseFiles.Count() )
+	if ( maxCount >=  std::ssize(additionalPurchaseFiles) )
 	{
 		long i = 0;
 		
-		for ( FILE_LIST::EIterator iter = additionalPurchaseFiles.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = additionalPurchaseFiles.begin(); iter != additionalPurchaseFiles.end(); ++iter )
 		{
 			list[i++] = *iter;	
 		}
 	}
 
-	maxCount = additionalPurchaseFiles.Count();
+	maxCount = static_cast<int>(std::ssize(additionalPurchaseFiles));
 
-	return additionalPurchaseFiles.Count();
+	return static_cast<long>(std::ssize(additionalPurchaseFiles));
 }
 void				LogisticsMissionInfo::addBonusPurchaseFile( const char* fileName )
 {
@@ -234,7 +234,7 @@ void				LogisticsMissionInfo::addBonusPurchaseFile( const char* fileName )
 	char* pNewFile = new char[strlen( fileName )+1];
 	strcpy( pNewFile, fileName ); 
 
- 	additionalPurchaseFiles.Append( pNewFile );
+ 	additionalPurchaseFiles.push_back( pNewFile );
 }
 
 bool	LogisticsMissionInfo::skipLogistics()
@@ -246,7 +246,7 @@ bool	LogisticsMissionInfo::skipLogistics()
 		return false;
 
 	MissionGroup* pGroup = &groups[currentStage];
-	return !pGroup->infos[currentMission]->playLogistics;
+	return !pGroup->mission(currentMission)->playLogistics;
 
 }
 
@@ -255,8 +255,8 @@ void LogisticsMissionInfo::setSkipLogistics(bool skip)
 	// Smoke-mode helper. Bypasses the .fit-file-derived PlayLogistics flag
 	// on the currently-selected mission info. Safe to call only after
 	// setSingleMission() / setNextMission() has populated groups[currentStage].
-	if (currentStage < groupCount && !groups[currentStage].infos.IsEmpty()) {
-		groups[currentStage].infos[currentMission]->playLogistics = !skip;
+	if (currentStage < groupCount && !groups[currentStage].infos.empty()) {
+		groups[currentStage].mission(currentMission)->playLogistics = !skip;
 	}
 }
 bool	LogisticsMissionInfo::skipPilotReview()
@@ -287,7 +287,7 @@ bool	LogisticsMissionInfo::skipPurchasing()
 		return 0;
 
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return !pGroup->infos[currentMission]->playPurchasing;
+	return !pGroup->mission(currentMission)->playPurchasing;
 }
 
 LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::getPreviousMission()
@@ -295,23 +295,23 @@ LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::getPreviousMission()
 	if ( currentMission > 0 )
 	{
 		MissionGroup* pGroup = &groups[currentStage]; 
-		return pGroup->infos[currentMission-1];
+		return pGroup->mission(currentMission-1);
 	}
 	else if ( currentStage > 0 )
 	{
 		MissionGroup* pGroup = &groups[currentStage]-1; 
-		int Count  = pGroup->infos.Count();
+		int Count  = static_cast<int>(std::ssize(pGroup->infos));
 		if ( Count )
-			return pGroup->infos[Count-1];
+			return pGroup->mission(Count-1);
 		else
 			return nullptr;
 	}
 	else if ( currentStage == 0 )	//There may be only one stage.  I.e. Tutorials!
 	{
 		MissionGroup* pGroup = &groups[currentStage]; 
-		int Count  = pGroup->infos.Count();
+		int Count  = static_cast<int>(std::ssize(pGroup->infos));
 		if ( Count )
-			return pGroup->infos[Count-1];
+			return pGroup->mission(Count-1);
 		else
 			return nullptr;
 	}
@@ -323,7 +323,7 @@ bool LogisticsMissionInfo::isSingleMission() const
 {
 	if ( groupCount == 1 )
 	{
-		if ( groups[0].infos.Count() == 1 )
+		if ( std::ssize(groups[0].infos) == 1 )
 			return 1;
 	}
 
@@ -336,46 +336,46 @@ bool LogisticsMissionInfo::	showChooseMission()
 		return 0;
 
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->playMissionSelection;
+	return pGroup->mission(currentMission)->playMissionSelection;
 
 }
 
 bool	LogisticsMissionInfo::canHaveSalavageCraft()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableSalavageCraft;
+	return pGroup->mission(currentMission)->enableSalavageCraft;
 
 }
 
 bool LogisticsMissionInfo::canHaveRepairTruck()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableRepairTruck;
+	return pGroup->mission(currentMission)->enableRepairTruck;
 }
 bool	LogisticsMissionInfo::canHaveScoutCopter()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableScoutCopter;
+	return pGroup->mission(currentMission)->enableScoutCopter;
 }
 bool	LogisticsMissionInfo::canHaveArtilleryPiece()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableArtilleryPiece;
+	return pGroup->mission(currentMission)->enableArtilleryPiece;
 }
 bool	LogisticsMissionInfo::canHaveAirStrike()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableAirStrike;
+	return pGroup->mission(currentMission)->enableAirStrike;
 }
 bool	LogisticsMissionInfo::canHaveSensorStrike()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableSensorStrike;
+	return pGroup->mission(currentMission)->enableSensorStrike;
 }
 bool	LogisticsMissionInfo::canHaveMineLayer()
 {
 	MissionGroup* pGroup = &groups[currentStage]; 
-	return pGroup->infos[currentMission]->enableMineLayer;
+	return pGroup->mission(currentMission)->enableMineLayer;
 }
 
 bool LogisticsMissionInfo::getVideoShown()

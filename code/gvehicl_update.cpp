@@ -247,9 +247,6 @@ long GroundVehicle::update (void)
 	else if (getAwake() && !isDisabled())
 	{
 
-		GroundVehicleTypePtr vehicleType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);ObjectManager->getObjectType(typeHandle);
-		if (getTeam())	   //Vehicle Pilots are just out there.  They do not help anyone with LOS!!!
-			getTeam()->markSeen(position,vehicleType->LOSFactor);
 		markDistanceMoved = 0.0;
 	}
 	else if (isDisabled() && timeLeft)

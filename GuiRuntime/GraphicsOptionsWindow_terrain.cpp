@@ -511,7 +511,7 @@ void drawStaticPropTuningSection() {
         ImGui::EndDisabled();
     }
 
-    // PBR V1 specular (V-MATERIAL-PBR-3; default-OFF env). When gate ON,
+    // PBR V1 specular (V-MATERIAL-PBR-3; options.cfg StaticPropPbr, default OFF). When the option is ON,
     // slider controls strength. Default value 0.5 (dialled back from 1.0).
     ImGui::SeparatorText("PBR V1 specular");
     {

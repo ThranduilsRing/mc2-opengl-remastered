@@ -1017,9 +1017,8 @@ void MissionBegin::updateSoakAutoPurchase() {
 			     LogisticsData::instance )
 			{
 				LogisticsData* ld = LogisticsData::instance;
-				EList<LogisticsMech*, LogisticsMech*> fg;
-				ld->getForceGroup( fg );
-				if ( fg.Count() > 0 )
+				auto fg = ld->getForceGroup();
+				if ( std::ssize(fg) > 0 )
 				{
 					// Already have a lance (e.g. campaigns that pre-stage mechs).
 					s_autoPurchasedThisBay = true;
@@ -1092,10 +1091,9 @@ void MissionBegin::updateSoakAutoPurchase() {
 
 						// -- (a) salvaged inventory mechs (unassigned) ----------------------
 						{
-							EList<LogisticsMech*, LogisticsMech*> inv;
-							ld->getInventory( inv );
-							for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-							      !it.IsDone() && nCands < CAND_CAP; it++ )
+							auto inv = ld->getInventory();
+							for ( auto it = inv.begin();
+							      it != inv.end() && nCands < CAND_CAP; ++it )
 							{
 								LogisticsMech* m = (*it);
 								if ( !m ) continue;
@@ -1149,10 +1147,8 @@ void MissionBegin::updateSoakAutoPurchase() {
 									    slot, variant->getName().c_str());
 									continue;
 								}
-								EList<LogisticsMech*, LogisticsMech*> inv;
-								ld->getInventory( inv );
-								for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-								      !it.IsDone(); it++ )
+								auto inv = ld->getInventory();
+								for ( auto it = inv.begin(); it != inv.end(); ++it )
 								{
 									LogisticsMech* m = (*it);
 									if ( m && m->getVariant() == variant && !m->getForceGroup() )
@@ -1238,10 +1234,8 @@ void MissionBegin::updateSoakAutoPurchase() {
 						if ( pick && ld->purchaseMech( pick ) == 0 )
 						{
 							LogisticsMech* bought = nullptr;
-							EList<LogisticsMech*, LogisticsMech*> inv;
-							ld->getInventory( inv );
-							for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-							      !it.IsDone(); it++ )
+							auto inv = ld->getInventory();
+							for ( auto it = inv.begin(); it != inv.end(); ++it )
 								if ( (*it) && (*it)->getVariant() == pick && !(*it)->getForceGroup() )
 									bought = (*it);
 							if ( bought )
@@ -1385,9 +1379,8 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					int items = 0;
 					if ( LogisticsData::instance )
 					{
-						EList<LogisticsMech*, LogisticsMech*> inv;
-						LogisticsData::instance->getInventory( inv );
-						items = (int)inv.Count();
+						auto inv = LogisticsData::instance->getInventory();
+						items = (int)std::ssize(inv);
 					}
 					printf("[SOAK] screen-check screen=purchase ok=%d items=%d\n",
 						(items > 0) ? 1 : 0, items);
@@ -1454,9 +1447,8 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					int items = 0;
 					if ( LogisticsData::instance )
 					{
-						EList<LogisticsMech*, LogisticsMech*> fg;
-						LogisticsData::instance->getForceGroup( fg );
-						items = (int)fg.Count();
+						auto fg = LogisticsData::instance->getForceGroup();
+						items = (int)std::ssize(fg);
 					}
 					printf("[SOAK] screen-check screen=loadout ok=%d items=%d\n",
 						(items > 0) ? 1 : 0, items);

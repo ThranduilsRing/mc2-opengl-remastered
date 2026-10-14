@@ -1,6 +1,29 @@
 // Pathfinding: GlobalMap path search: start/goal doors, area ownership, calcPath, open/close and the debug log.
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
+#include "mc2fmt.h"
+
+namespace {
+
+// WHAT: gives the open-list entry of `door` its new key.
+// WHY: PriorityQueue::change() takes a heap POSITION; find() returns the position of an id and 0 for "not in the heap", and position 0 is the sentinel slot.
+// Passing a door id, or the 0 of a miss, re-keys an unrelated slot and sifts from the wrong place (the A* open-list corruption, B2.5-pre). A door flagged
+// OPEN that the heap does not hold is skipped, so the heap stays valid, and one line per run says it happened: release builds compile the assert out.
+void reKeyOpenDoor(long door, long newKey) {
+	const long position = openList->find(door);
+	if (position == 0) {
+		gosASSERT(position != 0);
+		static bool reported = false;
+		if (!reported) {
+			reported = true;
+			mc2::fmt::print_err("[PATH v1] event=open_list_miss solver=globalmap id={:d}\n", mc2::fmt::as_i32(door));
+		}
+		return;
+	}
+	openList->change(position, newKey);
+}
+
+}  // namespace
 
 
 void GlobalMap::setStartDoor (long startArea) {
@@ -192,13 +215,7 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 		curMapDoor->g = g + cost;
 		curMapDoor->fPrime = curMapDoor->g + curMapDoor->hPrime;
 		if (curMapDoor->flags & MOVEFLAG_OPEN) {
-			long openIndex = openList->find(door);
-			if (!openIndex) {
-				char s[128];
-				sprintf(s, "GlobalMap.propogateCost: Cannot find globalmap door [%d, %d, %d, %d] for change\n", door, cost, fromAreaIndex, g);
-				gosASSERT(openIndex != 0);
-			}
-			openList->change(door, curMapDoor->fPrime);
+			reKeyOpenDoor(door, curMapDoor->fPrime);
 			}
 		else {
 			long toAreaIndex = 1 - fromAreaIndex;
@@ -444,13 +461,7 @@ long GlobalMap::calcPath (long startArea,
 						succMapDoor->fromAreaIndex = succFromAreaIndex;
 						succMapDoor->g = succDoorG;
 						succMapDoor->fPrime = succDoorG + succMapDoor->hPrime;
-						long openIndex = openList->find(succDoor);
-						if (!openIndex) {
-							char s[128];
-							sprintf(s, "GlobalMap.calcPath: Cannot find globalmap door [%d, %d, %d, %d] for change\n", succDoor, curLink, succFromAreaIndex, succDoorCost);
-							gosASSERT(openIndex != 0);
-						}
-						openList->change(openIndex, succMapDoor->fPrime);
+						reKeyOpenDoor(succDoor, succMapDoor->fPrime);
 					}
 					}
 				else if (succMapDoor->flags & MOVEFLAG_CLOSED) {

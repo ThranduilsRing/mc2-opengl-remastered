@@ -1,6 +1,19 @@
 // ABL native bindings: movie mode, camera get/set pairs, GUI/logistics callouts and help/target/shelter requests.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "abl_script_events.h"
+#include <algorithm>
+#include <iterator>
+#include <span>
+
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
+namespace abl {
+long clampArrayCount(long, size_t, std::string_view);
+long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
+long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
+}
+
 
 
 // Target-plan helpers used by the strike and help-request bindings below.
@@ -233,12 +246,8 @@ void execGetCameraPosition (void) {
 	//		PARAMS:	real[3]				camPos
 	//		RETURN: NONE
 
-	float* camPos = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !camPos) {
-		abl_arg_guard_log("execGetCameraPosition", "camPos");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float camPos[3] = {};
 
 	Stuff::Vector3D result(0.0,0.0,0.0);
 	if (eye)
@@ -247,6 +256,7 @@ void execGetCameraPosition (void) {
 	camPos[0] = result.x;
 	camPos[1] = result.y;
 	camPos[2] = result.z;
+	abl::copyRealArray(output, camPos, "getcameraposition_truncated");
 }
 
 void execSetCameraPosition(void) {
@@ -296,12 +306,8 @@ void execGetCameraGoalPosition (void) {
 	//		PARAMS:	real[3]				camPos
 	//		RETURN: NONE
 
-	float* camPos = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !camPos) {
-		abl_arg_guard_log("execGetCameraGoalPosition", "camPos");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float camPos[3] = {};
 
 	Stuff::Vector3D result(0.0,0.0,0.0);
 
@@ -311,6 +317,7 @@ void execGetCameraGoalPosition (void) {
 	camPos[0] = result.x;
 	camPos[1] = result.y;
 	camPos[2] = result.z;
+	abl::copyRealArray(output, camPos, "getcameragoalposition_truncated");
 }
 
 void execGetCameraRotation (void) {
@@ -320,12 +327,8 @@ void execGetCameraRotation (void) {
 	//		PARAMS:	real[3]				camRot
 	//		RETURN: NONE
 
-	float* camRot = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !camRot) {
-		abl_arg_guard_log("execGetCameraRotation", "camRot");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float camRot[3] = {};
 
 	Stuff::Vector3D result(0.0,0.0,0.0);
 	if (eye)
@@ -334,6 +337,7 @@ void execGetCameraRotation (void) {
 	camRot[0] = result.x;
 	camRot[1] = result.y;
 	camRot[2] = result.z;
+	abl::copyRealArray(output, camRot, "getcamerarotation_truncated");
 }
 
 void execSetCameraRotation (void) {
@@ -384,12 +388,8 @@ void execGetCameraGoalRotation (void) {
 	//		PARAMS:	real[3]				camRot
 	//		RETURN: NONE
 
-	float* camRot = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !camRot) {
-		abl_arg_guard_log("execGetCameraGoalRotation", "camRot");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float camRot[3] = {};
 
 	Stuff::Vector3D result(0.0,0.0,0.0);
 
@@ -399,6 +399,7 @@ void execGetCameraGoalRotation (void) {
 	camRot[0] = result.x;
 	camRot[1] = result.y;
 	camRot[2] = result.z;
+	abl::copyRealArray(output, camRot, "getcameragoalrotation_truncated");
 }
 
 void execGetCameraZoom (void) {
@@ -487,12 +488,8 @@ void execGetCameraVelocity (void) {
 	//		PARAMS:	real[3]				camVel
 	//		RETURN: NONE
 
-	float* camVel = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !camVel) {
-		abl_arg_guard_log("execGetCameraVelocity", "camVel");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float camVel[3] = {};
 
 	Stuff::Vector3D result(0.0,0.0,0.0);
 
@@ -502,6 +499,7 @@ void execGetCameraVelocity (void) {
 	camVel[0] = result.x;
 	camVel[1] = result.y;
 	camVel[2] = result.z;
+	abl::copyRealArray(output, camVel, "getcameravelocity_truncated");
 }
 
 void execSetCameraGoalVelocity (void) {
@@ -539,12 +537,8 @@ void execGetCameraGoalVelocity (void) {
 	//				real				time
 	//		RETURN: NONE
 
-	float* camVel = ABLi_popRealPtr();
-
-	if (s_ablArgGuard && !camVel) {
-		abl_arg_guard_log("execGetCameraGoalVelocity", "camVel");
-		return;
-	}
+	const auto output = ABLi_popRealBuf();
+	float camVel[3] = {};
 
 	Stuff::Vector3D result(0.0,0.0,0.0);
 
@@ -554,6 +548,7 @@ void execGetCameraGoalVelocity (void) {
 	camVel[0] = result.x;
 	camVel[1] = result.y;
 	camVel[2] = result.z;
+	abl::copyRealArray(output, camVel, "getcameragoalvelocity_truncated");
 }
 
 void execSetCameraLookObject (void) {

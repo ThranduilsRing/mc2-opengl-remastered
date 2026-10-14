@@ -143,9 +143,11 @@ static bool mc2IsUndefinedName( const char* n )
 // the detail page uses.
 static bool mc2IsUndefinedDescription( int descID )
 {
-	char desc[256];
+	// Large enough for the longest string of the catalog (2047 characters): cLoadString STOPs when a text does not fit, and the vehicle descriptions are
+	// longer than 255 (id 45208 has 349), which stopped the vehicles tab of the Mechlopedia at its first entry.
+	char desc[4096];
 	desc[0] = 0;
-	cLoadString( descID, desc, 255 );
+	cLoadString( descID, desc, sizeof( desc ) - 1 );
 	return mc2IsUndefinedName( desc );
 }
 
@@ -447,9 +449,7 @@ void Mechlopedia::MechScreen::begin()
 			cLoadString( pVehicles[i]->getNameID(), name, 255 );
 			if ( mc2IsUndefinedName( name ) ) continue;
 			if ( mc2IsUndefinedDescription( pVehicles[i]->getEncyclopediaID() ) ) continue;   // ENCYCLO-UNDEFINED-FILTER-2
-			EString text = name;
-			text.MakeUpper();
-			pEntry->setText( text );
+			pEntry->setText( mc2::str::ascii_upper( name ) );
 			pEntry->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pEntry->height() );
 			bool bFound = 0;
 
@@ -563,17 +563,16 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 
 	if ( !bIsVehicle )
 	{
-		EString name = pText;
-		name += " Prime";
+		const std::string name = mc2::str::from_c( pText ) + " Prime";
 
-		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name );
+		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name.c_str() );
 		// ENCYCLO-3D-1 diagnostic: is the select→variant→camera chain intact?
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
 				fprintf(f,"[ENCYCLO] select mech text='%s' lookup='%s' variant=%p\n",
-					pText, (const char*)name, (void*)pChassis);
+					pText, name.c_str(), (void*)pChassis);
 				fclose(f);
 			}
 		}
@@ -686,8 +685,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	int descID = pVehicle->getEncyclopediaID();
 	char text[256];
 	cLoadString( pVehicle->getNameID(), text, 255 );
-	EString tmpStr = text;
-	tmpStr.MakeUpper();
+	const std::string tmpStr = mc2::str::ascii_upper( text );
 	aTextListItem* pItem = nullptr;
 	if ( !hasDefsUiPage() )
 	{
@@ -797,8 +795,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 	char name[256];
 	cLoadString( pChassis->getChassisName(), name, 255 );
-	EString upper = name;
-	upper.MakeUpper();
+	const std::string upper = mc2::str::ascii_upper( name );
 
 	aTextListItem* pItem = nullptr;
 	if ( !hasDefsUiPage() )
@@ -1050,9 +1047,7 @@ void Mechlopedia::WeaponScreen::begin()
 	{
 		if ( mc2IsUndefinedName( comps[i]->getName() ) ) continue;
 		MechlopediaListItem* pItem = new MechlopediaListItem();
-		EString text = comps[i]->getName();
-		text.MakeUpper();
-		pItem->setText( text  );
+		pItem->setText( mc2::str::ascii_upper( mc2::str::from_c( comps[i]->getName() ) ) );
 		pItem->setID( comps[i]->getID() );
 		pItem->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pItem->height() );
 
@@ -1077,8 +1072,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	statsListBox.removeAllItems( true );
 
 	//set header
-	EString name = pComponent->getName();
-	name.MakeUpper();
+	const std::string name = mc2::str::ascii_upper( mc2::str::from_c( pComponent->getName() ) );
 
 	// set description
 	aTextListItem* pEntry = nullptr;
@@ -1312,8 +1306,7 @@ void Mechlopedia::PersonalityScreen::begin()
 		MechlopediaListItem* pItem = new MechlopediaListItem();
 		char text[256];
 		cLoadString( FirstID + i, text, 255 );
-		EString upper = text;
-		upper.MakeUpper();
+		const std::string upper = mc2::str::ascii_upper( text );
 		pItem->setText( upper );
 		pItem->setID( i );
 		pItem->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pItem->height() );
@@ -1325,7 +1318,8 @@ void Mechlopedia::PersonalityScreen::begin()
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
 				MechlopediaListItem* pTmpItem = (MechlopediaListItem*)groupListBox->GetItem( j );
-				if ( upper.Compare( pTmpItem->getText(), 1 ) < 0 )
+				// The list is ordered by name, ignoring ASCII case; the stock personality names keep the order of the former locale collation.
+				if ( mc2::str::icompare( upper, mc2::str::from_c( pTmpItem->getText() ) ) < 0 )
 				{
 					groupListBox->InsertItem( pItem, j );
 					bAdded = 1;
@@ -1533,17 +1527,13 @@ void Mechlopedia::BuildingScreen::begin()
 	{
 		char tmp[256];
 		cLoadString( pBldgs[i]->nameID, tmp, 255 );
-		EString str = tmp;
-		str.MakeUpper();
-		EString liao = "Liao ";
-		str.Remove( liao);
-		liao = "LIAO ";
-		str.Remove( liao );
+		// The faction prefix is cut from the upper-cased name (a mixed-case "Liao " can no longer be present at that point).
+		const std::string str = mc2::str::erase_first( mc2::str::ascii_upper( tmp ), "LIAO " );
 
 		bool bFound = 0;
 		for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 		{
-			if ( S_stricmp(  str, ((aTextListItem*)groupListBox->GetItem( j ))->getText() ) < 0 )
+			if ( S_stricmp(  str.c_str(), ((aTextListItem*)groupListBox->GetItem( j ))->getText() ) < 0 )
 			{
 				MechlopediaListItem* pItem = new MechlopediaListItem();
 				pItem->setText( str );
@@ -1582,11 +1572,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 	{
 		char name[256];
 		cLoadString( pBldg->nameID, name, 255 );
-		EString tmpStr = name;
-		tmpStr.MakeUpper();
-
-		EString	liao = "LIAO ";
-		tmpStr.Remove( liao );
+		const std::string tmpStr = mc2::str::erase_first( mc2::str::ascii_upper( name ), "LIAO " );
 
 		camera.setBuilding( pBldg->fileName );
 		camera.setScale( pBldg->scale );

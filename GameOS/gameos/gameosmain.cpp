@@ -142,6 +142,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "asset_scale.h"
 #include "gos_crashbundle.h"
 #include "gos_smoke.h"
+#include "gpu_memory_report.h"   // [VRAM v1] load_end / run_end lines and the Tracy VRAM plot
 
 #include <signal.h>
 #include "gos_profiler.h"
@@ -897,6 +898,8 @@ extern "C" void mission_phase_report()
     // the call that prints it -- gate the SINK.
     MC2_DIAGF("%s\n", buf);
     fflush(stdout);
+    // Mission load is over: the GPU memory every later frame starts from (the smoke report's load-end VRAM line).
+    mc2::gpumem::log("load_end");
 }
 
 //typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
@@ -1306,6 +1309,7 @@ int main(int argc, char** argv)
             TracyGpuCollect;
         }
         FrameMark;
+        mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter));   // VRAM.Process.MB plot beside the frame marks
 
         {
             ZoneScopedN("Frame.ExitCheck");
@@ -1338,6 +1342,7 @@ int main(int argc, char** argv)
         // Smoke mode: timed auto-quit after durationSec seconds past mission_ready.
         if (SmokeMode::shouldQuit()) {
             SmokeMode::emitTiming("mission_quit");
+            mc2::gpumem::log("run_end");   // before the summary: the GPU memory the run ended with
             SmokeMode::emitCleanSummary();
             g_exit = true;
             break;

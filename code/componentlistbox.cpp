@@ -363,7 +363,7 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 	itemSelected = -1;
 
 	
-	if ( !masterComponentList.Count() )
+	if ( !std::ssize(masterComponentList) )
 	{
 		int count = 256;
 		LogisticsComponent* pComp[256];
@@ -373,7 +373,7 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 			for ( int i = 0; i < count; i++ )
 			{
 				ComponentListItem* pItem = new ComponentListItem( pComp[i] );
-				masterComponentList.Append( pItem );	
+				masterComponentList.push_back( pItem );	
 			}			
 	
 
@@ -384,12 +384,11 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 	//		turn++;
 	//	}
 
-	//	masterComponentList.Clear();
+	//	masterComponentList.clear();
 	//	}
 	}
 
-	for ( EList< ComponentListItem*, ComponentListItem* >::EIterator iter = masterComponentList.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = masterComponentList.begin(); iter != masterComponentList.end(); ++iter )
 		{
 			if ( (*iter)->getComponent()->isAvailable() )
 			{
@@ -458,7 +457,7 @@ ComponentIconListBox::ComponentIconListBox()
 
 ComponentIconListBox::~ComponentIconListBox()
 {
-	masterComponentList.Clear();
+	masterComponentList.clear();
 
 	s_instance = nullptr;
 

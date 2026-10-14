@@ -1,0 +1,38 @@
+### mc2_24_60s_a: 7320 sim frames, last 7319; baseline window 1000
+P1 (SortList):
+| site | calls | max n | ties | qsort != rule | NaN | inf | leak | first tie frame | first diff frame | diff within window |
+|---|---|---|---|---|---|---|---|---|---|---|
+| getContacts | 2448 | 6 | 0 | 0 | 0 | 0 | 0 | - | - | 0 of 0 |
+| getMoversWithinRadius | 28 | 6 | 21 | 19 | 0 | 0 | 0 | 2618 | 2618 | 0 of 0 |
+| calcOptimalRange | 441 | 5 | 441 | 416 | 0 | 0 | 0 | 0 | 0 | 53 of 75 |
+| sortWeapons_attack | 0 (UNEXERCISED) | | | | | | | | | |
+| sortWeapons_value | 0 (UNEXERCISED) | | | | | | | | | |
+P2 (A* open list):
+| solver | solves | max open | find()==0 | largest index to change | change > live n | change >= buffer | min key | solves > 5001 |
+|---|---|---|---|---|---|---|---|---|
+| globalmap | 4565 | 579 | 0 | 554 | 0 | 0 | 0 | 0 |
+| movemap | 2448 | 303 | 0 | 287 | 0 | 0 | 0 | 0 |
+| movemap_jump | 1047 | 2238 | 0 | 2233 | 0 | 0 | 0 | 0 |
+| movemap_escape | 0 (UNEXERCISED) | | | | | | | |
+| goalmap | 0 (UNEXERCISED) | | | | | | | |
+propogateCost hits (door != openIndex): 0 total, 0 within frame 1000; stale 0, door >= 5002 0
+
+### mc2_24_60s_b: 6624 sim frames, last 6623; baseline window 1000
+P1 (SortList):
+| site | calls | max n | ties | qsort != rule | NaN | inf | leak | first tie frame | first diff frame | diff within window |
+|---|---|---|---|---|---|---|---|---|---|---|
+| getContacts | 2448 | 6 | 0 | 0 | 0 | 0 | 0 | - | - | 0 of 0 |
+| getMoversWithinRadius | 28 | 6 | 21 | 19 | 0 | 0 | 0 | 2618 | 2618 | 0 of 0 |
+| calcOptimalRange | 441 | 5 | 441 | 416 | 0 | 0 | 0 | 0 | 0 | 53 of 75 |
+| sortWeapons_attack | 0 (UNEXERCISED) | | | | | | | | | |
+| sortWeapons_value | 0 (UNEXERCISED) | | | | | | | | | |
+P2 (A* open list):
+| solver | solves | max open | find()==0 | largest index to change | change > live n | change >= buffer | min key | solves > 5001 |
+|---|---|---|---|---|---|---|---|---|
+| globalmap | 4169 | 579 | 0 | 554 | 0 | 0 | 0 | 0 |
+| movemap | 2201 | 303 | 0 | 287 | 0 | 0 | 0 | 0 |
+| movemap_jump | 967 | 2238 | 0 | 2233 | 0 | 0 | 0 | 0 |
+| movemap_escape | 0 (UNEXERCISED) | | | | | | | |
+| goalmap | 0 (UNEXERCISED) | | | | | | | |
+propogateCost hits (door != openIndex): 0 total, 0 within frame 1000; stale 0, door >= 5002 0
+

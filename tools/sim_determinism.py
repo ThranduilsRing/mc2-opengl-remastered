@@ -16,6 +16,8 @@ prefix is compared.
   py -3 tools/sim_determinism.py check mc2_16 --env MC2_FIXTURE_ORDER_LIVENESS=1   # two runs + the committed baseline (env comes from the file too)
   py -3 tools/sim_determinism.py run mc2_10 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
   py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 8 --duration 30 --out <dir>   # stops at the first diverging pair
+  --duration may be up to 60 (MAX_DURATION): the determinism window past sim tick ~3600 needs it (owner ruling 2026-10-13). Tier smokes and captures keep the 30 s cap of run_smoke.py;
+  the runs here pass --sim-determinism to it, which is the only thing that lifts the cap.
   py -3 tools/sim_determinism.py compare run_a/mc2_03.log run_b/mc2_03.log
   py -3 tools/sim_determinism.py write-baseline run_a/mc2_03.log --frames 1200 --mission mc2_03 [--env NAME=VALUE]
   py -3 tools/sim_determinism.py selftest          # offline; the `sim_determinism` board row
@@ -37,6 +39,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import console_child  # noqa: E402
+from repo_intel import lane_model  # noqa: E402
 
 PREFIX = "[SIMID v1] simframe="
 _STRICT = re.compile(r" strict=\w+")
@@ -180,24 +183,39 @@ def _git_sha() -> str:
     return r.stdout.strip()
 
 
-def build_and_deploy() -> None:
-    """Build the committed HEAD with Ninja and deploy it to the 0.4 install (the smoke fingerprint gate wants an exe of this HEAD)."""
+def resolve_install(name_or_path: str) -> str:
+    """Registered install path, or an absolute caller-supplied install path."""
+    hit = lane_model.lane_for(name_or_path)
+    return hit[1]["install"] if hit else os.path.abspath(os.path.expanduser(name_or_path))
+
+
+def build_and_deploy(install: str = INSTALL_DIR) -> None:
+    """Build committed HEAD with Ninja and deploy to the selected install for the smoke fingerprint gate."""
     for cmd in ([sys.executable, os.path.join(ROOT, "scripts", "ninja_build.py")],
-                [sys.executable, os.path.join(ROOT, "scripts", "deploy_payload.py"), "--target", "game", "--ninja"]):
+                [sys.executable, os.path.join(ROOT, "scripts", "deploy_payload.py"), resolve_install(install), "--target", "game", "--ninja"]):
         r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", **console_child.child_kwargs(redirected=True))
         if r.returncode:
             sys.exit("sim_determinism: " + os.path.basename(cmd[1]) + " failed:\n" + "\n".join(r.stdout.splitlines()[-6:]))
 
 
-def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None) -> list:
+#: The longest smoke window a determinism run may ask for (owner ruling 2026-10-13); scripts/run_smoke.py refuses more than 30 s without `--sim-determinism`.
+MAX_DURATION = 60
+
+
+def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR) -> list:
     """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
     `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
     (the camera pose, an effects option) really does not; its "both" entry applies to the two runs (a mission fixture)."""
+    if int(duration) > MAX_DURATION:
+        sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
+    install = resolve_install(install)
+    lane = lane_model.lane_for(install)
+    target = ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe")]
     logs = []
     for tag in ("a", "b"):
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
-                            "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            *target, "--keep-logs", "--sim-determinism"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
         if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -241,7 +259,8 @@ def format_pair_line(index: int, ok: bool, msg: str, before: dict, after: dict, 
 MAX_STARVED_IN_A_ROW = 3
 
 
-def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_frames: int, extra_env: dict | None = None) -> int:
+def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_frames: int, extra_env: dict | None = None,
+                     install: str = INSTALL_DIR) -> int:
     """Run pairs until one diverges or `max_pairs` have passed. A pair whose runs did not both reach `min_frames` is STARVED: it proves
     nothing either way, is not counted, and is retried (the host was busy); MAX_STARVED_IN_A_ROW of them end the loop with exit 2. A
     failing pair's artifacts stay in `<out>/pair_<n>`; every pair appends a line to `<out>/pairs.log`. -> 0 when all passed, 1 at the
@@ -254,7 +273,7 @@ def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_
         i += 1
         before, t0 = host_load(), time.time()
         pair_dir = os.path.join(out, f"pair_{i}")
-        la, lb = run_mission(mission, duration, pair_dir, extra_env)
+        la, lb = run_mission(mission, duration, pair_dir, extra_env, install=install)
         a, b = load_simid(la), load_simid(lb)
         starved = min(len(a), len(b)) < min_frames
         ok, msg = compare(a, b, min_frames)
@@ -368,14 +387,19 @@ def main(argv=None) -> int:
         p.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
         p.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
 
+    def install_arg(p):
+        p.add_argument("--install", type=resolve_install, default=INSTALL_DIR, metavar="NAME_OR_PATH",
+                       help="install for runs and data fingerprint (default: 0.4)")
+
     r = sub.add_parser("run")
     r.add_argument("mission")
     r.add_argument("--duration", default="20")
     r.add_argument("--min-frames", type=int, default=MIN_FRAMES)
     r.add_argument("--baseline", nargs="?", const="", help="also compare with the committed baseline (default: tests/smoke/sim_determinism/<mission>.json)")
-    r.add_argument("--deploy", action="store_true", help="build and deploy HEAD to the 0.4 install first")
+    r.add_argument("--deploy", action="store_true", help="build and deploy HEAD to the selected install first")
     r.add_argument("--out", help="keep both runs' artifacts here (default: a temporary directory)")
     env_args(r)
+    install_arg(r)
     k = sub.add_parser("check", help="run twice and compare with the committed baseline (its recorded env is applied)")
     k.add_argument("mission")
     k.add_argument("--duration", default="30")
@@ -383,6 +407,7 @@ def main(argv=None) -> int:
     k.add_argument("--deploy", action="store_true")
     k.add_argument("--out")
     env_args(k)
+    install_arg(k)
     u = sub.add_parser("pairs-until-fail", help="run pairs until one diverges (or --max pass); records host load per pair")
     u.add_argument("--mission", required=True)
     u.add_argument("--max", type=int, required=True, help="stop after this many passing pairs")
@@ -390,13 +415,14 @@ def main(argv=None) -> int:
     u.add_argument("--min-frames", type=int, default=MIN_FRAMES)
     u.add_argument("--out", help="ledger and failing-pair artifacts go here (default: a temporary directory)")
     env_args(u)
+    install_arg(u)
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
     w.add_argument("--mission", required=True)
     w.add_argument("--out", help="default: tests/smoke/sim_determinism/<mission>.json")
     w.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="the fixture env the run had, recorded for `check`")
-    w.add_argument("--install", default=INSTALL_DIR, help="the install whose data the run used (fingerprinted)")
+    install_arg(w)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
@@ -428,10 +454,10 @@ def main(argv=None) -> int:
     both = dict(_load_env(base) if base else {}, **dict(kv.split("=", 1) for kv in args.env))
     extra = {"both": both, "a": dict(kv.split("=", 1) for kv in args.env_a), "b": dict(kv.split("=", 1) for kv in args.env_b)}
     if args.cmd == "pairs-until-fail":
-        return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra)
+        return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra, install=args.install)
     if args.deploy:
-        build_and_deploy()
-    la, lb = run_mission(args.mission, args.duration, out, extra)
+        build_and_deploy(args.install)
+    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
@@ -439,7 +465,7 @@ def main(argv=None) -> int:
         if not os.path.exists(base):
             print(f"sim_determinism: baseline FAIL no baseline at {os.path.relpath(base, ROOT)} (record one with write-baseline)")
             return 1
-        ok2, msg2 = check_baseline(a, base, _seed(la), data_fingerprint())
+        ok2, msg2 = check_baseline(a, base, _seed(la), data_fingerprint(args.install))
         print(("sim_determinism: baseline PASS " if ok2 else "sim_determinism: baseline FAIL ") + msg2)
         ok = ok and ok2
     return 0 if ok else 1

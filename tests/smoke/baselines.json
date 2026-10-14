@@ -1,4 +1,18 @@
 {
+  "stock@mc2_01@tier1@120": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-10-13T10-39-54"
+    },
+    "perf": {
+      "avg_fps": 149.4,
+      "p1low_fps": 98.7,
+      "peak_ms": 27.64,
+      "resolution": "1920x1080"
+    }
+  },
   "stock@mc2_01@tier2@60": {
     "destroys": {
       "mean": 0,
@@ -23,6 +37,20 @@
       "avg_fps": 120.2,
       "p1low_fps": 70.9,
       "peak_ms": 161.0
+    }
+  },
+  "stock@mc2_03@tier1@120": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-10-13T10-52-01"
+    },
+    "perf": {
+      "avg_fps": 92.5,
+      "p1low_fps": 70.5,
+      "peak_ms": 37.95,
+      "resolution": "1920x1080"
     }
   },
   "stock@mc2_03@tier2@60": {
@@ -116,6 +144,20 @@
       "peak_ms": 10.66
     }
   },
+  "stock@mc2_10@tier1@120": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-10-13T10-39-54"
+    },
+    "perf": {
+      "avg_fps": 128.8,
+      "p1low_fps": 85.7,
+      "peak_ms": 148.31,
+      "resolution": "1920x1080"
+    }
+  },
   "stock@mc2_10@tier2@60": {
     "destroys": {
       "mean": 0,
@@ -207,6 +249,20 @@
       "peak_ms": 72.35
     }
   },
+  "stock@mc2_17@tier1@120": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-10-13T10-39-54"
+    },
+    "perf": {
+      "avg_fps": 139.4,
+      "p1low_fps": 63.0,
+      "peak_ms": 32.39,
+      "resolution": "1920x1080"
+    }
+  },
   "stock@mc2_17@tier2@60": {
     "destroys": {
       "mean": 0,
@@ -283,6 +339,20 @@
       "avg_fps": 110.2,
       "p1low_fps": 47.4,
       "peak_ms": 284.39
+    }
+  },
+  "stock@mc2_24@tier1@120": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-10-13T10-39-54"
+    },
+    "perf": {
+      "avg_fps": 137.6,
+      "p1low_fps": 78.9,
+      "peak_ms": 156.63,
+      "resolution": "1920x1080"
     }
   },
   "stock@mc2_24@tier2@60": {

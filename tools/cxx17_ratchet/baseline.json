@@ -139,17 +139,17 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 225,
-   "LG02": 212,
-   "LG03": 953,
+   "LG01": 222,
+   "LG02": 206,
+   "LG03": 948,
    "LG04": 21,
    "LG05": 194,
    "LG06": 452,
-   "LG07": 0,
+   "LG07": 2,
    "LG08": 14,
-   "LG09": 2312,
+   "LG09": 2295,
    "LG10": 20,
-   "LG11": 101,
+   "LG11": 103,
    "LG12a": 100,
    "LG12b": 349,
    "LG13": 244,
@@ -185,25 +185,25 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 458,
-   "LG02": 287,
-   "LG03": 1138,
-   "LG04": 16,
+   "LG01": 454,
+   "LG02": 285,
+   "LG03": 1130,
+   "LG04": 15,
    "LG05": 136,
    "LG06": 670,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2180,
-   "LG10": 32,
+   "LG09": 2177,
+   "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
-   "LG12b": 245,
+   "LG12b": 243,
    "LG13": 483,
    "LG14": 119,
    "LG15": 0,
    "LG16": 156,
    "LG17": 94,
-   "LG18": 8,
+   "LG18": 9,
    "LG19": 0,
    "LG20": 10
   },
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 12
+   "LG20": 14
   },
   "tools": {
    "LG01": 0,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 44
+   "LG20": 41
   }
  },
  "dirs": [
@@ -1580,7 +1580,7 @@
    "LG09": 1
   },
   "code/ablmc2_queries.cpp": {
-   "LG09": 21
+   "LG09": 16
   },
   "code/ablmc2_repro.cpp": {
    "LG09": 4
@@ -1628,7 +1628,7 @@
   },
   "code/bldng.cpp": {
    "LG03": 3,
-   "LG09": 38,
+   "LG09": 36,
    "LG13": 2
   },
   "code/bldng.h": {
@@ -1710,7 +1710,7 @@
   "code/chatwindow.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 5,
+   "LG09": 4,
    "LG12b": 2
   },
   "code/chatwindow.h": {
@@ -1764,7 +1764,7 @@
   "code/controlgui_chat.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 2,
+   "LG09": 1,
    "LG11": 1
   },
   "code/controlgui_hudtabs.cpp": {
@@ -2010,13 +2010,13 @@
    "LG10": 2
   },
   "code/group.h": {
-   "LG01": 3,
+   "LG01": 2,
    "LG02": 2
   },
   "code/group_goals.cpp": {
    "LG01": 1,
    "LG03": 1,
-   "LG09": 2,
+   "LG09": 1,
    "LG12b": 2,
    "LG13": 2,
    "LG16": 4
@@ -2040,7 +2040,7 @@
    "LG09": 2
   },
   "code/gvehicl_update.cpp": {
-   "LG09": 8
+   "LG09": 7
   },
   "code/gvehicl_weapons.cpp": {
    "LG04": 1,
@@ -2157,7 +2157,6 @@
    "LG11": 3
   },
   "code/logisticsdata.h": {
-   "LG02": 6,
    "LG05": 2,
    "LG06": 23
   },
@@ -2219,8 +2218,7 @@
   },
   "code/logisticsmissioninfo.cpp": {
    "LG03": 5,
-   "LG05": 4,
-   "LG09": 1
+   "LG05": 4
   },
   "code/logisticsmissioninfo.h": {
    "LG06": 8
@@ -2341,7 +2339,7 @@
   },
   "code/mech_update.cpp": {
    "LG01": 1,
-   "LG09": 13,
+   "LG09": 12,
    "LG12a": 2,
    "LG12b": 1
   },
@@ -2409,7 +2407,7 @@
   "code/mechlabscreen.cpp": {
    "LG03": 4,
    "LG05": 7,
-   "LG09": 8,
+   "LG09": 7,
    "LG11": 1
   },
   "code/mechlabscreen.h": {
@@ -2847,7 +2845,7 @@
   },
   "code/pilotreadyscreen.cpp": {
    "LG03": 5,
-   "LG09": 7,
+   "LG09": 6,
    "LG12b": 10
   },
   "code/pilotreviewarea.cpp": {
@@ -2882,6 +2880,12 @@
    "LG12a": 1,
    "LG12b": 8,
    "LG13": 7
+  },
+  "code/save_archive.cpp": {
+   "LG11": 2
+  },
+  "code/save_archive.h": {
+   "LG07": 2
   },
   "code/saveload.cpp": {
    "LG01": 5,
@@ -2948,9 +2952,9 @@
    "LG02": 3
   },
   "code/team_los.cpp": {
-   "LG01": 4,
-   "LG03": 4,
-   "LG09": 4
+   "LG01": 2,
+   "LG03": 2,
+   "LG09": 3
   },
   "code/terrobj.cpp": {
    "LG01": 4,
@@ -2977,7 +2981,7 @@
   "code/turret.cpp": {
    "LG01": 1,
    "LG03": 3,
-   "LG09": 47,
+   "LG09": 46,
    "LG12b": 17,
    "LG17": 1
   },
@@ -3022,7 +3026,7 @@
    "LG09": 1
   },
   "code/warrior.cpp": {
-   "LG03": 17,
+   "LG03": 15,
    "LG06": 1,
    "LG09": 24
   },
@@ -3060,7 +3064,7 @@
    "LG09": 3
   },
   "code/warrior_state.cpp": {
-   "LG03": 5,
+   "LG03": 4,
    "LG06": 1,
    "LG09": 14
   },
@@ -3245,10 +3249,12 @@
    "LG09": 5
   },
   "mclib/ablxstd_stack.cpp": {
-   "LG09": 13
+   "LG09": 13,
+   "LG18": 1
   },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 25
+   "LG09": 25,
+   "LG10": 1
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
@@ -3362,14 +3368,6 @@
   "mclib/bdactor_update.cpp": {
    "LG03": 3,
    "LG09": 7
-  },
-  "mclib/bitflag.cpp": {
-   "LG03": 8,
-   "LG04": 1,
-   "LG09": 3
-  },
-  "mclib/bitflag.h": {
-   "LG01": 4
   },
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
@@ -3519,9 +3517,6 @@
   },
   "mclib/dbasegui.h": {
    "LG13": 33
-  },
-  "mclib/dbitflag.h": {
-   "LG02": 2
   },
   "mclib/dcamera.h": {
    "LG02": 1,
@@ -4365,7 +4360,7 @@
    "LG03": 3,
    "LG09": 4,
    "LG11": 1,
-   "LG12b": 16,
+   "LG12b": 14,
    "LG13": 1,
    "LG16": 3
   },
@@ -5164,27 +5159,27 @@
    "LG05": 1,
    "LG06": 1
   },
+  "tests/unit/test_job_system_harness.cpp": {
+   "LG20": 1
+  },
   "tests/unit/test_path_permutations.cpp": {
    "LG20": 3
   },
   "tests/unit/test_paths_mod.cpp": {
    "LG20": 6
   },
+  "tests/unit/test_render_state_contract_harness.cpp": {
+   "LG20": 1
+  },
   "tests/unit/test_rendercore.cpp": {
    "LG20": 3
   },
-  "tools/job_system_harness/job_system_harness.cpp": {
-   "LG20": 2
-  },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 40
-  },
-  "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
-   "LG20": 2
+   "LG20": 41
   }
  },
- "head": "ec1e72abb",
+ "head": "ae00ad1fa",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

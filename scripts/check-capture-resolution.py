@@ -128,7 +128,8 @@ def assert_capture_resolution(golden_dir, run_dir) -> dict:
             f"{gw}x{gh} (the install's options.cfg ResolutionX/Y; MC2_WIDTH/MC2_HEIGHT override it), or, when the golden is the stale one "
             f"(captures are pinned to the size in scripts/smoke_lib/render_resolution.py), RE-BLESS it at the pinned size: capture three "
             f"runs with `py -3 tools/visual_verify/capture.py --install <install> --bookmarks all --out <run>` and run "
-            f"`py -3 tools/visual_verify/bless.py --run <run1> --run <run2> --run <run3> --to {golden_name}`.")
+            f"`py -3 tools/visual_verify/bless.py --run <run1> --run <run2> --run <run3> --to {golden_name}`. "
+            f"The golden set at the pinned size is render_resolution.CURRENT_GOLDEN (`--golden current`).")
     return {"reference": f"{gw}x{gh}", "poses_checked": len(poses),
             "verdict": "MATCH"}
 
@@ -202,17 +203,51 @@ def _selftest() -> int:
     return 0 if ok else 1
 
 
+def current_golden_dir() -> Path:
+    """tests/visual/goldens/<render_resolution.CURRENT_GOLDEN>: the golden set blessed at the pinned capture size."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from smoke_lib import render_resolution
+    return Path(__file__).resolve().parents[1] / "tests" / "visual" / "goldens" / render_resolution.CURRENT_GOLDEN
+
+
+def check_current_golden() -> "list[str]":
+    """Problems with the CURRENT_GOLDEN set itself: missing on disk, or recorded at a size other than the pinned capture size."""
+    from smoke_lib import render_resolution
+    gdir = current_golden_dir()
+    if not (gdir / "golden.json").is_file():
+        return [f"render_resolution.CURRENT_GOLDEN names {gdir.name}, which has no golden.json under tests/visual/goldens"]
+    try:
+        have = golden_reference_resolution(gdir)
+    except ResolutionMismatch as e:
+        return [str(e)]
+    want = (render_resolution.PINNED_WIDTH, render_resolution.PINNED_HEIGHT)
+    return [] if have == want else [f"{gdir.name} is recorded at {have[0]}x{have[1]} but captures are pinned to {want[0]}x{want[1]}"]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--golden", help="golden dir (contains golden.json)")
+    ap.add_argument("--golden", help="golden dir (contains golden.json), or `current` for the golden set at the pinned size")
     ap.add_argument("--run", help="capture dir (contains capture_run.json)")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--current", action="store_true",
+                    help="check the CURRENT_GOLDEN set itself (present, recorded at the pinned size); with --run also grade that capture against it")
     args = ap.parse_args(argv)
 
     if args.selftest:
         return _selftest()
+    if args.golden == "current" or args.current:
+        problems = check_current_golden()
+        for p in problems:
+            print(f"FAIL: {PREFIX} {p}", file=sys.stderr)
+        if problems:
+            return 1
+        if args.golden in (None, "current"):
+            args.golden = str(current_golden_dir())
+        if not args.run:
+            print(f"PASS: {PREFIX} the current golden {Path(args.golden).name} is recorded at the pinned size")
+            return 0
     if not (args.golden and args.run):
-        ap.error("--golden and --run are required (or use --selftest)")
+        ap.error("--golden and --run are required (or use --selftest / --current)")
     try:
         rec = assert_capture_resolution(args.golden, args.run)
     except ResolutionMismatch as e:

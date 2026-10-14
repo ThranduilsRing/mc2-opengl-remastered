@@ -1,6 +1,7 @@
 // LogisticsData: current-mission accessors, mech modification accept / cancel, and the encrypt / decrypt helpers.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
+#include <algorithm>
 
 
 const std::string& LogisticsData::getCurrentMission() const
@@ -32,30 +33,30 @@ long LogisticsData::getCurrentMissionId()
 
 void LogisticsData::clearInventory()
 {
-	for (MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		(*iter)->setPilot( nullptr );
 		delete *iter;
 	}
 
-	inventory.Clear();
+	inventory.clear();
 }
 
 int	LogisticsData::getPilotCount()
 {
-	return pilots.Count();
+	return static_cast<int>(std::ssize(pilots));
 }
 int	LogisticsData::getPilots( LogisticsPilot** pArray, long& count )
 {
 	ensureMechBayDataLoaded("getPilots");
-	if ( count < pilots.Count() )
+	if ( count < std::ssize(pilots) )
 	 {
 		return NEED_BIGGER_ARRAY;
 	 }	 
 
 	 count= 0;
 
-	 for ( PILOT_LIST::EIterator iter = instance->pilots.Begin(); !iter.IsDone(); iter++  )
+	 for ( auto iter = instance->pilots.begin(); iter != instance->pilots.end(); ++iter )
 	 {
 		 pArray[count++] = &(*iter);
 	 }
@@ -71,7 +72,7 @@ int LogisticsData::getMaxDropWeight() const
 int LogisticsData::getCurrentDropWeight() const
 {
 	long retVal = 0;
-	for ( MECH_LIST::EIterator iter = instance->inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = instance->inventory.begin(); iter != instance->inventory.end(); ++iter )
 	{
 		if ( (*iter)->getForceGroup() )
 		{
@@ -105,7 +106,7 @@ bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
 
 	int fgCount = 0;
 	
-	for ( MECH_LIST::EIterator iter = instance->inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = instance->inventory.begin(); iter != instance->inventory.end(); ++iter )
 	{
 		if ( (*iter)->getForceGroup() )
 			{
@@ -126,7 +127,7 @@ bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
 int LogisticsData::getVariantsInInventory( LogisticsVariant* pVar, bool bIncludeForceGroup )
 {
 	long retVal = 0;
-	for ( MECH_LIST::EIterator iter = instance->inventory.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = instance->inventory.begin(); iter != instance->inventory.end(); ++iter )
 	{
 		if ( (*iter)->getVariant() == pVar )
 		{
@@ -149,8 +150,7 @@ int		LogisticsData::getChassisVariants( const LogisticsChassis* pChassis,
 	int retVal = 0;
 	
 	int i = 0;
-	for ( VARIANT_LIST::EIterator iter = variants.Begin(); 
-		!iter.IsDone(); iter++ )
+	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 		{
 			if ( (*iter)->getChassis() == pChassis  )
 			{
@@ -286,8 +286,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 	}
 	else
 	{
-		for ( MECH_LIST::EIterator iter = inventory.Begin();
-			!iter.IsDone(); iter++ )
+		for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 		{
 			if ( (*iter)->getVariant() == oldVariant && (*iter) != currentlyModifiedMech  )
 			{
@@ -298,44 +297,30 @@ int LogisticsData::acceptMechModifications( const char* name )
 
 	if ( !bFound )
 	{
-		VARIANT_LIST::EIterator vIter = variants.Find( oldVariant );
-		if ( vIter != VARIANT_LIST::INVALID_ITERATOR
+		const auto vIter = std::find( variants.begin(), variants.end(), oldVariant );
+		if ( vIter != variants.end()
 			&& mc2::str::iequals( oldVariant->getName(), mc2::str::from_c( name ) ) )
 		{
-			variants.Delete( vIter );
+			variants.erase( vIter );
 			delete oldVariant;
 		}
 	}
 
-	// now need to get rid of variants with this name....
-
-	//Code added by Frank on  May 3, 2001 @ 9:54pm.
-	// If you run this with the compare set to vIter.IsDone, it crashes in Profile
-	// based on Sean Bug number 4359.  We traverse past end of list and crash.
-	// Doing it by count does not crash and has the added advantage of being easy to debug!
-	// I suspect ESI going south again.  Probably a compiler option...
-
-	// 05/04 HKG, actually, if you increment vIter after deleteing it, it still won't work
-
-	// Good Point.  As you can see, it was pretty late when I "fixed" this!
-	long numVariants = variants.Count();
-	long i=0;
+	// Every variant that already carries the new name is deleted, in list order, before the modified variant takes the name.
 	const std::string wanted = mc2::str::from_c( name );
-	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone();  )
+	for ( auto vIter = variants.begin(); vIter != variants.end(); )
 	{
 		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
-			VARIANT_LIST::EIterator tmpIter = vIter;
-			vIter++;
-			delete (*tmpIter);
-			variants.Delete( tmpIter );
+			delete (*vIter);
+			vIter = variants.erase( vIter );
 		}
 		else
-			vIter++;
+			++vIter;
 	}
 
 	currentlyModifiedMech->getVariant()->setName( wanted );
-	variants.Append( currentlyModifiedMech->getVariant() );
+	variants.push_back( currentlyModifiedMech->getVariant() );
 	missionInfo->decrementCBills( currentlyModifiedMech->getVariant()->getCost() );
 
 	currentlyModifiedMech = nullptr;
@@ -343,8 +328,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 
 
 	// temporary, looking for dangling pointers
-	for ( MECH_LIST::EIterator iter = inventory.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		if ( (*iter)->getVariant()->getCost() )
 		{
@@ -357,7 +341,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 	if ( MPlayer )
 	{
 		// save the player created variants
-		for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone();  vIter++ )
+		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			if ( !(*vIter)->isDesignerMech() )
 			{
@@ -410,8 +394,7 @@ bool LogisticsData::canReplaceVariant( const char* name )
 {
 	int nameCount = 0;
 	const std::string wanted = mc2::str::from_c( name );
-	for ( MECH_LIST::EIterator iter = inventory.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 		{
 			if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
 			{
@@ -426,8 +409,7 @@ bool LogisticsData::canReplaceVariant( const char* name )
 		if ( nameCount > 1 )
 			return 0;
 
-		for ( VARIANT_LIST::EIterator vIter = variants.Begin();
-		!vIter.IsDone(); vIter++ )
+		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			if ( (*vIter)->isDesignerMech() && mc2::str::iequals( (*vIter)->getName(), wanted ) )
 				return 0;

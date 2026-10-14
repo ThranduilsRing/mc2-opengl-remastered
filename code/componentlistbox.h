@@ -13,10 +13,10 @@ ComponentListBox.h			: Interface for the ComponentListBox component.
 
 #ifndef AANIM_H
 #include"aanim.h"
+#include <vector>
 #endif
 
 #ifndef ELIST_H
-#include"elist.h"
 #endif
 
 class LogisticsVariant;
@@ -103,7 +103,7 @@ public:
 		ComponentIconListBox( const ComponentIconListBox& src );
 		ComponentIconListBox& operator=( const ComponentIconListBox& src );
 
-		EList<ComponentListItem*, ComponentListItem*>	masterComponentList;
+		std::vector<ComponentListItem*>	masterComponentList;
 
 		int type;
 

@@ -457,7 +457,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     return {
         "mission": mission_token,
         "backend": {"requested": want_backend,
-                    "drew": next((capture_backend.drew(sc) for _n, sc in sidecars if sc), None),
+                    "drew": sorted({d for d in (capture_backend.drew(sc) for _n, sc in sidecars if sc) if d}),
                     "disagree": backend_disagree},
         "render_options": {"values": engine_opts or options_rec["values"], "from": "engine" if engine_opts else "install",
                            "rejected": options_rec["rejected"], "disagree": options_disagree},
@@ -474,12 +474,22 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     }
 
 
+def fail_reasons(result: dict) -> "list[str]":
+    """Why a capture result is a FAIL, one line each (empty when it passes): the manifest used to say FAIL and nothing else."""
+    reasons = []
+    if not result["all_present"]:
+        reasons.append("not every bookmark produced a PNG")
+    if not result["engine_capture_fired"]:
+        reasons.append("the engine capture did not fire")
+    reasons += [f"render options: {m}" for m in (result.get("render_options") or {}).get("disagree") or []]
+    reasons += [f"render backend: {m}" for m in (result.get("backend") or {}).get("disagree") or []]
+    return reasons
+
+
 def write_manifest(result: dict, exe: Path) -> Path:
     out_dir = Path(result["out_dir"])
-    verdict = ("PASS" if result["all_present"] and result["engine_capture_fired"]
-               and not (result.get("render_options") or {}).get("disagree")
-               and not (result.get("backend") or {}).get("disagree")
-               else "FAIL")
+    reasons = fail_reasons(result)
+    verdict = "FAIL" if reasons else "PASS"
     ident = ms.identity_block(
         generator="visual_capture",
         exe_path=exe,
@@ -494,6 +504,7 @@ def write_manifest(result: dict, exe: Path) -> Path:
             "show_window": bool(result.get("show_window", False)),
             "mc2_env": result.get("mc2_env"),
             "render_options": result.get("render_options"),
+            "backend": result.get("backend"),
         },
     )
     rep = ms.report_summary(
@@ -501,6 +512,7 @@ def write_manifest(result: dict, exe: Path) -> Path:
         missions=[result["mission"]],
         artifact_dir=str(out_dir),
         extra={
+            "fail_reasons": reasons,
             "engine_capture_fired": result["engine_capture_fired"],
             "all_bookmarks_present": result["all_present"],
             "any_nondeterministic": result["any_nondeterministic"],
@@ -601,6 +613,9 @@ def materialize_candidate(set_name: str, last_run: dict, per: dict,
             "partial": bool(excluded),
         },
         "identity": ident,
+        # What drew the set and under which options: a blessed set says it was GL or Vulkan and which render options it ran with.
+        "backend": {k: v for k, v in (last_run.get("backend") or {}).items() if k != "disagree"},
+        "render_options": (last_run.get("render_options") or {}).get("values"),
         "bookmarks": members,
         "excluded_unstable": excluded,
     }

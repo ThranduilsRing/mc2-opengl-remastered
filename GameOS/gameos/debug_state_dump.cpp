@@ -164,6 +164,7 @@ extern "C" void mc2_render_backend_mech_region_health(
 #include <windows.h>
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
+#include "gpu_memory_report.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
 
@@ -481,6 +482,8 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "  },\n";
     // Every options.cfg render option as the renderer reads it (file values plus MC2_OPTIONS_OVERRIDE): a proof records what it ran with.
     s << "  \"renderOptions\": " << mc2::options::toJson(mc2::options::current()) << ",\n";
+    // GPU memory the process holds right now (whole MiB, -1 = that counter does not exist on this driver); the perf baseline records it beside the frame times.
+    s << "  \"gpu_memory\": " << mc2::gpumem::toJson(mc2::gpumem::take()) << ",\n";
     s << "  \"engineView\": {\n";
     s << "    \"known\": "; b(s, viewKnown); s << ",\n";
     s << "    \"viewId\": " << view.id << ",\n";

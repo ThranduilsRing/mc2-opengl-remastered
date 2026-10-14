@@ -1,0 +1,21 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "Saved in-game via Save Camera Bookmark button. Duplicate entry keeps >=2 bookmarks (single-pose files silently fail).",
+  "bookmarks": [
+    {
+      "name": "saved_212258",
+      "pos": [3930.0676, 4668.4512, 146.6920],
+      "rot": -91.2500,
+      "proj": 77.8750,
+      "alt": 5261.1401
+    },
+    {
+      "name": "saved_212258_dup",
+      "pos": [3930.0676, 4668.4512, 146.6920],
+      "rot": -91.2500,
+      "proj": 77.8750,
+      "alt": 5261.1401
+    }
+  ]
+}

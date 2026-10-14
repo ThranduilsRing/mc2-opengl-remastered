@@ -3,7 +3,6 @@ project(mclib)
 
 set(SOURCES ${SOURCES}
     alphapalette.cpp
-    bitflag.cpp
     cident.cpp
     cmponent.cpp
     color.cpp

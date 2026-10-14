@@ -862,7 +862,6 @@ class MechWarrior {
 		AttackerRec				attackers[MAX_ATTACKERS];			// should never have more than 12 attackers...
 		int32_t					numAttackers;
 		float					attackRadius;
-		static SortListPtr		sortList;
 
 		// ABL Brain and Memory
 		MemoryCell				memory[NUM_MEMORY_CELLS];

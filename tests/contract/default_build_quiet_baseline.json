@@ -14,10 +14,10 @@
       "reason": "scripts/smoke_lib/fingerprint.py parses this to prove the smoked exe matches the worktree HEAD. Silencing it disables DEPLOY_FINGERPRINT attribution -- the single strongest anti-'unverifiable work' control in the harness."
     },
     "CONFIG v1": {
-    "status": "keep",
-    "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
-  },
-  "INSTR v1": {
+      "status": "keep",
+      "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
+    },
+    "INSTR v1": {
       "status": "keep",
       "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
     },
@@ -37,6 +37,10 @@
       "status": "keep",
       "reason": "scripts/run_smoke.py, smoke_lib/runner.py and run_editor_playtest_smoke.py key their pass/fail verdict off the [SMOKE v1] line; run_editor_playtest_smoke.py requires it explicitly. This IS the harness's result channel."
     },
+    "TERRAIN_SHORELINE v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (DEPLOY-CURRENT-1, mclib/terrain.cpp): only the sidecar NOT FOUND / load-failure lines print by default; LOADED is MC2_DIAGF. Prints once per mission load on maps without a cooked shoreline mask."
+    },
     "TGL_POOL v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py counts pool_nulls from lines containing 'nulls='."
@@ -45,13 +49,21 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py TIMING_RE parses event=/elapsed_ms= for load-phase timing."
     },
-    "TERRAIN_SHORELINE v1": {
+    "VIDEO v1": {
       "status": "keep",
-      "reason": "FAIL-LOUD by design (DEPLOY-CURRENT-1, mclib/terrain.cpp): only the sidecar NOT FOUND / load-failure lines print by default; LOADED is MC2_DIAGF. Prints once per mission load on maps without a cooked shoreline mask."
+      "reason": "Regression floor of the video surface (owner ruling 2026-10-13, M1): one line per movie request, skip or play (campaign-start and won-mission pre-videos in code/missionbegin.cpp / logistics.cpp / logistics_begin.cpp, in-mission videos in controlgui_chat.cpp as event=play_requested), a few lines per session. No harness parser yet: a MarkerBucket in scripts/smoke_lib/logparse.py flags the PRESENCE of a line and this floor needs the ABSENCE rule (pre_video after a campaign boot, play_requested in tier1 mc2_10); that file is being edited by the smoke owner, so the rule is routed to them (cxx23-step4-b1-notes.md 8e) and until it lands the proof procedure greps these lines."
     },
     "WATER_SHORE_EDGE v1": {
       "status": "keep",
       "reason": "FAIL-LOUD by design (mclib/terrain.cpp): default shore mode 2 silently degrades to mask mode when visual_height_4x.r32 is missing from the install; NOT FOUND/size/read failures print once per mission load. LOADED is MC2_DIAGF (2026-10-07)."
+    },
+    "VRAM v1": {
+      "status": "keep",
+      "reason": "scripts/smoke_lib/vram.py parses the load_end / run_end GPU-memory lines into the smoke report and the perf baseline. GameOS/gameos/gpu_memory_report.cpp prints them only when the smoke harness or MC2_DIAG_VERBOSE asked for diagnostics (log() returns early otherwise), so a player's console stays quiet; this check grades a smoke log, which is why it sees the tag."
+    },
+    "VRAM_ADAPTER v1": {
+      "status": "keep",
+      "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
     }
   }
 }

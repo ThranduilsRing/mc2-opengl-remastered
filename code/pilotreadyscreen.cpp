@@ -14,6 +14,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"warrior.h"
 #include"gamesound.h"
 #include"mc2str.h"
+#include <format>
 #include"multplyr.h"
 #include"chatwindow.h"
 #include"../GuiRuntime/GuiRuntime.h"
@@ -170,8 +171,7 @@ void PilotReadyScreen::begin()
 	getButton( MB_MSG_MAINMENU )->disable( false );
 	launchFadeTime = 0;
 	// initialize both the inventory and icon lists
-	EList< LogisticsMech*, LogisticsMech* > mechList;
-	LogisticsData::instance->getInventory( mechList );
+	auto mechList = LogisticsData::instance->getInventory();
 
 	// reset force group
 	forceGroupCount = 0;
@@ -222,8 +222,7 @@ void PilotReadyScreen::begin()
 		}
 
 
-		for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = mechList.Begin();
-		!iter.IsDone(); iter++ )
+		for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
 		{
 			if ( (*iter)->getForceGroup() )
 			{
@@ -793,14 +792,8 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 			return;
 		}
 
-		char fileName[256];
-		strcpy( fileName, artPath );
-		strcat( fileName, "MCL_PR_" );
-		strcat( fileName, pPilot->getName().c_str() );
-		strcat( fileName, ".tga" );
-		EString str = fileName;
-		str.MakeLower();
-		statics[67].setTexture( str );
+		const std::string str = mc2::str::ascii_lower( std::format( "{}MCL_PR_{}.tga", mc2::str::from_c( artPath ), pPilot->getName() ) );
+		statics[67].setTexture( str.c_str() );
 		statics[67].setColor( 0xffffffff );
 		statics[67].setUVs( 0, 0, 92, 128 );
 		// Route the per-pilot portrait TGA into the defs image (the legacy static is
@@ -809,7 +802,7 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		// (colorkeyed) texture -- pass the sub-rect explicitly, mirroring the
 		// legacy statics[67].setUVs(0,0,92,128); dst = the fit-authored rect.
 		setDefsElementImageRegion( "game.mcl_pr_layout.image.this_rect_defines_the_placement",
-			std::string( (const char*)str ), 0, 0, 92, 128, 398, 344, 92, 128,
+			str, 0, 0, 92, 128, 398, 344, 92, 128,
 			/*legacyUvSpace*/ true );
 	}
 

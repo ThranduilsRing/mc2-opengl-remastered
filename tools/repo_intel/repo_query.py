@@ -292,7 +292,7 @@ _HARNESSES = {
                 re.S | re.I
             ),
         ],
-        "note": "ALWAYS --keep-logs. NEVER --kill-existing. NEVER --duration >30.",
+        "note": "ALWAYS --keep-logs. NEVER --kill-existing. NEVER --duration >30 (smokes and captures; only sim_determinism.py pairs may run 60).",
     },
     "tier1": {
         "description": "Smoke test gate - tier1 5-mission full run",

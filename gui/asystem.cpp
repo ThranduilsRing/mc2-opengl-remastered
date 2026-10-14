@@ -4,6 +4,7 @@
 
 #include"mclib.h"
 #include"asystem.h"
+#include "mc2str.h"
 #include "../GameOS/gameos/asset_scale.h"
 #include"packet.h"
 #include"afont.h"
@@ -1060,6 +1061,11 @@ void aText::setText(const char* str)
 void aText::setText(const std::string& str)
 {
 	text = str.c_str();
+}
+
+std::string aText::textString() const
+{
+	return mc2::str::from_c(text);
 }
 
 void aText::render()

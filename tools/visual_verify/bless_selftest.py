@@ -57,6 +57,8 @@ import bless as blesslib  # noqa: E402
 from png_io import encode_png  # noqa: E402
 import manifest_schema as ms  # noqa: E402
 import provenance_gate as pg  # noqa: E402
+import verify as verifylib  # noqa: E402
+from smoke_lib import render_options_pin  # noqa: E402
 
 W, H = 400, 200
 BM = "selftest_pose"
@@ -128,9 +130,14 @@ def _make_binary(path: Path, sha: str, branch: str = "claude/selftest") -> Path:
     return path
 
 
+def _default_options() -> dict:
+    return {o.key: o.default for o in render_options_pin.table()}
+
+
 def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H,
               exe: "Path | None" = None, legacy: bool = False,
-              share_png: "Path | None" = None) -> Path:
+              share_png: "Path | None" = None, options="defaults",
+              backend: "dict | None" = None) -> Path:
     """One synthetic capture run.
 
     exe        -- binary whose identity block the manifest carries. None with
@@ -139,6 +146,9 @@ def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H,
                   no identity block). This is what T7 feeds bless.
     share_png  -- point `primary_png` at somebody else's frame instead of
                   writing our own (T9).
+    options    -- the render-option record of the run ("defaults" = the table
+                  defaults; None = no record, T13; a dict = those values, T14).
+    backend    -- the capture_run `backend` block (default: asked GL, drew GL).
     """
     rd = root / name
     pose_dir = rd / BM
@@ -160,7 +170,11 @@ def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H,
                    "engine_deterministic": True, "all_present": True,
                    "engine_capture_fired": True}],
         "n_captured": 1, "n_requested": 1,
+        "declared_env": {"MC2_SMOKE_FREEZE_ANIM": "1"},
+        "backend": backend if backend is not None else {"requested": "gl", "drew": ["gl"]},
     }
+    if options is not None:
+        doc["render_options"] = _default_options() if options == "defaults" else options
     if not legacy:
         ms.attach(doc, ms.identity_block(generator="bless_selftest",
                                          exe_path=exe, repo_root=None,
@@ -272,8 +286,43 @@ def main() -> int:
                        lambda: blesslib.bless([r1, s2, s3], tmp / "g_t9"),
                        "same primary PNG")
 
+        # T13 -- a run with no render-option record: the golden could not say what picture it references.
+        n3 = _make_run(tmp, "n3", 3, exe=exe, options=None)
+        expect_refusal("T13 a run with NO render-option record refused",
+                       lambda: blesslib.bless([r1, r2, n3], tmp / "g_t13"),
+                       "no render-option record")
+
+        # T14 -- runs that ran with different options.
+        odd_opts = dict(_default_options(), StaticPropPbr=True)
+        o3 = _make_run(tmp, "o3", 3, exe=exe, options=odd_opts)
+        expect_refusal("T14 runs with DIFFERENT render options refused",
+                       lambda: blesslib.bless([r1, r2, o3], tmp / "g_t14"),
+                       "different render options")
+
+        # T15 -- a run whose backend is not the one it asked for.
+        b3 = _make_run(tmp, "b3", 3, exe=exe, backend={"requested": "vulkan", "drew": ["gl"]})
+        expect_refusal("T15 a Vulkan request drawn by GL refused",
+                       lambda: blesslib.bless([r1, r2, b3], tmp / "g_t15"),
+                       "asked for the vulkan backend")
+
         # T6 (+T3, +T4) -- the clean 3-run path.
         g = blesslib.bless([r1, r2, r3], tmp / "g_ok")
+        check("T6 the golden records the 17 render options, the declared env and the backend",
+              g["capture_env"]["render_options"] == _default_options() and len(g["capture_env"]["render_options"]) == 17
+              and g["capture_env"]["declared_env"] == {"MC2_SMOKE_FREEZE_ANIM": "1"}
+              and g["capture_env"]["backend"] == {"requested": "gl", "drew": ["gl"]})
+        # T16 -- verify.py grades only a candidate whose options agree with the golden's (or whose differing keys --vary names).
+        cand = json.loads((r1 / "capture_run.json").read_text(encoding="utf-8"))
+        check("T16 a candidate with the golden's options is accepted",
+              verifylib.check_render_options(tmp / "g_ok", cand, [])["candidate"] == _default_options())
+        cand_pbr = dict(cand, render_options=odd_opts)
+        expect_refusal("T16 a candidate with different options is refused",
+                       lambda: verifylib.check_render_options(tmp / "g_ok", cand_pbr, []), "StaticPropPbr")
+        check("T16 --vary StaticPropPbr lets the difference through and records it",
+              verifylib.check_render_options(tmp / "g_ok", cand_pbr, ["StaticPropPbr"])["vary"] == ["StaticPropPbr"])
+        expect_refusal("T16 a candidate with no option record is refused",
+                       lambda: verifylib.check_render_options(tmp / "g_ok", {k: v for k, v in cand.items() if k != "render_options"}, []),
+                       "no render-option record")
         blessed = {m["region"] for m in g["members"]}
         refused = {r["region"]: r for r in g["refused"]}
 

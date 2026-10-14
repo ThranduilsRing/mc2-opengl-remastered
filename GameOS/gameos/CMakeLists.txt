@@ -97,6 +97,7 @@ set(SOURCES ${SOURCES}
     gos_crashbundle.cpp
     mc2_verify.cpp
     gos_smoke.cpp
+    gpu_memory_report.cpp
     debug_renderer.cpp
     gos_font.cpp
     gos_input.cpp
@@ -148,6 +149,7 @@ if(MC2_VULKAN)
     # VK-P13-SELECTOR-1 / T2: the standalone SHARED engine Vulkan context
     # (instance/device/queue/VMA owned HERE). Entirely #ifdef MC2_VULKAN.
     list(APPEND SOURCES vulkan_context.cpp)
+    list(APPEND SOURCES vk_device_profile.cpp)
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap/VkBootstrap.cpp")
     # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU (header-only lib).
     list(APPEND SOURCES vma_impl.cpp)

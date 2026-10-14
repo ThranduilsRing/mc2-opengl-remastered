@@ -83,7 +83,6 @@ class MoverGroup {
 		GameObjectWatchID		pointWID;
 		bool					disbandOnNoPoint;
 
-		static SortList			sortList;
 		static GoalMapNode*		goalMap;
 
 	public:
@@ -170,8 +169,6 @@ class MoverGroup {
 		//----------------
 		// Tactical Orders
 
-		virtual long handleTacticalOrder (TacticalOrder tacOrder, long priority, Stuff::Vector3D* jumpGoalList = NULL, bool queueGroupOrder = false);
-
 		long orderMoveToPoint (bool setTacOrder, long origin, Stuff::Vector3D location, unsigned long params);
 
 		long orderMoveToObject (bool setTacOrder, long origin, GameObjectPtr target, long fromArea, unsigned long params);
@@ -204,7 +201,6 @@ class MoverGroup {
 
 		void handleMateFiredWeapon (unsigned long mateWID);
 
-		static void sortMovers (long numMoversInGroup, MoverPtr* moverList, Stuff::Vector3D dest);
 
 		static long calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vector3D* goalList);
 

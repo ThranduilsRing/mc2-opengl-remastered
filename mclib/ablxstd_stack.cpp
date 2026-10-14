@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in ablxstd_internal.h.
 #include "ablxstd_internal.h"
 #include "abl_string_append.h"
+#include <span>
+
 
 
 //***************************************************************************
@@ -109,6 +111,32 @@ int* ABLi_popIntegerPtr (void) {
 	pop();
 
 	return(integerPtr);
+}
+
+std::span<int> ABLi_popIntBuf(void) {
+
+	getCodeToken();
+	const auto idPtr = getCodeSymTableNodePtr();
+	const auto typePtr = execVariable(idPtr, USE_REFPARAM);
+	auto* address = reinterpret_cast<int*>(tos->address);
+	pop();
+	const bool isArray = typePtr && typePtr->form == FRM_ARRAY;
+	if (address && isArray && typePtr->info.array.elementTypePtr == IntegerTypePtr && typePtr->info.array.elementCount > 0)
+		return {address, static_cast<size_t>(typePtr->info.array.elementCount)};
+	return {};
+}
+
+std::span<float> ABLi_popRealBuf(void) {
+
+	getCodeToken();
+	const auto idPtr = getCodeSymTableNodePtr();
+	const auto typePtr = execVariable(idPtr, USE_REFPARAM);
+	auto* address = reinterpret_cast<float*>(tos->address);
+	pop();
+	const bool isArray = typePtr && typePtr->form == FRM_ARRAY;
+	if (address && isArray && typePtr->info.array.elementTypePtr == RealTypePtr && typePtr->info.array.elementCount > 0)
+		return {address, static_cast<size_t>(typePtr->info.array.elementCount)};
+	return {};
 }
 
 //---------------------------------------------------------------------------

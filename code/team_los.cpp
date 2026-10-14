@@ -54,7 +54,7 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 		
 			if (dist <= (radius * 25.0f * worldUnitsPerMeter))
 			{
-				if (lineOfSight(obj->getLOSPosition(),tPos,id,extRad,0.0f,false))
+				if (lineOfSight(obj->getLOSPosition(),tPos,id,extRad,0.0f))
 					return true;
 			}
 		}
@@ -107,7 +107,7 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 			
 				if (dist <= (radius * 25.0f * worldUnitsPerMeter))
 				{
-					if (lineOfSight(obj->getLOSPosition(),tPos,id,0.0f,obj->getAppearRadius(),false))
+					if (lineOfSight(obj->getLOSPosition(),tPos,id,0.0f,obj->getAppearRadius()))
 						return true;
 				}
 			}
@@ -118,196 +118,10 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 	return false;
 }
 
-//#define USE_OLD_LOS
-
-#ifdef USE_OLD_LOS
-
-//---------------------------------------------------------------------------
-bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCellRow, long tCellCol, long teamId, float extRad, bool checkVisibleBits)
-{
-	#ifdef LAB_ONLY
-	__int64 x=GetCycles();
-	#endif
-	
-	//-----------------------------------------------------
-	// Once we allow teams to have alliances (for contacts,
-	// etc.), simply set all nec. team bits in this mask...
-
-	//TILE HACK...
-	long tileRow = tCellRow / 3;
-	long tileCol = tCellCol / 3;
-
-	if ((teamId < 0) || (teamId >= MAX_TEAMS))	//Not on any team.  It can see everything!
-		return true;
-
-	if (checkVisibleBits) {
-		unsigned char teamMask = 0x01 << teamId;
-		unsigned char visbBits[4];
-	
-		//----------------------------------------------------------------------------
-		// First check is simple.  Is anyone within the magical line of sight radius?
-		// If not, return false and move on.
-		// If they are, you MUST check LOS between this object and the other one.
-		bool losResult = false;
-		visbBits[0] = Terrain::VisibleBits->getFlag(tileRow, tileCol);
-		if (visbBits[0] & teamMask)
-			losResult = true;
-		
-		if (!losResult)
-		{
-			visbBits[1] = Terrain::VisibleBits->getFlag(tileRow + 1, tileCol);
-			if (visbBits[1] & teamMask)
-				losResult = true;
-		}
-			
-		if (!losResult)
-		{
-			visbBits[2] = Terrain::VisibleBits->getFlag(tileRow + 1, tileCol + 1);
-			if (visbBits[2] & teamMask)
-				losResult = true;
-		}
-		
-		if (!losResult)
-		{
-			visbBits[3] = Terrain::VisibleBits->getFlag(tileRow, tileCol + 1);
-			if (visbBits[3] & teamMask)
-				losResult = true;
-		}
-
-		if (!losResult)
-		{
-			return losResult;
-		}
-	}
-
-	if (useRealLOS)
-	{
-		//------------------------------------------------------------------------------------------
-		// Within magic radius.  Check REAL LOS now.
-		// Check is really simple.
-		// Find deltaCellRow and deltaCellCol and iterate over them from source to dest.
-		// If the magic line ever goes BELOW the terrainElevation PLUS localElevation return false.
-		Stuff::Vector3D startPos, endPos;
-		startPos.Zero();
-		endPos.Zero();
-		
-		land->getCellPos(tCellRow,tCellCol,endPos);
-		land->getCellPos(mCellRow,mCellCol,startPos);
-		startPos.z += startLocal;
-
-		Stuff::Vector3D deltaCellVec;
-		deltaCellVec.y = tCellRow - mCellRow;
-		deltaCellVec.x = tCellCol - mCellCol;
-		deltaCellVec.z = 0.0f;
-		float startHeight = startPos.z;
-		
-		float length = deltaCellVec.GetApproximateLength();
-		
-		if (length > Stuff::SMALL)
-		{
-			float colLength = deltaCellVec.x / length;
-			float rowLength = deltaCellVec.y / length;
-			float heightLen = (endPos.z - startPos.z) / length;
-			
-			float lastCol = fabs(colLength * 2.0);
-			float lastRow = fabs(rowLength * 2.0);
-			
-			float startCellRow = mCellRow;
-			float startCellCol = mCellCol;
-			
-			float endCellRow = tCellRow;
-			float endCellCol = tCellCol;
-			
-			Stuff::Vector3D currentPos = startPos;
-			Stuff::Vector3D dist;
-			dist.Subtract(endPos,currentPos);
-			
-			float remainingDist = dist.GetApproximateLength();
-			bool colDone = false, rowDone = false;
-			while (!colDone || !rowDone)
-			{
-				if (fabs(startCellRow - endCellRow) > lastRow)	//DO NOT INCLUDE LAST CELL!!!!!
-				{
-					startCellRow += rowLength;
-				}
-				else
-				{
-//					startCellRow = (endCellRow - lastRow);
-					rowDone = true;
-				}
-					
-				if (fabs(startCellCol - endCellCol) > lastCol)	//DO NOT INCLUDE LAST CELL!!!!!
-				{
-					startCellCol += colLength;
-				}
-				else
-				{
-//					startCellCol = (endCellCol - lastCol);
-					colDone = true;
-				}
-
-				startHeight += heightLen;
-				
-				long startCellC = startCellCol;
-				long startCellR = startCellRow;
-
-				land->getCellPos(startCellR,startCellC,currentPos);
-				float localElev = (worldUnitsPerMeter * 4.0f * (float)GameMap->getLocalHeight(startCellR,startCellC));
-				currentPos.z += localElev;
-				
-				if (startHeight+startLocal < currentPos.z)
-				{
-#ifdef LAB_ONLY
-		if (drawTerrainGrid)
-		{
-			Stuff::Vector3D realStart = startPos;
-			Stuff::Vector4D lineStart, lineEnd;
-			// [PROJECTZ:DebugOnly id=debug_los_line_a0]
-			eye->projectForDebugOverlay(realStart,lineStart);
-			// [PROJECTZ:DebugOnly id=debug_los_line_a1]
-			eye->projectForDebugOverlay(endPos,lineEnd);
-
-			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_RED,NULL,-1);
-		}
-#endif
-					return false;
-				}
-
-				if (extRad > Stuff::SMALL)
-				{
-					dist.Subtract(endPos,currentPos);
-					remainingDist = dist.GetApproximateLength();
-					if (remainingDist < extRad)
-						break;
-				}
-			}
-		}
-
-#ifdef LAB_ONLY
-		if (drawTerrainGrid)
-		{
-			Stuff::Vector3D realStart = startPos;
-			Stuff::Vector4D lineStart, lineEnd;
-			// [PROJECTZ:DebugOnly id=debug_los_line_b0]
-			eye->projectForDebugOverlay(realStart,lineStart);
-			// [PROJECTZ:DebugOnly id=debug_los_line_b1]
-			eye->projectForDebugOverlay(endPos,lineEnd);
-
-			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_GREEN,NULL,-1);
-		}
-#endif
-	}
-
-
-	return true;
-}
-
-#else
-
 constexpr float ACCURACY_ADJUST = 1.5f;
 const float HALF_CELL_DIST	= (128.0f / 6.0f);
 //---------------------------------------------------------------------------
-bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad, bool checkVisibleBits)
+bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad)
 {
 	#ifdef LAB_ONLY
 	__int64 x=GetCycles();
@@ -316,10 +130,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 	//-----------------------------------------------------
 	// Once we allow teams to have alliances (for contacts,
 	// etc.), simply set all nec. team bits in this mask...
-
-	//TILE HACK...
-	long tileRow = tCellRow / 3;
-	long tileCol = tCellCol / 3;
 
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))	//Not on any team.  It can see everything!
 		return true;
@@ -452,10 +262,9 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 
 	return true;
 }
-#endif
 
 //---------------------------------------------------------------------------
-bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition, long teamId, float extRad, float startExtRad, bool checkVisibleBits) 
+bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition, long teamId, float extRad, float startExtRad) 
 {
 	int posCellR, posCellC;
 	int tarCellR, tarCellC;
@@ -468,5 +277,5 @@ bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition
 	elev = land->getTerrainElevation(targetPosition);
 	float localEnd = targetPosition.z - elev;
 	
-	return(lineOfSight(localStart,posCellR, posCellC, localEnd, tarCellR, tarCellC,teamId,extRad, startExtRad, checkVisibleBits));
+	return(lineOfSight(localStart,posCellR, posCellC, localEnd, tarCellR, tarCellC,teamId,extRad, startExtRad));
 }

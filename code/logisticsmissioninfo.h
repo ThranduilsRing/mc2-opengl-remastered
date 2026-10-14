@@ -8,10 +8,10 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 \*************************************************************************************************/
 
 #ifndef ELIST_H
-#include"elist.h"
 #endif
 
 #include <string>
+#include <vector>
 
 inline constexpr int MAX_PLAYER_NAME_LENGTH = 64;
 
@@ -161,8 +161,10 @@ class LogisticsMissionInfo
 			bool enableMineLayer = false;
 		};	
 
-		using MISSION_LIST = EList<MissionInfo*, MissionInfo*>;
-		using FILE_LIST = EList< char*, char* >;
+		// Both lists are filled while a campaign loads (and additionalPurchaseFiles when a purchase file is added) and never erased from; the pointees are
+		// owned by the destructor path (clear()). Order is load order.
+		using MISSION_LIST = std::vector<MissionInfo*>;
+		using FILE_LIST = std::vector<char*>;
 
 
 		class MissionGroup
@@ -177,6 +179,19 @@ class LogisticsMissionInfo
 			MISSION_LIST infos;
 			bool	bigVideoShown = false;
 			bool	videoShown = false;
+
+			// The record at `index`, or nullptr when the index is not one of this group's missions: the way to read an index a campaign save supplies.
+			MissionInfo* at( long index ) const
+			{
+				return ( index >= 0 && index < std::ssize( infos ) ) ? infos[static_cast<size_t>( index )] : nullptr;
+			}
+
+			// The record at an index the campaign state itself holds (currentMission); it is always a position of this group.
+			MissionInfo* mission( long index ) const
+			{
+				gosASSERT( at( index ) != nullptr );
+				return infos[static_cast<size_t>( index )];
+			}
 		};
 
 

@@ -50,10 +50,8 @@ def _default_of(kind: str, text: str):
     return float(text.rstrip("fF"))
 
 
-@lru_cache(maxsize=None)
-def table(header: Path = HEADER) -> "tuple[Option, ...]":
-    """The option table in declaration order, read from Gates/render_options.h."""
-    src = header.read_text(encoding="utf-8", errors="replace")
+def table_from_text(src: str) -> "tuple[Option, ...]":
+    """The option table in declaration order of one version of Gates/render_options.h (`git show <commit>:Gates/render_options.h` gives an old exe's)."""
     body = src[src.index("struct RenderOptions {"):src.index("bool operator==")]
     defaults = {m.group(2): (m.group(1), m.group(3))
                 for m in re.finditer(r"^\s*(bool|int|float)\s+(\w+)\s*=\s*([^;]+);", body, re.M)}
@@ -64,8 +62,14 @@ def table(header: Path = HEADER) -> "tuple[Option, ...]":
         ctype, text = defaults[member]
         rows.append(Option(key, kind, _default_of(kind, text), float(lo) if lo else 0.0, float(hi) if hi else 1.0))
     if not rows:
-        raise RuntimeError(f"no option rows found in {header}")
+        raise RuntimeError("no option rows found in the header text")
     return tuple(rows)
+
+
+@lru_cache(maxsize=None)
+def table(header: Path = HEADER) -> "tuple[Option, ...]":
+    """The option table in declaration order, read from Gates/render_options.h."""
+    return table_from_text(header.read_text(encoding="utf-8", errors="replace"))
 
 
 def keys() -> "tuple[str, ...]":

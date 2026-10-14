@@ -592,6 +592,9 @@ def main():
     ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
                     help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--sim-determinism", action="store_true",
+                    help="set only by tools/sim_determinism.py: raises the --duration cap from 30 to 60 s (owner ruling 2026-10-13: determinism pairs "
+                         "need the longer window; tier smokes and captures keep the 30 s cap)")
     ap.add_argument("--lite", action="store_true",
                     help="SMOKE-LITE-1 inner-loop profile: mc2_10 (night/urban, "
                          "heaviest) + mc2_01 (day) at --duration 10 (override "
@@ -680,7 +683,7 @@ def main():
         os.environ["MC2_GL_DEBUG_FATAL"] = "1"
 
     # SMOKE-LATENCY-WINS-1 win #1: --duration hard cap + quick-tier banner.
-    # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed).
+    # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed); the one exception is a sim_determinism pair, which may run 60 (owner 2026-10-13).
     # 15s is a valid opt-in "does it still boot+run+not crash" inner-loop tier
     # (see .claude/SMOKE-LATENCY-1-RECON.md §4) -- all duration-independent
     # gates (crash_silent, crash_no_summary, engine_reported_fail, gl_error,
@@ -688,11 +691,13 @@ def main():
     # freeze gate (3s threshold) are satisfied well within 15s. It intentionally
     # loses soak coverage (mid-mission combat/FX/leak/hitch observation), so it
     # must stay opt-in and never silently replace the 30s default.
+    duration_cap = 60 if args.sim_determinism else 30
     if args.duration is not None:
-        if args.duration > 30:
+        if args.duration > duration_cap:
             print(f"[runner] ERROR: --duration {args.duration} exceeds the hard "
-                  f"cap of 30s. The 30s window is the soak/parity tier and must "
-                  f"never be exceeded (CLAUDE.md). Use the default (30) or a "
+                  f"cap of {duration_cap}s. The 30s window is the soak/parity tier and must "
+                  f"never be exceeded (CLAUDE.md); only tools/sim_determinism.py "
+                  f"may run up to 60s (--sim-determinism). Use the default (30) or a "
                   f"shorter --duration for a quick inner-loop tier.",
                   file=sys.stderr)
             sys.exit(2)
@@ -1388,7 +1393,7 @@ def main():
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
-                **(render_resolution.size_env(*render_resolution.parse(e.resolution)) if e.resolution else {}),
+                **render_resolution.tier_size_env(tier, e.resolution),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).
                 **_mod_env,
@@ -1549,9 +1554,10 @@ def main():
         key = baselines.key(cfg.profile, label, tier, duration)
         delta = baselines.destroys_delta(baseline_data, key, result.summary.destroys)
 
-        if e.resolution:
+        _asked = render_resolution.asked_size(tier, e.resolution)
+        if _asked:
             # The size must have reached the engine: a clamped or ignored request would make this tier green without testing the size.
-            _asked_w, _asked_h = render_resolution.parse(e.resolution)
+            _asked_w, _asked_h = _asked
             if f"[RESOLUTION] Pre-window: {_asked_w}x{_asked_h} (from MC2_WIDTH/MC2_HEIGHT env)" not in result.stdout_text:
                 _resolution_failures.append(f"{label}: the engine log has no '[RESOLUTION] Pre-window: {_asked_w}x{_asked_h}' line")
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
@@ -1577,10 +1583,14 @@ def main():
                 "mean": result.summary.destroys, "stddev": 0, "samples": 1,
                 "updated": timestamp,
             }
+            # An informational record for whoever reads tests/smoke/baselines.json (a perf comparison starts from these numbers): no grader reads it, so a
+            # run is never red for being slower than this; only `destroys` above is compared.
             baseline_data[key]["perf"] = {
                 "avg_fps": result.summary.perf.avg_fps,
                 "p1low_fps": result.summary.perf.p1low_fps,
                 "peak_ms": result.summary.perf.peak_ms,
+                # The fps means this drawable size: a pinned tier is recorded at the pinned size, the others at whatever options.cfg said.
+                "resolution": (lambda s: f"{s[0]}x{s[1]}" if s else "install options.cfg size")(render_resolution.asked_size(tier, e.resolution)),
             }
 
         # VEG-SMOKE-FLOOR-1: check vegetation output contract when gate is active.
@@ -1730,37 +1740,6 @@ def main():
     if _resolution_failures:
         print(f"[runner] [RESOLUTION] HARD FAIL: {'; '.join(_resolution_failures)}", file=sys.stderr)
         passed = False
-
-    # VISUAL advisory (S13+).  Summarises the most recent run_visual.py compare
-    # report (zero engine cost -- it does NOT capture). Advisory by default:
-    # never changes the exit code. MC2_SMOKE_REQUIRE_VISUAL=1 promotes a non-PASS
-    # visual verdict to a hard fail (mirrors the DEPLOY_FINGERPRINT opt-in). Runs
-    # BEFORE the cockpit hook so any hard-fail is reflected in the cockpit result.
-    try:
-        _vis_report = os.environ.get(
-            "MC2_SMOKE_VISUAL_REPORT",
-            str(Path(__file__).resolve().parent.parent /
-                "tests" / "visual" / "compare" / "visual_compare_report.json"))
-        if os.path.isfile(_vis_report):
-            with open(_vis_report, "r", encoding="utf-8") as _vf:
-                _vrep = json.load(_vf)
-            _vverdict = str(_vrep.get("overall_verdict", "UNKNOWN"))
-            _vsets = len(_vrep.get("sets", []) or [])
-            _vwhen = _vrep.get("generated_utc", "?")
-            _vline = (f"[visual-advisory] last compare: {_vverdict} "
-                      f"({_vsets} sets) generated_utc={_vwhen}")
-            if os.environ.get("MC2_SMOKE_REQUIRE_VISUAL") == "1" and _vverdict != "PASS":
-                print(f"[runner] [VISUAL] HARD FAIL: visual verdict {_vverdict} and "
-                      "MC2_SMOKE_REQUIRE_VISUAL=1", file=sys.stderr)
-                passed = False
-        else:
-            _vline = ("[visual-advisory] no visual compare on record "
-                      "(scripts/run_visual.py is retired; nothing writes this report)")
-        print(_vline, file=sys.stderr)
-        with open(artifact_dir / "report.md", "a", encoding="utf-8") as _rf:
-            _rf.write("\n" + _vline + "\n")
-    except Exception as _vexc:  # noqa: BLE001  advisory must never break the gate
-        print(f"[runner] [visual-advisory] skipped ({_vexc})", file=sys.stderr)
 
     # SMOKE-GATE-GUARD-1: --require-gate assertion.
     # Gate → dotted counter path in latest_render_state.json["frame_graph"].

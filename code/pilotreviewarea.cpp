@@ -748,8 +748,8 @@ void	ActivePilotListItem::render()
 
 	float timeOffset = 0;
 
-	if ( pilot->killedIcons.Count() )
-		timeOffset += 1.5 + .5 * pilot->killedIcons.Count();
+	if ( std::ssize(pilot->killedIcons) )
+		timeOffset += 1.5 + .5 * std::ssize(pilot->killedIcons);
 
 	if ( currentTime - timeOffset > 0 )
 	{
@@ -861,13 +861,12 @@ void	ActivePilotListItem::render()
 		bDone = true;
 
 	// when adding a new icon, play sound
-	if ( oldPossible != numPossible && numPossible < pilot->killedIcons.Count() )
+	if ( oldPossible != numPossible && numPossible < std::ssize(pilot->killedIcons) )
 	{
 		soundSystem->playDigitalSample( LOG_KILLMARKER, Stuff::Vector3D(-9999.0f,-9999.0,-9999.0f), true );
 	}
 
-	for ( EList< ForceGroupIcon*, ForceGroupIcon* >::EIterator iter = pilot->killedIcons.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = pilot->killedIcons.begin(); iter != pilot->killedIcons.end(); ++iter )
 	{
 		if ( counter > numPossible )
 			break;
@@ -925,7 +924,7 @@ float ActivePilotListItem::flashTime()
 	float flashTime = 1.5f * (float)pilot->promotePilot();
 	flashTime += medalCount ? 2.0f : 0.f;
 	flashTime += .5 * medalCount;
-	flashTime += 1.5 + .5 * pilot->killedIcons.Count();
+	flashTime += 1.5 + .5 * std::ssize(pilot->killedIcons);
 
 	return flashTime;
 }
@@ -1169,7 +1168,7 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	medalCount = 0;
 
 	int offset = 0;
-	int killCount = pPilot->killedIcons.Count();
+	int killCount = static_cast<int>(std::ssize(pPilot->killedIcons));
 	if ( killCount > 32 )
 		offset = (killCount - 32)/8 + 1;
 

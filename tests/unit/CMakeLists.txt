@@ -88,6 +88,9 @@ add_executable(mc2_tests
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
     test_estring.cpp        # EString::Format sizing (ll/z/j specs) via the CRT parser; step 4 B1 characterization of the class (H1-H14)
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
+    test_elist_contract.cpp     # step 4 B2.0: EList characterization (HE1-HE12), the properties std::vector/deque replace
+    test_sortlist_contract.cpp  # step 4 B2.0: SortList characterization (HS1-HS6) + the CRT qsort tie table (golden/sortlist_ties.h)
+    test_pqueue_contract.cpp    # step 4 B2.0: PriorityQueue characterization (HP1-HP7) + 2000 golden scripts (golden/pqueue_golden.h)
     test_gui_bridge.cpp     # widget text bridge: setText / setEntry overload resolution (compile-time, step 4 B1)
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
@@ -151,6 +154,8 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/estring.cpp                 # EString under test
     ${MC2_WORKTREE_ROOT}/code/objective_text.cpp           # objective string reader/writer (leaf: FitIniFile + log facade)
     ${MC2_WORKTREE_ROOT}/code/objective_flags.cpp          # objective boolean flag table (leaf)
+    ${MC2_WORKTREE_ROOT}/mclib/sortlist.cpp                # SortList under test (B2.0; removed with the class in B2.4)
+    ${MC2_WORKTREE_ROOT}/mclib/pqueue.cpp                  # PriorityQueue under test (B2.0; replaced by the per-solver open list in B2.5)
     ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
 
     # MINIMAL-VIABLE-HARNESS-2: paths.cpp is a pure leaf TU (path string globals
@@ -298,3 +303,50 @@ target_compile_definitions(mc2_modlint PRIVATE
 if(MSVC)
     target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
 endif()
+
+# The former contract executables share doctest; the GL guard cases retain a real hidden context.
+target_sources(mc2_tests PRIVATE
+    test_contract_smoke_harness.cpp
+    test_shader_contract_harness.cpp
+    test_render_state_contract_harness.cpp
+    test_objmgr_contract_harness.cpp
+    test_ibl_registry_contract_harness.cpp
+    test_render_pass_table_harness.cpp
+    test_logistics_csv_harness.cpp
+    test_camera_frustum_harness.cpp
+    test_mech_texname_harness.cpp
+    test_icon_atlas_harness.cpp
+    test_timing_math_harness.cpp
+    test_job_system_harness.cpp
+    test_terrain_daylight_harness.cpp
+    test_object_light_row_harness.cpp
+    test_class_light_band_harness.cpp
+    test_glstate_guard_harness.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
+    ${MC2_WORKTREE_ROOT}/tools/render_state_contract_harness/gos_counter_stubs.cpp
+    ${MC2_WORKTREE_ROOT}/code/job_system.cpp
+    ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
+)
+target_compile_features(mc2_tests PRIVATE cxx_std_23)
+target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}")
+target_include_directories(mc2_tests PRIVATE
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils
+    ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
+)
+find_package(Threads REQUIRED)
+target_link_libraries(mc2_tests PRIVATE
+    Threads::Threads
+    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/SDL2.lib
+    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
+    opengl32
+)
+foreach(_contract_dll SDL2.dll glew32.dll)
+    add_custom_command(TARGET mc2_tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/${_contract_dll}"
+            "$<TARGET_FILE_DIR:mc2_tests>/${_contract_dll}"
+        COMMENT "Copy ${_contract_dll} for hidden GL guard tests"
+    )
+endforeach()
+target_sources(mc2_tests PRIVATE test_save_archive.cpp ${MC2_WORKTREE_ROOT}/code/save_archive.cpp)
+target_sources(mc2_tests PRIVATE test_abl_outarrays.cpp)

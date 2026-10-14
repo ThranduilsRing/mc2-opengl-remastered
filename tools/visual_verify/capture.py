@@ -198,9 +198,10 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
         "poses": poses,
         # The options every pose of this sweep ran with (one install, one environment); capture_ab compares them between sets.
         "render_options": next((p["render_options"] for p in poses if p.get("render_options")), None),
-        # The backend the sweep asked for and the one that drew it; a mismatch fails the sweep (a Vulkan request that fell back to GL).
+        # The backend the sweep asked for and the backends that drew it (every pose's value, sorted: one entry unless the sweep was mixed); a
+        # mismatch fails the sweep (a Vulkan request that fell back to GL).
         "backend": {"requested": next((p["backend_requested"] for p in poses if p.get("backend_requested")), None),
-                    "drew": next((p["backend_drew"] for p in poses if p.get("backend_drew")), None)},
+                    "drew": sorted({d for p in poses for d in _as_list(p.get("backend_drew"))})},
         "n_captured": sum(1 for p in poses if p["primary_png"]),
         "n_requested": len(bookmark_files),
     }
@@ -213,6 +214,11 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
     (out_dir / "capture_run.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     return manifest
+
+
+def _as_list(value) -> list:
+    """`drew` is a list of backend names (a string from an older record counts as one)."""
+    return [] if not value else [value] if isinstance(value, str) else list(value)
 
 
 def backend_failures(manifest: dict) -> "list[str]":

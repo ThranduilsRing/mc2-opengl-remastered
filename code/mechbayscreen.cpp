@@ -155,11 +155,9 @@ void MechBayScreen::begin()
 	bool bCurMechIsValid = 0;
 
 	// initialize both the inventory and icon lists
-	EList< LogisticsMech*, LogisticsMech* > mechList;
-	LogisticsData::instance->getInventory( mechList );
+	auto mechList = LogisticsData::instance->getInventory();
 	
-	for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = mechList.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
 		{
 			if ( *iter == pCurMech )
 				bCurMechIsValid = true;

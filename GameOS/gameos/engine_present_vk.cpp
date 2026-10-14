@@ -215,6 +215,7 @@ struct EnginePresentVk::Impl {
     VkRenderPass    compositeRenderPass = VK_NULL_HANDLE;
     VkFramebuffer   compositeFramebuffer = VK_NULL_HANDLE;
     VkSampler       compositeSampler = VK_NULL_HANDLE;
+    VkSampler       compositeNearestSampler = VK_NULL_HANDLE;   // the R32_UINT object-id image cannot be filtered linearly
     VkDescriptorSetLayout compositeDsl = VK_NULL_HANDLE;
     VkDescriptorPool compositePool = VK_NULL_HANDLE;
     VkDescriptorSet  compositeSet = VK_NULL_HANDLE;
@@ -659,6 +660,18 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
             s.compositeVkFailed = true; return false;
         }
     }
+    if (!s.compositeNearestSampler) {
+        VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        ci.magFilter = VK_FILTER_NEAREST;
+        ci.minFilter = VK_FILTER_NEAREST;
+        ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (vkCreateSampler(s.dev, &ci, nullptr, &s.compositeNearestSampler) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
     if (!s.compositeRenderPass) {
         VkAttachmentDescription color{};
         color.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -725,7 +738,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     ii[0].sampler = s.compositeSampler;
     ii[0].imageView = scene->view;
     ii[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    ii[1].sampler = s.compositeSampler;
+    ii[1].sampler = s.compositeNearestSampler;                 // the shader reads the id with usampler2D: an exact texel, never a blend
     ii[1].imageView = objectId && objectId->view ? objectId->view : scene->view;
     ii[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VkWriteDescriptorSet wr[2]{};
@@ -2652,6 +2665,7 @@ void EnginePresentVk::destroy() {
         if (s.compositePool) { vkDestroyDescriptorPool(s.dev, s.compositePool, nullptr); s.compositePool = VK_NULL_HANDLE; }
         if (s.compositeDsl) { vkDestroyDescriptorSetLayout(s.dev, s.compositeDsl, nullptr); s.compositeDsl = VK_NULL_HANDLE; }
         if (s.compositeSampler) { vkDestroySampler(s.dev, s.compositeSampler, nullptr); s.compositeSampler = VK_NULL_HANDLE; }
+        if (s.compositeNearestSampler) { vkDestroySampler(s.dev, s.compositeNearestSampler, nullptr); s.compositeNearestSampler = VK_NULL_HANDLE; }
         if (s.compositeRenderPass) { vkDestroyRenderPass(s.dev, s.compositeRenderPass, nullptr); s.compositeRenderPass = VK_NULL_HANDLE; }
         destroyShadowDebugFramebuffer(s);
         if (s.shadowDebugPipe) { vkDestroyPipeline(s.dev, s.shadowDebugPipe, nullptr); s.shadowDebugPipe = VK_NULL_HANDLE; }

@@ -39,7 +39,7 @@ Pose verdict = worst region verdict. Run exit = worst pose verdict.
 Usage:
   # grade a candidate capture against blessed goldens:
   py -3 tools/visual_verify/verify.py --run <capture-dir> \
-      --golden tests/visual/goldens/v0.5.1-baseline
+      --golden current          # = tests/visual/goldens/<render_resolution.CURRENT_GOLDEN>
 
   # baseline mode (no golden): just emit crops + a NEW-only report:
   py -3 tools/visual_verify/verify.py --run <capture-dir> --baseline
@@ -60,6 +60,7 @@ sys.path.insert(0, str(_THIS.parents[2] / "scripts"))
 from png_io import decode_png, encode_png  # noqa: E402
 import regions as regionlib  # noqa: E402
 import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
+from smoke_lib import render_options_pin  # noqa: E402  (the render options are an input of the picture)
 
 EPSILON_LSB = 2  # per-channel LSB treated as dither noise (matches visual_diff.py)
 
@@ -175,7 +176,23 @@ def grade(metrics: dict, thresholds: dict) -> "tuple[str, str]":
     return "PASS", ""
 
 
-def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict:
+def check_render_options(golden_dir: Path, cap: dict, vary: "list[str]") -> dict:
+    """The golden's recorded render options against the candidate capture's. Raises SystemExit on a mismatch or a missing record (an options.cfg
+    that differs is a different picture, not a regression); `vary` names the keys that differ on purpose. Returns both records for the report."""
+    gj = Path(golden_dir) / "golden.json"
+    try:
+        golden_opts = ((json.loads(gj.read_text(encoding="utf-8")).get("capture_env") or {}).get("render_options"))
+    except (OSError, ValueError):
+        golden_opts = None
+    cand_opts = cap.get("render_options")
+    try:
+        render_options_pin.require_same({"values": golden_opts}, {"values": cand_opts}, vary, "the golden", "the candidate capture")
+    except render_options_pin.OptionsMismatch as e:
+        raise SystemExit(f"[vv-verify] RENDER OPTIONS MISMATCH: {e}")
+    return {"golden": golden_opts, "candidate": cand_opts, "vary": list(vary)}
+
+
+def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool, vary: "list[str] | None" = None) -> dict:
     run_dir = Path(run_dir).resolve()
     manifest_path = run_dir / "capture_run.json"
     if not manifest_path.exists():
@@ -227,6 +244,11 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict
                     "verdict."))
         except pg.ProvenanceUnestablished as e:
             raise SystemExit(f"[vv-verify] {e}")
+
+    # The render options of the golden and of the candidate must agree (--vary names a deliberate difference); the report carries both records.
+    options_record = None
+    if golden_dir is not None and not baseline:
+        options_record = check_render_options(golden_dir, cap, vary or [])
 
     # CAPTURE-RESOLUTION-ASSERT-1 (HARNESS-HYGIENE-3). Region rects are
     # normalized fractions and diff_crops() below silently upscales a smaller
@@ -344,6 +366,7 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict
         "run_dir": str(run_dir),
         "golden_dir": str(golden_dir) if golden_dir else None,
         "baseline_mode": baseline,
+        "render_options": options_record,
         "install": cap.get("install"),
         "exe": cap.get("exe"),
         "frame": cap.get("frame"),
@@ -395,6 +418,10 @@ def _write_md(path: Path, report: dict) -> None:
     gd = report["golden_dir"]
     lines.append(f"- golden: `{gd}`" if gd else "- golden: (none — baseline mode)")
     lines.append(f"- generated: {report['generated_at']}")
+    ro = report.get("render_options")
+    if ro:
+        shown = render_options_pin.describe(ro["candidate"])
+        lines.append(f"- render options: {shown} (the golden recorded the same" + (f", except --vary {','.join(ro['vary'])}" if ro["vary"] else "") + ")")
     s = report["summary"]
     lines.append("")
     lines.append(f"**Pose verdicts:** " +
@@ -434,20 +461,26 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", required=True, help="capture dir (has capture_run.json)")
     ap.add_argument("--golden", default=None,
-                    help="golden crop dir (tests/visual/goldens/<name>). Omit for "
+                    help="golden crop dir (tests/visual/goldens/<name>), or `current` for "
+                         "the golden set at the pinned capture size. Omit for "
                          "pure crop-emit; with --baseline it is seeded.")
     ap.add_argument("--baseline", action="store_true",
                     help="baseline mode: write emitted crops as the golden seed "
                          "into --golden (all regions verdict NEW).")
+    ap.add_argument("--vary", default="",
+                    help="comma-separated options.cfg keys that differ between the golden and this capture on purpose (any other difference is refused)")
     args = ap.parse_args(argv)
 
+    if args.golden == "current":      # the golden set blessed at the pinned capture size (scripts/smoke_lib/render_resolution.py)
+        from smoke_lib import render_resolution
+        args.golden = str(_THIS.parents[2] / "tests" / "visual" / "goldens" / render_resolution.CURRENT_GOLDEN)
     golden = Path(args.golden).resolve() if args.golden else None
     if args.baseline and golden is None:
         print("[vv-verify] ERROR --baseline requires --golden (the seed dir)",
               file=sys.stderr)
         return 2
 
-    report = verify_run(Path(args.run), golden, args.baseline)
+    report = verify_run(Path(args.run), golden, args.baseline, [k for k in args.vary.split(",") if k])
     s = report["summary"]
     print(f"[vv-verify] poses: " +
           ", ".join(f"{k}={v}" for k, v in sorted(s["pose_verdicts"].items())))

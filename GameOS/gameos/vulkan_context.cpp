@@ -23,6 +23,8 @@
 #endif
 
 #include "vulkan_context.h"
+#include "vk_device_profile.h"
+#include "vk_validation_line.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -50,6 +52,12 @@ void ctxlog(const char* fmt, ...) {
     std::fflush(stderr);
 }
 
+// The `[VK_PROFILE v1]` line goes to stderr beside the other [VK_ENGINE_CONTEXT] lines; the smoke parser grades a refused verdict red.
+void profileLog(std::string_view line) {
+    std::fprintf(stderr, "%.*s\n", static_cast<int>(line.size()), line.data());
+    std::fflush(stderr);
+}
+
 // The single process-wide shared context.
 VulkanContext g_engineContext;
 
@@ -58,17 +66,26 @@ VulkanContext g_engineContext;
 // pointer is sufficient (set in init()).
 VulkanContext* g_cbContext = nullptr;
 
+// One validation-layer message in the engine log (vk_validation_line.h); the smoke parser grades an error red and counts the warnings. The layer limits
+// repeats of one message id itself, so the log stays small.
+void validationLog(std::string_view severity, std::string_view id, std::string_view text) {
+    const std::string line = formatValidationLine(severity, id, text);
+    std::fprintf(stderr, "%s\n", line.c_str());
+    std::fflush(stderr);
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT /*types*/,
     const VkDebugUtilsMessengerCallbackDataEXT* pData,
     void* /*user*/) {
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
+    const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         if (g_cbContext) ++g_cbContext->mutableHealth().validationErrors;
-        std::fprintf(stderr, "[VK_ENGINE_CONTEXT_VALIDATION] ERROR: %s\n", msg);
+        validationLog("error", id, msg);
     } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        std::fprintf(stderr, "[VK_ENGINE_CONTEXT_VALIDATION] warning: %s\n", msg);
+        validationLog("warning", id, msg);
     }
     return VK_FALSE;
 }
@@ -147,6 +164,23 @@ bool VulkanContext::init(bool wantPresent) {
     }
     initedVolk_ = true;
 
+    // ---- instance version: the 1.2 floor, and 1.3 when the loader has it (core dynamic rendering / synchronization2) ----
+    // Raising the version enables no device feature by itself: the device profile below queries and enables each one it wants.
+    uint32_t loaderApi = VK_API_VERSION_1_0;
+    if (vkEnumerateInstanceVersion) vkEnumerateInstanceVersion(&loaderApi);
+    const uint32_t instanceApi = loaderApi < profile::kUseApi13 ? loaderApi : profile::kUseApi13;
+    if (instanceApi < profile::kFloorApi) {
+        profile::DeviceCaps none;
+        none.instanceApi = loaderApi;
+        profile::Evaluation refused;
+        refused.accepted = false;
+        refused.items.push_back({"api_1_2", profile::Need::Required, false, profile::Route::None});
+        refused.missingRequired.push_back("api_1_2");
+        profileLog(profile::formatLine("(no device queried: the instance version the engine can request is below the floor)", none, refused));
+        return fail("the engine can request Vulkan instance version " + profile::versionText(instanceApi) + " (the loader reports " + profile::versionText(loaderApi) +
+                    "), below the " + profile::floorText() + " floor");
+    }
+
     // ---- validation preset ----
     std::vector<VkValidationFeatureEnableEXT> valFeatures;
     const char* valPreset = "off";
@@ -156,8 +190,7 @@ bool VulkanContext::init(bool wantPresent) {
     std::vector<const char*> layers;
     std::vector<const char*> instExts;
 
-    // No interop instance caps are requested.
-    // get_physical_device_properties_2 is VK 1.1 core anyway (apiVersion 1.1).
+    // No interop instance caps are requested: physical-device properties2 is core at the 1.2 floor.
 
     // VK-P13 T3: surface instance extensions so the shared device can create a
     // VkSurfaceKHR for the hidden present window (SDL_Vulkan_CreateSurface needs
@@ -188,6 +221,8 @@ bool VulkanContext::init(bool wantPresent) {
             wantValidation = false;
             health_.validationEnabled = false;
             ctxlog("validation requested but %s unavailable; continuing WITHOUT.", want);
+            // A validation run that silently has no layer would look green with no coverage: the smoke grades this error red.
+            validationLog("error", "layer_unavailable", std::string(want) + " was requested (MC2_VULKAN_VALIDATION) and the Vulkan loader does not offer it; this run is NOT validated");
         }
     }
 
@@ -196,7 +231,7 @@ bool VulkanContext::init(bool wantPresent) {
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app.pApplicationName = "MC2 (engine Vulkan context)";
     app.pEngineName = "MC2-GameOS";
-    app.apiVersion = VK_API_VERSION_1_1;
+    app.apiVersion = instanceApi;
 
     VkValidationFeaturesEXT valFeaturesInfo{};
     valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
@@ -230,10 +265,16 @@ bool VulkanContext::init(bool wantPresent) {
                                   VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
             mci.pfnUserCallback = engine_ctx_debug_cb;
             VkResult mr = pfnCreate(instance_, &mci, nullptr, &messenger_);
-            if (mr == VK_SUCCESS) ctxlog("validation messenger engaged (preset=%s).", valPreset);
-            else ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", (int)mr);
+            if (mr == VK_SUCCESS) {
+                ctxlog("validation messenger engaged (preset=%s).", valPreset);
+                validationLog("info", "layer_enabled", std::string("VK_LAYER_KHRONOS_validation messenger engaged, preset=") + valPreset);
+            } else {
+                ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", (int)mr);
+                validationLog("error", "messenger_unavailable", "vkCreateDebugUtilsMessengerEXT failed (" + std::to_string(static_cast<int>(mr)) + "); this run is NOT validated");
+            }
         } else {
             ctxlog("vkCreateDebugUtilsMessengerEXT not found; no error capture.");
+            validationLog("error", "messenger_unavailable", "vkCreateDebugUtilsMessengerEXT is not exported; this run is NOT validated");
         }
     }
 
@@ -243,19 +284,42 @@ bool VulkanContext::init(bool wantPresent) {
     if (r != VK_SUCCESS || devCount == 0) return fail("no physical devices");
     std::vector<VkPhysicalDevice> devs(devCount);
     vkEnumeratePhysicalDevices(instance_, &devCount, devs.data());
-    phys_ = devs[0];
-    if (devCount > 1) {
+
+    // ---- device profile: the first discrete device that meets every REQUIRED item, else the first device that does; if none does, the engine
+    // refuses Vulkan (fail-soft to GL) and the refused device's line says which items it lacks ----
+    profile::DeviceCaps caps;
+    {
+        struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; };
+        std::vector<Candidate> cands;
         for (auto pd : devs) {
             VkPhysicalDeviceProperties p{};
             vkGetPhysicalDeviceProperties(pd, &p);
-            if (p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { phys_ = pd; break; }
+            Candidate c{pd, profile::gather(pd, instanceApi), {}, p.deviceName, p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU};
+            c.ev = profile::evaluate(c.caps, wantPresent);
+            cands.push_back(std::move(c));
         }
-    }
-    {
-        VkPhysicalDeviceProperties props{};
-        vkGetPhysicalDeviceProperties(phys_, &props);
-        std::strncpy(health_.deviceName, props.deviceName, sizeof(health_.deviceName) - 1);
+        const Candidate* pick = nullptr;
+        for (const Candidate& c : cands)
+            if (c.ev.accepted && c.discrete) { pick = &c; break; }
+        if (!pick)
+            for (const Candidate& c : cands)
+                if (c.ev.accepted) { pick = &c; break; }
+        const bool accepted = pick != nullptr;
+        if (!pick) {                                      // report the device the engine would have preferred
+            pick = &cands[0];
+            for (const Candidate& c : cands)
+                if (c.discrete) { pick = &c; break; }
+        }
+        phys_ = pick->pd;
+        caps = pick->caps;
+        profile_ = pick->ev;
+        luidValid_ = caps.deviceLuidValid;
+        for (size_t i = 0; i < sizeof(luid_); ++i) luid_[i] = caps.deviceLuid[i];
+        std::strncpy(health_.deviceName, pick->name.c_str(), sizeof(health_.deviceName) - 1);
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
+        health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
+        profileLog(health_.profileLine);
+        if (!accepted) return fail("device profile: required item(s) missing on " + pick->name + ": " + profile::joinOr(pick->ev.missingRequired));
     }
 
     // ---- graphics queue family ----
@@ -276,19 +340,51 @@ bool VulkanContext::init(bool wantPresent) {
     qci.queueCount = 1;
     qci.pQueuePriorities = &prio;
 
+    // Every device extension comes from the profile, in table order: the swapchain of a present window, the KHR routes of dynamic rendering /
+    // synchronization2 on a 1.2 device, and the memory-budget extension when the device has it (the VRAM line is then the OS's number and not VMA's
+    // estimate). No external-memory extension is requested: no VK resource is exportable.
     std::vector<const char*> devExts;
-    // VK-RUNG8-ITEM3: the external-memory/-semaphore Win32 device extensions (the last
-    // hard MoltenVK/Metal-gate blocker) were REMOVED -- no VK resource is exportable
-    // anymore. VK_KHR_dedicated_allocation + VK_KHR_get_memory_requirements_2 are VK 1.1
-    // core (apiVersion 1.1), so the surviving dedicated allocations need no extension.
-    // vkCreateDevice on MoltenVK no longer fails on an unsupported extension here.
-    // VK-P13 T3: swapchain device extension for the hidden present window.
-    if (wantPresent) {
-        devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
+
+    // The feature bits the profile selected. Seven are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
+    // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2) and enabled although no island consumes them
+    // yet; independentBlend is required because the islands' two-attachment pipelines already need it. An accepted device has every one and no island
+    // carries a fallback arm for any. Each bit goes through the struct that defines it (the core 1.0 features, the core 1.2 / 1.3 aggregate when the
+    // route is core, the KHR struct otherwise).
+
+    VkPhysicalDeviceFeatures2 enableFeatures{};
+    enableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    VkPhysicalDeviceVulkan12Features en12{};
+    en12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    VkPhysicalDeviceVulkan13Features en13{};
+    en13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR enDr{};
+    enDr.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+    VkPhysicalDeviceSynchronization2FeaturesKHR enS2{};
+    enS2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+    {
+        enableFeatures.features.independentBlend = featureEnabled("independentBlend") ? VK_TRUE : VK_FALSE;
+        en12.timelineSemaphore = featureEnabled("timelineSemaphore") ? VK_TRUE : VK_FALSE;
+        en12.bufferDeviceAddress = featureEnabled("bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
+        en12.descriptorIndexing = featureEnabled("descriptorIndexing") ? VK_TRUE : VK_FALSE;
+        en12.runtimeDescriptorArray = featureEnabled("runtimeDescriptorArray") ? VK_TRUE : VK_FALSE;
+        en12.shaderSampledImageArrayNonUniformIndexing = featureEnabled("shaderSampledImageArrayNonUniformIndexing") ? VK_TRUE : VK_FALSE;
+        en12.descriptorBindingPartiallyBound = featureEnabled("descriptorBindingPartiallyBound") ? VK_TRUE : VK_FALSE;
+        const bool drCore = route("dynamic_rendering") == profile::Route::Core;
+        const bool s2Core = route("synchronization2") == profile::Route::Core;
+        if (featureEnabled("dynamicRendering")) (drCore ? en13.dynamicRendering : enDr.dynamicRendering) = VK_TRUE;
+        if (featureEnabled("synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
+        void** tail = &enableFeatures.pNext;
+        auto chain = [&](auto& s) { *tail = &s; tail = &s.pNext; };
+        chain(en12);
+        if (drCore || s2Core) chain(en13);
+        if (featureEnabled("dynamicRendering") && !drCore) chain(enDr);
+        if (featureEnabled("synchronization2") && !s2Core) chain(enS2);
     }
 
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.pNext = &enableFeatures;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
     dci.enabledExtensionCount   = static_cast<uint32_t>(devExts.size());
@@ -309,7 +405,9 @@ bool VulkanContext::init(bool wantPresent) {
         aci.physicalDevice = phys_;
         aci.device = device_;
         aci.instance = instance_;
-        aci.vulkanApiVersion = VK_API_VERSION_1_1;
+        aci.vulkanApiVersion = caps.usableApi();   // never above what the device or the instance was created for
+        if (route("memory_budget") == profile::Route::Ext) aci.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+        if (featureEnabled("bufferDeviceAddress")) aci.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         VmaVulkanFunctions fns{};
         r = vmaImportVulkanFunctionsFromVolk(&aci, &fns);
         if (r != VK_SUCCESS) return fail("vmaImportVulkanFunctionsFromVolk failed");
@@ -345,7 +443,26 @@ void VulkanContext::destroy() {
         instance_ = VK_NULL_HANDLE;
     }
     if (g_cbContext == this) g_cbContext = nullptr;
+    profile_ = profile::Evaluation{};
+    profile_.accepted = false;
+    luidValid_ = false;
     health_.created = false;
+}
+
+bool VulkanContext::deviceLocalMemory(uint64_t& budgetBytes, uint64_t& usageBytes, uint64_t& allocatedBytes) const {
+    if (!allocator_ || phys_ == VK_NULL_HANDLE) return false;
+    VkPhysicalDeviceMemoryProperties mp{};
+    vkGetPhysicalDeviceMemoryProperties(phys_, &mp);
+    VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
+    vmaGetHeapBudgets(allocator_, budgets);
+    budgetBytes = usageBytes = allocatedBytes = 0;
+    for (uint32_t i = 0; i < mp.memoryHeapCount; ++i) {
+        if (!(mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) continue;
+        budgetBytes += budgets[i].budget;
+        usageBytes += budgets[i].usage;
+        allocatedBytes += budgets[i].statistics.allocationBytes;
+    }
+    return true;
 }
 
 void VulkanContext::logHealth() const {
@@ -375,7 +492,7 @@ bool engineVulkanContextValid() {
 //     call here), return true immediately -- NO second init, NO second volkLoadDevice
 //     (the device is shared; init() is a no-op after success).
 //   - Else init(wantPresent=false): brings up instance/device/queue/VMA + the SINGLE
-//     volkLoadDevice, plain VK 1.1 core (no interop exts, no surface/swapchain). Native
+//     volkLoadDevice, Vulkan 1.2+ with the profile's features (no interop exts, no surface/swapchain). Native
 //     VK regions reuse this device.
 //   - init() is one-shot: after a failed attempt it returns false without retrying, so
 //     a repeated caller never thrashes. Fail-soft: returns false, caller falls back to GL.

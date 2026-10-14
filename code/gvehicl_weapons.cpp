@@ -793,14 +793,14 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					positionOffset.x += missRadius;
 					positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-					bool canSeeHit = lineOfSight(positionOffset,true);
+					bool canSeeHit = lineOfSight(positionOffset);
 
 					if (!canSeeHit)
 					{
 						positionOffset.x -= (missRadius * 2.0f);
 						positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-						canSeeHit = lineOfSight(positionOffset,true); 
+						canSeeHit = lineOfSight(positionOffset); 
 
 						if (!canSeeHit)
 						{
@@ -809,14 +809,14 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 							positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-							canSeeHit = lineOfSight(positionOffset,true);
+							canSeeHit = lineOfSight(positionOffset);
 
 							if (!canSeeHit)
 							{
 								positionOffset.y -= (missRadius * 2.0f);
 								positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-								canSeeHit = lineOfSight(positionOffset,true);
+								canSeeHit = lineOfSight(positionOffset);
 
 								if (!canSeeHit)
 								{
@@ -889,14 +889,14 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 				positionOffset.x += missRadius;
 				positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-				bool canSeeHit = lineOfSight(positionOffset,true);
+				bool canSeeHit = lineOfSight(positionOffset);
 
 				if (!canSeeHit)
 				{
 					positionOffset.x -= (missRadius * 2.0f);
 					positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-					canSeeHit = lineOfSight(positionOffset,true); 
+					canSeeHit = lineOfSight(positionOffset); 
 
 					if (!canSeeHit)
 					{
@@ -905,14 +905,14 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 						positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-						canSeeHit = lineOfSight(positionOffset,true);
+						canSeeHit = lineOfSight(positionOffset);
 
 						if (!canSeeHit)
 						{
 							positionOffset.y -= (missRadius * 2.0f);
 							positionOffset.z = TerrainRuntime::groundElevation(positionOffset);
 
-							canSeeHit = lineOfSight(positionOffset,true);
+							canSeeHit = lineOfSight(positionOffset);
 
 							if (!canSeeHit)
 							{

@@ -240,7 +240,7 @@ def lane_note_body(slug, branch, base, worktree_path, created):
 
   ALWAYS `--keep-logs`. NEVER `--kill-existing` (it taskkills concurrent
   mc2.exe and produces false `crash_silent`). NEVER `--with-menu-canary`.
-  NEVER `--duration` > 30. NEVER run concurrent with another smoke / mc2.exe
+  NEVER `--duration` > 30 (smokes and captures; only sim_determinism.py pairs may run 60). NEVER run concurrent with another smoke / mc2.exe
   trace. Exit `0` = pass; nonzero -> inspect
   `tests/smoke/artifacts/<timestamp>/`.
 

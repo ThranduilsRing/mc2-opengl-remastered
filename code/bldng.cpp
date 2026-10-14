@@ -892,18 +892,6 @@ long Building::update (void)
 	if (powerSupply && (ObjectManager->getByWatchID(powerSupply)->getStatus() == OBJECT_STATUS_DESTROYED))
 		appearance->setLightsOut(true);
 	
-	//---------------------------------------
-	// Handle Lookout tower
-	if ((((BuildingTypePtr)getObjectType())->lookoutTowerRange > 0.0f) && getTeam() && 
-		(!parent || 
-		 (parent && 
-		  !ObjectManager->getByWatchID(parent)->isDisabled() && 
-		  !ObjectManager->getByWatchID(parent)->isDestroyed())))
-	{
-		float lookoutRange = ((BuildingTypePtr)getObjectType())->lookoutTowerRange;
-		getTeam()->markSeen(position,lookoutRange);
-	}                                         
-	
 	//-------------------------------------------
 	// Handle Sensor Building
 	if (parent && sensorSystem)

@@ -664,16 +664,6 @@ long Turret::update (void)
 		setTargeted( true );
 	}
 
-	//Must reveal every frame now for REAL LOS!!
-	if ((turn > 1) && active && getTeam())
-	{
-		if (turretsEnabled[getTeamId()]) 
-		{
-			TurretTypePtr turretType = (TurretTypePtr)ObjectManager->getObjectType(typeHandle);
-			getTeam()->markSeen(position,turretType->LOSFactor);
-		}
-	}
-
 	float turretFacing = 0.0f;
 	float turretTurnRate = 0.0;
 	if (active && targetWID) 
@@ -1657,14 +1647,14 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 					positionOffset.x += missRadius;
 					positionOffset.z = land->getTerrainElevation(positionOffset);
 
-					bool canSeeHit = lineOfSight(positionOffset,true);
+					bool canSeeHit = lineOfSight(positionOffset);
 
 					if (!canSeeHit)
 					{
 						positionOffset.x -= (missRadius * 2.0f);
 						positionOffset.z = land->getTerrainElevation(positionOffset);
 
-						canSeeHit = lineOfSight(positionOffset,true); 
+						canSeeHit = lineOfSight(positionOffset); 
 
 						if (!canSeeHit)
 						{
@@ -1673,14 +1663,14 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 
 							positionOffset.z = land->getTerrainElevation(positionOffset);
 
-							canSeeHit = lineOfSight(positionOffset,true);
+							canSeeHit = lineOfSight(positionOffset);
 
 							if (!canSeeHit)
 							{
 								positionOffset.y -= (missRadius * 2.0f);
 								positionOffset.z = land->getTerrainElevation(positionOffset);
 
-								canSeeHit = lineOfSight(positionOffset,true);
+								canSeeHit = lineOfSight(positionOffset);
 
 								if (!canSeeHit)
 								{
@@ -1748,14 +1738,14 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 				positionOffset.x += missRadius;
 				positionOffset.z = land->getTerrainElevation(positionOffset);
 
-				bool canSeeHit = lineOfSight(positionOffset,true);
+				bool canSeeHit = lineOfSight(positionOffset);
 
 				if (!canSeeHit)
 				{
 					positionOffset.x -= (missRadius * 2.0f);
 					positionOffset.z = land->getTerrainElevation(positionOffset);
 
-					canSeeHit = lineOfSight(positionOffset,true); 
+					canSeeHit = lineOfSight(positionOffset); 
 
 					if (!canSeeHit)
 					{
@@ -1764,14 +1754,14 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 
 						positionOffset.z = land->getTerrainElevation(positionOffset);
 
-						canSeeHit = lineOfSight(positionOffset,true);
+						canSeeHit = lineOfSight(positionOffset);
 
 						if (!canSeeHit)
 						{
 							positionOffset.y -= (missRadius * 2.0f);
 							positionOffset.z = land->getTerrainElevation(positionOffset);
 
-							canSeeHit = lineOfSight(positionOffset,true);
+							canSeeHit = lineOfSight(positionOffset);
 
 							if (!canSeeHit)
 							{

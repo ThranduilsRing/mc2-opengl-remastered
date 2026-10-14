@@ -12,8 +12,8 @@ long LogisticsMissionInfo::getAvailableMissions( const char** missions, int& num
 	int count = 0;
 	int maxOut = numberOfEm;
 
-	MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-	while( !iter.IsDone() )
+	auto iter = pGroup->infos.begin();
+	while ( iter != pGroup->infos.end() )
 	{
 		if ( !(*iter)->completed )
 		{
@@ -46,8 +46,8 @@ long LogisticsMissionInfo::getCurrentMissions( const char** missions, int& numbe
 	int count = 0;
 	int maxOut = numberOfEm;
 
-	MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-	while( !iter.IsDone() )
+	auto iter = pGroup->infos.begin();
+	while ( iter != pGroup->infos.end() )
 	{
 		if ( !(*iter)->hidden )
 		{
@@ -81,7 +81,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 
 			currentMission = 0;
 			currentStage = 0;
-			MissionInfo* pInfo = groups[0].infos[0];
+			MissionInfo* pInfo = groups[0].mission(0);
 				
 			pInfo->fileName = missionName;
 			pInfo->completed = 0;
@@ -134,8 +134,8 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 		int count = 0;
 		bool bFound = 0;
 
-		MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-		while( !iter.IsDone() )
+		auto iter = pGroup->infos.begin();
+		while ( iter != pGroup->infos.end() )
 		{
 			if ( mc2::str::iequals( (*iter)->fileName, missionName ) )
 			{
@@ -149,7 +149,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 				{
 					if ( currentMission != -1 )
 					{
-						MissionInfo* pInfo = pGroup->infos[currentMission];
+						MissionInfo* pInfo = pGroup->mission(currentMission);
 						if ( !(pInfo)->completed )
 							CBills -= pInfo->additionalCBills;
 					}
@@ -187,7 +187,7 @@ long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
 	{
 		MissionGroup* pGroup = &groups[s];
 		long count = 0;
-		for ( MISSION_LIST::EIterator iter = pGroup->infos.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = pGroup->infos.begin(); iter != pGroup->infos.end(); ++iter )
 		{
 			if ( mc2::str::iequals( (*iter)->fileName, missionName ) )
 			{
@@ -211,7 +211,7 @@ void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
 	currentStage = 0;
 
 	MissionInfo* pInfo = new MissionInfo;
-	groups[0].infos.Append( pInfo );
+	groups[0].infos.push_back( pInfo );
 
 	groups[0].operationFileName = "MCL_CM_Op1_1.fit";
 	groups[0].ablBrainName = "";
@@ -278,8 +278,8 @@ long LogisticsMissionInfo::getCurrentMissionId( )
 		else
 		{
 			long count = 0;
-			MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-			while( !iter.IsDone() )
+			auto iter = pGroup->infos.begin();
+			while ( iter != pGroup->infos.end() )
 			{
 				count++;
 				iter++;
@@ -307,7 +307,7 @@ void LogisticsMissionInfo::setMissionComplete( )
 	MissionGroup* pGroup = &groups[currentStage];
 	if ( pGroup && currentMission > -1 )
 	{
-		CBills += pGroup->infos[currentMission]->additionalCBills;
+		CBills += pGroup->mission(currentMission)->additionalCBills;
 	}
 	int count = 0;
 	int numberCompleted = 0;
@@ -315,8 +315,8 @@ void LogisticsMissionInfo::setMissionComplete( )
 	int nextAvailableMission = -1;
 
 	// figure out whether to go to the next stage orn not
-	MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-	while( !iter.IsDone() )
+	auto iter = pGroup->infos.begin();
+	while ( iter != pGroup->infos.end() )
 	{
 		if ( currentMission == count )
 		{
@@ -348,8 +348,8 @@ void LogisticsMissionInfo::setMissionComplete( )
 		}
 		else 
 		{
-			MISSION_LIST::EIterator iter = pGroup->infos.Begin();
-			while( !iter.IsDone() )
+			auto iter = pGroup->infos.begin();
+			while ( iter != pGroup->infos.end() )
 			{
 				if ( (*iter)->hidden ) // use the hidden video file name for this
 				{
@@ -373,6 +373,6 @@ void LogisticsMissionInfo::setMissionComplete( )
 
 	if ( currentStage < groupCount )
 	{
-		currentMissionName = groups[currentStage].infos[currentMission]->fileName;
+		currentMissionName = groups[currentStage].mission(currentMission)->fileName;
 	}
 }
