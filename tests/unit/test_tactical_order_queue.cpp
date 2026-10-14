@@ -67,6 +67,27 @@ void drain(TacticalOrderQueue& queue, Tick tick, Application& application) {
 } // namespace
 
 TEST_SUITE("TacticalOrderQueue") {
+TEST_CASE("mission content source codec bounds and permission rules") {
+    Permit permit;
+    TacticalOrderQueue queue;
+    REQUIRE(queue.registerSource({1, SourceKind::MissionContent}));
+    CHECK_FALSE(queue.registerSource({2, SourceKind::MissionContent, InstanceId{7}}));
+    auto player = order();
+    CHECK(queue.submit(player, permit).error() == OrderError::Permission);
+    auto authored = order(); authored.payload.origin = OrderOrigin::Commander;
+    REQUIRE(queue.submit(authored, permit));
+    OrderSource source{9, SourceKind::MissionContent};
+    mc2::save::Archive writer;
+    writer(source);
+    REQUIRE(writer.finish());
+    OrderSource decoded;
+    REQUIRE(mc2::save::decodeRecord(writer.bytes(), decoded));
+    CHECK(decoded.kind == SourceKind::MissionContent);
+    source.kind = static_cast<SourceKind>(6);
+    mc2::save::Archive invalid([](std::string_view) {});
+    invalid(source);
+    CHECK_FALSE(invalid.good());
+}
 TEST_CASE("fixed enum IDs issuer envelope and TacticalOrder wire field order") {
     CHECK(static_cast<std::uint32_t>(OrderKind::AttackObject) == 16);
     CHECK(static_cast<std::uint32_t>(OrderKind::Recover) == 26);

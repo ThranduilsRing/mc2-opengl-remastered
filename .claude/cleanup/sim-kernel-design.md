@@ -353,3 +353,164 @@ The following previously unspecified values are frozen for these skeleton codecs
   Strike tags are 1 small/2 large/3 sensor. Mission-control actions are 1 set objective `{objectiveId:u32,completed:bool}`,
   2 set resource `{commanderId:u32,resourcePoints:i32 >= 0}`, 3 set mission result `{result:u32:0 running/1 won/2 lost}`;
   argument tags match those action IDs. Additional mission-control actions need an explicit schema extension.
+
+## S4-b1 mission ingress amendment (2026-10-14)
+
+Scope: lifecycle, bounded production adapter and receipts. Part-key parsing/admission and
+patrol/traverse execution belong to S4-b2. No authored-route loader or queue save hook ships
+in this slice. Fable granted the mission_init.cpp initialization/reset/post-spawn call sites
+on 2026-10-14; they are applied directly. The prepared patch remains scratch only and is
+excluded from the commit deliverable.
+The reset belongs before initPrologue, so reinitialization invalidates old tokens before
+any actor teardown. Post-spawn binding belongs immediately after initSpawnActors, when
+the Part actors and their pilots exist. mission_init_load.cpp needs no additional hook.
+
+Ownership and ticks:
+
+- Mission owns MissionOrderIngress by value; its vectors and queue die with Mission.
+  Explicit destroy and the initialization reset discard pending orders, receipts
+  and recipient bindings. No static queue owner exists. The process-wide atomic counter
+  allocates session identities only; it owns no mission resources and never wraps.
+- The tick predicate is `active && (!mc2SimTickFrozen(missionInterface) || MPlayer)`.
+  mc2SimTickFrozen includes UI pause and freeze_movers. Multiplayer keeps the existing
+  override. The drain is in updateObjectManager's simulation branch, before actor updates.
+  Queue completedTick is the contiguous simulation counter; retail turn remains unchanged.
+  SimulationOrderCompletion in Mission::update closes every opened tick, including 9999.
+  Paused/inactive pumps neither drain nor increment completedTick.
+- Producers admitted during a tick target its successor. The batch remains immutable,
+  ordered by applyTick/sourceId/sequence. Admission never means execution completed.
+
+Identity and consumers:
+
+- MissionReceipt is `{session:u64,receiptId:u64}`. Submission carries the expected session;
+  acknowledgement checks it. Restart or even a replacement Mission at the same address
+  gets a fresh session, so local receipt ID 1 cannot alias an old token.
+- Recipient ObjectRef slots are a mission-owned post-spawn roster, generation 1, unrelated
+  to watch slot/generation tags. A binding records original Part ID, watch mapping, actor
+  address and pilot address. Resolve verifies all four, the actor's own watch ID (without
+  assigning one), and existence/destruction; failure permanently retires the binding.
+  The current manager assigns monotonically fresh watch IDs and clears the actor's ID on
+  free/trade, independently of the generation gate. Reverse-ID verification detects pool
+  reuse even if an old watch-list entry still points to that address. No replacement or
+  dynamically spawned actor is rebound in S4-b1. Any future watch-slot reuse policy must
+  add an unconditional incarnation notification before enabling reuse for these bindings.
+- Mission content source tag 5 extends the codec bound from 4 to 5. It has no instanceId,
+  requires a commander issuer and Commander origin, and cannot issue support commands.
+  The production adapter permits MissionContent and UI only, requires the recipient's
+  commander, and requires Player origin for UI. ABL/replay/peer integration is deferred.
+- The mission content consumer logs a completed rejected receipt once, acknowledges it,
+  and retires acknowledged receipts after endTick. It retains source sequence state.
+  UI/ABL consumers must explicitly acknowledge their own results before retirement;
+  no UI or ABL source is registered by this slice. Pending receipts cannot be acknowledged.
+
+Bounded application:
+
+- Production MoverOrderApplication is in mission.h and instantiated in
+  mission.cpp with actual ::TacticalOrder and Mover. It maps Stop to retail code 11 and
+  MoveToPoint to code 2; origins 0 Player and 1 Commander are explicit retail tags.
+  It supports Replace only: handleTacticalOrder(legacy, 0, false) reaches
+  pilot->setPlayerTacOrder (also clears the legacy player queue) or setGeneralTacOrder.
+  Append and Prepend reject explicitly. The legacy handler's player append branch exists
+  but its global pilot-queue capacity/locking policy is outside this bounded contract.
+  Self origin rejects because alarm priority arbitration can suppress the write.
+- MoveToPoint accepts one finite point, cursor 0, Slow/Fast mode and ordinary movement
+  only. It rejects jump, special movement, modifiers, formations and group/sub/unit orders;
+  orderId must fit signed 32 bits. PatrolPath/TraversePath and every other verb reject,
+  including success-only patrol helpers. No route is truncated or reported as applied.
+  Admission/apply check existence, pilot, commander and mobility. Before the synchronous
+  handoff, the adapter temporarily marks the destination slot code None (0), distinct from
+  both supported codes. A suppressed handler leaves that marker unchanged; the adapter
+  restores the previous code and rejects, preserving the previous record. A fresh installation
+  must replace the marker and match origin, time, flags and every supported move parameter,
+  including travel mode. The marker is confined to the synchronous Move/Stop handoff and
+  verification, before the next actor update. This works with the existing handler and requires no mover_combat.cpp
+  change. The legacy assignment does not copy id, and delayedTime may reflect mover selection;
+  neither field is used as an installation serial. The matching-slot suppression tests cover
+  both origins, MoveToPoint/Stop and matching/different travel modes.
+  Applied means installed in that pilot order slot, not completed movement.
+
+Content policy default, CONFIRMED by Fable on 2026-10-14:
+
+This supersedes the earlier requirement that a migrated route retire its Part keys and that
+every authored patrol export use Brain/ABL; editor-rework-design.md now records the confirmed
+Part-key format and precedence. Existing Brain/ABL assignments remain valid. The current editor's
+Part keys feed MissionContent ingress. When the original pilot has an Enhanced Brain OPORD,
+that OPORD wins: reject the selected Part-key order once with one diagnostic naming PartN.
+No automatic dual dispatch, conversion, nearest-position matching or shared ABL mutation.
+
+S4-b2's atomic reader contract is:
+
+- Editor ID 0 ORDER_NONE maps explicitly to OrderKind::None (no envelope); 1 ORDER_MOVE
+  maps to TraversePath (once); 2 ORDER_PATROL maps to PatrolPath (loop). Do not cast these
+  editor IDs to queue tags 0/1/2, which would mean None/Wait/MoveToPoint.
+- Stance values 0..5 are Cautious/Conservative/Normal/Aggressive/Berserker/Suicidal.
+  Carry stance in the S4-b2 route schema and apply it through the production pilot contract;
+  this slice has no stance-bearing execution payload. Do not silently ignore a stance.
+- Part routes initially use 1..8 waypoints, matching the Enhanced Brain export cap;
+  None uses count 0. The typed queue cap 128 and legacy storage cap 15 do not authorize
+  more authored points. Any future widening changes both readers/exports deliberately.
+- No order-related keys means absent. Any present key without OrderType is malformed.
+  Present OrderType requires a valid stance/count and every counted X/Y/Z float, finite
+  and in the mission coordinate domain. Invalid type/stance/count/point, missing required
+  field, or excess/stray waypoint keys rejects the entire authored order exactly once.
+  No defaulting of malformed values, partial admission or truncation. Reject extra points
+  even if the prefix fits; the diagnostic names the selected Part and one failure reason.
+- Parse the selected alternate block after selection in initPartsLoad. Preserve the
+  original Part's pilot exactly as existing alternate loading does, and resolve OPORD
+  precedence using that preserved pilot. Retain original Part ID and selected content
+  Part ID separately. Bind/admit after the post-spawn boundary, never by position.
+
+Save/resume design only:
+
+- Add a versioned OrderIngress section through the existing save Archive section catalogue.
+  It contains completed simulation tick; sorted OrderSources including tag/instanceId,
+  nextSequence and lastAdmittedSequence; pending envelopes and full payload/recipient roster;
+  retained receipts including per-recipient reasons, status and acknowledgement;
+  nextReceiptId; and the mission recipient roster with durable Part/entity incarnation IDs,
+  generation and retirement state. No pointers, raw watch IDs, atomic allocator value,
+  executing batch, applicationActive, socket state or fixture state is serialized.
+- Save after completeSimulationTick and receipt consumption, at a completed-tick boundary;
+  existing queue serialization already rejects executing ticks. Completed tick must be
+  restored before pending-receipt cross-validation. Sources retain sequence history after
+  receipt retirement. The S4-a Part importer is not a queue save implementation.
+- Hook the writer alongside the authoritative mission/Part section export, and the reader
+  after Part restore and actor/pilot reconstruction, before active updates. The orchestrator
+  must grant saveload*.cpp after lane 1's quickload bisect. Validate into candidates and
+  publish atomically; malformed sections yield one diagnostic and leave the live state intact.
+  Restore durable entity references into a fresh process session; clients reacquire tokens
+  for retained receipt IDs. Old live-session tokens remain invalid. No restore-by-pointer
+  or gated-watch-generation fallback. Prove pending order and retained rejection at K/N.
+
+Proof checkpoint:
+
+Production sources are tactical_order_queue.cpp, the MoverOrderApplication template in
+mission.h, and the MissionRecipientBinding/SimulationOrderCompletion templates in
+tactical_order_queue.h, instantiated by mission.cpp/mission_update.cpp.
+test_mission_order_ingress.cpp exercises those same templates and the real legacy order
+type with an actor endpoint fixture; it does not link Mover's live implementation.
+test_tactical_order_queue.cpp adds the MissionContent codec/permission test.
+`tools/mission_order_ingress_witness.py` is the tracked live witness. It runs the background
+leased lane3 harness and submits three MissionContent MoveToPoint batches of 4096, 4096
+and 1 via the dev shell. Only Mission::updateObjectManager drains them and the completion
+guard in Mission::update consumes and retires their receipts. The check command requires
+all batch outcomes Applied, no pending/retained receipts and an unresolvable retired token.
+8193 admissions exceed the 8192 retained-receipt capacity; manual unit-test acknowledgement
+and retirement no longer serve as the production capacity proof. It proves installation
+and automatic retirement, not route traversal or movement completion.
+
+Runtime negative controls (orchestrator, committed/fingerprinted executables): remove only
+`beginOrderSimulationTick();` from updateObjectManager, then build/deploy lane3 and run the
+same witness: require exit 1, with no successful batch check (receipts stay Pending). In a
+separate control remove only `queue.retireAcknowledged(queue.nextReceiptId() - 1);` from
+completeOrderSimulationTick: require exit 1 (completed receipts stay retained). Restore both
+hooks and require exit 0 and three applied_retired fixture diagnostics with completed counts
+4096/4096/1, retained=0, sequence=4096/8192/8193. Removing the completion guard likewise
+leaves the first check false. Never suppress fingerprint validation to run these controls.
+The agent's pre-commit build is unit/syntax proof only; the live positive/negative results
+remain required at the orchestrator's commit-build-deploy checkpoint.
+
+Acceptance still requires the orchestrator to commit, build and
+pin b4f2d8d11 and the resulting after commit binaries by SHA256, and use identical resolved
+lane3 content for strict-chain mc2_03/10/24/16 before/after and both stock camera pairs.
+No write-baseline command or SIMID re-record belongs to this run. Save/resume and authored
+Part-key runtime fixtures belong to S4-b2; this fixture starts from a typed authored envelope.

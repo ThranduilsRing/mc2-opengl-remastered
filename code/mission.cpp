@@ -12,6 +12,172 @@
 
 #include "mission_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/gos_dev_shell.h"
+#include <algorithm>
+
+namespace {
+struct MissionOrderAccess {
+    Mission& owner;
+    MoverPtr resolve(mc2::sim::ObjectRef ref) const { return owner.resolveOrderRecipient(ref); }
+    float simulationTime() const { return scenarioTime; }
+};
+using MissionOrderApplication = mc2::sim::MoverOrderApplication<::TacticalOrder, MissionOrderAccess>;
+static_assert(TACTICAL_ORDER_NONE == 0 && TACTICAL_ORDER_STOP == 11 && TACTICAL_ORDER_MOVETO_POINT == 2);
+static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
+static_assert(ORDERSTATE_GENERAL == 0 && ORDERSTATE_PLAYER == 1);
+
+bool submitOrderFixture(const char*, std::string& data, std::string& error) {
+    const bool ok = mission && mission->runOrderIngressFixture();
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=submit ok={} mission={}\n", ok, mission != nullptr);
+    if (!ok) {
+        error = mission ? "mission-content fixture admission failed (see fixture admission log)" : "mission unavailable";
+        return false;
+    }
+    data = "{}";
+    return true;
+}
+bool checkOrderFixture(const char*, std::string& data, std::string& error) {
+    const bool ok = mission && mission->orderIngressFixtureApplied();
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=check ok={} mission={}\n", ok, mission != nullptr);
+    if (!ok) {
+        error = mission ? "mission-content fixture did not install and automatically retire every receipt" : "mission unavailable";
+        return false;
+    }
+    data = "{}";
+    return true;
+}
+}
+
+void Mission::resetOrderIngress() {
+    orderRecipients.clear();
+    orderFixtureReceipt.reset();
+    orderFixtureApplied = false;
+    orderFixtureSubmitted = orderFixtureCompleted = 0;
+    orderIngress.reset();
+}
+void Mission::bindOrderRecipients() {
+    // Each slot belongs to one initial Part incarnation; replacements never inherit its orders.
+    if (!orderRecipients.empty()) return;
+    for (long partId = 1; partId <= numParts; ++partId) {
+        auto* object = ObjectManager->getByWatchID(parts[partId].objectWID);
+        if (!object || !object->isMover() || !object->getPilot() || !object->getExists()) continue;
+        auto* mover = static_cast<MoverPtr>(object);
+        orderRecipients.push_back({{static_cast<std::uint32_t>(orderRecipients.size() + 1), 1},
+            partId, static_cast<std::uint32_t>(parts[partId].objectWID), mover, mover->getPilot()});
+    }
+    gos_dev_shell::registerCommand("order_ingress_fixture_submit", submitOrderFixture);
+    gos_dev_shell::registerCommand("order_ingress_fixture_check", checkOrderFixture);
+    if (mc2::gate::get<"MC2_DEV_SHELL">())
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=registered recipients={}\n", orderRecipients.size());
+}
+MoverPtr Mission::resolveOrderRecipient(mc2::sim::ObjectRef ref) {
+    if (!ref.slot || ref.slot > orderRecipients.size()) return nullptr;
+    auto& binding = orderRecipients[ref.slot - 1];
+    return binding.resolve(ref, [](std::uint32_t watchId) { return ObjectManager->getByWatchID(watchId); },
+        static_cast<std::uint32_t>(parts[binding.partId].objectWID));
+}
+std::optional<mc2::sim::ObjectRef> Mission::orderRecipient(long partId) const {
+    for (const auto& binding : orderRecipients)
+        if (binding.partId == partId && !binding.retired) return binding.ref;
+    return std::nullopt;
+}
+std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> Mission::submitMissionOrder(
+    std::uint64_t session, mc2::sim::OrderEnvelope envelope) {
+    MissionOrderApplication application(MissionOrderAccess{*this});
+    return orderIngress.submit(session, std::move(envelope), application);
+}
+void Mission::beginOrderSimulationTick() {
+    for (const auto& binding : orderRecipients) resolveOrderRecipient(binding.ref);
+    MissionOrderApplication application(MissionOrderAccess{*this});
+    const auto result = orderIngress.beginSimulationTick(true, false, MPlayer != nullptr, application);
+    if (!result) mc2::fmt::print_err("[ORDER_INGRESS v1] begin_error={}\n", static_cast<int>(result.error()));
+}
+void Mission::completeOrderSimulationTick() {
+    const auto result = orderIngress.completeSimulationTick();
+    if (!result) {
+        mc2::fmt::print_err("[ORDER_INGRESS v1] completion_error={}\n", static_cast<int>(result.error()));
+        return;
+    }
+    // The mission content consumer records rejection once, then releases its completed receipts.
+    auto& queue = orderIngress.queue();
+    bool fixtureCompletedThisTick = false;
+    for (const auto& receipt : queue.receipts()) {
+        if (receipt.applicationStatus == mc2::sim::ApplicationStatus::Pending || receipt.acknowledged) continue;
+        const auto sources = queue.sources();
+        const auto source = std::ranges::find(sources, receipt.sourceId, &mc2::sim::OrderSource::sourceId);
+        if (source == sources.end() || source->kind != mc2::sim::SourceKind::MissionContent) continue;
+        if (orderFixtureReceipt && receipt.receiptId <= orderFixtureReceipt->receiptId &&
+            receipt.receiptId > orderFixtureReceipt->receiptId - orderFixtureSubmitted) {
+            orderFixtureApplied &= receipt.applicationStatus == mc2::sim::ApplicationStatus::Applied;
+            ++orderFixtureCompleted;
+            fixtureCompletedThisTick = true;
+        }
+        if (receipt.applicationStatus != mc2::sim::ApplicationStatus::Applied)
+            mc2::fmt::print_err("[ORDER_INGRESS v1] rejected source={} sequence={} reason={}\n",
+                receipt.sourceId, receipt.sequence, receipt.results.empty() ? 0 : receipt.results.front().reasonCode);
+        const auto acknowledged = orderIngress.acknowledge({orderIngress.session(), receipt.receiptId});
+        if (!acknowledged) mc2::fmt::print_err("[ORDER_INGRESS v1] acknowledgement_error={}\n",
+            static_cast<int>(acknowledged.error()));
+    }
+    queue.retireAcknowledged(queue.nextReceiptId() - 1);
+    if (fixtureCompletedThisTick && orderFixtureCompleted == orderFixtureSubmitted)
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] status={} completed={} retained={} sequence={}\n",
+            orderIngressFixtureApplied() ? "applied_retired" : "failed", orderFixtureCompleted,
+            queue.receipts().size(), queue.sources().front().nextSequence);
+}
+bool Mission::runOrderIngressFixture() {
+    using namespace mc2::sim;
+    if (!active || (orderFixtureReceipt && !orderIngressFixtureApplied())) {
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=not_ready active={} submitted={} completed={} retained={}\n",
+            active != 0, orderFixtureSubmitted, orderFixtureCompleted, orderIngress.queue().receipts().size());
+        return false;
+    }
+    const auto sequence = orderIngress.queue().sources().front().nextSequence;
+    if (sequence > maxOrderReceipts) {
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=sequence_exhausted sequence={}\n", sequence);
+        return false;
+    }
+    std::uint32_t unresolved = 0, unowned = 0, disabled = 0, immobile = 0;
+    for (const auto& binding : orderRecipients) {
+        auto* mover = resolveOrderRecipient(binding.ref);
+        if (!mover) { ++unresolved; continue; }
+        if (mover->getCommanderId() < 0) { ++unowned; continue; }
+        if (mover->isDisabled()) { ++disabled; continue; }
+        if (!mover->canMove()) { ++immobile; continue; }
+        mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=eligible part={} actor_part={} commander={} simulation_time={}\n",
+            binding.partId, binding.actorPartId, mover->getCommanderId(), scenarioTime);
+        OrderEnvelope envelope;
+        envelope.sourceId = 1;
+        envelope.issuer = CommanderId{static_cast<std::uint32_t>(mover->getCommanderId())};
+        envelope.recipients = {binding.ref};
+        envelope.payload.origin = OrderOrigin::Commander;
+        envelope.payload.kind = OrderKind::MoveToPoint;
+        envelope.payload.move.emplace();
+        const auto point = mover->getPosition();
+        envelope.payload.move->wayPath.points.push_back({point.x + 50.0f, point.y, point.z});
+        envelope.payload.move->wayPath.mode.push_back(TravelMode::Slow);
+        // More than the retained-receipt capacity proves that the production consumer recovers space.
+        const auto count = std::min<std::uint64_t>(maxPendingOrders, maxOrderReceipts + 1 - sequence);
+        orderFixtureSubmitted = orderFixtureCompleted = 0;
+        orderFixtureApplied = true;
+        for (std::uint64_t i = 0; i < count; ++i) {
+            envelope.sequence = sequence + i;
+            auto receipt = submitMissionOrder(orderSession(), envelope);
+            if (!receipt) {
+                orderFixtureApplied = false;
+                mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=queue error={} submitted={} sequence={}\n",
+                    static_cast<int>(receipt.error()), orderFixtureSubmitted, envelope.sequence);
+                return false;
+            }
+            orderFixtureReceipt = *receipt;
+            ++orderFixtureSubmitted;
+        }
+        return true;
+    }
+    mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=admission_failed reason=no_eligible_recipient recipients={} unresolved={} unowned={} disabled={} immobile={} simulation_time={}\n",
+        orderRecipients.size(), unresolved, unowned, disabled, immobile, scenarioTime);
+    return false;
+}
 
 
 static float simSpeedClamp(float v)
@@ -597,6 +763,11 @@ void Mission::resetTeamsAndCommanders()
 //----------------------------------------------------------------------------------
 void Mission::destroy (bool initLogistics)
 {
+    orderRecipients.clear();
+    orderFixtureReceipt.reset();
+    orderFixtureApplied = false;
+    orderFixtureSubmitted = orderFixtureCompleted = 0;
+    orderIngress.close();
 	// MC2-VERIFY-LIVE-1: [VERIFY] counter line at mission end (soak evidence:
 	// fires=0 expected on stock missions). Silent when MC2_VERIFY_MODE=off.
 	mc2verify::MissionSummary(missionFileName);

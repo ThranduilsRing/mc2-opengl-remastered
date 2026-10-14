@@ -986,6 +986,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	ZoneScopedN("Mission::init");
 	MissionInitFrame f;
 	f.missionName = missionName;
+	resetOrderIngress(); // Old tokens cannot cross reinitialization.
 	initPrologue(f);
 	initTeamRelations(loadType);
 	initCoreSystems();
@@ -1019,6 +1020,7 @@ initPartsHeader(f);
 	initTerrainObjectsLoad(commandersToLoad, f);
 	initDisableAndObjectives(f);
 	initCommanders(commandersToLoad, f);
+	bindOrderRecipients(); // Commander groups finalize the actors' runtime roster IDs.
 	initWeatherCamera(f);
 	initInterface(f);
 initLabTimingAndClose();

@@ -11,6 +11,7 @@
 #ifndef MISSION_H
 #define MISSION_H
 #include "save_archive.h"
+#include "tactical_order_queue.h"
 //----------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
@@ -36,6 +37,122 @@
 #ifndef MULTPLYR_H
 #include"multplyr.h"
 #endif
+
+namespace mc2::sim {
+// The same bounded conversion is instantiated with the engine's TacticalOrder and Mover.
+// Access resolves mission-owned recipient slots, independent of gated watch generations.
+template<class LegacyOrder, class Access>
+class MoverOrderApplication final : public OrderAdmissionValidator, public OrderApplication {
+public:
+    explicit MoverOrderApplication(Access access) : access_(access) {}
+    bool permitted(const OrderSource& source, const OrderEnvelope& e) const override {
+        if (source.kind != SourceKind::MissionContent && source.kind != SourceKind::UI) return false;
+        if (source.kind == SourceKind::MissionContent && e.payload.origin != OrderOrigin::Commander) return false;
+        if (source.kind == SourceKind::UI && e.payload.origin != OrderOrigin::Player) return false;
+        for (std::uint32_t i = 0; i < e.recipients.size(); ++i)
+            if (validateRecipient(e, e.recipients[i], i)) return false;
+        return true;
+    }
+    std::uint32_t validateCommand(const OrderEnvelope& e) const override {
+        if (e.queueMode != QueueMode::Replace) return reason(MoverOrderRejection::UnsupportedMode);
+        const auto& p = e.payload;
+        if (p.origin != OrderOrigin::Player && p.origin != OrderOrigin::Commander)
+            return reason(MoverOrderRejection::UnsupportedPayload);
+        if (p.kind != OrderKind::Stop && p.kind != OrderKind::MoveToPoint)
+            return reason(MoverOrderRejection::UnsupportedKind);
+        if (p.orderId > 0x7fffffffULL || p.formationOrdinal || p.groupFlags || p.subOrder || p.unitOrder)
+            return reason(MoverOrderRejection::UnsupportedPayload);
+        if (p.move) {
+            const auto& m = *p.move;
+            if (m.wayPath.points.size() != 1 || m.wayPath.curPoint != 0 ||
+                m.wayPath.mode.size() != 1 || m.wayPath.mode[0] == TravelMode::Jump ||
+                m.faceObject || m.wait || m.mode != MoveMode::Normal || m.escapeTile ||
+                m.jump || m.fromArea != -1 || m.keepMoving)
+                return reason(MoverOrderRejection::UnsupportedPayload);
+        }
+        return 0;
+    }
+    std::uint32_t validateRecipient(const OrderEnvelope& e, ObjectRef ref, std::uint32_t) const override {
+        auto* mover = access_.resolve(ref);
+        if (!mover || !mover->getExists() || mover->isDestroyed() || !mover->getPilot())
+            return reason(MoverOrderRejection::MissingRecipient);
+        const auto* commander = std::get_if<CommanderId>(&e.issuer);
+        if (!commander || mover->getCommanderId() < 0 ||
+            commander->value != static_cast<std::uint32_t>(mover->getCommanderId()))
+            return reason(MoverOrderRejection::Permission);
+        if (e.payload.kind == OrderKind::MoveToPoint && (mover->isDisabled() || !mover->canMove()))
+            return reason(MoverOrderRejection::CannotMove);
+        return 0;
+    }
+    ApplicationOutcome applyRecipient(const OrderEnvelope& e, ObjectRef ref, std::uint32_t ordinal) override {
+        if (auto r = validateCommand(e)) return {RecipientStatus::Rejected, r};
+        if (auto r = validateRecipient(e, ref, ordinal)) return {RecipientStatus::Rejected, r};
+        LegacyOrder legacy;
+        // Explicit retail tag mapping; unsupported verbs never reach the success-only helpers.
+        legacy.code = static_cast<decltype(legacy.code)>(e.payload.kind == OrderKind::Stop ? 11 : 2);
+        legacy.origin = static_cast<decltype(legacy.origin)>(e.payload.origin);
+        legacy.id = static_cast<decltype(legacy.id)>(e.payload.orderId);
+        legacy.time = access_.simulationTime();
+        legacy.unitOrder = false;
+        legacy.subOrder = false;
+        legacy.selectionIndex = -1;
+        legacy.groupFlags = 0;
+        if (e.payload.move) {
+            const auto& m = *e.payload.move;
+            legacy.moveParams.wayPath.numPoints = 1;
+            legacy.moveParams.wayPath.curPoint = 0;
+            legacy.moveParams.wayPath.points[0] = m.wayPath.points[0].x;
+            legacy.moveParams.wayPath.points[1] = m.wayPath.points[0].y;
+            legacy.moveParams.wayPath.points[2] = m.wayPath.points[0].z;
+            legacy.moveParams.wayPath.mode[0] = static_cast<unsigned char>(m.wayPath.mode[0]);
+            legacy.moveParams.faceObject = false;
+            legacy.moveParams.wait = false;
+            legacy.moveParams.mode = static_cast<decltype(legacy.moveParams.mode)>(0);
+            legacy.moveParams.escapeTile = false;
+            legacy.moveParams.jump = false;
+            legacy.moveParams.fromArea = -1;
+            legacy.moveParams.keepMoving = false;
+        }
+        auto* mover = access_.resolve(ref);
+        auto* stored = mover->getPilot()->getTacOrder(e.payload.origin == OrderOrigin::Player ? 1 : 0);
+        const auto previousCode = stored->code;
+        // A distinct pre-state proves installation even when the previous order already matches.
+        // The synchronous handoff must replace this marker; suppression preserves the old order.
+        stored->code = static_cast<decltype(stored->code)>(0);
+        const auto result = mover->handleTacticalOrder(legacy, 0, false);
+        const bool installed = stored->code != static_cast<decltype(stored->code)>(0);
+        if (!installed) stored->code = previousCode;
+        if (result != 0 || !installed)
+            return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
+        if (stored->code != legacy.code || stored->origin != legacy.origin ||
+            stored->time != legacy.time || stored->unitOrder != legacy.unitOrder ||
+            stored->subOrder != legacy.subOrder || stored->selectionIndex != legacy.selectionIndex ||
+            stored->groupFlags != legacy.groupFlags)
+            return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
+        if (e.payload.move && (stored->moveParams.wayPath.numPoints != 1 ||
+            stored->moveParams.wayPath.curPoint != 0 ||
+            stored->moveParams.wayPath.mode[0] != legacy.moveParams.wayPath.mode[0] ||
+            stored->moveParams.wayPath.points[0] != legacy.moveParams.wayPath.points[0] ||
+            stored->moveParams.wayPath.points[1] != legacy.moveParams.wayPath.points[1] ||
+            stored->moveParams.wayPath.points[2] != legacy.moveParams.wayPath.points[2] ||
+            stored->moveParams.faceObject != legacy.moveParams.faceObject ||
+            stored->moveParams.wait != legacy.moveParams.wait ||
+            stored->moveParams.mode != legacy.moveParams.mode ||
+            stored->moveParams.escapeTile != legacy.moveParams.escapeTile ||
+            stored->moveParams.jump != legacy.moveParams.jump ||
+            stored->moveParams.fromArea != legacy.moveParams.fromArea ||
+            stored->moveParams.keepMoving != legacy.moveParams.keepMoving))
+            return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
+        return {};
+    }
+    ApplicationOutcome applySupport(const OrderEnvelope&) override {
+        return {RecipientStatus::Rejected, reason(MoverOrderRejection::UnsupportedKind)};
+    }
+private:
+    Access access_;
+    static constexpr std::uint32_t reason(MoverOrderRejection r) { return static_cast<std::uint32_t>(r); }
+};
+} // namespace mc2::sim
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -174,6 +291,12 @@ class Mission
 	//Data Members
 	//-------------
 	protected:
+		mc2::sim::MissionOrderIngress orderIngress;
+		using OrderRecipientBinding = mc2::sim::MissionRecipientBinding<Mover, MechWarrior>;
+		std::vector<OrderRecipientBinding> orderRecipients;
+		std::optional<mc2::sim::MissionReceipt> orderFixtureReceipt;
+		bool orderFixtureApplied = false;
+		std::uint32_t orderFixtureSubmitted = 0, orderFixtureCompleted = 0;
 	
 		FitIniFilePtr					missionFile;
 										
@@ -298,6 +421,25 @@ class Mission
 		}
 
 		bool calcComplexDropZones (char* missionName, char dropZoneList[MAX_MC_PLAYERS]);
+		void resetOrderIngress();
+		void bindOrderRecipients();
+		void beginOrderSimulationTick();
+		void completeOrderSimulationTick();
+		MoverPtr resolveOrderRecipient(mc2::sim::ObjectRef ref);
+		std::uint64_t orderSession() const { return orderIngress.session(); }
+		std::optional<mc2::sim::ObjectRef> orderRecipient(long partId) const;
+		std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> submitMissionOrder(
+			std::uint64_t session, mc2::sim::OrderEnvelope envelope);
+		bool runOrderIngressFixture();
+		bool orderIngressFixtureApplied() const {
+			return orderFixtureReceipt && orderFixtureApplied && orderFixtureSubmitted != 0 &&
+				orderFixtureCompleted == orderFixtureSubmitted && orderIngress.queue().receipts().empty() &&
+				orderIngress.queue().snapshotPending().empty() && !orderIngress.receipt(*orderFixtureReceipt);
+		}
+		std::expected<mc2::sim::OrderReceipt, mc2::sim::OrderError> missionOrderReceipt(
+			mc2::sim::MissionReceipt receipt) const { return orderIngress.receipt(receipt); }
+		std::expected<void, mc2::sim::OrderError> acknowledgeMissionOrder(
+			mc2::sim::MissionReceipt receipt) { return orderIngress.acknowledge(receipt); }
 
 		void init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
 

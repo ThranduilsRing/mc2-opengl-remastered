@@ -184,7 +184,7 @@ struct OrderExecution {
     bool operator==(const OrderExecution&) const = default;
 };
 
-enum class SourceKind : std::uint32_t { UI = 1, ABL = 2, Replay = 3, Peer = 4 };
+enum class SourceKind : std::uint32_t { UI = 1, ABL = 2, Replay = 3, Peer = 4, MissionContent = 5 };
 struct OrderSource {
     std::uint32_t sourceId = 0;
     SourceKind kind = SourceKind::UI;
@@ -192,7 +192,7 @@ struct OrderSource {
     std::uint64_t nextSequence = 0;
     std::optional<std::uint64_t> lastAdmittedSequence;
     void serialize(Archive& a) {
-        a(sourceId); orderCodec::tag(a, kind, 1u, 4u); a(instanceId, nextSequence, lastAdmittedSequence);
+        a(sourceId); orderCodec::tag(a, kind, 1u, 5u); a(instanceId, nextSequence, lastAdmittedSequence);
     }
     void validate(Archive& a) const;
     bool operator==(const OrderSource&) const = default;
@@ -304,5 +304,63 @@ private:
     std::expected<Tick, OrderError> admissionBoundary() const;
     void fields(Archive& a);
     void validate(Archive& a) const;
+};
+
+// Session tokens scope local receipt IDs and recipient slots across mission replacement.
+struct MissionReceipt {
+    std::uint64_t session = 0, receiptId = 0;
+    bool operator==(const MissionReceipt&) const = default;
+};
+template<class Actor, class Pilot> struct MissionRecipientBinding {
+    ObjectRef ref;
+    std::int64_t partId = 0;
+    std::uint32_t watchId = 0;
+    Actor* mover = nullptr;
+    Pilot* pilot = nullptr;
+    bool retired = false;
+    // FIT Part indices and runtime roster IDs occupy different namespaces.
+    std::int64_t actorPartId = mover ? mover->getPartId() : 0;
+
+    template<class Lookup> Actor* resolve(ObjectRef requested, Lookup lookup, std::uint32_t partWatch) {
+        if (ref != requested || retired) return nullptr;
+        auto* object = lookup(watchId);
+        // The original forward and reverse mappings must agree; pool reuse cannot inherit the slot.
+        if (object != mover || !object || !object->getExists() || object->isDestroyed() ||
+            object->getWatchID(false) != watchId || object->getPartId() != actorPartId ||
+            object->getPilot() != pilot || partWatch != watchId) {
+            retired = true;
+            return nullptr;
+        }
+        return mover;
+    }
+};
+enum class MoverOrderRejection : std::uint32_t {
+    UnsupportedKind = 1, UnsupportedMode, UnsupportedPayload, MissingRecipient,
+    Permission, CannotMove, HandlerFailure
+};
+
+class MissionOrderIngress {
+public:
+    MissionOrderIngress();
+    void reset();
+    void close();
+    std::uint64_t session() const { return session_; }
+    TacticalOrderQueue& queue() { return queue_; }
+    const TacticalOrderQueue& queue() const { return queue_; }
+    std::expected<MissionReceipt, OrderError> submit(std::uint64_t session, OrderEnvelope,
+        const OrderAdmissionValidator&);
+    std::expected<void, OrderError> acknowledge(MissionReceipt);
+    std::expected<OrderReceipt, OrderError> receipt(MissionReceipt) const;
+    std::expected<void, OrderError> beginSimulationTick(bool active, bool frozen, bool multiplayer,
+        OrderApplication&);
+    std::expected<void, OrderError> completeSimulationTick();
+private:
+    std::uint64_t session_ = 0;
+    TacticalOrderQueue queue_;
+};
+
+template<class Owner> struct SimulationOrderCompletion {
+    Owner& owner;
+    ~SimulationOrderCompletion() { owner.completeOrderSimulationTick(); }
 };
 } // namespace mc2::sim
