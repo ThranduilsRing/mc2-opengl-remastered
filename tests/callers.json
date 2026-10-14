@@ -2071,6 +2071,13 @@
           "text": "from configure_ninja import NINJA, under_vcvars  # noqa"
         },
         {
+          "path": "cmake/build_driver.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "import configure_ninja as cn"
+        },
+        {
           "path": "scripts/configure_analysis.py",
           "line": 10,
           "evidence": "import",
@@ -2151,6 +2158,13 @@
         {
           "path": ".claude/cleanup/lane3-diag/strhunt_patch.py",
           "line": 338,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
+          "path": "cmake/build_driver.py",
+          "line": 10,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -5251,6 +5265,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_build_compiler_presets.py",
+      "basename": "test_build_compiler_presets.py",
+      "stem": "test_build_compiler_presets",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_check_ab_kit.py",
       "basename": "test_check_ab_kit.py",
       "stem": "test_check_ab_kit",
@@ -6266,7 +6287,15 @@
       "basename": "build_all_targets.py",
       "stem": "build_all_targets",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_build_compiler_presets.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "build_all_targets",
+          "text": "import build_all_targets as bat"
+        }
+      ]
     },
     {
       "path": "tools/build_contract_harnesses.py",
@@ -6274,6 +6303,13 @@
       "stem": "build_contract_harnesses",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_build_compiler_presets.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "build_contract_harnesses",
+          "text": "import build_contract_harnesses as bch"
+        },
         {
           "path": "scripts/tests/test_contract_harness_migration.py",
           "line": 10,
