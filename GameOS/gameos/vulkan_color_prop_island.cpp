@@ -1530,6 +1530,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // The eye's night state lights the hot-colour tags; without the feed the island stays on its daytime arm.
         u.isNight      = haveLightFeed ? lightFeed.isNight : 0;
         u.nightFactor  = haveLightFeed ? lightFeed.nightFactor : 0.0f;
+        u.ambientV1Strength = haveLightFeed ? lightFeed.ambientV1Strength : 0.0f;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant

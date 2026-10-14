@@ -321,5 +321,10 @@ void main() {
         float wrap = 0.5 + 0.5 * dot(nMC2, L);
         propDirFactor = mix(1.0 - kPropBaseLightDirStrength, 1.0, wrap);
     }
-    vArgb = clamp((seed + ambientTerm) * propDirFactor + iblTerm + sunTerm * ndl, 0.0, 1.0);
+    // Hemisphere ambient fill of the StaticPropAmbient option (sky above, ground below; Stuff-space Y is up), added after the directional wrap so it lifts the back
+    // faces the wrap darkened, as in GL.
+    const vec3 kAmbientV1Sky    = vec3(0.20, 0.22, 0.28);
+    const vec3 kAmbientV1Ground = vec3(0.10, 0.09, 0.07);
+    vec3 ambientV1 = mix(kAmbientV1Ground, kAmbientV1Sky, 0.5 + 0.5 * worldNormalStuff.y) * uFrame.ambientV1Strength;
+    vArgb = clamp((seed + ambientTerm) * propDirFactor + ambientV1 + iblTerm + sunTerm * ndl, 0.0, 1.0);
 }

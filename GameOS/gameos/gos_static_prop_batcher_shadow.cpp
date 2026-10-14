@@ -935,6 +935,7 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     gos_GetNightState(&isNight, &nightFactor);
     out->isNight      = isNight ? 1 : 0;
     out->nightFactor  = nightFactor;
+    out->ambientV1Strength = staticPropAmbientV1Enabled() ? 1.0f : 0.0f;
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

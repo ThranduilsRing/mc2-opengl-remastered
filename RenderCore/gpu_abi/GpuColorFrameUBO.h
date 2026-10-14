@@ -36,6 +36,8 @@ struct ColorFrameUBO {
     // Night state of the eye (the hot-colour night tags light windows, building base lights and runway fixtures).
     int32_t isNight;            // 0/1
     float   nightFactor;        // 0..1 day->night blend
+    float   ambientV1Strength;  // StaticPropAmbient option: strength of the hemisphere ambient fill (0 = off)
+    float   _pad[3];            // @cpp_only pad to a 16 B multiple
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"
