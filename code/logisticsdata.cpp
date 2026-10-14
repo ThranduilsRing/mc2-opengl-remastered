@@ -82,7 +82,7 @@ void				LogisticsData::startNewCampaign( const char* fileName )
 	}
 #endif
 
-	inventory.clear();
+	clearInventory();
 	resourcePoints = 0;
 	clearPilots();
 	initPilots();
@@ -112,7 +112,7 @@ void				LogisticsData::startNewCampaign( const char* fileName )
 
 void LogisticsData::startMultiPlayer()
 {
-	inventory.clear();
+	clearInventory();
 	resourcePoints = 0;
 	clearPilots();
 	initPilots();
