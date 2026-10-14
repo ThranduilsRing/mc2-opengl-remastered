@@ -1,4 +1,5 @@
 #include "CommandHistory.h"
+#include "Gates/gate.h"
 #include "build_fingerprint.h"
 
 #include <SDL.h>
@@ -8,7 +9,6 @@
 #include <imgui_impl_sdl2.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -66,7 +66,7 @@ public:
         SDL_SetMainReady();
         SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, "1");
         // Harness runs never occupy the desktop or request pointer capture.
-        const bool hidden = options_.smoke || std::getenv("MC2_WINDOW_OFFSCREEN") != nullptr;
+        const bool hidden = options_.smoke || mc2::gate::get<"MC2_WINDOW_OFFSCREEN">();
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) return error("sdl_init_failed");
         sdlReady_ = true;
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
