@@ -543,6 +543,12 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
 
 } // namespace
 
+// The owner's deleter: idles the GPU and releases the owned objects before the state itself goes.
+void gosPostProcess::VkPostHzbNativeDeleter::operator()(VkPostHzbNative* s) const {
+    destroy_state(s);
+    delete s;
+}
+
 bool gosPostProcess::vkPostHzbNativeEnabled()
 {
     static int state = -1;
@@ -594,8 +600,8 @@ bool gosPostProcess::runVkPostHzbNative()
         }
     }
 
-    if (!vkPostHzbNative_) vkPostHzbNative_ = new (std::nothrow) VkPostHzbNative();
-    VkPostHzbNative* s = vkPostHzbNative_;
+    if (!vkPostHzbNative_) vkPostHzbNative_.reset(new (std::nothrow) VkPostHzbNative());
+    VkPostHzbNative* s = vkPostHzbNative_.get();
     if (!s) {
         setFallback("alloc_failed");
         return false;
@@ -754,9 +760,7 @@ void gosPostProcess::destroyVkPostHzbNative()
              g_health.waitSamples);
     }
     if (!vkPostHzbNative_) return;
-    destroy_state(vkPostHzbNative_);
-    delete vkPostHzbNative_;
-    vkPostHzbNative_ = nullptr;
+    vkPostHzbNative_.reset();
 }
 
 extern "C" void mc2_vk_post_hzb_native_health(

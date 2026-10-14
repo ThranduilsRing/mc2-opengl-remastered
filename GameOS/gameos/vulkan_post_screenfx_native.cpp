@@ -654,6 +654,12 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
 
 } // namespace
 
+// The owner's deleter: idles the GPU and releases the owned objects before the state itself goes.
+void gosPostProcess::VkPostScreenFxDeleter::operator()(VkPostScreenFx* s) const {
+    destroy_state(s);
+    delete s;
+}
+
 // ---------------------------------------------------------------------------
 // vkPostScreenFxNativeEnabled(): explicit OPT-IN, default-OFF (an Exact1 row: only "1"
 // arms it; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER). Gate name per the rung-8 ladder: MC2_VK_POST_SCREENFX. Per-pass bisect
@@ -709,8 +715,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         && shadowsEnabled_ && (!dynamicActive || csmDirectReady) && screenShadowDebug_ == 0;
     if (!wantShadow || width_ <= 0 || height_ <= 0) return false;
 
-    if (!vkPostScreenFx_) vkPostScreenFx_ = new VkPostScreenFx();
-    VkPostScreenFx* s = vkPostScreenFx_;
+    if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
+    VkPostScreenFx* s = vkPostScreenFx_.get();
     if (s->disabled) return false;
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -944,8 +950,8 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (!wantCloud && !wantShore) return 0;
     if (width_ <= 0 || height_ <= 0) return 0;
 
-    if (!vkPostScreenFx_) vkPostScreenFx_ = new VkPostScreenFx();
-    VkPostScreenFx* s = vkPostScreenFx_;
+    if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
+    VkPostScreenFx* s = vkPostScreenFx_.get();
     if (s->disabled) return 0;
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -1145,9 +1151,7 @@ void gosPostProcess::destroyVkPostScreenFxNative()
              g_fx.waitSamples);
     }
     if (!vkPostScreenFx_) return;
-    destroy_state(vkPostScreenFx_);
-    delete vkPostScreenFx_;
-    vkPostScreenFx_ = nullptr;
+    vkPostScreenFx_.reset();
 }
 
 // Debug-state dump receipt (used_vulkan receipts for every VK capture).

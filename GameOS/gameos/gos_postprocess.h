@@ -2,6 +2,7 @@
 #define GOS_POSTPROCESS_H
 
 #include <cstdint>
+#include <memory>
 #include "utils/gl_utils.h"
 
 #include "../../RenderCore/RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (relative: reachable from every TU that includes this header, incl. RenderWorld)
@@ -533,7 +534,9 @@ public:
     bool  runVkPostFogNative();
     void  destroyVkPostFogNative();
     struct VkPostFogNative;             // defined in vulkan_post_fog_native.cpp
-    VkPostFogNative* vkPostFogNative_ = nullptr;
+    // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
+    struct VkPostFogNativeDeleter { void operator()(VkPostFogNative*) const; };
+    std::unique_ptr<VkPostFogNative, VkPostFogNativeDeleter> vkPostFogNative_;
 
     // VK-POST-SSAO-NATIVE-1 (rung 8.2, .claude/VK-RUNG8-LADDER-1.md): SSAO
     // (gen + apply) rendered NATIVELY on the shared engine VulkanContext, sampling
@@ -552,7 +555,9 @@ public:
     bool  runVkPostSsaoNative();
     void  destroyVkPostSsaoNative();
     struct VkPostSsaoNative;            // defined in vulkan_post_ssao_native.cpp
-    VkPostSsaoNative* vkPostSsaoNative_ = nullptr;
+    // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
+    struct VkPostSsaoNativeDeleter { void operator()(VkPostSsaoNative*) const; };
+    std::unique_ptr<VkPostSsaoNative, VkPostSsaoNativeDeleter> vkPostSsaoNative_;
 
     // VK-POST-SCREENFX-NATIVE-1 (rung 8.3, .claude/VK-RUNG8-LADDER-1.md):
     // cloud-shadow + shoreline-foam rendered NATIVELY on the shared engine
@@ -574,7 +579,9 @@ public:
     unsigned  runVkPostScreenFxNative();
     void      destroyVkPostScreenFxNative();
     struct VkPostScreenFx;              // defined in vulkan_post_screenfx_native.cpp
-    VkPostScreenFx* vkPostScreenFx_ = nullptr;
+    // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
+    struct VkPostScreenFxDeleter { void operator()(VkPostScreenFx*) const; };
+    std::unique_ptr<VkPostScreenFx, VkPostScreenFxDeleter> vkPostScreenFx_;
 
     // VK-POST-HZB-NATIVE-1 (rung 8.4, .claude/VK-RUNG8-LADDER-1.md): the HZB
     // pyramid rendered NATIVELY on the shared engine VulkanContext, sampling the
@@ -588,7 +595,9 @@ public:
     bool  runVkPostHzbNative();
     void  destroyVkPostHzbNative();
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
-    VkPostHzbNative* vkPostHzbNative_ = nullptr;
+    // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
+    struct VkPostHzbNativeDeleter { void operator()(VkPostHzbNative*) const; };
+    std::unique_ptr<VkPostHzbNative, VkPostHzbNativeDeleter> vkPostHzbNative_;
 
     // Retained region-interface entry points;
     // these methods delegate to the shared-engine native implementations.

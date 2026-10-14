@@ -493,6 +493,12 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
 
 } // namespace
 
+// The owner's deleter: idles the GPU and releases the owned objects before the state itself goes.
+void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) const {
+    destroy_state(s);
+    delete s;
+}
+
 // ---------------------------------------------------------------------------
 // vkPostFogNativeEnabled(): UMBRELLA-ARMED, NOT an opt-in: ON iff MC2_VK_SHARED_GBUFFER=1
 // (and OFF once g_mc2VkSessionForcedGL is set). The SKYBOX-FOG-EXCLUDE parity guard
@@ -552,8 +558,8 @@ bool gosPostProcess::runVkPostFogNative()
 
     if (width_ <= 0 || height_ <= 0) return false;
 
-    if (!vkPostFogNative_) vkPostFogNative_ = new VkPostFogNative();
-    VkPostFogNative* s = vkPostFogNative_;
+    if (!vkPostFogNative_) vkPostFogNative_.reset(new VkPostFogNative());
+    VkPostFogNative* s = vkPostFogNative_.get();
     if (s->disabled) return false;
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -736,9 +742,7 @@ void gosPostProcess::destroyVkPostFogNative()
              g_pf.waitSamples);
     }
     if (!vkPostFogNative_) return;
-    destroy_state(vkPostFogNative_);
-    delete vkPostFogNative_;
-    vkPostFogNative_ = nullptr;
+    vkPostFogNative_.reset();
 }
 
 // Debug-state dump receipt (used_vulkan receipts for every VK capture).
