@@ -18,7 +18,7 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2332,
   "GameOS/gameos/gpu_cull_compute.cpp": 1510,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1783,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1782,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1651,
   "GameOS/include/gameos.hpp": 3753,
   "RenderCore/RendererFeatureRegistry.h": 1741,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "e5fd0205d",
+ "head": "dfdce9289",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -240,7 +240,7 @@
   },
   {
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1783
+   "lines": 1782
   },
   {
    "file": "mclib/ablrtn.cpp",
