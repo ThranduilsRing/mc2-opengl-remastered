@@ -2,7 +2,6 @@
 #include"vfx.h"
 #include<stdio.h>
 
-extern char AlphaTable[256*256];
 
 using SHAPEHEADER = struct
 {

@@ -2,7 +2,6 @@ cmake_minimum_required (VERSION 3.10)
 project(mclib)
 
 set(SOURCES ${SOURCES}
-    alphapalette.cpp
     cident.cpp
     cmponent.cpp
     color.cpp
@@ -66,16 +65,11 @@ set(SOURCES ${SOURCES}
     celement.cpp
     celine.cpp
     cellip.cpp
-    cepane.cpp
     cevfx.cpp
     cevfx_polys.cpp
-    vfx_ellipse.cpp
-    vfx_map_polygon.cpp
     vfx_transform.cpp
     vfx_translatedraw.cpp
     vfxtile.cpp
-    vfxtile_line.cpp
-    vfxtile_pixel.cpp
     abl_script_events.cpp
     abldbug.cpp
     abldbug_print.cpp
@@ -130,7 +124,6 @@ set(SOURCES ${SOURCES}
     terrtxm2_load.cpp
     burnin_jpeg_decode.cpp
     control_map_png_decode.cpp
-    txmconv.cpp
     appear.cpp
     apprtype.cpp
     bdactor.cpp

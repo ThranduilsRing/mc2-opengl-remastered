@@ -1,6 +1,5 @@
 #include"vfx.h"
 
-extern char AlphaTable[256*256];
 //extern enum { CPU_UNKNOWN, CPU_PENTIUM, CPU_MMX } Processor;
 extern void memfill(void *Dest,int Length);
 extern void memclear(void *Dest,int Length);

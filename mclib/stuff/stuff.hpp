@@ -226,4 +226,3 @@ namespace Stuff {
 #include"vector2d.hpp"
 #include"vector4d.hpp"
 #include"trace.hpp"
-#include"average.hpp"
