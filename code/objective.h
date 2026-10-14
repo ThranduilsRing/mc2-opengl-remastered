@@ -12,7 +12,11 @@ Objective.h			: Interface for the Objective component.
 #include"objective_text.h"
 #include"platform_tchar.h"
 
+#include <cstddef>
+#include <iterator>
+#include <memory>
 #include <string>
+#include <vector>
 #include"mover.h"
 
 #ifndef BLDNG_H

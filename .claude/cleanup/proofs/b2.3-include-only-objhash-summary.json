@@ -1,0 +1,72 @@
+{
+ "objects": 1207,
+ "classes": {
+  "DIFF": 1,
+  "IDENTICAL": 114,
+  "LAYOUT-ONLY": 4,
+  "NOT-REBUILT": 1087,
+  "ORDER-ONLY": 1
+ },
+ "not_identical": [
+  {
+   "source": "code/bldng.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/bldng.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "4:.bss",
+    "4:.data",
+    "5:.bss",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "code/controlgui_hudtabs.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_hudtabs.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "code/mechcmd2.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechcmd2.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "475:.text$mn",
+    "477:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/mission.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "4:.data"
+   ]
+  },
+  {
+   "source": "code/mpparameterscreen.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mpparameterscreen.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "10:.bss",
+    "4:.bss",
+    "4:.data",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "code/objective.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/objective.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  }
+ ]
+}
