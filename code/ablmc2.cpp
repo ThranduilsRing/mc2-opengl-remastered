@@ -4,6 +4,7 @@
 // its position in a fixed table), so the list stays in this one file; the exec* bodies live in ablmc2_<domain>.cpp.
 #include "ablmc2_internal.h"
 #include "mc2fmt.h"
+#include "abl_script_events.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 
@@ -278,6 +279,9 @@ static void logAblFunctionTableCapacity (void)
 }
 
 void initABL (void) {
+
+	// A new run of scripts gets a fresh per-event log budget, so a truncation in one mission is reported again in the next.
+	abl::resetEventBudgets();
 
 	// Heaps bumped 8x for mod content (Omnitech/Carver5O ABL scripts are far
 	// larger than stock). Previously 768KB/512KB/300KB — too tight, exhaustion
