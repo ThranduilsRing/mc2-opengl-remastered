@@ -6,6 +6,27 @@
 //===========================================================================//
 
 #include"stuffheaders.hpp"
+#include"det_rng.h"
+
+Scalar Random::Stream::GetFraction()
+{
+	const auto value = mc2_det_rng::next15(m_state.value);
+	++m_state.draws;
+	return static_cast<Scalar>(value) / 32768.0f;
+}
+
+std::uint64_t Random::GetDrawCount()
+{
+	return Instance ? Instance->m_drawCount : 0;
+}
+
+Random::State Random::GetState()
+{
+	State state{{}, Index, GetDrawCount()};
+	for (std::size_t i = 0; i < state.numbers.size(); ++i)
+		state.numbers[i] = Numbers[i];
+	return state;
+}
 
 int
 	Random::Numbers[250];
@@ -83,6 +104,7 @@ void Random::Init()
 int
 	Random::GetRandomInt()
 {
+	++Instance->m_drawCount;
 	int
 		indent,
 		result;

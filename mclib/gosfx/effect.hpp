@@ -9,6 +9,7 @@
 
 #include"gosfx.hpp"
 #include<mlr/mlr.hpp>
+#include<stuff/random.hpp>
 
 namespace MidLevelRenderer
 {
@@ -185,17 +186,20 @@ namespace gosFX
 				*m_parentToWorld;
 			Stuff::OBB
 				*m_bounds;
+			Stuff::Random::Stream *m_vfxRandom;
 
 			ExecuteInfo(
 				Stuff::Time time,
 				const Stuff::LinearMatrix4D *parent_to_world,
 				Stuff::OBB *bounds,
-				Stuff::Scalar seed = -1.0f
+				Stuff::Scalar seed = -1.0f,
+				Stuff::Random::Stream *vfx_random = nullptr
 			)
 				{
 					m_time = time; m_seed = seed;
 					m_parentToWorld = parent_to_world;
 					m_bounds = bounds; m_age = -1.0f; m_ageRate = -1.0f;
+					m_vfxRandom = vfx_random;
 				}
 
 			void TestInstance() const
@@ -358,6 +362,10 @@ namespace gosFX
 	protected:
 		Stuff::LinearMatrix4D
 			m_localToParent;
+		// Borrowed from the effects session; children cannot outlive their parent.
+		Stuff::Random::Stream *m_vfxRandom = nullptr;
+		Stuff::Scalar NextBirthFraction()
+			{return m_vfxRandom ? m_vfxRandom->GetFraction() : Stuff::Random::GetFraction();}
 		Stuff::Time
 			m_lastRan;
 		Stuff::Scalar

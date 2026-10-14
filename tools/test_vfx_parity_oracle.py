@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 from PIL import Image
+from vfx_oracle.evidence import extract
 import pytest
 import vfx_parity_oracle as oracle
 
@@ -71,10 +72,12 @@ def test_four_distinct_sources_keep_arm_and_repeat_order():
 
 @pytest.fixture
 def parity_case(monkeypatch):
+    raw_log = b"[VFX_BIRTH v1] spec=PPC stream=56465852 initial=42 state=123 draws=9"
+    monkeypatch.setattr(Path, "read_bytes", lambda path: raw_log)
     stamp = {"fingerprint": "5636f22bc357", "bookmark": "visible-effect", "frame": 154}
     effect = {"class": "ppc", "rect": [0, 0, 8, 8],
               "images": {"mlr": ["mlr1.png", "mlr2.png"], "gpu": ["gpu1.png", "gpu2.png"]},
-              "evidence": {"captures": {}, "effect_free": {}, "suppressed": {}}}
+              "evidence": {"experiment": "harvested", "captures": {}, "effect_free": {}, "suppressed": {}}}
     controls = {}
     for arm in ("mlr", "gpu"):
         effect["evidence"]["captures"][arm] = [
@@ -84,6 +87,21 @@ def parity_case(monkeypatch):
             effect["evidence"][kind][arm] = {**stamp, "image": name}
             controls[Path(name).resolve()] = Image.new("RGB", (8, 8))
         effect["evidence"]["suppressed"][arm]["effect_suppressed"] = True
+        enabled = "1" if arm == "gpu" else "0"
+        records = [*effect["evidence"]["captures"][arm],
+                   effect["evidence"]["effect_free"][arm], effect["evidence"]["suppressed"][arm]]
+        for index, record in enumerate(records):
+            record["runtime"] = {
+                "process": f"{arm}-{index}", "effect_age": 0.25,
+                "rng": {"owner": "RenderWorld", "stream": "56465852", "version": 1, "seed": 42,
+                        "algorithm": "LCG32-NR-next15", "state": 123, "draw_count": 9},
+                "backend": {"requested": "gl", "drawn": "gl", "readback": "gl_fbo"},
+                "assets": {"mc2.fx": "a" * 64}, "birth_transcript": extract(raw_log.decode())["birth_transcript"],
+                "log_sha256": hashlib.sha256(raw_log).hexdigest(), "log": f"{arm}-{index}.log",
+                "gates": {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": enabled,
+                          "MC2_VFX_ORACLE_TUBE": enabled, "MC2_VFX_ORACLE_SHAPE": enabled,
+                          "MC2_VFX_GPU_SIM_CARDCLOUD": "0", "MC2_VFX_GPU_SIM_COMPARE": "0"},
+                "draw_probe": {"scope": "all_draw_flush_cull", "unchanged": True, "frozen_repeats": 2}}
     monkeypatch.setattr(Image, "open", lambda path: controls[path].copy())
     return effect, [Image.new("RGB", (8, 8), "red") for _ in range(4)], controls
 
@@ -120,6 +138,48 @@ def test_stable_but_wrong_gpu_fails_parity(parity_case):
     result = grade(parity_case)
     assert result["repeatable"] and not result["parity_accepted"]
     assert "MLR/GPU pixels differ" in result["parity_failures"]
+
+
+@pytest.mark.parametrize("field,value", [
+    ("rng", {"owner": "Effect", "stream": "legacy"}),
+    ("rng", []), ("draw_probe", None), ("effect_age", 10**1000),
+    ("effect_age", float("nan")), ("assets", {}), ("birth_transcript", ""),
+    ("backend", {"requested": "gl", "drawn": "vk", "readback": "gl_fbo"}),
+    ("gates", {}), ("draw_probe", {"scope": "CardCloud", "unchanged": True, "frozen_repeats": 2}),
+    ("process", "mlr-0"),
+])
+def test_incomplete_or_false_runtime_evidence_is_diagnostic(parity_case, field, value):
+    parity_case[0]["evidence"]["captures"]["gpu"][0]["runtime"][field] = value
+    assert grade(parity_case)["status"] == "DIAGNOSTIC"
+
+
+@pytest.mark.parametrize("field,value", [("effect_age", 0.5), ("birth_transcript", "d" * 64),
+                                        ("assets", {"mc2.fx": "d" * 64})])
+def test_repeat_runtime_inputs_must_agree(parity_case, field, value):
+    parity_case[0]["evidence"]["captures"]["gpu"][1]["runtime"][field] = value
+    assert not grade(parity_case)["parity_accepted"]
+
+
+@pytest.mark.parametrize("field,value", [("seed", 43), ("state", 124), ("draw_count", 10),
+                                        ("seed", True), ("state", -1), ("draw_count", 2**64)])
+def test_rng_values_and_repeat_equality_are_required(parity_case, field, value):
+    parity_case[0]["evidence"]["captures"]["gpu"][1]["runtime"]["rng"][field] = value
+    assert not grade(parity_case)["parity_accepted"]
+
+
+def test_old_provenance_without_runtime_evidence_stays_diagnostic(parity_case):
+    del parity_case[0]["evidence"]["captures"]["gpu"][1]["runtime"]
+    assert not grade(parity_case)["parity_accepted"]
+
+
+def test_changed_bound_log_and_reused_process_log_are_rejected(parity_case, monkeypatch):
+    monkeypatch.setattr(Path, "read_bytes", lambda path: b"tampered log")
+    assert not grade(parity_case)["parity_accepted"]
+
+
+def test_eight_process_ids_cannot_reuse_one_engine_log(parity_case):
+    parity_case[0]["evidence"]["captures"]["gpu"][1]["runtime"]["log"] = "gpu-0.log"
+    assert not grade(parity_case)["parity_accepted"]
 
 
 def test_suppressed_run_itself_fails_presence(parity_case):

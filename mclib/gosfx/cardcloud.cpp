@@ -5,9 +5,7 @@
 #include"gosfxheaders.hpp"
 #include<mlr/mlrcardcloud.hpp>
 
-// B1 Stage 2' C11: subclass-Start routing into the GPU particle pipeline.
 #include"particles/batcher.h"
-#include"particles/spawn.h"
 #include"particles/cardcloud_sim.h"   // VFX-GPU-SIM-CARDCLOUD-BUFFER-1
 #include<cmath>    // VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: std::atan2
 #include<cstdio>   // VFX-ORACLE diagnostics
@@ -491,20 +489,30 @@ void gosFX::CardCloud::DestroyParticle(unsigned index)
 //
 void gosFX::CardCloud::Draw(DrawInfo *info)
 {
+	if (!mc2::particles::Batcher::is_log_enabled())
+	{
+		DrawState(info);
+		return;
+	}
+	const auto legacyBefore = Stuff::Random::GetState();
+	const auto before = m_vfxRandom ? m_vfxRandom->GetState() : Stuff::Random::Stream::State{};
+	DrawState(info);
+	const auto legacyAfter = Stuff::Random::GetState();
+	const auto after = m_vfxRandom ? m_vfxRandom->GetState() : Stuff::Random::Stream::State{};
+	mc2::fmt::print_err("[VFX_DRAW_RNG v1] class=CardCloud spec={} time={:.9f} age={:.9f} seed={:.9f} stream={} state_before={} state_after={} draws_before={} draws_after={} legacy_before={} legacy_after={} unchanged={}\n",
+		mc2::fmt::safe(static_cast<const char*>(m_specification->m_name)),
+		static_cast<double>(m_lastRan), static_cast<double>(m_age), static_cast<double>(m_seed),
+		m_vfxRandom ? "56465852" : "legacy", before.value, after.value, before.draws, after.draws,
+		legacyBefore.draws, legacyAfter.draws, (before == after && legacyBefore == legacyAfter) ? 1 : 0);
+}
+
+void gosFX::CardCloud::DrawState(DrawInfo *info)
+{
 	Check_Object(this);
 	Check_Object(info);
 
-	// GPU render path (Stage 2'): re-emit current cloud to the batcher on
-	// every Draw() call. This matches the legacy path which submits card
-	// geometry to MLR render lists each frame. SpawnCardCloud samples spec
-	// curves at resolveSampleAge(m_age) (0.5 unless MC2_VFX_AGE_SAMPLE=1)
-	// (per-frame CPU-animated positions are a B2 polish item).
-	// SpinningCloud::Draw propagates up the chain for EffectCloud children;
-	// it does not render card geometry.
-	//
-	// NOTE: GPU spawn moved from Start() to here. Start()-based emission only
-	// filled the batcher for one frame (until the first Flush()), leaving the
-	// batcher empty for all subsequent frames.
+	// Live particles retain their birth randomness across repeated frozen draws.
+	// Placeholder resimulation consumed RNG and changed geometry on every render.
 	if (mc2::particles::Batcher::is_enabled()) {
 		// VFX-GPU-SIM-CARDCLOUD-BUFFER-1: observe-only handoff of the live CPU
 		// sim state into the persistent GPU sim SSBO. Independent of the oracle
@@ -556,19 +564,8 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 			                         static_cast<unsigned>(m_activeParticleCount));
 		}
 
-		if (mc2::particles::Batcher::is_oracle_render_enabled()) {
-			// VFX-ORIGINAL-RECORD-ABI-1 (Phase 1, CardCloud): CPU-oracle render.
-			// ParticleCloud::Execute (which runs every frame under GPU mode)
-			// keeps each live particle current: m_localTranslation and m_scale
-			// are advanced per-frame, m_P_color[i] is recomputed in
-			// CardCloud::AnimateParticle, and m_halfX/Y are per-particle
-			// birth-time extents (set in CreateNewParticle). All are valid at Draw.
-			// Emit one GPU billboard per LIVE particle from that real data. CPU
-			// sim stays authoritative; the legacy MLR draw stays skipped (no
-			// dual-draw). Per-particle rotation (m_localRotation), aspect
-			// (halfX vs halfY) and per-particle UV frame are NOT representable in
-			// the existing 64B GpuParticle record — deferred to the ABI-extension
-			// follow-up (docs/vfx-originals-restoration-design.md).
+		{
+			// CPU updates retain the authored particle state in both render arms.
 			if (m_activeParticleCount > 0 && m_P_color) {
 				Specification *spec = GetSpecification();
 				Check_Object(spec);
@@ -743,8 +740,6 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 					}
 				}
 			}
-		} else {
-			(void)mc2::particles::Spawn(GetSpecification(), &m_localToWorld, (float)m_seed, (float)m_age);
 		}
 		// VFX-WEAPON-FX-RESTORE-OPUS-1: call Effect::Draw (not SpinningCloud::Draw) to
 		// propagate to EffectCloud children without re-submitting this cloud to MLR.
@@ -1153,10 +1148,7 @@ void
 }
 
 //------------------------------------------------------------------------------
-// B1 Stage 2' C11 — route to GPU particle pipeline when env-gated on.
-// See pointcloud.cpp Start for the full rationale; same pattern as
-// ShardCloud (C5/C8). C10 diagnostic showed CardCloud is 45.9% of stock
-// Effect::Start calls in mc2_10 — the dominant per-class spawn type.
+// Both render arms require the inherited particle initialization.
 //
 void
 	gosFX::CardCloud::Start(ExecuteInfo *info)
@@ -1164,13 +1156,5 @@ void
 	Check_Object(this);
 	Check_Pointer(info);
 
-	// C9 fix: ALWAYS call SpinningCloud::Start (which resolves to the
-	// inherited ParticleCloud::Start) so per-particle structures are
-	// initialized. Skipping the parent under env-on corrupts heap state
-	// because the destructor and legacy Execute walk garbage memory.
 	SpinningCloud::Start(info);
-
-	// GPU spawn moved to Draw() for per-frame emission. Start()-based spawning
-	// only filled the batcher for a single frame; Draw() re-emits each frame
-	// while the effect is alive, matching the legacy MLR submission cadence.
 }

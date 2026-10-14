@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <array>
 #include"stuff.hpp"
 #include"scalar.hpp"
 
@@ -20,6 +22,39 @@ namespace Stuff {
 		#endif
 	{
 	public:
+		// A borrowed effects-session stream; the caller owns its reset/save lifecycle.
+		class Stream
+		{
+		public:
+			static constexpr std::uint32_t Id = 0x56465852u;
+			static constexpr std::uint32_t Version = 1u;
+			static constexpr auto Algorithm = "LCG32-NR-next15";
+			struct State
+			{
+				std::uint32_t seed, value;
+				std::uint64_t draws;
+				bool operator==(const State&) const = default;
+			};
+			explicit Stream(std::uint32_t rootSeed = 0) { Reset(rootSeed); }
+			void Reset(std::uint32_t rootSeed) { m_state = {rootSeed ^ Id, rootSeed ^ Id, 0}; }
+			State GetState() const { return m_state; }
+			void Restore(State state) { m_state = state; }
+			std::uint64_t GetDrawCount() const { return m_state.draws; }
+			Scalar GetFraction();
+		private:
+			State m_state;
+		};
+
+		static std::uint64_t GetDrawCount();
+		struct State
+		{
+			std::array<int, 250> numbers;
+			int index;
+			std::uint64_t draws;
+			bool operator==(const State&) const = default;
+		};
+		static State GetState();
+
 		static void
 			InitializeClass();
 		static void
@@ -42,6 +77,7 @@ namespace Stuff {
 
 		static Random
 			*Instance;
+		std::uint64_t m_drawCount = 0;
 
 		void
 			TestInstance() const {}

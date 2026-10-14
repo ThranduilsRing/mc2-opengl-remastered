@@ -12,11 +12,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import struct
 
 from PIL import Image, ImageChops, ImageDraw
+from vfx_oracle.evidence import extract
 
 
 FAMILIES = {"missile", "ppc", "explosion", "smoke"}
@@ -77,6 +79,57 @@ def provenance(record: dict) -> tuple:
     return fingerprint.lower(), bookmark, frame
 
 
+def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, primary=False) -> tuple:
+    runtime = record.get("runtime")
+    if not isinstance(runtime, dict):
+        raise ValueError("bound VFX runtime evidence absent")
+    rng = runtime["rng"]
+    if (not isinstance(rng, dict) or rng.get("owner") != "RenderWorld"
+            or rng.get("stream") != "56465852" or type(rng.get("version")) is not int
+            or rng["version"] != 1 or rng.get("algorithm") != "LCG32-NR-next15"):
+        raise ValueError("session-owned RenderWorld VFX stream unproven")
+    for key in ("seed", "state", "draw_count"):
+        bits = 64 if key == "draw_count" else 32
+        if type(rng.get(key)) is not int or not 0 <= rng[key] < 2**bits:
+            raise ValueError(f"invalid VFX RNG {key}")
+    age = runtime["effect_age"]
+    if type(age) not in (int, float) or not math.isfinite(age) or age < 0:
+        raise ValueError("effect age absent or invalid")
+    if runtime["backend"] != {"requested": "gl", "drawn": "gl", "readback": "gl_fbo"}:
+        raise ValueError("GL oracle requires actual GL drawing and FBO readback")
+    assets = runtime["assets"]
+    if not isinstance(assets, dict) or not assets:
+        raise ValueError("resolved asset hashes absent")
+    for value in [*assets.values(), runtime["birth_transcript"], runtime["log_sha256"]]:
+        if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
+            raise ValueError("asset, birth transcript and log hashes must be SHA256")
+    log_path = (base / runtime["log"]).resolve()
+    raw_log = log_path.read_bytes()
+    if hashlib.sha256(raw_log).hexdigest() != runtime["log_sha256"]:
+        raise ValueError("bound engine log hash differs")
+    births = extract(raw_log.decode("utf-8", errors="replace"))
+    if births["birth_transcript"] != runtime["birth_transcript"]:
+        raise ValueError("birth transcript differs from the bound engine log")
+    if primary and not births["rng"]["injected_stream_seen"]:
+        raise ValueError("positive capture lacks births on the owned VFX stream")
+    gates = runtime["gates"]
+    if experiment not in {"master", "harvested"}:
+        raise ValueError("name master or harvested experiment")
+    enabled = "1" if arm == "gpu" else "0"
+    harvest = enabled if experiment == "harvested" else "0"
+    expected = {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": harvest,
+                "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest,
+                "MC2_VFX_GPU_SIM_CARDCLOUD": "0", "MC2_VFX_GPU_SIM_COMPARE": "0"}
+    if gates != expected:
+        raise ValueError("gate vector differs from the named experiment")
+    process = runtime["process"]
+    if not isinstance(process, str) or not process.strip():
+        raise ValueError("fresh-process identity absent")
+    common = (rng["seed"], tuple(sorted(assets.items())))
+    positive = (rng["state"], rng["draw_count"], age, runtime["birth_transcript"])
+    return common, positive, process, log_path
+
+
 def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                source_size: tuple[int, int]) -> dict:
     comparison = compare(crops)
@@ -93,6 +146,7 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
         try:
             paths = source_paths(base, effect["images"])
             stamps = []
+            runtime_stamps, positive_stamps, processes, logs = [], [], [], []
             primary_counts, negative_counts = {}, {}
             for arm, offset in (("mlr", 0), ("gpu", 2)):
                 records = evidence["captures"][arm]
@@ -100,6 +154,15 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                     raise ValueError(f"{arm}: provenance for two repeats required")
                 for record in records:
                     stamps.append(provenance(record))
+                    common, positive, process, log = runtime_provenance(record, arm, evidence.get("experiment"), base, True)
+                    runtime_stamps.append(common)
+                    positive_stamps.append(positive)
+                    processes.append(process)
+                    logs.append(log)
+                    probe = record["runtime"].get("draw_probe", {})
+                    if (not isinstance(probe, dict) or probe.get("scope") != "all_draw_flush_cull" or probe.get("unchanged") is not True
+                            or type(probe.get("frozen_repeats")) is not int or probe["frozen_repeats"] < 2):
+                        raise ValueError("zero-RNG frozen draw/flush/cull proof absent")
                     demonstration = record.get("demonstration")
                     if not isinstance(demonstration, str) or not demonstration.strip():
                         raise ValueError(f"{arm}: visible {effect['class']} demonstration required")
@@ -107,6 +170,10 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                 for kind in ("effect_free", "suppressed"):
                     record = evidence[kind][arm]
                     stamps.append(provenance(record))
+                    common, _, process, log = runtime_provenance(record, arm, evidence.get("experiment"), base)
+                    runtime_stamps.append(common)
+                    processes.append(process)
+                    logs.append(log)
                     path = (base / record["image"]).resolve()
                     if path in paths:
                         raise ValueError("effect-free and suppressed controls require distinct capture paths")
@@ -122,6 +189,10 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                 negative_counts[arm] = changed_pixels(controls[1], controls[0])
             if len(set(stamps)) != 1:
                 raise ValueError("capture/control fingerprint, bookmark or frame differs")
+            if len(set(processes)) != 8 or len(set(logs)) != 8:
+                raise ValueError("two repeats and both controls per arm require eight fresh processes")
+            if len(set(runtime_stamps)) != 1 or len(set(positive_stamps)) != 1:
+                raise ValueError("VFX seed/state/count, effect age, assets or birth transcript differs")
             checks["effect_region_changed_pixels"] = primary_counts
             checks["negative_control"] = {
                 "changed_pixels": negative_counts,
@@ -131,7 +202,7 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                 failures.append("empty effect region: effect-free difference below presence threshold")
             if checks["negative_control"]["verdict"] != "FAIL":
                 failures.append("suppressed negative control did not FAIL effect presence")
-        except (KeyError, TypeError, ValueError, OSError) as error:
+        except (KeyError, TypeError, ValueError, OSError, OverflowError) as error:
             failures.append(f"invalid parity evidence: {error}")
     return {**comparison, "status": "DIAGNOSTIC" if failures else "PARITY",
             "parity_accepted": not failures, "parity_failures": failures, **checks}

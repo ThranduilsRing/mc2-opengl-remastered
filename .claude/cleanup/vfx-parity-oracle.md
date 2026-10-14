@@ -1,4 +1,235 @@
-# Q2: GL VFX parity oracle
+# G2 checkpoint: partial, runtime acceptance pending
+
+Worktree `A:/Games/mc2-s3`, branch `claude/vfx-oracle`, base `5563945e0`.
+No commits, index writes, deployments, game launches, particle-default changes or MLR deletion.
+This checkpoint contains a reviewed scoped diff and offline proof. The orchestrator must commit,
+build the VS tree and collect fingerprinted lane3 runtime evidence before acceptance.
+The Q2 report below is historical evidence, not a post-change capture result.
+
+## Current parity gap list (supersedes the historical Q2 list)
+
+1. **Session RNG ownership incomplete.** `Stuff::Random::Stream` is an instance value with
+   stream ID `0x56465852`, algorithm version 1, explicit seed/reset, state/restore and u64 draw count.
+   The design's `mc2_det_rng::next15` LCG produces exactly representable 15-bit fractions
+   with u32 initial seed/state (`rootSeed XOR streamId`) without calling `gos_rand` or
+   the legacy Stuff table. `Effect::ExecuteInfo` can borrow that stream; root/child Event births
+   and loop restarts propagate it. No production caller injects it yet. The existing Stuff
+   table and its startup `gos_rand` seeding remain the default; only its count/snapshot are added.
+   **There is no presentation env-seed hook or mission/restart/save-load reset yet.** Adding a
+   new process-global owner to hide that gap was explicitly rejected by the binding review.
+   The transcript covers Effect starts, not a complete legacy particle/profile birth-random tape.
+2. **Draw RNG partially removed, not globally proved.** CardCloud now always reads its live
+   CPU particles under `MC2_GPU_PARTICLES=1`, including an empty-cloud no-emission case. It
+   no longer calls `SpawnCardCloud` or rerolls placeholder offsets/velocities while drawing.
+   Birth random values already reside in the live particle state. This changes the opt-in
+   master arm's CardCloud appearance; it does not flip the shipped master default.
+   `[VFX_DRAW_RNG v1]`, under existing `MC2_GPU_PARTICLES_LOG=1`, compares the full legacy
+   table/index/count and borrowed VFX state/count before/after CardCloud plus its children.
+   This is an implemented counted probe, **not an executed frozen-draw proof**. Flush,
+   culling and other leaf classes are outside its scope. PointCloud/ShardCloud still call
+   their random-consuming placeholder helpers. PointCloud's harvested branch also falls
+   through to placeholder Spawn when its active count is zero, even with oracle-render ON.
+3. **Fixture remains the existing force-fire fixture.** It fires at `nullptr` and +150 world X
+   (`code/warrior.cpp:2104`, `:2155`), not at quonsets. The prior 30 m versus approximately
+   48 m minimum-range analysis still applies. No legal-range three-player-mech fixture or
+   weapon-family demonstration is claimed. Laser/autocannon are additional owner-scene
+   requirements; they do not replace any of the oracle's `{missile, ppc, explosion, smoke}` set.
+4. **No post-change runtime set or controls.** Both-arm/two-fresh-process repeats, an effect-free
+   control and an independently family-suppressed control per arm remain pending. The tool
+   requires eight distinct image paths, engine-log paths and process identities per graded
+   family. It now also rejects missing/mismatched owner/stream/version/seed/state/count,
+   effect age, actual GL/FBO backend, resolved asset hashes, birth transcript, log hash,
+   algorithm identity, exact gate vector and all-draw/flush/cull frozen-state proof. The diagnostic extractor
+   deliberately emits owner=null and scope=CardCloud; it cannot certify itself as complete.
+5. **Strict simulation proof pending.** The standalone stream probe proves reset/restore,
+   known sequence, count, range and legacy-table isolation. It does not prove engine sim
+   invariance. Four baseline checks and pre/post camera-park pairs must still pass strict
+   equality. No baseline was written or regenerated. The new read-only strict checker
+   rejects strict-bit drift even when graded chains agree.
+
+## Files needing owners (not edited)
+
+- **Effects-session owner:** `RenderWorld/RenderWorld.h`, `RenderWorld/RenderWorld.cpp`,
+  `GameAdapters/StaticPropRenderAdapter.cpp` (begin/end/restore at lines 66/84/92),
+  `code/mission.h`, `code/mission_init.cpp:78`, `code/mission.cpp:598`,
+  `code/saveload.cpp:67,531` and `code/saveload_load.cpp`. The current RenderWorld API is
+  namespace/process state, not a session object. Introduce a session-owned effects stream
+  and pass it through root effect construction; destroy effects before releasing the owner.
+  Register the separate harness seed in `Gates/gate_table.cpp` and its generated surfaces.
+  Reset on mission start/restart; restore seed/state/count/version with presentation state
+  on load (or document an intentional presentation reset). Do not reseed the sim stream.
+- **Whole-gosFX birth routing:** `mclib/gosfx/particlecloud.cpp`, `spinningcloud.cpp`,
+  `tube.cpp`, `debriscloud.cpp` still draw from `Stuff::Random`; `effectcloud.cpp:205`
+  must pass the borrowed stream into its particle-owned child Start. Root sites include
+  `code/weaponbolt_update.cpp`, `code/carnage.cpp`, `mclib/bdactor.cpp`,
+  `mclib/bdactor_update.cpp`, `mclib/mech3d.cpp`, `mclib/mech3d_update.cpp`,
+  `mclib/gvactor_geometry.cpp` and `mclib/gvactor_update.cpp`; inventory all remaining
+  ExecuteInfo callers before declaring ownership complete.
+- **Remaining draw RNG:** needs lane 1 for `mclib/gosfx/pointcloud.cpp:483,583` and
+  `mclib/gosfx/shardcloud.cpp:326,454`. Reuse the live harvest and make empty clouds emit
+  nothing. Their claimed `mclib/particles/spawn_point.cpp` / `spawn_shard.cpp` files cannot
+  receive per-instance birth state through the current spec/transform/seed/age interface.
+  They and `spawn_cardcloud.cpp` are left intact, not replaced by a seeded RNG in Draw.
+- **Real fixture, minimum engine patch:** needs lane 1 for `code/warrior.cpp`. Reuse an
+  explicit value of existing `MC2_FX_FORCE_SPAWN` for a separate quonset-order recipe;
+  select only the three home-team players and stable quonset object IDs, schedule normal
+  movement to an on-map/unobstructed approximately 500-world-unit firing location, then
+  inject attack TacticalOrders with a real target WID. Existing tactical orders can hold
+  progress; no new global WID latch is needed. Harness/bookmark changes remain in claim.
+  An ABL alternative needs the actual resolved mc2_01 mission/brain asset, hence its owner.
+  Family suppression needs an owned birth/draw seam covering both GPU and MLR routes.
+  `MC2_DISABLE_GOSFX` only disables MLR and is not a valid GPU effect-free control.
+- **Defect ledger:** needs orchestrator for `.claude/cleanup/BUGS-FOUND-FIXED.md` when the
+  render-time RNG fix is committed and runtime-proved; that file is outside this claim.
+
+## Verified headless attack seam and destruction path
+
+`Mover::handleTacticalOrder` (`code/mover_combat.cpp:8,148`) sends player orders to
+`setPlayerTacOrder` / the existing queue; `code/warrior_alarms.cpp:134` records the pending
+order. `TacticalOrder::execute` calls `orderAttackObject` at `code/tacordr.cpp:953`.
+`code/warrior_orders.cpp:395,444` constructs a real target-WID attack and performs the
+normal range/pursuit setup. An existing headless commander-order example is
+`code/warrior.cpp:2205`; it attacks nearest enemy mechs, not buildings. The ABL seam is
+`code/ablmc2_orders.cpp:299,302` (findByPartId then commander-origin orderAttackObject).
+Terrain-object enumeration is already exposed at `code/objmgr.h:381,483`; stable part IDs
+resolve at `code/objmgr_pick.cpp:48`. None of these files was edited.
+
+Current damage handling invokes building destruction directly:
+`code/bldng.cpp:1513` calls `playDestruction`, with generic-explosion fallback;
+`mclib/bdactor.cpp:786,815` creates and starts the effect. The same hit path immediately
+updates the appearance at `code/bldng.cpp:1528`. `mclib/bdactor_static.cpp:64` rejects
+static eligibility while destructFX exists; `:483` includes that eligibility in IsStaticNow.
+The object-manager skip at `code/objmgr_update.cpp:903,1033` depends on IsStaticNow.
+Effect advancement/draw are `mclib/bdactor_update.cpp:721` and `bdactor_render.cpp:339`.
+Thus the old idle-update hook failure does not prove a real attack cannot play destruction
+FX today. This is source evidence; actual quonset destruction is still unverified.
+
+## Exact experiments and evidence format
+
+Vector order: `(GPU_PARTICLES, VFX_ORACLE_RENDER, VFX_ORACLE_TUBE, VFX_ORACLE_SHAPE,
+VFX_GPU_SIM_CARDCLOUD, VFX_GPU_SIM_COMPARE)`; all names have `MC2_` prefixes.
+
+| Experiment | MLR | GPU | Meaning |
+|---|---|---|---|
+| `--experiment master` (default) | `(0,0,0,0,0,0)` | `(1,0,0,0,0,0)` | Historical master toggle; this diff changes CardCloud alone to live harvesting. Other placeholder/hybrid routes remain. |
+| `--experiment harvested` | `(0,0,0,0,0,0)` | `(1,1,1,1,0,0)` | Retirement design's candidate; still hybrid/unproven and PointCloud empty-state fallback remains. |
+
+The wrapper explicitly pins every gate, records it in fingerprint checks and emits one
+`<arm>-r<N>-runtime.json` per fresh process. Those diagnostic files bind raw birth records
+and their transcript SHA256 to the engine-log SHA256. They do not fabricate asset,
+backend, session-reset, coverage or full-pipeline RNG attestations.
+
+For PARITY, each primary/control record additionally needs `runtime`: `process`,
+`effect_age`, `rng={owner:"RenderWorld",stream:"56465852",algorithm:"LCG32-NR-next15",version:1,seed,state,draw_count}`,
+`backend={requested:"gl",drawn:"gl",readback:"gl_fbo"}`, nonempty resolved `assets`
+(path-to-SHA256), `birth_transcript`, `log`, `log_sha256`, and the exact six-entry `gates`
+dictionary (string "0"/"1" values). Positives also need
+`draw_probe={scope:"all_draw_flush_cull",unchanged:true,frozen_repeats:2}` or greater.
+Declare `evidence.experiment` as `master` or `harvested`. The tool verifies the bound log
+bytes and birth transcript; positives must contain injected-stream birth records. Reviewed
+coverage and full-pipeline scope remain explicit attestations, not image recognition.
+Controls share seed/assets/backend/gates; positive repeats and arms must also share sampled
+state/count/age/birth transcript. Missing or inconsistent fields remain DIAGNOSTIC.
+
+## Offline proof and retained pre-change images
+
+- `py -3 -B tools/vfx_oracle/probe_rng.py --out E:/mc2-archive-2026-10/vfx-oracle-g2/rng-probe-lcg`:
+  compile/run rc=0, 30 s compiler / 10 s runtime bounds; optimized debug-info probe against
+  the real random.cpp. Known root-seed-42 sequence starts 9340/32768, 21221/32768. Existing
+  GameOS operator-delete exception-spec warnings only. This is not the VS engine build.
+- `py -3 tools/build_contract_harnesses.py --run --unit --unit-only`: SUCCESS in 392 s;
+  3,112 cases passed, 3 skipped; expected intentional-failure assertions remain expected.
+- `py -3 -B -m pytest tools/test_capture_vfx_oracle.py tools/test_vfx_parity_oracle.py tools/test_vfx_rng_evidence.py -q --capture=sys -p no:tmpdir -p no:cacheprovider`:
+  71 passed. No collection blocker or compiler timeout.
+- `git -c core.whitespace=cr-at-eol diff --check`: passed; CRLF C++ and LF Python/report
+  preserved. Plain `git diff --check` flags the preserved CR bytes as trailing whitespace.
+- `py -3 -B tools/vfx_parity_oracle.py tools/vfx_oracle/regions.json --out E:/mc2-archive-2026-10/vfx-oracle-g2/prechange-diagnostic`:
+  expected exit 1, all four DIAGNOSTIC; historical digest pairs unchanged. All four new
+  montages were opened and viewed: PPC shows mechs/status bars without a demonstrated
+  beam; missile shows enormous opaque GPU strips with differing repeats; explosion is
+  obscured by an opaque GPU polygon; smoke loses the dense CPU puff and has drifting GPU
+  specks/strips. None demonstrates laser/autocannon or the requested all-three scene.
+
+Three preliminary standalone clang invocations failed on missing PLATFORM_WINDOWS,
+missing GameOS/gameos include path, then missing test gos_rand implementation. These
+were fast compile/link setup failures, not timeouts. The final bounded probe fixes those
+inputs and passes; no production stubs were added. CIM process introspection was denied;
+no process was killed. No Git Bash/contracts, VS engine build, build_fingerprint,
+deployment, new captures, DEPLOY_FINGERPRINT runtime proof or sim pairs were run here:
+the binding checkpoint reserves commit/build/deploy/runtime acceptance to the orchestrator.
+
+## Orchestrator proof commands (not executed here)
+
+Before and after the commit, retain runs with identical seed, fixture, asset bytes,
+render gates and camera inputs. Use fresh `pre`/`post` output roots; never write baselines.
+Each stage runs these four baseline checks (check prints a strict-drift warning but may
+exit zero; inspect it and run the strict checker afterward):
+
+```powershell
+py -3 tools/sim_determinism.py check mc2_03 --install lane3 --duration 60 --out E:/mc2-archive-2026-10/vfx-oracle-g2/pre/mc2_03
+py -3 tools/sim_determinism.py check mc2_10 --install lane3 --duration 60 --out E:/mc2-archive-2026-10/vfx-oracle-g2/pre/mc2_10
+py -3 tools/sim_determinism.py check mc2_24 --install lane3 --duration 60 --out E:/mc2-archive-2026-10/vfx-oracle-g2/pre/mc2_24
+py -3 tools/sim_determinism.py check mc2_16 --install lane3 --duration 60 --out E:/mc2-archive-2026-10/vfx-oracle-g2/pre/mc2_16
+py -3 tools/sim_determinism.py run mc2_24 --install lane3 --duration 60 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300 --out E:/mc2-archive-2026-10/vfx-oracle-g2/pre/camera
+```
+
+After orchestrator commit, the VS build/deploy and post-change capture commands are:
+
+```powershell
+& 'C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' --build build64 --config RelWithDebInfo --target build_fingerprint mc2 mc2_launcher
+py -3 scripts/deploy_payload.py A:/Games/mc2-opengl/mc2-win64-lane3 --allow-new-target
+py -3 scripts/capture_vfx_oracle.py --plan tools/vfx_oracle/capture-plan.json --experiment master --out E:/mc2-archive-2026-10/vfx-oracle-g2/post/master
+py -3 scripts/capture_vfx_oracle.py --plan tools/vfx_oracle/capture-plan.json --experiment harvested --out E:/mc2-archive-2026-10/vfx-oracle-g2/post/harvested
+```
+
+Repeat the five sim commands with `/pre/` replaced by `/post/`. For each baseline mission,
+substitute its name for mc2_03 in this exact strict proof (four retained independent logs):
+
+```powershell
+py -3 -B tools/vfx_oracle/check_strict_sim.py tests/smoke/sim_determinism/mc2_03.json E:/mc2-archive-2026-10/vfx-oracle-g2/pre/mc2_03/a/mc2_03.log E:/mc2-archive-2026-10/vfx-oracle-g2/pre/mc2_03/b/mc2_03.log E:/mc2-archive-2026-10/vfx-oracle-g2/post/mc2_03/a/mc2_03.log E:/mc2-archive-2026-10/vfx-oracle-g2/post/mc2_03/b/mc2_03.log --install lane3
+py -3 tools/sim_determinism.py compare E:/mc2-archive-2026-10/vfx-oracle-g2/pre/camera/a/mc2_24.log E:/mc2-archive-2026-10/vfx-oracle-g2/post/camera/a/mc2_24.log
+py -3 tools/sim_determinism.py compare E:/mc2-archive-2026-10/vfx-oracle-g2/pre/camera/b/mc2_24.log E:/mc2-archive-2026-10/vfx-oracle-g2/post/camera/b/mc2_24.log
+```
+
+Also repeat the camera pair with `--env MC2_DISABLE_GOSFX=1` in both stages as the
+design's MLR-off diagnostic; that switch does not suppress the GPU routes. Inspect each
+fingerprint verdict and strict comparison, not command exit alone. Same-process duplicate
+bookmark poses supply the frozen CardCloud probe samples, not the fresh-process repeats.
+Collect effect-free/family-suppressed controls only after valid cross-route hooks exist.
+Create a new regions manifest with the post paths, reviewed demonstrations and bound
+runtime records; run `vfx_parity_oracle.py <manifest> --out <fresh-montage-dir>`, then view
+every montage. Missing ownership, coverage or controls must keep its result DIAGNOSTIC.
+
+SIMID limits: current v1 includes movers, sampled building/turret fields, ABL instance
+records/statics and selected RNG accounting (`code/sim_identity.cpp:164,202,332` and
+`mclib/sim_identity.h:307,357`). It is not the complete authoritative kernel digest in the
+sim design: pending execution/ingress/path state, all script/media state and presentation
+particles are not all represented. Installed data fingerprints hash archives by content
+but loose trees by path/size (`tools/sim_determinism.py:68`); pin resolved asset SHA256s
+and options separately. Strict equality is necessary, not a proof of every unrecorded field.
+
+## History not repeated; scratch retained
+
+No billboard-per-profile/PPC-head substitutes or gpu_trail ring restamping (wrong primitive),
+age-zero/midlife placeholder rebaking (discarded live curves), CPU curve cache or GPU sim
+offload (measured poor payoff), idle-golden/default-ON promotion (missing combat evidence),
+or quonset idle-update-hook spawning (historical static-skip obstacle). No Tube geometry
+change is designed here; the CPU profile/UV and RenderDoc interpretation investigation is
+still required before any Tube replacement. The CardCloud harvest itself reuses the
+already-existing CPU-state route; the difference is removing its RNG-consuming fallback.
+
+Retained scratch: `E:/mc2-archive-2026-10/g2-rng-probe.exe`; under
+`E:/mc2-archive-2026-10/vfx-oracle-g2/`, `prechange-diagnostic/{digests.json,ppc.png,missile.png,explosion.png,smoke.png}`
+and `rng-probe-lcg/{compile-command.json,compile.log,run.log,rng_probe.exe,rng_probe.pdb}`.
+The same five files under `rng-probe/`, and the standalone root `g2-rng-probe.exe`, are
+superseded pre-LCG scratch, not the final proof. The design's LCG requirement was caught
+in the final design re-read and replaced the preliminary algorithm before delivery.
+Existing `build64-tests` configure/build outputs were updated by doctest. No files deleted.
+Faster next batch: authorize the exact owner surfaces up front; provide captured family
+suppression hooks and stable scene target IDs; retain pre-change strict logs before the
+new build; provide a standalone native RNG test seam instead of engine-header setup probes.
+
+# Q2: GL VFX parity oracle (historical)
 
 Status: **DIAGNOSTIC / PARITY not accepted** for each of missile/LRM trail, PPC,
 explosion and smoke, and for the complete evidence set. All twelve final captures were

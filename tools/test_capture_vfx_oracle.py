@@ -21,7 +21,9 @@ def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
     assert "MC2_RENDER_BACKEND=gl" in cmd
     assert ("MC2_GPU_PARTICLES=1" in cmd) == (arm == "gpu")
     assert ("MC2_GPU_PARTICLES=0" in cmd) == (arm == "mlr")
-    assert not any("MC2_VFX_ORACLE_" in s for s in cmd)
+    assert all(f"{name}=0" in cmd for name in
+               ("MC2_VFX_ORACLE_RENDER", "MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_SHAPE",
+                "MC2_VFX_GPU_SIM_CARDCLOUD", "MC2_VFX_GPU_SIM_COMPARE"))
     assert "--no-lease" not in cmd and "--show-window" not in cmd
 
 
@@ -32,6 +34,18 @@ def test_capture_rejects_invalid_arm_and_frame():
         command(Path("a"), Path("b"), -1, "gpu")
     with pytest.raises(ValueError):
         command(Path("a"), Path("b"), 152, "gpu", "unsupported")
+    with pytest.raises(ValueError):
+        command(Path("a"), Path("b"), 152, "gpu", experiment="unknown")
+
+
+@pytest.mark.parametrize("arm", ["mlr", "gpu"])
+def test_harvested_experiment_pins_the_complete_candidate_and_no_gpu_sim(arm):
+    gates = runner.gate_vector(arm, "harvested")
+    enabled = "1" if arm == "gpu" else "0"
+    assert {gates[k] for k in gates if "SIM_" not in k} == {enabled}
+    assert gates["MC2_VFX_GPU_SIM_CARDCLOUD"] == gates["MC2_VFX_GPU_SIM_COMPARE"] == "0"
+    cmd = command(Path("a"), Path("b"), 152, arm, experiment="harvested")
+    assert all(f"{key}={value}" in cmd for key, value in gates.items())
 
 
 def test_one_shot_fixture_is_an_explicit_capture_input():
