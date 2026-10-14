@@ -46,7 +46,7 @@ EVIDENCE INDEX (session 2026-10-13 evening, lane-1 Sonnet, from about 17:00 CDT,
 
 ## Open
 - B2.3 objectives (83 sites, 13 files, SIM-VISIBLE): first the include-only commit for `code/objective.cpp` (PCH skip list, D16: `<vector>` / `<memory>`), objhash-compared; P3 (objective status per frame) is not built; the `logisticsdata_save.cpp:464` loop and `mission.cpp` loops are re-touched.
-- B2.4 waits for the Codex ABL slice (`ABLi_popIntegerBuf`, `execGetContacts` / `execSortWeapons` spans, `ablmc2_camera.cpp` list and static `sortValues`, plus the new site `ablmc2_state.cpp:677 Terrain::markRadiusSeen`); needs a `sortWeapons` fixture (unexercised on stock) and the patched-old equivalence; and the capacity of `SensorSystem::sortList` (200) against 255 contacts (notes section 10). R11: tell lane 2 and the sim-kernel track the baselines are re-made once at B2.4.
+- B2.4: the ABL slice, the markRadiusSeen and sortValues deletions are DONE; the rule commit needs a `sortWeapons` fixture (unexercised on stock), the patched-old equivalence, and the 200-slot decision of notes section 11 (delete the 200, sort the whole prefix). R11: tell lane 2 and the sim-kernel track the baselines are re-made once at B2.4.
 - B2.5: per-solver open lists; a fixture for the escape and goal-map solvers; P2 per-solve hashes in both `MC2_PATH_SOLVE_ISOLATED` positions. `reKeyOpenDoor` in `move_globalmap_path.cpp` becomes the heap's own method; HP7's 5001 is the floor for the new capacity.
 - B2.2c (logistics owners as `unique_ptr`, D12; `own_inventory` rows fall) was not started: optional, a separate diff.
 - B1.6 / B1.7 / B6 (EString editor and gui widgets), F1 (the `[VIDEO v1]` absence rule: text now in b1-notes 8e, routed to lane 2 / the smoke owner), F4 (`std::string` loader for `cLoadString`), pch_audit (`build-pch-off/on` stale; the objhash proofs cover the include changes).
@@ -55,7 +55,7 @@ EVIDENCE INDEX (session 2026-10-13 evening, lane-1 Sonnet, from about 17:00 CDT,
 
 ## NEXT, in order
 1. Docs commit of this session's notes, census and bug row (below), then lane merge by the orchestrator: `py -3 tools/lane_merge.py <sha>`; the Codex merges (editor strings, ABL out-arrays, the save Archive, sim include firewall, asset-json line endings, cull batches) land on nifty after this session. After that merge: rebuild, redeploy, `sim_determinism check` x4 (the asset-json fix removes the QuonsetGLB.mcasset.json size workaround), then B2.3.
-2. B2.3 is done (session 2026-10-14); B2.4 after the Codex ABL slice and the reviewed re-record of the four SIMID baselines (the install data fingerprint moved); B2.5 last; E-batches are the Codex track's.
+2. B2.3 is done (session 2026-10-14); B2.4 after the reviewed re-record of the four SIMID baselines (the install data fingerprint moved); B2.5 last; E-batches are the Codex track's.
 3. Pin the OLD-editor outputs of the E0 ledger (G6) before any editor batch (Codex).
 
 ## Tool notes (new this session)
