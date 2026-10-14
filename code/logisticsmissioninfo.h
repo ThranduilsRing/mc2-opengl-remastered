@@ -190,7 +190,8 @@ class LogisticsMissionInfo
 			// not always a position of this group: an out-of-range index logs once and yields an all-default record, never a read outside `infos`.
 			MissionInfo* mission( long index ) const;
 
-			// What mission() hands back for an index outside the group; writes to it are discarded with the group.
+			// What mission() hands back for an index outside the group; writes to it are discarded with the group. It is ONE record per group that every out-of-range
+			// mission() call resets, so a pointer to it is valid only until the next mission() call on this group; do not keep two of them.
 			mutable MissionInfo outOfRange;
 			mutable bool outOfRangeLogged = false;
 		};

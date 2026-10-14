@@ -956,7 +956,7 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 		// that holds more valid contacts than that has the first MAX_CONTACTS_PER_SENSOR (scan order) sorted and the rest appended unsorted.
 		const long sortCount = (numValidContacts < MAX_CONTACTS_PER_SENSOR) ? numValidContacts : MAX_CONTACTS_PER_SENSOR;
 		if (sortCount < numValidContacts)
-			MC2_LOG(Sim, Warn, "getContacts: {} valid contacts exceed the {} sortable, the rest are returned unsorted", numValidContacts, MAX_CONTACTS_PER_SENSOR);
+			MC2_LOG_ONCE(Sim, Warn, "getContacts: {} valid contacts exceed the {} sortable, the rest are returned unsorted", numValidContacts, MAX_CONTACTS_PER_SENSOR);
 		if (!SensorSystem::sortList) {
 			SensorSystem::sortList = new SortList;
 			if (!SensorSystem::sortList)

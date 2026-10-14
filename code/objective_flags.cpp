@@ -66,3 +66,9 @@ void CBooleanArray::load(long alignment, FitIniFile* file)
 		m_flags.push_back({std::move(id), value});
 	}
 }
+
+// Lives here, not in objective.cpp: this file already carries the logging facade and objective.cpp is on the PCH skip list.
+void logDroppedObjectivePart()
+{
+	MC2_LOG_ONCE(Sim, Warn, "objective: a null condition or action was dropped from an objective list");
+}
