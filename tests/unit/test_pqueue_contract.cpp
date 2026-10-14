@@ -11,6 +11,7 @@
 
 #include "heap.h"
 #include "pqueue.h"
+#include "open_heap.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -42,6 +43,24 @@ struct OldHeap
 	int find(uint32_t id) { return q.find(id); }
 	int count() { return q.getNumItems(); }
 	PQNode at(int index) { return *q.getItem(index); }
+	void clear() { q.clear(); }
+};
+
+// The heap that replaces it (mclib/open_heap.h), behind the same adapter, so the recorded scripts below run against both.
+struct NewHeap
+{
+	mc2::OpenHeap q;
+	explicit NewHeap(int capacity) : q(capacity) {}
+	int insert(int32_t key, uint32_t id)
+	{
+		q.insert(PQNode{key, id, int32_t(id & 7), key});
+		return 0;
+	}
+	bool pop(PQNode& out) { return q.popMin(out); }
+	void change(int index, int key) { q.changeAt(index, key); }
+	int find(uint32_t id) { return q.find(id); }
+	int count() { return q.size(); }
+	PQNode at(int index) { return q.at(index); }
 	void clear() { q.clear(); }
 };
 
@@ -383,6 +402,71 @@ TEST_CASE("HP generator" * doctest::skip())
 	}
 	std::fprintf(f, "};\n");
 	std::fclose(f);
+}
+
+TEST_CASE("OH1 the open heap reproduces the 2000 recorded A*-shaped scripts of the old heap")
+{
+	int mismatches = 0;
+	for (uint64_t seed = 0; seed < 2000; ++seed)
+	{
+		NewHeap h(300);
+		if (runScript(h, seed) != kHp6Hashes[seed])
+			++mismatches;
+	}
+	CHECK(mismatches == 0);
+}
+
+TEST_CASE("OH2 the open heap gives the old tie order on every recorded readable script")
+{
+	int i = 0;
+	for (const Hp2Case& c : kHp2Cases)
+	{
+		NewHeap h(64);
+		INFO(c.name);
+		CHECK(runOps(h, c.ops) == std::string(kHp2Expect[i]));
+		++i;
+	}
+}
+
+TEST_CASE("OH3 the open heap grows past its first size and past the old 5001-node limit without dropping a node")
+{
+	NewHeap h(4);
+	for (uint32_t i = 1; i <= 6000; ++i)
+		h.insert(int32_t(7000 - i), i);
+	CHECK(h.count() == 6000);
+	PQNode n;
+	REQUIRE(h.pop(n));
+	CHECK(n.id == 6000);
+}
+
+TEST_CASE("OH4 rekey finds the node by id and a miss changes nothing")
+{
+	mc2::OpenHeap heap(10);
+	for (uint32_t i = 1; i <= 5; ++i)
+		heap.insert(PQNode{int32_t(10 * i), i, 0, 0});
+	CHECK(heap.rekey(5, 1));
+	PQNode n;
+	REQUIRE(heap.popMin(n));
+	CHECK(n.id == 5);
+	CHECK(n.key == 1);
+	CHECK_FALSE(heap.rekey(99, 0));          // the id is not in the heap: no sift from a wrong slot (the old H18 failure)
+	REQUIRE(heap.popMin(n));
+	CHECK(n.id == 1);
+	CHECK_FALSE(heap.rekey(0xFFFFFFFFu, 0)); // the filler slot is not a node
+	CHECK(heap.size() == 3);
+}
+
+TEST_CASE("OH5 a key below every other key rises to the root and cannot run off the top (H14)")
+{
+	mc2::OpenHeap heap(10);
+	heap.insert(PQNode{5, 1, 0, 0});
+	heap.insert(PQNode{-5000000, 2, 0, 0});
+	PQNode n;
+	REQUIRE(heap.popMin(n));
+	CHECK(n.id == 2);
+	REQUIRE(heap.popMin(n));
+	CHECK(n.id == 1);
+	CHECK_FALSE(heap.popMin(n));
 }
 
 } // TEST_SUITE
