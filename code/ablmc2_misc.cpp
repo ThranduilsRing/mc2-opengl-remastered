@@ -452,12 +452,11 @@ void execGetNextPilotEvent (void) {
 	const auto output = ABLi_popIntBuf();
 	int params[MAX_ALARM_TRIGGERS] = {};
 	static_assert(std::size(params) == std::extent_v<decltype(PilotAlarm::trigger)>);
-	const long eventID = CurWarrior ? CurWarrior->getNextEventHistory(params) : -1;
-	if (eventID >= 0) {
-		const auto count = CurWarrior->getEventHistory(eventID, params);
-		abl::copyIntArray(output, {params, static_cast<size_t>(count)}, "getnextpilotevent_truncated");
+	const auto event = CurWarrior ? CurWarrior->getNextEventHistory(params) : MechWarrior::EventHistoryResult{};
+	if (event.eventID >= 0) {
+		abl::copyIntArray(output, {params, static_cast<size_t>(event.count)}, "getnextpilotevent_truncated");
 	}
-	ABLi_pushInteger(eventID);
+	ABLi_pushInteger(event.eventID);
 }
 
 void execSetTargetPriority (void) {

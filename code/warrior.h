@@ -1970,7 +1970,8 @@ class MechWarrior {
 
 		long getEventHistory (long alarmCode, int* paramList);
 
-		long getNextEventHistory (int* paramList);
+		struct EventHistoryResult { long eventID = -1; long count = 0; };
+		EventHistoryResult getNextEventHistory (int* paramList);
 
 		//--------------
 		// CORE COMMANDS

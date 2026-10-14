@@ -203,18 +203,18 @@ long MechWarrior::getEventHistory (long alarmCode, int* paramList) {
 	return(numValidTriggers);
 }
 
-long MechWarrior::getNextEventHistory (int* paramList) {
+MechWarrior::EventHistoryResult MechWarrior::getNextEventHistory (int* paramList) {
 
 	if (curEventID < NUM_PILOT_ALARMS) {
 		while ((curEventID < NUM_PILOT_ALARMS) && (alarmHistory[curEventID].numTriggers == 0))
 			curEventID++;
 		if (curEventID < NUM_PILOT_ALARMS) {
-			getEventHistory(curEventID, paramList);
+			const long count = getEventHistory(curEventID, paramList);
 			curEventID++;
-			return(curEventID - 1);
+			return {curEventID - 1, count};
 		}
 	}
-	return(-1);
+	return {};
 }
 
 long MechWarrior::handleAlarm (long alarmCode, unsigned long triggerId) {
