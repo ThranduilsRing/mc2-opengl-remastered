@@ -68,8 +68,8 @@ bool init_island(WaterIsland* s, int w, int h) {
          "(color0+normal+depth, no composite, direct-chain native, no interop).");
     // ---- UBOs (per parity slot, VK-WATER-FENCE-DEFER-1). ----
     for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo[i], &s->vsUboAlloc[i], "water.vsUbo", static_cast<int>(i))) return false;
-        if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo[i], &s->fsUboAlloc[i], "water.fsUbo", static_cast<int>(i))) return false;
+        if (!make_buffer(s, s->vsUbo[i], sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.vsUbo", static_cast<int>(i))) return false;
+        if (!make_buffer(s, s->fsUbo[i], sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.fsUbo", static_cast<int>(i))) return false;
     }
 
     // ---- Recipe SSBO (mission-static, copied once at first run). Sized to the
@@ -78,7 +78,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         const uint32_t rc = WaterStream::GetRecipeCount();
         // 64B/recipe (WaterRecipe). Allocate at least 1 to keep the descriptor valid.
         s->recipeBytes = (VkDeviceSize)(rc ? rc : 1) * 64;
-        if (!make_buffer(s, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc, "water.recipeBuf")) return false;
+        if (!make_buffer(s, s->recipeBuf, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.recipeBuf")) return false;
     }
     // Thin SSBOs (per parity slot) — start with a small ring; grows in run().
     if (!ensure_thin_capacity(s, 0, 64 * 1024)) return false; // ~1365 records to start
@@ -144,7 +144,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         rpci.attachmentCount = 3; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) {
+        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
             vlog("vkCreateRenderPass failed."); return false;
         }
         VkImageView fbViews[3] = {
@@ -154,9 +154,9 @@ bool init_island(WaterIsland* s, int w, int h) {
         };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
-        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb) != VK_SUCCESS) {
+        if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("vkCreateFramebuffer failed."); return false;
         }
     }
@@ -183,7 +183,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 7; lci.pBindings = b;
-        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
+        if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-WATER-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
@@ -194,13 +194,13 @@ bool init_island(WaterIsland* s, int w, int h) {
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
-        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
+        if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
-        VkDescriptorSetLayout layouts[2] = { s->dsl, s->dsl };
+        VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
@@ -210,14 +210,15 @@ bool init_island(WaterIsland* s, int w, int h) {
     // ---- Pipeline (procedural VS, no vertex input; GEQUAL depth on+write on;
     // cull none; MRT alpha-blend SRC_ALPHA/ONE_MINUS_SRC_ALPHA on both color atts). ----
     {
-        s->vert = load_spv(s->device, spv_dir() + "water_geom.vert.spv");
-        s->frag = load_spv(s->device, spv_dir() + "water_geom.frag.spv");
-        if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) { setFallback("spv_load_failed"); return false; }
+        s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "water_geom.vert.spv"));
+        s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "water_geom.frag.spv"));
+        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
-        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) {
+        const VkDescriptorSetLayout dslHandle = s->dsl.get();
+        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
+        if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("vkCreatePipelineLayout failed."); return false;
         }
 
@@ -271,20 +272,20 @@ bool init_island(WaterIsland* s, int w, int h) {
 
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert; stages[0].pName = "main";
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag; stages[1].pName = "main";
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;
         gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
-        gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
-        if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
+        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
-        mc2vk::nameObject(s->device, s->pipe, "water.pipe");
+        mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity) + fence. ----
@@ -293,17 +294,17 @@ bool init_island(WaterIsland* s, int w, int h) {
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool) != VK_SUCCESS) {
+        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
         VkFenceCreateInfo fnci{}; fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (vkCreateFence(s->device, &fnci, nullptr, &s->fence) != VK_SUCCESS) {
+        if (!mc2vk::create(s->fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fnci, nullptr, h); })) {
             vlog("vkCreateFence failed."); return false;
         }
     }

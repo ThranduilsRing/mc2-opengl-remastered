@@ -41,18 +41,18 @@ extern "C" int mc2_vk_water_island_run(
     double us_composite = 0.0;  // GL composite draw (step 9)
 
     // Lazy init / rebuild on size change.
-    if (g_island && (g_island->w != w || g_island->h != h)) {
-        destroy_island(g_island); delete g_island; g_island = nullptr;
-    }
-    if (!g_island) {
-        g_island = new WaterIsland();
-        if (!init_island(g_island, w, h)) {
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const WaterIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<WaterIsland>();
+        if (!init_island(fresh.get(), w, h)) {
             vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
-            destroy_island(g_island); delete g_island; g_island = nullptr;
+            slotCtx.waitIdle("water_init_failure");   // objects made before the failure may have been submitted
             return 0;
         }
+        islandSlot() = std::move(fresh);
     }
-    WaterIsland* s = g_island;
+    WaterIsland* s = parkedIsland();
     // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
     // (init:640) but the old guard '|| !s->useInterop' bailed here, so under the strict
     // umbrella water returned 0 and GL silently drew water into the VK-owned GBuffer
@@ -104,16 +104,16 @@ extern "C" int mc2_vk_water_island_run(
     if (!s->recipeUploaded) {
         const VkDeviceSize need = (VkDeviceSize)recipeCount * 64;
         if (need > s->recipeBytes) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, s->recipeBuf, s->recipeAlloc);
-            if (!make_buffer(s, need, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc, "water.recipeBuf")) { s->disabled = true; return 0; }
+            slotCtx.waitIdle("water_recipe_grow");
+            s->recipeBuf.reset();
+            if (!make_buffer(s, s->recipeBuf, need, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.recipeBuf")) { s->disabled = true; return 0; }
             s->recipeBytes = need;
             write_descriptors(s);
         }
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->recipeAlloc, &p) == VK_SUCCESS) {
+        if ((p = s->recipeBuf.map()) != nullptr) {
             std::memcpy(p, recipes, (size_t)recipeCount * 64);
-            vmaUnmapMemory(s->allocator, s->recipeAlloc);
+            s->recipeBuf.unmap();
         }
         s->recipeUploaded = true;
         g_health.recipeCount = recipeCount;
@@ -124,9 +124,9 @@ extern "C" int mc2_vk_water_island_run(
     if (!ensure_thin_capacity(s, par, thinBytes)) { s->disabled = true; return 0; }
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->thinAlloc[par], &p) == VK_SUCCESS) {
+        if ((p = s->thinBuf[par].map()) != nullptr) {
             std::memcpy(p, thinRecords, (size_t)thinBytes);
-            vmaUnmapMemory(s->allocator, s->thinAlloc[par]);
+            s->thinBuf[par].unmap();
         }
     }
     g_health.thinRecords = thinCount;
@@ -134,15 +134,15 @@ extern "C" int mc2_vk_water_island_run(
     // ---- 3) Upload slot `par`'s UBOs. ----
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->vsUboAlloc[par], &p) == VK_SUCCESS) {
+        if ((p = s->vsUbo[par].map()) != nullptr) {
             WaterVsParams vsLocal;
             std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
             // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
             // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
             vsLocal.p3[1] = (((int)(((const WaterFsParams*)fsParams)->f4[0] + 0.5f) == 3) && s->shHReal) ? 1.0f : 0.0f;
-            std::memcpy(p, &vsLocal, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc[par]);
+            std::memcpy(p, &vsLocal, sizeof(WaterVsParams)); s->vsUbo[par].unmap();
         }
-        if (vmaMapMemory(s->allocator, s->fsUboAlloc[par], &p) == VK_SUCCESS) {
+        if ((p = s->fsUbo[par].map()) != nullptr) {
             WaterFsParams fsLocal;
             std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
             // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
@@ -157,7 +157,7 @@ extern "C" int mc2_vk_water_island_run(
                 fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
             }
             std::memcpy(p, &fsLocal, sizeof(WaterFsParams));
-            vmaUnmapMemory(s->allocator, s->fsUboAlloc[par]);
+            s->fsUbo[par].unmap();
         }
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
@@ -186,12 +186,12 @@ extern "C" int mc2_vk_water_island_run(
         VkClearValue clears[3]{};
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+        rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set[par], 0, nullptr);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 0, nullptr);
         vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
         vkCmdEndRenderPass(cb);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
