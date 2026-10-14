@@ -447,7 +447,9 @@ void Mission::updateObjectManager() {
 	if ( mc2SimTickFrozen(missionInterface) && !MPlayer )
 		ObjectManager->updateAppearancesOnly( true, true, true );
 	else
-		{ MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }
+		{ // Ingress precedes actor updates so orders belong to this simulation tick.
+			beginOrderSimulationTick();
+			MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }
 
 	// C1b GPU authority flip: compute_dispatch() has been MOVED to txmmgr.cpp
 	// (between GpuStaticPropRegistry::flush() and GpuStaticPropBatcher::flush())
@@ -1126,6 +1128,8 @@ long Mission::update (void)
 	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
 	if (active)
 	{
+		// Every opened tick must complete, including the mission brain's 9999 return.
+		mc2::sim::SimulationOrderCompletion<Mission> orderTickCompletion{*this};
 		turn++;
 
 		memset(ObjectManager->moverLineOfSightTable, -1, ObjectManager->maxMovers*ObjectManager->maxMovers);

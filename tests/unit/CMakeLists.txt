@@ -359,10 +359,12 @@ target_sources(mc2_tests PRIVATE
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
 target_sources(mc2_tests PRIVATE
-    test_sim_rng.cpp test_tactical_order_queue.cpp
+    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )
+set_source_files_properties(test_mission_order_ingress.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 # The Part fixtures compile the same leaf sources as the engine.
 target_sources(mc2_tests PRIVATE
     test_part_archive.cpp

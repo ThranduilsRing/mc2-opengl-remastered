@@ -1,6 +1,8 @@
 #include "tactical_order_queue.h"
 
 #include <algorithm>
+#include <atomic>
+#include <stdexcept>
 #include <tuple>
 
 namespace mc2::sim {
@@ -32,6 +34,9 @@ bool sameIdentity(const OrderEnvelope& e, const OrderReceipt& r) {
     return e.sourceId == r.sourceId && e.sequence == r.sequence && e.applyTick == r.applyTick;
 }
 bool sourcePermits(const OrderSource& source, const OrderEnvelope& e) {
+    if (source.kind == SourceKind::MissionContent)
+        return std::holds_alternative<CommanderId>(e.issuer) &&
+            e.payload.origin == OrderOrigin::Commander && !supportKind(e.payload.kind);
     if (source.kind == SourceKind::ABL) {
         const auto* issuer = std::get_if<InstanceId>(&e.issuer);
         return issuer && source.instanceId == *issuer;
@@ -368,5 +373,63 @@ bool TacticalOrderQueue::restore(std::span<const std::uint8_t> bytes, Tick compl
     if (!a.finish()) return false;
     *this = std::move(candidate);
     return true;
+}
+
+MissionOrderIngress::MissionOrderIngress() { reset(); }
+void MissionOrderIngress::reset() {
+    // This non-owning process counter prevents old tokens aliasing a new Mission at the same address.
+    static std::atomic<std::uint64_t> nextSession{1};
+    auto next = nextSession.load(std::memory_order_relaxed);
+    do {
+        if (next == std::numeric_limits<std::uint64_t>::max())
+            throw std::overflow_error("mission order session identity exhausted");
+    } while (!nextSession.compare_exchange_weak(next, next + 1, std::memory_order_relaxed));
+    session_ = next;
+    queue_ = TacticalOrderQueue{};
+    const auto registered = queue_.registerSource({1, SourceKind::MissionContent});
+    if (!registered) throw std::logic_error("mission content source registration failed");
+}
+std::expected<MissionReceipt, OrderError> MissionOrderIngress::submit(std::uint64_t session,
+    OrderEnvelope envelope, const OrderAdmissionValidator& validator) {
+    if (!session_ || session != session_) return std::unexpected(OrderError::Permission);
+    auto receipt = queue_.submitNext(std::move(envelope), validator);
+    if (!receipt) return std::unexpected(receipt.error());
+    return MissionReceipt{session_, receipt->receiptId};
+}
+std::expected<void, OrderError> MissionOrderIngress::acknowledge(MissionReceipt receipt) {
+    if (!session_ || receipt.session != session_) return std::unexpected(OrderError::UnknownReceipt);
+    return queue_.acknowledge(receipt.receiptId);
+}
+std::expected<OrderReceipt, OrderError> MissionOrderIngress::receipt(MissionReceipt token) const {
+    if (!session_ || token.session != session_) return std::unexpected(OrderError::UnknownReceipt);
+    const auto found = std::ranges::lower_bound(queue_.receipts(), token.receiptId, {}, &OrderReceipt::receiptId);
+    if (found == queue_.receipts().end() || found->receiptId != token.receiptId)
+        return std::unexpected(OrderError::UnknownReceipt);
+    return *found;
+}
+void MissionOrderIngress::close() {
+    queue_ = TacticalOrderQueue{};
+    session_ = 0;
+}
+std::expected<void, OrderError> MissionOrderIngress::beginSimulationTick(bool active, bool frozen,
+    bool multiplayer, OrderApplication& application) {
+    if (!session_ || !active || (frozen && !multiplayer)) return {};
+    if (queue_.completedTick() == std::numeric_limits<Tick>::max())
+        return std::unexpected(OrderError::Overflow);
+    auto batch = queue_.beginTick(queue_.completedTick() + 1);
+    if (!batch) return std::unexpected(batch.error());
+    for (const auto& envelope : *batch) {
+        const auto receipt = std::ranges::find_if(queue_.receipts(), [&](const auto& r) {
+            return sameIdentity(envelope, r);
+        });
+        if (receipt == queue_.receipts().end()) return std::unexpected(OrderError::UnknownReceipt);
+        const auto applied = queue_.apply(receipt->receiptId, application);
+        if (!applied) return applied;
+    }
+    return {};
+}
+std::expected<void, OrderError> MissionOrderIngress::completeSimulationTick() {
+    if (!queue_.executingTick()) return {};
+    return queue_.endTick();
 }
 } // namespace mc2::sim
