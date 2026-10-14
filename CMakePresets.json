@@ -1,0 +1,56 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {"major": 3, "minor": 25, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "windows-alltargets",
+      "hidden": true,
+      "generator": "Ninja",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "cacheVariables": {
+        "CMAKE_MAKE_PROGRAM": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "MC2_CXX_STANDARD": "23",
+        "MC2_PCH": "ON",
+        "MC2_IMGUI": "ON",
+        "MC2_EDITOR": "ON",
+        "MC2_EDITOR_IN_ALL": "ON",
+        "ENABLE_MC2FX": "ON",
+        "ENABLE_MC2FX_PREVIEW": "ON",
+        "ENABLE_MC2WEAPON_GUI": "ON",
+        "CMAKE_PREFIX_PATH": "${sourceDir}/3rdparty/cmake",
+        "GLEW_INCLUDE_DIR": "${sourceDir}/3rdparty/include",
+        "GLEW_LIBRARY": "${sourceDir}/3rdparty/lib/x64/glew32.lib",
+        "GLEW_SHARED_LIBRARY_RELEASE": "${sourceDir}/3rdparty/lib/x64/glew32.lib",
+        "GLEW_STATIC_LIBRARY_RELEASE": "${sourceDir}/3rdparty/lib/x64/glew32s.lib",
+        "ZLIB_INCLUDE_DIR": "${sourceDir}/3rdparty/include",
+        "ZLIB_LIBRARY": "${sourceDir}/3rdparty/lib/x64/zlib.lib"
+      }
+    },
+    {
+      "name": "clang-cl-dev",
+      "inherits": "windows-alltargets",
+      "binaryDir": "${sourceDir}/build-clangcl-alltargets",
+      "toolchainFile": "${sourceDir}/cmake/clangcl-toolchain.cmake"
+    },
+    {
+      "name": "clang-cl-nmake",
+      "inherits": "clang-cl-dev",
+      "generator": "NMake Makefiles",
+      "binaryDir": "${sourceDir}/build-clangcl-nmake-alltargets",
+      "cacheVariables": {"CMAKE_MAKE_PROGRAM": null}
+    },
+    {
+      "name": "msvc-ninja-dev",
+      "inherits": "windows-alltargets",
+      "binaryDir": "${sourceDir}/build-msvc-alltargets",
+      "cacheVariables": {"CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl"}
+    }
+  ],
+  "buildPresets": [
+    {"name": "clang-cl-dev", "configurePreset": "clang-cl-dev", "targets": ["all", "ui_editor"], "nativeToolOptions": ["-k", "0"]},
+    {"name": "clang-cl-nmake", "configurePreset": "clang-cl-nmake", "targets": ["all", "ui_editor"], "nativeToolOptions": ["/K"]},
+    {"name": "msvc-ninja-dev", "configurePreset": "msvc-ninja-dev", "targets": ["all", "ui_editor"]}
+  ]
+}

@@ -15,6 +15,8 @@ import time
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import console_child
+sys.path.insert(0, str(REPO_ROOT / "cmake"))
+import build_driver as bd
 
 # This migration index preserves named selection and coverage of all sixteen contracts.
 REGISTERED_HARNESSES = [
@@ -49,29 +51,42 @@ def cmake_exe():
     return _VS_CMAKE if os.path.isfile(_VS_CMAKE) else "cmake"
 
 
-def build_and_run_unit_tests(config, run, asan=False, only=None):
+def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
+                             keep_going=False, log_dir=None, jobs=None):
     started = time.monotonic()
-    bdir = REPO_ROOT / ("build64-tests-asan" if asan else "build64-tests")
+    bdir = REPO_ROOT / bd.tree_name("build64-tests-asan" if asan else "build64-tests", preset)
     cm = cmake_exe()
     commands = [
-        [cm, "-S", str(REPO_ROOT / "tests/unit"), "-B", str(bdir), "-A", "x64",
-         "-DMC2_ASAN=" + ("ON" if asan else "OFF")],
-        [cm, "--build", str(bdir), "--config", config, "--target", "mc2_tests"],
+        [cm] + bd.configure_args(REPO_ROOT, REPO_ROOT / "tests/unit", bdir, preset) +
+        ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
+        bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
     ]
     for stage, command in zip(("configure", "build"), commands):
-        result = subprocess.run(command, capture_output=True, text=True, cwd=REPO_ROOT,
-                                **console_child.child_kwargs(redirected=True))
-        if result.returncode:
-            lines = (result.stdout + result.stderr).strip().splitlines()
+        if preset or log_dir is not None or jobs or keep_going:
+            rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,
+                                vcvars=bool(preset), capture=True)
+        else:
+            result = subprocess.run(command, capture_output=True, text=True, cwd=REPO_ROOT,
+                                    **console_child.child_kwargs(redirected=True))
+            rc, output = result.returncode, result.stdout + result.stderr
+        if rc:
+            lines = output.strip().splitlines()
             errors = [line for line in lines if " error " in line or "fatal error" in line]
             detail = "\n".join(errors + lines[-12:])
             return False, f"{stage} failed:\n{detail}"
+        if stage == "configure" and preset:
+            try:
+                bd.verify_compiler(bdir, preset)
+            except RuntimeError as exc:
+                return False, str(exc)
     if not run:
         return True, f"built in {time.monotonic() - started:.0f}s"
     suffix = ".exe" if os.name == "nt" else ""
     exe = bdir / config / ("mc2_tests" + suffix)
     if not exe.is_file():
         exe = bdir / ("mc2_tests" + suffix)
+    if preset and not exe.is_file():
+        return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
     if only:
         command += ["--test-case=" + ",".join(name + "/*" for name in only)]
@@ -104,12 +119,20 @@ def main(argv=None):
     ap.add_argument("--unit", action="store_true", help="compatibility flag; native contracts now use doctest")
     ap.add_argument("--unit-only", action="store_true", help="omit Python contract suites")
     ap.add_argument("--asan", action="store_true", help="MSVC AddressSanitizer; implies --unit-only")
+    ap.add_argument("--preset", choices=bd.PRESETS, help="compiler preset; omitted preserves the MSVC trees")
+    ap.add_argument("--keep-going", action="store_true", help="Ninja -k 0 / NMake /K in the selected preset tree")
+    ap.add_argument("--log-dir", help="complete mc2_tests configure/build logs")
+    ap.add_argument("-j", dest="jobs", help="parallel jobs")
     args = ap.parse_args(argv)
+    if args.asan and bd.is_clang(args.preset):
+        ap.error("--asan runtime deployment is currently MSVC-only")
     if args.only:
         unknown = set(args.only) - set(REGISTERED_HARNESSES)
         if unknown:
             ap.error("unregistered harness: " + ", ".join(sorted(unknown)))
-    ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only)
+    ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
+                                       preset=args.preset, keep_going=args.keep_going,
+                                       log_dir=args.log_dir, jobs=args.jobs)
     print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
     if not ok:
         return 1

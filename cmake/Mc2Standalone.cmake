@@ -22,7 +22,7 @@ set(CMAKE_CXX_STANDARD ${MC2_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 # CMake maps C++23 to /std:c++latest on MSVC; pin the stable preview switch like the root project.
-if(MSVC AND MC2_CXX_STANDARD EQUAL 23)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MC2_CXX_STANDARD EQUAL 23)
     set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++23preview")
     set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++23preview")
 endif()

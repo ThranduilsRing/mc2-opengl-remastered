@@ -1,0 +1,16 @@
+# Compiler-private trees preserve Windows SDK/CRT linkage without an MSVC fallback.
+if(DEFINED ENV{MC2_TOOL_CLANG_CL})
+    set(_mc2_clang_cl "$ENV{MC2_TOOL_CLANG_CL}")
+else()
+    find_program(_mc2_clang_cl NAMES clang-cl
+        HINTS "$ENV{LLVM_ROOT}/bin" "C:/Program Files/LLVM/bin" REQUIRED)
+endif()
+if(NOT EXISTS "${_mc2_clang_cl}")
+    message(FATAL_ERROR "clang-cl unavailable: ${_mc2_clang_cl}")
+endif()
+foreach(_lang C CXX)
+    if(DEFINED CMAKE_${_lang}_COMPILER AND NOT CMAKE_${_lang}_COMPILER STREQUAL "${_mc2_clang_cl}")
+        message(FATAL_ERROR "Refusing a different cached ${_lang} compiler: ${CMAKE_${_lang}_COMPILER}")
+    endif()
+    set(CMAKE_${_lang}_COMPILER "${_mc2_clang_cl}" CACHE FILEPATH "clang-cl compiler")
+endforeach()
