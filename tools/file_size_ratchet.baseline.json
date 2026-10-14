@@ -24,7 +24,7 @@
   "RenderCore/RendererFeatureRegistry.h": 1741,
   "code/artlry.cpp": 1818,
   "code/bldng.cpp": 1692,
-  "code/brain_special_dispatch.cpp": 2772,
+  "code/brain_special_dispatch.cpp": 2775,
   "code/gamecam.cpp": 1591,
   "code/gameobj.cpp": 2362,
   "code/infowindow.cpp": 1730,
@@ -136,7 +136,7 @@
   },
   {
    "file": "code/brain_special_dispatch.cpp",
-   "lines": 2772
+   "lines": 2775
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
