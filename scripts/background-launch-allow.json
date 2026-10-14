@@ -23,6 +23,7 @@
   "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
  },
  "direct_spawn": {
+  "tools/vfx_oracle/probe_rng.py": "runs clang++ and the standalone rng_probe.exe console helper (no game or window); Rule 10 children use console_child.child_kwargs(redirected=True), with 30s compile and 10s run timeouts and captured output",
   "scripts/tests/test_board_selftests.py": "runs the board's selftest checkers with the current interpreter (no window, no game); every child takes console_child.child_kwargs through the shared CHILD_OPTIONS dict, which the console-spawn scanner cannot see",
   "tools/visual_verify/vk_replay.py": "runs tools/visual_verify/capture.py (the engine goes through nofocus.spawn and the host lease there) with the GFXReconstruct layer in the environment, and gfxrecon-replay.exe --wsi headless (no window, no game) under the host lease; children use console_child.child_kwargs",
     "tests/smoke/test_launcher_legacy_env.py": "runs the mc2-launcher.exe copy headless (--sync-options: no window, no game) on a temp install; children use console_child.child_kwargs",
