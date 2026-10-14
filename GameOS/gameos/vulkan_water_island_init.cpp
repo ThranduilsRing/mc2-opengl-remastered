@@ -148,9 +148,9 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateRenderPass failed."); return false;
         }
         VkImageView fbViews[3] = {
-            s->sColorRes->view,   // shared scene color0 (MRT0)
-            s->sNormalRes->view,  // shared scene normal (MRT1)
-            s->sDepthRes->view    // shared scene depth
+            s->sColorRes->view.get(),   // shared scene color0 (MRT0)
+            s->sNormalRes->view.get(),  // shared scene normal (MRT1)
+            s->sDepthRes->view.get()    // shared scene depth
         };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

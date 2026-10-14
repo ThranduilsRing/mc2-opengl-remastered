@@ -17,22 +17,22 @@ code and the proof of a finished conversion, not a leak detector.
 | color_prop | 2 | 12 | 35 | -23 | 47 | Buffer 1/16, Image 1/3, ImageView 1/3, Sampler 1/3, ShaderModule 0/2 |
 | legacy_shape | 2 | 12 | 20 | -8 | 32 | Buffer 1/7, ShaderModule 0/2 |
 | mech | 2 | 12 | 25 | -13 | 37 | Buffer 1/12, ShaderModule 0/2 |
-| post_fog | 1 | 11 | 17 | -6 | 28 | Buffer 1/2, Pipeline 1/2, ShaderModule 0/4 |
+| post_fog | 1 | 0 | 0 | +0 | 0 | - |
 | post_hzb | 1 | 13 | 15 | -2 | 28 | ShaderModule 0/2 |
 | post_screenfx | 1 | 17 | 28 | -11 | 45 | Buffer 1/3, Fence 2/1, Pipeline 1/4, ShaderModule 0/7 |
 | post_ssao | 1 | 17 | 24 | -7 | 41 | Buffer 1/2, Pipeline 1/2, Sampler 1/2, ShaderModule 0/4 |
 | shadow | 2 | 16 | 33 | -17 | 49 | Buffer 1/9, Fence 1/2, Framebuffer 3/5, Image 1/2, ImageView 4/7, ShaderModule 0/2 |
-| sky | 2 | 12 | 15 | -3 | 27 | Buffer 1/2, ShaderModule 0/2 |
+| sky | 2 | 0 | 0 | +0 | 0 | - |
 | terrain | 6 | 31 | 86 | -55 | 117 | Buffer 1/34, Image 5/14, ImageView 5/12, ShaderModule 0/6 |
 | vfx | 2 | 0 | 0 | +0 | 0 | - |
 | water | 4 | 15 | 32 | -17 | 47 | Buffer 1/10, Image 2/5, ImageView 2/5, ShaderModule 0/2 |
 | present | 2 | 37 | 66 | -29 | 103 | Buffer 3/9, Memory 3/9, Pipeline 4/12, Semaphore 2/4, ShaderModule 1/8 |
-| image_resource | 2 | 5 | 6 | -1 | 11 | Semaphore 1/2 |
-| shared_scene | 6 | 2 | 2 | +0 | 4 | - |
-| light_feed | 2 | 1 | 1 | +0 | 2 | - |
+| image_resource | 2 | 0 | 0 | +0 | 0 | - |
+| shared_scene | 6 | 0 | 0 | +0 | 0 | - |
+| light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 0 | 0 | +0 | 0 | - |
 
-Total over all islands: created 213, released 405, imbalance -192.
+Total over all islands: created 182, released 364, imbalance -182.
 
 ## Files
 
@@ -41,12 +41,10 @@ Total over all islands: created 213, released 405, imbalance -192.
 | `vulkan_color_prop_island.cpp` | 12 | 35 | -23 |
 | `vulkan_legacy_shape_island.cpp` | 12 | 20 | -8 |
 | `vulkan_mech_island.cpp` | 12 | 25 | -13 |
-| `vulkan_post_fog_native.cpp` | 11 | 17 | -6 |
 | `vulkan_post_hzb_native.cpp` | 13 | 15 | -2 |
 | `vulkan_post_screenfx_native.cpp` | 17 | 28 | -11 |
 | `vulkan_post_ssao_native.cpp` | 17 | 24 | -7 |
 | `vulkan_shadow_island_live.cpp` | 16 | 33 | -17 |
-| `vulkan_sky_island.cpp` | 12 | 15 | -3 |
 | `vulkan_terrain_island_images.cpp` | 13 | 22 | -9 |
 | `vulkan_terrain_island_island.cpp` | 9 | 44 | -35 |
 | `vulkan_terrain_island_overlay.cpp` | 9 | 20 | -11 |
@@ -55,29 +53,21 @@ Total over all islands: created 213, released 405, imbalance -192.
 | `vulkan_water_island_init.cpp` | 8 | 0 | +8 |
 | `vulkan_water_island_run.cpp` | 0 | 1 | -1 |
 | `engine_present_vk.cpp` | 37 | 66 | -29 |
-| `vk_image_resource.cpp` | 5 | 6 | -1 |
-| `vk_first_layout.cpp` | 2 | 2 | +0 |
-| `vk_shared_light_feed.cpp` | 1 | 1 | +0 |
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): vfx. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): image_resource, light_feed, post_fog, shared_scene, sky, vfx. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
-1. light_feed (2 manual tokens)
-2. shared_scene (4 manual tokens)
-3. image_resource (11 manual tokens)
-4. sky (27 manual tokens)
-5. post_fog (28 manual tokens)
-6. post_hzb (28 manual tokens)
-7. legacy_shape (32 manual tokens)
-8. mech (37 manual tokens)
-9. post_ssao (41 manual tokens)
-10. post_screenfx (45 manual tokens)
-11. color_prop (47 manual tokens)
-12. water (47 manual tokens)
-13. shadow (49 manual tokens)
-14. present (103 manual tokens)
-15. terrain (117 manual tokens)
+1. post_hzb (28 manual tokens)
+2. legacy_shape (32 manual tokens)
+3. mech (37 manual tokens)
+4. post_ssao (41 manual tokens)
+5. post_screenfx (45 manual tokens)
+6. color_prop (47 manual tokens)
+7. water (47 manual tokens)
+8. shadow (49 manual tokens)
+9. present (103 manual tokens)
+10. terrain (117 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 
@@ -91,8 +81,9 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | DescriptorSetLayout | 1 |
 | Fence | 1 |
 | Framebuffer | 1 |
-| Image | 1 |
+| Image | 2 |
 | ImageView | 1 |
+| Memory | 1 |
 | Pipeline | 1 |
 | PipelineLayout | 1 |
 | RenderPass | 1 |

@@ -102,7 +102,7 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, const char** outRea
         return bail("vk_image_resource_create_failed");
     }
     d->resValid = true;
-    mc2vk::nameObject(device, d->res.image, "shared.scene.depth");
+    mc2vk::nameObject(device, d->res.image.get(), "shared.scene.depth");
 
     // The islands declare DEPTH_STENCIL_ATTACHMENT_OPTIMAL from their first frame, so the image must already be in it.
     if (!mc2vkGiveSharedImageFirstLayout(ctx, d->res, SharedImageStart::DepthStencilAttachment)) {

@@ -134,7 +134,7 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
         return bail("vk_image_resource_create_failed");
     }
     c->resValid = true;
-    mc2vk::nameObject(device, c->res.image, debugNameForSlot(slot));
+    mc2vk::nameObject(device, c->res.image.get(), debugNameForSlot(slot));
 
     // Every island declares the attachment layout from its first frame, so the image must already be in it; the object-id image, which no island
     // writes, also starts at "no object".

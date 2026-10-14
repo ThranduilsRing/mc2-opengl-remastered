@@ -262,8 +262,8 @@ bool init_island(VfxIsland* s, int w, int h) {
     s->sDepthRes  = mc2SharedSceneDepthGetResource();
     if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes) { setFallback("shared_gbuffer_not_ready"); return false; }
     // Not-ready guard: struct present but view/format not yet valid (boot warmup race).
-    if (s->sColorRes->view == VK_NULL_HANDLE || s->sColorRes->format == VK_FORMAT_UNDEFINED ||
-        s->sNormalRes->view == VK_NULL_HANDLE || s->sDepthRes->view == VK_NULL_HANDLE ||
+    if (s->sColorRes->view.get() == VK_NULL_HANDLE || s->sColorRes->format == VK_FORMAT_UNDEFINED ||
+        s->sNormalRes->view.get() == VK_NULL_HANDLE || s->sDepthRes->view.get() == VK_NULL_HANDLE ||
         s->sDepthRes->format == VK_FORMAT_UNDEFINED) {
         setFallback("shared_gbuffer_views_not_ready"); return false;
     }
@@ -320,7 +320,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* o) { return vkCreateRenderPass(s->device, &rpci, nullptr, o); })) { vlog("vkCreateRenderPass failed."); return false; }
-        VkImageView fbViews[3] = { s->sColorRes->view, s->sNormalRes->view, s->sDepthRes->view };
+        VkImageView fbViews[3] = { s->sColorRes->view.get(), s->sNormalRes->view.get(), s->sDepthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;

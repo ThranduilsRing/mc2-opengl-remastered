@@ -301,7 +301,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
     {
         VkImageViewCreateInfo vci{};
         vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vci.image = s->sDepthRes->image;
+        vci.image = s->sDepthRes->image.get();
         vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         vci.format = s->sDepthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
@@ -446,7 +446,8 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->applyRpass;
-        fci.attachmentCount = 1; fci.pAttachments = &s->sColorRes->view;
+        const VkImageView colorAttachment = s->sColorRes->view.get();
+        fci.attachmentCount = 1; fci.pAttachments = &colorAttachment;
         fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
         r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->applyFb);
         if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer(apply) failed (%d).", (int)r); return false; }
@@ -503,7 +504,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
         depthInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo normalInfo{};
         normalInfo.sampler = s->gbufSampler;
-        normalInfo.imageView = s->sNormalRes->view;
+        normalInfo.imageView = s->sNormalRes->view.get();
         normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo occInfo{};
         occInfo.sampler = s->occSampler;
@@ -775,7 +776,7 @@ bool gosPostProcess::runVkPostSsaoNative()
         b.oldLayout = oldL; b.newLayout = newL;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sDepthRes->image;
+        b.image = s->sDepthRes->image.get();
         b.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
@@ -789,7 +790,7 @@ bool gosPostProcess::runVkPostSsaoNative()
         b.oldLayout = oldL; b.newLayout = newL;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sNormalRes->image;
+        b.image = s->sNormalRes->image.get();
         b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);

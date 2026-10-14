@@ -386,7 +386,7 @@ bool init_island(ShadowIsland* s, int size) {
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
-    if (ok) mc2vk::nameObject(s->device, s->depthResource.image, "shadow.depthResource");
+    if (ok) mc2vk::nameObject(s->device, s->depthResource.image.get(), "shadow.depthResource");
     if (!ok) {
         vkImageResourceDestroy(&s->depthResource, s->device);
         setFallback("depth_resource_setup_failed");
@@ -406,7 +406,7 @@ bool init_island(ShadowIsland* s, int size) {
     {
         VkImageViewCreateInfo vi{};
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vi.image = s->depthResource.image;
+        vi.image = s->depthResource.image.get();
         vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = kDepthFmt;
         vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         if (vkCreateImageView(s->device, &vi, nullptr, &s->depthAttView) != VK_SUCCESS) {
@@ -612,13 +612,13 @@ bool init_island(ShadowIsland* s, int size) {
 
 bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     if (!s || size <= 0 || s->rpass == VK_NULL_HANDLE) return false;
-    if (s->csmFullMapResource.image != VK_NULL_HANDLE && s->csmFullMapSize == size)
+    if (s->csmFullMapResource.image.get() != VK_NULL_HANDLE && s->csmFullMapSize == size)
         return true;
 
     vkDeviceWaitIdle(s->device);
     if (s->csmFullMapFb) vkDestroyFramebuffer(s->device, s->csmFullMapFb, nullptr);
     if (s->csmFullMapDepthAttView) vkDestroyImageView(s->device, s->csmFullMapDepthAttView, nullptr);
-    if (s->csmFullMapResource.image != VK_NULL_HANDLE)
+    if (s->csmFullMapResource.image.get() != VK_NULL_HANDLE)
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
     s->csmFullMapResource = {};
     s->csmFullMapDepthAttView = VK_NULL_HANDLE;
@@ -630,7 +630,7 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
-    if (ok) mc2vk::nameObject(s->device, s->csmFullMapResource.image, "shadow.csmFullMap");
+    if (ok) mc2vk::nameObject(s->device, s->csmFullMapResource.image.get(), "shadow.csmFullMap");
     if (!ok) {
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
         setFallback("csm_fullmap_resource_setup_failed");
@@ -639,7 +639,7 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
 
     VkImageViewCreateInfo vi{};
     vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vi.image = s->csmFullMapResource.image;
+    vi.image = s->csmFullMapResource.image.get();
     vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
     vi.format = kDepthFmt;
     vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
@@ -1232,7 +1232,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_health.totalUs = usSince(tTotal0);
     if (!s_firstOk) {
         vlog("first VK shadow map produced: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
-             instanceCount, g_health.typeRuns, (void*)s->depthResource.view);
+             instanceCount, g_health.typeRuns, (void*)s->depthResource.view.get());
         s_firstOk = true;
     }
     // VK-SHADOW-DIRECT-CONSUME-1: fence-waited above, layout already transitioned to
@@ -1357,7 +1357,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     static bool s_firstOk = false;
     if (!s_firstOk) {
         vlog("first VK CSM full-map produced: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
-             instanceCount, typeRuns, (void*)s->csmFullMapResource.view);
+             instanceCount, typeRuns, (void*)s->csmFullMapResource.view.get());
         s_firstOk = true;
     }
     g_csmFullMapReadyThisFrame = true;
@@ -1509,7 +1509,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
 // declined one), so a stale prior-frame view is never reported ready this frame.
 extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_view() {
     return (g_island && g_dynShadowReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->depthResource.view) : nullptr;
+        ? reinterpret_cast<void*>(g_island->depthResource.view.get()) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
     // The shadow island itself has no VkSampler (GL owned all sampling before this
@@ -1523,11 +1523,11 @@ extern "C" int mc2_vk_shadow_island_dyn_shadow_ready() {
 
 extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_view() {
     return (g_island && g_csmFullMapReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->csmFullMapResource.view) : nullptr;
+        ? reinterpret_cast<void*>(g_island->csmFullMapResource.view.get()) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_image() {
     return (g_island && g_csmFullMapReadyThisFrame)
-        ? reinterpret_cast<void*>(g_island->csmFullMapResource.image) : nullptr;
+        ? reinterpret_cast<void*>(g_island->csmFullMapResource.image.get()) : nullptr;
 }
 extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
     return (g_island && g_csmFullMapReadyThisFrame) ? 1 : 0;
@@ -1582,11 +1582,11 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         diagGlRead(glDynTex, dynSize, -1, d);       diagDumpDepth("dyn", "gl", d, dynSize);
         diagGlRead(glArrTex, arrSize, 0, d);        diagDumpDepth("csm0", "gl", d, arrSize);
         diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
-        if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image, 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
+        if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image.get(), 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not ready this frame\n");
         if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg, 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not ready this frame\n");
-        if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image, 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
+        if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image.get(), 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not ready this frame\n");
     }
     std::fflush(stderr);
