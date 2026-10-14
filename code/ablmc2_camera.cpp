@@ -2,6 +2,7 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 #include <algorithm>
 #include <iterator>
 #include <span>
@@ -10,7 +11,9 @@
 
 long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {
 
-	static float sortValues[MAX_MOVERS];
+	// The shared sort list holds MAX_CONTACTS_PER_SENSOR slots and its qsort length decides the order of equal keys, so it keeps that size (B2.4 replaces it). A
+	// walk that finds more movers than that sorts the first MAX_CONTACTS_PER_SENSOR in scan order and appends the rest unsorted, as getContacts does.
+	long handleList[MAX_MOVERS];
 	if (!Team::sortList) {
 		Team::sortList = new SortList;
 		if (!Team::sortList)
@@ -31,6 +34,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 				if (mover->numFunctionalWeapons > 0)
 					if (mover->distanceFrom(center) < radius) {
 						if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
+							handleList[numValidMovers] = mover->getHandle();
 							Team::sortList->setId(numValidMovers, mover->getHandle());
 							Team::sortList->setValue(numValidMovers, mover->getThreatRating());
 							numValidMovers++;
@@ -46,6 +50,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 					if (mover->distanceFrom(center) < radius) {
 						if (mover->getPilot()->getWillHelp()) {
 							if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
+								handleList[numValidMovers] = mover->getHandle();
 								Team::sortList->setId(numValidMovers, mover->getHandle());
 								Team::sortList->setValue(numValidMovers, mover->getThreatRating());
 								numValidMovers++;
@@ -60,6 +65,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 					if (mover->distanceFrom(center) < radius) {
 						if (mover->getPilot()->getWillHelp()) {
 							if (ignoreOrder || (mover->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_NONE)) {
+								handleList[numValidMovers] = mover->getHandle();
 								Team::sortList->setId(numValidMovers, mover->getHandle());
 								Team::sortList->setValue(numValidMovers, mover->getThreatRating());
 								numValidMovers++;
@@ -70,9 +76,14 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 	}
 
 	if (numValidMovers > 0) {
+		const long sortCount = (numValidMovers < MAX_CONTACTS_PER_SENSOR) ? numValidMovers : MAX_CONTACTS_PER_SENSOR;
+		if (sortCount < numValidMovers)
+			MC2_LOG_ONCE(Sim, Warn, "getMoversWithinRadius: {} movers exceed the {} sortable, the rest are returned unsorted", numValidMovers, MAX_CONTACTS_PER_SENSOR);
 		Team::sortList->sort(sortDescending);
-		for (long i = 0; i < numValidMovers; i++)
+		for (long i = 0; i < sortCount; i++)
 			moverList[i] = (MoverPtr)ObjectManager->get(Team::sortList->getId(i));
+		for (long i = sortCount; i < numValidMovers; i++)
+			moverList[i] = (MoverPtr)ObjectManager->get(handleList[i]);
 	}
 	return(numValidMovers);
 }
