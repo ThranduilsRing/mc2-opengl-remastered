@@ -12,14 +12,52 @@ Run:
 from __future__ import annotations
 
 import os
+from contextlib import ExitStack
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from scripts import deploy_payload as dp  # noqa: E402
+from scripts import console_child  # noqa: E402
+
+
+def test_asset_sidecar_deploy_is_identical_across_checkout_roots(monkeypatch):
+    rel = "data/tgl/QuonsetGLB.mcasset.json"
+    tracked = subprocess.run(["git", "-C", str(ROOT), "show", "HEAD:" + rel],
+                             check=True, stdout=subprocess.PIPE,
+                             **console_child.child_kwargs(redirected=True)).stdout
+    assert len(tracked) == 2642
+    crlf_lines = set(range(1, 5)) | set(range(6, 41)) | set(range(98, 118))
+    mixed = b"".join(line.replace(b"\n", b"\r\n") if i in crlf_lines else line
+                     for i, line in enumerate(tracked.splitlines(keepends=True), 1))
+    assert len(mixed) == 2701
+    assert mixed.replace(b"\r\n", b"\n") == tracked
+    outputs = []
+    with ExitStack() as cleanup:
+        for checkout_bytes in (mixed, tracked):
+            root = Path(tempfile.gettempdir()) / f"mcasset-copy-{uuid.uuid4().hex}"
+            root.mkdir()
+            cleanup.callback(shutil.rmtree, root)
+            source = root / "checkout" / rel
+            source.parent.mkdir(parents=True)
+            source.write_bytes(checkout_bytes)
+            work = root / "working-directory"
+            work.mkdir()
+            with monkeypatch.context() as patch:
+                patch.chdir(work)
+                hashes = dp.deploy([(str(source), rel, "support")], str(root / "payload"), False)
+            output = root / "payload" / rel
+            outputs.append(output.read_bytes())
+            assert hashes[rel] == (dp.sha256_file(str(output)), len(tracked))
+            assert source.read_bytes() == checkout_bytes
+    assert outputs == [tracked, tracked]
 
 
 def _touch(p: Path, mtime=None):

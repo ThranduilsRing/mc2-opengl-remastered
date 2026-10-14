@@ -1028,12 +1028,21 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=()):
             continue
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
-            shutil.copyfile(src, dst)  # per-file copy, overwrite (never cp -r)
+            if rel.endswith(".mcasset.json"):
+                # Authored sidecars ship unchanged except for checkout line endings;
+                # mixed CRLF/LF copies must not change the pinned data fingerprint.
+                with open(src, "rb") as fh:
+                    content = fh.read().replace(b"\r\n", b"\n")
+                with open(dst, "wb") as fh:
+                    fh.write(content)
+                s_hash = hashlib.sha256(content).hexdigest()
+            else:
+                shutil.copyfile(src, dst)
+                s_hash = sha256_file(src)
         except PermissionError:
             fail(f"copy refused (file locked?): {dst}\n"
                  "  A process is holding this file. Close it and re-run; "
                  "this script never taskkills.", 2)
-        s_hash = sha256_file(src)
         d_hash = sha256_file(dst)
         src_hashes[rel] = (d_hash, os.path.getsize(dst))
         if s_hash != d_hash:
@@ -1247,6 +1256,7 @@ TARGET_PRESETS = {
 # (md5-verify after; a sibling may hold the lease).
 DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
+    "mc2-win64-lane3",
     "mc2-win64-v0.4c",
     "mc2-win64-0.4c",
 }

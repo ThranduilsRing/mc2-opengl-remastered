@@ -38,6 +38,10 @@ LANES: dict = {
         "branch": "claude/lane2-s3",
         "build_dir": "A:/Games/mc2-lane2/build64-ninja",
     },
+    "lane3": {
+        "install": f"{INSTALL_ROOT}/mc2-win64-lane3",
+        "worktree": None, "branch": None, "build_dir": None,
+    },
 }
 
 
