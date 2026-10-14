@@ -913,3 +913,11 @@ if(MC2_BUILD_TESTS)
   add_subdirectory(tests/model_override)
   add_subdirectory(tests/static_natural_skip)
 endif()
+
+target_sources(mc2 PRIVATE code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp)
+# The sim API must not inherit wall-clock access from the engine PCH.
+set_source_files_properties(
+    "code/sim_rng.cpp"
+    "code/tactical_order_queue.cpp"
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+)

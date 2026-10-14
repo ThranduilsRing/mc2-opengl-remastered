@@ -350,3 +350,8 @@ foreach(_contract_dll SDL2.dll glew32.dll)
 endforeach()
 target_sources(mc2_tests PRIVATE test_save_archive.cpp ${MC2_WORKTREE_ROOT}/code/save_archive.cpp)
 target_sources(mc2_tests PRIVATE test_abl_outarrays.cpp)
+target_sources(mc2_tests PRIVATE
+    test_sim_rng.cpp test_tactical_order_queue.cpp
+    ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
+    ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
+)

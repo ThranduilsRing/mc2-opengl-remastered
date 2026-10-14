@@ -6,7 +6,9 @@
       "code/ablmc2_orders.cpp",
       "code/mission_update.cpp",
       "code/sim_identity.cpp",
+      "code/sim_rng.cpp",
       "code/tacordr.cpp",
+      "code/tactical_order_queue.cpp",
       "code/warrior.cpp",
       "code/warrior_orders.cpp",
       "mclib/cmponent.cpp"
@@ -23,7 +25,8 @@
       "."
     ],
     "pch": "cmake/pch/mc2_std_pch.h",
-    "pch_skip": "cmake/pch/pch_skip.cmake"
+    "pch_skip": "cmake/pch/pch_skip.cmake",
+    "pch_excluded": ["code/sim_rng.cpp", "code/tactical_order_queue.cpp"]
   },
   "violations": [
     {

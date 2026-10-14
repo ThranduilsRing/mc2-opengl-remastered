@@ -298,3 +298,53 @@ S3/B7's wire catalogue implements the shared table above. No raw struct/vtable d
 Readers reject malformed records/content with a log line and never crash; optional presentation cannot change authoritative equality.
 
 Owner ruling: camera-reading scripts receive the last scripted camera value. Live player-camera reads remain banned; mc2_01 restoring scripted rotation at its mid-mission read is an accepted compatibility difference.
+
+## Q4 / CODEX-Q4-S1-STEP2 claimed amendment (2026-10-13)
+
+The isolated API files are `code/sim_rng.{h,cpp}` and `code/tactical_order_queue.{h,cpp}`.
+Values live in `mc2::sim`; `ObjectRef` is the shared `{slot:u32,generation:u32}` representation.
+No live sim call sites change. Root CMake disables the PCH for these two TUs; scope metadata
+names those exclusions and the firewall verifies the unconditional source property declaration.
+
+The following previously unspecified values are frozen for these skeleton codecs:
+
+- RNG records use ascending numeric stream IDs. `RngState` contains exactly eight records.
+  The ABL host separately owns `AblReseedState {reseedOrdinal:u64,reseedHistory:AblReseed[]}`.
+  Accepted reseeds start at ordinal 1, have nondecreasing executing ticks and preserve lifetime draw counts.
+  For `-1`, let u32 `v = rootSeed XOR instanceId XOR low32(tick) XOR high32(tick)
+  XOR low32(ordinal) XOR high32(ordinal) XOR 0x41424C52`; then `v ^= v >> 16`,
+  `v *= 0x7FEB352D`, `v ^= v >> 15`, `v *= 0x846CA68B`, `v ^= v >> 16`.
+  Products wrap modulo 2^32. Explicit seeds accept 0..INT32_MAX; values below -1 reject.
+- Origin tags retain 0 player/1 commander/2 self; tactical kinds retain 0..26 from `tacordr.h`,
+  with 27 airstrike/28 reinforcement/29 mission control; kind 0 cannot be admitted.
+  Other tactical enum values preserve their named retail meanings, declared explicitly in the header.
+  Support kinds carry one tagged SupportCommand in place of the move/attack optionals.
+  Support and issuer variant tags are u8, one-based in their declared schema order; other enums are u32,
+  except FireRange:i32 (-4..3). WayPath carries points length, points, curPoint, then exactly that many mode tags.
+- Source tags are 1 UI/2 ABL/3 replay/4 future peer. Only ABL sources carry instanceId;
+  their issuer must match it. UI/peer issuers are commander IDs; replay can carry either.
+  Issuer tags are 1 commander/2 instance. A required admission interface supplies mission permissions;
+  a required application interface checks live authority, handle generations and legal targets before effects.
+  Peer registration is a protocol value only; it starts no transport.
+- Sequences start at 0, admit exactly nextSequence, reject previously admitted identities and gaps,
+  and never wrap. Receipt IDs start at 1. A draw or increment requiring an unrepresentable next value rejects.
+  Receipt IDs follow ingress call order; replay preserves that order, and a future peer must establish
+  a stable admission order before calling submit. Canonical drain order does not renumber issued receipts.
+  Queue-mode tags are 1 replace/2 append/3 prepend. Admission status is 1 accepted;
+  application status is 0 pending/1 applied/2 rejected/3 partial, recipient result 1 applied/2 rejected.
+  Reason 0 means applied; nonzero means rejected. Application and recipients follow canonical batch/roster order.
+- Caps are 256 sources, 4096 pending envelopes, 8192 retained receipts, 128 recipients/waypoints/roster entries,
+  and 65536 ABL reseeds. Acknowledgement marks a completed receipt; explicit retirement releases acknowledged
+  records through a chosen ID, retaining source sequence state. On restore, nextReceiptId must equal
+  one plus the overflow-checked sum of all sources' nextSequence values, even after every receipt retires.
+  Capacity errors consume neither sequences nor IDs.
+  Completed tick comes from Clock when restoring OrderIngress; executing tick/drained batch are transient.
+  Queue save/restore is forbidden during a tick, and endTick requires final results for the drained batch.
+- Movement kinds 2..10/19/20 require move parameters; point/path movements require at least one point.
+  Wait may carry move parameters. Attack kinds 16/17 require attack parameters. Object-directed kinds
+  3/5/8/9/16/21/22/23/24/26 require a target. Guard (10) accepts either an object target or a valid
+  nonempty point/path in its move parameters, preserving retail Guard-at-point; other kinds carry no target.
+  Support commands have no recipient roster. Reinforcement IDs retain authored roster order and must be unique.
+  Strike tags are 1 small/2 large/3 sensor. Mission-control actions are 1 set objective `{objectiveId:u32,completed:bool}`,
+  2 set resource `{commanderId:u32,resourcePoints:i32 >= 0}`, 3 set mission result `{result:u32:0 running/1 won/2 lost}`;
+  argument tags match those action IDs. Additional mission-control actions need an explicit schema extension.
