@@ -612,7 +612,5 @@ Split commit: `16460b02e`.
 | Piece | What it holds |
 |---|---|
 | `vfxtile.cpp` | keeps the tile blit, its file-static scratch and the shape queries |
-| `vfxtile_line.cpp` | VFX: VFX_line_draw, the clipped line rasteriser entry point (an assert stub; the x86 asm body was removed). |
-| `vfxtile_pixel.cpp` | VFX: VFX_pixel_write and VFX_pixel_read. |
 | `vfxtile_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
