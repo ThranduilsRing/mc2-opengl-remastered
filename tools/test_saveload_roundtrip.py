@@ -52,3 +52,32 @@ def test_planted_save_is_judged_against_the_noise_mask_across_builds(tmp_path):
     assert ok
     ok, rep = rt.masked_resave_verdict(base, save("text.ims", 5), mask)                   # a pilot string byte is never masked
     assert not ok and "outside the mask" in " ".join(rep)
+
+
+def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_the_mask(tmp_path, monkeypatch, capsys):
+    """The quickload is lossy, so a re-save never stays inside the mask; --first-save-only keeps the masked first-save digest recordable and checkable."""
+    mask = os.path.join(HERE, "save_noise_mask.json")
+
+    def save(name, offset=None):
+        record = bytearray(19864)                                     # MechWarriorData
+        if offset is not None:
+            record[offset] = 1
+        path = str(tmp_path / name)
+        rt.si.scs.write(path, [(0, b"ver\0"), (4, bytes(record))], False)
+        return path
+
+    first, noisy_first, resave = save("a.ims"), save("b.ims", 10100), save("c.ims", 5)    # 10100 is masked run noise; 5 is a pilot string byte, never masked
+    monkeypatch.setattr(rt, "BASELINE_DIR", str(tmp_path / "baselines"))
+    monkeypatch.setattr(rt, "ROOT", str(tmp_path))                  # the tool prints the baseline path relative to the repo root
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, resave, {"sha": "x", "dirty": 0}))
+
+    def main(*extra):
+        return rt.main(["baseline", "--mission", "m", "--mask", mask, *extra])
+
+    assert main() == 1                                                # the re-save gate: refused
+    assert main("--first-save-only") == 0                             # recorded
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), noisy_first, resave, {"sha": "x", "dirty": 0}))
+    assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 0     # run-to-run noise in a masked byte does not fail the check
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), save("d.ims", 5), resave, {"sha": "x", "dirty": 0}))
+    assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 1     # a changed pilot string byte does
+    capsys.readouterr()
