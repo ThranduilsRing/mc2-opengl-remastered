@@ -463,9 +463,7 @@ bool CBooleanFlagIsSet::operator==(const CObjectiveCondition &rhs) const {
 bool CBooleanFlagIsSet::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	auto flagID = objective_text::readFlagID(*missionFile, "FlagID", "FlagIndex");
-	if (!flagID) { return false; }
-	m_flagID = std::move(*flagID);
+	if (auto flagID = EditorFit::flagID(*missionFile, "FlagID", "FlagIndex")) m_flagID = std::move(*flagID);
 	result = sReadIdBoolean(missionFile, "Value", m_value);
 	return true;
 }

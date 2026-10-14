@@ -32,10 +32,39 @@ def scratch_directory():
 def panel_lines():
     panels = "\n".join(f"[EDITOR_PANEL v1] workflow={w} panel={p} coverage={'model-only' if p in smoke.MODEL_ONLY else 'action-handler'} reached={0 if p in smoke.MODEL_ONLY else 1} ok=1 authored=1 undo=1 saved=1 reloaded=1"
                      for p, w in smoke.WORKFLOW_PANELS.items())
-    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
-    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID"):
-        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=oversized_text field={field} rejected=1 unchanged=1 ok=1"
-        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.pak field=[team0objective0]/{field} length=2001 rejected=1"
+    definitions = "[EDITOR_DEFINITIONS v1] stage=duplicate_unit_refresh_undo_redo ok=1\n[EDITOR_DEFINITIONS v1] stage=script_boundary ok=1\n[EDITOR_DEFINITIONS v1] preservation_commands_undo_reload_malformed=1"
+    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel",
+                  "MissionName", "Author", "Blurb", "Blurb2", "AVIFilename", "DownloadURL", "ScenarioScript"):
+        limit = 1023 if field == "ScenarioScript" else 2000
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=oversized_text field={field} rejected=1 continued=1 ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/{field} length={limit + 1} limit={limit} reason=too_long rejected=1"
+    for field in ("NumConditions", "NumObjectives", "Version", "scenarioTuneNum", "MissionName", "Blurb2",
+                  "ScenarioScript", "MissionNameResourceStringID"):
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage=missing_required field={field} rejected=1 unchanged=1 ok=1"
+        definitions += f"\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/{field} missing=1 rejected=1"
+    def reader_case(stage, case, filename, reason, field, flags):
+        nonlocal definitions
+        definitions += f"\n[EDITOR_DEFINITIONS v1] stage={stage} case={case} field={field} {flags} ok=1"
+        if reason:
+            definitions += f"\n[EDITOR_DOCUMENT v1] mission=terrain_gen_out/{filename}.fit field=Block/{field} {reason} rejected=1"
+    for kind, field in smoke.READER_PAYLOADS.items():
+        for mode in ("oversized", "unterminated", "trailing", "nul"):
+            case = f"{kind}_{mode}"
+            reader_case("payload", case, f"ew_payload_{case}",
+                        "length=2001 limit=2000 reason=too_long" if mode == "oversized" else "length=10 limit=2000 reason=malformed_literal",
+                        field, "retained=1 following=1")
+    for mode in smoke.READER_LITERALS:
+        reader_case("literal", mode, f"ew_literal_{mode}", None if mode == "cr" else "length=10 limit=2000 reason=malformed_literal",
+                    "Title", "retained=1 following=1")
+    for mode in ("unterminated", "trailing", "nul", "unquoted"):
+        reader_case("metadata_literal", mode, f"ew_metadata_{mode}", "length=10 limit=2000 reason=malformed_literal",
+                    "Author", "retained=1 following=1")
+    for case in smoke.READER_SPECIES:
+        reader_case("species", case, f"ew_species_{case}",
+                    "length=10 limit=2000 reason=malformed_literal" if case.startswith("literal_") else "length=10 limit=23 reason=invalid_species",
+                    "ConditionSpecies", "following=1")
+    for case, field in smoke.READER_MISSING_PAYLOADS.items():
+        reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", field, "rejected=1 unchanged=1")
     return panels + "\n" + definitions
 
 
@@ -45,10 +74,33 @@ class EditorSmokeTests(unittest.TestCase):
         for changed in (lines.replace("[EDITOR_DEFINITIONS v1]", "[EDITOR_DEFINITIONS]"),
                         lines.replace("[EDITOR_DOCUMENT v1]", "[EDITOR_DOCUMENT]"),
                         lines.replace("unchanged=1", "unchanged=0"),
+                        lines.replace("continued=1", "continued=0"),
+                        lines.replace("limit=2000", "limit=1999"),
+                        lines.replace(" missing=1", " missing=0"),
+                        lines.replace("script_boundary ok=1", "script_boundary ok=0"),
                         lines.replace("duplicate_unit_refresh_undo_redo ok=1", "duplicate_unit_refresh_undo_redo ok=0"),
-                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.pak field=[team0objective0]/Title length=2001 rejected=1"):
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/Title length=2001 limit=2000 reason=too_long rejected=1",
+                        lines + "\n[EDITOR_DOCUMENT v1] mission=fixture.fit field=Block/NumConditions missing=1 rejected=1"):
             with self.subTest(changed=changed):
                 self.assertTrue(smoke.grade_workflows(changed))
+
+    def test_reader_review_cases_require_exact_preservation_and_one_diagnostic(self):
+        lines = panel_lines()
+        for changed in (lines.replace("retained=1", "retained=0"), lines.replace("following=1", "following=0"),
+                        lines.replace("reason=malformed_literal", "reason=accepted"),
+                        lines.replace("reason=invalid_species", "reason=accepted"),
+                        lines.replace("case=legacy_unit_watch", "case=missing_probe"),
+                        lines.replace("case=action_flag_oversized", "case=missing_probe")):
+            with self.subTest(changed=changed):
+                self.assertTrue(smoke.grade_workflows(changed))
+        for line in lines.splitlines():
+            if "mission=terrain_gen_out/ew_" in line:
+                with self.subTest(line=line):
+                    self.assertTrue(smoke.grade_workflows(lines.replace(line, "")))
+                    self.assertTrue(smoke.grade_workflows(lines + "\n" + line))
+                    if "reason=" in line:
+                        self.assertTrue(smoke.grade_workflows(lines.replace(line, line.replace(" length=", " missing_length="))))
+                        self.assertTrue(smoke.grade_workflows(lines.replace(line, line.replace(" limit=", " missing_limit="))))
 
     def test_pinned_delta_uses_exact_input_and_reports_disappeared_classes(self):
         with scratch_directory() as directory:

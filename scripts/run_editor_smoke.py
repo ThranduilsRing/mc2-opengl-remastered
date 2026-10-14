@@ -83,6 +83,16 @@ WORKFLOW_PANELS = {
 MODEL_ONLY = {"ObjectivesSummary", "CampaignOverview"}
 BASELINE = REPO / "tests/smoke/editor/roundtrip-baseline.json"
 PINNED_BEFORE = REPO / "tests/smoke/editor/old-editor-2026-10-13"
+READER_PAYLOADS = {"bik": "AVIFileName", "wav": "WAVFileName", "message": "Message",
+                   "technology": "PurchaseFileName", "action_flag": "FlagID", "condition_flag": "FlagID"}
+READER_LITERALS = ("unterminated", "block_boundary", "trailing", "extra_quote", "nul", "unquoted", "cr")
+READER_SPECIES = ("condition", "action", "failure_condition", "failure_action", "negative",
+                  "out_of_range", "unsupported", "numeric_garbage", "literal_unterminated",
+                  "literal_trailing", "literal_nul", "literal_unquoted")
+READER_MISSING_PAYLOADS = {"legacy_num": "Num", "legacy_unit_watch": "PositionX",
+                           "legacy_structure_watch": "PositionY", "string_unit_watch": "PositionX",
+                           "string_structure_watch": "PositionY", "capture_unit": "PositionX",
+                           "capture_structure": "PositionY", "action_file": "AVIFileName"}
 
 
 def read_json_object(path: Path) -> dict:
@@ -122,19 +132,63 @@ def grade_workflows(text: str) -> str:
             failures.append(f"{workflow}/{panel}: missing or unsuccessful probe")
     definitions = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in text.splitlines()
                    if line.startswith("[EDITOR_DEFINITIONS v1] ")]
-    for stage in ("duplicate_unit_refresh_undo_redo",):
+    for stage in ("duplicate_unit_refresh_undo_redo", "script_boundary"):
         if not any(row.get("stage") == stage and row.get("ok") == "1" for row in definitions):
             failures.append(f"mission_definitions/{stage}: missing or unsuccessful probe")
     if not any(row.get("preservation_commands_undo_reload_malformed") == "1" for row in definitions):
         failures.append("mission_definitions: missing versioned summary")
-    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID"):
+    for field in ("Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel",
+                  "MissionName", "Author", "Blurb", "Blurb2", "AVIFilename", "DownloadURL", "ScenarioScript"):
+        limit = 1023 if field == "ScenarioScript" else 2000
         if not any(row.get("stage") == "oversized_text" and row.get("field") == field
+                   and all(row.get(key) == "1" for key in ("rejected", "continued", "ok")) for row in definitions):
+            failures.append(f"mission_definitions/{field}: missing rejected/continued proof")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/{field} " in line and f"length={limit + 1} limit={limit}" in line
+                       and "reason=too_long rejected=1" in line and "mission=" in line]
+        if len(diagnostics) != 1:
+            failures.append(f"mission_definitions/{field}: expected one mission/field/length/limit diagnostic")
+    for field in ("NumConditions", "NumObjectives", "Version", "scenarioTuneNum", "MissionName", "Blurb2",
+                  "ScenarioScript", "MissionNameResourceStringID"):
+        if not any(row.get("stage") == "missing_required" and row.get("field") == field
                    and all(row.get(key) == "1" for key in ("rejected", "unchanged", "ok")) for row in definitions):
             failures.append(f"mission_definitions/{field}: missing rejected/unchanged proof")
         diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
-                       and f"/{field} " in line and "length=2001 rejected=1" in line and "mission=" in line]
+                       and f"/{field} missing=1 rejected=1" in line and "mission=" in line]
         if len(diagnostics) != 1:
-            failures.append(f"mission_definitions/{field}: expected one mission/field/length diagnostic")
+            failures.append(f"mission_definitions/{field}: expected one missing-field diagnostic")
+    def reader_case(stage, case, filename, reason, flags, field=None):
+        if not any(row.get("stage") == stage and row.get("case") == case
+                   and (stage not in ("payload", "missing_payload") or row.get("field") == field)
+                   and all(row.get(key) == "1" for key in (*flags, "ok")) for row in definitions):
+            failures.append(f"mission_definitions/{stage}/{case}: missing or unsuccessful probe")
+        diagnostics = [line for line in text.splitlines() if line.startswith("[EDITOR_DOCUMENT v1] ")
+                       and f"/{filename}.fit " in line]
+        expected = 0 if reason is None else 1
+        if len(diagnostics) != expected or (expected and (f"{reason} rejected=1" not in diagnostics[0]
+                or (field is not None and f"/{field} " not in diagnostics[0])
+                or (reason.startswith("reason=") and not re.search(r" length=\d+ limit=\d+ reason=", diagnostics[0]))
+                or (stage == "payload" and case.endswith("_oversized")
+                    and "length=2001 limit=2000 reason=too_long" not in diagnostics[0]))):
+            failures.append(f"mission_definitions/{stage}/{case}: expected {expected} rejection diagnostic")
+
+    for kind, field in READER_PAYLOADS.items():
+        for mode in ("oversized", "unterminated", "trailing", "nul"):
+            case = f"{kind}_{mode}"
+            reader_case("payload", case, f"ew_payload_{case}",
+                        "reason=too_long" if mode == "oversized" else "reason=malformed_literal",
+                        ("retained", "following"), field)
+    for mode in READER_LITERALS:
+        reader_case("literal", mode, f"ew_literal_{mode}", None if mode == "cr" else "reason=malformed_literal",
+                    ("retained", "following"), "Title" if mode != "cr" else None)
+    for mode in ("unterminated", "trailing", "nul", "unquoted"):
+        reader_case("metadata_literal", mode, f"ew_metadata_{mode}", "reason=malformed_literal",
+                    ("retained", "following"), "Author")
+    for case in READER_SPECIES:
+        reader_case("species", case, f"ew_species_{case}",
+                    "reason=malformed_literal" if case.startswith("literal_") else "reason=invalid_species", ("following",))
+    for case, field in READER_MISSING_PAYLOADS.items():
+        reader_case("missing_payload", case, f"ew_missing_{case}", "missing=1", ("rejected", "unchanged"), field)
     return "; ".join(failures)
 
 
@@ -326,8 +380,9 @@ def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> 
     scratch = (REPO / "scratch").resolve()
     deploy = deploy.resolve()
     data_root = (deploy / "data").resolve()
-    if not deploy.is_relative_to(scratch) or not data_root.is_relative_to(deploy):
-        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime")
+    lane3 = Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve()
+    if (not deploy.is_relative_to(scratch) and deploy != lane3) or not data_root.is_relative_to(deploy):
+        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime or lane3")
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
     stock, changes = {}, []

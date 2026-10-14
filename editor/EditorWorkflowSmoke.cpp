@@ -147,7 +147,7 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	const unsigned long authoredCount = objectives.Count();
 	bool objectiveRoundtrip = false;
 	{
-		FitIniFile file;
+		EditorFit::MissionTextReader file;
 		if (file.create("terrain_gen_out/e0_objectives.fit") == NO_ERR)
 		{
 			// The collection writer needs the same version envelope as a mission export.

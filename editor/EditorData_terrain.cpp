@@ -41,12 +41,21 @@ static void EditorDataWarmTerrain(const char* where)
 bool EditorData::initTerrainFromPCV( const char* fileName )
 {
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
+	EditorFit::MissionTextReader file;
+	const auto previousMissionName = instance->MissionName();
+	const auto previousAuthor = instance->Author();
+	const auto previousBlurb = instance->Blurb();
+	const auto previousBlurb2 = instance->Blurb2();
+	const auto previousVideo = instance->VideoFilename();
+	const auto previousURL = instance->DownloadURL();
+	const std::string previousScript = missionScriptName;
 	if (fileName && fileName[0])
 	{
 		auto fitPath = mc2::str::from_c(fileName);
 		const auto extension = fitPath.rfind('.');
 		if (extension != fitPath.npos) fitPath.replace(extension, fitPath.npos, ".fit");
-		if (!EditorFit::objectiveTextLengths(fitPath.c_str(), fileName)) return false;
+		if (file.open(fitPath.c_str()) == NO_ERR
+			&& !file.requiredFields(GAME_MAX_PLAYERS, g_conditionSpeciesStringArray, g_actionSpeciesStringArray)) return false;
 	}
 
 	bool bRetVal = true;
@@ -100,13 +109,11 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	camFileName.MakeLower();
 	camFileName.Replace( ".pak", ".fit" );
 
-	FitIniFile file;
-
 	EditorDataTrace("EditorData::initTerrainFromPCV: camFileName=%s", (const char*)camFileName);
 	if ( fileExists( (char*)(const char*)camFileName ) )
 	{
 		EditorDataTrace("EditorData::initTerrainFromPCV: before cam file open");
-		long fitResult = file.open( (char*)(const char*)camFileName );
+		long fitResult = file.isOpen() ? NO_ERR : file.open( (char*)(const char*)camFileName );
 		EditorDataTrace("EditorData::initTerrainFromPCV: after cam file open result=%ld", fitResult);
 	}
 	else
@@ -264,13 +271,16 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 
 	{
 		long result = 0;
+		const auto readMetadata = [&file](const char* key, const std::string& previous, auto set) {
+			std::string value;
+			const auto status = file.text(key, value);
+			if (status == EditorFit::TextStatus::Read) set(std::move(value));
+			else if (status == EditorFit::TextStatus::Rejected) set(previous);
+		};
 		result = file.seekBlock("MissionSettings");
 		if (NO_ERR == result)
 		{
-			if (auto text = objective_text::read(file, "MissionName"))
-			{
-				EditorData::instance->MissionName(std::move(*text));
-			}
+			readMetadata("MissionName", previousMissionName, [](std::string value) { instance->MissionName(std::move(value)); });
 
 			bool tmpBool = false;
 			result = sReadIdBoolean(&file, "MissionNameUseResourceString", tmpBool);
@@ -286,15 +296,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->MissionNameResourceStringID(tmpInt);
 			}
 
-			if (auto text = objective_text::read(file, "Author"))
-			{
-				EditorData::instance->Author(std::move(*text));
-			}
+			readMetadata("Author", previousAuthor, [](std::string value) { instance->Author(std::move(value)); });
 
-			if (auto text = objective_text::read(file, "Blurb"))
-			{
-				EditorData::instance->Blurb(std::move(*text));
-			}
+			readMetadata("Blurb", previousBlurb, [](std::string value) { instance->Blurb(std::move(value)); });
 
 			tmpBool = false;
 			result = sReadIdBoolean(&file, "BlurbUseResourceString", tmpBool);
@@ -310,10 +314,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->BlurbResourceStringID(tmpInt);
 			}
 
-			if (auto text = objective_text::read(file, "Blurb2"))
-			{
-				EditorData::instance->Blurb2(std::move(*text));
-			}
+			readMetadata("Blurb2", previousBlurb2, [](std::string value) { instance->Blurb2(std::move(value)); });
 
 			tmpBool = false;
 			result = sReadIdBoolean(&file, "Blurb2UseResourceString", tmpBool);
@@ -386,10 +387,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->ScenarioTune(tmpUChar);
 			}
 
-			if (auto text = objective_text::read(file, "AVIFilename"))
-			{
-				EditorData::instance->VideoFilename(std::move(*text));
-			}
+			readMetadata("AVIFilename", previousVideo, [](std::string value) { instance->VideoFilename(std::move(value)); });
 
 			tmpULong = 0;
 			result = file.readIdULong("NumRandomRPbuildings", tmpULong);
@@ -398,10 +396,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 				EditorData::instance->NumRandomRPbuildings(tmpULong);
 			}
 
-			if (auto text = objective_text::read(file, "DownloadURL"))
-			{
-				EditorData::instance->DownloadURL(std::move(*text));
-			}
+			readMetadata("DownloadURL", previousURL, [](std::string value) { instance->DownloadURL(std::move(value)); });
 
 			tmpULong = 0;
 			result = file.readIdULong("MissionType", tmpULong);
@@ -498,9 +493,11 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		result = file.seekBlock("Script");
 		if (NO_ERR == result)
 		{
-			result = file.readIdString("ScenarioScript", missionScriptName,1023);
-			if (NO_ERR != result)
-				strcpy(missionScriptName,"m0101");
+			std::string script = previousScript;
+			file.text("ScenarioScript", script, sizeof(missionScriptName) - 1);
+			script = objective_text::toFileBreaks(script);
+			std::copy(script.begin(), script.end(), missionScriptName);
+			missionScriptName[script.size()] = '\0';
 		}
 		else
 		{
