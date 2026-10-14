@@ -292,6 +292,15 @@ bool make_buffer(ShadowIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, Vk
     return true;
 }
 
+// Writes the instances into a mapped instance buffer in the sorted order. A mapped allocation is only aligned to its buffer's offset alignment, which can be
+// less than the instance's alignas(16): a typed struct copy lets the compiler use aligned 16-byte stores and the process faults (access violation at
+// 0xFFFF...) when the allocator hands out a 4- or 8-aligned offset, so the bytes go through memcpy.
+void copy_sorted_instances(void* mapped, const GpuStaticPropInstance* insts, const std::vector<uint32_t>& order) {
+    uint8_t* dst = static_cast<uint8_t*>(mapped);
+    for (size_t k = 0; k < order.size(); ++k)
+        std::memcpy(dst + k * sizeof(GpuStaticPropInstance), &insts[order[k]], sizeof(GpuStaticPropInstance));
+}
+
 void write_descriptors(ShadowIsland* s) {
     if (s->set == VK_NULL_HANDLE) return;
     VkDescriptorBufferInfo uboInfo{ s->ubo.get(), 0, VK_WHOLE_SIZE };
@@ -1100,8 +1109,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
-            GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
-            for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
+            copy_sorted_instances(p, insts, order);
             vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
@@ -1243,8 +1251,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
-            GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
-            for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
+            copy_sorted_instances(p, insts, order);
             vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
@@ -1369,8 +1376,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instBuf.allocation(), &p) == VK_SUCCESS) {
-            GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
-            for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
+            copy_sorted_instances(p, insts, order);
             vmaFlushAllocation(s->allocator, s->instBuf.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instBuf.allocation());
         }
     }
