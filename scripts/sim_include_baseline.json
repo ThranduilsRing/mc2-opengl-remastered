@@ -1,0 +1,3451 @@
+{
+  "schema_version": 1,
+  "scope": {
+    "schema_version": 1,
+    "translation_units": [
+      "code/ablmc2_orders.cpp",
+      "code/mission_update.cpp",
+      "code/sim_identity.cpp",
+      "code/tacordr.cpp",
+      "code/warrior.cpp",
+      "code/warrior_orders.cpp",
+      "mclib/cmponent.cpp"
+    ],
+    "include_dirs": [
+      "GameOS/include",
+      "GameOS/gameos",
+      "mclib",
+      "gui",
+      "code",
+      "netlib",
+      "3rdparty/include",
+      "3rdparty/tracy",
+      "."
+    ],
+    "pch": "cmake/pch/mc2_std_pch.h",
+    "pch_skip": "cmake/pch/pch_skip.cmake"
+  },
+  "violations": [
+    {
+      "tu": "code/ablmc2_orders.cpp",
+      "file": "cmake/pch/mc2_std_pch.h",
+      "chain": [
+        "code/ablmc2_orders.cpp",
+        "<PCH>",
+        "cmake/pch/mc2_std_pch.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "cmake/pch/mc2_std_pch.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "<PCH>",
+        "cmake/pch/mc2_std_pch.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "cmake/pch/mc2_std_pch.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "<PCH>",
+        "cmake/pch/mc2_std_pch.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "cmake/pch/mc2_std_pch.h",
+      "chain": [
+        "code/tacordr.cpp",
+        "<PCH>",
+        "cmake/pch/mc2_std_pch.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "cmake/pch/mc2_std_pch.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "<PCH>",
+        "cmake/pch/mc2_std_pch.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "#include <chrono>",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/MechRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive ../GameAdapters/MechRenderAdapter.h",
+      "evidence": "#include \"../GameAdapters/MechRenderAdapter.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive ../GameAdapters/StaticPropRenderAdapter.h",
+      "evidence": "#include \"../GameAdapters/StaticPropRenderAdapter.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive ../GameAdapters/StaticPropRenderAdapter.h",
+      "evidence": "#include \"../GameAdapters/StaticPropRenderAdapter.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive ../GameAdapters/StaticPropRenderAdapter.h",
+      "evidence": "#include \"../GameAdapters/StaticPropRenderAdapter.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/VegetationAdapter.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive ../GameAdapters/VegetationAdapter.h",
+      "evidence": "#include \"../GameAdapters/VegetationAdapter.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/diagnostic_trace.h",
+      "evidence": "#include \"../GameOS/gameos/diagnostic_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/diagnostic_trace.h",
+      "evidence": "#include \"../GameOS/gameos/diagnostic_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/diagnostic_trace.h",
+      "evidence": "#include \"../GameOS/gameos/diagnostic_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/diagnostic_trace.h",
+      "evidence": "#include \"../GameOS/gameos/diagnostic_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/diagnostic_trace.h",
+      "evidence": "#include \"../GameOS/gameos/diagnostic_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameOS/gameos/gos_static_prop_registry.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gos_static_prop_registry.h",
+      "evidence": "#include \"../GameOS/gameos/gos_static_prop_registry.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameOS/gameos/gos_static_prop_registry.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gos_static_prop_registry.h",
+      "evidence": "#include \"../GameOS/gameos/gos_static_prop_registry.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_terrain_lighting.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gos_terrain_lighting.h",
+      "evidence": "#include \"../GameOS/gameos/gos_terrain_lighting.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_terrain_lod_chunk.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gos_terrain_lod_chunk.h",
+      "evidence": "#include \"../GameOS/gameos/gos_terrain_lod_chunk.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gpu_cull_compute.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gpu_cull_compute.h",
+      "evidence": "#include \"../GameOS/gameos/gpu_cull_compute.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gpu_cull_readback.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gpu_cull_readback.h",
+      "evidence": "#include \"../GameOS/gameos/gpu_cull_readback.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gpu_cull_substrate.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/gpu_cull_substrate.h",
+      "evidence": "#include \"../GameOS/gameos/gpu_cull_substrate.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/MechRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/MechRenderAdapter.h",
+        "RenderCore/Handle.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/Handle.h",
+      "evidence": "#include \"../RenderCore/Handle.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h",
+        "RenderCore/Handle.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/Handle.h",
+      "evidence": "#include \"../RenderCore/Handle.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h",
+        "RenderCore/Handle.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/Handle.h",
+      "evidence": "#include \"../RenderCore/Handle.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h",
+        "RenderCore/Handle.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/Handle.h",
+      "evidence": "#include \"../RenderCore/Handle.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h",
+        "RenderCore/MaterialGpu.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/MaterialGpu.h",
+      "evidence": "#include \"../RenderCore/MaterialGpu.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h",
+        "RenderCore/MaterialGpu.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/MaterialGpu.h",
+      "evidence": "#include \"../RenderCore/MaterialGpu.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h",
+        "RenderCore/MaterialGpu.h"
+      ],
+      "rule": "rendercore",
+      "subject": "../RenderCore/MaterialGpu.h",
+      "evidence": "#include \"../RenderCore/MaterialGpu.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp",
+        "mclib/appear.h"
+      ],
+      "rule": "camera",
+      "subject": "transitive ../mclib/appear.h",
+      "evidence": "#include \"../mclib/appear.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp",
+        "mclib/appear.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive ../mclib/appear.h",
+      "evidence": "#include \"../mclib/appear.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive abl_trace.h",
+      "evidence": "#include \"abl_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive abl_trace.h",
+      "evidence": "#include \"abl_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive abl_trace.h",
+      "evidence": "#include \"abl_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive abl_trace.h",
+      "evidence": "#include \"abl_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive abl_trace.h",
+      "evidence": "#include \"abl_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive abl_trace.h",
+      "evidence": "#include \"abl_trace.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/ablmc2_orders.cpp",
+      "file": "code/ablmc2_orders.cpp",
+      "chain": [
+        "code/ablmc2_orders.cpp",
+        "code/ablmc2_internal.h",
+        "GameOS/gameos/gos_crashbundle.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive ablmc2_internal.h",
+      "evidence": "#include \"ablmc2_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mech_brain_runtime.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive brain_order_intent.h",
+      "evidence": "#include \"brain_order_intent.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/mech_brain_runtime.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive brain_order_intent.h",
+      "evidence": "#include \"brain_order_intent.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive brain_order_intent.h",
+      "evidence": "#include \"brain_order_intent.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/ablmc2_orders.cpp",
+      "file": "code/ablmc2_internal.h",
+      "chain": [
+        "code/ablmc2_orders.cpp",
+        "code/ablmc2_internal.h",
+        "GameOS/gameos/gos_crashbundle.h"
+      ],
+      "rule": "gameos",
+      "subject": "gos_crashbundle.h",
+      "evidence": "#include \"gos_crashbundle.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_crashbundle.h"
+      ],
+      "rule": "gameos",
+      "subject": "gos_crashbundle.h",
+      "evidence": "#include \"gos_crashbundle.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_mech_batcher.h"
+      ],
+      "rule": "gameos",
+      "subject": "gos_mech_batcher.h",
+      "evidence": "#include \"gos_mech_batcher.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_postprocess.h"
+      ],
+      "rule": "gameos",
+      "subject": "gos_postprocess.h",
+      "evidence": "#include \"gos_postprocess.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_profiler.h"
+      ],
+      "rule": "gameos",
+      "subject": "gos_profiler.h",
+      "evidence": "#include \"gos_profiler.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_smoke.h"
+      ],
+      "rule": "gameos",
+      "subject": "gos_smoke.h",
+      "evidence": "#include \"gos_smoke.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/ablmc2_orders.cpp",
+      "file": "code/ablmc2_internal.h",
+      "chain": [
+        "code/ablmc2_orders.cpp",
+        "code/ablmc2_internal.h",
+        "GameOS/include/mc2_diag_verbose.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2_diag_verbose.h",
+      "evidence": "#include \"mc2_diag_verbose.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/include/mc2_verify.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2_verify.h",
+      "evidence": "#include \"mc2_verify.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp",
+        "GameOS/include/mc2fmt.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2fmt.h",
+      "evidence": "#include \"mc2fmt.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp",
+        "GameOS/include/mc2fmt.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2fmt.h",
+      "evidence": "#include \"mc2fmt.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive mech_brain_runtime.h",
+      "evidence": "#include \"mech_brain_runtime.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive mech_brain_runtime.h",
+      "evidence": "#include \"mech_brain_runtime.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "transitive mission_internal.h",
+      "evidence": "#include \"mission_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameOS/gameos/gos_crashbundle.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive mission_internal.h",
+      "evidence": "#include \"mission_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/MechRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive mission_internal.h",
+      "evidence": "#include \"mission_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "<chrono>"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive mission_internal.h",
+      "evidence": "#include \"mission_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive move_recon.h",
+      "evidence": "#include \"move_recon.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_internal.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive move_recon.h",
+      "evidence": "#include \"move_recon.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/mover.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "transitive mover.h",
+      "evidence": "#include \"mover.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/objmgr.h"
+      ],
+      "rule": "camera",
+      "subject": "transitive objmgr.h",
+      "evidence": "#include \"objmgr.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "mclib/cmponent.cpp",
+      "file": "mclib/cmponent.cpp",
+      "chain": [
+        "mclib/cmponent.cpp",
+        "GameOS/include/platform_str.h"
+      ],
+      "rule": "gameos",
+      "subject": "platform_str.h",
+      "evidence": "#include \"platform_str.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/brain_order_intent.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive tacordr.h",
+      "evidence": "#include \"tacordr.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/brain_order_intent.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive tacordr.h",
+      "evidence": "#include \"tacordr.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive tacordr.h",
+      "evidence": "#include \"tacordr.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive warrior.h",
+      "evidence": "#include \"warrior.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive warrior_internal.h",
+      "evidence": "#include \"warrior_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive warrior_internal.h",
+      "evidence": "#include \"warrior_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive warrior_internal.h",
+      "evidence": "#include \"warrior_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_orders.cpp",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameOS/gameos/diagnostic_trace.h"
+      ],
+      "rule": "gameos",
+      "subject": "transitive warrior_internal.h",
+      "evidence": "#include \"warrior_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_orders.cpp",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "transitive warrior_internal.h",
+      "evidence": "#include \"warrior_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/warrior_orders.cpp",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "transitive warrior_internal.h",
+      "evidence": "#include \"warrior_internal.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "*timeOfOrder = time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/MechRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/MechRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "BattleMech* findMechByHandle(RenderCore::RenderObjectHandle h);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "timeGetTime",
+      "evidence": "DWORD currentTimeGetTime = timeGetTime();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "timeGetTime",
+      "evidence": "DWORD currentTimeGetTime = timeGetTime();",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/MechRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/MechRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncSpawn(Mech3DAppearance& mech,",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncStaticProp(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncStaticProp(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncStaticProp(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncStaticPropLateSpawn(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncStaticPropLateSpawn(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "RenderCore::RenderObjectHandle syncStaticPropLateSpawn(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "auto t1 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "auto t1 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "auto t1 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "auto t1 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "auto t1 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "auto t1 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatLose = (userInput->getKeyDown(KEY_L) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatLose = (userInput->getKeyDown(KEY_L) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatLose = (userInput->getKeyDown(KEY_L) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatLose = (userInput->getKeyDown(KEY_L) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatWin = (userInput->getKeyDown(KEY_W) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatWin = (userInput->getKeyDown(KEY_W) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatWin = (userInput->getKeyDown(KEY_W) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "bool cheatWin = (userInput->getKeyDown(KEY_W) && userInput->shift() && userInput->ctrl() && userInput->alt());",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "bool getMaterialGpuData(uint32_t materialHandleBits, RenderCore::MaterialGpu* out);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "bool getMaterialGpuData(uint32_t materialHandleBits, RenderCore::MaterialGpu* out);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "bool getMaterialGpuData(uint32_t materialHandleBits, RenderCore::MaterialGpu* out);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "mclib/appear.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "mclib/appear.h"
+      ],
+      "rule": "camera",
+      "subject": "Camera",
+      "evidence": "class Camera;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "double us = std::chrono::duration<double, std::micro>(t1 - t0).count();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "double us = std::chrono::duration<double, std::micro>(t1 - t0).count();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "double us = std::chrono::duration<double, std::micro>(t1 - t0).count();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "else if (scenarioTime > time + 3)",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "else if (scenarioTime > time + 3)",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/mover.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/mover.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern MoverPtr getMoverFromHandle (long partId);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern int mc2FreezeMoversActive();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern int mc2SimIdentityWriteJson(char* buf, int cap, double scenarioTimeNow, long simFrame) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern long MovePathManager_getFrameCounter (void);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void GetBlockedDoorCells (int moveLevel, int door, char* openCells);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void PlaceMovers (void);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void PlaceStationaryMovers (MoveMap* map);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void closeABL (void);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void initABL (void);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void mc2FreezeMoversMissionReset();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void mission_phase_begin();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void mission_phase_mark(const char* name);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void mission_phase_report();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void terrainMaterials_apply(const char*);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_internal.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern void visualTuning_applyProfile(const char*);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "timeGetTime",
+      "evidence": "firstFrame ? timeGetTime()",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_GetTerrainShadowSoftness",
+      "evidence": "float s = max(gos_GetTerrainShadowSoftness() - 0.1f, 0.1f);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_GetTerrainShadowSoftness",
+      "evidence": "float s = min(gos_GetTerrainShadowSoftness() + 0.1f, 10.0f);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "float time;",
+      "occurrence": 5
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_SetTerrainShadowSoftness",
+      "evidence": "gos_SetTerrainShadowSoftness(s);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_SetTerrainShadowSoftness",
+      "evidence": "gos_SetTerrainShadowSoftness(s);",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "camera",
+      "subject": "eye",
+      "evidence": "gos_SetWorldToClipGL(eye->worldToClipGL());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_SetWorldToClipGL",
+      "evidence": "gos_SetWorldToClipGL(eye->worldToClipGL());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_TerrainLodChunk_UpdateVisualDampMovers",
+      "evidence": "gos_TerrainLodChunk_UpdateVisualDampMovers(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_TextSetAttributes",
+      "evidence": "gos_TextSetAttributes (gosFontHandle, 0, gosFontScale, false, true, false, false);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_TextStringLength",
+      "evidence": "gos_TextStringLength(&width,&height,text);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if ((scenarioTime > time + 3) && myGroup) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_GetKeyStatus",
+      "evidence": "if (gos_GetKeyStatus(KEY_LBRACKET) == KEY_PRESSED) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_GetKeyStatus",
+      "evidence": "if (gos_GetKeyStatus(KEY_RBRACKET) == KEY_PRESSED) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "gameos",
+      "subject": "gos_TerrainLodChunk_VisualDampWanted",
+      "evidence": "if (gos_TerrainLodChunk_VisualDampWanted())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "if (s_misSplit) t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "if (s_misSplit) t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "camera",
+      "subject": "eye",
+      "evidence": "if (s_mvpPublishEarly && eye && eye->active && turn > 1)",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "camera",
+      "subject": "eye",
+      "evidence": "if (s_mvpPublishEarly && eye && eye->active && turn > 1)",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if (scenarioTime > time + 5) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if (scenarioTime > time + 5)",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if (scenarioTime > time + Mover::refitTime)",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if (scenarioTime > time + Mover::refitTime)",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if (time == 0)",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "if (time == 0)",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_F) && !userInput->ctrl() && userInput->alt() && !userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_F) && !userInput->ctrl() && userInput->alt() && !userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_F) && !userInput->ctrl() && userInput->alt() && !userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_F) && !userInput->ctrl() && userInput->alt() && !userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_K) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_K) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_K) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_K) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_N) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_N) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_N) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_N) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_P) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_P) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_P) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_P) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Y) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Y) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Y) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Y) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Z) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Z) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Z) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "input",
+      "subject": "userInput",
+      "evidence": "if (userInput->getKeyDown(KEY_Z) && userInput->ctrl() && userInput->alt() && userInput->shift())",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "int idx; std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "int idx; std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "long getParamData (float* time, int* paramList);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "long getParamData (float* time, int* paramList);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "moveOrders.waitForPointTime = time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "moveOrders.yieldTime = time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "orders.time = time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "orders.time = time;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "audio",
+      "subject": "soundSystem",
+      "evidence": "soundSystem->clearIsPaused();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "audio",
+      "subject": "soundSystem",
+      "evidence": "soundSystem->playDigitalMusic(LOSE_TUNE_0);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "audio",
+      "subject": "soundSystem",
+      "evidence": "soundSystem->playDigitalMusic(WIN_TUNE_0);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "audio",
+      "subject": "soundSystem",
+      "evidence": "soundSystem->playDigitalSample( REPAIRBAY_FX, target->getPosition() );",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "audio",
+      "subject": "soundSystem",
+      "evidence": "soundSystem->setIsPaused();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp"
+      ],
+      "rule": "rng",
+      "subject": "srand",
+      "evidence": "srand((unsigned)time(nullptr));",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "srand((unsigned)time(nullptr));",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::duration_cast<std::chrono::nanoseconds>(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::duration_cast<std::chrono::nanoseconds>(",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::duration_cast<std::chrono::nanoseconds>(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::duration_cast<std::chrono::nanoseconds>(",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::duration_cast<std::chrono::nanoseconds>(",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::duration_cast<std::chrono::nanoseconds>(",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::now() - t0).count());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::now() - t0).count());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::now() - t0).count());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::now() - t0).count());",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::now() - t0).count();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::now() - t0).count();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "std::chrono::steady_clock::time_point t0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "chrono",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "mclib/move_recon.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "mclib/move_recon.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "steady_clock",
+      "evidence": "t0 = std::chrono::steady_clock::now();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = -1.0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = 0.0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = 0;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = 0;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = 0;",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = copy.time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = copy.time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = copy.time;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/tacordr.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h",
+        "code/mech_brain_runtime.h",
+        "code/brain_order_intent.h",
+        "code/tacordr.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = copy.time;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = orders.time;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = orders.time;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 3
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 4
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 5
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 6
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 7
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 8
+    },
+    {
+      "tu": "code/tacordr.cpp",
+      "file": "code/tacordr.cpp",
+      "chain": [
+        "code/tacordr.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 9
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/warrior.cpp",
+      "chain": [
+        "code/warrior.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "time = scenarioTime;",
+      "occurrence": 2
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "wall-clock",
+      "subject": "timeGetTime",
+      "evidence": "uint64_t nowMs = (uint64_t)timeGetTime();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "mclib/appear.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "mclib/appear.h"
+      ],
+      "rule": "camera",
+      "subject": "Camera",
+      "evidence": "virtual bool prewarmStaticLightBake(Camera* cam) { return false; }",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "mclib/appear.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "mclib/appear.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "virtual void setWeaponNodeRecycle(long nodeId, float time)",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "void destroyStaticProp(RenderCore::RenderObjectHandle h);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "void destroyStaticProp(RenderCore::RenderObjectHandle h);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "GameAdapters/StaticPropRenderAdapter.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "GameAdapters/StaticPropRenderAdapter.h"
+      ],
+      "rule": "rendercore",
+      "subject": "RenderCore",
+      "evidence": "void destroyStaticProp(RenderCore::RenderObjectHandle h);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "GameAdapters/VegetationAdapter.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "GameAdapters/VegetationAdapter.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "void flush(const float* terrainLightDir_4f, float time,",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/objmgr.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/objmgr.h"
+      ],
+      "rule": "camera",
+      "subject": "Camera",
+      "evidence": "void prewarmStaticPropLightBakes(Camera* cam);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "void setMoveWaitForPointTime (float time) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "void setMoveYieldTime (float time) {",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/warrior.h",
+      "chain": [
+        "code/sim_identity.cpp",
+        "code/warrior.h"
+      ],
+      "rule": "wall-clock",
+      "subject": "time",
+      "evidence": "void updateAttackerStatus (unsigned long attackerWID, float time);",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "camera",
+      "subject": "eye",
+      "evidence": "{ ZoneScopedN( ); MisScope _ms(MS_CAMERA); eye->update(); }",
+      "occurrence": 1
+    }
+  ]
+}

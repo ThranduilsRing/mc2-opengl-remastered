@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "translation_units": [
+    "code/ablmc2_orders.cpp",
+    "code/mission_update.cpp",
+    "code/sim_identity.cpp",
+    "code/tacordr.cpp",
+    "code/warrior.cpp",
+    "code/warrior_orders.cpp",
+    "mclib/cmponent.cpp"
+  ],
+  "include_dirs": ["GameOS/include", "GameOS/gameos", "mclib", "gui", "code", "netlib", "3rdparty/include", "3rdparty/tracy", "."],
+  "pch": "cmake/pch/mc2_std_pch.h",
+  "pch_skip": "cmake/pch/pch_skip.cmake"
+}
