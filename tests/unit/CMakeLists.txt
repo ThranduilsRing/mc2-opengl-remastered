@@ -323,30 +323,44 @@ target_sources(mc2_tests PRIVATE
     test_class_light_band_harness.cpp
     test_glstate_guard_harness.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
-    ${MC2_WORKTREE_ROOT}/tools/render_state_contract_harness/gos_counter_stubs.cpp
+    gos_counter_stubs.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
 )
 target_compile_features(mc2_tests PRIVATE cxx_std_23)
-target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}")
+target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}" MC2_ABL_EVENTS_TEST)
 target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils
     ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
 )
 find_package(Threads REQUIRED)
+list(PREPEND CMAKE_PREFIX_PATH "${MC2_WORKTREE_ROOT}/3rdparty" "${MC2_WORKTREE_ROOT}/3rdparty/cmake")
+if(WIN32)
+    list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
+endif()
+find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
+find_package(GLEW REQUIRED)
+find_package(OpenGL REQUIRED)
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/SDL2.lib
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
-    opengl32
+    SDL2::SDL2
+    GLEW::GLEW
+    OpenGL::GL
 )
-foreach(_contract_dll SDL2.dll glew32.dll)
+if(WIN32)
+    # GLEW's imported location is its import library; runtime DLLs are beside SDL2, like the root build.
     add_custom_command(TARGET mc2_tests POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/${_contract_dll}"
-            "$<TARGET_FILE_DIR:mc2_tests>/${_contract_dll}"
-        COMMENT "Copy ${_contract_dll} for hidden GL guard tests"
+            "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:SDL2::SDL2>/glew32.dll"
+            "$<TARGET_FILE_DIR:mc2_tests>"
+        COMMENT "Copy runtime libraries for hidden GL guard tests"
+        VERBATIM
     )
-endforeach()
-target_sources(mc2_tests PRIVATE test_save_archive.cpp ${MC2_WORKTREE_ROOT}/code/save_archive.cpp)
-target_sources(mc2_tests PRIVATE test_abl_outarrays.cpp)
+endif()
+
+# Save schema and ABL output bounds exercise their shared production helpers.
+target_sources(mc2_tests PRIVATE
+    test_save_archive.cpp
+    ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
+    test_abl_outarrays.cpp
+)

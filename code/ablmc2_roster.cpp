@@ -6,13 +6,6 @@
 #include <iterator>
 #include <span>
 
-std::span<int> ABLi_popIntBuf(void);
-std::span<float> ABLi_popRealBuf(void);
-namespace abl {
-long clampArrayCount(long, size_t, std::string_view);
-long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
-long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
-}
 
 #include "mc2fmt.h"
 
@@ -390,8 +383,12 @@ void execGetTargetRelativePosition (void) {
 	float* rangeOut = ABLi_popRealPtr();
 	float* angleOut = ABLi_popRealPtr();
 
-	if (rangeOut) rangeOut[0] = 0.0f;
-	if (angleOut) angleOut[0] = 0.0f;
+	if (!rangeOut || !angleOut) {
+		abl::reportBadArgument("gettargetrelativeposition", !rangeOut ? "rangeOut" : "angleOut");
+		return;
+	}
+	rangeOut[0] = 0.0f;
+	angleOut[0] = 0.0f;
 
 	if (!CurObject)
 		return;
@@ -405,8 +402,8 @@ void execGetTargetRelativePosition (void) {
 	float dy = tgtPos.y - myPos.y;
 	float range = sqrt(dx * dx + dy * dy);
 	float angle = atan2(dy, dx);
-	if (rangeOut) rangeOut[0] = range * metersPerWorldUnit;
-	if (angleOut) angleOut[0] = angle;
+	rangeOut[0] = range * metersPerWorldUnit;
+	angleOut[0] = angle;
 }
 
 void execGetRelativePositionToTarget (void) {

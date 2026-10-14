@@ -7,14 +7,27 @@
 
 #include <cstddef>
 #include <string_view>
+#include <span>
+
+// The declared script extent bounds every native array writer.
+std::span<int> ABLi_popIntBuf(void);
+std::span<float> ABLi_popRealBuf(void);
 
 namespace abl {
 
 // `[ABL v1] event=<event> module= line= capacity= dropped=`. `event` is the whole event name as a literal ("concat_truncated"); each name
-// logs at most 16 lines per run.
+// logs at most 16 lines per run; unregistered names share one fallback budget.
 void reportTruncated(std::string_view event, size_t capacity, size_t dropped);
 
 // `[ABL v1] event=bad_argument builtin= argument= module= line=`, at most 16 lines per run.
 void reportBadArgument(std::string_view builtin, std::string_view argument);
+
+long clampArrayCount(long count, size_t capacity, std::string_view event);
+long copyIntArray(std::span<int> dest, std::span<const int> src, std::string_view event);
+long copyRealArray(std::span<float> dest, std::span<const float> src, std::string_view event);
+
+#ifdef MC2_ABL_EVENTS_TEST
+void resetEventBudgetsForTest();
+#endif
 
 }  // namespace abl

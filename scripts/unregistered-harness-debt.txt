@@ -11,10 +11,8 @@
 #   * a buildable harness dir absent from BOTH the registry and this file
 #       -> FAIL. That is a dark check: never built, never run, and
 #          indistinguishable from a passing one. This is exactly how
-#          tools/class_light_band_harness -- 70 tests, the "17 of 24 missions
-#          light the wall facing away from the sun" measurement and the SH-IBL
-#          probe sign-flip guard -- shipped unrun on the same day both of its
-#          siblings were registered.
+#          the class-light-band tests shipped unrun before their migration
+#          into tests/unit/test_class_light_band_harness.cpp.
 #   * an entry here that IS now registered  -> FAIL. Delete the row. Debt can
 #          only shrink, and a silent re-add is impossible.
 #   * an entry here whose directory is gone -> FAIL (stale row).

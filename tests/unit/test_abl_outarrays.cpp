@@ -19,11 +19,6 @@ extern bool s_ablArgGuard;
 void execGetRelativePositionToObject(void);
 void execGetRelativePositionToPoint(void);
 
-namespace abl {
-long clampArrayCount(long, size_t, std::string_view);
-long copyIntArray(std::span<int>, std::span<const int>, std::string_view);
-long copyRealArray(std::span<float>, std::span<const float>, std::string_view);
-}
 
 namespace {
 
@@ -79,6 +74,21 @@ std::span<float> ABLi_popRealBuf(void) {
 }
 
 TEST_SUITE("ABL out arrays") {
+
+TEST_CASE("event budget reset permits a second log line after exhaustion") {
+    abl::resetEventBudgetsForTest();
+    const auto first = capture([] {
+        for (int i = 0; i < 17; ++i)
+            abl::reportTruncated("getobjects_truncated", 1, 1);
+    });
+    CHECK(std::count(first.begin(), first.end(), '\n') == 16);
+    CHECK(capture([] { abl::reportTruncated("getobjects_truncated", 1, 1); }).empty());
+    abl::resetEventBudgetsForTest();
+    const auto second = capture([] { abl::reportTruncated("getobjects_truncated", 1, 1); });
+    CHECK(second.find("[ABL v1] event=getobjects_truncated ") == 0);
+    CHECK(std::count(second.begin(), second.end(), '\n') == 1);
+    abl::resetEventBudgetsForTest();
+}
 
 TEST_CASE("integer output publishes the clamped count and one shared reporter line") {
 	int storage[] = {71, 72, 73, 74};

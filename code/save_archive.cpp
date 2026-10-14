@@ -1,16 +1,23 @@
+// Save schema codec; design: .claude/cleanup/cxx23-step4-save-schema-design.md.
+// Not wired yet; explicit fields keep saves independent of runtime ownership and layout.
 #include "save_archive.h"
 
 #include <algorithm>
+#include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <system_error>
 
 #ifdef _WIN32
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <fcntl.h>
 #include <io.h>
+#include <process.h>
 #include <sys/stat.h>
 #else
 #include <fcntl.h>
@@ -252,14 +259,25 @@ bool writeFile(const std::filesystem::path& path, Document document, Diagnostic 
     Archive errors(diagnostic);
     Bytes bytes;
     if (!encode(std::move(document), bytes, diagnostic)) return false;
-    auto temporary = path;
-    temporary += ".pending";
-    // Exclusive creation prevents a competing writer from overwriting the staged save.
+    std::filesystem::path temporary;
+    int fd = -1;
 #ifdef _WIN32
-    int fd = _wopen(temporary.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _S_IREAD | _S_IWRITE);
+    const auto process = _getpid();
 #else
-    int fd = open(temporary.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
+    const auto process = getpid();
 #endif
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    // A crash leaves only its own staging file; exclusive creation isolates concurrent saves.
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        temporary = path;
+        temporary += ".pending." + std::to_string(process) + "." + std::to_string(stamp) + "." + std::to_string(attempt);
+#ifdef _WIN32
+        fd = _wopen(temporary.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _S_IREAD | _S_IWRITE);
+#else
+        fd = open(temporary.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
+#endif
+        if (fd >= 0 || errno != EEXIST) break;
+    }
     if (fd < 0) { errors.reject("file_create"); return false; }
     std::size_t offset = 0;
     while (offset < bytes.size()) {
@@ -300,7 +318,7 @@ bool readFile(const std::filesystem::path& path, const Compatibility& compatibil
               Document& output, Diagnostic diagnostic) {
     Archive errors(diagnostic);
     try {
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        std::ifstream file(path, std::ios::binary | std::ios::ate); // path-audit: loose-only; user save files are outside the game-data VFS.
         if (!file) { errors.reject("file_open"); return false; }
         const auto length = file.tellg();
         if (length < 0 || static_cast<std::uint64_t>(length) > maxFileBytes) {

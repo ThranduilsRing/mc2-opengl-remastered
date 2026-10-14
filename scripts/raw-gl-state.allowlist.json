@@ -24,7 +24,6 @@
     ],
     "prefixes": [
       "tools/asset_viewer/",
-      "tools/glstate_guard_harness/",
       "tests/"
     ]
   },
@@ -55,7 +54,6 @@
     ],
     "prefixes": [
       "tools/asset_viewer/",
-      "tools/glstate_guard_harness/",
       "tests/"
     ]
   },
@@ -77,7 +75,6 @@
     ],
     "prefixes": [
       "tools/asset_viewer/",
-      "tools/glstate_guard_harness/",
       "tests/"
     ]
   },
@@ -101,7 +98,6 @@
     ],
     "prefixes": [
       "tools/asset_viewer/",
-      "tools/glstate_guard_harness/",
       "tests/"
     ]
   },
