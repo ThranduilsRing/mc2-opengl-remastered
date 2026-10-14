@@ -1,5 +1,53 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## SIXTEENTH session (2026-10-14 ~12:50 CDT start, cap 5 h) -- review should-fix items, Gates work, harness, ownership slices 7-9 (shadow, present, terrain); nifty NOT merged (lane 1 mid-session), start tip cdce24359
+Every number below was printed by the tool named beside it in this session.
+
+### Commits (oldest first)
+- 61db23a9e review should-fix 1-3: post_ssao / post_screenfx `destroy_state` and `vulkan_water_island_images.cpp` idle through `waitIdle("...")`; the release-order comment was wrong, so the ORDER was fixed, not the comment: the state moves into a scope-local (`{ auto dying = std::move(*s); }`) whose destructor releases in reverse declaration order (member-wise move-assignment releases forward).
+- d684bdb1f Gates: br-a-lane2.patch (973 -> 971 rows, `gate_gen --check` green, scripts_tests `test_the_committed_table_is_consistent` green again); `VFX_COMBAT` in `knownTags()`; `gate::ScopedOverride<"MC2_X">` (see API below), doctest x2, `Gates/README.md`.
+- e52392c70 harness: `run_visual_capture.py` starts the budget timer AFTER `nofocus.spawn` returns (spawn blocks on the host lease); bbee2604a F4 provider API `std::optional<size_t> gos_ResourceStringLength(HSTRRES, DWORD)` in the new `GameOS/include/gameos_resource.hpp` (own header: gameos.hpp is on the file-size ratchet; optional because the first version, bool + out-param, added LG05 sites); `gos_GetResourceString` unchanged for its callers (marker + log line kept).
+- 91a842230 ownership slice 7 shadow (`IslandSlot::Shadow`, every object owned, 49 -> 0); b19c52c46 shutdown-order trace; c119e8010 slice 8 present (new `OwnedRawBuffer` / `OwnedSwapchain` / `OwnedSurface`, `~Impl` releases in reverse, 103 -> 0); ffff63cbb slice 9 terrain (`IslandSlot::Terrain`, `g_island` and `g_ovl` gone, overlay state is a member of the island, 117 -> 0).
+- 5be71e04b regeneration: `scripts/check-vk-pipeline-layout.py` reads owner-created layouts (`mc2vk::create(s->dsl, ...)` and `{ s->dsl.get(), o->texDsl.get() }`: 26 false errors otherwise), ledger, background-launch inventory, gated-layout doc, callers allowlist row for nifty's `test_build_compiler_presets.py`.
+- 57ec9b574 FIX found by the live shadow run (below): the sorted caster re-stage copied `alignas(16)` instances through a typed pointer into a mapped allocation.
+
+### Ledger (`py -3 tools/vk_ownership_ledger.py`): Manual tokens, before -> after
+shadow 49 -> 0, present 103 -> 0, terrain 117 -> 0. Every island is at 0 (total created 0 / released 0). Command buffers and descriptor sets are the pool-owned kinds the ledger lists apart.
+
+### Proof
+| Evidence | Id |
+|---|---|
+| VK tier1, `MC2_VULKAN_VALIDATION=1`, FINAL exe 57ec9b574 (fe1c794ffd00), 5/5, errors=0 warnings=0 on mc2_01/03/10/17/24, 135 / 134 / 125 / 125 / 123 fps | `tests/smoke/artifacts/2026-10-14T14-32-55/report.md` |
+| GL tier1, same final exe, 5/5, 147 / 103 / 125 / 139 / 144 fps | `tests/smoke/artifacts/2026-10-14T14-43-48/report.md` |
+| Same two runs on the previous exe (5be71e04b, b89ad90f3b63, before the memcpy fix): VK 5/5 errors=0 warnings=0 (149 / 125 / 117 / 121 / 108), GL 5/5 (152 / 107 / 144 / 142 / 146) | `2026-10-14T13-42-42`, `2026-10-14T14-00-01` |
+| Captures day mc2_01_saved_205644 / night mc2_10_saved_204523 (1920x1080, FREEZE_ANIM), BEFORE = the installed exe of the previous session (cb24dc2686a1), AFTER = 5be71e04b (the memcpy fix is in code the default VK and GL runs never reach): day GL noise (before1->before2) 34 px, before1->after1 34 px, before1->after2 68 px; day VK before->after 24 px vs VK noise (before->beforeb) 71 px; night 0 px in all four pairs. Montages viewed: day VK (the only red box is a 1-px shoreline/horizon cluster) and night GL. | `.claude/l2cap/s6before{1,2}-gl`, `s6before-vk`, `s6beforeb-vk`, `s6after{1,2}-gl`, `s6after-vk`; montages `.claude/l2cap/montages/s6-*` |
+| EARLY-EXIT run (VK + validation + `MC2_VISUAL_DIFF_CAPTURE=1 MC2_VISUAL_DIFF_FRAME_N=100000 MC2_VISUAL_DIFF_MAX_FRAMES=20`): `capture_timeout` exit while every default island was live; log ends `event=summary result=fail reason=early_exit stage=atexit` after one `[VK_IMAGE_RESOURCE] destroy image owner`, no crash, no `shutdown order violated`, errors=0 warnings=0 | `tests/smoke/artifacts/2026-10-14T14-11-00/mc2_01.log` |
+| Live coverage of default-off islands: `MC2_VK_POST_SSAO=1 MC2_VK_POST_SCREENFX=1 MC2_SSAO=1 MC2_CLOUD_SHADOW=1` mc2_01 VK + validation: post_ssao used_vulkan=17510, post_screenfx cloud_frames=17510, errors=0 warnings=0, PASS | `2026-10-14T14-11-13/mc2_01.log` |
+| SHADOW island (default OFF, so the default VK run does not reach it; `[VK_SHADOW_INTEROP] vulkan_available=0` there): `MC2_VK_SHADOW_INTEROP=1` on the first converted exe CRASHED on frame 1 (access violation at 0xFFFFFFFFFFFFFFFF in the sorted re-stage, `2026-10-14T14-16-35`); the pre-session exe passed the same gates, so it was a regression of the conversion (latent bug, root cause in Open 1). After 57ec9b574: shadow only PASS 8192 frames, used_vulkan=15917, errors=0 warnings=0 (`2026-10-14T14-28-27`); shadow + `MC2_VK_CSM_ARRAY_INTEROP=1 MC2_VK_CSM_FULLMAP_INTEROP=1`: errors=10 (VUID-vkCmdDraw-None-09600 x10), IDENTICAL to the pre-session exe (10, `2026-10-14T14-18-29`), so pre-existing | see ids |
+| Shutdown-order trace (default VK run, `2026-10-14T13-42-42/mc2_01.log`): four `[VK_IMAGE_RESOURCE] destroy image owner ...; N alive after` lines (4 -> 1), then `[VK_ENGINE_CONTEXT] retire island slot=` Water, ColorProp, Terrain, Mech, LegacyShape, Sky in slot-use order, then the last image owner (the present image) `0 alive after`, then the context destroy: the `destroy()` precondition reads straight from the log (it goes through the existing `[VK_ENGINE_CONTEXT]` / `[VK_IMAGE_RESOURCE]` tags: the JSONL diag file is already closed at that point, `gos_DestroyRenderer` shuts it down first) | same file |
+| `tools/build_all_targets.py` every stage built (exit 0); `build_contract_harnesses --run --unit` 34 PASS rc 0, doctest 3143 / 3143 cases (3141 + the 2 ScopedOverride cases; the one aborting case in the log is the intended `fatal_if_aborts` test); `check-contracts.sh` full board 119 passed / 3 failed: `container_callsites`, `delivery_installs`, `doc_links` (the pre-existing reds, none of this lane's) | this session's logs (deleted, ids above) |
+
+### Gate override API
+- `gate::ScopedOverride<"MC2_X"> on("1");` (`Gates/gate_cold.h`; the name is `static_assert`ed against the gate table at compile time) sets the PROCESS environment (`_putenv_s` / `setenv`), so children started inside the scope inherit it.
+- The destructor restores the previous value (or unsets it) and BOTH ends call `gate::invalidate(name)`, so `gate::get<>()` in the same process sees the change at once; `nullptr` or `""` clears the variable; scopes nest (LIFO); single-threaded phases only, like `invalidate()`.
+- `gate::ScopedEnv(name, value)` is the untyped base for a runtime name; `Gates/README.md` documents it for `tools/vfx_oracle/lifecycle_driver.cpp` and `tests/unit/test_vfx_frozen_clouds.cpp` (the Sol files were NOT touched).
+
+### Open
+1. ROOT CAUSE of the shadow crash, worth a sweep: a mapped allocation is only aligned to its buffer's OFFSET alignment, so a typed copy of an `alignas(16)` struct (`GpuStaticPropInstance`, `GpuMechInstance`) into mapped memory can fault when the allocator hands out a 4- or 8-aligned offset; the conversion changed the allocation pattern and exposed it. Fixed for the three shadow sites; other islands copy with memcpy or write to 256-aligned UBO slots (checked by grep), not audited at run time.
+2. The CSM interop gates (default OFF) leave the CSM images in DEPTH_STENCIL_READ_ONLY while terrain expects SHADER_READ_ONLY: 10 validation errors, unchanged by this session.
+3. Tracy before/after pair NOT taken: the host was never quiet (lane 3 smokes and a lane 1 game held the lease or the CPU at every check); recipe in the EVENING section below.
+4. The post_* states are still new / deleted by `gosPostProcess` (post_fog and post_hzb too): out of the ledger's islands, not converted. `OvlState` and the island slots are the last parked states; no static-duration owner remains in the converted islands.
+5. Red rows of `check-contracts.sh` that are not this lane's: `container_callsites` (311), `delivery_installs`, `doc_links`.
+6. No BUGS-FOUND-FIXED row: the shadow crash was a regression of this session's own conversion in a default-OFF path, no player-visible symptom ever shipped.
+7. Scratch to clean (deleted by me: this session's scripts, patches, commit-message files and logs): `.claude/l2cap/s6*` (7 sets) and `.claude/l2cap/montages/s6-*`, plus older leftovers I did not touch: `.claude/l2cap/s5*`, `scratch/before/mc2_before.exe` (9910a8ee22d1, used to prove the shadow crash is a regression), `scratch/head_mc2.exe`, `scratch/patch_*.py`, `scratch/*.sh` (ab_gl, cap_after, cap_before2, gl_singles), `scratch/state_new.md`, `scratch_*.log` in the worktree root (older sessions).
+
+### Lessons
+- A default-off gate group is NOT covered by tier1: a conversion of an island behind a gate needs a live run with that gate on, before the commit, not after the batch (the shadow island's first frame crashed, and the default 5/5 proofs were green).
+- The Bash tool rewrites backslashes inside heredocs: `'\\0'` became a NUL byte (compile error C2137) and `"\n"` inside a Python string became a real newline (broke a string literal); a loop that searched for the NUL never ended. Write scripts with the Write tool. Python `open(f, 'w')` on Windows writes CRLF: always `newline=''`.
+- A checker that parses code SHAPE (`check-vk-pipeline-layout.py` read `&s->dsl` and plain array members) needs the new owner idiom taught to it in the same batch: 26 false errors after the terrain slice.
+- Scripted conversion (a table of member -> owner type, regex rewrites of the create / destroy / use sites) built clean on the first full compile of present and terrain; the table is the whole design, the compiler finds the rest.
+- The lease queue was the long pole (lane 3 and lane 1 smokes): chain every lease-taking step into one background script instead of one launch per step; the budget no longer includes the wait.
+
 ## FIFTEENTH session (2026-10-14 ~09:15 CDT start, cap 5 h) -- review should-fix items + ownership batches 5 and 6; nifty merged at the start (fast-forward to 5fddfc613; nifty NOT merged back)
 Every number below was printed by the tool named beside it in this session.
 
