@@ -6826,48 +6826,6 @@ String {
 }
 
 String {
-    key = "debug.source.unable_to_create_contact_sortlist"
-    text = " Unable to create Contact sortList "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "71c1e14fbbc9"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "main_game_code"
-    categories = "debug_log_candidate"
-    firstSourceFile = "code/contact.cpp"
-    firstLine = 927
-}
-
-String {
-    key = "debug.source.unable_to_create_contact_sortlist.aa14fa02"
-    text = " Unable to create Contact::sortList "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "aa14fa028ecd"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "main_game_code"
-    categories = "debug_log_candidate"
-    firstSourceFile = "code/contact.cpp"
-    firstLine = 129
-}
-
-String {
-    key = "debug.source.unable_to_create_mover_sortlist"
-    text = " Unable to create Mover::sortList "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "007d03d39549"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "main_game_code"
-    categories = "debug_log_candidate"
-    firstSourceFile = "code/mover.cpp"
-    firstLine = 2361
-}
-
-String {
     key = "debug.source.unable_to_create_multiplayer_object"
     text = " Unable to create MultiPlayer object "
     source = "source_diagnostics"
@@ -6879,34 +6837,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/mission.cpp"
     firstLine = 1949
-}
-
-String {
-    key = "debug.source.unable_to_create_team_contact_sortlist"
-    text = " Unable to create Team Contact sortList "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "b452454e9873"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "main_game_code"
-    categories = "debug_log_candidate"
-    firstSourceFile = "code/ablmc2.cpp"
-    firstLine = 147
-}
-
-String {
-    key = "debug.source.unable_to_create_warrior_sortlist"
-    text = " Unable to create Warrior::sortList "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "7eabda70fb14"
-    occurrenceCount = 3
-    activeOccurrenceCount = 3
-    sourceAreas = "main_game_code"
-    categories = "debug_log_candidate"
-    firstSourceFile = "code/warrior.cpp"
-    firstLine = 1015
 }
 
 String {
@@ -6935,20 +6865,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/mission.cpp"
     firstLine = 2107
-}
-
-String {
-    key = "debug.source.unable_to_init_sortlist"
-    text = " Unable to init sortList "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "9bd240113534"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/sortlist.cpp"
-    firstLine = 40
 }
 
 String {

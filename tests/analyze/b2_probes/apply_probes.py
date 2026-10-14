@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# HISTORICAL: patches mclib/sortlist.cpp, which was deleted at 29f95649a; only runs on a tree from before that commit.
 """apply_probes - patch a SCRATCH worktree with the step 4 B2 probes P1 (sort ties) and P2 (A* open list). Never run it on the main worktree.
 
 WHAT: edits mclib/sortlist.cpp (qsort -> b2P1Sort), the five live sort call sites (a site tag), mclib/pqueue.{h,cpp} (P2 counters and the per-solve ophash),

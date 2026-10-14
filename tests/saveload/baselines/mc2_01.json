@@ -129,6 +129,7 @@
    }
   }
  },
+ "judged": "first-save-only",
  "packets": 20000,
  "overall": "ed3581515c86157d",
  "resave_identical": false,

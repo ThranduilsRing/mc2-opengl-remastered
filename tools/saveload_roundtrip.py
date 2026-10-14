@@ -322,7 +322,7 @@ def masked_packets(pk, policy: dict):
 
 
 def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None,
-                    mask_path: str | None = None) -> dict:
+                    mask_path: str | None = None, first_save_only: bool = False) -> dict:
     pk = si.load(first)[1]
     policy = mask_policy(mask_path)
     identical, _ = resave_verdict(first, second)
@@ -330,6 +330,8 @@ def baseline_record(mission: str, save_at: int, load_at: int, first: str, second
     pk = masked_packets(pk, policy)
     return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
             "comparison": policy,
+            # WHY recorded: a first-save-only baseline never proved the re-save, so a reader must be able to tell it from a strong one.
+            "judged": "first-save-only" if first_save_only else "first-save-and-resave",
             "packets": len(pk), "overall": si.overall(pk), "resave_identical": identical, "resave_matches_policy": ok,
             "runs": [list(r) for r in si.runs(pk)],
             "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check"}
@@ -341,6 +343,8 @@ def check_baseline_record(base: dict, cur: dict):
     if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
         return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
     be, ce = base.get("exe") or {}, cur.get("exe") or {}
+    if base.get("judged", "unrecorded") != "first-save-and-resave":
+        lines.append(f"WEAK baseline: judged {base.get('judged', 'unrecorded (recorded before the field existed)')}; the re-save was not part of the verdict")
     lines.append(f"baseline exe {be.get('sha', '?')} dirty={be.get('dirty', '?')}; this run's exe {ce.get('sha', '?')} dirty={ce.get('dirty', '?')}")
     ok, msg = si.compare_runs(base["runs"], cur["runs"])
     if not ok:
@@ -391,7 +395,7 @@ def cmd_fixture(args) -> int:
     if not first:
         print("saveload_roundtrip: " + lines[0])
         return 1
-    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask)
+    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask, args.first_save_only)
     path = baseline_path(args.mission)
     if args.cmd == "baseline":
         os.makedirs(BASELINE_DIR, exist_ok=True)

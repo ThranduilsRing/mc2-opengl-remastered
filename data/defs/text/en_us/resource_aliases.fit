@@ -39146,22 +39146,6 @@ SuggestedTextKeyAlias {
 }
 
 SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.warrior.unable_to_create_warrior_sortlist.line1015"
-    textKey = "debug.source.unable_to_create_warrior_sortlist"
-    text = " Unable to create Warrior::sortList "
-    source = "source_audit"
-    textHash = "7eabda70fb14"
-}
-
-SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.warrior.unable_to_create_warrior_sortlist.line8515"
-    textKey = "debug.source.unable_to_create_warrior_sortlist"
-    text = " Unable to create Warrior::sortList "
-    source = "source_audit"
-    textHash = "7eabda70fb14"
-}
-
-SuggestedTextKeyAlias {
     suggestedKey = "editor.source.editorgosrender.unset_default_0.line748"
     textKey = "common.text.unset_default_0"
     text = "(unset, default 0)"
@@ -43511,46 +43495,6 @@ SuggestedTextKeyAlias {
     text = " Turret::addWeaponFireChunks--Too many weaponfire chunks "
     source = "source_audit"
     textHash = "4be40f0b311b"
-}
-
-SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.contact.unable_to_create_contact_sortlist.line927"
-    textKey = "debug.source.unable_to_create_contact_sortlist"
-    text = " Unable to create Contact sortList "
-    source = "source_audit"
-    textHash = "71c1e14fbbc9"
-}
-
-SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.contact.unable_to_create_contact_sortlist.line129"
-    textKey = "debug.source.unable_to_create_contact_sortlist.aa14fa02"
-    text = " Unable to create Contact::sortList "
-    source = "source_audit"
-    textHash = "aa14fa028ecd"
-}
-
-SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.mover.unable_to_create_mover_sortlist"
-    textKey = "debug.source.unable_to_create_mover_sortlist"
-    text = " Unable to create Mover::sortList "
-    source = "source_audit"
-    textHash = "007d03d39549"
-}
-
-SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.ablmc2.unable_to_create_team_contact_sortlist"
-    textKey = "debug.source.unable_to_create_team_contact_sortlist"
-    text = " Unable to create Team Contact sortList "
-    source = "source_audit"
-    textHash = "b452454e9873"
-}
-
-SuggestedTextKeyAlias {
-    suggestedKey = "editor.source.sortlist.unable_to_init_sortlist"
-    textKey = "debug.source.unable_to_init_sortlist"
-    text = " Unable to init sortList "
-    source = "source_audit"
-    textHash = "9bd240113534"
 }
 
 SuggestedTextKeyAlias {

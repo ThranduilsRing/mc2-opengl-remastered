@@ -1,4 +1,5 @@
 """saveload_roundtrip: the analysis that compares the simulation after a quickload with the one after the quicksave."""
+import json
 import os
 import sys
 
@@ -76,8 +77,10 @@ def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_th
 
     assert main() == 1                                                # the re-save gate: refused
     assert main("--first-save-only") == 0                             # recorded
+    assert json.load(open(rt.baseline_path("m")))["judged"] == "first-save-only"   # a weak baseline says so
     monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), noisy_first, resave, {"sha": "x", "dirty": 0}))
     assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 0     # run-to-run noise in a masked byte does not fail the check
+    assert "WEAK baseline: judged first-save-only" in capsys.readouterr().out                  # and the check reports the weakness
     monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), save("d.ims", 5), resave, {"sha": "x", "dirty": 0}))
     assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 1     # a changed pilot string byte does
     capsys.readouterr()
