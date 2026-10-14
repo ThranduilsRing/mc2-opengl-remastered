@@ -195,7 +195,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     s->hdriRealImported = haveReal;
     // VK-WATER-FENCE-DEFER-1: with the deferred retire, a prior water submit may still be in
     // flight — device-idle first (rare: at most twice per island, dummy -> real).
-    vkDeviceWaitIdle(s->device);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_image_import");
     write_descriptors(s);   // binding 2 now valid
     vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
          haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);

@@ -177,7 +177,7 @@ struct gosPostProcess::VkPostSsaoNative {
     VkDescriptorSet  applySet = VK_NULL_HANDLE;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot; allocated from `cpool`, freed with it
 
-    // OWNED objects, declared in creation order: the destructor releases them in reverse (the owner idles the GPU first, see destroy_state).
+    // OWNED objects, declared in creation order: the state is moved into a scope-local in destroy_state so the destructor releases them in REVERSE (a member-wise move-assignment would release forward); the owner idles the GPU first.
     mc2vk::OwnedImageView   depthSampleView;  // depth-aspect view over sDepthRes->image
     mc2vk::OwnedSampler     gbufSampler;      // NEAREST/CLAMP (GL sceneDepthTex_/sceneNormalTex_ parity)
     mc2vk::OwnedSampler     occSampler;       // LINEAR/CLAMP (GL ssaoColorTex_ GL_LINEAR -- N0 BUG-2)
@@ -220,10 +220,11 @@ bool make_buffer(gosPostProcess::VkPostSsaoNative* s, mc2vk::OwnedBuffer& out, V
     return true;
 }
 
-// Releases the owned objects (the state's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
+// Releases the owned objects in reverse declaration order (the moved-to local's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostSsaoNative* s) {
     if (!s) return;
-    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
+    if (s->device != VK_NULL_HANDLE) mc2vk::getOrCreateEngineVulkanContext().waitIdle("post_ssao_destroy");
+    { auto dying = std::move(*s); (void)dying; }
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostSsaoNative{};
     s->disabled = disabled;
