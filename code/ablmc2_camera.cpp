@@ -83,7 +83,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 		for (long i = 0; i < sortCount; i++)
 			moverList[i] = (MoverPtr)ObjectManager->get(Team::sortList->getId(i));
 		for (long i = sortCount; i < numValidMovers; i++)
-			moverList[i] = (MoverPtr)ObjectManager->get(handleList[i]);
+			moverList[i] = static_cast<MoverPtr>(ObjectManager->get(handleList[i]));
 	}
 	return(numValidMovers);
 }

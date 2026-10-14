@@ -2090,7 +2090,7 @@
    "owners": []
   },
   "File": {
-   "delete": 28,
+   "delete": 27,
    "delete_array": 0,
    "files": {
     "code/ablmc2.cpp": {
@@ -2110,10 +2110,6 @@
     },
     "code/radio.cpp": {
      "delete": 2,
-     "new": 1
-    },
-    "mclib/alphapalette.cpp": {
-     "delete": 1,
      "new": 1
     },
     "mclib/file.cpp": {
@@ -2155,7 +2151,7 @@
      "new": 1
     }
    },
-   "new": 29,
+   "new": 28,
    "new_array": 0,
    "owners": [
     "",
@@ -2807,12 +2803,9 @@
    "files": {
     "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
      "new": 1
-    },
-    "GameOS/gameos/vulkan_sky_island.cpp": {
-     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -5671,19 +5664,15 @@
   },
   "T": {
    "delete": 0,
-   "delete_array": 8,
+   "delete_array": 6,
    "files": {
-    "mclib/stuff/average.hpp": {
-     "delete_array": 2,
-     "new_array": 1
-    },
     "mclib/stuff/marray.hpp": {
      "delete_array": 6,
      "new_array": 2
     }
    },
    "new": 0,
-   "new_array": 3,
+   "new_array": 2,
    "owners": [
     ""
    ]
@@ -6683,18 +6672,6 @@
    "new_array": 0,
    "owners": []
   },
-  "VfxIsland": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_vfx_island.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "VideoSession": {
    "delete": 1,
    "delete_array": 0,
@@ -6806,7 +6783,7 @@
    ]
   },
   "WaterIsland": {
-   "delete": 24,
+   "delete": 18,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/vulkan_color_prop_island.cpp": {
@@ -6821,17 +6798,11 @@
     "GameOS/gameos/vulkan_shadow_island_live.cpp": {
      "delete": 3
     },
-    "GameOS/gameos/vulkan_sky_island.cpp": {
-     "delete": 3
-    },
     "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
      "delete": 1
     },
     "GameOS/gameos/vulkan_terrain_island_run.cpp": {
      "delete": 2
-    },
-    "GameOS/gameos/vulkan_vfx_island.cpp": {
-     "delete": 3
     },
     "GameOS/gameos/vulkan_water_island.cpp": {
      "delete": 1
@@ -8072,7 +8043,7 @@
   "editor/EditorObjectMgr.cpp": 1,
   "editor/EditorObjects.cpp": 1,
   "editor/ObjectSelectionBrush.cpp": 1,
-  "editor/Objective.cpp": 10,
+  "editor/Objective.cpp": 6,
   "editor/ObjectiveDlg.cpp": 9,
   "editor/ScatterBrush.cpp": 1,
   "editor/UnitSettingsDlg.cpp": 4,
