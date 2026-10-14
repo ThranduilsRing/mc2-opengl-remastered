@@ -3,7 +3,6 @@
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 #include"particles/batcher.h"
-#include"particles/spawn.h"
 
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
 #include<cmath>    // std::min / std::max fallback (also in gosfxheaders)
@@ -469,26 +468,10 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// GPU render path (Stage 2'): re-emit current cloud to the batcher on
-	// every Draw() call. This matches the legacy path which submits point
-	// geometry to MLR render lists each frame. SpawnPoint samples spec
-	// curves at resolveSampleAge(m_age) (0.5 unless MC2_VFX_AGE_SAMPLE=1).
-	// ParticleCloud::Draw propagates up the chain for EffectCloud children;
-	// it does not render point geometry.
-	//
-	// NOTE: GPU spawn moved from Start() to here. Start()-based emission only
-	// filled the batcher for one frame (until the first Flush()), leaving the
-	// batcher empty for all subsequent frames.
+	// Live particles retain birth randomness; rendering must not resample it.
+	// An empty cloud emits nothing but still draws its child effects.
 	if (mc2::particles::Batcher::is_enabled()) {
-		if (mc2::particles::Batcher::is_oracle_render_enabled() && m_activeParticleCount > 0) {
-			// VFX-POINTCLOUD-ORACLE-HARVEST-1: harvest live CPU PointCloud particles.
-			// PointCloud has no per-particle spin, no aspect ratio, no UV sub-rect —
-			// simpler than CardCloud. Position from m_P_localTranslation[i] (LOCAL
-			// space) transformed to world via local_to_world. Color from per-particle
-			// animated array m_P_color[i]. No per-particle size — spec has no size
-			// curve; use a 4.0f world-unit constant (kept below the shader's oracle
-			// size floor of max(size,8) for velocity=0 path — acceptable for muzzle
-			// flare dots). velocity stays (0,0,0): no spin, no aspect. atlasIndex=0.
+		if (m_activeParticleCount > 0) {
 			Specification *spec = GetSpecification();
 			Check_Object(spec);
 			const uint32_t mlrTex =
@@ -501,17 +484,14 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				    am == MidLevelRenderer::MLRState::AlphaOneMode)
 					blendMode = 1;
 			}
-			// Same effect->world transform as the legacy Draw() path.
 			Stuff::LinearMatrix4D local_to_world;
 			local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
 
 			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
-			// Full-page UV; PointCloud has no atlas sub-rect.
 			batcher.BeginGroup(mlrTex, 0.0f, 0.0f, 1.0f, 1.0f, blendMode, 0u);
 
 			int harvested = 0;
 			float minAlpha =  3.0e38f, maxAlpha = -3.0e38f;
-			// VFX-AGE-LIFETIME-UPLOAD-1: age range tracker for FIRST_HARVEST log.
 			float minAge = 1.0f, maxAge = 0.0f;
 
 			for (int i = 0; i < m_activeParticleCount; ++i) {
@@ -519,7 +499,6 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				Check_Object(p);
 				if (p->m_age >= 1.0f) continue;   // skip dead slots
 
-				// Transform local-space position to world space.
 				Stuff::Point3D wc;
 				wc.Multiply(m_P_localTranslation[i], local_to_world);
 
@@ -533,33 +512,23 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				gp.color[1]    = c.green;
 				gp.color[2]    = c.blue;
 				gp.color[3]    = c.alpha;
-				// PointCloud has no per-particle size curve; 4.0f world units is a
-				// reasonable visible constant for muzzle-flash dots. The oracle
-				// billboard path (velocity=(0,0,0)) floors size at max(size,8.0) in
-				// the shader, so this results in ~8 wu dot — acceptable.
+				// Preserve the harvest's existing billboard radius.
 				gp.size        = 4.0f;
-				// VFX-AGE-LIFETIME-UPLOAD-1: upload normalized age and lifetime sentinel.
 				gp.age         = static_cast<float>(p->m_age);  // normalized [0,1]
 				gp.lifetime    = 1.0f;                           // normalized sentinel (real seconds = 1.0f/p->m_ageRate)
-				// velocity stays zero-initialized: no spin, no aspect for PointCloud.
-				// atlasIndex stays 0: no animated atlas.
 
 				batcher.Emit(gp);
 				++harvested;
 				if (c.alpha < minAlpha) minAlpha = c.alpha;
 				if (c.alpha > maxAlpha) maxAlpha = c.alpha;
-				// VFX-AGE-LIFETIME-UPLOAD-1: track age range
 				if (gp.age < minAge) minAge = gp.age;
 				if (gp.age > maxAge) maxAge = gp.age;
 			}
 
-			// [VFX_ORACLE v1] diagnostics: one-shot on first harvest, then 240-call
-			// summary — same cadence as CardCloud oracle to stay consistent.
 			if (mc2::particles::Batcher::is_log_enabled()) {
 				static bool s_first = false;
 				if (!s_first && harvested > 0) {
 					s_first = true;
-					// VFX-AGE-LIFETIME-UPLOAD-1: age range
 					const double ageLo = static_cast<double>(minAge);
 					const double ageHi = static_cast<double>(maxAge);
 					mc2::fmt::print_err("[VFX_ORACLE v1] class=PointCloud FIRST_HARVEST spec=\"{}\" active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] size=4.0 spin=none atlas=none ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minAlpha), static_cast<double>(maxAlpha), ageLo, ageHi);
@@ -575,13 +544,8 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				}
 			}
 
-			// VFX-WEAPON-FX-RESTORE-OPUS-1: Effect::Draw only; skip MLR re-submission.
-			Effect::Draw(info);
-			return;
 		}
 
-		(void)mc2::particles::Spawn(GetSpecification(), &m_localToWorld, (float)m_seed, (float)m_age);
-		// VFX-WEAPON-FX-RESTORE-OPUS-1: Effect::Draw only; skip MLR re-submission.
 		Effect::Draw(info);
 		return;
 	}
@@ -612,33 +576,12 @@ void
 }
 
 //------------------------------------------------------------------------------
-// B1 Stage 2' C8 — route to GPU particle pipeline when env-gated on.
-// Subclass-Start routing catches BOTH top-level direct spawns AND
-// children-inside-composites (EffectCloud iterates its children and calls
-// child Start which lands here). After ParticleCloud::Start has resolved
-// m_seed / m_age / m_localToWorld we hand off to mc2::particles::Spawn
-// and skip the legacy newbie-accumulator path; the GPU pipeline owns
-// rendering. Lifecycle (Execute / IsExecuted / HasFinished / Kill)
-// remains on this subclass.
-//
+// Both render arms retain the same particle birth and lifetime state.
 void
 	gosFX::PointCloud::Start(ExecuteInfo *info)
 {
 	Check_Object(this);
 	Check_Pointer(info);
 
-	// C9 fix: ALWAYS call ParticleCloud::Start to initialize per-particle
-	// structures (m_birthAccumulator, m_activeParticleCount, etc.) so the
-	// destructor and the legacy Execute()/AnimateParticle() per-frame loop
-	// walk valid state. C8 skipped this under env-on by calling only
-	// Effect::Start; subsequent reads of garbage fields and writes to
-	// uninitialized offsets corrupted the heap adjacent to mcTextureManager
-	// state, ultimately crashing in MC_TextureNode::get_gosTextureHandle at
-	// frame ~3542. Under env-on we ADDITIONALLY emit a particle record into
-	// the SSBO batcher; legacy ParticleCloud per-frame work continues
-	// (B2 polish will skip Execute when env-on). Legacy ::Draw is A2-gated
-	// at the MLR work-leaves so it no-ops.
 	ParticleCloud::Start(info);
-
-	// GPU spawn moved to Draw() so it fires every frame (not just once at Start).
 }
