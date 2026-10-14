@@ -705,15 +705,20 @@ After the orchestrator commits, builds and deploys EditRel, EditorShell and
 EditorShellSmoke into lane3, these are the exact smoke-host commands. Bash
 check-contracts remains the orchestrator's command. Run the first command to create
 the artifacts consumed by the two independent legacy reload controls; none replaces
-or regenerates a frozen reference. Inspect the separate chooser render capture.
+or regenerates a frozen reference. Each reload prepares stock data again because
+legacy editor runs write terrain texture composites (`.txm`) and lists (`.lst`)
+into lane3's data directory. The dependency audit still rejects non-stock content.
+The legacy baseline FIT and PAK content stay byte-exact; only the six-packet PAK's
+final raw 16-byte save GUID may differ, since each legacy save calls `CoCreateGuid`.
+Inspect the separate chooser render capture.
 
 ```powershell
 $e5b2Editor = 'A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe'
 $e5b2Host = 'A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor Smoke.exe'
 py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --shell-exe $e5b2Host --prepare-stock-scratch --case stock_roundtrip --case new_model --case legacy_catalog_reference --compare-legacy-reference editor/tests/goldens/e5a-stock --case chooser --case chooser_mod --case chooser_player --case marker_panel --case chooser_render --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-runtime
 $e5b2Artifacts = (Get-ChildItem scratch/e5b2-runtime -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --case owned_marker_reload --owned-marker-action moved --owned-marker-placement "$e5b2Artifacts/marker_panel/marker-transform-edited" --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-moved-reload
-py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --case owned_marker_reload --owned-marker-action deleted --owned-marker-placement "$e5b2Artifacts/marker_panel/marker-delete-edited" --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-deleted-reload
+py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --prepare-stock-scratch --case owned_marker_reload --owned-marker-action moved --owned-marker-placement "$e5b2Artifacts/marker_panel/marker-transform-edited" --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-moved-reload
+py -3 scripts/run_editor_smoke.py --exe $e5b2Editor --prepare-stock-scratch --case owned_marker_reload --owned-marker-action deleted --owned-marker-placement "$e5b2Artifacts/marker_panel/marker-delete-edited" --keep-logs --exit-sec 3 --timeout 180 --out scratch/e5b2-deleted-reload
 ```
 
 Runtime execution, legacy reload and visual capture are pending the required

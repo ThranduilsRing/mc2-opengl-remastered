@@ -51,6 +51,32 @@ class FrozenParityTests(unittest.TestCase):
             path.write_bytes(rewritten)
         compare_frozen(self.root, self.evidence)
 
+    def test_fresh_baseline_save_guid_keeps_content_exact(self):
+        path = self.root / "e5_reference_before.pak"
+        original = path.read_bytes()
+        changed = original[:-16] + uuid.uuid4().bytes_le
+        self.assertNotEqual(changed, original)
+        path.write_bytes(changed)
+        compare_frozen(self.root, self.evidence)
+        # A fresh save identity cannot excuse terrain or tactical-map changes.
+        for index in (0, 2):
+            with self.subTest(packet=index):
+                corrupted = bytearray(changed)
+                offset = struct.unpack_from("<I", corrupted, 8 + 4 * index)[0] & 0x1fffffff
+                corrupted[offset] ^= 1
+                path.write_bytes(corrupted)
+                with self.assertRaisesRegex(ValueError, "baseline PAK differs"):
+                    compare_frozen(self.root, self.evidence)
+        for corrupted in (changed[:-1], changed + b"extra"):
+            path.write_bytes(corrupted)
+            with self.assertRaisesRegex(ValueError, "16-byte GUID"):
+                compare_frozen(self.root, self.evidence)
+        path.write_bytes(changed)
+        fit = self.root / "e5_reference_before.fit"
+        fit.write_bytes(fit.read_bytes().replace(b"\r\n", b"\n"))
+        with self.assertRaisesRegex(ValueError, "baseline FIT differs"):
+            compare_frozen(self.root, self.evidence)
+
     def test_complete_unit_values_same_count_controls(self):
         for family in ("mech", "vehicle"):
             for key, replacement in (("VariantNumber", "1"), ("Damage", "1.000000"), ("BaseColor", "0"),

@@ -99,13 +99,25 @@ def preserve_authored_units(before, after):
         raise ValueError("pre-existing authored Part/Warrior/cell fields changed")
 
 
+def baseline_pak_content(data):
+    """Keep every baseline byte except the legacy save's fresh CoCreateGuid packet."""
+    if (len(data) < 48 or struct.unpack_from("<I", data, 4)[0] != 32
+            or struct.unpack_from("<I", data, 28)[0] != len(data) - 16):
+        raise ValueError("placement baseline PAK requires six packets and a final raw 16-byte GUID")
+    return data[:-16]
+
+
 def compare_frozen(directory, evidence, expected=FROZEN):
     manifest = verify_frozen(expected)
     reference = grade(expected, reference_evidence(manifest))
     actual = grade(directory, evidence)
     for extension in ("fit", "pak"):
-        if (directory / f"e5_reference_before.{extension}").read_bytes() != (expected / f"e5_reference_before.{extension}").read_bytes():
-            raise ValueError("placement baseline differs from frozen input")
+        got = (directory / f"e5_reference_before.{extension}").read_bytes()
+        wanted = (expected / f"e5_reference_before.{extension}").read_bytes()
+        if extension == "pak":
+            got, wanted = baseline_pak_content(got), baseline_pak_content(wanted)
+        if got != wanted:
+            raise ValueError(f"placement baseline {extension.upper()} differs from frozen input")
     for family in PLACEMENTS:
         wanted, got = reference["placements"][family], actual["placements"][family]
         if wanted["part"] is not None:
