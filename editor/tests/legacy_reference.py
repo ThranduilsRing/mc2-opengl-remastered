@@ -2,15 +2,133 @@
 from collections import Counter
 import hashlib
 import json
+import math
 import re
 import shutil
 import struct
+from pathlib import Path
 from tools.mc2x_import.fst import decompress_entry
 
 PLACEMENTS = {"mech": (53, "Anubis"), "vehicle": (117, "APC"), "building": (263, "Barrels"),
               "turret": (525, "AutoCannonCamo1"), "tree": (252, "Birch1"), "gate": (157, "D_HeavyGate"),
               "bridge": (607, "bridge"), "light": (68, "Spotlight"), "marker": (290, "Nav1")}
 TEAMS = {family: -1 if family in ("building", "tree", "bridge", "marker") else 0 for family in PLACEMENTS}
+FROZEN = Path(__file__).resolve().parent / "goldens/e5a-stock"
+
+
+def reference_evidence(manifest):
+    return "\n".join("[EDITOR_LEGACY_PLACEMENT v1] " + " ".join(f"{k}={v}" for k, v in row["facts"].items())
+                     for row in manifest["placements"].values())
+
+
+def verify_frozen(directory=FROZEN):
+    """Pinned capture bytes are a prerequisite; this function never writes them."""
+    def digest(name):
+        return hashlib.sha256((directory / name).read_bytes()).hexdigest()
+    if digest("placements.json") != "3e3ed40dfb5c057fadf4d88a2ee36c128335b78bedfa28a745eeb24bb2e5eb37":
+        raise ValueError("frozen manifest fingerprint mismatch")
+    manifest = json.loads((directory / "placements.json").read_bytes())
+    if set(manifest["placements"]) != set(PLACEMENTS):
+        raise ValueError("frozen family corpus incomplete")
+    for extension, expected in (("fit", "95c715176dd664c68f1d04f386e954ef296724a4e0919bf33fa4e43dbef2d958"),
+                                ("pak", "18273400ab8115c323278dd18ba284f3e0378bbe79b1df0550086bc71a7702d5")):
+        if digest(f"e5_reference_before.{extension}") != expected:
+            raise ValueError("frozen baseline fingerprint mismatch")
+    for family, row in manifest["placements"].items():
+        for extension in ("fit", "pak"):
+            if digest(f"e5_reference_{family}.{extension}") != row[f"{extension}Sha256"]:
+                raise ValueError(f"frozen placement fingerprint mismatch: {family}.{extension}")
+    return manifest
+
+
+def typed_fields(fields):
+    """Whitespace and float spelling are syntax; declared types and all values remain semantic."""
+    def value(item):
+        kind, text = item.split(" ", 1)
+        if kind == "st":
+            return kind, text
+        values = text.replace(",", " ").split()
+        if kind.startswith("f"):
+            numbers = tuple(float(v) for v in values)
+            if any(not math.isfinite(v) for v in numbers):
+                raise ValueError("nonfinite placement value")
+            return kind, numbers
+        if kind == "b":
+            return kind, tuple(v.upper() for v in values)
+        return kind, tuple(int(v, 0) if v.lower().startswith("0x") else int(v) for v in values)
+    return {key: tuple(value(item) for item in values) for key, values in fields.items()}
+
+
+def inserted_unit(row):
+    fields, part = row["fitFields"], row["part"]
+    prefix = next(iter(part)).split("/", 1)[0] + "/"
+    pilot = int(part[prefix + "Pilot"][0].split(" ", 1)[1])
+    result = {"Part/" + key[len(prefix):]: value for key, value in part.items() if key != prefix + "Pilot"}
+    # Pilot is an export reference. Compare its complete target, including numbered cells.
+    result["Part/Pilot"] = [part[prefix + "Pilot"][0].split(" ", 1)[0] + " 1"]
+    for key, value in fields.items():
+        match = re.fullmatch(r"Warrior(\d+)([^/]*)/(.+)", key)
+        if match and int(match[1]) == pilot:
+            result["Warrior" + match[2] + "/" + match[3]] = value
+    return typed_fields(result)
+
+
+def marker_values(fields):
+    groups = {}
+    for key, value in fields.items():
+        match = re.fullmatch(r"NavMarker(\d+)/(.*)", key)
+        if match:
+            groups.setdefault(int(match[1]), {})[match[2]] = value
+    count = fields.get("NavMarkers/NumNavMarkers", ["ul 0"])
+    if len(count) != 1 or int(count[0].split(" ", 1)[1]) != len(groups):
+        raise ValueError("marker count mismatch")
+    if any(set(group) != {"xPos", "yPos", "radius"} for group in groups.values()):
+        raise ValueError("incomplete marker values")
+    return Counter(tuple(sorted(typed_fields(group).items())) for group in groups.values())
+
+
+def preserve_authored_units(before, after):
+    """Owned insertions append; every existing authored unit field keeps its exact spelling."""
+    def identity(key):
+        match = re.match(r"(Part|Warrior)(\d+)", key)
+        return match.groups() if match else None
+    identities = {identity(key) for key in before} - {None}
+    original = {key: value for key, value in before.items() if identity(key) in identities}
+    retained = {key: value for key, value in after.items() if identity(key) in identities}
+    if original != retained:
+        raise ValueError("pre-existing authored Part/Warrior/cell fields changed")
+
+
+def baseline_pak_content(data):
+    """Keep every baseline byte except the legacy save's fresh CoCreateGuid packet."""
+    if (len(data) < 48 or struct.unpack_from("<I", data, 4)[0] != 32
+            or struct.unpack_from("<I", data, 28)[0] != len(data) - 16):
+        raise ValueError("placement baseline PAK requires six packets and a final raw 16-byte GUID")
+    return data[:-16]
+
+
+def compare_frozen(directory, evidence, expected=FROZEN):
+    manifest = verify_frozen(expected)
+    reference = grade(expected, reference_evidence(manifest))
+    actual = grade(directory, evidence)
+    for extension in ("fit", "pak"):
+        got = (directory / f"e5_reference_before.{extension}").read_bytes()
+        wanted = (expected / f"e5_reference_before.{extension}").read_bytes()
+        if extension == "pak":
+            got, wanted = baseline_pak_content(got), baseline_pak_content(wanted)
+        if got != wanted:
+            raise ValueError(f"placement baseline {extension.upper()} differs from frozen input")
+    for family in PLACEMENTS:
+        wanted, got = reference["placements"][family], actual["placements"][family]
+        if wanted["part"] is not None:
+            if inserted_unit(wanted) != inserted_unit(got):
+                raise ValueError(f"frozen complete Part/Warrior/cell values differ: {family}")
+        elif wanted["building"] != got["building"]:
+            raise ValueError(f"frozen decoded placement differs: {family}")
+        if marker_values(wanted["fitFields"]) != marker_values(got["fitFields"]):
+            raise ValueError(f"frozen marker FIT values differ: {family}")
+    actual["frozenComparison"] = "9/9 complete inserted Part/Warrior/cell values and decoded building records equal"
+    return actual
 
 
 def packet(data, index):

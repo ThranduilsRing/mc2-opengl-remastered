@@ -290,10 +290,14 @@ TEST_CASE("catalog runtime classes cover every supported legacy placement family
         definitions.push_back(definition(classes[i]));
         rows += row("object" + std::to_string(i), i, "BUILDING", special[i]);
     }
+    definitions.push_back(definition(1));
+    rows += row("dropzone", 9, "BUILDING", "DROPZONE");
     write(root / "data/objects/object2.pak", pak(definitions)); write(root / "data/art/Buildings.csv", rows);
     auto resolver = FileResolver::mount({root}); REQUIRE(resolver);
     const auto catalog = ObjectCatalog::load(*resolver, {});
-    REQUIRE(catalog.entries().size() == 9);
+    REQUIRE(catalog.entries().size() == 10);
     for (unsigned i = 0; i < families.size(); ++i) CHECK(catalog.entries()[i].family == families[i]);
     CHECK(catalog.entries()[4].forestGroup == 3);
+    CHECK(catalog.entries()[9].family == ObjectFamily::marker);
+    CHECK(catalog.navMarkerObjects() == std::vector<std::uint32_t>{8});
 }

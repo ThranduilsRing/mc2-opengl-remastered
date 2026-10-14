@@ -50,7 +50,7 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
 {
     auto encoded = encodePlacements(pak_, placements);
     if (!encoded) return std::unexpected(encoded.error());
-    auto candidate = decode(std::move(fit), std::move(*encoded), mission_, {});
+    auto candidate = decode(std::move(fit), std::move(*encoded), mission_, {}, markerObjects_);
     if (!candidate) return std::unexpected(candidate.error());
     if (candidate->entities_.size() != ids.size()) return std::unexpected(LoadError{"command", "entity_count_mismatch", 0});
     const auto oldKeys = sectionKeys(syntax_, renamed), newKeys = sectionKeys(candidate->syntax_, {});

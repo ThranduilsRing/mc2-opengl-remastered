@@ -7,6 +7,14 @@
 #include <unordered_set>
 
 namespace editor::document {
+std::vector<std::uint32_t> ObjectCatalog::navMarkerObjects() const
+{
+    std::vector<std::uint32_t> result;
+    for (const auto& entry : entries_)
+        if (entry.family == ObjectFamily::marker && identifier(entry.special) == "navmarker" &&
+            std::ranges::find(result, entry.id) == result.end()) result.push_back(entry.id);
+    return result;
+}
 namespace {
 std::string trim(std::string_view text)
 {

@@ -10,6 +10,7 @@ add_library(editor_document STATIC
     document/FileResolver.cpp
     document/ObjectCatalog.cpp
     document/ResourceNames.cpp
+    document/PlacementPolicy.cpp
 )
 target_compile_features(editor_document PUBLIC cxx_std_23)
 target_include_directories(editor_document PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
@@ -42,9 +43,11 @@ target_compile_definitions(EditorShellSmoke PRIVATE MC2_EDITOR_SMOKE_HOST=1)
 
 set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tests/test_structure.cpp
     tests/test_catalog.cpp
+    tests/test_placement.cpp
     "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
 add_executable(editor_document_tests ${editor_document_test_sources})
 target_compile_features(editor_document_tests PRIVATE cxx_std_23)
+target_include_directories(editor_document_tests PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/include")
 target_link_libraries(editor_document_tests PRIVATE editor_document ZLIB::ZLIB)
 
 add_executable(editor_catalog_probe EXCLUDE_FROM_ALL tests/catalog_probe.cpp)
@@ -68,6 +71,7 @@ if(MSVC)
     target_link_libraries(editor_document_asan PRIVATE ZLIB::ZLIB)
     add_executable(editor_document_tests_asan EXCLUDE_FROM_ALL ${editor_document_test_sources})
     target_compile_features(editor_document_tests_asan PRIVATE cxx_std_23)
+    target_include_directories(editor_document_tests_asan PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/include")
     target_compile_options(editor_document_tests_asan PRIVATE /fsanitize=address)
     target_link_options(editor_document_tests_asan PRIVATE /INCREMENTAL:NO)
     target_link_libraries(editor_document_tests_asan PRIVATE editor_document_asan ZLIB::ZLIB)
@@ -135,6 +139,11 @@ add_executable(EditRel WIN32
     "${CMAKE_SOURCE_DIR}/code/objective_text.cpp"
     "${CMAKE_SOURCE_DIR}/code/unitprofile.cpp"               # mc2UnitProfileDataEnabled
 )
+
+# The legacy editor's linked GameOS libraries need current build identity, so
+# fingerprint generation must precede their compilation even in standalone builds.
+add_dependencies(gameos build_fingerprint)
+add_dependencies(gameos_editor build_fingerprint)
 
 # MFC setup
 set_target_properties(EditRel PROPERTIES

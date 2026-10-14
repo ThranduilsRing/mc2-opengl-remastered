@@ -33,6 +33,7 @@ public:
     using ResourceName = std::function<std::optional<std::string>(std::int64_t)>;
     static ObjectCatalog load(const FileResolver& resolver, Diagnostic log, ResourceName names = {});
     const std::vector<CatalogEntry>& entries() const { return entries_; }
+    std::vector<std::uint32_t> navMarkerObjects() const;
     std::size_t rejections() const { return rejections_; }
 private:
     std::vector<CatalogEntry> entries_;
