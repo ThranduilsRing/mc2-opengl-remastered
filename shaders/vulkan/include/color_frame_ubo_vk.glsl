@@ -14,5 +14,7 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     vec4  iblSh[9];  // off 96
     float iblShStrength;  // off 240
     int   lightingReady;  // off 244
+    int   isNight;  // off 248
+    float nightFactor;  // off 252
 } uFrame;
 #endif

@@ -256,6 +256,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint32_t      albedoGlTexImported = 0;  // GL name last imported (re-import guard)
     uint32_t      albedoLayers = 0;
     VkDeviceSize  layerCapBytes = 0;
+    VkDeviceSize  hotCapBytes = 0;
+    bool          hotReady = false;         // the hot-colour table was uploaded this map
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
     // VK-P11 STATIC-PROP MATERIAL alpha-ON (class 1): second copy-once array import +
@@ -288,6 +290,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView albedoOnView;
     mc2vk::OwnedSampler albedoOnSamp;
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
+    mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
@@ -351,12 +354,13 @@ void write_descriptors(ColorPropIsland* s) {
     VkDescriptorImageInfo  albInfo{};
     VkDescriptorBufferInfo layerOnInfo{};
     VkDescriptorImageInfo  albOnInfo{};
-    VkWriteDescriptorSet   wm[4]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
+    VkDescriptorBufferInfo hotInfo{};
+    VkWriteDescriptorSet   wm[5]{};   // alpha-OFF (2/3) + alpha-ON (5/6) + hot-colour table (7) material writes
     uint32_t m = 0;
     if (s->wantMaterial && s->tier1 && s->layerBuf &&
         s->albedoView && s->albedoSamp &&
         s->layerOnBuf &&
-        s->albedoOnView && s->albedoOnSamp) {
+        s->albedoOnView && s->albedoOnSamp && s->hotBuf) {
         layerInfo = VkDescriptorBufferInfo{ s->layerBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
@@ -376,6 +380,11 @@ void write_descriptors(ColorPropIsland* s) {
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 6; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albOnInfo; ++m;
+        // Hot-colour table: binding7 (VS).
+        hotInfo = VkDescriptorBufferInfo{ s->hotBuf.get(), 0, VK_WHOLE_SIZE };
+        wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
+        wm[m].dstBinding = 7; wm[m].descriptorCount = 1;
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &hotInfo; ++m;
     }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
@@ -766,6 +775,31 @@ bool cp_upload_layer_table_on(ColorPropIsland* s, const int32_t* layers, uint32_
     return cp_upload_layer_table_into(s, s->layerOnBuf, &s->layerOnCapBytes, layers, count);
 }
 
+// Uploads the per-type hot-colour table (12 floats per type); a null table with count 0 binds one zeroed entry, so the descriptor is always valid and an
+// unfed type simply has no night emission.
+bool cp_upload_hot_table(ColorPropIsland* s, const float* colours, uint32_t count) {
+    const uint32_t n = count ? count : 1u;
+    const VkDeviceSize bytes = (VkDeviceSize)n * 12u * sizeof(float);
+    bool rebound = false;
+    if (s->hotBuf && bytes > s->hotCapBytes) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");   // the old table may still be read by an in-flight submit
+        s->hotBuf.reset();
+    }
+    if (!s->hotBuf) {
+        if (!make_buffer(s, s->hotBuf, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.hotColors"))
+            return false;
+        s->hotCapBytes = bytes;
+        rebound = true;
+    }
+    void* p = s->hotBuf.map();
+    if (!p) return false;
+    if (count && colours) std::memcpy(p, colours, (size_t)bytes);
+    else std::memset(p, 0, (size_t)bytes);
+    s->hotBuf.unmap();
+    if (rebound && s->inited) write_descriptors(s);
+    return true;
+}
+
 // One-time init.
 bool init_island(ColorPropIsland* s, int w, int h) {
     s->w = w; s->h = h;
@@ -955,7 +989,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[7]{};
+        VkDescriptorSetLayoutBinding b[8]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -976,6 +1010,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
             b[nb].binding = 6; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+            b[nb].binding = 7; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
         }
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -987,7 +1023,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 2u : 0u) + (lightBinding ? 1u : 0u));
+        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 3u : 0u) + (lightBinding ? 1u : 0u));
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = materialBindings ? 4u : 2u;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1167,6 +1203,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         int32_t neg = -1;
         if (!cp_upload_layer_table(s, &neg, 1))    { setFallback("material_layer_buf_failed"); return false; }
         if (!cp_upload_layer_table_on(s, &neg, 1)) { setFallback("material_on_layer_buf_failed"); return false; }
+        if (!cp_upload_hot_table(s, nullptr, 0))   { setFallback("material_hot_buf_failed"); return false; }
         write_descriptors(s);  // now writes bindings 2/3 (alpha-OFF) + 5/6 (alpha-ON) dummies too
     }
 
@@ -1297,6 +1334,14 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
             bool changed = false;
+            // The night emission colours of the type table, once per map.
+            if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
+                if (cp_upload_hot_table(s, mf.typeHotColors, mf.typeCount)) {
+                    s->hotReady = true;
+                    changed = true;
+                    vlog("hot-colour table active: %u types.", mf.typeCount);
+                }
+            }
             // ---- alpha-OFF (class 0): textured layer per type -> s_texArrayOff. ----
             if (!s->materialReady) {
                 std::vector<int32_t> layerTbl(mf.typeCount, -1);
@@ -1481,6 +1526,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             u.iblShStrength = 0.0f;
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
+        // The eye's night state lights the hot-colour tags; without the feed the island stays on its daytime arm.
+        u.isNight      = haveLightFeed ? lightFeed.isNight : 0;
+        u.nightFactor  = haveLightFeed ? lightFeed.nightFactor : 0.0f;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant

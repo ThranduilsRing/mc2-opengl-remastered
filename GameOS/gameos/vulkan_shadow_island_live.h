@@ -135,6 +135,11 @@ struct Mc2ColorPropMaterialFeed {
     // chain-link post/arch sub-meshes). 1.0 = no crop (fills the layer).
     const float*    packetUvScaleX;
     const float*    packetUvScaleY;
+
+    // Per-type emission colours of the three hot-colour night tags (hot pink = lit windows, hot yellow = outside building lights,
+    // hot green = building base lights / runway fixtures), 12 floats per type (three RGBA triples in that order, alpha 0), indexed
+    // by type: the same table the GL prop shader reads. Without it the island cannot light a window or a fixture at night.
+    const float*    typeHotColors;   // [typeCount * 12], or null when the type table is not ready
 };
 int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 
@@ -157,6 +162,9 @@ struct Mc2ColorPropLightFeed {
     uint64_t     lightDataCpuBytes; // count * sizeof(GpuObjectLights)
     float        iblSh[9][3];       // RenderCore::kIblShCoeffs (or current mission's set)
     float        iblShStrength;     // g_iblShStrength if s_iblShEnabled else 0.0
+    // The eye's night state: the hot-colour tags (windows, base lights, fixtures) are lit by it.
+    int32_t      isNight;           // 0/1
+    float        nightFactor;       // 0..1 day->night blend
 };
 int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out);
 

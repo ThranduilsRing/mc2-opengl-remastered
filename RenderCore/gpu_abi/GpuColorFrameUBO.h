@@ -33,7 +33,9 @@ struct ColorFrameUBO {
     float   iblSh[9][4];        // @vec4xN SH-L2 coefficients, .w pad each
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
-    float   _pad[2];            // @cpp_only pad to a 16 B multiple
+    // Night state of the eye (the hot-colour night tags light windows, building base lights and runway fixtures).
+    int32_t isNight;            // 0/1
+    float   nightFactor;        // 0..1 day->night blend
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"

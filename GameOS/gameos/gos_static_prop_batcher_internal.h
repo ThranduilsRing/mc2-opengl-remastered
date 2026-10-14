@@ -517,6 +517,7 @@ extern std::vector<float> s_packetUvScaleX;
 extern std::vector<float> s_packetUvScaleY;
 extern std::vector<int32_t> s_typeAlbedoLayer;
 extern std::vector<int32_t> s_typeAlphaClass;
+extern std::vector<float> s_typeHotColors;
 extern std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 extern bool s_reinjectedThisFrame;
 extern RenderCore::GpuBufferOwner           s_materialGpuSsbo;

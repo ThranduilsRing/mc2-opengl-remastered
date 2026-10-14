@@ -14,4 +14,5 @@ static_assert(offsetof(ColorFrameUBO, terrainSunMC2) == 80, "terrainSunMC2 offse
 static_assert(offsetof(ColorFrameUBO, iblSh) == 96, "iblSh offset");
 static_assert(offsetof(ColorFrameUBO, iblShStrength) == 240, "iblShStrength offset");
 static_assert(offsetof(ColorFrameUBO, lightingReady) == 244, "lightingReady offset");
-static_assert(offsetof(ColorFrameUBO, _pad) == 248, "_pad offset");
+static_assert(offsetof(ColorFrameUBO, isNight) == 248, "isNight offset");
+static_assert(offsetof(ColorFrameUBO, nightFactor) == 252, "nightFactor offset");

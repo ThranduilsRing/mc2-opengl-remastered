@@ -901,6 +901,8 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->terrainSunMC2[1] = tsy;
     out->terrainSunMC2[2] = tsz;
 
+    out->typeHotColors = (s_typeHotColors.size() == s_types.size() * 12) ? s_typeHotColors.data() : nullptr;
+
     return 1;
 }
 
@@ -928,6 +930,11 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     // The StaticPropIblSh option (default on). Mirrors the GL per-frame upload rule
     // exactly: on -> g_iblShStrength; off -> 0.0.
     out->iblShStrength = iblShStrengthNightScaled();
+    bool isNight = false;
+    float nightFactor = 0.0f;
+    gos_GetNightState(&isNight, &nightFactor);
+    out->isNight      = isNight ? 1 : 0;
+    out->nightFactor  = nightFactor;
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

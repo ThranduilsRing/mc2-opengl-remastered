@@ -104,6 +104,41 @@ layout(location = 3) out vec3 vArgb;          // VERTEX-BAKED lit color (GL defa
 flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 
+// Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
+// Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
+layout(set = 0, binding = 7, std430) readonly buffer TypeHotColors {
+    vec4 c[];
+} uTypeHot;
+
+// Strength of the directional modulation of the baked base light + ambient: a face pointing at the sun keeps factor 1.0, a face pointing away is scaled by (1 - strength).
+// Same value as static_prop.vert so the back faces of buildings read soft instead of flat bright.
+const float kPropBaseLightDirStrength = 0.45;
+
+// Resolves the per-vertex hot-colour magic tags against the eye's night state, as lighting.hglsl get_base_light does for the GL prop path: the lit-window,
+// outside-light and building-base-light tags are self-illuminated at night and read dark grey (windows) or zero by day, the blink tags stay dark and any other
+// non-zero seed is added as authored. Without the night arms every window, base light and runway fixture stays off after dark.
+vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink, vec3 yellow, vec3 green) {
+    const float kSmall = 1e-4;   // Stuff_SMALL
+    const bool  isNight = uFrame.isNight != 0;
+    const float nightFactor = uFrame.nightFactor;
+    vec3 outLight = vec3(0.0);
+    if (startV == 0xffff00ffu) {                       // hot pink: lit windows, night only
+        if (isNight)                   outLight = pink;
+        else if (nightFactor > kSmall) outLight = pink * nightFactor;
+        else                           outLight = vec3(0x2f / 255.0);   // windows are painted dark grey by day
+    } else if (startV == 0xffffff00u) {                // hot yellow: outside building lights, night only
+        if (nightFactor >= 0.75) outLight = isNight ? yellow : yellow * nightFactor;
+    } else if (startV == 0xff00ff00u) {                // hot green: building base lights, night only
+        if (isNight)                   outLight = green;
+        else if (nightFactor > kSmall) outLight = green * nightFactor;
+    } else if (startV == 0xffff0000u || startV == 0xff0000ffu) {
+        // blink tags: dark
+    } else if ((startV & 0x00ffffffu) != 0u) {
+        if (!lightsOut) outLight = colouredSeed;       // any other light colour is added as authored
+    }
+    return clamp(outLight, vec3(0.0), vec3(1.0));
+}
+
 void main() {
     GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
@@ -154,40 +189,26 @@ void main() {
     //   * sunColor: white (per-actor sun color not fed); NdotL vs the terrain sun.
     // This is the ACTUAL default lighting MODEL (albedo * baked light), NOT PBR.
     //
-    // ★VK-FLIP-FIELD-REPORT-1 GREEN-GLOW FIX. The prior code used the RAW per-vertex
-    // bytes (r,g,b)/255 directly as the base-light seed. That is WRONG: GL feeds the
-    // decoded bytes through get_base_light() (lighting.hglsl:80-170), which resolves
-    // the hot-color MAGIC TAGS before they become light. In particular the
-    // "Building Base Lights" tag 0xff00ff00 (Hot Green) and the "Outside Building
-    // Lights" tag 0xffffff00 (Hot Yellow) contribute ONLY AT NIGHT — in daytime
-    // get_base_light returns ZERO for them. The raw-byte path dumped their green
-    // (g=0xff) byte straight into vArgb -> the GREEN GLOW AT BUILDING BASES the field
-    // report describes. We now replicate get_base_light's DAYTIME resolution exactly
-    // (isNight=false, nightFactor=0 — the same stub the GL static-prop VS uses):
-    //   * hot-pink  0xffff00ff -> vec3(0x2f/255) grey  (windows painted dark grey by day)
-    //   * hot-yellow/green/red/blue magic tags -> vec3(0)  (night-only, zero by day)
-    //   * generic non-magic colored seed (0x00ffffff != 0) -> RGB (the .zyx reorder;
-    //     our decode below already lands r/g/b in RGB order so we use it directly)
-    //   * all-zero seed -> vec3(0)
-    // The per-type ini HotGreenRGB/HotYellowRGB colors are NOT fed to the island, but
-    // they are IRRELEVANT by day (their tags resolve to zero regardless of the ini).
-    uint b8 = (a_aRGBLight >>  0) & 0xFFu;
-    uint g8 = (a_aRGBLight >>  8) & 0xFFu;
-    uint r8 = (a_aRGBLight >> 16) & 0xFFu;
-    uint a8 = (a_aRGBLight >> 24) & 0xFFu;
-    // start_v_light packing (lighting.hglsl:80): b | g<<8 | r<<16 | a<<24.
-    uint startV = b8 | (g8 << 8) | (r8 << 16) | (a8 << 24);
-    vec3 seed;
-    if      (startV == 0xffff00ffu) seed = vec3(0x2f / 255.0);        // hot-pink -> daytime grey
-    else if (startV == 0xffffff00u) seed = vec3(0.0);                 // hot-yellow -> night-only
-    else if (startV == 0xff00ff00u) seed = vec3(0.0);                 // hot-green  -> night-only (the glow)
-    else if (startV == 0xffff0000u) seed = vec3(0.0);                 // hot-red -> blink (0 by day)
-    else if (startV == 0xff0000ffu) seed = vec3(0.0);                 // hot-blue -> blink (0 by day)
-    else if ((startV & 0x00ffffffu) != 0u)
-        seed = vec3(float(r8) / 255.0, float(g8) / 255.0, float(b8) / 255.0);  // generic colored seed (RGB)
-    else
-        seed = vec3(0.0);                                             // unlit vert (the common building case)
-    seed = clamp(seed, vec3(0.0), vec3(1.0));                         // get_base_light clamps its return
+    // BASE-LIGHT SEED. The raw per-vertex bytes are NOT light: the hot-colour magic tags must be resolved first (the green-glow field report was the raw
+    // 0xff00ff00 tag dumped into the colour). hotColorBaseLight resolves them against the eye's night state and the type's own emission colours, so the
+    // windows, building base lights and runway / beacon fixtures light up at night exactly as authored and stay dark by day.
+    const uint kFlagIsLightsOut = 1u << 0;
+    const uint kFlagIsWindow    = 1u << 1;
+    const uint b8 = (a_aRGBLight >>  0) & 0xFFu;
+    const uint g8 = (a_aRGBLight >>  8) & 0xFFu;
+    const uint r8 = (a_aRGBLight >> 16) & 0xFFu;
+    const uint a8 = (a_aRGBLight >> 24) & 0xFFu;
+    const uint startV = b8 | (g8 << 8) | (r8 << 16) | (a8 << 24);   // start_v_light packing (lighting.hglsl)
+    vec3 seed = hotColorBaseLight(startV, vec3(float(r8), float(g8), float(b8)) / 255.0,
+                                  (inst.flags & kFlagIsLightsOut) != 0u,
+                                  uTypeHot.c[inst.typeID * 3u + 0u].rgb,
+                                  uTypeHot.c[inst.typeID * 3u + 1u].rgb,
+                                  uTypeHot.c[inst.typeID * 3u + 2u].rgb);
+    // A window node carries only its hot-colour light: no ambient, sun or IBL (they would wash out the night glow and the by-day grey).
+    if ((inst.flags & kFlagIsWindow) != 0u) {
+        vArgb = seed;
+        return;
+    }
 
     // NdotL vs terrain sun (both in MC2 world). static_prop.vert:363 maps the
     // Stuff-space normal to MC2 world as normalize(mc2ToRender(n)).
@@ -293,5 +314,12 @@ void main() {
     // material (hangar roofs measured GL 123.8 vs VK 171.1, +47/255) -- this is
     // the dominant remaining washout term after the sun-color fix (91051001 /
     // ADJUDICATION-1 sun fix landed +47.3->+43.5; the missing clamp is the rest).
-    vArgb = clamp(seed + ambientTerm + iblTerm + sunTerm * ndl, 0.0, 1.0);
+    // Directional wrap on the orientation-free part (baked seed + ambient): factor 1.0 facing the sun, (1 - strength) facing away; the sun term itself is never
+    // scaled. Alpha-test cards (foliage, fences) are two-sided and carry no solid-surface normal, so they stay at 1.0. The IBL fill is added unscaled, as in GL.
+    float propDirFactor = 1.0;
+    if (!alphaTestPacket) {
+        float wrap = 0.5 + 0.5 * dot(nMC2, L);
+        propDirFactor = mix(1.0 - kPropBaseLightDirStrength, 1.0, wrap);
+    }
+    vArgb = clamp((seed + ambientTerm) * propDirFactor + iblTerm + sunTerm * ndl, 0.0, 1.0);
 }
