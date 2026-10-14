@@ -358,6 +358,11 @@ target_sources(mc2_tests PRIVATE
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
+target_sources(vfx_lifecycle_tests PRIVATE test_vfx_frozen_clouds.cpp)
+# The frozen-cloud tests own the particle bridge capture instead of the platform sink.
+set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_platform.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")
+target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_sources(mc2_tests PRIVATE
     test_sim_rng.cpp test_tactical_order_queue.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
