@@ -10,9 +10,11 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <iterator>
 #include <mutex>
 #include <set>
 #include <string>
+#include <string_view>
 #include <sstream>
 #include <unordered_set>
 #include "mc2fmt.h"
@@ -49,20 +51,22 @@ const std::unordered_set<std::string>& knownTags() {
     return tags;
 }
 
-// Default tag whitelist (used when MC2_DIAG_TAGS is unset). Heap-allocated and never freed: tagRequested() is read by the Vulkan shutdown trace from the
-// destructors of other static-duration objects, which can run after a function-local static of this file would already be gone.
+// Default tag whitelist (used when MC2_DIAG_TAGS is unset). A constant array, so tagRequested() can read it from the destructors of other static-duration
+// objects (the Vulkan shutdown trace) without touching a function-local static of this file that may already be destroyed.
+constexpr std::string_view kDefaultTags[] = {
+    "GPU_CULL",
+    "LIGHTBAKE_PROOF",
+    "ANIM_GATE",
+    "TerrainLOD_prod",
+    "CONFIG",
+    "BUILD",
+    "DEVICE",
+    "SHADER_COMPILE",
+};
+
 const std::unordered_set<std::string>& defaultWhitelist() {
-    static const auto* const tagsPtr = new std::unordered_set<std::string>{
-        "GPU_CULL",
-        "LIGHTBAKE_PROOF",
-        "ANIM_GATE",
-        "TerrainLOD_prod",
-        "CONFIG",
-        "BUILD",
-        "DEVICE",
-        "SHADER_COMPILE",
-    };
-    return *tagsPtr;
+    static const std::unordered_set<std::string> tags(std::begin(kDefaultTags), std::end(kDefaultTags));
+    return tags;
 }
 
 struct DiagState {
@@ -234,6 +238,10 @@ bool tagEnabled(const char* tag) {
 
 bool tagRequested(std::string_view tag) {
     // Read from the environment, not from the open file: the shutdown trace runs after shutdown() closed the JSONL file.
+    if (mc2::gate::str<"MC2_DIAG_TAGS">().empty()) {
+        for (const std::string_view t : kDefaultTags) if (t == tag) return true;
+        return false;
+    }
     std::unordered_set<std::string> tags;
     bool disabled = false;
     if (parseTagsEnv(tags, disabled)) return true;
