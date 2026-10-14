@@ -149,7 +149,7 @@ public:
 #endif
 
     // Waits for the device to drain before the caller drops objects that may be in flight, and logs a failed wait (a lost device). A no-op without a device.
-    void waitIdle(const char* why) const;
+    void waitIdle(std::string_view why) const;
 
     // Emit the [VK_ENGINE_CONTEXT] health line (device_name / validation_errors
     // / created / fallback_reason) to stderr for the T5 device-birth proof.

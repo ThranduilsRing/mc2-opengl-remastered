@@ -445,11 +445,11 @@ void VulkanContext::retireIsland(IslandSlot slot) {
 }
 #endif
 
-void VulkanContext::waitIdle(const char* why) const {
+void VulkanContext::waitIdle(std::string_view why) const {
     if (device_ == VK_NULL_HANDLE) return;
     const VkResult r = vkDeviceWaitIdle(device_);
     // A lost device ends the wait with an error; the release that follows is still safe, but the log must say the GPU did not drain.
-    if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %s: VkResult=%d.", why, static_cast<int>(r));
+    if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %.*s: VkResult=%d.", static_cast<int>(why.size()), why.data(), static_cast<int>(r));
 }
 
 void VulkanContext::destroy() {
