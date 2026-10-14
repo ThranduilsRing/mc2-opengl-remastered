@@ -1,4 +1,140 @@
-# G2 build repair after 91f45c0e1
+# G2 mission-start crash repair after ff6ba111c
+
+Root cause: **mixed gosFX C++ ABIs in the deployed executable**. G2 inserted an
+unused borrowed stream pointer into Effect and ExecuteInfo, enlarging every derived
+cloud. The crash binary linked newly compiled Effect/CardCloud against stale
+ParticleCloud/SpinningCloud objects. This is not evidence of a new allocator pairing
+or a particle birth buffer owner. No new particle allocation was added by G2.
+
+Read-only evidence retained under `E:/mc2-archive-2026-10/`:
+
+- `vfx-oracle-g2/post/mc2_03/a/mc2_03.log` prints startup fingerprint ff6ba111cfad,
+  but other linked translation units and the crash provenance retain 5636f22bc357.
+  Its manifest records SOURCE-HEAD-MISMATCH. A current startup fingerprint alone
+  did not establish a coherent rebuild.
+- The crash dump's CodeView GUID is C618F90B-5C97-4288-89D5-0AC4CF8FD7AB, age 5,
+  exactly matching `build64/RelWithDebInfo/mc2.pdb` (93,409,280 bytes). That PDB
+  contains both Effect sizes 208/216, ParticleCloud 232/240 and CardCloud 264/272.
+- In `build64/out/mclib/gosfx/gosfx.dir/RelWithDebInfo`, Effect/CardCloud objects
+  date from 22:15:38; ParticleCloud/SpinningCloud and the other gosFX objects date
+  from 12:34. Disassembly shows the old ParticleCloud constructor storing its
+  DynamicArray at `this+0xd8`, with length at `this+0xe0`. The new CardCloud
+  destructor destroys the array at `this+0xe0`: it frees the old array length as
+  an address. The new CardCloud constructor also derives its channel pointers
+  from that wrong location. See `g2-lifecycle-inspect.log` and
+  `g2-lifecycle-pdb-layout.log`; the matching minidump remains in the orchestrator's
+  lane3 crash bundle `crash_2026-10-13_221715`.
+- `STOP[PACKET_OOB] packet=0 maxPackets=0` also occurs in the passing pre-G2
+  mc2_03 log. It is not specific evidence for this regression. The sim-determinism
+  manifest's env delta is precisely MC2_DETERMINISTIC_RNG=1,
+  MC2_SMOKE_FIXED_TIMESTEP=1 and MC2_SIM_IDENTITY_TRACE=1; no extra fixture env
+  appears there. Those settings alter the seed/mission progress, not class layout.
+
+Repair within the claim: remove the unused Effect/ExecuteInfo stream fields and
+propagation API, restoring the pre-G2 layouts and legacy birth sequence. Keep the
+standalone Stuff stream value type, reset/state/count probe, and CardCloud's live
+particle draw path and RNG audit. All birth transcripts now explicitly say legacy;
+the oracle cannot infer a presentation owner. The presentation stream is still
+**not wired**: implementing the RenderWorld session owner/reset/save-load lifecycle
+requires the owner files listed below. No global, side table, allocator workaround,
+GPU promotion or MLR removal is introduced. The prior injection description below
+is superseded by this repair.
+
+Regression: the real gosFX/MLR/particles/Stuff source closure is linked into a
+game-free doctest executable. Its platform sinks reuse the existing mc2fx shim;
+the RNG sink uses the same deterministic kernel as gos_rand, with state owned by
+the test fixture. Fatal STOPs abort. The normal mc2_tests corpus runs this child
+in two fresh hidden processes: MC2_GPU_PARTICLES=0 and =1, with oracle/tube/shape
+and GPU-sim gates off. Each uses the three sim-determinism gates above and the
+mc2_03 mission seed. Tests assert the pre-G2 ABI sizes (including ExecuteInfo=40),
+then construct real CardClouds at capacities 1/32/128, start and birth particles,
+and expire/delete them through the real parent Effect::Execute child-removal path.
+The GPU arm redraws each live frozen state eight times, including producer Flush,
+and compares the full legacy RNG table/index/count after each iteration. The ABI
+assertion would reject the G2 pointer addition; a coherent fresh lifecycle test
+alone would not reproduce a mixed-object executable. The renderer bridge is a
+sink, so this test does not establish GL rendering, culling or visual parity.
+
+Proof: native corpus passed 3,113 cases (3 skipped), plus the four Python contract
+harnesses; the final wrapper recorded raw Python rc=0 in 78s. Its ten intentional
+expected-failure assertions are marked as such by doctest, which ends SUCCESS.
+The release-tree harness still skips installed-tree validation without a
+release root. The full ASan corpus **failed**, 3,112 passed / 1 failed / 3 skipped,
+at `class_light_band_harness/mission_sh_map_is_functionally_but_not_literally_empty`,
+`tests/unit/test_class_light_band_harness.cpp:1424`: 24 pointer-identity assertions.
+The same lighting case fails alone (53 assertions, 24 failed) without running the
+VFX driver. This is not a full-green ASan checkpoint. It needs **lane 2 / RenderCore**
+and **lane 1 / unit-test** ownership: `RenderCore/IblShCoeffs.h:35` and
+`RenderCore/IblShRegistry.h:38` define internal-linkage constexpr tables, while
+`:90` exposes an external inline lookup returning a reference. Separate table
+addresses under ASan are consistent with that linkage problem; no lighting files
+were edited. A pre-G2 ASan run was not available, so no pre-existing-failure claim
+is made solely from this isolation result.
+
+The new VFX driver passes alone in the ASan mc2_tests binary (8 assertions), and
+the real lifecycle executable passes both arms natively and under ASan: 2 cases,
+31 CPU assertions / 55 GPU assertions, including 24 frozen-draw/Flush state checks.
+Strict child ASAN_OPTIONS are detect_leaks=0:halt_on_error=1:print_stacktrace=1.
+The instrumented executable imports clang_rt.asan_dynamic-x86_64.dll and ASan
+load/store/allocation hooks. No ASan memory diagnostic occurred in these probes.
+Oracle pytest: 71 passed. RNG probe: compile/run rc=0; known sequence, reset,
+restore, count, range and legacy isolation passed. CRLF C++ and LF docs/build/test
+registration retained; the CRLF-aware whitespace check passes. No compiler timeout
+or C1041 occurred in these unit builds. Early test integration attempts failed for
+GetHead/BeginFrame (wrong test API names) and a missing Psapi link, then were fixed.
+
+Exact proof commands, all from A:/Games/mc2-s3:
+
+```powershell
+py -3 tools/build_contract_harnesses.py --run --unit
+py -3 tools/build_contract_harnesses.py --run --unit-only --asan
+py -3 E:/mc2-archive-2026-10/g2-lifecycle-proof.py
+py -3 E:/mc2-archive-2026-10/g2-lifecycle-run.py
+py -3 E:/mc2-archive-2026-10/g2-lifecycle-run.py --asan
+py -3 E:/mc2-archive-2026-10/g2-lifecycle-isolate.py
+py -3 -B tools/vfx_oracle/probe_rng.py --out E:/mc2-archive-2026-10/g2-lifecycle-rng
+py -3 -c "import tempfile,pytest; tempfile.tempdir='E:/mc2-archive-2026-10'; raise SystemExit(pytest.main(['--capture=sys','-p','no:tmpdir','-p','no:cacheprovider','tools/test_capture_vfx_oracle.py','tools/test_vfx_rng_evidence.py','tools/test_vfx_parity_oracle.py']))"
+py -3 E:/mc2-archive-2026-10/g2-lifecycle-inspect.py
+& 'C:/Program Files/LLVM/bin/llvm-pdbutil.exe' pretty --native --classes --class-definitions=layout '--include-types=^gosFX::(Effect|ParticleCloud|SpinningCloud|CardCloud)$' build64/RelWithDebInfo/mc2.pdb
+& 'C:/Program Files/LLVM/bin/llvm-readobj.exe' --coff-imports build64-tests-asan/RelWithDebInfo/vfx_lifecycle_tests.exe
+git -c core.whitespace=cr-at-eol diff --check
+```
+
+The retained proof wrapper runs the exact native harness command with merged
+stdout/stderr and records its raw Python return code. It avoids PowerShell's
+NativeCommandError conversion of intentional diagnostic stderr in redirected logs.
+The isolate script expects lighting rc=1 and VFX driver rc=0; its own rc=0 means
+both isolated outcomes matched, not that the lighting assertion passed.
+
+The only tests/unit change registers the explicitly requested lifecycle doctest;
+all its implementation and closure definition live in tools/vfx_oracle.
+
+The orchestrator must **recompile the complete gosFX dependency closure**, build
+the committed fingerprint and launcher, deploy lane3 and rerun strict pre/post
+simulation and camera proofs. Build dependency/provenance hardening needs its
+build-system owner; no unclaimed production build files were edited. Baselines
+were not regenerated, and no game, deployment or capture was run here. SIMID does
+not cover every presentation allocation or render call; zero-frame crashes and
+mixed-object binaries are outside the conclusions of a matching simulation chain.
+For the clean production rebuild, the suggested orchestrator command is the real
+VS CMake `--build build64 --clean-first --config RelWithDebInfo --target
+build_fingerprint mc2 mc2_launcher -- /m:1`; it was not run here. Neither deployment
+nor runtime simulation/camera proof was authorized for this repair turn.
+
+Retained scratch under E:/mc2-archive-2026-10 (no files deleted):
+
+- `g2-lifecycle-{inspect,run,proof,isolate}.py`
+- `g2-lifecycle-{inspect,pdb-layout,unit,unit-final,unit-attempt3,unit-pass,unit-verified,asan,pytest,native-arm0,native-arm1,asan-arm0,asan-arm1,asan-isolated-lighting,asan-isolated-driver}.log`
+- `g2-lifecycle-rng/{compile-command.json,compile.log,run.log,rng_probe.exe,rng_probe.pdb}`
+- Existing build64-tests and build64-tests-asan outputs updated; build64 production
+  objects/PDB and the installed crash evidence were read only.
+
+Past failed approaches not repeated: placeholder draw-time random resimulation,
+billboard/2-profile PPC substitutes, GPU promotion from effect-free captures, the
+static-update-skipped force-spawn scene, and speculative May heap workarounds.
+The repair follows the matching dump/object ABI evidence instead.
+
+# Earlier G2 build repair after 91f45c0e1 (historical)
 
 Source fix verified in the real VS Stuff project; full engine build remains **blocked by
 C1041 PDB locks** after the requested single serial retry. No deployment, capture or commit.
@@ -53,8 +189,8 @@ The Q2 report below is historical evidence, not a post-change capture result.
    stream ID `0x56465852`, algorithm version 1, explicit seed/reset, state/restore and u64 draw count.
    The design's Numerical Recipes LCG produces exactly representable 15-bit fractions
    with u32 initial seed/state (`rootSeed XOR streamId`) without calling `gos_rand` or
-   the legacy Stuff table. `Effect::ExecuteInfo` can borrow that stream; root/child Event births
-   and loop restarts propagate it. No production caller injects it yet. The existing Stuff
+   the legacy Stuff table. The unused Effect/ExecuteInfo borrowing API was removed in the
+   crash repair above; no production birth uses this stream. The existing Stuff
    table and its startup `gos_rand` seeding remain the default; only its count/snapshot are added.
    **There is no presentation env-seed hook or mission/restart/save-load reset yet.** Adding a
    new process-global owner to hide that gap was explicitly rejected by the binding review.
@@ -65,9 +201,9 @@ The Q2 report below is historical evidence, not a post-change capture result.
    Birth random values already reside in the live particle state. This changes the opt-in
    master arm's CardCloud appearance; it does not flip the shipped master default.
    `[VFX_DRAW_RNG v1]`, under existing `MC2_GPU_PARTICLES_LOG=1`, compares the full legacy
-   table/index/count and borrowed VFX state/count before/after CardCloud plus its children.
-   This is an implemented counted probe, **not an executed frozen-draw proof**. Flush,
-   culling and other leaf classes are outside its scope. PointCloud/ShardCloud still call
+   table/index/count before/after CardCloud plus its children. The game-free regression
+   above exercises frozen GPU-harvest draws and producer Flush; runtime/GL proof,
+   culling and other leaf classes remain outside its scope. PointCloud/ShardCloud still call
    their random-consuming placeholder helpers. PointCloud's harvested branch also falls
    through to placeholder Spawn when its active count is zero, even with oracle-render ON.
 3. **Fixture remains the existing force-fire fixture.** It fires at `nullptr` and +150 world X

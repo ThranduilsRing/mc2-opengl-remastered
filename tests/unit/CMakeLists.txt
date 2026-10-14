@@ -350,3 +350,5 @@ foreach(_contract_dll SDL2.dll glew32.dll)
 endforeach()
 target_sources(mc2_tests PRIVATE test_save_archive.cpp ${MC2_WORKTREE_ROOT}/code/save_archive.cpp)
 target_sources(mc2_tests PRIVATE test_abl_outarrays.cpp)
+
+include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")

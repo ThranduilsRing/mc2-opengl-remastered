@@ -549,8 +549,7 @@ void
 	// If no seed was provided, pick one randomly
 	//-------------------------------------------
 	//
-	m_vfxRandom = info->m_vfxRandom;
-	m_seed = (info->m_seed == -1.0f) ? NextBirthFraction() : info->m_seed;
+	m_seed = (info->m_seed == -1.0f) ? Stuff::Random::GetFraction() : info->m_seed;
 	Verify(m_seed >= 0.0f && m_seed <= 1.0f);
 
 	//
@@ -591,12 +590,10 @@ void
 	m_event.First();
 	if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">())
 	{
-		const auto state = m_vfxRandom ? m_vfxRandom->GetState() : Stuff::Random::Stream::State{};
 		mc2::fmt::print_err("[VFX_BIRTH v1] spec={} time={:.9f} age={:.9f} seed={:.9f} stream={} algorithm={} version={} initial={} state={} draws={} legacy_draws={}\n",
 			mc2::fmt::safe(static_cast<const char*>(m_specification->m_name)),
 			static_cast<double>(info->m_time), static_cast<double>(m_age), static_cast<double>(m_seed),
-			m_vfxRandom ? "56465852" : "legacy", m_vfxRandom ? Stuff::Random::Stream::Algorithm : "legacy-table",
-			m_vfxRandom ? Stuff::Random::Stream::Version : 0u, state.seed, state.value, state.draws,
+			"legacy", "legacy-table", 0u, 0u, 0u, 0ull,
 			Stuff::Random::GetDrawCount());
 	}
 	gos_PopCurrentHeap();
@@ -692,15 +689,14 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 		Stuff::Scalar seed_range =
 			m_specification->m_maximumChildSeed.ComputeValue(m_age, m_seed) - min_seed;
 		Stuff::Scalar seed =
-			NextBirthFraction()*seed_range + min_seed;
+			Stuff::Random::GetFraction()*seed_range + min_seed;
 		Clamp(seed, 0.0f, 1.0f);
 		ExecuteInfo
 			local_info(
 				info->m_time,
 				&m_localToWorld,
 				nullptr,
-				seed,
-				m_vfxRandom
+				seed
 			);
 		effect->Start(&local_info);
 	}
@@ -717,9 +713,7 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 		child_info(
 			info->m_time,
 			&m_localToWorld,
-			&child_obb,
-			-1.0f,
-			m_vfxRandom
+			&child_obb
 		);
 	child_info.m_bounds = &child_obb;
 	while ((child = children.ReadAndNext()) != nullptr)
@@ -756,11 +750,7 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	if (m_age >= 1.0f)
 	{
 		if (IsLooped())
-		{
-			ExecuteInfo restart = *info;
-			restart.m_vfxRandom = m_vfxRandom;
-			Start(&restart);
-		}
+			Start(info);
 		else if (HasFinished())
 			Kill();
 	}

@@ -495,15 +495,13 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 		return;
 	}
 	const auto legacyBefore = Stuff::Random::GetState();
-	const auto before = m_vfxRandom ? m_vfxRandom->GetState() : Stuff::Random::Stream::State{};
 	DrawState(info);
 	const auto legacyAfter = Stuff::Random::GetState();
-	const auto after = m_vfxRandom ? m_vfxRandom->GetState() : Stuff::Random::Stream::State{};
 	mc2::fmt::print_err("[VFX_DRAW_RNG v1] class=CardCloud spec={} time={:.9f} age={:.9f} seed={:.9f} stream={} state_before={} state_after={} draws_before={} draws_after={} legacy_before={} legacy_after={} unchanged={}\n",
 		mc2::fmt::safe(static_cast<const char*>(m_specification->m_name)),
 		static_cast<double>(m_lastRan), static_cast<double>(m_age), static_cast<double>(m_seed),
-		m_vfxRandom ? "56465852" : "legacy", before.value, after.value, before.draws, after.draws,
-		legacyBefore.draws, legacyAfter.draws, (before == after && legacyBefore == legacyAfter) ? 1 : 0);
+		"legacy", 0u, 0u, legacyBefore.draws, legacyAfter.draws,
+		legacyBefore.draws, legacyAfter.draws, (legacyBefore == legacyAfter) ? 1 : 0);
 }
 
 void gosFX::CardCloud::DrawState(DrawInfo *info)
