@@ -73,16 +73,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 	while (!openHeap.isEmpty()) {
 
-		#ifdef DEBUG_MOVE_MAP
-			if (debugMoveMap) {
-				File* pathDebugFile = new File;
-					pathDebugFile->create("mm.dbg");
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
-			}
-		#endif
 
 		#ifdef DEBUG_PATH
 			if (topOpenNodes < openHeap.size())
@@ -190,16 +180,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		}
 	}
 
-	#ifdef DEBUG_MOVE_MAP
-		if (debugMoveMap) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("mm.dbg");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
-		}
-	#endif
 
 	if (goalFound) {
 		long curRow = goalCell[0] = bestRow;

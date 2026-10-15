@@ -109,16 +109,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 
 	while (!openHeap.isEmpty()) {
 
-		#ifdef DEBUG_MOVE_MAP
-			if (debugMoveMap) {
-				File* pathDebugFile = new File;
-					pathDebugFile->create("mm.dbg");
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
-			}
-		#endif
 
 		#ifdef DEBUG_PATH
 			if (topOpenNodes < openHeap.size())
@@ -253,16 +243,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		}
 	}
 
-	#ifdef DEBUG_MOVE_MAP
-		if (debugMoveMap) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("mm.dbg");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
-		}
-	#endif
 	
 	if (goalFound) {
 		int curRow = goalCell[0] = bestRow;
@@ -568,16 +548,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 
 	while (!openHeap.isEmpty()) {
 
-		#ifdef DEBUG_MOVE_MAP
-			if (debugMoveMap) {
-				File* pathDebugFile = new File;
-					pathDebugFile->create("mm.dbg");
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
-			}
-		#endif
 
 		#ifdef DEBUG_PATH
 			if (topOpenNodes < openHeap.size())
@@ -687,16 +657,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		}
 	}
 
-	#ifdef DEBUG_MOVE_MAP
-		if (debugMoveMap) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("mm.dbg");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
-		}
-	#endif
 
 	if (goalFound) {
 		int curRow = goalCell[0] = bestRow;
