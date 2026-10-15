@@ -105,6 +105,8 @@ public:
 
     bool create(VmaAllocator allocator, VkDevice device, const VkBufferCreateInfo& info, const VmaAllocationCreateInfo& alloc, std::string_view name,
                 int i0 = -1, int i1 = -1);
+    // A host-visible buffer the CPU writes in random order (a per-frame feed, a copy of CPU geometry).
+    bool createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
     void reset() noexcept;
 
     VkBuffer get() const noexcept { return buffer_; }
@@ -114,6 +116,8 @@ public:
     // Host mapping of a host-visible buffer for one write; nullptr when the map fails.
     void* map() const;
     void unmap() const;
+    // Copies `bytes` to `offset` and flushes the written range, for memory that is not coherent. False when the buffer is empty or the map fails.
+    bool upload(const void* src, VkDeviceSize bytes, VkDeviceSize offset = 0) const;
 
 private:
     void swap(OwnedBuffer& other) noexcept {

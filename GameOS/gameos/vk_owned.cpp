@@ -4,6 +4,8 @@
 
 #include "vk_owned.h"
 
+#include <cstring>
+
 #include <vk_mem_alloc.h>
 
 #include "vulkan_context.h"
@@ -23,6 +25,17 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     return true;
 }
 
+bool OwnedBuffer::createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1) {
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = size ? size : 16;
+    bci.usage = usage;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO;
+    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    return create(allocator, device, bci, aci, name, i0, i1);
+}
+
 void OwnedBuffer::reset() noexcept {
     if (buffer_ != VK_NULL_HANDLE) vmaDestroyBuffer(allocator_, buffer_, allocation_);
     buffer_ = VK_NULL_HANDLE;
@@ -37,6 +50,15 @@ void* OwnedBuffer::map() const {
 
 void OwnedBuffer::unmap() const {
     if (buffer_ != VK_NULL_HANDLE) vmaUnmapMemory(allocator_, allocation_);
+}
+
+bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offset) const {
+    void* dst = map();
+    if (!dst) return false;
+    std::memcpy(static_cast<uint8_t*>(dst) + offset, src, static_cast<size_t>(bytes));
+    vmaFlushAllocation(allocator_, allocation_, offset, bytes);
+    unmap();
+    return true;
 }
 
 bool OwnedImage::create(VmaAllocator allocator, VkDevice device, const VkImageCreateInfo& info, const VmaAllocationCreateInfo& alloc, std::string_view name,

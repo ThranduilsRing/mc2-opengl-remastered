@@ -390,6 +390,22 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vk_depth_caster_pipeline.h:22`
+- Class: `DepthCasterVertexInput`  (data-member)
+- Member: `uint32_t stride;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_depth_caster_pipeline.h:23`
+- Class: `DepthCasterVertexInput`  (data-member)
+- Member: `std::span<const VkVertexInputAttributeDescription> attributes;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vk_image_resource.h:28`
 - Class: `VkImageResource`  (data-member)
 - Member: `mc2vk::OwnedRawImage     image;`
@@ -518,7 +534,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:124`
+- Header: `GameOS/gameos/vk_owned.h:128`
 - Class: `OwnedBuffer`  (data-member)
 - Member: `VkBuffer buffer_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -526,7 +542,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:125`
+- Header: `GameOS/gameos/vk_owned.h:129`
 - Class: `OwnedBuffer`  (data-member)
 - Member: `VmaAllocation allocation_ = nullptr;`
 - Consuming targets: gameos
@@ -534,7 +550,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:126`
+- Header: `GameOS/gameos/vk_owned.h:130`
 - Class: `OwnedBuffer`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
@@ -542,7 +558,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:135`
+- Header: `GameOS/gameos/vk_owned.h:139`
 - Class: `OwnedImage`  (data-member)
 - Member: `OwnedImage& operator=(const OwnedImage&) = delete;`
 - Consuming targets: gameos
@@ -550,7 +566,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:142`
+- Header: `GameOS/gameos/vk_owned.h:146`
 - Class: `OwnedImage`  (data-member)
 - Member: `return *this;`
 - Consuming targets: gameos
@@ -558,7 +574,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:146`
+- Header: `GameOS/gameos/vk_owned.h:150`
 - Class: `OwnedImage`  (data-member)
 - Member: `int i0 = -1, int i1 = -1);`
 - Consuming targets: gameos
@@ -566,7 +582,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:159`
+- Header: `GameOS/gameos/vk_owned.h:163`
 - Class: `OwnedImage`  (data-member)
 - Member: `VkImage image_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -574,7 +590,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:160`
+- Header: `GameOS/gameos/vk_owned.h:164`
 - Class: `OwnedImage`  (data-member)
 - Member: `VmaAllocation allocation_ = nullptr;`
 - Consuming targets: gameos
@@ -582,7 +598,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:161`
+- Header: `GameOS/gameos/vk_owned.h:165`
 - Class: `OwnedImage`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
@@ -748,6 +764,142 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 - Consuming targets: gameos, gameos_main
 - Reached by define: gameos[gameos(PUBLIC)], gameos_main[gameos_main(PRIVATE)]
 
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:56`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `VkDevice device_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:57`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `VmaAllocator allocator_ = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:58`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `VkBuffer frameUbo_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:59`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `VkDeviceSize uboRange_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:60`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `uint32_t vertexStride_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:61`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `bool inited_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:63`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `uint64_t stagedEpoch_ = kNoEpoch;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:64`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `uint32_t geomGen_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:65`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `bool geomUploaded_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:66`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `uint32_t stagedInstances_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:67`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `uint64_t iboIndexCount_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:68`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `VkDeviceSize vboCap_ = 0, iboCap_ = 0, instCap_[2] = {0, 0}, boneCap_[2] = {0, 0};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:73`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `OwnedDescriptorSetLayout dsl_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:74`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `OwnedDescriptorPool pool_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:76`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `OwnedPipelineLayout layout_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:77`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `OwnedShaderModule vert_, frag_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:78`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `OwnedPipeline pipeline_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
 ---
 
-Result: 93 guard(s) analyzed, 0 violation(s).
+Result: 112 guard(s) analyzed, 0 violation(s).

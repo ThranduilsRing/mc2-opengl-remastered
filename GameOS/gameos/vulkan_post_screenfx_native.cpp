@@ -832,6 +832,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     // The cascade images are NOT transitioned here: the shadow island hands them over in DEPTH_STENCIL_READ_ONLY (its render pass final layout) and the
     // descriptors above name that layout. Barriers that assumed the attachment layout on entry and restored it on exit disagreed with the terrain
     // consumer of the same images (VUID-vkCmdDraw-None-09600 in both directions).
+    // Visibility of the writes comes from the shadow render pass itself: its external dependency makes the cascade depth writes visible to fragment-shader
+    // reads, and the next frame's writes wait for those reads. The shadow island submits once per frame without a CPU wait, so a change of that dependency
+    // (or of the single queue) makes a barrier owed here.
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

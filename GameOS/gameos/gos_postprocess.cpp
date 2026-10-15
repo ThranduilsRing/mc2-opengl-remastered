@@ -153,6 +153,8 @@ static struct PostFxOptions {
 void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode)
 {
     s_postFxOptions.casEnabled   = (casEnabled != 0);
+    // A non-finite value passes every comparison below, so it is replaced first: the default keeps the sharpening mild instead of reaching the shader as NaN.
+    if (!std::isfinite(casSharpness)) casSharpness = 0.5f;
     s_postFxOptions.casSharpness = casSharpness < 0.0f ? 0.0f : (casSharpness > 1.0f ? 1.0f : casSharpness);
     s_postFxOptions.tonemapMode  = (tonemapMode < 0 || tonemapMode > 3) ? 0 : tonemapMode;
     if (s_postProcess)

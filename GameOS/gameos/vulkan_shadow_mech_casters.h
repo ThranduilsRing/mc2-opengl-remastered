@@ -24,9 +24,6 @@
 #include <string_view>
 #include <vector>
 
-struct VmaAllocator_T;
-typedef struct VmaAllocator_T* VmaAllocator;
-
 namespace mc2vk {
 
 class ShadowMechCasters {

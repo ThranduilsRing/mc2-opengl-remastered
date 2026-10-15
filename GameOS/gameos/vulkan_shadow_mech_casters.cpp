@@ -7,29 +7,19 @@
 
 #include <volk.h>
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
-#include <vk_mem_alloc.h>
-
 #include "vulkan_shadow_mech_casters.h"
 
+#include "mc2fmt.h"
+#include "vk_depth_caster_pipeline.h"
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 
-#include <cstdarg>
 #include <cstring>
 #include <string>
 
 namespace mc2vk {
 
 namespace {
-
-void vlog(const char* fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    vk_island_util::vlogv("[VK_SHADOW_MECH] ", fmt, ap);
-    va_end(ap);
-}
 
 constexpr uint32_t kMechInstanceBytes = 64;
 constexpr uint32_t kMechBoneBytes = 64;
@@ -43,32 +33,15 @@ bool runFits(const Mc2MechDrawRun& r, uint64_t indexCount, uint64_t vertexCount,
     return true;
 }
 
-// Copies `bytes` into a host-visible buffer and flushes the write so the GPU sees it on memory that is not coherent. False when the map fails.
-bool writeBuffer(VmaAllocator allocator, const OwnedBuffer& buffer, const void* src, VkDeviceSize bytes) {
-    void* dst = buffer.map();
-    if (!dst) return false;
-    std::memcpy(dst, src, static_cast<size_t>(bytes));
-    vmaFlushAllocation(allocator, buffer.allocation(), 0, VK_WHOLE_SIZE);
-    buffer.unmap();
-    return true;
-}
-
 }  // namespace
 
 bool ShadowMechCasters::ensureBuffer(OwnedBuffer& buffer, VkDeviceSize& capacity, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name) {
     if (buffer && bytes <= capacity) return true;
     // The caller has retired every submit that read this buffer (the frame fence for a parity buffer, an idle device for the geometry).
     const VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    VkBufferCreateInfo bci{};
-    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bci.size = cap;
-    bci.usage = usage;
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     OwnedBuffer fresh;
-    if (!fresh.create(allocator_, device_, bci, aci, name)) {
-        vlog("buffer '%.*s' (%llu bytes) could not be created.", static_cast<int>(name.size()), name.data(), static_cast<unsigned long long>(cap));
+    if (!fresh.createHostWritable(allocator_, device_, cap, usage, name)) {
+        mc2::fmt::print_err("[VK_SHADOW_MECH] buffer '{}' ({} bytes) could not be created.\n", name, mc2::fmt::as_u64(cap));
         return false;
     }
     buffer = std::move(fresh);
@@ -103,9 +76,12 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     vertexStride_ = mc2_mech_vertex_stride();
 
     const std::string dir(spvDir);
-    vert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_mech.vert.spv", vlog));
-    frag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_mech.frag.spv", vlog));
-    if (!vert_ || !frag_) return false;
+    vert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_mech.vert.spv", nullptr));
+    frag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_mech.frag.spv", nullptr));
+    if (!vert_ || !frag_) {
+        mc2::fmt::print_err("[VK_SHADOW_MECH] shadow_mech SPIR-V missing under '{}'.\n", dir);
+        return false;
+    }
 
     VkDescriptorSetLayoutBinding b[3]{};
     b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -115,7 +91,7 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     lci.bindingCount = 3;
     lci.pBindings = b;
-    if (!create(dsl_, device_, [&](auto* h) { return vkCreateDescriptorSetLayout(device_, &lci, nullptr, h); })) { vlog("descriptor layout failed."); return false; }
+    if (!create(dsl_, device_, [&](auto* h) { return vkCreateDescriptorSetLayout(device_, &lci, nullptr, h); })) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor layout failed.\n"); return false; }
 
     VkDescriptorPoolSize sizes[2]{};
     sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2;
@@ -125,7 +101,7 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     pci.maxSets = 2;
     pci.poolSizeCount = 2;
     pci.pPoolSizes = sizes;
-    if (!create(pool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); })) { vlog("descriptor pool failed."); return false; }
+    if (!create(pool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); })) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor pool failed.\n"); return false; }
     const VkDescriptorSetLayout dslHandle = dsl_.get();
     const VkDescriptorSetLayout setLayouts[2] = {dslHandle, dslHandle};
     VkDescriptorSetAllocateInfo dsai{};
@@ -133,70 +109,23 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     dsai.descriptorPool = pool_.get();
     dsai.descriptorSetCount = 2;
     dsai.pSetLayouts = setLayouts;
-    if (vkAllocateDescriptorSets(device_, &dsai, set_) != VK_SUCCESS) { vlog("descriptor set allocation failed."); return false; }
+    if (vkAllocateDescriptorSets(device_, &dsai, set_) != VK_SUCCESS) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor set allocation failed.\n"); return false; }
 
     VkPipelineLayoutCreateInfo plci{};
     plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plci.setLayoutCount = 1;
     plci.pSetLayouts = &dslHandle;
-    if (!create(layout_, device_, [&](auto* h) { return vkCreatePipelineLayout(device_, &plci, nullptr, h); })) { vlog("pipeline layout failed."); return false; }
+    if (!create(layout_, device_, [&](auto* h) { return vkCreatePipelineLayout(device_, &plci, nullptr, h); })) { mc2::fmt::print_err("[VK_SHADOW_MECH] pipeline layout failed.\n"); return false; }
 
-    VkVertexInputBindingDescription vib{};
-    vib.binding = 0;
-    vib.stride = mc2_mech_vertex_stride();   // the batcher owns the vertex layout
-    vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     // The mech vertex: position at 0, the four bone indices at 32, their weights at 36 (the rest of the stride is not read here).
-    VkVertexInputAttributeDescription via[3]{};
-    via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
-    via[1].location = 3; via[1].binding = 0; via[1].format = VK_FORMAT_R8G8B8A8_UINT;    via[1].offset = 32;
-    via[2].location = 4; via[2].binding = 0; via[2].format = VK_FORMAT_R8G8B8A8_UNORM;   via[2].offset = 36;
-    VkPipelineVertexInputStateCreateInfo vin{};
-    vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
-    vin.vertexAttributeDescriptionCount = 3; vin.pVertexAttributeDescriptions = via;
-
-    VkPipelineInputAssemblyStateCreateInfo ia{};
-    ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    VkPipelineViewportStateCreateInfo vps{};
-    vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vps.viewportCount = 1; vps.scissorCount = 1;
-    // The state of the island's static-prop caster pipeline: no culling (GL's shadow pass draws both faces), depth bias on, forward-Z LESS.
-    VkPipelineRasterizationStateCreateInfo rs{};
-    rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rs.polygonMode = VK_POLYGON_MODE_FILL;
-    rs.cullMode = VK_CULL_MODE_NONE;
-    rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rs.depthBiasEnable = VK_TRUE;
-    rs.lineWidth = 1.0f;
-    VkPipelineMultisampleStateCreateInfo ms{};
-    ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkPipelineDepthStencilStateCreateInfo ds{};
-    ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    ds.depthTestEnable = VK_TRUE;
-    ds.depthWriteEnable = VK_TRUE;
-    ds.depthCompareOp = VK_COMPARE_OP_LESS;
-    VkPipelineColorBlendStateCreateInfo cb{};
-    cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    cb.attachmentCount = 0;
-    const VkDynamicState dyn[3] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS};
-    VkPipelineDynamicStateCreateInfo dsci{};
-    dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dsci.dynamicStateCount = 3; dsci.pDynamicStates = dyn;
-    VkPipelineShaderStageCreateInfo stages[2]{};
-    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vert_.get(); stages[0].pName = "main";
-    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = frag_.get(); stages[1].pName = "main";
-    VkGraphicsPipelineCreateInfo gp{};
-    gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    gp.stageCount = 2; gp.pStages = stages;
-    gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia; gp.pViewportState = &vps; gp.pRasterizationState = &rs;
-    gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb; gp.pDynamicState = &dsci;
-    gp.layout = layout_.get(); gp.renderPass = pass; gp.subpass = 0;
-    if (!create(pipeline_, device_, [&](auto* h) { return vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
-        vlog("pipeline creation failed.");
+    const VkVertexInputAttributeDescription attributes[3] = {
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0},
+        {3, 0, VK_FORMAT_R8G8B8A8_UINT, 32},
+        {4, 0, VK_FORMAT_R8G8B8A8_UNORM, 36},
+    };
+    const DepthCasterVertexInput vertex{mc2_mech_vertex_stride(), attributes};   // the batcher owns the vertex layout
+    if (!createDepthCasterPipeline(pipeline_, device_, pass, layout_.get(), vert_.get(), frag_.get(), vertex)) {
+        mc2::fmt::print_err("[VK_SHADOW_MECH] pipeline creation failed.\n");
         return false;
     }
     nameObject(device_, pipeline_.get(), "shadow.mechPipe");
@@ -214,8 +143,11 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     if (!mc2_mech_island_get_shadow_feed(&feed)) return;
     if (feed.vertexStride != vertexStride_ || feed.vboBytes % vertexStride_ != 0 || feed.iboBytes % sizeof(uint32_t) != 0) {
         static bool logged = false;
-        if (!logged) { logged = true; vlog("mech geometry refused: stride %u (want %u), %llu vertex bytes, %llu index bytes.",
-                                           feed.vertexStride, vertexStride_, static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes)); }
+        if (!logged) {
+            logged = true;
+            mc2::fmt::print_err("[VK_SHADOW_MECH] mech geometry refused: stride {} (want {}), {} vertex bytes, {} index bytes.\n", feed.vertexStride, vertexStride_,
+                                mc2::fmt::as_u64(feed.vboBytes), mc2::fmt::as_u64(feed.iboBytes));
+        }
         return;
     }
 
@@ -227,15 +159,15 @@ void ShadowMechCasters::stage(uint64_t epoch) {
             geomUploaded_ = false;
             return;
         }
-        if (!writeBuffer(allocator_, vbo_, feed.vboCpu, feed.vboBytes) || !writeBuffer(allocator_, ibo_, feed.iboCpu, feed.iboBytes)) {
+        if (!vbo_.upload(feed.vboCpu, feed.vboBytes) || !ibo_.upload(feed.iboCpu, feed.iboBytes)) {
             geomUploaded_ = false;
             return;
         }
         geomGen_ = feed.geomGen;
         geomUploaded_ = true;
         iboIndexCount_ = feed.iboBytes / sizeof(uint32_t);
-        vlog("mech caster geometry uploaded: %llu vertices, %llu indices (generation %u).",
-             static_cast<unsigned long long>(feed.vboBytes / vertexStride_), static_cast<unsigned long long>(iboIndexCount_), geomGen_);
+        mc2::fmt::print_err("[VK_SHADOW_MECH] mech caster geometry uploaded: {} vertices, {} indices (generation {}).\n", mc2::fmt::as_u64(feed.vboBytes / vertexStride_),
+                            mc2::fmt::as_u64(iboIndexCount_), geomGen_);
     }
 
     const uint32_t parity = static_cast<uint32_t>(epoch & 1u);
@@ -245,7 +177,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     if (!ensureBuffer(instBuf_[parity], instCap_[parity], instBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechInst") ||
         !ensureBuffer(boneBuf_[parity], boneCap_[parity], boneBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechBone")) return;
     if (instBuf_[parity].get() != oldInst || boneBuf_[parity].get() != oldBone) writeDescriptors(parity);
-    if (!writeBuffer(allocator_, instBuf_[parity], feed.instances64, instBytes) || !writeBuffer(allocator_, boneBuf_[parity], feed.bones64, boneBytes)) return;
+    if (!instBuf_[parity].upload(feed.instances64, instBytes) || !boneBuf_[parity].upload(feed.bones64, boneBytes)) return;
 
     const uint64_t vertexCount = feed.vboBytes / vertexStride_;
     uint32_t dropped = 0;
@@ -260,7 +192,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     }
     if (dropped != 0) {
         static bool logged = false;
-        if (!logged) { logged = true; vlog("%u of %u mech runs point outside the staged buffers and are not drawn.", dropped, feed.runCount); }
+        if (!logged) { logged = true; mc2::fmt::print_err("[VK_SHADOW_MECH] {} of {} mech runs point outside the staged buffers and are not drawn.\n", dropped, feed.runCount); }
     }
 }
 

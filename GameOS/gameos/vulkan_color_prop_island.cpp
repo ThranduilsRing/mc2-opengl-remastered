@@ -258,7 +258,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint32_t      albedoLayers = 0;
     VkDeviceSize  layerCapBytes = 0;
     VkDeviceSize  hotCapBytes = 0;
-    bool          hotReady = false;         // the hot-colour table was uploaded this map
+    bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
     // VK-P11 STATIC-PROP MATERIAL alpha-ON (class 1): second copy-once array import +
@@ -785,7 +785,8 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(n * sizeof(float));
     bool rebound = false;
     if (s->hotBuf && bytes > s->hotCapBytes) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");   // a one-time stall: the placeholder grows into the real table on the first upload   // the old table may still be read by an in-flight submit
+        // The placeholder grows into the real table on the first upload (a one-time stall); the old table may still be read by an in-flight submit.
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");
         s->hotBuf.reset();
     }
     if (!s->hotBuf) {
@@ -1283,6 +1284,10 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->geomUploaded = false;
     s->packets.clear();
     s->typeRuns.clear();
+    // The albedo arrays and the hot-colour table belong to the map too: the next map's feed imports its own (the island itself outlives the map).
+    s->materialReady = false;
+    s->materialReadyOn = false;
+    s->hotReady = false;
 }
 
 extern "C" int mc2_color_prop_island_get_alpha_array(void** view) {
