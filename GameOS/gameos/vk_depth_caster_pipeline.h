@@ -17,15 +17,10 @@
 
 namespace mc2vk {
 
-// One vertex stream: its stride and the attributes read from it.
-struct DepthCasterVertexInput {
-    uint32_t stride;
-    std::span<const VkVertexInputAttributeDescription> attributes;
-};
-
+// One vertex stream (`binding`, its stride and attributes as the caller filled them: the offline layout checker reads those assignments next to the shader name).
 // False, with `out` empty, when vkCreateGraphicsPipelines fails (the caller logs the reason it names).
 bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass pass, VkPipelineLayout layout, VkShaderModule vert, VkShaderModule frag,
-                               const DepthCasterVertexInput& vertex);
+                               const VkVertexInputBindingDescription& binding, std::span<const VkVertexInputAttributeDescription> attributes);
 
 }  // namespace mc2vk
 

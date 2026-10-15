@@ -385,13 +385,13 @@ bool ensure_inst_capacity(ShadowIsland* s, uint32_t parity, VkDeviceSize bytes) 
 
 // A static-prop caster pipeline: the shared static-prop vertex (position at 0, UV at 24; the alpha-tested kind reads the UV, the opaque kind ignores it).
 bool create_caster_pipeline(ShadowIsland* s, mc2vk::OwnedPipeline& out, VkShaderModule frag, std::string_view name) {
-    const VkVertexInputAttributeDescription attributes[2] = {
-        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0},
-        {2, 0, VK_FORMAT_R32G32_SFLOAT, 24},
-    };
-    // The pipeline is baked before the geometry upload, so the stride comes from the batcher's accessor, not from s->vertexStride.
-    const mc2vk::DepthCasterVertexInput vertex{mc2_static_prop_vertex_stride(), attributes};
-    if (!mc2vk::createDepthCasterPipeline(out, s->device, s->rpass.get(), s->playout.get(), s->vert.get(), frag, vertex)) {
+    VkVertexInputBindingDescription vib{};
+    vib.binding = 0; vib.stride = mc2_static_prop_vertex_stride();   // baked before the geometry upload: s->vertexStride is still 0 here
+    vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    VkVertexInputAttributeDescription via[2]{};
+    via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
+    via[1].location = 2; via[1].binding = 0; via[1].format = VK_FORMAT_R32G32_SFLOAT;    via[1].offset = 24;   // the UV of the shared static-prop vertex
+    if (!mc2vk::createDepthCasterPipeline(out, s->device, s->rpass.get(), s->playout.get(), s->vert.get(), frag, vib, via)) {
         vlog("vkCreateGraphicsPipelines failed.");
         return false;
     }

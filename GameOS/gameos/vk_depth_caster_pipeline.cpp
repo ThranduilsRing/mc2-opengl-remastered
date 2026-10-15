@@ -6,17 +6,13 @@
 namespace mc2vk {
 
 bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass pass, VkPipelineLayout layout, VkShaderModule vert, VkShaderModule frag,
-                               const DepthCasterVertexInput& vertex) {
-    VkVertexInputBindingDescription binding{};
-    binding.binding = 0;
-    binding.stride = vertex.stride;
-    binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+                               const VkVertexInputBindingDescription& binding, std::span<const VkVertexInputAttributeDescription> attributes) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vin.vertexBindingDescriptionCount = 1;
     vin.pVertexBindingDescriptions = &binding;
-    vin.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex.attributes.size());
-    vin.pVertexAttributeDescriptions = vertex.attributes.data();
+    vin.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+    vin.pVertexAttributeDescriptions = attributes.data();
 
     VkPipelineInputAssemblyStateCreateInfo ia{};
     ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
