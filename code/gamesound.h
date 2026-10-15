@@ -41,6 +41,12 @@ class GameSoundSystem : public SoundSystem
 		HGOSAUDIO			radioHandle;
 
 		float				generalAlarmTimer;						//How long do we play the alarm buzzer?
+
+	public:
+		// The radio packet files. Radio::init fills them; purgeSoundSystem resets them (before the radio heap goes, in the order the radios used them).
+		std::unique_ptr<PacketFile>	radioNoiseFile;
+		std::unique_ptr<PacketFile>	radioMessageFiles[MAX_RADIOS];
+	protected:
 			
 	//Member Functions
 	//----------------

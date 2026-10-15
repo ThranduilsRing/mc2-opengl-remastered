@@ -10,19 +10,6 @@
 long Mech3DAppearance::update (bool animate) 
 {
 
-#ifdef _DEBUG
-	if (!logFile)
-	{
-		logFile = new File;
-		long result = logFile->create("gesture.log");
-		if (result != NO_ERR)
-		{
-			delete logFile;
-			logFile = nullptr;
-		}
-	}
-#endif
-
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> nothing to
 	// animate; the many mechShape-> derefs below are unsafe. Return as if the
 	// frame advanced successfully so callers (encyclopedia preview, mech bay)
@@ -400,15 +387,6 @@ long Mech3DAppearance::update (bool animate)
 	if ((currentFrame > 0.0f) && (currentFrame >= mechType->getNumFrames(currentGestureId)))
 		currentFrame = 0.0f;
 		
-#ifdef _DEBUG
-	if (logFile && (inDebugMoveMode))
-	{
-		char msg[1024];
-		mc2::fmt::to_buf(msg, "Gesture: {:d}, Frame: {:f}, SGoal: {:d}, OGoal: {:d}, Rot: {:f}", mc2::fmt::as_i32(currentGestureId), currentFrame, mc2::fmt::as_i32(currentStateGoal), mc2::fmt::as_i32(oldStateGoal), rotation);
-		logFile->writeLine(msg);
-	}
-#endif
-
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): the light
 	// owner-intent writers live in updateGeometry, which is frustum-culled
 	// below — an OFF-SCREEN mech never refreshed its light state, so (a) a

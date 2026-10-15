@@ -346,6 +346,10 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 				}
 			}
 		}
+#ifdef MC2_VULKAN_ISLAND
+		// The VK shadow passes of the frame were recorded into one command buffer; submit it before any consumer (terrain, the screen shadow) reads.
+		if (mc2_vk_shadow_island_enabled()) mc2_vk_shadow_island_submit_frame();
+#endif
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowDyn);
 	}
 	g_numShadowShapes.store(0, std::memory_order_relaxed);

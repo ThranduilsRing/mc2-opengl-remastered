@@ -431,7 +431,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 
 // Read the objectives and the commanders and close gamesys.fit.
 void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
-	auto& loadFile = f.loadFile; auto& currentPacket = f.currentPacket; auto& gameSystemFile = f.gameSystemFile;
+	auto& loadFile = f.loadFile; auto& currentPacket = f.currentPacket; FitIniFile* const gameSystemFile = &f.gameSystemFile;
 	auto& missionFile = f.missionFile;
 	//----------------------------------------------
 	// Read in the Objectives.  Safe to have none.
@@ -480,8 +480,6 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 	// ALREADY LOADED above.
 
 	gameSystemFile->close();
-	delete gameSystemFile;
-	gameSystemFile = nullptr;
 }
 
 // Create the weather and the camera.

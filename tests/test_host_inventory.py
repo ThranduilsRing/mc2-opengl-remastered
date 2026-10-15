@@ -86,4 +86,5 @@ def test_json_provenance_and_regenerated_board_rows(monkeypatch, capsys, root):
     assert markdown == host.render_markdown(rows, provenance)
     assert "Exit 0" in markdown and "exit 2" in markdown
     assert all(row in markdown.split("## Proposed check-contracts.sh rows")[1] for row in host.BOARD_ROWS)
+    assert all(note in markdown.split("## Harness tooling")[1] for note in host.HARNESS_NOTES)
     assert "[proof ledger]" in markdown

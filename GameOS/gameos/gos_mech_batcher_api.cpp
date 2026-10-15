@@ -42,6 +42,23 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     return 1;
 }
 
+extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
+    if (!out || !vkMechGateOn()) return 0;
+    if (!mc2::gate::get<"MC2_SHADOW_ENABLE">()) return 0;
+    if (!g_useGpuMechs || !s_geometryFinalized || s_programLoadFailed) return 0;
+    if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty() || s_vkMechBoneSnapshot.empty()) return 0;
+    const uint64_t vboBytes = static_cast<uint64_t>(s_stagingVbo.size());
+    if (s_vkVboNativeCopy.empty() || s_vkVboNativeCopy.size() != vboBytes || s_stagingIbo.empty()) return 0;
+    out->instances64 = s_vkMechInstSnapshot.data(); out->instanceCount = static_cast<uint32_t>(s_vkMechInstSnapshot.size());
+    out->bones64     = s_vkMechBoneSnapshot.data(); out->boneCount     = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
+    out->runs        = s_vkMechRunSnapshot.data();  out->runCount      = static_cast<uint32_t>(s_vkMechRunSnapshot.size());
+    out->vboCpu = s_vkVboNativeCopy.data(); out->vboBytes = static_cast<uint64_t>(s_vkVboNativeCopy.size());
+    out->iboCpu = s_stagingIbo.data();      out->iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
+    out->vertexStride = static_cast<uint32_t>(sizeof(GpuMechVertex));
+    out->geomGen = s_vkVboNativeGen;
+    return 1;
+}
+
 extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     if (!out) return 0;
     if (!vkMechGateOn() || !s_vkMechFrameReady) return 0;

@@ -233,9 +233,8 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 	FullPathFileName objectName;
 	objectName.init(objectPath,objectFileName,".pak");
 
-	objectFile = new PacketFile;
-	if (!objectFile)
-		return NO_RAM_FOR_OBJECT_TYPE_FILE;
+	m_objectFile = std::make_unique<PacketFile>();
+	objectFile = m_objectFile.get();
 
 	long result = objectFile->open(objectName);
 	if (result != NO_ERR)
@@ -293,8 +292,8 @@ void ObjectTypeManager::destroy(void)
 	if (objectFile) 
 	{
 		objectFile->close();
-		delete objectFile;
 		objectFile = nullptr;
+		m_objectFile.reset();
 	}
 	
 	if (objectTypeCache) 

@@ -1,36 +1,27 @@
 # Step 4 B3 file-and-stream ownership sites from a [[deprecated("B3")]] build (tests/analyze/file_callsites.py); a batch commit removes its rows.
-# total 63 sites in 28 files
+# total 35 sites in 21 files
 # per kind:
-#      18  File::operator delete
-#      18  File::operator new
 #      18  FitIniFile::open
+#       4  File::operator delete
+#       4  File::operator new
 #       4  ABLFile::operator delete
 #       4  ABLFile::operator new
 #       1  File::readRAW
 # per batch (cxx23-step4-b3-files.json):
 #       2  B3.3 (done)
-#      29  B3.4
+#       5  B3.4
 #       8  B3.5
-#       4  B3.6
 #       1  B4 (heap-routed raw read, handed over)
 #       5  E-B3
 #      14  KEEP-child
 # sites in files the batch table does NOT list: 0 in 0 files
 # per file:
-#       6  code/radio.cpp
-#       6  mclib/soundsys.cpp
-#       4  code/ablmc2.cpp
 #       4  code/mission_init.cpp
-#       4  data_tools/pak.cpp
 #       4  editor/Editor.cpp
 #       4  mclib/ablenv.cpp
 #       4  mclib/ablscan.cpp
-#       3  code/objtype.cpp
 #       2  code/carnage.cpp
 #       2  code/mission_movers.cpp
-#       2  code/saveload.cpp
-#       2  mclib/gamelog.cpp
-#       2  mclib/terrtxm.cpp
 #       1  code/artlry.cpp
 #       1  code/bldng.cpp
 #       1  code/gate.cpp
@@ -40,15 +31,15 @@
 #       1  code/logisticsdata.cpp
 #       1  code/logisticsdata_init.cpp
 #       1  code/mech_type.cpp
+#       1  code/objtype.cpp
 #       1  code/terrobj.cpp
 #       1  code/turret.cpp
 #       1  code/weaponbolt.cpp
 #       1  editor/EditorObjectMgr.cpp
 #       1  mclib/txmmgr_texture.cpp
-# blob d7dce3ffa77d04cafbbbd30c983d0ed1965ec7aa code/ablmc2.cpp
 # blob 66b9cbae84144336eb4dcd89da2f14ce78abb42e code/artlry.cpp
 # blob adfee70994b76c03e111876fdab6063b8b206523 code/bldng.cpp
-# blob 902827125a1ae4c5351fc5c13244150c656b084a code/carnage.cpp
+# blob 4101c1c0ad725963d51f914635c4463b76aab8b9 code/carnage.cpp
 # blob d1b3ea9bb5497d06e4a43dbf4d03073e661ac5ad code/gate.cpp
 # blob 473147f13b071406d59fe3ca5c3668ec2bb87127 code/gvehicl.cpp
 # blob 6c0851270e1f04dfee533939d6d4dcac7dcea01f code/gvehicl_control.cpp
@@ -56,42 +47,19 @@
 # blob 8413920270f8a05c56f7b225084e5652fcac8013 code/logisticsdata.cpp
 # blob 58c47be6fceb8471a2806fb8e4c6e7d208447467 code/logisticsdata_init.cpp
 # blob e4c01f7f531b7086d3f3508a3da522a4583008b2 code/mech_type.cpp
-# blob 3c8cd19667c7183e08a7cf53e3564e58fa9cf1dd code/mission_init.cpp
+# blob c45f805f4979bda5847106e091676241140cffeb code/mission_init.cpp
 # blob 236c9c677b163b1aa7d4071b52f5d0f3abd2c98a code/mission_movers.cpp
-# blob 8155f69b8d9eb5db3d1bce95b692d81041d3b744 code/objtype.cpp
-# blob db831be44ba5f078fe1224e6c791418db1a9f90e code/radio.cpp
-# blob 3aa123071e983dd6dc38bcbdac515eb631e961fd code/saveload.cpp
+# blob 46dfdac24e5140e095f7a6d3a1ccdc8081592686 code/objtype.cpp
 # blob 8ae3848ceb0a4fa6f8de23525fc74454df18a517 code/terrobj.cpp
 # blob f0c438262204978b6dab3820e542000f0f603fd1 code/turret.cpp
-# blob dfb4ce4fa2f2a59991031719c6d9b7a11c728eee code/weaponbolt.cpp
-# blob fb7ae2583aed04870cbb5578b7e78e72a2d17a30 data_tools/pak.cpp
+# blob 4738675ca85caa3dcf34a6bee10ef0f93ba2b239 code/weaponbolt.cpp
 # blob 67f0795dff2cd52b0732230e31207e63789b847d editor/Editor.cpp
 # blob 5995a7b6cc76234e77b9305930ae42f517724fe0 editor/EditorObjectMgr.cpp
-# blob 1588675e63f30cc56a0c4b40660359abfc3515eb mclib/ablenv.cpp
+# blob 32fd2481902c848fbe9c1843ab488758ddb4578e mclib/ablenv.cpp
 # blob 9c063d1bd4a479a67d4e06ccd06acf80f7deeb19 mclib/ablscan.cpp
-# blob da491edc0ad43209fa2d36fc115bc9f7843480a1 mclib/gamelog.cpp
-# blob 101e12fe426fa7f94bcb4fc79bd124bef783a45e mclib/soundsys.cpp
-# blob d811910ce59aa49c9f427698275dc26e99b0291d mclib/terrtxm.cpp
 # blob e2f6238cdb7e9ad805b1271f9b5e9e393098b86e mclib/txmmgr_texture.cpp
-# mentions inside inactive #if branches (grep, the compiler cannot see them): 13
-#   mclib/mech3d_update.cpp:16 (branch opened at 13): logFile = new File;
-#   mclib/move_movemap_escape.cpp:78 (branch opened at 76): File* pathDebugFile = new File;
-#   mclib/move_movemap_escape.cpp:195 (branch opened at 193): File* pathDebugFile = new File;
-#   mclib/move_movemap_escape.cpp:231 (branch opened at 229): File* pathDebugFile = new File;
-#   mclib/move_movemap_escape.cpp:252 (branch opened at 248): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:114 (branch opened at 112): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:258 (branch opened at 256): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:320 (branch opened at 318): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:344 (branch opened at 342): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:573 (branch opened at 571): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:692 (branch opened at 690): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:726 (branch opened at 724): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:750 (branch opened at 748): File* pathDebugFile = new File;
+# mentions inside inactive #if branches (grep, the compiler cannot see them): 0
 # file:line:kind
-code/ablmc2.cpp:85:File::operator delete
-code/ablmc2.cpp:85:File::operator new
-code/ablmc2.cpp:98:File::operator delete
-code/ablmc2.cpp:98:File::operator new
 code/artlry.cpp:393:FitIniFile::open
 code/bldng.cpp:177:FitIniFile::open
 code/carnage.cpp:139:FitIniFile::open
@@ -109,45 +77,21 @@ code/mission_init.cpp:420:File::operator delete
 code/mission_init.cpp:420:File::operator new
 code/mission_movers.cpp:54:FitIniFile::open
 code/mission_movers.cpp:279:FitIniFile::open
-code/objtype.cpp:236:File::operator delete
-code/objtype.cpp:236:File::operator new
-code/objtype.cpp:364:FitIniFile::open
-code/radio.cpp:87:File::operator delete
-code/radio.cpp:87:File::operator new
-code/radio.cpp:97:File::operator delete
-code/radio.cpp:97:File::operator new
-code/radio.cpp:315:File::operator delete
-code/radio.cpp:315:File::operator new
-code/saveload.cpp:606:File::operator delete
-code/saveload.cpp:606:File::operator new
+code/objtype.cpp:363:FitIniFile::open
 code/terrobj.cpp:390:FitIniFile::open
 code/turret.cpp:137:FitIniFile::open
 code/weaponbolt.cpp:52:FitIniFile::open
-data_tools/pak.cpp:28:File::operator delete
-data_tools/pak.cpp:28:File::operator new
-data_tools/pak.cpp:81:File::operator delete
-data_tools/pak.cpp:81:File::operator new
 editor/Editor.cpp:368:File::operator delete
 editor/Editor.cpp:368:File::operator new
 editor/Editor.cpp:548:File::operator delete
 editor/Editor.cpp:548:File::operator new
 editor/EditorObjectMgr.cpp:253:FitIniFile::open
-mclib/ablenv.cpp:194:ABLFile::operator delete
-mclib/ablenv.cpp:194:ABLFile::operator new
-mclib/ablenv.cpp:325:ABLFile::operator delete
-mclib/ablenv.cpp:325:ABLFile::operator new
+mclib/ablenv.cpp:223:ABLFile::operator delete
+mclib/ablenv.cpp:223:ABLFile::operator new
+mclib/ablenv.cpp:354:ABLFile::operator delete
+mclib/ablenv.cpp:354:ABLFile::operator new
 mclib/ablscan.cpp:542:ABLFile::operator delete
 mclib/ablscan.cpp:542:ABLFile::operator new
 mclib/ablscan.cpp:1298:ABLFile::operator delete
 mclib/ablscan.cpp:1298:ABLFile::operator new
-mclib/gamelog.cpp:155:File::operator delete
-mclib/gamelog.cpp:155:File::operator new
-mclib/soundsys.cpp:146:File::operator delete
-mclib/soundsys.cpp:146:File::operator new
-mclib/soundsys.cpp:155:File::operator delete
-mclib/soundsys.cpp:155:File::operator new
-mclib/soundsys.cpp:166:File::operator delete
-mclib/soundsys.cpp:166:File::operator new
-mclib/terrtxm.cpp:1393:File::operator delete
-mclib/terrtxm.cpp:1393:File::operator new
 mclib/txmmgr_texture.cpp:376:File::readRAW

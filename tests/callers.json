@@ -575,7 +575,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1020,
+          "line": 1030,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -677,7 +677,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 954,
+          "line": 964,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -2012,7 +2012,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1038,
+          "line": 1048,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -2409,6 +2409,20 @@
           "text": "from console_child import child_kwargs"
         },
         {
+          "path": "scripts/smoke_lib/host_lease.py",
+          "line": 276,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child         # type: ignore"
+        },
+        {
+          "path": "scripts/smoke_lib/host_lease.py",
+          "line": 279,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child                       # type: ignore"
+        },
+        {
           "path": "scripts/smoke_lib/nofocus.py",
           "line": 73,
           "evidence": "import",
@@ -2521,8 +2535,22 @@
           "text": "from scripts import console_child  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_host_lease_batch.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_include_guards_unique.py",
           "line": 13,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_parent_watchdog.py",
+          "line": 10,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3187,7 +3215,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 896,
+          "line": 906,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -3203,7 +3231,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1310,
+          "line": 1320,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -3627,6 +3655,35 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/parent_watchdog.py",
+      "basename": "parent_watchdog.py",
+      "stem": "parent_watchdog",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/game_auto.py",
+          "line": 40,
+          "evidence": "import",
+          "reference": "parent_watchdog",
+          "text": "from parent_watchdog import ParentWatch  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_parent_watchdog.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "parent_watchdog",
+          "text": "import parent_watchdog  # noqa: E402"
+        },
+        {
+          "path": "tools/dev_shell/watch.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "parent_watchdog",
+          "text": "from parent_watchdog import ParentWatch  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "scripts/pe_gate_scan.py",
       "basename": "pe_gate_scan.py",
       "stem": "pe_gate_scan",
@@ -3765,10 +3822,24 @@
         },
         {
           "path": "editor/tests/objective_census.py",
-          "line": 11,
+          "line": 12,
           "evidence": "import",
           "reference": "run_editor_smoke",
           "text": "from run_editor_smoke import StockInputs, STOCK_MISSIONS"
+        },
+        {
+          "path": "editor/tests/objective_census.py",
+          "line": 89,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/objective_crud.py",
+          "line": 93,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import PANEL_OPERATIONS"
         },
         {
           "path": "editor/tests/run_catalog_proofs.py",
@@ -4094,21 +4165,28 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 793,
+          "line": 796,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 983,
+          "line": 808,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import host_load as _host_load"
+        },
+        {
+          "path": "scripts/run_smoke.py",
+          "line": 993,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1169,
+          "line": 1179,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -4171,7 +4249,7 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait, child_registry"
@@ -4227,35 +4305,35 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 24,
+          "line": 39,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 38,
+          "line": 53,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import vram"
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 49,
+          "line": 64,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import vk_profile"
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 59,
+          "line": 74,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import vk_validation"
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 70,
+          "line": 85,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_resolution"
@@ -4301,6 +4379,20 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease, nofocus  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_host_lease_batch.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import child_registry, host_lease  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_host_load.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import host_load  # noqa: E402"
         },
         {
           "path": "tests/smoke/test_capture_backend.py",
@@ -4404,14 +4496,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "bounded_wait",
           "text": "import bounded_wait                   # type: ignore"
@@ -4448,7 +4540,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1169,
+          "line": 1179,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -4462,14 +4554,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 39,
+          "line": 40,
           "evidence": "import",
           "reference": "child_registry",
           "text": "import child_registry                 # type: ignore"
@@ -4494,6 +4586,13 @@
           "evidence": "import",
           "reference": "child_registry",
           "text": "import child_registry  # type: ignore"
+        },
+        {
+          "path": "scripts/tests/test_host_lease_batch.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.child_registry",
+          "text": "from scripts.smoke_lib import child_registry, host_lease  # noqa: E402"
         }
       ]
     },
@@ -4756,7 +4855,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 793,
+          "line": 796,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -4788,6 +4887,35 @@
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
+        },
+        {
+          "path": "scripts/tests/test_host_lease_batch.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from scripts.smoke_lib import child_registry, host_lease  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/host_load.py",
+      "basename": "host_load.py",
+      "stem": "host_load",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_smoke.py",
+          "line": 808,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_load",
+          "text": "from scripts.smoke_lib import host_load as _host_load"
+        },
+        {
+          "path": "scripts/tests/test_host_load.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_load",
+          "text": "from scripts.smoke_lib import host_load  # noqa: E402"
         }
       ]
     },
@@ -5047,7 +5175,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 983,
+          "line": 993,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -5076,7 +5204,7 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 24,
+          "line": 39,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from . import render_options_pin"
@@ -5112,7 +5240,7 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 70,
+          "line": 85,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_resolution",
           "text": "from . import render_resolution"
@@ -5276,7 +5404,7 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 49,
+          "line": 64,
           "evidence": "import",
           "reference": "scripts.smoke_lib.vk_profile",
           "text": "from . import vk_profile"
@@ -5312,7 +5440,7 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 59,
+          "line": 74,
           "evidence": "import",
           "reference": "scripts.smoke_lib.vk_validation",
           "text": "from . import vk_validation"
@@ -5348,7 +5476,7 @@
         },
         {
           "path": "scripts/smoke_lib/report.py",
-          "line": 38,
+          "line": 53,
           "evidence": "import",
           "reference": "scripts.smoke_lib.vram",
           "text": "from . import vram"
@@ -5652,6 +5780,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_host_lease_batch.py",
+      "basename": "test_host_lease_batch.py",
+      "stem": "test_host_lease_batch",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_host_load.py",
+      "basename": "test_host_load.py",
+      "stem": "test_host_load",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_include_guards_unique.py",
       "basename": "test_include_guards_unique.py",
       "stem": "test_include_guards_unique",
@@ -5687,6 +5829,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_parent_watchdog.py",
+      "basename": "test_parent_watchdog.py",
+      "stem": "test_parent_watchdog",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_phase_tools.py",
       "basename": "test_phase_tools.py",
       "stem": "test_phase_tools",
@@ -5697,6 +5846,13 @@
       "path": "scripts/tests/test_raw_gl_firewall.py",
       "basename": "test_raw_gl_firewall.py",
       "stem": "test_raw_gl_firewall",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_ref_passthrough.py",
+      "basename": "test_ref_passthrough.py",
+      "stem": "test_ref_passthrough",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -8861,6 +9017,13 @@
       ],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_ref_passthrough.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "saveload_roundtrip",
+          "text": "import saveload_roundtrip as sl  # noqa: E402"
+        },
+        {
           "path": "tools/test_saveload_roundtrip.py",
           "line": 8,
           "evidence": "import",
@@ -8935,6 +9098,13 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_ref_passthrough.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sd  # noqa: E402"
+        },
         {
           "path": "tools/saveload_roundtrip.py",
           "line": 40,

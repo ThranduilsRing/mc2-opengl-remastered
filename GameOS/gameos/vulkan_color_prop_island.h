@@ -28,6 +28,10 @@ extern "C" {
 // mc2_vk_color_prop_island_run instead).
 int mc2_vk_color_prop_island_enabled();
 
+// The alpha-ON albedo array view (a VkImageView in SHADER_READ_ONLY layout, opaque here) the island imported for the alpha-tested props, or 0 while the island
+// has none. `generation` changes at every map change, so a caller that bound the view re-binds even when a new array comes back with the same handle value. Owned by the island: the caller reads it within the frame and re-queries each frame (a new map brings a new array).
+int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation);
+
 // Per-frame entry. Renders the visible static-prop color instances in-place into the
 // shared scene GBuffer. Pulls its geometry/instance feed from the batcher.
 //   w/h — the scene color target size (getWidth()/getHeight()).

@@ -32,6 +32,7 @@
 //#endif
 
 #include<string.h>
+#include"../GameOS/gameos/utils/mc2log.h"
 //---------------------------------------------------------------------------
 extern MemoryPtr 	LZPacketBuffer;
 extern unsigned int LZPacketBufferSize;
@@ -171,13 +172,9 @@ long PacketFile::afterOpen (void)
 		// header used to overrun the table or fail an assert).
 		if (numPackets < 0 || 8LL + 4LL * numPackets > (long long)getLength())
 		{
-			static bool s_loggedBadHeader = false;
-			if (!s_loggedBadHeader)
-			{
-				s_loggedBadHeader = true;
-				STOP(("[PACKET_HEADER_BAD] file=%s packets=%d bytes=%d (the header claims more packets than the file holds; rejected)\n",
-					m_fileName.c_str(), numPackets, (int)getLength()));
-			}
+			// One line per process: a mod with many bad packet files must not flood the log, and a malformed file never stops the game.
+			MC2_LOG_ONCE(Io, Error, "[PACKET_HEADER_BAD] file={} packets={} bytes={} (the header claims more packets than the file holds; rejected)",
+				m_fileName.c_str(), numPackets, (int)getLength());
 			numPackets = 0;
 			return PACKET_OUT_OF_RANGE;
 		}

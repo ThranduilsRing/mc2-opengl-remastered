@@ -196,7 +196,7 @@ if(MC2_VULKAN)
         # lighting up the vk2gl back-channel). Borrows the shared engine
         # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
         # -> GL shadow path byte-identical. extern "C" entry points only.
-        list(APPEND SOURCES vulkan_shadow_island_live.cpp)
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_shadow_mech_casters.cpp vk_depth_caster_pipeline.cpp)
         # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
         # region rendering REAL static-prop triangle geometry in-place into the shared
         # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
@@ -388,7 +388,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob ssao ssao_apply hzb_reduce shadow_debug_overlay water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob ssao ssao_apply hzb_reduce shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
@@ -409,6 +409,10 @@ if(MC2_VULKAN)
             endif()
             set(_src "${MC2_VK_SHADER_SRC_DIR}/${_src_base}.${_stage}")
             set(_spv "${MC2_VK_SPV_OUT_DIR}/${_base}.${_stage}.spv")
+            # A basename may name one stage only (shadow_prop_alpha is a fragment shader over the shared shadow_prop vertex shader).
+            if(NOT EXISTS "${_src}")
+                continue()
+            endif()
             if(MC2_GLSLANG_VALIDATOR)
                 add_custom_command(
                     OUTPUT "${_spv}"

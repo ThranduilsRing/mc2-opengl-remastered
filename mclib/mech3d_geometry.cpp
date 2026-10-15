@@ -1094,9 +1094,6 @@ void Mech3DAppearance::updateGeometry (void)
 	 
 }	
 
-#ifdef _DEBUG
-FilePtr logFile = NULL;
-#endif
 
 bool Mech3DAppearance::setJumpParameters (Stuff::Vector3D &end)
 {

@@ -58,3 +58,16 @@ def test_report_does_not_claim_fingerprint_pass_when_check_unavailable():
     md = render_markdown([row], tier="tier1", profile="stock", timestamp="t",
                          fingerprint=record)
     assert "**DEPLOY_FINGERPRINT:** NOT VERIFIED (gate disabled)" in md
+
+
+def test_report_records_host_wait():
+    row = Row(stem="mc2_01", verdict=Verdict(passed=True), summary=LogSummary(perf=PerfRow(avg_fps=60)), destroys_delta=0)
+    wait = {"lease_wait_s": 12.0, "host_load": {"checked": True, "waited_s": 40.0, "first_reason": "build burst: 9 compiler/linker processes > 4",
+                                                 "last_reason": "MsMpEng at 80% > 50%", "timed_out": True, "bound_s": 40.0}}
+    js = render_json([row], tier="tier1", profile="stock", timestamp="t", host_wait=wait)
+    assert js["host_wait"] == wait
+    md = render_markdown([row], tier="tier1", profile="stock", timestamp="t", host_wait=wait)
+    assert "**Host wait:** lease 12 s; host load 40 s (build burst" in md and "LAUNCHED LOADED" in md
+    quiet = {"lease_wait_s": 0.0, "host_load": {"checked": True, "waited_s": 0.0, "first_reason": "", "last_reason": "", "timed_out": False}}
+    assert "Host wait" not in render_markdown([row], tier="tier1", profile="stock", timestamp="t", host_wait=quiet)
+    assert render_json([row], tier="tier1", profile="stock", timestamp="t")["host_wait"] is None

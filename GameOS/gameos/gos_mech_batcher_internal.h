@@ -250,6 +250,7 @@ extern float                        s_vkMechWorldToClipGL[16];
 extern float                        s_vkMechObjectDepthBias;
 extern bool                         s_vkMechFrameReady;
 extern std::vector<uint8_t>         s_vkVboNativeCopy;
+extern uint32_t                     s_vkVboNativeGen;
 #endif
 
 // Free functions defined in the split pieces.

@@ -78,6 +78,19 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+
+namespace
+{
+// Largest in-RAM file image a FastFile entry may claim. The biggest stock member is tens of megabytes; this only has to stop a corrupt
+// size (a mod archive with a damaged entry reads back as up to 4 GB) from reaching the allocator.
+constexpr unsigned long kMaxInRamImage = 1ul << 30;
+
+bool imageSizePlausible (unsigned long size)
+{
+	return size <= kMaxInRamImage;
+}
+} // namespace
 
 struct ModFileEntry {
     std::string path;   // absolute path to real file
@@ -1017,6 +1030,7 @@ File::File (void)
 {
 	fileMode = NOMODE;
 	handle = INVALID_HANDLE_VALUE;
+	fastFileHandle = -1;
 	length = 0;
 	logicalPosition = 0;
 	bufferResult = 0;
@@ -1260,6 +1274,22 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			//-- Then close fastfile!!!!!
 			inRAM = TRUE;
 
+			// A corrupt archive entry can claim any size; an image that big would end the process in std::bad_alloc where the old malloc
+			// returned null. Refuse it with one log line and leave the file closed: the archive entry is released here because
+			// close() sees no handle and no image and would skip it.
+			if (!imageSizePlausible(fileSize()))
+			{
+				MC2_LOG_ONCE(Io, Error, "[FILE_IMAGE_SIZE_BAD] file={} size={} (an archive entry claims more than {} bytes; not opened)",
+					m_fileName.c_str(), fileSize(), (long)kMaxInRamImage);
+				fastFile->closeFast(fastFileHandle);
+				fastFile = nullptr;
+				fastFileHandle = -1;
+				m_fileName.clear();
+				length = 0;
+				inRAM = FALSE;
+				return FILE_NOT_OPEN;
+			}
+
 			// Never empty, so a zero-length member still has an image to read from (what malloc(0) gave).
 			m_ownedImage.assign(std::max<size_t>(fileSize(), 1), 0);
 			fileImage = m_ownedImage.data();
@@ -1309,6 +1339,15 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 {
 	if (_parent && (_parent->fastFile == nullptr))
 	{
+		if (numChild == -1 && fileSize > _parent->getLength())
+		{
+			// A RAM child is a copy of a slice of its parent: a size past the parent's end is a corrupt packet header, and sizing the image
+			// from it would end the process in std::bad_alloc.
+			MC2_LOG_ONCE(Io, Error, "[FILE_IMAGE_SIZE_BAD] file={} size={} parent={} (a child claims more bytes than its parent holds; not opened)",
+				_parent->m_fileName.c_str(), (long)fileSize, (long)_parent->getLength());
+			return PACKET_WRONG_SIZE;
+		}
+
 		parent = _parent;
 		if (parent->getFileMode() != READ)
 		{

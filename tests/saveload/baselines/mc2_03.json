@@ -1,17 +1,17 @@
 {
  "mission": "mc2_03",
- "save_at": 1300,
- "load_at": 1400,
+ "save_at": 1000,
+ "load_at": 1100,
  "gates": {
   "MC2_SMOKE_FIXED_TIMESTEP": "1",
   "MC2_DETERMINISTIC_RNG": "1",
   "MC2_SIM_IDENTITY_TRACE": "1",
   "MC2_SMOKE_FREEZE_ANIM": "1",
-  "MC2_BOOT_QUICKSAVE_AT": "1300",
-  "MC2_BOOT_QUICKLOAD_AT": "1400"
+  "MC2_BOOT_QUICKSAVE_AT": "1000",
+  "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "06f0d7211fb5",
+  "sha": "afe0e21a7e82",
   "dirty": 0
  },
  "comparison": {
@@ -63,29 +63,11 @@
       3035
      ]
     ],
-    "build": [
-     [
-      2952,
-      2955
-     ],
-     [
-      3000,
-      3003
-     ]
-    ]
+    "build": []
    },
    "GroundVehicleData": {
     "run": [],
-    "build": [
-     [
-      2952,
-      2955
-     ],
-     [
-      3000,
-      3003
-     ]
-    ]
+    "build": []
    },
    "CommanderData": {
     "run": [
@@ -106,12 +88,7 @@
     "build": []
    },
    "GateData": {
-    "run": [
-     [
-      736,
-      740
-     ]
-    ],
+    "run": [],
     "build": []
    },
    "WeaponBoltData": {

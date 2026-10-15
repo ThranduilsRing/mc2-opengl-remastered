@@ -73,16 +73,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 	while (!openHeap.isEmpty()) {
 
-		#ifdef DEBUG_MOVE_MAP
-			if (debugMoveMap) {
-				File* pathDebugFile = new File;
-					pathDebugFile->create("mm.dbg");
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
-			}
-		#endif
 
 		#ifdef DEBUG_PATH
 			if (topOpenNodes < openHeap.size())
@@ -190,16 +180,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		}
 	}
 
-	#ifdef DEBUG_MOVE_MAP
-		if (debugMoveMap) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("mm.dbg");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
-		}
-	#endif
 
 	if (goalFound) {
 		long curRow = goalCell[0] = bestRow;
@@ -228,16 +208,14 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 #ifdef _DEBUG
 		if (numCells > MAX_STEPS_PER_MOVEPATH) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("longpath.dbg");
+			File pathDebugFile;
+			pathDebugFile.create("longpath.dbg");
 			char s[512];
 			mc2::fmt::to_buf(s, "Path Too Long: {:d} steps (Max = {:d}) (please save longpath.dbg file:)", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
-			pathDebugFile->writeString(s);
-			pathDebugFile->writeString("\n\n");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
+			pathDebugFile.writeString(s);
+			pathDebugFile.writeString("\n\n");
+			writeDebug(&pathDebugFile);
+			pathDebugFile.close();
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
@@ -249,15 +227,13 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			long maxSteps = path->init(numCells);
 
 			if (maxSteps > -1) {
-				File* pathDebugFile = new File;
-				pathDebugFile->create("longpath.dbg");
+				File pathDebugFile;
+				pathDebugFile.create("longpath.dbg");
 				char s[512];
 				mc2::fmt::to_buf(s, "New Longest Path: {:d} steps (Max = {:d})\n\n", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
-				pathDebugFile->writeString(s);
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
+				pathDebugFile.writeString(s);
+				writeDebug(&pathDebugFile);
+				pathDebugFile.close();
 			}
 #endif
 			path->target = target;

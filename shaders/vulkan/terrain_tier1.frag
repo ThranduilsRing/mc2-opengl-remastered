@@ -323,6 +323,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     // POM: parallax-offset the material UVs, fwidth-gated (near only). The march uses the real view vector, faded out over the world
     // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
     // (a slab must not tear). lodNear fades the offset across the LOD0 band boundary (1.0 when the gate is off).
+    // GL also requires u_lodStep <= 2 before it marches; the VK island has no lod step, and the lodNear fade is its accepted stand-in for that limit.
     if (fwRock > 0.4 && lodNear > 0.01) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
         float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock * lodNear;
@@ -608,7 +609,7 @@ void main() {
             vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
                              + dN.xy * uT.detailStrength, 1.0);
             N = normalize(pert);
-            if (uT.detailReady != 0) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
+            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         vec3 lightDir = uT.terrainLightDir.xyz;

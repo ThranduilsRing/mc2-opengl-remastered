@@ -39,6 +39,35 @@
 #ifndef ABLDBUG_H
 #include"abldbug.h"
 #endif
+#include "../GameOS/gameos/utils/mc2log.h"
+
+//---------------------------------------------------------------------------
+// A scalar static or eternal is saved as a whole StackItem, but only its 4-byte integer / real / byte arm is meaningful. The union also has
+// an Address arm: writing the slot as it stands would put the upper half of a process address (or a stale 4 bytes) in the save, so the
+// file holds the 4-byte payload zero-extended to the slot size and the file layout is unchanged.
+static void writeScalarSlot (ABLFile* file, const StackItem* slot) {
+
+	StackItem image;
+	memset(&image, 0, sizeof(image));
+	memcpy(&image, slot, sizeof(image.integer));
+	file->write((unsigned char*)&image, sizeof(StackItem));
+}
+
+// A saved slot whose upper bytes are not zero was written before the writer zero-extended, or holds a pointer arm; dropping those bytes keeps
+// a stale process address out of the script's variables.
+static void clearScalarSlotPointerArm (StackItem* slot) {
+
+	if (sizeof(StackItem) <= sizeof(slot->integer))
+		return;
+	unsigned char* upper = (unsigned char*)slot + sizeof(slot->integer);
+	for (size_t i = 0; i < sizeof(StackItem) - sizeof(slot->integer); i++) {
+		if (upper[i]) {
+			MC2_LOG_ONCE(Sim, Warn, "[ABL_SAVE_SLOT_POINTER_ARM] a saved ABL scalar slot carries bytes past its 4-byte value; dropped");
+			memset(upper, 0, sizeof(StackItem) - sizeof(slot->integer));
+			return;
+		}
+	}
+}
 
 //***************************************************************************
 int32_t ABLi_preProcess (const char* sourceFileName,
@@ -623,7 +652,7 @@ void ABLModule::write (ABLFile* moduleFile) {
 		if (sizeList[i] > 0)
 			moduleFile->write((unsigned char*)staticData[i].address, sizeList[i]);
 		else
-			moduleFile->write((unsigned char*)&staticData[i], sizeof(StackItem));
+			writeScalarSlot(moduleFile, &staticData[i]);
 	}
 }
 
@@ -696,6 +725,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 			else {
 				staticData[i].integer = 0;
 				long result = moduleFile->read((unsigned char*)&staticData[i], sizeof(StackItem));
+				clearScalarSlotPointerArm(&staticData[i]);
 				if (!result) {
 					char err[255];
 					sprintf(err, "ABL: Unable to read staticData [Module %d]", id);
@@ -1493,7 +1523,7 @@ void ABLi_saveEnvironment (ABLFile* ablFile) {
 		if (EternalVariablesSizes[i] > 0)
 			ablFile->write((unsigned char*)dataPtr->address, EternalVariablesSizes[i]);
 		else
-			ablFile->write((unsigned char*)dataPtr, sizeof(StackItem));
+			writeScalarSlot(ablFile, dataPtr);
 	}
 	for (int i = 0; i < NumModules; i++)
 	{
@@ -1560,7 +1590,10 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		if (EternalVariablesSizes[i] > 0)
 			ablFile->read((unsigned char*)dataPtr->address, EternalVariablesSizes[i]);
 		else
+		{
 			ablFile->read((unsigned char*)dataPtr, sizeof(StackItem));
+			clearScalarSlotPointerArm(dataPtr);
+		}
 	}
 	for (int i = 0; i < numLibs; i++) {
 		ABLModulePtr library = LibraryInstanceRegistry[i];

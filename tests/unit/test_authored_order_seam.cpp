@@ -58,8 +58,6 @@ struct SeamWorldResources {
         Mover::holdFireIconHandle = 1;
     }
     ~SeamWorldResources() {
-        delete Mover::sortList;
-        Mover::sortList = nullptr;
         Mover::holdFireIconHandle = previousIcon;
         GameObject::initialize = previousInitialize;
         systemHeap = previousHeap;

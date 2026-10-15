@@ -117,6 +117,20 @@ struct Mc2MechFrameFeed {
     float        poolObjScale;
 };
 
+// The mech casters of the VK shadow cascades: the previous flush's instance and bone snapshots and run list (the data GpuMechBatcher::flushShadow draws), the CPU
+// bytes of the geometry and a generation that changes whenever those bytes are rebuilt, so the consumer keeps its own copy and re-uploads only on a change.
+struct Mc2MechShadowFeed {
+    const void* instances64; uint32_t instanceCount;
+    const void* bones64;     uint32_t boneCount;
+    const Mc2MechDrawRun* runs; uint32_t runCount;
+    const void* vboCpu; uint64_t vboBytes;
+    const void* iboCpu; uint64_t iboBytes;
+    uint32_t    vertexStride;
+    uint32_t    geomGen;
+};
+// Returns 0 when the shadows are off, the geometry is not finalized or there is nothing to draw (the same guards as the GL flushShadow).
+int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out);
+
 // Filled by gos_mech_batcher.cpp. Return 0 when geometry/gate not ready.
 int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out);
 // Mech batcher's real packed vertex stride (sizeof(GpuMechVertex)); valid before geometry upload.

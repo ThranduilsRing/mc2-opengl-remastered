@@ -59,14 +59,14 @@ void GameSoundSystem::purgeSoundSystem (void)
 	for (long i=0;i<MAX_RADIOS;i++)
 	{
 		Radio::radioList[i] = nullptr;
-		delete Radio::messagesFile[i];
+		radioMessageFiles[i].reset();
 		Radio::messagesFile[i] = nullptr; 
 	}
 
 	delete Radio::radioHeap;
 	Radio::radioHeap = nullptr;
 		
-	delete Radio::noiseFile;
+	radioNoiseFile.reset();
 	Radio::noiseFile = nullptr;
 
 	Radio::currentRadio = 0;

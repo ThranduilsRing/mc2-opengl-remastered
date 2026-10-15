@@ -566,7 +566,7 @@ public:
     // the SHARED scene color0 IN PLACE -- zero copies, zero CPU readbacks, no
     // private device. Screen-shadow is NOT ported (its CSM cascade array has no
     // zero-copy VK producer until ladder rung 2 -- see the TU header). Gate
-    // MC2_VK_POST_SCREENFX (an explicit opt-in: an Exact1 row, only "1" arms it) + per-pass bisect
+    // MC2_VK_POST_SCREENFX (a kill switch, on under the VK umbrella; =0 turns the VK passes off) + per-pass bisect
     // sub-gates MC2_VK_POST_SCREENFX_CLOUD / _SHORELINE (explicit 0 forces that
     // pass to GL). runVkPostScreenFxNative() returns a bitmask (bit0=cloud,
     // bit1=shoreline rendered via VK) -- the caller skips EXACTLY those GL pass

@@ -150,7 +150,8 @@ class TerrainTextures
 
 		bool				quickLoad;				//Checks for list o magic textures and then checks that each magic texture exists.
 		char				*localBaseName;
-		File				*listTransitionFile;	
+		// The list of converted magic textures, open only while a map is being converted; closed and released in destroy().
+		std::unique_ptr<File>	listTransitionFile;
 
 		static bool			terrainTexturesInstrumented;
 
@@ -216,7 +217,6 @@ class TerrainTextures
 			//Checks for list o magic textures and then checks that each magic texture exists. 
 			quickLoad = false;
 			localBaseName = NULL;
-			listTransitionFile = NULL;
 		}
 
 		TerrainTextures (void)

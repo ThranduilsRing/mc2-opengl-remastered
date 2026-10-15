@@ -509,94 +509,6 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 
 //---------------------------------------------------------------------------
 
-#ifdef _DEBUG
-#define	LOGWEAPONFIRECHUNKS
-constexpr int WEAPONFIRELOG_SIZE = 256;
-
-long NumWeaponFiresInLog = 0;
-long NumWeaponFiresInLogQueue = 0;
-GameObjectPtr WeaponFireAttackerLog[WEAPONFIRELOG_SIZE];
-GameObjectPtr WeaponFireTargetLog[WEAPONFIRELOG_SIZE];
-unsigned long WeaponFireDataLog[WEAPONFIRELOG_SIZE];
-File* WeaponFireLog = NULL;
-#endif
-
-//---------------------------------------------------------------------------
-
-#ifdef LOGWEAPONFIRECHUNKS
-void DumpWeaponFireLog (void) {
-
-	//----------------
-	// Dump to file...
-	for (long i = 0; i < NumWeaponFiresInLogQueue; i++) {
-		GameObjectPtr attacker = WeaponFireAttackerLog[i];
-		GameObjectPtr target = WeaponFireTargetLog[i];
-		unsigned long data = WeaponFireDataLog[i];
-
-		WeaponFireChunk chunk;
-		chunk.init();
-		chunk.data = data;
-		chunk.unpack(attacker);
-
-		char s[512];
-		char attackerName[128];
-		if (attacker->isMover())
-			sprintf(attackerName, "%s (%d)", attacker->getName(), attacker->getPartId());
-		else
-			sprintf(attackerName, "objClass %d (%d)", attacker->getObjectClass(), attacker->getPartId());
-		char targetName[128];
-		if (target)
-			if (target->isMover())
-				sprintf(targetName, "%s (%d)", target->getName(), target->getPartId());
-			else
-				sprintf(targetName, "objClass %d (%d)", target->getObjectClass(), target->getPartId());
-		else
-			sprintf(targetName, "NA/LOCATION");
-
-		sprintf(s, "attacker = %s, target = %s, data = %x, hit = %d, numMissiles = %d\n", attackerName, targetName, data, chunk.hit, chunk.numMissiles);
-
-		WeaponFireLog->writeString(s);
-	}
-	NumWeaponFiresInLogQueue = 0;
-}
-
-//---------------------------------------------------------------------------
-
-void CloseWeaponFireLog (void) {
-
-	if (WeaponFireLog) {
-		DumpWeaponFireLog();
-		char s[512];
-		sprintf(s, "\nNum Total WeaponFires = %d\n", NumWeaponFiresInLog);
-		WeaponFireLog->writeString(s);
-		WeaponFireLog->close();
-		delete WeaponFireLog;
-		WeaponFireLog = NULL;
-		NumWeaponFiresInLog = 0;
-		NumWeaponFiresInLogQueue = 0;
-	}
-}
-#endif
-
-//---------------------------------------------------------------------------
-
-void OpenWeaponFireLog (void) {
-#ifdef LOGWEAPONFIRECHUNKS
-	if (WeaponFireLog)
-		CloseWeaponFireLog();
-
-	NumWeaponFiresInLog = 0;
-	NumWeaponFiresInLogQueue = 0;
-	WeaponFireLog = new File;
-	if (!WeaponFireLog)
-		Fatal(0, " unable to malloc WeaponFireLog ");
-	if (WeaponFireLog->create("wf.log") != NO_ERR)
-		Fatal(0, " unable to create WeaponFireLog ");
-#endif
-}
-
-//---------------------------------------------------------------------------
-
 void LogWeaponFireChunk (WeaponFireChunkPtr chunk, GameObjectPtr attacker, GameObjectPtr target) {
 	// COMBAT-TRACE-1: every weapon fire (mech/vehicle/turret — all 10 fire sites) routes
 	// through here, so emitting one diagnostic event captures all combat engagement
@@ -611,20 +523,6 @@ void LogWeaponFireChunk (WeaponFireChunkPtr chunk, GameObjectPtr attacker, GameO
 			target->getWatchID(false), target->getTeamId());
 		mc2_diag::writeEvent("COMBAT", 1, g_mc2FrameCounter, _cbf);
 	}
-#ifdef LOGWEAPONFIRECHUNKS
-
-	if (!WeaponFireLog)
-		return;
-
-	if (NumWeaponFiresInLogQueue == WEAPONFIRELOG_SIZE)
-		DumpWeaponFireLog();
-
-	WeaponFireAttackerLog[NumWeaponFiresInLogQueue] = attacker;
-	WeaponFireTargetLog[NumWeaponFiresInLogQueue] = target;
-	WeaponFireDataLog[NumWeaponFiresInLogQueue] = chunk->data;
-	NumWeaponFiresInLog++;
-	NumWeaponFiresInLogQueue++;
-#endif
 }
 
 //---------------------------------------------------------------------------

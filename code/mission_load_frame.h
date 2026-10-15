@@ -14,7 +14,7 @@ struct MissionLoadFrame {
 	long result;
 	DWORD currentPacket;
 	char tmpString[2048];
-	FitIniFile* gameSystemFile;
+	FitIniFile gameSystemFile;   // gamesys.fit, open from loadGameSystemRanges until loadObjectivesCommanders closes it
 	long forestMoveCost;
 	FullPathFileName tmpName;
 	FitIniFile missionFile;

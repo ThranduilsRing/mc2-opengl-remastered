@@ -30,6 +30,9 @@
 // GL path also forwards a_uv at location 2 for the foliage alpha-test program;
 // P8a is OPAQUE-ONLY (empty frag), so only position is consumed here.
 layout(location = 0) in vec3 a_position;
+// The UV rides along for the alpha-tested pipeline (shadow_prop_alpha.frag cuts the leaf silhouette from it); the opaque pipeline ignores it.
+layout(location = 2) in vec2 a_uv;
+layout(location = 0) out vec2 v_uv;
 
 // Per-frame UBO: the dynamic light-space matrix (16 linear floats, GL_FALSE upload)
 // + the per-type instance-base offset (mirrors the GL u_instBase uniform, since the
@@ -60,4 +63,5 @@ void main() {
     // Stuff -> MC2 frame swizzle — identical to the GL VS.
     vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
+    v_uv = a_uv;
 }

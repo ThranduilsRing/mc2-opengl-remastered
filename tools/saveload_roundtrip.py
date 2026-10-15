@@ -191,7 +191,7 @@ def selftest() -> int:
                 with patch(__name__ + ".run_fixture", return_value=(td, save, nf, fp)) as fixture:
                     verdict = main(["--check", "--mission", "m", "--save-at", "10", "--load-at", "20", "--install", "lane3",
                                     "--save-dir", td, "--mask", mask_path])
-                    if verdict != expected or fixture.call_args.args[-2:] != (sd.resolve_install("lane3"), td):
+                    if verdict != expected or fixture.call_args.args[-4:] != (sd.resolve_install("lane3"), td, None, None):
                         fails.append("--check must apply --mask and route --install/--save-dir end to end")
     for f in fails:
         print("saveload_roundtrip selftest FAIL: " + f)
@@ -199,19 +199,17 @@ def selftest() -> int:
     return 1 if fails else 0
 
 
-def smoke_target(install: str) -> list[str]:
-    install = sd.resolve_install(install)
-    lane = sd.lane_model.lane_for(install)
-    return ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe")]
+def smoke_target(install: str, ref_exe: str | None = None, ref_commit: str | None = None) -> list[str]:
+    return sd.smoke_target(install, ref_exe, ref_commit)
 
 
 def run(mission: str, frames: int, deploy: bool, out: str | None, install: str = sd.INSTALL_DIR,
-        save_dir: str | None = None):
+        save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None):
     if deploy:
         sd.build_and_deploy(install)
     env = dict(os.environ, **ENV)
     with savegame_backup.guarded(save_dir):
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install),
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install, ref_exe, ref_commit),
                             "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
     arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
@@ -237,7 +235,7 @@ def resave_env(save_at: int, load_at: int) -> dict:
 
 
 def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None,
-                install: str = sd.INSTALL_DIR, save_dir: str | None = None):
+                install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
     `save_at` should lie beyond the run, so the first save returned is the planted one.
@@ -259,7 +257,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         if plant:
             shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
-                            *smoke_target(install), "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            *smoke_target(install, ref_exe, ref_commit), "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -348,6 +346,10 @@ def check_baseline_record(base: dict, cur: dict):
         return False, ["malformed baseline: it needs a 'runs' list and an 'overall' digest; record it again with --baseline"]
     if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
         return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
+    # A save taken at another frame is another scenario moment: its digest cannot match, and a silent mismatch once hid a re-record at the CLI default.
+    if (base.get("save_at"), base.get("load_at")) != (cur.get("save_at"), cur.get("load_at")):
+        return False, [f"baseline recorded at --save-at {base.get('save_at')} --load-at {base.get('load_at')}; this run used "
+                       f"{cur.get('save_at')} / {cur.get('load_at')}: pass the baseline's frames"]
     be, ce = base.get("exe") or {}, cur.get("exe") or {}
     if base.get("judged", "unrecorded") != "first-save-and-resave":
         lines.append(f"WEAK baseline: judged {base.get('judged', 'unrecorded (recorded before the field existed)')}; the re-save was not part of the verdict")
@@ -387,7 +389,7 @@ def fixture_verdict(first: str | None, second: str | None, mask_path: str | None
 def cmd_fixture(args) -> int:
     mask_policy(args.mask)
     dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                        args.install, args.save_dir)
+                                        args.install, args.save_dir, args.ref_exe, args.ref_commit)
     ok, lines = fixture_verdict(first, second, args.mask)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
@@ -444,6 +446,7 @@ def main(argv=None) -> int:
         p.add_argument("--mask", help="legacy noise mask: resave ignores declared run/build bytes; baseline/check hash zeroed noise bytes and require the same mask policy (old hashes must be re-recorded)")
         p.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH", help="launch/deploy install, e.g. lane3")
         p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")
+        sd.add_ref_args(p)
         p.add_argument("--first-save-only", action="store_true",
                        help="baseline/check with --mask: judge only the first save against the baseline and do not fail because the re-save leaves the mask "
                             "(the quickload is lossy: any save and its re-save differ in about 1159 of 20000 packets, so the re-save gate cannot pass); "
@@ -455,6 +458,7 @@ def main(argv=None) -> int:
     r.add_argument("--out")
     r.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
     r.add_argument("--save-dir", help="directory matching the engine's savePath")
+    sd.add_ref_args(r)
     a = sub.add_parser("analyze")
     a.add_argument("log")
     a.add_argument("--frames", type=int, default=300)
@@ -468,7 +472,7 @@ def main(argv=None) -> int:
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
-        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir)
+        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1
 

@@ -9,7 +9,7 @@
    "key": "box_decal",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:410",
+   "source": "GameOS/gameos/gos_postprocess.cpp:412",
    "stages": {
     "frag": "shaders/box_decal.frag",
     "vert": "shaders/box_decal.vert"
@@ -358,7 +358,7 @@
    "key": "cloud",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:383",
+   "source": "GameOS/gameos/gos_postprocess.cpp:385",
    "stages": {
     "frag": "shaders/cloud.frag",
     "vert": "shaders/postprocess.vert"
@@ -494,7 +494,7 @@
    "key": "edge_fog",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:496",
+   "source": "GameOS/gameos/gos_postprocess.cpp:498",
    "stages": {
     "frag": "shaders/edge_fog.frag",
     "vert": "shaders/postprocess.vert"
@@ -507,7 +507,7 @@
    "key": "fog_oob",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:477",
+   "source": "GameOS/gameos/gos_postprocess.cpp:479",
    "stages": {
     "frag": "shaders/fog_oob.frag",
     "vert": "shaders/postprocess.vert"
@@ -2824,7 +2824,7 @@
    "key": "hdri_skybox",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:330",
+   "source": "GameOS/gameos/gos_postprocess.cpp:332",
    "stages": {
     "frag": "shaders/hdri_skybox.frag",
     "vert": "shaders/hdri_skybox.vert"
@@ -2850,7 +2850,7 @@
    "key": "hzb_reduce",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:549",
+   "source": "GameOS/gameos/gos_postprocess.cpp:551",
    "stages": {
     "frag": "shaders/hzb_reduce.frag",
     "vert": "shaders/postprocess.vert"
@@ -2897,7 +2897,7 @@
    "key": "mech{IMPORTED_MECH_MATERIAL}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:506",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:508",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2915,7 +2915,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:506",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:508",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2935,7 +2935,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:506",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:508",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2953,7 +2953,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:506",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:508",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2979,7 +2979,7 @@
    "key": "postprocess",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:299",
+   "source": "GameOS/gameos/gos_postprocess.cpp:301",
    "stages": {
     "frag": "shaders/postprocess.frag",
     "vert": "shaders/postprocess.vert"
@@ -3043,7 +3043,7 @@
    "key": "shadow_debug",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:358",
+   "source": "GameOS/gameos/gos_postprocess.cpp:360",
    "stages": {
     "frag": "shaders/shadow_debug.frag",
     "vert": "shaders/postprocess.vert"
@@ -3060,7 +3060,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:358",
+   "source": "GameOS/gameos/gos_postprocess.cpp:360",
    "stages": {
     "frag": "shaders/shadow_debug.frag",
     "vert": "shaders/postprocess.vert"
@@ -3270,7 +3270,7 @@
    "key": "shadow_screen",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:378",
+   "source": "GameOS/gameos/gos_postprocess.cpp:380",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3294,7 +3294,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:378",
+   "source": "GameOS/gameos/gos_postprocess.cpp:380",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3312,7 +3312,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:378",
+   "source": "GameOS/gameos/gos_postprocess.cpp:380",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3333,7 +3333,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:378",
+   "source": "GameOS/gameos/gos_postprocess.cpp:380",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3576,7 +3576,7 @@
    "key": "shoreline",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:388",
+   "source": "GameOS/gameos/gos_postprocess.cpp:390",
    "stages": {
     "frag": "shaders/shoreline.frag",
     "vert": "shaders/postprocess.vert"
@@ -3589,7 +3589,7 @@
    "key": "skybox",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:310",
+   "source": "GameOS/gameos/gos_postprocess.cpp:312",
    "stages": {
     "frag": "shaders/skybox.frag",
     "vert": "shaders/skybox.vert"
@@ -3602,7 +3602,7 @@
    "key": "ssao",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:394",
+   "source": "GameOS/gameos/gos_postprocess.cpp:396",
    "stages": {
     "frag": "shaders/ssao.frag",
     "vert": "shaders/postprocess.vert"
@@ -3615,7 +3615,7 @@
    "key": "ssao_apply",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:398",
+   "source": "GameOS/gameos/gos_postprocess.cpp:400",
    "stages": {
     "frag": "shaders/ssao_apply.frag",
     "vert": "shaders/postprocess.vert"
@@ -3628,7 +3628,7 @@
    "key": "ssao_blur",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:403",
+   "source": "GameOS/gameos/gos_postprocess.cpp:405",
    "stages": {
     "frag": "shaders/ssao_blur.frag",
     "vert": "shaders/postprocess.vert"

@@ -211,9 +211,15 @@ class ObjectTypeManager {
 		long					numObjectTypes;
 		ObjectTypePtr*			table;
 
+	private:
+		// The object .pak. Declared before the first use by destroy(), which closes it and clears the view before the member goes.
+		std::unique_ptr<PacketFile>	m_objectFile;
+
+	public:
+
 		static UserHeapPtr		objectTypeCache;
 		static UserHeapPtr		objectCache;
-		static PacketFilePtr	objectFile;
+		static PacketFilePtr	objectFile;		// view of m_objectFile for the readers of object packets (null before init and after destroy)
 
 		//--------------------------------------------------------
 		// Following is done to maintain compatibility with MC1...
