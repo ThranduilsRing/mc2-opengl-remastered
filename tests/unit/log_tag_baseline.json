@@ -7457,6 +7457,17 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "reserved",
+    "needed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "solver",
     "id"
    ],

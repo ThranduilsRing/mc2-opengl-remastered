@@ -1040,21 +1040,6 @@
    "new_array": 0,
    "owners": []
   },
-  "CSVFile": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "code/mech_loadout.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "BattleMech"
-   ]
-  },
   "CSetBooleanFlag": {
    "delete": 0,
    "delete_array": 0,
@@ -2081,29 +2066,18 @@
    "owners": []
   },
   "File": {
-   "delete": 27,
+   "delete": 19,
    "delete_array": 0,
    "files": {
     "code/ablmc2.cpp": {
      "new": 2
     },
     "code/gameobj.cpp": {
-     "delete": 3,
-     "new": 3
-    },
-    "code/mover_diag.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "code/objmgr_io.cpp": {
      "delete": 1,
      "new": 1
     },
     "code/radio.cpp": {
      "delete": 2,
-     "new": 1
-    },
-    "mclib/file.cpp": {
      "new": 1
     },
     "mclib/gamelog.cpp": {
@@ -2117,14 +2091,6 @@
      "delete": 1,
      "new": 1
     },
-    "mclib/move.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/move_globalmap_path.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/move_movemap_escape.cpp": {
      "delete": 4,
      "new": 4
@@ -2133,27 +2099,19 @@
      "delete": 8,
      "new": 8
     },
-    "mclib/msl_load.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/terrtxm.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 28,
+   "new": 19,
    "new_array": 0,
    "owners": [
     "",
     "GameLog",
-    "GameObjectManager",
-    "GlobalMap",
     "Mech3DAppearance",
-    "MissionMap",
     "MoveMap",
     "Radio",
-    "TG_TypeMultiShape",
     "TerrainTextures"
    ]
   },
@@ -2209,35 +2167,14 @@
    "owners": []
   },
   "FitIniFile": {
-   "delete": 20,
+   "delete": 5,
    "delete_array": 0,
    "files": {
-    "code/brain_special_dispatch.cpp": {
-     "delete": 4,
-     "new": 1
-    },
-    "code/mechcmd2.cpp": {
-     "delete": 3,
-     "new": 3
-    },
     "code/mission_init.cpp": {
      "new": 2
     },
     "code/mission_init_load.cpp": {
-     "delete": 5,
-     "new": 3
-    },
-    "code/mission_movers.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "code/mover_combat.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/prefs.cpp": {
-     "delete": 2,
-     "new": 2
+     "delete": 2
     },
     "code/saveload.cpp": {
      "new": 1
@@ -2250,13 +2187,11 @@
      "new": 2
     }
    },
-   "new": 17,
+   "new": 5,
    "new_array": 0,
    "owners": [
     "",
-    "CPrefs",
-    "Mission",
-    "Mover"
+    "Mission"
    ]
   },
   "FlattenBrush": {
