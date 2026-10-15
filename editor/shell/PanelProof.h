@@ -35,6 +35,7 @@ private:
     void operation(const std::string& name, const std::string& widget, std::function<void()> semantic);
     void saveCheck(const std::string& stem);
     void chooserProof();
+    void objectivesProof();
     std::string chooserView() const;
     void viewCheck(const std::string& family, const std::string& stage);
     std::string beforeView_;

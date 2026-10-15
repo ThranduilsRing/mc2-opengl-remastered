@@ -376,7 +376,7 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
 }
 
 std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_view key,
-    std::string_view prefix, Scalar value, std::string label)
+    std::string_view prefix, Scalar value, std::string label, bool exactReal)
 {
     const auto* original = document_.section(id);
     if (!original) return reject("missing_section");
@@ -388,7 +388,8 @@ std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_
     const auto index = static_cast<std::size_t>(original - document_.syntax().sections.data());
     const auto& section = syntax->sections[index];
     Field spelling; spelling.prefix = prefix;
-    const auto text = formatValue(spelling, Value{std::move(value)});
+    const auto text = exactReal && std::holds_alternative<double>(value) ?
+        std::format("{:.17g}", std::get<double>(value)) : formatValue(spelling, Value{std::move(value)});
     if (const auto* field = find(*syntax, section, key)) {
         std::vector<Edit> edits{{field->syntax, text}};
         if (section.parent && key == "compatibilityMode") {

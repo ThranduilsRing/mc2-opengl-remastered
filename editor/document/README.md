@@ -756,3 +756,31 @@ timeout occurred. `scratch/e5b2-review-proof.txt` records commands and pending
 orchestrator proofs; `scratch/e5b2-review-reviewed.patch`, `-pathspec.txt`,
 `-commit-message.txt` and `-changes.json` retain the single reviewed commit package.
 `scratch/e5b2-review-artifacts.json` lists retained scratch files. None were deleted.
+
+E6a adds [existing-objective scalar editing](OBJECTIVES-E6a.md) to the owned model
+and SDL panels. That note contains the complete stock/legacy census, authoring
+and runtime schemas, opaque-entry/reference policy, E6b..E6e follow-ups and exact
+post-commit acceptance commands. Offline checkpoint
+`scratch/e4-proofs/2026-10-14T20-01-52`: 47 document cases/121479 assertions;
+ASan 41 core + 6 placement cases with the same 121479 assertions; 24 unchanged
+stock pairs; independently decoded values for 173 objectives; all 26 scalar
+widget operations; seven panel/file cases/203 assertions; shipping isolation.
+All six editor proof targets build. Python passes 71 tests/364 subtests.
+The real disk/RAM FIT readers pass two cases/581 assertions, including multiline
+widget saves, empty/trailing lines, literal backslash-n and the 2000-character
+boundary. All scalar prefixes and aliases are validated against those readers;
+mismatches reject once without changing bytes/history. Multiline import keeps
+original bytes; edits preserve the intended game text through save/reopen/undo.
+Shared contract `--run --unit` passes 3115 native cases and all four Python
+suites; the legacy `EditRel` build also passes with zero warnings.
+Exact species names match the game; case variants remain opaque. Rejected
+commands also preserve subsequent syntax-ID allocation.
+One combined ASan test run timed out at 120 seconds; complementary suites now
+retain that process bound and prove complete coverage. No compiler timed out.
+Rendered lane3 smokes, strict legacy 24/24 and owned-objective legacy reload
+remain at the orchestrator's committed/fingerprinted checkpoint. No deploy or
+commit was performed. `scratch/e6a-resume-reviewed.patch`,
+`scratch/e6a-resume-changes.json`, `scratch/e6a-resume-pathspec.txt`,
+`scratch/e6a-resume-commit-message.txt` and `scratch/e6a-resume-proof.txt` form
+the current handoff package; `scratch/e6a-resume-artifacts.json` lists retained
+scratch files. No source files were deleted.
