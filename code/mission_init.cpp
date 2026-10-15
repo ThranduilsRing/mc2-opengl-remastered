@@ -1021,6 +1021,7 @@ initPartsHeader(f);
 	initDisableAndObjectives(f);
 	initCommanders(commandersToLoad, f);
 	bindOrderRecipients(); // Commander groups finalize the actors' runtime roster IDs.
+	admitAuthoredRoutes();
 	initWeatherCamera(f);
 	initInterface(f);
 initLabTimingAndClose();

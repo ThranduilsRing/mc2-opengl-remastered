@@ -120,7 +120,7 @@ TEST_CASE("inactive pause freeze multiplayer contiguous simulation ticks and ear
     live.frame();
     CHECK(live.ingress.queue().completedTick() == 2);
 }
-TEST_CASE("production adapter rejects unsupported verbs modes and silent handler suppression") {
+TEST_CASE("production adapter installs routes and rejects unsupported modes and silent handler suppression") {
     for (const auto mode : {QueueMode::Append, QueueMode::Prepend}) {
         LiveIngress live;
         auto e = live.order(); e.queueMode = mode;
@@ -133,8 +133,9 @@ TEST_CASE("production adapter rejects unsupported verbs modes and silent handler
         LiveIngress live;
         auto e = live.order(); e.payload.kind = kind;
         live.submit(e); live.frame();
-        CHECK(live.actor.calls == 0);
-        CHECK(live.ingress.queue().receipts().front().applicationStatus == ApplicationStatus::Rejected);
+        CHECK(live.actor.calls == 1);
+        CHECK(live.actor.pilot.getTacOrder(ORDERSTATE_GENERAL)->code == static_cast<int>(kind));
+        CHECK(live.ingress.queue().receipts().front().applicationStatus == ApplicationStatus::Installed);
     }
     LiveIngress wrongMode;
     wrongMode.actor.corruptMode = true;

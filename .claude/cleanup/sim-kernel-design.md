@@ -444,8 +444,10 @@ S4-b2's atomic reader contract is:
   maps to TraversePath (once); 2 ORDER_PATROL maps to PatrolPath (loop). Do not cast these
   editor IDs to queue tags 0/1/2, which would mean None/Wait/MoveToPoint.
 - Stance values 0..5 are Cautious/Conservative/Normal/Aggressive/Berserker/Suicidal.
-  Carry stance in the S4-b2 route schema and apply it through the production pilot contract;
-  this slice has no stance-bearing execution payload. Do not silently ignore a stance.
+  S4-b2a retains stance in the mission-owned authored route and synchronous installation
+  evidence. The legacy TacticalOrder has no stance field and no pilot stance API is
+  established. S4-b2b must define and apply that execution policy; b2a does not apply it.
+  Do not change TacticalOrder's raw saved layout to carry stance.
 - Part routes initially use 1..8 waypoints, matching the Enhanced Brain export cap;
   None uses count 0. The typed queue cap 128 and legacy storage cap 15 do not authorize
   more authored points. Any future widening changes both readers/exports deliberately.
@@ -510,7 +512,13 @@ The agent's pre-commit build is unit/syntax proof only; the live positive/negati
 remain required at the orchestrator's commit-build-deploy checkpoint.
 
 Acceptance still requires the orchestrator to commit, build and
-pin b4f2d8d11 and the resulting after commit binaries by SHA256, and use identical resolved
+pin exactly 606b584b3 and the resulting after commit binaries by SHA256, and use identical resolved
 lane3 content for strict-chain mc2_03/10/24/16 before/after and both stock camera pairs.
-No write-baseline command or SIMID re-record belongs to this run. Save/resume and authored
-Part-key runtime fixtures belong to S4-b2; this fixture starts from a typed authored envelope.
+Require identical content fingerprint, seed and resolved environment for each comparison;
+strict-only mismatches are failures too. No write-baseline command or SIMID re-record
+belongs to this run. S4-b2a adds the real initializer/handler/setter console seam and live
+authored Part fixtures; commands and the b2b execution policy are in sim-s4b2-execution.md.
+Save/resume remains future work. Installed authored orders flag a new general order; the
+next warrior update can clear paths/attack state and call execute even with route dispatch
+commented out. Stock parity depends on zero handoffs for absent/None/rejected/suppressed
+content, never on an assumption that installation is inert.

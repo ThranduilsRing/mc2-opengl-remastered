@@ -359,7 +359,7 @@ target_sources(mc2_tests PRIVATE
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
 target_sources(mc2_tests PRIVATE
-    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp
+    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )

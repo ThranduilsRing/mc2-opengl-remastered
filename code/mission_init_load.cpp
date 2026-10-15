@@ -181,6 +181,20 @@ void Mission::loadBrainParamsPhase(MissionInitFrame& f) {
 // Load the mission-fit order sets for the enhanced brains.
 void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 	auto& missionFileName = f.missionFileName; auto& numWarriors = f.numWarriors;
+	// Authored precedence belongs to mission content, even when Enhanced runtime population is gated off.
+	File authoredFile;
+	if (authoredFile.open(missionFileName) == NO_ERR) {
+		authoredMissionText.resize(authoredFile.getLength());
+		authoredFile.read(reinterpret_cast<MemoryPtr>(authoredMissionText.data()), static_cast<long>(authoredMissionText.size()));
+		std::vector<MissionFitBrain> brains(MAX_WARRIORS);
+		const auto count = parseMissionFitBrains(authoredMissionText.c_str(), brains.data(), static_cast<int>(brains.size()));
+		for (int i = 0; i < count; ++i) {
+			const auto& brain = brains[i];
+			if (S_stricmp(brain.compatibilityMode, "Enhanced") == 0 &&
+			    (brain.primary.type[0] || brain.secondary.type[0] || brain.tertiary.type[0]))
+				authoredOpordPilots.push_back(static_cast<std::uint32_t>(brain.warriorIndex));
+		}
+	}
 	// BRAIN-MISSIONFIT-OPORD-CONSUMER-1: drive declarative patrol from the inline Brain{}
 	// PrimaryOPORD blocks in mission.fit (carver_v_enhanced format). FitIniFile cannot see
 	// brace-blocks, so raw-scan the mission.fit text via the File class (VFS/mod-overlay aware —
