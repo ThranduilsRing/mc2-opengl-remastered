@@ -449,6 +449,7 @@ class Mission
 		void recordAuthoredInstallation(const mc2::sim::OrderEnvelope&, mc2::sim::ObjectRef);
 		std::optional<mc2::sim::RouteTransition> onRouteEvent(const mc2::sim::RouteSignal&);
         mc2::sim::RouteExecution* ownedRoute(const MechWarrior*);
+        bool endedRouteOrder(MechWarrior*) const;
         bool routeLive(const mc2::sim::RouteExecution&);
         bool routeMapsReady(MechWarrior*) const;
         void signalRoute(mc2::sim::RouteExecution&, mc2::sim::RouteAction, bool mapsReady = false);

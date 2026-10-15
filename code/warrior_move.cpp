@@ -235,6 +235,8 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
         }
     }
 
+    if (mission && mission->endedRouteOrder(this)) return NO_ERR;
+
 	if (g_moveReconEnabled) g_moveRecon_calcMovePath_calls++;
 	ZoneScopedN("GameLogic.Warrior.Path");
 
@@ -761,6 +763,7 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
             return true;
         }
     }
+    if (mission && mission->endedRouteOrder(this)) return false;
 	if (!curTacOrder.isWayPathOrder())
 		return(false);
 

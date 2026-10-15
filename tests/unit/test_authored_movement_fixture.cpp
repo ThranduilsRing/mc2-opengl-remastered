@@ -548,6 +548,66 @@ TEST_CASE("AuthoredOrderProduction/traverse completes only after real final arri
     CHECK(world.queue->queueFront == nullptr);
 }
 
+TEST_CASE("AuthoredOrderProduction/ABL movement reissues cannot steer active or suspended routes") {
+    StandingRouteWorld world;
+    world.provisionPaths(); world.install();
+    auto path = world.pilot->getTacOrder(ORDERSTATE_GENERAL)->moveParams.wayPath;
+    for (bool suspended : {false, true}) {
+        if (suspended) world.alarm();
+        std::array<std::byte, sizeof(*world.pilot->getMoveOrders())> before;
+        std::memcpy(before.data(), world.pilot->getMoveOrders(), before.size());
+        const auto position = world.mech->getPosition();
+        const auto first = BufferSnapshot(world.pilot->getMovePath(0));
+        const auto second = BufferSnapshot(world.pilot->getMovePath(1));
+        const auto* request = world.queue->queueFront;
+        const auto paths = MovePathManager::numPaths;
+        for (int tick = 0; tick < 5; ++tick) {
+            scenarioTime += 1.0f;
+            world.pilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER, world.point(140), -1, TACORDER_PARAM_RUN);
+            world.pilot->orderMoveToObject(false, true, ORDER_ORIGIN_COMMANDER, world.mech.get(), -1, -1, 0);
+            world.pilot->orderTraversePath(false, true, ORDER_ORIGIN_COMMANDER, &path, 0);
+            world.pilot->orderPatrolPath(false, true, ORDER_ORIGIN_COMMANDER, &path);
+            CHECK(std::memcmp(before.data(), world.pilot->getMoveOrders(), before.size()) == 0);
+            CHECK(world.queue->queueFront == request);
+            CHECK(MovePathManager::numPaths == paths);
+            CHECK(BufferSnapshot(world.pilot->getMovePath(0)) == first);
+            CHECK(BufferSnapshot(world.pilot->getMovePath(1)) == second);
+            CHECK(world.mech->getPosition() == position);
+        }
+    }
+}
+
+TEST_CASE("AuthoredOrderProduction/terminal routes cancel movement and cannot fall back to legacy paths") {
+    using namespace mc2::sim;
+    for (auto action : {RouteAction::Removed, RouteAction::PlayerOrder, RouteAction::Arrived}) {
+        StandingRouteWorld world;
+        world.provisionPaths(); world.install(OrderKind::TraversePath);
+        world.queue->calcPath();
+        REQUIRE(world.pilot->getMovePath(0)->numStepsWhenNotPaused > 0);
+        world.pilot->requestMovePath(-1, MOVEPARAM_INIT, 17);
+        REQUIRE(world.queue->queueFront);
+        auto& route = world.storage.owner.routeExecutions.front();
+        if (action == RouteAction::Arrived) route.path.curPoint = 2;
+        world.storage.owner.signalRoute(route, action);
+        REQUIRE(route.terminal());
+        CHECK_FALSE(route.pendingSegment);
+        CHECK(world.queue->queueFront == nullptr);
+        CHECK(world.pilot->getMovePathRequest() == nullptr);
+        CHECK(world.pilot->getMoveOrders()->numWayPts == 0);
+        const auto position = world.mech->getPosition();
+        for (int tick = 0; tick < 3; ++tick) {
+            Stuff::Vector3D next;
+            CHECK_FALSE(world.pilot->getNextWayPoint(next, true));
+            LastMoveCalcErr = 12345;
+            CHECK(world.pilot->calcMovePath(-1, MOVEPARAM_INIT) == NO_ERR);
+            CHECK(LastMoveCalcErr == 12345);
+            CHECK(world.pilot->getMovePath(0)->numStepsWhenNotPaused == 0);
+            CHECK(world.pilot->getMovePath(1)->numStepsWhenNotPaused == 0);
+            CHECK(world.mech->getPosition() == position);
+        }
+    }
+}
+
 TEST_CASE("AuthoredOrderProduction/unready maps recover without rejected signals or duplicate start") {
     for (bool queued : {false, true}) {
         StandingRouteWorld world;

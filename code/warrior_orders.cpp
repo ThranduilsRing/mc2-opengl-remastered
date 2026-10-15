@@ -1,10 +1,18 @@
 // MechWarrior: order* entry points and the event handlers.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "mission.h"
 
+namespace {
+bool absorbsGeneralOrder(MechWarrior* pilot, long origin) {
+    // ABL reissues cannot steer the standing route, even during an alarm.
+    return origin == ORDER_ORIGIN_COMMANDER && mission && mission->ownedRoute(pilot);
+}
+}
 
 
 long MechWarrior::orderWait (bool unitOrder, long origin, long seconds, bool clearLastTarget) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	TacticalOrder tacOrder;
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_WAIT, unitOrder);
@@ -41,6 +49,7 @@ long MechWarrior::orderStop (bool unitOrder, bool setTacOrder) {
 }
 
 long MechWarrior::orderMoveToPoint (bool unitOrder, bool setTacOrder, long origin, Stuff::Vector3D location, long selectionIndex, unsigned long params) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
 	bool run = ((params & TACORDER_PARAM_RUN) != 0);
@@ -98,6 +107,7 @@ void MechWarrior::clearMovePath (long pathNum) {
 }
 
 long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long origin, GameObjectPtr target, long fromArea, long selectionIndex, unsigned long params) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
 	bool run = ((params & TACORDER_PARAM_RUN) != 0);
@@ -111,9 +121,7 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 	if (target->isMover())
 		goal = target->getPosition();
 	else {
-		// If not a mover, then pick an open cell adjacent
-		// to it. If it happens to be adjacent to blocked
-		// cells, this could be off...
+		// Non-movers need an adjacent destination because their own cell may be blocked.
 		if (target->isBuilding()) {
 			BuildingPtr building = (BuildingPtr)target;
 			long goalRow = 0, goalCol = 0;
@@ -176,6 +184,7 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 }
 
 long MechWarrior::orderJumpToPoint (bool unitOrder, bool setTacOrder, long origin, Stuff::Vector3D location, long selectionIndex) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	MoverPtr myVehicle = getVehicle();
 	if (myVehicle->getJumpRange() < myVehicle->distanceFrom(location))
@@ -211,6 +220,7 @@ long MechWarrior::orderJumpToPoint (bool unitOrder, bool setTacOrder, long origi
 }
 
 long MechWarrior::orderJumpToObject (bool unitOrder, bool setTacOrder, long origin, GameObjectPtr target, long selectionIndex) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	MoverPtr myVehicle = getVehicle();
 	Stuff::Vector3D location = target->getPosition();
@@ -254,6 +264,7 @@ long MechWarrior::orderJumpToObject (bool unitOrder, bool setTacOrder, long orig
 }
 
 long MechWarrior::orderTraversePath (bool unitOrder, bool setTacOrder, long origin, WayPathPtr wayPath, unsigned long params) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool layMines = ((params & TACORDER_PARAM_LAY_MINES) != 0);
 
@@ -284,6 +295,7 @@ long MechWarrior::orderTraversePath (bool unitOrder, bool setTacOrder, long orig
 }
 
 long MechWarrior::orderPatrolPath (bool unitOrder, bool setTacOrder, long origin, WayPathPtr wayPath) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	TacticalOrder tacOrder;
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_PATROL_PATH, unitOrder);
@@ -310,6 +322,7 @@ long MechWarrior::orderPatrolPath (bool unitOrder, bool setTacOrder, long origin
 }
 
 long MechWarrior::orderPowerUp (bool unitOrder, long origin) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	MoverPtr myVehicle = getVehicle();
 	if ((myVehicle->getStatus() != OBJECT_STATUS_SHUTDOWN))
@@ -337,6 +350,7 @@ long MechWarrior::orderPowerUp (bool unitOrder, long origin) {
 }
 
 long MechWarrior::orderPowerDown (bool unitOrder, long origin) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	MoverPtr myVehicle = getVehicle();
 	if ((myVehicle->getStatus() == OBJECT_STATUS_SHUTDOWN) || (myVehicle->getStatus() == OBJECT_STATUS_SHUTTING_DOWN))
@@ -393,6 +407,7 @@ long orderUseOrbitRange (long type, float range) {
 }
 
 long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr target, long type, long method, long range, long aimLocation, long fromArea, unsigned long params) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool run = ((params & TACORDER_PARAM_RUN) != 0);
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
@@ -469,12 +484,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	if (pursue) {
 		setMoveRun(run);
 		params |= TACORDER_PARAM_FACE_OBJECT;
-		// Restored from 2017 OpenGL conversion. The pursue flag is set by
-		// callers intentionally -- player via controlGui.getFireFromCurrentPos()
-		// (missiongui.cpp), AI via ABL TACORDER_PARAM_PURSUE -- and
-		// without this call the chase never happens, so scripted enemies that
-		// engage a target along their path lose the rest of their move (issue
-		// #10). setTacOrder=false keeps the outer attack tacOrder intact.
+		// Pursuit needs movement while retaining the outer attack order.
 		orderMoveToObject(unitOrder, false, origin, target, fromArea, -1/*unitMateId*/, params);
 		}
 	else
@@ -512,6 +522,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 }
 
 long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D location, long type, long method, long range, unsigned long params) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool pursue = ((params & TACORDER_PARAM_PURSUE) != 0);
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
@@ -569,6 +580,7 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D
 }
 
 long MechWarrior::orderWithdraw (bool unitOrder, long origin, Stuff::Vector3D location) {
+    if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	TacticalOrder tacOrder;
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_WITHDRAW, unitOrder);

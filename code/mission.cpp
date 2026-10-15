@@ -191,6 +191,18 @@ bool Mission::routeMapsReady(MechWarrior* pilot) const {
     return PathFindMap[SECTOR_PATHMAP] && PathFindMap[SIMPLE_PATHMAP] &&
         GlobalMoveMap[level] && !GlobalMoveMap[level]->badLoad && GlobalMoveMap[level]->areas;
 }
+bool Mission::endedRouteOrder(MechWarrior* pilot) const {
+    if (pilot->getOrderState() != ORDERSTATE_GENERAL) return false;
+    const auto* order = pilot->getCurTacOrder();
+    if (order->stage != 2) return false;
+    for (const auto& route : routeExecutions) {
+        if (!route.terminal() || order->code != static_cast<int>(route.kind)) continue;
+        const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
+            &OrderRecipientBinding::partIncarnation);
+        if (binding != orderRecipients.end() && binding->pilot == pilot) return true;
+    }
+    return false;
+}
 void Mission::signalRoute(mc2::sim::RouteExecution& route, mc2::sim::RouteAction action, bool mapsReady) {
     onRouteEvent({route.key, route.revision, route.eventSequence + 1,
         orderIngress.queue().executingTick().value_or(orderIngress.queue().completedTick()),
@@ -209,6 +221,21 @@ std::optional<mc2::sim::RouteTransition> Mission::onRouteEvent(const mc2::sim::R
             found->retryPending = event->event == mc2::sim::RouteEventKind::Retrying;
             if (found->terminal() || found->state == mc2::sim::RouteState::Suspended)
                 found->pendingSegment.reset();
+            if (found->terminal()) {
+                const auto binding = std::ranges::find(orderRecipients, found->key.partIncarnation,
+                    &OrderRecipientBinding::partIncarnation);
+                if (binding != orderRecipients.end() && binding->pilot) {
+                    auto* pilot = binding->pilot;
+                    if (PathManager) PathManager->remove(pilot);
+                    pilot->setMoveGoal(MOVEGOAL_NONE, nullptr);
+                    pilot->setMoveWayPath(nullptr);
+                    pilot->setMoveGlobalPath(nullptr, 0);
+                    for (long buffer = 0; buffer < 2; ++buffer) pilot->clearMovePath(buffer);
+                    // Retired route orders must not resume through legacy path handling.
+                    for (auto* order : {pilot->getCurTacOrder(), pilot->getTacOrder(ORDERSTATE_GENERAL)})
+                        if (order->code == static_cast<int>(found->kind)) order->setStage(2);
+                }
+            }
             mc2::fmt::print_err("[ROUTE_EXECUTION v1] execution={} revision={} sequence={} tick={} event={} reason={}\n",
                 event->key.executionId, event->revision, event->sequence, event->tick,
                 static_cast<int>(event->event), static_cast<int>(event->reason));
