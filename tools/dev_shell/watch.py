@@ -11,7 +11,7 @@ mc2.exe (MC2_DEV_SHELL=1):
 
 Usage:
   py -3 tools/dev_shell/watch.py A:/Games/mc2-opengl/mc2-win64-v0.4c [--port 9877]
-Ctrl+C to stop.
+Ctrl+C to stop; it also stops when the process that started it exits.
 """
 import argparse
 import os
@@ -20,6 +20,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mc2_cmd import send_command
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+from parent_watchdog import ParentWatch  # noqa: E402
 
 SHADER_EXT = {".frag", ".vert", ".tesc", ".tese", ".geom", ".comp", ".hglsl", ".glsl"}
 
@@ -50,7 +52,8 @@ def main():
 
     state = scan(args.deploy)
     print(f"[watch] {len(state)} files ({sum(1 for k,(t,_) in state.items() if t=='shader')} shaders); Ctrl+C stops")
-    while True:
+    parent = ParentWatch()
+    while not parent.gone():        # a killed shell must not leave this watcher sending commands to later engines
         time.sleep(args.interval)
         cur = scan(args.deploy)
         changed_kinds = set()

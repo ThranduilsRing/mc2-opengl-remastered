@@ -396,3 +396,14 @@ def test_cli_quiet_and_subdirectory(repo, capsys):
 def test_git_error_returns_two(scratch, capsys):
     assert hygiene.main(["--repo", str(scratch)]) == 2
     assert "staged-hygiene:" in capsys.readouterr().err
+
+
+def test_staged_alias_scans_index(repo, capsys):
+    # --staged is the pre-commit spelling of --index: a heredoc NUL and a CRLF flip both fail it.
+    baseline(repo, "a.txt", b"one\n")
+    baseline(repo, "b.txt", b"xy\n")
+    stage(repo, "a.txt", b"one\r\n")
+    stage(repo, "b.txt", b"x\x00y\n")
+    assert hygiene.main(["--repo", str(repo), "--staged"]) == 1
+    out = capsys.readouterr().out
+    assert "EOL drift" in out and "0x00" in out
