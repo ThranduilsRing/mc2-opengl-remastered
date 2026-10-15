@@ -118,7 +118,7 @@ void Mission::recordAuthoredInstallation(const mc2::sim::OrderEnvelope& e, mc2::
         if (!route.receiptId || route.installed || route.diagnosed || route.originalPart != e.payload.orderId ||
             e.sourceId != 1 || orderRecipient(route.originalPart) != ref) continue;
         auto* mover = resolveOrderRecipient(ref);
-        // This callback runs inside the verified handoff, before ABL can replace the general slot.
+        // Installation evidence must precede ABL's next general-slot replacement.
         if (!mover || route.pilot >= MAX_WARRIORS || mover->getPilot() != MechWarrior::warriorList[route.pilot]) continue;
         route.installed = true;
         mc2::fmt::print_err("[AUTHORED_ORDER v1] status=Installed original={} selected={} pilot={} stance={} points={}\n",
@@ -176,7 +176,7 @@ void Mission::completeOrderSimulationTick() {
         mc2::fmt::print_err("[ORDER_INGRESS v1] completion_error={}\n", static_cast<int>(result.error()));
         return;
     }
-    // The mission content consumer records rejection once, then releases its completed receipts.
+    // Mission content owns rejection reporting and completed-receipt retirement.
     auto& queue = orderIngress.queue();
     bool fixtureCompletedThisTick = false;
     for (const auto& receipt : queue.receipts()) {

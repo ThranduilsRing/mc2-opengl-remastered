@@ -465,7 +465,7 @@ bool TacticalOrderQueue::restore(std::span<const std::uint8_t> bytes, Tick compl
 
 MissionOrderIngress::MissionOrderIngress() { reset(); }
 void MissionOrderIngress::reset() {
-    // This non-owning process counter prevents old tokens aliasing a new Mission at the same address.
+    // Session IDs prevent stale-token aliasing when a Mission address is reused.
     static std::atomic<std::uint64_t> nextSession{1};
     auto next = nextSession.load(std::memory_order_relaxed);
     do {

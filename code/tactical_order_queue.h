@@ -229,7 +229,7 @@ struct OrderEnvelope {
     bool operator==(const OrderEnvelope&) const = default;
 };
 enum class AdmissionStatus : std::uint32_t { Accepted = 1 };
-// Applied is the S4-b1 wire spelling of Installed, never a movement-completion claim.
+// Applied preserves the Installed wire value; neither means movement completion.
 enum class ApplicationStatus : std::uint32_t { Pending = 0, Installed = 1, Applied = Installed, Rejected = 2, Partial = 3 };
 enum class RecipientStatus : std::uint32_t { Applied = 1, Rejected = 2 };
 struct ApplicationOutcome {

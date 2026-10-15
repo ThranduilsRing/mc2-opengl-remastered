@@ -6,7 +6,7 @@
 
 namespace {
 using namespace mc2::sim;
-// Only the actor endpoint is a fixture; queue, permissions, conversion and tick lifecycle are production.
+// The actor endpoint isolates conversion and ingress from engine resources.
 struct PilotEndpoint {
     ::TacticalOrder orders[2];
     PilotEndpoint() {

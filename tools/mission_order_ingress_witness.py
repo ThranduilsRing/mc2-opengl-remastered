@@ -1,9 +1,4 @@
-"""Mission ingress witness through the real tick hooks and the leased lane3 smoke harness.
-
-Run after the orchestrator commits, builds and deploys the reviewed executable.
-Exit 1 means the witness failed. The drain/retirement negative-control executables
-must each produce that failure; this tool never manually drains or retires orders.
-"""
+"""Witness real mission tick/drain/retirement hooks through the leased lane3 harness."""
 import argparse
 import json
 import math
@@ -24,7 +19,7 @@ from mc2_cmd import send_command
 
 
 def authored_fixture(stock, case):
-    """A stock mission with one forced alternate; the alternate's pilot must not win."""
+    """Force alternate content while preserving the original pilot."""
     stock = re.sub(r"(?mi)^FITend[ \t]*\r?$", "", stock)
     sections = re.split(r"(?m)^(?=\[)", stock)
     blocks = {}
@@ -78,11 +73,10 @@ def authored_fixture(stock, case):
 
 
 def same_authored_coordinate(actual, authored):
-    """Require the same finite float32 after round trip, with no fixed epsilon.
+    """Require the same finite float32, matching engine decimal round trips.
 
-    The engine stores float32 and prints its shortest round-trip decimal. Accept
-    only that authored float's rounding cell (half an ULP on each side at 2880:
-    0.0001220703125); even the adjacent float32 coordinate must fail.
+    Tolerance is the authored float's rounding cell (half-ULP 0.0001220703125
+    at 2880); adjacent float32 values fail. No fixed epsilon applies.
     """
     if type(actual) not in (int, float) or type(authored) not in (int, float):
         return False
@@ -95,7 +89,7 @@ def same_authored_coordinate(actual, authored):
 
 
 def authored_evidence_matches(data, expected, case):
-    """Empty evidence cannot pass a disconnected loader or an unconsumed pending receipt."""
+    """Empty evidence cannot prove installation."""
     if not isinstance(data, dict):
         return False
     if case == "valid":
@@ -152,7 +146,7 @@ def authored_witness(smoke, send, expected, case, now=time.monotonic, sleep=time
 
 
 def run_authored(args):
-    """Only new scratch mod files are written; the installed stock mission stays untouched."""
+    """Isolate fixtures in a new scratch mod, preserving installed content."""
     from mc2x_import.fst import extract_fst_file
     install = args.install.resolve()
     allowed = Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve()

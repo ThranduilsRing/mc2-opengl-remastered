@@ -924,8 +924,7 @@ set_source_files_properties(
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
 
-# S4-b2 production installation seam: a console entry with the real engine implementation.
-# Separate linkage excludes the initializer/actor stubs in the standalone doctest corpus.
+# Separate engine linkage avoids the standalone tests' initializer/actor stubs.
 if(MC2_BUILD_TESTS)
     get_target_property(_order_seam_sources mc2 SOURCES)
     add_executable(mc2_authored_order_seam EXCLUDE_FROM_ALL

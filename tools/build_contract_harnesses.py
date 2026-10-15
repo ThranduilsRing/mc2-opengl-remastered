@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Build the shared doctest corpus and run the retained Python contract suites.
+"""Build/run doctest, the engine-linked order seam and Python contracts.
 
-Native contracts live in tests/unit/mc2_tests. --only selects their doctest
-case prefixes. Full runs also build the engine-linked authored-order seam and
-require its adapter-disconnected negative control. --unit remains compatible;
---unit-only omits Python suites; --only/--asan stay in the standalone corpus.
-RelWithDebInfo preserves the release fatal-path proof.
+--only/--asan restrict runs to standalone doctests; --unit-only skips Python.
+--unit is compatibility syntax. RelWithDebInfo retains release fatal-path checks.
 """
 import argparse
 import os
@@ -99,7 +96,7 @@ def run_python_harnesses():
 
 
 def build_and_run_order_seam(run):
-    """The production linkage cannot share the standalone corpus's TacticalOrder stubs."""
+    """Separate linkage avoids the standalone TacticalOrder stubs."""
     from bootstrap_worktree_build import cache_args
     bdir = REPO_ROOT / "build64-order-seam"
     commands = [
@@ -127,7 +124,7 @@ def build_and_run_order_seam(run):
                               cwd=REPO_ROOT, env=env, capture_output=True,
                               text=True, timeout=60,
                               **console_child.child_kwargs(redirected=True))
-    # An assertion failure proves the positive oracle depends on the adapter; a crash cannot.
+    # Only an installation assertion failure proves adapter dependence; a crash cannot.
     controlled = negative.returncode == 1 and "CHECK( installed )" in negative.stdout
     print(f"  [{'PASS' if controlled else 'FAIL'}] adapter-disconnected negative control "
           f"(rc={negative.returncode}, positive installation assertion failed={controlled})")

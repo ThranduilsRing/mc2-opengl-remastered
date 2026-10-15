@@ -16,7 +16,7 @@
 bool missionFitOpordApplies(const MissionFitBrain&, unsigned long, bool);
 
 namespace {
-// Only world resources are absent. Constructors, conversion, handler and setter are production.
+// Supply world resources without replacing production constructors or order handling.
 struct Actor : Mover {
     void attach(MechWarrior& warrior) { pilot = &warrior; commanderId = 7; partId = 2; watchID = 1; setExists(true); }
 };
@@ -31,7 +31,7 @@ struct Access {
     void installed(const mc2::sim::OrderEnvelope&, mc2::sim::ObjectRef) const { evidence = true; }
 };
 using ProductionAdapter = mc2::sim::MoverOrderApplication<::TacticalOrder, Access>;
-// This control preserves real admission and tick consumption while removing the installation bridge.
+// Successful receipts alone cannot prove installation.
 struct DisconnectedApplication : mc2::sim::OrderApplication {
     ProductionAdapter& adapter;
     explicit DisconnectedApplication(ProductionAdapter& connected) : adapter(connected) {}
@@ -278,7 +278,7 @@ TEST_CASE("AuthoredOrderProduction/parsed patrol and traverse reach real general
             e.sourceId = 1; e.issuer = CommanderId{7}; e.recipients = {{1,1}};
             e.payload.kind = route.kind; e.payload.origin = OrderOrigin::Commander;
             e.payload.move.emplace(); e.payload.move->wayPath = route.path;
-            // Distinct modes and coordinates expose prefix-only conversion or setter copies.
+            // Distinct values expose incomplete conversion/copying.
             for (int i = 0; i < count; ++i)
                 e.payload.move->wayPath.mode[i] = i % 2 ? TravelMode::Fast : TravelMode::Slow;
             REQUIRE(ingress.submit(ingress.session(), e, adapter));

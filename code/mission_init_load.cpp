@@ -178,7 +178,7 @@ void Mission::loadBrainParamsPhase(MissionInitFrame& f) {
 	}
 }
 
-// Both authored precedence and OPORD population use the consumer's actual eligibility.
+// Precedence and OPORD population must agree on eligibility.
 bool missionFitOpordApplies(const MissionFitBrain& brain, unsigned long numWarriors, bool enabled) {
 	if (!enabled || brain.warriorIndex < 1 || static_cast<unsigned long>(brain.warriorIndex) > numWarriors ||
 		brain.warriorIndex >= MAX_WARRIORS || !MechWarrior::warriorList[brain.warriorIndex]) return false;
@@ -332,7 +332,6 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 						default:    // MoveTo / Attack / Withdraw / Ambush / Scout -> hold + engage (verb wiring TBD)
 							rt->guardHold = true; ++mfOther; break;
 					}
-					// Only an OPORD actually populated by this consumer can suppress authored content.
 					if (missionFitOpordApplies(b, numWarriors, opordEnabled))
 						authoredOpordPilots.push_back(static_cast<std::uint32_t>(b.warriorIndex));
 				}

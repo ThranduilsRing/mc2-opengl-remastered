@@ -40,7 +40,6 @@
 #endif
 
 namespace mc2::sim {
-// The same bounded conversion is instantiated with the engine's TacticalOrder and Mover.
 // Access resolves mission-owned recipient slots, independent of gated watch generations.
 template<class LegacyOrder, class Access>
 class MoverOrderApplication final : public OrderAdmissionValidator, public OrderApplication {
@@ -93,7 +92,7 @@ public:
         if (auto r = validateCommand(e)) return {RecipientStatus::Rejected, r};
         if (auto r = validateRecipient(e, ref, ordinal)) return {RecipientStatus::Rejected, r};
         LegacyOrder legacy;
-        // The admitted tags match retail codes; route execution remains the legacy consumer's responsibility.
+        // Admitted kind/origin tags match the legacy enums.
         legacy.code = static_cast<decltype(legacy.code)>(e.payload.kind);
         legacy.origin = static_cast<decltype(legacy.origin)>(e.payload.origin);
         legacy.id = static_cast<decltype(legacy.id)>(e.payload.orderId);
@@ -123,8 +122,7 @@ public:
         auto* mover = access_.resolve(ref);
         auto* stored = mover->getPilot()->getTacOrder(e.payload.origin == OrderOrigin::Player ? 1 : 0);
         const auto previousCode = stored->code;
-        // A distinct pre-state proves installation even when the previous order already matches.
-        // The synchronous handoff must replace this marker; suppression preserves the old order.
+        // A distinct marker detects suppressed handoffs even when the old order matches.
         stored->code = static_cast<decltype(stored->code)>(0);
         const auto result = mover->handleTacticalOrder(legacy, 0, false);
         const bool installed = stored->code != static_cast<decltype(stored->code)>(0);
