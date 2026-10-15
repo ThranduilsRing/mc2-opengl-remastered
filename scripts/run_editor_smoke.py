@@ -644,7 +644,14 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout):
     before_fit = source.with_suffix(".fit").read_bytes()
     before_pak = source.with_suffix(".pak").read_bytes()
     grade_objective_edit((FROZEN / "e5_reference_before.fit").read_bytes(), before_fit, "ResourcePoints")
-    if before_pak != (FROZEN / "e5_reference_before.pak").read_bytes():
+    fixture_pak = (source.parent / "fixture.pak").read_bytes()
+    panel_gate = read_json_object(source.parent / "gate.json")
+    if (panel_gate.get("result", {}).get("name") != "objectives_panel"
+            or panel_gate.get("result", {}).get("passed") is not True
+            or hashlib.sha256(fixture_pak).hexdigest() != panel_gate.get("provenance", {}).get("input_pak_sha256")
+            or fixture_pak != (source.parent / "input.pak").read_bytes()):
+        raise ValueError("objective reload fixture PAK does not match proven panel input")
+    if before_pak != fixture_pak:
         raise ValueError("objective reload control changed the PAK")
     directory = deploy / "terrain_gen_out/owned_objective_reload"
     directory.mkdir(parents=True, exist_ok=True)

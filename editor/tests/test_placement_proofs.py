@@ -1,5 +1,6 @@
 """Frozen comparisons must catch field corruption that preserves placement counts."""
 import hashlib
+import json
 from pathlib import Path
 import re
 import shutil
@@ -176,6 +177,68 @@ class FrozenParityTests(unittest.TestCase):
         with patch("scripts.run_editor_smoke.run_case_with_retry") as launch:
             with self.assertRaisesRegex(ValueError, "one inserted FIT"):
                 run_owned_marker_reload(Path("editor.exe"), deploy, source, report, 3, 180)
+            launch.assert_not_called()
+
+    def test_owned_objective_reload_uses_proven_panel_fixture(self):
+        from scripts.run_editor_smoke import run_owned_objective_reload
+        source = self.root / "objective-ResourcePoints-edited"
+        before_fit = (FROZEN / "e5_reference_before.fit").read_bytes()
+        prefix, section, remaining = before_fit.partition(b"[Team0Objective1]")
+        edited_fit = prefix + section + re.sub(rb"ResourcePoints = \d+", b"ResourcePoints = 17", remaining, count=1)
+        self.assertNotEqual(before_fit, edited_fit)
+        source.with_suffix(".fit").write_bytes(edited_fit)
+        legacy_pak = (FROZEN / "e5_reference_before.pak").read_bytes()
+        fixture_pak = legacy_pak + b"panel stock fixture"
+        self.assertNotEqual(fixture_pak, legacy_pak)
+        for name in ("input.pak", "fixture.pak", source.with_suffix(".pak").name):
+            (self.root / name).write_bytes(fixture_pak)
+        gate = dict(result=dict(name="objectives_panel", passed=True),
+                    provenance=dict(input_pak_sha256=hashlib.sha256(fixture_pak).hexdigest()))
+        (self.root / "gate.json").write_text(json.dumps(gate), encoding="utf-8")
+        deploy, report = self.root / "deploy", self.root / "report"
+        report.mkdir()
+
+        def accepted(*args):
+            directory = deploy / "terrain_gen_out/owned_objective_reload"
+            for extension in ("fit", "pak"):
+                shutil.copyfile(source.with_suffix("." + extension), directory / ("reloaded." + extension))
+            return dict(name="owned_objective_reload", passed=True)
+
+        def reload():
+            return run_owned_objective_reload(Path("editor.exe"), deploy, source, report, 3, 180)
+
+        with patch("scripts.run_editor_smoke.run_case_with_retry", side_effect=accepted) as launch:
+            self.assertTrue(reload()["passed"])
+            launch.assert_called_once()
+            self.assertEqual(launch.call_args.args[-1], "saved")
+
+        def corrupted(*args):
+            row = accepted(*args)
+            (deploy / "terrain_gen_out/owned_objective_reload/reloaded.fit").write_bytes(before_fit)
+            return row
+
+        with patch("scripts.run_editor_smoke.run_case_with_retry", side_effect=corrupted):
+            self.assertEqual(reload()["bucket"], "owned_objective_reload_changed")
+        with patch("scripts.run_editor_smoke.run_case_with_retry", return_value=dict(passed=False, bucket="autoload_missing")):
+            self.assertFalse(reload()["passed"])
+        with patch("scripts.run_editor_smoke.run_case_with_retry") as launch:
+            source.with_suffix(".fit").write_bytes(before_fit)
+            with self.assertRaisesRegex(ValueError, "scalar saved value wrong"):
+                reload()
+            source.with_suffix(".fit").write_bytes(edited_fit)
+            source.with_suffix(".pak").write_bytes(legacy_pak)
+            with self.assertRaisesRegex(ValueError, "control changed the PAK"):
+                reload()
+            source.with_suffix(".pak").write_bytes(fixture_pak)
+            for name in ("fixture.pak", "input.pak"):
+                (self.root / name).write_bytes(legacy_pak)
+                with self.assertRaisesRegex(ValueError, "does not match proven panel input"):
+                    reload()
+                (self.root / name).write_bytes(fixture_pak)
+            gate["result"]["passed"] = False
+            (self.root / "gate.json").write_text(json.dumps(gate), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "does not match proven panel input"):
+                reload()
             launch.assert_not_called()
 
     def test_owned_marker_reload_requires_clean_current_lane3_executable(self):
