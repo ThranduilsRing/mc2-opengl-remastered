@@ -1232,7 +1232,7 @@ bool upload_geometry_once(ColorPropIsland* s) {
     const void* vboCpu = nullptr; const void* iboCpu = nullptr;
     uint64_t vboBytes = 0, iboBytes = 0;
     if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
-    if (vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
+    if (vboBytes == 0 || iboBytes == 0 || vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
         vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", (unsigned long long)vboBytes,
              (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes);
         return false;
@@ -1240,14 +1240,13 @@ bool upload_geometry_once(ColorPropIsland* s) {
 
     if (!make_buffer(s, s->vbo, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
     if (!make_buffer(s, s->ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
-    { void* p = s->vbo.map();
-      if (!p) return false;
-      std::memcpy(p, vboCpu, (size_t)vboBytes);
-      s->vbo.unmap(); }
-    { void* p = s->ibo.map();
-      if (!p) return false;
-      std::memcpy(p, iboCpu, (size_t)iboBytes);
-      s->ibo.unmap(); }
+    // A failed copy frees both buffers, so the next frame's retry starts from nothing instead of holding a half-filled pair.
+    if (!s->vbo.upload(vboCpu, vboBytes) || !s->ibo.upload(iboCpu, iboBytes)) {
+        vlog("geometry upload failed (buffer map); retrying next frame.");
+        s->vbo.reset();
+        s->ibo.reset();
+        return false;
+    }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
     s->typeRuns.clear();

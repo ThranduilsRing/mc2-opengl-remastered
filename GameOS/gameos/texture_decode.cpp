@@ -121,14 +121,14 @@ bool decodeFile(const char* path, gos_TextureFormat requested, DWORD hints, Deco
             std::fclose(f);
         }
         if (bytes.empty()) {
-            MC2_LOG(Core, Debug, "failed to load texture from file: {}", mc2::fmt::safe(path));
+            MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: file missing, empty or unreadable", mc2::fmt::safe(path));
             return false;
         }
         return decodeMemory(bytes.data(), bytes.size(), path, requested, hints, out);
     }
     Image img;
     if (!img.loadFromFile(path)) {
-        MC2_LOG(Core, Debug, "failed to load texture from file: {}", mc2::fmt::safe(path));
+        MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: image loader failed", mc2::fmt::safe(path));
         return false;
     }
     return finishDecode(img, path, endsWithPng(path), requested, hints, out);
@@ -150,7 +150,8 @@ bool decodeMemory(const uint8_t* bytes, size_t size, const char* nameForLog, gos
     Image img;
     const bool decoded = png ? img.loadPNG(bytes, size) : img.loadTGA(bytes, size);
     if (!decoded) {
-        MC2_LOG(Core, Debug, "failed to load texture from data: {}", mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"));
+        MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: image loader failed",
+                mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"));
         return false;
     }
     return finishDecode(img, nameForLog, png, requested, hints, out);

@@ -1,7 +1,8 @@
 // terrain_field_store.h - the CPU copy of the terrain fields both backends draw from.
 //
 // WHAT: the height field (mapSide^2 floats, whole-map and patch writes), the per-vertex cement words, and the 4x visual height
-// bake with its mip maxes, each with a version that changes on every write.
+// bake with its mip maxes, each with a version that changes on every write. Versions are unique for the process (0 = never
+// written), so a recreated store never matches a version a consumer copied from the previous one.
 // WHY: these arrived as CPU arrays and were kept only inside GL SSBOs, so the Vulkan terrain island had to read the SSBOs back
 // to draw. The store keeps the bytes; the GL upload and the Vulkan snapshot both read it, and a patch write (crater deform)
 // now changes the version the Vulkan island keys its re-copy on. No GL here.

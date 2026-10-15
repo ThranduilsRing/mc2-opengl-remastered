@@ -3,6 +3,7 @@
 #include "terrain_field_store.h"
 
 #include <algorithm>
+#include <atomic>
 
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
@@ -13,6 +14,13 @@ namespace {
 // A terrain map side beyond this is a malformed input, not a map (stock maps are a few hundred vertices on a side).
 constexpr int kMaxSide = 16384;
 
+// Versions come from one process-wide sequence so a store created after a Destroy / Init never repeats a version an
+// island already copied (the islands outlive the store).
+uint64_t nextVersion() {
+    static std::atomic<uint64_t> sequence{0};
+    return ++sequence;
+}
+
 }  // namespace
 
 bool TerrainFieldStore::setHeight(const float* elevations, int mapSide) {
@@ -22,7 +30,7 @@ bool TerrainFieldStore::setHeight(const float* elevations, int mapSide) {
     }
     height_.assign(elevations, elevations + (size_t)mapSide * (size_t)mapSide);
     mapSide_ = mapSide;
-    ++heightVersion_;
+    heightVersion_ = nextVersion();
     return true;
 }
 
@@ -42,7 +50,7 @@ bool TerrainFieldStore::patchHeight(const float* rows, int originX, int originY,
         float* dst = height_.data() + (size_t)(originY + row) * (size_t)mapSide_ + (size_t)originX;
         std::copy(src, src + w, dst);
     }
-    ++heightVersion_;
+    heightVersion_ = nextVersion();
     return true;
 }
 
@@ -52,7 +60,7 @@ bool TerrainFieldStore::setCementWords(const uint32_t* words, int count) {
         return false;
     }
     cement_.assign(words, words + count);
-    ++cementVersion_;
+    cementVersion_ = nextVersion();
     return true;
 }
 
@@ -68,7 +76,7 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
     if (mipFloats > 0) std::copy(mipMaxes, mipMaxes + mipFloats, visual_.begin() + (std::ptrdiff_t)fineCount);
     visualSide_ = side;
     visualMipFloats_ = mipFloats;
-    ++visualVersion_;
+    visualVersion_ = nextVersion();
     return true;
 }
 

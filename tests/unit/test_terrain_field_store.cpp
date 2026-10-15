@@ -54,5 +54,18 @@ TEST_CASE("terrain fields: the visual bake is the fine field followed by the mip
     const uint32_t words[] = {0x80000001u, 0};
     REQUIRE(store.setCementWords(words, 2));
     CHECK(store.cementWords().size() == 2);
-    CHECK(store.cementVersion() == 1);
+    CHECK(store.cementVersion() != 0);
+}
+
+TEST_CASE("terrain fields: a recreated store never repeats a version an earlier store handed out") {
+    std::vector<float> map(2 * 2, 0.0f);
+    uint64_t first = 0;
+    {
+        mc2terrain::TerrainFieldStore store;
+        REQUIRE(store.setHeight(map.data(), 2));
+        first = store.heightVersion();
+    }
+    mc2terrain::TerrainFieldStore again;
+    REQUIRE(again.setHeight(map.data(), 2));
+    CHECK(again.heightVersion() > first);
 }
