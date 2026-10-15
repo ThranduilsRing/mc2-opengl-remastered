@@ -39,6 +39,7 @@
 #include <GL/glew.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "Gates/render_options.h"   // options.cfg SunAxisFix
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -1129,6 +1130,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.objectDepthBias = feed.objectDepthBias;
       u.materialReady = (s->wantMaterial && s->materialReady) ? 1 : 0;
       u.lightingReady = s->lightingReady ? 1 : 0;
+      u.sunAxisMc2Fix = mc2::options::current().sunAxisFix ? 1 : 0;   // same option the GL mech flush reads
       u.fogColorRGB[0] = feed.fogColorRGB[0];
       u.fogColorRGB[1] = feed.fogColorRGB[1];
       u.fogColorRGB[2] = feed.fogColorRGB[2];
