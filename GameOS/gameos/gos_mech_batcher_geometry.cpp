@@ -430,8 +430,10 @@ void uploadMechGeometryVbo() {
     // GL buffer-readback fallback in the island was deleted, so this copy is the
     // island's only geometry source. Copy-once per map / normals rebuild; the copy
     // exists only under the VK backend (vkMechGateOn()), never in the pure-GL product.
-    if (vkMechGateOn())
+    if (vkMechGateOn()) {
         s_vkVboNativeCopy = work;
+        ++s_vkVboNativeGen;
+    }
 #endif
 
     // Vertex attribute setup — 48-byte GpuMechVertex, 7 attributes.

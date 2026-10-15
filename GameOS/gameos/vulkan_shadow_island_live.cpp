@@ -53,6 +53,7 @@
 #include "vk_owned.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
+#include "vulkan_shadow_mech_casters.h"
 #include "vk_shared_gbuffer_gate.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -102,6 +103,8 @@ ShadowIslandHealth g_health;
 bool g_dynShadowReadyThisFrame = false;
 bool g_csmFullMapReadyThisFrame = false;
 bool g_csmArrayReadyThisFrame = false;
+// One value per frame (bumped by the first pass, the dynamic map): the mech casters stage their feed once per epoch and every later pass reuses it.
+uint64_t g_shadowFrameEpoch = 0;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -249,6 +252,8 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule        frag;
     mc2vk::OwnedPipeline            pipe;
     mc2vk::OwnedCommandPool         cpool;
+    // The mech casters share the render pass and the UBO above; declared last so they are released first.
+    mc2vk::ShadowMechCasters        mech;
 
     ShadowIsland() = default;
     // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
@@ -579,6 +584,10 @@ bool init_island(ShadowIsland* s, int size) {
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "shadow.pipe");
     }
+
+    // ---- Mech casters: a failure leaves the island with static-prop casters only (logged by the casters). ----
+    if (!s->mech.init(s->device, s->allocator, s->rpass.get(), s->ubo.get(), spv_dir()))
+        vlog("mech casters unavailable: the cascades carry static-prop casters only.");
 
     // ---- Command pool + 2 command buffers (per parity). ----
     {
@@ -991,6 +1000,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_dynShadowReadyThisFrame = false;   // VK-SHADOW-DIRECT-CONSUME-1: reset; set true only at the tail on success
     g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
     g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
+    ++g_shadowFrameEpoch;
     if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
     ZoneScopedN("VKIsl.Shadow.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
@@ -1180,6 +1190,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     }
     g_health.typeRuns = typeRuns;
 
+    s->mech.stage(g_shadowFrameEpoch);
+    s->mech.record(cb);
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
@@ -1323,6 +1335,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         }
         i = j;
     }
+    s->mech.stage(g_shadowFrameEpoch);
+    s->mech.record(cb);
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
 
@@ -1457,6 +1471,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         }
         i = j;
     }
+    s->mech.stage(g_shadowFrameEpoch);
+    s->mech.record(cb);
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_array_record_failed"); s->disabled = true; return 0; }
 
