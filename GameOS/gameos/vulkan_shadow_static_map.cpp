@@ -63,17 +63,15 @@ bool ShadowStaticMap::ensureBuffer(OwnedBuffer& buffer, VkDeviceSize& capacity, 
     return true;
 }
 
-// The shader files that name a vertex layout come before the pipeline builders, so the offline layout checker pairs the terrain stride with
-// shadow_terrain_static.vert and the building stride with shadow_prop.vert.
+// Each vertex shader is loaded just before the pipeline that names its vertex layout, so the offline layout checker pairs the terrain stride
+// with shadow_terrain_static.vert and the building stride with shadow_prop.vert.
 bool ShadowStaticMap::init(VkDevice device, VmaAllocator allocator, VkRenderPass pass, std::string_view spvDir) {
     device_ = device;
     allocator_ = allocator;
     pass_ = pass;
     const std::string dir(spvDir);
-    terrainVert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_terrain_static.vert.spv", nullptr));
-    propVert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop.vert.spv", nullptr));
     frag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop.frag.spv", nullptr));
-    if (!terrainVert_ || !propVert_ || !frag_) { slog("shader SPIR-V missing: no static map."); return false; }
+    if (!frag_) { slog("shadow_prop.frag SPIR-V missing: no static map."); return false; }
 
     VkDescriptorSetLayoutBinding b[2]{};
     b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -100,6 +98,8 @@ bool ShadowStaticMap::init(VkDevice device, VmaAllocator allocator, VkRenderPass
     if (!create(layout_, device_, [&](auto* h) { return vkCreatePipelineLayout(device_, &plci, nullptr, h); })) { slog("pipeline layout failed."); return false; }
 
     // Terrain: a packed world-space position per vertex.
+    terrainVert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_terrain_static.vert.spv", nullptr));
+    if (!terrainVert_) { slog("shadow_terrain_static.vert SPIR-V missing: no static map."); return false; }
     VkVertexInputBindingDescription vib{};
     vib.binding = 0; vib.stride = 12; vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription tvia[1]{};
@@ -108,6 +108,8 @@ bool ShadowStaticMap::init(VkDevice device, VmaAllocator allocator, VkRenderPass
     nameObject(device_, terrainPipe_.get(), "shadow.static.terrainPipe");
 
     // Buildings: the shared static-prop vertex (position at 0; the UV at 24 rides along unread, as in the island's opaque caster).
+    propVert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop.vert.spv", nullptr));
+    if (!propVert_) { slog("shadow_prop.vert SPIR-V missing: no static map."); return false; }
     VkVertexInputBindingDescription pvib{};
     pvib.binding = 0; pvib.stride = mc2_static_prop_vertex_stride(); pvib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription pvia[2]{};

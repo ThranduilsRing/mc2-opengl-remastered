@@ -1003,6 +1003,20 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
+// The matrix diag's VK depth dumps of the frame just submitted.
+bool g_diagVkDumpPending = false;
+void diagDumpVk(ShadowIsland* s) {
+    std::vector<float> d;
+    if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image.get(), 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
+    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not recorded this frame\n");
+    if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg.get(), 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
+    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not recorded this frame\n");
+    if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image.get(), 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
+    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not recorded this frame\n");
+    if (s->staticMap.view() != VK_NULL_HANDLE) { diagVkRead(s, s->staticMap.image(), 0, s->staticMap.size(), d); diagDumpDepth("static", "vk", d, s->staticMap.size()); }
+    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK static map not built\n");
+}
+
 } // namespace
 
 // ===========================================================================
@@ -1397,6 +1411,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     ZoneScopedN("VKIsl.Shadow.Submit");
     if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
     s->staticMap.markSubmitted();
+    if (g_diagVkDumpPending) { g_diagVkDumpPending = false; diagDumpVk(s); }
 }
 
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
@@ -1496,17 +1511,9 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
         diagGlRead(glStaticTex, staticSize, -1, d); diagDumpDepth("static", "gl", d, staticSize);
     }
-    if (ShadowIsland* parked = parkedIsland(); dump && parked && parked->inited) {
-        ShadowIsland* s = parked; std::vector<float> d;
-        if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image.get(), 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
-        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not ready this frame\n");
-        if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg.get(), 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
-        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not ready this frame\n");
-        if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image.get(), 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
-        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not ready this frame\n");
-        if (s->staticMap.view() != VK_NULL_HANDLE) { diagVkRead(s, s->staticMap.image(), 0, s->staticMap.size(), d); diagDumpDepth("static", "vk", d, s->staticMap.size()); }
-        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK static map not built\n");
-    }
+    // The VK side is read after this frame's submit (mc2_vk_shadow_island_submit_frame): read here it would be the previous frame's maps, whose
+    // camera-fitted cascades sit some texels away from this frame's GL ones.
+    if (dump && parkedIsland()) g_diagVkDumpPending = true;
     std::fflush(stderr);
 }
 
