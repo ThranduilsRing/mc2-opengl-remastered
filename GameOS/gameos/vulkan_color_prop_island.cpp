@@ -36,7 +36,6 @@
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
-extern const float* gos_GetTerrainMVPMat4();   // live camera matrix (matrix diag only)
 #include "vulkan_color_prop_island.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
@@ -44,6 +43,8 @@ extern const float* gos_GetTerrainMVPMat4();   // live camera matrix (matrix dia
 #include "vulkan_shared_scene_color.h"   // TIER-1: fetch shared scene color/normal images
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"   // TIER-1: fetch shared scene depth (island accessors)
+
+extern const float* gos_GetTerrainMVPMat4();   // live camera matrix (matrix diag only)
 
 #include <cstdio>
 #include <cstdlib>
@@ -1227,29 +1228,26 @@ bool upload_geometry_once(ColorPropIsland* s) {
     if (s->geomUploaded) return true;
     Mc2ShadowGeomFeed feed{};
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
-    if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
+    // The vertex / index bytes come from the batcher's CPU copy (the bytes the GL buffers were created from).
+    const void* vboCpu = nullptr; const void* iboCpu = nullptr;
+    uint64_t vboBytes = 0, iboBytes = 0;
+    if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
+    if (vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
+        vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", (unsigned long long)vboBytes,
+             (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes);
+        return false;
+    }
 
-    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
-    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
-    std::vector<uint8_t> scratch;
-    { void* p = nullptr;
-      if ((p = s->vbo.map()) != nullptr) {
-          scratch.resize((size_t)feed.vboBytes);
-          glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-          glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-          glBindBuffer(GL_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          s->vbo.unmap();
-      } }
-    { void* p = nullptr;
-      if ((p = s->ibo.map()) != nullptr) {
-          scratch.resize((size_t)feed.iboBytes);
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-          glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          s->ibo.unmap();
-      } }
+    if (!make_buffer(s, s->vbo, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
+    if (!make_buffer(s, s->ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
+    { void* p = s->vbo.map();
+      if (!p) return false;
+      std::memcpy(p, vboCpu, (size_t)vboBytes);
+      s->vbo.unmap(); }
+    { void* p = s->ibo.map();
+      if (!p) return false;
+      std::memcpy(p, iboCpu, (size_t)iboBytes);
+      s->ibo.unmap(); }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
     s->typeRuns.clear();
@@ -1326,7 +1324,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
     if (mc2_vk_shadow_matrix_diag_enabled()) {
         static int diagPrints = 0;
-        if (diagPrints < 3 && ++diagPrints) {
+        if (diagPrints < 3) {
+            ++diagPrints;
             const float* live = gos_GetTerrainMVPMat4();
             const float* f = feed.worldToClipGL;
             vlog("matrix diag: prop row0=[%.4f %.4f %.4f %.4f] row3=[%.4f %.4f %.4f %.4f] live row0=[%.4f %.4f %.4f %.4f] row3=[%.4f %.4f %.4f %.4f]",
