@@ -24,9 +24,9 @@
   "RenderCore/RendererFeatureRegistry.h": 1741,
   "code/artlry.cpp": 1818,
   "code/bldng.cpp": 1692,
-  "code/brain_special_dispatch.cpp": 2775,
+  "code/brain_special_dispatch.cpp": 2770,
   "code/gamecam.cpp": 1591,
-  "code/gameobj.cpp": 2362,
+  "code/gameobj.cpp": 2358,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1967,
@@ -49,7 +49,7 @@
   "mclib/ablrtn.cpp": 1778,
   "mclib/assimp_importer.cpp": 1589,
   "mclib/camera.h": 1812,
-  "mclib/file.cpp": 2685,
+  "mclib/file.cpp": 2560,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2632,
   "mclib/mlr/mlrlightmap.cpp": 1648,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "8b9338005",
+ "head": "6d3b59518",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -98,10 +98,10 @@
    "files": 404,
    "files_over_1500": 22,
    "files_over_3000": 0,
-   "max_lines": 2775
+   "max_lines": 2770
   },
   "editor": {
-   "files": 267,
+   "files": 275,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1427
@@ -116,7 +116,7 @@
    "files": 590,
    "files_over_1500": 15,
    "files_over_3000": 0,
-   "max_lines": 2685
+   "max_lines": 2632
   },
   "shaders": {
    "files": 172,
@@ -136,14 +136,10 @@
   },
   {
    "file": "code/brain_special_dispatch.cpp",
-   "lines": 2775
+   "lines": 2770
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2685
-  },
-  {
-   "file": "mclib/file.cpp",
    "lines": 2685
   },
   {
@@ -155,12 +151,16 @@
    "lines": 2632
   },
   {
+   "file": "mclib/file.cpp",
+   "lines": 2560
+  },
+  {
    "file": "code/mpparameterscreen.cpp",
    "lines": 2415
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2362
+   "lines": 2358
   },
   {
    "file": "code/turret.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1875,
+  "files": 1883,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3753

@@ -7,7 +7,7 @@
   "RenderCore": 580,
   "RenderWorld": 0,
   "code": 14830,
-  "mclib": 31982,
+  "mclib": 31905,
   "shaders": 2980
  },
  "dirs": [
@@ -329,7 +329,7 @@
   "mclib/elist.h": 143,
   "mclib/estring.cpp": 66,
   "mclib/ffile.cpp": 55,
-  "mclib/file.cpp": 271,
+  "mclib/file.cpp": 212,
   "mclib/gamelog.h": 18,
   "mclib/genactor.cpp": 201,
   "mclib/genactor.h": 9,
@@ -472,11 +472,11 @@
   "mclib/mlr/mlrtrianglecloud.hpp": 23,
   "mclib/mlr/mlrtrianglelighting.hpp": 53,
   "mclib/mouse.cpp": 166,
-  "mclib/move.cpp": 98,
+  "mclib/move.cpp": 89,
   "mclib/move.h": 18,
   "mclib/move_globalmap_build.cpp": 26,
   "mclib/move_globalmap_doors.cpp": 8,
-  "mclib/move_globalmap_path.cpp": 25,
+  "mclib/move_globalmap_path.cpp": 16,
   "mclib/move_movemap_escape.cpp": 211,
   "mclib/move_movemap_goals.cpp": 118,
   "mclib/move_movemap_path.cpp": 474,
@@ -643,8 +643,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "8b9338005",
+ "head": "6d3b59518",
  "n": 8,
- "total": 55877,
+ "total": 55800,
  "version": 1
 }

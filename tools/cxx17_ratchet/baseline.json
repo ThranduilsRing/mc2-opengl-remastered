@@ -144,7 +144,7 @@
    "LG03": 892,
    "LG04": 21,
    "LG05": 195,
-   "LG06": 460,
+   "LG06": 451,
    "LG07": 2,
    "LG08": 14,
    "LG09": 2296,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 22
+   "LG20": 21
   },
   "tools": {
    "LG01": 0,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 50
+   "LG20": 44
   }
  },
  "dirs": [
@@ -1684,7 +1684,6 @@
   "code/carnage.cpp": {
    "LG01": 1,
    "LG03": 5,
-   "LG06": 2,
    "LG09": 30,
    "LG13": 1
   },
@@ -1692,7 +1691,6 @@
    "LG01": 6,
    "LG02": 1,
    "LG04": 1,
-   "LG06": 2,
    "LG18": 1
   },
   "code/chatwindow.cpp": {
@@ -1714,9 +1712,6 @@
   },
   "code/collsn.h": {
    "LG13": 1
-  },
-  "code/combat_trace.h": {
-   "LG06": 1
   },
   "code/comndr.cpp": {
    "LG03": 3,
@@ -3070,13 +3065,11 @@
   },
   "code/weaponbolt.cpp": {
    "LG03": 14,
-   "LG06": 2,
    "LG09": 12
   },
   "code/weaponbolt.h": {
    "LG01": 10,
    "LG02": 1,
-   "LG06": 2,
    "LG09": 7
   },
   "code/weaponbolt_render.cpp": {
@@ -5090,9 +5083,6 @@
   "tests/unit/test_rendercore.cpp": {
    "LG20": 3
   },
-  "tests/unit/test_vfx_frozen_clouds.cpp": {
-   "LG20": 1
-  },
   "tests/unit/test_vfx_frozen_driver.cpp": {
    "LG20": 7
   },
@@ -5100,14 +5090,11 @@
    "LG19": 1,
    "LG20": 41
   },
-  "tools/vfx_oracle/lifecycle_driver.cpp": {
-   "LG20": 6
-  },
   "tools/vfx_oracle/lifecycle_test.cpp": {
    "LG20": 3
   }
  },
- "head": "493ce4a3d",
+ "head": "6d3b59518",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
