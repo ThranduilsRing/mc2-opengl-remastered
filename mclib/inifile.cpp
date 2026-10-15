@@ -12,6 +12,7 @@
 // Include files
 
 #include "inifile_internal.h"
+#include "fit_number.h"
 #include "mc2fmt.h"
 
 //#else
