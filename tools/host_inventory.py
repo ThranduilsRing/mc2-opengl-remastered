@@ -31,6 +31,12 @@ BOARD_ROWS = (
     'run_check "script_callers" "py -3 tools/callers.py --check"',
 )
 
+#: One line per harness tool a lane reaches for on this host; kept here so regeneration never drops them.
+HARNESS_NOTES = (
+    "- `py -3 scripts/check-staged-hygiene.py --staged` (alias of `--index`): pre-commit scan of the index for new control bytes"
+    " (0x00, 0x08, ...), mixed endings and CRLF/LF flips of tracked files; the board runs `--range`.",
+)
+
 
 def collect_inventory(*, which: Callable = shutil.which, find_spec: Callable = importlib.util.find_spec,
                       environ: Mapping[str, str] | None = None, exists: Callable = os.path.isfile,
@@ -198,6 +204,7 @@ def render_markdown(rows: list[dict[str, str]], provenance: dict[str, str]) -> s
               "  lease (no surface and no window: `--wsi headless` still tries the captured Win32 surface and fails), and `compare` hashes the decoded RGB pixels of the engine's own PNG of the presented frame (the live frame) and of every replayed frame:",
               "  exit 0 when one replayed frame equals the live one, 1 when none does, 2 when a tool failed. `--dry-run` prints the commands.",
               "  The SDK's capture and replay tools have no compare mode of their own; the hash comparison is this script's.", "",
+              "## Harness tooling", "", *HARNESS_NOTES, "",
               "## Proposed check-contracts.sh rows (orchestrator only)", "",
               "Regeneration preserves this section by emitting it from the generator. Insert inside the real board before its closing `fi`.",
               "The ledger row validates schema and commit identity without requiring any recorded proof.",

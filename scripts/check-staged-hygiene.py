@@ -176,7 +176,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Git worktree (default: cwd)")
     parser.add_argument("--quiet", action="store_true", help="suppress clean summary")
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--index", action="store_true", help="compare HEAD to INDEX (default; hooks)")
+    # --staged is the pre-commit spelling lanes reach for; one scanner, two names.
+    mode.add_argument("--index", "--staged", action="store_true", help="compare HEAD to INDEX (default; hooks)")
     mode.add_argument("--range", nargs="?", const="auto", metavar="BASE..TIP",
                       help="compare committed trees (default range: see module description)")
     args = parser.parse_args(argv)
