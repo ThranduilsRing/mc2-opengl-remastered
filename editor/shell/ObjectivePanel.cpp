@@ -170,7 +170,7 @@ void EntityPanels::objectives()
             const auto key = "objective.entry." + std::to_string(i);
             if (i % 2 == 0) {
                 const auto schema = conditionSchema();
-                const bool speciesOpen = ImGui::BeginCombo("Condition species", conditionCreation_ == 0 ? "BooleanFlagIsSet" : schema[conditionCreation_ - 1].name.data());
+                const bool speciesOpen = ImGui::BeginCombo("Condition species", conditionCreation_ == 0 ? "BooleanFlagIsSet" : schema[conditionCreation_ - 1].name.data(), ImGuiComboFlags_HeightLargest);
                 record(key + ".species", speciesOpen);
                 if (speciesOpen) {
                     if (choice(key + ".species.BooleanFlagIsSet", "BooleanFlagIsSet", conditionCreation_ == 0)) conditionCreation_ = 0;
@@ -179,9 +179,23 @@ void EntityPanels::objectives()
                     ImGui::EndCombo();
                 }
             }
+            if (i % 2 == 0 && conditionCreation_ != 0 && conditionSchema()[conditionCreation_ - 1].reference) {
+                const auto* target = conditionTarget_ ? document_.entity(*conditionTarget_) : nullptr;
+                const auto label = target ? std::to_string(target->id.value) : "Choose target";
+                const bool targetOpen = ImGui::BeginCombo("New condition target", label.c_str(), ImGuiComboFlags_HeightLargest);
+                record(key + ".target", targetOpen);
+                if (targetOpen) {
+                    for (const auto& entity : document_.entities()) {
+                        if (entity.exportedPart.has_value() == conditionSchema()[conditionCreation_ - 1].name.ends_with("Structure")) continue;
+                        const auto name = std::to_string(entity.id.value);
+                        if (choice(key + ".target." + name, name.c_str(), conditionTarget_ == entity.id)) conditionTarget_ = entity.id;
+                    }
+                    ImGui::EndCombo();
+                }
+            }
             if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add SetBooleanFlag")) {
                 const auto result = i % 2 == 0 && conditionCreation_ != 0 ?
-                    history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species) :
+                    history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species, conditionTarget_) :
                     history_.addObjectiveEntry(objective_, i);
                 if (result) { objectiveEntry_ = *result; status_ = "Applied"; } else status_ = result.error().reason;
                 ImGui::PopID(); ImGui::PopID(); return;
@@ -265,6 +279,8 @@ void EntityPanels::objectives()
                 for (const auto& section : document_.syntax().sections) {
                     if (section.parent) continue;
                     auto name = identifier(section.name);
+                    name.erase(0, name.find_first_not_of(" \t"));
+                    name.erase(name.find_last_not_of(" \t") + 1);
                     if (version == 2 && name.starts_with("team0")) name.erase(0, 5);
                     if (!name.starts_with(base) || name.size() == base.size() ||
                         !std::ranges::all_of(std::string_view(name).substr(base.size()), [](char c) { return c >= '0' && c <= '9'; }) ||

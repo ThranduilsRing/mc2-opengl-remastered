@@ -281,20 +281,6 @@ std::expected<void, LoadError> CommandHistory::transform(EntityId id, const Tran
         if (!absent.empty()) edits.push_back({{section->syntax.end, section->syntax.end}, nl + absent});
         fit = edited(std::move(fit), std::move(edits));
     }
-    auto syntax = decodeFit(fit);
-    if (!syntax) return std::unexpected(syntax.error());
-    std::vector<Edit> references;
-    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries) for (const auto& entry : list) {
-        if (entry.reference.status != ReferenceStatus::Resolved || entry.reference.target != id) continue;
-        const auto oldIndex = static_cast<std::size_t>(document_.section(entry.section) - document_.syntax().sections.data());
-        const auto& section = syntax->sections[oldIndex];
-        for (std::size_t i = 0; i < 2; ++i) {
-            if (transform.position[i] == entity->position[i]) continue;
-            const auto key = i == 0 ? "PositionX" : "PositionY";
-            references.push_back({find(*syntax, section, key)->syntax, real(transform.position[i])});
-        }
-    }
-    fit = edited(std::move(fit), std::move(references));
     return commitStructure(std::move(fit), std::move(placements), identities(document_), "Transform entity");
 }
 
@@ -328,7 +314,7 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
             const auto* count = find(*syntax, *root(*syntax, "NavMarkers"), "NumNavMarkers");
             const auto total = std::get<std::int64_t>(count->value[0]);
             std::vector<Edit> edits{{removed->syntax, ""}, {count->syntax, std::to_string(total - 1)}};
-            renamed.emplace(identifier(removed->name), "");
+            renamed.emplace(removed->name, "");
             bool following{};
             for (std::int64_t i = 0; i < total; ++i) {
                 const auto* section = root(*syntax, "NavMarker" + std::to_string(i));
@@ -337,7 +323,7 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
                 // Surviving blocks retain their stable IDs and unknown fields after export renumbering.
                 const auto name = "NavMarker" + std::to_string(i - 1);
                 edits.push_back({section->nameSyntax, name});
-                renamed.emplace(identifier(section->name), identifier(name));
+                renamed.emplace(section->name, name);
             }
             fit = edited(std::move(fit), std::move(edits));
         }
@@ -382,13 +368,13 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
             }
             if (values != mates->value) edits.push_back({mates->syntax, formatValue(*mates, values)});
         }
-        renamed.emplace(identifier(removed->name), "");
+        renamed.emplace(removed->name, "");
         // Runtime requires dense Part indices; document IDs and explicit Pilot links remain stable.
         for (auto i = *entity->exportedPart + 1; i <= total; ++i) {
             const auto* section = root(*syntax, "Part" + std::to_string(i));
             const auto name = "Part" + std::to_string(i - 1);
             edits.push_back({section->nameSyntax, name});
-            renamed.emplace(identifier(section->name), identifier(name));
+            renamed.emplace(section->name, name);
         }
         fit = edited(std::move(fit), std::move(edits));
     }

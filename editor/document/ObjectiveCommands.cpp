@@ -46,11 +46,15 @@ std::expected<NodeId, LoadError> CommandHistory::addObjectiveEntry(NodeId object
 {
     return editObjectiveEntries(ObjectiveEdit::add, objective, list);
 }
-std::expected<NodeId, LoadError> CommandHistory::addObjectiveCondition(NodeId objective, std::size_t list, ConditionSpecies species)
+std::expected<NodeId, LoadError> CommandHistory::addObjectiveCondition(NodeId objective, std::size_t list, ConditionSpecies species,
+    std::optional<EntityId> target)
 {
     if ((list != 0 && list != 2) || std::ranges::find(conditionSchema(), species, &ConditionSpec::species) == conditionSchema().end())
         return std::unexpected(rejectObjective("unsupported_condition_creation"));
-    return editObjectiveEntries(ObjectiveEdit::add, objective, list, {}, 0, species);
+    const auto spec = std::ranges::find(conditionSchema(), species, &ConditionSpec::species);
+    if (spec->reference && !target) return std::unexpected(rejectObjective("specific_condition_requires_target"));
+    if (!spec->reference) target.reset();
+    return editObjectiveEntries(ObjectiveEdit::add, objective, list, {}, 0, species, target);
 }
 
 std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, std::string_view key, Scalar value)
@@ -75,9 +79,8 @@ std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, st
     if (!old || old->array || old->opaque || old->prefix != fieldSpec->prefix)
         return reject("ignored_payload_declaration_would_be_activated");
     if (old->warning.starts_with("outside signed")) return reject(std::string(old->warning));
+    if (auto* real = std::get_if<double>(&value)) *real = static_cast<double>(static_cast<float>(*real));
     if (auto valid = validateObjectiveScalar(*fieldSpec, value); !valid) return reject(valid.error().reason);
-    if (const auto* real = std::get_if<double>(&value); real && static_cast<double>(static_cast<float>(*real)) != *real)
-        return reject("float_rounding_or_underflow_changes_value");
     const auto* requestedReal = std::get_if<double>(&value);
     if (old->value == Value{value} && (!requestedReal ||
         std::signbit(*requestedReal) == std::signbit(std::get<double>(old->value[0])))) return {};
@@ -106,7 +109,7 @@ std::expected<void, LoadError> CommandHistory::reorderObjectiveEntry(NodeId entr
 }
 
 std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveEdit edit, NodeId owner,
-    std::size_t list, NodeId id, std::uint32_t index, std::optional<ConditionSpecies> species)
+    std::size_t list, NodeId id, std::uint32_t index, std::optional<ConditionSpecies> species, std::optional<EntityId> target)
 {
     const auto reject = [&](std::string reason) -> std::expected<NodeId, LoadError> {
         return std::unexpected(rejectObjective(std::move(reason)));
@@ -161,11 +164,11 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveE
         const auto& section = freshSection(entry.section);
         const auto position = std::ranges::find(order, entry.section);
         if (position == order.end()) {
-            edits.push_back({section.syntax, {}}); renamed.emplace(identifier(section.name), "");
+            edits.push_back({section.syntax, {}}); renamed.emplace(section.name, "");
         } else {
             const auto name = base + std::to_string(position - order.begin());
             if (name != section.name) {
-                edits.push_back({section.nameSyntax, name}); renamed.emplace(identifier(section.name), identifier(name));
+                edits.push_back({section.nameSyntax, name}); renamed.emplace(section.name, name);
             }
         }
     }
@@ -180,12 +183,31 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveE
             const auto spec = std::ranges::find(conditionSchema(), *species, &ConditionSpec::species);
             text = "[" + name + "]" + nl + "st " + suffixes[list] + "SpeciesString = \"" + std::string(spec->name) + "\"" + nl;
             if (fresh->endMarker && fit[fresh->endMarker - 1] != '\n') text.insert(0, nl);
-            for (const auto& field : spec->fields) text += std::string(field.prefix) + " " + std::string(field.key) + " = 0" + nl;
+            const auto* entity = target ? document_.entity(*target) : nullptr;
+            if (spec->reference && !entity) return reject("specific_condition_requires_target");
+            for (const auto& field : spec->fields) {
+                const auto wire = spec->reference ? std::format("{:.9g}", static_cast<float>(entity->position[field.key == "PositionX" ? 0 : 1])) : "0";
+                text += std::string(field.prefix) + " " + std::string(field.key) + " = " + wire + nl;
+            }
         }
         edits.insert(edits.begin(), {{fresh->endMarker, fresh->endMarker}, text});
     }
     std::ranges::stable_sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
     for (const auto& change : edits) fit.replace(change.span.begin, change.span.end - change.span.begin, change.text);
+    if (species && target) {
+        std::vector<EntityId> ids;
+        for (const auto& entity : document_.entities()) ids.push_back(entity.id);
+        auto candidate = document_.structuralCandidate(std::move(fit), document_.placements_, ids, renamed);
+        if (!candidate) return reject(candidate.error().reason);
+        const auto candidateOwner = std::ranges::find(candidate->objectives, owner, &Objective::section);
+        const auto& entry = candidateOwner->entries[list][index];
+        if (entry.reference.status != ReferenceStatus::Resolved || entry.reference.target != target)
+            return reject("target_not_unique_or_ineligible");
+        const auto added = entry.section;
+        auto result = commit(StructuralCommand{document_.structuralState(), std::move(*candidate), "Add targeted condition"});
+        if (!result) return reject(result.error().reason);
+        return added;
+    }
     auto result = commitObjectiveFit(std::move(fit), "Edit objective entries", renamed);
     if (!result) return std::unexpected(result.error());
     return edit == ObjectiveEdit::add ? document_.objective(owner)->entries[list][index].section : id;
@@ -351,7 +373,6 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         !std::holds_alternative<std::int64_t>(count->value[0]) ||
         std::get<std::int64_t>(count->value[0]) != static_cast<std::int64_t>(previousCount))
         return reject("invalid_objective_count");
-    // Reparsed spans include prior edits; IDs retain document identity.
     const auto countSection = std::ranges::find_if(syntax->sections, [&](const Section& section) {
         return !section.parent && identifier(section.name) == identifier(block);
     });
@@ -389,6 +410,23 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         const auto base = identifier(document_.section(owner->section)->name);
         const auto suffix = old.name.substr(base.size() + (teamEntry ? 5 : 0));
         const auto entryPrefix = teamEntry ? "Team0" : "";
+        bool live = old.id == owner->section;
+        for (const auto& list : owner->entries) for (const auto& entry : list) live |= entry.section == old.id;
+        if (!live) {
+            if (edit == ObjectiveEdit::copy && base == sourceName) {
+                auto copy = fit.substr(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin);
+                auto spelling = old.name;
+                const auto digits = base.size() + (teamEntry ? 5 : 0) - std::to_string(owner->exportedIndex).size();
+                spelling.replace(digits, std::to_string(owner->exportedIndex).size(), std::to_string(index));
+                copy.replace(fresh.nameSyntax.begin - fresh.syntax.begin, fresh.nameSyntax.end - fresh.nameSyntax.begin, spelling);
+                appended += copy;
+                if (appended.back() != '\n') appended += nl;
+            }
+            const auto position = positions.find(owner->section.value);
+            if (position == positions.end() || position->second != owner->exportedIndex)
+                return reject("objective_rename_would_change_ignored_block");
+            continue;
+        }
         if (edit == ObjectiveEdit::copy && base == sourceName) {
             auto copy = fit.substr(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin);
             copy.replace(fresh.nameSyntax.begin - fresh.syntax.begin,
@@ -398,12 +436,12 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         }
         const auto position = positions.find(owner->section.value);
         if (position == positions.end()) {
-            edits.push_back({fresh.syntax, {}}); renamed.emplace(key, "");
+            edits.push_back({fresh.syntax, {}}); renamed.emplace(old.name, "");
         } else {
             const auto replacement = entryPrefix + name(position->second) + suffix;
             if (replacement != old.name) {
                 edits.push_back({fresh.nameSyntax, replacement});
-                renamed.emplace(key, identifier(replacement));
+                renamed.emplace(old.name, replacement);
             }
         }
     }
@@ -421,15 +459,6 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
     if (edit == ObjectiveEdit::add || edit == ObjectiveEdit::copy)
         for (auto& item : candidate->objectives) if (item.team == team && item.exportedIndex == index) {
             result = item.section;
-            if (edit == ObjectiveEdit::copy) for (std::size_t list = 0; list < item.entries.size(); ++list)
-                for (std::size_t i = 0; i < item.entries[list].size(); ++i) {
-                    auto& reference = item.entries[list][i].reference;
-                    const auto& source = selected->entries[list][i].reference;
-                    reference.kind = source.kind;
-                    reference.status = source.status;
-                    reference.target = source.target;
-                    reference.reason = source.reason;
-                }
         }
     const auto label = edit == ObjectiveEdit::add ? "Add objective" : edit == ObjectiveEdit::copy ? "Copy objective" :
         edit == ObjectiveEdit::erase ? "Delete objective" : "Reorder objective";

@@ -200,11 +200,12 @@ void PanelProof::objectivesProof()
             }
         }
         const auto key = "objective.entry." + std::to_string(list);
-        click(key + ".species"); click(key + ".species.ElapsedMissionTime");
-        operation(std::format("widget-payload-{}-create", list), key + ".add", [this, payloadOwner, list] {
+        click(key + ".species"); click(key + ".species.DestroySpecificEnemyUnit");
+        click(key + ".target"); click(key + ".target." + std::to_string(targetId.value));
+        operation(std::format("widget-payload-{}-create", list), key + ".add", [this, payloadOwner, list, targetId] {
             const auto& created = document_.objective(*payloadOwner)->entries[list];
-            if (created.size() != 4 || std::get<ConditionSpecies>(created.back().species) != ConditionSpecies::elapsed ||
-                document_.find(created.back().section, "Time")->value != Value{Scalar{0.0}})
+            if (created.size() != 4 || std::get<ConditionSpecies>(created.back().species) != ConditionSpecies::destroyUnit ||
+                created.back().reference.status != ReferenceStatus::Resolved || created.back().reference.target != targetId)
                 throw std::runtime_error("objective_condition_creation_widget_wrong");
         });
     }

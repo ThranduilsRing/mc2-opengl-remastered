@@ -66,11 +66,31 @@ def grade_condition_creation(before, after, owner, suffix):
     block = owner + suffix + "3"
     fields = objective_fields(before)
     fields[owner + "/" + count] = ["ul 4"]
-    fields[block + "/" + suffix + "SpeciesString"] = ['st "ElapsedMissionTime"']
-    fields[block + "/Time"] = ["f 0"]
-    if fields != objective_fields(after):
+    fields[block + "/" + suffix + "SpeciesString"] = ['st "DestroySpecificEnemyUnit"']
+    actual = objective_fields(after)
+    coordinates = []
+    for key in ("PositionX", "PositionY"):
+        wire = actual.get(block + "/" + key)
+        if not wire or len(wire) != 1 or not wire[0].startswith("f "):
+            raise ValueError("created specific condition lacks readable XY")
+        coordinates.append(wire[0][2:])
+        fields[block + "/" + key] = wire
+    from run_editor_smoke import fit_fields
+    parts = fit_fields(before)
+    def real(wire):
+        return struct.unpack("<f", struct.pack("<f", float(wire)))[0]
+    x, y = map(real, coordinates)
+    def close(a, b):
+        return max(abs(a), abs(b)) == 0 or abs(a - b) / max(abs(a), abs(b)) < 0.00001
+    matched = [path for path in parts if re.fullmatch(r"Part\d+/PositionX", path)
+               and close(real(parts[path][0][2:]), x)
+               and close(real(parts[path.replace("PositionX", "PositionY")][0][2:]), y)]
+    if len(matched) != 1:
+        raise ValueError("created specific condition is skipped or ambiguous in the game")
+    if fields != actual:
         raise ValueError("condition creation lacks atomic species/payload/count")
-    appended = ("[" + block + "]\r\nst " + suffix + 'SpeciesString = "ElapsedMissionTime"\r\nf Time = 0\r\n').encode()
+    appended = ("[" + block + "]\r\nst " + suffix + 'SpeciesString = "DestroySpecificEnemyUnit"\r\nf PositionX = '
+                + coordinates[0] + "\r\nf PositionY = " + coordinates[1] + "\r\n").encode()
     if after.count(appended) != 1:
         raise ValueError("created condition declaration differs")
     restored = after.replace(appended, b"")

@@ -1449,6 +1449,24 @@ def objective_negative_controls(directory):
             for path, original in zip(resolve_paths, resolved): path.write_bytes(original)
         if not caught:
             raise ValueError("objective missing row/wrong target/no-op resolve was accepted")
+    for listing in (0, 2):
+        paths = [directory / f"widget-payload-{listing}-create-{stage}.fit" for stage in ("edited", "redone")]
+        originals = [path.read_bytes() for path in paths]
+        begin = originals[0].rfind(b"f PositionX = ")
+        end = originals[0].find(b"\r\n", begin)
+        if begin < 0 or end < 0:
+            raise ValueError("specific creation negative control lacks XY")
+        skipped = originals[0][:begin] + b"f PositionX = -1e30" + originals[0][end:]
+        caught = False
+        try:
+            for path in paths: path.write_bytes(skipped)
+            grade_panel("objectives_panel", directory, 0, require_render=rendered)
+        except ValueError:
+            caught = True
+        finally:
+            for path, original in zip(paths, originals): path.write_bytes(original)
+        if not caught:
+            raise ValueError("game-skipped specific condition creation was accepted")
 
 
 def crud_negative_controls(directory):

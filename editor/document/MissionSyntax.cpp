@@ -1,5 +1,5 @@
 #include "MissionDocument.h"
-#include "FitNumeric.h"
+#include "fit_number.h"
 
 #include <algorithm>
 #include <charconv>
@@ -124,7 +124,7 @@ SectionKind sectionKind(std::string_view name)
     if (name == "MissionSettings" || name == "Script" || name == "Music") return SectionKind::settings;
     if (name == "Terrain") return SectionKind::terrain;
     if (name.starts_with("Part")) return SectionKind::entity;
-    if (name.find("Objective") != std::string_view::npos) return SectionKind::objective;
+    if (identifier(name).find("objective") != std::string::npos) return SectionKind::objective;
     if (name.starts_with("Team")) return SectionKind::team;
     if (name.starts_with("Player")) return SectionKind::player;
     if (name.starts_with("Warrior") || name == "Brain") return SectionKind::brain;
@@ -148,12 +148,17 @@ public:
                 const auto start = peek().span.begin;
                 if (section) result_.sections[*section].syntax.end = start;
                 ++cursor_;
-                const auto nameStart = peek().span.begin;
+                auto nameStart = peek().span.begin;
                 if (peek().kind != TokenKind::word) return failure("invalid_block");
                 std::string name = tokens_[cursor_++].value;
                 while (peek().kind == TokenKind::word) { name += ' ' + peek().value; ++cursor_; }
-                if (peek().kind != TokenKind::closeSquare || !topNames_.insert(identifier(name)).second) return failure("invalid_or_duplicate_block");
-                const auto nameEnd = tokens_[cursor_ - 1].span.end;
+                if (peek().kind != TokenKind::closeSquare) return failure("invalid_or_duplicate_block");
+                auto nameEnd = tokens_[cursor_ - 1].span.end;
+                if (sectionKind(name) == SectionKind::objective) {
+                    nameStart = start + 1; nameEnd = peek().span.begin;
+                    name = result_.originalBytes.substr(nameStart, nameEnd - nameStart);
+                }
+                if (!topNames_.insert(sectionKind(name) == SectionKind::objective ? name : identifier(name)).second) return failure("invalid_or_duplicate_block");
                 ++cursor_;
                 section = addSection(name, std::nullopt);
                 result_.sections[*section].syntax.begin = start;
@@ -259,9 +264,9 @@ private:
                     if (const auto* authored = std::get_if<std::int64_t>(&*value); authored &&
                         (*authored < -2147483648LL || *authored > 2147483647LL))
                         field.warning = "outside signed 32-bit range; the game reader overflows or wraps this value";
-                if (prefix == "f") value = Scalar{static_cast<double>(FitNumeric::textToFloat(wire.data()))};
-                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(FitNumeric::textToLong(wire.data()))};
-                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(FitNumeric::textToULong(wire.data())))};
+                if (prefix == "f") value = Scalar{static_cast<double>(mc2::fit::textToFloat(wire.data()))};
+                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(mc2::fit::textToLong(wire.data()))};
+                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(mc2::fit::textToULong(wire.data())))};
                 if (prefix == "f" && !std::isfinite(std::get<double>(*value)))
                     return std::unexpected(LoadError{path, "malformed_value", peek().span.begin});
             }
@@ -269,7 +274,9 @@ private:
                 (identifier(name) == "positionx" || identifier(name) == "positiony" ||
                     identifier(name) == "moverwid" || identifier(name) == "buildingwid" ||
                     identifier(name) == "flagid" || identifier(name) == "flagindex" || identifier(name) == "value" ||
-                    identifier(name).ends_with("speciesstring"))) {
+                    identifier(name).ends_with("speciesstring") ||
+                    identifier(result_.sections[section].name).find("condition") != std::string::npos ||
+                    identifier(result_.sections[section].name).find("action") != std::string::npos)) {
                 // Unreadable reader inputs remain visible, byte-exact syntax.
                 field.opaque = true;
                 value = Scalar{peek().value};

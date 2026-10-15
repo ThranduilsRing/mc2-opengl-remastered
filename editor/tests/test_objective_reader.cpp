@@ -8,6 +8,7 @@
 #include <tuple>
 #include <cmath>
 #include <limits>
+#include <bit>
 
 namespace {
 std::string bytes(const std::filesystem::path& path)
@@ -112,6 +113,89 @@ TEST_CASE("reader/condition fields match decimal saturation hex wrap rounding an
     const auto output = std::filesystem::path("scratch/e6c-payload-reader") /
         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
     std::filesystem::create_directories(output);
+    for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        CommandHistory history(*doc);
+        auto entry = history.addObjectiveCondition(doc->objectives()[1].section, list, spec.species);
+        std::size_t targetIndex{};
+        if (spec.reference) {
+            CHECK_FALSE(entry);
+            const auto before = doc->fitBytes();
+            for (const auto& entity : doc->entities()) {
+                if (entity.exportedPart.has_value() == spec.name.ends_with("Structure")) continue;
+                const auto index = entity.exportedPart ? *entity.exportedPart - 1 : *entity.packetRecord;
+                entry = history.addObjectiveCondition(doc->objectives()[1].section, list, spec.species, entity.id);
+                if (entry) { targetIndex = index; break; }
+                CHECK(doc->fitBytes() == before);
+            }
+        }
+        REQUIRE(entry);
+        const auto block = doc->section(*entry)->name;
+        REQUIRE(doc->save(output / "created", {}));
+        const auto fit = bytes(output / "created.fit");
+        FitIniFile game; REQUIRE(game.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+        const auto owner = doc->section(doc->objectives()[1].section)->name;
+        REQUIRE(game.seekBlock(owner.c_str()) == NO_ERR);
+        unsigned long count{};
+        REQUIRE(game.readIdULong(list == 0 ? "NumConditions" : "NumFailureConditions", count) == NO_ERR);
+        REQUIRE(count > 0);
+        CHECK(block == owner + (list == 0 ? "Condition" : "FailureCondition") + std::to_string(count - 1));
+        REQUIRE(game.seekBlock(block.c_str()) == NO_ERR);
+        const auto name = objective_text::read(game, list == 0 ? "ConditionSpeciesString" : "FailureConditionSpeciesString");
+        REQUIRE(name); CHECK(*name == spec.name);
+        if (name->find("Specific") != name->npos) {
+            float x{}, y{};
+            REQUIRE(game.readIdFloat("PositionX", x) == NO_ERR); REQUIRE(game.readIdFloat("PositionY", y) == NO_ERR);
+            const bool building = name->ends_with("Structure");
+            std::vector<std::tuple<float, float, int>> candidates;
+            if (building) {
+                const auto raw = bytes(output / "created.pak"); const auto span = std::as_bytes(std::span(raw));
+                const auto archive = decodePak({span.begin(), span.end()}); REQUIRE(archive);
+                const auto& data = archive->packets[1].decoded;
+                const auto word = [&](std::size_t offset) {
+                    std::uint32_t value{};
+                    for (unsigned i = 0; i < 4; ++i) value |= std::to_integer<std::uint32_t>(data[offset + i]) << (8 * i);
+                    return value;
+                };
+                for (std::size_t offset = 4; offset + 40 <= data.size(); offset += 40)
+                    candidates.emplace_back(std::bit_cast<float>(word(offset + 4)), std::bit_cast<float>(word(offset + 8)), static_cast<int>(word(offset + 24)));
+            } else {
+                REQUIRE(game.seekBlock("Parts") == NO_ERR); unsigned long count{}; REQUIRE(game.readIdULong("NumParts", count) == NO_ERR);
+                for (unsigned long part = 1; part <= count; ++part) {
+                    REQUIRE(game.seekBlock(("Part" + std::to_string(part)).c_str()) == NO_ERR);
+                    float px{}, py{}; char team{};
+                    REQUIRE(game.readIdFloat("PositionX", px) == NO_ERR); REQUIRE(game.readIdFloat("PositionY", py) == NO_ERR);
+                    REQUIRE(game.readIdChar("TeamID", team) == NO_ERR); candidates.emplace_back(px, py, team);
+                }
+            }
+            const auto matches = [&](float cx, float cy) {
+                std::size_t count{};
+                for (const auto& [px, py, team] : candidates) {
+                    if (!building && ((*name == "GuardSpecificUnit" && team != 0) ||
+                        (name->starts_with("Capture") && team == 0))) continue;
+                    const auto close = [](float a, float b) { const auto scale = std::max(std::abs(a), std::abs(b)); return scale == 0 || std::abs(a - b) / scale < 0.00001; };
+                    count += close(px, cx) && close(py, cy);
+                }
+                return count;
+            };
+            REQUIRE(targetIndex < candidates.size());
+            CHECK(x == std::get<0>(candidates[targetIndex])); CHECK(y == std::get<1>(candidates[targetIndex]));
+            CHECK(matches(x, y) == 1); CHECK(matches(-7654321, -8765432) == 0);
+        } else if (name->find("NumberOf") != name->npos) {
+            unsigned long count{}; REQUIRE(game.readIdULong("Num", count) == NO_ERR); CHECK(count == 0);
+        } else if (*name == "ElapsedMissionTime") {
+            float time{}; REQUIRE(game.readIdFloat("Time", time) == NO_ERR); CHECK(time == 0);
+            for (const double number : {0.1, 2.3, 1234.56, 1e-50}) {
+                REQUIRE(history.setObjectivePayload(*entry, "Time", number));
+                REQUIRE(doc->save(output / "decimal", {}));
+                FitIniFile decimal; REQUIRE(decimal.open((output / "decimal.fit").string().c_str()) == NO_ERR);
+                REQUIRE(decimal.seekBlock(block.c_str()) == NO_ERR);
+                REQUIRE(decimal.readIdFloat("Time", time) == NO_ERR); CHECK(time == static_cast<float>(number));
+            }
+        } else if (name->starts_with("Move")) {
+            for (const auto key : {"TargetCenterX", "TargetCenterY", "TargetRadius"}) { float number{}; REQUIRE(game.readIdFloat(key, number) == NO_ERR); CHECK(number == 0); }
+        } else CHECK(name->ends_with("AllEnemyUnits"));
+    }
     for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
         if (spec.reference) continue;
         auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);

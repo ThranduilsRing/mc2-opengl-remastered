@@ -77,6 +77,7 @@ private:
     bool showObjectiveEntries_{};
     std::size_t objectiveList_{};
     int conditionCreation_{};
+    std::optional<document::EntityId> conditionTarget_;
     std::array<document::Scalar, 3> payloadDraft_{};
     std::vector<document::CatalogSource> placementSources_;
     std::string module_, status_;
