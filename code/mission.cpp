@@ -20,9 +20,13 @@ struct MissionOrderAccess {
     Mission& owner;
     MoverPtr resolve(mc2::sim::ObjectRef ref) const { return owner.resolveOrderRecipient(ref); }
     float simulationTime() const { return scenarioTime; }
+    void installed(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const {
+        owner.recordAuthoredInstallation(e, ref);
+    }
 };
 using MissionOrderApplication = mc2::sim::MoverOrderApplication<::TacticalOrder, MissionOrderAccess>;
 static_assert(TACTICAL_ORDER_NONE == 0 && TACTICAL_ORDER_STOP == 11 && TACTICAL_ORDER_MOVETO_POINT == 2);
+static_assert(TACTICAL_ORDER_TRAVERSE_PATH == 6 && TACTICAL_ORDER_PATROL_PATH == 7);
 static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
 static_assert(ORDERSTATE_GENERAL == 0 && ORDERSTATE_PLAYER == 1);
 
@@ -46,10 +50,19 @@ bool checkOrderFixture(const char*, std::string& data, std::string& error) {
     data = "{}";
     return true;
 }
+bool authoredOrderEvidence(const char*, std::string& data, std::string& error) {
+    if (!mission) { error = "mission unavailable"; return false; }
+    data = mission->authoredRouteEvidence();
+    return true;
+}
 }
 
 void Mission::resetOrderIngress() {
     orderRecipients.clear();
+    authoredMissionText.clear();
+    authoredOpordPilots.clear();
+    authoredRoutes.clear();
+    authoredDiagnostics.clear();
     orderFixtureReceipt.reset();
     orderFixtureApplied = false;
     orderFixtureSubmitted = orderFixtureCompleted = 0;
@@ -67,8 +80,73 @@ void Mission::bindOrderRecipients() {
     }
     gos_dev_shell::registerCommand("order_ingress_fixture_submit", submitOrderFixture);
     gos_dev_shell::registerCommand("order_ingress_fixture_check", checkOrderFixture);
+    gos_dev_shell::registerCommand("authored_order_evidence", authoredOrderEvidence);
     if (mc2::gate::get<"MC2_DEV_SHELL">())
         mc2::fmt::print_err("[ORDER_INGRESS_FIXTURE v1] event=registered recipients={}\n", orderRecipients.size());
+}
+void Mission::admitAuthoredRoutes() {
+    using namespace mc2::sim;
+    for (auto& route : authoredRoutes) {
+        const auto ref = orderRecipient(route.originalPart);
+        auto* mover = ref ? resolveOrderRecipient(*ref) : nullptr;
+        if (!mover || mover->getCommanderId() < 0 || route.pilot >= MAX_WARRIORS ||
+            mover->getPilot() != MechWarrior::warriorList[route.pilot]) {
+            diagnoseAuthoredRoute(route.originalPart, route.selectedPart, route.pilot, "Rejected", "recipient");
+            route.diagnosed = true;
+            continue;
+        }
+        OrderEnvelope envelope;
+        envelope.sourceId = 1;
+        envelope.sequence = orderIngress.queue().sources().front().nextSequence;
+        envelope.issuer = CommanderId{static_cast<std::uint32_t>(mover->getCommanderId())};
+        envelope.recipients = {*ref};
+        envelope.payload.orderId = route.originalPart;
+        envelope.payload.origin = OrderOrigin::Commander;
+        envelope.payload.kind = route.kind;
+        envelope.payload.move.emplace();
+        envelope.payload.move->wayPath = route.path;
+        const auto receipt = submitMissionOrder(orderSession(), std::move(envelope));
+        if (receipt) route.receiptId = receipt->receiptId;
+        else {
+            diagnoseAuthoredRoute(route.originalPart, route.selectedPart, route.pilot, "Rejected", "admission");
+            route.diagnosed = true;
+        }
+    }
+}
+void Mission::recordAuthoredInstallation(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) {
+    for (auto& route : authoredRoutes) {
+        if (!route.receiptId || route.installed || route.diagnosed || route.originalPart != e.payload.orderId ||
+            e.sourceId != 1 || orderRecipient(route.originalPart) != ref) continue;
+        auto* mover = resolveOrderRecipient(ref);
+        // Installation evidence must precede ABL's next general-slot replacement.
+        if (!mover || route.pilot >= MAX_WARRIORS || mover->getPilot() != MechWarrior::warriorList[route.pilot]) continue;
+        route.installed = true;
+        mc2::fmt::print_err("[AUTHORED_ORDER v1] status=Installed original={} selected={} pilot={} stance={} points={}\n",
+            route.originalPart, route.selectedPart, route.pilot, route.stance, route.path.points.size());
+    }
+}
+std::string Mission::authoredRouteEvidence() const {
+    std::string result = "{\"installations\":[";
+    bool first = true;
+    for (const auto& route : authoredRoutes) {
+        if (!route.installed) continue;
+        if (!first) result += ',';
+        first = false;
+        result += std::format("{{\"status\":\"Installed\",\"original\":{},\"selected\":{},\"pilot\":{},\"stance\":{},\"kind\":{},\"points\":[",
+            route.originalPart, route.selectedPart, route.pilot, route.stance, static_cast<unsigned>(route.kind));
+        for (std::size_t i = 0; i < route.path.points.size(); ++i) {
+            if (i) result += ',';
+            const auto& p = route.path.points[i];
+            result += std::format("[{},{},{},{}]", p.x, p.y, p.z, static_cast<unsigned>(route.path.mode[i]));
+        }
+        result += "]}";
+    }
+    result += "],\"diagnostics\":[";
+    for (std::size_t i = 0; i < authoredDiagnostics.size(); ++i) {
+        if (i) result += ',';
+        result += authoredDiagnostics[i];
+    }
+    return result + "]}";
 }
 MoverPtr Mission::resolveOrderRecipient(mc2::sim::ObjectRef ref) {
     if (!ref.slot || ref.slot > orderRecipients.size()) return nullptr;
@@ -98,7 +176,7 @@ void Mission::completeOrderSimulationTick() {
         mc2::fmt::print_err("[ORDER_INGRESS v1] completion_error={}\n", static_cast<int>(result.error()));
         return;
     }
-    // The mission content consumer records rejection once, then releases its completed receipts.
+    // Mission content owns rejection reporting and completed-receipt retirement.
     auto& queue = orderIngress.queue();
     bool fixtureCompletedThisTick = false;
     for (const auto& receipt : queue.receipts()) {
@@ -112,7 +190,12 @@ void Mission::completeOrderSimulationTick() {
             ++orderFixtureCompleted;
             fixtureCompletedThisTick = true;
         }
-        if (receipt.applicationStatus != mc2::sim::ApplicationStatus::Applied)
+        auto authored = std::ranges::find(authoredRoutes, std::optional{receipt.receiptId}, &mc2::sim::AuthoredRoute::receiptId);
+        if (authored != authoredRoutes.end() && receipt.applicationStatus != mc2::sim::ApplicationStatus::Installed && !authored->diagnosed) {
+            diagnoseAuthoredRoute(authored->originalPart, authored->selectedPart, authored->pilot, "Rejected", "installation");
+            authored->diagnosed = true;
+        }
+        if (authored == authoredRoutes.end() && receipt.applicationStatus != mc2::sim::ApplicationStatus::Applied)
             mc2::fmt::print_err("[ORDER_INGRESS v1] rejected source={} sequence={} reason={}\n",
                 receipt.sourceId, receipt.sequence, receipt.results.empty() ? 0 : receipt.results.front().reasonCode);
         const auto acknowledged = orderIngress.acknowledge({orderIngress.session(), receipt.receiptId});

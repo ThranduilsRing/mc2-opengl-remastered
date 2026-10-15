@@ -228,6 +228,29 @@
    "count": 1
   },
   {
+   "tag": "AUTHORED_ORDER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "level"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "AUTHORED_ORDER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "status",
+    "original",
+    "selected",
+    "pilot",
+    "stance",
+    "points"
+   ],
+   "count": 1
+  },
+  {
    "tag": "B2",
    "ver": -1,
    "stream": "stderr",

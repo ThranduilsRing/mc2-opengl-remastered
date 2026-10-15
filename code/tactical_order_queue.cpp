@@ -2,10 +2,98 @@
 
 #include <algorithm>
 #include <atomic>
+#include <charconv>
+#include <cmath>
+#include <map>
 #include <stdexcept>
 #include <tuple>
 
 namespace mc2::sim {
+std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
+    std::string_view text, std::uint32_t original, std::uint32_t selected,
+    std::uint32_t pilot, float mapSide) {
+    const auto trim = [](std::string_view s) {
+        const auto first = s.find_first_not_of(" \t\r\n");
+        return first == s.npos ? std::string_view{} : s.substr(first, s.find_last_not_of(" \t\r\n") - first + 1);
+    };
+    const auto lower = [](std::string_view s) {
+        std::string result(s);
+        for (auto& c : result) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
+        return result;
+    };
+    struct Field { std::string type, value; };
+    std::map<std::string, Field> fields;
+    bool inPart = false, seenPart = false;
+    const auto wanted = "part" + std::to_string(selected);
+    while (!text.empty()) {
+        const auto end = text.find('\n');
+        auto line = trim(text.substr(0, end));
+        text = end == text.npos ? std::string_view{} : text.substr(end + 1);
+        const auto comment = std::min(line.find("//"), line.find(';'));
+        line = trim(line.substr(0, comment));
+        if (line.empty()) continue;
+        if (line.front() == '[') {
+            inPart = lower(line) == "[" + wanted + "]";
+            if (inPart && seenPart) return std::unexpected("duplicate_part");
+            seenPart |= inPart;
+            continue;
+        }
+        if (!inPart) continue;
+        const auto head = trim(line.substr(0, line.find('=')));
+        const auto first = lower(head.substr(0, head.find_first_of(" \t")));
+        if (first.starts_with("order") || first.starts_with("waypoint"))
+            return std::unexpected("missing_type");
+        const auto space = line.find_first_of(" \t");
+        const auto type = lower(line.substr(0, space));
+        auto rest = space == line.npos ? line : trim(line.substr(space));
+        const auto equal = rest.find('=');
+        const auto key = lower(trim(rest.substr(0, equal)));
+        if (!key.starts_with("order") && !key.starts_with("waypoint")) continue;
+        if (equal == rest.npos) return std::unexpected("missing_value");
+        if (!fields.emplace(key, Field{type, std::string(trim(rest.substr(equal + 1)))}).second)
+            return std::unexpected("duplicate_key");
+    }
+    if (fields.empty()) return std::optional<AuthoredRoute>{};
+    const auto number = [&]<class T>(const std::string& key, std::string_view type, T& value) {
+        const auto it = fields.find(key);
+        if (it == fields.end() || it->second.type != type) return false;
+        const auto& s = it->second.value;
+        const auto r = std::from_chars(s.data(), s.data() + s.size(), value);
+        return r.ec == std::errc{} && r.ptr == s.data() + s.size();
+    };
+    int editorId = -1, stance = -1, count = -1;
+    if (!number("ordertype", "l", editorId) || editorId < 0 || editorId > 2)
+        return std::unexpected("order_type");
+    if (!number("orderstance", "l", stance) || stance < 0 || stance > 5)
+        return std::unexpected("stance");
+    if (!number("waypointcount", "ul", count) || count < (editorId ? 1 : 0) || count > (editorId ? 8 : 0))
+        return std::unexpected("point_count");
+    AuthoredRoute route;
+    route.originalPart = original; route.selectedPart = selected; route.pilot = pilot;
+    route.stance = static_cast<std::uint32_t>(stance);
+    // Editor IDs are content tags, distinct from the TacticalOrder queue tags.
+    switch (editorId) {
+    case 0: route.kind = OrderKind::None; break;
+    case 1: route.kind = OrderKind::TraversePath; break;
+    case 2: route.kind = OrderKind::PatrolPath; break;
+    }
+    if (fields.size() != 3 + static_cast<std::size_t>(count) * 3)
+        return std::unexpected("stray_key");
+    for (int i = 0; i < count; ++i) {
+        save::Vec3 point;
+        const auto prefix = "waypoint" + std::to_string(i);
+        if (!number(prefix + "x", "f", point.x) || !number(prefix + "y", "f", point.y) ||
+            !number(prefix + "z", "f", point.z) || !std::isfinite(point.x) ||
+            !std::isfinite(point.y) || !std::isfinite(point.z)) return std::unexpected("point");
+        // Terrain's coordinate domain excludes its outer edges; elevation is finite, not planar-bounded.
+        if (!std::isfinite(mapSide) || mapSide <= 0 || !(point.x > -mapSide / 2 && point.x < mapSide / 2 &&
+            point.y > -mapSide / 2 && point.y < mapSide / 2)) return std::unexpected("out_of_map");
+        route.path.points.push_back(point);
+        route.path.mode.push_back(TravelMode::Slow);
+    }
+    return std::optional<AuthoredRoute>{std::move(route)};
+}
+
 namespace {
 bool supportKind(OrderKind kind) { return kind >= OrderKind::Airstrike && kind <= OrderKind::MissionControl; }
 bool moveKind(OrderKind kind) {
@@ -377,7 +465,7 @@ bool TacticalOrderQueue::restore(std::span<const std::uint8_t> bytes, Tick compl
 
 MissionOrderIngress::MissionOrderIngress() { reset(); }
 void MissionOrderIngress::reset() {
-    // This non-owning process counter prevents old tokens aliasing a new Mission at the same address.
+    // Session IDs prevent stale-token aliasing when a Mission address is reused.
     static std::atomic<std::uint64_t> nextSession{1};
     auto next = nextSession.load(std::memory_order_relaxed);
     do {

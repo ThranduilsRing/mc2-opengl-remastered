@@ -366,7 +366,7 @@ set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_pla
     PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_sources(mc2_tests PRIVATE
-    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp
+    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )

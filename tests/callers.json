@@ -34,6 +34,13 @@
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args, find_cmake  # noqa: E402"
+        },
+        {
+          "path": "tools/build_contract_harnesses.py",
+          "line": 115,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "from bootstrap_worktree_build import cache_args"
         }
       ]
     },
@@ -2697,7 +2704,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 17,
+          "line": 16,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -2858,7 +2865,7 @@
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
-          "line": 18,
+          "line": 17,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3856,7 +3863,14 @@
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
-          "line": 98,
+          "line": 177,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
+        },
+        {
+          "path": "tools/mission_order_ingress_witness.py",
+          "line": 274,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
@@ -6846,7 +6860,7 @@
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
-          "line": 19,
+          "line": 18,
           "evidence": "import",
           "reference": "mc2_cmd",
           "text": "from mc2_cmd import send_command"

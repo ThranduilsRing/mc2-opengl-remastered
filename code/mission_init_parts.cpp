@@ -2,6 +2,15 @@
 #include "mission_init_frame.h"
 #include "mc2fmt.h"
 
+void Mission::diagnoseAuthoredRoute(std::uint32_t original, std::uint32_t selected, std::uint32_t pilot,
+    std::string_view status, std::string_view reason) {
+    auto diagnostic = std::format("{{\"status\":\"{}\",\"original\":{},\"selected\":{},\"pilot\":{},\"reason\":\"{}\"}}",
+        status, original, selected, pilot, reason);
+    authoredDiagnostics.push_back(diagnostic);
+    // Loader/admission failures have no receipt; application rejection is reported by the same owner.
+    mc2::fmt::print_err("[AUTHORED_ORDER v1] level={} {}\n", status == "Suppressed" ? "info" : "error", diagnostic);
+}
+
 // Read the parts block header.
 void Mission::initPartsHeader(MissionInitFrame& f) {
 	auto& result = f.result;
@@ -130,6 +139,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 
 		for (int i = 1; i < long(numParts + 1); i++)
 		{
+			long selectedPartId = i;
 			char partName[12];
 			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 
@@ -173,6 +183,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot (alternate)", partName);
 
 				mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(partId));
+				selectedPartId = partId;
 				result = missionFile->seekBlock(partName);
 				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 				MC2_VERIFY(result == NO_ERR, "Mission::init: alternate part block [%s] missing", partName);
@@ -215,6 +226,16 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 				result = missionFile->readIdULong("Pilot", parts[i].pilot);
 				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot", partName);
+			}
+
+			const auto route = mc2::sim::readAuthoredRoute(authoredMissionText, static_cast<std::uint32_t>(i),
+				static_cast<std::uint32_t>(selectedPartId), static_cast<std::uint32_t>(parts[i].pilot), Terrain::worldUnitsMapSide);
+			if (!route)
+				diagnoseAuthoredRoute(i, selectedPartId, parts[i].pilot, "Rejected", route.error());
+			else if (*route && (*route)->kind != mc2::sim::OrderKind::None) {
+				if (std::ranges::find(authoredOpordPilots, (*route)->pilot) != authoredOpordPilots.end())
+					diagnoseAuthoredRoute(i, selectedPartId, parts[i].pilot, "Suppressed", "enhanced_opord");
+				else authoredRoutes.push_back(**route);
 			}
 
 			result = missionFile->readIdFloat("PositionX",parts[i].position.x);

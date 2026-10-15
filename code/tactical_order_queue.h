@@ -3,6 +3,7 @@
 #include "save_archive.h"
 
 #include <expected>
+#include <string_view>
 
 namespace mc2::sim {
 using save::Archive;
@@ -85,6 +86,19 @@ struct TacMoveParams {
     }
     bool operator==(const TacMoveParams&) const = default;
 };
+
+// Part identity and stance outlive the application receipt; legacy orders have no stance field.
+struct AuthoredRoute {
+    std::uint32_t originalPart = 0, selectedPart = 0, pilot = 0, stance = 2;
+    OrderKind kind = OrderKind::None;
+    WayPath path;
+    std::optional<std::uint64_t> receiptId;
+    bool installed = false, diagnosed = false;
+};
+// The caller owns the single diagnostic. A failed parse publishes no partial route.
+std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
+    std::string_view missionText, std::uint32_t originalPart, std::uint32_t selectedPart,
+    std::uint32_t preservedPilot, float mapSide);
 struct TacAttackParams {
     AttackType type = AttackType::Destroy;
     AttackMethod method = AttackMethod::Ranged;
@@ -215,7 +229,8 @@ struct OrderEnvelope {
     bool operator==(const OrderEnvelope&) const = default;
 };
 enum class AdmissionStatus : std::uint32_t { Accepted = 1 };
-enum class ApplicationStatus : std::uint32_t { Pending = 0, Applied = 1, Rejected = 2, Partial = 3 };
+// Applied preserves the Installed wire value; neither means movement completion.
+enum class ApplicationStatus : std::uint32_t { Pending = 0, Installed = 1, Applied = Installed, Rejected = 2, Partial = 3 };
 enum class RecipientStatus : std::uint32_t { Applied = 1, Rejected = 2 };
 struct ApplicationOutcome {
     RecipientStatus result = RecipientStatus::Applied;
