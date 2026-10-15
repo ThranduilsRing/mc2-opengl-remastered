@@ -247,10 +247,6 @@ struct ShadowIsland : mc2vk::IslandState {
     // The casters staged for this frame (the same set feeds every pass), sorted by type into runs of one draw each.
     const void* stagedInstances = nullptr;
     uint32_t    stagedInstanceCount = 0;
-    // The map's buildings, cast into every pass with the frame's props. GL renders them only into its world-fixed static map; here they join the cascades so
-    // terrain, mechs and props receive building shadows from a VK producer. Set once per map from the registry (visibility-independent), cleared at the map boundary.
-    std::vector<GpuStaticPropInstance> buildingCasters;
-    std::vector<GpuStaticPropInstance> stageScratch;   // props + buildings of the frame, reused
     std::vector<InstRun> instRuns;
     // Foliage and fence casters. Per packet of the shared geometry: the layer of the colour island's alpha-ON array that the packet's colour-pass fragments sample,
     // and the UV sub-region scale (layer < 0: an opaque packet). Built once per map from the colour island's material feed; the array view is re-bound whenever the
@@ -1066,23 +1062,16 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
         if (!logged) { logged = true; vlog("a second caster set in one frame is not staged (the passes of a frame share one)."); }
         return false;
     }
-    if (instanceCount == 0 && s->buildingCasters.empty()) {
+    if (instanceCount == 0) {
         s->instRuns.clear();
         s->stagedInstances = instances;
         s->stagedInstanceCount = 0;
         return true;
     }
     ZoneScopedN("VKIsl.Shadow.Feed");
-    const uint32_t propCount = instanceCount;
-    if (!s->buildingCasters.empty()) {
-        const GpuStaticPropInstance* props = static_cast<const GpuStaticPropInstance*>(instances);
-        s->stageScratch.assign(props, props + propCount);
-        s->stageScratch.insert(s->stageScratch.end(), s->buildingCasters.begin(), s->buildingCasters.end());
-        instanceCount = static_cast<uint32_t>(s->stageScratch.size());
-    }
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     if (!ensure_inst_capacity(s, s->parity, instBytes)) { s->disabled = true; return false; }
-    const GpuStaticPropInstance* insts = s->buildingCasters.empty() ? static_cast<const GpuStaticPropInstance*>(instances) : s->stageScratch.data();
+    const GpuStaticPropInstance* insts = static_cast<const GpuStaticPropInstance*>(instances);
     std::vector<uint32_t> order(instanceCount);
     for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
     std::sort(order.begin(), order.end(), [insts](uint32_t a, uint32_t b) { return insts[a].typeID < insts[b].typeID; });
@@ -1100,7 +1089,7 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
         i = j;
     }
     s->stagedInstances = instances;
-    s->stagedInstanceCount = propCount;
+    s->stagedInstanceCount = instanceCount;
     g_health.instRecords = instanceCount;
     g_health.typeRuns = s->instRuns.size();
     return true;
@@ -1528,18 +1517,7 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
     ShadowIsland* parked = parkedIsland();
     if (!parked) return;
     release_geometry(parked);
-    parked->buildingCasters.clear();
     vlog("caster geometry invalidated (map boundary).");
-}
-
-// The map's building casters, copied (the caller's vector is local to the static-map build). A malformed set (null data with a count) is refused with a log line.
-extern "C" void mc2_vk_shadow_island_set_building_casters(const void* instances, unsigned int count) {
-    ShadowIsland* s = parkedIsland();
-    if (!s) return;
-    if (count != 0 && instances == nullptr) { vlog("building caster set refused: count=%u with no data.", count); return; }
-    const GpuStaticPropInstance* b = static_cast<const GpuStaticPropInstance*>(instances);
-    s->buildingCasters.assign(b, b + count);
-    vlog("building casters for this map: %u.", count);
 }
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
