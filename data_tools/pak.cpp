@@ -25,12 +25,11 @@ int unpack(const char* pak_file, const char* out_path)
     if(!pak_file || !out_path)
         return -1;
 
-    PacketFile* pakFile = new PacketFile;
-    int result = pakFile->open(pak_file, READ, 50, true); // do not lower name
+    PacketFile pakFile;
+    int result = pakFile.open(pak_file, READ, 50, true); // do not lower name
 
 	if (NO_ERR != result) {
         PAUSE(("Error opening packet file\n"));
-        delete pakFile;
 		return -1;
 	}
 
@@ -40,12 +39,12 @@ int unpack(const char* pak_file, const char* out_path)
 	MemoryPtr packet_buffer = NULL;
 	size_t packet_buffer_len = 0;
 
-    const int num_packets = pakFile->getNumPackets();
+    const int num_packets = pakFile.getNumPackets();
 
     for(int i=0; i<num_packets;++i) {
-        if(NO_ERR == pakFile->seekPacket(i)) {
-            const int messageSize = pakFile->getPacketSize();
-            int storage_type = pakFile->getStorageType();
+        if(NO_ERR == pakFile.seekPacket(i)) {
+            const int messageSize = pakFile.getPacketSize();
+            int storage_type = pakFile.getStorageType();
             if(!packet_buffer || packet_buffer_len<messageSize) {
                 if(packet_buffer)
                     delete[] packet_buffer;
@@ -53,7 +52,7 @@ int unpack(const char* pak_file, const char* out_path)
                 packet_buffer_len = messageSize;
             }
 
-            pakFile->readPacket(i, packet_buffer);
+            pakFile.readPacket(i, packet_buffer);
 
 			char fname[1024];
             S_snprintf(fname, 1024, "%s" PATH_SEPARATOR "packet_%d", out_path, i);
@@ -78,9 +77,9 @@ int pack(const char* pak_file, const char* rsp_file, bool b_compress) {
 	if (!pak_file || !rsp_file)
 		return -1;
 
-	PacketFile* pakFile = new PacketFile;
+	PacketFile pakFile;
 
-	if (NO_ERR != pakFile->create(pak_file)) {
+	if (NO_ERR != pakFile.create(pak_file)) {
 		SPEW(("pack: ", "Failed to create new pack file %s\n", pak_file));
 		return -1;
 	}
@@ -168,7 +167,7 @@ int pack(const char* pak_file, const char* rsp_file, bool b_compress) {
 		}
 	}
 
-	pakFile->reserve((unsigned int)files2pack.size());
+	pakFile.reserve((unsigned int)files2pack.size());
 
     int i=0;
 	while(!files2pack.empty()) {
@@ -210,26 +209,25 @@ int pack(const char* pak_file, const char* rsp_file, bool b_compress) {
 				assert(len == num_read);
 				fclose(fh);
 
-				pakFile->writePacket(packet++, packet_buffer, len, storage_type);
+				pakFile.writePacket(packet++, packet_buffer, len, storage_type);
 			}
 		} else {
             
             if(fpath && !gos_FileExists(fpath)) {
                 SPEW(("DBG", "File %s does not exists though present in .rsp file, will be insluded as NULL packet instead\n", fpath));
             }
-			pakFile->writePacket(packet++, nullptr, 0, STORAGE_TYPE_NUL);
+			pakFile.writePacket(packet++, nullptr, 0, STORAGE_TYPE_NUL);
 		}
 
         i++;
 	}
 
-    pakFile->close();
+    pakFile.close();
 
     delete[] chunk;
     delete[] packet_buffer;
 	delete[] record;
 
-    delete pakFile;
 
     return 0;
 }

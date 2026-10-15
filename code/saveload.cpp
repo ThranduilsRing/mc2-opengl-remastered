@@ -590,7 +590,7 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 
 // Open gamesys.fit and read the weapon ranges and the general visual / sensor settings.
 void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
-	auto& result = f.result; auto& gameSystemFile = f.gameSystemFile; auto& forestMoveCost = f.forestMoveCost;
+	auto& result = f.result; FitIniFile* const gameSystemFile = &f.gameSystemFile; auto& forestMoveCost = f.forestMoveCost;
 	//--------------------------------------------------------------
 	// Start the Mission Heap
 	missionHeap = new UserHeap;
@@ -603,9 +603,6 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 	FullPathFileName fullGameSystemName;
 	fullGameSystemName.init(missionPath, "gamesys", ".fit");
 	
-	gameSystemFile = new FitIniFile;
-	gosASSERT(gameSystemFile != NULL);
-		
 	result = gameSystemFile->open(fullGameSystemName);
 	gosASSERT(result == NO_ERR);
 
@@ -672,7 +669,7 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 
 // Read the component list, the god-mode / footprint flags and the mover game-system blocks.
 void Mission::loadGameSystemGeneral(MissionLoadFrame& f) {
-	auto& result = f.result; auto& gameSystemFile = f.gameSystemFile;
+	auto& result = f.result; FitIniFile* const gameSystemFile = &f.gameSystemFile;
 	//----------------------------------------------------------------------
 	// Now that we have some base values, load the master component table...
 	if (!MasterComponent::masterList) {
@@ -737,7 +734,7 @@ void Mission::loadGameSystemGeneral(MissionLoadFrame& f) {
 
 // Read the mine, smoke and fire settings.
 void Mission::loadGameSystemHazards(MissionLoadFrame& f) {
-	auto& result = f.result; auto& gameSystemFile = f.gameSystemFile;
+	auto& result = f.result; FitIniFile* const gameSystemFile = &f.gameSystemFile;
 	result = gameSystemFile->seekBlock("Mine");
 	gosASSERT(result == NO_ERR);
 

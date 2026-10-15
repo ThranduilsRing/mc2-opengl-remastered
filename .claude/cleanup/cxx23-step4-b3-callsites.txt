@@ -1,30 +1,27 @@
 # Step 4 B3 file-and-stream ownership sites from a [[deprecated("B3")]] build (tests/analyze/file_callsites.py); a batch commit removes its rows.
-# total 41 sites in 23 files
+# total 35 sites in 21 files
 # per kind:
 #      18  FitIniFile::open
-#       7  File::operator delete
-#       7  File::operator new
+#       4  File::operator delete
+#       4  File::operator new
 #       4  ABLFile::operator delete
 #       4  ABLFile::operator new
 #       1  File::readRAW
 # per batch (cxx23-step4-b3-files.json):
 #       2  B3.3 (done)
-#       7  B3.4
+#       5  B3.4
 #       8  B3.5
-#       4  B3.6
 #       1  B4 (heap-routed raw read, handed over)
 #       5  E-B3
 #      14  KEEP-child
 # sites in files the batch table does NOT list: 0 in 0 files
 # per file:
 #       4  code/mission_init.cpp
-#       4  data_tools/pak.cpp
 #       4  editor/Editor.cpp
 #       4  mclib/ablenv.cpp
 #       4  mclib/ablscan.cpp
 #       2  code/carnage.cpp
 #       2  code/mission_movers.cpp
-#       2  code/saveload.cpp
 #       1  code/artlry.cpp
 #       1  code/bldng.cpp
 #       1  code/gate.cpp
@@ -53,24 +50,15 @@
 # blob c45f805f4979bda5847106e091676241140cffeb code/mission_init.cpp
 # blob 236c9c677b163b1aa7d4071b52f5d0f3abd2c98a code/mission_movers.cpp
 # blob 46dfdac24e5140e095f7a6d3a1ccdc8081592686 code/objtype.cpp
-# blob 3aa123071e983dd6dc38bcbdac515eb631e961fd code/saveload.cpp
 # blob 8ae3848ceb0a4fa6f8de23525fc74454df18a517 code/terrobj.cpp
 # blob f0c438262204978b6dab3820e542000f0f603fd1 code/turret.cpp
 # blob 4738675ca85caa3dcf34a6bee10ef0f93ba2b239 code/weaponbolt.cpp
-# blob fb7ae2583aed04870cbb5578b7e78e72a2d17a30 data_tools/pak.cpp
 # blob 67f0795dff2cd52b0732230e31207e63789b847d editor/Editor.cpp
 # blob 5995a7b6cc76234e77b9305930ae42f517724fe0 editor/EditorObjectMgr.cpp
 # blob 32fd2481902c848fbe9c1843ab488758ddb4578e mclib/ablenv.cpp
 # blob 9c063d1bd4a479a67d4e06ccd06acf80f7deeb19 mclib/ablscan.cpp
 # blob e2f6238cdb7e9ad805b1271f9b5e9e393098b86e mclib/txmmgr_texture.cpp
-# mentions inside inactive #if branches (grep, the compiler cannot see them): 7
-#   mclib/mech3d_update.cpp:16 (branch opened at 13): logFile = new File;
-#   mclib/move_movemap_escape.cpp:211 (branch opened at 209): File* pathDebugFile = new File;
-#   mclib/move_movemap_escape.cpp:232 (branch opened at 228): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:300 (branch opened at 298): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:324 (branch opened at 322): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:686 (branch opened at 684): File* pathDebugFile = new File;
-#   mclib/move_movemap_path.cpp:710 (branch opened at 708): File* pathDebugFile = new File;
+# mentions inside inactive #if branches (grep, the compiler cannot see them): 0
 # file:line:kind
 code/artlry.cpp:393:FitIniFile::open
 code/bldng.cpp:177:FitIniFile::open
@@ -90,15 +78,9 @@ code/mission_init.cpp:420:File::operator new
 code/mission_movers.cpp:54:FitIniFile::open
 code/mission_movers.cpp:279:FitIniFile::open
 code/objtype.cpp:363:FitIniFile::open
-code/saveload.cpp:606:File::operator delete
-code/saveload.cpp:606:File::operator new
 code/terrobj.cpp:390:FitIniFile::open
 code/turret.cpp:137:FitIniFile::open
 code/weaponbolt.cpp:52:FitIniFile::open
-data_tools/pak.cpp:28:File::operator delete
-data_tools/pak.cpp:28:File::operator new
-data_tools/pak.cpp:81:File::operator delete
-data_tools/pak.cpp:81:File::operator new
 editor/Editor.cpp:368:File::operator delete
 editor/Editor.cpp:368:File::operator new
 editor/Editor.cpp:548:File::operator delete
