@@ -17,17 +17,11 @@
 //     shaders/vulkan/shoreline.frag, VERBATIM port of shaders/shoreline.frag
 //     (+ the noise.hglsl fbm it #includes; pairs shorelineNoise/shorelineMain).
 //
-// SCREEN-SHADOW (the third pass the ladder row names) is NOT ported in this
-// slice — honest skip, documented in the ladder: shadow_screen.frag's dominant
-// inputs are the GL-produced CSM cascade 2D_ARRAY + full-map cascade, which
-// have NO zero-copy VK producer today (the terrain island imports the array via
-// per-frame glGetTexImage — a documented cost). A native screen-shadow port
-// would ADD that per-frame CPU readback tax to the tail, inverting the rung's
-// purpose. It stays GL until ladder rung 2 (VK shadow ownership) makes the
-// cascades VK-produced.
+// SCREEN-SHADOW (the third pass) is the receiver of the VK cascades: its inputs are the CSM cascade array and the full-map cascade the shadow island
+// produces (shaders/vulkan/screen_shadow_csm.frag), so it samples them with no GL round trip. It shades the object pixels the producing shaders do not
+// shade themselves (mech bodies in the shadows of the casters, props with the PropShadowReceive option); a frame whose cascades are not ready declines.
 //
-// GATES: master MC2_VK_POST_SCREENFX (explicit OPT-IN: an Exact1 row, only "1" arms it,
-// default-OFF; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER). Per-pass bisect sub-gates MC2_VK_POST_SCREENFX_CLOUD /
+// GATES: master MC2_VK_POST_SCREENFX (a kill switch, on under the VK umbrella; =0 turns the VK passes off). Per-pass bisect sub-gates MC2_VK_POST_SCREENFX_CLOUD /
 // MC2_VK_POST_SCREENFX_SHORELINE: explicit 0 forces that pass back to GL,
 // unset/1 follows the master. Each pass additionally runs ONLY when its GL
 // body would run (cloud: enableCloudShadow_+sceneHasTerrain_+prog valid;
@@ -664,21 +658,21 @@ void gosPostProcess::VkPostScreenFxDeleter::operator()(VkPostScreenFx* s) const 
 }
 
 // ---------------------------------------------------------------------------
-// vkPostScreenFxNativeEnabled(): explicit OPT-IN, default-OFF (an Exact1 row: only "1"
-// arms it; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER). Gate name per the rung-8 ladder: MC2_VK_POST_SCREENFX. Per-pass bisect
-// sub-gates resolved here too (explicit 0 forces that pass to GL).
+// vkPostScreenFxNativeEnabled(): on under the VK umbrella (MC2_VK_POST_SCREENFX is its kill switch; with the umbrella off the GL passes run untouched).
+// The per-pass sub-gates are resolved here too: the screen shadow is the receiver of the cascades (mech bodies in the shadows of the casters), and the
+// cloud and shoreline passes run only where the GL passes would.
 // ---------------------------------------------------------------------------
 bool gosPostProcess::vkPostScreenFxNativeEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_POST_SCREENFX">() ? 1 : 0;
+        state = (mc2::gate::get<"MC2_VK_POST_SCREENFX">() && mc2vkgate::umbrellaOn()) ? 1 : 0;
         g_fx.runtimeGate = state;
         if (state == 1) {
             g_fx.cloudGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_CLOUD">() ? 1 : 0;
             g_fx.shoreGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_SHORELINE">() ? 1 : 0;
             g_fx.shadowGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_SHADOW">() ? 1 : 0;
-            vlog("MC2_VK_POST_SCREENFX=1 — rung-8.3 native screenfx gate ON "
+            vlog("native screenfx gate ON (the VK umbrella) "
                  "(shadow=%d cloud=%d shoreline=%d; lazy init at the pass site; fail-soft to GL).",
                  g_fx.shadowGate, g_fx.cloudGate, g_fx.shoreGate);
         }

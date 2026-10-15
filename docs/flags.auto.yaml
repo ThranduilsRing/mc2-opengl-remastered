@@ -6963,10 +6963,10 @@ flags:
     verified: true
   - name: MC2_VK_POST_SCREENFX
     kind: Bool
-    default: false
-    rule: Exact1
+    default: true
+    rule: Lead0Kill
     owner: vk
-    doc: ""
+    doc: "VK native screen-shadow, cloud and shoreline passes, on under the VK umbrella; =0 turns the VK passes off."
     smoke_passthrough: true
     verified: true
   - name: MC2_VK_POST_SCREENFX_CLOUD

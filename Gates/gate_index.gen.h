@@ -913,7 +913,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_OBJECTID_DIRECT_CHAIN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_PICK_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_POST_HZB", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_VK_POST_SCREENFX", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_VK_POST_SCREENFX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_CLOUD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_SHORELINE", Kind::Bool, Rule::Lead0Kill, {}},

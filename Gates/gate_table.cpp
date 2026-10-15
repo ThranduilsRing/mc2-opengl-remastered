@@ -1285,7 +1285,7 @@ L(Lead1, "MC2_VK_OBJECTID_DIRECT_CHAIN", Bool, false, "vk", "", "", passthrough 
 // history: docs/gate-history.md#MC2_VK_PICK_PROBE
 L(Presence, "MC2_VK_PICK_PROBE", Bool, false, "code", "", "BUG-A pick regression fence: default-OFF.", passthrough | registry(Trace, "MC2_VK_PICK_PROBE", -1, false) | verified),
 L(Exact1, "MC2_VK_POST_HZB", Bool, false, "vk", "", "", verified | passthrough),
-L(Exact1, "MC2_VK_POST_SCREENFX", Bool, false, "vk", "", "", verified | passthrough),
+L(Lead0Kill, "MC2_VK_POST_SCREENFX", Bool, true, "vk", "", "VK native screen-shadow, cloud and shoreline passes, on under the VK umbrella; =0 turns the VK passes off.", verified | passthrough),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_CLOUD", Bool, true, "vk", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_SHADOW", Bool, true, "vk", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_SHORELINE", Bool, true, "vk", "", "", verified | passthrough),
