@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 976,
+ "count": 975,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -25181,32 +25181,6 @@
    "harnessValues": [],
    "numericRange": null,
    "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_MECH_FEED_AUDIT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_mech_island.cpp:170",
-     "idiom": "Exact1"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
