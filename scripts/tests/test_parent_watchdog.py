@@ -10,9 +10,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402
 import parent_watchdog  # noqa: E402
 
-KW = console_child.child_kwargs(redirected=True)
-
-
 def _wait(pred, s=20.0):
     end = time.time() + s
     while time.time() < end:
@@ -27,7 +24,8 @@ def test_live_parent_is_not_gone():
 
 
 def test_dead_watched_process_is_gone_and_logged_once():
-    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **KW)
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         **console_child.child_kwargs(redirected=True))
     lines = []
     w = parent_watchdog.ParentWatch(pid=p.pid, log=lines.append)
     assert not w.gone()
@@ -56,7 +54,8 @@ def test_dev_shell_watcher_exits_when_its_parent_dies(tmp_path):
               f"while time.time() < end and '[watch]' not in open(r'{out}').read(): time.sleep(0.1)\n"
               "time.sleep(0.6)\n"
               "sys.exit(0 if p.poll() is None else 3)\n")
-    rc = subprocess.run([sys.executable, "-c", middle], timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **KW).returncode
+    rc = subprocess.run([sys.executable, "-c", middle], timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        **console_child.child_kwargs(redirected=True)).returncode
     pid = int(pidfile.read_text())
     assert rc == 0, "watch.py was not polling while its parent lived:\n" + out.read_text()
     import psutil
