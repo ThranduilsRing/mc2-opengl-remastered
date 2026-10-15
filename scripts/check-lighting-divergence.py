@@ -269,6 +269,9 @@ BASELINE = {
         ("shaders/static_prop.vert", "kAmbientV1Sky", "0.20,0.22,0.28"),
         ("shaders/terrain_lod_chunk.frag", "ambGnd", "0.34,0.30,0.24"),
         ("shaders/terrain_lod_chunk.frag", "ambSky", "0.55,0.62,0.75"),
+        # Parity row 22 (StaticPropAmbient arm): verbatim port of static_prop.vert's kAmbientV1 pair (INTENTIONAL: parity).
+        ("shaders/vulkan/color_prop_tier1.vert", "kAmbientV1Ground", "0.10,0.09,0.07"),
+        ("shaders/vulkan/color_prop_tier1.vert", "kAmbientV1Sky", "0.20,0.22,0.28"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientGround", "0.14,0.13,0.11"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientSky", "0.00,0.02,0.08"),
         # VK-PARITY-TERRAIN-1: verbatim port of terrain_lod_chunk.frag's TERRAIN-AMBIENT-FLOOR-2 pair (INTENTIONAL: parity).
