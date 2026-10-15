@@ -48,7 +48,7 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
-#include "texture_decode.h"              // gos_GetTextureRgba: material texels without a GL readback
+#include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
@@ -447,25 +447,17 @@ bool make_albedo_sampler(MechIsland* s) {
     return mc2vk::create(s->albedoSamp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
-// Upload a single 2D RGBA8 image (w*h*4 bytes) into a fresh VkImage+view stored in the
+// Upload one level of RGBA8 or BC7 texels, as they are, into a fresh VkImage+view of `fmt` stored in the
 // given TexEntry (copy-once texture cache slot).
 bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
-                         uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+                         uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "mech.staging")) return false;
     { void* p = stg.map();
       if (!p) return false;
       std::memcpy(p, bytes, (size_t)byteCount); stg.unmap(); }
 
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-    ici.extent = {w, h, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!e.img.create(s->allocator, s->device, ici, aci, "mech.texture")) return false;
+    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "mech.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
     if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
@@ -488,7 +480,7 @@ bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
@@ -516,7 +508,7 @@ bool ensure_dummy_scheme(MechIsland* s) {
     if (s->textures.empty()) {
         MechIsland::TexEntry t; t.gosHandle = 0;
         const uint8_t px[4] = {255, 255, 255, 255};   // white -> flat FS uses vArgb only
-        if (!upload_scheme_image(s, t, 1, 1, px, sizeof(px))) return false;
+        if (!upload_scheme_image(s, t, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px))) return false;
         s->textures.push_back(std::move(t));
     }
     MechIsland::SchemeEntry e;
@@ -535,13 +527,14 @@ VkImageView get_tex_view(MechIsland* s, uint32_t gosHandle, bool* pending) {
     if (gosHandle == 0) return dummy;
     for (auto& t : s->textures) if (t.gosHandle == gosHandle) return t.view.get();
     if (s->textures.size() >= MechIsland::kMaxTextures) return dummy;
-    uint32_t w = 0, h = 0;
-    bool unavailable = false;
-    const auto rgba = gos_GetTextureRgba(gosHandle, &w, &h, &unavailable);
-    if (!rgba) { if (!unavailable) *pending = true; return dummy; }   // a failed readback caches the dummy
+    const GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status == GosTexels::Status::Pending) { *pending = true; return dummy; }
+    if (texels.status == GosTexels::Status::Unavailable) return dummy;   // no CPU texels: the set caches the dummy
+    const uint32_t w = texels.width, h = texels.height;
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return dummy;
     MechIsland::TexEntry t; t.gosHandle = gosHandle;
-    if (!upload_scheme_image(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()))
+    if (!upload_scheme_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
+                             (VkDeviceSize)texels.bytes->size()))
         return dummy;
     const VkImageView cachedView = t.view.get();
     s->textures.push_back(std::move(t));
@@ -864,13 +857,11 @@ bool upload_geometry_once(MechIsland* s) {
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
 
-    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "mech.vbo")) return false;
-    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "mech.ibo")) return false;
-    // A failed copy frees both buffers, so the next frame's retry starts from nothing instead of drawing unfilled buffers.
-    if (!s->vbo.upload(feed.vboCpu, feed.vboBytes) || !s->ibo.upload(feed.iboCpu, feed.iboBytes)) {
-        vlog("mech geometry upload failed (buffer map); retrying next frame.");
+    // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing instead of drawing unfilled buffers.
+    if (!s->vbo.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "mech.vbo") ||
+        !s->ibo.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "mech.ibo")) {
+        vlog("mech geometry upload failed (buffer creation or map); retrying next frame.");
         s->vbo.reset();
-        s->ibo.reset();
         return false;
     }
     g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));

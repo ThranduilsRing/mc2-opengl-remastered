@@ -119,6 +119,8 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)
     test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
+    test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)
+    ${MC2_WORKTREE_ROOT}/RenderCore/KtxLoader.cpp
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see

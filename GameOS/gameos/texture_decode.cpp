@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include "Gates/gate.h"
+#include "KtxLoader.h"
 #include "mc2fmt.h"
 #include "utils/Image.h"
 #include "utils/mc2log.h"
@@ -51,20 +52,21 @@ bool endsWithTga(const char* path) {
 
 // Copies the decoded image into `out` and applies the format policy. Only RGB8 / RGBA8 sources are accepted: the lock / unlock
 // and mirror paths assume 8-bit channels.
-bool finishDecode(const Image& img, const char* nameForLog, bool isPng, gos_TextureFormat requested, DWORD hints,
-                  DecodedTexture& out) {
+std::optional<DecodedTexture> finishDecode(const Image& img, const char* nameForLog, bool isPng, gos_TextureFormat requested,
+                                           DWORD hints) {
     const FORMAT fmt = img.getFormat();
     if (fmt != FORMAT_RGB8 && fmt != FORMAT_RGBA8) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: unsupported pixel format {:d} (need RGB8 or RGBA8)",
                 mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"), mc2::fmt::as_i32((int)fmt));
-        return false;
+        return std::nullopt;
     }
     if (img.getWidth() <= 0 || img.getHeight() <= 0 || img.getPixels() == nullptr) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: empty image {:d}x{:d}",
                 mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"), mc2::fmt::as_i32(img.getWidth()),
                 mc2::fmt::as_i32(img.getHeight()));
-        return false;
+        return std::nullopt;
     }
+    DecodedTexture out;
     out.width = img.getWidth();
     out.height = img.getHeight();
     out.layout = fmt == FORMAT_RGB8 ? PixelLayout::RGB8 : PixelLayout::RGBA8;
@@ -72,7 +74,7 @@ bool finishDecode(const Image& img, const char* nameForLog, bool isPng, gos_Text
     out.pixels.assign(img.getPixels(), img.getPixels() + bytes);
     out.wantMipmaps = wantsMipmaps(hints);
     applyFormatPolicy(out, requested, isPng && mc2::gate::get<"MC2_PNG_MAGENTA_KEY">());
-    return true;
+    return out;
 }
 
 }  // namespace
@@ -102,10 +104,10 @@ void applyFormatPolicy(DecodedTexture& t, gos_TextureFormat requested, bool keyM
     t.format = requested;
 }
 
-bool decodeFile(const char* path, gos_TextureFormat requested, DWORD hints, DecodedTexture& out) {
+std::optional<DecodedTexture> decodeFile(const char* path, gos_TextureFormat requested, DWORD hints) {
     if (!path) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected a file texture with no path");
-        return false;
+        return std::nullopt;
     }
     // A TGA file goes through the same header check as cached bytes: read it whole, decode from memory.
     if (endsWithTga(path)) {
@@ -122,47 +124,48 @@ bool decodeFile(const char* path, gos_TextureFormat requested, DWORD hints, Deco
         }
         if (bytes.empty()) {
             MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: file missing, empty or unreadable", mc2::fmt::safe(path));
-            return false;
+            return std::nullopt;
         }
-        return decodeMemory(bytes.data(), bytes.size(), path, requested, hints, out);
+        return decodeMemory(bytes.data(), bytes.size(), path, requested, hints);
     }
     Image img;
     if (!img.loadFromFile(path)) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: image loader failed", mc2::fmt::safe(path));
-        return false;
+        return std::nullopt;
     }
-    return finishDecode(img, path, endsWithPng(path), requested, hints, out);
+    return finishDecode(img, path, endsWithPng(path), requested, hints);
 }
 
-bool decodeMemory(const uint8_t* bytes, size_t size, const char* nameForLog, gos_TextureFormat requested, DWORD hints,
-                  DecodedTexture& out) {
+std::optional<DecodedTexture> decodeMemory(const uint8_t* bytes, size_t size, const char* nameForLog, gos_TextureFormat requested,
+                                           DWORD hints) {
     if (!bytes || size == 0) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: no bytes", mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"));
-        return false;
+        return std::nullopt;
     }
     // The texture cache stores raw file bytes; the signature picks the decoder (UI pages reference .png art through this path).
     const bool png = hasPngSignature(bytes, size);
     if (!png && !tgaFits(bytes, size)) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: truncated or unsupported TGA ({:d} bytes)",
                 mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"), mc2::fmt::as_size(size));
-        return false;
+        return std::nullopt;
     }
     Image img;
     const bool decoded = png ? img.loadPNG(bytes, size) : img.loadTGA(bytes, size);
     if (!decoded) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: image loader failed",
                 mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"));
-        return false;
+        return std::nullopt;
     }
-    return finishDecode(img, nameForLog, png, requested, hints, out);
+    return finishDecode(img, nameForLog, png, requested, hints);
 }
 
-bool makePlaceholder(int width, int height, gos_TextureFormat requested, DWORD hints, DecodedTexture& out) {
+std::optional<DecodedTexture> makePlaceholder(int width, int height, gos_TextureFormat requested, DWORD hints) {
     if (width <= 0 || height <= 0) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected a placeholder texture of {:d}x{:d}", mc2::fmt::as_i32(width),
                 mc2::fmt::as_i32(height));
-        return false;
+        return std::nullopt;
     }
+    DecodedTexture out;
     out.width = width;
     out.height = height;
     out.layout = PixelLayout::RGBA8;
@@ -176,7 +179,29 @@ bool makePlaceholder(int width, int height, gos_TextureFormat requested, DWORD h
         out.pixels[i * 4 + 2] = 0x00;
         out.pixels[i * 4 + 3] = 0xFF;
     }
-    return true;
+    return out;
+}
+
+size_t bc7LevelBytes(uint32_t width, uint32_t height) {
+    return ((size_t)(width + 3u) / 4u) * ((size_t)(height + 3u) / 4u) * 16u;
+}
+
+std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t width, uint32_t height) {
+    if (width == 0 || height == 0 || width > RenderCore::kKtxMaxEdge || height > RenderCore::kKtxMaxEdge ||
+        blocks.size() != bc7LevelBytes(width, height))
+        return {};
+    RenderCore::KtxImage img;
+    img.pixels = blocks;
+    img.width = (int)width;
+    img.height = (int)height;
+    img.mipCount = 1;
+    img.mipByteOffsets = {0};
+    img.vkFormat = kVkFormatBc7Unorm;   // the decoder ignores the colour space: the bytes come out as stored
+    img.isCompressed = true;
+    img.blockSizeBytes = 16;
+    std::vector<uint8_t> rgba;
+    if (!RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba)) return {};
+    return rgba;
 }
 
 }  // namespace mc2tex
