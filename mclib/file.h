@@ -121,7 +121,9 @@ class File
 	//--------------
 	protected:
 	
-		char 					*fileName;
+		// The name this file was opened with (lower-cased and slash-folded by open). Empty while closed. A child holds its OWN copy of its
+		// parent's name: the parent closing first must not leave a child with a name that no longer exists.
+		std::string				m_fileName;
 		FileMode				fileMode;
 	
 		int                     handle;
@@ -134,16 +136,19 @@ class File
 
 		unsigned long			bufferResult;
 
-		FilePtr					*childList;
-		unsigned long			numChildren;
-		unsigned long			maxChildren;
+		// The files opened on this one's handle (open(parent, size)). NON-owning: each child closes itself and clears its slot, and the parent's
+		// close() closes the children still open, in slot order. One slot per allowed child (open's numChildren), nullptr = free; empty = none allowed.
+		std::vector<FilePtr>	m_children;
 				
 		FilePtr					parent;
 		unsigned long			parentOffset;
 		unsigned long			physicalLength;
 
 		bool					inRAM;
+		// The bytes a RAM file reads and writes. It points into m_ownedImage when this file loaded the bytes itself (a FastFile member, or a child
+		// read into RAM) and at the caller's buffer after open(buffer, length); closing never frees a caller's buffer.
 		MemoryPtr				fileImage;
+		std::vector<unsigned char>	m_ownedImage;
 
 	public:
 
@@ -162,6 +167,10 @@ class File
 			
 			File (void);
 			~File (void);
+
+			// A copy would close the same descriptor twice and alias the in-RAM image.
+			File (const File&) = delete;
+			File& operator= (const File&) = delete;
 
 			bool eof (void);
 
@@ -222,7 +231,8 @@ class File
 				return BASEFILE;
 			}
 
-			char* getFilename (void);
+			// nullptr while the file is closed. Otherwise a pointer into this object's name: valid until its next open or close, so copy it at once.
+			const char* getFilename (void) const;
 
 			unsigned long getLength (void);
 			unsigned long fileSize (void);

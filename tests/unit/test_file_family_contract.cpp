@@ -22,6 +22,9 @@
 #include <cstring>
 #include <string>
 
+extern bool g_mc2TestStopFatal;   // tests/unit/heap_shim.cpp: STOP counts and continues instead of aborting
+extern int  g_mc2TestStopCount;
+
 namespace
 {
 
@@ -147,6 +150,64 @@ TEST_CASE("FC5 a parent holds its default 50 children and a closed child frees i
 		c.close();
 
 	remove(path.c_str());
+}
+
+// ---- B3.1b: behaviour that is NEW with the standard-container internals (they fail on the old classes) ----
+
+TEST_CASE("FC6 a child closed after its parent was destroyed does not touch the parent")
+{
+	const std::string path = scratch("orphan.bin");
+	writeBytes(path, "0123456789", 10);
+
+	File *parent = new File;
+	REQUIRE(parent->open(path.c_str()) == NO_ERR);
+	File child;
+	REQUIRE(child.open(parent, 4) == NO_ERR);
+
+	// The parent closes (and so closes the child) and is destroyed; the child's own close, then its destructor, run later.
+	parent->close();
+	delete parent;
+	child.close();
+
+	remove(path.c_str());
+}
+
+TEST_CASE("FC7 a packet file whose header claims more packets than the file holds is rejected")
+{
+	const std::string path = scratch("lying.pak");
+	// version, first-packet offset 0x7FFFFFF8 (claims about 536 million packets), and 8 more bytes: 16 bytes in all.
+	const unsigned char bytes[16] = {0xCE, 0xFA, 0xED, 0xFE, 0xF8, 0xFF, 0xFF, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0};
+	writeBytes(path, (const char *)bytes, sizeof(bytes));
+
+	g_mc2TestStopFatal = false;   // the rejection logs one [PACKET_HEADER_BAD] STOP line and carries on, like the engine
+	g_mc2TestStopCount = 0;
+
+	PacketFile in;
+	CHECK(in.open(path.c_str()) == PACKET_OUT_OF_RANGE);
+	CHECK(g_mc2TestStopCount == 1);
+	CHECK(in.getNumPackets() == 0);
+	in.close();
+
+	// A negative offset gives a negative count.
+	const unsigned char negative[16] = {0xCE, 0xFA, 0xED, 0xFE, 0xF0, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0};
+	writeBytes(path, (const char *)negative, sizeof(negative));
+	PacketFile in2;
+	CHECK(in2.open(path.c_str()) == PACKET_OUT_OF_RANGE);
+	CHECK(in2.getNumPackets() == 0);
+	in2.close();
+	CHECK(g_mc2TestStopCount == 1);   // one line per process, not one per bad file
+	g_mc2TestStopFatal = true;
+
+	remove(path.c_str());
+}
+
+TEST_CASE("FC8 a fit file with no blocks opens and finds no block")
+{
+	const char text[] = "FITini\r\n\r\nFITend\r\n";
+	FitIniFile fit;
+	REQUIRE(fit.open(text, (int)(sizeof(text) - 1)) == NO_ERR);
+	CHECK(fit.seekBlock("Anything") != NO_ERR);
+	fit.close();
 }
 
 } // TEST_SUITE

@@ -1,24 +1,20 @@
 # Step 4 B3 file-and-stream ownership sites from a [[deprecated("B3")]] build (tests/analyze/file_callsites.py); a batch commit removes its rows.
-# total 129 sites in 55 files
+# total 105 sites in 40 files
 # per kind:
 #      39  File::operator delete
 #      39  File::operator new
-#      19  File::getFilename
 #      18  FitIniFile::open
 #       4  ABLFile::operator delete
 #       4  ABLFile::operator new
-#       3  File::open
-#       1  File::addChild
-#       1  File::removeChild
 #       1  File::readRAW
 # per batch (cxx23-step4-b3-files.json):
-#      25  B3.1
-#      49  B3.3
+#      48  B3.3
 #      25  B3.4
 #       8  B3.5
 #       4  B3.6
-#       6  E-B3
-#      12  KEEP-child
+#       1  B4 (heap-routed raw read, handed over)
+#       5  E-B3
+#      14  KEEP-child
 # sites in files the batch table does NOT list: 0 in 0 files
 # per file:
 #       6  code/mechcmd2.cpp
@@ -35,50 +31,34 @@
 #       4  editor/Editor.cpp
 #       4  mclib/ablenv.cpp
 #       4  mclib/ablscan.cpp
-#       3  code/mech_loadout.cpp
-#       3  code/mech_type.cpp
 #       3  code/objtype.cpp
-#       3  mclib/file.cpp
 #       2  code/brain_special_dispatch.cpp
 #       2  code/carnage.cpp
-#       2  code/gvehicl.cpp
+#       2  code/mech_loadout.cpp
 #       2  code/mover_combat.cpp
 #       2  code/objmgr_io.cpp
 #       2  code/saveload.cpp
-#       2  gui/aanim.cpp
 #       2  mclib/gamelog.cpp
-#       2  mclib/inifile.cpp
 #       2  mclib/move.cpp
 #       2  mclib/move_globalmap_path.cpp
 #       2  mclib/msl_load.cpp
-#       2  mclib/terrain_init.cpp
 #       2  mclib/terrtxm.cpp
 #       1  code/artlry.cpp
-#       1  code/attributemeter.cpp
 #       1  code/bldng.cpp
 #       1  code/gate.cpp
+#       1  code/gvehicl.cpp
 #       1  code/gvehicl_control.cpp
 #       1  code/light.cpp
 #       1  code/logisticsdata.cpp
 #       1  code/logisticsdata_init.cpp
-#       1  code/logisticsmissioninfo.cpp
-#       1  code/logisticsvariant.cpp
+#       1  code/mech_type.cpp
 #       1  code/terrobj.cpp
 #       1  code/turret.cpp
-#       1  code/unitprofile_fit.cpp
 #       1  code/weaponbolt.cpp
 #       1  editor/EditorObjectMgr.cpp
-#       1  editor/EditorObjectMgr_io.cpp
-#       1  gui/abutton.cpp
-#       1  gui/asystem.cpp
-#       1  gui/logisticsscreen.cpp
-#       1  mclib/csvfile.cpp
-#       1  mclib/packet.cpp
-#       1  mclib/terrain.cpp
 #       1  mclib/txmmgr_texture.cpp
 # blob d7dce3ffa77d04cafbbbd30c983d0ed1965ec7aa code/ablmc2.cpp
 # blob 66b9cbae84144336eb4dcd89da2f14ce78abb42e code/artlry.cpp
-# blob a10d58cdf1d69984e7712b11782a84aff63b95e5 code/attributemeter.cpp
 # blob adfee70994b76c03e111876fdab6063b8b206523 code/bldng.cpp
 # blob b0cf937b7c8ff489a0d00d2f09fec37fb91c9aaf code/brain_special_dispatch.cpp
 # blob 902827125a1ae4c5351fc5c13244150c656b084a code/carnage.cpp
@@ -89,8 +69,6 @@
 # blob 4a4a71f30445711f4846d7013b35f164fc423334 code/light.cpp
 # blob 8413920270f8a05c56f7b225084e5652fcac8013 code/logisticsdata.cpp
 # blob 58c47be6fceb8471a2806fb8e4c6e7d208447467 code/logisticsdata_init.cpp
-# blob f25efd202aa1c430289a586418141471127f9b3a code/logisticsmissioninfo.cpp
-# blob dc2f295de1335f03799df625aa641b33635ff4b0 code/logisticsvariant.cpp
 # blob 7ff36931f3554543747f94dc6752a3ac91c5ff56 code/mech_loadout.cpp
 # blob e4c01f7f531b7086d3f3508a3da522a4583008b2 code/mech_type.cpp
 # blob 5376aebc52685b484ba4ccbe0a020cc8095e68eb code/mechcmd2.cpp
@@ -106,29 +84,17 @@
 # blob 3aa123071e983dd6dc38bcbdac515eb631e961fd code/saveload.cpp
 # blob 8ae3848ceb0a4fa6f8de23525fc74454df18a517 code/terrobj.cpp
 # blob f0c438262204978b6dab3820e542000f0f603fd1 code/turret.cpp
-# blob 09b93d241fa864d1bca7f3147e83c18afb7c4888 code/unitprofile_fit.cpp
 # blob dfb4ce4fa2f2a59991031719c6d9b7a11c728eee code/weaponbolt.cpp
 # blob fb7ae2583aed04870cbb5578b7e78e72a2d17a30 data_tools/pak.cpp
 # blob 67f0795dff2cd52b0732230e31207e63789b847d editor/Editor.cpp
 # blob 5995a7b6cc76234e77b9305930ae42f517724fe0 editor/EditorObjectMgr.cpp
-# blob e35e6437039ae156a6ded06fc531efd9849a898d editor/EditorObjectMgr_io.cpp
-# blob 70a7ec861f40c764ce45417ab619736ef289ffef gui/aanim.cpp
-# blob edfb3e8a67c6a04dcd8863a090bcb3d43b47da31 gui/abutton.cpp
-# blob 6306ad7160d8610cd9eabd176a16c27af66e9294 gui/asystem.cpp
-# blob b83fed6d2ef3f4a55fd1d923c6e1c647eb93ccfa gui/logisticsscreen.cpp
 # blob 1588675e63f30cc56a0c4b40660359abfc3515eb mclib/ablenv.cpp
 # blob 9c063d1bd4a479a67d4e06ccd06acf80f7deeb19 mclib/ablscan.cpp
-# blob 2a83b13dc0068b6a89ee7a2a45c3413ef93ce35b mclib/csvfile.cpp
-# blob d3a8c06549c6c326a3b9ede26851a037d2090a81 mclib/file.cpp
 # blob da491edc0ad43209fa2d36fc115bc9f7843480a1 mclib/gamelog.cpp
-# blob 9a92806d5a32038464527770e6e420b0946ebe67 mclib/inifile.cpp
 # blob 998843280a81ba30fdbe3e2d8be1efc58ba29829 mclib/move.cpp
 # blob 3dee47dab021ce13fd06d050182f5668adaa7af9 mclib/move_globalmap_path.cpp
 # blob f61333e405f862364b6f47b586291232b64fb851 mclib/msl_load.cpp
-# blob ee5b209b2ee9426b83bfb66bb0c9b2c946c80ee4 mclib/packet.cpp
 # blob 101e12fe426fa7f94bcb4fc79bd124bef783a45e mclib/soundsys.cpp
-# blob 65d02c881ef4f52864684a097e48962aeaef6c89 mclib/terrain.cpp
-# blob 3987975a48093bff8a486a5c4cd335fdf52bb9c7 mclib/terrain_init.cpp
 # blob d811910ce59aa49c9f427698275dc26e99b0291d mclib/terrtxm.cpp
 # blob e2f6238cdb7e9ad805b1271f9b5e9e393098b86e mclib/txmmgr_texture.cpp
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 13
@@ -151,7 +117,6 @@ code/ablmc2.cpp:85:File::operator new
 code/ablmc2.cpp:98:File::operator delete
 code/ablmc2.cpp:98:File::operator new
 code/artlry.cpp:393:FitIniFile::open
-code/attributemeter.cpp:154:File::getFilename
 code/bldng.cpp:177:FitIniFile::open
 code/brain_special_dispatch.cpp:2110:File::operator delete
 code/brain_special_dispatch.cpp:2110:File::operator new
@@ -163,19 +128,13 @@ code/gameobj.cpp:1221:File::operator delete
 code/gameobj.cpp:1221:File::operator new
 code/gate.cpp:101:FitIniFile::open
 code/gvehicl.cpp:125:FitIniFile::open
-code/gvehicl.cpp:221:File::getFilename
 code/gvehicl_control.cpp:89:FitIniFile::open
 code/light.cpp:56:FitIniFile::open
 code/logisticsdata.cpp:324:FitIniFile::open
 code/logisticsdata_init.cpp:527:FitIniFile::open
-code/logisticsmissioninfo.cpp:94:File::getFilename
-code/logisticsvariant.cpp:49:File::getFilename
-code/mech_loadout.cpp:61:File::getFilename
 code/mech_loadout.cpp:87:File::operator delete
 code/mech_loadout.cpp:87:File::operator new
 code/mech_type.cpp:166:FitIniFile::open
-code/mech_type.cpp:246:File::getFilename
-code/mech_type.cpp:254:File::getFilename
 code/mechcmd2.cpp:449:File::operator delete
 code/mechcmd2.cpp:449:File::operator new
 code/mechcmd2.cpp:700:File::operator delete
@@ -223,7 +182,6 @@ code/saveload.cpp:606:File::operator delete
 code/saveload.cpp:606:File::operator new
 code/terrobj.cpp:390:FitIniFile::open
 code/turret.cpp:137:FitIniFile::open
-code/unitprofile_fit.cpp:88:File::getFilename
 code/weaponbolt.cpp:52:FitIniFile::open
 data_tools/pak.cpp:28:File::operator delete
 data_tools/pak.cpp:28:File::operator new
@@ -234,12 +192,6 @@ editor/Editor.cpp:368:File::operator new
 editor/Editor.cpp:548:File::operator delete
 editor/Editor.cpp:548:File::operator new
 editor/EditorObjectMgr.cpp:253:FitIniFile::open
-editor/EditorObjectMgr_io.cpp:491:File::getFilename
-gui/aanim.cpp:420:File::getFilename
-gui/aanim.cpp:443:File::getFilename
-gui/abutton.cpp:529:File::getFilename
-gui/asystem.cpp:918:File::getFilename
-gui/logisticsscreen.cpp:277:File::getFilename
 mclib/ablenv.cpp:194:ABLFile::operator delete
 mclib/ablenv.cpp:194:ABLFile::operator new
 mclib/ablenv.cpp:325:ABLFile::operator delete
@@ -248,30 +200,20 @@ mclib/ablscan.cpp:542:ABLFile::operator delete
 mclib/ablscan.cpp:542:ABLFile::operator new
 mclib/ablscan.cpp:1298:ABLFile::operator delete
 mclib/ablscan.cpp:1298:ABLFile::operator new
-mclib/csvfile.cpp:660:File::open
-mclib/file.cpp:1356:File::getFilename
-mclib/file.cpp:1361:File::addChild
-mclib/file.cpp:1565:File::removeChild
 mclib/gamelog.cpp:155:File::operator delete
 mclib/gamelog.cpp:155:File::operator new
-mclib/inifile.cpp:207:File::getFilename
-mclib/inifile.cpp:768:File::open
 mclib/move.cpp:999:File::operator delete
 mclib/move.cpp:999:File::operator new
 mclib/move_globalmap_path.cpp:616:File::operator delete
 mclib/move_globalmap_path.cpp:616:File::operator new
 mclib/msl_load.cpp:711:File::operator delete
 mclib/msl_load.cpp:711:File::operator new
-mclib/packet.cpp:222:File::open
 mclib/soundsys.cpp:146:File::operator delete
 mclib/soundsys.cpp:146:File::operator new
 mclib/soundsys.cpp:155:File::operator delete
 mclib/soundsys.cpp:155:File::operator new
 mclib/soundsys.cpp:166:File::operator delete
 mclib/soundsys.cpp:166:File::operator new
-mclib/terrain.cpp:361:File::getFilename
-mclib/terrain_init.cpp:59:File::getFilename
-mclib/terrain_init.cpp:82:File::getFilename
 mclib/terrtxm.cpp:1393:File::operator delete
 mclib/terrtxm.cpp:1393:File::operator new
 mclib/txmmgr_texture.cpp:376:File::readRAW

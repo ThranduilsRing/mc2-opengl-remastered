@@ -66,7 +66,7 @@ class FitIniFile : public File
 	//--------------
 	protected:
 		unsigned long 	totalBlocks;					//Total number of blocks in file
-		IniBlockNode 	*fileBlocks;					//Data for blocks to speed up file
+		std::vector<IniBlockNode> m_fileBlocks;		//Data for blocks to speed up file (one node per [block]; currentBlockId points into it)
 		char 				*currentBlockId;				//Id of current block
 		unsigned long 	currentBlockOffset;			//Offset into file of block start
 		unsigned long 	currentBlockSize;				//Length of current block

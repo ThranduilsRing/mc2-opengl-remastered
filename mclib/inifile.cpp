@@ -31,7 +31,6 @@ char fitIniFooter[7] = "FITend";
 FitIniFile::FitIniFile (void) : File()
 {
 	totalBlocks = 0;
-	fileBlocks = nullptr;
 	
 	currentBlockId = nullptr;
 	currentBlockOffset = 0;
@@ -171,11 +170,7 @@ long FitIniFile::afterOpen (void)
 		
 		//--------------------------------------------------------------------------
 		// Allocate RAM for the BlockInfoNodes.  Check if system Heap is available
-		fileBlocks = (IniBlockNode *)systemHeap->Malloc(sizeof(IniBlockNode) * totalBlocks);
-		
-		gosASSERT(fileBlocks != nullptr);
-
-		memset(fileBlocks,0,sizeof(IniBlockNode) * totalBlocks);
+		m_fileBlocks.assign(totalBlocks, IniBlockNode{});
 		
 		//--------------------------------------------------------------------------
 		// Put Info into fileBlocks.
@@ -195,11 +190,11 @@ long FitIniFile::afterOpen (void)
 			long count = 1;
 			while (line[count] != ']' && line[count] != '\n' && line[count] != '\0' && count < 50)
 			{
-				fileBlocks[currentBlockNum].blockId[count-1] = line[count];
+				m_fileBlocks[currentBlockNum].blockId[count-1] = line[count];
 				count++;
 			}
 			if (count >= 49)
-				STOP(("BlockId To large in Fit File %s",fileName));
+				STOP(("BlockId To large in Fit File %s",m_fileName.c_str()));
 
 			if (line[count] == '\n' || line[count] == '\0')
 			{
@@ -209,11 +204,11 @@ long FitIniFile::afterOpen (void)
 				return SYNTAX_ERROR;
 			}
 			
-			fileBlocks[currentBlockNum].blockId[count-1] = '\0';
+			m_fileBlocks[currentBlockNum].blockId[count-1] = '\0';
 			
 			//----------------------------------------------------------------------
 			// Since we just read all of last line, we now point to start of data
-			fileBlocks[currentBlockNum].blockOffset = logicalPosition;
+			m_fileBlocks[currentBlockNum].blockOffset = logicalPosition;
 			currentBlockNum++;
 		}
 
@@ -240,9 +235,9 @@ void FitIniFile::atClose (void)
 	}
 
 	//-----------------------------
-	// Free up the fileBlocks
-	systemHeap->Free(fileBlocks);
-	fileBlocks = nullptr;
+	// Free up the fileBlocks; currentBlockId pointed into them.
+	m_fileBlocks.clear();
+	currentBlockId = nullptr;
 }
 
 //---------------------------------------------------------------------------

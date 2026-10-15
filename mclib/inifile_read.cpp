@@ -9,7 +9,7 @@ long FitIniFile::seekBlock (const char *blockId)
 {
 	unsigned long blockNum = 0;
 	
-	while ((blockNum < totalBlocks) && (strcmp(fileBlocks[blockNum].blockId,blockId) != 0))
+	while ((blockNum < totalBlocks) && (strcmp(m_fileBlocks[blockNum].blockId,blockId) != 0))
 	{
 		blockNum++;
 	}
@@ -21,12 +21,12 @@ long FitIniFile::seekBlock (const char *blockId)
 
 	//----------------------------------------
 	// Block was found, seek to that position
-	seek(fileBlocks[blockNum].blockOffset);
+	seek(m_fileBlocks[blockNum].blockOffset);
 	
 	//----------------------------------------
 	// Setup all current Block Info
-	currentBlockId = fileBlocks[blockNum].blockId;
-	currentBlockOffset = fileBlocks[blockNum].blockOffset;
+	currentBlockId = m_fileBlocks[blockNum].blockId;
+	currentBlockOffset = m_fileBlocks[blockNum].blockOffset;
 	
 	blockNum++;
 	if (blockNum == totalBlocks)
@@ -35,7 +35,7 @@ long FitIniFile::seekBlock (const char *blockId)
 	}
 	else
 	{
-		currentBlockSize = fileBlocks[blockNum].blockOffset - currentBlockOffset;
+		currentBlockSize = m_fileBlocks[blockNum].blockOffset - currentBlockOffset;
 	}
 		
 	return(NO_ERR);

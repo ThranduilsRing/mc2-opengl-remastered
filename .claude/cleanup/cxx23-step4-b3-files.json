@@ -3,21 +3,14 @@
  "commit": "06f0d7211 (tree of the census build)",
  "counts": {
   "B3.4": 6,
-  "KEEP-child": 11,
-  "B3.1": 17,
+  "KEEP-child": 13,
+  "B3.1": 10,
   "B3.3": 15,
   "B3.6": 1,
   "E-B3": 3,
-  "B3.5": 2
- },
- "row_counts": {
-  "B3.4": 25,
-  "KEEP-child": 12,
-  "B3.1": 28,
-  "B3.3": 49,
-  "B3.6": 4,
-  "E-B3": 6,
-  "B3.5": 8
+  "B3.5": 2,
+  "B3.1 (done)": 4,
+  "B4 (heap-routed raw read, handed over)": 1
  },
  "files": {
   "code/ablmc2.cpp": "B3.4",
@@ -28,7 +21,7 @@
   "code/carnage.cpp": "KEEP-child",
   "code/gameobj.cpp": "B3.3",
   "code/gate.cpp": "KEEP-child",
-  "code/gvehicl.cpp": "B3.1",
+  "code/gvehicl.cpp": "KEEP-child",
   "code/gvehicl_control.cpp": "KEEP-child",
   "code/light.cpp": "KEEP-child",
   "code/logisticsdata.cpp": "KEEP-child",
@@ -36,7 +29,7 @@
   "code/logisticsmissioninfo.cpp": "B3.1",
   "code/logisticsvariant.cpp": "B3.1",
   "code/mech_loadout.cpp": "B3.3",
-  "code/mech_type.cpp": "B3.1",
+  "code/mech_type.cpp": "KEEP-child",
   "code/mechcmd2.cpp": "B3.3",
   "code/mission_init.cpp": "B3.4",
   "code/mission_init_load.cpp": "B3.3",
@@ -62,18 +55,18 @@
   "gui/logisticsscreen.cpp": "B3.1",
   "mclib/ablenv.cpp": "B3.5",
   "mclib/ablscan.cpp": "B3.5",
-  "mclib/csvfile.cpp": "B3.1",
-  "mclib/file.cpp": "B3.1",
+  "mclib/csvfile.cpp": "B3.1 (done)",
+  "mclib/file.cpp": "B3.1 (done)",
   "mclib/gamelog.cpp": "B3.4",
-  "mclib/inifile.cpp": "B3.1",
+  "mclib/inifile.cpp": "B3.1 (done)",
   "mclib/move.cpp": "B3.3",
   "mclib/move_globalmap_path.cpp": "B3.3",
   "mclib/msl_load.cpp": "B3.3",
-  "mclib/packet.cpp": "B3.1",
+  "mclib/packet.cpp": "B3.1 (done)",
   "mclib/soundsys.cpp": "B3.4",
   "mclib/terrain.cpp": "B3.1",
   "mclib/terrain_init.cpp": "B3.1",
   "mclib/terrtxm.cpp": "B3.3",
-  "mclib/txmmgr_texture.cpp": "B3.1"
+  "mclib/txmmgr_texture.cpp": "B4 (heap-routed raw read, handed over)"
  }
 }

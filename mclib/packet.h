@@ -66,7 +66,9 @@ class PacketFile : public File
 		int packetType;		
 		int packetUnpackedSize;
 
-		int* seekTable;
+		// Packet offsets and storage types, one int per packet, kept in memory while the file is open for reading or being written start to finish.
+		// Empty means each entry is read from and written to the file directly.
+		std::vector<int> m_seekTable;
 
 		bool usesCheckSum;
 

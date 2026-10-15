@@ -45,10 +45,7 @@ void PacketFile::clear (void)
 	packetBase		=
 	numPackets		= 0;
 
-	if (seekTable)
-		systemHeap->Free(seekTable);
-
-	seekTable 		= nullptr;
+	m_seekTable.clear();
 }
 
 //---------------------------------------------------------------------------
@@ -64,7 +61,7 @@ void PacketFile::atClose (void)
 		unsigned int tableEntry;
 		currentPacket = numPackets;
 
-		if (!seekTable)
+		if (m_seekTable.empty())
 		{
 			while (--currentPacket >= 0)
 			{
@@ -86,11 +83,11 @@ void PacketFile::atClose (void)
 		{
 			while (--currentPacket >= 0)
 			{
-				tableEntry = seekTable[currentPacket];
+				tableEntry = m_seekTable[currentPacket];
 					
 				if (GetPacketType(tableEntry) == STORAGE_TYPE_NUL)
 				{
-					seekTable[currentPacket] = SetPacketType(endPtr,STORAGE_TYPE_NUL);
+					m_seekTable[currentPacket] = SetPacketType(endPtr,STORAGE_TYPE_NUL);
 				}
 				else
 				{
@@ -101,10 +98,10 @@ void PacketFile::atClose (void)
 
 		//-----------------------------------------------------
 		// If seekTable was being used, write it back to file
-		if (seekTable)
+		if (!m_seekTable.empty())
 		{
 			seek(sizeof(int)*2);							//File Version & File Length
-			write(MemoryPtr(seekTable),(numPackets*sizeof(int)));
+			write(MemoryPtr(m_seekTable.data()),(numPackets*sizeof(int)));
 		}
 
 		//------------------------------------------------------
@@ -169,19 +166,32 @@ long PacketFile::afterOpen (void)
 		firstPacketOffset = readInt();
 		
 		numPackets = (firstPacketOffset/sizeof(unsigned int))-2;
+
+		// The count comes from the file and sizes the seek table: it must describe a table that fits in the file (a mod packet file with a bad
+		// header used to overrun the table or fail an assert).
+		if (numPackets < 0 || 8LL + 4LL * numPackets > (long long)getLength())
+		{
+			static bool s_loggedBadHeader = false;
+			if (!s_loggedBadHeader)
+			{
+				s_loggedBadHeader = true;
+				STOP(("[PACKET_HEADER_BAD] file=%s packets=%d bytes=%d (the header claims more packets than the file holds; rejected)\n",
+					m_fileName.c_str(), numPackets, (int)getLength()));
+			}
+			numPackets = 0;
+			return PACKET_OUT_OF_RANGE;
+		}
 	}
 
 	currentPacket = -1;
 
 	if (fileMode == READ || fileMode == RDWRITE)
 	{
-		if (numPackets && !seekTable)
+		if (numPackets > 0 && m_seekTable.empty())
 		{
-			seekTable = (int*)systemHeap->Malloc(numPackets * sizeof(int));
-			gosASSERT(seekTable != NULL);
-				
+			m_seekTable.resize(numPackets);
 			seek(sizeof(int)*2); //File Version & File Length
-			read(MemoryPtr(seekTable),(numPackets*sizeof(int)));
+			read(MemoryPtr(m_seekTable.data()),(numPackets*sizeof(int)));
 		}
 	}
 	
@@ -191,7 +201,6 @@ long PacketFile::afterOpen (void)
 //---------------------------------------------------------------------------
 PacketFile::PacketFile (void)
 {
-	seekTable = nullptr;
 	usesCheckSum = FALSE;
 	clear();
 }
@@ -270,8 +279,8 @@ int PacketFile::readPacketOffset (int packet, int* lastType)
 	// packet is a signed int: a negative index must not reach seekTable[]
 	if (packet >= 0 && packet < numPackets)
 	{
-		if (seekTable)
-			offset = seekTable[packet];
+		if ((size_t)packet < m_seekTable.size())
+			offset = m_seekTable[packet];
 
 		if (lastType)
 			*lastType = GetPacketType(offset);
@@ -554,15 +563,11 @@ void PacketFile::reserve (unsigned int count, bool useCheckSum)
 	// If we called this, chances are we are writing a packet file
 	// from start to finish.  It is MUCH faster if this table is
 	// updated in memory and flushed when the file is closed.
-	if (!seekTable)
+	if (m_seekTable.empty() && numPackets > 0)
 	{
-		seekTable = (int*)systemHeap->Malloc(numPackets * sizeof(int));
-   			
-   		if (seekTable != nullptr)
-   		{
-   			seek(sizeof(int)*2);							//File Version & File Length
-   			read(MemoryPtr(seekTable),(numPackets*sizeof(int)));
-   		}
+		m_seekTable.resize(numPackets);
+		seek(sizeof(int)*2);							//File Version & File Length
+		read(MemoryPtr(m_seekTable.data()),(numPackets*sizeof(int)));
 	}
 }
 
@@ -620,7 +625,7 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 		unsigned long oldBufferSize = nbytes;
 		unsigned int compressedResult = compress2(workBuffer,&workBufferSize,buffer,nbytes,Z_DEFAULT_COMPRESSION);
 		if (compressedResult != Z_OK)
-			STOP(("Unable to write packet %d to file %s.  Error %d",packet,fileName,compressedResult));
+			STOP(("Unable to write packet %d to file %s.  Error %d",packet,m_fileName.c_str(),compressedResult));
 		//sebi:	
 		compressedResult = uncompress(buffer,&oldBufferSize,workBuffer,workBufferSize);
 		//compressedResult = uncompress(buffer,&oldBufferSize,workBuffer,nbytes);
@@ -647,27 +652,27 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 		result = write(buffer, packetSize);
 	}
 
-	if (!seekTable)
+	if (m_seekTable.empty())
 	{
 		seek(TABLE_ENTRY(packet));
 		writeInt(SetPacketType(packetBase,packetType));
 	}
 	else
 	{
-		seekTable[packet] = SetPacketType(packetBase,packetType);
+		m_seekTable[packet] = SetPacketType(packetBase,packetType);
 	}
 
 	int *currentEntry = nullptr;
-	if (seekTable)
+	if (!m_seekTable.empty())
 	{
 		packet++;
-		currentEntry = &(seekTable[packet]);
+		currentEntry = m_seekTable.data() + packet;
 	}
 
 	int tableData = SetPacketType(getLength(),STORAGE_TYPE_NUL);
 	while (packet < (numPackets - 1))
 	{
-		if (!seekTable)
+		if (m_seekTable.empty())
 		{
 			writeInt(tableData);
 		}
@@ -759,7 +764,7 @@ int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes,
 	char ourFileName[250];
 	unsigned int ourFileMode = 0;
 	
-	strcpy(ourFileName,fileName);
+	strcpy(ourFileName,m_fileName.c_str());
 	ourFileMode = fileMode;
 	
 	tmpFile.close();

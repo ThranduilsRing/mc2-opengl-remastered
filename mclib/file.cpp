@@ -1015,7 +1015,6 @@ void File::operator delete (void *us)
 //---------------------------------------------------------------------------
 File::File (void)
 {
-	fileName = nullptr;
 	fileMode = NOMODE;
 	handle = INVALID_HANDLE_VALUE;
 	length = 0;
@@ -1025,10 +1024,6 @@ File::File (void)
 	parent = nullptr;
 	parentOffset = 0;
 	physicalLength = 0;
-
-    maxChildren = 0;
-	childList = nullptr;
-	numChildren = 0;
 
 	inRAM = FALSE;
 	fileImage = nullptr;
@@ -1053,8 +1048,7 @@ inline void File::setup (void)
 	parentOffset = 0;
 	physicalLength = length;
 	
-	childList = nullptr;
-	numChildren = 0;
+	m_children.clear();
 }
 
 //---------------------------------------------------------------------------
@@ -1074,12 +1068,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 {
 	gosASSERT( !isOpen() );
 	//-------------------------------------------------------------
-	long fNameLength = static_cast<long>(strlen(fName));
-	
-	fileName = (char *)systemHeap->Malloc(fNameLength+1);
-	gosASSERT(fileName != NULL);
-		
-	strncpy(fileName,fName,fNameLength+1);
+	m_fileName = fName;
 	fileMode = _mode;
 	//_fmode = _O_BINARY;
 
@@ -1090,14 +1079,14 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 	// data_tools/pak.cpp, which opens the .fst archive itself) keep on-disk
 	// case and get the slash-only fold (fst_normalize_key, in-place safe).
 	if (!doNotLower)
-		fst_normalize_loose_key_inplace(fileName);
+		fst_normalize_loose_key_inplace(m_fileName.data());
 	else
-		fst_normalize_key(fileName, fileName);
+		fst_normalize_key(m_fileName.data(), m_fileName.data());
 
 	if (fileMode == CREATE)
 	{
 		// sebi: changed _creat to this, because otherwise non binary file is created which is wrong
-		handle = _open(fileName, _O_CREAT | _O_TRUNC | _O_BINARY | _O_RDWR, _S_IREAD | _S_IWRITE);
+		handle = _open(m_fileName.c_str(), _O_CREAT | _O_TRUNC | _O_BINARY | _O_RDWR, _S_IREAD | _S_IWRITE);
 		if (handle == INVALID_HANDLE_VALUE)
 		{
 			lastError = errno;
@@ -1113,23 +1102,23 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 		{
 			int modHandle = -1;
 			// Pass original fName as req so level-2 trace shows pre-lowercase casing.
-			if (TryModOpen(fileName, &modHandle, fName))
+			if (TryModOpen(m_fileName.c_str(), &modHandle, fName))
 			{
 				handle = modHandle;
 				++g_resolveOpens;
-				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon"))
-					printf("[MECHICON] File::open MOD-HIT: %s\n", fileName);
+				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(m_fileName.c_str(), "mechicon"))
+					printf("[MECHICON] File::open MOD-HIT: %s\n", m_fileName.c_str());
 			}
 			else
 			{
-				handle = _open(fileName, _O_RDONLY | _O_BINARY);
+				handle = _open(m_fileName.c_str(), _O_RDONLY | _O_BINARY);
 				if (handle != INVALID_HANDLE_VALUE)
 					++g_resolveOpens;
-				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon") && handle != INVALID_HANDLE_VALUE)
-					printf("[MECHICON] File::open LOOSE: %s\n", fileName);
+				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(m_fileName.c_str(), "mechicon") && handle != INVALID_HANDLE_VALUE)
+					printf("[MECHICON] File::open LOOSE: %s\n", m_fileName.c_str());
 				if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
-					std::string key = NormalizeKey(fileName);
-					EmitResolveRecord(key.c_str(), fName, "base-loose", fileName, nullptr);
+					std::string key = NormalizeKey(m_fileName.c_str());
+					EmitResolveRecord(key.c_str(), fName, "base-loose", m_fileName.c_str(), nullptr);
 				}
 			}
 		}
@@ -1137,23 +1126,23 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 		// Try stripping a numeric size subdir (e.g. data/tgl/128/foo.tga -> data/tgl/foo.tga).
 		// Upscaled loose overrides live in the parent dir without the size component.
 		if (handle == INVALID_HANDLE_VALUE) {
-			for (const char* p = fileName; *p; ++p) {
+			for (const char* p = m_fileName.c_str(); *p; ++p) {
 				if (*p != '/') continue;
 				const char* digits = p + 1;
 				const char* q = digits;
 				while (*q >= '0' && *q <= '9') ++q;
 				if (q > digits && *q == '/') {
 					char stripped[2048];
-					const size_t prefixLen = (size_t)(digits - fileName);
+					const size_t prefixLen = (size_t)(digits - m_fileName.c_str());
 					const char* suffix = q + 1;
 					if (prefixLen + strlen(suffix) < sizeof(stripped)) {
-						memcpy(stripped, fileName, prefixLen);
+						memcpy(stripped, m_fileName.c_str(), prefixLen);
 						strcpy(stripped + prefixLen, suffix);
 						handle = _open(stripped, _O_RDONLY | _O_BINARY);
 						if (handle != INVALID_HANDLE_VALUE)
 							++g_resolveOpens;
 						if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
-							std::string key = NormalizeKey(fileName);
+							std::string key = NormalizeKey(m_fileName.c_str());
 							EmitResolveRecord(key.c_str(), fName, "base-strip", stripped, nullptr);
 						}
 					}
@@ -1168,13 +1157,13 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 		{
 			lastError = errno;
 
-			fastFile = FastFileFind(fileName,fastFileHandle);
+			fastFile = FastFileFind(m_fileName.c_str(),fastFileHandle);
 			if (fastFile)
 				++g_resolveOpens;
-			if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && fastFile && strstr(fileName, "mechicon"))
-				printf("[MECHICON] File::open FST-HIT: %s\n", fileName);
+			if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && fastFile && strstr(m_fileName.c_str(), "mechicon"))
+				printf("[MECHICON] File::open FST-HIT: %s\n", m_fileName.c_str());
 			if (fastFile && logFileResolve >= 2) {
-				std::string key = NormalizeKey(fileName);
+				std::string key = NormalizeKey(m_fileName.c_str());
 				EmitResolveRecord(key.c_str(), fName, "fastfile", "", nullptr);
 			}
 			if (!fastFile)
@@ -1182,7 +1171,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
                 if(!Environment.checkCDForFiles) {
                     ++g_resolveMisses;
                     if (logFileResolve >= 2) {
-                        std::string key = NormalizeKey(fileName);
+                        std::string key = NormalizeKey(m_fileName.c_str());
                         EmitResolveRecord(key.c_str(), fName, "MISS", "", nullptr);
                     }
                     return 2;
@@ -1192,7 +1181,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 
 				char actualPath[2048];
 				strcpy(actualPath,CDInstallPath);
-				strcat(actualPath,fileName);
+				strcat(actualPath,m_fileName.c_str());
 				handle = _open(actualPath,_O_RDONLY);
 				if (handle == INVALID_HANDLE_VALUE)
 				{
@@ -1216,7 +1205,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 						{
 							++g_resolveMisses;
 							if (logFileResolve >= 2) {
-								std::string key = NormalizeKey(fileName);
+								std::string key = NormalizeKey(m_fileName.c_str());
 								EmitResolveRecord(key.c_str(), fName, "MISS", "", nullptr);
 							}
 							return 2;
@@ -1225,7 +1214,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 						if (!gos_NoUserPresentRequested()) EnterWindowMode();
 		
 						char data[2048];
-						sprintf(data,FileMissingString,fileName,CDMissingString);
+						sprintf(data,FileMissingString,m_fileName.c_str(),CDMissingString);
 						DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 						if (result1 == IDCANCEL)
 						{
@@ -1243,7 +1232,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 				{
 					++g_resolveOpens;
 					if (logFileResolve >= 2 && handle != INVALID_HANDLE_VALUE) {
-						std::string key = NormalizeKey(fileName);
+						std::string key = NormalizeKey(m_fileName.c_str());
 						EmitResolveRecord(key.c_str(), fName, "cd", actualPath, nullptr);
 					}
 					setup();
@@ -1260,19 +1249,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 					// files to avoid the ten thousand file syndrome.
 					//
 					// There is now an open which takes a FilePtr and a size.
-					maxChildren = numChild;
-					childList = (FilePtr *)systemHeap->Malloc(sizeof(FilePtr) * maxChildren);
-
-					if (!childList)
-					{
-						return(NO_RAM_FOR_CHILD_LIST);
-					}
-
-					numChildren = 0;
-					for (long i=0;i<(long)maxChildren;i++)
-					{
-						childList[i] = nullptr;
-					}	
+					m_children.assign(numChild > 0 ? (size_t)numChild : 0, nullptr);
 
 					return (NO_ERR);
 				}
@@ -1283,7 +1260,9 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			//-- Then close fastfile!!!!!
 			inRAM = TRUE;
 
-			fileImage = (unsigned char *)malloc(fileSize());
+			// Never empty, so a zero-length member still has an image to read from (what malloc(0) gave).
+			m_ownedImage.assign(std::max<size_t>(fileSize(), 1), 0);
+			fileImage = m_ownedImage.data();
 			if (fileImage)
 			{
 				fastFile->readFast(fastFileHandle,fileImage,fileSize());
@@ -1316,19 +1295,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			// files to avoid the ten thousand file syndrome.
 			//
 			// There is now an open which takes a FilePtr and a size.
-			maxChildren = numChild;
-			childList = (FilePtr *)systemHeap->Malloc(sizeof(FilePtr) * maxChildren);
-			
-			if (!childList)
-			{
-				return(NO_RAM_FOR_CHILD_LIST);
-			}
-		
-			numChildren = 0;
-			for (long i=0;i<(long)maxChildren;i++)
-			{
-				childList[i] = nullptr;
-			}	
+			m_children.assign(numChild > 0 ? (size_t)numChild : 0, nullptr);
 	
 			return (NO_ERR);
 		}
@@ -1353,7 +1320,10 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 		logicalPosition = 0;
 
 		//-------------------------------------------------------------
-		fileName = parent->getFilename();
+		{
+			const char* parentName = parent->getFilename();
+			m_fileName = parentName ? parentName : "";
+		}
 		fileMode = parent->getFileMode();
 		
 		handle = parent->getFileHandle();
@@ -1379,26 +1349,17 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 		// This means NO CHILDREN!!!!!!!!!!!!!
 		if (numChild != -1)
 		{
-			maxChildren = numChild;
-			childList = (FilePtr *)systemHeap->Malloc(sizeof(FilePtr) * maxChildren);
-			
-			gosASSERT(childList != NULL);
-
-			numChildren = 0;
-			for (long i=0;i<(long)maxChildren;i++)
-			{
-				childList[i] = nullptr;
-			}	
+			m_children.assign(numChild > 0 ? (size_t)numChild : 0, nullptr);
 		}
 		else
 		{
-			maxChildren = 0;
+			m_children.clear();
 			inRAM = TRUE;
 			unsigned long result = 0;
 
-			fileImage = (MemoryPtr)malloc(fileSize);
-			if (!fileImage)
-				inRAM = FALSE;
+			// Never empty (see the FastFile case above).
+			m_ownedImage.assign(std::max<size_t>(fileSize, 1), 0);
+			fileImage = m_ownedImage.data();
 
 			if (_parent->getFileClass() == PACKETFILE)
 			{
@@ -1424,6 +1385,7 @@ long File::open(const char* buffer, int bufferLength )
 {
 	if ( buffer && bufferLength > 0 )
 	{	
+		m_ownedImage.clear();
 		fileImage = (unsigned char*)buffer;
 		physicalLength = bufferLength;
 		logicalPosition = 0;
@@ -1450,16 +1412,11 @@ long File::createWithCase(const char* fName )
 {
 	gosASSERT( !isOpen() );
 	//-------------------------------------------------------------
-	long fNameLength = static_cast<long>(strlen(fName));
-	
-	fileName = (char *)systemHeap->Malloc(fNameLength+1);
-	gosASSERT(fileName != NULL);
-		
-	strncpy(fileName,fName,fNameLength+1);
+	m_fileName = fName;
 	fileMode = CREATE;
 	//_fmode = _O_BINARY;
 
-	handle = _creat(fileName,_S_IWRITE);
+	handle = _creat(m_fileName.c_str(),_S_IWRITE);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
 		lastError = errno;
@@ -1471,15 +1428,12 @@ long File::createWithCase(const char* fName )
 //---------------------------------------------------------------------------
 long File::addChild (FilePtr child)
 {
-	if (maxChildren)
+	for (FilePtr& slot : m_children)
 	{
-		for (long i=0;i < (long)maxChildren;i++)
+		if (slot == nullptr)
 		{
-			if (childList[i] == nullptr)
-			{
-				childList[i] = child;
-				return NO_ERR;
-			}
+			slot = child;
+			return NO_ERR;
 		}
 	}
 
@@ -1489,18 +1443,12 @@ long File::addChild (FilePtr child)
 //---------------------------------------------------------------------------
 void File::removeChild (FilePtr child)
 {
-	if (maxChildren)
+	for (FilePtr& slot : m_children)
 	{
-		if (childList)
+		if (slot == child)
 		{
-			for (long i=0;i < (long)maxChildren;i++)
-			{
-				if (childList[i] == child)
-				{
-					childList[i] = nullptr;
-					break;
-				}
-			}
+			slot = nullptr;
+			break;
 		}
 	}
 }
@@ -1512,17 +1460,9 @@ void File::close (void)
 	// First, close us if we are the parent.  Otherwise, just NULL the handle
 	// DO NOT CALL CLOSE IF WE ARE A CHILD!!
 	//
-	// The actual stored filename is also in the parent.  Everyone else just has
-	// pointer and, as such, only the parent frees the memory.
+	// Every file holds its own copy of its name, so closing the parent leaves a child's name valid until that child closes.
 
-	bool bFast = false;
-
-	if ((parent == nullptr) && (fileName != nullptr))
-	{
-		systemHeap->Free(fileName);
-	}
-
-	fileName = nullptr;
+	m_fileName.clear();
 	length = 0;
 
 	if (isOpen())
@@ -1535,7 +1475,6 @@ void File::close (void)
 		if (fastFile)
 		{
    			fastFile->closeFast(fastFileHandle);
-			bFast = true; // save that it was a fast file
 		}
 
 		fastFile = nullptr;			//DO NOT DELETE THE FASTFILE!!!!!!!!!!!!!
@@ -1546,31 +1485,27 @@ void File::close (void)
 	// Check if we have any children and close them.  This will set their
 	// handle to NULL and their filename to NULL.  It will also close any
 	// of THEIR children.
-	if (maxChildren)
+	// Index loop: a child's close() clears its own slot through removeChild(), never resizing the list.
+	for (size_t i = 0; i < m_children.size(); i++)
 	{
-		if (childList)
-		{
-			for (long i=0;i<(long)maxChildren;i++)
-			{
-				if (childList[i])
-					childList[i]->close();
-			}
-		}
-
-		if (childList)
-			systemHeap->Free(childList);
+		if (m_children[i])
+			m_children[i]->close();
 	}
+	m_children.clear();
 	
+	// Forget the parent once the slot is cleared: a second close() of this child (its destructor, after an explicit close) must not reach into a
+	// parent that has been destroyed in the meantime.
 	if (parent != nullptr)
-		parent->removeChild(this);
-
-	childList = nullptr;
-	numChildren = 0;
-
-	if (inRAM && (bFast || parent)) // don't want to delete memFiles
 	{
-		if (fileImage)
-			free(fileImage);
+		parent->removeChild(this);
+		parent = nullptr;
+	}
+
+	// Only an image this file loaded itself goes away; a caller's buffer (open(buffer, length)) stays attached, as it always did.
+	if (!m_ownedImage.empty())
+	{
+		m_ownedImage.clear();
+		m_ownedImage.shrink_to_fit();
 		fileImage = nullptr;
 		inRAM = FALSE;
 	}
@@ -2536,9 +2471,9 @@ bool File::isOpen (void)
 }
 
 //---------------------------------------------------------------------------
-char* File::getFilename (void)
+const char* File::getFilename (void) const
 {
-	return (fileName);
+	return m_fileName.empty() ? nullptr : m_fileName.c_str();
 }
 
 //---------------------------------------------------------------------------
