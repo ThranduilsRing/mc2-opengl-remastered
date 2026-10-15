@@ -2006,7 +2006,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         lowLightTint ? lowLightTint[2] : 0.6f,
         (float)engineIdxBase,
         casSharpness,
-        (float)tonemapMode
+        static_cast<float>(tonemapMode)
     };
     vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);
