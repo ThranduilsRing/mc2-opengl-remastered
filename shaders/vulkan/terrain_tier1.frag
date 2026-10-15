@@ -36,6 +36,7 @@
 #endif
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -152,16 +153,15 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale) {
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
-// Terrain parallax-occlusion march (legacy variant). This is the fixed-view-direction march
-// GL used before GL moved to a real per-fragment tangent-space view vector with a world-distance
-// fade and slope/cement exclusions (GL terrain_lod_chunk.frag chunkParallaxView). VK has NOT been
-// ported to that: it still marches along one fixed faux direction and is always on. The GL
-// promotions VK still lacks are listed in .claude/VK-PARITY-GAPS.md (rows 13-19) and
-// .claude/cleanup/vk-default-flip-checklist.md section 5; porting this block to the real-view
-// march is row 13. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import),
-// read with textureLod base level so it is valid in any control flow. No self-shadow term.
-// Constants are the GL scale and layer counts: {scale 0.02, minLayers 8, maxLayers 32}.
-const vec4 MATV_POM_PARAMS = vec4(0.02, 8.0, 32.0, 0.0);  // scale,minLayers,maxLayers,_
+// Terrain parallax-occlusion march with the REAL per-fragment tangent-space view vector (GL terrain_lod_chunk.frag
+// chunkParallaxView): more layers at grazing view, an epsilon guard on the denominator of the final blend (AMD yields inf/nan
+// silently), a hard 16-step cap. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import), read with
+// textureLod base level so it is valid in any control flow. No self-shadow term.
+const float MATV_POM_SCALE      = 0.02;     // GL u_pomScale
+const float MATV_POM_MIN_LAYERS = 8.0;
+const float MATV_POM_MAX_LAYERS = 16.0;
+const float MATV_POM_FADE_NEAR  = 1500.0;   // world units; one tile is 384
+const float MATV_POM_FADE_FAR   = 3500.0;
 float mv_pomDisplacement(vec2 uv, vec4 w) {
     float d = 0.0;
     if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
@@ -169,9 +169,8 @@ float mv_pomDisplacement(vec2 uv, vec4 w) {
     if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
     return 1.0 - d;
 }
-vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
-    const vec3 viewDirTS = vec3(0.15, 0.85, 0.15);
-    float numLayers = mix(MATV_POM_PARAMS.y, MATV_POM_PARAMS.z, max(viewDirTS.y, 0.0));
+vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
+    float numLayers = mix(MATV_POM_MAX_LAYERS, MATV_POM_MIN_LAYERS, max(viewDirTS.y, 0.0));
     numLayers = clamp(numLayers, 4.0, 16.0);
     float layerDepth = 1.0 / numLayers;
     float curLayer = 0.0;
@@ -188,7 +187,7 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
     vec2 prevUV = curUV + dUV;
     float after  = curD - curLayer;
     float before = mv_pomDisplacement(prevUV, w) - curLayer + layerDepth;
-    return mix(curUV, prevUV, after / (after - before));
+    return mix(curUV, prevUV, after / max(abs(after - before), 1.0e-6));
 }
 
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
@@ -196,9 +195,9 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
 // (fwRock..fwSnow, GL :353-357) + ★anti-tile resample gated by `fw* > 0.5 && ats* >
 // 0.01` EXACTLY as GL :392-415. Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
-// previously omitted — now included to match GL. POM is the legacy fixed-view march
+// previously omitted — now included to match GL. POM is the real-view march
 // (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
-// triplanar / height normal / cliff POM, real-view POM (VK-PARITY-GAPS rows 13-14).
+// triplanar / height normal / cliff POM (VK-PARITY-GAPS row 14).
 // Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
 // here — no non-uniform weight branch, so LOD is well-defined). -------------------
 // VK-TERRAIN-LODFADE: LOD_NEAR/LOD_NEAR_FADE constants verbatim from gos_terrain.frag
@@ -218,7 +217,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
 }
 //PORT-END:lodNear
 
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -233,16 +232,26 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
     float fwConcrete = clamp(1.0 - (length(fwidth(uvConcrete)) - 0.5) * 2.0, 0.0, 1.0);
     float fwSnow     = clamp(1.0 - (length(fwidth(uvSnow))     - 0.5) * 2.0, 0.0, 1.0);
 
-    // ★POM: parallax-offset the material UVs (GL :361-367). fwidth-gated (near only)
-    // -> bounded cost. pomParams.x (=0.02) > 0 always here; fwRock > 0.4 gate matches GL.
-    // VK-TERRAIN-LODFADE: fade the POM offset by lodNear (GL gos_terrain.frag :617-624
-    // `pomOffset *= lodNear` -- prevents popping at the LOD0/band boundary GL fades
-    // across; lodNear==1.0 when the gate is off, so this is a no-op then).
-    if (MATV_POM_PARAMS.x > 0.0 && fwRock > 0.4 && lodNear > 0.01) {
+    // POM: parallax-offset the material UVs, fwidth-gated (near only). The march uses the real view vector, faded out over the world
+    // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
+    // (a slab must not tear). lodNear fades the offset across the LOD0 band boundary (1.0 when the gate is off).
+    if (fwRock > 0.4 && lodNear > 0.01) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
-        float pomScale = MATV_POM_PARAMS.x * dot(pomScaleMat, w) * fwRock * lodNear;
+        float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock * lodNear;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
-        vec2  pomOff   = (mv_parallax(pomUV, pomScale, w) - pomUV) * fwRock * lodNear;
+        vec2  pomOff   = vec2(0.0);
+        vec3  camW     = mc2ToRender(uT.cameraPosMC2.xyz);   // the eye in the MC2 world frame (the feed is the Stuff frame)
+        float altBoost = max(camW.z - v_worldPos.z, 0.0) * 0.7;
+        float camDist  = distance(v_worldPos.xy, camW.xy) + altBoost;
+        float distFade = 1.0 - smoothstep(MATV_POM_FADE_NEAR, MATV_POM_FADE_FAR, camDist);
+        float slopeFade = 1.0 - smoothstep(0.85, 0.55, abs(macroNz));
+        float pomStrength = distFade * slopeFade * (1.0 - w.w);
+        if (pomStrength > 0.001) {
+            vec3 Vw = normalize(camW - v_worldPos);                 // fragment -> eye, MC2 world
+            // The detail UVs are top-down planar with no y flip: tangent u = east, bitangent v = north, normal = up.
+            vec3 viewDirTS = vec3(Vw.x, Vw.z, Vw.y);
+            pomOff = (mv_parallax(pomUV, pomScale, w, viewDirTS) - pomUV) * fwRock * lodNear * pomStrength;
+        }
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
     }
 
@@ -506,7 +515,7 @@ void main() {
                 // VK-TERRAIN-LODFADE: fades detail-normal/POM to 0 across the LOD0/band
                 // boundary (GL gos_terrain.frag :326-328). Gate off -> lodNear==1.0.
                 float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear);
+                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z);
             }
             vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
                              + dN.xy * uT.detailStrength, 1.0);
