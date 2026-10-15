@@ -57,6 +57,16 @@ void PanelProof::objectiveCrudProof()
         click("objective.list." + std::to_string(list));
         if (list % 2 != 0) {
             click(key + ".creation");
+            const auto refusal = [this, key](const char* reason) {
+                click("", [this, key, reason] {
+                    if (!panels_.widgets().contains(key + ".refusal." + reason)) throw std::runtime_error("action_refusal_reason_not_visible");
+                });
+            };
+            click(key + ".species"); click(key + ".species.DisplayTextMessage");
+            input(key + ".new.Message", "quoted\"payload"); refusal("invalid_objective_text");
+            input(key + ".new.Message", "hello\n[unterminated"); refusal("reader_scanner_collision");
+            click(key + ".species"); click(key + ".species.DisplayResourceTextMessage");
+            input(key + ".new.ResourceStringID", "2147483648"); refusal("out_of_range");
             click(key + ".species"); click(key + ".species.SetBooleanFlag");
             input(key + ".new.FlagID", "created-flag"); click(key + ".new.Value");
         }

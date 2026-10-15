@@ -226,9 +226,9 @@ void EntityPanels::objectives()
                     record(key + ".new." + name, changed || ImGui::IsItemActivated());
                 }
             }
-            const auto valid = i % 2 == 0 || encodeActionDraft(draft).has_value();
+            const auto validation = i % 2 == 0 ? std::expected<std::string, LoadError>{std::string{}} : encodeActionDraft(draft);
             if (i % 2 != 0 && !actionCreationOpen_[i / 2]) ImGui::SameLine();
-            ImGui::BeginDisabled(!valid);
+            ImGui::BeginDisabled(!validation);
             if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add selected action")) {
                 const auto result = i % 2 != 0 ? history_.addObjectiveAction(objective_, i, draft) : conditionCreation_ != 0 ?
                     history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species, conditionTarget_) :
@@ -238,6 +238,10 @@ void EntityPanels::objectives()
                 ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
             }
             ImGui::EndDisabled();
+            if (!validation) {
+                ImGui::TextWrapped("%s", validation.error().reason.c_str());
+                record(key + ".refusal." + validation.error().reason);
+            }
             for (std::size_t j = 0; j < selected->entries[i].size(); ++j) {
                 const auto& entry = selected->entries[i][j];
                 const auto row = document_.section(entry.section)->name;
@@ -275,10 +279,17 @@ void EntityPanels::objectives()
                     if (flagUseIndex_) record(key + ".index", ImGui::InputScalar("FlagIndex", ImGuiDataType_S64, &flagIndexDraft_));
                     else record(key + ".id", ImGui::InputTextMultiline("FlagID", &flagDraft_, ImVec2(-1, 55), ImGuiInputTextFlags_CtrlEnterForNewLine));
                     record(key + ".value", ImGui::Checkbox("Flag Value", &flagValueDraft_));
+                    const ObjectiveFieldSpec field = flagUseIndex_ ? ObjectiveFieldSpec{"FlagIndex", "ul", 0, -2147483648.0, 2147483647.0} : ObjectiveFieldSpec{"FlagID", "st", 3};
+                    const Scalar value = flagUseIndex_ ? Scalar{flagIndexDraft_} : Scalar{flagDraft_};
+                    auto validation = validateObjectiveScalar(field, value);
+                    if (validation) validation = validateObjectiveBlock("[Flag]\r\n" + std::string(field.prefix) + " " + std::string(field.key) + " = " + objectivePayloadWire(field, value));
+                    ImGui::BeginDisabled(!validation);
                     if (button((key + ".apply").c_str(), "Apply flag payload")) {
                         report(history_.setObjectiveFlag(entry.section, flagUseIndex_ ? std::nullopt : std::optional{flagDraft_}, flagIndexDraft_, flagValueDraft_));
-                        ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
+                        ImGui::EndDisabled(); ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
                     }
+                    ImGui::EndDisabled();
+                    if (!validation) ImGui::TextWrapped("%s", validation.error().reason.c_str());
                     ImGui::EndDisabled();
                 } else if (entry.policy.empty()) {
                     const auto fields = objectivePayloadSchema(entry);
@@ -295,10 +306,15 @@ void EntityPanels::objectives()
                             if (field.type == 0) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_S64, &std::get<std::int64_t>(payloadDraft_[f])));
                             else if (field.type == 1) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
                             else record(key + "." + std::string(field.key), ImGui::InputTextMultiline(field.key.data(), &std::get<std::string>(payloadDraft_[f]), ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine));
+                            auto validation = validateObjectiveScalar(field, payloadDraft_[f]);
+                            if (validation) validation = validateObjectiveBlock("[Payload]\r\n" + std::string(field.prefix) + " " + std::string(field.key) + " = " + objectivePayloadWire(field, payloadDraft_[f]));
+                            ImGui::BeginDisabled(!validation);
                             if (button((key + ".apply." + std::string(field.key)).c_str(), ("Apply " + std::string(field.key)).c_str())) {
                                 report(history_.setObjectivePayload(entry.section, field.key, payloadDraft_[f]));
-                                ImGui::PopID(); ImGui::PopID(); return;
+                                ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
                             }
+                            ImGui::EndDisabled();
+                            if (!validation) ImGui::TextWrapped("%s", validation.error().reason.c_str());
                         }
                     } else if (entry.reference.kind != ReferenceKind::none) ImGui::TextUnformatted("Use the objective reference rows to resolve the target.");
                     else ImGui::TextUnformatted("Payload authoring for this species is deferred.");

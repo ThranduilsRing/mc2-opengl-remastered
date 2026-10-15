@@ -10,6 +10,8 @@
 #include <limits>
 #include <bit>
 
+extern bool g_mc2TestStopFatal;
+
 namespace {
 std::string bytes(const std::filesystem::path& path)
 {
@@ -318,7 +320,7 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
                 {std::string(1999, 'x'), std::string(1999, 'x')}, {std::string(2000, 'x'), std::string(2000, 'x')},
                 {std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny"},
                 {std::string(1998, 'x') + "\r\ny", std::string(1998, 'x') + "\r\ny"},
-                {"hello\nul Count = 1", "hello\r\nul Count = 1"}}) {
+                {"hello\n ul Count = 1", "hello\r\n ul Count = 1"}}) {
             REQUIRE(history.setObjectivePayload(id, key, authored));
             REQUIRE(doc->save(output / "authored", {}));
             const auto saved = bytes(output / "authored.fit");
@@ -334,7 +336,8 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
                 {"\"" + std::string(2001, 'x') + "\"", std::nullopt},
                 {"\"one\"two\"", std::string("one")},
                 {"\"one\r\ntwo\"", std::string("onetwo")},
-                {"\"one\ntwo\"", std::string("onetwo")}}) {
+                {"\"one\ntwo\"", std::string("onetwo")},
+                {"\"\r\nhello\r\nul Count = 1\"", std::string("hello\r\nul Count = 1")}}) {
             const auto raw = "FITini\r\n[Text]\r\nst " + key + " = " + wire + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";
             const auto rawPath = output / "imported.fit";
             { std::ofstream out(rawPath, std::ios::binary); out << raw; }
@@ -359,6 +362,51 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
     FitIniFile reader; REQUIRE(reader.open(lf.data(), static_cast<int>(lf.size())) == NO_ERR);
     REQUIRE(reader.seekBlock("Text") == NO_ERR);
     CHECK(objective_text::read(reader, "Message") == std::optional<std::string>{"ab"});
+}
+
+TEST_CASE("reader/embedded boolean declarations cannot override created or edited action values")
+{
+    using namespace editor::document;
+    const std::string fit = "FITini\r\n[Action]\r\nst FlagID = \"\r\nname\r\nb Value = FALSE\"\r\nb Value = TRUE\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+    FitIniFile reader; REQUIRE(reader.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+    REQUIRE(reader.seekBlock("Action") == NO_ERR);
+    bool value = true; REQUIRE(reader.readIdBoolean("Value", value) == NO_ERR); CHECK_FALSE(value);
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+    std::vector<std::string> logs;
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](const std::string& line) { logs.push_back(line); });
+    const auto owner = history.addObjective(0); REQUIRE(owner);
+    const auto entry = history.addObjectiveAction(*owner, 1, {ActionSpecies::flag, {std::string("seed"), true}}); REQUIRE(entry);
+    const auto before = doc->fitBytes();
+    logs.clear();
+    CHECK_FALSE(history.addObjectiveAction(*owner, 1, {ActionSpecies::flag, {std::string("name\nb Value = FALSE"), true}}));
+    CHECK(logs.size() == 1); logs.clear();
+    CHECK_FALSE(history.setObjectiveFlag(*entry, std::string("name\nb Value = FALSE"), 0, true));
+    CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
+}
+
+TEST_CASE("reader/embedded block headers refuse creation and payload edits before FIT opening fails")
+{
+    using namespace editor::document;
+    const std::string fit = "FITini\r\n[Action]\r\nst Message = \"\r\nhello\r\n[unterminated\"\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+    FitIniFile reader;
+    g_mc2TestStopFatal = false;
+    const auto opened = reader.open(fit.data(), static_cast<int>(fit.size()));
+    g_mc2TestStopFatal = true;
+    CHECK(opened == SYNTAX_ERROR);
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+    std::vector<std::string> logs;
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](const std::string& line) { logs.push_back(line); });
+    const auto owner = history.addObjective(0); REQUIRE(owner);
+    const auto entry = history.addObjectiveAction(*owner, 1, {ActionSpecies::text, {std::string("seed")}}); REQUIRE(entry);
+    const auto before = doc->fitBytes();
+    for (const auto* text : {"hello\n[unterminated", "hello\n[Injected]", "hello\nst ActionSpeciesString = bogus"}) {
+        logs.clear(); CHECK_FALSE(history.addObjectiveAction(*owner, 1, {ActionSpecies::text, {std::string(text)}}));
+        CHECK(logs.size() == 1); logs.clear();
+        CHECK_FALSE(history.setObjectivePayload(*entry, "Message", std::string(text)));
+        CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
+    }
 }
 
 TEST_CASE("reader/created actions require all six literal payloads in both lists without changing unrelated bytes")

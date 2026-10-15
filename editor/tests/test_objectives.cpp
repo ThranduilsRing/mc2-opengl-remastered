@@ -104,14 +104,17 @@ TEST_CASE("objectives/LF blank line collapse matches the RAM reader")
     CHECK(doc->fitBytes() == fit);
 }
 
-TEST_CASE("objectives/quoted declaration lines remain authorable message text")
+TEST_CASE("objectives/quoted declaration edits refuse once without changing authored bytes")
 {
     auto doc = MissionDocument::decode(messageFixture(), packet(), "declaration", {}); REQUIRE(doc);
-    CommandHistory history(*doc);
+    const auto before = doc->fitBytes();
+    std::vector<std::string> logs;
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
     const auto id = doc->objectives()[0].entries[1][0].section;
     const std::string text = "hello\nul Count = 1";
-    REQUIRE(history.setObjectivePayload(id, "Message", text));
-    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{text});
+    const auto result = history.setObjectivePayload(id, "Message", text);
+    REQUIRE_FALSE(result); CHECK(result.error().reason == "reader_scanner_collision");
+    CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
 }
 
 TEST_CASE("objectives/imported closing quote keeps trailing bytes through edits")

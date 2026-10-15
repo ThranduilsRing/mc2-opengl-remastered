@@ -191,6 +191,7 @@ struct ActionDraft {
     bool flagIndex{};
 };
 std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft);
+std::expected<void, LoadError> validateObjectiveBlock(std::string_view block);
 std::string objectivePayloadWire(const ObjectiveFieldSpec& field, const Scalar& value);
 std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry);
 std::expected<void, LoadError> validateObjectiveScalar(const ObjectiveFieldSpec& spec, const Scalar& value);

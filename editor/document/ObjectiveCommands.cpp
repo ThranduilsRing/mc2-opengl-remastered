@@ -102,6 +102,9 @@ std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, st
     fit.replace(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin, wire);
     auto check = decodeFit(fit);
     if (!check) return reject(check.error().reason);
+    const auto& block = check->sections[static_cast<std::size_t>(document_.section(id) - document_.syntax().sections.data())];
+    if (auto valid = validateObjectiveBlock(std::string_view(fit).substr(block.syntax.begin, block.syntax.end - block.syntax.begin)); !valid)
+        return reject(valid.error().reason);
     if (check->fields[index].warning == "reader_string_buffer_limit") return reject("reader_string_buffer_limit");
     auto decoded = check->fields[index].value[0];
     if (decoded != value) return reject("reader_conversion_changes_value");
@@ -287,6 +290,11 @@ std::expected<void, LoadError> CommandHistory::setObjectiveFlag(NodeId id, std::
     std::ranges::sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
     for (const auto& change : edits) fit.replace(change.span.begin, change.span.end - change.span.begin, change.text);
     if (fit == document_.fitBytes()) return {};
+    auto check = decodeFit(fit);
+    if (!check) return reject(check.error().reason);
+    const auto& block = check->sections[static_cast<std::size_t>(document_.section(id) - document_.syntax().sections.data())];
+    if (auto valid = validateObjectiveBlock(std::string_view(fit).substr(block.syntax.begin, block.syntax.end - block.syntax.begin)); !valid)
+        return reject(valid.error().reason);
     return commitObjectiveFit(std::move(fit), "Set objective boolean flag");
 }
 

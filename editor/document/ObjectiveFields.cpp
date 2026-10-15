@@ -6,6 +6,30 @@
 #include <format>
 
 namespace editor::document {
+std::expected<void, LoadError> validateObjectiveBlock(std::string_view block)
+{
+    auto syntax = decodeFit("FITini\r\n" + std::string(block) + "\r\nFITend\r\n");
+    if (!syntax) return std::unexpected(syntax.error());
+    // FIT scans every physical line, including quoted payloads, for blocks and keys.
+    for (const auto& field : syntax->fields) {
+        auto wire = std::string_view(syntax->originalBytes).substr(field.syntax.begin, field.syntax.end - field.syntax.begin);
+        if (!wire.starts_with('"')) continue;
+        for (auto at = wire.find('\n'); at != wire.npos; at = wire.find('\n', at + 1)) {
+            const auto line = wire.substr(at + 1, wire.find_first_of("\r\n", at + 1) - at - 1);
+            bool collision = line.starts_with('[');
+            const auto lower = identifier(line);
+            for (const auto prefix : {"b ", "c ", "uc ", "s ", "us ", "l ", "ul ", "f ", "st "}) {
+                if (!lower.starts_with(prefix)) continue;
+                const auto equal = line.find('=');
+                if (equal != line.npos && line.substr(std::string_view(prefix).size(), equal - std::string_view(prefix).size()).find_first_not_of(" \t") != line.npos)
+                    collision = true;
+            }
+            if (collision) return std::unexpected(LoadError{field.name, "reader_scanner_collision", field.syntax.begin + at + 1});
+        }
+    }
+    return {};
+}
+
 std::span<const ActionSpec> actionSchema(bool creation)
 {
     static constexpr ObjectiveFieldSpec bik[] = {{"AVIFileName", "st", 3}};
@@ -62,6 +86,8 @@ std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft
             return reject("reader_conversion_changes_value");
         result += declaration;
     }
+    if (auto valid = validateObjectiveBlock("[Action]\r\nst ActionSpeciesString = \"" + std::string(spec->name) + "\"\r\n" + result); !valid)
+        return std::unexpected(valid.error());
     return result;
 }
 
@@ -279,6 +305,9 @@ std::expected<void, LoadError> CommandHistory::setObjectiveScalar(NodeId id, std
         }
         auto decoded = decodeFit(fit);
         if (!decoded) return reject(decoded.error().reason);
+        const auto& block = decoded->sections[static_cast<std::size_t>(section - document_.syntax().sections.data())];
+        if (auto valid = validateObjectiveBlock(std::string_view(fit).substr(block.syntax.begin, block.syntax.end - block.syntax.begin)); !valid)
+            return reject(valid.error().reason);
         const auto& fields = decoded->sections[static_cast<std::size_t>(section - document_.syntax().sections.data())].fields;
         const auto field = std::ranges::find_if(decoded->fields, [&](const Field& field) {
             return field.name == actualKey && std::ranges::find(fields, field.id) != fields.end();
