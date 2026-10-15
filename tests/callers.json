@@ -11633,6 +11633,13 @@
           "evidence": "import",
           "reference": "bless",
           "text": "import bless as blesslib  # noqa: E402"
+        },
+        {
+          "path": "tools/visual_verify/test_bless_backend.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "bless",
+          "text": "import bless as blesslib  # noqa: E402"
         }
       ]
     },
@@ -11649,7 +11656,15 @@
           "text": "_assert_pass(subprocess.run([sys.executable, \"tools/visual_verify/bless_selftest.py\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/visual_verify/test_bless_backend.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "bless_selftest",
+          "text": "import bless_selftest as st  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/visual_verify/capture.py",
@@ -11753,6 +11768,13 @@
           "text": "import regions as regionlib  # noqa: E402"
         },
         {
+          "path": "tools/visual_verify/test_bless_backend.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "regions",
+          "text": "import regions as regionlib  # noqa: E402"
+        },
+        {
           "path": "tools/visual_verify/verify.py",
           "line": 61,
           "evidence": "import",
@@ -11760,6 +11782,13 @@
           "text": "import regions as regionlib  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/visual_verify/test_bless_backend.py",
+      "basename": "test_bless_backend.py",
+      "stem": "test_bless_backend",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/visual_verify/test_capture_ab.py",
