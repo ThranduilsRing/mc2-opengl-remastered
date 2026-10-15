@@ -77,8 +77,9 @@ placement records; storage encoding and record order may differ.
 It does not use a legacy golden as the CRUD input oracle. Frozen placements
 remain a separate regression gate.
 
-Loose mod census (existing parser plus native owned reader, objectives isolated from unrelated mission fields): Exodus 0/328, MagicExpansion 0/173, Carver5 0/173, Omnitech 177/445 objective blocks reject.
-Omnitech rejects 30/68 mission FITs: 176 blocks use an invalid scalar prefix (e.g. `a_0_1.fit` ResourcePoints `l 500`); `mw2_9_1_lastfrontier.fit` objective 5 uses ResourcePoints `ul -55000`, out of range. Reader rules unchanged.
+Owner 2026-10-14 supersedes E6a's strict scalar imports: (a) required counts/payload failures still reject once ([game required count](../../code/objective.cpp:1501)); wrong-prefix DisplayMarker also rejects because the game uses an uninitialized temporary ([game](../../code/objective.cpp:1459)).
+(b) Wrong-prefix optional scalars/aliases/counts and overlong text retain opaque bytes read-only, warning "ignored by the game" ([guarded reads](../../code/objective.cpp:199), [optional reads](../../code/objective.cpp:1444), [text skip](../../code/objective_text.cpp:31)). (c) Consumed values outside authoring bounds retain bytes read-only, warning "outside the editor's authoring range; the game uses this value as read" ([whole-number assignment](../../code/objective.cpp:223), [signed conversion](../../mclib/inifile.cpp:471)). No repair; edit commands reject once.
+New objective census: Exodus 0/328, MagicExpansion 0/173, Carver5 0/173, Omnitech 0/445 blocks reject. All 68 full Omnitech FIT/PAK scratch copies save/reopen byte-identically; 176 ignored lines + one consumed `ul ResourcePoints = -55000` produce 177 warnings, and unrelated-field edits preserve them in all 30 affected missions.
 
 ## Orchestrator acceptance commands (after commit)
 

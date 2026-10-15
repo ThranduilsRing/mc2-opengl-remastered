@@ -193,17 +193,15 @@ TEST_CASE("objectives/malformed known fields and lists reject once without repla
         CHECK(history.bytesUsed() == memory); CHECK(history.canRedo()); REQUIRE(history.redo()); REQUIRE(history.undo());
     };
     const auto replace = [&](std::string_view a, std::string_view b) { auto input = fixture(); input.replace(input.find(a), a.size(), b); bad(std::move(input)); };
-    replace("ul Priority = 1", "st Priority = \"bad\"");
-    replace("ul ResourcePoints = 700", "l ResourcePoints = -1");
-    replace("st Title = \"Authored title\"", "st Title = \"" + std::string(2001, 'x') + "\"");
-    replace("ul ActivateFlagIndex = 42", "f ActivateFlagIndex = 1.5");
-    replace("b PreviousObjectiveMustBeComplete = TRUE", "l PreviousObjectiveMustBeComplete = 1");
+    replace("b IsActive = TRUE", "f DisplayMarker = 1\r\nb IsActive = TRUE");
     replace("ul Version = 2", "l Version = 2");
     replace("ul NumObjectives = 1", "l NumObjectives = 1");
     for (const auto key : {"NumConditions", "NumActions", "NumFailureConditions", "NumFailureActions"}) {
         replace(std::string(key) + " = 1", std::string(key) + " = 2");
-        replace(std::string("ul ") + key + " = 1", std::string("f ") + key + " = 1.5");
-        replace(std::string("ul ") + key + " = 1", std::string("l ") + key + " = 1");
+        if (std::string_view(key) == "NumConditions") {
+            replace(std::string("ul ") + key + " = 1", std::string("f ") + key + " = 1.5");
+            replace(std::string("ul ") + key + " = 1", std::string("l ") + key + " = 1");
+        }
     }
     replace("st ActionSpeciesString = \"SetBooleanFlag\"", "f ActionSpeciesString = 1.5");
     replace("st FlagID = \"reward\"\r\n", "");
@@ -215,7 +213,7 @@ TEST_CASE("objectives/malformed known fields and lists reject once without repla
     replace("st ConditionSpeciesString = \"VendorPredicate\"\r\n", "");
 }
 
-TEST_CASE("objectives/every scalar prefix rejects once without touching document or history")
+TEST_CASE("objectives/scalar prefixes follow game ignore and unsafe-read behavior")
 {
     std::vector<std::string> logs;
     const auto log = [&](const auto& line) { logs.push_back(line); };
@@ -223,6 +221,14 @@ TEST_CASE("objectives/every scalar prefix rejects once without touching document
     CommandHistory history(*doc);
     REQUIRE(history.setObjectiveScalar(doc->objectives()[0].section, "Priority", std::int64_t{2})); REQUIRE(history.undo());
     const auto reject = [&](std::string input, std::string_view field) {
+        CAPTURE(field);
+        if (field != "DisplayMarker") {
+            logs.clear(); auto imported = MissionDocument::decode(input, packet(), "ignored-prefix", log);
+            REQUIRE(imported);
+            CHECK(imported->fitBytes() == input); CHECK(logs.size() == 1);
+            CHECK(logs[0].find("ignored by the game") != std::string::npos);
+            return;
+        }
         logs.clear(); const auto revision = doc->revision(), memory = history.bytesUsed();
         const auto failed = history.replace(std::move(input), packet(), "wrong-prefix", log);
         REQUIRE_FALSE(failed); CHECK(failed.error().field == "Objective0/" + std::string(field));
@@ -251,6 +257,39 @@ TEST_CASE("objectives/every scalar prefix rejects once without touching document
         auto input = fixture(); const auto pos = input.find(key);
         input.replace(input.rfind('\n', pos) + 1, key == std::string_view("ActivateFlagIndex") ? 2 : 1, "l");
         reject(std::move(input), key);
+    }
+}
+
+TEST_CASE("objectives/game ignored and consumed out-of-range lines are preserved read-only")
+{
+    for (const auto replacement : {"l ResourcePoints = 500 // keep", "ul ResourcePoints = -55000 // keep"}) {
+        auto original = fixture();
+        original.replace(original.find("ul ResourcePoints = 700"), 23, replacement);
+        std::vector<std::string> logs;
+        const auto log = [&](const auto& line) { logs.push_back(line); };
+        auto doc = MissionDocument::decode(original, packet(), "preserved", log); REQUIRE(doc);
+        REQUIRE(logs.size() == 1);
+        CHECK(logs.front().find(replacement[0] == 'l' ? "ignored by the game" : "the game uses this value as read") != std::string::npos);
+        const auto id = doc->objectives()[0].section;
+        REQUIRE(doc->objectiveScalar(id, "ResourcePoints")->source);
+        CHECK(doc->find(id, "ResourcePoints")->opaque);
+        CommandHistory history(*doc, 32 * 1024 * 1024, log);
+        const auto before = doc->fitBytes(); const auto revision = doc->revision(); logs.clear();
+        CHECK_FALSE(history.setObjectiveScalar(id, "ResourcePoints", std::int64_t{0}));
+        CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before); CHECK(doc->revision() == revision);
+        CHECK_FALSE(history.canUndo()); CHECK_FALSE(doc->modified());
+        logs.clear(); CHECK_FALSE(history.setText(*doc->objectiveScalar(id, "ResourcePoints")->source, "repair", "Forbidden edit"));
+        CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before); CHECK(doc->revision() == revision);
+        const auto output = scratch(); REQUIRE(doc->save(output / "untouched", {}));
+        CHECK(bytes(output / "untouched.fit") == original);
+        auto reopened = MissionDocument::read(output / "untouched.fit", output / "untouched.pak", {}); REQUIRE(reopened);
+        CHECK(reopened->fitBytes() == original);
+        REQUIRE(history.setObjectiveScalar(id, "Priority", std::int64_t{2}));
+        CHECK(doc->fitBytes().find(replacement) != std::string::npos);
+        const auto changed = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == changed);
+        CHECK(doc->objectiveScalar(id, "ResourcePoints")->warning.size() != 0);
     }
 }
 

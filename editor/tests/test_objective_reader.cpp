@@ -11,6 +11,19 @@ std::string bytes(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary); return {std::istreambuf_iterator<char>(file), {}};
 }
+
+void checkGameScalarReads()
+{
+    for (const auto declaration : {"l ResourcePoints = 500", "ul ResourcePoints = -55000"}) {
+        const auto fit = std::string("FITini\r\n[Objective0]\r\n") + declaration + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+        FitIniFile reader; REQUIRE(reader.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+        REQUIRE(reader.seekBlock("Objective0") == NO_ERR);
+        unsigned long value{};
+        const auto result = reader.readIdULong("ResourcePoints", value);
+        if (declaration[0] == 'l') CHECK(result != NO_ERR);
+        else { CHECK(result == NO_ERR); CHECK(static_cast<std::int32_t>(value) == -55000); }
+    }
+}
 std::string memoryText(const std::string& file, const char* key)
 {
     FitIniFile reader;
@@ -71,6 +84,7 @@ TEST_CASE("reader/owned multiline edits match the real disk and RAM objective re
 
 TEST_CASE("reader/objective prefixes and imported multiline semantics match FitIniFile")
 {
+    checkGameScalarReads();
     using namespace editor::document;
     const auto& widgets = editor::tests::inputs().byteGradeDirectory;
     const auto original = bytes(widgets / "fixture.fit");

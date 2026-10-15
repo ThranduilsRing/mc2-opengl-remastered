@@ -152,7 +152,15 @@ int q3DocumentTests()
         for (const auto scale : {"0", "-1", "1e100"}) {
             auto input = withObjective;
             input.insert(input.find("[Objective0Condition0]"), "f ModelScale = " + std::string(scale) + "\r\n");
-            rejectField(std::move(input), "Objective0/ModelScale");
+            if (std::string_view(scale) == "1e100") {
+                rejectField(std::move(input), "Objective0/ModelScale");
+            } else {
+                logs.clear();
+                auto preserved = MissionDocument::decode(input, fixturePak(), "preserved", log);
+                require(preserved && preserved->fitBytes() == input && logs.size() == 1 &&
+                    logs[0].find("outside the editor's authoring range") != std::string::npos,
+                    "game_consumed_scale_preserved");
+            }
         }
         auto invalidSpecies = withObjective;
         invalidSpecies.replace(invalidSpecies.find("MoveAnyUnitToArea"), 17, "UnknownSpecies");

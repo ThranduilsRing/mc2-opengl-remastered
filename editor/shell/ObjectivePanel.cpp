@@ -60,6 +60,10 @@ void EntityPanels::objectives()
     if (button("objective.down", "Move down")) report(history_.reorderObjective(objective_, selected->exportedIndex + 1));
     ImGui::EndDisabled();
     ImGui::TextWrapped("Order changes prerequisite meaning. Existing prerequisite flags are preserved.");
+    for (const auto id : document_.section(objective_)->fields) {
+        const auto* field = document_.field(id);
+        if (!field->warning.empty()) ImGui::TextWrapped("%s: %s (read-only)", field->name.c_str(), field->warning.data());
+    }
     const auto specs = objectiveSchema();
     const bool fields = ImGui::BeginCombo("Authoring field", specs[objectiveField_].key.data(), ImGuiComboFlags_HeightLargest);
     record("objective.field", fields);
@@ -74,6 +78,14 @@ void EntityPanels::objectives()
         objectiveField_ = (objectiveField_ + 1) % specs.size(); objectiveRevision_ = ~std::uint64_t{};
     }
     const auto& spec = specs[objectiveField_];
+    const auto* scalar = document_.objectiveScalar(objective_, spec.key);
+    if (!scalar->warning.empty()) {
+        ImGui::TextUnformatted("Read-only value:");
+        const auto* field = document_.field(*scalar->source);
+        const auto raw = document_.syntax().originalBytes.substr(field->syntax.begin, field->syntax.end - field->syntax.begin);
+        ImGui::TextWrapped("%s %s = %s", field->prefix.c_str(), field->name.c_str(), raw.c_str());
+        ImGui::PopID(); return;
+    }
     if (objectiveRevision_ != document_.revision()) {
         objectiveDraft_ = document_.objectiveScalar(objective_, spec.key)->value;
         objectiveRevision_ = document_.revision();

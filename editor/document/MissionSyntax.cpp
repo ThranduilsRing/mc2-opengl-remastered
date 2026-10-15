@@ -225,12 +225,19 @@ private:
         prefix = identifier(prefix);
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
         Field field{NodeId{result_.fields.size() + 1}, name, prefix, {peek().span.begin, peek().span.begin}, {}, {}, opaque};
+        if (result_.sections[section].kind == SectionKind::objective) {
+            for (const auto& spec : objectiveSchema())
+                if (identifier(spec.key) == identifier(name) && prefix != spec.prefix && spec.key != "DisplayMarker") field.opaque = true;
+            if ((identifier(name) == "previousobjectivemustbecomplete" && prefix != "b") ||
+                (prefix != "ul" && (identifier(name) == "activateflagindex" || identifier(name) == "numactions" ||
+                    identifier(name) == "numfailureconditions" || identifier(name) == "numfailureactions"))) field.opaque = true;
+        }
         const auto path = result_.sections[section].name + "/" + name;
         if (!fieldNames_[section].insert(identifier(name)).second) return failure("duplicate_field");
         for (std::size_t i = 0; i < count; ++i) {
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
-            auto value = scalar(peek(), prefix);
+            auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix);
             if (!value) { auto err = value.error(); err.field = path; return std::unexpected(std::move(err)); }
             field.value.push_back(std::move(*value));
             field.syntax.end = peek().span.end;
