@@ -43,6 +43,9 @@ HARNESS_NOTES = (
     " load waits (neither counts against a mission budget). `MC2_HOST_LOAD=off` skips it.",
     "- Batch lease: `py -3 scripts/smoke_lib/host_lease.py hold --tag X [--ttl S]` parks the host lease in a holder process; runs"
     " started with `MC2_HOST_LEASE_BATCH=X` enter it, everyone else waits; `release --tag X`, the TTL (max 6 h) or a dead holder pid ends it.",
+    "- `tools/tracy_capture_compare.py capture|baseline|regress|selfcheck|matrix` hold the host lease from before the first child to"
+    " after the last; `--warmup-seconds N` adds one unrecorded launch of a freshly copied exe; the vk arm no longer forces"
+    " `MC2_VK_SHADOW_INTEROP=0` (engine default; pass `--env` to pin an island).",
 )
 
 
