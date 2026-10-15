@@ -35,6 +35,8 @@ BOARD_ROWS = (
 HARNESS_NOTES = (
     "- `py -3 scripts/check-staged-hygiene.py --staged` (alias of `--index`): pre-commit scan of the index for new control bytes"
     " (0x00, 0x08, ...), mixed endings and CRLF/LF flips of tracked files; the board runs `--range`.",
+    "- `tools/sim_determinism.py run|check|pairs-until-fail` and `tools/saveload_roundtrip.py resave|baseline|check|run` accept"
+    " `--ref-exe PATH` / `--ref-commit SHA` and forward them to every run_smoke.py child (the fingerprint reference of an A/B exe).",
 )
 
 
