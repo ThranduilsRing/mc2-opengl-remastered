@@ -19,7 +19,8 @@ engines at once with every runner call passing `--wait-timeout`. Test isolation 
     never killed here (only `kill_orphans`, which child_registry restricts to provable orphans of a dead run).
   * off only for the owner: `MC2_HOST_LEASE=off` together with `MC2_OWNER_NO_LEASE=1`; the first without the second is ignored aloud.
 
-CLI: `py -3 -m scripts.smoke_lib.host_lease status | clear-dead` (status exits 0 free, 1 held, 2 held by a dead process).
+CLI: `py -3 -m scripts.smoke_lib.host_lease status | clear-dead` (status exits 0 free, 1 held, 2 held by a dead process);
+`hold --tag X [--ttl S]` ... `release --tag X` keeps one lease across a chain of runs started with MC2_HOST_LEASE_BATCH=X.
 """
 from __future__ import annotations
 
@@ -45,6 +46,9 @@ PATH_ENV = "MC2_HOST_LEASE_PATH"          # tests only: a private lease file (th
 OFF_ENV = "MC2_HOST_LEASE"                # "off" switches leasing off, owner only (see OWNER_ENV)
 OWNER_ENV = "MC2_OWNER_NO_LEASE"          # "1" authorises OFF_ENV; the same owner switch run_smoke --no-lease needs
 TIMEOUT_ENV = "MC2_HOST_LEASE_TIMEOUT"    # seconds, default 3600
+BATCH_ENV = "MC2_HOST_LEASE_BATCH"        # the tag of a `hold` batch lease this process's launches run under
+DEFAULT_BATCH_TTL_S = 7200.0
+MAX_BATCH_TTL_S = 6 * 3600.0              # the lane cap: no batch outlives a lane session
 DEFAULT_TIMEOUT_S = 3600.0
 POLL_S = 2.0
 REPORT_EVERY_S = 30.0
@@ -116,6 +120,8 @@ def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
             rec = _read(path)
             if rec and int(rec.get("pid", 0)) == os.getpid():
                 return True, None
+            if _batch_member(rec) and _holder_alive(rec):
+                return True, None              # a step of a held chain: the batch holder's lease covers it
             if _holder_alive(rec):
                 return False, rec
             try:
@@ -145,8 +151,17 @@ _registered = False
 
 
 def holds() -> bool:
-    """True when this process already holds the lease."""
-    return bool(_registered and (_read(lease_path()) or {}).get("pid") == os.getpid())
+    """True when this process already holds the lease, itself or as a member of the live batch named by MC2_HOST_LEASE_BATCH."""
+    if not _registered:
+        return False
+    rec = _read(lease_path()) or {}
+    return rec.get("pid") == os.getpid() or (_batch_member(rec) and _holder_alive(rec))
+
+
+def _batch_member(rec: Optional[dict]) -> bool:
+    """True when `rec` is a batch lease whose tag this process carries in MC2_HOST_LEASE_BATCH."""
+    tag = os.environ.get(BATCH_ENV, "")
+    return bool(rec and tag and rec.get("batch") == tag)
 
 
 def _describe(rec: Optional[dict]) -> str:
@@ -218,6 +233,90 @@ def ensure_held(label: str) -> None:
     acquire(label)
 
 
+# ---------------------------------------------------------------- batch lease (hold / release)
+# WHY: a proof chain (deploy check, smoke, capture, determinism pair) is several runner processes; between two of them another lane
+# could take the lease and interleave its engine with the chain. `hold` parks the lease in a small holder process of its own (an agent's
+# shell does not outlive one tool call, so no caller pid would do); runner processes started with MC2_HOST_LEASE_BATCH=<tag> enter it.
+# The lease still ends on a dead holder pid (the usual rule), on `release`, and at the TTL, so a forgotten hold cannot wedge the host.
+
+def _write_record(path: Path, rec: dict) -> None:
+    tmp = path.with_name(path.name + f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(rec), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def holder_loop(tag: str, ttl_s: float, *, log: Callable[[str], None] = _log_default, sleep: Callable[[float], None] = time.sleep,
+                clock: Callable[[], float] = time.time) -> int:
+    """Body of the holder process: take the lease (waiting as usual), mark it as batch `tag`, keep it until it is released, taken
+    away, or the TTL passes. -> 0 on a normal end, 4 when the lease could not be taken."""
+    try:
+        acquire(f"batch {tag}", log=log)
+    except HostLeaseBusy as exc:
+        log(f"[host-lease] batch {tag}: {exc}")
+        return 4
+    path = lease_path()
+    rec = dict(_read(path) or {}, batch=tag, expires=clock() + ttl_s, label=f"batch {tag}")
+    _write_record(path, rec)
+    while True:
+        cur = _read(path)
+        if not cur or cur.get("pid") != os.getpid() or cur.get("batch") != tag:
+            return 0                                   # released (or cleared) from outside
+        if clock() >= float(cur.get("expires", 0)):
+            log(f"[host-lease] batch {tag}: TTL reached, releasing")
+            release()
+            return 0
+        sleep(POLL_S)
+
+
+def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[float] = None,
+         log: Callable[[str], None] = _log_default) -> int:
+    """Start the holder process and wait until it holds the lease. -> its pid. Raises HostLeaseBusy when it cannot."""
+    import subprocess
+    try:
+        from scripts import console_child         # type: ignore
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import console_child                       # type: ignore
+    if not tag or not all(c.isalnum() or c in "-_." for c in tag):
+        raise ValueError(f"batch tag {tag!r}: use letters, digits, '-', '_' or '.'")
+    ttl_s = min(max(ttl_s, 1.0), MAX_BATCH_TTL_S)
+    flags = 0x00000200 | 0x01000000 if sys.platform == "win32" else 0     # new process group, break away from the caller's job
+    argv = [sys.executable, str(Path(__file__).resolve()), "_holder", "--tag", tag, "--ttl", str(ttl_s)]
+    kw = console_child.child_kwargs(redirected=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        proc = subprocess.Popen(argv, **dict(kw, creationflags=kw.get("creationflags", 0) | flags))
+    except OSError:                                # the caller's job forbids breakaway: the holder then lives as long as that job
+        proc = subprocess.Popen(argv, **kw)
+    deadline = time.monotonic() + (timeout_s if timeout_s is not None else float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S))
+    last = time.monotonic() - REPORT_EVERY_S + 2.0      # first line only after the holder had time to take a free lease
+    while True:
+        rec = _read(lease_path())
+        if rec and rec.get("pid") == proc.pid and rec.get("batch") == tag:
+            return proc.pid
+        if proc.poll() is not None:
+            raise HostLeaseBusy(f"batch {tag}: the holder exited (rc {proc.returncode}) without the lease")
+        if time.monotonic() >= deadline:
+            proc.terminate()
+            raise HostLeaseBusy(f"batch {tag}: not held after the wait; the lease is held by {_describe(rec)}")
+        if time.monotonic() - last >= REPORT_EVERY_S:
+            last = time.monotonic()
+            log(f"[host-lease] batch {tag}: waiting for the lease (held by {_describe(rec)})")
+        time.sleep(0.25)
+
+
+def release_batch(tag: str) -> Tuple[bool, Optional[dict]]:
+    """End batch `tag`: remove its lease (the holder sees that and exits). -> (removed, the record). Another lease is left alone."""
+    path = lease_path()
+    rec = _read(path)
+    if not rec or rec.get("batch") != tag:
+        return False, rec
+    try:
+        path.unlink()
+    except OSError:
+        return False, rec
+    return True, rec
+
+
 # ---------------------------------------------------------------- status / clear-dead
 
 def status() -> dict:
@@ -264,10 +363,35 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status", help="holder, whether it is alive, engines running (exit 0 free / 1 held / 2 held by a dead process)")
     sub.add_parser("clear-dead", help="remove the lease when its holder process is dead; a live holder is left alone")
+    h = sub.add_parser("hold", help="hold the lease for a chain of runs: start a holder process, print the env line the chain's runs need")
+    h.add_argument("--tag", required=True, help="batch name; runs started with MC2_HOST_LEASE_BATCH=<tag> enter the held lease")
+    h.add_argument("--ttl", type=float, default=DEFAULT_BATCH_TTL_S, help=f"seconds until the lease lapses (max {MAX_BATCH_TTL_S:.0f})")
+    h.add_argument("--wait-timeout", type=float, default=None, help="seconds to wait for the lease (default MC2_HOST_LEASE_TIMEOUT or 3600)")
+    r = sub.add_parser("release", help="end a batch lease taken with hold")
+    r.add_argument("--tag", required=True)
+    hl = sub.add_parser("_holder")                 # the holder process itself; started by hold
+    hl.add_argument("--tag", required=True)
+    hl.add_argument("--ttl", type=float, required=True)
     argv = ["clear-dead" if a == "--clear-dead" else a for a in (sys.argv[1:] if argv is None else argv)]   # deploy_lease spelling
     args = ap.parse_args(argv)
     if args.cmd == "status":
         return _print_status(status())
+    if args.cmd == "_holder":
+        return holder_loop(args.tag, args.ttl)
+    if args.cmd == "hold":
+        try:
+            pid = hold(args.tag, args.ttl, timeout_s=args.wait_timeout)
+        except (HostLeaseBusy, ValueError) as exc:
+            print(f"[host-lease] {exc}", file=sys.stderr)
+            return 4
+        print(f"[host-lease] batch {args.tag} held by pid {pid} for at most {min(args.ttl, MAX_BATCH_TTL_S):.0f} s; "
+              f"run the chain with {BATCH_ENV}={args.tag}, end it with: host_lease release --tag {args.tag}")
+        return 0
+    if args.cmd == "release":
+        removed, rec = release_batch(args.tag)
+        print(f"[host-lease] batch {args.tag} released" if removed else
+              f"[host-lease] batch {args.tag} not held (lease: {_describe(rec) if rec else 'free'})")
+        return 0 if removed else 1
     removed, rec = clear_dead()
     if removed:
         print(f"[host-lease] cleared the lease left by {_describe(rec)}")

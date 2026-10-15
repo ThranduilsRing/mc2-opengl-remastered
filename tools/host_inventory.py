@@ -41,6 +41,8 @@ HARNESS_NOTES = (
     " compiler/linker burst above `MC2_HOST_LOAD_BUILD_MAX` (4) or MsMpEng above `MC2_HOST_LOAD_DEFENDER_PCT` (50) is named in one line"
     " and waited out up to `MC2_HOST_LOAD_WAIT_S` (300 s), then the run launches anyway; report.json `host_wait` records the lease and"
     " load waits (neither counts against a mission budget). `MC2_HOST_LOAD=off` skips it.",
+    "- Batch lease: `py -3 scripts/smoke_lib/host_lease.py hold --tag X [--ttl S]` parks the host lease in a holder process; runs"
+    " started with `MC2_HOST_LEASE_BATCH=X` enter it, everyone else waits; `release --tag X`, the TTL (max 6 h) or a dead holder pid ends it.",
 )
 
 
