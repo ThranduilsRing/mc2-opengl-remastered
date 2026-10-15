@@ -648,7 +648,7 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
         operation = source.name.removesuffix("-edited") if source.name != "widget-save" else "objective-down"
         grade_crud_edit((source.parent / "fixture.fit").read_bytes(), before_fit, operation)
     else:
-        grade_objective_edit((FROZEN / "e5_reference_before.fit").read_bytes(), before_fit, "ResourcePoints")
+        grade_objective_edit((source.parent / "fixture.fit").read_bytes(), before_fit, "ResourcePoints")
     fixture_pak = (source.parent / "fixture.pak").read_bytes()
     panel_gate = read_json_object(source.parent / "gate.json")
     panel_name = "objectives_crud_panel" if crud else "objectives_panel"
@@ -657,11 +657,11 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
             or hashlib.sha256(fixture_pak).hexdigest() != panel_gate.get("provenance", {}).get("input_pak_sha256")
             or fixture_pak != (source.parent / "input.pak").read_bytes()):
         raise ValueError("objective reload fixture PAK does not match proven panel input")
+    fixture_fit = (source.parent / "fixture.fit").read_bytes()
+    if (hashlib.sha256(fixture_fit).hexdigest() != panel_gate.get("provenance", {}).get("input_fit_sha256")
+            or fixture_fit != (source.parent / "input.fit").read_bytes()):
+        raise ValueError("objective reload fixture FIT does not match proven panel input")
     if crud:
-        fixture_fit = (source.parent / "fixture.fit").read_bytes()
-        if (hashlib.sha256(fixture_fit).hexdigest() != panel_gate.get("provenance", {}).get("input_fit_sha256")
-                or fixture_fit != (source.parent / "input.fit").read_bytes()):
-            raise ValueError("objective CRUD fixture FIT does not match proven panel input")
         grade_panel(panel_name, source.parent, 0)
     if before_pak != fixture_pak:
         raise ValueError("objective reload control changed the PAK")
@@ -1529,6 +1529,14 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
                 data = (FROZEN / f"e5_reference_{seed}.{extension}").read_bytes()
             else:
                 data = stock.read(f"data/missions/mc2_01.{extension}")
+            if name == "objectives_panel" and extension == "fit":
+                # The model-name edit needs a camera-supported type; fingerprint this prepared input.
+                begin = data.index(b"[Team0Objective1]")
+                end = data.index(b"\n[", begin)
+                body, count = re.subn(rb"(?m)^(l\s+ModelType\s*=\s*)[^\r\n]*", lambda match: match[1] + b"14", data[begin:end])
+                if count != 1:
+                    raise ValueError("objective panel fixture needs one ModelType")
+                data = data[:begin] + body + data[end:]
             (directory / f"input.{extension}").write_bytes(data)
             provenance[f"input_{extension}_sha256"] = hashlib.sha256(data).hexdigest()
         host_lease.ensure_held("E3-b SDL panel widgets")

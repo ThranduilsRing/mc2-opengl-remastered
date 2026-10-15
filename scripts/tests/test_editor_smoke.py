@@ -25,10 +25,14 @@ class ObjectiveScalarGradingTests(unittest.TestCase):
         before = (FROZEN / "e5_reference_before.fit").read_bytes()
         start = before.index(b"[Team0Objective1]")
         end = before.index(b"\n[", start)
+        before = before[:start] + before[start:end].replace(b"ModelType = 0", b"ModelType = 14") + before[end:]
+        end = before.index(b"\n[", start)
         changed = before[:start] + before[start:end].replace(b"ResourcePoints = 7500", b"ResourcePoints = 17") + before[end:]
         self.assertNotEqual(changed, before)
         with scratch_directory() as directory:
             source = directory / "source"
+            (directory / "fixture.fit").write_bytes(before)
+            (directory / "input.fit").write_bytes(before)
             source.with_suffix(".fit").write_bytes(changed)
             pak = (FROZEN / "e5_reference_before.pak").read_bytes()
             source.with_suffix(".pak").write_bytes(pak)
@@ -36,7 +40,7 @@ class ObjectiveScalarGradingTests(unittest.TestCase):
                 (directory / name).write_bytes(pak)
             import hashlib
             (directory / "gate.json").write_text(json.dumps(dict(result=dict(name="objectives_panel", passed=True),
-                provenance=dict(input_pak_sha256=hashlib.sha256(pak).hexdigest()))))
+                provenance=dict(input_pak_sha256=hashlib.sha256(pak).hexdigest(), input_fit_sha256=hashlib.sha256(before).hexdigest()))))
             for index, output in enumerate((changed, before, changed.replace(b"ResourcePoints = 17", b"ResourcePoints = 18"), None)):
                 deploy = directory / str(index)
                 report = deploy / "report"
@@ -852,7 +856,7 @@ class PanelGateTests(unittest.TestCase):
                 kind, old = objective_fields(original)["Team0Objective1/" + key][0].split(" ", 1)
                 value = ('"\r\nE6a objective\r\n\r\nsecond line\r\n"' if key in ("Title", "Description") else '"E6a objective scalar"' if kind == "st" else
                          ("FALSE" if old == "TRUE" else "TRUE") if kind == "b" else
-                         "123.25" if kind == "f" else "2" if key == "Priority" else "17")
+                         "123.25" if kind == "f" else "2" if key == "Priority" else "13" if key == "ModelType" else "17")
                 start = original.index(b"[Team0Objective1]")
                 end = original.index(b"\n[", start)
                 body = re.sub(rb"(?m)(^\w+\s+" + re.escape(key.encode()) + rb"\s*=\s*)[^\r\n]*",

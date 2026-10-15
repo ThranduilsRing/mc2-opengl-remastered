@@ -81,7 +81,7 @@ std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
     return tokens;
 }
 
-std::expected<Scalar, LoadError> scalar(const Token& token, std::string_view prefix)
+std::expected<Scalar, LoadError> scalar(const Token& token, std::string_view prefix, bool objectiveInteger = false)
 {
     const auto bad = [&] { return std::unexpected(LoadError{"value", "malformed_value", token.span.begin}); };
     if (prefix == "st") {
@@ -105,10 +105,14 @@ std::expected<Scalar, LoadError> scalar(const Token& token, std::string_view pre
         bool hex = text.starts_with("0x") || text.starts_with("0X");
         if (hex) text.remove_prefix(2);
         auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), n, hex ? 16 : 10);
+        // Decimal overflow remains preservable syntax; the objective decoder marks it read-only.
+        if (objectiveInteger && !hex && ec == std::errc::result_out_of_range && end == text.data() + text.size())
+            return Scalar{text.starts_with('-') ? std::numeric_limits<std::int64_t>::min() : std::numeric_limits<std::int64_t>::max()};
         // Unsigned FIT values also use signed decimal spellings for stored bit patterns.
         const auto maximum = prefix == "uc" ? 255LL : prefix == "c" ? 127LL : prefix == "us" ? 65535LL : prefix == "s" ? 32767LL : prefix == "ul" ? 4294967295LL : 2147483647LL;
         const auto minimum = prefix == "c" ? -128LL : prefix == "uc" ? 0LL : prefix == "s" ? -32768LL : prefix == "us" ? 0LL : -2147483648LL;
-        if (ec != std::errc{} || end != text.data() + text.size() || n < minimum || n > maximum) return bad();
+        if (ec != std::errc{} || end != text.data() + text.size() ||
+            (!objectiveInteger && (n < minimum || n > maximum))) return bad();
         return Scalar{n};
     }
     return Scalar{token.value};
@@ -225,9 +229,13 @@ private:
         prefix = identifier(prefix);
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
         Field field{NodeId{result_.fields.size() + 1}, name, prefix, {peek().span.begin, peek().span.begin}, {}, {}, opaque};
+        bool objectiveInteger{};
         if (result_.sections[section].kind == SectionKind::objective) {
-            for (const auto& spec : objectiveSchema())
+            for (const auto& spec : objectiveSchema()) {
                 if (identifier(spec.key) == identifier(name) && prefix != spec.prefix && spec.key != "DisplayMarker") field.opaque = true;
+                if (identifier(spec.key) == identifier(name) && prefix == spec.prefix && spec.type == 0) objectiveInteger = true;
+            }
+            objectiveInteger |= identifier(name) == "activateflagindex" && prefix == "ul";
             if ((identifier(name) == "previousobjectivemustbecomplete" && prefix != "b") ||
                 (prefix != "ul" && (identifier(name) == "activateflagindex" || identifier(name) == "numactions" ||
                     identifier(name) == "numfailureconditions" || identifier(name) == "numfailureactions"))) field.opaque = true;
@@ -237,7 +245,7 @@ private:
         for (std::size_t i = 0; i < count; ++i) {
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
-            auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix);
+            auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
             if (!value) { auto err = value.error(); err.field = path; return std::unexpected(std::move(err)); }
             field.value.push_back(std::move(*value));
             field.syntax.end = peek().span.end;

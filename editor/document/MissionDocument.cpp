@@ -268,10 +268,14 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             if (const auto* alias = find(name, "PreviousObjectiveMustBeComplete"); alias &&
                 (alias->prefix != "b" || !typed(name, "PreviousObjectiveMustBeComplete", 2)))
                 preserveObjectiveField(alias->id, "ignored by the game");
-            if (const auto* alias = find(name, "ActivateFlagIndex"); alias &&
-                (alias->prefix != "ul" || !typed(name, "ActivateFlagIndex", 0) || number(alias).value_or(-1) < 0 || number(alias).value_or(0) > legacyFlagIndexMax))
-                preserveObjectiveField(alias->id, alias->prefix != "ul" ? "ignored by the game" :
-                    "outside the editor's authoring range; the game uses this value as read");
+            if (const auto* alias = find(name, "ActivateFlagIndex")) {
+                const auto wire = std::string_view(syntax_.originalBytes).substr(alias->syntax.begin, alias->syntax.end - alias->syntax.begin);
+                const auto value = number(alias).value_or(0);
+                const bool bits = (wire.starts_with("0x") && value >= 0 && value <= 4294967295.0) || wire.starts_with("0X");
+                if (alias->prefix != "ul" || !typed(name, "ActivateFlagIndex", 0) || (!bits && (value < -2147483648.0 || value > legacyFlagIndexMax)))
+                    preserveObjectiveField(alias->id, alias->prefix != "ul" ? "ignored by the game" :
+                        "outside signed 32-bit range; the game reader overflows or wraps this value");
+            }
             if (auto scalars = decodeObjectiveScalars(objective); !scalars) return scalars;
             if (!whole(name, "NumConditions")) return reject(name + "/NumConditions", "missing_required");
             for (std::size_t list = 0; list < 4; ++list) {

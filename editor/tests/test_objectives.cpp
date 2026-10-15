@@ -25,7 +25,7 @@ std::string fixture()
         "[Script]\r\nst ScenarioScript = \"unit\"\r\n[Parts]\r\nul NumParts = 0\r\n"
         "[Objectives Version]\r\nul Version = 2\r\n[Objectives]\r\nul NumObjectives = 1\r\n"
         "[Objective0]\r\nst Title = \"Authored title\" // retain comment\r\nul Priority = 1\r\nul ResourcePoints = 700\r\n"
-        "f MarkerX = 001.250000\r\nf MarkerY = -4.5\r\n"
+        "f MarkerX = 001.250000\r\nf MarkerY = -4.5\r\nl ModelType = 14\r\n"
         "b PreviousObjectiveMustBeComplete = TRUE\r\nul ActivateFlagIndex = 42\r\n"
         "b IsActive = TRUE\r\nf ActivationTime = 10.500\r\nb IsResolved = FALSE\r\nl ResolvedStatus = 1\r\nb ChangedStatus = FALSE\r\n"
         "x VendorKey = unparsed_extension\r\nul NumConditions = 1\r\nul NumActions = 1\r\nul NumFailureConditions = 1\r\nul NumFailureActions = 1\r\n"
@@ -64,7 +64,7 @@ TEST_CASE("objectives/all authoring scalars have independent defaults and exact 
     const std::vector<Scalar> expected{
         std::string("Authored title"), std::string("Authored title"), std::int64_t{1}, std::int64_t{700}, true, false,
         false, 1.25, -4.5, false, false, std::string("42"), false, std::string{}, false, std::int64_t{}, false, std::int64_t{},
-        std::string{}, std::int64_t{}, std::int64_t{-1}, std::int64_t{-1}, std::int64_t{-1}, 1.0, std::int64_t{-1}, std::int64_t{}};
+        std::string{}, std::int64_t{14}, std::int64_t{-1}, std::int64_t{-1}, std::int64_t{-1}, 1.0, std::int64_t{-1}, std::int64_t{}};
     REQUIRE(expected.size() == doc->objectives().front().scalars.size());
     for (std::size_t i = 0; i < expected.size(); ++i) CHECK(doc->objectives().front().scalars[i].value == expected[i]);
     for (const auto& list : doc->objectives().front().entries) REQUIRE(list.size() == 1);
@@ -161,9 +161,9 @@ TEST_CASE("objectives/rejection is atomic with one diagnostic and retains execut
         reject(id, key, std::string("bad\rline"));
         reject(id, key, std::string("embedded\0nul", 12));
     }
-    reject(id, "Priority", std::int64_t{-1}); reject(id, "ResourcePoints", std::int64_t{2147483648LL});
-    reject(id, "MarkerX", std::numeric_limits<double>::infinity()); reject(id, "ModelScale", 0.0);
-    reject(id, "ModelType", std::int64_t{256}); reject(id, "Title", false);
+    reject(id, "Priority", std::int64_t{-2147483649LL}); reject(id, "ResourcePoints", std::int64_t{2147483648LL});
+    reject(id, "MarkerX", std::numeric_limits<double>::infinity()); reject(id, "ModelScale", std::numeric_limits<double>::max());
+    reject(id, "ModelType", std::int64_t{2147483648LL}); reject(id, "Title", false);
     reject(id, "IsActive", false); reject(id, "NumConditions", std::int64_t{}); reject(NodeId{99999}, "Title", std::string{});
     logs.clear(); const auto revision = doc->revision(); const auto memory = history.bytesUsed();
     REQUIRE(history.setObjectiveScalar(id, "Title", std::string("Authored title")));
@@ -243,7 +243,7 @@ TEST_CASE("objectives/scalar prefixes follow game ignore and unsafe-read behavio
         valid.erase(begin, end - begin);
         const auto declaration = std::string(spec.prefix) + " " + std::string(spec.key) + " = " +
             (spec.type == 3 ? "\"text\"" : spec.type == 2 ? "TRUE" : spec.type == 1 ? "1.25" : "1") + "\r\n";
-        valid.insert(begin, declaration);
+        valid.insert(begin, declaration + (spec.key == "ObjectiveModel" ? "l ModelType = 14\r\n" : ""));
         REQUIRE(MissionDocument::decode(valid, packet(), "valid-prefix", log));
         for (const auto wrong : {"l", "ul", "c", "uc", "s", "us", "x"}) {
             if (spec.prefix == wrong) continue;
@@ -260,23 +260,27 @@ TEST_CASE("objectives/scalar prefixes follow game ignore and unsafe-read behavio
     }
 }
 
-TEST_CASE("objectives/game ignored and consumed out-of-range lines are preserved read-only")
+TEST_CASE("objectives/ignored lines author explicitly while integer overflow stays read-only")
 {
-    for (const auto replacement : {"l ResourcePoints = 500 // keep", "ul ResourcePoints = -55000 // keep"}) {
+    for (const auto replacement : {"l ResourcePoints = 500 // keep", "ul ResourcePoints = 2147483648 // keep", "ul ResourcePoints = 9223372036854775808 // keep"}) {
         auto original = fixture();
         original.replace(original.find("ul ResourcePoints = 700"), 23, replacement);
         std::vector<std::string> logs;
         const auto log = [&](const auto& line) { logs.push_back(line); };
         auto doc = MissionDocument::decode(original, packet(), "preserved", log); REQUIRE(doc);
         REQUIRE(logs.size() == 1);
-        CHECK(logs.front().find(replacement[0] == 'l' ? "ignored by the game" : "the game uses this value as read") != std::string::npos);
+        const bool ignored = replacement[0] == 'l';
+        CHECK(logs.front().find(ignored ? "ignored by the game" : "overflows or wraps") != std::string::npos);
         const auto id = doc->objectives()[0].section;
         REQUIRE(doc->objectiveScalar(id, "ResourcePoints")->source);
         CHECK(doc->find(id, "ResourcePoints")->opaque);
         CommandHistory history(*doc, 32 * 1024 * 1024, log);
         const auto before = doc->fitBytes(); const auto revision = doc->revision(); logs.clear();
-        CHECK_FALSE(history.setObjectiveScalar(id, "ResourcePoints", std::int64_t{0}));
-        CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before); CHECK(doc->revision() == revision);
+        if (ignored) CHECK(doc->objectiveScalar(id, "ResourcePoints")->value == Scalar{std::int64_t{0}});
+        else {
+            CHECK_FALSE(history.setObjectiveScalar(id, "ResourcePoints", std::int64_t{0}));
+            CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before); CHECK(doc->revision() == revision);
+        }
         CHECK_FALSE(history.canUndo()); CHECK_FALSE(doc->modified());
         logs.clear(); CHECK_FALSE(history.setText(*doc->objectiveScalar(id, "ResourcePoints")->source, "repair", "Forbidden edit"));
         CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before); CHECK(doc->revision() == revision);
@@ -290,6 +294,67 @@ TEST_CASE("objectives/game ignored and consumed out-of-range lines are preserved
         REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
         REQUIRE(history.redo()); CHECK(doc->fitBytes() == changed);
         CHECK(doc->objectiveScalar(id, "ResourcePoints")->warning.size() != 0);
+        if (ignored) {
+            REQUIRE(history.undo()); logs.clear();
+            REQUIRE(history.setObjectiveScalar(id, "ResourcePoints", std::int64_t{0}));
+            CHECK(logs.empty()); CHECK(doc->fitBytes().find("ul ResourcePoints = 0 // keep") != std::string::npos);
+            CHECK(doc->objectiveScalar(id, "ResourcePoints")->warning.empty());
+            REQUIRE(doc->save(output / "authored", {}));
+            auto authored = MissionDocument::read(output / "authored.fit", output / "authored.pak", {}); REQUIRE(authored);
+            CHECK(authored->objectiveScalar(authored->objectives()[0].section, "ResourcePoints")->value == Scalar{std::int64_t{0}});
+            REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+            REQUIRE(history.redo()); CHECK(doc->fitBytes() == authored->fitBytes());
+        }
+    }
+}
+
+TEST_CASE("objectives/consumed signed values and finite scales are editable without warnings")
+{
+    std::vector<std::string> logs;
+    auto original = fixture();
+    original.replace(original.find("ul ResourcePoints = 700"), 23, "ul ResourcePoints = -55000");
+    auto doc = MissionDocument::decode(original, packet(), "signed", [&](const auto& line) { logs.push_back(line); }); REQUIRE(doc);
+    CHECK(logs.empty()); CHECK(doc->fitBytes() == original);
+    const auto id = doc->objectives()[0].section;
+    CHECK(doc->objectiveScalar(id, "ResourcePoints")->value == Scalar{std::int64_t{-55000}});
+    CommandHistory history(*doc);
+    for (const auto& spec : objectiveSchema()) {
+        if (spec.type != 0 && spec.type != 1) continue;
+        for (const auto value : {spec.type == 0 ? Scalar{std::int64_t{-2147483648LL}} : Scalar{-1.0},
+                               spec.type == 0 ? Scalar{std::int64_t{2147483647}} : Scalar{0.0}}) {
+            CAPTURE(spec.key);
+            REQUIRE(history.setObjectiveScalar(id, spec.key, value));
+            CHECK(doc->objectiveScalar(id, spec.key)->value == value);
+            CHECK(doc->objectiveScalar(id, spec.key)->warning.empty());
+            const auto output = scratch(); REQUIRE(doc->save(output / "signed", {}));
+            auto reopened = MissionDocument::read(output / "signed.fit", output / "signed.pak", {}); REQUIRE(reopened);
+            CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, spec.key)->value == value);
+            REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+            REQUIRE(history.redo()); REQUIRE(history.undo());
+        }
+    }
+    auto unsafe = original;
+    unsafe.replace(unsafe.find("l ModelType = 14"), 16, "l ModelType = 256");
+    unsafe.insert(unsafe.find("[Objective0Condition0]"), "st ObjectiveModel = \"model\"\r\n");
+    logs.clear(); CHECK_FALSE(MissionDocument::decode(unsafe, packet(), "unsafe", [&](const auto& line) { logs.push_back(line); }));
+    CHECK(logs.size() == 1); CHECK(logs[0].find("asserts_in_game_camera") != std::string::npos);
+}
+
+TEST_CASE("objectives/integer bit patterns reflect the game rather than dialog bounds")
+{
+    auto overflow = fixture();
+    overflow.replace(overflow.find("ul ActivateFlagIndex = 42"), 25, "ul ActivateFlagIndex = 2147483648");
+    auto legacy = MissionDocument::decode(overflow, packet(), "legacy-overflow", {}); REQUIRE(legacy);
+    CHECK(legacy->objectiveScalar(legacy->objectives()[0].section, "ActivateFlagID")->value == Scalar{std::string("2147483647")});
+    for (const auto& [wire, expected] : std::vector<std::pair<std::string, std::int64_t>>{
+        {"l BaseColor = 0xffffffff", -1}, {"l BaseColor = 0x80000000", -2147483648LL}, {"l BaseColor = 0Xffffffff", 0}}) {
+        auto original = fixture(); original.insert(original.find("[Objective0Condition0]"), wire + "\r\n");
+        auto doc = MissionDocument::decode(original, packet(), "bits", {}); REQUIRE(doc);
+        CHECK(doc->fitBytes() == original);
+        CHECK(doc->objectiveScalar(doc->objectives()[0].section, "BaseColor")->value == Scalar{expected});
+        CHECK(doc->objectiveScalar(doc->objectives()[0].section, "BaseColor")->warning.empty());
+        CommandHistory history(*doc); REQUIRE(history.setObjectiveScalar(doc->objectives()[0].section, "BaseColor", std::int64_t{7}));
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
     }
 }
 

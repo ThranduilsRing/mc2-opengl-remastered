@@ -157,8 +157,7 @@ int q3DocumentTests()
             } else {
                 logs.clear();
                 auto preserved = MissionDocument::decode(input, fixturePak(), "preserved", log);
-                require(preserved && preserved->fitBytes() == input && logs.size() == 1 &&
-                    logs[0].find("outside the editor's authoring range") != std::string::npos,
+                require(preserved && preserved->fitBytes() == input && logs.empty(),
                     "game_consumed_scale_preserved");
             }
         }

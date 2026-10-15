@@ -62,7 +62,7 @@ void EntityPanels::objectives()
     ImGui::TextWrapped("Order changes prerequisite meaning. Existing prerequisite flags are preserved.");
     for (const auto id : document_.section(objective_)->fields) {
         const auto* field = document_.field(id);
-        if (!field->warning.empty()) ImGui::TextWrapped("%s: %s (read-only)", field->name.c_str(), field->warning.data());
+        if (!field->warning.empty()) ImGui::TextWrapped("%s: %s (original line preserved)", field->name.c_str(), field->warning.data());
     }
     const auto specs = objectiveSchema();
     const bool fields = ImGui::BeginCombo("Authoring field", specs[objectiveField_].key.data(), ImGuiComboFlags_HeightLargest);
@@ -80,11 +80,12 @@ void EntityPanels::objectives()
     const auto& spec = specs[objectiveField_];
     const auto* scalar = document_.objectiveScalar(objective_, spec.key);
     if (!scalar->warning.empty()) {
-        ImGui::TextUnformatted("Read-only value:");
+        ImGui::TextUnformatted("Original line:");
         const auto* field = document_.field(*scalar->source);
         const auto raw = document_.syntax().originalBytes.substr(field->syntax.begin, field->syntax.end - field->syntax.begin);
         ImGui::TextWrapped("%s %s = %s", field->prefix.c_str(), field->name.c_str(), raw.c_str());
-        ImGui::PopID(); return;
+        if (scalar->warning != "ignored by the game") { ImGui::TextUnformatted("Read-only"); ImGui::PopID(); return; }
+        ImGui::TextUnformatted("Value the game uses (editable draft):");
     }
     if (objectiveRevision_ != document_.revision()) {
         objectiveDraft_ = document_.objectiveScalar(objective_, spec.key)->value;
@@ -100,7 +101,8 @@ void EntityPanels::objectives()
     else if (auto* value = std::get_if<std::int64_t>(&objectiveDraft_)) changed = ImGui::InputScalar("Value", ImGuiDataType_S64, value);
     else if (auto* value = std::get_if<double>(&objectiveDraft_)) changed = ImGui::InputDouble("Value", value, 0, 0, "%.17g");
     record("objective.value", changed || ImGui::IsItemActivated());
-    if (button("objective.apply", "Apply objective field")) report(history_.setObjectiveScalar(objective_, spec.key, objectiveDraft_));
+    if (button("objective.apply", scalar->warning.empty() ? "Apply objective field" : "author this field as the game reads it"))
+        report(history_.setObjectiveScalar(objective_, spec.key, objectiveDraft_));
     selected = document_.objective(objective_);
     ImGui::TextWrapped("Text supports up to 2,000 characters. Ctrl+Enter adds a line break in title and description. Resource IDs refer to existing string tables. Flag IDs refer to existing scripts.");
     ImGui::Separator();
