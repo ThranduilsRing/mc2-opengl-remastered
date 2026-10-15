@@ -20,6 +20,116 @@ AUTHORING_KEYS = (
 )
 
 
+def grade_payload_edit(before, after, block, key):
+    text = key in ("AVIFileName", "WAVFileName", "Message", "PurchaseFileName")
+    prefix, expected = ("st", "../Exact/Name\n\nsecond line\n") if text else (("ul", "-17") if key in ("Num", "ResourceStringID") else ("f", "-1.25"))
+    pattern = (rb"(?m)(^\[" + re.escape(block.encode()) + rb"\]\r?\n(?:(?!^\[)[\s\S])*?^"
+               + prefix.encode() + rb"[ \t]+" + key.encode() + rb'[ \t]*=[ \t]*)("[^"]*"|[^\r\n]+)')
+    match = re.search(pattern, after)
+    if not match:
+        raise ValueError("payload reader value or prefix missing")
+    actual = match[2].decode("latin-1")
+    if text:
+        if not actual.startswith('"') or not actual.endswith('"'):
+            raise ValueError("payload text lacks quotes")
+        actual = actual[1:-1].replace("\r\n", "\n").replace("\n", "", 1)
+    if actual != expected:
+        raise ValueError("payload reader value differs")
+    def masked(data):
+        result, count = re.subn(pattern, lambda match: match[1] + b"<payload>", data)
+        if count != 1:
+            raise ValueError("condition payload target missing or ambiguous")
+        return result
+    if before == after or masked(before) != masked(after):
+        raise ValueError("condition payload edit unchanged or unrelated bytes changed")
+
+
+def grade_payload_outputs(output):
+    species = {name + "NumberOfEnemyUnits": ("Num",) for name in ("Destroy", "CaptureOrDestroy", "DeadOrFled")}
+    species["ElapsedMissionTime"] = ("Time",)
+    species.update({name: ("TargetCenterX", "TargetCenterY", "TargetRadius") for name in
+                    ("MoveAnyUnitToArea", "MoveAllUnitsToArea", "MoveAllSurvivingUnitsToArea", "MoveAllSurvivingMechsToArea")})
+    for listing, block in ((0, "Objective0Condition1"), (2, "Team0Objective0FailureCondition1")):
+        for name, keys in species.items():
+            for key in keys:
+                stem = f"payload-{listing}-{name}-{key}"
+                before = (output / (stem + "-before.fit")).read_bytes()
+                after = (output / (stem + "-after.fit")).read_bytes()
+                grade_payload_edit(before, after, block, key)
+                declaration = (b"ul " if key == "Num" else b"f ") + key.encode() + b" = "
+                controls = (before, after.replace(declaration, b"l " + key.encode() + b" = "),
+                            after.replace(declaration + (b"-17" if key == "Num" else b"-1.25"), declaration + b"99"),
+                            after + b"// unrelated mutation\n", b"")
+                for bad in controls:
+                    try:
+                        grade_payload_edit(before, bad, block, key)
+                    except ValueError:
+                        pass
+                    else:
+                        raise ValueError("condition payload negative control accepted")
+    for listing in (1, 3):
+        for name, key in ACTION_PAYLOADS:
+            stem = f"payload-{listing}-{name}-{key}"
+            before = (output / (stem + "-before.fit")).read_bytes()
+            after = (output / (stem + "-after.fit")).read_bytes()
+            block = "Team0Objective0" + ("Action0" if listing == 1 else "FailureAction0")
+            grade_payload_edit(before, after, block, key)
+            declaration = (b"ul " if key == "ResourceStringID" else b"st ") + key.encode() + b" = "
+            for bad in (before, after.replace(declaration, b"l " + key.encode() + b" = "),
+                        after.replace(b"../Exact/Name", b"./Wrong/Name").replace(b"-17", b"99"),
+                        after + b"// unrelated mutation\n", b""):
+                try:
+                    grade_payload_edit(before, bad, block, key)
+                except ValueError:
+                    pass
+                else:
+                    raise ValueError("action payload negative control accepted")
+
+
+ACTION_PAYLOADS = (("PlayBIK", "AVIFileName"), ("PlayWAV", "WAVFileName"),
+                   ("DisplayTextMessage", "Message"), ("MakeNewTechnologyAvailable", "PurchaseFileName"),
+                   ("DisplayResourceTextMessage", "ResourceStringID"))
+
+
+def grade_condition_creation(before, after, owner, suffix):
+    count = "Num" + suffix + "s"
+    block = owner + suffix + "3"
+    fields = objective_fields(before)
+    fields[owner + "/" + count] = ["ul 4"]
+    fields[block + "/" + suffix + "SpeciesString"] = ['st "DestroySpecificEnemyUnit"']
+    actual = objective_fields(after)
+    coordinates = []
+    for key in ("PositionX", "PositionY"):
+        wire = actual.get(block + "/" + key)
+        if not wire or len(wire) != 1 or not wire[0].startswith("f "):
+            raise ValueError("created specific condition lacks readable XY")
+        coordinates.append(wire[0][2:])
+        fields[block + "/" + key] = wire
+    from run_editor_smoke import fit_fields
+    parts = fit_fields(before)
+    def real(wire):
+        return struct.unpack("<f", struct.pack("<f", float(wire)))[0]
+    x, y = map(real, coordinates)
+    def close(a, b):
+        return max(abs(a), abs(b)) == 0 or abs(a - b) / max(abs(a), abs(b)) < 0.00001
+    matched = [path for path in parts if re.fullmatch(r"Part\d+/PositionX", path)
+               and close(real(parts[path][0][2:]), x)
+               and close(real(parts[path.replace("PositionX", "PositionY")][0][2:]), y)]
+    if len(matched) != 1:
+        raise ValueError("created specific condition is skipped or ambiguous in the game")
+    if fields != actual:
+        raise ValueError("condition creation lacks atomic species/payload/count")
+    appended = ("[" + block + "]\r\nst " + suffix + 'SpeciesString = "DestroySpecificEnemyUnit"\r\nf PositionX = '
+                + coordinates[0] + "\r\nf PositionY = " + coordinates[1] + "\r\n").encode()
+    if after.count(appended) != 1:
+        raise ValueError("created condition declaration differs")
+    restored = after.replace(appended, b"")
+    pattern = rb"(?m)(^\[" + owner.encode() + rb"\]\r?\n(?:(?!^\[)[\s\S])*?^ul " + count.encode() + rb" = )4"
+    restored, matched = re.subn(pattern, lambda match: match[1] + b"3", restored)
+    if matched != 1 or restored != before:
+        raise ValueError("condition creation changed unrelated bytes")
+
+
 def grade_typed_objectives(inputs, output):
     from editor.tests.legacy_reference import typed_fields
     for mission in STOCK_MISSIONS:

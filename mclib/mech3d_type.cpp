@@ -3,8 +3,6 @@
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
 
-static uint32_t s_lcSkipCount3d = 0u;
-
 constexpr int MAX_ANIMATION_FILES = 25;
 const char* MechAnimationNames[MaxGestures+2] = 
 {
@@ -693,19 +691,8 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	if ((nodeId < mechType->numSmokeNodes) || (nodeId >= (mechType->numSmokeNodes+mechType->numWeaponNodes)))
 		return result;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	// 1-frame weapon-spawn-root artifact on visibility transition: accepted by design.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))) {
-			++s_lcSkipCount3d;
-			if (s_lcSkipCount3d == 1u || (s_lcSkipCount3d % 600u) == 0u)
-				LC3D_TRACE("event=node_skip actorHandle=%ld total=%u", actorHandle_, s_lcSkipCount3d);
-			return result;
-		}
-	} else {
-		if (!inView)
-			return result;
-	}
+	// No visibility test: update() poses every mech each sim step, and a weapon node that fell back to the mech
+	// origin off screen made where the camera pointed change where shots start.
 
 	//We already know we are using this node.  Do NOT increment recycle or nodeUsed!
 
@@ -758,14 +745,7 @@ Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 {
 	Stuff::Vector3D result = position;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -795,14 +775,7 @@ Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -834,14 +807,7 @@ Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
 	if ((nodeId < 0) || (nodeId >= mechType->getTotalNodes()))
 		return result;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;

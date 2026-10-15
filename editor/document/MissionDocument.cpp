@@ -12,6 +12,12 @@ namespace editor::document {
 namespace {
 constexpr std::int64_t teamCount = 8;
 constexpr std::int64_t legacyFlagIndexMax = std::numeric_limits<std::int32_t>::max();
+std::string blockKey(std::string_view name)
+{
+    auto folded = identifier(name);
+    if (folded.find("objective") != folded.npos) return std::string(name);
+    return folded;
+}
 std::string pathText(const std::filesystem::path& path)
 {
     const auto text = path.generic_u8string();
@@ -199,13 +205,13 @@ void MissionDocument::rebuildIndex()
     index_.clear();
     for (const auto& section : syntax_.sections) {
         if (section.parent) continue;
-        auto& fields = index_[identifier(section.name)];
+        auto& fields = index_[blockKey(section.name)];
         for (auto id : section.fields) fields.emplace(identifier(field(id)->name), id);
     }
 }
 const Field* MissionDocument::find(std::string_view section, std::string_view name) const
 {
-    const auto block = index_.find(identifier(section));
+    const auto block = index_.find(blockKey(section));
     if (block == index_.end()) return nullptr;
     const auto found = block->second.find(identifier(name));
     return found == block->second.end() ? nullptr : field(found->second);
@@ -226,7 +232,8 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
     if (!typed("MissionSettings", nameKey, resourceName ? 0 : 3)) return reject("MissionSettings/" + std::string(nameKey), "missing_or_malformed_required");
     if (!typed("Script", "ScenarioScript", 3)) return reject("Script/ScenarioScript", "missing_or_malformed_required");
     const auto sectionId = [&](std::string_view block) {
-        for (const auto& section : syntax_.sections) if (!section.parent && identifier(section.name) == identifier(block)) return section.id;
+        const auto key = blockKey(block);
+        for (const auto& section : syntax_.sections) if (!section.parent && blockKey(section.name) == key) return section.id;
         return NodeId{};
     };
     for (const auto& section : syntax_.sections) {
@@ -300,13 +307,19 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     const auto entry = std::format("{}{}{}", entryBase, suffixes[list], j);
                     const auto speciesKey = std::string(suffixes[list]) + "SpeciesString";
                     const auto* speciesField = find(entry, speciesKey);
-                    if (!sectionId(entry).value) return reject(entry, "missing_objective_entry");
+                    if (!sectionId(entry).value) {
+                        if (std::ranges::any_of(syntax_.sections, [&](const Section& section) {
+                            const auto first = section.name.find_first_not_of(" \t"), last = section.name.find_last_not_of(" \t");
+                            return !section.parent && first != section.name.npos &&
+                                identifier(std::string_view(section.name).substr(first, last - first + 1)) == identifier(entry);
+                        })) continue;
+                        return reject(entry, "missing_objective_entry");
+                    }
                     std::size_t species = names.size();
                     std::string_view policy;
                     std::optional<std::string> speciesText;
                     if (speciesField && !speciesField->array && speciesField->prefix == "st" && typed(entry, speciesKey, 3)) {
                         auto text = std::get<std::string>(speciesField->value[0]);
-                        if (const auto first = text.find('\n'); first != text.npos) text.erase(first, 1);
                         if (text.size() <= objectiveTextLimit) speciesText = std::move(text);
                     }
                     if (speciesText) {
@@ -347,22 +360,36 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                         if (!wid || wid->array || wid->opaque || wid->prefix != "l" || wid->value.size() != 1 ||
                             !std::holds_alternative<std::int64_t>(wid->value[0])) required = {"PositionX", "PositionY"};
                     }
+                    bool ignoredPayload{};
                     for (const auto key : required) {
                         const auto type = key == "AVIFileName" || key == "WAVFileName" || key == "Message" || key == "PurchaseFileName" || key == "FlagID" ? 3U : key == "ResourceStringID" || key == "Num" ? 0U : 1U;
-                        if (!(type == 0 ? whole(entry, key) : typed(entry, key, type))) return reject(entry + "/" + std::string(key), "missing_or_malformed_required_payload");
-                        if (type == 3 && std::get<std::string>(find(entry, key)->value[0]).size() > objectiveTextLimit)
-                            return reject(entry + "/" + std::string(key), "objective_text_limit");
+                        const auto* payload = find(entry, key);
+                        const auto prefix = type == 0 ? "ul" : type == 1 ? "f" : "st";
+                        if (!payload || payload->opaque || payload->prefix != prefix || payload->array ||
+                            !(type == 0 ? whole(entry, key) : typed(entry, key, type))) {
+                            if (payload) preserveObjectiveField(payload->id, "ignored by the game; required payload unreadable");
+                            ignoredPayload = true;
+                            continue;
+                        }
+                        if (type == 3) {
+                            auto text = std::get<std::string>(payload->value[0]);
+                            if (text.size() > objectiveTextLimit) ignoredPayload = true;
+                        }
                     }
                     ObjectiveEntry value{sectionId(entry), ConditionSpecies{}};
+                    if (ignoredPayload) value.policy = "required payload unreadable; game skips entry; entry read-only";
                     if (condition) value.species = static_cast<ConditionSpecies>(species);
                     else value.species = static_cast<ActionSpecies>(species);
+                    if (!ignoredPayload) for (const auto& field : objectivePayloadSchema(value)) {
+                        auto scalar = find(entry, field.key)->value[0];
+                        value.payload.push_back(std::move(scalar));
+                    }
                     if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {
                         value.flag.emplace();
                         auto& flag = *value.flag;
                         const auto* id = find(entry, "FlagID");
                         if (id && !id->array && id->prefix == "st" && typed(entry, "FlagID", 3)) {
                             auto text = std::get<std::string>(id->value[0]);
-                            if (const auto first = text.find('\n'); first != text.npos) text.erase(first, 1);
                             if (text.size() <= objectiveTextLimit) { flag.id = std::move(text); flag.idSource = id->id; }
                         }
                         const auto* index = find(entry, "FlagIndex");
@@ -526,7 +553,7 @@ std::expected<void, LoadError> MissionDocument::decodeReferences(bool resolve, c
     for (auto& objective : objectives_) for (auto& list : objective.entries) for (auto& entry : list) {
         auto& reference = entry.reference;
         const auto* species = std::get_if<ConditionSpecies>(&entry.species);
-        if (!species) continue;
+        if (!species || !entry.policy.empty()) continue;
         switch (*species) {
         case ConditionSpecies::destroyUnit: case ConditionSpecies::deadOrFledUnit:
             reference.kind = ReferenceKind::unit; break;
@@ -560,7 +587,11 @@ std::expected<void, LoadError> MissionDocument::decodeReferences(bool resolve, c
             return static_cast<float>(*value);
         };
         const auto x = coordinate("PositionX"), y = coordinate("PositionY");
-        if (!x || !y) return std::unexpected(LoadError{section(entry.section)->name, "missing_or_malformed_required_payload", 0});
+        if (!x || !y) {
+            entry.policy = "required payload unreadable; game skips entry; entry read-only";
+            reference = {};
+            continue;
+        }
         if (!resolve) continue;
         std::size_t matches{};
         for (const auto& entity : entities_) {

@@ -400,6 +400,7 @@ class BattleMech : public Mover {
 //		long				variant;						// Now we have three longs storing a bytes worth of data well done SJ
 		
 		float				damageThisFrame;				// How much damage have we taken this frame.
+		long				damageTurn = -1;				// The sim turn damageThisFrame accumulates; another turn starts it at zero.
 		bool				sentCrippledMsg;				// Have I already announced that I'm gimped?
 		bool				playedHeloDestruct;
 

@@ -1095,6 +1095,33 @@ void Mech3DAppearance::updateGeometry (void)
 }	
 
 
+void Mech3DAppearance::updateSimPose (void)
+{
+	ZoneScopedN("GameLogic.Mech3D.UpdateSimPose");
+	if (!mechShape)
+		return;
+
+	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
+	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.
+	if (status != OBJECT_STATUS_DESTROYED)
+	{
+		mechType->setAnimation(mechShape,currentGestureId);
+		mechShape->SetFrameNum(currentFrame);
+	}
+
+	Stuff::UnitQuaternion torsoRot;
+	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+	if (rotationalNodeIndex == -1)
+		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
+	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
+
+	Stuff::UnitQuaternion qRotation;
+	qRotation = Stuff::EulerAngles(0.0f, rotation * DEGREES_TO_RADS, 0.0f);
+	Stuff::Point3D xlatPosition;
+	mc2ToRender(xlatPosition, position);
+	mechShape->TransformMultiShape_BuildRecipe(&xlatPosition, &qRotation);
+}
+
 bool Mech3DAppearance::setJumpParameters (Stuff::Vector3D &end)
 {
 	if (!inJump)

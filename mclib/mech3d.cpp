@@ -417,14 +417,7 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeLeft (void)
 		hitLeftNodeIndex = mechShape->GetNodeNameId("hit_left");
 
 	Stuff::Vector3D result = position;
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+	// No visibility test: update() poses every mech each sim step, and bolts aim at this node in the simulation.
 
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
@@ -468,14 +461,7 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeRight (void)
 		hitRightNodeIndex = mechShape->GetNodeNameId("hit_right");
 
 	Stuff::Vector3D result = position;
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+	// No visibility test: update() poses every mech each sim step, and bolts aim at this node in the simulation.
 
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;

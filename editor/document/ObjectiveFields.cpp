@@ -5,6 +5,70 @@
 #include <limits>
 
 namespace editor::document {
+std::span<const ActionSpec> actionSchema()
+{
+    static constexpr ObjectiveFieldSpec bik[] = {{"AVIFileName", "st", 3}};
+    static constexpr ObjectiveFieldSpec wav[] = {{"WAVFileName", "st", 3}};
+    static constexpr ObjectiveFieldSpec text[] = {{"Message", "st", 3}};
+    static constexpr ObjectiveFieldSpec technology[] = {{"PurchaseFileName", "st", 3}};
+    static constexpr ObjectiveFieldSpec resource[] = {{"ResourceStringID", "ul", 0, -2147483648.0, 2147483647.0}};
+    static constexpr ActionSpec specs[] = {
+        {ActionSpecies::bik, "PlayBIK", bik}, {ActionSpecies::wav, "PlayWAV", wav},
+        {ActionSpecies::text, "DisplayTextMessage", text},
+        {ActionSpecies::technology, "MakeNewTechnologyAvailable", technology},
+        {ActionSpecies::resourceText, "DisplayResourceTextMessage", resource}};
+    return specs;
+}
+
+std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry)
+{
+    if (const auto* species = std::get_if<ConditionSpecies>(&entry.species)) {
+        const auto schema = conditionSchema();
+        const auto spec = std::ranges::find(schema, *species, &ConditionSpec::species);
+        if (spec != schema.end() && !spec->reference) return spec->fields;
+    }
+    if (const auto* species = std::get_if<ActionSpecies>(&entry.species)) {
+        const auto schema = actionSchema();
+        const auto spec = std::ranges::find(schema, *species, &ActionSpec::species);
+        if (spec != schema.end()) return spec->fields;
+    }
+    return {};
+}
+
+std::span<const ConditionSpec> conditionSchema()
+{
+    static constexpr ObjectiveFieldSpec num[] = {{"Num", "ul", 0, -2147483648.0, 2147483647.0}};
+    constexpr auto real = std::numeric_limits<float>::max();
+    static constexpr ObjectiveFieldSpec time[] = {{"Time", "f", 1, -real, real}};
+    static constexpr ObjectiveFieldSpec area[] = {
+        {"TargetCenterX", "f", 1, -real, real}, {"TargetCenterY", "f", 1, -real, real},
+        {"TargetRadius", "f", 1, -real, real}};
+    static constexpr ObjectiveFieldSpec xy[] = {
+        {"PositionX", "f", 1, -real, real}, {"PositionY", "f", 1, -real, real}};
+    static constexpr ConditionSpec specs[] = {
+        {ConditionSpecies::destroyAll, "DestroyAllEnemyUnits", {}},
+        {ConditionSpecies::captureOrDestroyAll, "CaptureOrDestroyAllEnemyUnits", {}},
+        {ConditionSpecies::deadOrFledAll, "DeadOrFledAllEnemyUnits", {}},
+        {ConditionSpecies::destroyNumber, "DestroyNumberOfEnemyUnits", num},
+        {ConditionSpecies::captureOrDestroyNumber, "CaptureOrDestroyNumberOfEnemyUnits", num},
+        {ConditionSpecies::deadOrFledNumber, "DeadOrFledNumberOfEnemyUnits", num},
+        {ConditionSpecies::elapsed, "ElapsedMissionTime", time},
+        {ConditionSpecies::moveAny, "MoveAnyUnitToArea", area},
+        {ConditionSpecies::moveAll, "MoveAllUnitsToArea", area},
+        {ConditionSpecies::moveSurvivors, "MoveAllSurvivingUnitsToArea", area},
+        {ConditionSpecies::moveMechs, "MoveAllSurvivingMechsToArea", area},
+        {ConditionSpecies::destroyUnit, "DestroySpecificEnemyUnit", xy, true},
+        {ConditionSpecies::destroyStructure, "DestroySpecificStructure", xy, true},
+        {ConditionSpecies::captureOrDestroyUnit, "CaptureOrDestroySpecificEnemyUnit", xy, true},
+        {ConditionSpecies::captureOrDestroyStructure, "CaptureOrDestroySpecificStructure", xy, true},
+        {ConditionSpecies::deadOrFledUnit, "DeadOrFledSpecificEnemyUnit", xy, true},
+        {ConditionSpecies::captureUnit, "CaptureSpecificUnit", xy, true},
+        {ConditionSpecies::captureStructure, "CaptureSpecificStructure", xy, true},
+        {ConditionSpecies::guardUnit, "GuardSpecificUnit", xy, true},
+        {ConditionSpecies::guardStructure, "GuardSpecificStructure", xy, true}};
+    return specs;
+}
+
 std::span<const ObjectiveFieldSpec> objectiveSchema()
 {
     constexpr double whole = 2147483647;
@@ -80,15 +144,14 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                 if (spec.key == "DisplayMarker")
                     return std::unexpected(LoadError{section(item.section)->name + "/DisplayMarker", "invalid_objective_prefix", 0});
                 warning = "ignored by the game";
-            } else if (field->opaque || field->value.size() != 1)
+            } else if (spec.type == 3 && field->warning == "reader_string_buffer_limit")
+                warning = "ignored by the game";
+            else if (field->opaque || field->value.size() != 1)
                 return std::unexpected(LoadError{section(item.section)->name + "/" + std::string(spec.key), "malformed_value", 0});
             else {
                 value = field->value[0];
                 if (field->warning.starts_with("outside signed")) warning = field->warning;
             }
-            // Imported text reflects FIT's first-line join.
-            if (auto* text = std::get_if<std::string>(&value))
-                if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
         }
         auto valid = validateObjectiveScalar(spec, value);
         if (!valid) {
@@ -145,11 +208,39 @@ std::expected<void, LoadError> CommandHistory::setObjectiveScalar(NodeId id, std
     // Preserve authored prerequisite aliases and legacy activation indices.
     const auto actualKey = old->source && document_.field(*old->source)->name != "ActivateFlagIndex" ?
         std::string_view(document_.field(*old->source)->name) : key;
+    const auto requested = value;
     if (auto* text = std::get_if<std::string>(&value); text && text->find('\n') != text->npos) {
         // FIT text needs an empty opening line and CRLF for lossless disk/RAM reads.
         std::string wire = "\r\n";
         for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
         *text = std::move(wire);
+    }
+    if (spec->type == 3) {
+        auto fit = document_.fitBytes();
+        const auto* section = document_.section(id);
+        Field spelling; spelling.prefix = spec->prefix;
+        const auto wire = formatValue(spelling, Value{value});
+        if (const auto* field = document_.find(id, actualKey)) {
+            fit.replace(field->syntax.begin, field->syntax.end - field->syntax.begin, wire);
+            if (field->prefix != spec->prefix) {
+                auto begin = fit.rfind('\n', field->syntax.begin);
+                begin = begin == fit.npos ? 0 : begin + 1;
+                while (fit[begin] == ' ' || fit[begin] == '\t') ++begin;
+                fit.replace(begin, field->prefix.size(), spec->prefix);
+            }
+        } else {
+            const auto nl = fit.find("\r\n") == fit.npos ? "\n" : "\r\n";
+            fit.insert(section->syntax.end, std::string(nl) + std::string(spec->prefix) + " " + std::string(actualKey) + " = " + wire + nl);
+        }
+        auto decoded = decodeFit(fit);
+        if (!decoded) return reject(decoded.error().reason);
+        const auto& fields = decoded->sections[static_cast<std::size_t>(section - document_.syntax().sections.data())].fields;
+        const auto field = std::ranges::find_if(decoded->fields, [&](const Field& field) {
+            return field.name == actualKey && std::ranges::find(fields, field.id) != fields.end();
+        });
+        if (field == decoded->fields.end() || field->opaque) return reject("reader_string_buffer_limit");
+        if (field->value != Value{requested}) return reject("reader_conversion_changes_value");
+        return commitObjectiveFit(std::move(fit), "Objective " + std::string(key));
     }
     auto result = setScalar(id, actualKey, spec->prefix, std::move(value), "Objective " + std::string(key), true);
     if (!result && result.error().reason == "history_budget") return reject(result.error().reason);

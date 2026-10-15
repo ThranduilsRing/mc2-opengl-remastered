@@ -6554,7 +6554,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 7
+   "count": 6
   },
   {
    "tag": "MOVE_BD",
@@ -9242,6 +9242,16 @@
    "count": 1
   },
   {
+   "tag": "SIM_SPEED",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "steps_per_frame",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SMOKE",
    "ver": 1,
    "stream": "stderr",
@@ -10204,6 +10214,13 @@
    "count": 1
   },
   {
+   "tag": "TERRAIN_FIELDS",
+   "ver": 1,
+   "stream": "log",
+   "keys": [],
+   "count": 4
+  },
+  {
    "tag": "TERRAIN_HEIGHT_TEX",
    "ver": -1,
    "stream": "stderr",
@@ -10694,6 +10711,20 @@
    "tag": "TEXMGR_KTX_PRIMARY",
    "ver": -1,
    "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEXTURE_DECODE",
+   "ver": 1,
+   "stream": "log",
+   "keys": [],
+   "count": 6
+  },
+  {
+   "tag": "TEXTURE_RGBA",
+   "ver": 1,
+   "stream": "log",
    "keys": [],
    "count": 1
   },
