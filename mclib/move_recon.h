@@ -28,9 +28,9 @@ extern uint64_t g_moveRecon_frames;
 
 // Global-A* (GlobalMap::calcPath) internal split — sizes the per-call FIXED
 // reinit cost (door-clear loop O(numDoors) + gate-scan loop O(numAreas)) vs the
-// actual A* search (while-openList). Hypothesis: dense-urban prologue dominates.
+// actual A* search (the while loop over openHeap). Hypothesis: dense-urban prologue dominates.
 extern uint64_t g_moveRecon_ag_prologue_ns;   // door-clear + gate-scan reinit
-extern uint64_t g_moveRecon_ag_search_ns;     // the while(!openList->isEmpty)
+extern uint64_t g_moveRecon_ag_search_ns;     // the while(!openHeap.isEmpty())
 extern uint64_t g_moveRecon_ag_nodesPopped;   // total A* nodes expanded
 extern uint64_t g_moveRecon_ag_gatesScanned;  // total gate-areas open/closed
 extern uint64_t g_moveRecon_ag_maxNumDoors;   // map size (last/max seen)

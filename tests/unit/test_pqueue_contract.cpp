@@ -377,4 +377,19 @@ TEST_CASE("OH5 a key below every other key rises to the root and cannot run off 
 	CHECK_FALSE(heap.popMin(n));
 }
 
+TEST_CASE("OH6 an insert past the first reservation is counted once per reallocation and a sized heap never counts")
+{
+	mc2::OpenHeap sized(8);
+	for (uint32_t i = 1; i <= 8; ++i)
+		sized.insert(PQNode{static_cast<int32_t>(i), i, 0, 0});
+	CHECK(sized.growths() == 0);
+	mc2::OpenHeap tiny(1);
+	for (uint32_t i = 1; i <= 64; ++i)
+		tiny.insert(PQNode{static_cast<int32_t>(i), i, 0, 0});
+	CHECK(tiny.growths() >= 1);
+	CHECK(tiny.size() == 64);
+	tiny.clear();
+	CHECK(tiny.growths() >= 1); // clear() keeps the counter: it belongs to the heap object
+}
+
 } // TEST_SUITE

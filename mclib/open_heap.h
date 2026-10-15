@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "mc2fmt.h"
+
 // One entry of an open list: the sort key, the id of the map position it stands for, and the row and column the solver reads back when it pops it.
 struct PQNode
 {
@@ -38,7 +40,8 @@ namespace mc2
 class OpenHeap
 {
 public:
-	// `expectedNodes` sizes the first allocation to the graph (cells of a move map, doors of the global map); the heap grows past it when a search needs more.
+	// `expectedNodes` sizes the first allocation to the graph (cells of a move map, doors of the global map); the heap grows past it when a search needs more,
+	// and says so once per heap object: an upper bound that proved too small is a sizing mistake worth one log line, not a failure.
 	explicit OpenHeap(int expectedNodes = 0)
 	{
 		nodes_.reserve(static_cast<std::size_t>(expectedNodes) + 2);
@@ -52,6 +55,9 @@ public:
 
 	void insert(const PQNode& item)
 	{
+		if (nodes_.size() == nodes_.capacity() && ++growths_ == 1)
+			mc2::fmt::print_err("[PATH v1] event=open_list_growth reserved={:d} needed={:d}\n", mc2::fmt::as_i32(static_cast<long>(nodes_.capacity())),
+				mc2::fmt::as_i32(static_cast<long>(nodes_.size()) + 1));
 		nodes_.push_back(item);
 		upHeap(size());
 	}
@@ -107,8 +113,11 @@ public:
 		}
 	}
 
-	// How many rekey() calls found no node: a solver reports the first one (1) and ignores the rest.
+	// How many rekey() calls found no node: a solver reports the first one (1) and ignores the rest. Both counters belong to this heap object for its whole
+	// life (clear() keeps them), so "once" means once per map object, not once per mission.
 	int rekeyMisses() const { return rekeyMisses_; }
+	// How many inserts had to reallocate; the first of them logged a line.
+	int growths() const { return growths_; }
 
 	const PQNode& at(int position) const { return nodes_[static_cast<std::size_t>(position)]; }
 
@@ -142,6 +151,7 @@ private:
 	}
 
 	int rekeyMisses_ = 0;
+	int growths_ = 0;
 	std::vector<PQNode> nodes_; // [0] is the filler, [1 .. size()] the heap
 };
 

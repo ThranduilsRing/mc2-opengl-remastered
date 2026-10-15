@@ -124,10 +124,12 @@ long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 	land->worldToCell(goal, goalRow, goalCol);
 	int topLeftRow = goalRow - GOALMAP_DIM / 2;
 	int topLeftCol = goalCol - GOALMAP_DIM / 2;
+	int cellsInMap = 0;
 	for (int r = 0; r < GOALMAP_DIM; r++)
 		for (int c = 0; c < GOALMAP_DIM; c++) {
 			if (!inMapBounds(topLeftRow + r, topLeftCol + c, GameMap->height, GameMap->width))
 				continue;
+			cellsInMap++;
 			int index = r * GOALMAP_DIM + c;
 			goalMap[index].cost = GameMap->getPassable(topLeftRow + r, topLeftCol + c) ? 100 : COST_BLOCKED;
 			goalMap[index].flags = GOALFLAG_AVAILABLE + GOALFLAG_NO_NEIGHBORS;
@@ -135,8 +137,10 @@ long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 		}
 
 	//-----------------------------------------------
-	// The OPEN list of this search: one node per goal-map cell at most.
-	mc2::OpenHeap openHeap(GOALMAP_DIM * GOALMAP_DIM);
+	// The OPEN list of this search. A cell is on it at most once and only cells inside the map can be on it, so cellsInMap bounds it; the search stops after
+	// numMovers goals, so in practice it holds one ring of cells around the goal (about 8 per step of radius, 4 * GOALMAP_DIM covers the whole window). The list
+	// starts at the smaller figure instead of paying for the whole square on every call, and says so once if a search ever needs more.
+	mc2::OpenHeap openHeap(std::min(cellsInMap, 4 * GOALMAP_DIM));
 
 	int curRow = GOALMAP_DIM / 2;
 	int curCol = GOALMAP_DIM / 2;
