@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 5441,
+  "GameOS": 5442,
   "GuiRuntime": 64,
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
   "code": 14822,
   "mclib": 32021,
-  "shaders": 2980
+  "shaders": 3076
  },
  "dirs": [
   "code",
@@ -24,8 +24,8 @@
  "files": {
   "GameOS/gameos/MC2Strings.cpp": 16,
   "GameOS/gameos/debug_state_dump.cpp": 122,
-  "GameOS/gameos/engine_present_vk.cpp": 158,
-  "GameOS/gameos/engine_present_vk.h": 9,
+  "GameOS/gameos/engine_present_vk.cpp": 159,
+  "GameOS/gameos/engine_present_vk.h": 10,
   "GameOS/gameos/gameos.cpp": 16,
   "GameOS/gameos/gameos_graphics_bridge.cpp": 247,
   "GameOS/gameos/gameos_graphics_draw.cpp": 88,
@@ -89,7 +89,7 @@
   "GameOS/gameos/vulkan_mech_island.cpp": 244,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 201,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 43,
-  "GameOS/gameos/vulkan_post_screenfx_native.cpp": 258,
+  "GameOS/gameos/vulkan_post_screenfx_native.cpp": 257,
   "GameOS/gameos/vulkan_post_ssao_native.cpp": 261,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 328,
   "GameOS/gameos/vulkan_shadow_island_live.h": 8,
@@ -602,7 +602,7 @@
   "shaders/include/terrain_lighting_shared.hglsl": 8,
   "shaders/mech.frag": 19,
   "shaders/mech.vert": 18,
-  "shaders/postprocess.frag": 55,
+  "shaders/postprocess.frag": 116,
   "shaders/shadow_debug.frag": 11,
   "shaders/shadow_mech.vert": 8,
   "shaders/shadow_screen.frag": 119,
@@ -627,8 +627,8 @@
   "shaders/vulkan/include/terrain_overlay_vs.glsl": 11,
   "shaders/vulkan/mech_tier1.frag": 10,
   "shaders/vulkan/mech_tier1.vert": 10,
-  "shaders/vulkan/postprocess.frag": 74,
-  "shaders/vulkan/postprocess_visual.frag": 58,
+  "shaders/vulkan/postprocess.frag": 61,
+  "shaders/vulkan/postprocess_visual.frag": 106,
   "shaders/vulkan/screen_shadow_csm.frag": 45,
   "shaders/vulkan/screen_shadow_static.frag": 53,
   "shaders/vulkan/shadow_debug_overlay.frag": 11,
@@ -642,8 +642,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "510037a87",
+ "head": "3b5a1829e",
  "n": 8,
- "total": 55908,
+ "total": 56005,
  "version": 1
 }
