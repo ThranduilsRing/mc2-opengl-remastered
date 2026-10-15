@@ -1,13 +1,17 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
-## RESUME (parked 2026-10-14 for a host reboot) -- parity1 review pre-merge fixes
-All four pre-merge fixes are COMMITTED (tip before this commit: f12957839); there are no uncommitted edits, so `lane2-wip-2026-10-14.patch` is empty.
-1. Binding 7 hot-colour table: declared in every tier-1 layout (placeholder bound at init), pool size adjusted. DONE (commit "hot-colour table binding declared in every tier-1 layout").
-2. Placeholder index: shader gated by the new `ColorFrameUBO.hotTableReady` flag and `uTypeHot.c.length()` bound check. DONE, same commit.
-3. e1411ba4b claim: REWORDED (one typed delete per deleter, the five `reset(new T())` stay at the call sites), in this file's session 17 text. DONE.
-4. `docs/lighting-divergence-map.md` row 52 night column. DONE.
-Proof so far: build (ninja) OK and deployed at the state commit; day airbase capture vs GL re-measured 3.266 (`.claude/l2cap/s9after-vk`), no regression. NOT done: the VK tier1 with validation (the run was killed by the park), `build_all_targets`, doctest. Note: `MC2_VK_PROP_MATERIAL` was folded into the umbrella (gate deleted), so "material off" is not reachable; tier1 and material are the same mode.
-Next command: `py -3 tools/build_all_targets.py --log-dir scratch/blogs` then `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1 MC2_VULKAN_VALIDATION=1 py -3 scripts/run_smoke.py --tier tier1 --deploy lane2 --continue --keep-logs --wait-timeout 3600` (redeploy first if the exe is stale), then `py -3 tools/build_contract_harnesses.py --run --unit`.
+## EIGHTEENTH session (2026-10-14 ~19:00 CDT start after the host reboot, cap 5 h) -- pre-merge proofs, then VK parity rows
+Every number below was printed by the tool named beside it in this session. Task 1 result: the tip `dafe472ad` plus the docs commit that carries this section is MERGEABLE (the code is the commit 71d2a3d29; everything after is docs).
+
+### Task 1 proof (exe built from 71d2a3d29, deployed to `mc2-win64-lane2`, DEPLOY_FINGERPRINT OK "2 doc-only commits since")
+| Evidence | Id |
+|---|---|
+| `tools/build_all_targets.py --log-dir scratch/blogs`: every stage built (exit 0) | `scratch/bat.log` |
+| `build_contract_harnesses --run --unit`: rc 0, doctest 3165 cases / 3165 passed, 3 skipped (the 10 failed assertions are the intended `fatal_if_aborts` test) | `scratch/doctest.log` |
+| VK tier1 `MC2_VULKAN_VALIDATION=1`, 5/5, errors=0 warnings=0 on mc2_01/03/10/17/24, 143 / 120 / 120 / 120 / 118 fps (the host was shared with lane 3) | `tests/smoke/artifacts/2026-10-14T19-47-40/report.md` |
+| EARLY-EXIT (`MC2_VISUAL_DIFF_FRAME_N=100000 MAX_FRAMES=20`, VK + validation): log ends `event=summary result=fail reason=early_exit stage=atexit`, `crash_handler_hit=False`, no minidump, errors=0 warnings=0 | `2026-10-14T20-08-36/mc2_01.log` |
+| GL tier1 on the same exe: 4/5; mc2_17 `heartbeat_freeze_play` twice under another lane's ninja/cmake on the host (flake log row added), mc2_17 alone then PASS 133 fps; the other four 138 / 100 / 127 / 147 fps | `2026-10-14T20-09-57`, `20-24-49` (fail), `20-33-43` (pass) |
+| Material-off arm: `MC2_VK_PROP_MATERIAL` is folded into the umbrella, so there is no off run. By code reading: `init_island` appends layout binding 7 under `if (s->tier1)` (outside the `materialBindings` block), sizes the storage-buffer pool with `(s->tier1 ? 1u : 0u)`, uploads the placeholder with `if (s->tier1 && !cp_upload_hot_table(s, {}))`, and `write_descriptors` writes binding 7 under `if (s->tier1 && s->hotBuf)` outside the `wantMaterial` block; the shader reads the table only when `uFrame.hotTableReady != 0 && hotBase + 2u < uTypeHot.c.length()`. No unit seam exists (`grep -rn "hotReady\|uTypeHot" tests` finds nothing; the island is Vulkan-only), so this is the code-read proof plus the validation-clean tier1 above. | `GameOS/gameos/vulkan_color_prop_island.cpp`, `shaders/vulkan/color_prop_tier1.vert` |
 
 ## SEVENTEENTH session (2026-10-14 ~16:05 CDT start, cap 5 h) -- post_* owners, CSM layouts, VK parity rows 15 + 16 (+ the ambient arm of 22); nifty merged at the start (d109918d4), NOT merged back
 Every number below was printed by the tool named beside it in this session.
