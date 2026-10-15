@@ -763,7 +763,7 @@ constexpr int NUM_MISSIONMAP_PACKETS = 4;
 
 // Reads packet `index` into `dst` only when the packet is exactly `bytes` long. WHY: the mission pak is mod content; a packet of
 // another size used to be copied whole into a fixed-size field or grid. A mismatch logs one line and leaves `dst` as it was.
-static bool readExactPacket (PacketFile* packetFile, long index, void* dst, size_t bytes, const char* what) {
+static bool readExactPacket (PacketFile* packetFile, long index, void* dst, size_t bytes, std::string_view what) {
 
 	packetFile->seekPacket(index);
 	const int size = packetFile->getPacketSize();
