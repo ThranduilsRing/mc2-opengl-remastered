@@ -889,6 +889,9 @@ run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --chec
 # may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
 # lives in scripts/tests (scripts_tests row).
 run_check "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
+# Journal comments (slice/ticket tags, Phase N, revN, plan docs) may not grow: repo total of such comment lines
+# is baselined and may not rise (per-file deltas are printed). HEAD-scanned. Selftest lives in scripts/tests (scripts_tests row).
+run_check "journal_comment_ratchet"  "py -3 tools/journal_comment_ratchet.py --check"
 # docs/split-map.md (old file -> pieces -> what each holds) is generated from tools/split/allow/*.json and the pieces' header comments.
 run_check "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
