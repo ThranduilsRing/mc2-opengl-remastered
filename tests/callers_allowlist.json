@@ -210,7 +210,7 @@
   "tools/test_handoff_append.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_kill_build_tree.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_journal_comment_ratchet.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
-  "tools/test_lane_merge.py":"Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/test_lane_merge.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_identity.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_tag_census.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_montage_compact.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
@@ -287,5 +287,6 @@
   "scripts/tests/test_tracy_capture_compare.py": "Pytest-discovered module through the scripts_tests board row.",
   "tools/vfx_oracle/compare_frozen_snapshots.py": "VFX parity oracle diagnostic, run by hand from the Sol G lane (DIAGNOSTIC status, no board row yet).",
   "tools/vfx_oracle/test_compare_combat_traces.py": "Pytest-discovered module through the scripts_tests board row.",
-  "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row."
+  "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/visual_verify/test_bless_backend.py": "Pytest-discovered module through the scripts_tests board row."
 }
