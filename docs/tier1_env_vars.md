@@ -302,6 +302,7 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 - `MC2_ASSIMP_MECH_IMPORT=1` — BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer (`mclib/mech3d.cpp`) instead of the legacy MSL loader. Default **OFF**.
 - `MC2_BRAIN_RUNTIME=1` — TechBrain declarative-brain runtime master gate (`code/warrior.cpp`). Default **OFF**. Companion `MC2_BRAIN_RUNTIME_APPLY` gates whether resolved intents are actually applied.
 - `MC2_BRAIN_RUNTIME_APPLY=1` — TechBrain runtime apply gate. Default **OFF**; requires `MC2_BRAIN_RUNTIME=1`.
+- `MC2_BRAIN_MISSIONFIT_OPORD=1` — Enhanced Brain OPORD precedence over editor-authored routes (`code/`). Default **OFF** by owner ruling 2026-10-14 (the one named exception to the no-default-off-gates rule): enabling it changes stock AI behavior and needs its own proof.
 - `MC2_BRAIN_DISPATCH=1` — TechScript special-dispatch master gate (`code/mission.cpp`, `code/brain_special_dispatch.cpp`). Default **OFF**; requires `MC2_BRAIN_RUNTIME=1` + `MC2_BRAIN_RUNTIME_APPLY=1`.
 - `MC2_DYNAMIC_DECALS` — dynamic decal ring (`mclib/dynamic_decal_ring.cpp`); `spawn()`/`gatherToDecalBatch()` are no-ops when off. Default **OFF**; any non-`0` value enables.
 - `MC2_MOVE_RECON` — pathfinding cost instrumentation (`mclib/move_recon.cpp`). Default **OFF**, zero behavior change when unset. `MC2_MOVE_CHUNK_SHADOW` / `MC2_MOVE_PATH_CACHE_SHADOW` are alternate enables for the same instrumentation.

@@ -42,6 +42,10 @@ Owners used here: **L1** = code/, mclib/, tests/unit/, tests/analyze/, tools/sav
 
 **Every deletion has mandatory L2 edits:** `Gates/gate_table.cpp`, compiler-emitted `Gates/gate_table.json`, generated `Gates/gate_index.gen.h`, and generated `RenderCore/RendererFeatureRegistry.h`; Sol/unowned `docs/flags.auto.yaml` follows too (`tools/gate_gen.py:4-13`). The manual positional RendererFeature enum must be renumbered in the same L2 change where applicable, never tombstoned. Generic enum loops/COUNT tests need revalidation; name/index fixtures may need L1 edits. Frozen `tools/gate_table.seed.json` is provenance, not a runtime setter. No generated artifacts were regenerated here.
 
+## Named default-off exception
+
+`MC2_BRAIN_MISSIONFIT_OPORD` (`Gates/gate_table.cpp`, Bool, owner code) stays default OFF. Owner ruling 2026-10-14: it is the single named exception to the no-default-off-gates rule, because it gates Enhanced Brain OPORD precedence over editor-authored routes; enabling it changes stock AI behavior and needs its own proof first. No deletion or default flip without a new owner ruling.
+
 ## Fresh scan method and limits
 
 The read-only collector unions `git ls-files -z` with `rg --files --hidden` and normalizes Windows separators. It scanned **4381 text files**, including untracked visible source/config files, with per-file SHA-256 evidence. Exclusions: .git/, .scratch/, build* trees, 3rdparty/, graphify output and .claude/l2cap capture artifacts. Binary files are excluded after NUL detection. This audit covers repository text setters/configuration; external user environments and packed FST/mod-install payloads were not exhaustively decoded, so it makes no claim of absence there.
