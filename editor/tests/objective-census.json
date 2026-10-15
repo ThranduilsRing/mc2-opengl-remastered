@@ -1,0 +1,197 @@
+{
+  "missions": {
+    "mc2_01": "95c715176dd664c68f1d04f386e954ef296724a4e0919bf33fa4e43dbef2d958",
+    "mc2_02": "e860d257d76a3fa506d6eba24b0345d7f6b9fda4be588efd486b91e3fd8e1835",
+    "mc2_03": "e874277bc7a6de6ed4e682f07c2cbb471a0daa5d80fa753df9004b842446e1e5",
+    "mc2_04": "90ab1204542efcbb4c1b7bed277b9ebf4849123701ceb2238300b43481417a4d",
+    "mc2_05": "d2d14790a3420b483a3a4b28e88853e16f67b6aafb6a8c5cecd715c68df23852",
+    "mc2_06": "9c13410dd984297d6b01ec55410280e61257bc594aa787eb6b0facb897dc9e2d",
+    "mc2_07": "d4382286d80902cd25c63b48b98d81b1d7157a5cddd20e9f6a24afe102abfec8",
+    "mc2_08": "805e6e7e26e1790959daf1ced07eac448bd644204ca725c170dc463faff00392",
+    "mc2_09": "6f5dc64190b090d871bef3932025e143a5fb5ca15fa7fd548ad2feeb59b02738",
+    "mc2_10": "885244171387ccdf64f1414de2d2009ac67bf35002fb7fe689342f1d0f9c656b",
+    "mc2_11": "505afc9cd374a99e35eb5971b8307d6ff5ae6b34ad9462152fe442da7066e004",
+    "mc2_12": "e1634e979f32ee6b40cb9794a96132c4bb417a4e2424f3a4978c7457dce9d9b2",
+    "mc2_13": "3640d3fd1b71cea70a9662fef494665706a41f89aee6cb27708e0b72dfe4ac83",
+    "mc2_14": "7518d12bfa2d0493f7d691e40e235c61f914d7cba501ef566387f214c817e306",
+    "mc2_15": "87fe8f51ed0a78d5663ac65117bccf5da89eae6a66f94846172553e8c7fd1a53",
+    "mc2_16": "bb10f379df7f4619dc2d9a72fd8604ccfa90a5cb57fedf394b87977f4220cf42",
+    "mc2_17": "57931cc53ce9beadf4931d9853d2165be0d5b236017311d2f0c4b954d8ccd46b",
+    "mc2_18": "c87c7b91cd5c17f519d13e544e0c10e20642db8a5eeeb333a5440fab337d9dfe",
+    "mc2_19": "24c300ccb0c33da5db55852b37ac188d9426672599154ea04d3eb926661150e7",
+    "mc2_20": "bd1b849dca7bb080cf7ef6912f608219f292fe5e911e9b3fa8f66daca58107b4",
+    "mc2_21": "0a2937d89192f5f34073ab8ead1a93a1504493bc99a503bc8d8bbd04a960e85d",
+    "mc2_22": "a916c6164543866bb71082e698c0c8c0c839673a748a99daef89fe64dd50ed1b",
+    "mc2_23": "91df83a6103fe93d54bfb7df03c06dd5151cbee71062994da221af48d429cfbd",
+    "mc2_24": "d554a3948e9df993c19baec80868fbb03bff835f471096b467c58d121ed10341"
+  },
+  "objectives": 173,
+  "versions": {
+    "ul 3": 24
+  },
+  "teamBooleanFlags": {},
+  "fields": {
+    "ActivateFlagID": 173,
+    "ActivateOnFlag": 173,
+    "AllPreviousPrimaryObjectivesMustBeComplete": 173,
+    "BaseColor": 173,
+    "Description": 173,
+    "DescriptionResourceStringID": 173,
+    "DescriptionUseResourceString": 173,
+    "DisplayMarker": 173,
+    "HiddenTrigger": 173,
+    "HighlightColor": 173,
+    "HighlightColor2": 173,
+    "MarkerX": 173,
+    "MarkerY": 173,
+    "ModelID": 173,
+    "ModelID Version": 173,
+    "ModelScale": 173,
+    "ModelType": 173,
+    "NumActions": 173,
+    "NumConditions": 173,
+    "NumFailureActions": 173,
+    "NumFailureConditions": 173,
+    "ObjectiveModel": 173,
+    "PreviousPrimaryObjectiveMustBeComplete": 173,
+    "Priority": 173,
+    "ResetStatusFlagID": 173,
+    "ResetStatusOnFlag": 173,
+    "ResourcePoints": 173,
+    "Title": 173,
+    "TitleResourceStringID": 173,
+    "TitleUseResourceString": 173
+  },
+  "lists": {
+    "Action/MakeNewTechnologyAvailable": 6,
+    "Action/PlayWAV": 4,
+    "Action/SetBooleanFlag": 45,
+    "Condition/BooleanFlagIsSet": 13,
+    "Condition/CaptureOrDestroySpecificEnemyUnit": 12,
+    "Condition/CaptureOrDestroySpecificStructure": 2,
+    "Condition/CaptureSpecificStructure": 42,
+    "Condition/CaptureSpecificUnit": 9,
+    "Condition/DestroyAllEnemyUnits": 10,
+    "Condition/DestroyNumberOfEnemyUnits": 6,
+    "Condition/DestroySpecificEnemyUnit": 301,
+    "Condition/DestroySpecificStructure": 54,
+    "Condition/ElapsedMissionTime": 2,
+    "Condition/MoveAllSurvivingMechsToArea": 18,
+    "Condition/MoveAnyUnitToArea": 18,
+    "FailureCondition/DestroySpecificEnemyUnit": 6
+  },
+  "payloads": {
+    "BooleanFlagIsSet": {
+      "ConditionSpecies": 13,
+      "ConditionSpeciesString": 13,
+      "FlagID": 13,
+      "Value": 13
+    },
+    "CaptureOrDestroySpecificEnemyUnit": {
+      "CellX": 12,
+      "CellY": 12,
+      "Commander": 12,
+      "ConditionSpecies": 12,
+      "ConditionSpeciesString": 12,
+      "Group": 12,
+      "Mate": 12,
+      "PositionX": 12,
+      "PositionY": 12
+    },
+    "CaptureOrDestroySpecificStructure": {
+      "CellX": 2,
+      "CellY": 2,
+      "Commander": 2,
+      "ConditionSpecies": 2,
+      "ConditionSpeciesString": 2,
+      "PositionX": 2,
+      "PositionY": 2
+    },
+    "CaptureSpecificStructure": {
+      "CellX": 42,
+      "CellY": 42,
+      "Commander": 42,
+      "ConditionSpecies": 42,
+      "ConditionSpeciesString": 42,
+      "PositionX": 42,
+      "PositionY": 42
+    },
+    "CaptureSpecificUnit": {
+      "CellX": 9,
+      "CellY": 9,
+      "Commander": 9,
+      "ConditionSpecies": 9,
+      "ConditionSpeciesString": 9,
+      "Group": 9,
+      "Mate": 9,
+      "PositionX": 9,
+      "PositionY": 9
+    },
+    "DestroyAllEnemyUnits": {
+      "ConditionSpecies": 10,
+      "ConditionSpeciesString": 10
+    },
+    "DestroyNumberOfEnemyUnits": {
+      "ConditionSpecies": 6,
+      "ConditionSpeciesString": 6,
+      "Num": 6
+    },
+    "DestroySpecificEnemyUnit": {
+      "CellX": 307,
+      "CellY": 307,
+      "Commander": 307,
+      "ConditionSpecies": 301,
+      "ConditionSpeciesString": 301,
+      "FailureConditionSpecies": 6,
+      "FailureConditionSpeciesString": 6,
+      "Group": 307,
+      "Mate": 307,
+      "PositionX": 307,
+      "PositionY": 307
+    },
+    "DestroySpecificStructure": {
+      "CellX": 54,
+      "CellY": 54,
+      "Commander": 54,
+      "ConditionSpecies": 54,
+      "ConditionSpeciesString": 54,
+      "PositionX": 54,
+      "PositionY": 54
+    },
+    "ElapsedMissionTime": {
+      "ConditionSpecies": 2,
+      "ConditionSpeciesString": 2,
+      "Time": 2
+    },
+    "MakeNewTechnologyAvailable": {
+      "ActionSpecies": 6,
+      "ActionSpeciesString": 6,
+      "PurchaseFileName": 6
+    },
+    "MoveAllSurvivingMechsToArea": {
+      "ConditionSpecies": 18,
+      "ConditionSpeciesString": 18,
+      "TargetCenterX": 18,
+      "TargetCenterY": 18,
+      "TargetRadius": 18
+    },
+    "MoveAnyUnitToArea": {
+      "ConditionSpecies": 18,
+      "ConditionSpeciesString": 18,
+      "TargetCenterX": 18,
+      "TargetCenterY": 18,
+      "TargetRadius": 18
+    },
+    "PlayWAV": {
+      "ActionSpecies": 4,
+      "ActionSpeciesString": 4,
+      "WAVFileName": 4
+    },
+    "SetBooleanFlag": {
+      "ActionSpecies": 45,
+      "ActionSpeciesString": 45,
+      "FlagID": 45,
+      "Value": 45
+    }
+  }
+}

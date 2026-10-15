@@ -104,6 +104,9 @@ def grade_placements(output, evidence):
 
 
 def grade_outputs(inputs, output):
+    from editor.tests.objective_census import grade_typed_objectives
+    grade_typed_objectives(inputs, output)
+    print("Objective semantic grader: 173/173 typed models equal independently parsed stock authoring values", flush=True)
     for mission in STOCK_MISSIONS:
         original = (inputs / f"{mission}.fit").read_bytes()
         written = (output / f"{mission}.fit").read_bytes()
@@ -121,13 +124,19 @@ def grade_shipping_shell():
     smoke = (binaries / "Mission Editor Smoke.exe").read_bytes()
     for marker in (b"--panel-smoke", b"panel_fixture_seed_failed", b"[EDITOR_PANEL_OPERATION v1]",
                    b"Q3 long mission ", b"--file-smoke", b"file_fixture_seed_failed", b"[EDITOR_FILE v1]",
-                   b"chooser_catalog_missing", b"[EDITOR_CHOOSER_VIEW v1]", b"marker_fixture_replace_failed"):
+                   b"chooser_catalog_missing", b"[EDITOR_CHOOSER_VIEW v1]", b"marker_fixture_replace_failed",
+                   b"objective_fixture_missing", b"objective_widget_value_wrong"):
         if marker in shipping or marker not in smoke:
             raise ValueError(f"shipping/smoke isolation failed: {marker!r}")
     print("Shipping shell: proof markers absent; smoke host: proof markers present", flush=True)
 
 
 def main():
+    from editor.tests.objective_census import census
+    current = census(StockInputs(Path("A:/Games/mc2-opengl/mc2-win64-lane3")))
+    if current != json.loads((ROOT / "editor/tests/objective-census.json").read_text()):
+        raise ValueError("stock objective census differs from the committed input hashes and schema")
+    print("Objective census: 24 mission hashes, scalar fields and four lists match the committed census", flush=True)
     verify_frozen()
     print("Frozen corpus: nine committed captures, manifest and baseline fingerprints verified", flush=True)
     directory = ROOT / "scratch" / "e4-proofs" / time.strftime("%Y-%m-%dT%H-%M-%S")
@@ -145,7 +154,7 @@ def main():
     env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-egl-{os.getpid()}",
                ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
     commands = []
-    for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests"):
+    for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests", "editor_objective_reader_tests"):
         commands.append(([sys.executable, "tools/build_quiet.py", "--target", target], 300, f"{target}-build"))
     for target in ("editor_document_tests", "editor_document_tests_asan", "editor_panel_tests"):
         label = f"{target}-run"
@@ -162,31 +171,81 @@ def main():
         else:
             command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
                         "--placement-goldens", str(FROZEN), "--placement-output", str(directory / "panel-placements")]
-        commands.append((command, 120, label))
+        if target == "editor_document_tests_asan":
+            # Separate allocation-heavy stock and placement proofs retain the same process bound and complete case coverage.
+            commands.append((command + ["--test-suite-exclude=placement-live"], 120, "editor_document_tests_asan-core-run"))
+            commands.append((command + ["--test-suite=placement-live"], 120, "editor_document_tests_asan-placement-run"))
+        else:
+            commands.append((command, 120, label))
+    native_cases = 0
+    asan_cases = []
     for command, timeout, label in commands:
         print(subprocess.list2cmdline(command), flush=True)
         try:
             result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
                                     timeout=timeout, **child_kwargs(redirected=True))
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as error:
+            partial = error.stdout or b""
+            if isinstance(partial, bytes):
+                partial = partial.decode("utf-8", errors="replace")
+            (directory / f"{label}.timeout.log").write_text(partial, encoding="utf-8")
             print(f"{label}: TIMEOUT ({timeout}s; no compiler/test verdict)", flush=True)
             return 124
         (directory / f"{label}.log").write_text(result.stdout + result.stderr, encoding="utf-8")
         print(result.stdout + result.stderr, end="", flush=True)
         if result.returncode:
             return result.returncode
-        if label.endswith("-run") and label != "editor_panel_tests-run":
+        if label.startswith("editor_document_tests_asan-") and label.endswith("-run"):
+            match = re.search(r"\[doctest\] test cases:\s+(\d+)\s+\|\s+(\d+) passed\s+\|\s+0 failed", result.stdout)
+            if not match or int(match[1]) == 0 or match[1] != match[2]:
+                raise ValueError("ASan split has missing or failed test cases")
+            asan_cases.append(int(match[1]))
+            if label == "editor_document_tests_asan-core-run":
+                grade_outputs(inputs, directory / "editor_document_tests_asan-run")
+            else:
+                grade_placements(directory / "editor_document_tests_asan-run-placements", result.stdout)
+        elif label == "editor_document_tests-run":
+            match = re.search(r"\[doctest\] test cases:\s+(\d+)", result.stdout)
+            if not match:
+                raise ValueError("normal document test coverage summary missing")
+            native_cases = int(match[1])
             grade_outputs(inputs, directory / label)
             grade_placements(directory / (label + "-placements"), result.stdout)
         elif label == "editor_panel_tests-run":
             from scripts.run_editor_smoke import grade_panel, panel_negative_controls
             rows = re.findall(r"\[EDITOR_WIDGET_ARTIFACT v1\] name=(\S+) directory=(\S+)", result.stdout)
-            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel"]:
+            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel"]:
                 raise ValueError("chooser/marker native widget artifacts missing or duplicated")
             for name, path in rows:
                 grade_panel(name, ROOT / path, 0, require_render=False)
                 panel_negative_controls(name, ROOT / path)
-            print("Chooser widget grader: 9/9 frozen placement fields, mod provenance, current player, marker edits PASS; render capture awaits smoke host", flush=True)
+            objective_widgets = ROOT / dict(rows)["objectives_panel"]
+            command = [str(ROOT / "build64/out/editor/RelWithDebInfo/editor_objective_reader_tests.exe"),
+                       "--no-breaks", "--byte-grade-dir", str(objective_widgets),
+                       "--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3",
+                       "--placement-mods", "A:/Games/mc2-opengl", "--placement-goldens", str(FROZEN),
+                       "--placement-output", str(directory / "reader-placements")]
+            print(subprocess.list2cmdline(command), flush=True)
+            try:
+                reader = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
+                                        timeout=120, **child_kwargs(redirected=True))
+            except subprocess.TimeoutExpired as error:
+                partial = error.stdout or b""
+                if isinstance(partial, bytes):
+                    partial = partial.decode("utf-8", errors="replace")
+                (directory / "editor_objective_reader_tests-run.timeout.log").write_text(partial, encoding="utf-8")
+                print("editor_objective_reader_tests-run: TIMEOUT (120s; no test verdict)", flush=True)
+                return 124
+            (directory / "editor_objective_reader_tests-run.log").write_text(reader.stdout + reader.stderr, encoding="utf-8")
+            print(reader.stdout + reader.stderr, end="", flush=True)
+            if reader.returncode:
+                return reader.returncode
+            if not re.search(r"\[doctest\] test cases:\s+2\s+\|\s+2 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
+                raise ValueError("real objective reader cases were skipped or omitted")
+            print("Widget graders: chooser frozen placements/provenance/player, marker edits and all 26 objective scalars PASS; render capture awaits smoke host", flush=True)
+    if len(asan_cases) != 2 or sum(asan_cases) != native_cases:
+        raise ValueError("ASan split did not cover the complete normal document suite")
+    print(f"ASan coverage: {' + '.join(map(str, asan_cases))} = {native_cases} native cases; no cases omitted", flush=True)
     grade_shipping_shell()
     print(f"Proof artifacts: {directory}", flush=True)
     return 0

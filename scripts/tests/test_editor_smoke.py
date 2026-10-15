@@ -19,6 +19,65 @@ smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 
+class ObjectiveScalarGradingTests(unittest.TestCase):
+    def test_legacy_reload_grades_values_and_rejects_noop_or_wrong_resave(self):
+        from editor.tests.legacy_reference import FROZEN
+        before = (FROZEN / "e5_reference_before.fit").read_bytes()
+        start = before.index(b"[Team0Objective1]")
+        end = before.index(b"\n[", start)
+        changed = before[:start] + before[start:end].replace(b"ResourcePoints = 7500", b"ResourcePoints = 17") + before[end:]
+        self.assertNotEqual(changed, before)
+        with scratch_directory() as directory:
+            source = directory / "source"
+            source.with_suffix(".fit").write_bytes(changed)
+            source.with_suffix(".pak").write_bytes((FROZEN / "e5_reference_before.pak").read_bytes())
+            for index, output in enumerate((changed, before, changed.replace(b"ResourcePoints = 17", b"ResourcePoints = 18"))):
+                deploy = directory / str(index)
+                report = deploy / "report"
+                report.mkdir(parents=True)
+                def resave(*args):
+                    target = deploy / "terrain_gen_out/owned_objective_reload"
+                    (target / "reloaded.fit").write_bytes(output)
+                    (target / "reloaded.pak").write_bytes(source.with_suffix(".pak").read_bytes())
+                    return dict(passed=True, name="owned_objective_reload")
+                with patch.object(smoke, "run_case_with_retry", side_effect=resave) as launch:
+                    row = smoke.run_owned_objective_reload(deploy / "fake.exe", deploy, source, report, 3, 30)
+                    self.assertEqual(row["passed"], index == 0)
+                    launch.assert_called_once()
+
+    def test_independent_scalar_grader_rejects_wrong_noop_and_unrelated_changes(self):
+        from editor.tests.objective_census import grade_objective_edit
+        before = (b"FITini\r\n[Team0Objective0]\r\nul ResourcePoints = 10\r\n"
+                  b"[Team0Objective1]\r\nul ResourcePoints = 7500 // original comment\r\nst Title = \"second\"\r\n"
+                  b"[Team0Objective1Action0]\r\nst ActionSpeciesString = \"Vendor\"\r\nx Opaque = KEEP\r\nFITend\r\n")
+        after = before.replace(b"7500", b"17")
+        grade_objective_edit(before, after, "ResourcePoints")
+        for wrong in (before, after.replace(b"17", b"18"), after.replace(b"KEEP", b"LOST"), after.replace(b"= 10", b"= 11"), after.replace(b"original comment", b"changed comment")):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                grade_objective_edit(before, wrong, "ResourcePoints")
+
+    def test_census_records_spaced_keys_and_all_four_lists(self):
+        from editor.tests.objective_census import objective_fields
+        parsed = objective_fields(b"[Team0Objective1]\nul ModelID Version = 2\nul NumFailureActions = 1\n"
+                                  b"[Team0Objective1FailureAction0]\nst FailureActionSpeciesString = \"Vendor\"\n")
+        self.assertEqual(parsed["Team0Objective1/ModelID Version"], ["ul 2"])
+        self.assertEqual(parsed["Team0Objective1/NumFailureActions"], ["ul 1"])
+        self.assertEqual(parsed["Team0Objective1FailureAction0/FailureActionSpeciesString"], ['st "Vendor"'])
+
+    def test_multiline_widget_grader_matches_reader_and_rejects_literal_escape_or_lost_break(self):
+        from editor.tests.objective_census import grade_objective_edit, objective_fields
+        before = b'FITini\r\n[Team0Objective1]\r\nst Title = "old" // keep\r\nFITend\r\n'
+        wire = b'"\r\nE6a objective\r\n\r\nsecond line\r\n"'
+        edited = before.replace(b'"old"', wire)
+        self.assertEqual(objective_fields(edited)["Team0Objective1/Title"], ['st ' + wire.decode()])
+        grade_objective_edit(before, edited, "Title")
+        for wrong in (before, edited.replace(b'"\r\nE6a', b'"E6a'),
+                      before.replace(b'"old"', b'"E6a objective\\n\\nsecond line\\n"'),
+                      edited.replace(b'// keep', b'// changed'), edited.replace(b'st Title', b'x Title')):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                grade_objective_edit(before, wrong, "Title")
+
+
 @contextmanager
 def scratch_directory():
     path = TEMP_ROOT / uuid.uuid4().hex
@@ -591,6 +650,8 @@ class PanelGateTests(unittest.TestCase):
         directory = TEMP_ROOT / ("e3b-panel-" + uuid.uuid4().hex)
         directory.mkdir()
         original = b'FITini\nfixture\nFITend\n'
+        if name == "objectives_panel":
+            original = (SCRIPT.parents[1] / "editor/tests/goldens/e5a-stock/e5_reference_before.fit").read_bytes()
         hybrid = b'FITini\ncompatibilityMode = "Hybrid";\nFITend\n'
         for stage, fit in (("fixture", original), ("existing-hybrid", hybrid), ("hybrid-roundtrip", hybrid)):
             (directory / f"{stage}.fit").write_bytes(fit)
@@ -601,10 +662,24 @@ class PanelGateTests(unittest.TestCase):
         for operation in smoke.PANEL_OPERATIONS[name]:
             before = hybrid if operation == "brain-Legacy" else original
             edited = hybrid if operation == "brain-Hybrid" else before + b"authored change"
+            if name == "objectives_panel":
+                from editor.tests.objective_census import objective_fields
+                key = operation.removeprefix("objective-").replace("_", " ")
+                kind, old = objective_fields(original)["Team0Objective1/" + key][0].split(" ", 1)
+                value = ('"\r\nE6a objective\r\n\r\nsecond line\r\n"' if key in ("Title", "Description") else '"E6a objective scalar"' if kind == "st" else
+                         ("FALSE" if old == "TRUE" else "TRUE") if kind == "b" else
+                         "123.25" if kind == "f" else "2" if key == "Priority" else "17")
+                start = original.index(b"[Team0Objective1]")
+                end = original.index(b"\n[", start)
+                body = re.sub(rb"(?m)(^\w+\s+" + re.escape(key.encode()) + rb"\s*=\s*)[^\r\n]*",
+                              lambda m: m[1] + value.encode(), original[start:end])
+                edited = original[:start] + body + original[end:]
             for stage, fit in (("edited", edited), ("undone", before), ("redone", edited)):
                 (directory / f"{operation}-{stage}.fit").write_bytes(fit)
                 (directory / f"{operation}-{stage}.pak").write_bytes(b"original pak")
             lines.append(f"[EDITOR_PANEL_OPERATION v1] name={operation} changed=1 reopened=1 undo=1 redo=1 widgets=1")
+        if name == "objectives_panel":
+            (directory / "widget-save.fit").write_bytes(edited)
         (directory / "shell.log").write_text("\n".join(lines))
         (directory / "panels.bmp").write_bytes(b"BM" + bytes(52) + (bytes(range(256)) * (1440 * 960 * 3 // 256)))
         return directory

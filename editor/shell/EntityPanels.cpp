@@ -241,6 +241,8 @@ void EntityPanels::draw()
     if (button("reopen", "Reopen saved mission") && reopen_) reopen_();
     ImGui::EndDisabled();
     ImGui::SameLine(); ImGui::TextUnformatted(status_.c_str());
+    if (button("objective.toggle", showObjectives_ ? "Entities" : "Objectives")) showObjectives_ = !showObjectives_;
+    if (showObjectives_) { objectives(); ImGui::End(); return; }
     if (policy_) {
         if (button("chooser.toggle", showChooser_ ? "Entity properties" : "Object chooser")) showChooser_ = !showChooser_;
         if (showChooser_) { chooser(); ImGui::End(); return; }

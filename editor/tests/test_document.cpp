@@ -156,7 +156,9 @@ int q3DocumentTests()
         }
         auto invalidSpecies = withObjective;
         invalidSpecies.replace(invalidSpecies.find("MoveAnyUnitToArea"), 17, "UnknownSpecies");
-        badFit(invalidSpecies, "invalid_species");
+        auto opaqueSpecies = MissionDocument::decode(invalidSpecies, fixturePak(), "opaque", log);
+        require(opaqueSpecies && opaqueSpecies->fitBytes() == invalidSpecies &&
+            std::holds_alternative<std::monostate>(opaqueSpecies->objectives()[0].entries[0][0].species), "opaque_species_preserved");
         auto depth = std::string("FITini\n[Extension]\n");
         for (std::size_t i = 0; i < nestingLimit + 2; ++i) depth += "Nested { ";
         for (std::size_t i = 0; i < nestingLimit + 2; ++i) depth += " }";

@@ -203,7 +203,7 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
     const auto reject = [](std::string field, std::string reason) { return std::unexpected(LoadError{std::move(field), std::move(reason), 0}); };
     const auto typed = [&](std::string_view block, std::string_view key, std::size_t type) {
         const auto* value = find(block, key);
-        return value && value->value.size() == 1 && value->value[0].index() == type;
+        return value && !value->opaque && value->value.size() == 1 && value->value[0].index() == type;
     };
     if (!typed("MissionSettings", "Blurb2", 3) || !typed("MissionSettings", "scenarioTuneNum", 0)) return reject("MissionSettings", "missing_or_malformed_required_metadata");
     const auto* resource = find("MissionSettings", "MissionNameUseResourceString");
@@ -240,8 +240,11 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             }
         }
     }
+    const auto whole = [&](std::string_view block, std::string_view key) {
+        return typed(block, key, 0) && find(block, key)->prefix == "ul";
+    };
     const auto version = number(find("Objectives Version", "Version"));
-    if (!typed("Objectives Version", "Version", 0) || !version || (*version != 2 && *version != 3)) return reject("Objectives Version/Version", "unsupported_or_missing_version");
+    if (!whole("Objectives Version", "Version") || !version || (*version != 2 && *version != 3)) return reject("Objectives Version/Version", "unsupported_or_missing_version");
     const std::array<std::string_view, 24> conditions = {"DestroyAllEnemyUnits", "DestroyNumberOfEnemyUnits", "DestroyEnemyUnitGroup", "DestroySpecificEnemyUnit", "DestroySpecificStructure",
         "CaptureOrDestroyAllEnemyUnits", "CaptureOrDestroyNumberOfEnemyUnits", "CaptureOrDestroyEnemyUnitGroup", "CaptureOrDestroySpecificEnemyUnit", "CaptureOrDestroySpecificStructure",
         "DeadOrFledAllEnemyUnits", "DeadOrFledNumberOfEnemyUnits", "DeadOrFledEnemyUnitGroup", "DeadOrFledSpecificEnemyUnit", "CaptureSpecificUnit", "CaptureSpecificStructure",
@@ -252,19 +255,22 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
     for (std::uint32_t team = 0; team < (*version == 2 ? 1U : 8U); ++team) {
         const auto block = *version == 2 ? std::string("Objectives") : std::format("Team{}Objectives", team);
         const auto count = number(find(block, "NumObjectives"));
-        if (!typed(block, "NumObjectives", 0) || !count || *count < 0 || *count > nodeLimit || *count > syntax_.sections.size()) return reject(block + "/NumObjectives", "invalid_or_missing_count");
+        if (!whole(block, "NumObjectives") || !count || *count < 0 || *count > nodeLimit || *count > syntax_.sections.size()) return reject(block + "/NumObjectives", "invalid_or_missing_count");
         for (std::uint32_t i = 0; i < *count; ++i) {
             const auto name = *version == 2 ? std::format("Objective{}", i) : std::format("Team{}Objective{}", team, i);
             Objective objective{sectionId(name), team, i, {}};
-            if (!typed(name, "NumConditions", 0)) return reject(name + "/NumConditions", "missing_required");
-            if (find(name, "ObjectiveModel") && !typed(name, "ObjectiveModel", 3)) return reject(name + "/ObjectiveModel", "malformed_value");
-            if (const auto* modelType = find(name, "ModelType"); modelType && (!typed(name, "ModelType", 0) || number(modelType).value_or(-1) < 0 || number(modelType).value_or(256) > 255)) return reject(name + "/ModelType", "malformed_value");
-            if (const auto* scale = find(name, "ModelScale"); scale && (!typed(name, "ModelScale", 1) ||
-                number(scale).value_or(0) < std::numeric_limits<float>::denorm_min() || number(scale).value_or(0) > std::numeric_limits<float>::max()))
-                return reject(name + "/ModelScale", "malformed_value");
+            if (!objective.section.value) return reject(name, "missing_objective_block");
+            if (const auto* alias = find(name, "PreviousObjectiveMustBeComplete"); alias &&
+                (alias->prefix != "b" || !typed(name, "PreviousObjectiveMustBeComplete", 2)))
+                return reject(name + "/PreviousObjectiveMustBeComplete", "malformed_value");
+            if (const auto* alias = find(name, "ActivateFlagIndex"); alias &&
+                (alias->prefix != "ul" || !typed(name, "ActivateFlagIndex", 0) || number(alias).value_or(-1) < 0 || number(alias).value_or(0) > legacyFlagIndexMax))
+                return reject(name + "/ActivateFlagIndex", "out_of_range");
+            if (auto scalars = decodeObjectiveScalars(objective); !scalars) return scalars;
+            if (!whole(name, "NumConditions")) return reject(name + "/NumConditions", "missing_required");
             for (std::size_t list = 0; list < 4; ++list) {
                 const auto entries = number(find(name, counts[list])).value_or(0);
-                if (find(name, counts[list]) && !typed(name, counts[list], 0)) return reject(name + "/" + std::string(counts[list]), "malformed_count");
+                if (find(name, counts[list]) && !whole(name, counts[list])) return reject(name + "/" + std::string(counts[list]), "malformed_count");
                 if (entries < 0 || entries > nodeLimit || entries > syntax_.sections.size() || std::floor(entries) != entries) return reject(name + "/" + std::string(counts[list]), "invalid_count");
                 const bool condition = list % 2 == 0;
                 const std::span<const std::string_view> names = condition ? std::span<const std::string_view>(conditions) : std::span<const std::string_view>(actions);
@@ -272,17 +278,27 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     const auto entry = std::format("{}{}{}", name, suffixes[list], j);
                     const auto speciesKey = std::string(suffixes[list]) + "SpeciesString";
                     const auto* speciesField = find(entry, speciesKey);
+                    if (!sectionId(entry).value) return reject(entry, "missing_objective_entry");
                     std::size_t species = names.size();
                     if (speciesField && typed(entry, speciesKey, 3)) {
                         const auto& text = std::get<std::string>(speciesField->value[0]);
-                        for (std::size_t k = 0; k < names.size(); ++k) if (identifier(text) == identifier(names[k])) species = k;
-                    } else if (!speciesField) {
+                        if (text.empty() || text.size() > objectiveTextLimit) return reject(entry + "/" + speciesKey, "invalid_species_text");
+                        // Species names match the game exactly; near matches remain unsupported data.
+                        for (std::size_t k = 0; k < names.size(); ++k) if (text == names[k]) species = k;
+                    } else if (speciesField) return reject(entry + "/" + speciesKey, "malformed_species");
+                    else {
                         const auto key = std::string(suffixes[list]) + "Species";
                         const auto legacy = number(find(entry, key));
-                        if (typed(entry, key, 0) && legacy && *legacy >= 0 && *legacy < names.size() && std::floor(*legacy) == *legacy) species = static_cast<std::size_t>(*legacy);
+                        if (whole(entry, key) && legacy && *legacy >= 0 && *legacy < names.size() && std::floor(*legacy) == *legacy) species = static_cast<std::size_t>(*legacy);
+                        if (!whole(entry, key) || !legacy || *legacy < 0) return reject(entry + "/" + key, "invalid_or_missing_species");
                     }
-                    if (species == names.size() || names[species].ends_with("EnemyUnitGroup")) return reject(entry + "/" + speciesKey, "invalid_or_missing_species");
+                    if (species == names.size() || names[species].ends_with("EnemyUnitGroup")) {
+                        objective.entries[list].push_back({sectionId(entry), std::monostate{}});
+                        continue;
+                    }
                     const auto kind = names[species];
+                    if ((kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") && find(entry, "Value") && !typed(entry, "Value", 2))
+                        return reject(entry + "/Value", "malformed_value");
                     std::vector<std::string_view> required;
                     if (kind == "PlayBIK") required = {"AVIFileName"};
                     else if (kind == "PlayWAV") required = {"WAVFileName"};
@@ -292,7 +308,7 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     else if (kind == "ElapsedMissionTime") required = {"Time"};
                     else if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {
                         if (const auto* index = find(entry, "FlagIndex")) {
-                            if (!typed(entry, "FlagIndex", 0)) return reject(entry + "/FlagIndex", "malformed_value");
+                            if (!whole(entry, "FlagIndex")) return reject(entry + "/FlagIndex", "malformed_value");
                             const auto value = std::get<std::int64_t>(index->value[0]);
                             if (value < 0 || value > legacyFlagIndexMax) return reject(entry + "/FlagIndex", "out_of_range");
                         } else required = {"FlagID"};
@@ -302,7 +318,9 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     else if (kind.find("Specific") != std::string_view::npos) required = {"PositionX", "PositionY"};
                     for (const auto key : required) {
                         const auto type = key == "AVIFileName" || key == "WAVFileName" || key == "Message" || key == "PurchaseFileName" || key == "FlagID" ? 3U : key == "ResourceStringID" || key == "Num" ? 0U : 1U;
-                        if (!typed(entry, key, type)) return reject(entry + "/" + std::string(key), "missing_or_malformed_required_payload");
+                        if (!(type == 0 ? whole(entry, key) : typed(entry, key, type))) return reject(entry + "/" + std::string(key), "missing_or_malformed_required_payload");
+                        if (type == 3 && std::get<std::string>(find(entry, key)->value[0]).size() > objectiveTextLimit)
+                            return reject(entry + "/" + std::string(key), "objective_text_limit");
                     }
                     ObjectiveEntry value{sectionId(entry), ConditionSpecies{}};
                     if (condition) value.species = static_cast<ConditionSpecies>(species);

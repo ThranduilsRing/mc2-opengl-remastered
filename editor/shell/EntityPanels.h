@@ -26,6 +26,7 @@ public:
     void resetDocument() {
         unit_ = {}; building_ = {}; player_ = {}; unitDraft_ = {}; buildingDraft_ = {};
         module_.clear(); status_.clear(); revision_ = ~std::uint64_t{};
+        objective_ = {}; objectiveRevision_ = ~std::uint64_t{};
         refresh();
     }
     void persistence(std::function<void()> save, std::function<void()> reopen) {
@@ -60,6 +61,11 @@ private:
     document::Transform chooserTransform_;
     unsigned chooserVariant_{};
     bool showChooser_ = true;
+    bool showObjectives_{};
+    document::NodeId objective_;
+    std::size_t objectiveField_{};
+    document::Scalar objectiveDraft_ = std::string{};
+    std::uint64_t objectiveRevision_ = ~std::uint64_t{};
     std::vector<document::CatalogSource> placementSources_;
     std::string module_, status_;
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};
@@ -79,5 +85,6 @@ private:
     std::expected<document::EntityId, document::LoadError> place(const document::CatalogEntry& entry,
         const document::Transform& transform, unsigned variant);
     void chooser();
+    void objectives();
 };
 }

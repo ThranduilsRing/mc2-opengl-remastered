@@ -22,6 +22,7 @@ public:
     CommandHistory(const CommandHistory&) = delete;
     CommandHistory& operator=(const CommandHistory&) = delete;
     std::expected<void, LoadError> setText(NodeId field, std::string text, std::string label);
+    std::expected<void, LoadError> setObjectiveScalar(NodeId objective, std::string_view key, Scalar value);
     std::expected<EntityId, LoadError> insertUnit(const UnitPlacement& unit);
     std::expected<EntityId, LoadError> insertBuilding(const BuildingPlacement& building);
     std::expected<void, LoadError> erase(EntityId entity);
@@ -47,7 +48,7 @@ private:
     std::expected<void, LoadError> commit(DocumentCommand command);
     std::expected<void, LoadError> apply(const DocumentCommand& command, bool forward);
     std::expected<void, LoadError> setScalar(NodeId section, std::string_view key,
-        std::string_view prefix, Scalar value, std::string label);
+        std::string_view prefix, Scalar value, std::string label, bool exactReal = false);
     std::expected<void, LoadError> commitStructure(std::string fit, std::vector<std::byte> placements,
         const std::vector<EntityId>& ids, std::string label,
         const std::unordered_map<std::string, std::string>& renamed = {});

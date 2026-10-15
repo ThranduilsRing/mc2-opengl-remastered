@@ -1,5 +1,6 @@
 #include "MissionDocument.h"
 
+#include <algorithm>
 #include <unordered_map>
 
 namespace editor::document {
@@ -40,6 +41,8 @@ std::expected<void, LoadError> MissionDocument::restore(const StructuralState& s
     placements_ = state.placements;
     encodedPak_ = std::move(*encoded);
     rebuildIndex();
+    for (const auto& section : syntax_.sections) nextNodeId_ = std::max(nextNodeId_, section.id.value + 1);
+    for (const auto& field : syntax_.fields) nextNodeId_ = std::max(nextNodeId_, field.id.value + 1);
     ++revision_;
     return {};
 }
@@ -57,15 +60,16 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
     std::unordered_map<std::string, const Section*> oldSections;
     for (std::size_t i = 0; i < oldKeys.size(); ++i) oldSections.emplace(oldKeys[i], &syntax_.sections[i]);
     std::unordered_map<std::uint64_t, NodeId> remap;
+    auto nextNode = nextNodeId_;
     for (std::size_t i = 0; i < newKeys.size(); ++i) {
         auto& section = candidate->syntax_.sections[i];
         const auto found = oldSections.find(newKeys[i]);
         const auto* old = found == oldSections.end() ? nullptr : found->second;
-        remap.emplace(section.id.value, old ? old->id : NodeId{nextNodeId_++});
+        remap.emplace(section.id.value, old ? old->id : NodeId{nextNode++});
         for (auto id : section.fields) {
             const auto* field = candidate->field(id);
             const auto* previous = old ? find(old->id, field->name) : nullptr;
-            remap.emplace(id.value, previous ? previous->id : NodeId{nextNodeId_++});
+            remap.emplace(id.value, previous ? previous->id : NodeId{nextNode++});
         }
     }
     for (auto& section : candidate->syntax_.sections) {
@@ -82,6 +86,7 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
     for (auto& objective : candidate->objectives_) {
         objective.section = remap.at(objective.section.value);
         for (auto& list : objective.entries) for (auto& entry : list) entry.section = remap.at(entry.section.value);
+        for (auto& scalar : objective.scalars) if (scalar.source) scalar.source = remap.at(scalar.source->value);
     }
     return StructuralState{std::move(candidate->syntax_), std::move(candidate->entities_),
         std::move(candidate->objectives_), std::move(placements)};

@@ -636,6 +636,37 @@ def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout, acti
     return row
 
 
+def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout):
+    """The legacy authoring reader must retain an identified owned scalar edit."""
+    from editor.tests.objective_census import grade_objective_edit, objective_fields
+    from editor.tests.legacy_reference import FROZEN, typed_fields, verify_frozen
+    verify_frozen()
+    before_fit = source.with_suffix(".fit").read_bytes()
+    before_pak = source.with_suffix(".pak").read_bytes()
+    grade_objective_edit((FROZEN / "e5_reference_before.fit").read_bytes(), before_fit, "ResourcePoints")
+    if before_pak != (FROZEN / "e5_reference_before.pak").read_bytes():
+        raise ValueError("objective reload control changed the PAK")
+    directory = deploy / "terrain_gen_out/owned_objective_reload"
+    directory.mkdir(parents=True, exist_ok=True)
+    for extension, data in (("fit", before_fit), ("pak", before_pak)):
+        (directory / f"input.{extension}").write_bytes(data)
+        (report / f"input.{extension}").write_bytes(data)
+    row = run_case_with_retry("owned_objective_reload", exe, deploy, exit_sec, timeout,
+        ["-mission=terrain_gen_out/owned_objective_reload/input.pak", "-smoke-save=terrain_gen_out/owned_objective_reload/reloaded.pak"], "saved")
+    row["input_sha256"] = {"fit": hashlib.sha256(before_fit).hexdigest(), "pak": hashlib.sha256(before_pak).hexdigest()}
+    if row["passed"]:
+        try:
+            after = (directory / "reloaded.fit").read_bytes()
+            if typed_fields(objective_fields(before_fit)) != typed_fields(objective_fields(after)):
+                raise ValueError("legacy reload changed objective scalar/list values")
+            for extension in ("fit", "pak"):
+                (report / f"reloaded.{extension}").write_bytes((directory / f"reloaded.{extension}").read_bytes())
+            row["detail"] = "Owned ResourcePoints edit accepted and re-saved by legacy reader; all objective scalar/list values retained. Runtime outcomes remain unproven."
+        except (OSError, ValueError, KeyError) as error:
+            row.update(passed=False, bucket="owned_objective_reload_changed", detail=str(error))
+    return row
+
+
 def _gen_foliage_json(deploy: Path, instances: bool) -> bool:
     """Produce <deploy>/terrain_gen_out/genmap.foliage.json via the deployed
     generator. instances=True -> real rules (placed trees); the editor's later
@@ -1066,6 +1097,12 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
 
 
 PANEL_OPERATIONS = {
+    "objectives_panel": tuple("objective-" + key.replace(" ", "_") for key in (
+        "Title", "Description", "Priority", "ResourcePoints", "PreviousPrimaryObjectiveMustBeComplete",
+        "AllPreviousPrimaryObjectivesMustBeComplete", "DisplayMarker", "MarkerX", "MarkerY", "HiddenTrigger",
+        "ActivateOnFlag", "ActivateFlagID", "ResetStatusOnFlag", "ResetStatusFlagID", "TitleUseResourceString",
+        "TitleResourceStringID", "DescriptionUseResourceString", "DescriptionResourceStringID", "ObjectiveModel",
+        "ModelType", "BaseColor", "HighlightColor", "HighlightColor2", "ModelScale", "ModelID", "ModelID Version")),
     "unit_panel": ("unit-transform", "unit-team", "unit-place", "unit-delete"),
     "building_panel": ("building-transform", "building-team", "building-place", "building-delete"),
     "player_panel": ("player-alignment",),
@@ -1154,7 +1191,7 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
                 raise ValueError("existing Hybrid bytes changed")
         if b'compatibilityMode = "Hybrid";' not in (directory / "brain-Hybrid-edited.fit").read_bytes():
             raise ValueError("Hybrid assignment missing")
-    saved_baseline = (expected[-1] + "-edited" if name.startswith("chooser") else
+    saved_baseline = (expected[-1] + "-edited" if name.startswith("chooser") or name == "objectives_panel" else
                       "existing-hybrid" if name == "brain_modes" else "fixture")
     for extension in ("fit", "pak"):
         if (directory / f"widget-save.{extension}").read_bytes() != (directory / f"{saved_baseline}.{extension}").read_bytes():
@@ -1167,6 +1204,11 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
         grade_chooser(name, directory, lines)
     elif name == "marker_panel":
         grade_marker_edits(directory)
+    elif name == "objectives_panel":
+        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit
+        for key in AUTHORING_KEYS:
+            grade_objective_edit((directory / "fixture.fit").read_bytes(),
+                                 (directory / ("objective-" + key.replace(" ", "_") + "-edited.fit")).read_bytes(), key)
 
 
 def grade_marker_edits(directory):
@@ -1295,7 +1337,34 @@ def chooser_unit_prefix(fields, object_id):
     return prefixes[0]
 
 
+def objective_negative_controls(directory):
+    """Consistent edited/redo files must still fail when the widget save is wrong or unchanged."""
+    paths = [directory / "objective-ResourcePoints-edited.fit", directory / "objective-ResourcePoints-redone.fit"]
+    originals = [path.read_bytes() for path in paths]
+    baseline = (directory / "fixture.fit").read_bytes()
+    wrong = originals[0].replace(b"ul ResourcePoints = 17", b"ul ResourcePoints = 18")
+    if wrong == originals[0]:
+        raise ValueError("objective wrong-value control did not change output")
+    rendered = " rendered=1" in (directory / "shell.log").read_text()
+    for data in (baseline, wrong):
+        caught = False
+        try:
+            for path in paths:
+                path.write_bytes(data)
+            grade_panel("objectives_panel", directory, 0, require_render=rendered)
+        except ValueError:
+            caught = True
+        finally:
+            for path, original in zip(paths, originals):
+                path.write_bytes(original)
+        if not caught:
+            raise ValueError("objective wrong/no-op widget output was accepted")
+
+
 def panel_negative_controls(name, directory):
+    if name == "objectives_panel":
+        objective_negative_controls(directory)
+        return
     if not name.startswith("chooser") and name != "marker_panel": return
     if name.startswith("chooser"):
         path = directory / "chooser-mech-edited.fit"
@@ -1409,6 +1478,7 @@ def main() -> int:
     ap.add_argument("--compare-legacy-reference", type=Path, help="compare complete placement values with an existing frozen corpus")
     ap.add_argument("--owned-marker-placement", type=Path, help="owned marker save stem for the explicit owned_marker_reload case")
     ap.add_argument("--owned-marker-action", choices=("inserted", "moved", "deleted"), default="inserted")
+    ap.add_argument("--owned-objective-edit", type=Path, help="objective-ResourcePoints-edited save stem from objectives_panel")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -1427,6 +1497,8 @@ def main() -> int:
     args = ap.parse_args()
     if args.case and "owned_marker_reload" in args.case and not args.owned_marker_placement:
         ap.error("owned_marker_reload requires --owned-marker-placement from run_document_proofs.py")
+    if args.case and "owned_objective_reload" in args.case and not args.owned_objective_edit:
+        ap.error("owned_objective_reload requires --owned-objective-edit from objectives_panel")
     if args.freeze_legacy_reference and args.freeze_legacy_reference.exists():
         ap.error("freeze directory already exists; frozen placement references are immutable")
     if args.freeze_legacy_reference and args.compare_legacy_reference:
@@ -1466,7 +1538,7 @@ def main() -> int:
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
-        if c not in ALL and c not in single_stock and c != "owned_marker_reload":
+        if c not in ALL and c not in single_stock and c not in ("owned_marker_reload", "owned_objective_reload"):
             print(f"ERROR: unknown case '{c}'. Valid: {', '.join(ALL)}")
             return 2
 
@@ -1511,6 +1583,17 @@ def main() -> int:
 
     results = []
     for c in selected:
+        if c == "owned_objective_reload":
+            control = rptdir / c
+            control.mkdir()
+            try:
+                provenance = marker_reload_provenance(exe)
+                row = run_owned_objective_reload(exe, deploy, args.owned_objective_edit, control, args.exit_sec, args.timeout)
+                row["provenance"] = provenance
+            except (OSError, ValueError, KeyError, struct.error) as error:
+                row = dict(name=c, passed=False, bucket="owned_objective_control_invalid", detail=str(error), esmoke={})
+            results.append(row)
+            continue
         if c == "owned_marker_reload":
             control = rptdir / c
             control.mkdir()

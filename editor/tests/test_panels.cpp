@@ -9,7 +9,7 @@ TEST_CASE("panels/chooser stock mod and marker edits reach real widgets" * docte
 {
     using namespace editor::document;
     const auto& paths = editor::tests::inputs();
-    for (const auto* kind : {"chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel"}) {
+    for (const auto* kind : {"chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel"}) {
         CAPTURE(kind);
         const auto directory = std::filesystem::path("scratch/e5b2-widget-tests") /
             std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) / kind;

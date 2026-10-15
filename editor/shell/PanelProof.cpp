@@ -58,6 +58,7 @@ PanelProof::PanelProof(MissionDocument& doc, CommandHistory& history, EntityPane
     std::filesystem::path output, std::string kind, Diagnostic log, bool captureRendered)
     : document_(doc), history_(history), panels_(panels), output_(std::move(output)), kind_(std::move(kind)), log_(std::move(log)), captureRendered_(captureRendered)
 {
+    if (kind_ == "objectives_panel") { objectivesProof(); return; }
     if (kind_.starts_with("chooser")) { chooserProof(); return; }
     if (kind_ == "marker_panel") {
         EntityId marker;
@@ -279,7 +280,7 @@ void PanelProof::viewCheck(const std::string& family, const std::string& stage)
 }
 bool PanelProof::tick()
 {
-    require(++frames_ < 1500, "panel_widget_timeout");
+    require(++frames_ < (kind_ == "objectives_panel" ? 4000U : 1500U), "panel_widget_timeout");
     if (step_ == steps_.size()) {
         require(ImGui::GetDrawData()->TotalVtxCount > 0, "panel_render_empty");
         if (captureRendered_) capture(output_ / "panels.bmp");

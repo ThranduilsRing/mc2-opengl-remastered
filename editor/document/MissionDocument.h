@@ -127,11 +127,27 @@ enum class ConditionSpecies : std::uint8_t {
     moveAny, moveAll, moveSurvivors, moveMechs, flag, elapsed
 };
 enum class ActionSpecies : std::uint8_t { bik, wav, text, resourceText, flag, technology };
-struct ObjectiveEntry { NodeId section; std::variant<ConditionSpecies, ActionSpecies> species; };
+// Unsupported entries are opaque data, never a fallback executable species.
+struct ObjectiveEntry { NodeId section; std::variant<ConditionSpecies, ActionSpecies, std::monostate> species; };
+inline constexpr std::size_t objectiveTextLimit = 2000;
+struct ObjectiveFieldSpec {
+    std::string_view key, prefix;
+    std::size_t type;
+    double minimum{}, maximum{};
+    std::int64_t integerDefault{};
+};
+std::span<const ObjectiveFieldSpec> objectiveSchema();
+std::expected<void, LoadError> validateObjectiveScalar(const ObjectiveFieldSpec& spec, const Scalar& value);
+struct ObjectiveScalar {
+    std::string_view key;
+    std::optional<NodeId> source;
+    Scalar value;
+};
 struct Objective {
     NodeId section;
     std::uint32_t team{}, exportedIndex{};
     std::array<std::vector<ObjectiveEntry>, 4> entries;
+    std::vector<ObjectiveScalar> scalars;
 };
 
 // Reversible authored state excludes terrain caches and unchanged encoded packets.
@@ -172,6 +188,8 @@ public:
     const std::vector<Entity>& entities() const { return entities_; }
     std::span<const std::uint32_t> markerObjects() const { return markerObjects_; }
     const std::vector<Objective>& objectives() const { return objectives_; }
+    const Objective* objective(NodeId id) const;
+    const ObjectiveScalar* objectiveScalar(NodeId objective, std::string_view key) const;
     const Field* field(NodeId id) const;
     const Section* section(NodeId id) const;
     const Section* childSection(NodeId parent, std::string_view name) const;
@@ -210,6 +228,7 @@ private:
         std::vector<std::byte> placements, const std::vector<EntityId>& ids,
         const std::unordered_map<std::string, std::string>& renamed = {});
     std::expected<void, LoadError> validateSemantics();
+    std::expected<void, LoadError> decodeObjectiveScalars(Objective& objective) const;
     std::expected<void, LoadError> assign(NodeId id, Value value);
 };
 
