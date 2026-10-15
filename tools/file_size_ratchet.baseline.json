@@ -18,7 +18,7 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2332,
   "GameOS/gameos/gpu_cull_compute.cpp": 1510,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1811,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1826,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1537,
   "GameOS/include/gameos.hpp": 3753,
   "RenderCore/RendererFeatureRegistry.h": 1741,
@@ -26,7 +26,7 @@
   "code/bldng.cpp": 1692,
   "code/brain_special_dispatch.cpp": 2770,
   "code/gamecam.cpp": 1591,
-  "code/gameobj.cpp": 2358,
+  "code/gameobj.cpp": 2256,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1967,
@@ -49,7 +49,7 @@
   "mclib/ablrtn.cpp": 1778,
   "mclib/assimp_importer.cpp": 1589,
   "mclib/camera.h": 1812,
-  "mclib/file.cpp": 2593,
+  "mclib/file.cpp": 2599,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2632,
   "mclib/mlr/mlrlightmap.cpp": 1648,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "3f40c8571",
+ "head": "0597f71e5",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 590,
+   "files": 591,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2632
@@ -152,15 +152,11 @@
   },
   {
    "file": "mclib/file.cpp",
-   "lines": 2593
+   "lines": 2599
   },
   {
    "file": "code/mpparameterscreen.cpp",
    "lines": 2415
-  },
-  {
-   "file": "code/gameobj.cpp",
-   "lines": 2358
   },
   {
    "file": "code/turret.cpp",
@@ -173,6 +169,10 @@
   {
    "file": "code/objective.cpp",
    "lines": 2259
+  },
+  {
+   "file": "code/gameobj.cpp",
+   "lines": 2256
   },
   {
    "file": "shaders/terrain_lod_chunk.frag",
@@ -231,16 +231,16 @@
    "lines": 1833
   },
   {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1826
+  },
+  {
    "file": "code/artlry.cpp",
    "lines": 1818
   },
   {
    "file": "mclib/camera.h",
    "lines": 1812
-  },
-  {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1811
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1891,
+  "files": 1892,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3753

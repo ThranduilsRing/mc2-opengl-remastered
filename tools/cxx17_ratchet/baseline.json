@@ -55,7 +55,7 @@
    "LG06": 497,
    "LG07": 0,
    "LG08": 257,
-   "LG09": 1974,
+   "LG09": 1973,
    "LG10": 39,
    "LG11": 102,
    "LG12a": 95,
@@ -1231,7 +1231,7 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 30
+   "LG09": 29
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -5099,7 +5099,7 @@
    "LG20": 3
   }
  },
- "head": "55f62bc4d",
+ "head": "0597f71e5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
