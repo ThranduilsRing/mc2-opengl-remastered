@@ -186,6 +186,8 @@ class FrozenParityTests(unittest.TestCase):
         prefix, section, remaining = before_fit.partition(b"[Team0Objective1]")
         edited_fit = prefix + section + re.sub(rb"ResourcePoints = \d+", b"ResourcePoints = 17", remaining, count=1)
         self.assertNotEqual(before_fit, edited_fit)
+        for name in ("input.fit", "fixture.fit"):
+            (self.root / name).write_bytes(before_fit)
         source.with_suffix(".fit").write_bytes(edited_fit)
         legacy_pak = (FROZEN / "e5_reference_before.pak").read_bytes()
         fixture_pak = legacy_pak + b"panel stock fixture"
@@ -193,7 +195,8 @@ class FrozenParityTests(unittest.TestCase):
         for name in ("input.pak", "fixture.pak", source.with_suffix(".pak").name):
             (self.root / name).write_bytes(fixture_pak)
         gate = dict(result=dict(name="objectives_panel", passed=True),
-                    provenance=dict(input_pak_sha256=hashlib.sha256(fixture_pak).hexdigest()))
+                    provenance=dict(input_pak_sha256=hashlib.sha256(fixture_pak).hexdigest(),
+                                    input_fit_sha256=hashlib.sha256(before_fit).hexdigest()))
         (self.root / "gate.json").write_text(json.dumps(gate), encoding="utf-8")
         deploy, report = self.root / "deploy", self.root / "report"
         report.mkdir()
