@@ -7978,14 +7978,14 @@
     "lightDataCpuBytes",
     "terrainSun"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "PROP_LIGHT_VERTEX_PROBE",
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "PROP_LIGHT_VERTEX_PROBE",
@@ -7998,7 +7998,7 @@
     "sunColor",
     "sunFound"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "PROP_MIP_PROBE",
@@ -8014,7 +8014,7 @@
     "vkComputedMips",
     "vkSamplerMaxLod"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "PROP_REINJECT",
@@ -12195,7 +12195,7 @@
     "fence_wait_us",
     "island_total_us"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "VK_SCENE_GL_DRAW_CANARY",
