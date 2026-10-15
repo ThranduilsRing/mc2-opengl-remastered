@@ -12,7 +12,7 @@ std::vector<std::string> sectionKeys(const Syntax& syntax,
     std::unordered_map<std::string, std::size_t> occurrences;
     std::vector<std::string> keys;
     for (const auto& section : syntax.sections) {
-        auto name = identifier(section.name);
+        auto name = section.name;
         if (!section.parent) {
             if (auto found = renamed.find(name); found != renamed.end()) name = found->second;
         }
@@ -106,10 +106,30 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
                 if (*source) *source = remap.at((*source)->value);
             for (auto& source : entry.reference.sources) source.node = remap.at(source.node.value);
             if (const auto old = references.find(entry.section.value); old != references.end()) {
+                if (entry.section != resolving && old->second->kind != ReferenceKind::none) {
+                    const Objective* previousOwner{};
+                    for (const auto& item : objectives_) for (const auto& entries : item.entries)
+                        if (std::ranges::any_of(entries, [&](const ObjectiveEntry& previous) { return previous.section == entry.section; })) previousOwner = &item;
+                    std::vector<EntityId> before, after;
+                    const auto& previous = *previousEntries.at(entry.section.value);
+                    const bool runtime = old->second->status == ReferenceStatus::RuntimeOnlyWid;
+                    for (const auto& entity : entities_) if (runtime || referenceMatches(*previousOwner, previous, entity)) before.push_back(entity.id);
+                    for (const auto& entity : candidate->entities_) if (runtime || candidate->referenceMatches(objective, entry, entity)) after.push_back(entity.id);
+                    if (before != after) return std::unexpected(LoadError{"command", "objective_reference", 0});
+                }
                 entry.reference.kind = old->second->kind;
                 entry.reference.status = old->second->status;
                 entry.reference.target = old->second->target;
                 entry.reference.reason = old->second->reason;
+            } else if (entry.reference.kind != ReferenceKind::none && entry.reference.status != ReferenceStatus::RuntimeOnlyWid) {
+                std::size_t matches{};
+                for (const auto& entity : candidate->entities_) if (candidate->referenceMatches(objective, entry, entity)) {
+                    entry.reference.target = entity.id;
+                    ++matches;
+                }
+                entry.reference.status = matches == 1 ? ReferenceStatus::Resolved : matches ? ReferenceStatus::Ambiguous : ReferenceStatus::Missing;
+                entry.reference.reason = matches == 1 ? "unique eligible XY target" : matches ? "multiple eligible XY targets" : "no eligible XY target";
+                if (matches != 1) entry.reference.target.reset();
             }
             if (entry.section == resolving) {
                 entry.reference.status = ReferenceStatus::Resolved;

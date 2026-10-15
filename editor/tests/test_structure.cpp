@@ -659,7 +659,13 @@ TEST_CASE("document/stock corpus requires exactly 24 unchanged pairs and a negat
             for (const auto& objective : doc->objectives()) for (const auto& list : objective.entries) for (const auto& entry : list)
                 referring |= entry.reference.status == ReferenceStatus::Resolved && entry.reference.target == id;
             Transform moved{found->position, found->rotation}; moved.position[0] += 16;
-            REQUIRE(history.transform(id, moved));
+            const auto transformed = history.transform(id, moved);
+            if (!transformed) {
+                CHECK(transformed.error().reason == "objective_reference");
+                CHECK(referring);
+                CHECK(doc->fitBytes() == original); CHECK(bytes(*doc) == originalPak);
+                continue;
+            }
             CHECK(std::bit_cast<std::uint32_t>(static_cast<float>(doc->entity(id)->position[0])) ==
                 std::bit_cast<std::uint32_t>(static_cast<float>(moved.position[0])));
             CHECK((doc->fitBytes() != original) == (!building || referring));

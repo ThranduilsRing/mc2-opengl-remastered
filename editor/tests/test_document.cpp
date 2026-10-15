@@ -153,7 +153,8 @@ int q3DocumentTests()
         badFit(missing, "missing_required");
         auto missingRadius = withObjective;
         missingRadius.erase(missingRadius.find("f TargetRadius"), 22);
-        badFit(missingRadius, "missing_objective_payload");
+        auto skipped = MissionDocument::decode(missingRadius, fixturePak(), "skipped-payload", log);
+        require(skipped && skipped->fitBytes() == missingRadius && !skipped->objectives()[0].entries[0][0].policy.empty(), "missing_objective_payload_preserved");
         for (const auto scale : {"0", "-1", "1e100"}) {
             auto input = withObjective;
             input.insert(input.find("[Objective0Condition0]"), "f ModelScale = " + std::string(scale) + "\r\n");

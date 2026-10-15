@@ -6,6 +6,9 @@
 #include <chrono>
 #include <fstream>
 #include <tuple>
+#include <cmath>
+#include <limits>
+#include <bit>
 
 namespace {
 std::string bytes(const std::filesystem::path& path)
@@ -102,6 +105,172 @@ TEST_CASE("reader/hex in a FlagIndex comment supplies the ID and is removed on e
 {
     checkNumericObjectiveRead("7 // 0xff", false, 255);
 }
+
+TEST_CASE("reader/condition fields match decimal saturation hex wrap rounding and underflow on disk and RAM")
+{
+    using namespace editor::document;
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    const auto output = std::filesystem::path("scratch/e6c-payload-reader") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(output);
+    for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        CommandHistory history(*doc);
+        auto entry = history.addObjectiveCondition(doc->objectives()[1].section, list, spec.species);
+        std::size_t targetIndex{};
+        if (spec.reference) {
+            CHECK_FALSE(entry);
+            const auto before = doc->fitBytes();
+            for (const auto& entity : doc->entities()) {
+                if (entity.exportedPart.has_value() == spec.name.ends_with("Structure")) continue;
+                const auto index = entity.exportedPart ? *entity.exportedPart - 1 : *entity.packetRecord;
+                entry = history.addObjectiveCondition(doc->objectives()[1].section, list, spec.species, entity.id);
+                if (entry) { targetIndex = index; break; }
+                CHECK(doc->fitBytes() == before);
+            }
+        }
+        REQUIRE(entry);
+        const auto block = doc->section(*entry)->name;
+        REQUIRE(doc->save(output / "created", {}));
+        const auto fit = bytes(output / "created.fit");
+        FitIniFile game; REQUIRE(game.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+        const auto owner = doc->section(doc->objectives()[1].section)->name;
+        REQUIRE(game.seekBlock(owner.c_str()) == NO_ERR);
+        unsigned long count{};
+        REQUIRE(game.readIdULong(list == 0 ? "NumConditions" : "NumFailureConditions", count) == NO_ERR);
+        REQUIRE(count > 0);
+        CHECK(block == owner + (list == 0 ? "Condition" : "FailureCondition") + std::to_string(count - 1));
+        REQUIRE(game.seekBlock(block.c_str()) == NO_ERR);
+        const auto name = objective_text::read(game, list == 0 ? "ConditionSpeciesString" : "FailureConditionSpeciesString");
+        REQUIRE(name); CHECK(*name == spec.name);
+        if (name->find("Specific") != name->npos) {
+            float x{}, y{};
+            REQUIRE(game.readIdFloat("PositionX", x) == NO_ERR); REQUIRE(game.readIdFloat("PositionY", y) == NO_ERR);
+            const bool building = name->ends_with("Structure");
+            std::vector<std::tuple<float, float, int>> candidates;
+            if (building) {
+                const auto raw = bytes(output / "created.pak"); const auto span = std::as_bytes(std::span(raw));
+                const auto archive = decodePak({span.begin(), span.end()}); REQUIRE(archive);
+                const auto& data = archive->packets[1].decoded;
+                const auto word = [&](std::size_t offset) {
+                    std::uint32_t value{};
+                    for (unsigned i = 0; i < 4; ++i) value |= std::to_integer<std::uint32_t>(data[offset + i]) << (8 * i);
+                    return value;
+                };
+                for (std::size_t offset = 4; offset + 40 <= data.size(); offset += 40)
+                    candidates.emplace_back(std::bit_cast<float>(word(offset + 4)), std::bit_cast<float>(word(offset + 8)), static_cast<int>(word(offset + 24)));
+            } else {
+                REQUIRE(game.seekBlock("Parts") == NO_ERR); unsigned long count{}; REQUIRE(game.readIdULong("NumParts", count) == NO_ERR);
+                for (unsigned long part = 1; part <= count; ++part) {
+                    REQUIRE(game.seekBlock(("Part" + std::to_string(part)).c_str()) == NO_ERR);
+                    float px{}, py{}; char team{};
+                    REQUIRE(game.readIdFloat("PositionX", px) == NO_ERR); REQUIRE(game.readIdFloat("PositionY", py) == NO_ERR);
+                    REQUIRE(game.readIdChar("TeamID", team) == NO_ERR); candidates.emplace_back(px, py, team);
+                }
+            }
+            const auto matches = [&](float cx, float cy) {
+                std::size_t count{};
+                for (const auto& [px, py, team] : candidates) {
+                    if (!building && ((*name == "GuardSpecificUnit" && team != 0) ||
+                        (name->starts_with("Capture") && team == 0))) continue;
+                    const auto close = [](float a, float b) { const auto scale = std::max(std::abs(a), std::abs(b)); return scale == 0 || std::abs(a - b) / scale < 0.00001; };
+                    count += close(px, cx) && close(py, cy);
+                }
+                return count;
+            };
+            REQUIRE(targetIndex < candidates.size());
+            CHECK(x == std::get<0>(candidates[targetIndex])); CHECK(y == std::get<1>(candidates[targetIndex]));
+            CHECK(matches(x, y) == 1); CHECK(matches(-7654321, -8765432) == 0);
+        } else if (name->find("NumberOf") != name->npos) {
+            unsigned long count{}; REQUIRE(game.readIdULong("Num", count) == NO_ERR); CHECK(count == 0);
+        } else if (*name == "ElapsedMissionTime") {
+            float time{}; REQUIRE(game.readIdFloat("Time", time) == NO_ERR); CHECK(time == 0);
+            for (const double number : {0.1, 2.3, 1234.56, 1e-50}) {
+                REQUIRE(history.setObjectivePayload(*entry, "Time", number));
+                REQUIRE(doc->save(output / "decimal", {}));
+                FitIniFile decimal; REQUIRE(decimal.open((output / "decimal.fit").string().c_str()) == NO_ERR);
+                REQUIRE(decimal.seekBlock(block.c_str()) == NO_ERR);
+                REQUIRE(decimal.readIdFloat("Time", time) == NO_ERR); CHECK(time == static_cast<float>(number));
+            }
+        } else if (name->starts_with("Move")) {
+            for (const auto key : {"TargetCenterX", "TargetCenterY", "TargetRadius"}) { float number{}; REQUIRE(game.readIdFloat(key, number) == NO_ERR); CHECK(number == 0); }
+        } else CHECK(name->ends_with("AllEnemyUnits"));
+    }
+    for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
+        if (spec.reference) continue;
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        CommandHistory history(*doc);
+        const auto entry = history.addObjectiveCondition(doc->objectives()[1].section, list, spec.species); REQUIRE(entry);
+        const auto block = doc->section(*entry)->name;
+        for (const auto& field : spec.fields) {
+            const std::vector<std::pair<std::string, Scalar>> cases = field.type == 0 ?
+                std::vector<std::pair<std::string, Scalar>>{
+                    {"-2147483648", std::int64_t{-2147483648LL}}, {"2147483647", std::int64_t{2147483647}},
+                    {"2147483648", std::int64_t{2147483647}}, {"-2147483649", std::int64_t{-2147483648LL}},
+                    {"9223372036854775808", std::int64_t{2147483647}},
+                    {"0xffffffff", std::int64_t{-1}}, {"0x80000000", std::int64_t{-2147483648LL}},
+                    {"0Xffffffff", std::int64_t{0}}} :
+                std::vector<std::pair<std::string, Scalar>>{
+                    {"-1.25", -1.25}, {"0", 0.0}, {"-0", -0.0},
+                    {"0.1", 0.100000001490116119384765625}, {"16777217", 16777216.0},
+                    {"1.401298464324817e-45", static_cast<double>(std::numeric_limits<float>::denorm_min())},
+                    {"1e-50", 0.0}, {"-1e-50", -0.0}};
+            for (const auto& [wire, expected] : cases) {
+                CAPTURE(spec.name, field.key, list, wire);
+                auto fit = doc->fitBytes();
+                const auto* source = doc->find(*entry, field.key); REQUIRE(source);
+                fit.replace(source->syntax.begin, source->syntax.end - source->syntax.begin, wire);
+                std::ofstream(output / "variant.fit", std::ios::binary) << fit;
+                auto decoded = MissionDocument::decode(fit, {doc->pakBytes().begin(), doc->pakBytes().end()}, "payload-reader", {}, doc->markerObjects()); REQUIRE(decoded);
+                const auto id = decoded->objectives()[1].entries[list].back().section;
+                CHECK(decoded->find(id, field.key)->value == Value{expected});
+                FitIniFile ram; REQUIRE(ram.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+                FitIniFile disk; REQUIRE(disk.open((output / "variant.fit").string().c_str()) == NO_ERR);
+                for (auto* reader : {&ram, &disk}) {
+                    REQUIRE(reader->seekBlock(block.c_str()) == NO_ERR);
+                    if (field.type == 0) {
+                        unsigned long actual{}; REQUIRE(reader->readIdULong(field.key.data(), actual) == NO_ERR);
+                        CHECK(static_cast<std::int32_t>(actual) == std::get<std::int64_t>(expected));
+                    } else {
+                        float actual{}; REQUIRE(reader->readIdFloat(field.key.data(), actual) == NO_ERR);
+                        CHECK(static_cast<double>(actual) == std::get<double>(expected));
+                        CHECK(std::signbit(actual) == std::signbit(std::get<double>(expected)));
+                    }
+                }
+                auto wrongPrefix = fit;
+                const auto declaration = wrongPrefix.rfind('\n', source->syntax.begin) + 1;
+                wrongPrefix.replace(declaration, field.prefix.size(), field.type == 0 ? "l" : "ul");
+                FitIniFile ignored; REQUIRE(ignored.open(wrongPrefix.data(), static_cast<int>(wrongPrefix.size())) == NO_ERR);
+                REQUIRE(ignored.seekBlock(block.c_str()) == NO_ERR);
+                if (field.type == 0) { unsigned long value{}; CHECK(ignored.readIdULong(field.key.data(), value) != NO_ERR); }
+                else { float value{}; CHECK(ignored.readIdFloat(field.key.data(), value) != NO_ERR); }
+                CHECK(decoded->fitBytes() == fit);
+                std::vector<std::string> logs;
+                CommandHistory edited(*decoded, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+                const Scalar next = field.type == 0 ? Scalar{std::int64_t{-17}} : Scalar{-1.25};
+                if (decoded->find(id, field.key)->warning.starts_with("outside signed")) {
+                    const auto revision = decoded->revision();
+                    CHECK_FALSE(edited.setObjectivePayload(id, field.key, next));
+                    CHECK(logs.size() == 1); CHECK(decoded->revision() == revision);
+                    CHECK(decoded->fitBytes() == fit); CHECK_FALSE(edited.canUndo());
+                    REQUIRE(decoded->save(output / "overflow", {}));
+                    CHECK(bytes(output / "overflow.fit") == fit);
+                    continue;
+                }
+                REQUIRE(edited.setObjectivePayload(id, field.key, next));
+                REQUIRE(decoded->save(output / "edited", {}));
+                FitIniFile exported; REQUIRE(exported.open((output / "edited.fit").string().c_str()) == NO_ERR);
+                REQUIRE(exported.seekBlock(block.c_str()) == NO_ERR);
+                if (field.type == 0) {
+                    unsigned long actual{}; REQUIRE(exported.readIdULong(field.key.data(), actual) == NO_ERR);
+                    CHECK(static_cast<std::int32_t>(actual) == -17);
+                } else {
+                    float actual{}; REQUIRE(exported.readIdFloat(field.key.data(), actual) == NO_ERR); CHECK(actual == -1.25f);
+                }
+            }
+        }
+    }
+}
 TEST_CASE("reader/a sign after the FlagIndex hex prefix yields zero")
 {
     checkNumericObjectiveRead("0x-1", false, 0);
@@ -109,6 +278,86 @@ TEST_CASE("reader/a sign after the FlagIndex hex prefix yields zero")
 TEST_CASE("reader/uppercase numeric species reads DestroyAllEnemyUnits")
 {
     checkNumericObjectiveRead("0X16", true, 0);
+}
+
+TEST_CASE("reader/action text limits and imported quotes have explicit disk and RAM expectations")
+{
+    using namespace editor::document;
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    const auto output = std::filesystem::path("scratch/e6c-action-reader") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(output);
+    for (const auto list : {1U, 3U}) for (const auto& spec : actionSchema()) {
+        const auto& field = spec.fields.front();
+        const auto block = std::string("Team0Objective1") + (list == 1 ? "Action0" : "FailureAction0");
+        const auto key = std::string(field.key);
+        const auto path = widgets / (std::format("widget-payload-{}-{}-edited.fit", list, key));
+        const auto fit = bytes(path); REQUIRE_FALSE(fit.empty());
+        for (const bool disk : {false, true}) {
+            FitIniFile reader;
+            REQUIRE((disk ? reader.open(path.string().c_str()) : reader.open(fit.data(), static_cast<int>(fit.size()))) == NO_ERR);
+            const auto owner = std::string("Team0Objective1");
+            REQUIRE(reader.seekBlock(owner.c_str()) == NO_ERR);
+            unsigned long count{};
+            REQUIRE(reader.readIdULong(list == 1 ? "NumActions" : "NumFailureActions", count) == NO_ERR);
+            REQUIRE(count == 5);
+            const auto index = static_cast<std::size_t>(&spec - actionSchema().data());
+            REQUIRE(reader.seekBlock((owner + (list == 1 ? "Action" : "FailureAction") + std::to_string(index)).c_str()) == NO_ERR);
+            if (field.type == 0) {
+                unsigned long value{}; REQUIRE(reader.readIdULong(key.c_str(), value) == NO_ERR);
+                CHECK(static_cast<std::int32_t>(value) == -17);
+            } else CHECK(objective_text::read(reader, key.c_str()) == std::optional<std::string>{"../Exact/Name\r\n\r\nsecond line\r\n"});
+        }
+        if (field.type != 3) continue;
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        const auto index = static_cast<std::size_t>(&spec - actionSchema().data());
+        const auto id = doc->objectives()[1].entries[list][index].section;
+        const auto targetBlock = doc->section(id)->name;
+        CommandHistory history(*doc);
+        for (const auto& authored : {std::string(1999, 'x'), std::string(2000, 'x'),
+                                    std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny",
+                                    std::string("hello\nul Count = 1")}) {
+            REQUIRE(history.setObjectivePayload(id, key, authored));
+            REQUIRE(doc->save(output / "authored", {}));
+            const auto saved = bytes(output / "authored.fit");
+            const auto expected = objective_text::toMemoryBreaks(objective_text::toFileBreaks(authored));
+            for (const bool disk : {false, true}) {
+                FitIniFile reader;
+                REQUIRE((disk ? reader.open((output / "authored.fit").string().c_str()) : reader.open(saved.data(), static_cast<int>(saved.size()))) == NO_ERR);
+                REQUIRE(reader.seekBlock(targetBlock.c_str()) == NO_ERR);
+                CHECK(objective_text::read(reader, key.c_str()) == std::optional{expected});
+            }
+            REQUIRE(history.undo());
+        }
+        for (const auto& [wire, expected] : std::vector<std::pair<std::string, std::optional<std::string>>>{
+                {"\"" + std::string(2001, 'x') + "\"", std::nullopt},
+                {"\"one\"two\"", std::string("one")},
+                {"\"one\r\ntwo\"", std::string("onetwo")},
+                {"\"one\ntwo\"", std::string("onetwo")}}) {
+            const auto raw = "FITini\r\n[Text]\r\nst " + key + " = " + wire + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+            const auto rawPath = output / "imported.fit";
+            { std::ofstream out(rawPath, std::ios::binary); out << raw; }
+            for (const bool disk : {false, true}) {
+                FitIniFile reader;
+                REQUIRE((disk ? reader.open(rawPath.string().c_str()) : reader.open(raw.data(), static_cast<int>(raw.size()))) == NO_ERR);
+                REQUIRE(reader.seekBlock("Text") == NO_ERR);
+                CHECK(objective_text::read(reader, key.c_str()) == expected);
+            }
+            if (expected) {
+                auto imported = doc->fitBytes();
+                const auto* source = doc->find(id, key); REQUIRE(source);
+                imported.replace(source->syntax.begin, source->syntax.end - source->syntax.begin, wire);
+                auto decoded = MissionDocument::decode(imported, {doc->pakBytes().begin(), doc->pakBytes().end()}, "imported", {}, editor::tests::inputs().markerObjects);
+                REQUIRE(decoded);
+                CHECK(decoded->objectives()[1].entries[list][index].payload[0] == Scalar{objective_text::toFileBreaks(*expected)});
+                CHECK(decoded->fitBytes() == imported);
+            }
+        }
+    }
+    const auto lf = std::string("FITini\n[Text]\nst Message = \"a\n\nb\"\n[End]\nul End = 0\nFITend\n");
+    FitIniFile reader; REQUIRE(reader.open(lf.data(), static_cast<int>(lf.size())) == NO_ERR);
+    REQUIRE(reader.seekBlock("Text") == NO_ERR);
+    CHECK(objective_text::read(reader, "Message") == std::optional<std::string>{"ab"});
 }
 
 TEST_CASE("reader/owned multiline edits match the real disk and RAM objective readers")
