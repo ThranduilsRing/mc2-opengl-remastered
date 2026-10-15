@@ -14,6 +14,8 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
+#include <limits>
+#include <stdexcept>
 
 namespace {
 struct MissionOrderAccess {
@@ -62,6 +64,8 @@ void Mission::resetOrderIngress() {
     authoredMissionText.clear();
     authoredOpordPilots.clear();
     authoredRoutes.clear();
+    routeExecutions.clear();
+    rejectedRouteSignals.clear();
     authoredDiagnostics.clear();
     orderFixtureReceipt.reset();
     orderFixtureApplied = false;
@@ -69,14 +73,20 @@ void Mission::resetOrderIngress() {
     orderIngress.reset();
 }
 void Mission::bindOrderRecipients() {
-    // Each slot belongs to one initial Part incarnation; replacements never inherit its orders.
+    // Incarnations survive ingress resets so a reused Part cannot inherit an execution.
     if (!orderRecipients.empty()) return;
     for (long partId = 1; partId <= numParts; ++partId) {
         auto* object = ObjectManager->getByWatchID(parts[partId].objectWID);
         if (!object || !object->isMover() || !object->getPilot() || !object->getExists()) continue;
         auto* mover = static_cast<MoverPtr>(object);
-        orderRecipients.push_back({{static_cast<std::uint32_t>(orderRecipients.size() + 1), 1},
+        if (nextPartIncarnation > std::numeric_limits<std::uint32_t>::max() ||
+            nextPilotIncarnation == std::numeric_limits<std::uint64_t>::max())
+            throw std::overflow_error("mission incarnation identity exhausted");
+        orderRecipients.push_back({{static_cast<std::uint32_t>(orderRecipients.size() + 1),
+            static_cast<std::uint32_t>(nextPartIncarnation)},
             partId, static_cast<std::uint32_t>(parts[partId].objectWID), mover, mover->getPilot()});
+        orderRecipients.back().partIncarnation = nextPartIncarnation++;
+        orderRecipients.back().pilotIncarnation = nextPilotIncarnation++;
     }
     gos_dev_shell::registerCommand("order_ingress_fixture_submit", submitOrderFixture);
     gos_dev_shell::registerCommand("order_ingress_fixture_check", checkOrderFixture);
@@ -120,10 +130,52 @@ void Mission::recordAuthoredInstallation(const mc2::sim::OrderEnvelope& e, mc2::
         auto* mover = resolveOrderRecipient(ref);
         // Installation evidence must precede ABL's next general-slot replacement.
         if (!mover || route.pilot >= MAX_WARRIORS || mover->getPilot() != MechWarrior::warriorList[route.pilot]) continue;
+        if (nextRouteExecution == std::numeric_limits<std::uint64_t>::max() ||
+            nextOrderRevision == std::numeric_limits<std::uint64_t>::max())
+            throw std::overflow_error("mission route identity exhausted");
+        const auto& binding = orderRecipients[ref.slot - 1];
+        mc2::sim::RouteExecution execution;
+        execution.key = {binding.partIncarnation, nextRouteExecution++};
+        execution.pilotIncarnation = binding.pilotIncarnation;
+        execution.originalPart = route.originalPart;
+        execution.selectedPart = route.selectedPart;
+        execution.pilot = route.pilot;
+        execution.stance = route.stance;
+        execution.kind = route.kind;
+        execution.path = route.path;
+        execution.revision = nextOrderRevision++;
+        execution.lastTransitionTick = e.applyTick;
+        // This record issues no movement; existing installation still reaches execute and path requests.
+        routeExecutions.push_back(std::move(execution));
         route.installed = true;
         mc2::fmt::print_err("[AUTHORED_ORDER v1] status=Installed original={} selected={} pilot={} stance={} points={}\n",
             route.originalPart, route.selectedPart, route.pilot, route.stance, route.path.points.size());
     }
+}
+const mc2::sim::RouteExecution* Mission::routeExecution(mc2::sim::RouteKey key) const {
+    const auto found = std::ranges::find(routeExecutions, key, &mc2::sim::RouteExecution::key);
+    return found == routeExecutions.end() ? nullptr : &*found;
+}
+std::optional<mc2::sim::RouteTransition> Mission::onRouteEvent(const mc2::sim::RouteSignal& signal) {
+    auto found = std::ranges::find(routeExecutions, signal.key, &mc2::sim::RouteExecution::key);
+    if (found != routeExecutions.end()) {
+        if (auto event = found->transition(signal)) {
+            mc2::fmt::print_err("[ROUTE_EXECUTION v1] execution={} revision={} sequence={} tick={} event={} reason={}\n",
+                event->key.executionId, event->revision, event->sequence, event->tick,
+                static_cast<int>(event->event), static_cast<int>(event->reason));
+            return event;
+        }
+    }
+    const auto duplicate = std::ranges::any_of(rejectedRouteSignals, [&](const auto& rejected) {
+        return rejected.key == signal.key && rejected.revision == signal.revision &&
+            rejected.sequence == signal.sequence && rejected.action == signal.action;
+    });
+    if (!duplicate) {
+        rejectedRouteSignals.push_back(signal);
+        mc2::fmt::print_err("[ROUTE_EXECUTION v1] rejected execution={} revision={} sequence={} tick={} action={}\n",
+            signal.key.executionId, signal.revision, signal.sequence, signal.tick, static_cast<int>(signal.action));
+    }
+    return {};
 }
 std::string Mission::authoredRouteEvidence() const {
     std::string result = "{\"installations\":[";

@@ -9,6 +9,88 @@
 #include <tuple>
 
 namespace mc2::sim {
+bool RouteExecution::terminal() const {
+    return state == RouteState::Completed || state == RouteState::Interrupted || state == RouteState::Failed;
+}
+std::optional<TravelMode> RouteExecution::cursorMode() const {
+    if (terminal() || path.curPoint >= path.points.size() || path.curPoint >= path.mode.size()) return {};
+    return path.mode[path.curPoint];
+}
+std::optional<RouteTransition> RouteExecution::transition(const RouteSignal& signal) {
+    if (signal.key != key || signal.revision != revision || terminal() ||
+        eventSequence == std::numeric_limits<std::uint64_t>::max() ||
+        signal.sequence != eventSequence + 1 || signal.tick < lastTransitionTick) return {};
+    RouteEventKind event;
+    auto reason = RouteReason::None;
+    const auto unreachable = [&] {
+        reason = routeFailureReason;
+        if (!retryDeadline)
+            retryDeadline = signal.tick > std::numeric_limits<Tick>::max() - routeRetryWindow
+                ? std::numeric_limits<Tick>::max() : signal.tick + routeRetryWindow;
+        if (!retriesRemaining || signal.tick >= retryDeadline) {
+            state = RouteState::Failed;
+            suspensionReason = RouteReason::None;
+            event = RouteEventKind::Failed;
+        } else {
+            --retriesRemaining;
+            event = RouteEventKind::Retrying;
+        }
+    };
+    switch (signal.action) {
+    case RouteAction::Ready:
+        if (state != RouteState::Pending || !signal.pathMapsReady || !signal.goalMapReady || !cursorMode()) return {};
+        state = RouteState::Active;
+        event = RouteEventKind::Started;
+        break;
+    case RouteAction::Arrived:
+        if (state != RouteState::Active || !cursorMode()) return {};
+        ++path.curPoint;
+        retriesRemaining = routeRetryBudget;
+        retryDeadline = 0;
+        if (path.curPoint == path.points.size()) {
+            if (kind == OrderKind::PatrolPath) {
+                path.curPoint = 0;
+                event = RouteEventKind::Advanced;
+            } else {
+                state = RouteState::Completed;
+                event = RouteEventKind::Completed;
+            }
+        } else event = RouteEventKind::Advanced;
+        break;
+    case RouteAction::Unreachable:
+        if (state != RouteState::Active) return {};
+        unreachable();
+        break;
+    case RouteAction::Alarm:
+        if (state != RouteState::Active) return {};
+        state = RouteState::Suspended;
+        suspensionReason = reason = RouteReason::Alarm;
+        event = RouteEventKind::Suspended;
+        break;
+    case RouteAction::AlarmCleared:
+        if (state != RouteState::Suspended) return {};
+        if (!signal.segmentReachable) unreachable();
+        else {
+            state = RouteState::Active;
+            suspensionReason = RouteReason::None;
+            event = RouteEventKind::Resumed;
+        }
+        break;
+    case RouteAction::PlayerOrder:
+    case RouteAction::GeneralReplacement:
+    case RouteAction::Removed:
+        state = RouteState::Interrupted;
+        suspensionReason = RouteReason::None;
+        reason = signal.action == RouteAction::PlayerOrder ? routePlayerReason :
+            signal.action == RouteAction::GeneralReplacement ? routeReplacementReason : routeRemovalReason;
+        event = RouteEventKind::Interrupted;
+        break;
+    default: return {};
+    }
+    lastTransitionTick = signal.tick;
+    eventSequence = signal.sequence;
+    return RouteTransition{key, revision, eventSequence, signal.tick, event, reason};
+}
 std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
     std::string_view text, std::uint32_t original, std::uint32_t selected,
     std::uint32_t pilot, float mapSide) {

@@ -15,6 +15,11 @@ Mission owns RouteExecution by durable Part incarnation and execution ID, indepe
 Ownership cannot be inferred from coordinates or legacy id, which assignment does not copy. Emit Started/Suspended/Resumed/Completed/Interrupted/Failed exactly once per transition, with tick and reason.
 Stance remains mission-owned: no legacy field or established pilot setter exists. Define movement/combat policy for all six values before dispatch; never silently discard stance or change TacticalOrder's layout.
 
+Cancellation maps player to Interrupted(PlayerOrder), ABL replacement to Interrupted(Superseded), and death/removal/pilot change to Interrupted(Removed); exhausted reachability maps to Failed(Unreachable).
+Retry permits three retries, bounded by 30 simulation ticks from the first failure; the next failure after exhaustion or at the deadline fails. Resume receives segment reachability as input; path-consumer acceptance is deferred to wiring.
+Signals carry execution ID, owning revision and next event sequence; stale, duplicate and terminal signals reject without mutation and are logged once. Readiness requires both path and goal maps; no movement is issued here.
+Stance proposal: all six preserve authored travel mode; combat policies are evade/return fire/defend/engage/pursue/fight to death in editor order, pending owner confirmation.
+
 | Condition | Decision |
 |---|---|
 | Patrol endpoint | Wrap last to zero, including a one-point route; never reverse or compute -1. |
@@ -46,6 +51,6 @@ Renew code/mission.h, code/mission.cpp, code/mission_init.cpp, code/tactical_ord
 
 ## Acceptance and open questions
 
-Acceptance pins baseline 606b584b3c192e07f7207e9a6f48940bfc798eab and post-commit binaries by SHA256. Strict chains must match on mc2_03/10/24/16 and both camera arms on mc2_10/24, with identical content bytes, seed and resolved environment; no baseline rewriting.
+Acceptance pins baseline 6a54a4583 (nifty, includes S4-b2a) and post-commit binaries by SHA256. Strict chains must match on mc2_03/10/24/16 and both camera arms on mc2_10/24, with identical content bytes, seed and resolved environment; no baseline rewriting.
 Missing frame budget, fingerprint, smoke success or matching inputs fails acceptance, as does any strict mismatch. Preserve manifests/logs and binary hashes. Fingerprinted positive and loader-disconnected witness controls are separate from the offline adapter control; movement/arbitration acceptance belongs to b2b.
 Open: MC2_BRAIN_MISSIONFIT_OPORD defaults OFF; should eligible Enhanced OPORD precedence become default-on? The gate itself is lane 2's. Stance application and save-hook implementation remain required before execution/restore.

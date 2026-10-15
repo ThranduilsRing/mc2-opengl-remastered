@@ -58,8 +58,6 @@ struct SeamWorldResources {
         Mover::holdFireIconHandle = 1;
     }
     ~SeamWorldResources() {
-        delete Mover::sortList;
-        Mover::sortList = nullptr;
         Mover::holdFireIconHandle = previousIcon;
         GameObject::initialize = previousInitialize;
         systemHeap = previousHeap;
@@ -85,11 +83,14 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     struct AuthoredMission : Mission {
         using Mission::authoredRoutes;
         using Mission::orderIngress;
+        using Mission::rejectedRouteSignals;
         void roster(Part* entries) { parts = entries; numParts = 2; }
         void releaseOrderState() {
             std::destroy_at(&orderFixtureReceipt);
             std::destroy_at(&authoredDiagnostics);
             std::destroy_at(&authoredRoutes);
+            std::destroy_at(&routeExecutions);
+            std::destroy_at(&rejectedRouteSignals);
             std::destroy_at(&authoredOpordPilots);
             std::destroy_at(&authoredMissionText);
             std::destroy_at(&orderRecipients);
@@ -127,6 +128,53 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     owner.completeOrderSimulationTick();
     CHECK(owner.orderIngress.queue().receipts().empty());
     CHECK(owner.authoredRoutes[0].installed);
+    using namespace mc2::sim;
+    REQUIRE(owner.authoredExecutions().size() == 1);
+    auto previous = owner.authoredExecutions().front();
+    CHECK(previous.originalPart == 2); CHECK(previous.selectedPart == 9); CHECK(previous.pilot == 7);
+    CHECK(previous.path == (**parsed).path); CHECK(previous.stance == 4);
+    CHECK(previous.state == RouteState::Pending); CHECK(previous.eventSequence == 0);
+    auto input = RouteSignal{previous.key, previous.revision, 1, 1, RouteAction::Ready, true, true, true};
+    REQUIRE(owner.onRouteEvent(input));
+    CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
+    CHECK(owner.rejectedRouteSignals.size() == 1); CHECK(owner.routeExecution(previous.key)->eventSequence == 1);
+    input.sequence = 2; input.action = RouteAction::Alarm;
+    REQUIRE(owner.onRouteEvent(input));
+    input.sequence = 3; input.action = RouteAction::AlarmCleared; --input.revision;
+    CHECK_FALSE(owner.onRouteEvent(input));
+    CHECK_FALSE(owner.onRouteEvent(input)); CHECK(owner.rejectedRouteSignals.size() == 2);
+    ++input.revision; input.segmentReachable = false;
+    REQUIRE(owner.onRouteEvent(input));
+    CHECK(owner.routeExecution(previous.key)->state == RouteState::Suspended);
+    input.sequence = 4; input.segmentReachable = true;
+    auto event = owner.onRouteEvent(input);
+    REQUIRE(event); CHECK(event->event == RouteEventKind::Resumed);
+    input.sequence = 5; input.action = RouteAction::GeneralReplacement;
+    event = owner.onRouteEvent(input);
+    REQUIRE(event); CHECK(event->reason == RouteReason::Superseded);
+    input.sequence = 6; input.action = RouteAction::AlarmCleared;
+    CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
+    CHECK(owner.rejectedRouteSignals.size() == 3);
+    CHECK(owner.routeExecution(previous.key)->eventSequence == 5);
+    for (const auto action : {RouteAction::PlayerOrder, RouteAction::Removed}) {
+        const auto oldRef = *owner.orderRecipient(2);
+        owner.resetOrderIngress(); owner.bindOrderRecipients();
+        CHECK(owner.orderRecipient(2) != oldRef);
+        owner.authoredRoutes.push_back(**parsed); owner.admitAuthoredRoutes();
+        owner.beginOrderSimulationTick(); owner.completeOrderSimulationTick();
+        REQUIRE(owner.authoredExecutions().size() == 1);
+        const auto current = owner.authoredExecutions().front();
+        CHECK(current.key.partIncarnation > previous.key.partIncarnation);
+        CHECK(current.pilotIncarnation > previous.pilotIncarnation);
+        CHECK(current.key.executionId > previous.key.executionId); CHECK(current.revision > previous.revision);
+        CHECK_FALSE(owner.onRouteEvent(input));
+        event = owner.onRouteEvent({current.key, current.revision, 1, 1, action});
+        REQUIRE(event); CHECK(event->reason ==
+            (action == RouteAction::PlayerOrder ? RouteReason::PlayerOrder : RouteReason::Removed));
+        CHECK_FALSE(owner.onRouteEvent({current.key, current.revision, 2, 2, RouteAction::AlarmCleared, true, true, true}));
+        CHECK(owner.routeExecution(current.key)->eventSequence == 1);
+        previous = current;
+    }
 }
 
 TEST_CASE("AuthoredOrderProduction/OPORD eligibility matches the consumer skip rules") {
