@@ -67,15 +67,18 @@ input and gate files, no-op and wrong-count legacy re-saves. The runtime CRUD
 reload control binds **both** fixture FIT and PAK to the panel's input hashes
 and input copies, independently grades expected counts/order/content, rechecks
 the complete panel gate, then compares all objective fields after legacy reload.
-The re-saved PAK must decode every packet and retain the input's complete
-packet-1 placement-record multiset (all 40 bytes per record and multiplicities).
-CRUD changes FIT objectives only, so placement changes reject. Whole-archive
+Both re-saved PAKs must decode every packet; edited packet-1 records must match
+a same-run, same-executable null-edit save of the unedited panel fixture.
+This accounts for legacy position quantization; CRUD-only differences reject. Whole-archive
 byte equality is not required: legacy quick-save repacks the archive, omits
 derived movement/tactical-map packets and generates a fresh GUID. Corrupt or
 missing re-saved PAKs reject before publishing reload artifacts, as do changed
 placement records; storage encoding and record order may differ.
 It does not use a legacy golden as the CRUD input oracle. Frozen placements
 remain a separate regression gate.
+
+Loose mod census (existing parser plus native owned reader, objectives isolated from unrelated mission fields): Exodus 0/328, MagicExpansion 0/173, Carver5 0/173, Omnitech 177/445 objective blocks reject.
+Omnitech rejects 30/68 mission FITs: 176 blocks use an invalid scalar prefix (e.g. `a_0_1.fit` ResourcePoints `l 500`); `mw2_9_1_lastfrontier.fit` objective 5 uses ResourcePoints `ul -55000`, out of range. Reader rules unchanged.
 
 ## Orchestrator acceptance commands (after commit)
 

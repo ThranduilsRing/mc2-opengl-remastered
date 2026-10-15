@@ -56,7 +56,11 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         if (!selected) return reject("missing_objective");
         team = selected->team;
     }
-    const auto version = std::get<std::int64_t>(document_.find("Objectives Version", "Version")->value[0]);
+    const auto* versionField = document_.find("Objectives Version", "Version");
+    if (!versionField || versionField->prefix != "ul" || versionField->value.size() != 1 ||
+        !std::holds_alternative<std::int64_t>(versionField->value[0])) return reject("invalid_objective_version");
+    const auto version = std::get<std::int64_t>(versionField->value[0]);
+    if (version != 2 && version != 3) return reject("invalid_objective_version");
     if (team >= (version == 2 ? 1U : 8U)) return reject("invalid_objective_team");
     std::vector<NodeId> order;
     for (const auto& item : document_.objectives()) if (item.team == team) order.push_back(item.section);
@@ -79,10 +83,22 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
     };
     const auto block = version == 2 ? std::string("Objectives") : std::format("Team{}Objectives", team);
     const auto* count = document_.find(block, "NumObjectives");
+    if (!count || count->prefix != "ul" || count->value.size() != 1 ||
+        !std::holds_alternative<std::int64_t>(count->value[0]) ||
+        std::get<std::int64_t>(count->value[0]) != static_cast<std::int64_t>(previousCount))
+        return reject("invalid_objective_count");
     // Fresh spans include earlier scalar edits; stable IDs belong to the existing document only.
-    const auto countOrdinal = static_cast<std::size_t>(count - document_.syntax().fields.data());
+    const auto countSection = std::ranges::find_if(syntax->sections, [&](const Section& section) {
+        return !section.parent && identifier(section.name) == identifier(block);
+    });
+    if (countSection == syntax->sections.end()) return reject("invalid_objective_count");
+    const auto freshCount = std::ranges::find_if(syntax->fields, [&](const Field& field) {
+        return identifier(field.name) == "numobjectives" &&
+            std::ranges::find(countSection->fields, field.id) != countSection->fields.end();
+    });
+    if (freshCount == syntax->fields.end()) return reject("invalid_objective_count");
     std::vector<Edit> edits;
-    if (order.size() != previousCount) edits.push_back({syntax->fields[countOrdinal].syntax, std::to_string(order.size())});
+    if (order.size() != previousCount) edits.push_back({freshCount->syntax, std::to_string(order.size())});
     std::unordered_map<std::string, std::string> renamed;
     std::string appended;
     const auto nl = fit.find("\r\n") == fit.npos ? "\n" : "\r\n";

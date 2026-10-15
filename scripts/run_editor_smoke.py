@@ -668,12 +668,27 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
     case = "owned_objective_crud_reload" if crud else "owned_objective_reload"
     directory = deploy / "terrain_gen_out" / case
     directory.mkdir(parents=True, exist_ok=True)
+    null_reload = None
+    if crud:
+        for extension, data in (("fit", fixture_fit), ("pak", fixture_pak)):
+            (directory / f"null-input.{extension}").write_bytes(data)
+            (report / f"null-input.{extension}").write_bytes(data)
+        for extension in ("fit", "pak"):
+            (directory / f"null-reloaded.{extension}").unlink(missing_ok=True)
+        null_reload = run_case_with_retry(case + "_null", exe, deploy, exit_sec, timeout,
+            [f"-mission=terrain_gen_out/{case}/null-input.pak", f"-smoke-save=terrain_gen_out/{case}/null-reloaded.pak"], "saved")
+        if not null_reload["passed"] or any(not (directory / f"null-reloaded.{ext}").is_file() for ext in ("fit", "pak")):
+            return dict(name=case, passed=False, bucket="owned_objective_null_reload_failed", null_reload=null_reload)
     for extension, data in (("fit", before_fit), ("pak", before_pak)):
         (directory / f"input.{extension}").write_bytes(data)
         (report / f"input.{extension}").write_bytes(data)
+    for extension in ("fit", "pak"):
+        (directory / f"reloaded.{extension}").unlink(missing_ok=True)
     row = run_case_with_retry(case, exe, deploy, exit_sec, timeout,
         [f"-mission=terrain_gen_out/{case}/input.pak", f"-smoke-save=terrain_gen_out/{case}/reloaded.pak"], "saved")
     row["input_sha256"] = {"fit": hashlib.sha256(before_fit).hexdigest(), "pak": hashlib.sha256(before_pak).hexdigest()}
+    if crud:
+        row["null_reload"] = null_reload
     if row["passed"]:
         try:
             after = (directory / "reloaded.fit").read_bytes()
@@ -682,14 +697,20 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
                 raise ValueError("legacy reload changed objective scalar/list values")
             if crud:
                 from editor.tests.legacy_reference import buildings, packet
-                # Legacy saves repack derived data and refresh the GUID; CRUD must retain every placement record.
-                for data in (before_pak, after_pak):
+                null_fit = (directory / "null-reloaded.fit").read_bytes()
+                null_pak = (directory / "null-reloaded.pak").read_bytes()
+                if typed_fields(objective_fields(fixture_fit)) != typed_fields(objective_fields(null_fit)):
+                    raise ValueError("legacy null reload changed objective values")
+                # Same-executable null saves account for legacy position quantization, not CRUD changes.
+                for data in (null_pak, after_pak):
                     packet(data, 0)
                     count = struct.unpack_from("<I", data, 4)[0] // 4 - 2
                     for index in range(1, count):
                         packet(data, index)
-                if Counter(buildings(after_pak)) != Counter(buildings(before_pak)):
+                if Counter(buildings(after_pak)) != Counter(buildings(null_pak)):
                     raise ValueError("legacy CRUD reload changed PAK placement records")
+                (report / "null-reloaded.fit").write_bytes(null_fit)
+                (report / "null-reloaded.pak").write_bytes(null_pak)
             for extension, data in (("fit", after), ("pak", after_pak)):
                 (report / f"reloaded.{extension}").write_bytes(data)
             row["detail"] = ("Owned CRUD edit" if crud else "Owned ResourcePoints edit") + " accepted and re-saved by legacy reader; all objective counts/order/content retained." + (" PAK placement records retained; archive packets decode." if crud else "") + " Runtime outcomes remain unproven."
@@ -1403,9 +1424,11 @@ def crud_negative_controls(directory):
         paths = [directory / f"{operation}-{stage}.fit" for stage in ("edited", "redone")]
         originals = [path.read_bytes() for path in paths]
         wrong = originals[0].replace(b"ResourcePoints = ", b"ResourcePoints = 9", 1)
+        swapped = originals[0].replace(b"[Team0Objective0]", b"[swap]", 1).replace(
+            b"[Team0Objective1]", b"[Team0Objective0]", 1).replace(b"[swap]", b"[Team0Objective1]", 1)
         if wrong == originals[0]:
             raise ValueError("CRUD wrong-value negative control did not change output")
-        for data in (baseline, wrong):
+        for data in (baseline, wrong, swapped):
             caught = False
             try:
                 for path in paths:

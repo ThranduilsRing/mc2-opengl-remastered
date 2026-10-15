@@ -37,12 +37,21 @@ class ObjectiveScalarGradingTests(unittest.TestCase):
             import hashlib
             (directory / "gate.json").write_text(json.dumps(dict(result=dict(name="objectives_panel", passed=True),
                 provenance=dict(input_pak_sha256=hashlib.sha256(pak).hexdigest()))))
-            for index, output in enumerate((changed, before, changed.replace(b"ResourcePoints = 17", b"ResourcePoints = 18"))):
+            for index, output in enumerate((changed, before, changed.replace(b"ResourcePoints = 17", b"ResourcePoints = 18"), None)):
                 deploy = directory / str(index)
                 report = deploy / "report"
                 report.mkdir(parents=True)
+                if output is None:
+                    stale = deploy / "terrain_gen_out/owned_objective_reload"
+                    stale.mkdir(parents=True)
+                    (stale / "reloaded.fit").write_bytes(changed)
+                    (stale / "reloaded.pak").write_bytes(pak)
                 def resave(*args):
                     target = deploy / "terrain_gen_out/owned_objective_reload"
+                    if output is None:
+                        self.assertFalse((target / "reloaded.fit").exists())
+                        self.assertFalse((target / "reloaded.pak").exists())
+                        return dict(passed=True, name="owned_objective_reload")
                     (target / "reloaded.fit").write_bytes(output)
                     (target / "reloaded.pak").write_bytes(source.with_suffix(".pak").read_bytes())
                     return dict(passed=True, name="owned_objective_reload")
@@ -717,13 +726,16 @@ class ObjectiveCrudGradingTests(unittest.TestCase):
         for output in (expected, (directory / "fixture.fit").read_bytes(), expected.replace(b"NumObjectives = 10", b"NumObjectives = 11", 1)):
             def resave(*args):
                 target = directory / "terrain_gen_out/owned_objective_crud_reload"
-                (target / "reloaded.fit").write_bytes(output)
-                (target / "reloaded.pak").write_bytes(source.with_suffix(".pak").read_bytes())
+                null = args[0].endswith("_null")
+                (target / ("null-reloaded.fit" if null else "reloaded.fit")).write_bytes((directory / "fixture.fit").read_bytes() if null else output)
+                (target / ("null-reloaded.pak" if null else "reloaded.pak")).write_bytes(source.with_suffix(".pak").read_bytes())
                 return dict(passed=True, name="owned_objective_crud_reload")
             with patch.object(smoke, "run_case_with_retry", side_effect=resave) as launch:
                 row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
-                self.assertEqual(row["passed"], output == expected); launch.assert_called_once()
-        from editor.tests.legacy_reference import packet
+                self.assertEqual(row["passed"], output == expected); self.assertEqual(launch.call_count, 2)
+                self.assertEqual(launch.call_args_list[0].args[1], launch.call_args_list[1].args[1])
+        from editor.tests.legacy_reference import packet, buildings
+        from collections import Counter
         original_pak = source.with_suffix(".pak").read_bytes()
         table = struct.unpack_from("<I", original_pak, 4)[0]
         packet_count = table // 4 - 2
@@ -734,6 +746,8 @@ class ObjectiveCrudGradingTests(unittest.TestCase):
                 struct.pack_into("<I", data, 8 + 4 * index, len(data))
                 decoded = packet(original_pak, index)
                 if index == 1:
+                    decoded = bytearray(decoded)
+                    struct.pack_into("<I", decoded, 8, struct.unpack_from("<I", decoded, 8)[0] ^ 1)
                     if changed:
                         decoded = decoded[:-1] + bytes([decoded[-1] ^ 1])
                     else:
@@ -744,31 +758,56 @@ class ObjectiveCrudGradingTests(unittest.TestCase):
                 data.extend(decoded)
             return bytes(data)
 
+        null_pak = repacked_pak()
+        self.assertNotEqual(Counter(buildings(original_pak)), Counter(buildings(null_pak)))
         for label, saved_pak, accepted in (("repacked", repacked_pak(), True),
                                            ("corrupted", b"CORRUPTED PAK", False),
                                            ("changed-record", repacked_pak(changed=True), False),
                                            ("missing", None, False)):
             target = directory / "terrain_gen_out/owned_objective_crud_reload/reloaded.pak"
-            retained = target.with_suffix(".missing-control.pak")
 
             def resave_pak(*args):
+                if args[0].endswith("_null"):
+                    target.with_name("null-reloaded.fit").write_bytes((directory / "fixture.fit").read_bytes())
+                    target.with_name("null-reloaded.pak").write_bytes(null_pak)
+                    return dict(passed=True, name="owned_objective_crud_reload_null")
                 target.with_suffix(".fit").write_bytes(expected)
                 if saved_pak is None:
-                    target.rename(retained)
+                    self.assertFalse(target.exists())
                 else:
                     target.write_bytes(saved_pak)
                 return dict(passed=True, name="owned_objective_crud_reload")
 
-            try:
-                with self.subTest(reloaded_pak=label), patch.object(smoke, "run_case_with_retry", side_effect=resave_pak) as launch:
-                    row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
-                    self.assertEqual(row["passed"], accepted)
-                    if not accepted:
-                        self.assertEqual(row["bucket"], "owned_objective_reload_changed")
-                    launch.assert_called_once()
-            finally:
-                if retained.exists():
-                    retained.rename(target)
+            with self.subTest(reloaded_pak=label), patch.object(smoke, "run_case_with_retry", side_effect=resave_pak) as launch:
+                row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                self.assertEqual(row["passed"], accepted)
+                if not accepted:
+                    self.assertEqual(row["bucket"], "owned_objective_reload_changed")
+                self.assertEqual(launch.call_count, 2)
+        with patch.object(smoke, "run_case_with_retry", return_value=dict(passed=False)) as launch:
+            row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+            self.assertFalse(row["passed"]); self.assertEqual(row["bucket"], "owned_objective_null_reload_failed")
+            launch.assert_called_once()
+        for stale_stem in ("null-reloaded", "reloaded"):
+            target = directory / "terrain_gen_out/owned_objective_crud_reload"
+            for stem in ("null-reloaded", "reloaded"):
+                (target / f"{stem}.fit").write_bytes((directory / "fixture.fit").read_bytes() if stem == "null-reloaded" else expected)
+                (target / f"{stem}.pak").write_bytes(null_pak)
+
+            def no_save(*args):
+                null = args[0].endswith("_null")
+                stem = "null-reloaded" if null else "reloaded"
+                self.assertFalse((target / f"{stem}.fit").exists())
+                self.assertFalse((target / f"{stem}.pak").exists())
+                if null and stale_stem == "reloaded":
+                    (target / "null-reloaded.fit").write_bytes((directory / "fixture.fit").read_bytes())
+                    (target / "null-reloaded.pak").write_bytes(null_pak)
+                return dict(passed=True)
+
+            with self.subTest(stale=stale_stem), patch.object(smoke, "run_case_with_retry", side_effect=no_save) as launch:
+                row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                self.assertFalse(row["passed"])
+                self.assertEqual(launch.call_count, 1 if stale_stem == "null-reloaded" else 2)
         for name in ("fixture.fit", "fixture.pak", "input.fit", "input.pak", "objective-copy-edited.fit", "objective-copy-edited.pak", "gate.json"):
             path = directory / name; original = path.read_bytes()
             path.write_bytes(original + b"corrupt")

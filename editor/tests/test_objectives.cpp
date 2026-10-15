@@ -437,6 +437,22 @@ TEST_CASE("objectives/CRUD rejection and no-op retain revision dirty bytes and e
     const auto nextActual = history.addObjective(0); REQUIRE(nextActual); CHECK(*nextActual == *nextExpected);
 }
 
+TEST_CASE("objectives/CRUD defensively rejects invalid structural metadata once")
+{
+    for (const auto key : {"Version", "NumObjectives"}) for (const Value value : {
+        Value{}, Value{true}, Value{std::int64_t{9}}, Value{std::int64_t{2}, std::int64_t{3}}}) {
+        auto doc = MissionDocument::decode(fixture(), packet(), "metadata", {}); REQUIRE(doc);
+        auto* field = const_cast<Field*>(doc->find(key == std::string_view("Version") ? "Objectives Version" : "Objectives", key));
+        REQUIRE(field); field->value = value;
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto revision = doc->revision(); const auto dirty = doc->modified();
+        CHECK_FALSE(history.addObjective(0)); CHECK(logs.size() == 1);
+        CHECK(doc->revision() == revision); CHECK(doc->modified() == dirty);
+        CHECK(field->value == value); CHECK_FALSE(history.canUndo()); CHECK_FALSE(history.canRedo());
+    }
+}
+
 TEST_CASE("objectives/structural entity and objective commands share one identity history")
 {
     auto doc = MissionDocument::decode(fixture(), packet(), "interleave", {}); REQUIRE(doc);
