@@ -125,7 +125,8 @@ def grade_shipping_shell():
     for marker in (b"--panel-smoke", b"panel_fixture_seed_failed", b"[EDITOR_PANEL_OPERATION v1]",
                    b"Q3 long mission ", b"--file-smoke", b"file_fixture_seed_failed", b"[EDITOR_FILE v1]",
                    b"chooser_catalog_missing", b"[EDITOR_CHOOSER_VIEW v1]", b"marker_fixture_replace_failed",
-                   b"objective_fixture_missing", b"objective_widget_value_wrong"):
+                   b"objective_fixture_missing", b"objective_widget_value_wrong",
+                   b"objective_crud_fixture_missing", b"objective_crud_reopen_widget_wrong"):
         if marker in shipping or marker not in smoke:
             raise ValueError(f"shipping/smoke isolation failed: {marker!r}")
     print("Shipping shell: proof markers absent; smoke host: proof markers present", flush=True)
@@ -214,7 +215,7 @@ def main():
         elif label == "editor_panel_tests-run":
             from scripts.run_editor_smoke import grade_panel, panel_negative_controls
             rows = re.findall(r"\[EDITOR_WIDGET_ARTIFACT v1\] name=(\S+) directory=(\S+)", result.stdout)
-            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel"]:
+            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel", "objectives_crud_panel"]:
                 raise ValueError("chooser/marker native widget artifacts missing or duplicated")
             for name, path in rows:
                 grade_panel(name, ROOT / path, 0, require_render=False)
@@ -242,7 +243,7 @@ def main():
                 return reader.returncode
             if not re.search(r"\[doctest\] test cases:\s+2\s+\|\s+2 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
                 raise ValueError("real objective reader cases were skipped or omitted")
-            print("Widget graders: chooser frozen placements/provenance/player, marker edits and all 26 objective scalars PASS; render capture awaits smoke host", flush=True)
+            print("Widget graders: chooser frozen placements/provenance/player, marker edits, all 26 objective scalars and five CRUD operations PASS; render capture awaits smoke host", flush=True)
     if len(asan_cases) != 2 or sum(asan_cases) != native_cases:
         raise ValueError("ASan split did not cover the complete normal document suite")
     print(f"ASan coverage: {' + '.join(map(str, asan_cases))} = {native_cases} native cases; no cases omitted", flush=True)

@@ -9,22 +9,57 @@ void EntityPanels::objectives()
 {
     ImGui::PushID("objectives");
     const auto label = [](const Objective& item) { return std::format("Team {} / objective {}", item.team, item.exportedIndex + 1); };
+    const auto version = std::get<std::int64_t>(document_.find("Objectives Version", "Version")->value[0]);
+    if (objectiveTeam_ >= (version == 2 ? 1U : 8U)) objectiveTeam_ = 0;
+    const bool teams = ImGui::BeginCombo("Objective team", std::to_string(objectiveTeam_).c_str());
+    record("objective.team", teams);
+    if (teams) {
+        for (std::uint32_t i = 0; i < (version == 2 ? 1U : 8U); ++i)
+            if (choice("objective.team." + std::to_string(i), std::to_string(i).c_str(), objectiveTeam_ == i)) {
+                objectiveTeam_ = i; objective_ = {}; objectiveRevision_ = ~std::uint64_t{};
+            }
+        ImGui::EndCombo();
+    }
+    if (button("objective.add", "Add objective")) {
+        const auto result = history_.addObjective(objectiveTeam_);
+        if (result) { objective_ = *result; status_ = "Applied"; }
+        else status_ = result.error().reason;
+    }
     const auto* selected = document_.objective(objective_);
-    if (!selected && !document_.objectives().empty()) {
-        objective_ = document_.objectives().front().section;
-        selected = document_.objective(objective_);
+    if (!selected) {
+        for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_) {
+            objective_ = item.section; selected = &item; objectiveRevision_ = ~std::uint64_t{}; break;
+        }
     }
     const bool open = ImGui::BeginCombo("Existing objective", selected ? label(*selected).c_str() : "No objectives");
     record("objective.select", open);
     if (open) {
-        for (const auto& item : document_.objectives())
+        for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_)
             if (choice("objective.select." + std::to_string(item.section.value), label(item).c_str(), item.section == objective_)) {
                 objective_ = item.section; objectiveRevision_ = ~std::uint64_t{};
             }
         ImGui::EndCombo();
     }
     selected = document_.objective(objective_);
-    if (!selected) { ImGui::TextUnformatted("This mission has no existing objectives."); ImGui::PopID(); return; }
+    if (!selected) { ImGui::TextUnformatted("This team has no objectives. Add creates an empty objective."); ImGui::PopID(); return; }
+    if (button("objective.copy", "Copy objective")) {
+        const auto result = history_.copyObjective(objective_);
+        if (result) { objective_ = *result; status_ = "Applied"; }
+        else status_ = result.error().reason;
+    }
+    ImGui::SameLine();
+    if (button("objective.delete", "Delete objective")) report(history_.deleteObjective(objective_));
+    selected = document_.objective(objective_);
+    if (!selected) { ImGui::PopID(); return; }
+    const auto count = std::ranges::count(document_.objectives(), objectiveTeam_, &Objective::team);
+    ImGui::BeginDisabled(selected->exportedIndex == 0);
+    if (button("objective.up", "Move up")) report(history_.reorderObjective(objective_, selected->exportedIndex - 1));
+    ImGui::EndDisabled(); ImGui::SameLine();
+    selected = document_.objective(objective_);
+    ImGui::BeginDisabled(selected->exportedIndex + 1 >= count);
+    if (button("objective.down", "Move down")) report(history_.reorderObjective(objective_, selected->exportedIndex + 1));
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Order changes prerequisite meaning. Existing prerequisite flags are preserved.");
     const auto specs = objectiveSchema();
     const bool fields = ImGui::BeginCombo("Authoring field", specs[objectiveField_].key.data(), ImGuiComboFlags_HeightLargest);
     record("objective.field", fields);

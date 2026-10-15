@@ -23,6 +23,10 @@ public:
     CommandHistory& operator=(const CommandHistory&) = delete;
     std::expected<void, LoadError> setText(NodeId field, std::string text, std::string label);
     std::expected<void, LoadError> setObjectiveScalar(NodeId objective, std::string_view key, Scalar value);
+    std::expected<NodeId, LoadError> addObjective(std::uint32_t team);
+    std::expected<NodeId, LoadError> copyObjective(NodeId objective);
+    std::expected<void, LoadError> deleteObjective(NodeId objective);
+    std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);
     std::expected<EntityId, LoadError> insertUnit(const UnitPlacement& unit);
     std::expected<EntityId, LoadError> insertBuilding(const BuildingPlacement& building);
     std::expected<void, LoadError> erase(EntityId entity);
@@ -45,6 +49,9 @@ private:
     std::deque<DocumentCommand> commands_;
     std::size_t cursor_{}, used_{}, evicted_{}, budget_;
     Diagnostic log_;
+    enum class ObjectiveEdit { add, copy, erase, reorder };
+    std::expected<NodeId, LoadError> editObjectives(ObjectiveEdit edit, std::uint32_t team,
+        NodeId objective = {}, std::uint32_t index = 0);
     std::expected<void, LoadError> commit(DocumentCommand command);
     std::expected<void, LoadError> apply(const DocumentCommand& command, bool forward);
     std::expected<void, LoadError> setScalar(NodeId section, std::string_view key,

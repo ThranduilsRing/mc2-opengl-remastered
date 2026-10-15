@@ -3,6 +3,7 @@ find_package(ZLIB REQUIRED)
 add_library(editor_document STATIC
     document/MissionDocument.cpp
     document/ObjectiveFields.cpp
+    document/ObjectiveCommands.cpp
     document/MissionSyntax.cpp
     document/MissionPackets.cpp
     document/MissionStructure.cpp

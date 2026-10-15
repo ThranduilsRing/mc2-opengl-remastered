@@ -305,3 +305,188 @@ TEST_CASE("objectives/stock corpus exports typed scalars independently of retain
     }
     CHECK(total == 173);
 }
+
+TEST_CASE("objectives/CRUD preserves four lists and stable identity in both versions")
+{
+    for (const bool v3 : {false, true}) {
+        auto original = fixture();
+        if (v3) {
+            original.replace(original.find("Version = 2"), 11, "Version = 3");
+            for (auto at = original.find("[Objective"); at != original.npos; at = original.find("[Objective", at + 1)) {
+                if (original.substr(at, 12) == "[Objectives ") continue;
+                original.insert(at + 1, "Team0");
+            }
+            for (unsigned team = 1; team < 8; ++team) {
+                auto block = std::format("[Team{}Objectives]\r\nul NumObjectives = {}\r\n", team, team == 1 ? 1 : 0);
+                if (team == 1) block += "[Team1Objective0]\r\nst Title = \"Other team\" // unchanged\r\nul NumConditions = 0\r\nx VendorRef = retain_17\r\n";
+                original.insert(original.find("FITend"), block);
+            }
+        }
+        const auto dir = scratch();
+        auto doc = MissionDocument::decode(original, packet(), "crud", {}); REQUIRE(doc);
+        const auto initialCount = doc->objectives().size();
+        const auto source = doc->objectives().front().section;
+        const auto entry = doc->objective(source)->entries[0][0].section;
+        const auto payload = [&](const MissionDocument& d, NodeId section) {
+            const auto* s = d.section(section); REQUIRE(s);
+            const auto fit = d.fitBytes();
+            return fit.substr(s->nameSyntax.end, s->syntax.end - s->nameSyntax.end);
+        };
+        const auto sourcePayload = payload(*doc, entry);
+        const auto rootPayload = payload(*doc, source);
+        const auto otherTeam = v3 ? std::optional{doc->objectives()[1].section} : std::nullopt;
+        const auto otherPayload = otherTeam ? payload(*doc, *otherTeam) : std::string{};
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto check = [&](const std::string& before, const std::string& changed, std::size_t count) {
+            REQUIRE(changed != before); CHECK(doc->objectives().size() == count);
+            REQUIRE(doc->save(dir / "crud", {}));
+            auto reopened = MissionDocument::read(dir / "crud.fit", dir / "crud.pak", {}); REQUIRE(reopened);
+            CHECK(reopened->fitBytes() == changed); CHECK(reopened->objectives().size() == count);
+            CHECK(std::ranges::equal(reopened->pakBytes(), packet()));
+            if (otherTeam) CHECK(payload(*doc, *otherTeam) == otherPayload);
+            REQUIRE(history.undo()); CHECK(doc->fitBytes() == before);
+            REQUIRE(history.redo()); CHECK(doc->fitBytes() == changed);
+        };
+        auto added = history.addObjective(v3 ? 7 : 0); REQUIRE(added);
+        const auto addedId = *added;
+        check(original, doc->fitBytes(), initialCount + 1);
+        const std::vector<Scalar> expected{
+            std::string{}, std::string{}, std::int64_t{1}, std::int64_t{}, false, false, false, 0.0, 0.0,
+            false, false, std::string{}, false, std::string{}, false, std::int64_t{}, false, std::int64_t{},
+            std::string{}, std::int64_t{}, std::int64_t{-1}, std::int64_t{-1}, std::int64_t{-1}, 1.0, std::int64_t{-1}, std::int64_t{2}};
+        REQUIRE(doc->objective(addedId));
+        for (std::size_t i = 0; i < expected.size(); ++i) CHECK(doc->objective(addedId)->scalars[i].value == expected[i]);
+        for (const auto& list : doc->objective(addedId)->entries) CHECK(list.empty());
+        CHECK(payload(*doc, entry) == sourcePayload);
+        CHECK(payload(*doc, source) == rootPayload);
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        auto copied = history.copyObjective(source); REQUIRE(copied); CHECK(*copied != source);
+        check(original, doc->fitBytes(), initialCount + 1);
+        CHECK(payload(*doc, source) == rootPayload); CHECK(payload(*doc, *copied) == rootPayload);
+        for (std::size_t i = 0; i < 4; ++i) {
+            const auto& a = doc->objective(source)->entries[i];
+            const auto& b = doc->objective(*copied)->entries[i];
+            REQUIRE(b.size() == 1); CHECK(a[0].section != b[0].section);
+            CHECK(a[0].species == b[0].species); CHECK(payload(*doc, a[0].section) == payload(*doc, b[0].section));
+        }
+        const auto pair = doc->fitBytes();
+        REQUIRE(history.reorderObjective(*copied, 0)); check(pair, doc->fitBytes(), initialCount + 1);
+        CHECK(doc->objective(source)->exportedIndex == 1); CHECK(doc->objective(*copied)->exportedIndex == 0);
+        CHECK(payload(*doc, entry) == sourcePayload);
+        const auto reordered = doc->fitBytes();
+        REQUIRE(history.deleteObjective(source)); check(reordered, doc->fitBytes(), initialCount);
+        CHECK(!doc->objective(source)); REQUIRE(doc->objective(*copied)); CHECK(doc->objective(*copied)->exportedIndex == 0);
+        REQUIRE(history.undo()); REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.deleteObjective(source)); check(original, doc->fitBytes(), initialCount - 1);
+        const auto empty = doc->fitBytes();
+        auto first = history.addObjective(0); REQUIRE(first); check(empty, doc->fitBytes(), initialCount);
+        CHECK(doc->objective(*first)->exportedIndex == 0);
+        CHECK(logs.empty());
+    }
+}
+
+TEST_CASE("objectives/oversize copy and colliding orphan headers reject without truncation")
+{
+    for (const bool oversized : {false, true}) {
+        auto original = fixture();
+        if (oversized) {
+            std::string opaque;
+            for (unsigned i = 0; i < 9; ++i) opaque += "st Vendor" + std::to_string(i) + " = \"" + std::string(textByteLimit - 1, 'x') + "\"\r\n";
+            original.insert(original.find("[Objective0Action0]"), opaque);
+        } else original.insert(original.find("FITend"), "[Objective1]\r\nx Orphan = retain\r\n");
+        auto doc = MissionDocument::decode(original, packet(), "crud-limit", {}); REQUIRE(doc);
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 128 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto id = doc->objectives()[0].section;
+        const auto title = doc->find("MissionSettings", "MissionName")->id;
+        REQUIRE(history.setText(title, "Retained redo", "Mission name")); REQUIRE(history.undo());
+        const auto revision = doc->revision(), used = history.bytesUsed();
+        auto copied = history.copyObjective(id); REQUIRE_FALSE(copied);
+        CHECK(copied.error().reason == (oversized ? "file_size_limit" : "invalid_or_duplicate_block"));
+        CHECK(logs.size() == 1); CHECK(doc->fitBytes() == original); CHECK_FALSE(doc->modified());
+        CHECK(doc->revision() == revision); CHECK(history.bytesUsed() == used); CHECK(history.canRedo());
+        REQUIRE(history.redo()); CHECK(doc->field(title)->value == Value{std::string("Retained redo")});
+    }
+}
+
+TEST_CASE("objectives/CRUD rejection and no-op retain revision dirty bytes and executable history")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "crud-reject", {}); REQUIRE(doc);
+    std::vector<std::string> logs;
+    const auto log = [&](const auto& line) { logs.push_back(line); };
+    CommandHistory history(*doc, 32 * 1024 * 1024, log);
+    const auto id = doc->objectives()[0].section;
+    REQUIRE(history.copyObjective(id)); REQUIRE(history.undo());
+    const auto before = doc->fitBytes(); const auto revision = doc->revision(); const auto used = history.bytesUsed();
+    auto control = *doc; CommandHistory controlHistory(control);
+    const auto nextExpected = controlHistory.addObjective(0); REQUIRE(nextExpected);
+    for (unsigned op = 0; op < 6; ++op) {
+        if (op == 0) CHECK_FALSE(history.addObjective(1));
+        if (op == 1) CHECK_FALSE(history.copyObjective(NodeId{999999}));
+        if (op == 2) CHECK_FALSE(history.deleteObjective(NodeId{999999}));
+        if (op == 3) CHECK_FALSE(history.reorderObjective(id, 1));
+        if (op == 4) { CommandHistory tiny(*doc, 1, log); CHECK_FALSE(tiny.addObjective(0)); CHECK_FALSE(tiny.canUndo()); }
+        if (op == 5) { CommandHistory tiny(*doc, 1, log); CHECK_FALSE(tiny.deleteObjective(id)); }
+        CHECK(logs.size() == op + 1); CHECK(doc->fitBytes() == before); CHECK(doc->revision() == revision);
+        CHECK_FALSE(doc->modified()); CHECK(history.bytesUsed() == used); CHECK(history.canRedo());
+    }
+    REQUIRE(history.reorderObjective(id, 0)); CHECK(logs.size() == 6); CHECK(doc->revision() == revision); CHECK(history.canRedo());
+    REQUIRE(history.redo()); CHECK(doc->objectives().size() == 2);
+    REQUIRE(history.undo());
+    const auto nextActual = history.addObjective(0); REQUIRE(nextActual); CHECK(*nextActual == *nextExpected);
+}
+
+TEST_CASE("objectives/structural entity and objective commands share one identity history")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "interleave", {}); REQUIRE(doc);
+    const auto original = doc->fitBytes();
+    const auto objective = doc->objectives()[0].section;
+    CommandHistory history(*doc);
+    UnitPlacement unit; unit.objectNumber = 123; unit.objectProfile = "unit"; unit.csvFile = "unit";
+    unit.warriorProfile = "pilot"; unit.legacyBrain = "PBrain";
+    auto entity = history.insertUnit(unit); REQUIRE(entity);
+    auto copy = history.copyObjective(objective); REQUIRE(copy);
+    REQUIRE(history.transform(*entity, {{12, 34, 0}, 90}));
+    REQUIRE(history.reorderObjective(*copy, 0));
+    REQUIRE(history.erase(*entity));
+    const auto final = doc->fitBytes();
+    for (unsigned i = 0; i < 5; ++i) REQUIRE(history.undo());
+    CHECK(doc->fitBytes() == original); CHECK(doc->objective(objective));
+    for (unsigned i = 0; i < 5; ++i) REQUIRE(history.redo());
+    CHECK(doc->fitBytes() == final); CHECK(doc->objective(*copy)->exportedIndex == 0); CHECK_FALSE(doc->entity(*entity));
+    REQUIRE(history.undo()); REQUIRE(doc->entity(*entity)); CHECK(doc->entity(*entity)->position[0] == 12);
+}
+
+TEST_CASE("objectives/CRUD numeric boundaries nested extensions and compact framing survive")
+{
+    auto original = fixture();
+    original.insert(original.find("[Objective0Action0]"), "Vendor { InternalTarget = 17; Child { Token = raw; } }\r\n");
+    original.insert(original.find("[Team0BooleanFlags]"), "[Objective0Vendor]\r\nx UnknownReference = 12345 // unchanged\r\n");
+    original.replace(original.rfind("\r\nFITend"), 2, "; ");
+    auto doc = MissionDocument::decode(original, packet(), "crud-boundary", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto source = doc->objectives()[0].section;
+    const auto entry = doc->objective(source)->entries[0][0].section;
+    const auto* nested = doc->childSection(entry, "Vendor"); REQUIRE(nested);
+    const auto nestedId = nested->id;
+    auto copy = history.copyObjective(source); REQUIRE(copy);
+    const auto* cloned = doc->childSection(doc->objective(*copy)->entries[0][0].section, "Vendor"); REQUIRE(cloned);
+    CHECK(cloned->id != nestedId); CHECK(doc->childSection(entry, "Vendor")->id == nestedId);
+    const auto output = doc->fitBytes();
+    CHECK(output.find("\r\n[Objective1]") != output.npos);
+    CHECK(doc->find("Objective1Vendor", "UnknownReference")->value == Value{std::string("12345")});
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+    for (unsigned i = 1; i < 12; ++i) {
+        auto added = history.addObjective(0); REQUIRE(added);
+        REQUIRE(history.setObjectiveScalar(*added, "Title", std::format("objective-{}", i)));
+    }
+    const auto one = doc->objectives()[1].section, ten = doc->objectives()[10].section, eleven = doc->objectives()[11].section;
+    copy = history.copyObjective(one); REQUIRE(copy);
+    CHECK(doc->objective(ten)->exportedIndex == 11); CHECK(doc->objective(eleven)->exportedIndex == 12);
+    CHECK(doc->objectiveScalar(*copy, "Title")->value == Scalar{std::string("objective-1")});
+    CHECK(doc->objectiveScalar(ten, "Title")->value == Scalar{std::string("objective-10")});
+    REQUIRE(history.deleteObjective(one)); CHECK(doc->objective(ten)->exportedIndex == 10);
+    REQUIRE(history.reorderObjective(ten, 1)); CHECK(doc->objective(ten)->exportedIndex == 1);
+    REQUIRE(history.undo()); CHECK(doc->objective(ten)->exportedIndex == 10);
+}

@@ -4,6 +4,46 @@
 
 namespace editor::shell {
 using namespace document;
+void PanelProof::objectiveCrudProof()
+{
+    if (document_.objectives().size() < 3 || document_.objectives()[2].team != 0)
+        throw std::runtime_error("objective_crud_fixture_missing");
+    const auto id = document_.objectives()[1].section;
+    const auto count = document_.objectives().size();
+    saveCheck("fixture");
+    files_ = std::make_unique<FileWorkflow>(document_, history_, panels_, output_ / "widget-save", log_);
+    click("objective.toggle");
+    operation("objective-add", "objective.add", [this, count] {
+        if (document_.objectives().size() != count + 1) throw std::runtime_error("objective_add_widget_wrong");
+    });
+    const auto select = [this, id] { click("objective.select"); click("objective.select." + std::to_string(id.value)); };
+    select();
+    operation("objective-copy", "objective.copy", [this, count] {
+        if (document_.objectives().size() != count + 1) throw std::runtime_error("objective_copy_widget_wrong");
+    });
+    select();
+    operation("objective-delete", "objective.delete", [this, id, count] {
+        if (document_.objective(id) || document_.objectives().size() != count - 1) throw std::runtime_error("objective_delete_widget_wrong");
+    });
+    select();
+    operation("objective-up", "objective.up", [this, id] {
+        if (document_.objective(id)->exportedIndex != 0) throw std::runtime_error("objective_up_widget_wrong");
+    });
+    select();
+    operation("objective-down", "objective.down", [this, id] {
+        if (document_.objective(id)->exportedIndex != 2) throw std::runtime_error("objective_down_widget_wrong");
+    });
+    click("redo", [this] { beforeFit_ = document_.fitBytes(); beforePak_ = {document_.pakBytes().begin(), document_.pakBytes().end()}; });
+    click("save", [this] {
+        auto saved = MissionDocument::read(output_ / "widget-save.fit", output_ / "widget-save.pak", log_, document_.markerObjects());
+        if (!saved || saved->fitBytes() != beforeFit_) throw std::runtime_error("objective_crud_save_widget_wrong");
+    });
+    click("undo"); click("reopen");
+    click("dirty.discard", [this] {
+        if (document_.fitBytes() != beforeFit_ || history_.canUndo() || history_.canRedo())
+            throw std::runtime_error("objective_crud_reopen_widget_wrong");
+    });
+}
 void PanelProof::objectivesProof()
 {
     if (document_.objectives().size() < 2) throw std::runtime_error("objective_fixture_missing");

@@ -784,3 +784,26 @@ commit was performed. `scratch/e6a-resume-reviewed.patch`,
 `scratch/e6a-resume-commit-message.txt` and `scratch/e6a-resume-proof.txt` form
 the current handoff package; `scratch/e6a-resume-artifacts.json` lists retained
 scratch files. No source files were deleted.
+
+E6b adds [complete objective CRUD](OBJECTIVES-E6b.md) in the owned document and
+SDL panel. [E6b-refs](OBJECTIVES-E6b-refs.md) defers typed references in full with
+the runtime WID/XY, alignment, identity and atomic move/delete contract.
+Checkpoint `scratch/e4-proofs/2026-10-14T20-59-06`: all six editor proof targets
+build with zero warnings; 52 document cases/121949 assertions pass normally and
+under ASan (46 core + 6 placement cases, no omitted cases). All 24 stock pairs,
+173 scalar models, nine frozen placements, five CRUD widget operations,
+26 scalar widgets, seven panel/file cases and two real-reader cases pass.
+Python passes 74 tests/382 subtests. One intermediate ASan core process reached
+its unchanged 120-second bound; the large rejection test stopped reparsing its
+9 MB fixture to seed redo and the final complete run passes the original bound.
+No compiler timed out. The self-reviewed diff, pathspec, commit message, proof
+record and scratch inventory are `scratch/e6b-reviewed.patch`,
+`scratch/e6b-pathspec.txt`, `scratch/e6b-commit-message.txt`,
+`scratch/e6b-proof.txt`, `scratch/e6b-self-review.txt` and
+`scratch/e6b-artifacts.json`. No source files were deleted. No git index change,
+commit or deploy was performed. The orchestrator runs clean/fingerprinted
+lane3 panels, strict legacy 24/24 and all five owned CRUD reloads after commit;
+exact executable commands are in the E6b note.
+Shared `tools/build_contract_harnesses.py --run --unit` passes 3115 native cases
+(four existing skips, deliberate negative controls) and four Python suites;
+release-tree checks remain explicit no-ops without a configured release root.

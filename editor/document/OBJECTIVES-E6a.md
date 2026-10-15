@@ -229,8 +229,9 @@ omitted. Compiler probes retain their 300-second bounds.
 
 ## Follow-ups
 
-- E6b: objective add/copy/delete/reorder and typed entity-reference import/export,
-  including ambiguity, moves, deletes, renumbering and identity/undo proof.
+- E6b: [complete objective add/copy/delete/reorder](OBJECTIVES-E6b.md).
+- E6b-refs: [deferred typed entity references](OBJECTIVES-E6b-refs.md), including
+  ambiguity, atomic moves, rejected deletes, renumbering and identity/undo proof.
 - E6c: known success/failure condition/action payload editors and team BooleanFlags,
   then rare supported types and an explicit group-condition implementation policy.
 - E6d: templates, localization/string-table authoring and model catalog selection,

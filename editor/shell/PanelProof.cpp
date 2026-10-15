@@ -59,6 +59,7 @@ PanelProof::PanelProof(MissionDocument& doc, CommandHistory& history, EntityPane
     : document_(doc), history_(history), panels_(panels), output_(std::move(output)), kind_(std::move(kind)), log_(std::move(log)), captureRendered_(captureRendered)
 {
     if (kind_ == "objectives_panel") { objectivesProof(); return; }
+    if (kind_ == "objectives_crud_panel") { objectiveCrudProof(); return; }
     if (kind_.starts_with("chooser")) { chooserProof(); return; }
     if (kind_ == "marker_panel") {
         EntityId marker;
