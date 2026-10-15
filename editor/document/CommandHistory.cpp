@@ -31,7 +31,10 @@ std::size_t cost(const StructuralState& state)
     for (const auto& objective : state.objectives) {
         for (const auto& list : objective.entries) {
             size += list.capacity() * sizeof(ObjectiveEntry);
-            for (const auto& entry : list) size += referenceStorage(entry.reference);
+            for (const auto& entry : list) {
+                size += referenceStorage(entry.reference);
+                if (entry.flag) size += entry.flag->warning.capacity() + (entry.flag->id ? entry.flag->id->capacity() : 0);
+            }
         }
         size += objective.scalars.capacity() * sizeof(ObjectiveScalar);
         for (const auto& scalar : objective.scalars)
@@ -64,6 +67,14 @@ void CommandHistory::adopt(MissionDocument document)
 }
 std::expected<void, LoadError> CommandHistory::setText(NodeId id, std::string text, std::string label)
 {
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries)
+        for (const auto& entry : list) for (const auto source : document_.section(entry.section)->fields)
+            if (source == id) {
+                if (!entry.policy.empty()) return std::unexpected(rejectObjective(std::string(entry.policy)));
+                if (document_.field(id)->name == "FlagID" && entry.flag)
+                    return setObjectiveFlag(entry.section, std::move(text), 0, entry.flag->value);
+                return std::unexpected(rejectObjective("entry_field_requires_typed_command"));
+            }
     const auto* field = document_.field(id);
     if (field && !field->warning.empty()) {
         if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] field=" + field->name + " reason=" + std::string(field->warning) + " rejected=1");

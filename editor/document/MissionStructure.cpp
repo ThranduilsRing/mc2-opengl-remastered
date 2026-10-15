@@ -85,12 +85,25 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
     }
     candidate->rebuildIndex();
     std::unordered_map<std::uint64_t, const ObjectiveReference*> references;
+    std::unordered_map<std::uint64_t, const ObjectiveEntry*> previousEntries;
     for (const auto& objective : objectives_) for (const auto& list : objective.entries) for (const auto& entry : list)
+    {
         references.emplace(entry.section.value, &entry.reference);
+        previousEntries.emplace(entry.section.value, &entry);
+    }
     for (auto& objective : candidate->objectives_) {
         objective.section = remap.at(objective.section.value);
+        if (section(objective.section) && !this->objective(objective.section))
+            return std::unexpected(LoadError{"objective", "would_awaken_ignored_objective", 0});
         for (auto& list : objective.entries) for (auto& entry : list) {
             entry.section = remap.at(entry.section.value);
+            if (section(entry.section) && !previousEntries.contains(entry.section.value))
+                return std::unexpected(LoadError{"objective", "would_awaken_ignored_entry", 0});
+            if (const auto old = previousEntries.find(entry.section.value); old != previousEntries.end())
+                if (!old->second->policy.empty() && (old->second->policy != entry.policy || old->second->species != entry.species))
+                    return std::unexpected(LoadError{"objective", "preserved_entry_reader_meaning_changed", 0});
+            if (entry.flag) for (auto* source : {&entry.flag->idSource, &entry.flag->valueSource})
+                if (*source) *source = remap.at((*source)->value);
             for (auto& source : entry.reference.sources) source.node = remap.at(source.node.value);
             if (const auto old = references.find(entry.section.value); old != references.end()) {
                 entry.reference.kind = old->second->kind;

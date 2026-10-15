@@ -1,4 +1,5 @@
 #include "MissionDocument.h"
+#include "FitNumeric.h"
 
 #include <algorithm>
 #include <charconv>
@@ -236,7 +237,7 @@ private:
                 if (identifier(spec.key) == identifier(name) && prefix != spec.prefix && spec.key != "DisplayMarker") field.opaque = true;
                 if (identifier(spec.key) == identifier(name) && prefix == spec.prefix && spec.type == 0) objectiveInteger = true;
             }
-            objectiveInteger |= identifier(name) == "activateflagindex" && prefix == "ul";
+            objectiveInteger |= (identifier(name) == "activateflagindex" || identifier(name) == "flagindex") && prefix == "ul";
             if ((identifier(name) == "previousobjectivemustbecomplete" && prefix != "b") ||
                 (prefix != "ul" && (identifier(name) == "activateflagindex" || identifier(name) == "numactions" ||
                     identifier(name) == "numfailureconditions" || identifier(name) == "numfailureactions"))) field.opaque = true;
@@ -247,10 +248,28 @@ private:
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
             auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
+            if (!array && result_.sections[section].kind == SectionKind::objective &&
+                (prefix == "ul" || prefix == "l" || prefix == "f")) {
+                const auto lineStart = result_.originalBytes.rfind('\n', peek().span.begin);
+                const auto lineEnd = std::min(result_.originalBytes.find_first_of("\r\n", peek().span.begin),
+                    (lineStart == std::string::npos ? 0 : lineStart + 1) + 254);
+                auto wire = result_.originalBytes.substr(peek().span.begin, lineEnd - peek().span.begin);
+                if (value && prefix != "f" && wire.find("0x") == wire.npos && wire.find("0X") == wire.npos)
+                    if (const auto* authored = std::get_if<std::int64_t>(&*value); authored &&
+                        (*authored < -2147483648LL || *authored > 2147483647LL))
+                        field.warning = "outside signed 32-bit range; the game reader overflows or wraps this value";
+                if (prefix == "f") value = Scalar{static_cast<double>(FitNumeric::textToFloat(wire.data()))};
+                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(FitNumeric::textToLong(wire.data()))};
+                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(FitNumeric::textToULong(wire.data())))};
+                if (prefix == "f" && !std::isfinite(std::get<double>(*value)))
+                    return std::unexpected(LoadError{path, "malformed_value", peek().span.begin});
+            }
             if (!value && result_.sections[section].kind == SectionKind::objective &&
                 (identifier(name) == "positionx" || identifier(name) == "positiony" ||
-                    identifier(name) == "moverwid" || identifier(name) == "buildingwid")) {
-                // Runtime WIDs bypass XY; ignored reference payload must retain its spelling.
+                    identifier(name) == "moverwid" || identifier(name) == "buildingwid" ||
+                    identifier(name) == "flagid" || identifier(name) == "flagindex" || identifier(name) == "value" ||
+                    identifier(name).ends_with("speciesstring"))) {
+                // Unreadable reader inputs remain visible, byte-exact syntax.
                 field.opaque = true;
                 value = Scalar{peek().value};
             }
@@ -263,6 +282,15 @@ private:
         }
         if (peek().kind != TokenKind::newline && peek().kind != TokenKind::semi && peek().kind != TokenKind::closeBrace && peek().kind != TokenKind::end)
             return failure("trailing_value_garbage");
+        if (!array && result_.sections[section].kind == SectionKind::objective && (prefix == "ul" || prefix == "l")) {
+            const auto lineEnd = result_.originalBytes.find_first_of("\r\n", field.syntax.end);
+            const auto tail = std::string_view(result_.originalBytes).substr(field.syntax.end, lineEnd - field.syntax.end);
+            // A hex-bearing comment is numeric input to FIT; replacing the value must remove it too.
+            if (tail.find("0x") != tail.npos) {
+                field.syntax.end += tail.size();
+                field.warning = "numeric comment consumed by game; rewriting value removes comment";
+            }
+        }
         field.original = field.value;
         result_.sections[section].fields.push_back(field.id);
         result_.fields.push_back(std::move(field));

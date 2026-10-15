@@ -8,6 +8,7 @@
 #include <fstream>
 #include <format>
 #include <limits>
+#include <tuple>
 
 using namespace editor::document;
 namespace {
@@ -32,9 +33,9 @@ std::string fixture()
         "b IsActive = TRUE\r\nf ActivationTime = 10.500\r\nb IsResolved = FALSE\r\nl ResolvedStatus = 1\r\nb ChangedStatus = FALSE\r\n"
         "x VendorKey = unparsed_extension\r\nul NumConditions = 1\r\nul NumActions = 1\r\nul NumFailureConditions = 1\r\nul NumFailureActions = 1\r\n"
         "[Objective0Condition0]\r\nst ConditionSpeciesString = \"VendorPredicate\"\r\nf PositionX = 001.25\r\nx Raw = retain_this\r\n"
-        "[Objective0Action0]\r\nst ActionSpeciesString = \"SetBooleanFlag\"\r\nst FlagID = \"reward\"\r\nb Value = TRUE\r\n"
-        "[Objective0FailureCondition0]\r\nst FailureConditionSpeciesString = \"DestroyEnemyUnitGroup\"\r\nul VendorGroup = 73\r\n"
-        "[Objective0FailureAction0]\r\nul FailureActionSpecies = 200\r\nx Unknown = keep\r\n"
+        "[Team0Objective0Action0]\r\nst ActionSpeciesString = \"SetBooleanFlag\"\r\nst FlagID = \"reward\"\r\nb Value = TRUE\r\n"
+        "[Team0Objective0FailureCondition0]\r\nst FailureConditionSpeciesString = \"DestroyEnemyUnitGroup\"\r\nul VendorGroup = 73\r\n"
+        "[Team0Objective0FailureAction0]\r\nul FailureActionSpecies = 200\r\nx Unknown = keep\r\n"
         "[Team0BooleanFlags]\r\nst BooleanString0 = \"existing\"\r\nb BooleanValue0 = TRUE\r\nFITend\r\n";
 }
 std::filesystem::path scratch()
@@ -81,6 +82,7 @@ TEST_CASE("objectives/all authoring scalars have independent defaults and exact 
     for (const auto& spec : objectiveSchema()) {
         CAPTURE(spec.key);
         auto value = replacement(spec);
+        if (spec.type == 1) value = static_cast<double>(static_cast<float>(std::get<double>(value)));
         if (spec.type == 2) value = !std::get<bool>(doc->objectiveScalar(id, spec.key)->value);
         const auto source = doc->objectiveScalar(id, spec.key)->source;
         const auto oldSource = source ? std::optional{doc->field(*source)->name} : std::nullopt;
@@ -205,14 +207,6 @@ TEST_CASE("objectives/malformed known fields and lists reject once without repla
             replace(std::string("ul ") + key + " = 1", std::string("l ") + key + " = 1");
         }
     }
-    replace("st ActionSpeciesString = \"SetBooleanFlag\"", "f ActionSpeciesString = 1.5");
-    replace("st FlagID = \"reward\"\r\n", "");
-    replace("st FlagID = \"reward\"", "x FlagID = reward");
-    replace("st FlagID = \"reward\"", "st FlagID = \"" + std::string(2001, 'x') + "\"");
-    replace("b Value = TRUE", "l Value = 1");
-    replace("ul FailureActionSpecies = 200", "l FailureActionSpecies = 200");
-    replace("st FlagID = \"reward\"", "l FlagIndex = 7\r\nst FlagID = \"reward\"");
-    replace("st ConditionSpeciesString = \"VendorPredicate\"\r\n", "");
 }
 
 TEST_CASE("objectives/scalar prefixes follow game ignore and unsafe-read behavior")
@@ -379,6 +373,182 @@ TEST_CASE("objectives/imported multiline lexemes remain exact through no-op edit
     }
 }
 
+TEST_CASE("objectives/entry commands preserve identities and exact history in all four lists")
+{
+    for (std::size_t list = 0; list < 4; ++list) {
+        auto doc = MissionDocument::decode(fixture(), packet(), "entries", {}); REQUIRE(doc);
+        CommandHistory history(*doc);
+        const auto owner = doc->objectives()[0].section;
+        const auto preserved = doc->objective(owner)->entries[list][0].section;
+        const auto original = doc->fitBytes();
+        auto added = history.addObjectiveEntry(owner, list); REQUIRE(added);
+        const auto first = *added;
+        REQUIRE(doc->objective(owner)->entries[list][1].flag);
+        CHECK(doc->objective(owner)->entries[list][1].flag->id == "");
+        CHECK(doc->objective(owner)->entries[list][1].flag->value);
+        const auto addedBytes = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == addedBytes);
+        CHECK(doc->objective(owner)->entries[list][1].section == first);
+        auto second = history.addObjectiveEntry(owner, list); REQUIRE(second);
+        const auto two = doc->fitBytes();
+        REQUIRE(history.reorderObjectiveEntry(*second, 1));
+        CHECK(doc->objective(owner)->entries[list][1].section == *second);
+        CHECK(doc->objective(owner)->entries[list][2].section == first);
+        const auto reordered = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == two);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == reordered);
+        REQUIRE(history.deleteObjectiveEntry(preserved));
+        CHECK(doc->objective(owner)->entries[list][0].section == *second);
+        const auto deleted = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == reordered);
+        CHECK(doc->objective(owner)->entries[list][0].section == preserved);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == deleted);
+        REQUIRE(history.setObjectiveFlag(first, std::string("flag\nsecond"), 0, false));
+        const auto& payload = *doc->objective(owner)->entries[list][1].flag;
+        CHECK(payload.id == "flag\nsecond"); CHECK_FALSE(payload.value);
+        REQUIRE(payload.idSource); CHECK(doc->field(*payload.idSource)->name == "FlagID");
+        REQUIRE(payload.valueSource); CHECK(doc->field(*payload.valueSource)->name == "Value");
+        const auto authored = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == deleted);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == authored);
+        REQUIRE(history.setObjectiveFlag(first, std::string(2000, 'x'), 0, true));
+        CHECK(doc->objective(owner)->entries[list][1].flag->id->size() == 2000);
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == authored);
+    }
+}
+
+TEST_CASE("objectives/version two action names follow the reader and keep ignored aliases exact")
+{
+    auto fit = fixture();
+    const auto ignored = std::string("[Objective0Action0]\r\nst ActionSpeciesString = \"SetBooleanFlag\"\r\nst FlagID = \"ignored-alias\"\r\n");
+    fit.insert(fit.find("FITend"), ignored);
+    auto doc = MissionDocument::decode(fit, packet(), "v2-names", {}); REQUIRE(doc);
+    const auto owner = doc->objectives()[0].section;
+    const auto entry = doc->objective(owner)->entries[1][0].section;
+    CHECK(doc->section(entry)->name == "Team0Objective0Action0");
+    CHECK(doc->objective(owner)->entries[1][0].flag->id == "reward");
+    auto unreadable = fit;
+    unreadable.replace(unreadable.find("st ActionSpeciesString"), 2, "st[1]");
+    auto preserved = MissionDocument::decode(unreadable, packet(), "array-species", {}); REQUIRE(preserved);
+    CHECK(preserved->objectives()[0].entries[1][0].policy.starts_with("unreadable species string"));
+    CHECK(preserved->fitBytes() == unreadable);
+    CommandHistory history(*doc);
+    REQUIRE(history.setObjectiveFlag(entry, std::string("actual-reader-entry"), 0, false));
+    CHECK(doc->fitBytes().find(ignored) != std::string::npos);
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+    const auto copy = history.copyObjective(owner); REQUIRE(copy);
+    CHECK(doc->section(doc->objective(*copy)->entries[1][0].section)->name == "Team0Objective1Action0");
+    const auto& copiedFlag = *doc->objective(*copy)->entries[1][0].flag;
+    REQUIRE(copiedFlag.idSource); CHECK(doc->field(*copiedFlag.idSource)->name == "FlagID");
+    CHECK(copiedFlag.idSource != doc->objective(owner)->entries[1][0].flag->idSource);
+    REQUIRE(copiedFlag.valueSource); CHECK(doc->field(*copiedFlag.valueSource)->name == "Value");
+    CHECK(doc->find("Objective1Action0", "FlagID")->value == Value{std::string("ignored-alias")});
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+}
+
+TEST_CASE("objectives/flag precedence preserves unreadable aliases and signed reader conversions")
+{
+    for (const auto& [wire, expected, fallback, state] : std::vector<std::tuple<std::string, std::optional<std::string>, bool, bool>>{
+        {"st FlagID = \"\"\r\nul FlagIndex = malformed\r\n", std::string{}, false, true},
+        {"st FlagID = \"wins\"\r\nul FlagIndex = 9223372036854775808\r\nb Value = FALSE\r\n", "wins", false, false},
+        {"l FlagID = 7\r\nul FlagIndex = -2147483648\r\n", "-2147483648", true, true},
+        {"st FlagID = unquoted\r\nul FlagIndex = 2147483647\r\n", "2147483647", true, true},
+        {"st FlagID = \"" + std::string(2001, 'x') + "\"\r\nul FlagIndex = -1\r\n", "-1", true, true},
+        {"ul FlagIndex = 2147483648\r\n", "2147483647", true, true},
+        {"ul FlagIndex = -2147483649\r\n", "-2147483648", true, true},
+        {"ul FlagIndex = 0xffffffff\r\n", "-1", true, true},
+        {"ul FlagIndex = malformed\r\nb Value = falsehood\r\n", "0", true, false},
+        {"l FlagIndex = 7\r\nl Value = 0\r\n", std::nullopt, false, true}}) {
+        CAPTURE(wire);
+        auto fit = fixture();
+        const auto begin = fit.find("st FlagID = \"reward\"");
+        fit.replace(begin, fit.find("[Team0Objective0FailureCondition0]", begin) - begin, wire);
+        auto doc = MissionDocument::decode(fit, packet(), "flags", {}); REQUIRE(doc);
+        const auto owner = doc->objectives()[0].section;
+        const auto& flag = *doc->objective(owner)->entries[1][0].flag;
+        CHECK(flag.id == expected); CHECK(flag.indexFallback == fallback); CHECK(flag.value == state);
+        CHECK(doc->fitBytes() == fit);
+        CommandHistory history(*doc);
+        const auto flagEntry = doc->objective(owner)->entries[1][0].section;
+        if (!expected) {
+            CHECK_FALSE(doc->objective(owner)->entries[1][0].policy.empty());
+            CHECK_FALSE(history.setObjectiveFlag(flagEntry, std::string("awaken"), 0, true));
+            CHECK_FALSE(history.reorderObjectiveEntry(flagEntry, 0));
+            CHECK(doc->fitBytes() == fit); CHECK(doc->revision() == 0); CHECK_FALSE(history.canUndo());
+        }
+        if (fallback) {
+            for (const auto boundary : {-2147483648LL, 2147483647LL}) {
+                REQUIRE(history.setObjectiveFlag(flagEntry, std::nullopt, boundary, !state));
+                CHECK(doc->objective(owner)->entries[1][0].flag->id == std::to_string(boundary));
+                CHECK(doc->objective(owner)->entries[1][0].flag->value == !state);
+                const auto changed = doc->fitBytes();
+                REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+                REQUIRE(history.redo()); CHECK(doc->fitBytes() == changed);
+                REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+            }
+        }
+        REQUIRE(history.setObjectiveScalar(owner, "Priority", std::int64_t{2}));
+        CHECK(doc->fitBytes().find(wire) != std::string::npos);
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+    }
+}
+
+TEST_CASE("objectives/policy and collision rejection cannot consume history or future IDs")
+{
+    std::vector<std::string> logs;
+    auto doc = MissionDocument::decode(fixture(), packet(), "reject-entry", {}); REQUIRE(doc);
+    auto control = MissionDocument::decode(fixture(), packet(), "control", {}); REQUIRE(control);
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+    CommandHistory controlHistory(*control);
+    const auto owner = doc->objectives()[0].section;
+    REQUIRE(history.addObjectiveEntry(owner, 0)); REQUIRE(history.undo());
+    REQUIRE(controlHistory.addObjectiveEntry(owner, 0)); REQUIRE(controlHistory.undo());
+    const auto rejected = [&](auto edit) {
+        logs.clear(); const auto before = doc->fitBytes(); const auto revision = doc->revision();
+        const auto memory = history.bytesUsed(); const auto dirty = doc->modified();
+        CHECK_FALSE(edit()); CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
+        CHECK(doc->revision() == revision); CHECK(doc->modified() == dirty); CHECK(history.bytesUsed() == memory);
+        CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
+        REQUIRE(history.redo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == before);
+    };
+    for (const auto list : {0, 2, 3}) {
+        const auto entry = doc->objective(owner)->entries[list][0].section;
+        CHECK_FALSE(doc->objective(owner)->entries[list][0].policy.empty());
+        rejected([&] { return history.reorderObjectiveEntry(entry, 0); });
+        rejected([&] { return history.setObjectiveFlag(entry, std::string("bad"), 0, false); });
+    }
+    const auto flag = doc->objective(owner)->entries[1][0].section;
+    rejected([&] { CommandHistory tiny(*doc, 1, [&](const auto& line) { logs.push_back(line); }); return tiny.addObjectiveEntry(owner, 1); });
+    rejected([&] { return history.setObjectiveFlag(flag, std::string(2001, 'x'), 0, true); });
+    rejected([&] { return history.setObjectiveFlag(flag, std::nullopt, -2147483649LL, true); });
+    rejected([&] { return history.setObjectiveFlag(flag, std::nullopt, 7, true); });
+    auto added = history.addObjectiveEntry(owner, 0), expected = controlHistory.addObjectiveEntry(owner, 0);
+    REQUIRE(added); REQUIRE(expected); CHECK(*added == *expected);
+    auto hidden = fixture(); hidden.insert(hidden.find("FITend"), "[Team0Objective0Action1]\r\nst ActionSpeciesString = \"VendorAction\"\r\n");
+    auto collision = MissionDocument::decode(hidden, packet(), "tail", {}); REQUIRE(collision);
+    logs.clear(); CommandHistory collisionHistory(*collision, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+    CHECK_FALSE(collisionHistory.addObjectiveEntry(collision->objectives()[0].section, 1));
+    CHECK(logs.size() == 1); CHECK(collision->fitBytes() == hidden); CHECK(collision->revision() == 0); CHECK_FALSE(collisionHistory.canUndo());
+    auto parentTail = fixture(); parentTail.insert(parentTail.find("FITend"), "[Objective1]\r\nul NumConditions = 0\r\n");
+    auto parent = MissionDocument::decode(parentTail, packet(), "parent-tail", {}); REQUIRE(parent);
+    CommandHistory parentHistory(*parent); CHECK_FALSE(parentHistory.addObjective(0));
+    CHECK(parent->fitBytes() == parentTail); CHECK(parent->revision() == 0);
+    for (std::size_t list = 0; list < 4; ++list) {
+        auto numeric = fixture();
+        constexpr std::array suffixes = {"Condition", "Action", "FailureCondition", "FailureAction"};
+        const auto key = std::string(suffixes[list]) + "SpeciesString";
+        const auto at = numeric.find("st " + key);
+        if (at != numeric.npos) numeric.replace(at, numeric.find('\n', at) - at + 1,
+            "ul " + std::string(suffixes[list]) + "Species = " + (list % 2 == 0 ? "22" : "4") +
+            (list == 1 ? "\r\n" : "\r\nst FlagID = \"numeric\"\r\n"));
+        else numeric.replace(numeric.find("ul FailureActionSpecies = 200"), std::string_view("ul FailureActionSpecies = 200").size(),
+            "ul FailureActionSpecies = 4\r\nst FlagID = \"numeric\"");
+        auto loaded = MissionDocument::decode(numeric, packet(), "numeric", {}); REQUIRE(loaded);
+        CHECK(loaded->objectives()[0].entries[list][0].flag.has_value() == (list == 0));
+    }
+}
+
 TEST_CASE("objectives/stock corpus exports typed scalars independently of retained FIT bytes" * doctest::test_suite("stock-fixture"))
 {
     const auto& paths = editor::tests::inputs();
@@ -499,7 +669,7 @@ TEST_CASE("objectives/oversize copy and colliding orphan headers reject without 
         if (oversized) {
             std::string opaque;
             for (unsigned i = 0; i < 9; ++i) opaque += "st Vendor" + std::to_string(i) + " = \"" + std::string(textByteLimit - 1, 'x') + "\"\r\n";
-            original.insert(original.find("[Objective0Action0]"), opaque);
+            original.insert(original.find("[Team0Objective0Action0]"), opaque);
         } else original.insert(original.find("FITend"), "[Objective1]\r\nx Orphan = retain\r\n");
         auto doc = MissionDocument::decode(original, packet(), "crud-limit", {}); REQUIRE(doc);
         std::vector<std::string> logs;
@@ -583,7 +753,7 @@ TEST_CASE("objectives/structural entity and objective commands share one identit
 TEST_CASE("objectives/CRUD numeric boundaries nested extensions and compact framing survive")
 {
     auto original = fixture();
-    original.insert(original.find("[Objective0Action0]"), "Vendor { InternalTarget = 17; Child { Token = raw; } }\r\n");
+    original.insert(original.find("[Team0Objective0Action0]"), "Vendor { InternalTarget = 17; Child { Token = raw; } }\r\n");
     original.insert(original.find("[Team0BooleanFlags]"), "[Objective0Vendor]\r\nx UnknownReference = 12345 // unchanged\r\n");
     original.replace(original.rfind("\r\nFITend"), 2, "; ");
     auto doc = MissionDocument::decode(original, packet(), "crud-boundary", {}); REQUIRE(doc);
@@ -623,7 +793,7 @@ struct ReferenceFixture {
         auto text = fixture();
         text.replace(text.find("ul NumParts = 0"), 15, "ul NumParts = " +
             std::to_string(std::ranges::count_if(targets, [](const auto& t) { return t.unit; })));
-        const auto begin = text.find("[Objective0Condition0]"), end = text.find("[Objective0Action0]");
+        const auto begin = text.find("[Objective0Condition0]"), end = text.find("[Team0Objective0Action0]");
         text.replace(begin, end - begin, "[Objective0Condition0]\r\nst ConditionSpeciesString = \"" + species +
             "\"\r\n" + wid + (x.empty() ? "" : "f PositionX = " + x + "\r\n") +
             (y.empty() ? "" : "f PositionY = " + y + "\r\n") +
@@ -641,6 +811,10 @@ struct ReferenceFixture {
             for (std::size_t offset{}; (offset = text.find("[Objective0", offset)) != text.npos;) {
                 const auto replacement = std::format("[Team{}Objective0", alignment);
                 text.replace(offset, 11, replacement); offset += replacement.size();
+            }
+            for (std::size_t offset{}; (offset = text.find("[Team0Objective0", offset)) != text.npos;) {
+                const auto replacement = std::format("[Team{}Objective0", alignment);
+                text.replace(offset, 16, replacement); offset += replacement.size();
             }
             for (int team = 0; team < 8; ++team) if (team != alignment)
                 text.insert(text.find("FITend"), std::format("[Team{}Objectives]\r\nul NumObjectives = 0\r\n", team));
@@ -805,13 +979,16 @@ TEST_CASE("objectives/readable WIDs bypass absent and malformed XY but unreadabl
         input.targets = {{unit, 0, 0, 0}}; input.x = input.y = xy;
         input.wid = std::string(prefix) + (unit ? " MoverWID = " : " BuildingWID = ") + (prefix == std::string_view("st") ? "\"7\"" : "7") + "\r\n";
         auto document = MissionDocument::decode(input.fit(), input.pak(), "wid", {});
-        if (prefix != std::string_view("l") && xy != std::string_view("0")) { CHECK_FALSE(document); continue; }
-        REQUIRE(document); CHECK(targetOracle(input).accepts(reference(*document)));
+        if (prefix != std::string_view("l") && xy == std::string_view("")) { CHECK_FALSE(document); continue; }
+        REQUIRE(document);
+        if (xy == std::string_view("broken")) input.x = input.y = "0";
+        CHECK(targetOracle(input).accepts(reference(*document)));
+        if (xy == std::string_view("broken")) input.x = input.y = "broken";
         CHECK(document->fitBytes() == input.fit());
     }
 }
 
-TEST_CASE("objectives/array and malformed WIDs require readable XY")
+TEST_CASE("objectives/array WIDs use XY while malformed signed WIDs read as zero")
 {
     for (const bool unit : {false, true}) for (const auto declaration : {"l[1]", "l"}) for (const bool xy : {false, true}) {
         ReferenceFixture input; input.species = unit ? "DestroySpecificEnemyUnit" : "GuardSpecificStructure";
@@ -821,6 +998,10 @@ TEST_CASE("objectives/array and malformed WIDs require readable XY")
         if (!xy) input.x = input.y = "";
         auto doc = MissionDocument::decode(input.fit(), input.pak(), "wid-declaration", {});
         CAPTURE(unit, declaration, xy);
+        if (declaration == std::string_view("l")) {
+            REQUIRE(doc); CHECK(reference(*doc).status == ReferenceStatus::RuntimeOnlyWid);
+            CHECK(doc->fitBytes() == input.fit()); continue;
+        }
         if (!xy) { CHECK_FALSE(doc); continue; }
         REQUIRE(doc); CHECK(reference(*doc).status == ReferenceStatus::Resolved);
         CHECK(reference(*doc).target == EntityId{1}); CHECK(doc->fitBytes() == input.fit());
@@ -920,8 +1101,8 @@ TEST_CASE("objectives/referenced deletes reject once and resolved moves undo exa
         ReferenceFixture input; input.species = unit ? "GuardSpecificUnit" : "DestroySpecificStructure";
         input.x = "001.250000"; input.y = "-4.50000"; input.targets = {{unit, 1.25f, -4.5f, 0}};
         auto original = input.fit();
-        const auto failure = original.find("[Objective0FailureCondition0]"), failureEnd = original.find("[Objective0FailureAction0]");
-        original.replace(failure, failureEnd - failure, "[Objective0FailureCondition0]\r\nst FailureConditionSpeciesString = \"" +
+        const auto failure = original.find("[Team0Objective0FailureCondition0]"), failureEnd = original.find("[Team0Objective0FailureAction0]");
+        original.replace(failure, failureEnd - failure, "[Team0Objective0FailureCondition0]\r\nst FailureConditionSpeciesString = \"" +
             input.species + "\"\r\nf PositionX = 001.250000\r\nf PositionY = -4.50000\r\nul Commander = 007\r\n");
         if (marker) original.insert(original.find("FITend"),
             "[NavMarkers]\r\nul NumNavMarkers = 1\r\n[NavMarker0]\r\nf xPos = 1.2500\r\nf yPos = -4.5000\r\nf radius = 20\r\n");

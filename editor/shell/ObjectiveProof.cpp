@@ -11,6 +11,19 @@ void PanelProof::objectiveCrudProof()
 {
     if (document_.objectives().size() < 3 || document_.objectives()[2].team != 0)
         throw std::runtime_error("objective_crud_fixture_missing");
+    const auto seed = document_.objectives()[1].section;
+    for (std::size_t list = 0; list < 4; ++list) {
+        while (!document_.objective(seed)->entries[list].empty())
+            if (!history_.deleteObjectiveEntry(document_.objective(seed)->entries[list].back().section))
+                throw std::runtime_error("objective_entry_fixture_delete_failed");
+        for (int i = 0; i < 2; ++i) {
+            const auto entry = history_.addObjectiveEntry(seed, list);
+            if (!entry || !history_.setObjectiveFlag(*entry, std::string(i ? "e6c-second" : "e6c-first"), 0, i != 0))
+                throw std::runtime_error("objective_entry_fixture_add_failed");
+        }
+    }
+    if (!history_.replace(document_.fitBytes(), {document_.pakBytes().begin(), document_.pakBytes().end()}, "entry-fixture", log_))
+        throw std::runtime_error("objective_entry_fixture_replace_failed");
     const auto id = document_.objectives()[1].section;
     const auto count = document_.objectives().size();
     saveCheck("fixture");
@@ -36,6 +49,39 @@ void PanelProof::objectiveCrudProof()
     operation("objective-down", "objective.down", [this, id] {
         if (document_.objective(id)->exportedIndex != 2) throw std::runtime_error("objective_down_widget_wrong");
     });
+    select(); click("objective.entries");
+    for (std::size_t list = 0; list < 4; ++list) {
+        const auto key = "objective.entry." + std::to_string(list);
+        const auto name = "entry-" + std::to_string(list);
+        click("objective.list." + std::to_string(list));
+        operation(name + "-add", key + ".add", [this, id, list] {
+            const auto& entries = document_.objective(id)->entries[list];
+            if (entries.size() != 3 || !entries.back().flag || entries.back().flag->id != "" || !entries.back().flag->value)
+                throw std::runtime_error("objective_entry_add_widget_wrong");
+        });
+        click(key + ".select.0");
+        input(key + ".id", "e6c-edited-" + std::to_string(list)); click(key + ".value");
+        operation(name + "-flag", key + ".apply", [this, id, list] {
+            const auto& flag = document_.objective(id)->entries[list][0].flag;
+            if (!flag || flag->id != "e6c-edited-" + std::to_string(list) || !flag->value)
+                throw std::runtime_error("objective_flag_widget_wrong");
+        });
+        operation(name + "-delete", key + ".delete", [this, id, list] {
+            const auto& entries = document_.objective(id)->entries[list];
+            if (entries.size() != 1 || entries[0].flag->id != "e6c-second")
+                throw std::runtime_error("objective_entry_delete_widget_wrong");
+        });
+        click(key + ".select.1");
+        operation(name + "-up", key + ".up", [this, id, list] {
+            if (document_.objective(id)->entries[list][0].flag->id != "e6c-second")
+                throw std::runtime_error("objective_entry_up_widget_wrong");
+        });
+        click(key + ".select.0");
+        operation(name + "-down", key + ".down", [this, id, list] {
+            if (document_.objective(id)->entries[list][1].flag->id != "e6c-first")
+                throw std::runtime_error("objective_entry_down_widget_wrong");
+        });
+    }
     click("redo", [this] { beforeFit_ = document_.fitBytes(); beforePak_ = {document_.pakBytes().begin(), document_.pakBytes().end()}; });
     click("save", [this] {
         auto saved = MissionDocument::read(output_ / "widget-save.fit", output_ / "widget-save.pak", log_, document_.markerObjects());

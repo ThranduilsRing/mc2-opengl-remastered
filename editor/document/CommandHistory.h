@@ -28,6 +28,11 @@ public:
     std::expected<void, LoadError> deleteObjective(NodeId objective);
     std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);
     std::expected<void, LoadError> resolveObjectiveEntry(NodeId entry, EntityId target);
+    std::expected<NodeId, LoadError> addObjectiveEntry(NodeId objective, std::size_t list);
+    std::expected<void, LoadError> deleteObjectiveEntry(NodeId entry);
+    std::expected<void, LoadError> reorderObjectiveEntry(NodeId entry, std::uint32_t index);
+    std::expected<void, LoadError> setObjectiveFlag(NodeId entry, std::optional<std::string> id,
+        std::int64_t index, bool value);
     std::expected<EntityId, LoadError> insertUnit(const UnitPlacement& unit);
     std::expected<EntityId, LoadError> insertBuilding(const BuildingPlacement& building);
     std::expected<void, LoadError> erase(EntityId entity);
@@ -51,6 +56,11 @@ private:
     std::size_t cursor_{}, used_{}, evicted_{}, budget_;
     Diagnostic log_;
     enum class ObjectiveEdit { add, copy, erase, reorder };
+    LoadError rejectObjective(std::string reason);
+    std::expected<NodeId, LoadError> editObjectiveEntries(ObjectiveEdit edit, NodeId objective,
+        std::size_t list, NodeId entry = {}, std::uint32_t index = 0);
+    std::expected<void, LoadError> commitObjectiveFit(std::string fit, std::string label,
+        const std::unordered_map<std::string, std::string>& renamed = {});
     std::expected<NodeId, LoadError> editObjectives(ObjectiveEdit edit, std::uint32_t team,
         NodeId objective = {}, std::uint32_t index = 0);
     std::expected<void, LoadError> commit(DocumentCommand command);

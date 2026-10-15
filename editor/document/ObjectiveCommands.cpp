@@ -23,6 +23,180 @@ std::string defaults(const std::string& name, const std::string& nl)
 }
 }
 
+LoadError CommandHistory::rejectObjective(std::string reason)
+{
+    if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] reason=" + reason + " rejected=1");
+    return {"objective", std::move(reason), 0};
+}
+
+std::expected<void, LoadError> CommandHistory::commitObjectiveFit(std::string fit, std::string label,
+    const std::unordered_map<std::string, std::string>& renamed)
+{
+    std::vector<EntityId> ids;
+    for (const auto& entity : document_.entities()) ids.push_back(entity.id);
+    auto candidate = document_.structuralCandidate(std::move(fit), document_.placements_, ids, renamed);
+    if (!candidate) return std::unexpected(rejectObjective(candidate.error().reason));
+    auto result = commit(StructuralCommand{document_.structuralState(), std::move(*candidate), std::move(label)});
+    if (!result) return std::unexpected(rejectObjective(result.error().reason));
+    return {};
+}
+
+std::expected<NodeId, LoadError> CommandHistory::addObjectiveEntry(NodeId objective, std::size_t list)
+{
+    return editObjectiveEntries(ObjectiveEdit::add, objective, list);
+}
+std::expected<void, LoadError> CommandHistory::deleteObjectiveEntry(NodeId entry)
+{
+    auto result = editObjectiveEntries(ObjectiveEdit::erase, {}, 0, entry);
+    if (!result) return std::unexpected(result.error());
+    return {};
+}
+std::expected<void, LoadError> CommandHistory::reorderObjectiveEntry(NodeId entry, std::uint32_t index)
+{
+    auto result = editObjectiveEntries(ObjectiveEdit::reorder, {}, 0, entry, index);
+    if (!result) return std::unexpected(result.error());
+    return {};
+}
+
+std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveEdit edit, NodeId owner,
+    std::size_t list, NodeId id, std::uint32_t index)
+{
+    const auto reject = [&](std::string reason) -> std::expected<NodeId, LoadError> {
+        return std::unexpected(rejectObjective(std::move(reason)));
+    };
+    if (edit != ObjectiveEdit::add) {
+        for (const auto& objective : document_.objectives()) for (std::size_t i = 0; i < 4; ++i)
+            for (const auto& entry : objective.entries[i]) if (entry.section == id) { owner = objective.section; list = i; }
+    }
+    const auto* objective = document_.objective(owner);
+    if (!objective || list >= 4) return reject("missing_objective_or_list");
+    const auto& entries = objective->entries[list];
+    const auto found = std::ranges::find(entries, id, &ObjectiveEntry::section);
+    if (edit != ObjectiveEdit::add && found == entries.end()) return reject("missing_entry");
+    std::vector<NodeId> order;
+    for (const auto& entry : entries) order.push_back(entry.section);
+    if (edit == ObjectiveEdit::add) {
+        if (entries.size() >= nodeLimit) return reject("entry_count_limit");
+        index = static_cast<std::uint32_t>(order.size()); order.push_back({});
+    } else if (edit == ObjectiveEdit::erase) std::erase(order, id);
+    else {
+        if (!found->policy.empty()) return reject(std::string(found->policy));
+        if (index >= order.size()) return reject("invalid_entry_index");
+        const auto old = static_cast<std::size_t>(found - entries.begin());
+        if (index == old) return id;
+        for (auto i = std::min<std::size_t>(old, index); i <= std::max<std::size_t>(old, index); ++i)
+            if (!entries[i].policy.empty()) return reject("reorder_crosses_preserved_entry");
+        std::erase(order, id); order.insert(order.begin() + index, id);
+    }
+    constexpr std::array suffixes = {"Condition", "Action", "FailureCondition", "FailureAction"};
+    constexpr std::array counts = {"NumConditions", "NumActions", "NumFailureConditions", "NumFailureActions"};
+    const auto version = std::get<std::int64_t>(document_.find("Objectives Version", "Version")->value[0]);
+    const auto base = (version == 2 && list != 0 ? "Team0" : "") + document_.section(owner)->name + suffixes[list];
+    auto fit = document_.fitBytes();
+    auto fresh = decodeFit(fit);
+    if (!fresh) return reject(fresh.error().reason);
+    const auto freshSection = [&](NodeId node) -> const Section& {
+        return fresh->sections[static_cast<std::size_t>(document_.section(node) - document_.syntax().sections.data())];
+    };
+    std::vector<Edit> edits;
+    const auto nl = fit.find("\r\n") == fit.npos ? "\n" : "\r\n";
+    const auto* count = document_.find(owner, counts[list]);
+    if (count && (count->prefix != "ul" || count->opaque)) return reject("ignored_list_count_preserved");
+    if (count) {
+        const auto at = static_cast<std::size_t>(count - document_.syntax().fields.data());
+        edits.push_back({fresh->fields[at].syntax, std::to_string(order.size())});
+    } else {
+        const auto end = freshSection(owner).syntax.end;
+        edits.push_back({{end, end}, std::string(nl) + "ul " + counts[list] + " = " + std::to_string(order.size()) + nl});
+    }
+    std::unordered_map<std::string, std::string> renamed;
+    for (const auto& entry : entries) {
+        const auto& section = freshSection(entry.section);
+        const auto position = std::ranges::find(order, entry.section);
+        if (position == order.end()) {
+            edits.push_back({section.syntax, {}}); renamed.emplace(identifier(section.name), "");
+        } else {
+            const auto name = base + std::to_string(position - order.begin());
+            if (name != section.name) {
+                edits.push_back({section.nameSyntax, name}); renamed.emplace(identifier(section.name), identifier(name));
+            }
+        }
+    }
+    if (edit == ObjectiveEdit::add) {
+        const auto name = base + std::to_string(index);
+        for (const auto& section : fresh->sections) if (!section.parent && identifier(section.name) == identifier(name))
+            return reject("entry_add_would_awaken_ignored_tail");
+        const auto text = (fresh->endMarker && fit[fresh->endMarker - 1] != '\n' ? std::string(nl) : std::string{}) + "[" + name + "]" + nl + "st " + suffixes[list] +
+            "SpeciesString = \"" + (list % 2 == 0 ? "BooleanFlagIsSet" : "SetBooleanFlag") + "\"" + nl +
+            "st FlagID = \"\"" + nl + "b Value = TRUE" + nl;
+        edits.insert(edits.begin(), {{fresh->endMarker, fresh->endMarker}, text});
+    }
+    std::ranges::stable_sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
+    for (const auto& change : edits) fit.replace(change.span.begin, change.span.end - change.span.begin, change.text);
+    auto result = commitObjectiveFit(std::move(fit), "Edit objective entries", renamed);
+    if (!result) return std::unexpected(result.error());
+    return edit == ObjectiveEdit::add ? document_.objective(owner)->entries[list][index].section : id;
+}
+
+std::expected<void, LoadError> CommandHistory::setObjectiveFlag(NodeId id, std::optional<std::string> flagID,
+    std::int64_t index, bool value)
+{
+    const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
+        return std::unexpected(rejectObjective(std::move(reason)));
+    };
+    const ObjectiveEntry* selected{};
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries)
+        for (const auto& entry : list) if (entry.section == id) selected = &entry;
+    if (!selected) return reject("missing_entry");
+    if (!selected->policy.empty()) return reject(std::string(selected->policy));
+    if (!selected->flag) return reject("payload_authoring_deferred_for_species");
+    if (flagID) {
+        for (auto at = flagID->find("\r\n"); at != flagID->npos; at = flagID->find("\r\n", at)) flagID->erase(at, 1);
+        const ObjectiveFieldSpec spec{"FlagID", "st", 3};
+        if (auto valid = validateObjectiveScalar(spec, Scalar{*flagID}); !valid) return reject(valid.error().reason);
+    } else if (index < -2147483648LL || index > 2147483647LL) return reject("FlagIndex_outside_signed_32_bit");
+    if (selected->flag->id == (flagID ? flagID : std::optional{std::to_string(index)}) &&
+        selected->flag->indexFallback == !flagID.has_value() && selected->flag->value == value) return {};
+    auto fit = document_.fitBytes();
+    auto syntax = decodeFit(fit);
+    if (!syntax) return reject(syntax.error().reason);
+    const auto& section = syntax->sections[static_cast<std::size_t>(document_.section(id) - document_.syntax().sections.data())];
+    std::vector<Edit> edits;
+    const auto nl = fit.find("\r\n") == fit.npos ? "\n" : "\r\n";
+    std::string added;
+    const auto set = [&](std::string_view key, std::string_view prefix, std::string wire) {
+        const auto* old = document_.find(id, key);
+        if (old) {
+            if (old->prefix != prefix || old->array) return false;
+            const auto at = static_cast<std::size_t>(old - document_.syntax().fields.data());
+            edits.push_back({syntax->fields[at].syntax, std::move(wire)});
+        } else added += std::string(prefix) + " " + std::string(key) + " = " + wire + nl;
+        return true;
+    };
+    if (flagID) {
+        std::string text = *flagID;
+        if (text.find('\n') != text.npos) {
+            std::string wire = "\r\n";
+            for (const auto c : text) { if (c == '\n') wire += '\r'; wire += c; }
+            text = std::move(wire);
+        }
+        if (!set("FlagID", "st", "\"" + text + "\"")) return reject("preserved_FlagID_prefix_or_array");
+    } else {
+        if (const auto* old = document_.find(id, "FlagID")) {
+            if (selected->flag->idSource == old->id && !selected->flag->indexFallback)
+                return reject("readable_FlagID_would_override_FlagIndex");
+        }
+        if (!set("FlagIndex", "ul", std::to_string(index))) return reject("preserved_FlagIndex_prefix_or_array");
+    }
+    if (value != selected->flag->value && !set("Value", "b", value ? "TRUE" : "FALSE"))
+        return reject("preserved_Value_prefix_or_array");
+    if (!added.empty()) edits.push_back({{section.syntax.end, section.syntax.end}, std::string(nl) + added});
+    std::ranges::sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
+    for (const auto& change : edits) fit.replace(change.span.begin, change.span.end - change.span.begin, change.text);
+    if (fit == document_.fitBytes()) return {};
+    return commitObjectiveFit(std::move(fit), "Set objective boolean flag");
+}
+
 std::expected<NodeId, LoadError> CommandHistory::addObjective(std::uint32_t team)
 {
     return editObjectives(ObjectiveEdit::add, team);
@@ -46,8 +220,7 @@ std::expected<void, LoadError> CommandHistory::reorderObjective(NodeId id, std::
 std::expected<void, LoadError> CommandHistory::resolveObjectiveEntry(NodeId id, EntityId target)
 {
     const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
-        if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] action=resolve reason=" + reason + " rejected=1");
-        return std::unexpected(LoadError{"objective", std::move(reason), 0});
+        return std::unexpected(rejectObjective(std::move(reason)));
     };
     const ObjectiveEntry* selected{};
     for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries)
@@ -87,8 +260,7 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
     NodeId id, std::uint32_t index)
 {
     const auto reject = [&](std::string reason) -> std::expected<NodeId, LoadError> {
-        if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] action=crud reason=" + reason + " rejected=1");
-        return std::unexpected(LoadError{"objective", std::move(reason), 0});
+        return std::unexpected(rejectObjective(std::move(reason)));
     };
     const auto* selected = document_.objective(id);
     if (edit != ObjectiveEdit::add) {
@@ -153,18 +325,21 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         const auto& old = document_.syntax().sections[i];
         if (old.parent) continue;
         const auto key = identifier(old.name);
-        if (!key.starts_with(objectivePrefix)) continue;
-        const auto end = key.find_first_not_of("0123456789", objectivePrefix.size());
-        const auto found = owners.find(key.substr(0, end));
+        const bool teamEntry = version == 2 && key.starts_with("team0objective");
+        const auto ownerKey = teamEntry ? key.substr(5) : key;
+        if (!ownerKey.starts_with(objectivePrefix)) continue;
+        const auto end = ownerKey.find_first_not_of("0123456789", objectivePrefix.size());
+        const auto found = owners.find(ownerKey.substr(0, end));
         if (found == owners.end()) continue;
         const auto* owner = found->second;
         const auto& fresh = syntax->sections[i];
         const auto base = identifier(document_.section(owner->section)->name);
-        const auto suffix = old.name.substr(base.size());
+        const auto suffix = old.name.substr(base.size() + (teamEntry ? 5 : 0));
+        const auto entryPrefix = teamEntry ? "Team0" : "";
         if (edit == ObjectiveEdit::copy && base == sourceName) {
             auto copy = fit.substr(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin);
             copy.replace(fresh.nameSyntax.begin - fresh.syntax.begin,
-                fresh.nameSyntax.end - fresh.nameSyntax.begin, name(index) + suffix);
+                fresh.nameSyntax.end - fresh.nameSyntax.begin, entryPrefix + name(index) + suffix);
             appended += copy;
             if (appended.back() != '\n') appended += nl;
         }
@@ -172,7 +347,7 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         if (position == positions.end()) {
             edits.push_back({fresh.syntax, {}}); renamed.emplace(key, "");
         } else {
-            const auto replacement = name(position->second) + suffix;
+            const auto replacement = entryPrefix + name(position->second) + suffix;
             if (replacement != old.name) {
                 edits.push_back({fresh.nameSyntax, replacement});
                 renamed.emplace(key, identifier(replacement));

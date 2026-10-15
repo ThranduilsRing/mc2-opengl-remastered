@@ -84,13 +84,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                 return std::unexpected(LoadError{section(item.section)->name + "/" + std::string(spec.key), "malformed_value", 0});
             else {
                 value = field->value[0];
-                if (spec.type == 0) {
-                    const auto wire = std::string_view(syntax_.originalBytes).substr(field->syntax.begin, field->syntax.end - field->syntax.begin);
-                    auto& number = std::get<std::int64_t>(value);
-                    // Hex bit patterns are signed runtime values; the game recognizes only lowercase 0x.
-                    if (wire.starts_with("0x") && number >= 0 && number <= 4294967295LL) number = static_cast<std::int32_t>(number);
-                    else if (wire.starts_with("0X")) number = 0;
-                }
+                if (field->warning.starts_with("outside signed")) warning = field->warning;
             }
             // Imported text reflects FIT's first-line join.
             if (auto* text = std::get_if<std::string>(&value))
@@ -114,10 +108,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
         if ((!field || !warning.empty()) && spec.key == "ActivateFlagID")
             if (const auto* legacy = find(item.section, "ActivateFlagIndex")) {
                 if (legacy->prefix == "ul" && legacy->value.size() == 1 && std::holds_alternative<std::int64_t>(legacy->value[0])) {
-                    const auto wire = std::string_view(syntax_.originalBytes).substr(legacy->syntax.begin, legacy->syntax.end - legacy->syntax.begin);
-                    auto number = std::get<std::int64_t>(legacy->value[0]);
-                    if (!wire.starts_with("0x")) number = std::clamp<std::int64_t>(number, -2147483648LL, 2147483647LL);
-                    value = std::to_string(wire.starts_with("0X") ? 0 : static_cast<std::int32_t>(number));
+                    value = std::to_string(std::get<std::int64_t>(legacy->value[0]));
                 }
                 if (!field && !legacy->warning.empty()) { field = legacy; warning = legacy->warning; }
             }
@@ -138,8 +129,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
 std::expected<void, LoadError> CommandHistory::setObjectiveScalar(NodeId id, std::string_view key, Scalar value)
 {
     const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
-        if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] field=" + std::string(key) + " reason=" + reason + " rejected=1");
-        return std::unexpected(LoadError{std::string(key), std::move(reason), 0});
+        return std::unexpected(rejectObjective(std::move(reason)));
     };
     const auto* old = document_.objectiveScalar(id, key);
     const auto specs = objectiveSchema();

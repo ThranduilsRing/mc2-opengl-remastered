@@ -645,7 +645,7 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
     before_pak = source.with_suffix(".pak").read_bytes()
     if crud:
         from editor.tests.objective_crud import grade_crud_edit
-        operation = source.name.removesuffix("-edited") if source.name != "widget-save" else "objective-down"
+        operation = source.name.removesuffix("-edited") if source.name != "widget-save" else PANEL_OPERATIONS["objectives_crud_panel"][-1]
         grade_crud_edit((source.parent / "fixture.fit").read_bytes(), before_fit, operation)
     else:
         grade_objective_edit((source.parent / "fixture.fit").read_bytes(), before_fit, "ResourcePoints")
@@ -1149,7 +1149,8 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
 
 
 PANEL_OPERATIONS = {
-    "objectives_crud_panel": ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down"),
+    "objectives_crud_panel": ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down") +
+        tuple(f"entry-{i}-{action}" for i in range(4) for action in ("add", "flag", "delete", "up", "down")),
     "objectives_panel": ("objective-resolve",) + tuple("objective-" + key.replace(" ", "_") for key in (
         "Title", "Description", "Priority", "ResourcePoints", "PreviousPrimaryObjectiveMustBeComplete",
         "AllPreviousPrimaryObjectivesMustBeComplete", "DisplayMarker", "MarkerX", "MarkerY", "HiddenTrigger",
@@ -1449,7 +1450,16 @@ def crud_negative_controls(directory):
             b"[Team0Objective1]", b"[Team0Objective0]", 1).replace(b"[swap]", b"[Team0Objective1]", 1)
         if wrong == originals[0]:
             raise ValueError("CRUD wrong-value negative control did not change output")
-        for data in (baseline, wrong, swapped):
+        controls = [baseline, wrong, swapped]
+        if operation.startswith("entry-"):
+            for source, replacement in ((b'e6c-first', b'wrong-id'), (b'Value = FALSE', b'Value = TRUE'),
+                                        (b'BooleanFlagIsSet', b'UnknownCondition'), (b'SetBooleanFlag', b'UnknownAction'),
+                                        (b'st FailureActionSpeciesString = "SetBooleanFlag"', b'ul FailureActionSpecies = 4')):
+                changed = originals[0].replace(source, replacement, 1)
+                if changed == originals[0]:
+                    raise ValueError("flag/species negative control did not mutate output")
+                controls.append(changed)
+        for data in controls:
             caught = False
             try:
                 for path in paths:

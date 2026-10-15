@@ -153,6 +153,15 @@ struct ObjectiveEntry {
     NodeId section;
     std::variant<ConditionSpecies, ActionSpecies, std::monostate> species;
     ObjectiveReference reference;
+    struct Flag {
+        std::optional<std::string> id;
+        bool value = true;
+        bool indexFallback{};
+        std::optional<NodeId> idSource, valueSource;
+        std::string warning;
+    };
+    std::optional<Flag> flag;
+    std::string_view policy;
 };
 inline constexpr std::size_t objectiveTextLimit = 2000;
 struct ObjectiveFieldSpec {

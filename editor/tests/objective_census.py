@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import struct
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -25,6 +26,9 @@ def grade_typed_objectives(inputs, output):
         source = objective_fields((inputs / f"{mission}.fit").read_bytes())
         expected = {k: v for k, v in source.items()
                     if re.fullmatch(r"(?:Team\d+)?Objective\d+", k.partition("/")[0]) and k.partition("/")[2] in AUTHORING_KEYS}
+        expected = {key: ["f " + repr(struct.unpack("<f", struct.pack("<f", float(item[2:])))[0])
+                          if item.startswith("f ") else item for item in values]
+                    for key, values in expected.items()}
         actual = objective_fields((output / f"{mission}.objectives.fit").read_bytes())
         if typed_fields(actual) != typed_fields(expected):
             raise ValueError(f"typed objective model disagrees with independent stock decode: {mission}")
