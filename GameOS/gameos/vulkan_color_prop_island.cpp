@@ -1536,6 +1536,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.nightFactor  = haveLightFeed ? lightFeed.nightFactor : 0.0f;
         u.hotTableReady = s->hotReady ? 1 : 0;   // the shader reads the table only when the real one is bound
         u.ambientV1Strength = haveLightFeed ? lightFeed.ambientV1Strength : 0.0f;
+        u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
+        for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant

@@ -166,6 +166,8 @@ struct Mc2ColorPropLightFeed {
     int32_t      isNight;           // 0/1
     float        nightFactor;       // 0..1 day->night blend
     float        ambientV1Strength; // StaticPropAmbient option: 1.0 when the hemisphere ambient fill is on, else 0.0
+    float        pbrV1Strength;     // StaticPropPbr option: the specular strength when it is on, else 0.0
+    float        cameraWorldPos[4]; // GL world eye position for the specular view vector
 };
 int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out);
 

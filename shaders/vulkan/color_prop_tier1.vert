@@ -103,6 +103,10 @@ flat layout(location = 2) out int  vLayer;    // alpha-OFF albedo array layer (-
 layout(location = 3) out vec3 vArgb;          // VERTEX-BAKED lit color (GL default model)
 flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
+// Inputs of the StaticPropPbr specular: the surface position (GL world) and the instance's sun light as stored in its ObjectLights row (Stuff frame, colour zero = none).
+layout(location = 6) out vec3 vWorldPos;
+flat layout(location = 7) out vec3 vSunDirStuff;
+flat layout(location = 8) out vec3 vSunColor;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -148,6 +152,9 @@ void main() {
     vec4 clip = uFrame.worldToClipGL * vec4(world_mc2, 1.0);
     clip.z += uFrame.objectDepthBias * clip.w;
     gl_Position = clip;
+    vWorldPos = world_mc2;
+    vSunDirStuff = vec3(0.0);
+    vSunColor = vec3(0.0);
     vUv = a_uv;
     // NORMAL: forward in STUFF-SPACE (un-swapped). BIT-EXACT mirror of
     // static_prop.vert:352 `worldNormal = a_normal * mat3(inst.modelMatrix)`
@@ -278,6 +285,7 @@ void main() {
     // TG_LIGHT types (match calc_light / static_prop.vert): 1=INFINITE, 2=INFINITEWITHFALLOFF.
     vec3 ambientTerm = vec3(0.0);
     vec3 sunColorFed = vec3(0.0);
+    vec3 sunDirFed   = vec3(0.0);
     bool sunFound    = false;
     if (uFrame.lightingReady != 0) {
         ObjectLights ld = lightsData_.light[int(inst.lightDataIndex)];
@@ -288,6 +296,7 @@ void main() {
                 ambientTerm += ld.light_color[i].xyz;
             } else if (!sunFound && (lt == 1 || lt == 2)) {
                 sunColorFed = ld.light_color[i].xyz;
+                sunDirFed = ld.light_dir[i].xyz;
                 sunFound = true;
             }
         }
@@ -297,6 +306,8 @@ void main() {
     // Use the real scanned sun color when the feed is live (GL parity). Only the
     // fail-soft branch (no feed) falls back to the neutral kSunColor stand-in.
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
+    vSunDirStuff = sunDirFed;
+    vSunColor = sunFound ? sunColorFed : vec3(0.0);
 
     vec3 iblTerm = vec3(0.0);
     if (uFrame.iblShStrength > 0.0) {

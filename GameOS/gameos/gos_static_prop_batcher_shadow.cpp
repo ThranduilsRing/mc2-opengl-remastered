@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
+#include "view_uniforms_gl.h"   // RenderCore::getCurrentView: the eye position of the VK prop specular
 
 
 // SHADOW-PROP-ALPHA-1 -------------------------------------------------------
@@ -936,6 +937,10 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     out->isNight      = isNight ? 1 : 0;
     out->nightFactor  = nightFactor;
     out->ambientV1Strength = staticPropAmbientV1Enabled() ? 1.0f : 0.0f;
+    // The GL upload zeroes the strength when the view-uniform block is off; the island always has the eye position.
+    out->pbrV1Strength = pbrV1Enabled() ? g_pbrV1Strength : 0.0f;
+    const RenderCore::ViewUniforms& vu = RenderCore::getCurrentView().viewUniforms;
+    for (int k = 0; k < 4; ++k) out->cameraWorldPos[k] = vu.cameraWorldPos[k];
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

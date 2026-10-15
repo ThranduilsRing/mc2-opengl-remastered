@@ -38,7 +38,9 @@ struct ColorFrameUBO {
     float   nightFactor;        // 0..1 day->night blend
     float   ambientV1Strength;  // StaticPropAmbient option: strength of the hemisphere ambient fill (0 = off)
     int32_t hotTableReady;      // 1 = the per-type hot-colour table is the real one (else the one-entry placeholder)
-    float   _pad[2];            // @cpp_only pad to a 16 B multiple
+    float   pbrV1Strength;      // StaticPropPbr option: strength of the Schlick-Fresnel sun specular (0 = off)
+    float   _padEye;            // keeps the eye position 16-byte aligned
+    float   cameraWorldPos[4];  // @vec4 GL world eye position (ViewUniforms.cameraWorldPos); .w pad
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"
