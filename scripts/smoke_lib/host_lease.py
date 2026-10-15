@@ -1,7 +1,8 @@
 # scripts/smoke_lib/host_lease.py
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
-MC2_HOST_GAME_SLOTS selects 1..6 physical cores (default 4); cores 0..1 stay reserved.
+MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
+MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 3 at width 2); cores 0..1 stay reserved.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
@@ -37,10 +38,18 @@ DEFAULT_TIMEOUT_S = 3600.0
 POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
+def cores_per_slot() -> int:
+    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "2"))
+    if not 1 <= width <= 6:
+        raise ValueError("MC2_HOST_CORES_PER_SLOT must be between 1 and 6")
+    return width
+
+
 def slot_count() -> int:
-    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "4"))
-    if not 1 <= count <= 6:
-        raise ValueError("MC2_HOST_GAME_SLOTS must be between 1 and 6")
+    maximum = 6 // cores_per_slot()
+    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", str(maximum)))
+    if not 1 <= count <= maximum:
+        raise ValueError(f"MC2_HOST_GAME_SLOTS must be between 1 and {maximum}")
     return count
 
 
@@ -50,9 +59,10 @@ def slot_path(slot: int) -> Path:
 
 
 def affinity_mask(slot: int) -> int:
-    if not 0 <= slot < 6:
-        raise ValueError("slot must be between 0 and 5")
-    return 3 << (4 + slot * 2)
+    width = cores_per_slot()
+    if not 0 <= slot < 6 // width:
+        raise ValueError("slot exceeds the physical game core budget")
+    return ((1 << (width * 2)) - 1) << (4 + slot * width * 2)
 
 
 @contextmanager
@@ -104,7 +114,7 @@ def apply_affinity(proc) -> None:
         return
     mask = 0
     for rec in records:
-        mask |= affinity_mask(rec.get("slot", 0))
+        mask |= rec.get("affinity_mask", 3 << (4 + rec.get("slot", 0) * 2))
     if sys.platform == "win32":
         import ctypes
         from ctypes import wintypes
@@ -114,8 +124,18 @@ def apply_affinity(proc) -> None:
         if not kernel.SetProcessAffinityMask(int(proc._handle), mask):
             proc.kill()
             raise ctypes.WinError(ctypes.get_last_error())
+        kernel.GetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+        kernel.GetProcessAffinityMask.restype = wintypes.BOOL
+        actual, system = ctypes.c_size_t(), ctypes.c_size_t()
+        if not kernel.GetProcessAffinityMask(int(proc._handle), ctypes.byref(actual), ctypes.byref(system)):
+            proc.kill()
+            raise ctypes.WinError(ctypes.get_last_error())
+        if actual.value != mask:
+            proc.kill()
+            raise RuntimeError(f"engine affinity mismatch: requested {mask:#x}, applied {actual.value:#x}")
     elif hasattr(os, "sched_setaffinity"):
         os.sched_setaffinity(proc.pid, {i for i in range(16) if mask & (1 << i)})
+    print(f"[host-affinity] pid={proc.pid} mask={mask:#x} logical_cpus={mask.bit_count()}", file=sys.stderr, flush=True)
 
 
 class HostLeaseBusy(RuntimeError):
@@ -284,14 +304,17 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
                 free = [i for i in range(slot_count()) if not slot_path(i).exists()]
                 legacy = any("slot" not in rec for _, rec in live)
-                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free))
+                compatible = all(rec.get("cores_per_slot", 1) == cores_per_slot() for _, rec in live)
+                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free) and compatible)
                 if eligible:
                     for i in (range(6) if exclusive else free[:1]):
                         taken, _ = _try_take(slot_path(i), label)
                         if not taken:
                             raise HostLeaseBusy("slot changed during allocation")
                         rec = _read(slot_path(i))
-                        _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive))
+                        _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
+                                                       cores_per_slot=cores_per_slot(),
+                                                       affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
                     queue.pop(0)
                 _write_record(path, {"tickets": queue})
                 if eligible:

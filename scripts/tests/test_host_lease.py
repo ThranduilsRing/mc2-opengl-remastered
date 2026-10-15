@@ -18,6 +18,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 @pytest.fixture()
 def lease(tmp_path, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
     monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
     monkeypatch.setattr(host_lease, "_registered", False)
@@ -187,7 +188,11 @@ def test_two_lanes_from_two_worktree_copies_share_one_lease(tmp_path, monkeypatc
         assert status.returncode == 1 and "lane laneA" in status.stdout and "ALIVE" in status.stdout
         b = lane(lane_b, "b")
         try:
-            time.sleep(1.0)
+            deadline = time.monotonic() + 20
+            while not (tmp_path / "b.log").stat().st_size:
+                assert b.poll() is None, "lane B exited before waiting for the lease"
+                assert time.monotonic() < deadline, "lane B never reported lease contention"
+                time.sleep(0.05)
             assert b.poll() is None and not (tmp_path / "b.held").exists(), "lane B took the lease while lane A held it"
             (tmp_path / "a.go").write_text("go", encoding="utf-8")
             assert a.wait(timeout=20) == 0
@@ -326,26 +331,42 @@ def test_registered_batch_engine_allows_another_slot_but_reused_pid_blocks(lease
     host_lease.acquire("neighbor", wait=False, scan=lambda: [(4242, "mc2.exe")])
     assert host_lease._read(host_lease.slot_path(1))["pid"] == os.getpid()
     host_lease.release()
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
+    with pytest.raises(host_lease.HostLeaseBusy):
+        host_lease.acquire("incompatible core layout", wait=False, scan=lambda: [])
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
     record["create_time"] = 456
     with pytest.raises(host_lease.HostLeaseBusy, match="mc2.exe pid 4242"):
         host_lease.acquire("reused engine pid", wait=False, scan=lambda: [(4242, "mc2.exe")])
 
 
 def test_affinity_reserves_only_physical_game_cores(monkeypatch):
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
     assert [host_lease.affinity_mask(i) for i in range(6)] == [0x30, 0xC0, 0x300, 0xC00, 0x3000, 0xC000]
     monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
-    assert host_lease.slot_count() == 4
-    for invalid in ("0", "7"):
+    monkeypatch.delenv("MC2_HOST_CORES_PER_SLOT", raising=False)
+    assert host_lease.slot_count() == 3
+    assert [host_lease.affinity_mask(i) for i in range(3)] == [0xF0, 0xF00, 0xF000]
+    with pytest.raises(ValueError):
+        host_lease.affinity_mask(3)
+    for invalid in ("0", "4"):
         monkeypatch.setenv("MC2_HOST_GAME_SLOTS", invalid)
+        with pytest.raises(ValueError):
+            host_lease.slot_count()
+    monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
+    for invalid in ("0", "7"):
+        monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", invalid)
         with pytest.raises(ValueError):
             host_lease.slot_count()
 
 
-def test_slot_affinity_reaches_child_process(lease):
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (2, False, 0xF0), (2, True, 0xFFF0)])
+def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes
 
-    host_lease.acquire("affinity")
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", str(width))
+    host_lease.acquire("affinity", exclusive=exclusive)
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(20)"],
                             **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
     try:
@@ -355,7 +376,7 @@ def test_slot_affinity_reaches_child_process(lease):
         get_mask.restype = wintypes.BOOL
         process_mask, system_mask = ctypes.c_size_t(), ctypes.c_size_t()
         assert get_mask(int(proc._handle), ctypes.byref(process_mask), ctypes.byref(system_mask))
-        assert process_mask.value == 0x30
+        assert process_mask.value == expected
     finally:
         proc.kill()
         proc.communicate(timeout=10)
