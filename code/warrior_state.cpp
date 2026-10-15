@@ -608,6 +608,9 @@ void MechWarrior::copyToData (MechWarriorData &data)
 	//Pilots which are not used may not have this assigned.
 	if (tacOrderQueue) {
 		MemCpy(data.tacOrderQueue,tacOrderQueue);
+		// The marker is a heap object of this process; copyFromData rebuilds it from the move mode, so the file carries null.
+		for (auto& queued : data.tacOrderQueue)
+			queued.marker = nullptr;
     }
 
 	data.tacOrderQueueIndex = tacOrderQueueIndex;

@@ -15,6 +15,7 @@
 #endif
 
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+#include "../GameOS/gameos/utils/mc2log.h"
 #include"terrain_runtime.h"
 
 #ifndef MCLIB_H
@@ -872,7 +873,8 @@ void Gate::CopyTo (GateData *data)
 
 	data->lastMarkedOpen = lastMarkedOpen;
 
-	data->closestObject = closestObject;
+	// A mover address is meaningless in another process: the save carries null and the gate finds its blocker again when something next collides.
+	data->closestObject = nullptr;
 
 	data->parentId = parentId;
 	data->parent = parent;
@@ -901,7 +903,10 @@ void Gate::Load (GateData *data)
 
 	lastMarkedOpen = data->lastMarkedOpen;
 
-	closestObject = data->closestObject;
+	// Saves written before this field was cleared hold a mover address of the process that wrote them; using it would be a wild read.
+	if (data->closestObject)
+		MC2_LOG_ONCE(Sim, Warn, "gate load: dropped the stale blocker pointer of an older save");
+	closestObject = nullptr;
 
 	parentId = data->parentId;
 	parent = data->parent;
