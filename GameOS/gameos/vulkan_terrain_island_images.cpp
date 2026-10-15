@@ -760,16 +760,10 @@ bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     return true;
 }
 
-// Per-frame copy of the GL DYNAMIC (building/mech) shadow depth texture into the 2nd VK
-// D32 image (binding 7). Same mechanism as static; gated by MC2_VK_TERRAIN_DYNSHADOW feed.
-//
-// VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island (MC2_VK_SHADOW_INTEROP) produced
-// this frame's dynamic shadow depth, skip the glGetTexImage+vkCmdCopyBufferToImage
-// round-trip entirely and point binding 7 at the shadow island's own VkImageView
-// (dynShadowExternalView; write_descriptors() picks it up). Falls back to the existing
-// GL-copy mechanism whenever the shadow island declined this frame (fail-soft, never a
-// hole — matches the umbrella's existing per-frame fail-soft convention). This is a
-// dyn-shadow-CONSUME optimization only; the interop gate + producer are unchanged.
+// The single dynamic shadow map (binding 7) for frames without cascades (ShadowCSM=FALSE): the VK shadow island's own depth view when it produced one this
+// frame, else no dynamic shadow on terrain this frame. There is no GL-copy fallback: it was a per-frame GL depth readback, which the co-write path treats
+// as fatal, so the first frame of a ShadowCSM=FALSE mission (shadow island not yet up) latched the whole terrain island off and the VK scene was never
+// cleared again (objects smeared over a frame with no terrain).
 bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->dynShadowReady = false;
     s->dynShadowExternalView = VK_NULL_HANDLE;
@@ -779,8 +773,7 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // The cascades serve the dynamic shadow whenever the island produced both of them this frame; the single map is then neither produced nor copied.
     if (mc2_vk_shadow_island_csm_array_ready() && mc2_vk_shadow_island_csm_fullmap_ready()) return false;
 
-    // Direct path: the shadow island already produced+fenced a VK-native depth image
-    // this exact frame (same-queue, already retired -- see accessor doc comment).
+    // The shadow island recorded this frame's map into its one submit; the same queue and its render-pass dependencies order this read behind the write.
     if (mc2_vk_shadow_island_dyn_shadow_ready()) {
         void* rawView = mc2_vk_shadow_island_get_dyn_shadow_view();
         if (rawView != nullptr) {
@@ -791,15 +784,7 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
     }
 
-    // Fallback: existing GL-copy mechanism (unchanged).
-    if (feed.glDynamicShadowTex == 0 || feed.dynamicShadowSize <= 0) return false;
-    const uint32_t dim = (uint32_t)feed.dynamicShadowSize;
-    if (!ensure_shadow_image_slot(s, dim, s->dynShadowImg, s->dynShadowView, &s->dynShadowDim)) return false;
-    if (!copy_shadow_slot(s, feed.glDynamicShadowTex, dim, s->dynShadowImg.get(),
-                          s->dynShadowStage, &s->dynShadowStageBytes,
-                          /*perFrame=*/true)) return false;  // H2b: per-frame fallback (direct-chain declined)
-    s->dynShadowReady = true;
-    return true;
+    return false;
 }
 
 } // namespace
