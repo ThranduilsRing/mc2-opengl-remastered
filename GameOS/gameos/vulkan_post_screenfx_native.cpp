@@ -49,6 +49,7 @@
 #include "gos_postprocess.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "Gates/render_options.h"   // options.cfg PropShadowReceive
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -186,7 +187,8 @@ struct ScreenFxShadowStaticParams {
     float _padBeforeLight[2];    // off 376..380
     float lightDir[4];           // off 384, xyz used
     float mechSoft;              // off 400
-    float _pad0, _pad1, _pad2;   // off 404..412
+    int   propShadowReceive;     // off 404 (options.cfg PropShadowReceive)
+    float _pad1, _pad2;          // off 408..412
 };
 static_assert(sizeof(ScreenFxShadowStaticParams) == 416, "ScreenFxShadowStaticParams std140 offsets drifted");
 
@@ -755,6 +757,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         // Same rows as the GL path (gos_postprocess_gates.cpp): default 2, clamps to [0, 16] and default 1, [0, 4].
         p.objNormalBiasScale = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();
         p.mechSoft = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
+        p.propShadowReceive = mc2::options::current().propShadowReceive;   // the option the GL screen shadow reads
         float lx = 0.0f, ly = 0.0f, lz = 1.0f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
         float len = sqrtf(lx*lx + ly*ly + lz*lz);

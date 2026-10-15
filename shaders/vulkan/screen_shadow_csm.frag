@@ -15,6 +15,12 @@ bool rc_isStaticPropNoSelfShadow(PREC vec4 gbuf1) {
     return gbuf1.a > 0.1 && gbuf1.a <= 0.5;
 }
 
+// Alpha-test cutout props (trees, fences): excluded from the prop receive opt-in because the
+// shadow depth pass writes them as solid slabs.
+bool rc_isAlphaTestProp(PREC vec4 gbuf1) {
+    return gbuf1.a > 0.1 && gbuf1.a <= 0.22;
+}
+
 layout(location = 0) in  vec2 TexCoord;
 layout(location = 0) out PREC vec4 FragColor;
 
@@ -40,6 +46,7 @@ layout(std140, set = 0, binding = 3) uniform ScreenShadowCsmParams {
     float objNormalBiasScale;
     vec4 lightDir;
     float mechSoft;
+    int   propShadowReceive;
 } u;
 
 const vec2 poissonDisk[8] = vec2[](
@@ -146,5 +153,7 @@ void main()
         shadow = min(shadow, sampleShadowMap(shadowMap, worldPos, u.lightSpaceMatrix, 8));
     if (u.enableDynamicShadows == 1 && !isStaticProp)
         shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.55));
+    else if (u.enableDynamicShadows == 1 && u.propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))
+        shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.4));
     FragColor = vec4(shadow, shadow, shadow, 1.0);
 }
