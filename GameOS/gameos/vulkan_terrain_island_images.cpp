@@ -7,24 +7,20 @@
 
 namespace vk_terrain_detail {
 
-// Snapshot the GL height SSBO into the VK-owned buffer when the feed version changes.
-// Map-load copy (glGetBufferSubData -> vmaMap), NOT a per-frame handoff readback.
+// Copy the store's height field into the VK-owned buffer when the feed version changes
+// (map load and every height patch), never per frame.
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
-    if (feed.glHeightSsbo == 0 || feed.heightBytes == 0) return false;
+    if (!feed.heightCpu || feed.heightBytes == 0) return false;
     if (!ensure_height_capacity(s, (VkDeviceSize)feed.heightBytes)) return false;
     // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
     // rare rewrite: mission load / crater deform). Under the deferred retire a prior
     // terrain submit may still be reading it — device-idle before rewriting in place.
     // (The old inline post-submit fence wait used to provide this guarantee for free.)
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
-    std::vector<uint8_t> scratch((size_t)feed.heightBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, scratch.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, scratch.data(), (size_t)feed.heightBytes);
+    std::memcpy(p, feed.heightCpu, (size_t)feed.heightBytes);
     vmaUnmapMemory(s->allocator, s->heightBuf.allocation());
     s->heightVersionCopied = feed.heightVersion;
     ++g_health.heightSnapshots;
@@ -403,10 +399,10 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // On failure the dummy stays bound (matNormalReady=false) -> FS uses macro-slope only.
 }
 
-// Snapshot the GL cement-word SSBO into the VK-owned buffer when the feed version
-// changes. Map-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_height.
+// Copy the store's cement words into the VK-owned buffer when the feed version changes
+// (map load), mirroring snapshot_height. A map without words gets an all-zero field.
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (feed.glCementSsbo == 0 || feed.cementBytes == 0) return false;  // not live yet
+    if (feed.cementBytes == 0) return false;  // no map yet
     if (feed.cementVersion == s->cementVersionCopied && s->cementWordsReady) return true;
     // Ensure capacity (grow-only, like the height buffer).
     if (!s->cementBuf || (VkDeviceSize)feed.cementBytes > s->cementCapBytes) {
@@ -424,27 +420,24 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (map-load version bump)
     // — device-idle before writing in place (see snapshot_height).
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_snapshot");
-    std::vector<uint8_t> scratch((size_t)feed.cementBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glCementSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.cementBytes, scratch.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->cementBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, scratch.data(), (size_t)feed.cementBytes);
+    if (feed.cementCpu) std::memcpy(p, feed.cementCpu, (size_t)feed.cementBytes);
+    else std::memset(p, 0, (size_t)feed.cementBytes);
     vmaUnmapMemory(s->allocator, s->cementBuf.allocation());
     s->cementVersionCopied = feed.cementVersion;
     s->cementWordsReady = true;
     return true;
 }
 
-// VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshot the GL 4x visual-heightfield bake SSBO
-// (binding 26) into the VK-owned buffer when the feed version changes. Version-gated
-// mission-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_cement — the
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: copy the store's 4x visual-heightfield bake (the GL
+// binding-26 bytes) into the VK-owned buffer when the feed version changes. Version-gated
+// mission-load copy, mirroring snapshot_cement — the
 // bake is uploaded once per mission (gos_TerrainLodChunk_UploadVisualHeightFull), so
 // this is a cheap no-op on every other frame. Fail-soft: on any failure
 // visualHeightReady stays false -> UBO visualMode forced 0 -> VS draws undisplaced.
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (feed.glVisualHeightSsbo == 0 || feed.visualHeightBytes == 0) return false;  // bake not live
+    if (!feed.visualHeightCpu || feed.visualHeightBytes == 0) return false;  // bake not live
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
     if (!s->visualHeightBuf || (VkDeviceSize)feed.visualHeightBytes > s->visualHeightCapBytes) {
@@ -462,19 +455,15 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (once-per-mission bake)
     // — device-idle before writing in place (see snapshot_height).
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_snapshot");
-    std::vector<uint8_t> scratch((size_t)feed.visualHeightBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glVisualHeightSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.visualHeightBytes, scratch.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->visualHeightBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, scratch.data(), (size_t)feed.visualHeightBytes);
+    std::memcpy(p, feed.visualHeightCpu, (size_t)feed.visualHeightBytes);
     vmaUnmapMemory(s->allocator, s->visualHeightBuf.allocation());
     s->visualHeightVersionCopied = feed.visualHeightVersion;
     s->visualHeightReady = true;
     static bool s_first = false;
     if (!s_first) {
-        vlog("VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshotted GL visual-height bake "
+        vlog("VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshotted the visual-height bake "
              "(V=%d bytes=%llu ver=%llu); VK far bands now Z-swap like GL mode 2.",
              feed.visualSide, (unsigned long long)feed.visualHeightBytes,
              (unsigned long long)feed.visualHeightVersion);

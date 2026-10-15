@@ -364,15 +364,6 @@ const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep, bool checkerDia
 extern GLuint s_patchVao;
 void mirrorTerrainPatchUniforms(GLuint src, GLuint dst);
 #ifdef MC2_VULKAN_ISLAND
-extern uint64_t g_terrainHeightVersion;
-#endif
-#ifdef MC2_VULKAN_ISLAND
-extern uint64_t g_terrainCementVersion;
-#endif
-#ifdef MC2_VULKAN_ISLAND
-extern uint64_t g_terrainVisualHeightVersion;
-#endif
-#ifdef MC2_VULKAN_ISLAND
 bool terrainVisualDisplaceGateOn();
 #endif
 #ifdef MC2_VULKAN_ISLAND

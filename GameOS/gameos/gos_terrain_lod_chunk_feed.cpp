@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
+#include "terrain_field_store.h"
 
 #ifdef MC2_VULKAN_ISLAND
 // ---------------------------------------------------------------------------
@@ -10,10 +11,8 @@
 // this scratch, SKIPS the GL LOD0 main+skirt draws, and the VK terrain island
 // co-writes those patches into the shared scene GBuffer instead. Default-OFF ->
 // none of this runs -> the GL path draws every band exactly as before.
+// The height / cement / visual-height bytes and their versions come from the terrain field store.
 // ---------------------------------------------------------------------------
-uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
-uint64_t g_terrainCementVersion = 0;  // bumps on UploadCementWordsFull
-uint64_t g_terrainVisualHeightVersion = 0;  // bumps on UploadVisualHeightFull (rung 5)
 #endif
 #ifdef MC2_VULKAN_ISLAND
 // VK-TERRAIN-VISUALDISPLACE-FAR-1: file-scope reads of the SAME env knobs the draw
@@ -40,15 +39,16 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
 {
     if (!out) return 0;
     if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
-    if (!s_heightSsbo.created() || s_mapSide <= 0) return 0;
+    const mc2terrain::TerrainFieldStore* fields = gos_TerrainFieldStore();
+    if (!fields || s_mapSide <= 0 || fields->mapSide() != s_mapSide) return 0;
     out->patches    = s_vkTerrainPatches.data();
     out->patchCount = (uint32_t)s_vkTerrainPatches.size();
     std::memcpy(out->worldToClipGL, s_vkTerrainMvp, sizeof(out->worldToClipGL));
     out->mapSide       = s_mapSide;
     out->halfMap       = s_halfMap;
-    out->glHeightSsbo  = s_heightSsbo.name();
-    out->heightBytes   = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(float);
-    out->heightVersion = g_terrainHeightVersion;
+    out->heightCpu     = fields->height().data();
+    out->heightBytes   = (uint64_t)fields->height().size() * sizeof(float);
+    out->heightVersion = fields->heightVersion();
     // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
     // island so it can copy-once import the colormap and sample the REAL base color.
     out->glColormapTex          = static_cast<uint32_t>(gos_terrain_indirect_getAtlasGLTex());
@@ -69,24 +69,27 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     {
         out->cementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">() ? 1 : 0;
     }
-    out->glCementSsbo       = s_cementSsbo.name();
+    // Null until the words of this map were uploaded: the island then keeps an all-zero (no cement) field of the same size.
+    const bool cementMatchesMap = fields->cementWords().size() == (size_t)s_mapSide * (size_t)s_mapSide;
+    out->cementCpu          = cementMatchesMap ? fields->cementWords().data() : nullptr;
     out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
-    out->cementVersion      = g_terrainCementVersion;
+    out->cementVersion      = fields->cementVersion();
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): hand the 4x visual-height bake SSBO +
     // mode-2 params to the island. Armed ONLY when the sub-gate is on AND the GL displace
     // gate is on AND the bake is loaded -- else all-zero (island honors visualMode=0 only,
     // and the capture predicate below never emits mode-2 patches in that case anyway).
-    out->glVisualHeightSsbo  = 0;
+    out->visualHeightCpu     = nullptr;
     out->visualHeightBytes   = 0;
     out->visualHeightVersion = 0;
     out->visualSide          = 0;
     out->visualDisplaceFar   = 0.0f;
     if (mc2_vk_terrain_visualdisplace_far_enabled() && terrainVisualDisplaceGateOn()
-        && s_visualHeightSsbo.created() && s_visualSide > 0) {
-        out->glVisualHeightSsbo  = s_visualHeightSsbo.name();
+        && s_visualSide > 0 && fields->visualSide() == s_visualSide) {
+        // The fine bake only (the mip maxes that follow it are a GL-path geomorph input).
+        out->visualHeightCpu     = fields->visualHeight().data();
         out->visualHeightBytes   = (uint64_t)s_visualSide * (uint64_t)s_visualSide * sizeof(float);
-        out->visualHeightVersion = g_terrainVisualHeightVersion;
+        out->visualHeightVersion = fields->visualHeightVersion();
         out->visualSide          = s_visualSide;
         out->visualDisplaceFar   = terrainVisualDisplaceFarParam();
     }

@@ -917,16 +917,12 @@ void MechFlushFrame::drawBuckets() {
             run.instanceBase  = dc.instanceBase;
             run.instanceCount = dc.instanceCount;
             run.materialFlags = dc.materialFlags;
-            run.slot0GlTex    = glTexId;   // LIVE per-actor paint scheme this frame
+            run.slot0Tex      = (uint32_t)liveGosHandle;   // LIVE per-actor paint scheme this frame
             // VK-PARITY-MECH-1: per-type AO / normal maps (same resolve as units 6/7 below).
-            {
-                const DWORD aoGos = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
-                    ? mcTextureManager->get_gosTextureHandle(dc.aoTexHandle) : 0u;
-                run.aoGlTex = aoGos ? gos_GetGLTextureId((uint32_t)aoGos) : 0u;
-                const DWORD nrmGos = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
-                    ? mcTextureManager->get_gosTextureHandle(dc.normalTexHandle) : 0u;
-                run.normalGlTex = nrmGos ? gos_GetGLTextureId((uint32_t)nrmGos) : 0u;
-            }
+            run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
+                ? (uint32_t)mcTextureManager->get_gosTextureHandle(dc.aoTexHandle) : 0u;
+            run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
+                ? (uint32_t)mcTextureManager->get_gosTextureHandle(dc.normalTexHandle) : 0u;
             s_vkMechRunSnapshot.push_back(run);
         }
 #endif

@@ -5,7 +5,7 @@
 // parity-fenced submit) with a much simpler feed:
 //   * geometry: the node's CPU gos_VERTEX array (pre-transformed screen-space,
 //     CPU-lit) is memcpy'd each frame into a per-parity host-visible vertex buffer;
-//   * textures: copy-once glGetTexImage import keyed on the mcTextureManager node;
+//   * textures: copy-once import of the handle's decoded texels, keyed on the mcTextureManager node;
 //   * no lights / no instancing: vertex colour is already CPU-lit.
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
@@ -18,7 +18,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
-#include <GL/glew.h>
+#include "texture_decode.h"   // gos_GetTextureRgba
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -45,7 +45,6 @@
 #include <unordered_map>
 #include <tracy/Tracy.hpp>
 
-uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // defined in gameos_graphics.cpp
 const float* gos_GetProj2ScreenMat4();             // gosRenderer::projection_ (row-major, GL_TRUE)
 
 namespace {
@@ -253,37 +252,25 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
 }
 
 // Resolve (importing copy-once on first sight) the texture entry for a node.
-// Called BEFORE recording (GL calls); never inside the VK command buffer.
+// Called BEFORE recording (a pre-compressed texture is read back once by its texture object); never inside the VK command buffer.
 TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
     auto it = s->texs.find(texNode);
     if (it != s->texs.end()) return &it->second;
     if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
-    const uint32_t glTex = gos_GetGLTextureId(gosHandle);
-    if (glTex == 0) return &s->dummyTex;    // not resident yet; retry next frame
-
-    GLint prevTex = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) {
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
-        return &s->dummyTex;
-    }
-    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    uint32_t w = 0, h = 0;
+    const auto rgba = gos_GetTextureRgba(gosHandle, &w, &h);
+    if (!rgba) return &s->dummyTex;    // not resident yet; retry next frame
+    if (w == 0 || h == 0 || w > 8192 || h > 8192) return &s->dummyTex;
 
     TexEntry t;
-    if (!upload_image(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
+    if (!upload_image(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()) ||
         !alloc_tex_sets(s, t)) {
         return &s->dummyTex;   // `t` releases whatever it created
     }
     ++g_health.texUploads;
     auto ins = s->texs.emplace(texNode, std::move(t));
-    vlog("texture cached: node=%u glTex=%u %dx%d (%zu/%u).", texNode, glTex, (int)w, (int)h,
+    vlog("texture cached: node=%u handle=%u %ux%u (%zu/%u).", texNode, gosHandle, w, h,
          s->texs.size(), kMaxTextures);
     return &ins.first->second;
 }
@@ -561,7 +548,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     Island* s = parkedIsland();
     if (s->disabled || !s->inited) return 0;
 
-    // Resolve textures (GL calls) BEFORE recording; total the vertex bytes.
+    // Resolve textures BEFORE recording; total the vertex bytes.
     struct Resolved { TexEntry* t; const Mc2LegacyMlrDraw* d; VkDeviceSize byteOff; };
     std::vector<Resolved> list;
     list.reserve(draws.size());
