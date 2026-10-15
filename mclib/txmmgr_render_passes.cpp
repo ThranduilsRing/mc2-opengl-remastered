@@ -340,7 +340,8 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 							ppCsm->getDynamicShadowTextureRaw(),
 							ppCsm->getDynamicCascadeMatrices(), csmN, ppCsm->getDynamicShadowMapSize(),
 							ppCsm->getDynamicShadowArrayTexture(), ppCsm->getDynamicFullMapTexture(),
-							ppCsm->getDynamicFullMapSize(), ppCsm->getDynamicFullMapTexelWorld());
+							ppCsm->getDynamicFullMapSize(), ppCsm->getDynamicFullMapTexelWorld(),
+							ppCsm->getShadowTexture(), ppCsm->getShadowMapSize());
 					}
 #endif
 				}

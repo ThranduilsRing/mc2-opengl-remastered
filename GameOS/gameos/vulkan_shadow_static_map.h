@@ -56,6 +56,9 @@ public:
     // The map of the last submitted build; null before the first one.
     VkImageView view() const { return builtGeneration_ != 0 ? view_.get() : VK_NULL_HANDLE; }
     uint64_t generation() const { return builtGeneration_; }
+    // For the matrix diag's depth dump.
+    VkImage image() const { return image_.get(); }
+    int size() const { return size_; }
 
     // A map boundary: the next map's generation builds afresh, and nothing is handed out until it has.
     void invalidate() { builtGeneration_ = 0; pendingGeneration_ = 0; failedGeneration_ = 0; }

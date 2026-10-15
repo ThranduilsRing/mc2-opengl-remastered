@@ -247,7 +247,7 @@ int  mc2_vk_shadow_matrix_diag_enabled();
 void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
                                     const float* glCascMats, int csmN, int arrSize,
                                     unsigned glArrTex, unsigned glFullTex, int fullSize,
-                                    float fullTexelWorld);
+                                    float fullTexelWorld, unsigned glStaticTex, int staticSize);
 // Terrain island: returns 1 exactly once after a tick armed a log (consumes the latch).
 int  mc2_vk_shadow_matrix_diag_take_terrain_arm();
 

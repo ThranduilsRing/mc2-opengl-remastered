@@ -1467,7 +1467,7 @@ extern "C" int mc2_vk_shadow_matrix_diag_take_terrain_arm() {
 extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
                                                const float* glCascMats, int csmN, int arrSize,
                                                unsigned glArrTex, unsigned glFullTex, int fullSize,
-                                               float fullTexelWorld) {
+                                               float fullTexelWorld, unsigned glStaticTex, int staticSize) {
     if (!diagOn()) return;
     // The dump runs before a capture's frame (431 by default, after a 30-frame settle): the capture harness ends the process once it has its frame,
     // so a later dump never reached the log.
@@ -1494,6 +1494,7 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         diagGlRead(glDynTex, dynSize, -1, d);       diagDumpDepth("dyn", "gl", d, dynSize);
         diagGlRead(glArrTex, arrSize, 0, d);        diagDumpDepth("csm0", "gl", d, arrSize);
         diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
+        diagGlRead(glStaticTex, staticSize, -1, d); diagDumpDepth("static", "gl", d, staticSize);
     }
     if (ShadowIsland* parked = parkedIsland(); dump && parked && parked->inited) {
         ShadowIsland* s = parked; std::vector<float> d;
@@ -1503,6 +1504,8 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not ready this frame\n");
         if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image.get(), 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not ready this frame\n");
+        if (s->staticMap.view() != VK_NULL_HANDLE) { diagVkRead(s, s->staticMap.image(), 0, s->staticMap.size(), d); diagDumpDepth("static", "vk", d, s->staticMap.size()); }
+        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK static map not built\n");
     }
     std::fflush(stderr);
 }

@@ -920,8 +920,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     ++g_fx.glSkipped;
     // The receipt that the VK screen shadow drew, with the inputs that decide what props receive.
     if ((g_fx.shadowFrames % 600) == 1)
-        vlog("screen shadow drawn: shadow_frames=%lu attempted=%lu csm_count=%d prop_shadow_receive=%d",
-             g_fx.shadowFrames, g_fx.attempted, csmCount_, mc2::options::current().propShadowReceive);
+        vlog("screen shadow drawn: shadow_frames=%lu attempted=%lu csm_count=%d prop_shadow_receive=%d static_map=%d",
+             g_fx.shadowFrames, g_fx.attempted, csmCount_, mc2::options::current().propShadowReceive, hasStaticShadow ? 1 : 0);
     setFallback("");
     return true;
 }
