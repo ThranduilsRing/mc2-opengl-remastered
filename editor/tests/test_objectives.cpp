@@ -710,6 +710,41 @@ ExpectedReference targetOracle(const ReferenceFixture& fixture) {
     if (matches.size() == 1) result.target = matches[0];
     return result;
 }
+ExpectedReference outputOracle(const std::string& fit, std::span<const std::byte> pak,
+    const std::string& entry, int alignment = 0)
+{
+    auto syntax = decodeFit(fit); REQUIRE(syntax);
+    const auto value = [&](const std::string& section, const std::string& key) -> Scalar {
+        const auto block = std::ranges::find(syntax->sections, section, &Section::name); REQUIRE(block != syntax->sections.end());
+        for (const auto id : block->fields) {
+            const auto field = std::ranges::find(syntax->fields, id, &Field::id);
+            if (field->name == key) return field->value[0];
+        }
+        FAIL("oracle field missing: " << section << "/" << key); return {};
+    };
+    ReferenceFixture decoded; decoded.alignment = alignment;
+    decoded.species = std::get<std::string>(value(entry, "ConditionSpeciesString"));
+    decoded.x = std::format("{:.17g}", std::get<double>(value(entry, "PositionX")));
+    decoded.y = std::format("{:.17g}", std::get<double>(value(entry, "PositionY")));
+    auto archive = decodePak({pak.begin(), pak.end()}); REQUIRE(archive);
+    const auto& placements = archive->packets[1].decoded;
+    const auto word = [&](std::size_t at) {
+        std::uint32_t number{};
+        for (unsigned i = 0; i < 4; ++i) number |= std::to_integer<std::uint32_t>(placements[at + i]) << (8 * i);
+        return number;
+    };
+    for (std::size_t offset = 4; offset + 40 <= placements.size(); offset += 40)
+        decoded.targets.push_back({false, std::bit_cast<float>(word(offset + 4)), std::bit_cast<float>(word(offset + 8)),
+            std::bit_cast<std::int32_t>(word(offset + 24))});
+    const auto parts = std::get<std::int64_t>(value("Parts", "NumParts"));
+    for (int i = 1; i <= parts; ++i) {
+        const auto part = "Part" + std::to_string(i);
+        decoded.targets.push_back({true, static_cast<float>(std::get<double>(value(part, "PositionX"))),
+            static_cast<float>(std::get<double>(value(part, "PositionY"))),
+            static_cast<int>(std::get<std::int64_t>(value(part, "TeamID")))});
+    }
+    return targetOracle(decoded);
+}
 const ObjectiveReference& reference(const MissionDocument& document, std::size_t index = 0) {
     return document.objectives()[index].entries[0][0].reference;
 }
@@ -871,6 +906,10 @@ TEST_CASE("objectives/structural edits preserve missing ambiguous and noncontigu
         CHECK(reference(*fresh).status == ReferenceStatus::Resolved);
         REQUIRE(edits.undo()); CHECK(expected.accepts(reference(*doc)));
         REQUIRE(edits.redo()); CHECK(expected.accepts(reference(*doc)));
+        const auto copy = edits.copyObjective(doc->objectives()[0].section); REQUIRE(copy);
+        CHECK(expected.accepts(doc->objective(*copy)->entries[0][0].reference));
+        REQUIRE(edits.reorderObjective(*copy, 0));
+        CHECK(expected.accepts(doc->objective(*copy)->entries[0][0].reference));
     }
 }
 
@@ -897,6 +936,14 @@ TEST_CASE("objectives/referenced deletes reject once and resolved moves undo exa
         CHECK_FALSE(history.erase(target)); CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
         CHECK(doc->revision() == revision); CHECK_FALSE(doc->modified()); CHECK_FALSE(history.canUndo()); CHECK(history.bytesUsed() == 0);
         auto copied = history.copyObjective(objective); REQUIRE(copied); CHECK(reference(*doc, 1).target == target);
+        REQUIRE(history.setObjectiveScalar(*copied, "AllPreviousPrimaryObjectivesMustBeComplete", true));
+        REQUIRE(history.reorderObjective(*copied, 0));
+        CHECK(doc->objective(*copied)->exportedIndex == 0);
+        CHECK(doc->objectiveScalar(*copied, "PreviousPrimaryObjectiveMustBeComplete")->value == Scalar{true});
+        CHECK(doc->objectiveScalar(*copied, "AllPreviousPrimaryObjectivesMustBeComplete")->value == Scalar{true});
+        CHECK(doc->objectiveScalar(objective, "AllPreviousPrimaryObjectivesMustBeComplete")->value == Scalar{false});
+        CHECK(doc->objective(*copied)->entries[0][0].reference.target == target);
+        REQUIRE(history.undo()); REQUIRE(history.undo());
         CommandHistory controlHistory(control);
         const auto expectedCopy = controlHistory.copyObjective(objective); REQUIRE(expectedCopy); CHECK(*copied == *expectedCopy);
         REQUIRE(history.transform(target, {{12, 34, 0}, 0}));
@@ -925,6 +972,112 @@ TEST_CASE("objectives/referenced deletes reject once and resolved moves undo exa
         REQUIRE(history.deleteObjective(*copied)); REQUIRE(history.deleteObjective(objective)); REQUIRE(history.erase(target));
         REQUIRE(history.undo()); REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(reference(*doc).target == target);
         CHECK(doc->fitBytes() == moved);
+    }
+}
+
+TEST_CASE("objectives/Part compaction retains target identity Pilot and reference spelling and insertion refuses ambiguity")
+{
+    ReferenceFixture input; input.x = "030.0000"; input.targets = {{true, 10, 0, 0}, {true, 30, 0, 0}};
+    auto fit = input.fit();
+    fit.insert(fit.find("[Part2]"), "ul Pilot = 1\r\n");
+    fit.insert(fit.find("FITend"), "ul Pilot = 2\r\n[Warriors]\r\nul NumWarriors = 2\r\n"
+        "[Warrior1]\r\nst Profile = \"first\"\r\n[Warrior2]\r\nst Profile = \"target\"\r\n");
+    auto doc = MissionDocument::decode(fit, input.pak(), "renumber", {}); REQUIRE(doc);
+    std::vector<std::string> logs;
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+    const auto target = *reference(*doc).target;
+    const auto sources = reference(*doc).sources;
+    const auto warrior = doc->entity(target)->warrior;
+    REQUIRE(history.erase(EntityId{1}));
+    CHECK(doc->entity(target)->exportedPart == 1); CHECK(doc->entity(target)->warrior == warrior);
+    CHECK(reference(*doc).target == target);
+    for (std::size_t i = 0; i < sources.size(); ++i) CHECK(reference(*doc).sources[i].lexeme == sources[i].lexeme);
+    CHECK(outputOracle(doc->fitBytes(), doc->pakBytes(), "Objective0Condition0").target == EntityId{1});
+    const auto compacted = doc->fitBytes(); const auto revision = doc->revision(); const auto cost = history.bytesUsed();
+    UnitPlacement unit; unit.transform.position = {30, 0, 0};
+    unit.objectProfile = unit.csvFile = unit.warriorProfile = unit.legacyBrain = "unit";
+    CHECK_FALSE(history.insertUnit(unit)); REQUIRE(logs.size() == 1);
+    CHECK(logs[0].find("objective_reference") != std::string::npos);
+    CHECK(doc->fitBytes() == compacted); CHECK(doc->revision() == revision); CHECK(history.bytesUsed() == cost);
+    unit.transform.position[0] = 90;
+    const auto inserted = history.insertUnit(unit); REQUIRE(inserted); CHECK(inserted->value == 3);
+    CHECK(reference(*doc).target == target); CHECK(doc->entity(target)->warrior == warrior);
+    REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+    REQUIRE(history.redo()); CHECK(doc->fitBytes() == compacted);
+}
+
+TEST_CASE("objectives/resolve replaces carried status with a unique exported target and undo redo save reopen agree")
+{
+    for (const bool unit : {false, true}) for (const bool ambiguous : {false, true}) {
+        ReferenceFixture input; input.species = unit ? "CaptureSpecificUnit" : "GuardSpecificStructure";
+        input.x = "050.000"; input.y = "0.0000";
+        input.targets = {{unit, ambiguous ? 50.0f : 10.0f, 0, 1}, {unit, ambiguous ? 50.0f : 30.0f, 0, 1}, {unit, 70, 0, 1}};
+        auto doc = MissionDocument::decode(input.fit(), input.pak(), "resolve", {}); REQUIRE(doc);
+        CommandHistory history(*doc);
+        const auto entry = doc->objectives()[0].entries[0][0].section;
+        const auto original = reference(*doc);
+        REQUIRE(history.transform(EntityId{1}, {{20, 0, 0}, 0}));
+        CHECK(reference(*doc).status == original.status);
+        const auto before = doc->fitBytes(); const auto old = reference(*doc).sources;
+        const auto resolvedCommand = history.resolveObjectiveEntry(entry, EntityId{3});
+        INFO("unit=" << unit << " ambiguous=" << ambiguous << " reason=" << (resolvedCommand ? "" : resolvedCommand.error().reason));
+        REQUIRE(resolvedCommand);
+        CHECK(reference(*doc).target == EntityId{3}); CHECK(reference(*doc).status == ReferenceStatus::Resolved);
+        auto exported = outputOracle(doc->fitBytes(), doc->pakBytes(), "Objective0Condition0");
+        CHECK(exported.status == ReferenceStatus::Resolved); CHECK(exported.target == EntityId{3});
+        for (std::size_t i = 0; i < old.size(); ++i)
+            if (old[i].key != "PositionX") CHECK(reference(*doc).sources[i].lexeme == old[i].lexeme);
+        const auto resolved = doc->fitBytes();
+        auto corrupted = resolved;
+        const auto at = corrupted.find("f PositionX = 70", corrupted.find("[Objective0Condition0]")); REQUIRE(at != corrupted.npos);
+        corrupted.replace(at, 16, "f PositionX = 50");
+        CHECK(outputOracle(corrupted, doc->pakBytes(), "Objective0Condition0").target != exported.target);
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == before); CHECK(reference(*doc).status == original.status);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == resolved); CHECK(reference(*doc).target == EntityId{3});
+        const auto path = scratch() / "resolved"; REQUIRE(doc->save(path, {}));
+        auto reopened = MissionDocument::read(path.string() + ".fit", path.string() + ".pak", {}); REQUIRE(reopened);
+        CHECK(outputOracle(reopened->fitBytes(), reopened->pakBytes(), "Objective0Condition0").accepts(reference(*reopened)));
+        CHECK(reference(*reopened).target == EntityId{3});
+    }
+}
+
+TEST_CASE("objectives/refused resolve logs once and preserves bytes revision dirty redo budget and future IDs")
+{
+    for (int shape = 0; shape < 9; ++shape) {
+        ReferenceFixture input; input.x = "50"; input.targets = {{true, 10, 0, 1}, {true, 10, 0, 1}, {false, 20, 0, 0}};
+        if (shape == 2) input.species = "GuardSpecificUnit";
+        if (shape == 3) input.wid = "l MoverWID = 7\r\n";
+        if (shape == 4) input.species = "VendorPredicate";
+        if (shape == 5) input.targets[1].x = 30;
+        if (shape == 8) { input.targets[1].x = 30; input.x = "10"; }
+        auto doc = MissionDocument::decode(input.fit(), input.pak(), "reject-resolve", {}); REQUIRE(doc);
+        auto twin = *doc;
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, shape == 5 ? 1 : 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+        CommandHistory control(twin);
+        const auto objective = doc->objectives()[0].section, entry = doc->objectives()[0].entries[0][0].section;
+        if (shape != 5) {
+            REQUIRE(history.copyObjective(objective)); REQUIRE(history.undo());
+            REQUIRE(control.copyObjective(objective)); REQUIRE(control.undo());
+        }
+        const auto fit = doc->fitBytes(); const std::vector<std::byte> pak(doc->pakBytes().begin(), doc->pakBytes().end());
+        const auto revision = doc->revision(), cost = history.bytesUsed(); const auto dirty = doc->modified();
+        const auto carried = reference(*doc);
+        const auto undo = history.canUndo(), redo = history.canRedo();
+        CHECK_FALSE(history.resolveObjectiveEntry(shape == 6 ? NodeId{99999} : entry,
+            EntityId{shape == 7 ? 99999U : shape == 1 ? 1U : 2U}));
+        REQUIRE(logs.size() == 1); CHECK(logs[0].find(shape == 5 ? "history_budget" : "rejected=1") != std::string::npos);
+        CHECK(doc->fitBytes() == fit); CHECK(std::ranges::equal(doc->pakBytes(), pak)); CHECK(doc->revision() == revision);
+        CHECK(doc->modified() == dirty); CHECK(history.bytesUsed() == cost); CHECK(history.canUndo() == undo); CHECK(history.canRedo() == redo);
+        CHECK(reference(*doc).status == carried.status); CHECK(reference(*doc).target == carried.target);
+        CHECK(reference(*doc).reason == carried.reason);
+        if (redo) { REQUIRE(history.redo()); REQUIRE(history.undo()); }
+        CommandHistory retry(*doc);
+        const auto copy = retry.copyObjective(objective), expected = control.copyObjective(objective); REQUIRE(copy); REQUIRE(expected);
+        CHECK(*copy == *expected);
+        BuildingPlacement building; building.transform.position = {90, 0, 0};
+        const auto inserted = retry.insertBuilding(building), controlInserted = control.insertBuilding(building);
+        REQUIRE(inserted); REQUIRE(controlInserted); CHECK(*inserted == *controlInserted);
     }
 }
 

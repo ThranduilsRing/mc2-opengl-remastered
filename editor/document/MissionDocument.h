@@ -257,7 +257,8 @@ private:
     std::expected<void, LoadError> restore(const StructuralState& state);
     std::expected<StructuralState, LoadError> structuralCandidate(std::string fit,
         std::vector<std::byte> placements, const std::vector<EntityId>& ids,
-        const std::unordered_map<std::string, std::string>& renamed = {});
+        const std::unordered_map<std::string, std::string>& renamed = {},
+        NodeId resolving = {}, EntityId target = {});
     std::expected<void, LoadError> validateSemantics();
     std::expected<void, LoadError> decodeObjectiveScalars(Objective& objective);
     void preserveObjectiveField(NodeId id, std::string_view warning);

@@ -1150,7 +1150,7 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
 
 PANEL_OPERATIONS = {
     "objectives_crud_panel": ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down"),
-    "objectives_panel": tuple("objective-" + key.replace(" ", "_") for key in (
+    "objectives_panel": ("objective-resolve",) + tuple("objective-" + key.replace(" ", "_") for key in (
         "Title", "Description", "Priority", "ResourcePoints", "PreviousPrimaryObjectiveMustBeComplete",
         "AllPreviousPrimaryObjectivesMustBeComplete", "DisplayMarker", "MarkerX", "MarkerY", "HiddenTrigger",
         "ActivateOnFlag", "ActivateFlagID", "ResetStatusOnFlag", "ResetStatusFlagID", "TitleUseResourceString",
@@ -1258,7 +1258,8 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
     elif name == "marker_panel":
         grade_marker_edits(directory)
     elif name == "objectives_panel":
-        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit
+        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit, grade_reference_rows
+        grade_reference_rows(directory)
         for key in AUTHORING_KEYS:
             grade_objective_edit((directory / "fixture.fit").read_bytes(),
                                  (directory / ("objective-" + key.replace(" ", "_") + "-edited.fit")).read_bytes(), key)
@@ -1415,6 +1416,26 @@ def objective_negative_controls(directory):
                 path.write_bytes(original)
         if not caught:
             raise ValueError("objective wrong/no-op widget output was accepted")
+    row_path = directory / "objective-rows-resolved.tsv"
+    rows = row_path.read_bytes()
+    resolve_paths = [directory / f"objective-resolve-{stage}.fit" for stage in ("edited", "redone")]
+    resolved = [path.read_bytes() for path in resolve_paths]
+    controls = (rows.split(b"\n", 1)[1], rows.replace(b" / Part ", b" / WrongPart ", 1), None)
+    for control in controls:
+        caught = False
+        try:
+            if control is None:
+                for path in resolve_paths: path.write_bytes(baseline)
+            else:
+                row_path.write_bytes(control)
+            grade_panel("objectives_panel", directory, 0, require_render=rendered)
+        except ValueError:
+            caught = True
+        finally:
+            row_path.write_bytes(rows)
+            for path, original in zip(resolve_paths, resolved): path.write_bytes(original)
+        if not caught:
+            raise ValueError("objective missing row/wrong target/no-op resolve was accepted")
 
 
 def crud_negative_controls(directory):

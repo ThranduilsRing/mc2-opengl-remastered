@@ -34,6 +34,7 @@ public:
     }
 #ifdef MC2_EDITOR_SMOKE_HOST
     const std::map<std::string, Widget>& widgets() const { return widgets_; }
+    const std::vector<std::string>& objectiveRows() const { return objectiveRows_; }
 #endif
     const std::string& status() const { return status_; }
     document::EntityId unit() const { return unit_; }
@@ -73,6 +74,7 @@ private:
     std::uint64_t revision_ = ~std::uint64_t{};
 #ifdef MC2_EDITOR_SMOKE_HOST
     std::map<std::string, Widget> widgets_;
+    std::vector<std::string> objectiveRows_;
 #endif
     std::function<void()> save_, reopen_;
     bool button(const char* key, const char* label);

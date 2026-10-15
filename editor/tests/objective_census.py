@@ -81,6 +81,73 @@ def objective_fields(data):
     return result
 
 
+def grade_reference_rows(directory):
+    from run_editor_smoke import fit_fields
+    from editor.tests.legacy_reference import buildings
+    import struct
+    def f32(number):
+        return struct.unpack("<f", struct.pack("<f", float(number)))[0]
+    def rows(data):
+        fields = fit_fields(data)
+        objectives = objective_fields(data)
+        def number(path):
+            return float(fields[path][0].split(" ", 1)[1])
+        targets = []
+        for record, raw in enumerate(buildings((directory / "fixture.pak").read_bytes()), 1):
+            obj, x, y = struct.unpack_from("<Iff", raw)
+            team = struct.unpack_from("<i", raw, 24)[0]
+            targets.append((False, x, y, team, f"Object {obj} / Building {record}"))
+        for part in range(1, int(number("Parts/NumParts")) + 1):
+            prefix = f"Part{part}/"
+            name = fields.get(prefix + "CSVFile", fields.get(prefix + "ObjectProfile", [f'st "Object {int(number(prefix + "ObjectNumber"))}"']))[0][4:-1]
+            targets.append((True, f32(number(prefix + "PositionX")), f32(number(prefix + "PositionY")),
+                            number(prefix + "TeamID"), f"{name} / Part {part}"))
+        result = []
+        for suffix in ("Condition", "FailureCondition"):
+            count = int(objectives.get("Team0Objective1/Num" + suffix + "s", ["ul 0"])[0].split()[1])
+            for index in range(count):
+                entry = f"Team0Objective1{suffix}{index}"
+                species = objectives.get(entry + "/" + suffix + "SpeciesString", ['st ""'])[0][4:-1]
+                unit = species in ("DestroySpecificEnemyUnit", "DeadOrFledSpecificEnemyUnit", "CaptureSpecificUnit", "CaptureOrDestroySpecificEnemyUnit", "GuardSpecificUnit")
+                building = species in ("DestroySpecificStructure", "CaptureSpecificStructure", "CaptureOrDestroySpecificStructure", "GuardSpecificStructure")
+                status, reason, target = "Unsupported", "no supported entity reference", ""
+                if unit or building:
+                    wid = objectives.get(entry + ("/MoverWID" if unit else "/BuildingWID"), [""])[0]
+                    if wid.startswith("l "):
+                        status, reason = "RuntimeOnlyWid", "runtime watch ID has no document identity"
+                    else:
+                        x = f32(number(entry + "/PositionX")); y = f32(number(entry + "/PositionY"))
+                        def close(a, b):
+                            scale = max(abs(a), abs(b))
+                            return scale == 0 or f32(abs(f32(a - b)) / scale) < 0.00001
+                        matches = [t for t in targets if t[0] == unit and
+                                   (species not in ("CaptureSpecificUnit", "CaptureOrDestroySpecificEnemyUnit") or t[3] != 0) and
+                                   (species != "GuardSpecificUnit" or t[3] == 0) and close(x, t[1]) and close(y, t[2])]
+                        status, reason = (("Missing", "no eligible XY target") if not matches else
+                                          ("Resolved", "unique eligible XY target") if len(matches) == 1 else
+                                          ("Ambiguous", "multiple eligible XY targets"))
+                        if len(matches) == 1: target = matches[0][4]
+                result.append("\t".join((entry, status, target, reason)))
+        return result
+    before = (directory / "fixture.fit").read_bytes()
+    after = (directory / "objective-resolve-edited.fit").read_bytes()
+    initial, resolved = rows(before), rows(after)
+    for stem, expected in (("before", initial), ("resolved", resolved)):
+        if (directory / f"objective-rows-{stem}.tsv").read_text().splitlines() != expected:
+            raise ValueError("objective row identity/status/target/reason differs from exported bytes")
+    if initial[0].split("\t")[1] != "Missing" or resolved[0].split("\t")[1:3] != initial[2].split("\t")[1:3]:
+        raise ValueError("resolve did not uniquely select the chosen target")
+    pattern = rb"(?m)(^\[Team0Objective1Condition0\]\r?\n(?:(?!^\[)[\s\S])*?^f Position[XY] = )[^\r\n]+"
+    # Each axis is the only authored field; all auxiliary and entity bytes must survive.
+    def masked(data):
+        for axis in (b"X", b"Y"):
+            data, count = re.subn(pattern.replace(b"[XY]", axis), lambda m: m[1] + b"<coordinate>", data)
+            if count != 1: raise ValueError("resolve coordinate missing or duplicated")
+        return data
+    if before == after or masked(before) != masked(after):
+        raise ValueError("resolve did nothing or changed unrelated bytes")
+
+
 def census(stock):
     fields = collections.Counter()
     payloads = collections.defaultdict(collections.Counter)

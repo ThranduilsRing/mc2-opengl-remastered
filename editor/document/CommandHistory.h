@@ -27,6 +27,7 @@ public:
     std::expected<NodeId, LoadError> copyObjective(NodeId objective);
     std::expected<void, LoadError> deleteObjective(NodeId objective);
     std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);
+    std::expected<void, LoadError> resolveObjectiveEntry(NodeId entry, EntityId target);
     std::expected<EntityId, LoadError> insertUnit(const UnitPlacement& unit);
     std::expected<EntityId, LoadError> insertBuilding(const BuildingPlacement& building);
     std::expected<void, LoadError> erase(EntityId entity);

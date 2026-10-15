@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iostream>
 
-TEST_CASE("panels/chooser stock mod and marker edits reach real widgets" * doctest::test_suite("placement-live"))
+TEST_CASE("panels/chooser marker and objective reference rows and resolve reach real widgets" * doctest::test_suite("placement-live"))
 {
     using namespace editor::document;
     const auto& paths = editor::tests::inputs();

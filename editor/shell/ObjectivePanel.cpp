@@ -8,6 +8,9 @@ using namespace document;
 void EntityPanels::objectives()
 {
     ImGui::PushID("objectives");
+#ifdef MC2_EDITOR_SMOKE_HOST
+    objectiveRows_.clear();
+#endif
     const auto label = [](const Objective& item) { return std::format("Team {} / objective {}", item.team, item.exportedIndex + 1); };
     const auto version = std::get<std::int64_t>(document_.find("Objectives Version", "Version")->value[0]);
     if (objectiveTeam_ >= (version == 2 ? 1U : 8U)) objectiveTeam_ = 0;
@@ -59,10 +62,45 @@ void EntityPanels::objectives()
     ImGui::BeginDisabled(selected->exportedIndex + 1 >= count);
     if (button("objective.down", "Move down")) report(history_.reorderObjective(objective_, selected->exportedIndex + 1));
     ImGui::EndDisabled();
+    selected = document_.objective(objective_);
     ImGui::TextWrapped("Order changes prerequisite meaning. Existing prerequisite flags are preserved.");
     for (const auto id : document_.section(objective_)->fields) {
         const auto* field = document_.field(id);
         if (!field->warning.empty()) ImGui::TextWrapped("%s: %s (original line preserved)", field->name.c_str(), field->warning.data());
+    }
+    const auto entityName = [&](const Entity& entity) {
+        std::string name = entity.csvFile.value_or(entity.objectProfile.value_or("Object " + std::to_string(entity.objectNumber)));
+        if (catalog_) for (const auto& item : catalog_->entries())
+            if (item.id == entity.objectNumber) { name = item.displayName; break; }
+        return name + (entity.exportedPart ? " / Part " + std::to_string(*entity.exportedPart) :
+            " / Building " + std::to_string(*entity.packetRecord + 1));
+    };
+    for (const auto list : {0, 2}) for (const auto& entry : selected->entries[list]) {
+        const auto& ref = entry.reference;
+        const char* states[] = {"Resolved", "Missing", "Ambiguous", "RuntimeOnlyWid", "Unsupported"};
+        const auto* target = ref.target ? document_.entity(*ref.target) : nullptr;
+        const auto identity = document_.section(entry.section)->name;
+        const auto text = identity + ": " + states[static_cast<int>(ref.status)] + " / " +
+            (target ? entityName(*target) + " / " : "") + std::string(ref.reason);
+        ImGui::TextWrapped("%s", text.c_str());
+#ifdef MC2_EDITOR_SMOKE_HOST
+        objectiveRows_.push_back(identity + "\t" + states[static_cast<int>(ref.status)] + "\t" +
+            (target ? entityName(*target) : "") + "\t" + std::string(ref.reason));
+#endif
+        if (ref.status != ReferenceStatus::Missing && ref.status != ReferenceStatus::Ambiguous) continue;
+        const auto key = "objective.resolve." + std::to_string(entry.section.value);
+        const bool resolving = ImGui::BeginCombo(("Resolve this entry##" + key).c_str(), "Choose target");
+        record(key, resolving);
+        if (resolving) {
+            for (const auto& entity : document_.entities()) {
+                if ((ref.kind == ReferenceKind::unit) != entity.exportedPart.has_value()) continue;
+                if (choice(key + "." + std::to_string(entity.id.value), entityName(entity).c_str(), false)) {
+                    report(history_.resolveObjectiveEntry(entry.section, entity.id));
+                    ImGui::EndCombo(); ImGui::PopID(); return;
+                }
+            }
+            ImGui::EndCombo();
+        }
     }
     const auto specs = objectiveSchema();
     const bool fields = ImGui::BeginCombo("Authoring field", specs[objectiveField_].key.data(), ImGuiComboFlags_HeightLargest);

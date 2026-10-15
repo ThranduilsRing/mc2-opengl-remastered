@@ -43,6 +43,46 @@ std::expected<void, LoadError> CommandHistory::reorderObjective(NodeId id, std::
     if (!result) return std::unexpected(result.error());
     return {};
 }
+std::expected<void, LoadError> CommandHistory::resolveObjectiveEntry(NodeId id, EntityId target)
+{
+    const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
+        if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] action=resolve reason=" + reason + " rejected=1");
+        return std::unexpected(LoadError{"objective", std::move(reason), 0});
+    };
+    const ObjectiveEntry* selected{};
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries)
+        for (const auto& entry : list) if (entry.section == id) selected = &entry;
+    if (!selected || (selected->reference.status != ReferenceStatus::Missing &&
+        selected->reference.status != ReferenceStatus::Ambiguous)) return reject("entry_not_resolvable");
+    const auto* entity = document_.entity(target);
+    if (!entity) return reject("missing_entity");
+    auto fit = document_.fitBytes();
+    auto syntax = decodeFit(fit);
+    if (!syntax) return reject(syntax.error().reason);
+    const auto index = static_cast<std::size_t>(document_.section(id) - document_.syntax().sections.data());
+    std::vector<Edit> edits;
+    for (std::size_t axis = 0; axis < 2; ++axis) {
+        const auto key = axis == 0 ? "PositionX" : "PositionY";
+        const auto* old = document_.find(id, key);
+        if (!old) return reject("missing_coordinate");
+        if (static_cast<float>(std::get<double>(old->value[0])) == static_cast<float>(entity->position[axis])) continue;
+        const auto fresh = std::ranges::find_if(syntax->fields, [&](const Field& field) {
+            return identifier(field.name) == identifier(key) &&
+                std::ranges::find(syntax->sections[index].fields, field.id) != syntax->sections[index].fields.end();
+        });
+        if (fresh == syntax->fields.end()) return reject("missing_coordinate");
+        edits.push_back({fresh->syntax, std::format("{:.9g}", static_cast<float>(entity->position[axis]))});
+    }
+    std::ranges::sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
+    for (const auto& edit : edits) fit.replace(edit.span.begin, edit.span.end - edit.span.begin, edit.text);
+    std::vector<EntityId> ids;
+    for (const auto& item : document_.entities()) ids.push_back(item.id);
+    auto candidate = document_.structuralCandidate(std::move(fit), document_.placements_, ids, {}, id, target);
+    if (!candidate) return reject(candidate.error().reason);
+    auto result = commit(StructuralCommand{document_.structuralState(), std::move(*candidate), "Resolve objective entry"});
+    if (!result) return reject(result.error().reason);
+    return {};
+}
 std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit edit, std::uint32_t team,
     NodeId id, std::uint32_t index)
 {

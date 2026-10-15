@@ -49,7 +49,7 @@ std::expected<void, LoadError> MissionDocument::restore(const StructuralState& s
 
 std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(std::string fit,
     std::vector<std::byte> placements, const std::vector<EntityId>& ids,
-    const std::unordered_map<std::string, std::string>& renamed)
+    const std::unordered_map<std::string, std::string>& renamed, NodeId resolving, EntityId target)
 {
     auto encoded = encodePlacements(pak_, placements);
     if (!encoded) return std::unexpected(encoded.error());
@@ -97,6 +97,11 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
                 entry.reference.status = old->second->status;
                 entry.reference.target = old->second->target;
                 entry.reference.reason = old->second->reason;
+            }
+            if (entry.section == resolving) {
+                entry.reference.status = ReferenceStatus::Resolved;
+                entry.reference.target = target;
+                entry.reference.reason = "unique eligible XY target";
             }
             if (entry.reference.status == ReferenceStatus::Resolved) {
                 std::size_t matches{};

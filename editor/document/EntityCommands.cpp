@@ -170,7 +170,7 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
             std::get<std::int64_t>(field->value[0]) : fallback;
     };
     for (const auto& entity : document_.entities()) if (entity.section) {
-        const auto& section = *document_.section(*entity.section);
+        const auto& section = *root(*syntax, document_.section(*entity.section)->name);
         const auto squad = integer(section, "SquadNum", 0);
         if (squad < 0 || squad >= std::numeric_limits<std::uint32_t>::max()) return reject("invalid_squad");
         nextSquad = std::max(nextSquad, static_cast<std::uint64_t>(squad) + 1);
@@ -187,7 +187,7 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
     // Empty alternative cursors use legacy defaults; authored references stay exact.
     std::int64_t alternativeStart = part - static_cast<std::int64_t>(alternatives.size()) + 2;
     for (const auto& entity : document_.entities()) if (entity.section && !alternatives.contains(*entity.exportedPart)) {
-        const auto& section = *document_.section(*entity.section);
+        const auto& section = *root(*syntax, document_.section(*entity.section)->name);
         const auto player = integer(section, "CommanderID", 0), previousSquad = integer(section, "SquadNum", 0);
         if (player < unit.commander || (player == unit.commander && previousSquad <= squad))
             alternativeStart += 1 + integer(section, "NumAlternatives", 0);
