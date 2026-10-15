@@ -161,7 +161,7 @@ Content-derived camera lighting/terrain geometry rebuild from the data fingerpri
 - Pool identity: preserve vacant slots and generations, watch mapping, rotating spawn indexes and list order (`code/objmgr.h:240`, `code/objmgr.h:260`), not only live objects. Legacy loads reset generations (`code/objmgr_io.cpp:729`); the new schema preserves them so retained references neither revive stale objects nor change future slot reuse.
 
 The fidelity report's +70 path/+98 target divergence is evidence of a lossy format, not permission for a tolerance. B1 proof exposed real writer defects: vftable bytes 2952-2955/3000-3003; uninitialised TacticalOrder bytes; unused MovePath tails (`tools/save_noise_mask.json`). Named scalar serialization eliminates these bytes; zeroing an old staging struct does not solve pointer writes or missing state.
-Logistics IS saved (`code/saveload.cpp:275`): packet 3600 is the B1 mc2_01 fixture's logistics FIT, not a stable packet number. Other missions have different navigation/object counts. B1 notes 8c-8d require a populated campaign save (three inventory mechs plus player variant), not the empty inventory of a mission boot. Campaign pilot byte 220 can differ across fresh captures because it is rolled on creation; a loaded immediate re-save must preserve it.
+Logistics IS saved (`code/saveload.cpp:275`): packet 3600 is the B1 mc2_01 fixture's logistics FIT, not a stable packet number. Other missions have different navigation/object counts. B1 notes section 8 requires a populated campaign save (three inventory mechs plus player variant), not the empty inventory of a mission boot. Campaign pilot byte 220 can differ across fresh captures because it is rolled on creation; a loaded immediate re-save must preserve it.
 
 ## Validation and restore transaction
 
@@ -224,10 +224,5 @@ No partial new save ships as default: codecs can land privately, then one comple
 - Editor MOVE packets share existing writer entry points; runtime schema deletion must preserve mission/content codecs. One final release waits for full migration, Vulkan and editor workflow closure; interim broken saves are allowed, broken mod content is not.
 
 Shared owner ruling: ABL camera getters return the last scripted camera value, retained by the wire records. Stock mc2_01, mc2_10 and tut_01 save and restore the camera around cutscenes; mc2_01's mid-mission read now restores the scripted rotation, an accepted difference. Live player-camera reads stay banned. All other listed checks affect implementation readiness, not owner intent.
-
-## Design-task verification
-
-Read-only inspection covered the handoff rules/newest 20 log entries, canonical CLAUDE.md, all requested inputs, saved Data declarations and runtime gaps in this worktree only. No engine/editor launch, build, index operation or source edit was performed.
-Earlier design-task attempts at `py -3 -B tools/save_inspect.py selftest` and `py -3 -B tools/saveload_roundtrip.py selftest` failed with Temp PermissionError; those historical results are not this revision's proofs. This docs-only revision runs document line/reference/contract checks; engine proofs above remain proposed, not run.
 
 Archive staging uses a unique process/time/attempt suffix with exclusive creation, so crash leftovers cannot block saves; the POSIX directory flush is deferred for the Windows-only game.

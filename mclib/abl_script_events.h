@@ -1,6 +1,6 @@
 // WHAT: the log lines ABL writes when it rejects or clamps a script's content: a string cut to fit its char[N] variable, a builtin that
 // was handed no output variable.
-// WHY: malformed script content never crashes the engine (owner ruling 2026-10-11); it is clamped or ignored with one greppable line, and
+// WHY: malformed script content never crashes the engine; it is clamped or ignored with one greppable line, and
 // the line stops after a few repeats so a looping script cannot flood the log. One place keeps the line format identical across the
 // executor, the standard routines and the native bindings.
 #pragma once

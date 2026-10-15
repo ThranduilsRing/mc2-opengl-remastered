@@ -2,7 +2,7 @@
 //
 // mc2::sort_scored (mclib/score_sort.h): the ordering rule of the candidate lists the simulation sorts (contacts by distance or value, movers by
 // threat, weapons by attack chance). WHY: equal scores must come out in the order the items were filled, whatever the library's sort does, and a
-// NaN must never sit between two numbers; the old SortList (qsort over a padded array) gave neither guarantee, and step 4 B2.4 replaces it.
+// NaN must never sit between two numbers; the old SortList (qsort over a padded array) gave neither guarantee.
 
 #include "doctest.h"
 

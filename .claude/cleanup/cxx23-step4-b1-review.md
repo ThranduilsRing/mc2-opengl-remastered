@@ -9,10 +9,6 @@ regress the game without anything noticing: (1) H1 is misstated. `Data()` is nul
 (saveload.cpp:181), so B1.3 is a save-path batch as well.
 (4) The claim that "EString does not feed the simulation" is false: objective boolean flags are looked up case-insensitively (`CBooleanArray::elementPos`, objective.h:98-112), and the deployed force comes from logistics name lookups.
 (5) Dangling sites exist in files with no `EString` token (`editor/BeautySidecarPreview.cpp:46`), so a census of the 67 grep-set files cannot be the net.
-Inputs read: the notes, ownership plan sections 5/7/10-12, step-4 review finding 10, program-review section 8 (T5, RB1/RA1), target-arch 2.2,
-HANDOFF-LOG entries 2026-10-11 19:35 to 2026-10-12 17:56, `mclib/estring.{h,cpp}`, `mclib/elist.h`, and the caller sites cited below (HEAD 264b27f1c).
-Already known and not repeated here: the factual slips in Sonnet cleanup review F6 (6391a5e0b): row sums, B1.4 lists 15 files, "15 batches", H11
-false because `alloc_probe.cpp:89` calls `CreateMBCS`, and 179 occurrences. The ABL zero-vector sentinel is an ABL host-interface question, outside B1.
 
 ## 1. Judgement of lane 1's findings (read from the class and the callers)
 - **H1, corrected.** `EBuffer::Data()` returns 0 when `m_Alloc_Length == 0`. That is true only of `s_Empty_Buffer`, which a default-constructed, `Empty()`'d, or
@@ -162,9 +158,6 @@ missions and does not exercise logistics, campaign flow or dialogs. The failure 
 6. Split B1.2, by header (B1.3 and B1.4 in section 4), and put objectives ahead of it: two files plus six includers carry every hazard (H1, H2, H4, H15, save
    path), so the rules get proven on the smallest blast radius.
 
-## 7. Owner questions (only those that change the design)
-- Q1. Multiplayer front-end screens (`mp*.cpp/h`, 11 files): are they kept for a later multiplayer (they convert in B6 with their widgets), or deleted with the compiled-out
-  session layer (then B6 deletes them and nobody converts them)?
-- Q2. Objective text that today falls back to the Title (objective has no `Description` key, H15): if the R12 probe finds stock objectives that show this, should the briefing keep
-  showing the title (a deliberate fallback written in the reader) or show empty (the reader fix)? Default if not answered: an explicit "description = title when the key is
-  absent" in the reader, because the stock content was authored against it.
+## 7. Owner questions (answered 2026-10-12)
+- Q1. The 11 multiplayer front-end screens are KEPT and convert in B6 with their widgets.
+- Q2. An objective without a `Description` key shows its Title, written explicitly in the reader.

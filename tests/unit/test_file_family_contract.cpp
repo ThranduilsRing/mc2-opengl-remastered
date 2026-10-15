@@ -1,6 +1,6 @@
 // tests/unit/test_file_family_contract.cpp
 //
-// STEP 4 B3.0: what the File family promises to its callers TODAY, pinned before B3.1 moves the name, the child list, the in-RAM image and the seek
+// What the File family promises to its callers, pinned before the conversion that moved the name, the child list, the in-RAM image and the seek
 // tables into standard containers. Every case here passes on the old classes and must keep passing, unchanged, after the conversion; the cases that
 // need NEW behaviour (malformed packet headers, an empty fit file) arrive with the commit that makes them true.
 //
@@ -154,7 +154,7 @@ TEST_CASE("FC5 a parent holds its default 50 children and a closed child frees i
 	remove(path.c_str());
 }
 
-// ---- B3.1b: behaviour that is NEW with the standard-container internals (they fail on the old classes) ----
+// ---- Behaviour that is NEW with the standard-container internals (they fail on the old classes) ----
 
 TEST_CASE("FC6 a child closed after its parent was destroyed does not touch the parent")
 {
@@ -181,7 +181,7 @@ TEST_CASE("FC7 a packet file whose header claims more packets than the file hold
 	const unsigned char bytes[16] = {0xCE, 0xFA, 0xED, 0xFE, 0xF8, 0xFF, 0xFF, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0};
 	writeBytes(path, (const char *)bytes, sizeof(bytes));
 
-	// The rejection is one [PACKET_HEADER_BAD] log line per process and never a STOP (ruling 5, rule E7).
+	// The rejection is one [PACKET_HEADER_BAD] log line per process and never a STOP: malformed content is rejected with a log line, never a crash.
 	g_mc2TestStopFatal = false;
 	g_mc2TestStopCount = 0;
 	std::FILE *capture = std::tmpfile();
