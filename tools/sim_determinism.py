@@ -225,7 +225,7 @@ def add_ref_args(p) -> None:
 
 
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR,
-                ref_exe: str | None = None, ref_commit: str | None = None) -> list:
+                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1) -> list:
     """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
     `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
     (the camera pose, an effects option) really does not; its "both" entry applies to the two runs (a mission fixture)."""
@@ -236,7 +236,7 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
     for tag in ("a", "b"):
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
-                            *target, "--keep-logs", "--sim-determinism"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
         if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -281,7 +281,7 @@ MAX_STARVED_IN_A_ROW = 3
 
 
 def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_frames: int, extra_env: dict | None = None,
-                     install: str = INSTALL_DIR, ref_exe: str | None = None, ref_commit: str | None = None) -> int:
+                     install: str = INSTALL_DIR, ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1) -> int:
     """Run pairs until one diverges or `max_pairs` have passed. A pair whose runs did not both reach `min_frames` is STARVED: it proves
     nothing either way, is not counted, and is retried (the host was busy); MAX_STARVED_IN_A_ROW of them end the loop with exit 2. A
     failing pair's artifacts stay in `<out>/pair_<n>`; every pair appends a line to `<out>/pairs.log`. -> 0 when all passed, 1 at the
@@ -294,7 +294,7 @@ def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_
         i += 1
         before, t0 = host_load(), time.time()
         pair_dir = os.path.join(out, f"pair_{i}")
-        la, lb = run_mission(mission, duration, pair_dir, extra_env, install=install, ref_exe=ref_exe, ref_commit=ref_commit)
+        la, lb = run_mission(mission, duration, pair_dir, extra_env, install=install, ref_exe=ref_exe, ref_commit=ref_commit, sim_speed=sim_speed)
         a, b = load_simid(la), load_simid(lb)
         starved = min(len(a), len(b)) < min_frames
         ok, msg = compare(a, b, min_frames)
@@ -382,6 +382,26 @@ def selftest() -> int:
             fh.write(b"12345")
         expect(f1["digest"] != data_fingerprint(inst)["digest"] and f1["inputs"] == ["mission.fst", "data/tgl/"],
                "the data fingerprint sees a changed loose file size and names its inputs")
+    from unittest.mock import patch
+
+    class _Stop(Exception):
+        pass
+
+    def argv_for(speed):
+        seen = []
+
+        def fake(cmd, **_kw):
+            seen.append(cmd)
+            raise _Stop
+
+        with patch(__name__ + ".subprocess.run", side_effect=fake):
+            try:
+                run_mission("m", "10", tempfile.gettempdir(), sim_speed=speed)
+            except _Stop:
+                pass
+        return seen[0] if seen else []
+    a4 = argv_for(4)
+    expect(a4[-2:] == ["--sim-speed", "4"] and "--sim-speed" not in argv_for(1), "--sim-speed reaches run_smoke, and 1x adds no argument")
     quiet = {"cpu": 3.0, "procs": {}}
     busy = {"cpu": 71.4, "procs": {"cl.exe": 4, "mc2.exe": 1}}
     line = format_pair_line(2, False, "DIVERGED at sim frame index 9\n  run a: x", quiet, busy, 61.2)
@@ -407,6 +427,8 @@ def main(argv=None) -> int:
         p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="set for both runs (a mission fixture; repeatable)")
         p.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
         p.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
+        p.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=1, metavar="N",
+                       help="N fixed sim steps per drawn frame (run_smoke --sim-speed); the SIMID chain is that of 1x, reached in ~1/N host time")
 
     def install_arg(p):
         p.add_argument("--install", type=resolve_install, default=INSTALL_DIR, metavar="NAME_OR_PATH",
@@ -479,10 +501,11 @@ def main(argv=None) -> int:
     extra = {"both": both, "a": dict(kv.split("=", 1) for kv in args.env_a), "b": dict(kv.split("=", 1) for kv in args.env_b)}
     if args.cmd == "pairs-until-fail":
         return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra, install=args.install,
-                                ref_exe=args.ref_exe, ref_commit=args.ref_commit)
+                                ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed)
     if args.deploy:
         build_and_deploy(args.install)
-    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install, ref_exe=args.ref_exe, ref_commit=args.ref_commit)
+    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install, ref_exe=args.ref_exe, ref_commit=args.ref_commit,
+                         sim_speed=args.sim_speed)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
