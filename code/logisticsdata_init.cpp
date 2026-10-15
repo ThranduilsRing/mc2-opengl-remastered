@@ -449,38 +449,35 @@ void LogisticsData::initVariants()
 
 	}
 
-	// --- Parallel phase: open + parse each mech CSV concurrently ---
-	// Safety: CSVFile/File use read-only FastFile globals and g_modIndex.
-	// LogisticsChassis::init() writes only to 'this'. LogisticsVariant::init()
-	// reads LogisticsData::components (read-only after initComponents()).
-	// pChassis->refCount++ is per-chassis so only one thread touches each chassis.
-	std::vector<std::future<void>> mechFutures;
-	mechFutures.reserve(mechJobs.size());
+	// The mech CSVs are parsed on this thread, one after another. WHY: a FastFile archive reads through one shared FILE*
+	// (seek then read) and one shared LZ buffer, so parsing them concurrently let one thread's seek land between another's
+	// seek and read. Under host load a chassis file then failed to parse, its variants were missing, and every mech of that
+	// variant got the 10 C-Bill fallback in Mech::init (mc2_16 save, BUGS-FOUND-FIXED).
 	for (auto& job : mechJobs) {
-		mechFutures.push_back(std::async(std::launch::async, [&job, this]() {
-			CSVFile mechFile;
-			if (NO_ERR != mechFile.open(job.path.c_str()))
-				return;
+		CSVFile mechFile;
+		if (NO_ERR != mechFile.open(job.path.c_str()))
+		{
+			MC2_LOG(Io, Warn, "logistics: mech file {} did not open; its chassis and variants are skipped", job.path);
+			continue;
+		}
 
-			job.chassis = new LogisticsChassis();
-			job.chassis->init(&mechFile, job.chassisId);
-			job.chassis->setFitID(job.fitID);
-			job.chassis->setScale(job.scale);
+		job.chassis = new LogisticsChassis();
+		job.chassis->init(&mechFile, job.chassisId);
+		job.chassis->setFitID(job.fitID);
+		job.chassis->setScale(job.scale);
 
-			int row = 23;
-			char buffer[256];
-			int varCount = 0;
-			while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
-				LogisticsVariant* pVariant = new LogisticsVariant;
-				if (0 == pVariant->init(&mechFile, job.chassis, varCount++))
-					job.varList.push_back(pVariant);
-				else
-					delete pVariant;
-				row += 97;
-			}
-		}));
+		int row = 23;
+		char buffer[256];
+		int varCount = 0;
+		while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
+			LogisticsVariant* pVariant = new LogisticsVariant;
+			if (0 == pVariant->init(&mechFile, job.chassis, varCount++))
+				job.varList.push_back(pVariant);
+			else
+				delete pVariant;
+			row += 97;
+		}
 	}
-	for (auto& f : mechFutures) f.get();
 
 	// Serial merge in original buildings.csv order.
 	for (auto& job : mechJobs) {

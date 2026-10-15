@@ -27,7 +27,6 @@
 #include<zlib.h>
 #include<vector>
 #include<string>
-#include<future>
 #include"../GameOS/gameos/diagnostic_trace.h"   // LOGISTICS front-end state capture
 #include "Gates/gate.h"
 #ifndef VIEWER
