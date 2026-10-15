@@ -25,7 +25,10 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <span>
 #include <vector>
 
 namespace RenderCore {
@@ -48,8 +51,20 @@ struct KtxImage {
     uint32_t blockSizeBytes = 0;   // 16 for BC6H/BC7; 0 for uncompressed RGBA8
 };
 
-// Returns true and fills `out` on success.
-// Returns false (silent) if file missing, bad magic, or format unsupported.
+// The outcome of parsing a KTX2 container: `image` on success, otherwise `error` names the first check that failed.
+struct KtxParseResult {
+    std::optional<KtxImage> image;
+    const char* error = nullptr;
+};
+
+// Parses a KTX2 container held in memory. A malformed or hostile file (a mod sidecar, a truncated cache file) is rejected,
+// never trusted: the edges are bounded (kKtxMaxEdge), the level count cannot exceed a full mip chain, every level must have
+// exactly the byte length its format and size imply and must lie inside the file, and only 2D, single-layer, single-face,
+// non-supercompressed RGBA8 / BC6H / BC7 files are accepted.
+inline constexpr uint32_t kKtxMaxEdge = 16384;
+KtxParseResult ktxParse(std::span<const uint8_t> file);
+
+// Reads a .ktx2 file and parses it with ktxParse. Returns false (silent) for a missing file or anything ktxParse rejects.
 // Despite the historical name, this also accepts stored (non-supercompressed)
 // BC7 KTX2 files — inspect out.isCompressed / out.vkFormat to dispatch upload.
 bool ktxLoadRgba8(const char* path, KtxImage& out);

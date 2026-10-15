@@ -54,5 +54,36 @@ TEST_CASE("terrain fields: the visual bake is the fine field followed by the mip
     const uint32_t words[] = {0x80000001u, 0};
     REQUIRE(store.setCementWords(words, 2));
     CHECK(store.cementWords().size() == 2);
-    CHECK(store.cementVersion() == 1);
+    CHECK(store.cementVersion() != 0);
+}
+
+TEST_CASE("terrain fields: the shore sidecars keep their bytes and reject a bad size") {
+    mc2terrain::TerrainFieldStore store;
+    const uint8_t mask[2 * 1 * 4] = {1, 2, 3, 4, 5, 6, 7, 8};
+    REQUIRE(store.setShorelineMask(mask, 2, 1));
+    CHECK(store.shorelineMask().width == 2);
+    CHECK(store.shorelineMask().texels == std::vector<uint8_t>(mask, mask + 8));
+    const uint64_t v = store.shorelineMask().version;
+    CHECK(v != 0);
+    CHECK_FALSE(store.setShorelineMask(mask, 0, 1));
+    CHECK_FALSE(store.setShorelineMask(nullptr, 2, 1));
+    CHECK(store.shorelineMask().version == v);
+
+    const float heights[3] = {1.5f, 2.5f, 3.5f};
+    REQUIRE(store.setWaterShoreHeight(heights, 3, 1));
+    CHECK(store.waterShoreHeight().texels == std::vector<float>{1.5f, 2.5f, 3.5f});
+    CHECK_FALSE(store.setWaterShoreHeight(heights, 1, 70000));
+}
+
+TEST_CASE("terrain fields: a recreated store never repeats a version an earlier store handed out") {
+    std::vector<float> map(2 * 2, 0.0f);
+    uint64_t first = 0;
+    {
+        mc2terrain::TerrainFieldStore store;
+        REQUIRE(store.setHeight(map.data(), 2));
+        first = store.heightVersion();
+    }
+    mc2terrain::TerrainFieldStore again;
+    REQUIRE(again.setHeight(map.data(), 2));
+    CHECK(again.heightVersion() > first);
 }

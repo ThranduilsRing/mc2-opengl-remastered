@@ -1,6 +1,6 @@
 // gameos_graphics_texture.cpp - gosTexture hardware-texture creation: the GL upload of what texture_decode.cpp decoded.
 // Decode and upload policy live in texture_decode.cpp (no GL); this file only uploads and keeps the decoded texels as the CPU
-// copy other backends import (gos_GetTextureRgba). Class definition lives in gameos_graphics_internal.h.
+// copy other backends import (gos_GetTextureTexels). Class definition lives in gameos_graphics_internal.h.
 
 #include "gameos_graphics_internal.h"
 
@@ -40,21 +40,20 @@ void tracePlaceholder(const char* filename, const char* texname, int w, int h) {
 }  // namespace
 
 bool gosTexture::createHardwareTexture() {
-    mc2tex::DecodedTexture img;
+    std::optional<mc2tex::DecodedTexture> decoded;
     if (!is_from_memory_) {
-        if (!mc2tex::decodeFile(filename_, format_, hints_, img))
-            return false;
-        format_ = img.format;
+        decoded = mc2tex::decodeFile(filename_, format_, hints_);
     } else if (pcompdata_ && size_ > 0) {
-        if (!mc2tex::decodeMemory(pcompdata_, size_, filename_ ? filename_ : texname_, format_, hints_, img))
-            return false;
-        format_ = img.format;
+        decoded = mc2tex::decodeMemory(pcompdata_, size_, filename_ ? filename_ : texname_, format_, hints_);
     } else {
         // A sized texture with no source and no bytes.
         tracePlaceholder(filename_, texname_, tex_.w, tex_.h);
-        if (!mc2tex::makePlaceholder(tex_.w, tex_.h, format_, hints_, img))
-            return false;
+        decoded = mc2tex::makePlaceholder(tex_.w, tex_.h, format_, hints_);
     }
+    if (!decoded)
+        return false;
+    mc2tex::DecodedTexture& img = *decoded;
+    format_ = img.format;   // a placeholder keeps the requested format
 
     const TexFormat tf = img.layout == mc2tex::PixelLayout::RGB8 ? TF_RGB8 : TF_RGBA8;
     tex_ = create2DTexture(img.width, img.height, tf, img.pixels.data(), img.wantMipmaps);

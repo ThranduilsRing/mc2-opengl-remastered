@@ -7978,14 +7978,14 @@
     "lightDataCpuBytes",
     "terrainSun"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "PROP_LIGHT_VERTEX_PROBE",
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "PROP_LIGHT_VERTEX_PROBE",
@@ -7998,7 +7998,7 @@
     "sunColor",
     "sunFound"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "PROP_MIP_PROBE",
@@ -8014,7 +8014,7 @@
     "vkComputedMips",
     "vkSamplerMaxLod"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "PROP_REINJECT",
@@ -10227,7 +10227,7 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 4
+   "count": 5
   },
   {
    "tag": "TERRAIN_HEIGHT_TEX",
@@ -10728,7 +10728,14 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 6
+   "count": 10
+  },
+  {
+   "tag": "TEXTURE_DECODE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
   },
   {
    "tag": "TEXTURE_RGBA",
@@ -11930,25 +11937,6 @@
    "count": 1
   },
   {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id",
-    "err"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_HUD_SKIP",
    "ver": 1,
    "stream": "stderr",
@@ -12207,7 +12195,7 @@
     "fence_wait_us",
     "island_total_us"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "VK_SCENE_GL_DRAW_CANARY",

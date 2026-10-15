@@ -1,7 +1,7 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
-#include "texture_decode.h"   // gos_GetTextureRgba
+#include "texture_decode.h"   // gos_GetTextureTexels
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -19,7 +19,7 @@
 // queue into the SHARED scene GBuffer (LOAD color0 + normal + depth, GEQUAL reverse-Z) with
 // the terrain island's own set 0 (UBO slot 0 + cement/pool/shadow bindings), so overlays are
 // lit by exactly the inputs the terrain beneath them used. Textures are copy-once mip'd
-// imports of the handle's decoded texels (gos_GetTextureRgba), keyed on the gos texture handle.
+// imports of the handle's decoded texels (gos_GetTextureTexels), keyed on the gos texture handle.
 // ===========================================================================
 
 namespace vk_terrain_detail {
@@ -56,25 +56,19 @@ bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
     return true;
 }
 
-// RGBA8 sampled image with a full blit-generated mip chain (copy-once import).
-bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+// Sampled image (copy-once import): RGBA8 gets a full blit-generated mip chain; BC7 blocks are copied as they are into a single
+// level (a compressed image cannot be a blit target, and the GL texture is single-level too).
+bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     uint32_t mips = 1;
-    { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
+    if (fmt == VK_FORMAT_R8G8B8A8_UNORM) { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
     mc2vk::OwnedBuffer stg;
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
       std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
 
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-    ici.extent = {w, h, 1}; ici.mipLevels = mips; ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!e.img.create(s->allocator, s->device, ici, aci, "terrain.overlayTexture")) return false;
+    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, mips, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, "terrain.overlayTexture"))
+        return false;
     VkCommandBuffer cb = begin_oneshot(s);
     if (cb == VK_NULL_HANDLE) return false;
 
@@ -120,7 +114,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
     return mc2vk::create(e.view, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
@@ -129,12 +123,12 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
 // resident / cannot import (caller skips the draw this frame). 0 / 0xffffffff = untextured.
 OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &o->dummy;
-    uint32_t w = 0, h = 0;
-    auto rgba = gos_GetTextureRgba(gosHandle, &w, &h);
-    if (!rgba) return nullptr;
+    GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status != GosTexels::Status::Ready) return nullptr;
+    const uint32_t w = texels.width, h = texels.height;
     auto it = o->texs.find(gosHandle);
     if (it != o->texs.end()) {
-        if (it->second.source == rgba) return &it->second;
+        if (it->second.source == texels.bytes) return &it->second;
         // The texels behind this handle changed (reloaded): re-import.
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_texture_replace");
         ovl_destroy_tex(it->second);
@@ -146,14 +140,15 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return nullptr;
 
     OvlTex t;
-    if (!ovl_upload_tex(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()) ||
+    if (!ovl_upload_tex(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
+                        (VkDeviceSize)texels.bytes->size()) ||
         !ovl_alloc_tex_set(s, o, t)) {
         ovl_destroy_tex(t);
         return nullptr;
     }
-    t.source = std::move(rgba);
-    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u (%zu/%u).",
-         gosHandle, w, h, o->texs.size() + 1, kOvlMaxTex);
+    t.source = std::move(texels.bytes);
+    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u format=%u (%zu/%u).",
+         gosHandle, w, h, texels.vkFormat, o->texs.size() + 1, kOvlMaxTex);
     return &o->texs.emplace(gosHandle, std::move(t)).first->second;
 }
 
@@ -231,7 +226,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         pci.maxSets = kOvlMaxTex + 2; pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
         if (!mc2vk::create(o->texPool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) return false;
         const uint8_t px[4] = {255, 255, 255, 255};
-        if (!ovl_upload_tex(s, o->dummy, 1, 1, px, sizeof(px)) || !ovl_alloc_tex_set(s, o, o->dummy)) return false;
+        if (!ovl_upload_tex(s, o->dummy, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px)) || !ovl_alloc_tex_set(s, o, o->dummy)) return false;
     }
 
     {   // command buffers (own pair, from the island's pool)

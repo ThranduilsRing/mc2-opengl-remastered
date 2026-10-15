@@ -300,8 +300,11 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
                                               float boundsTopLeftX, float boundsTopLeftY,
                                               float boundsSizeX, float boundsSizeY)
 {
-    if (!rgba || w <= 0 || h <= 0)
+    // The store keeps the CPU copy the VK water island imports; GL uploads the same bytes.
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store || !store->setShorelineMask(rgba, w, h))
         return;
+    rgba = store->shorelineMask().texels.data();
 
     if (s_shorelineMaskTex == 0)
         // TEX-CLASS: asset-pool -- shoreline mask sidecar (mission-lifetime content, SHORE-MASK deferred-sweep-1)
@@ -349,8 +352,11 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
                                                  float boundsTopLeftX, float boundsTopLeftY,
                                                  float boundsSizeX, float boundsSizeY)
 {
-    if (!heights || w <= 0 || h <= 0)
+    // The store keeps the CPU copy the VK water island imports; GL uploads the same bytes.
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store || !store->setWaterShoreHeight(heights, w, h))
         return;
+    heights = store->waterShoreHeight().texels.data();
 
     if (s_waterShoreHeightTex == 0)
         // TEX-CLASS: asset-pool -- water shore hi-res height sidecar (mission-lifetime content)
