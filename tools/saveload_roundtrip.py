@@ -346,6 +346,10 @@ def check_baseline_record(base: dict, cur: dict):
         return False, ["malformed baseline: it needs a 'runs' list and an 'overall' digest; record it again with --baseline"]
     if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
         return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
+    # A save taken at another frame is another scenario moment: its digest cannot match, and a silent mismatch once hid a re-record at the CLI default.
+    if (base.get("save_at"), base.get("load_at")) != (cur.get("save_at"), cur.get("load_at")):
+        return False, [f"baseline recorded at --save-at {base.get('save_at')} --load-at {base.get('load_at')}; this run used "
+                       f"{cur.get('save_at')} / {cur.get('load_at')}: pass the baseline's frames"]
     be, ce = base.get("exe") or {}, cur.get("exe") or {}
     if base.get("judged", "unrecorded") != "first-save-and-resave":
         lines.append(f"WEAK baseline: judged {base.get('judged', 'unrecorded (recorded before the field existed)')}; the re-save was not part of the verdict")

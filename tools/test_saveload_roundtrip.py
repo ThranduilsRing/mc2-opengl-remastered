@@ -84,3 +84,13 @@ def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_th
     monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), save("d.ims", 5), resave, {"sha": "x", "dirty": 0}))
     assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 1     # a changed pilot string byte does
     capsys.readouterr()
+
+
+def test_check_refuses_a_run_taken_at_other_frames_than_the_baseline(tmp_path):
+    """A check run at the CLI default frames against a baseline recorded at other frames fails loudly instead of comparing two scenario moments."""
+    path = str(tmp_path / "a.ims")
+    rt.si.scs.write(path, [(0, b"ver\0"), (4, bytes(64))], False)
+    fp = {"sha": "x", "dirty": 0}
+    ok, lines = rt.check_baseline_record(rt.baseline_record("m", 1300, 1400, path, path, fp), rt.baseline_record("m", 1000, 1100, path, path, fp))
+    assert not ok and "--save-at 1300 --load-at 1400" in lines[0]
+    assert rt.check_baseline_record(rt.baseline_record("m", 1300, 1400, path, path, fp), rt.baseline_record("m", 1300, 1400, path, path, fp))[0]
