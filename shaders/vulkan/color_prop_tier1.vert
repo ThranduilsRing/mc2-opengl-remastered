@@ -199,11 +199,14 @@ void main() {
     const uint r8 = (a_aRGBLight >> 16) & 0xFFu;
     const uint a8 = (a_aRGBLight >> 24) & 0xFFu;
     const uint startV = b8 | (g8 << 8) | (r8 << 16) | (a8 << 24);   // start_v_light packing (lighting.hglsl)
+    // Until the real table is bound (placeholder: one entry) or for a type past its end, the emission colours are black.
+    const uint hotBase = inst.typeID * 3u;
+    const bool hotOk = uFrame.hotTableReady != 0 && hotBase + 2u < uint(uTypeHot.c.length());
     vec3 seed = hotColorBaseLight(startV, vec3(float(r8), float(g8), float(b8)) / 255.0,
                                   (inst.flags & kFlagIsLightsOut) != 0u,
-                                  uTypeHot.c[inst.typeID * 3u + 0u].rgb,
-                                  uTypeHot.c[inst.typeID * 3u + 1u].rgb,
-                                  uTypeHot.c[inst.typeID * 3u + 2u].rgb);
+                                  hotOk ? uTypeHot.c[hotBase + 0u].rgb : vec3(0.0),
+                                  hotOk ? uTypeHot.c[hotBase + 1u].rgb : vec3(0.0),
+                                  hotOk ? uTypeHot.c[hotBase + 2u].rgb : vec3(0.0));
     // A window node carries only its hot-colour light: no ambient, sun or IBL (they would wash out the night glow and the by-day grey).
     if ((inst.flags & kFlagIsWindow) != 0u) {
         vArgb = seed;

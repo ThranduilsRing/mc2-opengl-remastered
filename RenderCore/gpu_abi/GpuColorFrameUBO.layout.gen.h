@@ -17,4 +17,5 @@ static_assert(offsetof(ColorFrameUBO, lightingReady) == 244, "lightingReady offs
 static_assert(offsetof(ColorFrameUBO, isNight) == 248, "isNight offset");
 static_assert(offsetof(ColorFrameUBO, nightFactor) == 252, "nightFactor offset");
 static_assert(offsetof(ColorFrameUBO, ambientV1Strength) == 256, "ambientV1Strength offset");
-static_assert(offsetof(ColorFrameUBO, _pad) == 260, "_pad offset");
+static_assert(offsetof(ColorFrameUBO, hotTableReady) == 260, "hotTableReady offset");
+static_assert(offsetof(ColorFrameUBO, _pad) == 264, "_pad offset");

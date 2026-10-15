@@ -17,5 +17,6 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     int   isNight;  // off 248
     float nightFactor;  // off 252
     float ambientV1Strength;  // off 256
+    int   hotTableReady;  // off 260
 } uFrame;
 #endif

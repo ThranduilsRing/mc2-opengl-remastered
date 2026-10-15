@@ -356,12 +356,12 @@ void write_descriptors(ColorPropIsland* s) {
     VkDescriptorBufferInfo layerOnInfo{};
     VkDescriptorImageInfo  albOnInfo{};
     VkDescriptorBufferInfo hotInfo{};
-    VkWriteDescriptorSet   wm[5]{};   // alpha-OFF (2/3) + alpha-ON (5/6) + hot-colour table (7) material writes
+    VkWriteDescriptorSet   wm[5]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
     uint32_t m = 0;
     if (s->wantMaterial && s->tier1 && s->layerBuf &&
         s->albedoView && s->albedoSamp &&
         s->layerOnBuf &&
-        s->albedoOnView && s->albedoOnSamp && s->hotBuf) {
+        s->albedoOnView && s->albedoOnSamp) {
         layerInfo = VkDescriptorBufferInfo{ s->layerBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
@@ -381,11 +381,13 @@ void write_descriptors(ColorPropIsland* s) {
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 6; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albOnInfo; ++m;
-        // Hot-colour table: binding7 (VS).
+    }
+    // Hot-colour table (binding 7, VS): declared in every tier-1 layout, bound to a one-entry placeholder until the real table lands.
+    if (s->tier1 && s->hotBuf) {
         hotInfo = VkDescriptorBufferInfo{ s->hotBuf.get(), 0, VK_WHOLE_SIZE };
-        wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
-        wm[m].dstBinding = 7; wm[m].descriptorCount = 1;
-        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &hotInfo; ++m;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+        w[n].dstBinding = 7; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hotInfo; ++n;
     }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
@@ -783,7 +785,7 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(n * sizeof(float));
     bool rebound = false;
     if (s->hotBuf && bytes > s->hotCapBytes) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");   // the old table may still be read by an in-flight submit
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");   // a one-time stall: the placeholder grows into the real table on the first upload   // the old table may still be read by an in-flight submit
         s->hotBuf.reset();
     }
     if (!s->hotBuf) {
@@ -1011,6 +1013,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
             b[nb].binding = 6; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        }
+        if (s->tier1) {   // the hot-colour table is read by the tier-1 vertex shader in every mode
             b[nb].binding = 7; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
         }
@@ -1024,7 +1028,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 3u : 0u) + (lightBinding ? 1u : 0u));
+        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 2u : 0u) + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u));
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = materialBindings ? 4u : 2u;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1045,6 +1049,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             if (!ensure_light_capacity(s, 0, sizeof(GpuObjectLights))) { setFallback("light_buf_failed"); return false; }
             if (!ensure_light_capacity(s, 1, sizeof(GpuObjectLights))) { setFallback("light_buf_failed"); return false; }
         }
+        if (s->tier1 && !cp_upload_hot_table(s, {})) { setFallback("hot_buf_failed"); return false; }
         write_descriptors(s);
     }
 
@@ -1204,7 +1209,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         int32_t neg = -1;
         if (!cp_upload_layer_table(s, &neg, 1))    { setFallback("material_layer_buf_failed"); return false; }
         if (!cp_upload_layer_table_on(s, &neg, 1)) { setFallback("material_on_layer_buf_failed"); return false; }
-        if (!cp_upload_hot_table(s, {}))   { setFallback("material_hot_buf_failed"); return false; }
         write_descriptors(s);  // now writes bindings 2/3 (alpha-OFF) + 5/6 (alpha-ON) dummies too
     }
 
@@ -1335,7 +1339,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
             bool changed = false;
-            // The night emission colours of the type table, once per map.
+            // The night emission colours of the type table, once per island lifetime (like the material arrays).
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
                 if (cp_upload_hot_table(s, std::span<const float>(mf.typeHotColors, static_cast<size_t>(mf.typeCount) * 12u))) {
                     s->hotReady = true;
@@ -1530,6 +1534,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // The eye's night state lights the hot-colour tags; without the feed the island stays on its daytime arm.
         u.isNight      = haveLightFeed ? lightFeed.isNight : 0;
         u.nightFactor  = haveLightFeed ? lightFeed.nightFactor : 0.0f;
+        u.hotTableReady = s->hotReady ? 1 : 0;   // the shader reads the table only when the real one is bound
         u.ambientV1Strength = haveLightFeed ? lightFeed.ambientV1Strength : 0.0f;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If

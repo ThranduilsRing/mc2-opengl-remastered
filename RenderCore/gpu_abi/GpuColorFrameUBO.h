@@ -37,7 +37,8 @@ struct ColorFrameUBO {
     int32_t isNight;            // 0/1
     float   nightFactor;        // 0..1 day->night blend
     float   ambientV1Strength;  // StaticPropAmbient option: strength of the hemisphere ambient fill (0 = off)
-    float   _pad[3];            // @cpp_only pad to a 16 B multiple
+    int32_t hotTableReady;      // 1 = the per-type hot-colour table is the real one (else the one-entry placeholder)
+    float   _pad[2];            // @cpp_only pad to a 16 B multiple
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"
