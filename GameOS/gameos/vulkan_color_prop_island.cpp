@@ -1286,6 +1286,8 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->packets.clear();
     s->typeRuns.clear();
     // The albedo arrays and the hot-colour table belong to the map too: the next map's feed imports its own (the island itself outlives the map).
+    // The previous map's two albedo arrays stay allocated until that import replaces them: the per-parity descriptor sets still name their views, and a set
+    // naming a destroyed view must not be bound by a draw before the rewrite, so the GPU memory is retained across a menu stay rather than released here.
     s->materialReady = false;
     s->materialReadyOn = false;
     s->hotReady = false;
