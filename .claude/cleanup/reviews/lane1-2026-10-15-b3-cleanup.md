@@ -1,0 +1,42 @@
+<!-- doc-status: current | reviewed:2026-10-15 -->
+# Lane 1 cleanup review, 2026-10-15: save pointer zeroing, B3.0 to B3.3a, ratchets
+
+Scope: 05adde1e1 06f0d7211 9642db7a3 ae15a4734 f6f7a0c33 fee3887f2 b2c53f243 493ce4a3d 7f9e4037e. Read-only (diffs, headers, one `file_callsites.py --check`; nothing built or run).
+VERDICT: ACCEPT-WITH-FIX. Blockers 0. Should-fix 6. Nits 8.
+
+## What was checked and holds
+- `mc2SaveClearVptr` (code/save_struct_zero.h): correct for MoverControl and MoverDynamics (polymorphic, no virtual base, `operator=` copies data fields only, so the vptr in a record comes from the staging constructor and the clear is the only thing needed). Both Mover::CopyTo lines run for Mech and GroundVehicle (one writer, `mover_misc.cpp:395`). Staging structs are `MC2_SAVE_STRUCT` (never destroyed).
+- Gate: `closestObject` is null in the file (gate.cpp:877) and null after Load (gate.cpp:910); the once-log fires only on a nonzero value, tag `Sim` already exists, include path matches `contact.cpp`. `GateData` is 760 bytes, so `closestObject` sat at 736.
+- `QueuedTacOrder::marker` (warrior_state.cpp:612): nulled after the MemCpy, inside `if (tacOrderQueue)`; `copyFromData` (line 738) already nulls and rebuilds from `moveMode`. Correct.
+- Pointer audit of all 19 structs in save_layout_guard.h (script over the headers): no other raw pointer or vptr in GameObject, Mover, TerrainObject, Building, Turret, Artillery, Carnage, Mech (MechAppearanceData is plain), GroundVehicle, WeaponBolt, ObjectManager, Team, Commander, MechWarriorData (`MovePath path[2]` is by value; `TacticalOrder` is non-polymorphic with no pointer member). One gap: S2.
+- Five baselines (9642db7a3): only `exe.sha`, `overall` and the per-class packet hashes moved (mc2_01/03/10/16: MechData, GroundVehicleData; mc2_24: also the two GateData groups at 7423 and 8226). Consistent with the stated cause. Chains untouched. Reason is in the commit.
+- fee3887f2: `git grep` for `logFileTraffic|fileTrafficLog|createTrafficLog` at 7f9e4037e outside `.claude/` is empty; no readers, no setter, no static-duration `new File` left.
+- B3.3a (493ce4a3d): scripted diff comparison shows every non-mechanical line is `new`/`delete`/null-check removal; `x->` to `x.`; `init(x)` to `init(&x)`. Largest object is `CSVFile` (2048-byte `dataBuffer`): fine for the stack. `delete x` became `x.close()`; `FitIniFile::close` and `CSVFile::close` are `isOpen()`-guarded, so the destructor's second close does not write the FIT footer twice. No callee stores the borrowed pointer (pilot->init, loadHotKeys, saveRenderOptions read and return).
+- B3.1b container internals: seek table (`m_seekTable`), child list (index loop, removal nulls the slot, vector never resizes during close), `m_ownedImage`/caller-buffer split, `currentBlockId` nulled in `atClose`, same return codes on every old path; the parent-forgotten fix is safe in FC6.
+- B3.0: census header, per-kind and per-file blocks, blob seal lines, `--ifdef-scan` comment (13 inactive lines) have the same shape as B1/B2.
+
+## Should-fix
+- S1 `tools/save_noise_mask.json` (MechData and GroundVehicleData `build` [[2952,2955],[3000,3003]], GateData `run` [736,740], and the `known_writer_defects` text for the vftable slots): these ranges are exactly the bytes now fixed, so the mask would hide the defect coming back; the after-review (section 3, last bullet) says the entries are no longer needed but they were not removed. Fix: delete those three ranges and the two defect lines, re-run `saveload_roundtrip check` x5, and say so in the commit.
+- S2 `mclib/ablexec.h:62-67` + `mclib/ablenv.cpp:626,1496`: `StackItem` is a union holding `Address address`; scalar ABL statics and eternals are written as all 8 bytes (`sizeof(StackItem)`), so the top 4 bytes of an int/real are whatever the slot held and an address-typed slot would put a process pointer in the file. The `save_layout_guard.h:61` row lists StackItem but the B2 audit text does not mention it. Fix: prove the slots are zero-extended (one test over a saved mission) or write the live 4-byte payload only; add a line to the audit text either way.
+- S3 `mclib/packet.cpp:~175` (afterOpen): the bad-header rejection logs with `STOP(...)`; rule E7 says "one log line, never STOP", and `InternalFunctionStop` returns `enter_debugger` = 1 in _DEBUG builds (`GameOS/gameos/gameos_debugging.cpp:16`), so a malformed mod packet breaks into the debugger or faults a debug build. Fix: log with `MC2_LOG_ONCE` (census-registered tag) and change FC7's `g_mc2TestStopCount` check to the log counter.
+- S4 `mclib/file.cpp:1264` and `:1357`: `m_ownedImage.assign(fileSize...)` sizes from a FastFile entry or a caller's child size; a corrupt FST entry or packet size throws `std::bad_alloc`, which E11 turns into `terminate`, where the old `malloc` null path returned or flagged `inRAM = FALSE`. This is the "malformed input crashes" case E7 forbids, on mod-reachable data. Fix: reject a size above the parent's length (FastFile: the archive's length) with the existing error code and one log line before allocating.
+- S5 Proof owed and recorded only as prose: B3.1b changes every reader of mod files, but notes section 9 states "tier2 was NOT run ... still owed" and no before-review file exists for B3 (B1/B2 each have `*-review.md`; the notes header says "NOT yet read by a before-review"). Fix: put both as named open items in `lane1-state.md` with the batch that must close them (B3.4), and hold B3.4 until a before-review of the notes exists.
+- S6 No test pins the two new nulls: `Gate::CopyTo` writing null, `Gate::Load` dropping a nonzero value (and its once-log), and `copyToData` nulling `marker`. The baselines only cover them on mc2_24. Fix: add a small doctest for the gate pair (CopyTo into an `MC2_SAVE_STRUCT`, Load of a record with a fake nonzero pointer) and one for the marker loop.
+
+## Nits
+- N1 7f9e4037e message says "File new 28 -> 27"; the baseline diff is File `new` 28 -> 19 and `delete` 27 -> 19. Fix: correct the figure in the next notes update (do not amend).
+- N2 7f9e4037e also carries the `[PATH v1] open_list_growth` log-tag baseline line, which belongs to B2.5, not B3; name it in the B3 results table as a carry-over.
+- N3 Notes disagree on the KEEP-child floor: E6 says "18 + 3 rows" (b3-notes.md E6), sections 2 and 4 say 12, section 9 and the census header say 14 (+2 in a done file). Fix: one number, with the derivation.
+- N4 E6 says the contract "the parent outlives a read through the child" is written at the declaration; `mclib/file.h` m_children comment does not say it. Fix: add that clause.
+- N5 `mclib/inifile.cpp` `atClose` (about line 238) clears `m_fileBlocks` but leaves `totalBlocks`; a `seekBlock` after `close` indexes an empty vector (was a null deref). Fix: set `totalBlocks = 0` there.
+- N6 `file_callsites.py --check` FAILS at the tip: carnage.cpp and weaponbolt.cpp were edited by later merges (a6aa88f..a8e83b746). Fix: `--remap` those two before the B3.4 commit.
+- N7 `mc2SaveClearVptr` test uses a synthetic class; the "no virtual base" assumption is only in a comment. Fix: add `static_assert(std::is_polymorphic_v<MoverControl>)` plus a runtime check that a real `MoverControl`'s first 8 bytes are nonzero before and zero after.
+- N8 `File::File` still leaves `fastFileHandle` unset (file.cpp:1016); read only when `fastFile` is set, so harmless, but the 22 new stack objects make it uninitialised stack. Fix: `fastFileHandle = -1;` in the constructor.
+
+## Rules E1 to E12
+Consistent and mostly testable: E4 (`analyze_dangling`), E5/E6/E7/E11 (FC1-FC8), E10 (grep, census), E12 (`build_all_targets`). Not yet testable as written: E2 (teardown-order comment, no owner converted yet), E11's "no new throw" (see S4). E7 as written contradicts the implementation (S3). Comments in the reviewed hunks say WHAT and WHY (save_struct_zero.h, gate.cpp, file.cpp close, packet.cpp header check); no HOW-only comments found.
+
+## Efficiency retrospective
+- One script over the 19 guard-listed structs found the pointer candidates in a single pass; reading each header by hand would have taken five times as long.
+- Diffing the saved noise mask against the fix offsets (GateData 760 minus 24 = 736) found the biggest issue (S1) only because the mask was opened late; open the verification tool's data files first on a "proof standard" review.
+- The tool-result persistence of large diffs forced a second read; request `git show -- <file>` per file from the start.
