@@ -7,7 +7,7 @@
   "RenderCore": 580,
   "RenderWorld": 0,
   "code": 14830,
-  "mclib": 31822,
+  "mclib": 31878,
   "shaders": 3076
  },
  "dirs": [
@@ -331,6 +331,7 @@
   "mclib/estring.cpp": 66,
   "mclib/ffile.cpp": 55,
   "mclib/file.cpp": 212,
+  "mclib/fit_number.h": 64,
   "mclib/gamelog.h": 8,
   "mclib/genactor.cpp": 201,
   "mclib/genactor.h": 9,
@@ -372,7 +373,7 @@
   "mclib/gvactor_render.cpp": 100,
   "mclib/gvactor_update.cpp": 285,
   "mclib/heap.cpp": 12,
-  "mclib/inifile.cpp": 294,
+  "mclib/inifile.cpp": 298,
   "mclib/inifile.h": 9,
   "mclib/inifile_arrays.cpp": 706,
   "mclib/inifile_read.cpp": 262,
@@ -478,9 +479,9 @@
   "mclib/move_globalmap_build.cpp": 26,
   "mclib/move_globalmap_doors.cpp": 8,
   "mclib/move_globalmap_path.cpp": 16,
-  "mclib/move_movemap_escape.cpp": 188,
+  "mclib/move_movemap_escape.cpp": 184,
   "mclib/move_movemap_goals.cpp": 118,
-  "mclib/move_movemap_path.cpp": 434,
+  "mclib/move_movemap_path.cpp": 426,
   "mclib/msl_anim.cpp": 29,
   "mclib/msl_load.cpp": 91,
   "mclib/msl_shape.cpp": 93,
@@ -644,8 +645,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "3f40c8571",
+ "head": "55f62bc4d",
  "n": 8,
- "total": 55601,
+ "total": 55657,
  "version": 1
 }
