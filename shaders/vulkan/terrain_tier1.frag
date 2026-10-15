@@ -36,6 +36,7 @@
 #endif
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -60,6 +61,7 @@ layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
 #define MAT_LAYER_DIRT     2
 #define MAT_LAYER_CONCRETE 3
 #define MAT_LAYER_SNOW     4
+#define MAT_LAYER_MARBLE_CLIFF 5   // mat5_normal.tga: RGB = marble microsurface normal, A = the cooked cliff displacement
 
 // GL default tuning (terrain_lod_chunk.frag uniforms; ImGui-driven, values are the
 // gameos_graphics.cpp member defaults). Baked const for the parity oracle.
@@ -152,16 +154,15 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale) {
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
-// Terrain parallax-occlusion march (legacy variant). This is the fixed-view-direction march
-// GL used before GL moved to a real per-fragment tangent-space view vector with a world-distance
-// fade and slope/cement exclusions (GL terrain_lod_chunk.frag chunkParallaxView). VK has NOT been
-// ported to that: it still marches along one fixed faux direction and is always on. The GL
-// promotions VK still lacks are listed in .claude/VK-PARITY-GAPS.md (rows 13-19) and
-// .claude/cleanup/vk-default-flip-checklist.md section 5; porting this block to the real-view
-// march is row 13. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import),
-// read with textureLod base level so it is valid in any control flow. No self-shadow term.
-// Constants are the GL scale and layer counts: {scale 0.02, minLayers 8, maxLayers 32}.
-const vec4 MATV_POM_PARAMS = vec4(0.02, 8.0, 32.0, 0.0);  // scale,minLayers,maxLayers,_
+// Terrain parallax-occlusion march with the REAL per-fragment tangent-space view vector (GL terrain_lod_chunk.frag
+// chunkParallaxView): more layers at grazing view, an epsilon guard on the denominator of the final blend (AMD yields inf/nan
+// silently), a hard 16-step cap. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import), read with
+// textureLod base level so it is valid in any control flow. No self-shadow term.
+const float MATV_POM_SCALE      = 0.02;     // GL u_pomScale
+const float MATV_POM_MIN_LAYERS = 8.0;
+const float MATV_POM_MAX_LAYERS = 16.0;
+const float MATV_POM_FADE_NEAR  = 1500.0;   // world units; one tile is 384
+const float MATV_POM_FADE_FAR   = 3500.0;
 float mv_pomDisplacement(vec2 uv, vec4 w) {
     float d = 0.0;
     if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
@@ -169,9 +170,8 @@ float mv_pomDisplacement(vec2 uv, vec4 w) {
     if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
     return 1.0 - d;
 }
-vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
-    const vec3 viewDirTS = vec3(0.15, 0.85, 0.15);
-    float numLayers = mix(MATV_POM_PARAMS.y, MATV_POM_PARAMS.z, max(viewDirTS.y, 0.0));
+vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
+    float numLayers = mix(MATV_POM_MAX_LAYERS, MATV_POM_MIN_LAYERS, max(viewDirTS.y, 0.0));
     numLayers = clamp(numLayers, 4.0, 16.0);
     float layerDepth = 1.0 / numLayers;
     float curLayer = 0.0;
@@ -188,7 +188,94 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
     vec2 prevUV = curUV + dUV;
     float after  = curD - curLayer;
     float before = mv_pomDisplacement(prevUV, w) - curLayer + layerDepth;
-    return mix(curUV, prevUV, after / (after - before));
+    return mix(curUV, prevUV, after / max(abs(after - before), 1.0e-6));
+}
+
+// Cliff faces: triplanar parallax-occlusion march of ONE world plane (GL terrain_lod_chunk.frag cliffParallaxPlane). viewPlane is the view
+// vector projected on the plane's 2D basis; depth is a world-unit height relative to the cliff tiling. The layer-5 alpha is the cliff
+// displacement (1 = peak). textureLod only: the march sits in a non-uniform branch.
+const float MATV_CLIFF_TS          = 256.0;   // world units per cliff repeat
+const float MATV_CLIFF_POM_DEPTH   = 12.0;
+const float MATV_CLIFF_POM_STEPS   = 24.0;
+const float MATV_CLIFF_HEIGHT_NORMAL_STRENGTH = 2.0;
+float mv_cliffHeight(vec2 uv) {
+    return textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+}
+vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps) {
+    if (depth <= 0.0) return uv;
+    float nSteps = clamp(steps, 8.0, 32.0);
+    float layerDepth = 1.0 / nSteps;
+    vec2 P = -viewPlane * depth;   // negative: the parallax shifts toward the eye
+    vec2 deltaUV = P * layerDepth;
+    float curDepth = 0.0;
+    vec2  curUV    = uv;
+    float curH = 1.0 - mv_cliffHeight(curUV);
+    for (int i = 0; i < 32; ++i) {
+        if (float(i) >= nSteps || curDepth >= curH) break;
+        curUV   += deltaUV;
+        curDepth += layerDepth;
+        curH = 1.0 - mv_cliffHeight(curUV);
+    }
+    vec2  prevUV = curUV - deltaUV;
+    float afterH = curH - curDepth;
+    float beforeH = (1.0 - mv_cliffHeight(prevUV)) - (curDepth - layerDepth);
+    float t = afterH / (afterH - beforeH + 1e-5);
+    return mix(curUV, prevUV, clamp(t, 0.0, 1.0));
+}
+
+// Steep cells: the rock normal is projected from the WORLD axes (triplanar) instead of the top-down per-tile UV, which removes the vertical
+// stretch on a cliff face. The shading normal is mixed strongly toward the height gradient of the cliff displacement (its RGB normal is too
+// smooth to catch light), and the albedo is darkened by the displacement (groove relief). `N` is the detail-perturbed normal on entry and
+// the cliff-blended one on return; `baseColor` takes the groove darkening. macroN is the un-perturbed macro slope normal. The cliff albedo
+// re-projection of GL is NOT here: the island carries no material albedo array.
+void mv_cliffMaterial(vec3 macroN, inout vec3 N, inout vec3 baseColor) {
+    float cb = smoothstep(0.85, 0.55, abs(macroN.z));
+    if (cb <= 0.01) return;
+    const float ts = MATV_CLIFF_TS;
+    vec3 wp = v_worldPos;
+    vec3 wn = abs(macroN); wn /= (wn.x + wn.y + wn.z + 1e-5);
+    vec2 uvX = wp.yz / ts;   // YZ plane
+    vec2 uvY = wp.xz / ts;   // XZ plane
+    vec2 uvZ = wp.xy / ts;   // XY plane
+
+    vec3  camW = mc2ToRender(uT.cameraPosMC2.xyz);
+    vec3  Vw   = normalize(camW - wp);   // fragment -> eye, MC2 world
+    float depth = MATV_CLIFF_POM_DEPTH / ts;
+    float steps = MATV_CLIFF_POM_STEPS;
+    vec2 vpX = Vw.yz / max(abs(Vw.x), 0.30);
+    vec2 vpY = Vw.xz / max(abs(Vw.y), 0.30);
+    vec2 vpZ = Vw.xy / max(abs(Vw.z), 0.30);
+    uvX = mix(uvX, mv_cliffParallaxPlane(uvX, vpX, depth, steps), clamp(wn.x * 1.5, 0.0, 1.0));
+    uvY = mix(uvY, mv_cliffParallaxPlane(uvY, vpY, depth, steps), clamp(wn.y * 1.5, 0.0, 1.0));
+    uvZ = mix(uvZ, mv_cliffParallaxPlane(uvZ, vpZ, depth, steps), clamp(wn.z * 1.5, 0.0, 1.0));
+
+    vec3 nX = textureLod(u_matNormalArray, vec3(uvX, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+    vec3 nY = textureLod(u_matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+    vec3 nZ = textureLod(u_matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+    vec3 triTilt = vec3(0.0, nX.x, nX.y) * wn.x
+                 + vec3(nY.x, 0.0, nY.y) * wn.y
+                 + vec3(nZ.x, nZ.y, 0.0) * wn.z;
+
+    // Height-derived shading normal: forward differences of the displacement per plane (one texel of the 2048 map as the step).
+    const float hEps = 1.0 / 2048.0;
+    float hX0 = mv_cliffHeight(uvX), hXu = mv_cliffHeight(uvX + vec2(hEps, 0.0)), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps));
+    float hY0 = mv_cliffHeight(uvY), hYu = mv_cliffHeight(uvY + vec2(hEps, 0.0)), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps));
+    float hZ0 = mv_cliffHeight(uvZ), hZu = mv_cliffHeight(uvZ + vec2(hEps, 0.0)), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps));
+    float g = MATV_CLIFF_HEIGHT_NORMAL_STRENGTH / hEps;
+    vec3 hnX = normalize(vec3(-(hXu - hX0) * g, -(hXv - hX0) * g, 1.0));
+    vec3 hnY = normalize(vec3(-(hYu - hY0) * g, -(hYv - hY0) * g, 1.0));
+    vec3 hnZ = normalize(vec3(-(hZu - hZ0) * g, -(hZv - hZ0) * g, 1.0));
+    vec3 htTilt = vec3(0.0, hnX.x, hnX.y) * wn.x
+                + vec3(hnY.x, 0.0, hnY.y) * wn.y
+                + vec3(hnZ.x, hnZ.y, 0.0) * wn.z;
+    float hMix = clamp(MATV_CLIFF_HEIGHT_NORMAL_STRENGTH * 0.5, 0.0, 1.0);
+    triTilt = mix(triTilt, htTilt, hMix);
+
+    vec3 triN = normalize(macroN + triTilt);
+    N = normalize(mix(N, triN, cb));
+
+    float disp = hX0 * wn.x + hY0 * wn.y + hZ0 * wn.z;
+    baseColor *= mix(1.0, 0.62 + 0.38 * disp, cb);
 }
 
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
@@ -196,9 +283,9 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
 // (fwRock..fwSnow, GL :353-357) + ★anti-tile resample gated by `fw* > 0.5 && ats* >
 // 0.01` EXACTLY as GL :392-415. Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
-// previously omitted — now included to match GL. POM is the legacy fixed-view march
+// previously omitted — now included to match GL. POM is the real-view march
 // (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
-// triplanar / height normal / cliff POM, real-view POM (VK-PARITY-GAPS rows 13-14).
+// albedo re-projection (VK-PARITY-GAPS row 14).
 // Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
 // here — no non-uniform weight branch, so LOD is well-defined). -------------------
 // VK-TERRAIN-LODFADE: LOD_NEAR/LOD_NEAR_FADE constants verbatim from gos_terrain.frag
@@ -218,7 +305,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
 }
 //PORT-END:lodNear
 
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -233,16 +320,26 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
     float fwConcrete = clamp(1.0 - (length(fwidth(uvConcrete)) - 0.5) * 2.0, 0.0, 1.0);
     float fwSnow     = clamp(1.0 - (length(fwidth(uvSnow))     - 0.5) * 2.0, 0.0, 1.0);
 
-    // ★POM: parallax-offset the material UVs (GL :361-367). fwidth-gated (near only)
-    // -> bounded cost. pomParams.x (=0.02) > 0 always here; fwRock > 0.4 gate matches GL.
-    // VK-TERRAIN-LODFADE: fade the POM offset by lodNear (GL gos_terrain.frag :617-624
-    // `pomOffset *= lodNear` -- prevents popping at the LOD0/band boundary GL fades
-    // across; lodNear==1.0 when the gate is off, so this is a no-op then).
-    if (MATV_POM_PARAMS.x > 0.0 && fwRock > 0.4 && lodNear > 0.01) {
+    // POM: parallax-offset the material UVs, fwidth-gated (near only). The march uses the real view vector, faded out over the world
+    // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
+    // (a slab must not tear). lodNear fades the offset across the LOD0 band boundary (1.0 when the gate is off).
+    if (fwRock > 0.4 && lodNear > 0.01) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
-        float pomScale = MATV_POM_PARAMS.x * dot(pomScaleMat, w) * fwRock * lodNear;
+        float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock * lodNear;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
-        vec2  pomOff   = (mv_parallax(pomUV, pomScale, w) - pomUV) * fwRock * lodNear;
+        vec2  pomOff   = vec2(0.0);
+        vec3  camW     = mc2ToRender(uT.cameraPosMC2.xyz);   // the eye in the MC2 world frame (the feed is the Stuff frame)
+        float altBoost = max(camW.z - v_worldPos.z, 0.0) * 0.7;
+        float camDist  = distance(v_worldPos.xy, camW.xy) + altBoost;
+        float distFade = 1.0 - smoothstep(MATV_POM_FADE_NEAR, MATV_POM_FADE_FAR, camDist);
+        float slopeFade = 1.0 - smoothstep(0.85, 0.55, abs(macroNz));
+        float pomStrength = distFade * slopeFade * (1.0 - w.w);
+        if (pomStrength > 0.001) {
+            vec3 Vw = normalize(camW - v_worldPos);                 // fragment -> eye, MC2 world
+            // The detail UVs are top-down planar with no y flip: tangent u = east, bitangent v = north, normal = up.
+            vec3 viewDirTS = vec3(Vw.x, Vw.z, Vw.y);
+            pomOff = (mv_parallax(pomUV, pomScale, w, viewDirTS) - pomUV) * fwRock * lodNear * pomStrength;
+        }
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
     }
 
@@ -506,11 +603,12 @@ void main() {
                 // VK-TERRAIN-LODFADE: fades detail-normal/POM to 0 across the LOD0/band
                 // boundary (GL gos_terrain.frag :326-328). Gate off -> lodNear==1.0.
                 float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear);
+                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z);
             }
             vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
                              + dN.xy * uT.detailStrength, 1.0);
             N = normalize(pert);
+            if (uT.detailReady != 0) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         vec3 lightDir = uT.terrainLightDir.xyz;

@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry -- the orchestrator and every phase except the texture arrays.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include <cstring>
 #include "gos_static_prop_finalize_frame.h"
 #include "mc2fmt.h"
 
@@ -100,6 +101,10 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
             unpack(yellow, perTypeBlob[i].hotYellowRGB);
             unpack(green,  perTypeBlob[i].hotGreenRGB);
         }
+        // The Vulkan prop island reads the same table from this CPU copy.
+        s_typeHotColors.resize(s_types.size() * 12);
+        for (size_t i = 0; i < s_types.size(); ++i)
+            std::memcpy(&s_typeHotColors[i * 12], &perTypeBlob[i], sizeof(PerTypeShaderData));
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perTypeSsbo);

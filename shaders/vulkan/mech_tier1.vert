@@ -72,7 +72,7 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 // mech.vert calls calc_light with MC2_STATIC_PROP_LIGHTING defined -> the
 // numLights==0 early-return preserves base_light (not vec3(1)). Match that.
 //PORT-BEGIN:calc_light
-vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light) {
+vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix) {
     ObjectLights ld = uLights.light[idx];
     if (ld.numLights.x == 0) return base_light;   // MC2_STATIC_PROP_LIGHTING branch
     vec3 final = base_light;
@@ -84,13 +84,15 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light) {
         if (lt == TG_LIGHT_AMBIENT) {
             ambient += lc;
         } else if (lt == TG_LIGHT_INFINITE) {
-            float ndl = clamp(dot(normal, -ld.light_dir[i].xyz), 0.0, 1.0);
+            vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(ld.light_dir[i].xyz) : ld.light_dir[i].xyz;
+            float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
             final += ndl * lc;
         } else if (lt == TG_LIGHT_INFINITEWITHFALLOFF) {
             vec3 lp = ld.light_to_world[i][3].xyz;
             float d = length(wpos - lp); float f;
             if (GetFalloff(d, ld.light_falloff[i].xyz, f)) {
-                float ndl = clamp(dot(normal, -ld.light_dir[i].xyz), 0.0, 1.0);
+                vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(ld.light_dir[i].xyz) : ld.light_dir[i].xyz;
+                float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
                 final += ndl * lc * f;
             }
         } else if (lt == TG_LIGHT_POINT) {
@@ -158,7 +160,7 @@ void main() {
         baseLight = vec3(kAmbientFloor);
     } else if (uFrame.lightingReady != 0) {
         vec3 base = vec3(kAmbientFloor);
-        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base);
+        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, uFrame.sunAxisMc2Fix);
         baseLight = clamp(litRGB + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
     } else {
         // LightsData not yet copied — mirror mech.vert's Slice-A passthrough (flat white).

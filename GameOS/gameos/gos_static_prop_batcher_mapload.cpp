@@ -69,6 +69,7 @@ void GpuStaticPropBatcher::onMapLoad() {
 #endif
     s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
     s_typeAlphaClass.clear();
+    s_typeHotColors.clear();
     s_failedTypes.clear();
     s_geometryFinalized = false;
     s_fatalRegistrationFailure = false;

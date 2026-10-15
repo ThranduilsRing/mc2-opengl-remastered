@@ -72,11 +72,31 @@ flat layout(location = 2) in int  vLayer;
 layout(location = 3) in vec3 vArgb;   // VERTEX-BAKED lit color (GL default prop model)
 flat layout(location = 4) in int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) in vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
+layout(location = 6) in vec3 vWorldPos;
+flat layout(location = 7) in vec3 vSunDirStuff;
+flat layout(location = 8) in vec3 vSunColor;
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 
 #include "../include/prop_dither.hglsl"
+#include "../include/axis.hglsl"
+
+// StaticPropPbr option: Schlick-Fresnel sun specular added to the lit prop colour. The albedo-tinted F0 and the power lobe are the GL terms; metallic 0 and roughness 1
+// are the GL literal defaults, because the island carries no per-material scalars.
+vec3 propSunSpecular(vec3 albedo) {
+    const float metallic  = 0.0;
+    const float roughness = 1.0;
+    vec3 N = mc2ToRender(normalize(vNormalStuff));
+    vec3 V = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
+    vec3 L = mc2ToRender(normalize(-vSunDirStuff));
+    vec3 H = normalize(L + V);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F  = F0 + (vec3(1.0) - F0) * pow(max(0.0, 1.0 - dot(N, V)), 5.0);
+    float smoothness = 1.0 - roughness;
+    float specPower  = mix(1.0, 512.0, smoothness * smoothness);
+    return vSunColor * F * pow(max(0.0, dot(N, H)), specPower) * max(0.0, dot(N, L));
+}
 
 void main() {
     vec3 rgb;
@@ -136,6 +156,7 @@ void main() {
         // read pure black. VK omitted this -> alpha-test fences/cards rendered BLACK. Apply
         // the SAME floor verbatim before multiplying the albedo.
         rgb = texc.rgb * max(vArgb, vec3(0.5));
+        if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(texc.rgb) * uFrame.pbrV1Strength;
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
         // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
@@ -147,6 +168,7 @@ void main() {
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb
         // is the VERTEX-BAKED lit color (base_light seed + ambient + sun*NdotL). NOT PBR.
         rgb = albedo * vArgb;
+        if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(albedo) * uFrame.pbrV1Strength;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);

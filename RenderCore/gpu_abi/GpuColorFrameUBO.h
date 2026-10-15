@@ -33,7 +33,14 @@ struct ColorFrameUBO {
     float   iblSh[9][4];        // @vec4xN SH-L2 coefficients, .w pad each
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
-    float   _pad[2];            // @cpp_only pad to a 16 B multiple
+    // Night state of the eye (the hot-colour night tags light windows, building base lights and runway fixtures).
+    int32_t isNight;            // 0/1
+    float   nightFactor;        // 0..1 day->night blend
+    float   ambientV1Strength;  // StaticPropAmbient option: strength of the hemisphere ambient fill (0 = off)
+    int32_t hotTableReady;      // 1 = the per-type hot-colour table is the real one (else the one-entry placeholder)
+    float   pbrV1Strength;      // StaticPropPbr option: strength of the Schlick-Fresnel sun specular (0 = off)
+    float   _padEye;            // keeps the eye position 16-byte aligned
+    float   cameraWorldPos[4];  // @vec4 GL world eye position (ViewUniforms.cameraWorldPos); .w pad
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"

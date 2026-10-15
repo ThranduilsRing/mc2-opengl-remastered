@@ -6512,64 +6512,52 @@
    ]
   },
   "VkPostFogNative": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/vulkan_post_fog_native.cpp": {
-     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    "gosPostProcess"
-   ]
+   "owners": []
   },
   "VkPostHzbNative": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/vulkan_post_hzb_native.cpp": {
-     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    "gosPostProcess"
-   ]
+   "owners": []
   },
   "VkPostScreenFx": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
-     "delete": 1,
      "new": 2
     }
    },
    "new": 2,
    "new_array": 0,
-   "owners": [
-    "gosPostProcess"
-   ]
+   "owners": []
   },
   "VkPostSsaoNative": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/vulkan_post_ssao_native.cpp": {
-     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    "gosPostProcess"
-   ]
+   "owners": []
   },
   "VulkanContext": {
    "delete": 0,
@@ -7785,6 +7773,10 @@
   "GameOS/gameos/utils/gl_utils.h": 4,
   "GameOS/gameos/utils/shader_builder.cpp": 12,
   "GameOS/gameos/utils/stream.cpp": 1,
+  "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
+  "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
+  "GameOS/gameos/vulkan_post_screenfx_native.cpp": 1,
+  "GameOS/gameos/vulkan_post_ssao_native.cpp": 1,
   "code/ablmc2.cpp": 1,
   "code/artlry.cpp": 8,
   "code/carnage.cpp": 3,

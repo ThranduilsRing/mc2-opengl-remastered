@@ -23,7 +23,7 @@ struct MechFrameUBO {
     float   objectDepthBias;    // OBJECT_DEPTH_BIAS
     int32_t materialReady;      // 1 = sample the copy-once albedo
     int32_t lightingReady;      // 1 = LightsData copied -> calc_light valid; else flat white
-    int32_t _pad1;
+    int32_t sunAxisMc2Fix;      // options.cfg SunAxisFix: 1 = diffuse sun direction takes the Stuff->MC2 swap (GL u_sunAxisMc2Fix)
     float   fogColorRGB[4];     // @vec4 g_scene.fogColor.rgb; .a unused
     // Default mech fragment shading block (the vertex stage ignores it).
     float   cameraWorldPos[4];  // @vec4 GL world (ViewUniforms.cameraWorldPos)

@@ -9,7 +9,7 @@ static_assert(offsetof(MechFrameUBO, worldToClipGL) == 0, "worldToClipGL offset"
 static_assert(offsetof(MechFrameUBO, objectDepthBias) == 64, "objectDepthBias offset");
 static_assert(offsetof(MechFrameUBO, materialReady) == 68, "materialReady offset");
 static_assert(offsetof(MechFrameUBO, lightingReady) == 72, "lightingReady offset");
-static_assert(offsetof(MechFrameUBO, _pad1) == 76, "_pad1 offset");
+static_assert(offsetof(MechFrameUBO, sunAxisMc2Fix) == 76, "sunAxisMc2Fix offset");
 static_assert(offsetof(MechFrameUBO, fogColorRGB) == 80, "fogColorRGB offset");
 static_assert(offsetof(MechFrameUBO, cameraWorldPos) == 96, "cameraWorldPos offset");
 static_assert(offsetof(MechFrameUBO, shadeA) == 112, "shadeA offset");

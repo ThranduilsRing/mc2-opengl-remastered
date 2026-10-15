@@ -3,5 +3,4 @@
 # These are REAL VK gaps, not noise. The row stays green only while the diff is byte-for-byte
 # what is pinned here: a port that goes verbatim (stale entry) or drifts further fails.
 # Re-pin with: py -3 tools/glsl_port_diff.py --all --print-hashes
-calc_light	shaders/vulkan/mech_tier1.vert	0760f69dcef7	VK calc_light lacks the sunAxisMc2Fix param (MC2_SUN_AXIS_FIX axis swap on the sun direction in both INFINITE branches), so flipping that gate leaves VK mech lighting wrong.
 waterBaseColor	shaders/vulkan/water_geom.frag	1c3716891bf7	VK water FS has no GL shore-meander block (u_shoreMeanderWu/u_shoreMeanderFreq fbm3 offset on WaterThickness), so VK shorelines are straight where GL meanders.

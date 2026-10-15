@@ -627,6 +627,12 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
 
 } // namespace
 
+// The owner's deleter: idles the GPU and releases the owned objects before the state itself goes.
+void gosPostProcess::VkPostSsaoNativeDeleter::operator()(VkPostSsaoNative* s) const {
+    destroy_state(s);
+    delete s;
+}
+
 // ---------------------------------------------------------------------------
 // vkPostSsaoNativeEnabled(): explicit OPT-IN, default-OFF (an Exact1 row: only "1" arms
 // it; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER).
@@ -679,8 +685,8 @@ bool gosPostProcess::runVkPostSsaoNative()
     if (ssaoDebug_ != 0) return false;
     if (width_ <= 0 || height_ <= 0 || ssaoW_ <= 0 || ssaoH_ <= 0) return false;
 
-    if (!vkPostSsaoNative_) vkPostSsaoNative_ = new VkPostSsaoNative();
-    VkPostSsaoNative* s = vkPostSsaoNative_;
+    if (!vkPostSsaoNative_) vkPostSsaoNative_.reset(new VkPostSsaoNative());
+    VkPostSsaoNative* s = vkPostSsaoNative_.get();
     if (s->disabled) return false;
     if (!s->inited || s->width != width_ || s->height != height_ ||
         s->halfW != ssaoW_ || s->halfH != ssaoH_) {
@@ -882,9 +888,7 @@ void gosPostProcess::destroyVkPostSsaoNative()
              g_ps.waitSamples);
     }
     if (!vkPostSsaoNative_) return;
-    destroy_state(vkPostSsaoNative_);
-    delete vkPostSsaoNative_;
-    vkPostSsaoNative_ = nullptr;
+    vkPostSsaoNative_.reset();
 }
 
 // Debug-state dump receipt (used_vulkan receipts for every VK capture).

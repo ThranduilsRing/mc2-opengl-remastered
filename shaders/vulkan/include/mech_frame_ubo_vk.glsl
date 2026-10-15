@@ -8,7 +8,7 @@ layout(set = 0, binding = 0, std140) uniform MechFrameUBO {
     float objectDepthBias;  // off 64
     int   materialReady;  // off 68
     int   lightingReady;  // off 72
-    int   _pad1;  // off 76
+    int   sunAxisMc2Fix;  // off 76
     vec4  fogColorRGB;  // off 80
     vec4  cameraWorldPos;  // off 96
     vec4  shadeA;  // off 112

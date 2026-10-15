@@ -1047,6 +1047,7 @@ void gosPostProcess::endScene()
             effectiveModeForComposite,
             sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0,
             lowLightGain_, lowLightTint_,
+            casEnabled_, casSharpness_, tonemapMode_,
             compositeVpX, compositeVpY, compositeVpW, compositeVpH);
     }
 #endif

@@ -80,8 +80,9 @@ void invalidateAll() noexcept;
 // the previous value back and clears the gate cache. It exists so test drivers and tools set a gate by its
 // registered name instead of a string literal that no registry check sees: a misspelt name is a compile
 // error. The change is made in the process environment, so child processes started inside the scope inherit
-// it. An empty string clears the variable too (the Windows CRT cannot hold an empty value).
-// Single-threaded phases only (the same contract as invalidate()): do not nest one across threads.
+// it. An empty string clears the variable too (the Windows CRT cannot hold an empty value), so a variable that was set to the empty string comes back unset.
+// Single-threaded phases only (the same contract as invalidate()): no other thread may read or write the environment while a scope is open, and none may
+// read a gate that the scope changes (the process environment is not synchronised).
 //   { gate::ScopedOverride<"MC2_SSAO"> on("1"); child = spawn(...); }   // MC2_SSAO restored here
 class ScopedEnv {
 public:

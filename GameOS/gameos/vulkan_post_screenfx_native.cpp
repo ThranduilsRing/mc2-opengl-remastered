@@ -49,6 +49,7 @@
 #include "gos_postprocess.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "Gates/render_options.h"   // options.cfg PropShadowReceive
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -186,7 +187,8 @@ struct ScreenFxShadowStaticParams {
     float _padBeforeLight[2];    // off 376..380
     float lightDir[4];           // off 384, xyz used
     float mechSoft;              // off 400
-    float _pad0, _pad1, _pad2;   // off 404..412
+    int   propShadowReceive;     // off 404 (options.cfg PropShadowReceive)
+    float _pad1, _pad2;          // off 408..412
 };
 static_assert(sizeof(ScreenFxShadowStaticParams) == 416, "ScreenFxShadowStaticParams std140 offsets drifted");
 
@@ -654,6 +656,12 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
 
 } // namespace
 
+// The owner's deleter: idles the GPU and releases the owned objects before the state itself goes.
+void gosPostProcess::VkPostScreenFxDeleter::operator()(VkPostScreenFx* s) const {
+    destroy_state(s);
+    delete s;
+}
+
 // ---------------------------------------------------------------------------
 // vkPostScreenFxNativeEnabled(): explicit OPT-IN, default-OFF (an Exact1 row: only "1"
 // arms it; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER). Gate name per the rung-8 ladder: MC2_VK_POST_SCREENFX. Per-pass bisect
@@ -709,8 +717,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         && shadowsEnabled_ && (!dynamicActive || csmDirectReady) && screenShadowDebug_ == 0;
     if (!wantShadow || width_ <= 0 || height_ <= 0) return false;
 
-    if (!vkPostScreenFx_) vkPostScreenFx_ = new VkPostScreenFx();
-    VkPostScreenFx* s = vkPostScreenFx_;
+    if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
+    VkPostScreenFx* s = vkPostScreenFx_.get();
     if (s->disabled) return false;
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -749,6 +757,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         // Same rows as the GL path (gos_postprocess_gates.cpp): default 2, clamps to [0, 16] and default 1, [0, 4].
         p.objNormalBiasScale = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();
         p.mechSoft = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
+        p.propShadowReceive = mc2::options::current().propShadowReceive;   // the option the GL screen shadow reads
         float lx = 0.0f, ly = 0.0f, lz = 1.0f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
         float len = sqrtf(lx*lx + ly*ly + lz*lz);
@@ -825,20 +834,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    if (csmDirectReady) {
-        if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
-            barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-        }
-        if (void* csmFullMap = mc2_vk_shadow_island_get_csm_fullmap_image()) {
-            barrier(reinterpret_cast<VkImage>(csmFullMap), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-        }
-    }
+    // The cascade images are NOT transitioned here: the shadow island hands them over in DEPTH_STENCIL_READ_ONLY (its render pass final layout) and the
+    // descriptors above name that layout. Barriers that assumed the attachment layout on entry and restored it on exit disagreed with the terrain
+    // consumer of the same images (VUID-vkCmdDraw-None-09600 in both directions).
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -850,20 +848,6 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
 
-    if (csmDirectReady) {
-        if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
-            barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    VK_ACCESS_SHADER_READ_BIT, 0,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        }
-        if (void* csmFullMap = mc2_vk_shadow_island_get_csm_fullmap_image()) {
-            barrier(reinterpret_cast<VkImage>(csmFullMap), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    VK_ACCESS_SHADER_READ_BIT, 0,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        }
-    }
     barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, 0,
@@ -944,8 +928,8 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (!wantCloud && !wantShore) return 0;
     if (width_ <= 0 || height_ <= 0) return 0;
 
-    if (!vkPostScreenFx_) vkPostScreenFx_ = new VkPostScreenFx();
-    VkPostScreenFx* s = vkPostScreenFx_;
+    if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
+    VkPostScreenFx* s = vkPostScreenFx_.get();
     if (s->disabled) return 0;
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -1145,9 +1129,7 @@ void gosPostProcess::destroyVkPostScreenFxNative()
              g_fx.waitSamples);
     }
     if (!vkPostScreenFx_) return;
-    destroy_state(vkPostScreenFx_);
-    delete vkPostScreenFx_;
-    vkPostScreenFx_ = nullptr;
+    vkPostScreenFx_.reset();
 }
 
 // Debug-state dump receipt (used_vulkan receipts for every VK capture).

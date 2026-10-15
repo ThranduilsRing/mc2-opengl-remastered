@@ -651,6 +651,9 @@ std::vector<float> s_packetUvScaleY;
 // onMapUnload(). -1 = type has no alpha-OFF albedo texture.
 std::vector<int32_t> s_typeAlbedoLayer;
 std::vector<int32_t> s_typeAlphaClass;
+// Per-type hot-colour night emission colours (12 floats per type: pink, yellow, green RGBA), the CPU copy of the GL per-type SSBO for the Vulkan prop island.
+// Populated with the SSBO at finalize, cleared in onMapUnload().
+std::vector<float> s_typeHotColors;
 // v2.1: per-type instance count snapshot from the most recent flush().
 // Keyed by typeID. Cleared in onMapUnload().
 // Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
