@@ -3822,10 +3822,24 @@
         },
         {
           "path": "editor/tests/objective_census.py",
-          "line": 11,
+          "line": 12,
           "evidence": "import",
           "reference": "run_editor_smoke",
           "text": "from run_editor_smoke import StockInputs, STOCK_MISSIONS"
+        },
+        {
+          "path": "editor/tests/objective_census.py",
+          "line": 89,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/objective_crud.py",
+          "line": 93,
+          "evidence": "import",
+          "reference": "scripts.run_editor_smoke",
+          "text": "from scripts.run_editor_smoke import PANEL_OPERATIONS"
         },
         {
           "path": "editor/tests/run_catalog_proofs.py",
