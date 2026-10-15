@@ -595,6 +595,9 @@ def main():
     ap.add_argument("--sim-determinism", action="store_true",
                     help="set only by tools/sim_determinism.py: raises the --duration cap from 30 to 60 s (owner ruling 2026-10-13: determinism pairs "
                          "need the longer window; tier smokes and captures keep the 30 s cap)")
+    ap.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=None, metavar="N",
+                    help="non-visual proofs only (sim_determinism, saveload_roundtrip): MC2_SIM_SPEED=N runs N fixed 1/30 s sim steps per drawn "
+                         "frame under the fixed-step clock, so the same sim frames take about 1/N of the host time; step size and RNG draws are those of 1x")
     ap.add_argument("--lite", action="store_true",
                     help="SMOKE-LITE-1 inner-loop profile: mc2_10 (night/urban, "
                          "heaviest) + mc2_01 (day) at --duration 10 (override "
@@ -1421,6 +1424,7 @@ def main():
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
+                **({"MC2_SIM_SPEED": str(args.sim_speed)} if args.sim_speed else {}),
                 **render_resolution.tier_size_env(tier, e.resolution),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).

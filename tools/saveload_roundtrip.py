@@ -197,6 +197,10 @@ def selftest() -> int:
                 if main(["--check", "--mission", "m", "--mask", mask_path]) != 0 or fixture.call_args.args[1:3] != (10, 20):
                     fails.append("--check without frame flags must run at the baseline's frames")
             with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp)) as fixture:
+                main(["--check", "--mission", "m", "--mask", mask_path, "--sim-speed", "4"])
+                if fixture.call_args.kwargs.get("sim_speed") != 4 or speed_args(4) != ["--sim-speed", "4"] or speed_args(1):
+                    fails.append("--sim-speed must reach run_smoke, and 1x must add no argument")
+            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp)) as fixture:
                 if main(["--check", "--mission", "m", "--save-at", "11", "--mask", mask_path]) != 1 or fixture.called:
                     fails.append("--check with frames that contradict the baseline must refuse before launching")
     for f in fails:
@@ -209,14 +213,24 @@ def smoke_target(install: str, ref_exe: str | None = None, ref_commit: str | Non
     return sd.smoke_target(install, ref_exe, ref_commit)
 
 
+def speed_args(sim_speed: int) -> list[str]:
+    """run_smoke.py arguments for N sim steps per drawn frame; the save fixtures count the same frame numbers at any N."""
+    return ["--sim-speed", str(sim_speed)] if sim_speed > 1 else []
+
+
+def add_speed_arg(p) -> None:
+    p.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=1, metavar="N",
+                   help="N fixed sim steps per drawn frame (run_smoke --sim-speed); same saves, about 1/N of the host time past loading")
+
+
 def run(mission: str, frames: int, deploy: bool, out: str | None, install: str = sd.INSTALL_DIR,
-        save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None):
+        save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1):
     if deploy:
         sd.build_and_deploy(install)
     env = dict(os.environ, **ENV)
     with savegame_backup.guarded(save_dir):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install, ref_exe, ref_commit),
-                            "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
     arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
     if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -241,7 +255,8 @@ def resave_env(save_at: int, load_at: int) -> dict:
 
 
 def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None,
-                install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None):
+                install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None,
+                sim_speed: int = 1):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
     `save_at` should lie beyond the run, so the first save returned is the planted one.
@@ -263,7 +278,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         if plant:
             shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
-                            *smoke_target(install, ref_exe, ref_commit), "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
         arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -428,7 +443,7 @@ def cmd_fixture(args) -> int:
         print("saveload_roundtrip check: FAIL\n" + refusal)
         return 1
     dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                        args.install, args.save_dir, args.ref_exe, args.ref_commit)
+                                        args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=args.sim_speed)
     ok, lines = fixture_verdict(first, second, args.mask)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
@@ -476,6 +491,7 @@ def main(argv=None) -> int:
         p.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH", help="launch/deploy install, e.g. lane3")
         p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")
         sd.add_ref_args(p)
+        add_speed_arg(p)
         p.add_argument("--first-save-only", action="store_true",
                        help="baseline/check with --mask: judge only the first save against the baseline and do not fail because the re-save leaves the mask "
                             "(the quickload is lossy: any save and its re-save differ in about 1159 of 20000 packets, so the re-save gate cannot pass); "
@@ -488,6 +504,7 @@ def main(argv=None) -> int:
     r.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
     r.add_argument("--save-dir", help="directory matching the engine's savePath")
     sd.add_ref_args(r)
+    add_speed_arg(r)
     a = sub.add_parser("analyze")
     a.add_argument("log")
     a.add_argument("--frames", type=int, default=300)
@@ -501,7 +518,7 @@ def main(argv=None) -> int:
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
-        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit)
+        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1
 

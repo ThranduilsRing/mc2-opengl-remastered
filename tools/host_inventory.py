@@ -49,6 +49,24 @@ HARNESS_NOTES = (
     "- `scripts/parent_watchdog.py` `ParentWatch().gone()`: unbounded polling loops stop when the process that started them exits"
     " (TaskStop kills the shell, not always its child). Inventory 2026-10-15: no tracked script runs `tail -f`; the two unbounded pollers,"
     " `tools/dev_shell/watch.py` and the `scripts/game_auto.py` recorder, carry it; every other loop in scripts/ and tools/ is deadline-bounded.",
+    "- `--sim-speed N` (1..4) on `tools/sim_determinism.py run|check|pairs-until-fail`, `tools/saveload_roundtrip.py` and run_smoke sets"
+    " `MC2_SIM_SPEED=N`: under the fixed-step clock, after mission_ready and while the window lacks focus, the engine runs N 1/30 s steps"
+    " per drawn frame (same step, same RNG draws). Measured 2026-10-15 (exe 0e1be95bf, install 0.4, lease-held seconds, wall clock):",
+    "",
+    "| proof | mission | 1x | 4x | 4x result |",
+    "|---|---|---|---|---|",
+    "| sim_determinism check (2 runs; 1x --duration 30, 4x --duration 12) | mc2_03 | 82 s, 2452 frames | 64 s, 2801 frames | baseline PASS, = 1x chain |",
+    "| | mc2_10 | 206 s, 2909 | 291 s, 3025 (host busy) | baseline PASS, = 1x chain |",
+    "| | mc2_16 | 142 s, 1607 | 47 s, 2033 | baseline PASS, = 1x chain |",
+    "| | mc2_24 | 85 s, 3757 | 49 s, 3945 | baseline PASS; 1x/4x chains split at sim frame 3204 (mover gesture, see lane3-state) |",
+    "| saveload check (--mask --first-save-only; 1x 28 s, 4x --duration 10) | mc2_01 | 44 s | 25 s | PASS |",
+    "| | mc2_03 | 44 s | 27 s | PASS |",
+    "| | mc2_10 | 46 s | 27 s | FLAKY: WeaponBoltData digest differs in 2 of 4 runs at 2x/4x, 0 of 3 at 1x |",
+    "| | mc2_16 | 45 s | 59 s | PASS |",
+    "| | mc2_24 | 53 s | 30 s | PASS |",
+    "",
+    "  The 1x engine already runs the fixed step uncapped (80-100 sim frames per wall second), so mission load, not sim time, dominates a"
+    " run: 4x saves about 40%, not 75%. A chain at N>1 proves only the frames before the first render-coupled sim read (see the two findings).",
 )
 
 
