@@ -452,16 +452,18 @@ TEST_CASE("objectives/entry commands preserve identities and exact history in al
         const auto owner = doc->objectives()[0].section;
         const auto preserved = doc->objective(owner)->entries[list][0].section;
         const auto original = doc->fitBytes();
-        auto added = history.addObjectiveEntry(owner, list); REQUIRE(added);
+        const auto add = [&] { return list % 2 == 0 ? history.addObjectiveEntry(owner, list) :
+            history.addObjectiveAction(owner, list, {ActionSpecies::flag, {std::string("created"), true}}); };
+        auto added = add(); REQUIRE(added);
         const auto first = *added;
         REQUIRE(doc->objective(owner)->entries[list][1].flag);
-        CHECK(doc->objective(owner)->entries[list][1].flag->id == "");
+        CHECK(doc->objective(owner)->entries[list][1].flag->id == (list % 2 ? "created" : ""));
         CHECK(doc->objective(owner)->entries[list][1].flag->value);
         const auto addedBytes = doc->fitBytes();
         REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
         REQUIRE(history.redo()); CHECK(doc->fitBytes() == addedBytes);
         CHECK(doc->objective(owner)->entries[list][1].section == first);
-        auto second = history.addObjectiveEntry(owner, list); REQUIRE(second);
+        auto second = add(); REQUIRE(second);
         const auto two = doc->fitBytes();
         REQUIRE(history.reorderObjectiveEntry(*second, 1));
         CHECK(doc->objective(owner)->entries[list][1].section == *second);
@@ -578,8 +580,10 @@ TEST_CASE("objectives/policy and collision rejection cannot consume history or f
     REQUIRE(controlHistory.addObjectiveEntry(owner, 0)); REQUIRE(controlHistory.undo());
     const auto rejected = [&](auto edit) {
         logs.clear(); const auto before = doc->fitBytes(); const auto revision = doc->revision();
+        const std::vector<std::byte> beforePak(doc->pakBytes().begin(), doc->pakBytes().end());
         const auto memory = history.bytesUsed(); const auto dirty = doc->modified();
         CHECK_FALSE(edit()); CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
+        CHECK(std::vector<std::byte>(doc->pakBytes().begin(), doc->pakBytes().end()) == beforePak);
         CHECK(doc->revision() == revision); CHECK(doc->modified() == dirty); CHECK(history.bytesUsed() == memory);
         CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
         REQUIRE(history.redo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == before);
@@ -591,16 +595,42 @@ TEST_CASE("objectives/policy and collision rejection cannot consume history or f
         rejected([&] { return history.setObjectiveFlag(entry, std::string("bad"), 0, false); });
     }
     const auto flag = doc->objective(owner)->entries[1][0].section;
-    rejected([&] { CommandHistory tiny(*doc, 1, [&](const auto& line) { logs.push_back(line); }); return tiny.addObjectiveEntry(owner, 1); });
+    rejected([&] { CommandHistory tiny(*doc, 1, [&](const auto& line) { logs.push_back(line); });
+        return tiny.addObjectiveAction(owner, 1, {ActionSpecies::flag, {std::string("valid"), true}}); });
     rejected([&] { return history.setObjectiveFlag(flag, std::string(2001, 'x'), 0, true); });
     rejected([&] { return history.setObjectiveFlag(flag, std::nullopt, -2147483649LL, true); });
     rejected([&] { return history.setObjectiveFlag(flag, std::nullopt, 7, true); });
+    for (const auto list : {1U, 3U}) {
+        for (const auto& spec : actionSchema(true)) {
+            rejected([&] { return history.addObjectiveAction(owner, list, {spec.species, {}}); });
+            if (spec.species != ActionSpecies::flag && spec.species != ActionSpecies::resourceText)
+                for (const auto& text : {std::string{}, std::string(2001, 'x'), std::string("bad\"quote"),
+                        std::string("bad\rline"), std::string("bad\0tail", 8)})
+                    rejected([&] { return history.addObjectiveAction(owner, list, {spec.species, {text}}); });
+        }
+        for (const ActionDraft draft : {
+                ActionDraft{ActionSpecies::flag, {std::string{}, true}},
+                ActionDraft{ActionSpecies::flag, {std::string(2001, 'x'), true}},
+                ActionDraft{ActionSpecies::flag, {std::string("id")}},
+                ActionDraft{ActionSpecies::flag, {std::string("id"), std::int64_t{1}}},
+                ActionDraft{ActionSpecies::flag, {std::int64_t{2147483648LL}, true}, true},
+                ActionDraft{ActionSpecies::resourceText, {std::int64_t{-2147483649LL}}},
+                ActionDraft{ActionSpecies::resourceText, {std::string("7")}},
+                ActionDraft{static_cast<ActionSpecies>(6), {std::string("_RemoveStructure")}},
+                ActionDraft{static_cast<ActionSpecies>(255), {std::string("unknown")}}})
+            rejected([&] { return history.addObjectiveAction(owner, list, draft); });
+        rejected([&] { return history.addObjectiveEntry(owner, list); });
+        rejected([&] { CommandHistory tiny(*doc, 1, [&](const auto& line) { logs.push_back(line); });
+            return tiny.addObjectiveAction(owner, list, {ActionSpecies::flag, {std::string("valid"), true}}); });
+    }
+    rejected([&] { return history.addObjectiveAction(owner, 0, {ActionSpecies::wav, {std::string("sound.wav")}}); });
     auto added = history.addObjectiveEntry(owner, 0), expected = controlHistory.addObjectiveEntry(owner, 0);
     REQUIRE(added); REQUIRE(expected); CHECK(*added == *expected);
     auto hidden = fixture(); hidden.insert(hidden.find("FITend"), "[Team0Objective0Action1]\r\nst ActionSpeciesString = \"VendorAction\"\r\n");
     auto collision = MissionDocument::decode(hidden, packet(), "tail", {}); REQUIRE(collision);
     logs.clear(); CommandHistory collisionHistory(*collision, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
-    CHECK_FALSE(collisionHistory.addObjectiveEntry(collision->objectives()[0].section, 1));
+    CHECK_FALSE(collisionHistory.addObjectiveAction(collision->objectives()[0].section, 1,
+        {ActionSpecies::flag, {std::string("valid"), true}}));
     CHECK(logs.size() == 1); CHECK(collision->fitBytes() == hidden); CHECK(collision->revision() == 0); CHECK_FALSE(collisionHistory.canUndo());
     auto parentTail = fixture(); parentTail.insert(parentTail.find("FITend"), "[Objective1]\r\nul NumConditions = 0\r\n");
     auto parent = MissionDocument::decode(parentTail, packet(), "parent-tail", {}); REQUIRE(parent);

@@ -3,21 +3,66 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <format>
 
 namespace editor::document {
-std::span<const ActionSpec> actionSchema()
+std::span<const ActionSpec> actionSchema(bool creation)
 {
     static constexpr ObjectiveFieldSpec bik[] = {{"AVIFileName", "st", 3}};
     static constexpr ObjectiveFieldSpec wav[] = {{"WAVFileName", "st", 3}};
     static constexpr ObjectiveFieldSpec text[] = {{"Message", "st", 3}};
     static constexpr ObjectiveFieldSpec technology[] = {{"PurchaseFileName", "st", 3}};
     static constexpr ObjectiveFieldSpec resource[] = {{"ResourceStringID", "ul", 0, -2147483648.0, 2147483647.0}};
+    static constexpr ObjectiveFieldSpec flag[] = {{"FlagID", "st", 3}, {"Value", "b", 2}};
     static constexpr ActionSpec specs[] = {
         {ActionSpecies::bik, "PlayBIK", bik}, {ActionSpecies::wav, "PlayWAV", wav},
         {ActionSpecies::text, "DisplayTextMessage", text},
         {ActionSpecies::technology, "MakeNewTechnologyAvailable", technology},
-        {ActionSpecies::resourceText, "DisplayResourceTextMessage", resource}};
-    return specs;
+        {ActionSpecies::resourceText, "DisplayResourceTextMessage", resource},
+        {ActionSpecies::flag, "SetBooleanFlag", flag}};
+    return std::span{specs}.first(creation ? 6 : 5);
+}
+
+std::string objectivePayloadWire(const ObjectiveFieldSpec& field, const Scalar& value)
+{
+    auto encoded = value;
+    // FIT assembles multiline text differently unless the opening line is empty.
+    if (auto* text = std::get_if<std::string>(&encoded); text && text->find('\n') != text->npos) {
+        std::string wire = "\r\n";
+        for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
+        *text = std::move(wire);
+    }
+    Field spelling; spelling.prefix = field.prefix;
+    return field.type == 1 ? std::format("{:.9g}", std::get<double>(value)) : formatValue(spelling, Value{encoded});
+}
+
+std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft)
+{
+    const auto schema = actionSchema(true);
+    const auto spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+    const auto reject = [](std::string reason) { return std::unexpected(LoadError{"action", std::move(reason), 0}); };
+    if (spec == schema.end()) return reject("unsupported_action_creation");
+    if (draft.payload.size() != spec->fields.size()) return reject("required_action_payload");
+    if (draft.flagIndex && draft.species != ActionSpecies::flag) return reject("unexpected_FlagIndex");
+    std::string result;
+    for (std::size_t i = 0; i < spec->fields.size(); ++i) {
+        auto field = spec->fields[i];
+        if (draft.flagIndex && i == 0) field = {"FlagIndex", "ul", 0, -2147483648.0, 2147483647.0};
+        auto value = draft.payload[i];
+        if (auto* text = std::get_if<std::string>(&value)) {
+            for (auto at = text->find("\r\n"); at != text->npos; at = text->find("\r\n", at)) text->erase(at, 1);
+            if (text->empty()) return reject("required_action_text");
+        }
+        if (auto valid = validateObjectiveScalar(field, value); !valid) return std::unexpected(valid.error());
+        const auto wire = objectivePayloadWire(field, value);
+        const auto declaration = std::string(field.prefix) + " " + std::string(field.key) + " = " + wire + "\r\n";
+        auto check = decodeFit("FITini\r\n[Team0Objective0Action0]\r\n" + declaration + "FITend\r\n");
+        if (!check || check->fields.size() != 1 || check->fields[0].opaque ||
+            check->fields[0].warning == "reader_string_buffer_limit" || check->fields[0].value != Value{value})
+            return reject("reader_conversion_changes_value");
+        result += declaration;
+    }
+    return result;
 }
 
 std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry)

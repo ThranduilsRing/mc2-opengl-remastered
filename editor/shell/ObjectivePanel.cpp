@@ -193,13 +193,51 @@ void EntityPanels::objectives()
                     ImGui::EndCombo();
                 }
             }
-            if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add SetBooleanFlag")) {
-                const auto result = i % 2 == 0 && conditionCreation_ != 0 ?
+            auto& draft = actionCreation_[i / 2];
+            if (i % 2 != 0 && button((key + ".creation").c_str(), "New action payload"))
+                actionCreationOpen_[i / 2] = !actionCreationOpen_[i / 2];
+            if (i % 2 != 0 && actionCreationOpen_[i / 2]) {
+                const auto schema = actionSchema(true);
+                auto spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+                const bool speciesOpen = ImGui::BeginCombo("Action species", spec->name.data(), ImGuiComboFlags_HeightLargest);
+                record(key + ".species", speciesOpen);
+                if (speciesOpen) {
+                    for (const auto& candidate : schema)
+                        if (choice(key + ".species." + std::string(candidate.name), candidate.name.data(), draft.species == candidate.species)) {
+                            draft = ActionDraft{candidate.species};
+                        }
+                    ImGui::EndCombo();
+                    spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+                }
+                if (draft.payload.empty()) for (const auto& field : spec->fields) {
+                    if (field.type == 3) draft.payload.emplace_back(std::string{});
+                    else if (field.type == 2) draft.payload.emplace_back(false);
+                    else draft.payload.emplace_back(std::int64_t{});
+                }
+                if (draft.species == ActionSpecies::flag && ImGui::Checkbox("New flag uses FlagIndex", &draft.flagIndex))
+                    draft.payload[0] = draft.flagIndex ? Scalar{std::int64_t{}} : Scalar{std::string{}};
+                for (std::size_t f = 0; f < spec->fields.size(); ++f) {
+                    auto name = std::string(spec->fields[f].key);
+                    if (draft.flagIndex && f == 0) name = "FlagIndex";
+                    bool changed{};
+                    if (auto* value = std::get_if<std::string>(&draft.payload[f])) changed = ImGui::InputTextMultiline(("New " + name).c_str(), value, ImVec2(-1, 55), ImGuiInputTextFlags_CtrlEnterForNewLine);
+                    else if (auto* value = std::get_if<bool>(&draft.payload[f])) changed = ImGui::Checkbox(("New " + name).c_str(), value);
+                    else changed = ImGui::InputScalar(("New " + name).c_str(), ImGuiDataType_S64, &std::get<std::int64_t>(draft.payload[f]));
+                    record(key + ".new." + name, changed || ImGui::IsItemActivated());
+                }
+            }
+            const auto valid = i % 2 == 0 || encodeActionDraft(draft).has_value();
+            if (i % 2 != 0 && !actionCreationOpen_[i / 2]) ImGui::SameLine();
+            ImGui::BeginDisabled(!valid);
+            if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add selected action")) {
+                const auto result = i % 2 != 0 ? history_.addObjectiveAction(objective_, i, draft) : conditionCreation_ != 0 ?
                     history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species, conditionTarget_) :
                     history_.addObjectiveEntry(objective_, i);
-                if (result) { objectiveEntry_ = *result; status_ = "Applied"; } else status_ = result.error().reason;
-                ImGui::PopID(); ImGui::PopID(); return;
+                if (result) { objectiveEntry_ = *result; status_ = "Applied"; actionCreationOpen_[i / 2] = false; }
+                else status_ = result.error().reason;
+                ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
             }
+            ImGui::EndDisabled();
             for (std::size_t j = 0; j < selected->entries[i].size(); ++j) {
                 const auto& entry = selected->entries[i][j];
                 const auto row = document_.section(entry.section)->name;

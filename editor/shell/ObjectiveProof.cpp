@@ -17,7 +17,8 @@ void PanelProof::objectiveCrudProof()
             if (!history_.deleteObjectiveEntry(document_.objective(seed)->entries[list].back().section))
                 throw std::runtime_error("objective_entry_fixture_delete_failed");
         for (int i = 0; i < 2; ++i) {
-            const auto entry = history_.addObjectiveEntry(seed, list);
+            const auto entry = list % 2 == 0 ? history_.addObjectiveEntry(seed, list) :
+                history_.addObjectiveAction(seed, list, {ActionSpecies::flag, {std::string(i ? "e6c-second" : "e6c-first"), i != 0}});
             if (!entry || !history_.setObjectiveFlag(*entry, std::string(i ? "e6c-second" : "e6c-first"), 0, i != 0))
                 throw std::runtime_error("objective_entry_fixture_add_failed");
         }
@@ -54,9 +55,14 @@ void PanelProof::objectiveCrudProof()
         const auto key = "objective.entry." + std::to_string(list);
         const auto name = "entry-" + std::to_string(list);
         click("objective.list." + std::to_string(list));
+        if (list % 2 != 0) {
+            click(key + ".creation");
+            click(key + ".species"); click(key + ".species.SetBooleanFlag");
+            input(key + ".new.FlagID", "created-flag"); click(key + ".new.Value");
+        }
         operation(name + "-add", key + ".add", [this, id, list] {
             const auto& entries = document_.objective(id)->entries[list];
-            if (entries.size() != 3 || !entries.back().flag || entries.back().flag->id != "" || !entries.back().flag->value)
+            if (entries.size() != 3 || !entries.back().flag || entries.back().flag->id != (list % 2 ? "created-flag" : "") || !entries.back().flag->value)
                 throw std::runtime_error("objective_entry_add_widget_wrong");
         });
         click(key + ".select.0");

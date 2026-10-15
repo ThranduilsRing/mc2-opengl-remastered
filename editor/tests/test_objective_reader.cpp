@@ -314,13 +314,14 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
         const auto id = doc->objectives()[1].entries[list][index].section;
         const auto targetBlock = doc->section(id)->name;
         CommandHistory history(*doc);
-        for (const auto& authored : {std::string(1999, 'x'), std::string(2000, 'x'),
-                                    std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny",
-                                    std::string("hello\nul Count = 1")}) {
+        for (const auto& [authored, expected] : std::vector<std::pair<std::string, std::string>>{
+                {std::string(1999, 'x'), std::string(1999, 'x')}, {std::string(2000, 'x'), std::string(2000, 'x')},
+                {std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny"},
+                {std::string(1998, 'x') + "\r\ny", std::string(1998, 'x') + "\r\ny"},
+                {"hello\nul Count = 1", "hello\r\nul Count = 1"}}) {
             REQUIRE(history.setObjectivePayload(id, key, authored));
             REQUIRE(doc->save(output / "authored", {}));
             const auto saved = bytes(output / "authored.fit");
-            const auto expected = objective_text::toMemoryBreaks(objective_text::toFileBreaks(authored));
             for (const bool disk : {false, true}) {
                 FitIniFile reader;
                 REQUIRE((disk ? reader.open((output / "authored.fit").string().c_str()) : reader.open(saved.data(), static_cast<int>(saved.size()))) == NO_ERR);
@@ -358,6 +359,70 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
     FitIniFile reader; REQUIRE(reader.open(lf.data(), static_cast<int>(lf.size())) == NO_ERR);
     REQUIRE(reader.seekBlock("Text") == NO_ERR);
     CHECK(objective_text::read(reader, "Message") == std::optional<std::string>{"ab"});
+}
+
+TEST_CASE("reader/created actions require all six literal payloads in both lists without changing unrelated bytes")
+{
+    using namespace editor::document;
+    struct Expected { ActionSpecies species; const char* name; const char* key; Scalar value; const char* wire; const char* runtime; };
+    const Expected cases[] = {
+        {ActionSpecies::wav, "PlayWAV", "WAVFileName", std::string("../Audio/cue.wav"), "st WAVFileName = \"../Audio/cue.wav\"\r\n", "../Audio/cue.wav"},
+        {ActionSpecies::text, "DisplayTextMessage", "Message", std::string("first\n\nlast\n"), "st Message = \"\r\nfirst\r\n\r\nlast\r\n\"\r\n", "first\r\n\r\nlast\r\n"},
+        {ActionSpecies::technology, "MakeNewTechnologyAvailable", "PurchaseFileName", std::string("../Tech/new.fit"), "st PurchaseFileName = \"../Tech/new.fit\"\r\n", "../Tech/new.fit"},
+        {ActionSpecies::bik, "PlayBIK", "AVIFileName", std::string("../Video/intro.bik"), "st AVIFileName = \"../Video/intro.bik\"\r\n", "../Video/intro.bik"},
+        {ActionSpecies::resourceText, "DisplayResourceTextMessage", "ResourceStringID", std::int64_t{-17}, "ul ResourceStringID = -17\r\n", nullptr},
+        {ActionSpecies::flag, "SetBooleanFlag", "FlagID", std::string("created\nflag"), "st FlagID = \"\r\ncreated\r\nflag\"\r\nb Value = FALSE\r\n", "created\r\nflag"}};
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    const auto output = std::filesystem::path("scratch/e6c-created-reader") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(output);
+    for (const auto list : {1U, 3U}) for (const auto& row : cases) for (const bool index : {false, true}) {
+        if (index && row.species != ActionSpecies::flag) continue;
+        CAPTURE(list); INFO(row.name); CAPTURE(index);
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        CommandHistory history(*doc);
+        const auto owner = history.addObjective(0); REQUIRE(owner);
+        const auto original = doc->fitBytes();
+        const auto ownerName = doc->section(*owner)->name;
+        ActionDraft draft{row.species, {index ? Scalar{std::int64_t{-2147483648LL}} : row.value}, index};
+        if (row.species == ActionSpecies::flag) draft.payload.emplace_back(false);
+        const auto added = history.addObjectiveAction(*owner, list, draft);
+        INFO((added ? "created" : added.error().reason));
+        REQUIRE(added);
+        const auto block = doc->section(*added)->name;
+        const auto suffix = list == 1 ? "Action" : "FailureAction";
+        CHECK(block == ownerName + suffix + "0");
+        auto expected = original;
+        const auto* count = doc->find(*owner, list == 1 ? "NumActions" : "NumFailureActions"); REQUIRE(count);
+        expected.replace(count->syntax.begin, 1, "1");
+        expected.insert(expected.find("FITend"), "[" + block + "]\r\nst " + suffix + "SpeciesString = \"" + row.name + "\"\r\n" +
+            (index ? "ul FlagIndex = -2147483648\r\nb Value = FALSE\r\n" : row.wire));
+        CHECK(doc->fitBytes() == expected);
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == expected);
+        CHECK(doc->objective(*owner)->entries[list].back().section == *added);
+        const auto path = output / (std::to_string(list) + row.name + (index ? "-index" : "-id"));
+        REQUIRE(doc->save(path, {}));
+        CHECK(bytes(path.string() + ".fit") == expected);
+        auto reopened = MissionDocument::read(path.string() + ".fit", path.string() + ".pak", {}, editor::tests::inputs().markerObjects); REQUIRE(reopened);
+        CHECK(reopened->fitBytes() == expected);
+        CHECK(std::vector<std::byte>(reopened->pakBytes().begin(), reopened->pakBytes().end()) ==
+            std::vector<std::byte>(doc->pakBytes().begin(), doc->pakBytes().end()));
+        for (const bool disk : {false, true}) {
+            FitIniFile reader;
+            REQUIRE((disk ? reader.open((path.string() + ".fit").c_str()) : reader.open(expected.data(), static_cast<int>(expected.size()))) == NO_ERR);
+            REQUIRE(reader.seekBlock(block.c_str()) == NO_ERR);
+            CHECK(objective_text::read(reader, (std::string(suffix) + "SpeciesString").c_str()) == std::optional<std::string>{row.name});
+            if (index || row.species == ActionSpecies::resourceText) {
+                unsigned long value{}; REQUIRE(reader.readIdULong(index ? "FlagIndex" : row.key, value) == NO_ERR);
+                CHECK(static_cast<std::int32_t>(value) == (index ? -2147483648LL : -17));
+            } else CHECK(objective_text::read(reader, row.key) == std::optional<std::string>{row.runtime});
+            if (row.species == ActionSpecies::flag) {
+                bool value = true; REQUIRE(reader.readIdBoolean("Value", value) == NO_ERR); CHECK_FALSE(value);
+                if (index) CHECK_FALSE(objective_text::read(reader, "FlagID"));
+            }
+        }
+    }
 }
 
 TEST_CASE("reader/owned multiline edits match the real disk and RAM objective readers")
@@ -476,7 +541,9 @@ TEST_CASE("reader/exported four-list boolean payloads obey ID precedence and def
         CHECK(value == expected);
     };
     for (std::size_t list = 0; list < 4; ++list) {
-        const auto entry = history.addObjectiveEntry(owner, list); REQUIRE(entry);
+        const auto entry = list % 2 == 0 ? history.addObjectiveEntry(owner, list) :
+            history.addObjectiveAction(owner, list, {ActionSpecies::flag, {std::string("seed"), true}});
+        REQUIRE(entry);
         REQUIRE(history.setObjectiveFlag(*entry, std::string("flag\nsecond"), 0, false));
         const auto block = doc->section(*entry)->name;
         REQUIRE(doc->save(output / "exported", {}));

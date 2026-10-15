@@ -184,7 +184,14 @@ struct ActionSpec {
     std::string_view name;
     std::span<const ObjectiveFieldSpec> fields;
 };
-std::span<const ActionSpec> actionSchema();
+std::span<const ActionSpec> actionSchema(bool creation = false);
+struct ActionDraft {
+    ActionSpecies species = ActionSpecies::bik;
+    std::vector<Scalar> payload;
+    bool flagIndex{};
+};
+std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft);
+std::string objectivePayloadWire(const ObjectiveFieldSpec& field, const Scalar& value);
 std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry);
 std::expected<void, LoadError> validateObjectiveScalar(const ObjectiveFieldSpec& spec, const Scalar& value);
 struct ObjectiveScalar {

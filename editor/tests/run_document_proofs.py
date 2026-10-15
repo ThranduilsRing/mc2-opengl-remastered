@@ -254,9 +254,9 @@ def main():
             print(reader.stdout + reader.stderr, end="", flush=True)
             if reader.returncode:
                 return reader.returncode
-            if not re.search(r"\[doctest\] test cases:\s+8\s+\|\s+8 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
+            if not re.search(r"\[doctest\] test cases:\s+9\s+\|\s+9 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
                 raise ValueError("real objective reader cases were skipped or omitted")
-            print("Offline proofs with installed prerequisites: widget graders and eight real FIT/text reader cases executed; species dispatch remains source-derived; rendered-widget proof awaits smoke host", flush=True)
+            print("Offline proofs with installed prerequisites: widget graders and nine real FIT/text reader cases executed; six creation species have literal expectations; rendered-widget proof awaits smoke host", flush=True)
     if args.asan and (len(asan_cases) != 2 or sum(asan_cases) != native_cases):
         raise ValueError("ASan split did not cover the complete normal document suite")
     if args.asan:

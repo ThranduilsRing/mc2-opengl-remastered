@@ -29,6 +29,7 @@ public:
     std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);
     std::expected<void, LoadError> resolveObjectiveEntry(NodeId entry, EntityId target);
     std::expected<NodeId, LoadError> addObjectiveEntry(NodeId objective, std::size_t list);
+    std::expected<NodeId, LoadError> addObjectiveAction(NodeId objective, std::size_t list, const ActionDraft& draft);
     std::expected<NodeId, LoadError> addObjectiveCondition(NodeId objective, std::size_t list, ConditionSpecies species,
         std::optional<EntityId> target = {});
     std::expected<void, LoadError> setObjectivePayload(NodeId entry, std::string_view key, Scalar value);
@@ -62,7 +63,8 @@ private:
     LoadError rejectObjective(std::string reason);
     std::expected<NodeId, LoadError> editObjectiveEntries(ObjectiveEdit edit, NodeId objective,
         std::size_t list, NodeId entry = {}, std::uint32_t index = 0,
-        std::optional<ConditionSpecies> species = {}, std::optional<EntityId> target = {});
+        std::optional<ConditionSpecies> species = {}, std::optional<EntityId> target = {},
+        std::string action = {});
     std::expected<void, LoadError> commitObjectiveFit(std::string fit, std::string label,
         const std::unordered_map<std::string, std::string>& renamed = {});
     std::expected<NodeId, LoadError> editObjectives(ObjectiveEdit edit, std::uint32_t team,
