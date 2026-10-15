@@ -1,5 +1,14 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## RESUME (parked 2026-10-14 for a host reboot) -- parity1 review pre-merge fixes
+All four pre-merge fixes are COMMITTED (tip before this commit: f12957839); there are no uncommitted edits, so `lane2-wip-2026-10-14.patch` is empty.
+1. Binding 7 hot-colour table: declared in every tier-1 layout (placeholder bound at init), pool size adjusted. DONE (commit "hot-colour table binding declared in every tier-1 layout").
+2. Placeholder index: shader gated by the new `ColorFrameUBO.hotTableReady` flag and `uTypeHot.c.length()` bound check. DONE, same commit.
+3. e1411ba4b claim: REWORDED (one typed delete per deleter, the five `reset(new T())` stay at the call sites), in this file's session 17 text. DONE.
+4. `docs/lighting-divergence-map.md` row 52 night column. DONE.
+Proof so far: build (ninja) OK and deployed at the state commit; day airbase capture vs GL re-measured 3.266 (`.claude/l2cap/s9after-vk`), no regression. NOT done: the VK tier1 with validation (the run was killed by the park), `build_all_targets`, doctest. Note: `MC2_VK_PROP_MATERIAL` was folded into the umbrella (gate deleted), so "material off" is not reachable; tier1 and material are the same mode.
+Next command: `py -3 tools/build_all_targets.py --log-dir scratch/blogs` then `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1 MC2_VULKAN_VALIDATION=1 py -3 scripts/run_smoke.py --tier tier1 --deploy lane2 --continue --keep-logs --wait-timeout 3600` (redeploy first if the exe is stale), then `py -3 tools/build_contract_harnesses.py --run --unit`.
+
 ## SEVENTEENTH session (2026-10-14 ~16:05 CDT start, cap 5 h) -- post_* owners, CSM layouts, VK parity rows 15 + 16 (+ the ambient arm of 22); nifty merged at the start (d109918d4), NOT merged back
 Every number below was printed by the tool named beside it in this session.
 
