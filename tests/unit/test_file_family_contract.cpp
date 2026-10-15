@@ -18,6 +18,8 @@
 #include "inifile.h"
 #include "packet.h"
 
+#include "../../GameOS/gameos/utils/mc2log.h"
+
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -179,12 +181,17 @@ TEST_CASE("FC7 a packet file whose header claims more packets than the file hold
 	const unsigned char bytes[16] = {0xCE, 0xFA, 0xED, 0xFE, 0xF8, 0xFF, 0xFF, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0};
 	writeBytes(path, (const char *)bytes, sizeof(bytes));
 
-	g_mc2TestStopFatal = false;   // the rejection logs one [PACKET_HEADER_BAD] STOP line and carries on, like the engine
+	// The rejection is one [PACKET_HEADER_BAD] log line per process and never a STOP (ruling 5, rule E7).
+	g_mc2TestStopFatal = false;
 	g_mc2TestStopCount = 0;
+	std::FILE *capture = std::tmpfile();
+	REQUIRE(capture != nullptr);
+	mc2::log::setSpec("*:info");
+	mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, capture);
 
 	PacketFile in;
 	CHECK(in.open(path.c_str()) == PACKET_OUT_OF_RANGE);
-	CHECK(g_mc2TestStopCount == 1);
+	CHECK(g_mc2TestStopCount == 0);
 	CHECK(in.getNumPackets() == 0);
 	in.close();
 
@@ -195,7 +202,19 @@ TEST_CASE("FC7 a packet file whose header claims more packets than the file hold
 	CHECK(in2.open(path.c_str()) == PACKET_OUT_OF_RANGE);
 	CHECK(in2.getNumPackets() == 0);
 	in2.close();
-	CHECK(g_mc2TestStopCount == 1);   // one line per process, not one per bad file
+	CHECK(g_mc2TestStopCount == 0);
+
+	std::fflush(capture);
+	std::rewind(capture);
+	std::string logged;
+	char buf[512];
+	size_t n;
+	while ((n = std::fread(buf, 1, sizeof buf, capture)) > 0) logged.append(buf, n);
+	mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
+	std::fclose(capture);
+	const size_t first = logged.find("[PACKET_HEADER_BAD]");
+	CHECK(first != std::string::npos);
+	CHECK(logged.find("[PACKET_HEADER_BAD]", first + 1) == std::string::npos);   // one line per process, not one per bad file
 	g_mc2TestStopFatal = true;
 
 	remove(path.c_str());

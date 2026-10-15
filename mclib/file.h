@@ -137,7 +137,8 @@ class File
 		unsigned long			bufferResult;
 
 		// The files opened on this one's handle (open(parent, size)). NON-owning: each child closes itself and clears its slot, and the parent's
-		// close() closes the children still open, in slot order. One slot per allowed child (open's numChildren), nullptr = free; empty = none allowed.
+		// close() closes the children still open, in slot order. The parent must outlive any read made through a child (a child is a view of its
+		// parent's handle and RAM image; it keeps its own copy of the name only). One slot per allowed child (open's numChildren), nullptr = free; empty = none allowed.
 		std::vector<FilePtr>	m_children;
 				
 		FilePtr					parent;

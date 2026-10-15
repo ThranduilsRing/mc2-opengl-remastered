@@ -52,6 +52,7 @@ add_executable(mc2_tests
     alloc_probe_new.cpp     # this binary's global operator new/delete, routed through the probe
     test_saved_objects_check.cpp  # SAVE-REJECT-1: object-packet run check of an in-mission save (offline)
     test_save_struct_zero.cpp  # SAVE-ZERO-1: MC2_SAVE_STRUCT zeroes struct padding on a dirty stack (offline)
+    test_save_pointer_pins.cpp  # SAVE-PTR-PIN-1: Gate closestObject and QueuedTacOrder marker are written as null (source pins)
     test_sim_identity.cpp   # SIM-IDENTITY-HASH-1: world-hash order/quantum kernel
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
