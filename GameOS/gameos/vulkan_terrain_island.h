@@ -117,7 +117,6 @@ struct Mc2TerrainTier1Feed {
     // pure concrete shadow = dyn (static dropped, dynamic kept). Gate MC2_VK_TERRAIN_DYNSHADOW
     // (requires MC2_VK_TERRAIN_LIGHTING). 0/false -> no dynamic shadow (lit-only), no hole.
     int32_t                     dynShadowsEnabled;     // pp->shadowsEnabled_ && getDynamicShadowFBO() && !CSM
-    uint32_t                    glDynamicShadowTex;    // GL name of pp->getDynamicShadowTexture() (0 = not ready)
     int32_t                     dynamicShadowSize;     // dynamic shadow map edge in texels
     float                       dynamicLightSpaceMatrix[16]; // pp->getDynamicLightSpaceMatrix()
     // VK-TERRAIN-DETAIL sub-slice: perturb the terrain normal (macro slope + material

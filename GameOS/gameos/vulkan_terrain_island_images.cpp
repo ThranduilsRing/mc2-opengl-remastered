@@ -784,6 +784,12 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
     }
 
+    // Expected on a mission's first frames; logged once so a map that never arrives is visible.
+    static bool s_noDynMapLogged = false;
+    if (!s_noDynMapLogged) {
+        s_noDynMapLogged = true;
+        vlog("dynamic shadow: no VK dynamic map yet; terrain has no dynamic shadow this frame");
+    }
     return false;
 }
 

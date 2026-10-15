@@ -350,10 +350,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (s_copyStatsOn) subStaticUs = usSince(t0);
     }
 
-    // VK-TERRAIN-DYNSHADOW: per-frame copy of the GL DYNAMIC (building/mech) shadow map
-    // into the 2nd VK D32 depth-compare image. No-op (dynShadowReady=false) when the
-    // sub-gate is off or the GL dynamic map isn't live -> VK terrain has no dynamic
-    // shadow (fail-soft, never a hole). Same mechanism as the static copy above.
+    // Binding 7 is the VK shadow island's single dynamic map this frame, or no dynamic shadow at all.
     {
         const clk::time_point t0 = clk::now();
         copy_dynamic_shadow(s, feed);

@@ -128,7 +128,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // deferred — matches the mechanism-proven shadow-compare spike). Copy source is
         // the RAW engine GL texture so we never toggle compare-mode on a VK interop tex.
         out->dynShadowsEnabled = 0;
-        out->glDynamicShadowTex = 0;
         out->dynamicShadowSize = 0;
         std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
         // Umbrella member; requires lighting (its own precondition).
@@ -141,7 +140,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             const int    dSize = pp->getDynamicShadowMapSize();
             if (dTex != 0 && dSize > 0) {
                 out->dynShadowsEnabled = 1;
-                out->glDynamicShadowTex = static_cast<uint32_t>(dTex);
                 out->dynamicShadowSize = dSize;
                 std::memcpy(out->dynamicLightSpaceMatrix, pp->getDynamicLightSpaceMatrix(),
                             sizeof(out->dynamicLightSpaceMatrix));
@@ -188,7 +186,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             const float* mats  = pp->getDynamicCascadeMatrices();
             if (fTex != 0 && fSize > 0 && ccount > 0 && mats) {
                 out->dynShadowsEnabled = 1;
-                out->glDynamicShadowTex = static_cast<uint32_t>(fTex);
                 out->dynamicShadowSize = fSize;
                 // Full-map cascade = the LAST cascade; its matrix is row (ccount-1).
                 std::memcpy(out->dynamicLightSpaceMatrix, mats + (ccount - 1) * 16,

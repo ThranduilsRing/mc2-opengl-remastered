@@ -212,8 +212,6 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   dynShadowView;
     uint32_t      dynShadowDim  = 0;
     bool          dynShadowReady = false;
-    mc2vk::OwnedBuffer      dynShadowStage;
-    VkDeviceSize  dynShadowStageBytes = 0;
 
     // VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island produced+fenced this
     // frame's dynamic shadow depth (mc2_vk_shadow_island_dyn_shadow_ready()), binding 7
