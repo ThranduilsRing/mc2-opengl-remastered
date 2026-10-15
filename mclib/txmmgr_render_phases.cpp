@@ -523,6 +523,10 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 			GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
 			GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
 			gos_EndShadowPrePass();
+#ifdef MC2_VULKAN_ISLAND
+			// The same building set casts into the VK cascades, so objects receive building shadows under VK (GL's screen pass cannot reach the VK scene).
+			mc2_vk_shadow_island_set_building_casters(bldgShadowInstances.data(), (unsigned int)bldgShadowInstances.size());
+#endif
 		}
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowStatic);
 	}
