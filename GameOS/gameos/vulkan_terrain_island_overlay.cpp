@@ -1,6 +1,7 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "texture_decode.h"   // gos_GetTextureRgba
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -18,9 +19,8 @@
 // queue into the SHARED scene GBuffer (LOAD color0 + normal + depth, GEQUAL reverse-Z) with
 // the terrain island's own set 0 (UBO slot 0 + cement/pool/shadow bindings), so overlays are
 // lit by exactly the inputs the terrain beneath them used. Textures are copy-once mip'd
-// imports of the GL textures, keyed on the gos texture handle.
+// imports of the handle's decoded texels (gos_GetTextureRgba), keyed on the gos texture handle.
 // ===========================================================================
-uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // gameos_graphics.cpp
 
 namespace vk_terrain_detail {
 
@@ -31,7 +31,7 @@ void ovl_destroy_tex(OvlTex& t) {
     t.view.reset();   // the view goes before the image it covers
     t.img.reset();
     t.set = VK_NULL_HANDLE;   // freed with the pool
-    t.glTex = 0;
+    t.source.reset();
 }
 
 // Idles the GPU, then releases the overlay objects (the state's destructor does it, in reverse declaration order).
@@ -129,12 +129,13 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const v
 // resident / cannot import (caller skips the draw this frame). 0 / 0xffffffff = untextured.
 OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &o->dummy;
-    const uint32_t glTex = gos_GetGLTextureId(gosHandle);
-    if (glTex == 0) return nullptr;
+    uint32_t w = 0, h = 0;
+    auto rgba = gos_GetTextureRgba(gosHandle, &w, &h);
+    if (!rgba) return nullptr;
     auto it = o->texs.find(gosHandle);
     if (it != o->texs.end()) {
-        if (it->second.glTex == glTex) return &it->second;
-        // The GL texture behind this handle changed (reloaded): re-import.
+        if (it->second.source == rgba) return &it->second;
+        // The texels behind this handle changed (reloaded): re-import.
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_texture_replace");
         ovl_destroy_tex(it->second);
         o->texs.erase(it);
@@ -142,29 +143,17 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     }
     if (o->texs.size() >= kOvlMaxTex) return nullptr;
 
-    GLint prevTex = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) {
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
-        return nullptr;
-    }
-    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    if (w == 0 || h == 0 || w > 8192 || h > 8192) return nullptr;
 
     OvlTex t;
-    t.glTex = glTex;
-    if (!ovl_upload_tex(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
+    if (!ovl_upload_tex(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()) ||
         !ovl_alloc_tex_set(s, o, t)) {
         ovl_destroy_tex(t);
         return nullptr;
     }
-    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u glTex=%u %dx%d (%zu/%u).",
-         gosHandle, glTex, (int)w, (int)h, o->texs.size() + 1, kOvlMaxTex);
+    t.source = std::move(rgba);
+    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u (%zu/%u).",
+         gosHandle, w, h, o->texs.size() + 1, kOvlMaxTex);
     return &o->texs.emplace(gosHandle, std::move(t)).first->second;
 }
 

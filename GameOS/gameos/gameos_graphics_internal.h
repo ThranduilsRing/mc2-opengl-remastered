@@ -232,6 +232,17 @@ class gosTexture {
             rgba_mirror_ = std::move(fresh);
         }
 
+        // Publishes already-RGBA8 texels as the mirror without a copy (the decoded upload source).
+        void adoptRgbaMirror(int w, int h, std::vector<uint8_t>&& rgba) {
+            if (w <= 0 || h <= 0 || rgba.size() != (size_t)w * (size_t)h * 4u) {
+                setRgbaMirror(0, 0, TF_RGBA8, nullptr);
+                return;
+            }
+            mirror_w_ = w;
+            mirror_h_ = h;
+            rgba_mirror_ = std::make_shared<const std::vector<uint8_t>>(std::move(rgba));
+        }
+
         // VK-FIELD-VFX-4: lazily build the HUD rgba mirror by reading the texel
         // content back from the GPU. Covers textures whose upload path never set
         // a CPU mirror — above all the BC7 .ktx2 sidecar path
@@ -256,10 +267,13 @@ class gosTexture {
             {
                 GlPixelStoreGuard pixelStoreGuard;
                 while (glGetError() != GL_NO_ERROR) {} // clear stale errors
+                // Callers include the Vulkan islands mid-frame: the GL binding they find must survive.
+                GLint prevTex = 0;
+                glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
                 glBindTexture(GL_TEXTURE_2D, tex_.id);
                 glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
                 const GLenum err = glGetError();
-                glBindTexture(GL_TEXTURE_2D, 0);
+                glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
                 if (err != GL_NO_ERROR) {
                     static int s_mirrorReadFails = 0;
                     if (++s_mirrorReadFails <= 3)

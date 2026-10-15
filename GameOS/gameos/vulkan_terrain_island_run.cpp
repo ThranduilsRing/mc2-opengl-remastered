@@ -332,10 +332,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
 
-    // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the GL 4x
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake
     // version changed). Fail-soft: not-ready -> UBO visualMode forced 0 (undisplaced).
-    if (feed.glVisualHeightSsbo != 0)
+    if (feed.visualHeightCpu)
         snapshot_visual_height(s, feed);
 
     // VK-TERRAIN-LIGHTING: copy-once-per-generation of the GL static sun shadow map into

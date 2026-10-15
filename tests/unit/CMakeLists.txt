@@ -113,6 +113,11 @@ add_executable(mc2_tests
     test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
     test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
+    test_texture_decode.cpp  # backend-neutral texture decode + upload policy (no GL)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/texture_decode.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)
+    test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
@@ -196,6 +201,7 @@ target_include_directories(mc2_tests PRIVATE
 # 3rdparty/lib/x64/zlib.lib is the static build -- no zlib1.dll needed at run time.
 target_link_libraries(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
+    ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
 )
 
 # Match main build's preprocessor environment so engine headers parse the

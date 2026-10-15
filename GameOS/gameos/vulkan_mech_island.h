@@ -40,7 +40,7 @@ extern "C" {
 // One indexed sub-range of the shared mech IBO for a single (packet,instanceBase).
 // Mirrors the flush() DrawCall the GL path issues (globalPacketIdx + instanceBase
 // + instanceCount), pre-resolved to firstIndex/indexCount/baseVertex + the live
-// slot-0 GL texture id (per-actor paint scheme resolved LIVE this frame).
+// slot-0 gos texture handle (per-actor paint scheme resolved LIVE this frame).
 struct Mc2MechDrawRun {
     uint32_t firstIndex;    // into shared IBO (indices, not bytes)
     uint32_t indexCount;
@@ -48,9 +48,9 @@ struct Mc2MechDrawRun {
     uint32_t instanceBase;  // first instance index into the instance SSBO snapshot
     uint32_t instanceCount;
     uint32_t materialFlags; // bit0: ALPHA_TEST
-    uint32_t slot0GlTex;    // LIVE GL_TEXTURE_2D id for this run's paint scheme (0=none)
-    uint32_t aoGlTex;       // VK-PARITY-MECH-1: GL unit-6 AO map id (AO-1; 0=none)
-    uint32_t normalGlTex;   // VK-PARITY-MECH-1: GL unit-7 normal map id (NORMALS-1; 0=none)
+    uint32_t slot0Tex;      // LIVE gos texture handle of this run's paint scheme (0 = none)
+    uint32_t aoTex;         // gos texture handle of the per-type AO map (0 = none)
+    uint32_t normalTex;     // gos texture handle of the per-type normal map (0 = none)
 };
 
 // Copy-ONCE geometry feed: the shared mech VBO/IBO GL names + 48B stride.

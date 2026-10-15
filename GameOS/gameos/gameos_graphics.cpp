@@ -6,6 +6,7 @@
 
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "texture_decode.h"
 
 
 
@@ -876,6 +877,21 @@ uint32_t gos_GetGLTextureId(uint32_t gosHandle) {
     if (gosHandle >= g_gos_renderer->getTextureListSize()) return 0;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
     return tex ? tex->getTextureId() : 0;
+}
+
+std::shared_ptr<const std::vector<uint8_t>> gos_GetTextureRgba(uint32_t gosHandle, uint32_t* width, uint32_t* height) {
+    if (width) *width = 0;
+    if (height) *height = 0;
+    if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return nullptr;
+    if (gosHandle >= g_gos_renderer->getTextureListSize()) return nullptr;
+    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
+    // Pre-compressed (.ktx2) textures were uploaded without CPU texels; the texture object reads them back once per content.
+    if (!tex || !tex->ensureRgbaMirrorFromGpu()) return nullptr;
+    gosTextureInfo info;
+    tex->getTextureInfo(&info);
+    if (width) *width = info.width_;
+    if (height) *height = info.height_;
+    return tex->getRgbaMirror();
 }
 
 // P1-1: FX-GPU-1 Phase 1 — narrow GL-name resolver for the GPU particle

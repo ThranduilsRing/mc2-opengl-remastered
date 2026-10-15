@@ -5,6 +5,16 @@
 
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
+#include "terrain_field_store.h"
+
+#include <memory>
+
+namespace {
+// Lives from Init to Destroy, like the SSBOs it feeds.
+std::unique_ptr<mc2terrain::TerrainFieldStore> s_fieldStore;
+}
+
+mc2terrain::TerrainFieldStore* gos_TerrainFieldStore() { return s_fieldStore.get(); }
 
 
 
@@ -475,6 +485,7 @@ void gos_TerrainLodChunk_Init()
     }
     s_typeSsbo.create();   // Step 5b: terrainType SSBO (concrete)
     s_cementSsbo.create(); // Step 5c: cement word SSBO
+    s_fieldStore = std::make_unique<mc2terrain::TerrainFieldStore>();
 
     // Shader program (Phase 4) — load unconditionally; SubmitDrawCommands gates
     // on the env var so no pixels change unless MC2_TERRAIN_LOD_CHUNK=1.
@@ -672,6 +683,7 @@ void gos_TerrainLodChunk_Destroy()
     // Free patch cache VBOs/IBOs (main + Phase 6 skirt). RAII: clearing the
     // cache runs each GpuBuffer dtor -> glDeleteBuffers (was a hand loop).
     s_patchCache.clear();
+    s_fieldStore.reset();
 
     if (s_patchVao != 0) {
         glDeleteVertexArrays(1, &s_patchVao);

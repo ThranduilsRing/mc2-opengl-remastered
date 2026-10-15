@@ -1226,29 +1226,26 @@ bool upload_geometry_once(ColorPropIsland* s) {
     if (s->geomUploaded) return true;
     Mc2ShadowGeomFeed feed{};
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
-    if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
+    // The vertex / index bytes come from the batcher's CPU copy (the bytes the GL buffers were created from).
+    const void* vboCpu = nullptr; const void* iboCpu = nullptr;
+    uint64_t vboBytes = 0, iboBytes = 0;
+    if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
+    if (vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
+        vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", (unsigned long long)vboBytes,
+             (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes);
+        return false;
+    }
 
-    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
-    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
-    std::vector<uint8_t> scratch;
-    { void* p = nullptr;
-      if ((p = s->vbo.map()) != nullptr) {
-          scratch.resize((size_t)feed.vboBytes);
-          glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-          glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-          glBindBuffer(GL_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          s->vbo.unmap();
-      } }
-    { void* p = nullptr;
-      if ((p = s->ibo.map()) != nullptr) {
-          scratch.resize((size_t)feed.iboBytes);
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-          glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          s->ibo.unmap();
-      } }
+    if (!make_buffer(s, s->vbo, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
+    if (!make_buffer(s, s->ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
+    { void* p = s->vbo.map();
+      if (!p) return false;
+      std::memcpy(p, vboCpu, (size_t)vboBytes);
+      s->vbo.unmap(); }
+    { void* p = s->ibo.map();
+      if (!p) return false;
+      std::memcpy(p, iboCpu, (size_t)iboBytes);
+      s->ibo.unmap(); }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
     s->typeRuns.clear();
