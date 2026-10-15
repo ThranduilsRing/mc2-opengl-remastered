@@ -5,7 +5,7 @@ A set listed here may no longer exist on disk: deleting a set directory never re
 VOID = the requested backend is not the one that drew it, or the set has no capture record: never cite the set as evidence for the requested backend. A VOID flag is sticky.
 unrecorded = the set predates that field. `[vs HEAD defaults]` = the exe's own option table could not be read, so the differences are against the defaults of the commit this index was written at.
 Add new sets with `py -3 tools/visual_verify/capture_index.py`.
-154 set(s), 23 VOID (counted from the ledger when this file was written).
+220 set(s), 28 VOID (counted from the ledger when this file was written).
 
 f21-after-vk **VOID** | vulkan | gl | gl_fbo | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 f21-after-vkarm | vulkan | vulkan | vk_present | ec0e983ec621 | unrecorded | frozen | 2/2 | 2026-10-12
@@ -52,6 +52,21 @@ gold1080-nocsv-01 | gl | gl | gl_fbo | 5a39cb4bf0b5 | defaults | frozen | 1/1 | 
 gold1080-r1 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 gold1080-r2 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
 gold1080-r3 | gl | gl | gl_fbo | e9e3f19d6f6e | defaults | frozen | 10/10 | 2026-10-13
+lfsi-after-vk | vulkan | vulkan | vk_present | d992212c3ebc | defaults | frozen | 2/2 | 2026-10-14
+lfsi-after1-gl | gl | gl | gl_fbo | d992212c3ebc | defaults | frozen | 2/2 | 2026-10-14
+lfsi-after2-gl | gl | gl | gl_fbo | d992212c3ebc | defaults | frozen | 2/2 | 2026-10-14
+lfsi-after3-vk | vulkan | vulkan | vk_present | 4896b503e213 | defaults | frozen | 1/2 | 2026-10-14
+lfsi-after31-gl | gl | gl | gl_fbo | 4896b503e213 | defaults | frozen | 1/2 | 2026-10-14
+lfsi-after32-gl | gl | gl | gl_fbo | 4896b503e213 | defaults | frozen | 2/2 | 2026-10-14
+lfsi-after4-vk | vulkan | vulkan | vk_present | 4896b503e213 | defaults | frozen | 1/1 | 2026-10-14
+lfsi-after41-gl **VOID** | gl | unrecorded | unrecorded | 4896b503e213 | defaults | frozen | 0/1 | 2026-10-14 | no pose has a sidecar
+lfsi-after42-gl **VOID** | gl | unrecorded | unrecorded | 4896b503e213 | defaults | frozen | 0/1 | 2026-10-14 | no pose has a sidecar
+lfsi-before-vk | vulkan | vulkan | vk_present | 2c0052240995 | defaults | frozen | 2/2 | 2026-10-14
+lfsi-before1-gl | gl | gl | gl_fbo | 2c0052240995 | defaults | frozen | 2/2 | 2026-10-14
+lfsi-before2-gl | gl | gl | gl_fbo | 2c0052240995 | defaults | frozen | 2/2 | 2026-10-14
+lfsi-beforeb-vk | vulkan | vulkan | vk_present | 2c0052240995 | defaults | frozen | 2/2 | 2026-10-14
+lfsi-beforeb1-gl | gl | gl | gl_fbo | 2c0052240995 | defaults | frozen | 2/2 | 2026-10-14
+lfsi-beforeb2-gl | gl | gl | gl_fbo | 2c0052240995 | defaults | frozen | 2/2 | 2026-10-14
 opt-off | gl | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 1/1 | 2026-10-12
 opt-on | gl | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 1/1 | 2026-10-12
 p1a-vk **VOID** | vulkan | gl | gl_fbo | 0196b20c5f56 | unrecorded | unfrozen | 2/2 | 2026-10-10 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
@@ -89,12 +104,63 @@ probe-vk-noumbrella **VOID** | vulkan | gl | gl_fbo | c5b7e0843952 | defaults | 
 res1080-a-gl | gl | gl | gl_fbo | e8437015b524 | unrecorded | frozen | 1/1 | 2026-10-13
 res1080-b-gl | gl | gl | gl_fbo | e8437015b524 | unrecorded | frozen | 1/1 | 2026-10-13
 res2160-gl | gl | gl | gl_fbo | e8437015b524 | unrecorded | frozen | 1/1 | 2026-10-13
+s10-fx-gl | gl | gl | gl_fbo | ee3016909ead | PostCAS=true,TonemapMode=1 | frozen | 2/2 | 2026-10-15
+s10-fx-vk-before | vulkan | vulkan | vk_present | ee3016909ead | PostCAS=true,TonemapMode=1 | frozen | 2/2 | 2026-10-15
+s10-fx-vk-r19 | vulkan | vulkan | vk_present | 91fe7b29e9eb | PostCAS=true,TonemapMode=1 | frozen | 2/2 | 2026-10-15
+s10-fx2-gl | gl | gl | gl_fbo | 91fe7b29e9eb | TonemapMode=2 | frozen | 2/2 | 2026-10-15
+s10-fx2-vk-r19 | vulkan | vulkan | vk_present | 91fe7b29e9eb | TonemapMode=2 | frozen | 2/2 | 2026-10-15
+s10-night-low-gl **VOID** | gl | unrecorded | unrecorded | e05bc6430789 | defaults | frozen | 0/3 | 2026-10-15 | no pose has a sidecar
+s10-night-low-vk **VOID** | vulkan | unrecorded | unrecorded | e05bc6430789 | defaults | frozen | 0/3 | 2026-10-15 | no pose has a sidecar
+s10-night-low-vk-opts **VOID** | vulkan | unrecorded | unrecorded | e05bc6430789 | PostCAS=true,PropShadowReceive=1,StaticPropPbr=true,SunAxisFix=true,TonemapMode=1 | frozen | 0/3 | 2026-10-15 | no pose has a sidecar
+s10-terr-gl | gl | gl | gl_fbo | ee3016909ead | defaults | frozen | 5/5 | 2026-10-15
+s10-terr-vk-before | vulkan | vulkan | vk_present | ee3016909ead | defaults | frozen | 5/5 | 2026-10-15
+s10-terr-vk-r13 | vulkan | vulkan | vk_present | 91fe7b29e9eb | defaults | frozen | 5/5 | 2026-10-15
+s10-terr-vk-r14 | vulkan | vulkan | vk_present | e05bc6430789 | defaults | frozen | 5/5 | 2026-10-15
 s4after-vk **VOID** | vulkan | gl | gl_fbo | 37e86abfe443 | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 s4after1-gl | gl | gl | gl_fbo | 37e86abfe443 | unrecorded | frozen | 2/2 | 2026-10-12
 s4after2-gl | gl | gl | gl_fbo | 37e86abfe443 | unrecorded | frozen | 2/2 | 2026-10-12
 s4base-vk **VOID** | vulkan | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 2/2 | 2026-10-12 | mc2_01_saved_205644: requested vulkan but the sidecar says gl drew it (readback_source=gl_fbo)
 s4base1-gl | gl | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 2/2 | 2026-10-12
 s4base2-gl | gl | gl | gl_fbo | e796f71afba0 | unrecorded | frozen | 2/2 | 2026-10-12
+s5after-vk | vulkan | vulkan | vk_present | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s5after1-gl | gl | gl | gl_fbo | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s5after2-gl | gl | gl | gl_fbo | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s5before-vk | vulkan | vulkan | vk_present | 4896b503e213 | defaults | frozen | 2/2 | 2026-10-14
+s5before1-gl | gl | gl | gl_fbo | 4896b503e213 | defaults | frozen | 2/2 | 2026-10-14
+s5before2-gl | gl | gl | gl_fbo | 4896b503e213 | defaults | frozen | 1/1 | 2026-10-14
+s5beforeb-vk | vulkan | vulkan | vk_present | 4896b503e213 | defaults | frozen | 2/2 | 2026-10-14
+s6after-vk | vulkan | vulkan | vk_present | 5be71e04bd89 | defaults | frozen | 2/2 | 2026-10-14
+s6after1-gl | gl | gl | gl_fbo | 5be71e04bd89 | defaults | frozen | 2/2 | 2026-10-14
+s6after2-gl | gl | gl | gl_fbo | 5be71e04bd89 | defaults | frozen | 2/2 | 2026-10-14
+s6before-vk | vulkan | vulkan | vk_present | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s6before1-gl | gl | gl | gl_fbo | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s6before2-gl | gl | gl | gl_fbo | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s6beforeb-vk | vulkan | vulkan | vk_present | f27037a326c1 | defaults | frozen | 2/2 | 2026-10-14
+s7after-vk | vulkan | vulkan | vk_present | cc9e1eda0cfc | defaults | frozen | 2/2 | 2026-10-14
+s7after2-vk | vulkan | vulkan | vk_present | cc9e1eda0cfc | defaults | frozen | 2/2 | 2026-10-14
+s7b2-after-vk | vulkan | vulkan | vk_present | cc9e1eda0cfc | defaults | frozen | 2/2 | 2026-10-14
+s7b2-before-vk | vulkan | vulkan | vk_present | cc9e1eda0cfc | defaults | frozen | 2/2 | 2026-10-14
+s7before-vk | vulkan | vulkan | vk_present | d0e295e4f501 | defaults | frozen | 2/2 | 2026-10-14
+s7csm-vk | vulkan | vulkan | vk_present | 27573d088a36 | defaults | frozen | 1/1 | 2026-10-14
+s7gl | gl | gl | gl_fbo | c9bddde8362a | defaults | frozen | 4/4 | 2026-10-14
+s8after-vk | vulkan | vulkan | vk_present | 8d950fd8b4ad | defaults | frozen | 2/2 | 2026-10-14
+s9-r0-after-vk | vulkan | vulkan | vk_present | ee3016909ead | defaults | frozen | 2/2 | 2026-10-15
+s9-r20-after-vk | vulkan | vulkan | vk_present | ee3016909ead | PropShadowReceive=1 | frozen | 2/2 | 2026-10-15
+s9-r20-before-gl | gl | gl | gl_fbo | 71d2a3d29ac8 | PropShadowReceive=1 | frozen | 2/2 | 2026-10-15
+s9-r20-before-vk | vulkan | vulkan | vk_present | 71d2a3d29ac8 | PropShadowReceive=1 | frozen | 2/2 | 2026-10-15
+s9-r20-csm-off | vulkan | vulkan | vk_present | ee3016909ead | defaults | frozen | 2/2 | 2026-10-15
+s9-r20-csm-on | vulkan | vulkan | vk_present | ee3016909ead | PropShadowReceive=1 | frozen | 2/2 | 2026-10-15
+s9-r20-fix-off | vulkan | vulkan | vk_present | e05bc6430789 | defaults | frozen | 2/2 | 2026-10-15
+s9-r20-fix-on | vulkan | vulkan | vk_present | e05bc6430789 | PropShadowReceive=1 | frozen | 2/2 | 2026-10-15
+s9-r20-sfx-off | vulkan | vulkan | vk_present | ee3016909ead | defaults | frozen | 2/2 | 2026-10-15
+s9-r20-sfx-on | vulkan | vulkan | vk_present | ee3016909ead | PropShadowReceive=1 | frozen | 2/2 | 2026-10-15
+s9-r21-after-vk | vulkan | vulkan | vk_present | ee3016909ead | SunAxisFix=true | frozen | 2/2 | 2026-10-15
+s9-r21-before-gl | gl | gl | gl_fbo | 71d2a3d29ac8 | SunAxisFix=true | frozen | 2/2 | 2026-10-15
+s9-r21-before-vk | vulkan | vulkan | vk_present | 71d2a3d29ac8 | SunAxisFix=true | frozen | 2/2 | 2026-10-15
+s9-r22-after-vk | vulkan | vulkan | vk_present | ee3016909ead | StaticPropPbr=true | frozen | 2/2 | 2026-10-15
+s9-r22-before-gl | gl | gl | gl_fbo | 71d2a3d29ac8 | StaticPropPbr=true | frozen | 2/2 | 2026-10-15
+s9-r22-before-vk | vulkan | vulkan | vk_present | 71d2a3d29ac8 | StaticPropPbr=true | frozen | 2/2 | 2026-10-15
+s9after-vk | vulkan | vulkan | vk_present | 71d2a3d29ac8 | defaults | frozen | 2/2 | 2026-10-15
 set-after-day-gl | gl | gl | gl_fbo | 8589e3148db1 | unrecorded | frozen | 1/1 | 2026-10-13
 set-after-night-gl | gl | gl | gl_fbo | 8589e3148db1 | unrecorded | frozen | 1/1 | 2026-10-13
 set-before-night-gl | gl | gl | gl_fbo | e8437015b524 | unrecorded | frozen | 1/1 | 2026-10-13

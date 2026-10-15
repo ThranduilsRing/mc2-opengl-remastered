@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "Low NIGHT poses over the mc2_10 airbase runway and apron, written so lit fixtures can be judged under VK: runway edge lights (red, blue), taxi lights (green), the lit control building and hot-colour windows. Authored from the airbase positions of the saved poses mc2_10_saved_204753 / _204937 / _204956 (night overview poses of the same base) at a low altitude; viewed in a GL and a VK capture on 2026-10-14 (lane 2, session 18): pose a frames the runway threshold with red and blue fixture lights and the control building, pose b the runway centre line with green taxi lights, pose c the apron with the hangar row, red fixtures and the pads. The three poses also separate the two backends today: pose c shows the VK pads staying bright where GL darkens them (parity row 5).",
+  "bookmarks": [
+    {
+      "name": "night_runway_threshold",
+      "pos": [3746.5864, 5151.1533, 117.7777],
+      "rot": -80.0,
+      "proj": 20.0,
+      "alt": 450.0,
+      "covers": ["static_prop_fixture_lights"]
+    },
+    {
+      "name": "night_runway_centre",
+      "pos": [3898.2888, 4983.4429, 107.8056],
+      "rot": -1.25,
+      "proj": 22.0,
+      "alt": 520.0,
+      "covers": ["static_prop_fixture_lights"]
+    },
+    {
+      "name": "night_apron_hangars",
+      "pos": [3580.6836, 5121.9028, 117.8043],
+      "rot": -150.0,
+      "proj": 18.0,
+      "alt": 400.0,
+      "covers": ["static_prop_fixture_lights"]
+    }
+  ]
+}
