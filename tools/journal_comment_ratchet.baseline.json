@@ -1,12 +1,11 @@
 {
   "what": "count of journal comments in C++ comments; may only fall (tools/journal_comment_ratchet.py)",
-  "rev": "08d9d9f91",
-  "total": 6530,
+  "rev": "375f7dfa9",
+  "total": 6497,
   "by_pattern": {
-    "arc-id": 5392,
-    "batch-tag": 10,
-    "plan-doc": 113,
+    "arc-id": 5390,
+    "plan-doc": 103,
     "review-id": 16,
-    "step-slice-phase": 999
+    "step-slice-phase": 988
   }
 }
