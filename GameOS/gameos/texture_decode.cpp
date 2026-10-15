@@ -3,6 +3,7 @@
 
 #include "texture_decode.h"
 
+#include <cstdio>
 #include <cstring>
 
 #include "Gates/gate.h"
@@ -22,8 +23,13 @@ bool hasPngSignature(const uint8_t* bytes, size_t size) {
     return size >= 8 && bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G';
 }
 
-// The in-memory TGA loader trusts its header; a cached file can be truncated or a mod file malformed, so the header and (for
-// an uncompressed image) the pixel payload are checked against the byte count first. RLE payloads are bounded by the loader.
+// A texture edge beyond this is malformed content, not art; it also keeps the loader's int byte counts (w * h * 4) from wrapping.
+constexpr size_t kMaxTgaEdge = 16384;
+
+// The TGA loader trusts its header; a cached file can be truncated or a mod file malformed. This checks the header before the
+// loader runs: the size is bounded, an uncompressed payload must be present in full, and RLE is accepted only at 24 / 32 bpp
+// (the RLE loader sizes its buffer by the stored pixel size while expanding 16-bit pixels to 4 bytes). The loader itself stops
+// an RLE stream at the end of the bytes.
 bool tgaFits(const uint8_t* bytes, size_t size) {
     constexpr size_t kHeader = 18;
     if (size <= kHeader) return false;
@@ -32,9 +38,15 @@ bool tgaFits(const uint8_t* bytes, size_t size) {
     const size_t w = (size_t)bytes[12] | ((size_t)bytes[13] << 8);
     const size_t h = (size_t)bytes[14] | ((size_t)bytes[15] << 8);
     const size_t bpp = bytes[16];
-    if (w == 0 || h == 0 || (bpp != 16 && bpp != 24 && bpp != 32)) return false;
-    if (imageType == 2) return size >= kHeader + descLen + w * h * (bpp / 8);
-    return imageType == 10 && size > kHeader + descLen;
+    if (w == 0 || h == 0 || w > kMaxTgaEdge || h > kMaxTgaEdge) return false;
+    if (imageType == 2)
+        return (bpp == 16 || bpp == 24 || bpp == 32) && size >= kHeader + descLen + w * h * (bpp / 8);
+    return imageType == 10 && (bpp == 24 || bpp == 32) && size > kHeader + descLen;
+}
+
+bool endsWithTga(const char* path) {
+    const size_t n = std::strlen(path);
+    return n >= 4 && _stricmp(path + n - 4, ".tga") == 0;
 }
 
 // Copies the decoded image into `out` and applies the format policy. Only RGB8 / RGBA8 sources are accepted: the lock / unlock
@@ -94,6 +106,25 @@ bool decodeFile(const char* path, gos_TextureFormat requested, DWORD hints, Deco
     if (!path) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected a file texture with no path");
         return false;
+    }
+    // A TGA file goes through the same header check as cached bytes: read it whole, decode from memory.
+    if (endsWithTga(path)) {
+        std::vector<uint8_t> bytes;
+        if (FILE* f = std::fopen(path, "rb")) {
+            std::fseek(f, 0, SEEK_END);
+            const long n = std::ftell(f);
+            std::fseek(f, 0, SEEK_SET);
+            if (n > 0) {
+                bytes.resize((size_t)n);
+                if (std::fread(bytes.data(), 1, bytes.size(), f) != bytes.size()) bytes.clear();
+            }
+            std::fclose(f);
+        }
+        if (bytes.empty()) {
+            MC2_LOG(Core, Debug, "failed to load texture from file: {}", mc2::fmt::safe(path));
+            return false;
+        }
+        return decodeMemory(bytes.data(), bytes.size(), path, requested, hints, out);
     }
     Image img;
     if (!img.loadFromFile(path)) {

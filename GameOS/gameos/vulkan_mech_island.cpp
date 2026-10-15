@@ -556,8 +556,9 @@ VkImageView get_tex_view(MechIsland* s, uint32_t gosHandle, bool* pending) {
     for (auto& t : s->textures) if (t.gosHandle == gosHandle) return t.view.get();
     if (s->textures.size() >= MechIsland::kMaxTextures) return dummy;
     uint32_t w = 0, h = 0;
-    const auto rgba = gos_GetTextureRgba(gosHandle, &w, &h);
-    if (!rgba) { *pending = true; return dummy; }
+    bool unavailable = false;
+    const auto rgba = gos_GetTextureRgba(gosHandle, &w, &h, &unavailable);
+    if (!rgba) { if (!unavailable) *pending = true; return dummy; }   // a failed readback caches the dummy
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return dummy;
     MechIsland::TexEntry t; t.gosHandle = gosHandle;
     if (!upload_scheme_image(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()))

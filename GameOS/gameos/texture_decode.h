@@ -48,7 +48,9 @@ bool makePlaceholder(int width, int height, gos_TextureFormat requested, DWORD h
 }  // namespace mc2tex
 
 // The level-0 RGBA8 texels of a gos texture handle (the bytes its upload took, or for a pre-compressed texture a one-time readback
-// made by the texture object), for a backend that uploads its own copy. Null when the handle is invalid or has no texels yet.
+// made by the texture object), for a backend that uploads its own copy. Null when the handle is invalid or not loaded yet
+// (retry later), or when that readback failed (*unavailable set, logged; retrying will not help).
 // The vector is immutable once published: a content change publishes a new one, so pointer identity tracks the content.
 // Implemented by the renderer's texture list (gameos_graphics.cpp).
-std::shared_ptr<const std::vector<uint8_t>> gos_GetTextureRgba(uint32_t gosHandle, uint32_t* width, uint32_t* height);
+std::shared_ptr<const std::vector<uint8_t>> gos_GetTextureRgba(uint32_t gosHandle, uint32_t* width, uint32_t* height,
+                                                               bool* unavailable = nullptr);

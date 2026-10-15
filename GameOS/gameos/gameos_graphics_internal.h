@@ -253,9 +253,16 @@ class gosTexture {
         // result (GL error / all-zero alpha+rgb) so a driver that can't decode
         // just leaves the mirror empty and behavior is unchanged (per-draw
         // decline, as today). Attempted at most once per content serial.
-        bool ensureRgbaMirrorFromGpu() {
+        // acceptAllZero: a material importer takes an all-zero readback as real (black, transparent) texels, as its own GL
+        // import did; the HUD keeps declining it as a possibly unwritten readback.
+        bool ensureRgbaMirrorFromGpu(bool acceptAllZero = false) {
             if (hasRgbaMirror())
                 return true;
+            if (acceptAllZero && mirror_zero_serial_ == content_serial_ && tex_.w > 0 && tex_.h > 0) {
+                std::vector<uint8_t> zeros((size_t)tex_.w * (size_t)tex_.h * 4u, 0u);
+                adoptRgbaMirror(tex_.w, tex_.h, std::move(zeros));
+                return true;
+            }
             if (mirror_gpu_attempt_serial_ == content_serial_)
                 return false; // already tried this content; don't retry per frame
             mirror_gpu_attempt_serial_ = content_serial_;
@@ -287,8 +294,11 @@ class gosTexture {
             for (size_t i = 0; i < bytes; ++i) {
                 if (px[i] != 0u) { anyNonZero = true; break; }
             }
-            if (!anyNonZero)
-                return false; // silently-unwritten readback: keep declining
+            if (!anyNonZero) {
+                mirror_zero_serial_ = content_serial_;
+                if (!acceptAllZero)
+                    return false; // possibly an unwritten readback: the HUD keeps declining
+            }
             setRgbaMirror(tex_.w, tex_.h, TF_RGBA8, px.data());
             static int s_mirrorReadOk = 0;
             if (++s_mirrorReadOk <= 8)
@@ -402,6 +412,7 @@ class gosTexture {
         // VK-FIELD-VFX-4: content serial of the last GPU-readback mirror attempt
         // (ensureRgbaMirrorFromGpu), so a failed readback is not retried per frame.
         uint32_t mirror_gpu_attempt_serial_ = 0xffffffffu;
+        uint32_t mirror_zero_serial_ = 0xffffffffu;   // content serial whose readback came back all zero
 };
 
 class gosFont {

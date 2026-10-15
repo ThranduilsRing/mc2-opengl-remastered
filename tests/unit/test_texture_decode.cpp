@@ -5,6 +5,7 @@
 #include "texture_decode.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <vector>
 
 namespace {
@@ -93,6 +94,42 @@ TEST_CASE("texture decode: malformed sources are rejected, not trusted") {
     const uint8_t tiny[4] = {0, 0, 2, 0};
     CHECK_FALSE(mc2tex::decodeMemory(tiny, sizeof(tiny), "tiny.tga", gos_Texture_Detect, 0, t));
     CHECK_FALSE(mc2tex::decodeMemory(nullptr, 0, "none", gos_Texture_Detect, 0, t));
+}
+
+TEST_CASE("texture decode: RLE headers the loader cannot size safely are rejected") {
+    mc2tex::DecodedTexture t;
+    // 16-bit RLE: the loader would size 2 bytes per pixel and write 4.
+    auto rle16 = tga(64, 64, 16, std::vector<uint8_t>(64, 0x80));
+    rle16[2] = 10;
+    CHECK_FALSE(mc2tex::decodeMemory(rle16.data(), rle16.size(), "rle16.tga", gos_Texture_Detect, 0, t));
+    // An edge over the cap (its byte count would wrap the loader's int arithmetic near 32768 x 32768).
+    auto huge = tga(0, 0, 32, std::vector<uint8_t>(64, 0x80));
+    huge[2] = 10;
+    huge[12] = 0x20; huge[13] = 0x4E;   // 20000
+    huge[14] = 0x20; huge[15] = 0x4E;
+    CHECK_FALSE(mc2tex::decodeMemory(huge.data(), huge.size(), "huge.tga", gos_Texture_Detect, 0, t));
+}
+
+TEST_CASE("texture decode: a TGA file goes through the same header check") {
+    auto truncated = tga(4, 4, 32, {1, 2, 3, 4});
+    const char* path = "test_texture_decode_truncated.tga";
+    FILE* f = std::fopen(path, "wb");
+    REQUIRE(f);
+    std::fwrite(truncated.data(), 1, truncated.size(), f);
+    std::fclose(f);
+    mc2tex::DecodedTexture t;
+    CHECK_FALSE(mc2tex::decodeFile(path, gos_Texture_Detect, 0, t));
+    std::remove(path);
+
+    const auto good = tga(1, 2, 24, {255, 0, 0, 0, 0, 255});
+    const char* goodPath = "test_texture_decode_good.tga";
+    f = std::fopen(goodPath, "wb");
+    REQUIRE(f);
+    std::fwrite(good.data(), 1, good.size(), f);
+    std::fclose(f);
+    CHECK(mc2tex::decodeFile(goodPath, gos_Texture_Detect, 0, t));
+    CHECK(t.pixels.size() == 6);
+    std::remove(goodPath);
 }
 
 TEST_CASE("texture decode: a placeholder keeps the requested format and refuses a zero size") {
