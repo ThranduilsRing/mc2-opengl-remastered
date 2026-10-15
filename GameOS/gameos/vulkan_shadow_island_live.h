@@ -266,6 +266,8 @@ void mc2_render_backend_shadow_region_health(
 void mc2_vk_shadow_island_destroy();
 // Map boundary: drop VK-owned caster geometry (re-uploaded on next map).
 void mc2_vk_shadow_island_invalidate_geometry();
+// The map's building set changed (a destroy rebakes GL's static map): the next pass reads the registry again.
+void mc2_vk_shadow_island_reread_building_casters();
 
 #ifdef __cplusplus
 }

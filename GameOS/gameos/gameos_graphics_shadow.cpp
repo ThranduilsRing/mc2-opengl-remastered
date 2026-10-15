@@ -2,6 +2,9 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_shadow_island_live.h"   // building casters follow the static map rebake
+#endif
 
 //
 // Trace is gated on MC2_SHADOW_STATE_TRACE=1: default OFF = zero lines, and the
@@ -740,6 +743,10 @@ void gos_EndShadowPrePass() {
 void gos_ResetStaticLightMatrix() {
     gosPostProcess* pp = getGosPostProcess();
     if (pp) pp->resetStaticLightMatrix();
+#ifdef MC2_VULKAN_ISLAND
+    // The VK cascades cast the same building set: a destroyed building must stop casting there too.
+    mc2_vk_shadow_island_reread_building_casters();
+#endif
 }
 // VPL-#shadow Phase 1: the gos_*ShadowRebuild* one-shot-flag API
 // (s_shadowRebuildPending + Request/Pending/Clear) is RETIRED. Its only
