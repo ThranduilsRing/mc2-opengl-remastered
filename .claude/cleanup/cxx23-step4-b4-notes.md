@@ -1,4 +1,4 @@
-<!-- doc-status: draft | reviewed:2026-10-15 -->
+<!-- doc-status: current | reviewed:2026-10-15 -->
 # C++23 step 4, batch B4 (raw-buffer heaps): batch notes (census only; written by lane 1 on 2026-10-15, NOT yet read by a before-review, no code)
 
 WHAT: the scope and census of B4, the batch after B3 in the ownership plan's order (`cxx23-step4-ownership-plan.md` section 6: "B4 RAW-BUFFER heaps only
@@ -8,7 +8,9 @@ the class-routed heaps are B5 / B7; the heaps themselves (`UserHeap`, `systemHea
 WHY: these buffers are where size mismatches, double frees and the save-padding class of bugs live (BUGS rows 21, 22 were overruns of hand-sized buffers), and
 every one of them is a `Malloc` / `Free` pair a reader must match across files. `bitflag` is already gone (B2.1).
 
-## 1. Census (grep, 2026-10-15 at 82cff74b1; the compiler census of B4.0 replaces it)
+## 1. Census (grep, 2026-10-15 at 82cff74b1; superseded by the sealed census of B4.0)
+SEALED (B4.0): `py -3 tests/analyze/b4_heap_census.py --check` against `.claude/cleanup/cxx23-step4-b4-callsites.txt`: 331 sites in 23 files (the 321 below
+plus collision's 10); the unequal pairs are explained in `cxx23-step4-b4-before-review.md` section 1. The hand table below is kept as the first count.
 Pattern: `->Malloc(` `->Free(` `malloc/calloc/realloc(` `free(` `new T[` `delete[]`, in the B4 subsystems' files. 321 lines in 22 files.
 | file | lines | | file | lines |
 |---|---|---|---|---|
@@ -38,7 +40,7 @@ the txm cache batch).
 | B4.2 | terrain, tile, colour map, mapdata (`terrain*`, `terrtxm*`, `mapdata.cpp`, 165 lines) | `sim_determinism` (terrain heights feed the sim) + captures day and night VIEWED (lane 1 is a sim lane; captures need the orchestrator's assignment) |
 | B4.3 | txm caches (`txmmgr*`, 38 lines, plus the B3 `readRAW` row) | captures (render-only): orchestrator assigns |
 | B4.4 | sound and radio (`soundsys.cpp`, `gamesound.cpp`, `radio.cpp`, 33 lines) | mechlab boot + tier1 with sound (no capture signal) |
-| B4.5 | crater (4 lines) | rides with B4.2 |
+| B4.5 | crater (4 lines) | its own commit, proven in the same run as B4.2 |
 | B4.6 | collision (`code/collsn.cpp`, 10 lines) | `sim_determinism check` x4 |
 
 ## 3. Open before B4.1
