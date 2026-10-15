@@ -1,17 +1,17 @@
 {
  "mission": "mc2_10",
- "save_at": 1300,
- "load_at": 1400,
+ "save_at": 1000,
+ "load_at": 1100,
  "gates": {
   "MC2_SMOKE_FIXED_TIMESTEP": "1",
   "MC2_DETERMINISTIC_RNG": "1",
   "MC2_SIM_IDENTITY_TRACE": "1",
   "MC2_SMOKE_FREEZE_ANIM": "1",
-  "MC2_BOOT_QUICKSAVE_AT": "1300",
-  "MC2_BOOT_QUICKLOAD_AT": "1400"
+  "MC2_BOOT_QUICKSAVE_AT": "1000",
+  "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "06f0d7211fb5",
+  "sha": "afe0e21a7e82",
   "dirty": 0
  },
  "comparison": {
@@ -63,29 +63,11 @@
       3035
      ]
     ],
-    "build": [
-     [
-      2952,
-      2955
-     ],
-     [
-      3000,
-      3003
-     ]
-    ]
+    "build": []
    },
    "GroundVehicleData": {
     "run": [],
-    "build": [
-     [
-      2952,
-      2955
-     ],
-     [
-      3000,
-      3003
-     ]
-    ]
+    "build": []
    },
    "CommanderData": {
     "run": [
@@ -106,12 +88,7 @@
     "build": []
    },
    "GateData": {
-    "run": [
-     [
-      736,
-      740
-     ]
-    ],
+    "run": [],
     "build": []
    },
    "WeaponBoltData": {
@@ -131,9 +108,9 @@
  },
  "judged": "first-save-only",
  "packets": 20000,
- "overall": "953d02666f8c2ac9",
- "resave_identical": false,
- "resave_matches_policy": false,
+ "overall": "7cf6fed1746230aa",
+ "resave_identical": true,
+ "resave_matches_policy": true,
  "runs": [
   [
    "data",
@@ -147,14 +124,14 @@
    2,
    1,
    38994,
-   "2e506ceba0a3a781"
+   "de2ea594e086e37e"
   ],
   [
    "data",
    3,
    256,
    787245,
-   "918b9bbcbeb75b6f"
+   "216c5da07dd42180"
   ],
   [
    "data",
@@ -168,7 +145,7 @@
    515,
    256,
    24728,
-   "4ebcc67b50c3de97"
+   "ca8612f796b9d132"
   ],
   [
    "data",
@@ -182,14 +159,14 @@
    1027,
    256,
    277499,
-   "f17f3f67fbca2c3e"
+   "f2bd26aea1a1bbfb"
   ],
   [
    "data",
    1283,
    256,
    34682,
-   "aa0efcc55f0e9275"
+   "78594769fd6763e4"
   ],
   [
    "data",
@@ -203,7 +180,7 @@
    1795,
    256,
    18183,
-   "e4764fc2096467b7"
+   "86807435f1bd414a"
   ],
   [
    "data",
@@ -217,7 +194,7 @@
    2307,
    256,
    275330,
-   "74822d8c8da86d51"
+   "90e19c6ce8acee8c"
   ],
   [
    "data",
@@ -252,21 +229,21 @@
    3587,
    24,
    43333,
-   "5d748bca7ee717f1"
+   "8481db69aba59fef"
   ],
   [
    "StaticMechWarriorData",
    3611,
    1,
    40,
-   "b507580233e6f893"
+   "d48d6c7a2cd3f362"
   ],
   [
    "MechWarriorData",
    3612,
    120,
    2383680,
-   "aa1478c08dfa7941"
+   "df4a6e632c02d495"
   ],
   [
    "TeamStaticData",
@@ -301,14 +278,14 @@
    3737,
    147,
    586824,
-   "4e7acc80c413be56"
+   "16b53b7f492ba922"
   ],
   [
    "GroundVehicleData",
    3884,
    157,
    537568,
-   "49e26bd2845c6f47"
+   "bd92b498b045cdd1"
   ],
   [
    "TerrainObjectData",
@@ -322,7 +299,7 @@
    4127,
    1,
    820,
-   "d2d348a9d98a9761"
+   "f0f7ab8ee2b8e543"
   ],
   [
    "TerrainObjectData",
@@ -336,21 +313,21 @@
    4177,
    2,
    1512,
-   "934e82d9e7803052"
+   "b3a6eb40d055a900"
   ],
   [
    "TurretData",
    4179,
    1,
    820,
-   "c0f71e2fe66fa749"
+   "c336744396bfab0a"
   ],
   [
    "BuildingData",
    4180,
    1,
    756,
-   "ae50af8f929151c6"
+   "ede29232845fc9d2"
   ],
   [
    "TerrainObjectData",
@@ -364,7 +341,7 @@
    4301,
    2,
    1640,
-   "7f77d4d6e78fe3af"
+   "10439f603e7e21ce"
   ],
   [
    "TerrainObjectData",
@@ -406,7 +383,7 @@
    4491,
    1,
    820,
-   "8a31e6a66fa49a63"
+   "8a4331952c6c02e7"
   ],
   [
    "TerrainObjectData",
@@ -420,14 +397,14 @@
    4505,
    1,
    820,
-   "be9df3f986163b2e"
+   "0acf262565fa8852"
   ],
   [
    "BuildingData",
    4506,
    1,
    756,
-   "c8c2163e756b7a48"
+   "cdb9924947893b12"
   ],
   [
    "TerrainObjectData",
@@ -441,14 +418,14 @@
    4614,
    1,
    756,
-   "25cc8b16f4e128fc"
+   "34bcabd22d311a6c"
   ],
   [
    "TurretData",
    4615,
    1,
    820,
-   "a4f7e9f4b23fd6ab"
+   "f419f16546d214e5"
   ],
   [
    "TerrainObjectData",
@@ -462,7 +439,7 @@
    4618,
    11,
    8316,
-   "2e513fc60360fded"
+   "2d8af41285b3f27c"
   ],
   [
    "TerrainObjectData",
@@ -476,7 +453,7 @@
    4640,
    2,
    1640,
-   "d14d9e9a3df1c836"
+   "f46f64ebf791d4c9"
   ],
   [
    "TerrainObjectData",
@@ -490,7 +467,7 @@
    4659,
    1,
    820,
-   "6bfce5311caacdc9"
+   "98458753159dddab"
   ],
   [
    "TerrainObjectData",
@@ -504,7 +481,7 @@
    4670,
    2,
    1640,
-   "41bf8787e890fc08"
+   "7873f37dcbd7d654"
   ],
   [
    "TerrainObjectData",
@@ -518,7 +495,7 @@
    4675,
    1,
    756,
-   "bfc2b158ef64cdd2"
+   "e4f979b7b84b9abb"
   ],
   [
    "TerrainObjectData",
@@ -532,7 +509,7 @@
    4716,
    1,
    820,
-   "01ba52f53b4bf651"
+   "e7946f4ee0cdda83"
   ],
   [
    "TerrainObjectData",
@@ -546,7 +523,7 @@
    4724,
    1,
    820,
-   "193d6d5a90d3c79a"
+   "6a6a2256476a4abe"
   ],
   [
    "TerrainObjectData",
@@ -560,14 +537,14 @@
    4832,
    20,
    15120,
-   "7e8ee9b063528c97"
+   "d49349467211661c"
   ],
   [
    "TurretData",
    4852,
    1,
    820,
-   "addefc3ebe857ebb"
+   "e9964affa5e951b5"
   ],
   [
    "TerrainObjectData",
@@ -581,28 +558,28 @@
    4907,
    2,
    1512,
-   "9652f6e6b0ded7b8"
+   "95428eea03ae8b9a"
   ],
   [
    "TurretData",
    4909,
    6,
    4920,
-   "2dc02b8d37cd8230"
+   "0e3e1a0b6ba07810"
   ],
   [
    "BuildingData",
    4915,
    1,
    756,
-   "69dd1927c5a77bc0"
+   "8ac3c5902a0705e9"
   ],
   [
    "TurretData",
    4916,
    1,
    820,
-   "9133dddda1462f75"
+   "f4651bb7f8ea5d63"
   ],
   [
    "TerrainObjectData",
@@ -637,7 +614,7 @@
    5256,
    17,
    12852,
-   "77d71cebff3b7f07"
+   "8984678c2b829949"
   ],
   [
    "TerrainObjectData",
@@ -651,7 +628,7 @@
    5384,
    1,
    820,
-   "83f65b75fd469953"
+   "79dd8901d85323d8"
   ],
   [
    "TerrainObjectData",
@@ -665,21 +642,21 @@
    5490,
    1,
    820,
-   "5730e2982a3f8cdf"
+   "b3ce90689433d7fd"
   ],
   [
    "BuildingData",
    5491,
    22,
    16632,
-   "712d345e98e06fdf"
+   "41d267815506ebaf"
   ],
   [
    "TurretData",
    5513,
    2,
    1640,
-   "71f2f53c4cd1b5db"
+   "3c3eb35f73844344"
   ],
   [
    "TerrainObjectData",
@@ -693,14 +670,14 @@
    5534,
    2,
    1640,
-   "507f3a84a296a3f6"
+   "831aa51b60fca504"
   ],
   [
    "BuildingData",
    5536,
    1,
    756,
-   "d429ed4df29e0b40"
+   "d4f651348a3e4f0e"
   ],
   [
    "TerrainObjectData",
@@ -714,7 +691,7 @@
    5556,
    1,
    756,
-   "c14cbec5eca1f5c1"
+   "5611534bd6a1c04c"
   ],
   [
    "TerrainObjectData",
@@ -728,7 +705,7 @@
    5612,
    2,
    1512,
-   "ab63f792bb0881bd"
+   "d7134ff3f28c9071"
   ],
   [
    "TerrainObjectData",
@@ -742,7 +719,7 @@
    5846,
    1,
    756,
-   "0560ed00ff0f5eeb"
+   "4da7510760c534b3"
   ],
   [
    "TerrainObjectData",
@@ -756,7 +733,7 @@
    5903,
    20,
    15120,
-   "c1e21ad38594c486"
+   "73d37724d90972b1"
   ],
   [
    "TerrainObjectData",
@@ -770,7 +747,7 @@
    5926,
    1,
    756,
-   "9339867f4427a5ac"
+   "d9870b0b763809d2"
   ],
   [
    "TerrainObjectData",
@@ -784,21 +761,21 @@
    6095,
    1,
    756,
-   "20dea578a9e1f4c1"
+   "13a672c6eef2a519"
   ],
   [
    "TurretData",
    6096,
    4,
    3280,
-   "5cb2380e68238cc5"
+   "6378c09c8064a985"
   ],
   [
    "BuildingData",
    6100,
    2,
    1512,
-   "0900e4db89b34988"
+   "6ec0c053dbe07e64"
   ],
   [
    "TerrainObjectData",
@@ -819,7 +796,7 @@
    6519,
    1,
    756,
-   "ae14989b7fb60e37"
+   "c3ad2c02d7ef96c9"
   ],
   [
    "TerrainObjectData",
@@ -833,14 +810,14 @@
    6670,
    100,
    58000,
-   "7e339e363f310160"
+   "e731f04f796fe837"
   ],
   [
    "CarnageData",
    6770,
    50,
    19800,
-   "c81d289871001207"
+   "45657d96248855d7"
   ],
   [
    "ArtilleryData",
