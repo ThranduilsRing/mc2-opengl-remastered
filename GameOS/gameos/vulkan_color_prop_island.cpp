@@ -258,6 +258,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint32_t      albedoLayers = 0;
     VkDeviceSize  layerCapBytes = 0;
     VkDeviceSize  hotCapBytes = 0;
+    uint32_t      mapGeneration = 0;        // bumped at every map change; consumers of the albedo arrays rebind on a change
     bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
@@ -1288,12 +1289,14 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialReady = false;
     s->materialReadyOn = false;
     s->hotReady = false;
+    ++s->mapGeneration;
 }
 
-extern "C" int mc2_color_prop_island_get_alpha_array(void** view) {
+extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation) {
     const ColorPropIsland* s = parkedIsland();
-    if (!view || !s || !s->materialReadyOn || !s->albedoOnView) return 0;
+    if (!view || !generation || !s || !s->materialReadyOn || !s->albedoOnView) return 0;
     *view = reinterpret_cast<void*>(s->albedoOnView.get());
+    *generation = s->mapGeneration;
     return 1;
 }
 
@@ -1351,7 +1354,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
             bool changed = false;
-            // The night emission colours of the type table, once per island lifetime (like the material arrays).
+            // The night emission colours of the type table, once per map (like the material arrays).
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
                 if (cp_upload_hot_table(s, std::span<const float>(mf.typeHotColors, static_cast<size_t>(mf.typeCount) * 12u))) {
                     s->hotReady = true;

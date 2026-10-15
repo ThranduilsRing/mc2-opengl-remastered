@@ -259,6 +259,7 @@ struct ShadowIsland : mc2vk::IslandState {
     std::vector<PacketAlpha> packetAlpha;
     bool        alphaTableBuilt = false;
     VkImageView alphaBoundView = VK_NULL_HANDLE;
+    uint32_t    alphaBoundGen = 0;   // the colour island's map generation the set was written for
     bool        alphaReady = false;   // this frame: the array is bound and the table is built
     // The single dynamic map is only the fallback of a receiver that has no cascades, so its pass is held until the frame's cascades are known: it is recorded
     // at the submit when the cascade array and the full-map cascade were not both produced, and never otherwise.
@@ -381,6 +382,18 @@ bool ensure_inst_capacity(ShadowIsland* s, uint32_t parity, VkDeviceSize bytes) 
     s->instCapBytes[parity] = cap;
     write_descriptors(s, parity);
     return true;
+}
+
+// The per-packet push constant of the alpha-tested caster (vec2 uvScale, int layer, pad); declared above the pipelines so the layout checker pairs it with them.
+constexpr VkPushConstantRange kCasterPushRange{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16};
+
+// The static-prop caster shaders. Loaded above the pipeline builder so the offline layout checker, which pairs a vertex binding with the shader names named
+// before it in the file, checks the prop caster stride and attributes against shadow_prop.vert.
+static bool load_caster_modules(ShadowIsland* s) {
+    s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.vert.spv"));
+    s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.frag.spv"));
+    s->alphaFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop_alpha.frag.spv"));
+    return s->vert && s->frag && s->alphaFrag;
 }
 
 // A static-prop caster pipeline: the shared static-prop vertex (position at 0, UV at 24; the alpha-tested kind reads the UV, the opaque kind ignores it).
@@ -565,10 +578,7 @@ bool init_island(ShadowIsland* s, int size) {
     // ---- Pipelines: the opaque caster and the alpha-tested one share one layout (set 0 the frame UBO + instances, set 1 the alpha array, a push constant
     // of the per-packet layer and UV scale), so the set 0 binding of a pass stays valid across a switch of pipeline. ----
     {
-        s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.vert.spv"));
-        s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.frag.spv"));
-        s->alphaFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop_alpha.frag.spv"));
-        if (!s->vert || !s->frag || !s->alphaFrag) { setFallback("spv_load_failed"); return false; }
+        if (!load_caster_modules(s)) { setFallback("spv_load_failed"); return false; }
 
         // Set 1: the alpha-ON albedo array the colour island imported (bound later, when it exists).
         VkDescriptorSetLayoutBinding ab{};
@@ -597,9 +607,8 @@ bool init_island(ShadowIsland* s, int size) {
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         const VkDescriptorSetLayout setLayouts[2] = {s->dsl.get(), s->alphaDsl.get()};
-        const VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16};   // vec2 uvScale, int layer, pad
         plci.setLayoutCount = 2; plci.pSetLayouts = setLayouts;
-        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
+        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &kCasterPushRange;
         if (!mc2vk::create(s->playout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("vkCreatePipelineLayout failed."); return false;
         }
@@ -1045,11 +1054,19 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
 // Copies the frame's static-prop casters into the parity's instance buffer, sorted by type so each type is one instanced draw per packet. Every pass of a
 // frame passes the same set; a different set in the middle of a frame has no buffer of its own and is refused.
 static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t instanceCount) {
+    // An empty set still opens the frame's passes (the mechs cast without any prop); a null data pointer then stands in as a marker.
+    if (instances == nullptr) instances = &s->stagedInstanceCount;
     if (s->stagedInstances == instances && s->stagedInstanceCount == instanceCount) return true;
     if (s->stagedInstances != nullptr) {
         static bool logged = false;
         if (!logged) { logged = true; vlog("a second caster set in one frame is not staged (the passes of a frame share one)."); }
         return false;
+    }
+    if (instanceCount == 0) {
+        s->instRuns.clear();
+        s->stagedInstances = instances;
+        s->stagedInstanceCount = 0;
+        return true;
     }
     ZoneScopedN("VKIsl.Shadow.Feed");
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
@@ -1082,10 +1099,11 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
 // may still be read by a frame in flight; that is once per map) and builds the per-packet table from its material feed.
 static void refresh_alpha_casters(ShadowIsland* s) {
     void* view = nullptr;
+    uint32_t generation = 0;
     s->alphaReady = false;
-    if (!mc2_color_prop_island_get_alpha_array(&view) || !view) return;
+    if (!mc2_color_prop_island_get_alpha_array(&view, &generation) || !view) return;
     const VkImageView arrayView = reinterpret_cast<VkImageView>(view);
-    if (arrayView != s->alphaBoundView) {
+    if (arrayView != s->alphaBoundView || generation != s->alphaBoundGen) {
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_alpha_array");
         VkDescriptorImageInfo info{s->alphaSampler.get(), arrayView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet w{};
@@ -1093,6 +1111,7 @@ static void refresh_alpha_casters(ShadowIsland* s) {
         w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
         vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
         s->alphaBoundView = arrayView;
+        s->alphaBoundGen = generation;
     }
     if (!s->alphaTableBuilt) {
         Mc2ColorPropMaterialFeed mf{};
@@ -1224,7 +1243,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
     ++g_shadowFrameEpoch;
     if (!shadowInteropGateRequested()) return 0;
-    if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
+    if (size <= 0 || !lightSpace16) return 0;
     ZoneScopedN("VKIsl.Shadow.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
 
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this island for the whole session -> GL owns the dynamic shadow pass.
@@ -1278,7 +1297,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     float biasFactor, float biasUnits) {
     g_csmFullMapReadyThisFrame = false;
     if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
-    if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
+    if (size <= 0 || !lightSpace16) return 0;
     ShadowIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
     ZoneScopedN("VKIsl.Shadow.CsmFullMap");
@@ -1309,7 +1328,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     }
     if (!shadowInteropGateRequested() || !csmArrayInteropGateRequested()) return 0;
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
-    if (!lightSpace16 || !instances || instanceCount == 0) return 0;
+    if (!lightSpace16) return 0;
     ShadowIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
     ZoneScopedN("VKIsl.Shadow.CsmArrayLayer");
@@ -1371,7 +1390,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
 
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
 // island. g_dynShadowReadyThisFrame is set true at the tail of a successful
-// mc2_vk_shadow_island_run() (after the fence wait retired the submit, i.e. the
+// mc2_vk_shadow_island_run() (recorded, and usable once the frame is submitted: the
 // depth image content + layout transition to DEPTH_STENCIL_READ_ONLY_OPTIMAL are
 // already complete) and reset false at the top of every call (including a failed/
 // declined one), so a stale prior-frame view is never reported ready this frame.

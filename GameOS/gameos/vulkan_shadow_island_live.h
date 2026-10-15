@@ -198,7 +198,7 @@ void mc2_vk_shadow_island_submit_frame();
 // no GL round-trip at all (neither the GL copy-to-VK-image the terrain island does
 // today, nor a GL sample). Valid ONLY for the frame just produced by
 // mc2_vk_shadow_island_run() (mc2_vk_shadow_island_dyn_shadow_ready()!=0 iff that
-// call produced+signalled+fenced this frame). The returned view/sampler are owned by
+// call recorded this frame and the frame was submitted; consumers run later on the same queue and the render pass dependencies order their reads). The returned view/sampler are owned by
 // the shadow island; the caller must NOT destroy them. Opaque void* to keep this
 // header GL/Vulkan-type-free for non-VK TUs; real type is VkImageView / VkSampler,
 // reinterpret_cast in the (VK-only) consumer TU. Same VkDevice as the terrain island

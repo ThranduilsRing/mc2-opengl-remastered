@@ -809,7 +809,7 @@ void gosPostProcess::endScene()
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::ScreenShadow);
 
     // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): HIGHEST precedence at the cloud +
-    // shoreline sites. When MC2_VK_POST_SCREENFX=1 and the shared-GBuffer
+    // shoreline sites. When the VK umbrella is on (MC2_VK_POST_SCREENFX=0 turns it off) and the shared-GBuffer
     // substrate is live, the armed subset of {cloud-shadow, shoreline} renders
     // natively on the shared engine context (one submit, multiply into shared
     // color0 in place) and EXACTLY those GL pass bodies are skipped (bitmask:
