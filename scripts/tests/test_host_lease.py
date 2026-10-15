@@ -39,10 +39,73 @@ def test_free_host_takes_the_lease(lease):
     assert not lease.exists()
 
 
-def test_a_live_holder_blocks_with_no_wait(lease):
+@pytest.mark.parametrize("exclusive", [False, True])
+def test_a_live_holder_blocks_with_no_wait(lease, monkeypatch, exclusive):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "3")
     _foreign_holder(lease, os.getppid())
     with pytest.raises(host_lease.HostLeaseBusy, match="held by other lane"):
-        host_lease.acquire("t", wait=False, scan=lambda: [], log=lambda m: None)
+        host_lease.acquire("t", wait=False, scan=lambda: [], log=lambda m: None, exclusive=exclusive)
+    assert not any(host_lease.slot_path(i).exists() for i in range(1, 6))
+
+
+def test_exclusive_retries_legacy_release_and_partial_allocation(lease, monkeypatch):
+    _foreign_holder(lease, os.getppid())
+    original = host_lease._try_take
+    attempts, sleeps = [], []
+
+    def take(path, label):
+        attempts.append(path)
+        if attempts == [lease]:
+            _foreign_holder(lease, os.getppid())
+        elif len(attempts) == 3:
+            _foreign_holder(path, os.getppid())
+        return original(path, label)
+
+    def release_holder(_):
+        assert not any(r and r.get("pid") == os.getpid() for _, r in host_lease._records())
+        for path, rec in host_lease._records():
+            if rec and rec.get("pid") == os.getppid():
+                path.unlink()
+        sleeps.append(True)
+
+    monkeypatch.setattr(host_lease, "_try_take", take)
+    host_lease.acquire("exclusive", exclusive=True, sleep=release_holder, timeout_s=10, log=lambda m: None)
+    assert len(sleeps) == 3
+    assert len([r for _, r in host_lease._records() if r and r.get("pid") == os.getpid()]) == 6
+
+
+def test_lease_publication_never_exposes_empty_record(lease, monkeypatch):
+    original = os.link
+    published = []
+
+    def publish(source, target):
+        published.append(host_lease._read(source))
+        return original(source, target)
+
+    monkeypatch.setattr(os, "link", publish)
+    host_lease.acquire("complete record", wait=False)
+    assert len(published) == 1 and published[0]["pid"] == os.getpid()
+
+
+def test_legacy_acquirer_waits_after_slot_zero_releases(lease, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
+    host_lease.acquire("slot zero")
+    neighbor = dict(host_lease._read(lease), pid=os.getppid(), created=None, slot=1)
+    host_lease._write_record(host_lease.slot_path(1), neighbor)
+    host_lease.release()
+    assert host_lease._read(lease)["legacy_guard"]
+    assert not host_lease._records()[0][1]
+    assert host_lease._holder_alive(host_lease._read(lease))
+    assert not host_lease._try_take(lease, "legacy single-file acquirer")[0]
+    host_lease.acquire("reuse slot zero", wait=False)
+    assert host_lease._read(lease)["slot"] == 0 and not host_lease._read(lease).get("legacy_guard")
+    host_lease.release()
+    host_lease._remove_records([(host_lease.slot_path(1), neighbor)])
+    assert not lease.exists()
+    host_lease._write_record(host_lease.slot_path(1), neighbor)
+    host_lease._remove_records([])
+    assert host_lease._read(lease)["legacy_guard"]
+    assert not host_lease._try_take(lease, "legacy single-file acquirer")[0]
 
 
 def test_a_dead_holder_is_taken_over(lease, monkeypatch):

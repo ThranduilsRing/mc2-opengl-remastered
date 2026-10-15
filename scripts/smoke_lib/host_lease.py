@@ -96,7 +96,27 @@ def _queue_lock():
 
 
 def _records():
-    return [(slot_path(i), _read(slot_path(i))) for i in range(6)]
+    records = [(slot_path(i), _read(slot_path(i))) for i in range(6)]
+    return [(p, None if r and r.get("legacy_guard") else r) for p, r in records]
+
+
+def _remove_records(records):
+    """Keep a legacy-visible owner until the last slot releases."""
+    removed = {p for p, r in records if _read(p) == r}
+    survivors = [(p, r) for p, r in _records() if p not in removed and _holder_alive(r)]
+    global_path = lease_path()
+    global_rec = _read(global_path)
+    guard = global_rec and global_rec.get("legacy_guard")
+    if survivors and not global_path.exists():
+        taken, _ = _try_take(global_path, "slot compatibility guard")
+        guard = taken
+    if survivors and (global_path in removed or guard):
+        _write_record(global_path, dict(survivors[0][1], legacy_guard=True))
+        removed.discard(global_path)
+    for p in removed:
+        p.unlink(missing_ok=True)
+    if not survivors and guard:
+        global_path.unlink(missing_ok=True)
 
 
 def _ours(rec):
@@ -199,37 +219,36 @@ def _holder_alive(rec: Optional[dict]) -> bool:
 
 
 def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
-    """-> (we hold it, the other holder's record when we do not)."""
+    """Claim a complete record so legacy readers never mistake publication for a dead owner."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    for _ in range(3):
-        try:
-            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
-            rec = _read(path)
-            if rec and int(rec.get("pid", 0)) == os.getpid():
-                return True, None
-            if _batch_member(rec) and _holder_alive(rec):
-                return True, None              # a step of a held chain: the batch holder's lease covers it
-            if _holder_alive(rec):
-                return False, rec
+    tmp = path.with_name(path.name + f".{os.getpid()}.take.tmp")
+    tmp.write_text(json.dumps({"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()),
+                               "label": label, "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()}), encoding="utf-8")
+    try:
+        for _ in range(3):
             try:
-                path.unlink()                  # holder died without releasing
-            except OSError:
-                pass
-            continue
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump({"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()), "label": label,
-                       "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()}, fh)
-        return True, None
-    return False, _read(path)
+                os.link(tmp, path)
+            except FileExistsError:
+                rec = _read(path)
+                if rec is None:
+                    return False, None
+                if rec.get("pid") == os.getpid() or (_batch_member(rec) and _holder_alive(rec)):
+                    return True, None
+                if _holder_alive(rec):
+                    return False, rec
+                if _read(path) == rec:
+                    path.unlink(missing_ok=True)
+                continue
+            return True, None
+        return False, _read(path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def release() -> None:
     """Give the lease back if this process holds it."""
     with _queue_lock():
-        for path, rec in _records():
-            if rec and rec.get("pid") == os.getpid():
-                path.unlink(missing_ok=True)
+        _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
 
 
 _registered = False
@@ -290,9 +309,9 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 if ticket not in queue:
                     queue.append(ticket)
                 records = _records()
-                for p, rec in records:
-                    if p.exists() and not _holder_alive(rec):
-                        p.unlink(missing_ok=True)
+                _remove_records([(p, rec) for p, rec in records
+                                 if rec and p.exists() and not _holder_alive(rec)
+                                 and not (_read(p) or {}).get("legacy_guard")])
                 live = [(p, r) for p, r in records if _holder_alive(r)]
                 foreign = scan() if queue[0] == ticket else []
                 if foreign and kill_orphans:
@@ -302,20 +321,28 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                     foreign = scan()
                 managed = [r for _, r in live]
                 foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
-                free = [i for i in range(slot_count()) if not slot_path(i).exists()]
-                legacy = any("slot" not in rec for _, rec in live)
+                free = [i for i in range(slot_count()) if not slot_path(i).exists()
+                        or (_read(slot_path(i)) or {}).get("legacy_guard")]
+                legacy = any("slot" not in rec for _, rec in live) or (lease_path().exists() and _read(lease_path()) is None)
                 compatible = all(rec.get("cores_per_slot", 1) == cores_per_slot() for _, rec in live)
                 eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free) and compatible)
                 if eligible:
+                    allocated = []
                     for i in (range(6) if exclusive else free[:1]):
-                        taken, _ = _try_take(slot_path(i), label)
+                        guard = i == 0 and (_read(slot_path(i)) or {}).get("legacy_guard")
+                        taken, _ = (True, None) if guard else _try_take(slot_path(i), label)
                         if not taken:
-                            raise HostLeaseBusy("slot changed during allocation")
-                        rec = _read(slot_path(i))
+                            _remove_records(allocated)
+                            eligible = False
+                            break
+                        rec = {"pid": os.getpid(), "created": ticket["created"], "label": label,
+                               "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()} if guard else _read(slot_path(i))
                         _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
                                                        cores_per_slot=cores_per_slot(),
                                                        affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
-                    queue.pop(0)
+                        allocated.append((slot_path(i), _read(slot_path(i))))
+                    if eligible:
+                        queue.pop(0)
                 _write_record(path, {"tickets": queue})
                 if eligible:
                     granted = True
@@ -336,9 +363,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     finally:
         with _queue_lock():
             if not granted:
-                for p, rec in _records():
-                    if rec and rec.get("pid") == os.getpid():
-                        p.unlink(missing_ok=True)
+                _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
             queue = (_read(path) or {}).get("tickets", [])
             _write_record(path, {"tickets": [t for t in queue if t != ticket and _holder_alive(t)]})
 
@@ -438,8 +463,7 @@ def release_batch(tag: str) -> Tuple[bool, Optional[dict]]:
     with _queue_lock():
         records = _records()
         matched = [(p, r) for p, r in records if r and r.get("batch") == tag]
-        for p, _ in matched:
-            p.unlink(missing_ok=True)
+        _remove_records(matched)
         return bool(matched), matched[0][1] if matched else records[0][1]
 
 
@@ -462,8 +486,9 @@ def clear_dead() -> Tuple[bool, Optional[dict]]:
         records = _records()
         for path, rec in records:
             if path.exists() and not _holder_alive(rec):
-                path.unlink(missing_ok=True)
                 removed = rec
+        _remove_records([(p, r) for p, r in records if r and p.exists() and not _holder_alive(r)
+                         and not (_read(p) or {}).get("legacy_guard")])
         return removed is not None, removed or next((r for _, r in records if r), None)
 
 
