@@ -1,5 +1,42 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-FIRST session (2026-10-15 ~12:00-15:00 CDT, cap 5 h, Opus 5.5) -- review fixes, lane 6 geometry seam, census T12-T14, row 20 narrowed, row 17 design; nifty NOT merged ("merge lane2 5135a6d04" absent from mc2-main at the checkpoints)
+
+### Commits (after 5135a6d04)
+9a45d009f should-fix 1+2, nits 1+2 (once-only log, call-site comment, dead staging, glDynamicShadowTex) | e1e21176b lane 6 seam: shadow + colour prop islands copy the batcher's CPU geometry (mc2_static_prop_geometry_cpu), Mc2ShadowGeomFeed loses glVbo/glIbo; nits 3+4 (extern placement, diag counter) | 9fbfc49a6 screenfx decline-reason log + periodic draw receipt | e93adcdbf CSM feed drops glCsmArrayTex/glCsmFullMapTex | 85317ac3b TEMP class tint + 805bd5896 its revert | this state/gaps commit.
+- MERGE NOTE: `mc2_static_prop_geometry_cpu` (declaration in vulkan_color_prop_island.h, definition in gos_static_prop_batcher_finalize.cpp, the colour-island upload) is byte-identical to lane 6's 242b9582c hunks (applied from its diff), so merging both lanes unifies them; the shadow island side and the Mc2ShadowGeomFeed field removal are lane 2's only. Lane 6's colour-island hunk still compares `feed.vboBytes` (kept).
+
+### Census T12-T14 (lane 6 `vk-producer-census-2026-10-15.md`): the backend-neutral producers
+- T12 static sun shadow map: producer = a VK static pass in the shadow island (gaps row 17 DESIGN); it deletes `copy_static_shadow`'s GL depth readback; P11 (static light matrix) moves to a no-GL scene-lighting TU with it. NOT done.
+- T13 dynamic / CSM maps: DONE for consumers -- terrain binds only the VK shadow island's views (single map since eae98a21e, cascades), and e93adcdbf drops the GL texture names from the feed. Left on GL: the cascade matrices (CPU data, placement: move to the scene-lighting TU) and `diagGlRead` in the shadow island's matrix diag (diagnostic only; delete with GL).
+- T14 HDRI: producer = the neutral HDRI decode in `gos_hdri.cpp` keeping its decoded mips (BC6H blob or RGBA16F chain) CPU-side for both islands. NOT small: two islands (sky, water) read it, and the RGBA16F path needs a CPU mip chain to replace `glGenerateMipmap`; left for a session of its own.
+
+### Row 20 (narrowed, OPEN) and row 17 (design only): see VK-PARITY-GAPS rows 20 and 17.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja (`MC2_BUILD_JOBS=2 ... ninja_build.py -j2 mc2` after the owner's 2-job ruling) | exit 0 at every commit |
+| build_contract_harnesses --run --unit (`scratch/harn21.log`, at e93adcdbf = tip code) | rc 0, doctest 3185/3185, 2 skipped |
+| check-contracts (`scratch` log at e1e21176b) | only the pre-existing non-lane reds: container_callsites (editor), scripts_tests test_editor_smoke legacy reload |
+| row 20 battery (`.claude/l2cap/s21-{vk,gl}-psr{0,1}`, exe 9fbfc49a6) | table in gaps row 20 |
+| tier1 VK+validation and GL at the tip (`scratch/b21_{vk,gl}_t1.log`) | exe 805bd5896 (DEPLOY_FINGERPRINT OK): VK+validation run 2026-10-15T14-24-46 PASS 5/5, errors=0 warnings=0 on all five; GL run 2026-10-15T14-35-38 PASS 5/5 (152/101/132/140/146 fps), +0 destroys |
+
+### INCIDENT (mine, report to the orchestrator)
+- 12:05 `deploy_payload --target game --ninja` with no target dir deployed lane 2's exe into lane 1's install `mc2-win64-v0.4` (the preset's default). Restored at 12:06 by deploying mc2-main's own `build64-ninja` (manifest src 55f62bc4d985, exe == mc2-main/build64-ninja/mc2.exe). Lane 6 held the batch lease from 11:55 and at ~12:38 was running mc2.exe from v0.4 with that restored exe; if lane 6 had deployed between 11:55 and 12:05 I overwrote it, and its runs since then tested mc2-main's exe (its own build is from 12:18): lane 6's runtime proof must be re-checked against its manifest. Lesson: always pass the target dir to deploy_payload; the preset default is another lane's install.
+- My tree's `host_lease.py` has no `hold` (mc2-main's does), and my capture/smoke runner does not read MC2_HOST_LEASE_BATCH, so this session took the lease per run instead of a batch hold.
+
+### BUGS rows proposed: none (no player-visible defect fixed this session).
+
+### Open
+1. Row 20: caster-depth self-occlusion differs (dump GL vs VK cascade depth at a tent); a mech-shadow-on-prop pose needs a spawn facility. 2. Row 17: implement the design. 3. T12, T14. 4. Session 20 items 3, 4, 7, 8 unchanged.
+5. Scratch (mine): `scratch/` battery21.sh, battery21.out, classdiag.out, psr21.py, t1_21.sh, t1_21.out, harn21.log, build_s21*.log, deploy_s21*.log, b21_*_t1.log; `.claude/l2cap/s21-*`, montages `s21-psr-*.png`; session scratchpad patch l6seam.patch. Older lane-2 scratch listed in session 20.
+
+### Lessons (21)
+- A preset default target is somebody else's install: name the target directory on every deploy.
+- Classify before chasing a sampler: a one-line class tint settled the GBuffer1 question in one capture.
+- A same-exe on/off diff with a viewed mask shows what the option actually does (here prop self-shadow banding), which is often not the pose the row assumed.
+
 ## TWENTIETH session (2026-10-15 morning, cap 5 h) -- ShadowCSM=FALSE under VK, building shadows (row 17), row 20 receive arm, review nits 7/8, tracy tool; nifty NOT merged (no "merge lane2 6adecc763" in mc2-main at any checkpoint)
 
 ### Commits (oldest first, after 6adecc763)

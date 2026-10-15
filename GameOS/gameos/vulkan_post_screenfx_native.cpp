@@ -117,6 +117,13 @@ struct PostScreenFxHealth {
 PostScreenFxHealth g_fx;
 
 void setFallback(const char* reason) {
+    // A decline changes what the frame shows (GL pass or no screen shadow), so each new reason is logged; capped because
+    // a pose can alternate between two reasons every frame.
+    static int s_reasonLogs = 0;
+    if (reason && reason[0] && std::strcmp(reason, g_fx.fallbackReason) != 0 && s_reasonLogs < 8) {
+        ++s_reasonLogs;
+        vlog("screenfx declined: reason=%s attempted=%lu shadow_frames=%lu", reason, g_fx.attempted, g_fx.shadowFrames);
+    }
     std::strncpy(g_fx.fallbackReason, reason ? reason : "",
                  sizeof(g_fx.fallbackReason) - 1);
     g_fx.fallbackReason[sizeof(g_fx.fallbackReason) - 1] = '\0';
@@ -903,6 +910,10 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     ++g_fx.usedVulkan;
     ++g_fx.shadowFrames;
     ++g_fx.glSkipped;
+    // The receipt that the VK screen shadow drew, with the inputs that decide what props receive.
+    if ((g_fx.shadowFrames % 600) == 1)
+        vlog("screen shadow drawn: shadow_frames=%lu attempted=%lu csm_count=%d prop_shadow_receive=%d",
+             g_fx.shadowFrames, g_fx.attempted, csmCount_, mc2::options::current().propShadowReceive);
     setFallback("");
     return true;
 }

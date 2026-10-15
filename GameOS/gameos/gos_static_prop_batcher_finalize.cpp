@@ -3,6 +3,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include <cstring>
 #include "gos_static_prop_finalize_frame.h"
+#include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
 
 
@@ -115,14 +116,12 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    // VK-P8a SHADOW-INTEROP: capture the shared VBO/IBO byte sizes BEFORE the CPU
-    // staging is freed, so the Vulkan shadow island can pull the geometry from the
-    // GL buffers (glGetBufferSubData) once per map.
+    // The staging bytes stay for the map's lifetime: they are the CPU copy of the shared VBO / IBO the Vulkan islands build
+    // their own buffers from (mc2_static_prop_geometry_cpu); onMapLoad clears them.
     s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
     s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
-
-    s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
-    s_stagingIbo.clear(); s_stagingIbo.shrink_to_fit();
+    s_stagingVbo.shrink_to_fit();
+    s_stagingIbo.shrink_to_fit();
 
     mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets\n",
                  mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()));
@@ -1051,4 +1050,14 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     if (reportMaterialCacheAndBaseInstances(f)) return;
 
     armCoalesce(f);
+}
+
+extern "C" int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes, const void** ibo, uint64_t* iboBytes) {
+    if (!vbo || !vboBytes || !ibo || !iboBytes) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure || s_stagingVbo.empty() || s_stagingIbo.empty()) return 0;
+    *vbo = s_stagingVbo.data();
+    *vboBytes = (uint64_t)s_stagingVbo.size();
+    *ibo = s_stagingIbo.data();
+    *iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
+    return 1;
 }

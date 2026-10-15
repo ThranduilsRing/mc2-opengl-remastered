@@ -117,7 +117,6 @@ struct Mc2TerrainTier1Feed {
     // pure concrete shadow = dyn (static dropped, dynamic kept). Gate MC2_VK_TERRAIN_DYNSHADOW
     // (requires MC2_VK_TERRAIN_LIGHTING). 0/false -> no dynamic shadow (lit-only), no hole.
     int32_t                     dynShadowsEnabled;     // pp->shadowsEnabled_ && getDynamicShadowFBO() && !CSM
-    uint32_t                    glDynamicShadowTex;    // GL name of pp->getDynamicShadowTexture() (0 = not ready)
     int32_t                     dynamicShadowSize;     // dynamic shadow map edge in texels
     float                       dynamicLightSpaceMatrix[16]; // pp->getDynamicLightSpaceMatrix()
     // VK-TERRAIN-DETAIL sub-slice: perturb the terrain normal (macro slope + material
@@ -147,13 +146,11 @@ struct Mc2TerrainTier1Feed {
     // csmEnabled=0 -> VK frag skips the CSM path entirely (falls back to the legacy
     // single-map dynShadowsEnabled path above, unchanged).
     int32_t                     csmEnabled;            // 1 iff gate on AND GL CSM is actually active+ready
-    uint32_t                    glCsmArrayTex;         // GL name of dynShadowArrayTex_ (0 = not ready)
     int32_t                     csmArraySize;           // dynShadowMapSize_ (near-cascade array edge, texels)
     int32_t                     csmCount;               // pp->getDynamicShadowCascadeCount() (1..3)
     float                       csmCascadeMatrices[16 * 3]; // pp->getDynamicCascadeMatrices() (row-major GL_FALSE)
     float                       csmCascadeTexelWorld[3];    // pp->getDynamicCascadeTexelWorld()
     float                       csmDepthSpan;           // pp->getCsmDepthSpan()
-    uint32_t                    glCsmFullMapTex;        // GL name of dynamicFullMapTex_ (0 = not ready)
     int32_t                     csmFullMapSize;         // pp->getDynamicFullMapSize()
     float                       csmFullMapTexelWorld;   // pp->getDynamicFullMapTexelWorld()
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): the 4x-finer VISUAL heightfield bake

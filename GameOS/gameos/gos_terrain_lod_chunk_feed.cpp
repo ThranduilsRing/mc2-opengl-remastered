@@ -128,7 +128,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // deferred — matches the mechanism-proven shadow-compare spike). Copy source is
         // the RAW engine GL texture so we never toggle compare-mode on a VK interop tex.
         out->dynShadowsEnabled = 0;
-        out->glDynamicShadowTex = 0;
         out->dynamicShadowSize = 0;
         std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
         // Umbrella member; requires lighting (its own precondition).
@@ -141,7 +140,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             const int    dSize = pp->getDynamicShadowMapSize();
             if (dTex != 0 && dSize > 0) {
                 out->dynShadowsEnabled = 1;
-                out->glDynamicShadowTex = static_cast<uint32_t>(dTex);
                 out->dynamicShadowSize = dSize;
                 std::memcpy(out->dynamicLightSpaceMatrix, pp->getDynamicLightSpaceMatrix(),
                             sizeof(out->dynamicLightSpaceMatrix));
@@ -188,7 +186,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             const float* mats  = pp->getDynamicCascadeMatrices();
             if (fTex != 0 && fSize > 0 && ccount > 0 && mats) {
                 out->dynShadowsEnabled = 1;
-                out->glDynamicShadowTex = static_cast<uint32_t>(fTex);
                 out->dynamicShadowSize = fSize;
                 // Full-map cascade = the LAST cascade; its matrix is row (ccount-1).
                 std::memcpy(out->dynamicLightSpaceMatrix, mats + (ccount - 1) * 16,
@@ -219,13 +216,11 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // Now requires the CSM sub-gate explicitly, matching the documented contract.
         const bool csmNearGate = mc2vkgate::umbrellaOn();
         out->csmEnabled = 0;
-        out->glCsmArrayTex = 0;
         out->csmArraySize = 0;
         out->csmCount = 0;
         std::memset(out->csmCascadeMatrices, 0, sizeof(out->csmCascadeMatrices));
         std::memset(out->csmCascadeTexelWorld, 0, sizeof(out->csmCascadeTexelWorld));
         out->csmDepthSpan = 1.0f;
-        out->glCsmFullMapTex = 0;
         out->csmFullMapSize = 0;
         out->csmFullMapTexelWorld = 0.0f;
         if (csmNearGate && dynShadowGate && pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
@@ -236,13 +231,11 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             const float* texelW  = pp->getDynamicCascadeTexelWorld();
             if (arrTex != 0 && fmTex != 0 && ccount2 > 0 && ccount2 <= 3 && mats2 && texelW) {
                 out->csmEnabled = 1;
-                out->glCsmArrayTex = static_cast<uint32_t>(arrTex);
                 out->csmArraySize  = pp->getDynamicShadowMapSize();
                 out->csmCount      = ccount2;
                 std::memcpy(out->csmCascadeMatrices, mats2, sizeof(float) * 16 * ccount2);
                 std::memcpy(out->csmCascadeTexelWorld, texelW, sizeof(float) * ccount2);
                 out->csmDepthSpan  = pp->getCsmDepthSpan();
-                out->glCsmFullMapTex = static_cast<uint32_t>(fmTex);
                 out->csmFullMapSize  = pp->getDynamicFullMapSize();
                 out->csmFullMapTexelWorld = pp->getDynamicFullMapTexelWorld();
             }

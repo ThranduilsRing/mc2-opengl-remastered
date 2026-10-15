@@ -803,41 +803,30 @@ bool upload_geometry_once(ShadowIsland* s) {
     release_geometry(s);   // drop any half-built buffers from a failed earlier attempt
     Mc2ShadowGeomFeed feed{};
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
-    if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
+    // The vertex / index bytes come from the batcher's CPU copy (the bytes the GL buffers were created from).
+    const void* vboCpu = nullptr; const void* iboCpu = nullptr;
+    uint64_t vboBytes = 0, iboBytes = 0;
+    if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
+    if (vboBytes == 0 || iboBytes == 0 || vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
+        vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", (unsigned long long)vboBytes,
+             (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes);
+        return false;
+    }
 
     s->vertexStride = feed.vertexStride;
     if (feed.vertexStride != mc2_static_prop_vertex_stride())
         vlog("ERROR: feed vertexStride %u != pipeline stride %u (shadow geometry will explode).", feed.vertexStride, mc2_static_prop_vertex_stride());
 
-    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "shadow.vbo")) return false;
-    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "shadow.ibo")) return false;
-    // The CPU staging was freed at finalize; pull the immutable GL buffer bytes ONCE
-    // (map-load, not per-frame) via glGetBufferSubData into a scratch, then memcpy
-    // into the VK buffers. This one-time geometry copy is NOT the shadow-map surface,
-    // so it does not touch the per-frame zero-copy shadow-map invariant.
-    std::vector<uint8_t> scratch;
+    if (!make_buffer(s, s->vbo, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "shadow.vbo")) return false;
+    if (!make_buffer(s, s->ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "shadow.ibo")) return false;
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->vbo.allocation(), &p) == VK_SUCCESS) {
-          scratch.resize((size_t)feed.vboBytes);
-          glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-          while (glGetError() != GL_NO_ERROR) {}
-          glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-          { GLenum ge = glGetError(); if (ge != GL_NO_ERROR) vlog("glGetBufferSubData(vbo) readback GL error 0x%x.", (unsigned)ge); }
-          glBindBuffer(GL_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          vmaFlushAllocation(s->allocator, s->vbo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->vbo.allocation());
-      } }
+      if (vmaMapMemory(s->allocator, s->vbo.allocation(), &p) != VK_SUCCESS) return false;
+      std::memcpy(p, vboCpu, (size_t)vboBytes);
+      vmaFlushAllocation(s->allocator, s->vbo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->vbo.allocation()); }
     { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->ibo.allocation(), &p) == VK_SUCCESS) {
-          scratch.resize((size_t)feed.iboBytes);
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-          while (glGetError() != GL_NO_ERROR) {}
-          glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-          { GLenum ge = glGetError(); if (ge != GL_NO_ERROR) vlog("glGetBufferSubData(ibo) readback GL error 0x%x.", (unsigned)ge); }
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          vmaFlushAllocation(s->allocator, s->ibo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ibo.allocation());
-      } }
+      if (vmaMapMemory(s->allocator, s->ibo.allocation(), &p) != VK_SUCCESS) return false;
+      std::memcpy(p, iboCpu, (size_t)iboBytes);
+      vmaFlushAllocation(s->allocator, s->ibo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ibo.allocation()); }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
     s->typeRuns.clear();
