@@ -2,7 +2,7 @@
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
 MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
-MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 3 at width 2); cores 0..1 stay reserved.
+MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 1); cores 0..1 stay reserved.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
@@ -47,7 +47,7 @@ def cores_per_slot() -> int:
 
 def slot_count() -> int:
     maximum = 6 // cores_per_slot()
-    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", str(maximum)))
+    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "1"))
     if not 1 <= count <= maximum:
         raise ValueError(f"MC2_HOST_GAME_SLOTS must be between 1 and {maximum}")
     return count

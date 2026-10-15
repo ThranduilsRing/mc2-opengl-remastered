@@ -1,6 +1,7 @@
 # Host tool inventory
 
-Game slots default to three: `MC2_HOST_CORES_PER_SLOT=2` gives each slot two physical cores (four logical CPUs).
+Game slots default to one engine: `MC2_HOST_CORES_PER_SLOT=2` gives each slot two physical cores (four logical CPUs).
+Enable concurrency with `MC2_HOST_GAME_SLOTS=3` only after concurrent strict-chain validation passes.
 `MC2_HOST_GAME_SLOTS` accepts 1..floor(6/width); physical cores 2..7 are available, CPUs 0..3 stay free.
 `MC2_HOST_LEASE_EXCLUSIVE=1` (or `host_lease hold --exclusive --tag X`) reserves all six cores for timing proofs.
 FIFO tickets block later requests behind an exclusive waiter; dead holders/tickets recover automatically.
