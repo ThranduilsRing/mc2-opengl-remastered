@@ -52,7 +52,7 @@ Lanes: lane 1 = `A:/Games/mc2-main` (install `mc2-win64-v0.4`), lane 2 = `A:/Gam
 | T2 | 2 | Mon 12 - Tue 13 | Gate amnesty wave 1 (render-side files) | 8 |
 | T3 | 1 | Wed 14 - Thu 15 | Step 4 B1: EString -> std::string for non-widget callers | 10 |
 | T4 | 2 | Wed 14 - Thu 15 | Step 4 B4: raw-buffer heaps -> owned buffers (mclib) | 10 |
-| T5 | 1 | Fri 16 - Sat 17 | Step 4 B2: EList and value containers, SortList total order | 10 |
+| T5 | 1 | Fri 16 - Sat 17 | Step 4 B2: EList and value containers, SortList total order **[CLOSED 2026-10-14 for the game code: `cxx23-step4-b2-after-review.md`; the editor E-batches and B2.2c stay open]** | 10 |
 | T6 | 2 | Fri 16 - Sat 17 | mc2_15 writer fix (if page heap gave a stack) ELSE step 3 remainder (facade P3, value-used, lane-2 tags) | 8 |
 | T7 | 1 | Sun 18 | Step 4 B3 files/streams (if tier3 unblocked) ELSE B5 prep: one `TextureRef` behind the two release APIs | 8 |
 | R1 | ro | Thu 15 eve | Fable reviewer: B0 + B1 against the step 4 checklist | 3 |

@@ -245,6 +245,9 @@ T2 s2 (multiplayer, validation, Tracy option), 20:00 merge T2, overnight tier2 a
 T3 s1, T4 s1. Thu 15: T3 s2 (batch notes), T4 s2, 20:00 merge T4, RB1. Fri 16: RB1 fixes (1 h cap), T5 s1 (batches 1-2), T6 s1 (audit + first family).
 Sat 17: T5 s2 (batch 3, B2 note), T6 s2, 20:00 merge T6, overnight 12 pairs at HEAD. Sun 18: RA1 + RB2, E0, merges. Mon 19: M.
 
+### STATUS 2026-10-14 (lane 1)
+Step 4 B1 closed earlier (RA1 `cxx23-step4-b1-after-review-1.md`). **B2 CLOSED 2026-10-14** for the game code: B2.0 to B2.5 landed and are proved (`cxx23-step4-b2-after-review.md`: what shipped, rules held and bent, open items, KPI); the editor `EList` (E-batches) and the optional B2.2c remain open on their own tracks. **B3 (files and streams) STARTED**: batch notes, sealed census (132 sites in 55 files) and contract tests are in (`cxx23-step4-b3-notes.md`, B3.0); T7 reads "B3 if tier3 ran" but the owner ruled 2026-10-14 that B3's proof is tier2 plus crafted malformed-content tests, so B3 goes ahead.
+
 ## 9. Fixes the orchestrator applies to the source docs (edits, not rewrites)
 `program-plan-2026-10-12.md`: section 1 "about 113" -> 132; the `tests/saveload/baselines` sentence -> "mc2_01 recorded (untracked, lane 1 s3)";
 tier3 row -> "parked by ruling; 7 mod + 2 stock rows"; section 3 table replaced by section 8 above (T4 removed, cull/multiplayer/validation/E0 added,
