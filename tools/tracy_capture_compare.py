@@ -111,18 +111,13 @@ BASELINE_ROOT = Path("release_assets/tracy-baselines")  # gitignored; traces nev
 REGRESS_WARN_PCT = 5.0   # frame-count drop that WARNs (exit 1)
 REGRESS_FAIL_PCT = 10.0  # frame-count drop that FAILs (exit 2)
 
-# VK-ISLAND-TRACY-1 (2026-07-18): the old arm (backend + MC2_VK_WATER_INTEROP/
-# MC2_VK_SHADOW_INTEROP) measured a PHANTOM config: MC2_VK_WATER_INTEROP is a dead
-# name (no consumer), the umbrella was never armed (zero islands ran; present
-# declined not-VK-owned and force-fell back to GL), and MC2_VK_SHADOW_INTEROP is an
-# opt-in island the user's TEST-C-vk.bat does not set — when it DOES engage it adds
-# a ~3.5 ms/frame ALWAYS-inline fence wait that swamps every other number. The vk
-# arm now = the user's real config: backend + umbrella, shadow interop explicitly
-# OFF. Override per-capture with --env (e.g. --env MC2_VK_SHADOW_INTEROP=1).
+# The vk arm measures the shipped VK frame: backend + shared GBuffer, every umbrella member
+# at its default (the shadow producers are default-on kill switches since the one-submit-
+# per-frame rework, so forcing MC2_VK_SHADOW_INTEROP=0 would measure a frame without shadows).
+# Per-capture overrides go through --env (e.g. --env MC2_VK_SHADOW_INTEROP=0 for a no-shadow arm).
 VK_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_VK_SHARED_GBUFFER": "1",
-    "MC2_VK_SHADOW_INTEROP": "0",
 }
 
 
@@ -951,7 +946,7 @@ def main() -> int:
     c.set_defaults(show_window=True)
     c.add_argument("--env", action="append", default=[], metavar="KEY=VAL",
                    help="extra env var(s) for the game, applied AFTER the arm's "
-                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHADOW_INTEROP=1). "
+                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHADOW_INTEROP=0). "
                         "Repeatable.")
     c.set_defaults(fn=cmd_capture)
 
