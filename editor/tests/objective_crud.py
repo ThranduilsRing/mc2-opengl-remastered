@@ -2,7 +2,7 @@
 import re
 
 
-# Legacy Construct + model-definition defaults, as written by authoring Save.
+# Authoring defaults come from the legacy constructor and model definition.
 NEW_FIELDS = {
     "Title": ['st ""'], "Description": ['st ""'], "Priority": ["ul 1"], "ResourcePoints": ["ul 0"],
     **{key: ["b FALSE"] for key in (

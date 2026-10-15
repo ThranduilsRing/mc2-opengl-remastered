@@ -75,7 +75,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
         if (spec.key == "Description") value = item.scalars.front().value;
         std::string_view warning;
         if (field) {
-            // FIT prefixes select distinct readers; a shared C++ integer alternative cannot validate them.
+            // FIT prefixes select readers independently of the C++ value type.
             if (field->prefix != spec.prefix) {
                 if (spec.key == "DisplayMarker")
                     return std::unexpected(LoadError{section(item.section)->name + "/DisplayMarker", "invalid_objective_prefix", 0});
@@ -92,7 +92,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                     else if (wire.starts_with("0X")) number = 0;
                 }
             }
-            // FitIniFile joins the first two physical string lines; the model reflects the game's text.
+            // Imported text reflects FIT's first-line join.
             if (auto* text = std::get_if<std::string>(&value))
                 if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
         }
@@ -110,7 +110,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                 return valid;
             }
         }
-        // Legacy activation indices supply a default ID; their lexemes remain authored syntax.
+        // Activation indices supply fallback IDs without losing authored spelling.
         if ((!field || !warning.empty()) && spec.key == "ActivateFlagID")
             if (const auto* legacy = find(item.section, "ActivateFlagIndex")) {
                 if (legacy->prefix == "ul" && legacy->value.size() == 1 && std::holds_alternative<std::int64_t>(legacy->value[0])) {
@@ -129,7 +129,7 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
     }
     const auto scalar = [&](std::string_view key) -> const Scalar& { return std::ranges::find(item.scalars, key, &ObjectiveScalar::key)->value; };
     const auto type = std::get<std::int64_t>(scalar("ModelType"));
-    // A nonempty preview model reaches SimpleCamera's asserting default for every other type.
+    // Other model types assert in the game camera.
     if (!std::get<std::string>(scalar("ObjectiveModel")).empty() && type != 5 && type != 13 && type != 14 && type != 15)
         return std::unexpected(LoadError{section(item.section)->name + "/ModelType", "unsupported_model_type_asserts_in_game_camera", 0});
     return {};
@@ -152,11 +152,11 @@ std::expected<void, LoadError> CommandHistory::setObjectiveScalar(NodeId id, std
     auto valid = validateObjectiveScalar(*spec, value);
     if (!valid) return reject(valid.error().reason);
     if (value == old->value && old->warning.empty()) return {};
-    // The original alias remains authoritative when present; no other objective bytes are rewritten.
+    // Preserve authored prerequisite aliases and legacy activation indices.
     const auto actualKey = old->source && document_.field(*old->source)->name != "ActivateFlagIndex" ?
         std::string_view(document_.field(*old->source)->name) : key;
     if (auto* text = std::get_if<std::string>(&value); text && text->find('\n') != text->npos) {
-        // An empty opening line absorbs FitIniFile's first-line join. CRLF keeps empty lines on its RAM path too.
+        // FIT text needs an empty opening line and CRLF for lossless disk/RAM reads.
         std::string wire = "\r\n";
         for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
         *text = std::move(wire);

@@ -701,7 +701,7 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
                 null_pak = (directory / "null-reloaded.pak").read_bytes()
                 if typed_fields(objective_fields(fixture_fit)) != typed_fields(objective_fields(null_fit)):
                     raise ValueError("legacy null reload changed objective values")
-                # Same-executable null saves account for legacy position quantization, not CRUD changes.
+                # Legacy position quantization requires a same-run null-save control.
                 for data in (null_pak, after_pak):
                     packet(data, 0)
                     count = struct.unpack_from("<I", data, 4)[0] // 4 - 2
@@ -1300,8 +1300,8 @@ def grade_chooser(name, directory, lines):
     from editor.tests.legacy_reference import PLACEMENTS, compare_frozen, inserted_unit, typed_fields, verify_frozen
     from editor.tests.run_catalog_proofs import oracle
     families = [operation.removeprefix("chooser-") for operation in PANEL_OPERATIONS[name]]
-    # These references save the very same placement; widget artifacts must match both byte streams.
-    # Frozen stock references are legacy exports and retain the existing semantic parity grade.
+    # Identical placements require identical widget/reference byte streams.
+    # Legacy parity compares decoded content, not archive encoding.
     for extension in ("fit", "pak"):
         if (directory / f"fixture.{extension}").read_bytes() != (directory / f"e5_reference_before.{extension}").read_bytes():
             raise ValueError(f"chooser widget/reference baseline bytes differ: {extension}")
@@ -1473,7 +1473,7 @@ def panel_negative_controls(name, directory):
         corrupted, count = re.subn(rb"(?m)^(ul\s+VariantNumber\s*=\s*)0", lambda match: match[1] + b"1", body)
         if count != 1: raise ValueError("chooser corruption control did not alter one placed field")
         corrupted = original[:start] + corrupted + original[end:]
-        # Corrupt matching history saves together so byte history facts alone still pass.
+        # Matching history artifacts alone cannot prove a correct edit.
         paths = [path, directory / "chooser-mech-redone.fit"]
         if len(PANEL_OPERATIONS[name]) == 1: paths.append(directory / "widget-save.fit")
         lines = (directory / "shell.log").read_text().splitlines()
@@ -1530,7 +1530,7 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
             else:
                 data = stock.read(f"data/missions/mc2_01.{extension}")
             if name == "objectives_panel" and extension == "fit":
-                # The model-name edit needs a camera-supported type; fingerprint this prepared input.
+                # Model-name edits require a camera-supported type in the fingerprinted input.
                 begin = data.index(b"[Team0Objective1]")
                 end = data.index(b"\n[", begin)
                 body, count = re.subn(rb"(?m)^(l\s+ModelType\s*=\s*)[^\r\n]*", lambda match: match[1] + b"14", data[begin:end])

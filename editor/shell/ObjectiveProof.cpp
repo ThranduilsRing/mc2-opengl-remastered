@@ -48,7 +48,7 @@ void PanelProof::objectivesProof()
 {
     if (document_.objectives().size() < 2) throw std::runtime_error("objective_fixture_missing");
     const auto id = document_.objectives()[1].section;
-    // Model-name edits need a camera-supported type even when the input has no model.
+    // Model-name edits require a camera-supported type.
     if (!history_.setObjectiveScalar(id, "ModelType", std::int64_t{14})) throw std::runtime_error("objective_fixture_type_failed");
     saveCheck("fixture");
     files_ = std::make_unique<FileWorkflow>(document_, history_, panels_, output_ / "widget-save", log_);
@@ -71,7 +71,7 @@ void PanelProof::objectivesProof()
         });
         click("objective.next");
     }
-    // The final redo supplies a changed widget save; undo makes reopen replace dirty state.
+    // Reopen must replace a changed, dirty mission.
     click("redo", [this] { beforeFit_ = document_.fitBytes(); beforePak_ = {document_.pakBytes().begin(), document_.pakBytes().end()}; });
     click("save", [this] {
         auto saved = MissionDocument::read(output_ / "widget-save.fit", output_ / "widget-save.pak", log_, document_.markerObjects());

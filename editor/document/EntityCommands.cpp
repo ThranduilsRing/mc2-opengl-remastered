@@ -184,7 +184,7 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
         }
     }
     const auto squad = unit.squad.value_or(static_cast<std::uint32_t>(nextSquad));
-    // Empty alternative cursors retain the legacy export value; existing authored references stay untouched.
+    // Empty alternative cursors use legacy defaults; authored references stay exact.
     std::int64_t alternativeStart = part - static_cast<std::int64_t>(alternatives.size()) + 2;
     for (const auto& entity : document_.entities()) if (entity.section && !alternatives.contains(*entity.exportedPart)) {
         const auto& section = *document_.section(*entity.section);

@@ -89,7 +89,7 @@ TEST_CASE("objectives/all authoring scalars have independent defaults and exact 
         const auto edited = doc->fitBytes();
         CHECK(edited.substr(edited.find("[Objective0Condition0]")) == original.substr(original.find("[Objective0Condition0]")));
         for (std::size_t i = 0; i < 4; ++i) CHECK(doc->objective(id)->entries[i][0].section == entryIds[i]);
-        // Only the requested value or newly inserted declaration may differ from authored bytes.
+        // Only the edited value or absent declaration may change.
         if (source) {
             auto reverted = edited;
             const auto* changed = doc->field(*source); REQUIRE(changed);

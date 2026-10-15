@@ -7,7 +7,6 @@ namespace {
 struct Edit { Span span; std::string text; };
 std::string defaults(const std::string& name, const std::string& nl)
 {
-    // Constructor defaults and empty lists author a new objective without borrowing a template.
     std::string text = "[" + name + "]" + nl;
     for (const auto& spec : objectiveSchema()) {
         Scalar value;
@@ -87,7 +86,7 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
         !std::holds_alternative<std::int64_t>(count->value[0]) ||
         std::get<std::int64_t>(count->value[0]) != static_cast<std::int64_t>(previousCount))
         return reject("invalid_objective_count");
-    // Fresh spans include earlier scalar edits; stable IDs belong to the existing document only.
+    // Reparsed spans include prior edits; IDs retain document identity.
     const auto countSection = std::ranges::find_if(syntax->sections, [&](const Section& section) {
         return !section.parent && identifier(section.name) == identifier(block);
     });

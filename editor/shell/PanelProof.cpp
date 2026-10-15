@@ -65,7 +65,7 @@ PanelProof::PanelProof(MissionDocument& doc, CommandHistory& history, EntityPane
         EntityId marker;
         for (const auto& e : doc.entities()) if (doc.hasMarkerReference(e.id) && e.position[0] == -4288 && e.position[1] == 4288) { marker = e.id; break; }
         require(marker.value != 0, "panel_marker_missing");
-        // The fixture puts the chosen marker first so selection reaches a visible row without a thousand-row scroll.
+        // The selected marker must be visible without scrolling.
         auto placements = doc.archive().packets[1].decoded;
         const auto offset = 4 + *doc.entity(marker)->packetRecord * 40;
         std::rotate(placements.begin() + 4, placements.begin() + offset, placements.begin() + offset + 40);
@@ -246,7 +246,7 @@ void PanelProof::chooserProof()
                 family, object.id, object.stem, found->team));
             if (kind_ == "chooser_mod") require(panels_.chooserSelection()->definition.layer == "mod:MC2X-CVE-G", "chooser_mod_preview_missing");
         });
-        // Each family browse starts with an empty query so prior searches cannot hide entries.
+        // Prior searches must not hide the next family's entries.
         input("chooser.search", " ");
     }
     click("redo", [this] { beforeFit_ = document_.fitBytes(); beforePak_ = pak(document_); });
@@ -254,7 +254,7 @@ void PanelProof::chooserProof()
         auto saved = MissionDocument::read(output_ / "widget-save.fit", output_ / "widget-save.pak", log_, document_.markerObjects());
         require(saved && saved->fitBytes() == beforeFit_ && pak(*saved) == beforePak_, "chooser_save_widget_failed");
     });
-    // A changed in-memory mission makes reopen prove replacement instead of a no-op.
+    // Reopen must replace changed state.
     click("undo");
     click("reopen");
     click("dirty.discard", [this] {

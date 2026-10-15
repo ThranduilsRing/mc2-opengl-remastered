@@ -173,7 +173,7 @@ def main():
             command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
                         "--placement-goldens", str(FROZEN), "--placement-output", str(directory / "panel-placements")]
         if target == "editor_document_tests_asan":
-            # Separate allocation-heavy stock and placement proofs retain the same process bound and complete case coverage.
+            # Separate memory-heavy suites retain the timeout and must cover every native case.
             commands.append((command + ["--test-suite-exclude=placement-live"], 120, "editor_document_tests_asan-core-run"))
             commands.append((command + ["--test-suite=placement-live"], 120, "editor_document_tests_asan-placement-run"))
         else:

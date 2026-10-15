@@ -146,8 +146,7 @@ add_executable(EditRel WIN32
     "${CMAKE_SOURCE_DIR}/code/unitprofile.cpp"               # mc2UnitProfileDataEnabled
 )
 
-# The legacy editor's linked GameOS libraries need current build identity, so
-# fingerprint generation must precede their compilation even in standalone builds.
+# Linked GameOS libraries require the current build fingerprint before compilation.
 add_dependencies(gameos build_fingerprint)
 add_dependencies(gameos_editor build_fingerprint)
 
