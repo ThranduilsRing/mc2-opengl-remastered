@@ -2393,6 +2393,8 @@ long MechWarrior::mainDecisionTree (void) {
 	switch (orderState) {
 		case ORDERSTATE_GENERAL:
 			if (newTacOrderReceived[ORDERSTATE_ALARM]) {
+                extern void suspendAuthoredRoute(MechWarrior*);
+                suspendAuthoredRoute(this);
 				clearCurTacOrder(false);
 				newTacOrder = tacOrder[ORDERSTATE_ALARM];
 				orderState = ORDERSTATE_ALARM;

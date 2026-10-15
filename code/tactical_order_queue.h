@@ -97,13 +97,12 @@ struct AuthoredRoute {
 };
 
 enum class RouteState { Pending, Active, Suspended, Completed, Interrupted, Failed };
-enum class RouteReason { None, PlayerOrder, Superseded, Removed, Unreachable, Alarm };
-enum class RouteAction { Ready, Arrived, Unreachable, PlayerOrder, GeneralReplacement, Alarm, AlarmCleared, Removed, PathAccepted };
+enum class RouteReason { None, PlayerOrder, Removed, Unreachable, Alarm };
+enum class RouteAction { Ready, Arrived, Unreachable, PlayerOrder, Alarm, AlarmCleared, Removed, PathAccepted };
 enum class RouteEventKind { Started, Advanced, Retrying, Suspended, Resumed, Completed, Interrupted, Failed, PathAccepted };
 inline constexpr unsigned routeRetryBudget = 3;
 inline constexpr Tick routeRetryWindow = 30;
 inline constexpr RouteReason routePlayerReason = RouteReason::PlayerOrder;
-inline constexpr RouteReason routeReplacementReason = RouteReason::Superseded;
 inline constexpr RouteReason routeRemovalReason = RouteReason::Removed;
 inline constexpr RouteReason routeFailureReason = RouteReason::Unreachable;
 
@@ -147,6 +146,15 @@ struct RouteExecution {
     unsigned retriesRemaining = routeRetryBudget;
     Tick retryDeadline = 0, lastTransitionTick = 0;
     std::uint64_t eventSequence = 0;
+    struct Segment {
+        std::uint32_t cursor;
+        std::uint64_t revision;
+        bool reinit = false;
+        bool operator==(const Segment&) const = default;
+    };
+    std::optional<Segment> pendingSegment;
+    std::int32_t commander = -1;
+    bool generalWriteDiagnosed = false, awaitingMaps = false, retryPending = false;
     bool terminal() const;
     std::optional<TravelMode> cursorMode() const;
     std::optional<RouteTransition> transition(const RouteSignal&);

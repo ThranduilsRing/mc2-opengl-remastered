@@ -85,12 +85,10 @@ std::optional<RouteTransition> RouteExecution::transition(const RouteSignal& sig
         }
         break;
     case RouteAction::PlayerOrder:
-    case RouteAction::GeneralReplacement:
     case RouteAction::Removed:
         state = RouteState::Interrupted;
         suspensionReason = RouteReason::None;
-        reason = action == RouteAction::PlayerOrder ? routePlayerReason :
-            action == RouteAction::GeneralReplacement ? routeReplacementReason : routeRemovalReason;
+        reason = action == RouteAction::PlayerOrder ? routePlayerReason : routeRemovalReason;
         event = RouteEventKind::Interrupted;
         break;
     default: return {};

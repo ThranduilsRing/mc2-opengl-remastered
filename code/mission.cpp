@@ -134,7 +134,6 @@ void Mission::recordAuthoredInstallation(const mc2::sim::OrderEnvelope& e, mc2::
         if (!route.receiptId || route.installed || route.diagnosed || route.originalPart != e.payload.orderId ||
             e.sourceId != 1 || orderRecipient(route.originalPart) != ref) continue;
         auto* mover = resolveOrderRecipient(ref);
-        // Installation evidence must precede ABL's next general-slot replacement.
         if (!mover || route.pilot >= MAX_WARRIORS || mover->getPilot() != MechWarrior::warriorList[route.pilot]) continue;
         if (nextRouteExecution == std::numeric_limits<std::uint64_t>::max() ||
             nextOrderRevision == std::numeric_limits<std::uint64_t>::max()) {
@@ -150,16 +149,52 @@ void Mission::recordAuthoredInstallation(const mc2::sim::OrderEnvelope& e, mc2::
         execution.selectedPart = route.selectedPart;
         execution.pilot = route.pilot;
         execution.stance = route.stance;
+        execution.commander = mover->getCommanderId();
         execution.kind = route.kind;
         execution.path = route.path;
         execution.revision = nextOrderRevision++;
         execution.lastTransitionTick = e.applyTick;
-        // This record issues no movement; existing installation still reaches execute and path requests.
         routeExecutions.push_back(std::move(execution));
         route.installed = true;
         mc2::fmt::print_err("[AUTHORED_ORDER v1] status=Installed original={} selected={} pilot={} stance={} points={}\n",
             route.originalPart, route.selectedPart, route.pilot, route.stance, route.path.points.size());
     }
+}
+bool Mission::routeLive(const mc2::sim::RouteExecution& route) {
+    const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
+        &OrderRecipientBinding::partIncarnation);
+    if (binding == orderRecipients.end()) return false;
+    auto* mover = resolveOrderRecipient(binding->ref);
+    return mover && !mover->isDisabled() && route.pilot < MAX_WARRIORS &&
+        binding->pilotIncarnation == route.pilotIncarnation &&
+        mover->getPilot() == MechWarrior::warriorList[route.pilot] &&
+        mover->getPilot()->getStatus() == WARRIOR_STATUS_NORMAL && mover->getCommanderId() == route.commander;
+}
+mc2::sim::RouteExecution* Mission::ownedRoute(const MechWarrior* pilot) {
+    if (routeExecutions.empty()) return nullptr;
+    for (auto& route : routeExecutions) {
+        if (route.terminal()) continue;
+        const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
+            &OrderRecipientBinding::partIncarnation);
+        if (binding == orderRecipients.end() || binding->pilot != pilot ||
+            binding->pilotIncarnation != route.pilotIncarnation) continue;
+        if (!routeLive(route)) {
+            signalRoute(route, mc2::sim::RouteAction::Removed);
+            return nullptr;
+        }
+        return &route;
+    }
+    return nullptr;
+}
+bool Mission::routeMapsReady(MechWarrior* pilot) const {
+    const auto level = pilot->getVehicle()->getMoveLevel();
+    return PathFindMap[SECTOR_PATHMAP] && PathFindMap[SIMPLE_PATHMAP] &&
+        GlobalMoveMap[level] && !GlobalMoveMap[level]->badLoad && GlobalMoveMap[level]->areas;
+}
+void Mission::signalRoute(mc2::sim::RouteExecution& route, mc2::sim::RouteAction action, bool mapsReady) {
+    onRouteEvent({route.key, route.revision, route.eventSequence + 1,
+        orderIngress.queue().executingTick().value_or(orderIngress.queue().completedTick()),
+        action, mapsReady, mapsReady, true, route.pilotIncarnation});
 }
 const mc2::sim::RouteExecution* Mission::routeExecution(mc2::sim::RouteKey key) const {
     const auto found = std::ranges::find(routeExecutions, key, &mc2::sim::RouteExecution::key);
@@ -169,11 +204,11 @@ std::optional<mc2::sim::RouteTransition> Mission::onRouteEvent(const mc2::sim::R
     auto found = std::ranges::find(routeExecutions, signal.key, &mc2::sim::RouteExecution::key);
     if (found != routeExecutions.end()) {
         auto current = signal;
-        const auto binding = std::ranges::find(orderRecipients, signal.key.partIncarnation,
-            &OrderRecipientBinding::partIncarnation);
-        if (binding == orderRecipients.end() || !resolveOrderRecipient(binding->ref))
-            current.pilotIncarnation = 0;
+        if (!routeLive(*found)) current.action = mc2::sim::RouteAction::Removed;
         if (auto event = found->transition(current)) {
+            found->retryPending = event->event == mc2::sim::RouteEventKind::Retrying;
+            if (found->terminal() || found->state == mc2::sim::RouteState::Suspended)
+                found->pendingSegment.reset();
             mc2::fmt::print_err("[ROUTE_EXECUTION v1] execution={} revision={} sequence={} tick={} event={} reason={}\n",
                 event->key.executionId, event->revision, event->sequence, event->tick,
                 static_cast<int>(event->event), static_cast<int>(event->reason));
@@ -236,6 +271,27 @@ void Mission::beginOrderSimulationTick() {
     MissionOrderApplication application(MissionOrderAccess{*this});
     const auto result = orderIngress.beginSimulationTick(true, false, MPlayer != nullptr, application);
     if (!result) mc2::fmt::print_err("[ORDER_INGRESS v1] begin_error={}\n", static_cast<int>(result.error()));
+    using namespace mc2::sim;
+    for (auto& route : routeExecutions) {
+        if (route.terminal()) continue;
+        if (!routeLive(route)) { signalRoute(route, RouteAction::Removed); continue; }
+        auto* pilot = MechWarrior::warriorList[route.pilot];
+        const auto team = pilot->getTeam() ? pilot->getTeam()->getId() : -1;
+        if (team < 0 || team >= MAX_TEAMS || !MechWarrior::brainsEnabled[team] ||
+            ((route.state == RouteState::Active || route.state == RouteState::Pending) &&
+             pilot->getTacOrder(ORDERSTATE_GENERAL)->code != static_cast<int>(route.kind))) {
+            signalRoute(route, RouteAction::Removed);
+            continue;
+        }
+        if (pilot->getOrderState() != ORDERSTATE_GENERAL || route.state == RouteState::Suspended ||
+            !routeMapsReady(pilot)) continue;
+        if (route.state == RouteState::Pending && route.awaitingMaps) {
+            signalRoute(route, RouteAction::Ready, true);
+            if (!route.terminal()) dispatchOwnedRoute(pilot, route);
+        } else if (route.state == RouteState::Active && (route.retryPending || route.awaitingMaps)) {
+            dispatchOwnedRoute(pilot, route);
+        }
+    }
 }
 void Mission::completeOrderSimulationTick() {
     const auto result = orderIngress.completeSimulationTick();

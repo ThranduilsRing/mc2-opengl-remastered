@@ -6,6 +6,7 @@
 #include "mission_init_frame.h"
 #include "mech.h"
 #include "movemgr.h"
+#include "team.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -89,6 +90,9 @@ struct SeamWorldResources {
     unsigned long previousIcon = Mover::holdFireIconHandle;
     GameObjectManager* previousObjects = ObjectManager;
     MechWarrior* previousPilot = MechWarrior::warriorList[7];
+    Team* previousTeam = Team::teams[0];
+    bool previousBrain = MechWarrior::brainsEnabled[0];
+    long previousTeamCount = Team::numTeams;
     SeamWorldResources() {
         heap.init(1024 * 1024, "authored-order-seam");
         systemHeap = &heap;
@@ -103,6 +107,9 @@ struct SeamWorldResources {
         missionHeap = previousMissionHeap;
         ObjectManager = previousObjects;
         MechWarrior::warriorList[7] = previousPilot;
+        Team::teams[0] = previousTeam;
+        MechWarrior::brainsEnabled[0] = previousBrain;
+        Team::numTeams = previousTeamCount;
     }
 };
 }
@@ -207,6 +214,11 @@ TEST_CASE("AuthoredOrderProduction/BattleMech path orders cannot reach the queue
 TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and records installation") {
     SeamWorldResources resources;
     Pilot pilot;
+    Team team;
+    team.id = 0;
+    Team::teams[0] = &team;
+    MechWarrior::brainsEnabled[0] = true;
+    pilot.setTeam(&team);
     Actor actor;
     actor.attach(pilot);
     struct WatchManager : GameObjectManager {
@@ -215,6 +227,7 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     } objects;
     ObjectManager = &objects;
     objects.watches[1] = &actor;
+    pilot.setVehicle(&actor);
     MechWarrior::warriorList[7] = &pilot;
     struct AuthoredMission : Mission {
         using Mission::authoredRoutes;
@@ -311,7 +324,9 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
         REQUIRE(owner.onRouteEvent(input));
         CHECK_FALSE(owner.onRouteEvent(input));
         ObjectManager = nullptr; MechWarrior::warriorList[7] = nullptr; missionHeap = nullptr;
+        Team::teams[0] = nullptr;
         owner.destroy(false);
+        Team::teams[0] = &team;
         ObjectManager = &objects; MechWarrior::warriorList[7] = &pilot; missionHeap = &resources.heap;
         CHECK(owner.authoredExecutions().empty()); CHECK(owner.rejectedRouteSignals.empty());
         CHECK(owner.authoredRoutes.empty()); CHECK_FALSE(owner.orderRecipient(2));
@@ -338,13 +353,19 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
         REQUIRE(event); CHECK(event->event == RouteEventKind::Suspended);
         input.sequence = 5; input.action = RouteAction::AlarmCleared; input.segmentReachable = true;
         REQUIRE(owner.onRouteEvent(input));
-        input.sequence = 6; input.action = RouteAction::GeneralReplacement;
-        event = owner.onRouteEvent(input);
-        REQUIRE(event); CHECK(event->reason == RouteReason::Superseded);
-        input.sequence = 7; input.action = RouteAction::AlarmCleared;
+        const auto sequence = owner.routeExecution(previous.key)->eventSequence;
+        ::TacticalOrder replacement;
+        replacement.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_STOP, false);
+        auto* savedMission = mission;
+        mission = &owner;
+        pilot.setGeneralTacOrder(replacement);
+        mission = savedMission;
+        CHECK(pilot.getTacOrder(ORDERSTATE_GENERAL)->code == TACTICAL_ORDER_PATROL_PATH);
+        CHECK(owner.routeExecution(previous.key)->eventSequence == sequence);
+        input.sequence = 6; input.action = RouteAction::AlarmCleared;
         CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
         CHECK(owner.rejectedRouteSignals.size() == 1);
-        CHECK(owner.routeExecution(previous.key)->eventSequence == 6);
+        CHECK(owner.routeExecution(previous.key)->eventSequence == 5);
     }
     SUBCASE("identity exhaustion rejects once without unwinding queue application") {
         for (const auto counter : {&owner.nextPartIncarnation, &owner.nextPilotIncarnation,

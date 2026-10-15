@@ -183,15 +183,14 @@ TEST_CASE("alarm before readiness suspends until cleared and maps are ready") {
         CHECK(route.state == RouteState::Active);
     }
 }
-TEST_CASE("player ABL and removal cancel permanently even while suspended") {
-    for (const auto action : {RouteAction::PlayerOrder, RouteAction::GeneralReplacement, RouteAction::Removed}) {
+TEST_CASE("player and removal cancel permanently even while suspended") {
+    for (const auto action : {RouteAction::PlayerOrder, RouteAction::Removed}) {
         for (const auto suspended : {false, true}) {
             auto route = execution(); start(route);
             if (suspended) REQUIRE(route.transition(signal(route, RouteAction::Alarm, 2)));
             const auto event = route.transition(signal(route, action, 3));
             REQUIRE(event); CHECK(event->event == RouteEventKind::Interrupted);
-            CHECK(event->reason == (action == RouteAction::PlayerOrder ? RouteReason::PlayerOrder :
-                action == RouteAction::GeneralReplacement ? RouteReason::Superseded : RouteReason::Removed));
+            CHECK(event->reason == (action == RouteAction::PlayerOrder ? RouteReason::PlayerOrder : RouteReason::Removed));
             CHECK(route.state == RouteState::Interrupted);
             const auto sequence = route.eventSequence;
             for (const auto resurrection : {RouteAction::Ready, RouteAction::AlarmCleared, RouteAction::Arrived})
@@ -224,7 +223,7 @@ TEST_CASE("every terminal state rejects every later action without emitting an e
     for (const auto terminal : {RouteState::Completed, RouteState::Interrupted, RouteState::Failed}) {
         auto route = execution(); route.state = terminal;
         for (const auto action : {RouteAction::Ready, RouteAction::Arrived, RouteAction::Unreachable,
-            RouteAction::PlayerOrder, RouteAction::GeneralReplacement, RouteAction::Alarm,
+            RouteAction::PlayerOrder, RouteAction::Alarm,
             RouteAction::AlarmCleared, RouteAction::Removed, RouteAction::PathAccepted}) {
             CHECK_FALSE(route.transition(signal(route, action)));
             CHECK(route.state == terminal); CHECK(route.eventSequence == 0); CHECK(route.path.curPoint == 0);

@@ -132,6 +132,7 @@ def build_and_run_order_seam(run):
     env = dict(os.environ)
     env.pop("MC2_SEAM_DISCONNECT_ADAPTER", None)
     env.pop("MC2_SEAM_DISCONNECT_EXECUTION", None)
+    env.pop("AUTHORED_SEAM_DISCONNECT_EXECUTION", None)
     positive = subprocess.run(command + ["--test-case-exclude=" + census], cwd=REPO_ROOT, env=env, timeout=60,
                               **console_child.child_kwargs())
     if positive.returncode:
@@ -153,6 +154,21 @@ def build_and_run_order_seam(run):
     controlled = negative.returncode == 1 and "CHECK( installed )" in negative.stdout
     print(f"  [{'PASS' if controlled else 'FAIL'}] adapter-disconnected negative control "
           f"(rc={negative.returncode}, positive installation assertion failed={controlled})")
+    if not controlled:
+        print(negative.stdout + negative.stderr)
+        return False
+    env.pop("MC2_SEAM_DISCONNECT_ADAPTER", None)
+    env["AUTHORED_SEAM_DISCONNECT_EXECUTION"] = "1"
+    negative = subprocess.run(command + ["--test-case=AuthoredOrderProduction/standing route moves and survives general writes"],
+                              cwd=REPO_ROOT, env=env, capture_output=True,
+                              text=True, timeout=60,
+                              **console_child.child_kwargs(redirected=True))
+    controlled = (negative.returncode == 1 and
+                  "CHECK( cursor_sequence )" in negative.stdout and
+                  "CHECK( general_slot_authored )" in negative.stdout and
+                  "REQUIRE" not in negative.stdout)
+    print(f"  [{'PASS' if controlled else 'FAIL'}] execution-disconnected negative control "
+          f"(rc={negative.returncode}, movement and persistence assertions failed={controlled})")
     if not controlled:
         print(negative.stdout + negative.stderr)
     return controlled

@@ -9,6 +9,7 @@
 #include "quad.h"
 #include "move_internal.h"
 #include "mover_internal.h"
+#include "comndr.h"
 
 #include <array>
 #include <cstring>
@@ -17,6 +18,10 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#include <cstdlib>
+#include <cstdio>
+#include <io.h>
+#include <filesystem>
 
 extern long LastMoveCalcErr;
 
@@ -59,10 +64,21 @@ struct MovingMech : BattleMech {
         maxMoveSpeed = 10.0f;
         moveLevel = 0;
         pathLocks = false;
+        commanderId = 7;
+        teamId = 0;
     }
+    void nextSegment() { char throttle = -1; long gesture = -1; setNextMovePath(throttle, gesture); }
 };
 struct MovingPilot : MechWarrior {
     void deferTactics() { movementUpdate = scenarioTime + 1000.0f; }
+    void activate() {
+        teamId = 0;
+        brainUpdate = combatUpdate = movementUpdate = scenarioTime + 1000.0f;
+        useGoalPlan = false;
+        status = WARRIOR_STATUS_NORMAL;
+    }
+    void finishGlobalPath() { moveOrders.curGlobalStep = moveOrders.numGlobalSteps - 1; }
+    bool generalReceived() const { return newTacOrderReceived[ORDERSTATE_GENERAL]; }
 };
 
 struct MovementWorld {
@@ -91,6 +107,8 @@ struct MovementWorld {
         saved.keep(ObjectTypeManager::objectCache);
         saved.keep(GameObject::initialize); saved.keep(Mover::holdFireIconHandle);
         saved.keep(Mover::numMovers); saved.keep(MechWarrior::numWarriors);
+        saved.keep(MechWarrior::warriorList);
+        saved.keep(Team::numTeams); saved.keep(Commander::numCommanders);
         saved.keep(scenarioTime); saved.keep(SimpleMovePathRange);
         saved.keep(MovePathManager::numPaths); saved.keep(MovePathManager::peakPaths);
         saved.keep(MovePathManager::sourceTally);
@@ -292,6 +310,133 @@ std::array<const void*, 20> bindings() {
         Terrain::mapData, Terrain::terrainHeap, Terrain::tileRowToWorldCoord, Terrain::tileColToWorldCoord,
         Terrain::cellRowToWorldCoord, Terrain::cellColToWorldCoord, Terrain::objBlockInfo, Mover::triggerAreaMgr};
 }
+
+struct RouteMission : Mission {
+    Part roster[2]{};
+    RouteMission() { parts = roster; numParts = 1; roster[1].objectWID = 1; }
+    using Mission::authoredRoutes;
+    using Mission::routeExecutions;
+    void release() {
+        std::destroy_at(&orderFixtureReceipt); std::destroy_at(&authoredDiagnostics);
+        std::destroy_at(&authoredRoutes); std::destroy_at(&routeExecutions);
+        std::destroy_at(&rejectedRouteSignals); std::destroy_at(&authoredOpordPilots);
+        std::destroy_at(&authoredMissionText); std::destroy_at(&orderRecipients);
+        std::destroy_at(&orderIngress);
+    }
+};
+// Mission's production destructor also shuts down the renderer and ABL globals.
+union RouteMissionStorage {
+    RouteMission owner;
+    RouteMissionStorage() : owner() {}
+    ~RouteMissionStorage() { owner.release(); }
+};
+struct RouteTeam : Team { RouteTeam() { id = 0; } };
+struct StandingRouteWorld : MovementWorld {
+    RouteTeam team;
+    Commander commander;
+    RouteMissionStorage storage;
+    mc2::sim::RouteExecution snapshot;
+    bool disconnected = false;
+    StandingRouteWorld() {
+        saved.keep(mission); saved.keep(Team::home); saved.keep(Team::teams);
+        saved.keep(Commander::home); saved.keep(Commander::commanders);
+        saved.keep(MechWarrior::brainsEnabled);
+        Team::home = Team::teams[0] = &team;
+        commander.setId(0); Commander::home = &commander;
+        MechWarrior::warriorList[7] = pilot.get();
+        MechWarrior::brainsEnabled[0] = true;
+        pilot->activate();
+        mission = &storage.owner;
+        storage.owner.resetOrderIngress();
+        storage.owner.bindOrderRecipients();
+    }
+    void install(mc2::sim::OrderKind kind = mc2::sim::OrderKind::PatrolPath, int firstCol = 70) {
+        mc2::sim::AuthoredRoute route;
+        route.originalPart = route.selectedPart = 1; route.pilot = 7; route.kind = kind;
+        for (int col : {firstCol, 100, 130}) {
+            auto p = point(col);
+            route.path.points.push_back({p.x, p.y, p.z});
+            route.path.mode.push_back(col == 100 ? mc2::sim::TravelMode::Fast : mc2::sim::TravelMode::Slow);
+        }
+        storage.owner.authoredRoutes.push_back(route);
+        storage.owner.admitAuthoredRoutes();
+        storage.owner.beginOrderSimulationTick(); storage.owner.completeOrderSimulationTick();
+        REQUIRE(storage.owner.authoredExecutions().size() == 1);
+        snapshot = storage.owner.authoredExecutions().front();
+        disconnected = std::getenv("AUTHORED_SEAM_DISCONNECT_EXECUTION") != nullptr;
+        if (disconnected) storage.owner.routeExecutions.clear();
+        pilot->mainDecisionTree();
+    }
+    const mc2::sim::RouteExecution& execution() const {
+        return disconnected ? snapshot : storage.owner.authoredExecutions().front();
+    }
+    void poll() { storage.owner.beginOrderSimulationTick(); storage.owner.completeOrderSimulationTick(); }
+    bool segment() {
+        const auto cursor = execution().path.curPoint;
+        if (!queue->queueFront) return false;
+        CHECK(pilot->getMoveRun() == (execution().path.mode[cursor] == mc2::sim::TravelMode::Fast));
+        const auto sequence = execution().eventSequence;
+        Stuff::Vector3D query;
+        CHECK(pilot->getNextWayPoint(query, false));
+        CHECK(query.x == execution().path.points[cursor].x);
+        CHECK(execution().eventSequence == sequence);
+        CHECK(execution().path.curPoint == cursor);
+        const bool reinit = execution().pendingSegment && execution().pendingSegment->reinit;
+        const auto flags = queue->queueFront->moveParams;
+        CHECK(((flags & MOVEPARAM_INIT) != 0 || reinit));
+        queue->calcPath();
+        CHECK(pilot->getMoveCurGlobalStep() == 0);
+        CHECK(pilot->getMovePath(0)->numStepsWhenNotPaused > 0);
+        CHECK_FALSE(execution().pendingSegment);
+        std::vector<int> visited;
+        for (int i = 0; i < 12; ++i) {
+            pilot->movementDecisionTree();
+            if (queue->queueFront) queue->calcPath();
+            if (pilot->getMovePath(0)->numStepsWhenNotPaused) consumeActive(*this, visited);
+            else break;
+        }
+        const auto p = execution().path.points[cursor];
+        const auto pos = mech->getPosition();
+        CHECK(pos.x == doctest::Approx(p.x)); CHECK(pos.y == doctest::Approx(p.y));
+        CHECK_FALSE(visited.empty());
+        mech->nextSegment();
+        return std::abs(pos.x - p.x) < 0.001f && std::abs(pos.y - p.y) < 0.001f;
+    }
+    void alarm() {
+        TacticalOrder order;
+        order.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_WAIT, false);
+        order.delayedTime = scenarioTime + 1000;
+        pilot->setAlarmTacOrder(order, 100);
+        pilot->mainDecisionTree();
+    }
+};
+struct RouteLog {
+    FILE* file = nullptr;
+    int previous = -1;
+    RouteLog() {
+        std::filesystem::create_directories(".scratch");
+        file = std::fopen(".scratch/s4b2b1w-events.log", "w+");
+        REQUIRE(file);
+        std::fflush(stderr); previous = _dup(_fileno(stderr)); _dup2(_fileno(file), _fileno(stderr));
+    }
+    std::string finish() {
+        std::fflush(stderr); _dup2(previous, _fileno(stderr)); _close(previous); previous = -1;
+        std::rewind(file);
+        std::string result;
+        char buffer[1024];
+        while (auto count = std::fread(buffer, 1, sizeof(buffer), file)) result.append(buffer, count);
+        return result;
+    }
+    ~RouteLog() {
+        if (previous != -1) { std::fflush(stderr); _dup2(previous, _fileno(stderr)); _close(previous); }
+        if (file) std::fclose(file);
+    }
+};
+size_t occurrences(const std::string& text, const std::string& token) {
+    size_t count = 0, offset = 0;
+    while ((offset = text.find(token, offset)) != text.npos) { ++count; offset += token.size(); }
+    return count;
+}
 }
 
 TEST_CASE("AuthoredOrderProduction/BattleMech queued point move calculates complex buffers") {
@@ -350,4 +495,190 @@ TEST_CASE("AuthoredOrderProduction/omitting queue service fails the same complex
         CHECK(world.pilot->getMovePathRequest() != nullptr);
     }
     CHECK(bindings() == previous);
+}
+
+TEST_CASE("AuthoredOrderProduction/standing route moves and survives general writes") {
+    using namespace mc2::sim;
+    StandingRouteWorld world;
+    world.provisionPaths();
+    RouteLog log;
+    world.install();
+    std::vector<unsigned> cursors;
+    bool moved = true;
+    for (int i = 0; i < 6; ++i) {
+        cursors.push_back(world.execution().path.curPoint);
+        moved = world.segment() && moved;
+    }
+    const bool cursor_sequence = moved && cursors == std::vector<unsigned>{0, 1, 2, 0, 1, 2};
+    CHECK(cursor_sequence);
+    CHECK(world.execution().path.curPoint == 0);
+    CHECK(world.segment());
+    const auto sequence = world.execution().eventSequence;
+    ::TacticalOrder replacement;
+    replacement.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_STOP, false);
+    for (int i = 0; i < 25; ++i) world.pilot->setGeneralTacOrder(replacement);
+    CHECK(world.execution().eventSequence == sequence);
+    CHECK_FALSE(world.pilot->generalReceived());
+    world.alarm();
+    const auto suspended = world.execution().eventSequence;
+    for (int i = 0; i < 25; ++i) world.pilot->setGeneralTacOrder(replacement);
+    const bool general_slot_authored = world.pilot->getTacOrder(ORDERSTATE_GENERAL)->code == TACTICAL_ORDER_PATROL_PATH;
+    CHECK(general_slot_authored);
+    CHECK(world.execution().eventSequence == suspended);
+    CHECK_FALSE(world.pilot->generalReceived());
+    CHECK(world.execution().state == RouteState::Suspended);
+    world.pilot->clearCurTacOrder();
+    CHECK(world.execution().state == RouteState::Active);
+    CHECK(world.execution().path.curPoint == 1);
+    CHECK(world.pilot->getCurTacOrder()->moveParams.wayPath.curPoint == 1);
+    CHECK(world.segment());
+    const auto output = log.finish();
+    CHECK(occurrences(output, "general_write_absorbed") == 1);
+    CHECK(occurrences(output, "event=0 reason=0") == 1);
+    CHECK(output.find("rejected") == output.npos);
+}
+
+TEST_CASE("AuthoredOrderProduction/traverse completes only after real final arrival") {
+    StandingRouteWorld world;
+    world.provisionPaths();
+    world.install(mc2::sim::OrderKind::TraversePath);
+    for (int i = 0; i < 3; ++i) CHECK(world.segment());
+    CHECK(world.execution().state == mc2::sim::RouteState::Completed);
+    CHECK(world.pilot->getCurTacOrder()->status(world.pilot.get()) == TACORDER_SUCCESS);
+    CHECK(world.queue->queueFront == nullptr);
+}
+
+TEST_CASE("AuthoredOrderProduction/unready maps recover without rejected signals or duplicate start") {
+    for (bool queued : {false, true}) {
+        StandingRouteWorld world;
+        if (queued) world.provisionPaths();
+        RouteLog log;
+        world.install();
+        if (queued) {
+            auto* map = PathFindMap[SECTOR_PATHMAP];
+            PathFindMap[SECTOR_PATHMAP] = nullptr;
+            world.queue->calcPath();
+            CHECK(world.execution().pendingSegment.has_value());
+            CHECK(world.execution().eventSequence == 1);
+            PathFindMap[SECTOR_PATHMAP] = map;
+        } else {
+            for (int i = 0; i < 3; ++i) world.poll();
+            CHECK(world.execution().state == mc2::sim::RouteState::Pending);
+            CHECK(world.execution().eventSequence == 0);
+            CHECK(world.queue->queueFront == nullptr);
+            world.provisionPaths();
+        }
+        world.poll();
+        CHECK(world.segment());
+        const auto output = log.finish();
+        CHECK(occurrences(output, "event=0 reason=0") == 1);
+        CHECK(output.find("rejected") == output.npos);
+    }
+}
+
+TEST_CASE("AuthoredOrderProduction/player cancellation and dead pilots cannot emit later progress") {
+    using namespace mc2::sim;
+    for (int ending : {0, 1, 2}) {
+        StandingRouteWorld world;
+        world.provisionPaths(); world.install();
+        RouteLog log;
+        if (ending == 2) world.alarm();
+        if (ending == 0) {
+            ::TacticalOrder player;
+            player.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_WAIT, false);
+            world.pilot->setPlayerTacOrder(player, false);
+        } else world.pilot->setStatus(WARRIOR_STATUS_DEAD);
+        if (world.queue->queueFront) world.queue->calcPath();
+        if (ending == 0) world.pilot->mainDecisionTree();
+        world.poll();
+        const auto sequence = world.execution().eventSequence;
+        CHECK(world.execution().state == RouteState::Interrupted);
+        if (ending == 2) world.pilot->clearCurTacOrder();
+        Stuff::Vector3D point;
+        world.pilot->getNextWayPoint(point, true);
+        world.poll();
+        CHECK(world.execution().eventSequence == sequence);
+        CHECK(world.execution().path.curPoint == 0);
+        const auto output = log.finish();
+        CHECK(occurrences(output, ending == 0 ? "event=6 reason=1" : "event=6 reason=2") == 1);
+        CHECK(output.find("event=8") == output.npos);
+        CHECK(output.find("event=1") == output.npos);
+    }
+}
+
+TEST_CASE("AuthoredOrderProduction/ABL temporaries and alarm PATH remain stock with a standing route") {
+    StandingRouteWorld world;
+    world.provisionPaths(); world.install();
+    auto path = world.pilot->getTacOrder(ORDERSTATE_GENERAL)->moveParams.wayPath;
+    auto* request = world.queue->queueFront;
+    CHECK(world.pilot->orderPatrolPath(false, true, ORDER_ORIGIN_SELF, &path) == TACORDER_SUCCESS);
+    CHECK(world.pilot->orderTraversePath(false, true, ORDER_ORIGIN_SELF, &path, 0) == TACORDER_SUCCESS);
+    CHECK(world.queue->queueFront == request);
+    TacticalOrder alarm;
+    alarm.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_PATROL_PATH, false);
+    alarm.moveParams.wayPath = path;
+    world.pilot->setAlarmTacOrder(alarm, 100); world.pilot->mainDecisionTree();
+    CHECK(world.execution().state == mc2::sim::RouteState::Suspended);
+    CHECK(world.queue->queueFront == nullptr);
+    CHECK(world.pilot->getCurTacOrder()->status(world.pilot.get()) == TACORDER_SUCCESS);
+}
+
+TEST_CASE("AuthoredOrderProduction/unserviced route queue cannot claim path acceptance") {
+    StandingRouteWorld world;
+    world.provisionPaths(); world.install();
+    const auto sequence = world.execution().eventSequence;
+    world.poll();
+    CHECK(world.queue->queueFront != nullptr);
+    CHECK(world.pilot->getMovePath(0)->numStepsWhenNotPaused == 0);
+    CHECK(world.execution().eventSequence == sequence);
+    CHECK(world.execution().pendingSegment.has_value());
+}
+
+TEST_CASE("AuthoredOrderProduction/brain and general-slot purges release ownership at the next poll") {
+    for (bool disabled : {false, true}) {
+        StandingRouteWorld world;
+        world.provisionPaths(); world.install();
+        if (disabled) {
+            MechWarrior::brainsEnabled[0] = false;
+            world.pilot->mainDecisionTree();
+        } else world.pilot->getTacOrder(ORDERSTATE_GENERAL)->init();
+        CHECK(world.execution().state == mc2::sim::RouteState::Active);
+        world.poll();
+        CHECK(world.execution().state == mc2::sim::RouteState::Interrupted);
+        const auto sequence = world.execution().eventSequence;
+        world.poll();
+        CHECK(world.execution().eventSequence == sequence);
+    }
+}
+
+TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and retries a ready zero-step path") {
+    using namespace mc2::sim;
+    for (bool zeroSteps : {false, true}) {
+        StandingRouteWorld world;
+        world.provisionPaths(); world.install(OrderKind::PatrolPath, 140);
+        world.queue->calcPath();
+        CHECK(world.pilot->getMovePath(0)->numStepsWhenNotPaused > 0);
+        world.pilot->movementDecisionTree();
+        REQUIRE(world.queue->queueFront);
+        auto& route = world.storage.owner.routeExecutions.front();
+        // A correlated continuation must classify its own buffer despite an older active path.
+        route.pendingSegment = {route.path.curPoint, route.revision, false};
+        auto goal = world.point(140);
+        world.pilot->setMoveGoal(MOVEGOAL_LOCATION, &goal);
+        if (zeroSteps) world.pilot->finishGlobalPath();
+        const auto sequence = route.eventSequence;
+        const auto evidence = service(world, true);
+        CHECK(evidence.before[0].pausedSteps > 0);
+        CHECK(evidence.after[0] == evidence.before[0]);
+        CHECK((evidence.after[1].pausedSteps == 0) == zeroSteps);
+        CHECK(route.eventSequence == sequence + 1);
+        CHECK_FALSE(route.pendingSegment);
+        CHECK(route.retryPending == zeroSteps);
+        CHECK(route.retriesRemaining == routeRetryBudget - (zeroSteps ? 1 : 0));
+        if (zeroSteps) {
+            world.poll();
+            CHECK(world.queue->queueFront != nullptr);
+            CHECK(world.segment());
+        }
+    }
 }

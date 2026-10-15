@@ -448,6 +448,11 @@ class Mission
 		void admitAuthoredRoutes();
 		void recordAuthoredInstallation(const mc2::sim::OrderEnvelope&, mc2::sim::ObjectRef);
 		std::optional<mc2::sim::RouteTransition> onRouteEvent(const mc2::sim::RouteSignal&);
+        mc2::sim::RouteExecution* ownedRoute(const MechWarrior*);
+        bool routeLive(const mc2::sim::RouteExecution&);
+        bool routeMapsReady(MechWarrior*) const;
+        void signalRoute(mc2::sim::RouteExecution&, mc2::sim::RouteAction, bool mapsReady = false);
+        void dispatchOwnedRoute(MechWarrior*, mc2::sim::RouteExecution&);
 		const mc2::sim::RouteExecution* routeExecution(mc2::sim::RouteKey) const;
 		std::span<const mc2::sim::RouteExecution> authoredExecutions() const { return routeExecutions; }
 		std::string authoredRouteEvidence() const;
