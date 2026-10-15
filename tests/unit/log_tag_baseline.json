@@ -9242,6 +9242,16 @@
    "count": 1
   },
   {
+   "tag": "SIM_SPEED",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "steps_per_frame",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SMOKE",
    "ver": 1,
    "stream": "stderr",
