@@ -5,6 +5,7 @@
 #include <memory>
 #include "utils/gl_utils.h"
 
+struct HdriCpuImage;   // gos_hdri.h
 #include "../../RenderCore/RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (relative: reachable from every TU that includes this header, incl. RenderWorld)
 
 struct glsl_program;
@@ -28,6 +29,7 @@ public:
 
     bool   isHdriReady()  const { return hdriReady_; }
     GLuint getHdriTex()   const { return hdriTex_; }   // WATER-HDRI-REFL-1
+    const struct HdriCpuImage* getHdriCpu() const { return hdriCpu_.get(); }
 
     // FRAME-GRAPH-EXECUTOR-ISLAND-1: read-only accessors used by the executor
     // wrapper (executorOwnBegin / executorOwnEnd) in gos_postprocess.cpp to
@@ -735,6 +737,10 @@ private:
     // HDRI-SKY-1: background sky from a single equirect HDRI.
     // All HDRI state is null/false when MC2_HDRI_SKY=0 or load fails.
     GLuint        hdriTex_         = 0;
+    // The CPU bytes of hdriTex_ the Vulkan sky and water islands upload; kept only while the Vulkan umbrella is armed.
+    std::shared_ptr<struct HdriCpuImage> hdriCpu_;
+    uint64_t      hdriCpuGeneration_ = 0;
+    void          loadHdri(const char* path, float* outSunAz, bool* outSunValid);   // sets hdriTex_ and hdriCpu_
     glsl_program* hdriSkyboxProg_  = nullptr;
     bool          hdriEnabled_     = false;  // resolved once from env at init
     bool          hdriReady_       = false;  // true iff tex + program both valid
