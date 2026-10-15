@@ -1275,11 +1275,17 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			inRAM = TRUE;
 
 			// A corrupt archive entry can claim any size; an image that big would end the process in std::bad_alloc where the old malloc
-			// returned null. Refuse it with one log line and leave the file closed.
+			// returned null. Refuse it with one log line and leave the file closed: the archive entry is released here because
+			// close() sees no handle and no image and would skip it.
 			if (!imageSizePlausible(fileSize()))
 			{
 				MC2_LOG_ONCE(Io, Error, "[FILE_IMAGE_SIZE_BAD] file={} size={} (an archive entry claims more than {} bytes; not opened)",
-					m_fileName.c_str(), (long)fileSize(), (long)kMaxInRamImage);
+					m_fileName.c_str(), fileSize(), (long)kMaxInRamImage);
+				fastFile->closeFast(fastFileHandle);
+				fastFile = nullptr;
+				fastFileHandle = -1;
+				m_fileName.clear();
+				length = 0;
 				inRAM = FALSE;
 				return FILE_NOT_OPEN;
 			}

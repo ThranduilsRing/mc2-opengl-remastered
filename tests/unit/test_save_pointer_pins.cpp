@@ -56,7 +56,7 @@ std::string functionBody(const std::string &source, const char *signature)
 
 } // namespace
 
-TEST_CASE("Gate::CopyTo writes the blocker pointer as null")
+TEST_CASE("source pin: Gate::CopyTo writes the blocker pointer as null")
 {
 	const std::string body = functionBody(readSource("code/gate.cpp"), "void Gate::CopyTo (GateData *data)");
 	REQUIRE_FALSE(body.empty());
@@ -64,7 +64,7 @@ TEST_CASE("Gate::CopyTo writes the blocker pointer as null")
 	CHECK(body.find("data->closestObject = closestObject") == std::string::npos);
 }
 
-TEST_CASE("Gate::Load logs once for a stale blocker pointer, then drops it")
+TEST_CASE("source pin: Gate::Load logs once for a stale blocker pointer, then drops it")
 {
 	const std::string body = functionBody(readSource("code/gate.cpp"), "void Gate::Load (GateData *data)");
 	REQUIRE_FALSE(body.empty());
@@ -76,7 +76,7 @@ TEST_CASE("Gate::Load logs once for a stale blocker pointer, then drops it")
 	CHECK(body.find("closestObject = data->closestObject") == std::string::npos);
 }
 
-TEST_CASE("MechWarrior::copyToData writes every queued order marker as null, after the queue is copied")
+TEST_CASE("source pin: MechWarrior::copyToData writes every queued order marker as null, after the queue is copied")
 {
 	const std::string body = functionBody(readSource("code/warrior_state.cpp"), "void MechWarrior::copyToData (MechWarriorData &data)");
 	REQUIRE_FALSE(body.empty());
