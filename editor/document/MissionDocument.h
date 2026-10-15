@@ -171,6 +171,13 @@ struct ObjectiveFieldSpec {
     std::int64_t integerDefault{};
 };
 std::span<const ObjectiveFieldSpec> objectiveSchema();
+struct ConditionSpec {
+    ConditionSpecies species;
+    std::string_view name;
+    std::span<const ObjectiveFieldSpec> fields;
+    bool reference{};
+};
+std::span<const ConditionSpec> conditionSchema();
 std::expected<void, LoadError> validateObjectiveScalar(const ObjectiveFieldSpec& spec, const Scalar& value);
 struct ObjectiveScalar {
     std::string_view key;

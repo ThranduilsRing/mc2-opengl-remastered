@@ -76,6 +76,8 @@ private:
     bool flagUseIndex_{}, flagValueDraft_ = true;
     bool showObjectiveEntries_{};
     std::size_t objectiveList_{};
+    int conditionCreation_{};
+    std::array<document::Scalar, 3> payloadDraft_{};
     std::vector<document::CatalogSource> placementSources_;
     std::string module_, status_;
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};

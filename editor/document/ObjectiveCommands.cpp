@@ -1,6 +1,7 @@
 #include "CommandHistory.h"
 #include <algorithm>
 #include <format>
+#include <cmath>
 
 namespace editor::document {
 namespace {
@@ -45,6 +46,52 @@ std::expected<NodeId, LoadError> CommandHistory::addObjectiveEntry(NodeId object
 {
     return editObjectiveEntries(ObjectiveEdit::add, objective, list);
 }
+std::expected<NodeId, LoadError> CommandHistory::addObjectiveCondition(NodeId objective, std::size_t list, ConditionSpecies species)
+{
+    if ((list != 0 && list != 2) || std::ranges::find(conditionSchema(), species, &ConditionSpec::species) == conditionSchema().end())
+        return std::unexpected(rejectObjective("unsupported_condition_creation"));
+    return editObjectiveEntries(ObjectiveEdit::add, objective, list, {}, 0, species);
+}
+
+std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, std::string_view key, Scalar value)
+{
+    const auto reject = [&](std::string reason) -> std::expected<void, LoadError> {
+        return std::unexpected(rejectObjective(std::move(reason)));
+    };
+    const ObjectiveEntry* selected{};
+    for (const auto& objective : document_.objectives()) for (const auto list : {0U, 2U})
+        for (const auto& entry : objective.entries[list]) if (entry.section == id) selected = &entry;
+    if (!selected) return reject("unsupported_condition_payload");
+    if (!selected->policy.empty()) return reject(std::string(selected->policy));
+    const auto* species = std::get_if<ConditionSpecies>(&selected->species);
+    if (!species) return reject("unsupported_condition_payload");
+    const auto schema = conditionSchema();
+    const auto spec = std::ranges::find(schema, *species, &ConditionSpec::species);
+    if (spec == schema.end()) return reject("unsupported_condition_payload");
+    if (spec->reference) return reject("reference_requires_existing_resolution_command");
+    const auto fieldSpec = std::ranges::find(spec->fields, key, &ObjectiveFieldSpec::key);
+    if (fieldSpec == spec->fields.end()) return reject("unsupported_condition_field");
+    const auto* old = document_.find(id, key);
+    if (!old || old->array || old->opaque || old->prefix != fieldSpec->prefix)
+        return reject("ignored_payload_declaration_would_be_activated");
+    if (old->warning.starts_with("outside signed")) return reject(std::string(old->warning));
+    if (auto valid = validateObjectiveScalar(*fieldSpec, value); !valid) return reject(valid.error().reason);
+    if (const auto* real = std::get_if<double>(&value); real && static_cast<double>(static_cast<float>(*real)) != *real)
+        return reject("float_rounding_or_underflow_changes_value");
+    const auto* requestedReal = std::get_if<double>(&value);
+    if (old->value == Value{value} && (!requestedReal ||
+        std::signbit(*requestedReal) == std::signbit(std::get<double>(old->value[0])))) return {};
+    auto fit = document_.fitBytes();
+    auto syntax = decodeFit(fit);
+    if (!syntax) return reject(syntax.error().reason);
+    const auto index = static_cast<std::size_t>(old - document_.syntax().fields.data());
+    const auto& fresh = syntax->fields[index];
+    const auto wire = fieldSpec->type == 1 ? std::format("{:.9g}", std::get<double>(value)) : std::to_string(std::get<std::int64_t>(value));
+    fit.replace(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin, wire);
+    auto check = decodeFit(fit);
+    if (!check || check->fields[index].value != Value{value}) return reject("reader_conversion_changes_value");
+    return commitObjectiveFit(std::move(fit), "Edit condition payload");
+}
 std::expected<void, LoadError> CommandHistory::deleteObjectiveEntry(NodeId entry)
 {
     auto result = editObjectiveEntries(ObjectiveEdit::erase, {}, 0, entry);
@@ -59,7 +106,7 @@ std::expected<void, LoadError> CommandHistory::reorderObjectiveEntry(NodeId entr
 }
 
 std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveEdit edit, NodeId owner,
-    std::size_t list, NodeId id, std::uint32_t index)
+    std::size_t list, NodeId id, std::uint32_t index, std::optional<ConditionSpecies> species)
 {
     const auto reject = [&](std::string reason) -> std::expected<NodeId, LoadError> {
         return std::unexpected(rejectObjective(std::move(reason)));
@@ -126,9 +173,15 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveE
         const auto name = base + std::to_string(index);
         for (const auto& section : fresh->sections) if (!section.parent && identifier(section.name) == identifier(name))
             return reject("entry_add_would_awaken_ignored_tail");
-        const auto text = (fresh->endMarker && fit[fresh->endMarker - 1] != '\n' ? std::string(nl) : std::string{}) + "[" + name + "]" + nl + "st " + suffixes[list] +
+        auto text = (fresh->endMarker && fit[fresh->endMarker - 1] != '\n' ? std::string(nl) : std::string{}) + "[" + name + "]" + nl + "st " + suffixes[list] +
             "SpeciesString = \"" + (list % 2 == 0 ? "BooleanFlagIsSet" : "SetBooleanFlag") + "\"" + nl +
             "st FlagID = \"\"" + nl + "b Value = TRUE" + nl;
+        if (species) {
+            const auto spec = std::ranges::find(conditionSchema(), *species, &ConditionSpec::species);
+            text = "[" + name + "]" + nl + "st " + suffixes[list] + "SpeciesString = \"" + std::string(spec->name) + "\"" + nl;
+            if (fresh->endMarker && fit[fresh->endMarker - 1] != '\n') text.insert(0, nl);
+            for (const auto& field : spec->fields) text += std::string(field.prefix) + " " + std::string(field.key) + " = 0" + nl;
+        }
         edits.insert(edits.begin(), {{fresh->endMarker, fresh->endMarker}, text});
     }
     std::ranges::stable_sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });

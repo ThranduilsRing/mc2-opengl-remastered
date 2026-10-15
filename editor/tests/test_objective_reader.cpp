@@ -6,6 +6,8 @@
 #include <chrono>
 #include <fstream>
 #include <tuple>
+#include <cmath>
+#include <limits>
 
 namespace {
 std::string bytes(const std::filesystem::path& path)
@@ -101,6 +103,89 @@ void checkNumericObjectiveRead(std::string_view wire, bool species, long expecte
 TEST_CASE("reader/hex in a FlagIndex comment supplies the ID and is removed on edit")
 {
     checkNumericObjectiveRead("7 // 0xff", false, 255);
+}
+
+TEST_CASE("reader/condition fields match decimal saturation hex wrap rounding and underflow on disk and RAM")
+{
+    using namespace editor::document;
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    const auto output = std::filesystem::path("scratch/e6c-payload-reader") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(output);
+    for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
+        if (spec.reference) continue;
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        CommandHistory history(*doc);
+        const auto entry = history.addObjectiveCondition(doc->objectives()[1].section, list, spec.species); REQUIRE(entry);
+        const auto block = doc->section(*entry)->name;
+        for (const auto& field : spec.fields) {
+            const std::vector<std::pair<std::string, Scalar>> cases = field.type == 0 ?
+                std::vector<std::pair<std::string, Scalar>>{
+                    {"-2147483648", std::int64_t{-2147483648LL}}, {"2147483647", std::int64_t{2147483647}},
+                    {"2147483648", std::int64_t{2147483647}}, {"-2147483649", std::int64_t{-2147483648LL}},
+                    {"9223372036854775808", std::int64_t{2147483647}},
+                    {"0xffffffff", std::int64_t{-1}}, {"0x80000000", std::int64_t{-2147483648LL}},
+                    {"0Xffffffff", std::int64_t{0}}} :
+                std::vector<std::pair<std::string, Scalar>>{
+                    {"-1.25", -1.25}, {"0", 0.0}, {"-0", -0.0},
+                    {"0.1", 0.100000001490116119384765625}, {"16777217", 16777216.0},
+                    {"1.401298464324817e-45", static_cast<double>(std::numeric_limits<float>::denorm_min())},
+                    {"1e-50", 0.0}, {"-1e-50", -0.0}};
+            for (const auto& [wire, expected] : cases) {
+                CAPTURE(spec.name, field.key, list, wire);
+                auto fit = doc->fitBytes();
+                const auto* source = doc->find(*entry, field.key); REQUIRE(source);
+                fit.replace(source->syntax.begin, source->syntax.end - source->syntax.begin, wire);
+                std::ofstream(output / "variant.fit", std::ios::binary) << fit;
+                auto decoded = MissionDocument::decode(fit, {doc->pakBytes().begin(), doc->pakBytes().end()}, "payload-reader", {}, doc->markerObjects()); REQUIRE(decoded);
+                const auto id = decoded->objectives()[1].entries[list].back().section;
+                CHECK(decoded->find(id, field.key)->value == Value{expected});
+                FitIniFile ram; REQUIRE(ram.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+                FitIniFile disk; REQUIRE(disk.open((output / "variant.fit").string().c_str()) == NO_ERR);
+                for (auto* reader : {&ram, &disk}) {
+                    REQUIRE(reader->seekBlock(block.c_str()) == NO_ERR);
+                    if (field.type == 0) {
+                        unsigned long actual{}; REQUIRE(reader->readIdULong(field.key.data(), actual) == NO_ERR);
+                        CHECK(static_cast<std::int32_t>(actual) == std::get<std::int64_t>(expected));
+                    } else {
+                        float actual{}; REQUIRE(reader->readIdFloat(field.key.data(), actual) == NO_ERR);
+                        CHECK(static_cast<double>(actual) == std::get<double>(expected));
+                        CHECK(std::signbit(actual) == std::signbit(std::get<double>(expected)));
+                    }
+                }
+                auto wrongPrefix = fit;
+                const auto declaration = wrongPrefix.rfind('\n', source->syntax.begin) + 1;
+                wrongPrefix.replace(declaration, field.prefix.size(), field.type == 0 ? "l" : "ul");
+                FitIniFile ignored; REQUIRE(ignored.open(wrongPrefix.data(), static_cast<int>(wrongPrefix.size())) == NO_ERR);
+                REQUIRE(ignored.seekBlock(block.c_str()) == NO_ERR);
+                if (field.type == 0) { unsigned long value{}; CHECK(ignored.readIdULong(field.key.data(), value) != NO_ERR); }
+                else { float value{}; CHECK(ignored.readIdFloat(field.key.data(), value) != NO_ERR); }
+                CHECK(decoded->fitBytes() == fit);
+                std::vector<std::string> logs;
+                CommandHistory edited(*decoded, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+                const Scalar next = field.type == 0 ? Scalar{std::int64_t{-17}} : Scalar{-1.25};
+                if (decoded->find(id, field.key)->warning.starts_with("outside signed")) {
+                    const auto revision = decoded->revision();
+                    CHECK_FALSE(edited.setObjectivePayload(id, field.key, next));
+                    CHECK(logs.size() == 1); CHECK(decoded->revision() == revision);
+                    CHECK(decoded->fitBytes() == fit); CHECK_FALSE(edited.canUndo());
+                    REQUIRE(decoded->save(output / "overflow", {}));
+                    CHECK(bytes(output / "overflow.fit") == fit);
+                    continue;
+                }
+                REQUIRE(edited.setObjectivePayload(id, field.key, next));
+                REQUIRE(decoded->save(output / "edited", {}));
+                FitIniFile exported; REQUIRE(exported.open((output / "edited.fit").string().c_str()) == NO_ERR);
+                REQUIRE(exported.seekBlock(block.c_str()) == NO_ERR);
+                if (field.type == 0) {
+                    unsigned long actual{}; REQUIRE(exported.readIdULong(field.key.data(), actual) == NO_ERR);
+                    CHECK(static_cast<std::int32_t>(actual) == -17);
+                } else {
+                    float actual{}; REQUIRE(exported.readIdFloat(field.key.data(), actual) == NO_ERR); CHECK(actual == -1.25f);
+                }
+            }
+        }
+    }
 }
 TEST_CASE("reader/a sign after the FlagIndex hex prefix yields zero")
 {

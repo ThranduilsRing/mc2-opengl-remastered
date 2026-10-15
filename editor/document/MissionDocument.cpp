@@ -347,13 +347,23 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                         if (!wid || wid->array || wid->opaque || wid->prefix != "l" || wid->value.size() != 1 ||
                             !std::holds_alternative<std::int64_t>(wid->value[0])) required = {"PositionX", "PositionY"};
                     }
+                    bool ignoredPayload{};
                     for (const auto key : required) {
                         const auto type = key == "AVIFileName" || key == "WAVFileName" || key == "Message" || key == "PurchaseFileName" || key == "FlagID" ? 3U : key == "ResourceStringID" || key == "Num" ? 0U : 1U;
+                        const auto* payload = find(entry, key);
+                        const auto prefix = type == 0 ? "ul" : type == 1 ? "f" : "st";
+                        if (condition && (key == "Num" || key == "Time" || key.starts_with("Target")) &&
+                            payload && (payload->prefix != prefix || payload->array)) {
+                            preserveObjectiveField(payload->id, "ignored by the game; required payload unreadable");
+                            ignoredPayload = true;
+                            continue;
+                        }
                         if (!(type == 0 ? whole(entry, key) : typed(entry, key, type))) return reject(entry + "/" + std::string(key), "missing_or_malformed_required_payload");
                         if (type == 3 && std::get<std::string>(find(entry, key)->value[0]).size() > objectiveTextLimit)
                             return reject(entry + "/" + std::string(key), "objective_text_limit");
                     }
                     ObjectiveEntry value{sectionId(entry), ConditionSpecies{}};
+                    if (ignoredPayload) value.policy = "required payload declaration ignored by the game; entry read-only";
                     if (condition) value.species = static_cast<ConditionSpecies>(species);
                     else value.species = static_cast<ActionSpecies>(species);
                     if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {

@@ -549,6 +549,80 @@ TEST_CASE("objectives/policy and collision rejection cannot consume history or f
     }
 }
 
+TEST_CASE("objectives/condition payload edits preserve reader values and reject atomic conversion changes")
+{
+    const auto& paths = editor::tests::inputs();
+    const auto output = paths.byteGradeDirectory.empty() ? scratch() : paths.byteGradeDirectory;
+    std::filesystem::create_directories(output);
+    for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
+        auto doc = MissionDocument::decode(fixture(), packet(), "payload", {}); REQUIRE(doc);
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto owner = doc->objectives()[0].section;
+        const auto original = doc->fitBytes();
+        const auto added = history.addObjectiveCondition(owner, list, spec.species); REQUIRE(added);
+        const auto created = doc->fitBytes();
+        CHECK(doc->objective(owner)->entries[list].back().species == decltype(ObjectiveEntry::species){spec.species});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == created);
+        if (spec.reference) {
+            CHECK(doc->objective(owner)->entries[list].back().reference.status == ReferenceStatus::Missing);
+            for (const auto& field : spec.fields) CHECK(doc->find(*added, field.key)->value == Value{Scalar{0.0}});
+            CHECK_FALSE(history.setObjectivePayload(*added, "PositionX", 1.0));
+            CHECK(doc->fitBytes() == created);
+            continue;
+        }
+        for (const auto& field : spec.fields) {
+            CAPTURE(spec.name, field.key, list);
+            const auto stem = std::format("payload-{}-{}-{}", list, spec.name, field.key);
+            REQUIRE(doc->save(output / (stem + "-before"), {}));
+            const Scalar changed = field.type == 0 ? Scalar{std::int64_t{-17}} : Scalar{-1.25};
+            REQUIRE(history.setObjectivePayload(*added, field.key, changed));
+            CHECK(doc->find(*added, field.key)->value == Value{changed});
+            REQUIRE(doc->save(output / (stem + "-after"), {}));
+            auto reopened = MissionDocument::read(output / (stem + "-after.fit"), output / (stem + "-after.pak"), {}); REQUIRE(reopened);
+            CHECK(reopened->fitBytes() == doc->fitBytes());
+            const auto edited = doc->fitBytes();
+            REQUIRE(history.undo()); CHECK(doc->fitBytes() == created);
+            REQUIRE(history.redo()); CHECK(doc->fitBytes() == edited);
+            REQUIRE(history.undo());
+            const std::vector<Scalar> accepted = field.type == 0 ?
+                std::vector<Scalar>{std::int64_t{-2147483648LL}, std::int64_t{2147483647}} :
+                std::vector<Scalar>{-1.0, 0.0, -0.0, static_cast<double>(std::numeric_limits<float>::denorm_min()),
+                    static_cast<double>(std::numeric_limits<float>::max())};
+            for (const auto& value : accepted) {
+                REQUIRE(history.setObjectivePayload(*added, field.key, value));
+                CHECK(doc->find(*added, field.key)->value == Value{value});
+                if (field.type == 1) CHECK(std::signbit(std::get<double>(doc->find(*added, field.key)->value[0])) == std::signbit(std::get<double>(value)));
+                if (doc->fitBytes() != created) { REQUIRE(history.undo()); CHECK(doc->fitBytes() == created); }
+            }
+            const std::vector<Scalar> rejected = field.type == 0 ?
+                std::vector<Scalar>{std::int64_t{-2147483649LL}, std::int64_t{2147483648LL}, 1.0} :
+                std::vector<Scalar>{0.1, 1e-50, std::numeric_limits<double>::infinity(), std::int64_t{1}};
+            for (const auto& value : rejected) {
+                const auto revision = doc->revision(); logs.clear();
+                CHECK_FALSE(history.setObjectivePayload(*added, field.key, value));
+                CHECK(logs.size() == 1); CHECK(doc->revision() == revision); CHECK(doc->fitBytes() == created);
+                CHECK(history.canRedo());
+            }
+            auto wrong = created;
+            const auto* source = doc->find(*added, field.key);
+            const auto start = wrong.rfind('\n', source->syntax.begin) + 1;
+            wrong.replace(start, field.prefix.size(), field.type == 0 ? "l" : "ul");
+            auto ignored = MissionDocument::decode(wrong, packet(), "ignored", {}); REQUIRE(ignored);
+            const auto entry = ignored->objectives()[0].entries[list].back().section;
+            CommandHistory ignoredHistory(*ignored, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+            logs.clear(); CHECK_FALSE(ignoredHistory.setObjectivePayload(entry, field.key, changed));
+            CHECK(logs.size() == 1); CHECK(ignored->fitBytes() == wrong); CHECK_FALSE(ignoredHistory.canUndo());
+            CommandHistory tiny(*doc, 1); CHECK_FALSE(tiny.setObjectivePayload(*added, field.key, changed));
+            CHECK(doc->fitBytes() == created);
+        }
+        CHECK_FALSE(history.addObjectiveCondition(owner, 1, spec.species));
+        CHECK_FALSE(history.addObjectiveCondition(owner, 3, spec.species));
+        CHECK(doc->fitBytes() == created);
+    }
+}
+
 TEST_CASE("objectives/stock corpus exports typed scalars independently of retained FIT bytes" * doctest::test_suite("stock-fixture"))
 {
     const auto& paths = editor::tests::inputs();

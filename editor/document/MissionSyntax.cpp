@@ -238,6 +238,7 @@ private:
                 if (identifier(spec.key) == identifier(name) && prefix == spec.prefix && spec.type == 0) objectiveInteger = true;
             }
             objectiveInteger |= (identifier(name) == "activateflagindex" || identifier(name) == "flagindex") && prefix == "ul";
+            objectiveInteger |= identifier(name) == "num" && prefix == "ul";
             if ((identifier(name) == "previousobjectivemustbecomplete" && prefix != "b") ||
                 (prefix != "ul" && (identifier(name) == "activateflagindex" || identifier(name) == "numactions" ||
                     identifier(name) == "numfailureconditions" || identifier(name) == "numfailureactions"))) field.opaque = true;

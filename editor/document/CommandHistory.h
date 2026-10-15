@@ -29,6 +29,8 @@ public:
     std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);
     std::expected<void, LoadError> resolveObjectiveEntry(NodeId entry, EntityId target);
     std::expected<NodeId, LoadError> addObjectiveEntry(NodeId objective, std::size_t list);
+    std::expected<NodeId, LoadError> addObjectiveCondition(NodeId objective, std::size_t list, ConditionSpecies species);
+    std::expected<void, LoadError> setObjectivePayload(NodeId entry, std::string_view key, Scalar value);
     std::expected<void, LoadError> deleteObjectiveEntry(NodeId entry);
     std::expected<void, LoadError> reorderObjectiveEntry(NodeId entry, std::uint32_t index);
     std::expected<void, LoadError> setObjectiveFlag(NodeId entry, std::optional<std::string> id,
@@ -58,7 +60,8 @@ private:
     enum class ObjectiveEdit { add, copy, erase, reorder };
     LoadError rejectObjective(std::string reason);
     std::expected<NodeId, LoadError> editObjectiveEntries(ObjectiveEdit edit, NodeId objective,
-        std::size_t list, NodeId entry = {}, std::uint32_t index = 0);
+        std::size_t list, NodeId entry = {}, std::uint32_t index = 0,
+        std::optional<ConditionSpecies> species = {});
     std::expected<void, LoadError> commitObjectiveFit(std::string fit, std::string label,
         const std::unordered_map<std::string, std::string>& renamed = {});
     std::expected<NodeId, LoadError> editObjectives(ObjectiveEdit edit, std::uint32_t team,

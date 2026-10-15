@@ -104,8 +104,10 @@ def grade_placements(output, evidence):
 
 
 def grade_outputs(inputs, output):
-    from editor.tests.objective_census import grade_typed_objectives
+    from editor.tests.objective_census import grade_typed_objectives, grade_payload_outputs
     grade_typed_objectives(inputs, output)
+    grade_payload_outputs(output)
+    print("Condition payload grader: 32 changed exports and wrong-prefix/value, unchanged, unrelated-byte and missing-output controls PASS", flush=True)
     print("Objective semantic grader: 173/173 typed models equal independently parsed stock reader values", flush=True)
     for mission in STOCK_MISSIONS:
         original = (inputs / f"{mission}.fit").read_bytes()
@@ -241,9 +243,9 @@ def main():
             print(reader.stdout + reader.stderr, end="", flush=True)
             if reader.returncode:
                 return reader.returncode
-            if not re.search(r"\[doctest\] test cases:\s+6\s+\|\s+6 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
+            if not re.search(r"\[doctest\] test cases:\s+7\s+\|\s+7 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
                 raise ValueError("real objective reader cases were skipped or omitted")
-            print("Widget graders: chooser/marker, 26 objective scalars, five parent and 20 four-list/flag operations PASS; six real FIT/text reader cases executed; species dispatch remains source-derived; render capture awaits smoke host", flush=True)
+            print("Offline proofs with installed prerequisites: widget graders and seven real FIT/text reader cases executed; species dispatch remains source-derived; rendered-widget proof awaits smoke host", flush=True)
     if len(asan_cases) != 2 or sum(asan_cases) != native_cases:
         raise ValueError("ASan split did not cover the complete normal document suite")
     print(f"ASan coverage: {' + '.join(map(str, asan_cases))} = {native_cases} native cases; no cases omitted", flush=True)

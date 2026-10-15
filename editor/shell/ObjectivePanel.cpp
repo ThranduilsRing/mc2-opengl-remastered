@@ -34,7 +34,7 @@ void EntityPanels::objectives()
             objective_ = item.section; selected = &item; objectiveRevision_ = ~std::uint64_t{}; break;
         }
     }
-    const bool open = ImGui::BeginCombo("Existing objective", selected ? label(*selected).c_str() : "No objectives");
+    const bool open = ImGui::BeginCombo("Existing objective", selected ? label(*selected).c_str() : "No objectives", ImGuiComboFlags_HeightLargest);
     record("objective.select", open);
     if (open) {
         for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_)
@@ -168,8 +168,21 @@ void EntityPanels::objectives()
             ImGui::PushID(static_cast<int>(i));
             ImGui::Text("%s: %zu", lists[i], selected->entries[i].size());
             const auto key = "objective.entry." + std::to_string(i);
-            if (button((key + ".add").c_str(), i % 2 == 0 ? "Add BooleanFlagIsSet" : "Add SetBooleanFlag")) {
-                const auto result = history_.addObjectiveEntry(objective_, i);
+            if (i % 2 == 0) {
+                const auto schema = conditionSchema();
+                const bool speciesOpen = ImGui::BeginCombo("Condition species", conditionCreation_ == 0 ? "BooleanFlagIsSet" : schema[conditionCreation_ - 1].name.data());
+                record(key + ".species", speciesOpen);
+                if (speciesOpen) {
+                    if (choice(key + ".species.BooleanFlagIsSet", "BooleanFlagIsSet", conditionCreation_ == 0)) conditionCreation_ = 0;
+                    for (std::size_t s = 0; s < schema.size(); ++s)
+                        if (choice(key + ".species." + std::string(schema[s].name), schema[s].name.data(), conditionCreation_ == static_cast<int>(s + 1))) conditionCreation_ = static_cast<int>(s + 1);
+                    ImGui::EndCombo();
+                }
+            }
+            if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add SetBooleanFlag")) {
+                const auto result = i % 2 == 0 && conditionCreation_ != 0 ?
+                    history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species) :
+                    history_.addObjectiveEntry(objective_, i);
                 if (result) { objectiveEntry_ = *result; status_ = "Applied"; } else status_ = result.error().reason;
                 ImGui::PopID(); ImGui::PopID(); return;
             }
@@ -215,7 +228,30 @@ void EntityPanels::objectives()
                         ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
                     }
                     ImGui::EndDisabled();
-                } else if (entry.policy.empty()) ImGui::TextUnformatted("Payload authoring for this species is deferred.");
+                } else if (entry.policy.empty()) {
+                    const auto* species = std::get_if<ConditionSpecies>(&entry.species);
+                    const auto schema = conditionSchema();
+                    const auto spec = species ? std::ranges::find(schema, *species, &ConditionSpec::species) : schema.end();
+                    if (spec != schema.end() && !spec->reference) {
+                        if (entryRevision_ != document_.revision()) {
+                            for (std::size_t f = 0; f < spec->fields.size(); ++f)
+                                payloadDraft_[f] = document_.find(entry.section, spec->fields[f].key)->value[0];
+                            entryRevision_ = document_.revision();
+                        }
+                        for (std::size_t f = 0; f < spec->fields.size(); ++f) {
+                            const auto& field = spec->fields[f];
+                            const auto* source = document_.find(entry.section, field.key);
+                            if (!source->warning.empty()) ImGui::TextWrapped("%s: %s; authored bytes preserved", field.key.data(), source->warning.data());
+                            if (field.type == 0) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_S64, &std::get<std::int64_t>(payloadDraft_[f])));
+                            else record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
+                            if (button((key + ".apply." + std::string(field.key)).c_str(), ("Apply " + std::string(field.key)).c_str())) {
+                                report(history_.setObjectivePayload(entry.section, field.key, payloadDraft_[f]));
+                                ImGui::PopID(); ImGui::PopID(); return;
+                            }
+                        }
+                    } else if (entry.reference.kind != ReferenceKind::none) ImGui::TextUnformatted("Use the objective reference rows to resolve the target.");
+                    else ImGui::TextUnformatted("Payload authoring for this species is deferred.");
+                }
                 if (ImGui::TreeNode("Authored bytes (preserved declarations included)")) {
                     const auto span = document_.section(entry.section)->syntax;
                     const auto& source = document_.syntax().originalBytes;

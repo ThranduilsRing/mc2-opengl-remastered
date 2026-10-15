@@ -20,6 +20,66 @@ AUTHORING_KEYS = (
 )
 
 
+def grade_payload_edit(before, after, block, key):
+    prefix, expected = ("ul", "-17") if key == "Num" else ("f", "-1.25")
+    fields = objective_fields(after)
+    if fields.get(block + "/" + key) != [prefix + " " + expected]:
+        raise ValueError("condition payload reader value or prefix differs")
+    pattern = (rb"(?m)(^\[" + re.escape(block.encode()) + rb"\]\r?\n(?:(?!^\[)[\s\S])*?^"
+               + prefix.encode() + rb"[ \t]+" + key.encode() + rb"[ \t]*=[ \t]*)([^\r\n]+)")
+    def masked(data):
+        result, count = re.subn(pattern, lambda match: match[1] + b"<payload>", data)
+        if count != 1:
+            raise ValueError("condition payload target missing or ambiguous")
+        return result
+    if before == after or masked(before) != masked(after):
+        raise ValueError("condition payload edit unchanged or unrelated bytes changed")
+
+
+def grade_payload_outputs(output):
+    species = {name + "NumberOfEnemyUnits": ("Num",) for name in ("Destroy", "CaptureOrDestroy", "DeadOrFled")}
+    species["ElapsedMissionTime"] = ("Time",)
+    species.update({name: ("TargetCenterX", "TargetCenterY", "TargetRadius") for name in
+                    ("MoveAnyUnitToArea", "MoveAllUnitsToArea", "MoveAllSurvivingUnitsToArea", "MoveAllSurvivingMechsToArea")})
+    for listing, block in ((0, "Objective0Condition1"), (2, "Team0Objective0FailureCondition1")):
+        for name, keys in species.items():
+            for key in keys:
+                stem = f"payload-{listing}-{name}-{key}"
+                before = (output / (stem + "-before.fit")).read_bytes()
+                after = (output / (stem + "-after.fit")).read_bytes()
+                grade_payload_edit(before, after, block, key)
+                declaration = (b"ul " if key == "Num" else b"f ") + key.encode() + b" = "
+                controls = (before, after.replace(declaration, b"l " + key.encode() + b" = "),
+                            after.replace(declaration + (b"-17" if key == "Num" else b"-1.25"), declaration + b"99"),
+                            after + b"// unrelated mutation\n", b"")
+                for bad in controls:
+                    try:
+                        grade_payload_edit(before, bad, block, key)
+                    except ValueError:
+                        pass
+                    else:
+                        raise ValueError("condition payload negative control accepted")
+
+
+def grade_condition_creation(before, after, owner, suffix):
+    count = "Num" + suffix + "s"
+    block = owner + suffix + "3"
+    fields = objective_fields(before)
+    fields[owner + "/" + count] = ["ul 4"]
+    fields[block + "/" + suffix + "SpeciesString"] = ['st "ElapsedMissionTime"']
+    fields[block + "/Time"] = ["f 0"]
+    if fields != objective_fields(after):
+        raise ValueError("condition creation lacks atomic species/payload/count")
+    appended = ("[" + block + "]\r\nst " + suffix + 'SpeciesString = "ElapsedMissionTime"\r\nf Time = 0\r\n').encode()
+    if after.count(appended) != 1:
+        raise ValueError("created condition declaration differs")
+    restored = after.replace(appended, b"")
+    pattern = rb"(?m)(^\[" + owner.encode() + rb"\]\r?\n(?:(?!^\[)[\s\S])*?^ul " + count.encode() + rb" = )4"
+    restored, matched = re.subn(pattern, lambda match: match[1] + b"3", restored)
+    if matched != 1 or restored != before:
+        raise ValueError("condition creation changed unrelated bytes")
+
+
 def grade_typed_objectives(inputs, output):
     from editor.tests.legacy_reference import typed_fields
     for mission in STOCK_MISSIONS:

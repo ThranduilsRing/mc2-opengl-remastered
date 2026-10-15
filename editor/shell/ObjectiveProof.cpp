@@ -139,6 +139,10 @@ void PanelProof::objectivesProof()
     for (const auto& entity : document_.entities()) if (entity.exportedPart == part) targetId = entity.id;
     // Model-name edits require a camera-supported type.
     if (!history_.setObjectiveScalar(id, "ModelType", std::int64_t{14})) throw std::runtime_error("objective_fixture_type_failed");
+    const auto payloadOwner = history_.addObjective(0);
+    if (!payloadOwner) throw std::runtime_error("objective_payload_fixture_failed");
+    for (const auto list : {0U, 2U}) for (const auto species : {ConditionSpecies::destroyNumber, ConditionSpecies::elapsed, ConditionSpecies::moveAny})
+        if (!history_.addObjectiveCondition(*payloadOwner, list, species)) throw std::runtime_error("objective_payload_fixture_failed");
     saveCheck("fixture");
     files_ = std::make_unique<FileWorkflow>(document_, history_, panels_, output_ / "widget-save", log_);
     click("objective.toggle"); click("objective.select"); click("objective.select." + std::to_string(id.value));
@@ -175,7 +179,35 @@ void PanelProof::objectivesProof()
         });
         click("objective.next");
     }
-    // Reopen must replace a changed, dirty mission.
+    click("objective.select"); click("objective.select." + std::to_string(payloadOwner->value));
+    click("objective.entries");
+    for (const auto list : {0U, 2U}) {
+        click("objective.list." + std::to_string(list));
+        const auto& entries = document_.objective(*payloadOwner)->entries[list];
+        for (std::size_t e = 0; e < entries.size(); ++e) {
+            const auto entryId = entries[e].section;
+            const auto species = std::get<ConditionSpecies>(entries[e].species);
+            const auto spec = std::ranges::find(conditionSchema(), species, &ConditionSpec::species);
+            click("objective.entry." + std::to_string(list) + ".select." + std::to_string(e));
+            for (const auto& field : spec->fields) {
+                const auto key = "objective.entry." + std::to_string(list);
+                input(key + "." + std::string(field.key), field.type == 0 ? "-17" : "-1.25");
+                operation(std::format("widget-payload-{}-{}", list, field.key), key + ".apply." + std::string(field.key),
+                    [this, entryId, field] {
+                        const Scalar value = field.type == 0 ? Scalar{std::int64_t{-17}} : Scalar{-1.25};
+                        if (document_.find(entryId, field.key)->value != Value{value}) throw std::runtime_error("objective_payload_widget_wrong");
+                    });
+            }
+        }
+        const auto key = "objective.entry." + std::to_string(list);
+        click(key + ".species"); click(key + ".species.ElapsedMissionTime");
+        operation(std::format("widget-payload-{}-create", list), key + ".add", [this, payloadOwner, list] {
+            const auto& created = document_.objective(*payloadOwner)->entries[list];
+            if (created.size() != 4 || std::get<ConditionSpecies>(created.back().species) != ConditionSpecies::elapsed ||
+                document_.find(created.back().section, "Time")->value != Value{Scalar{0.0}})
+                throw std::runtime_error("objective_condition_creation_widget_wrong");
+        });
+    }
     click("redo", [this] { beforeFit_ = document_.fitBytes(); beforePak_ = {document_.pakBytes().begin(), document_.pakBytes().end()}; });
     click("save", [this] {
         auto saved = MissionDocument::read(output_ / "widget-save.fit", output_ / "widget-save.pak", log_, document_.markerObjects());

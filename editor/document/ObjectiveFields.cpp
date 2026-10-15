@@ -5,6 +5,40 @@
 #include <limits>
 
 namespace editor::document {
+std::span<const ConditionSpec> conditionSchema()
+{
+    static constexpr ObjectiveFieldSpec num[] = {{"Num", "ul", 0, -2147483648.0, 2147483647.0}};
+    constexpr auto real = std::numeric_limits<float>::max();
+    static constexpr ObjectiveFieldSpec time[] = {{"Time", "f", 1, -real, real}};
+    static constexpr ObjectiveFieldSpec area[] = {
+        {"TargetCenterX", "f", 1, -real, real}, {"TargetCenterY", "f", 1, -real, real},
+        {"TargetRadius", "f", 1, -real, real}};
+    static constexpr ObjectiveFieldSpec xy[] = {
+        {"PositionX", "f", 1, -real, real}, {"PositionY", "f", 1, -real, real}};
+    static constexpr ConditionSpec specs[] = {
+        {ConditionSpecies::destroyAll, "DestroyAllEnemyUnits", {}},
+        {ConditionSpecies::captureOrDestroyAll, "CaptureOrDestroyAllEnemyUnits", {}},
+        {ConditionSpecies::deadOrFledAll, "DeadOrFledAllEnemyUnits", {}},
+        {ConditionSpecies::destroyNumber, "DestroyNumberOfEnemyUnits", num},
+        {ConditionSpecies::captureOrDestroyNumber, "CaptureOrDestroyNumberOfEnemyUnits", num},
+        {ConditionSpecies::deadOrFledNumber, "DeadOrFledNumberOfEnemyUnits", num},
+        {ConditionSpecies::elapsed, "ElapsedMissionTime", time},
+        {ConditionSpecies::moveAny, "MoveAnyUnitToArea", area},
+        {ConditionSpecies::moveAll, "MoveAllUnitsToArea", area},
+        {ConditionSpecies::moveSurvivors, "MoveAllSurvivingUnitsToArea", area},
+        {ConditionSpecies::moveMechs, "MoveAllSurvivingMechsToArea", area},
+        {ConditionSpecies::destroyUnit, "DestroySpecificEnemyUnit", xy, true},
+        {ConditionSpecies::destroyStructure, "DestroySpecificStructure", xy, true},
+        {ConditionSpecies::captureOrDestroyUnit, "CaptureOrDestroySpecificEnemyUnit", xy, true},
+        {ConditionSpecies::captureOrDestroyStructure, "CaptureOrDestroySpecificStructure", xy, true},
+        {ConditionSpecies::deadOrFledUnit, "DeadOrFledSpecificEnemyUnit", xy, true},
+        {ConditionSpecies::captureUnit, "CaptureSpecificUnit", xy, true},
+        {ConditionSpecies::captureStructure, "CaptureSpecificStructure", xy, true},
+        {ConditionSpecies::guardUnit, "GuardSpecificUnit", xy, true},
+        {ConditionSpecies::guardStructure, "GuardSpecificStructure", xy, true}};
+    return specs;
+}
+
 std::span<const ObjectiveFieldSpec> objectiveSchema()
 {
     constexpr double whole = 2147483647;

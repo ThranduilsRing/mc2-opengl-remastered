@@ -110,6 +110,15 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
                 entry.reference.status = old->second->status;
                 entry.reference.target = old->second->target;
                 entry.reference.reason = old->second->reason;
+            } else if (entry.reference.kind != ReferenceKind::none && entry.reference.status != ReferenceStatus::RuntimeOnlyWid) {
+                std::size_t matches{};
+                for (const auto& entity : candidate->entities_) if (candidate->referenceMatches(objective, entry, entity)) {
+                    entry.reference.target = entity.id;
+                    ++matches;
+                }
+                entry.reference.status = matches == 1 ? ReferenceStatus::Resolved : matches ? ReferenceStatus::Ambiguous : ReferenceStatus::Missing;
+                entry.reference.reason = matches == 1 ? "unique eligible XY target" : matches ? "multiple eligible XY targets" : "no eligible XY target";
+                if (matches != 1) entry.reference.target.reset();
             }
             if (entry.section == resolving) {
                 entry.reference.status = ReferenceStatus::Resolved;
