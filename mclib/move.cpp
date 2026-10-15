@@ -5,6 +5,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "move_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 int GlobalMap::minRow = 0;
