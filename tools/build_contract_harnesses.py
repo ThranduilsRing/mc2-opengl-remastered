@@ -123,7 +123,8 @@ def build_and_run_order_seam(run):
     if positive.returncode:
         return False
     env["MC2_SEAM_DISCONNECT_ADAPTER"] = "1"
-    negative = subprocess.run(command, cwd=REPO_ROOT, env=env, capture_output=True,
+    negative = subprocess.run(command + ["--test-case=AuthoredOrderProduction/parsed patrol and traverse reach real general setter"],
+                              cwd=REPO_ROOT, env=env, capture_output=True,
                               text=True, timeout=60,
                               **console_child.child_kwargs(redirected=True))
     # An assertion failure proves the positive oracle depends on the adapter; a crash cannot.

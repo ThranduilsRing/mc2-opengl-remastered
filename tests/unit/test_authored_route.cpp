@@ -43,6 +43,12 @@ TEST_CASE("absent and None produce no route handoff") {
     CHECK((**read(routeText(0, 0))).kind == mc2::sim::OrderKind::None);
 }
 TEST_CASE("malformed entire orders have one reason and no published prefix") {
+    for (const auto text : {"[Part9]\nOrderType = 1\n", "[Part9]\nOrderType=1\n",
+                           "[Part9]\nWaypointCount = 1\n"}) {
+        const auto parsed = read(text);
+        REQUIRE_FALSE(parsed);
+        CHECK(parsed.error() == "missing_type");
+    }
     for (const auto& text : {routeText(3), routeText(2,0), routeText(2,9), routeText(0,1),
         routeText(2,2,-1), routeText(2,2,6), routeText() + "f Waypoint2X=1\n",
         routeText() + "l OrderMystery=1\n", routeText() + "f Waypoint0X=1\n",

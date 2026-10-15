@@ -39,6 +39,10 @@ std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
             continue;
         }
         if (!inPart) continue;
+        const auto head = trim(line.substr(0, line.find('=')));
+        const auto first = lower(head.substr(0, head.find_first_of(" \t")));
+        if (first.starts_with("order") || first.starts_with("waypoint"))
+            return std::unexpected("missing_type");
         const auto space = line.find_first_of(" \t");
         const auto type = lower(line.substr(0, space));
         auto rest = space == line.npos ? line : trim(line.substr(space));

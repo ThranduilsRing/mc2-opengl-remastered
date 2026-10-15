@@ -2,7 +2,7 @@
 
 Baseline: exactly `606b584b3c192e07f7207e9a6f48940bfc798eab`. Owner ruling:
 editor Part keys are content; the preserved original pilot's Enhanced Brain OPORD
-wins regardless of `MC2_BRAIN_MISSIONFIT_OPORD`. No runtime proof was run for b2a.
+wins only when the shared OPORD eligibility predicate admits it (including the runtime gate). No runtime proof was run for b2a.
 
 ## Installed means a synchronous handoff
 
@@ -48,8 +48,8 @@ mc2_01.fit there, and writes fixtures only in that new directory. It never chang
 the installed stock fit or archives. A forced alternate has a different content
 pilot; evidence must retain the original pilot. Valid requires exactly one complete
 installation; malformed requires zero installations and exactly one rejection;
-suppressed requires zero installations and one info diagnostic, with the OPORD
-runtime gate both off and on. An empty/disconnected loader cannot pass any case.
+suppressed requires zero installations and one info diagnostic with the OPORD
+runtime gate on; gate off requires authored installation. An empty/disconnected loader cannot pass any case.
 Scratch mods and per-case fixture copies remain for review. Movement is not graded.
 
 ## B2b route state and arbitration
@@ -95,6 +95,9 @@ is terminal; patrol remains active until cancelled, failed or dead. Prove each
 case through real setters and update arbitration before enabling route dispatch.
 
 ## Save/restore and additional claims
+
+Mission::load (saveload.cpp) currently calls neither resetOrderIngress nor bindOrderRecipients.
+B2b-2 must claim saveload.cpp and add the reset/rebind hook before resumed updates.
 
 warrior_state.cpp copies tactical orders and queues into raw saved data in
 copyToData/init (including the regions originally identified at 596/624/821).

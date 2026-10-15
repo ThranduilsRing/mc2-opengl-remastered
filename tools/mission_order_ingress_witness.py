@@ -181,8 +181,9 @@ def run_authored(args):
         command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--mission", "mc2_01",
                    "--duration", "30", "--keep-logs", "--deploy", "lane3"]
         with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:
+            evidence_case = "valid" if case == "suppressed" and gate == "0" else case
             passed = authored_witness(smoke, lambda command: send_command(command, port=args.port, timeout=1),
-                                      expected, case,
+                                      expected, evidence_case,
                                       startup_timeout=float(env.get("MC2_HOST_LEASE_TIMEOUT") or 3600) + 120)
             try:
                 status = smoke.wait(timeout=120)

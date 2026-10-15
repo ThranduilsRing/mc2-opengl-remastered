@@ -178,22 +178,24 @@ void Mission::loadBrainParamsPhase(MissionInitFrame& f) {
 	}
 }
 
+// Both authored precedence and OPORD population use the consumer's actual eligibility.
+bool missionFitOpordApplies(const MissionFitBrain& brain, unsigned long numWarriors, bool enabled) {
+	if (!enabled || brain.warriorIndex < 1 || static_cast<unsigned long>(brain.warriorIndex) > numWarriors ||
+		brain.warriorIndex >= MAX_WARRIORS || !MechWarrior::warriorList[brain.warriorIndex]) return false;
+	BrainArchetypeDefaults defaults;
+	brainArchetypeLookup(brain.archetype, defaults);
+	const auto type = brainOpordTypeId(brain.primary.type);
+	return !defaults.playerControlled && type != 9 && type != 255;
+}
+
 // Load the mission-fit order sets for the enhanced brains.
 void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 	auto& missionFileName = f.missionFileName; auto& numWarriors = f.numWarriors;
-	// Authored precedence belongs to mission content, even when Enhanced runtime population is gated off.
+	const bool opordEnabled = mc2::gate::get<"MC2_BRAIN_MISSIONFIT_OPORD">();
 	File authoredFile;
 	if (authoredFile.open(missionFileName) == NO_ERR) {
 		authoredMissionText.resize(authoredFile.getLength());
 		authoredFile.read(reinterpret_cast<MemoryPtr>(authoredMissionText.data()), static_cast<long>(authoredMissionText.size()));
-		std::vector<MissionFitBrain> brains(MAX_WARRIORS);
-		const auto count = parseMissionFitBrains(authoredMissionText.c_str(), brains.data(), static_cast<int>(brains.size()));
-		for (int i = 0; i < count; ++i) {
-			const auto& brain = brains[i];
-			if (S_stricmp(brain.compatibilityMode, "Enhanced") == 0 &&
-			    (brain.primary.type[0] || brain.secondary.type[0] || brain.tertiary.type[0]))
-				authoredOpordPilots.push_back(static_cast<std::uint32_t>(brain.warriorIndex));
-		}
 	}
 	// BRAIN-MISSIONFIT-OPORD-CONSUMER-1: drive declarative patrol from the inline Brain{}
 	// PrimaryOPORD blocks in mission.fit (carver_v_enhanced format). FitIniFile cannot see
@@ -201,7 +203,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 	// NOT fopen). Gate MC2_BRAIN_MISSIONFIT_OPORD (default OFF). Populates the existing
 	// MechBrainRuntime patrol structures (BRAIN-OPORD-COREPATROL-1); the brain bundle drives them
 	// (the patrol FIELDS persist through later _ai.fit/tactic loaders, which only touch mode).
-	if (mc2::gate::get<"MC2_BRAIN_MISSIONFIT_OPORD">()) {
+	if (opordEnabled) {
 		File mfFile;
 		if (mfFile.open(missionFileName) == NO_ERR) {
 			unsigned long mfSz = mfFile.getLength();
@@ -214,12 +216,10 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 				int mfPatrol = 0, mfGuard = 0, mfSentry = 0, mfEscort = 0, mfOther = 0;
 				for (int r = 0; r < mfN; ++r) {
 					const MissionFitBrain& b = mfBrains[r];
-					if (b.warriorIndex < 1 || (unsigned long)b.warriorIndex > numWarriors) continue;
+					if (!missionFitOpordApplies(b, numWarriors, opordEnabled)) continue;
 					uint8_t pType = brainOpordTypeId(b.primary.type);
 					BrainArchetypeDefaults ad; brainArchetypeLookup(b.archetype, ad);  // archetype presets; switches override
-					if (ad.playerControlled || pType == 9 || pType == 255) continue;   // player / unknown -> default path
 					MechWarriorPtr w = MechWarrior::warriorList[b.warriorIndex];
-					if (!w) continue;
 					if (!w->getBrainRuntime()) w->setBrainRuntimeMode(BrainRuntimeMode::Enhanced);
 					MechBrainRuntime* rt = w->getBrainRuntime();
 					if (!rt) continue;
@@ -332,6 +332,9 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 						default:    // MoveTo / Attack / Withdraw / Ambush / Scout -> hold + engage (verb wiring TBD)
 							rt->guardHold = true; ++mfOther; break;
 					}
+					// Only an OPORD actually populated by this consumer can suppress authored content.
+					if (missionFitOpordApplies(b, numWarriors, opordEnabled))
+						authoredOpordPilots.push_back(static_cast<std::uint32_t>(b.warriorIndex));
 				}
 				mc2::fmt::print_err("[MISSIONFIT_OPORD] parsed {:d} Brain{{}} record(s): patrol={:d} guard={:d} sentry={:d} escort={:d} other={:d}\n", mc2::fmt::as_i32(mfN), mc2::fmt::as_i32(mfPatrol), mc2::fmt::as_i32(mfGuard), mc2::fmt::as_i32(mfSentry), mc2::fmt::as_i32(mfEscort), mc2::fmt::as_i32(mfOther));
 				if (mfBrains) free(mfBrains);
