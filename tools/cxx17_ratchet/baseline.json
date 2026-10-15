@@ -139,15 +139,15 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 217,
+   "LG01": 215,
    "LG02": 204,
-   "LG03": 892,
+   "LG03": 880,
    "LG04": 21,
-   "LG05": 195,
-   "LG06": 451,
+   "LG05": 196,
+   "LG06": 452,
    "LG07": 2,
-   "LG08": 14,
-   "LG09": 2296,
+   "LG08": 17,
+   "LG09": 2291,
    "LG10": 20,
    "LG11": 102,
    "LG12a": 100,
@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 430,
+   "LG01": 424,
    "LG02": 280,
-   "LG03": 1114,
+   "LG03": 1092,
    "LG04": 15,
    "LG05": 134,
    "LG06": 671,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2122,
+   "LG09": 2124,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 21
+   "LG20": 22
   },
   "tools": {
    "LG01": 0,
@@ -1543,9 +1543,9 @@
    "LG12b": 2
   },
   "code/ablmc2.cpp": {
-   "LG03": 9,
+   "LG03": 6,
    "LG06": 6,
-   "LG09": 17,
+   "LG09": 13,
    "LG17": 3
   },
   "code/ablmc2_camera.cpp": {
@@ -1952,7 +1952,7 @@
    "LG09": 2
   },
   "code/gamesound.cpp": {
-   "LG03": 3,
+   "LG03": 1,
    "LG09": 8
   },
   "code/gamesound.h": {
@@ -2440,7 +2440,7 @@
    "LG01": 6,
    "LG03": 5,
    "LG04": 2,
-   "LG09": 20
+   "LG09": 19
   },
   "code/mission_init_parts.cpp": {
    "LG01": 1,
@@ -2789,7 +2789,7 @@
    "LG09": 7
   },
   "code/objtype.cpp": {
-   "LG03": 21,
+   "LG03": 19,
    "LG05": 3,
    "LG06": 2,
    "LG09": 8
@@ -2846,9 +2846,7 @@
    "LG17": 1
   },
   "code/radio.cpp": {
-   "LG01": 2,
-   "LG03": 6,
-   "LG05": 1,
+   "LG03": 1,
    "LG09": 8
   },
   "code/salvagemecharea.cpp": {
@@ -2909,6 +2907,13 @@
   "code/tacordr.h": {
    "LG02": 16,
    "LG14": 12
+  },
+  "code/tactical_order_queue.cpp": {
+   "LG06": 1,
+   "LG08": 3
+  },
+  "code/tactical_order_queue.h": {
+   "LG05": 2
   },
   "code/tacticaloverview.cpp": {
    "LG09": 2,
@@ -3598,7 +3603,7 @@
    "LG05": 15,
    "LG06": 24,
    "LG08": 24,
-   "LG09": 32,
+   "LG09": 34,
    "LG11": 17,
    "LG12a": 31,
    "LG12b": 17,
@@ -3655,11 +3660,10 @@
    "LG09": 1
   },
   "mclib/gamelog.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG06": 2
   },
   "mclib/gamelog.h": {
-   "LG01": 1,
    "LG06": 2
   },
   "mclib/genactor.cpp": {
@@ -4319,7 +4323,7 @@
    "LG16": 4
   },
   "mclib/move_movemap_escape.cpp": {
-   "LG03": 8,
+   "LG03": 4,
    "LG09": 10,
    "LG11": 3,
    "LG16": 19
@@ -4329,7 +4333,7 @@
    "LG16": 6
   },
   "mclib/move_movemap_path.cpp": {
-   "LG03": 16,
+   "LG03": 8,
    "LG09": 20,
    "LG16": 9
   },
@@ -4526,8 +4530,8 @@
    "LG06": 2
   },
   "mclib/soundsys.cpp": {
-   "LG01": 9,
-   "LG03": 8,
+   "LG01": 6,
+   "LG03": 2,
    "LG05": 3,
    "LG06": 3,
    "LG09": 21,
@@ -4536,7 +4540,7 @@
    "LG17": 2
   },
   "mclib/soundsys.h": {
-   "LG01": 10,
+   "LG01": 9,
    "LG06": 3,
    "LG13": 4,
    "LG17": 1
@@ -4850,7 +4854,7 @@
   },
   "mclib/terrtxm.cpp": {
    "LG01": 21,
-   "LG03": 6,
+   "LG03": 4,
    "LG06": 4,
    "LG09": 46,
    "LG11": 1,
@@ -4858,7 +4862,7 @@
    "LG12b": 29
   },
   "mclib/terrtxm.h": {
-   "LG01": 9,
+   "LG01": 8,
    "LG05": 1,
    "LG06": 4,
    "LG09": 8,
@@ -5068,6 +5072,9 @@
    "LG05": 1,
    "LG06": 1
   },
+  "tests/unit/test_authored_order_seam.cpp": {
+   "LG20": 1
+  },
   "tests/unit/test_job_system_harness.cpp": {
    "LG20": 1
   },
@@ -5094,7 +5101,7 @@
    "LG20": 3
   }
  },
- "head": "24fd336f7",
+ "head": "afe0e21a7",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

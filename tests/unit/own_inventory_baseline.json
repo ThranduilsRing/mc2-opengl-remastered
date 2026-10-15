@@ -2066,21 +2066,10 @@
    "owners": []
   },
   "File": {
-   "delete": 19,
+   "delete": 9,
    "delete_array": 0,
    "files": {
-    "code/ablmc2.cpp": {
-     "new": 2
-    },
     "code/gameobj.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/radio.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "mclib/gamelog.cpp": {
      "delete": 1,
      "new": 1
     },
@@ -2092,27 +2081,20 @@
      "new": 1
     },
     "mclib/move_movemap_escape.cpp": {
-     "delete": 4,
-     "new": 4
+     "delete": 2,
+     "new": 2
     },
     "mclib/move_movemap_path.cpp": {
-     "delete": 8,
-     "new": 8
-    },
-    "mclib/terrtxm.cpp": {
-     "delete": 1,
-     "new": 1
+     "delete": 4,
+     "new": 4
     }
    },
-   "new": 19,
+   "new": 8,
    "new_array": 0,
    "owners": [
     "",
-    "GameLog",
     "Mech3DAppearance",
-    "MoveMap",
-    "Radio",
-    "TerrainTextures"
+    "MoveMap"
    ]
   },
   "FileStatPlug": {
@@ -4686,29 +4668,6 @@
    "new_array": 0,
    "owners": [
     ""
-   ]
-  },
-  "PacketFile": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/radio.cpp": {
-     "new": 2
-    },
-    "mclib/soundsys.cpp": {
-     "delete": 3,
-     "new": 3
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": [
-    "ObjectTypeManager",
-    "SoundSystem"
    ]
   },
   "Page": {
@@ -7777,12 +7736,11 @@
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 1,
   "GameOS/gameos/vulkan_post_ssao_native.cpp": 1,
-  "code/ablmc2.cpp": 1,
   "code/artlry.cpp": 8,
   "code/carnage.cpp": 3,
   "code/componentlistbox.cpp": 1,
   "code/forcegroupbar.cpp": 5,
-  "code/gamesound.cpp": 3,
+  "code/gamesound.cpp": 1,
   "code/gametacmap.h": 1,
   "code/infowindow.cpp": 1,
   "code/loadscreen.cpp": 7,
