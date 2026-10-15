@@ -147,7 +147,6 @@ class File
 
 	public:
 
-		static bool				logFileTraffic;
 		static unsigned long	lastError;
 
 	// Member Functions

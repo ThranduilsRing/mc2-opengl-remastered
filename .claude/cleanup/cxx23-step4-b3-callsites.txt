@@ -1,9 +1,9 @@
 # Step 4 B3 file-and-stream ownership sites from a [[deprecated("B3")]] build (tests/analyze/file_callsites.py); a batch commit removes its rows.
-# total 132 sites in 55 files
+# total 129 sites in 55 files
 # per kind:
-#      40  File::operator delete
-#      40  File::operator new
-#      20  File::getFilename
+#      39  File::operator delete
+#      39  File::operator new
+#      19  File::getFilename
 #      18  FitIniFile::open
 #       4  ABLFile::operator delete
 #       4  ABLFile::operator new
@@ -12,7 +12,7 @@
 #       1  File::removeChild
 #       1  File::readRAW
 # per batch (cxx23-step4-b3-files.json):
-#      28  B3.1
+#      25  B3.1
 #      49  B3.3
 #      25  B3.4
 #       8  B3.5
@@ -25,7 +25,6 @@
 #       6  code/mission_init_load.cpp
 #       6  code/mission_movers.cpp
 #       6  code/radio.cpp
-#       6  mclib/file.cpp
 #       6  mclib/soundsys.cpp
 #       4  code/ablmc2.cpp
 #       4  code/gameobj.cpp
@@ -39,6 +38,7 @@
 #       3  code/mech_loadout.cpp
 #       3  code/mech_type.cpp
 #       3  code/objtype.cpp
+#       3  mclib/file.cpp
 #       2  code/brain_special_dispatch.cpp
 #       2  code/carnage.cpp
 #       2  code/gvehicl.cpp
@@ -119,7 +119,7 @@
 # blob 1588675e63f30cc56a0c4b40660359abfc3515eb mclib/ablenv.cpp
 # blob 9c063d1bd4a479a67d4e06ccd06acf80f7deeb19 mclib/ablscan.cpp
 # blob 2a83b13dc0068b6a89ee7a2a45c3413ef93ce35b mclib/csvfile.cpp
-# blob 88c6b5901fe0b3cef5212948086bc38c2f9d74fc mclib/file.cpp
+# blob d3a8c06549c6c326a3b9ede26851a037d2090a81 mclib/file.cpp
 # blob da491edc0ad43209fa2d36fc115bc9f7843480a1 mclib/gamelog.cpp
 # blob 9a92806d5a32038464527770e6e420b0946ebe67 mclib/inifile.cpp
 # blob 998843280a81ba30fdbe3e2d8be1efc58ba29829 mclib/move.cpp
@@ -249,12 +249,9 @@ mclib/ablscan.cpp:542:ABLFile::operator new
 mclib/ablscan.cpp:1298:ABLFile::operator delete
 mclib/ablscan.cpp:1298:ABLFile::operator new
 mclib/csvfile.cpp:660:File::open
-mclib/file.cpp:929:File::operator delete
-mclib/file.cpp:929:File::operator new
-mclib/file.cpp:1404:File::getFilename
-mclib/file.cpp:1417:File::getFilename
-mclib/file.cpp:1421:File::addChild
-mclib/file.cpp:1625:File::removeChild
+mclib/file.cpp:1356:File::getFilename
+mclib/file.cpp:1361:File::addChild
+mclib/file.cpp:1565:File::removeChild
 mclib/gamelog.cpp:155:File::operator delete
 mclib/gamelog.cpp:155:File::operator new
 mclib/inifile.cpp:207:File::getFilename

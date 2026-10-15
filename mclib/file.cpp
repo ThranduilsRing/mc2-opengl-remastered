@@ -905,9 +905,7 @@ void InitModSearchPaths(const char* modsRoot) {
 //-----------------
 // Static Variables
 unsigned long File::lastError = NO_ERR;
-bool		  File::logFileTraffic = FALSE;
 
-FilePtr fileTrafficLog = nullptr;
 char CDInstallPath[1024];
 void EnterWindowMode();
 void EnterFullScreenMode();
@@ -920,16 +918,6 @@ extern char MissingTitleString[];
 #undef INVALID_HANDLE_VALUE
 #define INVALID_HANDLE_VALUE	-1
 constexpr int CLOSED_HANDLE_VALUE = -2;
-//---------------------------------------------------------------------------
-void createTrafficLog (void)
-{
-	if (fileTrafficLog && fileTrafficLog->isOpen())
-		return;
-
-	fileTrafficLog = new File;
-	fileTrafficLog->create("filetraffic.log");
-}
-
 //---------------------------------------------------------------------------
 // Global Functions
 long fileExists (const char* fName, long destination_mask)
@@ -1258,18 +1246,6 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 						std::string key = NormalizeKey(fileName);
 						EmitResolveRecord(key.c_str(), fName, "cd", actualPath, nullptr);
 					}
-					if (logFileTraffic && (handle != INVALID_HANDLE_VALUE))
-					{
-						if (!fileTrafficLog)
-						{
-							createTrafficLog();
-						}
-
-						char msg[300];
-						sprintf(msg,"CFHandle  Length: %010ld    File: %s",fileSize(),fileName);
-						fileTrafficLog->writeLine(msg);
-					}
-
 					setup();
 
 					//------------------------------------------------------------
@@ -1302,18 +1278,6 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 				}
 			}
 
-			if (logFileTraffic)
-			{
-				if (!fileTrafficLog)
-				{
-					createTrafficLog();
-				}
-	
-				char msg[300];
-				sprintf(msg,"FASTF     Length: %010ld    File: %s",fileSize(),fileName);
-				fileTrafficLog->writeLine(msg);
-			}
-
 			//---------------------------------------------------------------------
 			//-- FastFiles are all compressed.  Must read in entire chunk into RAM
 			//-- Then close fastfile!!!!!
@@ -1338,18 +1302,6 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 		}
 		else
 		{
-			if (logFileTraffic && (handle != INVALID_HANDLE_VALUE))
-			{
-				if (!fileTrafficLog)
-				{
-					createTrafficLog();
-				}
-	
-				char msg[300];
-				sprintf(msg,"CFHandle  Length: %010ld    File: %s",fileSize(),fileName);
-				fileTrafficLog->writeLine(msg);
-			}
-
 			setup();
 	
 			//------------------------------------------------------------
@@ -1406,18 +1358,6 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 		
 		handle = parent->getFileHandle();
 		
-		if (logFileTraffic)
-		{
-			if (!fileTrafficLog)
-			{
-				createTrafficLog();
-			}
-		
-			char msg[300];
-			sprintf(msg,"CHILD     Length: %010ld    File: %s",fileSize,_parent->getFilename());
-			fileTrafficLog->writeLine(msg);
-		}
-
 		long result = parent->addChild(this);
 		if (result != NO_ERR)
 			return(result);
