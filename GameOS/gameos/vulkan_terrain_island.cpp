@@ -57,38 +57,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// VK-NOINTEROP-STRICT-REVIEW (H2b): record a PER-FRAME render-path GL depth readback.
-// The terrain island's per-frame shadow fallback (copy_shadow_slot for the dynamic
-// single-map slot) does a glGetTexImage when the VK direct producer declined -- exactly
-// the fallback that
-// caused the 126 ms/frame CSM readback (killed by direct-chain in 62707331). Before this
-// fix the g_forbidden.glGetTexImage counter was DECLARED and printed but NEVER
-// incremented, so the run()-scope f0b/f0c snapshot check and the health-line counter were
-// always 0 (a realized false-pass). Copy-ONCE asset-feed imports (import_colormap /
-// import_cement / import_matnormal, each guarded to fire once at
-// map/mission load) must NOT call this -- they are the allowed GL-dependent feed layer
-// documented in .claude/METAL-GATE-AUDIT-2.md. This bumps the counter the health line
-// asserts == 0 AND emits a one-time PERFRAME_READBACK trip-wire the hardened checker greps.
-// True under MC2_VK_NO_GL_INTEROP_STRICT: a per-frame render-path GL readback must NEVER
-// fire (the whole point of the strict proof). The shadow direct-chain producer covers the
-// steady state; on the ~2 warmup frames before it is ready, the per-frame fallback would
-// otherwise do a GL depth readback. Under strict we fail-soft (skip the readback -> that
-// frame's terrain is unshadowed via the legacy path) instead of violating the invariant.
-bool terrainNoInteropStrict() {
-    static const int s = mc2::gate::get<"MC2_VK_NO_GL_INTEROP_STRICT">();
-    return s != 0;
-}
-
-void terrainPerFrameReadback(std::string_view fn) {
-    g_forbidden.glGetTexImage++;
-    static bool s_first = true;
-    if (s_first) {
-        s_first = false;
-        vlog("[VK_TERRAIN_PERFRAME_READBACK v1] fn=%s (forbidden per-frame GL depth "
-             "readback in render path -- direct-chain declined this frame)", std::string(fn).c_str());
-    }
-}
-
 // VK-TERRAIN-FENCE-DEFER-1: defer the
 // island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
 // of waiting the submit fence inline. Default-ON (the per-parity UBO staging +

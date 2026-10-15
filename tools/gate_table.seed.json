@@ -25316,34 +25316,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_NO_GL_INTEROP_STRICT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK Metal-gate canary.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_terrain_island.cpp:140",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_NO_GL_INTEROP_STRICT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_OBJECTID_DIRECT_CHAIN",
    "kind": "Bool",
    "default": false,

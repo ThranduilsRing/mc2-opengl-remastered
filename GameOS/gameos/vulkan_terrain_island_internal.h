@@ -375,8 +375,6 @@ extern bool g_ovlDeclined;
 extern std::vector<OvlPending> g_ovlPending;
 void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
-bool terrainNoInteropStrict();
-void terrainPerFrameReadback(std::string_view fn);
 bool terrainFenceDeferEnabled();
 bool terrainPerfGateRequested();
 bool terrainTier1Requested();
