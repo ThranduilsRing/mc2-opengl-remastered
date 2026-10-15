@@ -57,7 +57,6 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 	result = bullFile.seekBlock("BoltProjectileData");
 	if (result != NO_ERR)
 	{
-		//Check if we are a NEW beam type.
 		result = bullFile.seekBlock("BeamProjectileData");
 		if (result != NO_ERR)
 		{
@@ -263,7 +262,7 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 		}
 	
 		//------------------------------------------------------------------
-		// Editor writes RGBs as BGRs.  Change over here.
+		// Editor colors use BGR byte order.
 		frontRGB = bgrTorgb(frontRGB);
 		backRGB = bgrTorgb(backRGB);
 		middleRGB = bgrTorgb(middleRGB);
@@ -272,7 +271,6 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 	}
 	
 	//------------------------------------------------------------------
-	// Initialize the base object Type from the current file.
 	result = ObjectType::init(&bullFile);
 	
 	return(result);
@@ -282,9 +280,7 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 bool WeaponBoltType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider)
 {
 	//-------------------------------------------------------
-	// The bolt ceases to exist when its effect is done.
-	// always return FALSE or the collision will make it
-	// go away!
+	// Effect completion owns retirement; collision must not remove the bolt.
 	
 	return(FALSE);
 }
@@ -293,9 +289,7 @@ bool WeaponBoltType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 bool WeaponBoltType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collider)
 {
 	//-------------------------------------------------------
-	// The bolt ceases to exist when its effect is done.
-	// always return FALSE or the collision will make it
-	// go away!
+	// Effect completion owns retirement; collision must not remove the bolt.
 	
 	return(FALSE);
 }
@@ -324,7 +318,6 @@ TG_LightPtr WeaponBoltType::getLight (void)
 bool WeaponBolt::isVisible (void)
 {
 	//----------------------------------------------------------------------
-	// This function checks to see if this weaponBolt is visible on screen
 	bool isVisible = true;
 	if (isVisible)
 	{
@@ -373,7 +366,7 @@ void WeaponBolt::destroy (void)
 		targetPosition = nullptr;
 	}
 
-	//Must toss these here as mission may have ended with effect still playing!!
+	// Effects can outlive the mission.
 	if (pointLight)
 	{
 		if (eye)
@@ -419,16 +412,7 @@ void WeaponBolt::destroy (void)
 }
 
 // ---------------------------------------------------------------------------
-// B3b-3: INI survey -> gpu_trail_kind mapping.
-// Driven by effects.csv GosEffectName column:
-//   effectName="ppc_trail"      (ids 4=PPC, 5=ER PPC)           -> PpcBolt
-//   effectName="srm_trail"      (id 8=SRM)                       -> MissileSmoke
-//   effectName="lrm_trail"      (id 9=LRM)                       -> MissileSmoke
-//   effectName="Swarm_lrm_trail"(id 74=Swarm LRM)                -> MissileSmoke
-//   effectName="TBolt_trail"    (id 27=Thunderbolt)               -> MissileSmoke
-//   effectName="flamer_trail"   (id 3=Flamer bolt)                -> None (CPU gosFX; not proven)
-//   anything else (lasers, ACs, gauss, MG, NONE, ...)             -> None
-// Survey saved to docs/superpowers/specs/2026-05-26-fx-gpu-b3-weapon-ini-survey.md
+// Trail kinds follow effects.csv names; unmapped effects retain CPU gosFX.
 static mc2::particles::GpuTrailKind gpuTrailKindFromEffectId(int32_t eid)
 {
     using mc2::particles::GpuTrailKind;
@@ -444,21 +428,13 @@ static mc2::particles::GpuTrailKind gpuTrailKindFromEffectId(int32_t eid)
         S_stricmp(name, "Swarm_lrm_trail") == 0 ||
         S_stricmp(name, "TBolt_trail")     == 0)
         return GpuTrailKind::MissileSmoke;
-    // flamer_trail → None: flamer GPU visual not proven; CPU gosFX fallback preserved.
+    // Flamer retains CPU gosFX until GPU visual parity is established.
     return GpuTrailKind::None;
 }
 
-// VFX-ORIGINALS-LOCKDOWN-1: allowlist of GPU trail kinds proven to match original visuals.
-// Both PpcBolt and MissileSmoke are currently demoted (return false). The GPU ring-buffer
-// billboard trail produced "white square card" artifacts. Original gosFX Tube via CPU MLR
-// is the active path for both.
-//
-// To re-promote a kind:
-//   1. Implement a proper swept-mesh ribbon GPU oracle for Tube (VFX-TUBE-SWEPT-MESH-ORACLE-1).
-//   2. Run an interactive combat session (mc2_10 missiles + mc2_24 PPC) and confirm visual parity.
-//   3. Update this function and docs/vfx-originals-lockdown.md in the same commit.
-//   NEVER re-promote based on smoke-only (passive 30s) results — weapon-hit effects are not
-//   exercised in passive smoke. See docs/vfx-originals-lockdown.md for full policy.
+// PPC and missile trails retain CPU MLR: GPU billboards produce white square artifacts.
+// Promotion requires swept-mesh Tube parity in active missile/PPC combat; passive smoke
+// misses weapon-hit effects. Keep docs/vfx-originals-lockdown.md consistent with this policy.
 static bool gpuTrailKindProven(mc2::particles::GpuTrailKind k)
 {
     (void)k;
@@ -477,28 +453,21 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	
 	lightId = -9;	//Tell it to make one!
 	
-	//Make SURE all of the old Effects are GONE!!
 
 	destroy();
 	//-----------------------------------------
-	// Are we a magical new GOSFX(tm)?
 	if (effectId >= 0)
 	{
-		// B3c-1: suppress CPU gosFX trail when GPU owns it.
-		// gpu_trail_kind is set at the bottom of this function by gpuTrailKindFromEffectId.
-		// We need the kind before that assignment, so derive it here directly from effectId.
+		// A GPU-owned trail must not also emit CPU gosFX.
 		mc2::particles::GpuTrailKind init_gpu_kind = gpuTrailKindFromEffectId(effectId);
 		bool gpu_owns_trail = false;
 		if (gpuTrailKindProven(init_gpu_kind)) {
-			// Use Batcher::is_enabled() as single source of truth.
-			// Reading getenv directly misses the B3c-2 default-ON case
-			// (v==nullptr -> false), causing double trails on normal runs.
+			// Batcher owns the default-ON policy; raw environment reads can cause double trails.
 			gpu_owns_trail = mc2::particles::Batcher::is_enabled();
 		}
 		if (!gpu_owns_trail && strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
 		{
 			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -518,7 +487,6 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 		if ((strcmp(weaponEffects->GetEffectMuzzleFlashName(effectId),"NONE") != 0) && useNonWeaponEffects)
 		{
 			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 	
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -538,7 +506,6 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 		if (strcmp(weaponEffects->GetEffectHitName(effectId),"NONE") != 0)
 		{
 			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 	
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -558,7 +525,6 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 		if ((strcmp(weaponEffects->GetEffectMissName(effectId),"NONE") != 0) && useNonWeaponEffects)
 		{
 			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 	
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -579,7 +545,6 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 		if (useNonWeaponEffects && (effectId != 11) && (strcmp(weaponEffects->GetEffectName(WATER_MISS_FX),"NONE") != 0))
 		{
 			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 	
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -602,8 +567,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	}
 	
 	//----------------------------------------------
-	// Get a texture Handle from the textureManager
-	// Assume ALPHA!
+	// Effect textures require alpha.
 	if (((WeaponBoltTypePtr)_type)->textureName && S_stricmp(((WeaponBoltTypePtr)_type)->textureName,"NONE") != 0)
 	{
 		char tPath[1024];
@@ -623,8 +587,6 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 		gosTextureHandle = 0xffffffff;
 	}
 
-	// B3b-3: table-driven mapping from effects.csv effectName to GpuTrailKind.
-	// Unmapped weapons fall back to GpuTrailKind::None (CPU gosFX unchanged).
 	gpu_trail_kind = gpuTrailKindFromEffectId(effectId);
     combatTrace.begin(_type->whatAmI(), effectId);
     traceCombat("birth");
@@ -754,14 +716,8 @@ void WeaponBolt::Load (WeaponBoltData *data)
 
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): deliver a successful AIMED area-effect
-// shot's located damage directly to the aimed target. Stock area-effect bolts
-// (LRM et al.) are converted to position bolts at connect() and deliver ALL
-// damage as a randomly-located explosion ("Hit or MISS, its the same!"), so a
-// called shot's location is never honored. aimedTargetWID is only ever set by
-// fireWeapon under the gate on a successful aimed roll; weaponShot.hitLocation
-// already carries the called location. Single-player only — in MP the flag is
-// never acted on (stock splash behavior preserved).
+// Successful gated area-effect aimed shots retain weaponShot.hitLocation in single-player;
+// ordinary position-bolt explosions randomize the location. Multiplayer keeps stock splash.
 bool WeaponBolt::deliverAimedAreaHit (void)
 {
 	if (!aimedTargetWID)
@@ -788,10 +744,7 @@ void WeaponBolt::finishNow (void)
 {
 	if (getExists())
 	{
-		//This weapon is still enroute or in some other way is not resolved.  Resolve it.
-		// Then setExists to false!!
 
-		//Toss its effects.
 		if (hitEffect)
 		{
 			hitEffect->Kill();
@@ -827,7 +780,6 @@ void WeaponBolt::finishNow (void)
 			gosEffect = nullptr;
 		}
 
-		//Need to kill the light source here too!
 		if (pointLight)
 		{
 			if (eye)
@@ -846,9 +798,7 @@ void WeaponBolt::finishNow (void)
 			(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 			(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 		{
-			// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): same aimed-hit routing as the
-			// normal arrival path — located damage to the aimed target, explosion
-			// kept cosmetic. Stock path otherwise.
+			// Aimed-hit explosions stay cosmetic to avoid duplicate damage.
 			float areaDmg = ((WeaponBoltTypePtr)getObjectType())->areaEffectDmg;
 			if (deliverAimedAreaHit())
 				areaDmg = 0.0f;

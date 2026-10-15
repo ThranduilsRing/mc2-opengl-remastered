@@ -51,7 +51,7 @@ struct CombatTrace {
                 std::bit_cast<std::uint32_t>(targetPosition.x), std::bit_cast<std::uint32_t>(targetPosition.y),
                 std::bit_cast<std::uint32_t>(targetPosition.z));
         }
-        // Complete JSON keeps sequence and field order auditable; fixed buffers could truncate it.
+        // Complete JSON preserves sequence and field order; fixed buffers risk truncation.
         const auto data = std::format(
             "{{\"kind\":\"{}\",\"slot\":{},\"generation\":{},\"seq\":{},\"tick\":{},"
             "\"event\":\"{}\",\"reason\":\"{}\",\"effect_id\":{},\"type\":{}{}{}{}}}",
