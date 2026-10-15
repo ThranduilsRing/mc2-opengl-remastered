@@ -129,6 +129,17 @@ void PanelProof::objectivesProof()
         else if (i != 4) added += std::format("f PositionX = {:.9g}\r\nf PositionY = {:.9g}\r\nul Commander = 007\r\n",
             i == 0 ? -1e30 : i == 1 ? 1000000.0 : x, i == 0 ? -1e30 : i == 1 ? 1000000.0 : y);
     }
+    for (const auto list : {1U, 3U}) {
+        for (const auto& entry : owner.entries[list]) edits.push_back({document_.section(entry.section)->syntax, {}});
+        edits.push_back({document_.find(owner.section, list == 1 ? "NumActions" : "NumFailureActions")->syntax, "5"});
+        const auto suffix = list == 1 ? "Action" : "FailureAction";
+        for (std::size_t a = 0; a < actionSchema().size(); ++a) {
+            const auto& spec = actionSchema()[a];
+            const auto& field = spec.fields.front();
+            added += std::format("[{}{}{}]\r\nst {}SpeciesString = \"{}\"\r\n{} {} = {}\r\n",
+                base, suffix, a, suffix, spec.name, field.prefix, field.key, field.type == 3 ? "\"../Original/Name.ext\"" : "7");
+        }
+    }
     edits.push_back({{document_.syntax().endMarker, document_.syntax().endMarker}, added});
     std::ranges::sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
     for (const auto& edit : edits) fit.replace(edit.span.begin, edit.span.end - edit.span.begin, edit.text);
@@ -179,8 +190,24 @@ void PanelProof::objectivesProof()
         });
         click("objective.next");
     }
-    click("objective.select"); click("objective.select." + std::to_string(payloadOwner->value));
     click("objective.entries");
+    for (const auto list : {1U, 3U}) {
+        click("objective.list." + std::to_string(list));
+        for (std::size_t a = 0; a < actionSchema().size(); ++a) {
+            const auto field = actionSchema()[a].fields.front();
+            const auto entryId = document_.objective(id)->entries[list][a].section;
+            const auto key = "objective.entry." + std::to_string(list);
+            click(key + ".select." + std::to_string(a));
+            input(key + "." + std::string(field.key), field.type == 3 ? "../Exact/Name\n\nsecond line\n" : "-17");
+            operation(std::format("widget-payload-{}-{}", list, field.key), key + ".apply." + std::string(field.key),
+                [this, id, list, a, field, entryId] {
+                    const Scalar expected = field.type == 3 ? Scalar{std::string("../Exact/Name\n\nsecond line\n")} : Scalar{std::int64_t{-17}};
+                    if (document_.objective(id)->entries[list][a].section != entryId || document_.objective(id)->entries[list][a].payload[0] != expected)
+                        throw std::runtime_error("objective_action_widget_wrong");
+                });
+        }
+    }
+    click("objective.select"); click("objective.select." + std::to_string(payloadOwner->value));
     for (const auto list : {0U, 2U}) {
         click("objective.list." + std::to_string(list));
         const auto& entries = document_.objective(*payloadOwner)->entries[list];

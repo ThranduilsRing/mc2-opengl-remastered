@@ -161,6 +161,7 @@ struct ObjectiveEntry {
         std::string warning;
     };
     std::optional<Flag> flag;
+    std::vector<Scalar> payload;
     std::string_view policy;
 };
 inline constexpr std::size_t objectiveTextLimit = 2000;
@@ -178,6 +179,13 @@ struct ConditionSpec {
     bool reference{};
 };
 std::span<const ConditionSpec> conditionSchema();
+struct ActionSpec {
+    ActionSpecies species;
+    std::string_view name;
+    std::span<const ObjectiveFieldSpec> fields;
+};
+std::span<const ActionSpec> actionSchema();
+std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry);
 std::expected<void, LoadError> validateObjectiveScalar(const ObjectiveFieldSpec& spec, const Scalar& value);
 struct ObjectiveScalar {
     std::string_view key;

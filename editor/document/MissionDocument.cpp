@@ -372,13 +372,22 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                             ignoredPayload = true;
                             continue;
                         }
-                        if (type == 3 && std::get<std::string>(find(entry, key)->value[0]).size() > objectiveTextLimit)
-                            ignoredPayload = true;
+                        if (type == 3) {
+                            auto text = std::get<std::string>(payload->value[0]);
+                            if (const auto first = text.find('\n'); first != text.npos) text.erase(first, 1);
+                            if (text.size() > objectiveTextLimit) ignoredPayload = true;
+                        }
                     }
                     ObjectiveEntry value{sectionId(entry), ConditionSpecies{}};
                     if (ignoredPayload) value.policy = "required payload unreadable; game skips entry; entry read-only";
                     if (condition) value.species = static_cast<ConditionSpecies>(species);
                     else value.species = static_cast<ActionSpecies>(species);
+                    if (!ignoredPayload) for (const auto& field : objectivePayloadSchema(value)) {
+                        auto scalar = find(entry, field.key)->value[0];
+                        if (auto* text = std::get_if<std::string>(&scalar))
+                            if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
+                        value.payload.push_back(std::move(scalar));
+                    }
                     if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {
                         value.flag.emplace();
                         auto& flag = *value.flag;

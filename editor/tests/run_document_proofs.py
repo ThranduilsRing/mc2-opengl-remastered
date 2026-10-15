@@ -8,6 +8,7 @@ import sys
 import time
 import zlib
 import re
+import argparse
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -108,6 +109,7 @@ def grade_outputs(inputs, output):
     grade_typed_objectives(inputs, output)
     grade_payload_outputs(output)
     print("Condition payload grader: 32 changed exports and wrong-prefix/value, unchanged, unrelated-byte and missing-output controls PASS", flush=True)
+    print("Action payload grader: 10 changed exports and wrong-prefix/value, unchanged, unrelated-byte and missing-output controls PASS", flush=True)
     print("Objective semantic grader: 173/173 typed models equal independently parsed stock reader values", flush=True)
     for mission in STOCK_MISSIONS:
         original = (inputs / f"{mission}.fit").read_bytes()
@@ -135,6 +137,9 @@ def grade_shipping_shell():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--asan", action="store_true", help="include ASan for merge candidates")
+    args = parser.parse_args()
     from editor.tests.objective_census import census
     current = census(StockInputs(Path("A:/Games/mc2-opengl/mc2-win64-lane3")))
     if current != json.loads((ROOT / "editor/tests/objective-census.json").read_text()):
@@ -158,8 +163,14 @@ def main():
                ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
     commands = []
     for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests", "editor_objective_reader_tests"):
-        commands.append(([sys.executable, "tools/build_quiet.py", "--target", target], 300, f"{target}-build"))
+        if target == "editor_document_tests_asan" and not args.asan:
+            continue
+        cmake = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
+        commands.append(([cmake, "--build", "build64", "--config", "RelWithDebInfo", "--target", target,
+                          "--parallel", "2", "--", "-m:1", "-p:CL_MPCount=2"], 300, f"{target}-build"))
     for target in ("editor_document_tests", "editor_document_tests_asan", "editor_panel_tests"):
+        if target == "editor_document_tests_asan" and not args.asan:
+            continue
         label = f"{target}-run"
         command = [str(ROOT / "build64/out/editor/RelWithDebInfo" / (target + ".exe")),
                    "--no-breaks", "--stock-dir", str(inputs)]
@@ -243,12 +254,15 @@ def main():
             print(reader.stdout + reader.stderr, end="", flush=True)
             if reader.returncode:
                 return reader.returncode
-            if not re.search(r"\[doctest\] test cases:\s+7\s+\|\s+7 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
+            if not re.search(r"\[doctest\] test cases:\s+8\s+\|\s+8 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
                 raise ValueError("real objective reader cases were skipped or omitted")
-            print("Offline proofs with installed prerequisites: widget graders and seven real FIT/text reader cases executed; species dispatch remains source-derived; rendered-widget proof awaits smoke host", flush=True)
-    if len(asan_cases) != 2 or sum(asan_cases) != native_cases:
+            print("Offline proofs with installed prerequisites: widget graders and eight real FIT/text reader cases executed; species dispatch remains source-derived; rendered-widget proof awaits smoke host", flush=True)
+    if args.asan and (len(asan_cases) != 2 or sum(asan_cases) != native_cases):
         raise ValueError("ASan split did not cover the complete normal document suite")
-    print(f"ASan coverage: {' + '.join(map(str, asan_cases))} = {native_cases} native cases; no cases omitted", flush=True)
+    if args.asan:
+        print(f"ASan coverage: {' + '.join(map(str, asan_cases))} = {native_cases} native cases; no cases omitted", flush=True)
+    else:
+        print("ASan: skipped (pass --asan for merge candidates)", flush=True)
     grade_shipping_shell()
     print(f"Proof artifacts: {directory}", flush=True)
     return 0

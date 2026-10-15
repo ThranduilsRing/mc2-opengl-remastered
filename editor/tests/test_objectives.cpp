@@ -624,6 +624,68 @@ TEST_CASE("objectives/condition payload edits preserve reader values and reject 
     }
 }
 
+TEST_CASE("objectives/action payloads preserve paths and reject invalid text without changing history")
+{
+    const auto& paths = editor::tests::inputs();
+    const auto output = paths.byteGradeDirectory.empty() ? scratch() : paths.byteGradeDirectory;
+    std::filesystem::create_directories(output);
+    for (const auto list : {1U, 3U}) for (const auto& spec : actionSchema()) {
+        const auto& field = spec.fields.front();
+        auto fit = fixture();
+        const auto block = std::string("Team0Objective0") + (list == 1 ? "Action0" : "FailureAction0");
+        const auto begin = fit.find("[" + block + "]");
+        const auto end = fit.find('[', begin + 1);
+        fit.replace(begin, end - begin, "[" + block + "]\r\nst " + (list == 1 ? "Action" : "FailureAction") +
+            "SpeciesString = \"" + std::string(spec.name) + "\"\r\n" + std::string(field.prefix) + " " +
+            std::string(field.key) + (field.type == 3 ? " = \"../Original/Name.ext\"\r\n" : " = 7\r\n"));
+        auto doc = MissionDocument::decode(fit, packet(), "actions", {}); REQUIRE(doc);
+        const auto id = doc->objectives()[0].entries[list][0].section;
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto stem = std::format("payload-{}-{}-{}", list, spec.name, field.key);
+        REQUIRE(doc->save(output / (stem + "-before"), {}));
+        const Scalar changed = field.type == 3 ? Scalar{std::string("../Exact/Name\n\nsecond line\n")} : Scalar{std::int64_t{-17}};
+        REQUIRE(history.setObjectivePayload(id, field.key, changed));
+        CHECK(doc->objectives()[0].entries[list][0].payload[0] == changed);
+        REQUIRE(doc->save(output / (stem + "-after"), {}));
+        auto reopened = MissionDocument::read(output / (stem + "-after.fit"), output / (stem + "-after.pak"), {}); REQUIRE(reopened);
+        CHECK(reopened->objectives()[0].entries[list][0].payload[0] == changed);
+        const auto edited = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == edited);
+        REQUIRE(history.undo());
+        const auto reject = [&](Scalar value) {
+            const auto revision = doc->revision(); const auto dirty = doc->modified(); const auto cost = history.bytesUsed(); logs.clear();
+            CHECK_FALSE(history.setObjectivePayload(id, field.key, std::move(value)));
+            CHECK(logs.size() == 1); CHECK(doc->fitBytes() == fit); CHECK(doc->revision() == revision);
+            CHECK(doc->modified() == dirty); CHECK(history.bytesUsed() == cost); CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
+        };
+        if (field.type == 3) {
+            for (const auto size : {1999U, 2000U}) {
+                auto text = std::string(size - 2, 'x') + "\r\ny";
+                REQUIRE(history.setObjectivePayload(id, field.key, text));
+                text.erase(text.find('\r'), 1);
+                CHECK(doc->objectives()[0].entries[list][0].payload[0] == Scalar{text});
+                REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+            }
+            for (const auto& text : {std::string(2001, 'x'), std::string("a\"b"), std::string("a\rb"), std::string("a\0b", 3)}) reject(text);
+            reject(std::int64_t{3});
+        } else {
+            for (const auto n : {-2147483648LL, 2147483647LL}) {
+                REQUIRE(history.setObjectivePayload(id, field.key, std::int64_t{n})); REQUIRE(history.undo());
+            }
+            reject(std::int64_t{2147483648LL}); reject(std::int64_t{-2147483649LL}); reject(std::string("7"));
+        }
+        auto wrong = fit;
+        const auto declaration = std::string(field.prefix) + " " + std::string(field.key);
+        wrong.replace(wrong.find(declaration), field.prefix.size(), "l");
+        auto ignored = MissionDocument::decode(wrong, packet(), "ignored-action", {}); REQUIRE(ignored);
+        CommandHistory ignoredHistory(*ignored, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        logs.clear(); CHECK_FALSE(ignoredHistory.setObjectivePayload(ignored->objectives()[0].entries[list][0].section, field.key, changed));
+        CHECK(logs.size() == 1); CHECK(ignored->fitBytes() == wrong); CHECK_FALSE(ignoredHistory.canUndo());
+    }
+}
+
 TEST_CASE("objectives/decimal payload authoring records the finite game float including underflow")
 {
     auto doc = MissionDocument::decode(fixture(), packet(), "decimal", {}); REQUIRE(doc);

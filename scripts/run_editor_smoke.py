@@ -1157,6 +1157,8 @@ PANEL_OPERATIONS = {
         "ActivateOnFlag", "ActivateFlagID", "ResetStatusOnFlag", "ResetStatusFlagID", "TitleUseResourceString",
         "TitleResourceStringID", "DescriptionUseResourceString", "DescriptionResourceStringID", "ObjectiveModel",
         "ModelType", "BaseColor", "HighlightColor", "HighlightColor2", "ModelScale", "ModelID", "ModelID Version")) +
+        tuple(f"widget-payload-{listing}-{key}" for listing in (1, 3)
+              for key in ("AVIFileName", "WAVFileName", "Message", "PurchaseFileName", "ResourceStringID")) +
         tuple(f"widget-payload-{listing}-{key}" for listing in (0, 2)
               for key in ("Num", "Time", "TargetCenterX", "TargetCenterY", "TargetRadius", "create")),
     "unit_panel": ("unit-transform", "unit-team", "unit-place", "unit-delete"),
@@ -1276,6 +1278,11 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
                 grade_payload_edit(baseline, (directory / f"widget-payload-{listing}-{key}-edited.fit").read_bytes(), block, key)
             owner = re.match(r"Team0Objective\d+", block)[0]
             grade_condition_creation(baseline, (directory / f"widget-payload-{listing}-create-edited.fit").read_bytes(), owner, suffix)
+        from editor.tests.objective_census import ACTION_PAYLOADS
+        for listing, suffix in ((1, "Action"), (3, "FailureAction")):
+            for index, (_, key) in enumerate(ACTION_PAYLOADS):
+                grade_payload_edit(baseline, (directory / f"widget-payload-{listing}-{key}-edited.fit").read_bytes(),
+                                   f"Team0Objective1{suffix}{index}", key)
     elif name == "objectives_crud_panel":
         from editor.tests.objective_crud import grade_crud_panel
         grade_crud_panel(directory)

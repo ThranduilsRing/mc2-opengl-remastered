@@ -243,21 +243,20 @@ void EntityPanels::objectives()
                     }
                     ImGui::EndDisabled();
                 } else if (entry.policy.empty()) {
-                    const auto* species = std::get_if<ConditionSpecies>(&entry.species);
-                    const auto schema = conditionSchema();
-                    const auto spec = species ? std::ranges::find(schema, *species, &ConditionSpec::species) : schema.end();
-                    if (spec != schema.end() && !spec->reference) {
+                    const auto fields = objectivePayloadSchema(entry);
+                    if (!fields.empty()) {
                         if (entryRevision_ != document_.revision()) {
-                            for (std::size_t f = 0; f < spec->fields.size(); ++f)
-                                payloadDraft_[f] = document_.find(entry.section, spec->fields[f].key)->value[0];
+                            for (std::size_t f = 0; f < fields.size(); ++f)
+                                payloadDraft_[f] = entry.payload[f];
                             entryRevision_ = document_.revision();
                         }
-                        for (std::size_t f = 0; f < spec->fields.size(); ++f) {
-                            const auto& field = spec->fields[f];
+                        for (std::size_t f = 0; f < fields.size(); ++f) {
+                            const auto& field = fields[f];
                             const auto* source = document_.find(entry.section, field.key);
                             if (!source->warning.empty()) ImGui::TextWrapped("%s: %s; authored bytes preserved", field.key.data(), source->warning.data());
                             if (field.type == 0) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_S64, &std::get<std::int64_t>(payloadDraft_[f])));
-                            else record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
+                            else if (field.type == 1) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
+                            else record(key + "." + std::string(field.key), ImGui::InputTextMultiline(field.key.data(), &std::get<std::string>(payloadDraft_[f]), ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine));
                             if (button((key + ".apply." + std::string(field.key)).c_str(), ("Apply " + std::string(field.key)).c_str())) {
                                 report(history_.setObjectivePayload(entry.section, field.key, payloadDraft_[f]));
                                 ImGui::PopID(); ImGui::PopID(); return;

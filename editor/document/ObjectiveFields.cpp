@@ -5,6 +5,36 @@
 #include <limits>
 
 namespace editor::document {
+std::span<const ActionSpec> actionSchema()
+{
+    static constexpr ObjectiveFieldSpec bik[] = {{"AVIFileName", "st", 3}};
+    static constexpr ObjectiveFieldSpec wav[] = {{"WAVFileName", "st", 3}};
+    static constexpr ObjectiveFieldSpec text[] = {{"Message", "st", 3}};
+    static constexpr ObjectiveFieldSpec technology[] = {{"PurchaseFileName", "st", 3}};
+    static constexpr ObjectiveFieldSpec resource[] = {{"ResourceStringID", "ul", 0, -2147483648.0, 2147483647.0}};
+    static constexpr ActionSpec specs[] = {
+        {ActionSpecies::bik, "PlayBIK", bik}, {ActionSpecies::wav, "PlayWAV", wav},
+        {ActionSpecies::text, "DisplayTextMessage", text},
+        {ActionSpecies::technology, "MakeNewTechnologyAvailable", technology},
+        {ActionSpecies::resourceText, "DisplayResourceTextMessage", resource}};
+    return specs;
+}
+
+std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry)
+{
+    if (const auto* species = std::get_if<ConditionSpecies>(&entry.species)) {
+        const auto schema = conditionSchema();
+        const auto spec = std::ranges::find(schema, *species, &ConditionSpec::species);
+        if (spec != schema.end() && !spec->reference) return spec->fields;
+    }
+    if (const auto* species = std::get_if<ActionSpecies>(&entry.species)) {
+        const auto schema = actionSchema();
+        const auto spec = std::ranges::find(schema, *species, &ActionSpec::species);
+        if (spec != schema.end()) return spec->fields;
+    }
+    return {};
+}
+
 std::span<const ConditionSpec> conditionSchema()
 {
     static constexpr ObjectiveFieldSpec num[] = {{"Num", "ul", 0, -2147483648.0, 2147483647.0}};

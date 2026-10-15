@@ -63,37 +63,44 @@ std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, st
         return std::unexpected(rejectObjective(std::move(reason)));
     };
     const ObjectiveEntry* selected{};
-    for (const auto& objective : document_.objectives()) for (const auto list : {0U, 2U})
+    for (const auto& objective : document_.objectives()) for (const auto list : {0U, 1U, 2U, 3U})
         for (const auto& entry : objective.entries[list]) if (entry.section == id) selected = &entry;
     if (!selected) return reject("unsupported_condition_payload");
     if (!selected->policy.empty()) return reject(std::string(selected->policy));
-    const auto* species = std::get_if<ConditionSpecies>(&selected->species);
-    if (!species) return reject("unsupported_condition_payload");
-    const auto schema = conditionSchema();
-    const auto spec = std::ranges::find(schema, *species, &ConditionSpec::species);
-    if (spec == schema.end()) return reject("unsupported_condition_payload");
-    if (spec->reference) return reject("reference_requires_existing_resolution_command");
-    const auto fieldSpec = std::ranges::find(spec->fields, key, &ObjectiveFieldSpec::key);
-    if (fieldSpec == spec->fields.end()) return reject("unsupported_condition_field");
+    const auto schema = objectivePayloadSchema(*selected);
+    const auto fieldSpec = std::ranges::find(schema, key, &ObjectiveFieldSpec::key);
+    if (fieldSpec == schema.end()) return reject("unsupported_payload_field");
     const auto* old = document_.find(id, key);
     if (!old || old->array || old->opaque || old->prefix != fieldSpec->prefix)
         return reject("ignored_payload_declaration_would_be_activated");
     if (old->warning.starts_with("outside signed")) return reject(std::string(old->warning));
     if (auto* real = std::get_if<double>(&value)) *real = static_cast<double>(static_cast<float>(*real));
+    if (auto* text = std::get_if<std::string>(&value))
+        for (auto at = text->find("\r\n"); at != text->npos; at = text->find("\r\n", at)) text->erase(at, 1);
     if (auto valid = validateObjectiveScalar(*fieldSpec, value); !valid) return reject(valid.error().reason);
     const auto* requestedReal = std::get_if<double>(&value);
-    if (old->value == Value{value} && (!requestedReal ||
+    if (selected->payload[static_cast<std::size_t>(fieldSpec - schema.begin())] == value && (!requestedReal ||
         std::signbit(*requestedReal) == std::signbit(std::get<double>(old->value[0])))) return {};
     auto fit = document_.fitBytes();
     auto syntax = decodeFit(fit);
     if (!syntax) return reject(syntax.error().reason);
     const auto index = static_cast<std::size_t>(old - document_.syntax().fields.data());
     const auto& fresh = syntax->fields[index];
-    const auto wire = fieldSpec->type == 1 ? std::format("{:.9g}", std::get<double>(value)) : std::to_string(std::get<std::int64_t>(value));
+    auto encoded = value;
+    if (auto* text = std::get_if<std::string>(&encoded); text && text->find('\n') != text->npos) {
+        std::string wire = "\r\n";
+        for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
+        *text = std::move(wire);
+    }
+    const auto wire = fieldSpec->type == 1 ? std::format("{:.9g}", std::get<double>(value)) : formatValue(*old, Value{encoded});
     fit.replace(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin, wire);
     auto check = decodeFit(fit);
-    if (!check || check->fields[index].value != Value{value}) return reject("reader_conversion_changes_value");
-    return commitObjectiveFit(std::move(fit), "Edit condition payload");
+    if (!check) return reject("reader_conversion_changes_value");
+    auto decoded = check->fields[index].value[0];
+    if (auto* text = std::get_if<std::string>(&decoded))
+        if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
+    if (decoded != value) return reject("reader_conversion_changes_value");
+    return commitObjectiveFit(std::move(fit), "Edit objective payload");
 }
 std::expected<void, LoadError> CommandHistory::deleteObjectiveEntry(NodeId entry)
 {

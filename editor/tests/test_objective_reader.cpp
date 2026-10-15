@@ -280,6 +280,72 @@ TEST_CASE("reader/uppercase numeric species reads DestroyAllEnemyUnits")
     checkNumericObjectiveRead("0X16", true, 0);
 }
 
+TEST_CASE("reader/action text limits and imported quotes have explicit disk and RAM expectations")
+{
+    using namespace editor::document;
+    const auto& widgets = editor::tests::inputs().byteGradeDirectory;
+    const auto output = std::filesystem::path("scratch/e6c-action-reader") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(output);
+    for (const auto list : {1U, 3U}) for (const auto& spec : actionSchema()) {
+        const auto& field = spec.fields.front();
+        const auto block = std::string("Team0Objective1") + (list == 1 ? "Action0" : "FailureAction0");
+        const auto key = std::string(field.key);
+        const auto path = widgets / (std::format("widget-payload-{}-{}-edited.fit", list, key));
+        const auto fit = bytes(path); REQUIRE_FALSE(fit.empty());
+        for (const bool disk : {false, true}) {
+            FitIniFile reader;
+            REQUIRE((disk ? reader.open(path.string().c_str()) : reader.open(fit.data(), static_cast<int>(fit.size()))) == NO_ERR);
+            const auto owner = std::string("Team0Objective1");
+            REQUIRE(reader.seekBlock(owner.c_str()) == NO_ERR);
+            unsigned long count{};
+            REQUIRE(reader.readIdULong(list == 1 ? "NumActions" : "NumFailureActions", count) == NO_ERR);
+            REQUIRE(count == 5);
+            const auto index = static_cast<std::size_t>(&spec - actionSchema().data());
+            REQUIRE(reader.seekBlock((owner + (list == 1 ? "Action" : "FailureAction") + std::to_string(index)).c_str()) == NO_ERR);
+            if (field.type == 0) {
+                unsigned long value{}; REQUIRE(reader.readIdULong(key.c_str(), value) == NO_ERR);
+                CHECK(static_cast<std::int32_t>(value) == -17);
+            } else CHECK(objective_text::read(reader, key.c_str()) == std::optional<std::string>{"../Exact/Name\r\n\r\nsecond line\r\n"});
+        }
+        if (field.type != 3) continue;
+        auto doc = MissionDocument::read(widgets / "fixture.fit", widgets / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+        const auto index = static_cast<std::size_t>(&spec - actionSchema().data());
+        const auto id = doc->objectives()[1].entries[list][index].section;
+        const auto targetBlock = doc->section(id)->name;
+        CommandHistory history(*doc);
+        for (const auto& authored : {std::string(1999, 'x'), std::string(2000, 'x'),
+                                    std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny"}) {
+            REQUIRE(history.setObjectivePayload(id, key, authored));
+            REQUIRE(doc->save(output / "authored", {}));
+            const auto saved = bytes(output / "authored.fit");
+            const auto expected = objective_text::toMemoryBreaks(objective_text::toFileBreaks(authored));
+            for (const bool disk : {false, true}) {
+                FitIniFile reader;
+                REQUIRE((disk ? reader.open((output / "authored.fit").string().c_str()) : reader.open(saved.data(), static_cast<int>(saved.size()))) == NO_ERR);
+                REQUIRE(reader.seekBlock(targetBlock.c_str()) == NO_ERR);
+                CHECK(objective_text::read(reader, key.c_str()) == std::optional{expected});
+            }
+            REQUIRE(history.undo());
+        }
+        for (const auto& [wire, expected] : std::vector<std::pair<std::string, std::optional<std::string>>>{
+                {"\"" + std::string(2001, 'x') + "\"", std::nullopt},
+                {"\"one\"two\"", std::string("one")},
+                {"\"one\r\ntwo\"", std::string("onetwo")},
+                {"\"one\ntwo\"", std::string("onetwo")}}) {
+            const auto raw = "FITini\r\n[Text]\r\nst " + key + " = " + wire + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+            const auto rawPath = output / "imported.fit";
+            { std::ofstream out(rawPath, std::ios::binary); out << raw; }
+            for (const bool disk : {false, true}) {
+                FitIniFile reader;
+                REQUIRE((disk ? reader.open(rawPath.string().c_str()) : reader.open(raw.data(), static_cast<int>(raw.size()))) == NO_ERR);
+                REQUIRE(reader.seekBlock("Text") == NO_ERR);
+                CHECK(objective_text::read(reader, key.c_str()) == expected);
+            }
+        }
+    }
+}
+
 TEST_CASE("reader/owned multiline edits match the real disk and RAM objective readers")
 {
     using namespace editor::document;

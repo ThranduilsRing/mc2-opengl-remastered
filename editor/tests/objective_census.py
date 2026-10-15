@@ -21,12 +21,20 @@ AUTHORING_KEYS = (
 
 
 def grade_payload_edit(before, after, block, key):
-    prefix, expected = ("ul", "-17") if key == "Num" else ("f", "-1.25")
-    fields = objective_fields(after)
-    if fields.get(block + "/" + key) != [prefix + " " + expected]:
-        raise ValueError("condition payload reader value or prefix differs")
+    text = key in ("AVIFileName", "WAVFileName", "Message", "PurchaseFileName")
+    prefix, expected = ("st", "../Exact/Name\n\nsecond line\n") if text else (("ul", "-17") if key in ("Num", "ResourceStringID") else ("f", "-1.25"))
     pattern = (rb"(?m)(^\[" + re.escape(block.encode()) + rb"\]\r?\n(?:(?!^\[)[\s\S])*?^"
-               + prefix.encode() + rb"[ \t]+" + key.encode() + rb"[ \t]*=[ \t]*)([^\r\n]+)")
+               + prefix.encode() + rb"[ \t]+" + key.encode() + rb'[ \t]*=[ \t]*)("[^"]*"|[^\r\n]+)')
+    match = re.search(pattern, after)
+    if not match:
+        raise ValueError("payload reader value or prefix missing")
+    actual = match[2].decode("latin-1")
+    if text:
+        if not actual.startswith('"') or not actual.endswith('"'):
+            raise ValueError("payload text lacks quotes")
+        actual = actual[1:-1].replace("\r\n", "\n").replace("\n", "", 1)
+    if actual != expected:
+        raise ValueError("payload reader value differs")
     def masked(data):
         result, count = re.subn(pattern, lambda match: match[1] + b"<payload>", data)
         if count != 1:
@@ -59,6 +67,28 @@ def grade_payload_outputs(output):
                         pass
                     else:
                         raise ValueError("condition payload negative control accepted")
+    for listing in (1, 3):
+        for name, key in ACTION_PAYLOADS:
+            stem = f"payload-{listing}-{name}-{key}"
+            before = (output / (stem + "-before.fit")).read_bytes()
+            after = (output / (stem + "-after.fit")).read_bytes()
+            block = "Team0Objective0" + ("Action0" if listing == 1 else "FailureAction0")
+            grade_payload_edit(before, after, block, key)
+            declaration = (b"ul " if key == "ResourceStringID" else b"st ") + key.encode() + b" = "
+            for bad in (before, after.replace(declaration, b"l " + key.encode() + b" = "),
+                        after.replace(b"../Exact/Name", b"./Wrong/Name").replace(b"-17", b"99"),
+                        after + b"// unrelated mutation\n", b""):
+                try:
+                    grade_payload_edit(before, bad, block, key)
+                except ValueError:
+                    pass
+                else:
+                    raise ValueError("action payload negative control accepted")
+
+
+ACTION_PAYLOADS = (("PlayBIK", "AVIFileName"), ("PlayWAV", "WAVFileName"),
+                   ("DisplayTextMessage", "Message"), ("MakeNewTechnologyAvailable", "PurchaseFileName"),
+                   ("DisplayResourceTextMessage", "ResourceStringID"))
 
 
 def grade_condition_creation(before, after, owner, suffix):
