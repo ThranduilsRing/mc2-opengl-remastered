@@ -94,3 +94,10 @@ def test_check_refuses_a_run_taken_at_other_frames_than_the_baseline(tmp_path):
     ok, lines = rt.check_baseline_record(rt.baseline_record("m", 1300, 1400, path, path, fp), rt.baseline_record("m", 1000, 1100, path, path, fp))
     assert not ok and "--save-at 1300 --load-at 1400" in lines[0]
     assert rt.check_baseline_record(rt.baseline_record("m", 1300, 1400, path, path, fp), rt.baseline_record("m", 1300, 1400, path, path, fp))[0]
+
+
+def test_a_baseline_without_frames_is_refused_by_name():
+    """A baseline that lacks its frames names the missing key and asks for a re-record, instead of quoting 'None' as a frame."""
+    args = type("Args", (), {"save_at": None, "load_at": None})()
+    refusal = rt.frames_from_baseline(args, {"load_at": 1100})
+    assert refusal and "no save_at" in refusal and "--baseline" in refusal

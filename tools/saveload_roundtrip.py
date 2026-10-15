@@ -399,6 +399,10 @@ def frames_from_baseline(args, base: dict | None) -> str | None:
     for attr, idx, default in (("save_at", 0, DEFAULT_SAVE_AT), ("load_at", 1, DEFAULT_LOAD_AT)):
         if getattr(args, attr) is None:
             setattr(args, attr, recorded[idx] if isinstance(recorded[idx], int) else default)
+    if base is not None:
+        missing = [key for key, value in zip(("save_at", "load_at"), recorded) if not isinstance(value, int)]
+        if missing:
+            return (f"baseline has no {' / '.join(missing)}; re-record it with --baseline")
     if base is not None and recorded != (args.save_at, args.load_at):
         return (f"baseline recorded at --save-at {recorded[0]} --load-at {recorded[1]}; this run asks for "
                 f"{args.save_at} / {args.load_at}: omit the flags or pass the baseline's frames")
