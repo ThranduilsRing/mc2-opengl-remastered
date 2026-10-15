@@ -446,12 +446,12 @@ void __stdcall InitializeGameEngine()
 		//--------------------------------------------------------------
 		// Read in System.CFG
 		{ ZoneScopedN("InitializeGameEngine system.cfg");
-		FitIniFilePtr systemFile = new FitIniFile;
+		FitIniFile systemFile;
 
 	#ifdef _DEBUG
 		long systemOpenResult =
 	#endif
-			systemFile->open("system.cfg");
+			systemFile.open("system.cfg");
 			   
 	#ifdef _DEBUG
 		if( systemOpenResult != NO_ERR)
@@ -466,32 +466,32 @@ void __stdcall InitializeGameEngine()
 	#ifdef _DEBUG
 			long systemBlockResult = 
 	#endif
-				systemFile->seekBlock("systemHeap");
+				systemFile.seekBlock("systemHeap");
 			gosASSERT(systemBlockResult == NO_ERR);
 			{
-				long result = systemFile->readIdULong("systemHeapSize",systemHeapSize);
+				long result = systemFile.readIdULong("systemHeapSize",systemHeapSize);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdULong("guiHeapSize",guiHeapSize);
+				result = systemFile.readIdULong("guiHeapSize",guiHeapSize);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdULong("logisticsHeapSize",logisticsHeapSize);
+				result = systemFile.readIdULong("logisticsHeapSize",logisticsHeapSize);
 				gosASSERT(result == NO_ERR);
 			}
 	
 	#ifdef _DEBUG
 			long systemPathResult = 
 	#endif
-				systemFile->seekBlock("systemPaths");
+				systemFile.seekBlock("systemPaths");
 			gosASSERT(systemPathResult == NO_ERR);
 			{
-				long result = systemFile->readIdString("terrainPath",terrainPath,79);
+				long result = systemFile.readIdString("terrainPath",terrainPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("artPath",artPath,79);
+				result = systemFile.readIdString("artPath",artPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("fontPath",fontPath,79);
+				result = systemFile.readIdString("fontPath",fontPath,79);
 				gosASSERT(result == NO_ERR);
 	
 				//result = systemFile->readIdString("savePath",savePath,79);
@@ -509,56 +509,56 @@ void __stdcall InitializeGameEngine()
                 MC2_LOG(Io, Debug, "{}", mc2::fmt::safe(savePath));
 
 	
-				result = systemFile->readIdString("spritePath",spritePath,79);
+				result = systemFile.readIdString("spritePath",spritePath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("shapesPath",shapesPath,79);
+				result = systemFile.readIdString("shapesPath",shapesPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("soundPath",soundPath,79);
+				result = systemFile.readIdString("soundPath",soundPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("objectPath",objectPath,79);
+				result = systemFile.readIdString("objectPath",objectPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("cameraPath",cameraPath,79);
+				result = systemFile.readIdString("cameraPath",cameraPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("tilePath",tilePath,79);
+				result = systemFile.readIdString("tilePath",tilePath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("missionPath",missionPath,79);
+				result = systemFile.readIdString("missionPath",missionPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("warriorPath",warriorPath,79);
+				result = systemFile.readIdString("warriorPath",warriorPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("profilePath",profilePath,79);
+				result = systemFile.readIdString("profilePath",profilePath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("interfacepath",interfacePath,79);
+				result = systemFile.readIdString("interfacepath",interfacePath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("moviepath",moviePath,79);
+				result = systemFile.readIdString("moviepath",moviePath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("CDsoundPath",CDsoundPath,79);
+				result = systemFile.readIdString("CDsoundPath",CDsoundPath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("CDmoviepath",CDmoviePath,79);
+				result = systemFile.readIdString("CDmoviepath",CDmoviePath,79);
 				gosASSERT(result == NO_ERR);
 	
-				result = systemFile->readIdString("CDspritePath",CDspritePath,79);
+				result = systemFile.readIdString("CDspritePath",CDspritePath,79);
 				gosASSERT(result == NO_ERR);
 			}
 	
 	#ifdef _DEBUG
 			long fastFileResult = 
 	#endif
-				systemFile->seekBlock("FastFiles");
+				systemFile.seekBlock("FastFiles");
 			gosASSERT(fastFileResult == NO_ERR);
 			{
-				long result = systemFile->readIdLong("NumFastFiles",maxFastFiles);
+				long result = systemFile.readIdLong("NumFastFiles",maxFastFiles);
 				if (result != NO_ERR)
 					maxFastFiles = 0;
 	
@@ -572,7 +572,7 @@ void __stdcall InitializeGameEngine()
 					char fileName[100];
 					mc2::fmt::to_buf(fastFileId, "File{:d}", mc2::fmt::as_i32(fileNum));
 		
-					while (systemFile->readIdString(fastFileId,fileName,99) == NO_ERR)
+					while (systemFile.readIdString(fastFileId,fileName,99) == NO_ERR)
 					{
 						bool result = FastFileInit(fileName);
 						if (!result)
@@ -592,13 +592,13 @@ void __stdcall InitializeGameEngine()
 			// an empty mod index); LoadModFits() bypasses the one-shot guard.
 			MC2Strings::LoadModFits();
 
-			long result = systemFile->seekBlock("UseMusic");
+			long result = systemFile.seekBlock("UseMusic");
 			if (result == NO_ERR)
 				useMusic = TRUE;
 			else
 				useMusic = FALSE;
 				
-			result = systemFile->seekBlock("UseSound");
+			result = systemFile.seekBlock("UseSound");
 			if (result == NO_ERR)
 			{
 				useSound = TRUE;
@@ -609,57 +609,55 @@ void __stdcall InitializeGameEngine()
 				useMusic = FALSE;
 			}
 
-			result = systemFile->seekBlock("CameraSettings");
+			result = systemFile.seekBlock("CameraSettings");
 			if (result == NO_ERR)
 			{
-				result = systemFile->readIdFloat("MaxPerspective",Camera::MAX_PERSPECTIVE);
+				result = systemFile.readIdFloat("MaxPerspective",Camera::MAX_PERSPECTIVE);
 				if (result != NO_ERR)
 					Camera::MAX_PERSPECTIVE = 88.0f;
 
 				if (Camera::MAX_PERSPECTIVE > 90.0f)
 					Camera::MAX_PERSPECTIVE = 90.0f;
 
-				result = systemFile->readIdFloat("MinPerspective",Camera::MIN_PERSPECTIVE);
+				result = systemFile.readIdFloat("MinPerspective",Camera::MIN_PERSPECTIVE);
 				if (result != NO_ERR)
 					Camera::MIN_PERSPECTIVE = 18.0f;
 
 				if (Camera::MIN_PERSPECTIVE < -89.0f)
 					Camera::MIN_PERSPECTIVE = -89.0f;
 
-				result = systemFile->readIdFloat("MaxOrtho",Camera::MAX_ORTHO);
+				result = systemFile.readIdFloat("MaxOrtho",Camera::MAX_ORTHO);
 				if (result != NO_ERR)
 					Camera::MAX_ORTHO = 88.0f;
 
 				if (Camera::MAX_ORTHO > 90.0f)
 					Camera::MAX_ORTHO = 90.0f;
 
-				result = systemFile->readIdFloat("MinOrtho",Camera::MIN_ORTHO);
+				result = systemFile.readIdFloat("MinOrtho",Camera::MIN_ORTHO);
 				if (result != NO_ERR)
 					Camera::MIN_ORTHO = 18.0f;
 
 				if (Camera::MIN_ORTHO < 0.0f)
 					Camera::MIN_ORTHO = 0.0f;
 
-				result = systemFile->readIdFloat("AltitudeMinimum",Camera::AltitudeMinimum);
+				result = systemFile.readIdFloat("AltitudeMinimum",Camera::AltitudeMinimum);
 				if (result != NO_ERR)
 					Camera::AltitudeMinimum = 10.0f;
 
 				if (Camera::AltitudeMinimum < 1.0f)
 					Camera::AltitudeMinimum = 1.0f;
 
-				result = systemFile->readIdFloat("AltitudeMaximumHi",Camera::AltitudeMaximumHi);
+				result = systemFile.readIdFloat("AltitudeMaximumHi",Camera::AltitudeMaximumHi);
 				if (result != NO_ERR)
 					Camera::AltitudeMaximumHi = 1600.0f;
 
-				result = systemFile->readIdFloat("AltitudeMaximumLo",Camera::AltitudeMaximumLo);
+				result = systemFile.readIdFloat("AltitudeMaximumLo",Camera::AltitudeMaximumLo);
 				if (result != NO_ERR)
 					Camera::AltitudeMaximumHi = 1500.0f;
 			}
 		}
 	
-		systemFile->close();
-		delete systemFile;
-		systemFile = nullptr;
+		systemFile.close();
 		}
 	
 		if (initGameLogs) {
@@ -697,14 +695,14 @@ void __stdcall InitializeGameEngine()
 		// Read in Prefs.cfg
 		{ ZoneScopedN("InitializeGameEngine prefs.cfg");
 		bool fullScreen = false;
-		FitIniFilePtr prefsFile = new FitIniFile;
-		FitIniFilePtr optsFile = new FitIniFile;
+		FitIniFile prefsFile;
+		FitIniFile optsFile;
 	
-		long prefsOpenResult = prefsFile->open("prefs.cfg");
+		long prefsOpenResult = prefsFile.open("prefs.cfg");
 	
 		gosASSERT (prefsOpenResult == NO_ERR);
 		
-		prefsOpenResult = optsFile->open("options.cfg");
+		prefsOpenResult = optsFile.open("options.cfg");
 		
 		gosASSERT (prefsOpenResult == NO_ERR);
 		
@@ -712,8 +710,8 @@ void __stdcall InitializeGameEngine()
 	#ifdef _DEBUG
 			long prefsBlockResult = 
 	#endif
-				prefsFile->seekBlock("MechCommander2");
-				optsFile->seekBlock("MechCommander2");
+				prefsFile.seekBlock("MechCommander2");
+				optsFile.seekBlock("MechCommander2");
 			gosASSERT(prefsBlockResult == NO_ERR);
 			{
 				/*The following commented out options have been moved to "options.cfg" and are
@@ -727,43 +725,43 @@ void __stdcall InitializeGameEngine()
 				
 				// store volume settings in global variable since soundsystem 
 				// does not exist yet.  These will be set in SoundSystem::init()
-				long result = optsFile->readIdLong("DigitalMasterVolume",DigitalMasterVolume);
+				long result = optsFile.readIdLong("DigitalMasterVolume",DigitalMasterVolume);
 				if (result != NO_ERR)
 					DigitalMasterVolume = 255;
 	
-				result = optsFile->readIdLong("MusicVolume",MusicVolume);
+				result = optsFile.readIdLong("MusicVolume",MusicVolume);
 				if (result != NO_ERR)
 					MusicVolume = 64;
 	
-				result = optsFile->readIdLong("RadioVolume",RadioVolume);
+				result = optsFile.readIdLong("RadioVolume",RadioVolume);
 				if (result != NO_ERR)
 					RadioVolume = 64;
 	
-				result = optsFile->readIdLong("SFXVolume",sfxVolume);
+				result = optsFile.readIdLong("SFXVolume",sfxVolume);
 				if (result != NO_ERR)
 					sfxVolume = 64;
 	
-				result = optsFile->readIdLong("BettyVolume",BettyVolume);
+				result = optsFile.readIdLong("BettyVolume",BettyVolume);
 				if (result != NO_ERR)
 					BettyVolume = 64;
 	
-				result = optsFile->readIdBoolean( "Shadows", useShadows);
+				result = optsFile.readIdBoolean( "Shadows", useShadows);
 				if (result != NO_ERR)
 					useShadows = true;
 	
-				result = optsFile->readIdBoolean( "DetailTexture", useWaterInterestTexture);
+				result = optsFile.readIdBoolean( "DetailTexture", useWaterInterestTexture);
 				if (result != NO_ERR)
 					useWaterInterestTexture = true;
 	
-				result = optsFile->readIdLong("Difficulty",GameDifficulty);
+				result = optsFile.readIdLong("Difficulty",GameDifficulty);
 				if (result != NO_ERR)
 					GameDifficulty = 1;
 					
-				result = optsFile->readIdBoolean("UnlimitedAmmo",useUnlimitedAmmo);
+				result = optsFile.readIdBoolean("UnlimitedAmmo",useUnlimitedAmmo);
 				if (result != NO_ERR)
 					useUnlimitedAmmo = true;
 	
-				result = optsFile->readIdLong("Rasterizer",renderer);
+				result = optsFile.readIdLong("Rasterizer",renderer);
 				if (result != NO_ERR)
 					renderer = 0;
 	
@@ -774,35 +772,35 @@ void __stdcall InitializeGameEngine()
 				//if (result != NO_ERR)
 				//	resolution = 0;
                 
-				result = optsFile->readIdLong("ResolutionX",resolutionX);
+				result = optsFile.readIdLong("ResolutionX",resolutionX);
 				if (result != NO_ERR)
 					resolutionX = 800;
                 
-				result = optsFile->readIdLong("ResolutionY",resolutionY);
+				result = optsFile.readIdLong("ResolutionY",resolutionY);
 				if (result != NO_ERR)
 					resolutionY = 600;
 	
-				result = optsFile->readIdBoolean("FullScreen",fullScreen);
+				result = optsFile.readIdBoolean("FullScreen",fullScreen);
 				if (result != NO_ERR)
 					fullScreen = true;
 	
-				result = optsFile->readIdLong("Brightness",gammaLevel);
+				result = optsFile.readIdLong("Brightness",gammaLevel);
 				if (result != NO_ERR)
 					gammaLevel = 0;
 	
-				result = optsFile->readIdBoolean( "useLeftRightMouseProfile", useLeftRightMouseProfile );
+				result = optsFile.readIdBoolean( "useLeftRightMouseProfile", useLeftRightMouseProfile );
 				if ( result != NO_ERR )
 					useLeftRightMouseProfile = true;
 	
 				bool asyncMouse = false;
-				result = optsFile->readIdBoolean( "useAsyncMouse", asyncMouse );
+				result = optsFile.readIdBoolean( "useAsyncMouse", asyncMouse );
 				if ( result != NO_ERR )
 					asyncMouse = false;
 	
 				mc2UseAsyncMouse = asyncMouse;
 	
 				long filterSetting;
-				result = prefsFile->readIdLong("FilterState",filterSetting);
+				result = prefsFile.readIdLong("FilterState",filterSetting);
 				if (result == NO_ERR)
 				{
 					switch (filterSetting)
@@ -823,94 +821,92 @@ void __stdcall InitializeGameEngine()
 				}
 	
                 long tmp;
-				result = prefsFile->readIdLong("TerrainTextureRes", tmp);
+				result = prefsFile.readIdLong("TerrainTextureRes", tmp);
 				if (result != NO_ERR)
 					TERRAIN_TXM_SIZE = 64;
                 else {
                     TERRAIN_TXM_SIZE = (int)tmp;
                 }
 	
-				result = prefsFile->readIdLong("ObjectTextureRes", tmp);
+				result = prefsFile.readIdLong("ObjectTextureRes", tmp);
 				if (result != NO_ERR)
 					ObjectTextureSize = 128;
                 else {
                     ObjectTextureSize = tmp;
                 }
 	
-				result = prefsFile->readIdFloat("DoubleClickThreshold",doubleClickThreshold);
+				result = prefsFile.readIdFloat("DoubleClickThreshold",doubleClickThreshold);
 				if (result != NO_ERR)
 					doubleClickThreshold = 0.2f;
 	
                 // sebi??
 				//result = prefsFile->readIdLong("DragThreshold",dragThreshold);
-				result = prefsFile->readIdFloat("DragThreshold",dragThreshold);
+				result = prefsFile.readIdFloat("DragThreshold",dragThreshold);
 				if (result != NO_ERR)
 					dragThreshold = .01667f;
 					
-				result = prefsFile->readIdULong("BaseVertexColor",BaseVertexColor);
+				result = prefsFile.readIdULong("BaseVertexColor",BaseVertexColor);
 				if (result != NO_ERR)
 					BaseVertexColor = 0x00000000;
 					
-				result = prefsFile->readIdBoolean("RealLOS",useRealLOS);
+				result = prefsFile.readIdBoolean("RealLOS",useRealLOS);
 				if (result != NO_ERR)
 					useRealLOS = true;
 					
-				result = prefsFile->readIdLong("GameVisibleVertices",GameVisibleVertices);
+				result = prefsFile.readIdLong("GameVisibleVertices",GameVisibleVertices);
 				if (result != NO_ERR)
 					GameVisibleVertices = 500;
 				GameVisibleVertices = 500;  // Override config — full visibility
 
-				result = prefsFile->readIdFloat("MaxClipDistance",Camera::MaxClipDistance);
+				result = prefsFile.readIdFloat("MaxClipDistance",Camera::MaxClipDistance);
 				if (result != NO_ERR)
 					Camera::MaxClipDistance	= 50000.0f;
 				Camera::MaxClipDistance = 50000.0f;  // Override config
 					
-				result = prefsFile->readIdFloat("MinHazeDistance",Camera::MinHazeDistance);
+				result = prefsFile.readIdFloat("MinHazeDistance",Camera::MinHazeDistance);
 				if (result != NO_ERR)
 					Camera::MinHazeDistance	= 2000.0f;
 					
-				result = prefsFile->readIdFloat("View0Zoom",Camera::cameraZoom[0]);
+				result = prefsFile.readIdFloat("View0Zoom",Camera::cameraZoom[0]);
 				if (result != NO_ERR)
 					Camera::cameraZoom[0] = 1200.0f;
 					
-				result = prefsFile->readIdFloat("View0Tilt",Camera::cameraTilt[0]);
+				result = prefsFile.readIdFloat("View0Tilt",Camera::cameraTilt[0]);
 				if (result != NO_ERR)
 					Camera::cameraTilt[0] = 35.0f;
 					
-				result = prefsFile->readIdFloat("View1Zoom",Camera::cameraZoom[1]);
+				result = prefsFile.readIdFloat("View1Zoom",Camera::cameraZoom[1]);
 				if (result != NO_ERR)
 					Camera::cameraZoom[1] = 1200.0f;
 					
-				result = prefsFile->readIdFloat("View1Tilt",Camera::cameraTilt[1]);
+				result = prefsFile.readIdFloat("View1Tilt",Camera::cameraTilt[1]);
 				if (result != NO_ERR)
 					Camera::cameraTilt[1] = 35.0f;
 					
-				result = prefsFile->readIdFloat("View2Zoom",Camera::cameraZoom[2]);
+				result = prefsFile.readIdFloat("View2Zoom",Camera::cameraZoom[2]);
 				if (result != NO_ERR)
 					Camera::cameraZoom[2] = 1200.0f;
 					
-				result = prefsFile->readIdFloat("View2Tilt",Camera::cameraTilt[2]);
+				result = prefsFile.readIdFloat("View2Tilt",Camera::cameraTilt[2]);
 				if (result != NO_ERR)
 					Camera::cameraTilt[2] = 35.0f;
 					
-				result = prefsFile->readIdFloat("View3Zoom",Camera::cameraZoom[3]);
+				result = prefsFile.readIdFloat("View3Zoom",Camera::cameraZoom[3]);
 				if (result != NO_ERR)
 					Camera::cameraZoom[3] = 1200.0f;
 					
-				result = prefsFile->readIdFloat("View3Tilt",Camera::cameraTilt[3]);
+				result = prefsFile.readIdFloat("View3Tilt",Camera::cameraTilt[3]);
 				if (result != NO_ERR)
 					Camera::cameraTilt[3] = 35.0f;
 			}
 		}
 		
-		prefsFile->close();
-		optsFile->close();
+		prefsFile.close();
+		optsFile.close();
 		
-		delete prefsFile;
-		prefsFile = nullptr;
+		prefsFile.close();
 		
-		delete optsFile;
-		optsFile = nullptr;
+		optsFile.close();
 		
 		//---------------------------------------------------------------------
 		//void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth=16, DWORD Device=0, bool disableZBuffer=0, bool AntiAlias=0, bool RenderToVram=0, bool GotoFullScreen=0, int DirtyRectangle=0, bool GotoWindowMode=0, bool EnableStencil=0, DWORD Renderer=0 );

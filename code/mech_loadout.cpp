@@ -84,33 +84,32 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 
 long BattleMech::init (DWORD variantNum)
 {
-	CSVFile *mechFile = new CSVFile;
+	CSVFile mechFile;
 	
 	FullPathFileName csvName;
 	csvName.init(objectPath,getObjectType()->getAppearanceTypeName(),".csv");
 
 	variantID = variantNum;
 	
-	long result = mechFile->open(csvName);
+	long result = mechFile.open(csvName);
 	if (result != NO_ERR)
 	{
-		delete mechFile;
-		mechFile = NULL;
+		mechFile.close();
 		return result;
 	}
 
 	// CSV file open.  Variant Num controls offsets to data in the file.	
 	// Same rules as before,  Rows start at one.  Columns start at zero.
 	char thisMechName[128];
-	mechFile->readString(3,2,thisMechName,127);
+	mechFile.readString(3,2,thisMechName,127);
 	strncpy(name, thisMechName, MAXLEN_MOVER_NAME - 1);
 	name[MAXLEN_MOVER_NAME-1] = '\0';
 
-	mechFile->readInt(10,5,chassisBR);
+	mechFile.readInt(10,5,chassisBR);
 
-	mechFile->readFloat(3,5,tonnage);
+	mechFile.readFloat(3,5,tonnage);
 
-	mechFile->readInt(5,2,descID);
+	mechFile.readInt(5,2,descID);
 
 	cLoadString( descID, thisMechName, 127 );
 
@@ -118,79 +117,79 @@ long BattleMech::init (DWORD variantNum)
 	cLoadString( IDS_MFDMCH_PRINTSTRING, tmp, 256 );
 	sprintf( longName, tmp, thisMechName, tonnage );
 
-	mechFile->readInt( 12, 2, iconPictureIndex );
+	mechFile.readInt( 12, 2, iconPictureIndex );
 
 	unsigned char speed;	
-	mechFile->readUChar(7,5,speed);
+	mechFile.readUChar(7,5,speed);
 	maxMoveSpeed = (float)speed;
 
-	result = mechFile->readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
+	result = mechFile.readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
 	if (result == 1)
 	{
 		PAUSE(("Variant Number %d does not exist for mech %s.  Please set variant in editor!",variantNum,(const char*)csvName));
 		variantNum = 0;
 		variantID = 0;
-		result = mechFile->readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
+		result = mechFile.readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
 		if (result == 1)
 			STOP(("Can't even find Variant 0 for mech %s",csvName));
 	}
 
 	status = 0;
 
-	mechFile->readUChar(18,2,armor[MECH_ARMOR_LOCATION_HEAD].maxArmor);
+	mechFile.readUChar(18,2,armor[MECH_ARMOR_LOCATION_HEAD].maxArmor);
 
-	mechFile->readUChar(18,7,armor[MECH_ARMOR_LOCATION_CTORSO].maxArmor);
+	mechFile.readUChar(18,7,armor[MECH_ARMOR_LOCATION_CTORSO].maxArmor);
 
-	mechFile->readUChar(18,5,armor[MECH_ARMOR_LOCATION_LTORSO].maxArmor);
+	mechFile.readUChar(18,5,armor[MECH_ARMOR_LOCATION_LTORSO].maxArmor);
 
-	mechFile->readUChar(18,6,armor[MECH_ARMOR_LOCATION_RTORSO].maxArmor);
+	mechFile.readUChar(18,6,armor[MECH_ARMOR_LOCATION_RTORSO].maxArmor);
 	
-	mechFile->readUChar(18,3,armor[MECH_ARMOR_LOCATION_LARM].maxArmor);
+	mechFile.readUChar(18,3,armor[MECH_ARMOR_LOCATION_LARM].maxArmor);
 
-	mechFile->readUChar(18,4,armor[MECH_ARMOR_LOCATION_RARM].maxArmor);
+	mechFile.readUChar(18,4,armor[MECH_ARMOR_LOCATION_RARM].maxArmor);
 
-	mechFile->readUChar(18,8,armor[MECH_ARMOR_LOCATION_LLEG].maxArmor);
+	mechFile.readUChar(18,8,armor[MECH_ARMOR_LOCATION_LLEG].maxArmor);
 
-	mechFile->readUChar(18,9,armor[MECH_ARMOR_LOCATION_RLEG].maxArmor);
+	mechFile.readUChar(18,9,armor[MECH_ARMOR_LOCATION_RLEG].maxArmor);
 
-	mechFile->readUChar(18,12,armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor);
+	mechFile.readUChar(18,12,armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor);
 
-	mechFile->readUChar(18,10,armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor);
+	mechFile.readUChar(18,10,armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor);
 
-	mechFile->readUChar(18,11,armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor);
+	mechFile.readUChar(18,11,armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor);
 
 	unsigned char currentArmor;
-	mechFile->readUChar(115 + (97 * variantNum),2,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),2,currentArmor);
 	armor[MECH_ARMOR_LOCATION_HEAD].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),7,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),7,currentArmor);
 	armor[MECH_ARMOR_LOCATION_CTORSO].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),5,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),5,currentArmor);
 	armor[MECH_ARMOR_LOCATION_LTORSO].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),6,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),6,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RTORSO].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),3,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),3,currentArmor);
 	armor[MECH_ARMOR_LOCATION_LARM].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),4,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),4,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RARM].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),8,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),8,currentArmor);
 	armor[MECH_ARMOR_LOCATION_LLEG].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),9,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),9,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RLEG].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),12,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),12,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RCTORSO].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),10,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),10,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RLTORSO].curArmor = currentArmor;
 
-	mechFile->readUChar(115 + (97 * variantNum),11,currentArmor);
+	mechFile.readUChar(115 + (97 * variantNum),11,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = currentArmor;
 
 	numAntiMissileSystems = numOther = numWeapons = numAmmos = 0;
@@ -215,14 +214,14 @@ long BattleMech::init (DWORD variantNum)
 
 	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
-		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
+		mechFile.readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
 		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override. Gate-ON,
 		// if this row carries an optional EquipmentId="core:<slug>" token that
 		// resolves to a legacy ordinal in 0..254, use it; else keep the numeric
 		// masterID just read. Stock rows have no token -> no override (parity).
 		{
-			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
+			int aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
 				inventory[realItemNum].masterID = (unsigned char)aliasId;
 		}
@@ -289,13 +288,13 @@ long BattleMech::init (DWORD variantNum)
 
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
-		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
+		mechFile.readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
 		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override (weapons
 		// pass). Same rule as the non-weapon pass above -- gate-ON optional
 		// EquipmentId token resolves to a legacy ordinal; else legacy numeric id.
 		{
-			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
+			int aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
 				inventory[realItemNum].masterID = (unsigned char)aliasId;
 		}
@@ -374,7 +373,7 @@ long BattleMech::init (DWORD variantNum)
 
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
-		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
+		mechFile.readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
 		// index MasterComponent::masterList (sized numComponents). A corrupt, modded
@@ -446,7 +445,7 @@ long BattleMech::init (DWORD variantNum)
 		body[curLocation].CASE = true;	//ALL MC2 Mechs have CASE everywhere.
 
 		unsigned char internalStructure;
-		mechFile->readUChar(114 + (97 * variantNum), stupidNewSageColumns[curLocation], internalStructure);
+		mechFile.readUChar(114 + (97 * variantNum), stupidNewSageColumns[curLocation], internalStructure);
 		body[curLocation].curInternalStructure = internalStructure;
 
 		float damageLevel = (float)body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
@@ -465,7 +464,7 @@ long BattleMech::init (DWORD variantNum)
 		for (long curSpace = 0; curSpace < numSpaces; curSpace++)
 		{
 			unsigned char spaceData;
-			mechFile->readUChar((102 + (97*variantNum))+curSpace,stupidNewSageColumns[curLocation], spaceData);
+			mechFile.readUChar((102 + (97*variantNum))+curSpace,stupidNewSageColumns[curLocation], spaceData);
 
 			// MECH-INV-IDX-GUARD-1: spaceData is a raw .mdf byte (0-255) used to
 			// index ItemLocationToInvLocation[MAX_MOVER_INVENTORY_ITEMS]. A corrupt
@@ -695,9 +694,7 @@ long BattleMech::init (DWORD variantNum)
 	if (mechVariant)
 		cBills = mechVariant->getCost();
 
-	mechFile->close();
-	delete mechFile;
-	mechFile = NULL;
+	mechFile.close();
 
 	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is final here (loadout scan
 	// complete). This is the real gameplay mech-load path (init(variantNum)).

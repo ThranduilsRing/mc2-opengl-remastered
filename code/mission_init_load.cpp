@@ -70,21 +70,18 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 			FullPathFileName pilotFullFileName;
 			pilotFullFileName.init(warriorPath, warriorFile, ".fit");
 			
-			FitIniFile* pilotFile = new FitIniFile;
-			gosASSERT(pilotFile != NULL);
+			FitIniFile pilotFile;
 		
-			long result = pilotFile->open(pilotFullFileName);
+			long result = pilotFile.open(pilotFullFileName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 			MC2_VERIFY(result == NO_ERR, "Mission::init: warrior profile open failed: %s",
 				(const char*)pilotFullFileName);
-			result = pilot->init(pilotFile);
+			result = pilot->init(&pilotFile);
 			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 			MC2_VERIFY(result == NO_ERR, "Mission::init: warrior init failed: %s",
 				(const char*)pilotFullFileName);
 			
-			pilotFile->close();
-			delete pilotFile;
-			pilotFile = NULL;
+			pilotFile.close();
 			
 			char moduleName[128];
 			result = missionFile->readIdString("Brain", moduleName, 127);
@@ -341,14 +338,14 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 		mc2::fmt::to_buf(aiFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
 		mc2::fmt::print_err("[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission={} seeking {}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(aiFitName));
 		std::fflush(stderr);
-		FitIniFile* aiFit = new FitIniFile;
-		if (aiFit && aiFit->open(aiFitName) == NO_ERR) {
+		FitIniFile aiFit;
+		if (aiFit.open(aiFitName) == NO_ERR) {
 			// Seek the single "Brain" block (single-warrior fixture; multi-block not supported this slice).
-			if (aiFit->seekBlock("Brain") == NO_ERR) {
+			if (aiFit.seekBlock("Brain") == NO_ERR) {
 				char unitRefBuf[32] = {};
 				long modeValLong = 0;
-				long unitRefResult  = aiFit->readIdString("unitRef",  unitRefBuf, 31);
-				long modeResult     = aiFit->readIdLong("mode", modeValLong);
+				long unitRefResult  = aiFit.readIdString("unitRef",  unitRefBuf, 31);
+				long modeResult     = aiFit.readIdLong("mode", modeValLong);
 				if (unitRefResult == NO_ERR && modeResult == NO_ERR) {
 					// Parse "Warrior%d" -> 1-based index.
 					int warriorIdx = -1;
@@ -372,7 +369,7 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 					}
 				}
 			}
-			aiFit->close();
+			aiFit.close();
 		}
 		// MC2_BRAIN_RUNTIME_FORCE_MODE overrides all per-unit modes (post-load global override).
 		if (mc2::gate::isSet<"MC2_BRAIN_RUNTIME_FORCE_MODE">()) {
@@ -385,7 +382,7 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 					w->setBrainRuntimeMode(forced);
 			}
 		}
-		delete aiFit;
+		aiFit.close();
 	}
 }
 
@@ -402,9 +399,9 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 	if (mc2::gate::get<"MC2_TACTIC_WEIGHTS">()) {
 		char tacFitName[256];
 		mc2::fmt::to_buf(tacFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
-		FitIniFile* tacFit = new FitIniFile;
-		if (tacFit && tacFit->open(tacFitName) == NO_ERR) {
-			if (tacFit->seekBlock("Tactics") == NO_ERR) {
+		FitIniFile tacFit;
+		if (tacFit.open(tacFitName) == NO_ERR) {
+			if (tacFit.seekBlock("Tactics") == NO_ERR) {
 				struct { const char* name; int idx; } kTacticKeys[] = {
 					{ "None",             TACTIC_NONE             },
 					{ "FlankLeft",        TACTIC_FLANK_LEFT       },
@@ -422,7 +419,7 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 				float loadedWeights[NUM_TACTICS] = {};
 				for (auto& kv : kTacticKeys) {
 					float val = 0.0f;
-					if (tacFit->readIdFloat(kv.name, val) == NO_ERR)
+					if (tacFit.readIdFloat(kv.name, val) == NO_ERR)
 						loadedWeights[kv.idx] = (val < 0.0f) ? 0.0f : val;
 				}
 				float sum = 0.0f;
@@ -450,9 +447,9 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 				mc2::fmt::print_err("[BRAIN_TACTIC_SELECT] [Tactics] loaded from {}: {:d} warriors weighted\n", mc2::fmt::safe(tacFitName), mc2::fmt::as_i32(loadCount));
 				std::fflush(stderr);
 			}
-			tacFit->close();
+			tacFit.close();
 		}
-		delete tacFit;
+		tacFit.close();
 	}
 }
 

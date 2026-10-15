@@ -2107,24 +2107,20 @@ static bool parseBrainSpecialBody_RawScan(const char* fitPath, BrainSpecialBody&
 //
 // FORBIDDEN-CALL CONTRACT: calls FitIniFile API only. No order functions.
 static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& outBody) {
-    FitIniFile* fit = new FitIniFile;
-    if (!fit)
-        return false;
+    FitIniFile fit;
 
-    if (fit->open(fitPath) != NO_ERR) {
-        delete fit;
+    if (fit.open(fitPath) != NO_ERR) {
+        fit.close();
         return false;
     }
 
-    if (fit->seekBlock("BrainSpecial") != NO_ERR) {
-        fit->close();
-        delete fit;
+    if (fit.seekBlock("BrainSpecial") != NO_ERR) {
+        fit.close();
         return false;
     }
 
-    if (fit->seekBlock("Body") != NO_ERR) {
-        fit->close();
-        delete fit;
+    if (fit.seekBlock("Body") != NO_ERR) {
+        fit.close();
         return false;
     }
 
@@ -2137,15 +2133,14 @@ static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& 
     for (int i = 0; i < 64; ++i) {
         std::snprintf(keyBuf, sizeof(keyBuf), "DO%d", i);
         verbBuf[0] = '\0';
-        long result = fit->readIdString(keyBuf, verbBuf, (unsigned long)(sizeof(verbBuf) - 1));
+        long result = fit.readIdString(keyBuf, verbBuf, (unsigned long)(sizeof(verbBuf) - 1));
         if (result != NO_ERR)
             break;
         if (verbBuf[0] != '\0')
             outBody.verbs.push_back(std::string(verbBuf));
     }
 
-    fit->close();
-    delete fit;
+    fit.close();
     return !outBody.verbs.empty();
 }
 

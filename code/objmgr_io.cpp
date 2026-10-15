@@ -38,10 +38,10 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 		terrainFile->readPacket( packet, pBuffer );
 	gosASSERT( bytesRead == size );
 	
-	File* terrainObjectFile = new File;
-	terrainObjectFile->open( (char*)pBuffer, size );
+	File terrainObjectFile;
+	terrainObjectFile.open( (char*)pBuffer, size );
 	
-	totalObjCount = terrainObjectFile->readInt();
+	totalObjCount = terrainObjectFile.readInt();
 
 	if (totalObjCount)
 	{
@@ -56,20 +56,20 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 	ObjDataLoader *data = objData;
 	for ( int i = 0; i < totalObjCount; ++i )
 	{
-		data->objTypeNum = terrainObjectFile->readInt();
-		data->vector.x = terrainObjectFile->readFloat();
-		data->vector.y = terrainObjectFile->readFloat();
-		data->vector.z = terrainObjectFile->readFloat();
+		data->objTypeNum = terrainObjectFile.readInt();
+		data->vector.x = terrainObjectFile.readFloat();
+		data->vector.y = terrainObjectFile.readFloat();
+		data->vector.z = terrainObjectFile.readFloat();
 
-		data->rotation = terrainObjectFile->readFloat();		
-		data->damage = terrainObjectFile->readInt();
+		data->rotation = terrainObjectFile.readFloat();		
+		data->damage = terrainObjectFile.readInt();
 
-		data->teamId = terrainObjectFile->readInt();
-		data->parentId = terrainObjectFile->readInt();
+		data->teamId = terrainObjectFile.readInt();
+		data->parentId = terrainObjectFile.readInt();
 		
 		// padding
-		terrainObjectFile->readInt();
-		terrainObjectFile->readInt();
+		terrainObjectFile.readInt();
+		terrainObjectFile.readInt();
 
 		// convert to block and vertex
 		int tileCol;
@@ -98,7 +98,7 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 		curHandle += Terrain::objBlockInfo[i].numObjects;						
 	}
 
-	delete terrainObjectFile;
+	terrainObjectFile.close();
 	delete[] pBuffer;
 
 }

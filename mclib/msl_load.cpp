@@ -708,10 +708,9 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			
 				if( fileExists(textureName) == 1 )
 				{
-					File *touchTexture = new File();
-					touchTexture->open(textureName);
-					touchTexture->close();
-					delete touchTexture;
+					File touchTexture;
+					touchTexture.open(textureName);
+					touchTexture.close();
 				}
 			}
 		}

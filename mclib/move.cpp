@@ -996,8 +996,8 @@ long MissionMap::getOverlayWeight (long cellR, long cellC, long moverOverlayWeig
 
 void MissionMap::print (char* fileName) {
 
-	File* debugFile = new File;
-	debugFile->create(fileName);
+	File debugFile;
+	debugFile.create(fileName);
 	
 	for (long cellR = 0; cellR < height; cellR++) {
 		char outString[1024];
@@ -1009,13 +1009,11 @@ void MissionMap::print (char* fileName) {
 				strcat(outString, ".");
 		}
 		strcat(outString, "\n");
-		debugFile->writeString(outString);
+		debugFile.writeString(outString);
 	}
-	debugFile->writeString("\n");
+	debugFile.writeString("\n");
 
-	debugFile->close();
-	delete debugFile;
-	debugFile = nullptr;
+	debugFile.close();
 }
 
 void MissionMap::destroy (void) {

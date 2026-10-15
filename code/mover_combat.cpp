@@ -227,17 +227,14 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 	FullPathFileName pilotFullFileName;
 	pilotFullFileName.init(warriorPath, pilotFileName, ".fit");
 			
-	FitIniFile* pilotFile = new FitIniFile;
-	gosASSERT(pilotFile != nullptr);
+	FitIniFile pilotFile;
 		
-	long result = pilotFile->open(pilotFullFileName);
+	long result = pilotFile.open(pilotFullFileName);
 	gosASSERT(result == NO_ERR);
-	result = pilot->init(pilotFile);
+	result = pilot->init(&pilotFile);
 	gosASSERT(result == NO_ERR);
 			
-	pilotFile->close();
-	delete pilotFile;
-	pilotFile = nullptr;
+	pilotFile.close();
 
 	//Copy logistics data to pilot AFTER loading old data.
 	// ONLY if we overrode the data in logistics!!

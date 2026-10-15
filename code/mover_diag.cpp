@@ -73,12 +73,10 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 		strcat(ChunkDebugMsg, outString);
 	}
 
-	File* debugFile = new File;
-	debugFile->create("mvchunk.dbg");
-	debugFile->writeString(ChunkDebugMsg);
-	debugFile->close();
-	delete debugFile;
-	debugFile = nullptr;
+	File debugFile;
+	debugFile.create("mvchunk.dbg");
+	debugFile.writeString(ChunkDebugMsg);
+	debugFile.close();
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }
@@ -275,12 +273,10 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		strcat(ChunkDebugMsg, outString);
 	}
 
-	File* debugFile = new File;
-	debugFile->create("stchunk.dbg");
-	debugFile->writeString(ChunkDebugMsg);
-	debugFile->close();
-	delete debugFile;
-	debugFile = nullptr;
+	File debugFile;
+	debugFile.create("stchunk.dbg");
+	debugFile.writeString(ChunkDebugMsg);
+	debugFile.close();
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }

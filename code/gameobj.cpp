@@ -499,12 +499,10 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		strcat(ChunkDebugMsg, outString);
 	}
 
-	File* debugFile = new File;
-	debugFile->create("wfchunk.dbg");
-	debugFile->writeString(ChunkDebugMsg);
-	debugFile->close();
-	delete debugFile;
-	debugFile = nullptr;
+	File debugFile;
+	debugFile.create("wfchunk.dbg");
+	debugFile.writeString(ChunkDebugMsg);
+	debugFile.close();
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }
@@ -1218,12 +1216,10 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 		strcat(ChunkDebugMsg, outString);
 	}
 
-	File* debugFile = new File;
-	debugFile->create("whchunk.dbg");
-	debugFile->writeString(ChunkDebugMsg);
-	debugFile->close();
-	delete debugFile;
-	debugFile = nullptr;
+	File debugFile;
+	debugFile.create("whchunk.dbg");
+	debugFile.writeString(ChunkDebugMsg);
+	debugFile.close();
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }

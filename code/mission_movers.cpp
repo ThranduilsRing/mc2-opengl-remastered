@@ -177,22 +177,19 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	FullPathFileName pilotFullFileName;
 	pilotFullFileName.init(warriorPath, moverSpec->pilotFileName, ".fit");
 			
-	FitIniFile* pilotFile = new FitIniFile;
-	gosASSERT(pilotFile != nullptr);
+	FitIniFile pilotFile;
 		
-	long result = pilotFile->open(pilotFullFileName);
+	long result = pilotFile.open(pilotFullFileName);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
 	// the pilot .fit is required external data; a failed open feeds a not-open
 	// FitIniFile into pilot->init() below.
 	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot .fit open failed (%ld): %s",
 		result, moverSpec ? moverSpec->pilotFileName : "(null)");
-	result = pilot->init(pilotFile);
+	result = pilot->init(&pilotFile);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot init failed (%ld)", result);
 
-	pilotFile->close();
-	delete pilotFile;
-	pilotFile = nullptr;
+	pilotFile.close();
 
 	if (moverSpec->overrideLoadedPilot)
 	{
@@ -532,10 +529,9 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	FullPathFileName missionFileName;
 	missionFileName.init(missionPath,missionName,".fit");
 
-	FitIniFile* missionFile = new FitIniFile;
-	gosASSERT(missionFile != nullptr);
+	FitIniFile missionFile;
 	
-	long result = missionFile->open(missionFileName);
+	long result = missionFile.open(missionFileName);
 	if (result != NO_ERR)
 		STOP(("Unable to open Mission File %s",missionFileName));
 
@@ -549,29 +545,29 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	}
 	*/
 	long dropZoneSetup[MAX_MC_PLAYERS] = {-1, -1, -1, -1, -1 ,-1 ,-1 ,-1};
-	result = missionFile->seekBlock("Parts");
+	result = missionFile.seekBlock("Parts");
 	gosASSERT(result == NO_ERR);
-	result = missionFile->readIdULong("NumParts",numParts);
+	result = missionFile.readIdULong("NumParts",numParts);
 	gosASSERT(result == NO_ERR);
 	if (numParts)
 		for (long i = 1; i < long(numParts + 1); i++) {
 			char partName[12];
 			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			
-			result = missionFile->seekBlock(partName);
+			result = missionFile.seekBlock(partName);
 			gosASSERT(result == NO_ERR);
 
 			char teamID = -1;
-			result = missionFile->readIdChar("TeamId", teamID);
+			result = missionFile.readIdChar("TeamId", teamID);
 			gosASSERT(result == NO_ERR);
 			if ((teamID < 0) || (teamID >= MAX_TEAMS))
 				STOP(("Mission.calcComplexDropZones: bad teamID"));
 
 			char commanderID = -1;
-			result = missionFile->readIdChar("CommanderId", commanderID);
+			result = missionFile.readIdChar("CommanderId", commanderID);
 			if (result != NO_ERR) {
 				long cID;
-				result = missionFile->readIdLong("CommanderId", cID);
+				result = missionFile.readIdLong("CommanderId", cID);
 				gosASSERT(result == NO_ERR);
 				commanderID = (char)cID;
 			}
@@ -610,9 +606,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 
 	}
 
-	missionFile->close();
-	delete missionFile;
-	missionFile = nullptr;
+	missionFile.close();
 
 
 	return(true);

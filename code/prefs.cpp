@@ -122,64 +122,64 @@ int CPrefs::load( const char* pFileName ) {
 
 	FullPathFileName prefsPathname;
 	prefsPathname.init("./",pFileName,".cfg");
-	FitIniFilePtr prefsFile = new FitIniFile;
+	FitIniFile prefsFile;
 
 #ifdef _DEBUG
 	long prefsOpenResult = 
 #endif
-	prefsFile->open(prefsPathname);
+	prefsFile.open(prefsPathname);
 
 	gosASSERT (prefsOpenResult == NO_ERR);
 	{
 #ifdef _DEBUG
 		long prefsBlockResult = 
 #endif
-			prefsFile->seekBlock("MechCommander2");
+			prefsFile.seekBlock("MechCommander2");
 		gosASSERT(prefsBlockResult == NO_ERR);
 		{
 			// store volume settings in global variable since soundsystem 
 			// does not exist yet.  These will be set in SoundSystem::init()
-			result = prefsFile->readIdLong("DigitalMasterVolume",DigitalMasterVolume);
+			result = prefsFile.readIdLong("DigitalMasterVolume",DigitalMasterVolume);
 			if (result != NO_ERR)
 				DigitalMasterVolume = 255;
 
-			result = prefsFile->readIdLong("MusicVolume",MusicVolume);
+			result = prefsFile.readIdLong("MusicVolume",MusicVolume);
 			if (result != NO_ERR)
 				MusicVolume = 64;
 
-			result = prefsFile->readIdLong("RadioVolume",RadioVolume);
+			result = prefsFile.readIdLong("RadioVolume",RadioVolume);
 			if (result != NO_ERR)
 				RadioVolume = 64;
 
-			result = prefsFile->readIdLong("SFXVolume",sfxVolume);
+			result = prefsFile.readIdLong("SFXVolume",sfxVolume);
 			if (result != NO_ERR)
 				sfxVolume = 64;
 
-			result = prefsFile->readIdLong("BettyVolume",BettyVolume);
+			result = prefsFile.readIdLong("BettyVolume",BettyVolume);
 			if (result != NO_ERR)
 				BettyVolume = 64;
 
-			result = prefsFile->readIdBoolean( "Shadows", useShadows);
+			result = prefsFile.readIdBoolean( "Shadows", useShadows);
 			if (result != NO_ERR)
 				useShadows = true;
 
-			result = prefsFile->readIdBoolean( "DetailTexture", useWaterInterestTexture);
+			result = prefsFile.readIdBoolean( "DetailTexture", useWaterInterestTexture);
 			if (result != NO_ERR)
 				useWaterInterestTexture = true;
 
-			result = prefsFile->readIdBoolean( "HighObjectDetail", useHighObjectDetail );
+			result = prefsFile.readIdBoolean( "HighObjectDetail", useHighObjectDetail );
 			if ( result != NO_ERR )
 				useHighObjectDetail = true;
 
-			result = prefsFile->readIdLong("Difficulty",GameDifficulty);
+			result = prefsFile.readIdLong("Difficulty",GameDifficulty);
 			if (result != NO_ERR)
 				GameDifficulty = 1;
 
-			result = prefsFile->readIdBoolean("UnlimitedAmmo",useUnlimitedAmmo);
+			result = prefsFile.readIdBoolean("UnlimitedAmmo",useUnlimitedAmmo);
 			if (result != NO_ERR)
 				useUnlimitedAmmo = true;
 
-			result = prefsFile->readIdLong("Rasterizer",renderer);
+			result = prefsFile.readIdLong("Rasterizer",renderer);
 			if (result != NO_ERR)
 				renderer = 0;
 
@@ -209,23 +209,23 @@ int CPrefs::load( const char* pFileName ) {
 				}
 			}
 				
-			result = prefsFile->readIdInt("ResolutionX",resolutionX);
+			result = prefsFile.readIdInt("ResolutionX",resolutionX);
 			if (result != NO_ERR)
 				resolutionX = 800;
 
-			result = prefsFile->readIdInt("ResolutionY",resolutionY);
+			result = prefsFile.readIdInt("ResolutionY",resolutionY);
 			if (result != NO_ERR)
 				resolutionY = 600;
 
-			result = prefsFile->readIdBoolean("FullScreen",fullScreen);
+			result = prefsFile.readIdBoolean("FullScreen",fullScreen);
 			if (result != NO_ERR)
 				fullScreen = false;
 
-			result = prefsFile->readIdLong("Brightness",gammaLevel);
+			result = prefsFile.readIdLong("Brightness",gammaLevel);
 			if (result != NO_ERR)
 				gammaLevel = 0;
 
-			result = prefsFile->readIdBoolean( "useLeftRightMouseProfile", useLeftRightMouseProfile );
+			result = prefsFile.readIdBoolean( "useLeftRightMouseProfile", useLeftRightMouseProfile );
 			if ( result != NO_ERR )
 				useLeftRightMouseProfile = true;
 
@@ -233,80 +233,80 @@ int CPrefs::load( const char* pFileName ) {
 			for ( int i = 0; i < 10; i++ )
 			{	
 				mc2::fmt::to_buf(blockName, "PlayerName{:d}", mc2::fmt::as_i32(i));
-				result = prefsFile->readIdString( blockName, &playerName[i][0], 255 );
+				result = prefsFile.readIdString( blockName, &playerName[i][0], 255 );
 
 				if ( result != NO_ERR && i == 0 )
 				{
-					result = prefsFile->readIdString( "PlayerName", &playerName[0][0], 255 );
-					result = prefsFile->readIdString( "UnitName", &unitName[0][0], 255 );
+					result = prefsFile.readIdString( "PlayerName", &playerName[0][0], 255 );
+					result = prefsFile.readIdString( "UnitName", &unitName[0][0], 255 );
 					break;
 				}
 
 				mc2::fmt::to_buf(blockName, "IPAddress{:d}", mc2::fmt::as_i32(i));
-				result = prefsFile->readIdString( blockName, &ipAddresses[i][0], 255 );
+				result = prefsFile.readIdString( blockName, &ipAddresses[i][0], 255 );
 
 
 				mc2::fmt::to_buf(blockName, "UnitName{:d}", mc2::fmt::as_i32(i));
-				result = prefsFile->readIdString( blockName, &unitName[i][0], 255 );
+				result = prefsFile.readIdString( blockName, &unitName[i][0], 255 );
 
 			}
 
 		
-			result = prefsFile->readIdLong( "BaseColor", baseColor );
+			result = prefsFile.readIdLong( "BaseColor", baseColor );
 			if ( result != NO_ERR )	
 				baseColor = 0xffff7e00;
-			result = prefsFile->readIdLong( "Highlightcolor", highlightColor );
+			result = prefsFile.readIdLong( "Highlightcolor", highlightColor );
 			if ( result != NO_ERR )	
 				highlightColor = 0xffff7e00;
 			
-			result = prefsFile->readIdLong( "faction", faction );
-			result = prefsFile->readIdString( "InsigniaFile", insigniaFile, 255 );
+			result = prefsFile.readIdLong( "faction", faction );
+			result = prefsFile.readIdString( "InsigniaFile", insigniaFile, 255 );
 
-			result = prefsFile->readIdBoolean( "PilotVideos",	pilotVideos );
+			result = prefsFile.readIdBoolean( "PilotVideos",	pilotVideos );
 			if ( result != NO_ERR )
 			{
 				pilotVideos = true;
 			}
 			{
 				long tmp = UseUpscaledVideos ? 1 : 0;
-				prefsFile->readIdLong("UseUpscaledVideos", tmp);
+				prefsFile.readIdLong("UseUpscaledVideos", tmp);
 				UseUpscaledVideos = (tmp != 0);
 			}
-			result = prefsFile->readIdBoolean( "UseLocalShadows",	useLocalShadows );
+			result = prefsFile.readIdBoolean( "UseLocalShadows",	useLocalShadows );
 			if ( result != NO_ERR )
 			{
 				useLocalShadows = true;
 			}
-			result = prefsFile->readIdBoolean( "UseNonWeaponEffects",	useNonWeaponEffects );
+			result = prefsFile.readIdBoolean( "UseNonWeaponEffects",	useNonWeaponEffects );
 			if ( result != NO_ERR )
 			{
 				useNonWeaponEffects = 0;
 			}
-			result = prefsFile->readIdBoolean( "AsyncMouse",	asyncMouse );
+			result = prefsFile.readIdBoolean( "AsyncMouse",	asyncMouse );
 			if ( result != NO_ERR )
 				asyncMouse = 0;
 
-			result = prefsFile->readIdLong( "FogPos",	fogPos );
+			result = prefsFile.readIdLong( "FogPos",	fogPos );
 			if ( result != NO_ERR )
 			{
 				fogPos = 50;
 			}
-			result = prefsFile->readIdChar( "BitDepth",	bitDepth );
+			result = prefsFile.readIdChar( "BitDepth",	bitDepth );
 			if ( result != NO_ERR )
 				bitDepth = 32;
 
 			if (bitDepth && (renderer == 3))
 				bitDepth = 16;
 
-			result = prefsFile->readIdBoolean( "SaveTranscripts", saveTranscripts );
-			result = prefsFile->readIdBoolean( "Tutorials", tutorials );
+			result = prefsFile.readIdBoolean( "SaveTranscripts", saveTranscripts );
+			result = prefsFile.readIdBoolean( "Tutorials", tutorials );
 			if ( result != NO_ERR )
 				tutorials = true;
 
-			result = prefsFile->readIdFloat( "ScrollSpeedMult", scrollSpeedMult );
+			result = prefsFile.readIdFloat( "ScrollSpeedMult", scrollSpeedMult );
 			if ( result != NO_ERR )
 				scrollSpeedMult = 2.0f;
-			result = prefsFile->readIdFloat( "ZoomSpeedMult", zoomSpeedMult );
+			result = prefsFile.readIdFloat( "ZoomSpeedMult", zoomSpeedMult );
 			if ( result != NO_ERR )
 				zoomSpeedMult = 2.0f;
 
@@ -321,12 +321,11 @@ int CPrefs::load( const char* pFileName ) {
 
 	}
 #ifndef VIEWER
-	MissionInterfaceManager::loadHotKeys( *prefsFile);
+	MissionInterfaceManager::loadHotKeys( prefsFile);
 #endif
-	prefsFile->close();
+	prefsFile.close();
 	
-	delete prefsFile;
-	prefsFile = nullptr;
+	prefsFile.close();
 
 	return 0;
 }
@@ -344,8 +343,8 @@ int CPrefs::save() {
 	rename(originalPath, backupPath);
 	//MoveFileEx(originalPath, backupPath, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
 
-	FitIniFilePtr prefsFile = new FitIniFile;
-	int result = prefsFile->create( (char*)originalPath );
+	FitIniFile prefsFile;
+	int result = prefsFile.create( (char*)originalPath );
 	if (result != NO_ERR)
 	{
 		gosASSERT( false );
@@ -356,74 +355,73 @@ int CPrefs::save() {
 #ifdef _DEBUG
 		long prefsBlockResult = 
 #endif
-		prefsFile->writeBlock("MechCommander2");
+		prefsFile.writeBlock("MechCommander2");
 		gosASSERT(prefsBlockResult == strlen("\r\n[") + strlen("MechCommander2") + strlen("]\r\n"));
 		{
-			result = prefsFile->writeIdLong("DigitalMasterVolume",DigitalMasterVolume);
-			result = prefsFile->writeIdLong("MusicVolume",MusicVolume);
-			result = prefsFile->writeIdLong("RadioVolume",RadioVolume);
-			result = prefsFile->writeIdLong("SFXVolume",sfxVolume);
-			result = prefsFile->writeIdLong("BettyVolume",BettyVolume);
+			result = prefsFile.writeIdLong("DigitalMasterVolume",DigitalMasterVolume);
+			result = prefsFile.writeIdLong("MusicVolume",MusicVolume);
+			result = prefsFile.writeIdLong("RadioVolume",RadioVolume);
+			result = prefsFile.writeIdLong("SFXVolume",sfxVolume);
+			result = prefsFile.writeIdLong("BettyVolume",BettyVolume);
 
-			result = prefsFile->writeIdBoolean( "Shadows", useShadows );
-			result = prefsFile->writeIdBoolean( "DetailTexture", useWaterInterestTexture );
-			result = prefsFile->writeIdBoolean( "HighObjectDetail", useHighObjectDetail );
+			result = prefsFile.writeIdBoolean( "Shadows", useShadows );
+			result = prefsFile.writeIdBoolean( "DetailTexture", useWaterInterestTexture );
+			result = prefsFile.writeIdBoolean( "HighObjectDetail", useHighObjectDetail );
 
-			result = prefsFile->writeIdLong("Difficulty",GameDifficulty);
-			result = prefsFile->writeIdBoolean("UnlimitedAmmo",useUnlimitedAmmo);
+			result = prefsFile.writeIdLong("Difficulty",GameDifficulty);
+			result = prefsFile.writeIdBoolean("UnlimitedAmmo",useUnlimitedAmmo);
 
-			result = prefsFile->writeIdLong("Rasterizer",renderer);
-			result = prefsFile->writeIdLong("ResolutionX",resolutionX);
-			result = prefsFile->writeIdLong("ResolutionY",resolutionY);
-			result = prefsFile->writeIdBoolean("FullScreen",fullScreen);
-			result = prefsFile->writeIdLong("Brightness",gammaLevel);
-			result = prefsFile->writeIdBoolean( "useLeftRightMouseProfile", useLeftRightMouseProfile );
+			result = prefsFile.writeIdLong("Rasterizer",renderer);
+			result = prefsFile.writeIdLong("ResolutionX",resolutionX);
+			result = prefsFile.writeIdLong("ResolutionY",resolutionY);
+			result = prefsFile.writeIdBoolean("FullScreen",fullScreen);
+			result = prefsFile.writeIdLong("Brightness",gammaLevel);
+			result = prefsFile.writeIdBoolean( "useLeftRightMouseProfile", useLeftRightMouseProfile );
 			char blockName[64];
 			for ( int i = 0; i < 10; i++ )
 			{	
 				
 				mc2::fmt::to_buf(blockName, "PlayerName{:d}", mc2::fmt::as_i32(i));
-				result = prefsFile->writeIdString( blockName, &playerName[i][0] );
+				result = prefsFile.writeIdString( blockName, &playerName[i][0] );
 
 				mc2::fmt::to_buf(blockName, "UnitName{:d}", mc2::fmt::as_i32(i));
-				result = prefsFile->writeIdString( blockName, &unitName[i][0] );
+				result = prefsFile.writeIdString( blockName, &unitName[i][0] );
 
 				mc2::fmt::to_buf(blockName, "IPAddress{:d}", mc2::fmt::as_i32(i));
-				result = prefsFile->writeIdString( blockName, &ipAddresses[i][0] );
+				result = prefsFile.writeIdString( blockName, &ipAddresses[i][0] );
 
 			}
 
-			result = prefsFile->writeIdLong( "BaseColor", baseColor );
-			result = prefsFile->writeIdLong( "Highlightcolor", highlightColor );
-			result = prefsFile->writeIdLong( "faction", faction );
-			result = prefsFile->writeIdString( "InsigniaFile", insigniaFile );
+			result = prefsFile.writeIdLong( "BaseColor", baseColor );
+			result = prefsFile.writeIdLong( "Highlightcolor", highlightColor );
+			result = prefsFile.writeIdLong( "faction", faction );
+			result = prefsFile.writeIdString( "InsigniaFile", insigniaFile );
 
-			result = prefsFile->writeIdBoolean( "PilotVideos",	pilotVideos );
-			prefsFile->writeIdLong("UseUpscaledVideos", UseUpscaledVideos ? 1 : 0);
-			result = prefsFile->writeIdBoolean( "UseLocalShadows",	useLocalShadows );
-			result = prefsFile->writeIdBoolean( "UseNonWeaponEffects",	useNonWeaponEffects );
-			result = prefsFile->writeIdBoolean( "AsyncMouse",	asyncMouse );
-			result = prefsFile->writeIdLong( "FogPos",	fogPos );
-			result = prefsFile->writeIdChar( "BitDepth",	bitDepth );
+			result = prefsFile.writeIdBoolean( "PilotVideos",	pilotVideos );
+			prefsFile.writeIdLong("UseUpscaledVideos", UseUpscaledVideos ? 1 : 0);
+			result = prefsFile.writeIdBoolean( "UseLocalShadows",	useLocalShadows );
+			result = prefsFile.writeIdBoolean( "UseNonWeaponEffects",	useNonWeaponEffects );
+			result = prefsFile.writeIdBoolean( "AsyncMouse",	asyncMouse );
+			result = prefsFile.writeIdLong( "FogPos",	fogPos );
+			result = prefsFile.writeIdChar( "BitDepth",	bitDepth );
 
-			result = prefsFile->writeIdBoolean( "SaveTranscripts", saveTranscripts );
-			result = prefsFile->writeIdBoolean( "Tutorials", tutorials );
+			result = prefsFile.writeIdBoolean( "SaveTranscripts", saveTranscripts );
+			result = prefsFile.writeIdBoolean( "Tutorials", tutorials );
 
-			result = prefsFile->writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
-			result = prefsFile->writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
+			result = prefsFile.writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
+			result = prefsFile.writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
 
-			saveRenderOptions( *prefsFile, render );
+			saveRenderOptions( prefsFile, render );
 
 		}
 	}
 #ifndef VIEWER	
-	MissionInterfaceManager::saveHotKeys( *prefsFile);
+	MissionInterfaceManager::saveHotKeys( prefsFile);
 #endif
-	prefsFile->close();
+	prefsFile.close();
 	
 	
-	delete prefsFile;
-	prefsFile = nullptr;
+	prefsFile.close();
 
 	return 0;
 }

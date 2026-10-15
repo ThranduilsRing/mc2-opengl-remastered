@@ -613,8 +613,8 @@ void GlobalMap::print (char* fileName) {
 	if (areaMap)
 		return;
 
-	File* debugFile = new File;
-	debugFile->create(fileName);
+	File debugFile;
+	debugFile.create(fileName);
 
 	char outString[500];
 	for (long row = 0; row < height; row++) {
@@ -631,13 +631,11 @@ void GlobalMap::print (char* fileName) {
 			}
 		}
 		strcat(outString, "\n");
-		debugFile->writeString(outString);
+		debugFile.writeString(outString);
 	}
-	debugFile->writeString("\n");
+	debugFile.writeString("\n");
 
-	debugFile->close();
-	delete debugFile;
-	debugFile = nullptr;
+	debugFile.close();
 }
 
 void GlobalMap::destroy (void) {
