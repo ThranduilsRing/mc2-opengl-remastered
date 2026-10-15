@@ -834,20 +834,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    if (csmDirectReady) {
-        if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
-            barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-        }
-        if (void* csmFullMap = mc2_vk_shadow_island_get_csm_fullmap_image()) {
-            barrier(reinterpret_cast<VkImage>(csmFullMap), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-        }
-    }
+    // The cascade images are NOT transitioned here: the shadow island hands them over in DEPTH_STENCIL_READ_ONLY (its render pass final layout) and the
+    // descriptors above name that layout. Barriers that assumed the attachment layout on entry and restored it on exit disagreed with the terrain
+    // consumer of the same images (VUID-vkCmdDraw-None-09600 in both directions).
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -859,20 +848,6 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
 
-    if (csmDirectReady) {
-        if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
-            barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    VK_ACCESS_SHADER_READ_BIT, 0,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        }
-        if (void* csmFullMap = mc2_vk_shadow_island_get_csm_fullmap_image()) {
-            barrier(reinterpret_cast<VkImage>(csmFullMap), VK_IMAGE_ASPECT_DEPTH_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    VK_ACCESS_SHADER_READ_BIT, 0,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        }
-    }
     barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, 0,
