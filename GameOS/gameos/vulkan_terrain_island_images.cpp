@@ -640,8 +640,7 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->csmArrayDirect = false;
     s->csmFullMapExternalView = VK_NULL_HANDLE;
     s->csmFullMapDirect = false;
-    if (!feed.csmEnabled || feed.glCsmArrayTex == 0 || feed.csmArraySize <= 0
-        || feed.glCsmFullMapTex == 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
+    if (!feed.csmEnabled || feed.csmArraySize <= 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
         return false;
 
     // Near-cascade array: direct VK shadow-island view only (warmup-declines to legacy).

@@ -146,13 +146,11 @@ struct Mc2TerrainTier1Feed {
     // csmEnabled=0 -> VK frag skips the CSM path entirely (falls back to the legacy
     // single-map dynShadowsEnabled path above, unchanged).
     int32_t                     csmEnabled;            // 1 iff gate on AND GL CSM is actually active+ready
-    uint32_t                    glCsmArrayTex;         // GL name of dynShadowArrayTex_ (0 = not ready)
     int32_t                     csmArraySize;           // dynShadowMapSize_ (near-cascade array edge, texels)
     int32_t                     csmCount;               // pp->getDynamicShadowCascadeCount() (1..3)
     float                       csmCascadeMatrices[16 * 3]; // pp->getDynamicCascadeMatrices() (row-major GL_FALSE)
     float                       csmCascadeTexelWorld[3];    // pp->getDynamicCascadeTexelWorld()
     float                       csmDepthSpan;           // pp->getCsmDepthSpan()
-    uint32_t                    glCsmFullMapTex;        // GL name of dynamicFullMapTex_ (0 = not ready)
     int32_t                     csmFullMapSize;         // pp->getDynamicFullMapSize()
     float                       csmFullMapTexelWorld;   // pp->getDynamicFullMapTexelWorld()
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): the 4x-finer VISUAL heightfield bake
