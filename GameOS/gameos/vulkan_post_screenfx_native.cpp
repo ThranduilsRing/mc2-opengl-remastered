@@ -769,7 +769,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     p.screenSize[0] = (float)width_;
     p.screenSize[1] = (float)height_;
     p.enableShadows = hasStaticShadow ? 1 : 0;
-    p.debugMode = mc2_vk_shadow_matrix_diag_enabled() ? 2 : 0;   // TEMP row-20 class tint
+    p.debugMode = 0;
     p.shadowSoftness = shadow_softness_default();
     void* m = nullptr;
     if ((m = s->shadowUbo.map()) != nullptr) {

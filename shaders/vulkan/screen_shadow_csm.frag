@@ -138,14 +138,6 @@ void main()
 {
     PREC vec4 normalData = texture(sceneNormalTex, TexCoord);
     float depth = texture(sceneDepthTex, TexCoord).r;
-    if (u.debugMode == 2) {   // TEMP row-20 class tint (multiplied into the scene)
-        if (depth <= 0.0001) FragColor = vec4(1.0);
-        else if (normalData.a > 0.5) FragColor = vec4(1.0, 0.3, 0.3, 1.0);
-        else if (normalData.a > 0.22) FragColor = vec4(0.3, 1.0, 0.3, 1.0);
-        else if (normalData.a > 0.1) FragColor = vec4(1.0, 1.0, 0.3, 1.0);
-        else FragColor = vec4(0.3, 0.3, 1.0, 1.0);
-        return;
-    }
     if (depth <= 0.0001 || rc_pixelHandlesOwnShadow(normalData)) {
         FragColor = vec4(1.0);
         return;
