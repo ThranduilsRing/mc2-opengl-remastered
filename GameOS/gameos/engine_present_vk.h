@@ -227,6 +227,7 @@ public:
                                      int engineIdxBase,
                                      float lowLightGain,
                                      const float lowLightTint[3],
+                                     bool casEnabled, float casSharpness, int tonemapMode,
                                      int viewportX, int viewportY,
                                      int viewportW, int viewportH);
 

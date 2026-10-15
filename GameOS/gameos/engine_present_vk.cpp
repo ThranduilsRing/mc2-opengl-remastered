@@ -1883,6 +1883,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   int engineIdxBase,
                                                   float lowLightGain,
                                                   const float lowLightTint[3],
+                                                  bool casEnabled, float casSharpness, int tonemapMode,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
     if (!nativeCompositeGateEnabled() || !created_ || !impl_ || directFbo_ == 0)
@@ -1997,15 +1998,15 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         fxaaSubpix,
         fxaaEdgeThreshold,
         fxaaEdgeThresholdMin,
-        0.0f,
+        casEnabled ? 1.0f : 0.0f,
         (float)viewMode,
         lowLightGain,
         lowLightTint ? lowLightTint[0] : 0.7f,
         lowLightTint ? lowLightTint[1] : 1.0f,
         lowLightTint ? lowLightTint[2] : 0.6f,
         (float)engineIdxBase,
-        0.0f,
-        0.0f
+        casSharpness,
+        (float)tonemapMode
     };
     vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);

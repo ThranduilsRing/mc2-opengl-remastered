@@ -10,9 +10,9 @@ layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
 
 layout(push_constant) uniform Params {
     vec4 p0; // exposure, invW, invH, fxaaEnabled
-    vec4 p1; // fxaaSubpix, fxaaEdgeThreshold, fxaaEdgeThresholdMin, unused
+    vec4 p1; // fxaaSubpix, fxaaEdgeThreshold, fxaaEdgeThresholdMin, casEnabled
     vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
-    vec4 p3; // lowLightTint.b, engineIdxBase, unused, unused
+    vec4 p3; // lowLightTint.b, engineIdxBase, casSharpness, tonemapMode
 } u;
 
 float fxaaLuma(vec3 c) { return sqrt(dot(c, vec3(0.299, 0.587, 0.114))); }
@@ -57,11 +57,13 @@ vec3 fxaaFilter(vec2 uv, vec2 rcp) {
     return (lumaB < rangeMin || lumaB > rangeMax) ? rgbA : rgbB;
 }
 
-void main() {
+// Scene sample with exposure and FXAA, then the unconditional sunset grade (warm push, luminance warm/cool split, vignette, top glow). The
+// grade depends on the position, so the sharpening filter below grades every tap it reads.
+vec3 gradeColor(vec2 uv) {
     vec2 invSize = vec2(u.p0.y, u.p0.z);
     vec3 color = ((u.p0.w != 0.0)
-        ? fxaaFilter(TexCoord, invSize)
-        : texture(sceneTex, TexCoord).rgb) * u.p0.x;
+        ? fxaaFilter(uv, invSize)
+        : texture(sceneTex, uv).rgb) * u.p0.x;
 
     color *= vec3(1.05, 1.01, 0.94);
     float lum = dot(color, vec3(0.299, 0.587, 0.114));
@@ -70,13 +72,87 @@ void main() {
     vec3 grade = mix(cool, warm, smoothstep(0.10, 0.75, lum));
     color *= grade;
 
-    vec2 vdir = TexCoord - vec2(0.5);
+    vec2 vdir = uv - vec2(0.5);
     float vdist = length(vdir * vec2(1.0, 0.6));
     float vignette = smoothstep(0.85, 0.25, vdist);
     color *= mix(0.82, 1.0, vignette);
 
-    float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - TexCoord.y), 1.5);
-    color = mix(color, color * vec3(1.10, 1.03, 0.92), sunBias * 0.25);
+    float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - uv.y), 1.5);
+    return mix(color, color * vec3(1.10, 1.03, 0.92), sunBias * 0.25);
+}
+
+// Options.cfg PostCAS: contrast adaptive sharpening (AMD FidelityFX CAS) on the graded colour. Adaptive weight from the local min/max of the
+// 3x3 neighbourhood, blended over the diamond ring; PostCASSharpness 0..1 maps to the AMD peak -1/8 .. -1/5.
+vec3 casFilter(vec2 uv) {
+    vec2 rcp = vec2(u.p0.y, u.p0.z);
+    vec3 a = gradeColor(uv + vec2(-rcp.x, -rcp.y));
+    vec3 b = gradeColor(uv + vec2( 0.0,   -rcp.y));
+    vec3 c = gradeColor(uv + vec2( rcp.x, -rcp.y));
+    vec3 d = gradeColor(uv + vec2(-rcp.x,  0.0));
+    vec3 e = gradeColor(uv);
+    vec3 f = gradeColor(uv + vec2( rcp.x,  0.0));
+    vec3 g = gradeColor(uv + vec2(-rcp.x,  rcp.y));
+    vec3 h = gradeColor(uv + vec2( 0.0,    rcp.y));
+    vec3 i = gradeColor(uv + vec2( rcp.x,  rcp.y));
+
+    vec3 mnRing = min(min(min(d, e), min(f, b)), h);
+    vec3 mnCorner = min(min(a, c), min(g, i));
+    vec3 mn = mnRing + min(mnRing, mnCorner);
+
+    vec3 mxRing = max(max(max(d, e), max(f, b)), h);
+    vec3 mxCorner = max(max(a, c), max(g, i));
+    vec3 mx = mxRing + max(mxRing, mxCorner);
+
+    vec3 rcpMx = 1.0 / max(mx, vec3(1.0 / 32768.0));
+    vec3 amp = clamp(min(mn, 2.0 - mx) * rcpMx, 0.0, 1.0);
+    amp = sqrt(amp);
+
+    float peak = -1.0 / mix(8.0, 5.0, u.p3.z);
+    vec3 w = amp * peak;
+
+    vec3 rcpWeight = 1.0 / (1.0 + 4.0 * w);
+    vec3 outColor = (b * w + d * w + f * w + h * w + e) * rcpWeight;
+    return clamp(outColor, 0.0, 1.0);
+}
+
+// Options.cfg TonemapMode: filmic curves on the final graded colour (1 AgX, 2 Hable, 3 Reinhard; 0 leaves the colour alone).
+vec3 tmAgxContrast(vec3 x) {
+    vec3 x2 = x * x; vec3 x4 = x2 * x2;
+    return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x
+         + 0.4298 * x2 + 0.1191 * x - 0.00232;
+}
+vec3 tmAgx(vec3 c) {
+    const mat3 m = mat3(0.842479062253094, 0.0423282422610123, 0.0423756549057051,
+                        0.0784335999999992, 0.878468636469772,  0.0784336,
+                        0.0792237451477643, 0.0791661274605434, 0.879142973793104);
+    const mat3 mi = mat3(1.19687900512017,  -0.0528968517574562, -0.0529716355144438,
+                        -0.0980208811401368, 1.15190312990417,   -0.0980434501171241,
+                        -0.0990297440797205,-0.0989611768448433,  1.15107367264116);
+    const float lo = -12.47393, hi = 4.026069;
+    c = m * max(c, vec3(0.0));
+    c = clamp(log2(max(c, vec3(1e-10))), lo, hi);
+    c = (c - lo) / (hi - lo);
+    c = tmAgxContrast(c);
+    return clamp(mi * c, 0.0, 1.0);
+}
+vec3 tmHableP(vec3 x) {
+    const float A = 0.15, B = 0.50, C = 0.10, D = 0.20, E = 0.02, F = 0.30;
+    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+vec3 tmHable(vec3 c) {
+    return clamp(tmHableP(c * 2.0) / tmHableP(vec3(11.2)), 0.0, 1.0);
+}
+vec3 applyTonemap(vec3 c) {
+    int mode = int(u.p3.w + 0.5);
+    if (mode == 1) return tmAgx(c);
+    if (mode == 2) return tmHable(c);
+    if (mode == 3) return c / (1.0 + c);
+    return c;
+}
+
+void main() {
+    vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord) : gradeColor(TexCoord);
+    color = applyTonemap(color);
 
     int viewMode = int(u.p2.x + 0.5);
     if (viewMode == 1) {
