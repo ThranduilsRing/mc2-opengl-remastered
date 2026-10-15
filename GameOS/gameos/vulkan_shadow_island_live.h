@@ -266,6 +266,8 @@ void mc2_render_backend_shadow_region_health(
 void mc2_vk_shadow_island_destroy();
 // Map boundary: drop VK-owned caster geometry (re-uploaded on next map).
 void mc2_vk_shadow_island_invalidate_geometry();
+// The map's buildings (GpuStaticPropInstance records), cast into every VK shadow pass from then on; called once per map where GL builds its static map.
+void mc2_vk_shadow_island_set_building_casters(const void* instances, unsigned int count);
 
 #ifdef __cplusplus
 }

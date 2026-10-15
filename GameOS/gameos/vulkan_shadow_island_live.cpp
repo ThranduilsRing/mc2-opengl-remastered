@@ -56,7 +56,6 @@
 #include "vk_depth_caster_pipeline.h"
 #include "vulkan_color_prop_island.h"
 #include "vulkan_shadow_mech_casters.h"
-#include "gos_static_prop_registry.h"   // the map's building casters
 #include "vk_shared_gbuffer_gate.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -249,10 +248,8 @@ struct ShadowIsland : mc2vk::IslandState {
     const void* stagedInstances = nullptr;
     uint32_t    stagedInstanceCount = 0;
     // The map's buildings, cast into every pass with the frame's props. GL renders them only into its world-fixed static map; here they join the cascades so
-    // terrain, mechs and props receive building shadows from a VK producer. Read once per map from the registry (visibility-independent, filled at mission
-    // load), cleared at the map boundary.
+    // terrain, mechs and props receive building shadows from a VK producer. Set once per map from the registry (visibility-independent), cleared at the map boundary.
     std::vector<GpuStaticPropInstance> buildingCasters;
-    bool buildingsRead = false;
     std::vector<GpuStaticPropInstance> stageScratch;   // props + buildings of the frame, reused
     std::vector<InstRun> instRuns;
     // Foliage and fence casters. Per packet of the shared geometry: the layer of the colour island's alpha-ON array that the packet's colour-pass fragments sample,
@@ -1155,11 +1152,6 @@ static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCo
     if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return nullptr;
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return nullptr; }
     if (!begin_frame(s, g_shadowFrameEpoch)) return nullptr;
-    if (!s->buildingsRead) {
-        GpuStaticPropRegistry::getBuildingShadowInstances(s->buildingCasters);
-        s->buildingsRead = true;
-        vlog("building casters for this map: %zu.", s->buildingCasters.size());
-    }
     if (!stage_instances(s, instances, instanceCount)) return nullptr;
     refresh_alpha_casters(s);
     s->mech.stage(g_shadowFrameEpoch);
@@ -1537,8 +1529,17 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
     if (!parked) return;
     release_geometry(parked);
     parked->buildingCasters.clear();
-    parked->buildingsRead = false;
     vlog("caster geometry invalidated (map boundary).");
+}
+
+// The map's building casters, copied (the caller's vector is local to the static-map build). A malformed set (null data with a count) is refused with a log line.
+extern "C" void mc2_vk_shadow_island_set_building_casters(const void* instances, unsigned int count) {
+    ShadowIsland* s = parkedIsland();
+    if (!s) return;
+    if (count != 0 && instances == nullptr) { vlog("building caster set refused: count=%u with no data.", count); return; }
+    const GpuStaticPropInstance* b = static_cast<const GpuStaticPropInstance*>(instances);
+    s->buildingCasters.assign(b, b + count);
+    vlog("building casters for this map: %u.", count);
 }
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
