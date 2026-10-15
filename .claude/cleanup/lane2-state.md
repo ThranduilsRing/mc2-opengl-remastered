@@ -3,6 +3,9 @@
 ## EIGHTEENTH session (2026-10-14 ~19:00 CDT start after the host reboot, cap 5 h) -- pre-merge proofs, then VK parity rows
 Every number below was printed by the tool named beside it in this session. Task 1 result: the tip `dafe472ad` plus the docs commit that carries this section is MERGEABLE (the code is the commit 71d2a3d29; everything after is docs).
 
+### Commits (oldest first)
+60907eefc state (task 1, RESUME removed) | db0af1461 row 21 | 75ecbb05c row 20 receive arm | ee3016909 row 22 pbr | 65aeedc3d row 19 | 91fe7b29e row 13 | 2675522ea row 14 (mixed) | e05bc6430 screenfx layout fix | 2c3a68eb1 gaps table + montages + bookmark + ledger + bug row 32 | 1411c6719 static_cast | 3b5a1829e gated-layout doc | 37b4e0797 dup_lines baseline | this state commit. MERGEABLE TIP = the commit that carries this line (code = 37b4e0797, everything after is docs).
+
 ### Task 1 proof (exe built from 71d2a3d29, deployed to `mc2-win64-lane2`, DEPLOY_FINGERPRINT OK "2 doc-only commits since")
 | Evidence | Id |
 |---|---|
@@ -12,6 +15,47 @@ Every number below was printed by the tool named beside it in this session. Task
 | EARLY-EXIT (`MC2_VISUAL_DIFF_FRAME_N=100000 MAX_FRAMES=20`, VK + validation): log ends `event=summary result=fail reason=early_exit stage=atexit`, `crash_handler_hit=False`, no minidump, errors=0 warnings=0 | `2026-10-14T20-08-36/mc2_01.log` |
 | GL tier1 on the same exe: 4/5; mc2_17 `heartbeat_freeze_play` twice under another lane's ninja/cmake on the host (flake log row added), mc2_17 alone then PASS 133 fps; the other four 138 / 100 / 127 / 147 fps | `2026-10-14T20-09-57`, `20-24-49` (fail), `20-33-43` (pass) |
 | Material-off arm: `MC2_VK_PROP_MATERIAL` is folded into the umbrella, so there is no off run. By code reading: `init_island` appends layout binding 7 under `if (s->tier1)` (outside the `materialBindings` block), sizes the storage-buffer pool with `(s->tier1 ? 1u : 0u)`, uploads the placeholder with `if (s->tier1 && !cp_upload_hot_table(s, {}))`, and `write_descriptors` writes binding 7 under `if (s->tier1 && s->hotBuf)` outside the `wantMaterial` block; the shader reads the table only when `uFrame.hotTableReady != 0 && hotBase + 2u < uTypeHot.c.length()`. No unit seam exists (`grep -rn "hotReady\|uTypeHot" tests` finds nothing; the island is Vulkan-only), so this is the code-read proof plus the validation-clean tier1 above. | `GameOS/gameos/vulkan_color_prop_island.cpp`, `shaders/vulkan/color_prop_tier1.vert` |
+
+### Task 2: VK parity rows (one commit per row; oracle = same-exe GL capture, 1080p, `MC2_SMOKE_FREEZE_ANIM=1`, VK carries the umbrella, every montage viewed)
+Mean absolute per-channel pixel distance VK -> GL, printed by `scratch/regdist.py` / `regdist2.py` (regions: boxes on the 1920x1080 frame; the option under test is ON in both arms via `MC2_OPTIONS_OVERRIDE`). Default options: VK after vs VK before identical on every region (0.000, `s9-r0-after-vk` vs `s9-r21-before-vk`), so every new path is inert until its option is on.
+
+| Row | Commit | Before -> after (VK vs GL) | Evidence |
+|---|---|---|---|
+| 21 SunAxisFix | db0af1461 | `SunAxisFix=TRUE`: day mech box 5.363 -> 5.289, day mech region 3.547 -> 3.519, day full 1.905 -> 1.904, night unchanged (remaining mech distance = missing mech shadows); `glsl_port_diff` calc_light now VERBATIM, allowlist row removed | montage `s9-r21-mechs-gl-before-after.png`; sets `s9-r21-*` |
+| 20 PropShadowReceive (receive arm) | 75ecbb05c | NO measurable effect: with the opt-in chain (`MC2_VK_SHADOW_INTEROP` + both CSM gates + `MC2_VK_POST_SCREENFX=1`) option on/off differ by 92-105 px, GL's pair by 1,913 px; hangar 2.193 both arms. The VK cascades carry only static-prop casters. NOT closed. `ShadowCSM` (legacy single map) not ported | `s9-r20-sfx-*`, `s10-r20-chain-fix-gl-off-on.png` |
+| 22 StaticPropPbr | ee3016909 | `StaticPropPbr=TRUE`: day hangar 2.469 -> 1.686, day airbase 3.317 -> 3.222, day full 1.945 -> 1.929, night compound 3.719 -> 3.708 | `s9-r22-hangar-gl-before-after.png` |
+| 19 PostCAS / TonemapMode | 65aeedc3d | `TonemapMode=1,PostCAS=TRUE`: day full 63.426 -> 1.572, night full 75.326 -> 1.263; Hable (mode 2, no CAS) after: 0.756 / 0.439 | `s10-r19-agx-cas-day-gl-before-after.png` |
+| 13 terrain POM real view | 91fe7b29e | full frame: mc2_01 day 1.904 -> 1.353, mc2_05 3.148 -> 2.775, mc2_10 212019 2.135 -> 1.777, 212140 2.661 -> 1.362, 204523 1.565 -> 0.709 (centre region 2.629 -> 1.815, 5.860 -> 4.403, 2.028 -> 1.536, 3.631 -> 1.965, 1.876 -> 0.926) | `s10-r13-terrain-day-*`, `s10-r13-terrain-snow-*` |
+| 14 cliff material | 2675522ea | MIXED, not closed: 204523 0.709 -> 0.600 (on the changed pixels the distance fell 1.45 -> 0.41, the brightness step -1.11 vs GL's -1.10), mc2_01 / 212019 / 212140 unchanged, mc2_05 2.775 -> 2.883 (the changed pixels brighten +2.47 where GL moves +1.22, near the pad light pool; cause not found). Cliff albedo re-projection not ported (VK has no albedo array) | `s10-r14-cliff-mc2_05-*` |
+| 17 building static shadow | none (finding) | VERIFIED ABSENT in default VK: the GL screen-shadow pass cannot write the VK-owned scene, the VK screenfx pass is opt-in and its static map input is retired (`hasStaticShadow = false`); no mech, tree or building shadow reaches receivers under the umbrella (GL shows mech shadows, VK none, with or without the chain) | `s10-r17-mech-shadow-gl-default-chain.png` |
+| 18 decal fill / colour blend | none (finding) | not portable with an oracle: no stock mission places a MarbleCliff; the blend also needs the terrain colormap in the prop island | gaps row 18 |
+| bug found on the way | e05bc6430 | the screen-shadow pass assumed the attachment layout on the cascade images (VUID-vkCmdDraw-None-09600 x10 with `MC2_VK_POST_SCREENFX=1` + the CSM gates): errors 10 (`2026-10-14T21-34-21`) -> 0 (`22-27-07`); BUGS-FOUND-FIXED row 32 | `vk_chainA2.log` |
+Also: the low night bookmark `tests/visual/bookmarks/mc2_10_night_runway_low.json` (three poses over the mc2_10 runway and apron; the install copies are `saved_bookmarks/mc2_10_saved_nightlow{a,b,c}.json`): GL / VK / VK-with-options montage `s10-night-runway-low-gl-vk-vkopts.png` shows the red, blue and green fixture lights and the lit buildings under VK; pose c also shows the VK apron staying bright where GL darkens it (gaps row 5).
+
+### Proof on the final exe (37b4e0797 = e05bc6430 code + one static_cast; docs after)
+| Evidence | Id |
+|---|---|
+| VK tier1 `MC2_VULKAN_VALIDATION=1` on e05bc6430 (rows 21 20 22 19 13 14 + the layout fix): 5/5, errors=0 warnings=0, 150 / 152 / 141 / 136 / 132 fps | `tests/smoke/artifacts/2026-10-14T22-29-17/report.md` (ee3016909: `21-08-47`) |
+| the three options + TonemapMode 1 + PostCAS on, VK + validation: mc2_01 and mc2_10 errors=0 warnings=0 | `22-43-06`, `22-45-15` |
+| the opt-in chain (`MC2_VK_POST_SCREENFX=1` + CSM gates) + validation: errors=0 warnings=0 (was 10) | `22-27-07` |
+| GL tier1 on e05bc6430: 5/5, 149 / 105 / 139 / 146 / 147 fps | `22-47-26` |
+| final exe 37b4e0797: VK tier1 + validation 5/5 errors=0 warnings=0 (150 / 156 / 146 / 137 / 133 fps, `2026-10-14T23-06-00`); GL tier1 5/5 (149 / 105 / 139 / 146 / 146 fps, `23-16-45`); early-exit (`MC2_VISUAL_DIFF_FRAME_N=100000`, VK + validation) ends `reason=early_exit stage=atexit`, exit 4, `crash_handler_hit=False`, no minidump, errors=0 (`23-27-29`) | `tests/smoke/artifacts/` ids as listed |
+| `build_all_targets` exit 0; doctest 3165 / 3165 passed (3 skipped; the 10 failed assertions are the intended `fatal_if_aborts` case); pytest scripts 811 passed | `scratch/bat2.log`, `scratch/doctest2.log`, `scratch/cc_final.log` |
+| `check-contracts.sh` full board at 37b4e0797: 121 passed, 2 failed (`container_callsites`, `doc_links`, not this lane's); ratchets: `cxx17_ratchet` green (LG09 +1 cast fixed with a static_cast); `dup_lines` baseline REWRITTEN 55908 -> 56005 (the VK composite shader is the port of postprocess.frag: +96 twin shader lines, +1 parameter list entry; not contorted); `gated_layout_macros` doc regenerated (line numbers); `container_callsites` and `doc_links` red as before, not this lane's | the board before those fixes: 118 passed, 5 failed (`scratch/cc_final.log`) |
+
+### Tracy (task 3): NOT taken. Lane 1 and lane 3 held the host lease for about an hour at the start and the editor smoke / lane 3 loops kept it busy afterwards; a before / after pair would have measured the neighbours.
+
+### Open (session 18)
+1. Rows 14 (mc2_05 overshoot), 20 (needs mech / building casters in the VK cascades and `ShadowCSM` legacy map), 22 (material scalars), 17 (default VK has no screen shadow: port target = enable the VK screenfx shadow arm by default with a static-building input, or a world-fixed building map consumer), 18 (no content), 9/5 (terrain night cement) remain.
+2. `container_callsites` and `doc_links` of `check-contracts.sh` are red and are not this lane's.
+3. Islands4 nit 1 (protected ScopedEnv ctor) still waits for the Sol files.
+4. Terrain POM: the GL per-layer height multipliers and the dirt layer in the displacement sum are not in the VK sum.
+5. Scratch to clean (mine): `scratch/` (scripts `capb*.sh capg*.sh chain14.sh final*.sh gates.sh vk_opts*.sh edit_*.py regdist*.py mont.py build_mc2.bat`, logs `*.log`, `blogs/`, `blogs2/`, `terrain_both.frag`, `state_add.md`), `.claude/l2cap/s9-*`, `s10-*` capture sets (PNGs, not committed; the ledger records them), `.claude/l2cap/s7*`, `s8after-vk`, older leftovers listed in session 16 and 17; the install `saved_bookmarks/mc2_10_saved_nightlow{a,b,c}.json` stay (they are the pose source for the tracked bookmark file).
+
+### Lessons (18)
+- A `timeout N` around `run_smoke.py` kills the runner while it waits for the host lease: run smokes with `nohup` in the background and poll; the dead run leaves its own folder-lease entry (remove only your pid).
+- The default VK path has no screen-shadow pass at all (GL's cannot write the VK-owned scene); an option that steers only the GL screen shadow (PropShadowReceive, ShadowCSM) has nothing to steer under the umbrella.
+- Run an option's oracle with the option ON in BOTH arms (`MC2_OPTIONS_OVERRIDE`), and a default-options pair as the regression guard (0.000 distance).
 
 ## SEVENTEENTH session (2026-10-14 ~16:05 CDT start, cap 5 h) -- post_* owners, CSM layouts, VK parity rows 15 + 16 (+ the ambient arm of 22); nifty merged at the start (d109918d4), NOT merged back
 Every number below was printed by the tool named beside it in this session.
