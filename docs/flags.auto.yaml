@@ -6815,22 +6815,22 @@ flags:
     verified: true
   - name: MC2_VK_CSM_ARRAY_INTEROP
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: Lead0Kill
     owner: vk
-    doc: "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF."
+    doc: "VK near-cascade array producer, on under the VK umbrella; =0 turns it off (terrain then loses the near cascades)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VK_CSM_ARRAY_INTEROP, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VK_CSM_ARRAY_INTEROP, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_CSM_FULLMAP_INTEROP
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: Lead0Kill
     owner: vk
-    doc: "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF."
+    doc: "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VK_CSM_FULLMAP_INTEROP, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VK_CSM_FULLMAP_INTEROP, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_DECAL_STATIC_GL_CANARY
     kind: Bool
     default: false
@@ -7119,13 +7119,13 @@ flags:
     verified: true
   - name: MC2_VK_SHADOW_INTEROP
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: Lead0Kill
     owner: vk
-    doc: "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF."
+    doc: "VK shadow-caster island (dynamic map, cascades, mech casters), on under the VK umbrella; =0 turns every VK shadow producer off."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VK_SHADOW_INTEROP, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VK_SHADOW_INTEROP, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_SHADOW_MATRIX_DIAG
     kind: Bool
     default: false

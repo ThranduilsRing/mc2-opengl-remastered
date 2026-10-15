@@ -1258,9 +1258,9 @@ L(Lead0Kill, "MC2_VIS_SEMANTICS", Bool, true, "code", "", "ONE gate.", verified 
 L(Lead0, "MC2_VIS_SEMANTICS_TRACE", Bool, false, "code", "", "", verified | passthrough),
 P("MC2_VIS_SEMANTICS_TRACE_EVERY", Int, 120, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VK_CSM_ARRAY_INTEROP
-L(Lead1, "MC2_VK_CSM_ARRAY_INTEROP", Bool, false, "vk", "", "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_CSM_ARRAY_INTEROP", -1, false) | verified),
+L(Lead0Kill, "MC2_VK_CSM_ARRAY_INTEROP", Bool, true, "vk", "", "VK near-cascade array producer, on under the VK umbrella; =0 turns it off (terrain then loses the near cascades).", passthrough | registry(Feature, "MC2_FEATURE_VK_CSM_ARRAY_INTEROP", -1, true) | verified),
 // history: docs/gate-history.md#MC2_VK_CSM_FULLMAP_INTEROP
-L(Lead1, "MC2_VK_CSM_FULLMAP_INTEROP", Bool, false, "vk", "", "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP", -1, false) | verified),
+L(Lead0Kill, "MC2_VK_CSM_FULLMAP_INTEROP", Bool, true, "vk", "", "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade).", passthrough | registry(Feature, "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP", -1, true) | verified),
 // history: docs/gate-history.md#MC2_VK_DECAL_STATIC_GL_CANARY
 L(Lead1, "MC2_VK_DECAL_STATIC_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...", registry(Trace, "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY", -1, false) | verified),
 G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
@@ -1315,7 +1315,7 @@ L(Lead1, "MC2_VK_SCREENSHADOW_GL_CANARY", Bool, false, "post", "", "VK final-gat
 L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
 // history: docs/gate-history.md#MC2_VK_SHADOW_INTEROP
-L(Lead1, "MC2_VK_SHADOW_INTEROP", Bool, false, "vk", "", "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHADOW_INTEROP", -1, false) | verified),
+L(Lead0Kill, "MC2_VK_SHADOW_INTEROP", Bool, true, "vk", "", "VK shadow-caster island (dynamic map, cascades, mech casters), on under the VK umbrella; =0 turns every VK shadow producer off.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHADOW_INTEROP", -1, true) | verified),
 // history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false) | verified),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
