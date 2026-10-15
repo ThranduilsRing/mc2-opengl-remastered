@@ -11,13 +11,13 @@ The live witness writes only new scratch-mod copies of stock content. It require
 
 ## B2b route state and arbitration
 
-Mission owns RouteExecution by durable Part incarnation and execution ID, independently of receipts. Retain original/selected IDs, pilot, kind, stance, points/modes, next cursor, owning order revision, state, suspension reason, retry budget/deadline, last transition tick and event sequence.
+Mission owns RouteExecution by Part incarnation and execution ID, independently of receipts. Destroy/reset clears routes, executions, rejections and mission-local identity counters; ObjectRef generation remains 1 under session isolation. Retain original/selected IDs, pilot, kind, stance, points/modes, next cursor, owning order revision, state, suspension reason, retry budget/deadline, last transition tick and event sequence.
 Ownership cannot be inferred from coordinates or legacy id, which assignment does not copy. Emit Started/Suspended/Resumed/Completed/Interrupted/Failed exactly once per transition, with tick and reason.
 Stance remains mission-owned: no legacy field or established pilot setter exists. Define movement/combat policy for all six values before dispatch; never silently discard stance or change TacticalOrder's layout.
 
 Cancellation maps player to Interrupted(PlayerOrder), ABL replacement to Interrupted(Superseded), and death/removal/pilot change to Interrupted(Removed); exhausted reachability maps to Failed(Unreachable).
-Retry permits three retries, bounded by 30 simulation ticks from the first failure; the next failure after exhaustion or at the deadline fails. Resume receives segment reachability as input; path-consumer acceptance is deferred to wiring.
-Signals carry execution ID, owning revision and next event sequence; stale, duplicate and terminal signals reject without mutation and are logged once. Readiness requires both path and goal maps; no movement is issued here.
+Retry permits three retries within 30 simulation ticks of the first failure; PathAccepted and arrival reset both limits. Failed resume becomes Active+Retrying or Failed. Alarm also suspends Pending; clearing it waits in Pending if maps are unavailable.
+Signals carry execution ID, owning revision, pilot incarnation and next event sequence; pilot mismatch interrupts as Removed. Stale, duplicate and terminal signals reject; retain only the last rejection per execution. Readiness requires both path and goal maps; no movement is issued here.
 Stance proposal: all six preserve authored travel mode; combat policies are evade/return fire/defend/engage/pursue/fight to death in editor order, pending owner confirmation.
 
 | Condition | Decision |
@@ -37,7 +37,7 @@ Stance proposal: all six preserve authored travel mode; combat policies are evad
 
 Raw warrior saves copy TacticalOrder and queues; keep that layout unchanged and add a versioned mission execution section. Save only at a completed tick, with execution fields above and ingress tick/source/sequence/receipt state; never serialize pointers, watch IDs or live-session tokens.
 Validate candidates atomically with one diagnostic. Restore durable identities into a fresh session after Part/pilot/commander reconstruction and path-map setup, before updates; reconcile slot/cursor/suspension once, without re-admission or replay. Pending, active, suspended and unreachable routes must resume identically to uninterrupted execution.
-Mission::load currently calls neither resetOrderIngress nor bindOrderRecipients. B2b-2 must claim saveload.cpp and add reset/rebind before resumed updates.
+Mission::load clears executions through destroy(); B2b-2 must claim saveload.cpp and add restore/rebind before resumed updates.
 
 | Claim | Exact additional paths |
 |---|---|

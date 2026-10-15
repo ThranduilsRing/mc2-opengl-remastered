@@ -27,7 +27,7 @@ RouteExecution execution(OrderKind kind = OrderKind::PatrolPath, unsigned count 
     return route;
 }
 RouteSignal signal(const RouteExecution& route, RouteAction action, Tick tick = 1) {
-    return {route.key, route.revision, route.eventSequence + 1, tick, action, true, true, true};
+    return {route.key, route.revision, route.eventSequence + 1, tick, action, true, true, true, route.pilotIncarnation};
 }
 void start(RouteExecution& route) { REQUIRE(route.transition(signal(route, RouteAction::Ready))); }
 }
@@ -159,6 +159,30 @@ TEST_CASE("accepted arrival resets the failed segment budget") {
     REQUIRE(route.transition(signal(route, RouteAction::Arrived, 3)));
     CHECK(route.retriesRemaining == routeRetryBudget); CHECK(route.retryDeadline == 0);
 }
+TEST_CASE("path acceptance rearms retries after a long segment without arrival") {
+    auto route = execution(); start(route);
+    REQUIRE(route.transition(signal(route, RouteAction::Unreachable, 2)));
+    REQUIRE(route.transition(signal(route, RouteAction::PathAccepted, 3)));
+    CHECK(route.retriesRemaining == routeRetryBudget); CHECK(route.retryDeadline == 0);
+    const auto event = route.transition(signal(route, RouteAction::Unreachable, 230));
+    REQUIRE(event); CHECK(event->event == RouteEventKind::Retrying);
+    CHECK(route.retryDeadline == 230 + routeRetryWindow); CHECK(route.path.curPoint == 0);
+}
+TEST_CASE("alarm before readiness suspends until cleared and maps are ready") {
+    for (const bool mapsReady : {false, true}) {
+        auto route = execution();
+        const auto event = route.transition(signal(route, RouteAction::Alarm));
+        REQUIRE(event); CHECK(event->event == RouteEventKind::Suspended);
+        CHECK(route.state == RouteState::Suspended);
+        CHECK_FALSE(route.transition(signal(route, RouteAction::Ready, 2)));
+        auto input = signal(route, RouteAction::AlarmCleared, 3);
+        input.pathMapsReady = mapsReady;
+        REQUIRE(route.transition(input));
+        CHECK(route.state == (mapsReady ? RouteState::Active : RouteState::Pending));
+        if (!mapsReady) REQUIRE(route.transition(signal(route, RouteAction::Ready, 4)));
+        CHECK(route.state == RouteState::Active);
+    }
+}
 TEST_CASE("player ABL and removal cancel permanently even while suspended") {
     for (const auto action : {RouteAction::PlayerOrder, RouteAction::GeneralReplacement, RouteAction::Removed}) {
         for (const auto suspended : {false, true}) {
@@ -176,7 +200,7 @@ TEST_CASE("player ABL and removal cancel permanently even while suspended") {
         }
     }
 }
-TEST_CASE("resume requires current revision and reachable segment without losing route data") {
+TEST_CASE("failed resume becomes active and exhausts its retry budget") {
     auto route = execution(); start(route);
     const auto path = route.path;
     auto event = route.transition(signal(route, RouteAction::Alarm, 2));
@@ -185,15 +209,15 @@ TEST_CASE("resume requires current revision and reachable segment without losing
     auto input = signal(route, RouteAction::AlarmCleared, 3); ++input.revision;
     CHECK_FALSE(route.transition(input)); CHECK(route.state == RouteState::Suspended);
     input = signal(route, RouteAction::AlarmCleared, 3); input.segmentReachable = false;
-    REQUIRE(route.transition(input)); CHECK(route.state == RouteState::Suspended);
-    CHECK(route.suspensionReason == RouteReason::Alarm); CHECK(route.retriesRemaining == routeRetryBudget - 1);
-    event = route.transition(signal(route, RouteAction::AlarmCleared, 4));
-    REQUIRE(event); CHECK(event->event == RouteEventKind::Resumed);
+    event = route.transition(input);
+    REQUIRE(event); CHECK(event->event == RouteEventKind::Retrying);
+    CHECK(route.state == RouteState::Active);
+    CHECK(route.suspensionReason == RouteReason::None); CHECK(route.retriesRemaining == routeRetryBudget - 1);
     CHECK(route.state == RouteState::Active); CHECK(route.path == path); CHECK(route.stance == 4);
     CHECK_FALSE(route.transition(signal(route, RouteAction::AlarmCleared, 5)));
-    REQUIRE(route.transition(signal(route, RouteAction::Alarm, 5)));
-    input = signal(route, RouteAction::AlarmCleared, route.retryDeadline); input.segmentReachable = false;
-    REQUIRE(route.transition(input)); CHECK(route.state == RouteState::Failed);
+    for (unsigned i = 1; i <= routeRetryBudget; ++i)
+        REQUIRE(route.transition(signal(route, RouteAction::Unreachable, 5 + i)));
+    CHECK(route.state == RouteState::Failed);
     CHECK_FALSE(route.transition(signal(route, RouteAction::AlarmCleared, 50)));
 }
 TEST_CASE("every terminal state rejects every later action without emitting an event") {
@@ -201,7 +225,7 @@ TEST_CASE("every terminal state rejects every later action without emitting an e
         auto route = execution(); route.state = terminal;
         for (const auto action : {RouteAction::Ready, RouteAction::Arrived, RouteAction::Unreachable,
             RouteAction::PlayerOrder, RouteAction::GeneralReplacement, RouteAction::Alarm,
-            RouteAction::AlarmCleared, RouteAction::Removed}) {
+            RouteAction::AlarmCleared, RouteAction::Removed, RouteAction::PathAccepted}) {
             CHECK_FALSE(route.transition(signal(route, action)));
             CHECK(route.state == terminal); CHECK(route.eventSequence == 0); CHECK(route.path.curPoint == 0);
         }

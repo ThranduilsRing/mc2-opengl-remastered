@@ -36,7 +36,8 @@ std::optional<RouteTransition> RouteExecution::transition(const RouteSignal& sig
             event = RouteEventKind::Retrying;
         }
     };
-    switch (signal.action) {
+    const auto action = signal.pilotIncarnation == pilotIncarnation ? signal.action : RouteAction::Removed;
+    switch (action) {
     case RouteAction::Ready:
         if (state != RouteState::Pending || !signal.pathMapsReady || !signal.goalMapReady || !cursorMode()) return {};
         state = RouteState::Active;
@@ -61,18 +62,25 @@ std::optional<RouteTransition> RouteExecution::transition(const RouteSignal& sig
         if (state != RouteState::Active) return {};
         unreachable();
         break;
-    case RouteAction::Alarm:
+    case RouteAction::PathAccepted:
         if (state != RouteState::Active) return {};
+        retriesRemaining = routeRetryBudget;
+        retryDeadline = 0;
+        event = RouteEventKind::PathAccepted;
+        break;
+    case RouteAction::Alarm:
+        if (state != RouteState::Active && state != RouteState::Pending) return {};
         state = RouteState::Suspended;
         suspensionReason = reason = RouteReason::Alarm;
         event = RouteEventKind::Suspended;
         break;
     case RouteAction::AlarmCleared:
         if (state != RouteState::Suspended) return {};
+        state = RouteState::Active;
+        suspensionReason = RouteReason::None;
         if (!signal.segmentReachable) unreachable();
         else {
-            state = RouteState::Active;
-            suspensionReason = RouteReason::None;
+            if (!signal.pathMapsReady || !signal.goalMapReady) state = RouteState::Pending;
             event = RouteEventKind::Resumed;
         }
         break;
@@ -81,8 +89,8 @@ std::optional<RouteTransition> RouteExecution::transition(const RouteSignal& sig
     case RouteAction::Removed:
         state = RouteState::Interrupted;
         suspensionReason = RouteReason::None;
-        reason = signal.action == RouteAction::PlayerOrder ? routePlayerReason :
-            signal.action == RouteAction::GeneralReplacement ? routeReplacementReason : routeRemovalReason;
+        reason = action == RouteAction::PlayerOrder ? routePlayerReason :
+            action == RouteAction::GeneralReplacement ? routeReplacementReason : routeRemovalReason;
         event = RouteEventKind::Interrupted;
         break;
     default: return {};

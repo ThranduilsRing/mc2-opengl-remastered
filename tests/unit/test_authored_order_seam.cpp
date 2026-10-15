@@ -84,6 +84,11 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
         using Mission::authoredRoutes;
         using Mission::orderIngress;
         using Mission::rejectedRouteSignals;
+        using Mission::nextPartIncarnation;
+        using Mission::nextPilotIncarnation;
+        using Mission::nextRouteExecution;
+        using Mission::nextOrderRevision;
+        using Mission::authoredDiagnostics;
         void roster(Part* entries) { parts = entries; numParts = 2; }
         void releaseOrderState() {
             std::destroy_at(&orderFixtureReceipt);
@@ -134,47 +139,95 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     CHECK(previous.originalPart == 2); CHECK(previous.selectedPart == 9); CHECK(previous.pilot == 7);
     CHECK(previous.path == (**parsed).path); CHECK(previous.stance == 4);
     CHECK(previous.state == RouteState::Pending); CHECK(previous.eventSequence == 0);
-    auto input = RouteSignal{previous.key, previous.revision, 1, 1, RouteAction::Ready, true, true, true};
-    REQUIRE(owner.onRouteEvent(input));
-    CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
-    CHECK(owner.rejectedRouteSignals.size() == 1); CHECK(owner.routeExecution(previous.key)->eventSequence == 1);
-    input.sequence = 2; input.action = RouteAction::Alarm;
-    REQUIRE(owner.onRouteEvent(input));
-    input.sequence = 3; input.action = RouteAction::AlarmCleared; --input.revision;
-    CHECK_FALSE(owner.onRouteEvent(input));
-    CHECK_FALSE(owner.onRouteEvent(input)); CHECK(owner.rejectedRouteSignals.size() == 2);
-    ++input.revision; input.segmentReachable = false;
-    REQUIRE(owner.onRouteEvent(input));
-    CHECK(owner.routeExecution(previous.key)->state == RouteState::Suspended);
-    input.sequence = 4; input.segmentReachable = true;
-    auto event = owner.onRouteEvent(input);
-    REQUIRE(event); CHECK(event->event == RouteEventKind::Resumed);
-    input.sequence = 5; input.action = RouteAction::GeneralReplacement;
-    event = owner.onRouteEvent(input);
-    REQUIRE(event); CHECK(event->reason == RouteReason::Superseded);
-    input.sequence = 6; input.action = RouteAction::AlarmCleared;
-    CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
-    CHECK(owner.rejectedRouteSignals.size() == 3);
-    CHECK(owner.routeExecution(previous.key)->eventSequence == 5);
-    for (const auto action : {RouteAction::PlayerOrder, RouteAction::Removed}) {
-        const auto oldRef = *owner.orderRecipient(2);
+    auto input = RouteSignal{previous.key, previous.revision, 1, 1, RouteAction::Ready, true, true, true, previous.pilotIncarnation};
+    SUBCASE("pilot replacement interrupts the old execution on its next signal") {
+        Pilot replacement;
+        actor.attach(replacement);
+        const auto event = owner.onRouteEvent(input);
+        REQUIRE(event); CHECK(event->event == RouteEventKind::Interrupted);
+        CHECK(event->reason == RouteReason::Removed);
+        CHECK(owner.routeExecution(previous.key)->state == RouteState::Interrupted);
+    }
+    SUBCASE("resetting mission records reproduces execution identities") {
+        const auto oldSession = owner.orderSession();
         owner.resetOrderIngress(); owner.bindOrderRecipients();
-        CHECK(owner.orderRecipient(2) != oldRef);
         owner.authoredRoutes.push_back(**parsed); owner.admitAuthoredRoutes();
         owner.beginOrderSimulationTick(); owner.completeOrderSimulationTick();
         REQUIRE(owner.authoredExecutions().size() == 1);
-        const auto current = owner.authoredExecutions().front();
-        CHECK(current.key.partIncarnation > previous.key.partIncarnation);
-        CHECK(current.pilotIncarnation > previous.pilotIncarnation);
-        CHECK(current.key.executionId > previous.key.executionId); CHECK(current.revision > previous.revision);
-        CHECK_FALSE(owner.onRouteEvent(input));
-        event = owner.onRouteEvent({current.key, current.revision, 1, 1, action});
-        REQUIRE(event); CHECK(event->reason ==
-            (action == RouteAction::PlayerOrder ? RouteReason::PlayerOrder : RouteReason::Removed));
-        CHECK_FALSE(owner.onRouteEvent({current.key, current.revision, 2, 2, RouteAction::AlarmCleared, true, true, true}));
-        CHECK(owner.routeExecution(current.key)->eventSequence == 1);
-        previous = current;
+        const auto& current = owner.authoredExecutions().front();
+        CHECK(current.key == previous.key); CHECK(current.revision == previous.revision);
+        CHECK(current.pilotIncarnation == previous.pilotIncarnation);
+        CHECK(owner.orderSession() != oldSession);
+        CHECK(owner.orderRecipient(2)->generation == 1);
     }
+    SUBCASE("rejections retain only the last signal for an endless patrol") {
+        REQUIRE(owner.onRouteEvent(input));
+        for (int i = 0; i < 100; ++i) {
+            input.action = RouteAction::Ready; ++input.sequence;
+            CHECK_FALSE(owner.onRouteEvent(input));
+            CHECK(owner.rejectedRouteSignals.size() == 1);
+            CHECK(owner.rejectedRouteSignals.front().sequence == input.sequence);
+            input.action = RouteAction::Arrived;
+            REQUIRE(owner.onRouteEvent(input));
+        }
+    }
+    SUBCASE("destroy discards live routes and rejections before a mission reload") {
+        REQUIRE(owner.onRouteEvent(input));
+        CHECK_FALSE(owner.onRouteEvent(input));
+        ObjectManager = nullptr; MechWarrior::warriorList[7] = nullptr; missionHeap = nullptr;
+        owner.destroy(false);
+        ObjectManager = &objects; MechWarrior::warriorList[7] = &pilot; missionHeap = &resources.heap;
+        CHECK(owner.authoredExecutions().empty()); CHECK(owner.rejectedRouteSignals.empty());
+        CHECK(owner.authoredRoutes.empty()); CHECK_FALSE(owner.orderRecipient(2));
+        CHECK_FALSE(owner.onRouteEvent(input));
+        owner.bindOrderRecipients();
+        CHECK(owner.authoredExecutions().empty());
+        CHECK(owner.nextRouteExecution == 1); CHECK(owner.nextOrderRevision == 1);
+        CHECK(owner.nextPartIncarnation == 2); CHECK(owner.nextPilotIncarnation == 2);
+    }
+    SUBCASE("revision and terminal rejection preserve execution ownership") {
+        REQUIRE(owner.onRouteEvent(input));
+        CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
+        CHECK(owner.rejectedRouteSignals.size() == 1); CHECK(owner.routeExecution(previous.key)->eventSequence == 1);
+        input.sequence = 2; input.action = RouteAction::Alarm;
+        REQUIRE(owner.onRouteEvent(input));
+        input.sequence = 3; input.action = RouteAction::AlarmCleared; --input.revision;
+        CHECK_FALSE(owner.onRouteEvent(input));
+        CHECK_FALSE(owner.onRouteEvent(input)); CHECK(owner.rejectedRouteSignals.size() == 1);
+        ++input.revision; input.segmentReachable = false;
+        REQUIRE(owner.onRouteEvent(input));
+        CHECK(owner.routeExecution(previous.key)->state == RouteState::Active);
+        input.sequence = 4; input.action = RouteAction::Alarm;
+        auto event = owner.onRouteEvent(input);
+        REQUIRE(event); CHECK(event->event == RouteEventKind::Suspended);
+        input.sequence = 5; input.action = RouteAction::AlarmCleared; input.segmentReachable = true;
+        REQUIRE(owner.onRouteEvent(input));
+        input.sequence = 6; input.action = RouteAction::GeneralReplacement;
+        event = owner.onRouteEvent(input);
+        REQUIRE(event); CHECK(event->reason == RouteReason::Superseded);
+        input.sequence = 7; input.action = RouteAction::AlarmCleared;
+        CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
+        CHECK(owner.rejectedRouteSignals.size() == 1);
+        CHECK(owner.routeExecution(previous.key)->eventSequence == 6);
+    }
+    SUBCASE("identity exhaustion rejects once without unwinding queue application") {
+        for (const auto counter : {&owner.nextPartIncarnation, &owner.nextPilotIncarnation,
+                                  &owner.nextRouteExecution, &owner.nextOrderRevision}) {
+            owner.resetOrderIngress();
+            owner.authoredRoutes.push_back(**parsed);
+            *counter = std::numeric_limits<std::uint64_t>::max();
+            CHECK_NOTHROW(owner.bindOrderRecipients());
+            CHECK_NOTHROW(owner.admitAuthoredRoutes());
+            CHECK_NOTHROW(owner.beginOrderSimulationTick());
+            CHECK_NOTHROW(owner.completeOrderSimulationTick());
+            CHECK(owner.authoredExecutions().empty());
+            CHECK(owner.authoredRoutes[0].diagnosed);
+            REQUIRE(owner.authoredDiagnostics.size() == 1);
+            CHECK(owner.authoredDiagnostics[0].find("identity") != std::string::npos);
+            CHECK(owner.orderIngress.queue().receipts().empty());
+        }
+    }
+
 }
 
 TEST_CASE("AuthoredOrderProduction/OPORD eligibility matches the consumer skip rules") {

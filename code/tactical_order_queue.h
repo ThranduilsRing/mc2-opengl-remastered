@@ -98,8 +98,8 @@ struct AuthoredRoute {
 
 enum class RouteState { Pending, Active, Suspended, Completed, Interrupted, Failed };
 enum class RouteReason { None, PlayerOrder, Superseded, Removed, Unreachable, Alarm };
-enum class RouteAction { Ready, Arrived, Unreachable, PlayerOrder, GeneralReplacement, Alarm, AlarmCleared, Removed };
-enum class RouteEventKind { Started, Advanced, Retrying, Suspended, Resumed, Completed, Interrupted, Failed };
+enum class RouteAction { Ready, Arrived, Unreachable, PlayerOrder, GeneralReplacement, Alarm, AlarmCleared, Removed, PathAccepted };
+enum class RouteEventKind { Started, Advanced, Retrying, Suspended, Resumed, Completed, Interrupted, Failed, PathAccepted };
 inline constexpr unsigned routeRetryBudget = 3;
 inline constexpr Tick routeRetryWindow = 30;
 inline constexpr RouteReason routePlayerReason = RouteReason::PlayerOrder;
@@ -125,6 +125,7 @@ struct RouteSignal {
     Tick tick = 0;
     RouteAction action = RouteAction::Ready;
     bool pathMapsReady = false, goalMapReady = false, segmentReachable = false;
+    std::uint64_t pilotIncarnation = 0;
     bool operator==(const RouteSignal&) const = default;
 };
 struct RouteTransition {
