@@ -151,7 +151,18 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectives(ObjectiveEdit ed
     if (!candidate) return reject(candidate.error().reason);
     NodeId result = id;
     if (edit == ObjectiveEdit::add || edit == ObjectiveEdit::copy)
-        for (const auto& item : candidate->objectives) if (item.team == team && item.exportedIndex == index) result = item.section;
+        for (auto& item : candidate->objectives) if (item.team == team && item.exportedIndex == index) {
+            result = item.section;
+            if (edit == ObjectiveEdit::copy) for (std::size_t list = 0; list < item.entries.size(); ++list)
+                for (std::size_t i = 0; i < item.entries[list].size(); ++i) {
+                    auto& reference = item.entries[list][i].reference;
+                    const auto& source = selected->entries[list][i].reference;
+                    reference.kind = source.kind;
+                    reference.status = source.status;
+                    reference.target = source.target;
+                    reference.reason = source.reason;
+                }
+        }
     const auto label = edit == ObjectiveEdit::add ? "Add objective" : edit == ObjectiveEdit::copy ? "Copy objective" :
         edit == ObjectiveEdit::erase ? "Delete objective" : "Reorder objective";
     auto committed = commit(StructuralCommand{document_.structuralState(), std::move(*candidate), label});

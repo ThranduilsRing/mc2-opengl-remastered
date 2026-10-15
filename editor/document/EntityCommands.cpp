@@ -221,10 +221,11 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
     body += "f Rotation = " + real(unit.transform.rotation) + nl;
     edits.push_back({{syntax->endMarker, syntax->endMarker}, std::move(body)});
     auto ids = identities(document_);
-    const EntityId id{document_.nextEntityId_++};
+    const EntityId id{document_.nextEntityId_};
     ids.push_back(id);
     auto applied = commitStructure(edited(std::move(fit), std::move(edits)), document_.placements_, ids, "Place unit");
     if (!applied) return std::unexpected(applied.error());
+    ++document_.nextEntityId_;
     return id;
 }
 
@@ -280,6 +281,20 @@ std::expected<void, LoadError> CommandHistory::transform(EntityId id, const Tran
         if (!absent.empty()) edits.push_back({{section->syntax.end, section->syntax.end}, nl + absent});
         fit = edited(std::move(fit), std::move(edits));
     }
+    auto syntax = decodeFit(fit);
+    if (!syntax) return std::unexpected(syntax.error());
+    std::vector<Edit> references;
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries) for (const auto& entry : list) {
+        if (entry.reference.status != ReferenceStatus::Resolved || entry.reference.target != id) continue;
+        const auto oldIndex = static_cast<std::size_t>(document_.section(entry.section) - document_.syntax().sections.data());
+        const auto& section = syntax->sections[oldIndex];
+        for (std::size_t i = 0; i < 2; ++i) {
+            if (transform.position[i] == entity->position[i]) continue;
+            const auto key = i == 0 ? "PositionX" : "PositionY";
+            references.push_back({find(*syntax, section, key)->syntax, real(transform.position[i])});
+        }
+    }
+    fit = edited(std::move(fit), std::move(references));
     return commitStructure(std::move(fit), std::move(placements), identities(document_), "Transform entity");
 }
 
@@ -287,6 +302,11 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
 {
     const auto* entity = document_.entity(id);
     if (!entity) return reject("missing_entity");
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries) for (const auto& entry : list)
+        if (entry.reference.status == ReferenceStatus::Resolved && entry.reference.target == id) {
+            if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=delete reason=objective_reference");
+            return reject("objective_reference");
+        }
     const auto marker = document_.markerReference(id);
     if (!marker) {
         if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=delete reason=" + marker.error().reason);

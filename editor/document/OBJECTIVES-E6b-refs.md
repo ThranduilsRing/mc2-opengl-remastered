@@ -1,6 +1,6 @@
-# E6b-refs: typed entity references (deferred)
+# E6b-refs: typed entity references
 
-Reference delivery is deferred in full. CRUD preserves target lexemes; entity commands are reference-unaware. Passthrough and scalar census results do not prove resolution.
+E6b-refs-1 delivers the reference model, resolution once at document read, identity carry-through across structural candidates, referenced-delete rejection and resolved-move XY updates (including marker transforms) with undo/redo. E6b-refs-2 delivers Part/Warrior renumber, objective/entity copy, objective reorder, explicit resolution and the objective panel UI. Passthrough and scalar census results do not prove resolution.
 
 ## Authority and identity
 
@@ -21,7 +21,7 @@ XY uses float conversion and strict relative tolerance `abs(a-b)/max(abs(a),abs(
 
 Extend document-owned ObjectiveEntry with kind, explicit status, optional EntityId and source NodeIds/lexemes; retain XY/auxiliary spelling after resolution. Use StructuralState/CommandHistory and budget all dynamic reference storage; limits reject without truncation. No static registry or parallel model.
 
-Candidate decoding precedes final EntityId assignment in MissionStructure: resolve afterward or remap every target alongside entities. Remap source NodeIds too. Noncontiguous IDs must not resolve by accidental equality with export indices.
+Resolve only after final EntityId assignment at document read. Structural candidates carry status, target identity and source lexemes without re-resolution; remap source NodeIds too. Noncontiguous IDs must not resolve by accidental equality with export indices.
 
 | Command | Required behavior |
 |---|---|

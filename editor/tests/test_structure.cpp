@@ -655,11 +655,19 @@ TEST_CASE("document/stock corpus requires exactly 24 unchanged pairs and a negat
             const auto found = std::ranges::find_if(doc->entities(), [=](const Entity& e) { return e.packetRecord.has_value() == building; });
             REQUIRE(found != doc->entities().end());
             const auto id = found->id;
+            bool referring = doc->hasMarkerReference(id);
+            for (const auto& objective : doc->objectives()) for (const auto& list : objective.entries) for (const auto& entry : list)
+                referring |= entry.reference.status == ReferenceStatus::Resolved && entry.reference.target == id;
             Transform moved{found->position, found->rotation}; moved.position[0] += 16;
             REQUIRE(history.transform(id, moved));
             CHECK(std::bit_cast<std::uint32_t>(static_cast<float>(doc->entity(id)->position[0])) ==
                 std::bit_cast<std::uint32_t>(static_cast<float>(moved.position[0])));
-            CHECK((doc->fitBytes() != original) == !building);
+            CHECK((doc->fitBytes() != original) == (!building || referring));
+            for (const auto& objective : doc->objectives()) for (const auto& list : objective.entries) for (const auto& entry : list)
+                if (entry.reference.status == ReferenceStatus::Resolved && entry.reference.target == id) {
+                    CHECK(static_cast<float>(std::get<double>(doc->find(entry.section, "PositionX")->value[0])) == static_cast<float>(moved.position[0]));
+                    CHECK(static_cast<float>(std::get<double>(doc->find(entry.section, "PositionY")->value[0])) == static_cast<float>(moved.position[1]));
+                }
             CHECK((bytes(*doc) != originalPak) == building);
             for (std::size_t n = 0; n < originalIds.size(); ++n) CHECK(doc->entities()[n].id == originalIds[n]);
             const auto changedStem = output / (name + (building ? "-building" : "-unit"));

@@ -14,6 +14,14 @@ std::string bytes(const std::filesystem::path& path)
 
 void checkGameScalarReads()
 {
+    for (const auto key : {"MoverWID", "BuildingWID"}) for (const auto declaration : {"l", "ul", "st"}) {
+        const auto fit = std::string("FITini\r\n[Reference]\r\n") + declaration + " " + key +
+            " = 7\r\nf PositionX = malformed\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+        FitIniFile reader; REQUIRE(reader.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+        REQUIRE(reader.seekBlock("Reference") == NO_ERR);
+        long wid{};
+        CHECK((reader.readIdLong(key, wid) == NO_ERR) == (declaration == std::string_view("l")));
+    }
     for (const auto& [wire, expected] : std::vector<std::pair<std::string, long>>{
         {"0xffffffff", -1}, {"0x80000000", -2147483647L - 1}, {"0Xffffffff", 0}}) {
         const auto fit = "FITini\r\n[Objective0]\r\nl BaseColor = " + wire + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";

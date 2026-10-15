@@ -29,7 +29,10 @@ std::size_t cost(const StructuralState& state)
         if (entity.csvFile) size += entity.csvFile->capacity();
     }
     for (const auto& objective : state.objectives) {
-        for (const auto& list : objective.entries) size += list.capacity() * sizeof(ObjectiveEntry);
+        for (const auto& list : objective.entries) {
+            size += list.capacity() * sizeof(ObjectiveEntry);
+            for (const auto& entry : list) size += referenceStorage(entry.reference);
+        }
         size += objective.scalars.capacity() * sizeof(ObjectiveScalar);
         for (const auto& scalar : objective.scalars)
             if (const auto* text = std::get_if<std::string>(&scalar.value)) size += text->capacity();

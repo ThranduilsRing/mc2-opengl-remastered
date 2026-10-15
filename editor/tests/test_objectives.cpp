@@ -3,6 +3,8 @@
 #include "CommandHistory.h"
 #include <algorithm>
 #include <chrono>
+#include <bit>
+#include <cmath>
 #include <fstream>
 #include <format>
 #include <limits>
@@ -609,4 +611,374 @@ TEST_CASE("objectives/CRUD numeric boundaries nested extensions and compact fram
     REQUIRE(history.deleteObjective(one)); CHECK(doc->objective(ten)->exportedIndex == 10);
     REQUIRE(history.reorderObjective(ten, 1)); CHECK(doc->objective(ten)->exportedIndex == 1);
     REQUIRE(history.undo()); CHECK(doc->objective(ten)->exportedIndex == 10);
+}
+
+namespace {
+struct ReferenceFixture {
+    struct Target { bool unit; float x, y; int team; };
+    std::vector<Target> targets;
+    std::string species = "DestroySpecificEnemyUnit", x = "0", y = "0", wid;
+    int alignment{};
+    std::string fit() const {
+        auto text = fixture();
+        text.replace(text.find("ul NumParts = 0"), 15, "ul NumParts = " +
+            std::to_string(std::ranges::count_if(targets, [](const auto& t) { return t.unit; })));
+        const auto begin = text.find("[Objective0Condition0]"), end = text.find("[Objective0Action0]");
+        text.replace(begin, end - begin, "[Objective0Condition0]\r\nst ConditionSpeciesString = \"" + species +
+            "\"\r\n" + wid + (x.empty() ? "" : "f PositionX = " + x + "\r\n") +
+            (y.empty() ? "" : "f PositionY = " + y + "\r\n") +
+            "ul Commander = 007\r\nul Group = 9\r\nul Mate = 3\r\nul CellX = 88\r\nul CellY = 99\r\nx VendorTarget = untouched\r\n");
+        std::string parts;
+        unsigned index{};
+        for (const auto& target : targets) if (target.unit) {
+            parts += std::format("[Part{}]\r\nul ObjectNumber = 1\r\nf PositionX = {:.9g}\r\nf PositionY = {:.9g}\r\nc TeamID = {}\r\n",
+                ++index, target.x, target.y, target.team);
+        }
+        text.insert(text.find("FITend"), parts);
+        if (alignment) {
+            text.replace(text.find("ul Version = 2"), 14, "ul Version = 3");
+            text.replace(text.find("[Objectives]"), 12, std::format("[Team{}Objectives]", alignment));
+            for (std::size_t offset{}; (offset = text.find("[Objective0", offset)) != text.npos;) {
+                const auto replacement = std::format("[Team{}Objective0", alignment);
+                text.replace(offset, 11, replacement); offset += replacement.size();
+            }
+            for (int team = 0; team < 8; ++team) if (team != alignment)
+                text.insert(text.find("FITend"), std::format("[Team{}Objectives]\r\nul NumObjectives = 0\r\n", team));
+        }
+        return text;
+    }
+    std::vector<std::byte> pak() const {
+        auto bytes = packet();
+        std::vector<std::byte> placements;
+        const auto put = [&](std::vector<std::byte>& data, std::size_t offset, std::uint32_t value) {
+            for (unsigned i = 0; i < 4; ++i) data[offset + i] = static_cast<std::byte>(value >> (8 * i));
+        };
+        const auto buildings = std::ranges::count_if(targets, [](const auto& t) { return !t.unit; });
+        if (buildings) {
+            placements.resize(4 + 40 * buildings);
+            put(placements, 0, static_cast<std::uint32_t>(buildings));
+            std::size_t offset = 4;
+            for (const auto& target : targets) if (!target.unit) {
+                put(placements, offset, 10);
+                put(placements, offset + 4, std::bit_cast<std::uint32_t>(target.x));
+                put(placements, offset + 8, std::bit_cast<std::uint32_t>(target.y));
+                put(placements, offset + 24, static_cast<std::uint32_t>(target.team));
+                offset += 40;
+            }
+        }
+        put(bytes, 12, 156);
+        for (std::size_t i = 2; i < 5; ++i) put(bytes, 8 + 4 * i, 0xe0000000U | static_cast<std::uint32_t>(156 + placements.size()));
+        bytes.insert(bytes.end(), placements.begin(), placements.end());
+        return bytes;
+    }
+};
+struct ExpectedReference {
+    ReferenceKind kind;
+    ReferenceStatus status;
+    std::optional<EntityId> target;
+    bool accepts(const ObjectiveReference& actual) const {
+        return actual.kind == kind && actual.status == status && actual.target == target;
+    }
+};
+ExpectedReference targetOracle(const ReferenceFixture& fixture) {
+    ExpectedReference result{ReferenceKind::none, ReferenceStatus::Unsupported, {}};
+    int filter{};
+    if (fixture.species == "DestroySpecificEnemyUnit" || fixture.species == "DeadOrFledSpecificEnemyUnit") result.kind = ReferenceKind::unit;
+    else if (fixture.species == "CaptureSpecificUnit" || fixture.species == "CaptureOrDestroySpecificEnemyUnit") {
+        result.kind = ReferenceKind::unit; filter = -1;
+    } else if (fixture.species == "GuardSpecificUnit") { result.kind = ReferenceKind::unit; filter = 1; }
+    else if (fixture.species == "DestroySpecificStructure" || fixture.species == "CaptureSpecificStructure" ||
+        fixture.species == "CaptureOrDestroySpecificStructure" || fixture.species == "GuardSpecificStructure") result.kind = ReferenceKind::building;
+    else return result;
+    if (fixture.wid.starts_with(result.kind == ReferenceKind::unit ? "l MoverWID" : "l BuildingWID")) {
+        result.status = ReferenceStatus::RuntimeOnlyWid; return result;
+    }
+    const float x = std::stof(fixture.x), y = std::stof(fixture.y);
+    const auto close = [](float a, float b) {
+        const float scale = std::max(std::fabs(a), std::fabs(b));
+        return scale == 0 || static_cast<float>(std::fabs(a - b) / scale) < 0.00001;
+    };
+    std::vector<EntityId> matches;
+    std::uint64_t id{};
+    for (const bool unit : {false, true}) for (const auto& target : fixture.targets) if (target.unit == unit) {
+        ++id;
+        if (unit != (result.kind == ReferenceKind::unit) || (filter == -1 && target.team == fixture.alignment) ||
+            (filter == 1 && target.team != fixture.alignment)) continue;
+        if (close(x, target.x) && close(y, target.y)) matches.push_back(EntityId{id});
+    }
+    result.status = matches.empty() ? ReferenceStatus::Missing : matches.size() == 1 ? ReferenceStatus::Resolved : ReferenceStatus::Ambiguous;
+    if (matches.size() == 1) result.target = matches[0];
+    return result;
+}
+const ObjectiveReference& reference(const MissionDocument& document, std::size_t index = 0) {
+    return document.objectives()[index].entries[0][0].reference;
+}
+}
+
+TEST_CASE("objectives/reference oracle rejects wrong identities statuses kinds and alignment")
+{
+    for (const auto species : {"DestroySpecificEnemyUnit", "DeadOrFledSpecificEnemyUnit", "CaptureOrDestroySpecificEnemyUnit",
+        "CaptureSpecificUnit", "GuardSpecificUnit", "DestroySpecificStructure", "CaptureOrDestroySpecificStructure",
+        "CaptureSpecificStructure", "GuardSpecificStructure", "VendorPredicate"}) {
+        for (int shape = 0; shape < 6; ++shape) {
+            ReferenceFixture input; input.species = species;
+            input.alignment = shape == 4 ? 3 : 0;
+            input.targets = {{true, 0, 0, shape == 1 ? 0 : 1}, {false, 40, 40, 0}};
+            if (shape == 2) input.targets.push_back({true, 0, 0, 1});
+            if (shape == 3) input.targets[0].x = 5;
+            if (shape == 4) input.targets[1].x = input.targets[1].y = 0;
+            if (shape == 5) input.targets.erase(input.targets.begin());
+            std::vector<std::string> logs;
+            auto document = MissionDocument::decode(input.fit(), input.pak(), "oracle", [&](auto line) { logs.push_back(line); });
+            REQUIRE(document);
+            const auto expected = targetOracle(input);
+            CAPTURE(species, shape);
+            CHECK(expected.accepts(reference(*document)));
+            CHECK(logs.size() == (expected.status == ReferenceStatus::Missing || expected.status == ReferenceStatus::Ambiguous ? 1 : 0));
+            CHECK(document->fitBytes() == input.fit()); CHECK(std::ranges::equal(document->pakBytes(), input.pak()));
+            auto corrupted = reference(*document);
+            corrupted.target = EntityId{9999}; CHECK_FALSE(expected.accepts(corrupted));
+            corrupted = reference(*document);
+            corrupted.status = expected.status == ReferenceStatus::Resolved ? ReferenceStatus::Missing : ReferenceStatus::Resolved;
+            CHECK_FALSE(expected.accepts(corrupted));
+        }
+    }
+}
+
+TEST_CASE("objectives/strict float matching handles zero negative adjacent and tolerance boundary")
+{
+    for (const float value : {0.0f, -0.0f, -100.0f, 100.0f, std::nextafter(100.0f, 0.0f),
+        std::nextafter(100.0f, 200.0f), 99.99901f, 99.999f, 99.99899f, -99.99901f, -99.99899f,
+        std::numeric_limits<float>::denorm_min()}) {
+        ReferenceFixture input; input.x = std::format("{:.9g}", value);
+        input.targets = {{true, value < 0 ? -100.0f : value == 0 || value < 1 ? 0.0f : 100.0f, 0, 0}};
+        auto document = MissionDocument::decode(input.fit(), input.pak(), "tolerance", {}); REQUIRE(document);
+        CAPTURE(value); CHECK(targetOracle(input).accepts(reference(*document)));
+    }
+    ReferenceFixture input; input.targets = {{true, 0, 0, 0}};
+    for (const auto [x, expected] : {std::pair{"99.99901", ReferenceStatus::Resolved}, {"99.99899", ReferenceStatus::Missing}}) {
+        input.x = x; input.targets[0].x = 100;
+        auto document = MissionDocument::decode(input.fit(), input.pak(), "boundary", {}); REQUIRE(document);
+        CHECK(reference(*document).status == expected);
+    }
+}
+
+TEST_CASE("objectives/readable WIDs bypass absent and malformed XY but unreadable WIDs use XY")
+{
+    for (const bool unit : {false, true}) for (const auto xy : {"", "broken", "0"}) for (const auto prefix : {"l", "ul", "st"}) {
+        ReferenceFixture input; input.species = unit ? "DestroySpecificEnemyUnit" : "GuardSpecificStructure";
+        input.targets = {{unit, 0, 0, 0}}; input.x = input.y = xy;
+        input.wid = std::string(prefix) + (unit ? " MoverWID = " : " BuildingWID = ") + (prefix == std::string_view("st") ? "\"7\"" : "7") + "\r\n";
+        auto document = MissionDocument::decode(input.fit(), input.pak(), "wid", {});
+        if (prefix != std::string_view("l") && xy != std::string_view("0")) { CHECK_FALSE(document); continue; }
+        REQUIRE(document); CHECK(targetOracle(input).accepts(reference(*document)));
+        CHECK(document->fitBytes() == input.fit());
+    }
+}
+
+TEST_CASE("objectives/array and malformed WIDs require readable XY")
+{
+    for (const bool unit : {false, true}) for (const auto declaration : {"l[1]", "l"}) for (const bool xy : {false, true}) {
+        ReferenceFixture input; input.species = unit ? "DestroySpecificEnemyUnit" : "GuardSpecificStructure";
+        input.targets = {{unit, 0, 0, 0}};
+        input.wid = std::string(declaration) + (unit ? " MoverWID = " : " BuildingWID = ") +
+            (declaration == std::string_view("l") ? "broken\r\n" : "7\r\n");
+        if (!xy) input.x = input.y = "";
+        auto doc = MissionDocument::decode(input.fit(), input.pak(), "wid-declaration", {});
+        CAPTURE(unit, declaration, xy);
+        if (!xy) { CHECK_FALSE(doc); continue; }
+        REQUIRE(doc); CHECK(reference(*doc).status == ReferenceStatus::Resolved);
+        CHECK(reference(*doc).target == EntityId{1}); CHECK(doc->fitBytes() == input.fit());
+    }
+}
+
+TEST_CASE("objectives/moves cannot collide with a recorded resolved target")
+{
+    for (const bool unit : {false, true}) for (const bool moveTarget : {false, true}) {
+        ReferenceFixture input; input.species = unit ? "DestroySpecificEnemyUnit" : "GuardSpecificStructure";
+        input.targets = {{unit, 10, 0, 0}, {unit, 20, 0, 0}}; input.x = "20";
+        auto doc = MissionDocument::decode(input.fit(), input.pak(), "collision", {}); REQUIRE(doc);
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+        const auto revision = doc->revision();
+        CHECK_FALSE(history.transform(EntityId{moveTarget ? 2ULL : 1ULL}, {{moveTarget ? 10.0 : 20.0, 0, 0}, 0}));
+        REQUIRE(logs.size() == 1); CHECK(logs[0].find("objective_reference") != std::string::npos);
+        CHECK(doc->fitBytes() == input.fit()); CHECK(std::ranges::equal(doc->pakBytes(), input.pak()));
+        CHECK(doc->revision() == revision); CHECK_FALSE(doc->modified()); CHECK_FALSE(history.canUndo());
+        CHECK(history.bytesUsed() == 0); CHECK(reference(*doc).target == EntityId{2});
+    }
+}
+
+TEST_CASE("objectives/team edits cannot exclude or add a resolved target candidate")
+{
+    for (const auto species : {"GuardSpecificUnit", "CaptureSpecificUnit", "CaptureOrDestroySpecificEnemyUnit"})
+        for (const bool target : {false, true}) {
+        ReferenceFixture input; input.species = species;
+        const int eligible = input.species == "GuardSpecificUnit" ? 0 : 1;
+        input.targets = {{true, 0, 0, eligible}, {true, 0, 0, 1 - eligible}};
+        auto doc = MissionDocument::decode(input.fit(), input.pak(), "team-filter", {}); REQUIRE(doc);
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+        const auto revision = doc->revision();
+        CHECK_FALSE(history.setTeam(EntityId{target ? 1ULL : 2ULL}, target ? 1 - eligible : eligible));
+        REQUIRE(logs.size() == 1); CHECK(logs[0].find("objective_reference") != std::string::npos);
+        CHECK(doc->fitBytes() == input.fit()); CHECK(doc->revision() == revision); CHECK_FALSE(doc->modified());
+        CHECK_FALSE(history.canUndo()); CHECK(history.bytesUsed() == 0); CHECK(reference(*doc).target == EntityId{1});
+    }
+}
+
+TEST_CASE("objectives/transforms retain each unchanged referring coordinate lexeme")
+{
+    for (const bool unit : {false, true}) for (const int axis : {-1, 0, 1, 2}) {
+        ReferenceFixture input; input.species = unit ? "DestroySpecificEnemyUnit" : "GuardSpecificStructure";
+        input.x = "001.250000"; input.y = "-4.50000"; input.targets = {{unit, 1.25f, -4.5f, 0}};
+        auto doc = MissionDocument::decode(input.fit(), input.pak(), "spelling", {}); REQUIRE(doc);
+        CommandHistory history(*doc);
+        Transform transform{{1.25, -4.5, 0}, axis == -1 ? 90.0 : 0.0};
+        if (axis >= 0) transform.position[axis] += 1;
+        REQUIRE(history.transform(EntityId{1}, transform));
+        for (const auto& source : reference(*doc).sources) {
+            if (source.key == "PositionX" && axis != 0) CHECK(source.lexeme == input.x);
+            if (source.key == "PositionY" && axis != 1) CHECK(source.lexeme == input.y);
+        }
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == input.fit());
+    }
+}
+
+TEST_CASE("objectives/structural edits preserve missing ambiguous and noncontiguous target identities")
+{
+    ReferenceFixture input; input.x = "10"; input.targets = {{true, 10, 0, 0}, {true, 30, 0, 0}};
+    auto doc = MissionDocument::decode(input.fit(), input.pak(), "identity", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto target = reference(*doc).target; REQUIRE(target); CHECK(target->value == 1);
+    BuildingPlacement building; building.transform.position = {100, 100, 0};
+    auto inserted = history.insertBuilding(building); REQUIRE(inserted); CHECK(inserted->value == 3);
+    CHECK(doc->entities()[0].id == *inserted); CHECK(reference(*doc).target == target);
+    REQUIRE(history.erase(*inserted));
+    inserted = history.insertBuilding(building); REQUIRE(inserted); CHECK(inserted->value == 4);
+    CHECK(reference(*doc).target == target);
+    REQUIRE(history.setTeam(*target, 1)); CHECK(reference(*doc).target == target);
+    for (const bool ambiguous : {false, true}) {
+        input.x = "50";
+        input.targets = {{true, ambiguous ? 50.0f : 0.0f, 0, 0}, {true, 50, 0, 0}};
+        if (!ambiguous) input.targets[1].x = 10;
+        doc = MissionDocument::decode(input.fit(), input.pak(), "carry", {}); REQUIRE(doc);
+        CommandHistory edits(*doc);
+        const auto expected = targetOracle(input); CHECK(expected.accepts(reference(*doc)));
+        REQUIRE(edits.transform(doc->entities()[0].id, {{ambiguous ? 70.0 : 50.0, 0, 0}, 0}));
+        CHECK(expected.accepts(reference(*doc)));
+        auto fresh = MissionDocument::decode(doc->fitBytes(), input.pak(), "fresh", {}); REQUIRE(fresh);
+        CHECK(reference(*fresh).status == ReferenceStatus::Resolved);
+        REQUIRE(edits.undo()); CHECK(expected.accepts(reference(*doc)));
+        REQUIRE(edits.redo()); CHECK(expected.accepts(reference(*doc)));
+    }
+}
+
+TEST_CASE("objectives/referenced deletes reject once and resolved moves undo exact spelling across CRUD")
+{
+    for (int kind = 0; kind < 3; ++kind) {
+        const bool unit = kind == 0, marker = kind == 2;
+        ReferenceFixture input; input.species = unit ? "GuardSpecificUnit" : "DestroySpecificStructure";
+        input.x = "001.250000"; input.y = "-4.50000"; input.targets = {{unit, 1.25f, -4.5f, 0}};
+        auto original = input.fit();
+        const auto failure = original.find("[Objective0FailureCondition0]"), failureEnd = original.find("[Objective0FailureAction0]");
+        original.replace(failure, failureEnd - failure, "[Objective0FailureCondition0]\r\nst FailureConditionSpeciesString = \"" +
+            input.species + "\"\r\nf PositionX = 001.250000\r\nf PositionY = -4.50000\r\nul Commander = 007\r\n");
+        if (marker) original.insert(original.find("FITend"),
+            "[NavMarkers]\r\nul NumNavMarkers = 1\r\n[NavMarker0]\r\nf xPos = 1.2500\r\nf yPos = -4.5000\r\nf radius = 20\r\n");
+        const std::vector<std::uint32_t> markers = marker ? std::vector<std::uint32_t>{10} : std::vector<std::uint32_t>{};
+        auto doc = MissionDocument::decode(original, input.pak(), "commands", {}, markers); REQUIRE(doc);
+        auto control = *doc;
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+        const auto target = *reference(*doc).target;
+        const auto objective = doc->objectives()[0].section;
+        const auto before = doc->fitBytes(); const auto revision = doc->revision();
+        CHECK_FALSE(history.erase(target)); CHECK(logs.size() == 1); CHECK(doc->fitBytes() == before);
+        CHECK(doc->revision() == revision); CHECK_FALSE(doc->modified()); CHECK_FALSE(history.canUndo()); CHECK(history.bytesUsed() == 0);
+        auto copied = history.copyObjective(objective); REQUIRE(copied); CHECK(reference(*doc, 1).target == target);
+        CommandHistory controlHistory(control);
+        const auto expectedCopy = controlHistory.copyObjective(objective); REQUIRE(expectedCopy); CHECK(*copied == *expectedCopy);
+        REQUIRE(history.transform(target, {{12, 34, 0}, 0}));
+        if (marker) CHECK(doc->find("NavMarker0", "xPos")->value == Value{12.0});
+        for (const auto& item : doc->objectives()) {
+            for (const auto list : {0, 2}) {
+                const auto entry = item.entries[list][0].section;
+                CHECK(doc->find(entry, "PositionX")->value == Value{12.0});
+                CHECK(doc->find(entry, "PositionY")->value == Value{34.0});
+                CHECK(doc->find(entry, "Commander")->value == Value{std::int64_t{7}});
+                CHECK(item.entries[list][0].reference.target == target);
+            }
+            CHECK(item.entries[0][0].reference.target == target);
+            for (const auto& source : item.entries[0][0].reference.sources) {
+                CHECK(doc->field(source.node));
+                if (source.key == "Commander") CHECK(source.lexeme == "007");
+            }
+        }
+        REQUIRE(history.setObjectiveScalar(objective, "Title", std::string("moved")));
+        const auto moved = doc->fitBytes();
+        const auto path = scratch() / "references"; REQUIRE(doc->save(path, {}));
+        auto reopened = MissionDocument::read(path.string() + ".fit", path.string() + ".pak", {}, markers); REQUIRE(reopened);
+        CHECK(reopened->fitBytes() == moved); CHECK(reference(*reopened).status == ReferenceStatus::Resolved);
+        REQUIRE(history.undo()); REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == before);
+        REQUIRE(history.redo()); REQUIRE(history.redo()); REQUIRE(history.redo()); CHECK(doc->fitBytes() == moved);
+        REQUIRE(history.deleteObjective(*copied)); REQUIRE(history.deleteObjective(objective)); REQUIRE(history.erase(target));
+        REQUIRE(history.undo()); REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(reference(*doc).target == target);
+        CHECK(doc->fitBytes() == moved);
+    }
+}
+
+TEST_CASE("objectives/reference storage contributes to history budget and rejection preserves future IDs")
+{
+    ReferenceFixture input; input.targets = {{true, 0, 0, 0}};
+    auto doc = MissionDocument::decode(input.fit(), input.pak(), "budget", {}); REQUIRE(doc);
+    auto twin = *doc;
+    const auto snapshotReference = reference(twin);
+    const auto nested = referenceStorage(snapshotReference); REQUIRE(nested > 0);
+    auto& stripped = const_cast<ObjectiveReference&>(reference(twin));
+    stripped.sources = {};
+    stripped.sources.shrink_to_fit();
+    CommandHistory measured(*doc), control(twin);
+    BuildingPlacement building; building.transform.position = {20, 20, 0};
+    REQUIRE(measured.insertBuilding(building)); REQUIRE(control.insertBuilding(building));
+    CHECK(measured.bytesUsed() == control.bytesUsed() + nested);
+    const auto budget = measured.bytesUsed() - 1;
+    auto rejected = MissionDocument::decode(input.fit(), input.pak(), "budget", {}); REQUIRE(rejected);
+    std::vector<std::string> logs;
+    CommandHistory limited(*rejected, budget, [&](auto line) { logs.push_back(line); });
+    const auto bytes = rejected->fitBytes();
+    const auto revision = rejected->revision();
+    CHECK_FALSE(limited.insertBuilding(building)); CHECK(logs.empty()); CHECK(rejected->fitBytes() == bytes);
+    CHECK(rejected->revision() == revision); CHECK_FALSE(rejected->modified()); CHECK(limited.bytesUsed() == 0);
+    CHECK_FALSE(limited.canUndo()); CHECK_FALSE(limited.canRedo());
+    CommandHistory retry(*rejected); auto id = retry.insertBuilding(building); REQUIRE(id); CHECK(id->value == 2);
+    CHECK(reference(*rejected).target == EntityId{1});
+    auto unitDoc = MissionDocument::decode(input.fit(), input.pak(), "unit-budget", {}); REQUIRE(unitDoc);
+    CommandHistory noRoom(*unitDoc, 1);
+    UnitPlacement unit; unit.objectProfile = unit.csvFile = unit.warriorProfile = unit.legacyBrain = "unit";
+    unit.transform.position = {20, 20, 0};
+    CHECK_FALSE(noRoom.insertUnit(unit)); CHECK(unitDoc->fitBytes() == input.fit());
+    CommandHistory unitRetry(*unitDoc); auto unitId = unitRetry.insertUnit(unit); REQUIRE(unitId); CHECK(unitId->value == 2);
+}
+
+TEST_CASE("objectives/reference allocation limit rejects the entire replacement without truncation")
+{
+    ReferenceFixture input; input.targets = {{true, 0, 0, 0}};
+    auto doc = MissionDocument::decode(input.fit(), input.pak(), "limit", {}); REQUIRE(doc);
+    const auto original = doc->fitBytes();
+    auto large = original;
+    const auto count = large.find("ul NumConditions = 1");
+    large.replace(count, 20, "ul NumConditions = 1250");
+    std::string entries;
+    for (unsigned i = 1; i < 1250; ++i) entries += std::format(
+        "[Objective0Condition{}]\r\nst ConditionSpeciesString = \"DestroySpecificEnemyUnit\"\r\n"
+        "f PositionX = 0\r\nf PositionY = 0\r\nul MoverWID = 7\r\nul BuildingWID = 8\r\n"
+        "st Commander = \"{}\"\r\nul Group = 9\r\nul Mate = 3\r\nul CellX = 88\r\nul CellY = 99\r\n", i, std::string(12800, 'a'));
+    large.insert(large.find("FITend"), entries);
+    REQUIRE(large.size() < fitByteLimit);
+    CommandHistory history(*doc);
+    auto result = history.replace(large, input.pak(), "limit", {});
+    REQUIRE_FALSE(result); CHECK(result.error().reason == "reference_storage_limit");
+    CHECK(doc->fitBytes() == original); CHECK(doc->revision() == 0); CHECK_FALSE(doc->modified()); CHECK(history.bytesUsed() == 0);
+    CHECK(reference(*doc).target == EntityId{1});
 }

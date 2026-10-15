@@ -102,6 +102,12 @@ std::expected<MissionDocument, LoadError> MissionDocument::read(const std::files
 std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fit, std::vector<std::byte> pak, std::string mission,
     const Diagnostic& log, std::span<const std::uint32_t> markerObjects)
 {
+    return decodeSource(std::move(fit), std::move(pak), std::move(mission), log, markerObjects, true);
+}
+
+std::expected<MissionDocument, LoadError> MissionDocument::decodeSource(std::string fit, std::vector<std::byte> pak,
+    std::string mission, const Diagnostic& log, std::span<const std::uint32_t> markerObjects, bool resolve)
+{
     auto syntax = decodeFit(std::move(fit));
     if (!syntax) { diagnostic(log, mission, syntax.error()); return std::unexpected(syntax.error()); }
     auto archive = decodePak(std::move(pak));
@@ -114,6 +120,8 @@ std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fi
     document.rebuildIndex();
     auto valid = document.validateSemantics();
     if (!valid) { diagnostic(log, document.mission_, valid.error()); return std::unexpected(valid.error()); }
+    auto references = document.decodeReferences(resolve, log);
+    if (!references) { diagnostic(log, document.mission_, references.error()); return std::unexpected(references.error()); }
     if (log) for (const auto& section : document.syntax_.sections) for (const auto id : section.fields) {
         const auto& field = *document.field(id);
         if (!field.warning.empty()) log(std::format("[EDITOR_OBJECTIVE_WARNING v1] field={}/{} warning={} preserved=1",
@@ -328,7 +336,11 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     }
                     else if (kind.find("NumberOf") != std::string_view::npos) required = {"Num"};
                     else if (kind.starts_with("Move")) required = {"TargetCenterX", "TargetCenterY", "TargetRadius"};
-                    else if (kind.find("Specific") != std::string_view::npos) required = {"PositionX", "PositionY"};
+                    else if (kind.find("Specific") != std::string_view::npos) {
+                        const auto* wid = find(entry, kind.ends_with("Structure") ? "BuildingWID" : "MoverWID");
+                        if (!wid || wid->array || wid->opaque || wid->prefix != "l" || wid->value.size() != 1 ||
+                            !std::holds_alternative<std::int64_t>(wid->value[0])) required = {"PositionX", "PositionY"};
+                    }
                     for (const auto key : required) {
                         const auto type = key == "AVIFileName" || key == "WAVFileName" || key == "Message" || key == "PurchaseFileName" || key == "FlagID" ? 3U : key == "ResourceStringID" || key == "Num" ? 0U : 1U;
                         if (!(type == 0 ? whole(entry, key) : typed(entry, key, type))) return reject(entry + "/" + std::string(key), "missing_or_malformed_required_payload");
@@ -450,6 +462,82 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
         }
         entities_.push_back(std::move(entity));
     }
+    return {};
+}
+
+bool MissionDocument::referenceMatches(const Objective& objective, const ObjectiveEntry& entry, const Entity& entity) const
+{
+    if ((entry.reference.kind == ReferenceKind::unit) != entity.exportedPart.has_value()) return false;
+    const auto species = std::get<ConditionSpecies>(entry.species);
+    if ((species == ConditionSpecies::captureOrDestroyUnit || species == ConditionSpecies::captureUnit) &&
+        entity.team == objective.team) return false;
+    if (species == ConditionSpecies::guardUnit && entity.team != objective.team) return false;
+    for (std::size_t i = 0; i < 2; ++i) {
+        const auto* field = find(entry.section, i == 0 ? "PositionX" : "PositionY");
+        const auto a = static_cast<float>(entity.position[i]), b = static_cast<float>(std::get<double>(field->value[0]));
+        const float difference = std::abs(a - b), bigger = std::max(std::abs(a), std::abs(b));
+        const float proportion = bigger == 0 ? 0 : difference / bigger;
+        if (!(proportion < std::pow(10.0, -std::numeric_limits<float>::digits10) * 10.0)) return false;
+    }
+    return true;
+}
+
+std::expected<void, LoadError> MissionDocument::decodeReferences(bool resolve, const Diagnostic& log)
+{
+    std::size_t storage{};
+    for (auto& objective : objectives_) for (auto& list : objective.entries) for (auto& entry : list) {
+        auto& reference = entry.reference;
+        const auto* species = std::get_if<ConditionSpecies>(&entry.species);
+        if (!species) continue;
+        switch (*species) {
+        case ConditionSpecies::destroyUnit: case ConditionSpecies::deadOrFledUnit:
+            reference.kind = ReferenceKind::unit; break;
+        case ConditionSpecies::captureOrDestroyUnit: case ConditionSpecies::captureUnit:
+            reference.kind = ReferenceKind::unit; break;
+        case ConditionSpecies::guardUnit:
+            reference.kind = ReferenceKind::unit; break;
+        case ConditionSpecies::destroyStructure: case ConditionSpecies::captureOrDestroyStructure:
+        case ConditionSpecies::captureStructure: case ConditionSpecies::guardStructure:
+            reference.kind = ReferenceKind::building; break;
+        default: continue;
+        }
+        for (const auto key : {"MoverWID", "BuildingWID", "PositionX", "PositionY", "Commander", "Group", "Mate", "CellX", "CellY"}) {
+            if (const auto* source = find(entry.section, key)) reference.sources.push_back({source->id, key,
+                syntax_.originalBytes.substr(source->syntax.begin, source->syntax.end - source->syntax.begin)});
+        }
+        storage += sizeof(ObjectiveReference) + referenceStorage(reference);
+        if (storage > fitByteLimit) return std::unexpected(LoadError{"objectives", "reference_storage_limit", 0});
+        const auto* wid = find(entry.section, reference.kind == ReferenceKind::unit ? "MoverWID" : "BuildingWID");
+        if (wid && !wid->array && !wid->opaque && wid->prefix == "l" && wid->value.size() == 1 &&
+            std::holds_alternative<std::int64_t>(wid->value[0])) {
+            reference.status = ReferenceStatus::RuntimeOnlyWid;
+            reference.reason = "runtime watch ID has no document identity";
+            continue;
+        }
+        const auto coordinate = [&](std::string_view key) -> std::optional<float> {
+            const auto* field = find(entry.section, key);
+            if (!field || field->opaque || field->prefix != "f" || field->value.size() != 1) return {};
+            const auto* value = std::get_if<double>(&field->value[0]);
+            if (!value || !std::isfinite(*value) || std::abs(*value) > std::numeric_limits<float>::max()) return {};
+            return static_cast<float>(*value);
+        };
+        const auto x = coordinate("PositionX"), y = coordinate("PositionY");
+        if (!x || !y) return std::unexpected(LoadError{section(entry.section)->name, "missing_or_malformed_required_payload", 0});
+        if (!resolve) continue;
+        std::size_t matches{};
+        for (const auto& entity : entities_) {
+            if (!referenceMatches(objective, entry, entity)) continue;
+            ++matches;
+            reference.target = entity.id;
+        }
+        reference.status = matches == 1 ? ReferenceStatus::Resolved : matches ? ReferenceStatus::Ambiguous : ReferenceStatus::Missing;
+        reference.reason = matches == 1 ? "unique eligible XY target" : matches ? "multiple eligible XY targets" : "no eligible XY target";
+        if (matches != 1) reference.target.reset();
+    }
+    if (log) for (const auto& objective : objectives_) for (const auto& list : objective.entries) for (const auto& entry : list)
+        if (entry.reference.status == ReferenceStatus::Missing || entry.reference.status == ReferenceStatus::Ambiguous)
+            log(std::format("[EDITOR_OBJECTIVE_REFERENCE v1] entry={} reason={} preserved=1",
+                logText(section(entry.section)->name), entry.reference.reason));
     return {};
 }
 

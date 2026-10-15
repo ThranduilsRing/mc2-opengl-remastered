@@ -229,6 +229,7 @@ private:
         prefix = identifier(prefix);
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
         Field field{NodeId{result_.fields.size() + 1}, name, prefix, {peek().span.begin, peek().span.begin}, {}, {}, opaque};
+        field.array = array;
         bool objectiveInteger{};
         if (result_.sections[section].kind == SectionKind::objective) {
             for (const auto& spec : objectiveSchema()) {
@@ -246,6 +247,13 @@ private:
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
             auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
+            if (!value && result_.sections[section].kind == SectionKind::objective &&
+                (identifier(name) == "positionx" || identifier(name) == "positiony" ||
+                    identifier(name) == "moverwid" || identifier(name) == "buildingwid")) {
+                // Runtime WIDs bypass XY; ignored reference payload must retain its spelling.
+                field.opaque = true;
+                value = Scalar{peek().value};
+            }
             if (!value) { auto err = value.error(); err.field = path; return std::unexpected(std::move(err)); }
             field.value.push_back(std::move(*value));
             field.syntax.end = peek().span.end;
