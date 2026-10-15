@@ -101,12 +101,9 @@ void SoundSystem::destroy (void)
 		soundHeap = nullptr;
 	}
 
-    delete soundDataFile;
-    soundDataFile = nullptr;
-    delete bettyDataFile;
-    bettyDataFile = nullptr;
-    delete supportDataFile;
-    supportDataFile = nullptr;
+    soundDataFile.reset();
+    bettyDataFile.reset();
+    supportDataFile.reset();
 
 }
 
@@ -143,8 +140,7 @@ long SoundSystem::init (const char *soundFileName)
 		// When ordered to play a sample, the sound system check to see if that
 		// sound ID is in the cache.  If not, it is loaded.  If there is no more
 		// room, any idle sounds are flushed in order of priority.
-		soundDataFile = new PacketFile;
-		gosASSERT(soundDataFile != NULL);
+		soundDataFile = std::make_unique<PacketFile>();
 		
 		FullPathFileName soundDataPath;
 		soundDataPath.init(CDsoundPath,soundFileName,".pak");
@@ -152,8 +148,7 @@ long SoundSystem::init (const char *soundFileName)
 		result = soundDataFile->open(soundDataPath);
 		gosASSERT(result == NO_ERR);
 		
-		bettyDataFile = new PacketFile;
-		gosASSERT(bettyDataFile != NULL);
+		bettyDataFile = std::make_unique<PacketFile>();
 		
 		FullPathFileName bettyDataPath;
 		bettyDataPath.init(CDsoundPath,"Betty",".pak");
@@ -163,8 +158,7 @@ long SoundSystem::init (const char *soundFileName)
 
 		numBettySamples = bettyDataFile->getNumPackets();
 		
-		supportDataFile = new PacketFile;
-		gosASSERT(supportDataFile != NULL);
+		supportDataFile = std::make_unique<PacketFile>();
 		
 		FullPathFileName supportDataPath;
 		supportDataPath.init(CDsoundPath,"support",".pak");

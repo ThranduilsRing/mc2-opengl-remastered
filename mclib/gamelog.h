@@ -44,7 +44,7 @@ class GameLog {
 		long					handle;
 		bool					inUse;
 		char					fileName[MAXLEN_GAMELOG_NAME];
-		File*					filePtr;
+		std::unique_ptr<File>	filePtr;		// owned; cleanup() closes it before the log is released
 		long					numLines;
 		long					totalLines;
 		char					lines[MAX_GAMELOG_LINES][MAX_GAMELOG_LINELEN];
@@ -61,7 +61,7 @@ class GameLog {
 			handle = -1;
 			inUse = false;
 			fileName[0] = '\0';
-			filePtr = NULL;
+			filePtr.reset();
 			numLines = 0;
 			totalLines = 0;
 			for (long i = 0; i < MAX_GAMELOG_LINES; i++)

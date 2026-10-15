@@ -110,9 +110,10 @@ class SoundSystem
 
 		unsigned long		numBettySamples;
 		unsigned long		numSupportSamples;
-		PacketFilePtr		soundDataFile;
-		PacketFilePtr		bettyDataFile;
-		PacketFilePtr		supportDataFile;
+		// The three sound packet files are owned here and closed by destroy(); a sound bite reads through them while the system lives.
+		std::unique_ptr<PacketFile>	soundDataFile;
+		std::unique_ptr<PacketFile>	bettyDataFile;
+		std::unique_ptr<PacketFile>	supportDataFile;
 		
 		long				numDMS;
 		float				streamFadeDownTime;
@@ -191,7 +192,6 @@ class SoundSystem
 			numSoundBites = 0;
 			sounds = NULL;
 			
-			soundDataFile = bettyDataFile = NULL;
 			
 			numDMS = 0;
 			streamFadeDownTime = 0.0;

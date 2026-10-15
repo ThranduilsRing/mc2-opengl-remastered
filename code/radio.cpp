@@ -84,8 +84,9 @@ long Radio::init (char *fileName, unsigned long heapSize, char *movie)
 	//--------------------------------------
 	// Startup the packet file.
 	radioID = currentRadio;
-	messagesFile[radioID] = new PacketFile;
-	gosASSERT(messagesFile[radioID] != NULL);
+	// The sound system owns the files (it outlives every radio and frees them at purge); the statics are views for the radios.
+	soundSystem->radioMessageFiles[radioID] = std::make_unique<PacketFile>();
+	messagesFile[radioID] = soundSystem->radioMessageFiles[radioID].get();
 		
 	long result = messagesFile[radioID]->open(pilotAudioPath);
 	gosASSERT(result == NO_ERR);
@@ -94,8 +95,8 @@ long Radio::init (char *fileName, unsigned long heapSize, char *movie)
 	{
 		//--------------------------------------
 		// Startup the Noise packet file.
-		noiseFile = new PacketFile;
-		gosASSERT(noiseFile != NULL);
+		soundSystem->radioNoiseFile = std::make_unique<PacketFile>();
+		noiseFile = soundSystem->radioNoiseFile.get();
 			
 		result = noiseFile->open(noisePath);
 		gosASSERT(result == NO_ERR);
@@ -306,28 +307,21 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 long Radio::loadMessageInfo(void)
 {
 FullPathFileName	messageInfoPath;
-FilePtr				messageInfoFile;
+File				messageInfoFile;
 long				result;
 char				dataLine[512];
 char*				field;
 
 	messageInfoPath.init(soundPath,"radio",".csv");
-	messageInfoFile = new File;
-	if (!messageInfoFile)
-		return -1; //quasit
-
-	result = messageInfoFile->open(messageInfoPath);
+	result = messageInfoFile.open(messageInfoPath);
 	if (result != NO_ERR)
-	{
-		delete messageInfoFile;
 		return result;
-	}
 
-	messageInfoFile->readLine((MemoryPtr)dataLine, 511);	// skip title line
+	messageInfoFile.readLine((MemoryPtr)dataLine, 511);	// skip title line
 
 	for (long i=0; i<RADIO_MESSAGE_COUNT; i++)
 	{
-		result = messageInfoFile->readLine((MemoryPtr)dataLine, 511);
+		result = messageInfoFile.readLine((MemoryPtr)dataLine, 511);
 		if (!result)
 			Fatal(0, "Bad Message Info File");
 
@@ -396,7 +390,6 @@ char*				field;
 		if (!field)
 			messageInfo[i].kludgeStyle = FALSE;
 	}
-	messageInfoFile->close();
-	delete messageInfoFile;
+	messageInfoFile.close();
 	return NO_ERR;
 }

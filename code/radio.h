@@ -106,6 +106,7 @@ class Radio
 		long			radioID;
 
 	public:		
+		// Views of the radio packet files; GameSoundSystem owns them (radioNoiseFile / radioMessageFiles) and nulls these at purge.
 		static PacketFilePtr 	noiseFile;
 		static RadioPtr			radioList[MAX_RADIOS];		//Warriors no longer delete their radios.  We do when the
 															//SoundSystem Shutdown occurs.
