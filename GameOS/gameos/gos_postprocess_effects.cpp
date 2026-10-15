@@ -378,8 +378,13 @@ void gosPostProcess::runScreenShadow()
     if (!shadowsEnabled_) return;
 
 #ifdef MC2_VULKAN_ISLAND
-    if (vkPostScreenFxNativeEnabled() && runVkPostScreenShadowStaticNative())
+    // Under the VK umbrella the scene is VK-owned: the GL pass below would multiply into a GL scene target the VK frame no longer presents, and with
+    // ShadowCSM=FALSE (the VK receiver has no cascades to sample and no static map) it ran every frame and the VK frame presented a stale GL target
+    // instead of the scene. So the VK pass is the only receiver there; when it declines, objects get no screen shadow this frame.
+    if (vkPostScreenFxNativeEnabled()) {
+        (void)runVkPostScreenShadowStaticNative();
         return;
+    }
 #endif
 
     // APPLY-STATE-SCREENSHADOW-1: skip the 4 setup calls when the executor already
