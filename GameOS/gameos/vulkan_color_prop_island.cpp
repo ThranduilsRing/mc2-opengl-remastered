@@ -1232,7 +1232,7 @@ bool upload_geometry_once(ColorPropIsland* s) {
     const void* vboCpu = nullptr; const void* iboCpu = nullptr;
     uint64_t vboBytes = 0, iboBytes = 0;
     if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
-    if (vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
+    if (vboBytes == 0 || iboBytes == 0 || vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
         vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", (unsigned long long)vboBytes,
              (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes);
         return false;
