@@ -246,6 +246,15 @@ struct ShadowIsland : mc2vk::IslandState {
     const void* stagedInstances = nullptr;
     uint32_t    stagedInstanceCount = 0;
     std::vector<InstRun> instRuns;
+    // The single dynamic map is only the fallback of a receiver that has no cascades, so its pass is held until the frame's cascades are known: it is recorded
+    // at the submit when the cascade array and the full-map cascade were not both produced, and never otherwise.
+    struct PendingDynamicMap {
+        bool  valid = false;
+        int   size = 0;
+        float lightSpace[16] = {};
+        float biasFactor = 0.0f;
+        float biasUnits = 0.0f;
+    } pendingDyn;
 
     // OWNED objects, declared in creation order: the destructor releases them in reverse, so a framebuffer goes before the view and render pass it uses.
     mc2vk::OwnedBuffer vbo;   // VK-owned copies of the shared static-prop VBO/IBO (P8a (B))
@@ -1030,6 +1039,7 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     s->stagedInstances = nullptr;
     s->stagedInstanceCount = 0;
     s->instRuns.clear();
+    s->pendingDyn.valid = false;
     return true;
 }
 
@@ -1197,16 +1207,13 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     ShadowIsland* s = prepare_pass(instances, instanceCount);
     if (!s) return 0;
     diagRecordDyn(size, lightSpace16);
-    if (!record_pass(s, s->fb.get(), size, lightSpace16, biasFactor, biasUnits)) return 0;
+    s->pendingDyn.valid = true;
+    s->pendingDyn.size = size;
+    std::memcpy(s->pendingDyn.lightSpace, lightSpace16, sizeof(s->pendingDyn.lightSpace));
+    s->pendingDyn.biasFactor = biasFactor;
+    s->pendingDyn.biasUnits = biasUnits;
     g_health.vkDraws = 1;
     g_health.totalUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
-    static bool s_firstOk = false;
-    if (!s_firstOk) {
-        vlog("first VK shadow map recorded: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
-             instanceCount, g_health.typeRuns, (void*)s->depthResource.view.get());
-        s_firstOk = true;
-    }
-    g_dynShadowReadyThisFrame = true;
     return 0u;
 }
 
@@ -1277,8 +1284,21 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
 extern "C" void mc2_vk_shadow_island_submit_frame() {
     ShadowIsland* s = parkedIsland();
     if (!s || !s->recording) return;
-    s->recording = false;
     VkCommandBuffer cb = s->cbuf[s->parity];
+    // The single dynamic map is recorded only when a receiver would otherwise have no dynamic shadow at all.
+    if (s->pendingDyn.valid && !(g_csmArrayReadyThisFrame && g_csmFullMapReadyThisFrame)) {
+        const auto& d = s->pendingDyn;
+        if (record_pass(s, s->fb.get(), d.size, d.lightSpace, d.biasFactor, d.biasUnits)) {
+            g_dynShadowReadyThisFrame = true;
+            static bool s_firstOk = false;
+            if (!s_firstOk) {
+                vlog("first VK dynamic shadow map recorded (no cascades this frame): instCount=%u view=%p.", s->stagedInstanceCount, (void*)s->depthResource.view.get());
+                s_firstOk = true;
+            }
+        }
+    }
+    s->pendingDyn.valid = false;
+    s->recording = false;
     if (s->passCount == 0) return;   // every pass declined: nothing to submit, the products stay not-ready
     auto fail = [&](const char* reason) {
         setFallback(reason);
