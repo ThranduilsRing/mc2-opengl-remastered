@@ -12251,6 +12251,13 @@
    "count": 1
   },
   {
+   "tag": "VK_SHADOW_MECH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 10
+  },
+  {
    "tag": "VK_SHARED_SCENE_COLOR",
    "ver": -1,
    "stream": "stderr",
