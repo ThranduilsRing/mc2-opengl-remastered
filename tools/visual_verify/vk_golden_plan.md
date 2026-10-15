@@ -1,0 +1,91 @@
+<!-- doc-status: current | reviewed:2026-10-15 -->
+# VK golden set: blessing plan and the 14 refused regions
+
+WHAT: how the Vulkan golden set is blessed from Vulkan captures, and what happens to the 14 regions the GL 1080p set refused.
+WHY: GL deletion step 1 (the capture and tooling GL arms, `.claude/cleanup/gl-retirement-inventory-2026-10-15.md` sections 11-13) needs a
+golden that was drawn by VK. Today `render_resolution.CURRENT_GOLDEN` = `golden-e9e3f19d6-1080p`, blessed from three GL runs
+(`capture_env.backend = {requested: gl, drew: [gl]}`); every later VK candidate graded against it measures the GL/VK gap, not a regression.
+
+## 1. The 14 refused regions of `golden-e9e3f19d6-1080p`
+
+Source: `golden.json` `refused` (13 unstable by the all-pairs rule, 1 degenerate crop). The three GL runs are `A:/Games/mc2-lane2/.claude/l2cap/gold1080-r{1,2,3}`
+(exe e9e3f19d6, frozen animation, deterministic clock). Viewed 2026-10-15 (lane 7): no run is shifted against another (phase correlation 0,0 on every
+pose), the camera record `cap_pos` is identical in all three, and two poses (mc2_01 205644 day, mc2_10 204523 night top-down) have a mean pixel difference of 0.00 across the runs. On `mc2_10_saved_204753`
+the r1/r3 difference is one large floodlight pool on the apron that changes colour and extent (warm in r1, white in r3) while geometry and
+camera agree. Cause class of the 12 night-light refusals: **the GL night light feed is not run-to-run deterministic under
+`MC2_SMOKE_FREEZE_ANIM` + the deterministic clock** (which lights reach the pool/cluster set, or their intensity phase, differs between launches). Not proven
+which: the freeze gate covers mech gait and building animation frames only (`mclib/anim_freeze.h`); light selection, light animation and the
+water clock are outside it.
+
+Decision key: **keep** = the region stays in its manifest unchanged and is expected to be refused again (a declared hole of the VK set until its
+precondition lands); **re-bless** = blessed into the VK set (rect unchanged unless stated) once its precondition lands; **retire** = deleted from
+the region manifest in the commit that blesses the VK set.
+
+| # | pose / region | sev | refused because (worst pair) | decision | reason / precondition |
+|---|---|---|---|---|---|
+| 1 | mc2_05_205843 / light_pools_feathered | med | unstable, 17.3% changed (all three pairs) | re-bless | night pool shape is the region's subject; needs P1 + parity row 1 |
+| 2 | mc2_10_204611 / horizon_white_billboards | high | unstable, 11.1% (r1/r2) | retire | its check describes a GL-era defect (fullbright white impostors); a golden of it would freeze the defect; the horizon is covered by far_water_surface and the poses 204523 / 212019 |
+| 3 | mc2_10_204611 / far_water_surface | med | unstable, 23.6% on all pairs | keep | the water surface animates on its own clock, which no capture gate freezes; re-bless only if P2 is built |
+| 4 | mc2_10_204753 / light_clusters_census | med | unstable, 44.8% (r1/r3) | re-bless | the viewed floodlight-pool case; P1 + row 1 |
+| 5 | mc2_10_204753 / runway_edge_lights | med | unstable, 56.0% (r1/r3) | re-bless | edge-light sprites + pools; P1 + rows 1, 5 |
+| 6 | mc2_10_204753 / pad_outline_fence | low | unstable, 8.9% (r*/r3 only; r1 = r2) | retire | its check says the stipple is a legit asset, not a defect; it sits under the varying pool and adds nothing light_clusters_census does not grade |
+| 7 | mc2_10_204753 / lamp_cones | low | unstable, 64.2% (r1/r3) | re-bless | lamp-base cone anchoring is a live VK question (row 1); P1 |
+| 8 | mc2_10_204907 / distant_ridge_base | crit | degenerate: 1 colour, luma 0.0 | re-bless, rect re-authored | at 1080p the 4K-referenced rect lands on the black off-map slab above the ridge (viewed); move it onto the lit ridge-top compound (about x 1300-1600, y 400-520 of 1920x1080) and keep the "angle B goes all-dark" sentinel |
+| 9 | mc2_10_204907 / spotlight_towers | med | unstable, 29.2% (r2/r3) | re-bless | P1 + row 1 |
+| 10 | mc2_10_204907 / near_base_lighting | low | unstable, 4.6% (r2/r3; r1/r2 0.67%) | re-bless | marginal; P1 is expected to clear it |
+| 11 | mc2_10_212258 / runway_pad_edges_blend | high | unstable, 13.2% (r*/r3 only; r1 = r2) | re-bless | pad edge shape is what VK rows 5 and 6 change; the noise is the pool over the pad; P1 + rows 5, 6 |
+| 12 | mc2_10_212258 / runway_grid_complete | med | unstable, 19.8% (r2/r3) | re-bless | runway markings = row 6; P1 + row 6 |
+| 13 | mc2_10_212258 / cement_tile_seams | low | unstable, 8.2% (r2/r3) | retire | its check grades an art-style seam, low severity, overlapping regions 11-12 |
+| 14 | mc2_10_212258 / light_pools_sourcing | low | unstable, 26.9% (r2/r3) | re-bless | sourceless-pool sentinel; P1 + row 1 |
+
+Totals: **keep 1, retire 3, re-bless 10** (one of them with a new rect). The 25 regions the GL set did bless are all re-blessed from VK runs.
+
+Preconditions named above:
+- **P1, night light determinism.** Two same-exe launches of a night pose under the capture env must agree on the light set. Proof: three VK
+  captures of `mc2_10_saved_204753`, all pairs under every region threshold. Owner: lane 1 (sim/determinism) for the light producer, lane 2 for
+  the VK pool consumer. Until P1 lands, a VK bless refuses the same 9 light regions and that is acceptable: they are declared holes, not coverage.
+- **P2, water clock under the freeze** (optional): a capture-mode water time pinned to the sim frame. No lane owns it; without it region 3 stays
+  a declared hole.
+- **Parity rows** (`.claude/VK-PARITY-GAPS.md`): a region is not re-blessed from VK while a row that changes its pixels is MISSING or PARTIAL,
+  or the VK golden would freeze the gap. Open rows touching golden poses: 1 (pools), 2 (mech shading), 4 (shadow fade), 5 (night apron), 6 (overlays),
+  7 (shore edge), 9 / 14 (terrain relief, cliff), 17 (static building map), 20 (option paths).
+
+## 2. Blessing the VK set
+
+| item | value | why |
+|---|---|---|
+| poses | the 10 poses vendored in `golden-e9e3f19d6-1080p/poses` (mc2_01 205644, mc2_05 205843, mc2_10 204523 / 204611 / 204753 / 204907 / 205952 / 212019 / 212140 / 212258) | same coverage as the GL set, so the region manifests carry over; day and night are both present |
+| added pose | the mc2_10 night runway low bookmark lane 2 added for rows 5 and 15, once it has a region manifest | the GL poses sit too high to show lit windows and fixtures (row 15) |
+| resolution | 1920x1080 (`render_resolution.PINNED_WIDTH/HEIGHT`, applied by `run_visual_capture.py`) | the tier1 and golden size; `check-capture-resolution.py --current` enforces it |
+| backend | `--env MC2_RENDER_BACKEND=vulkan --env MC2_VK_SHARED_GBUFFER=1` (the umbrella) | the release path; `capture_run.json` records `requested` and `drew`, readback `vk_present` |
+| animation | `--env MC2_SMOKE_FREEZE_ANIM=1`, deterministic clock on (the default), trigger frame 431, settle 30 | owner ruling: captures run with animations frozen |
+| options | the 17 options.cfg render options at their defaults; recorded per run; no `--vary` | `bless.py` refuses runs with differing or missing options |
+| validation | off for the capture runs | the validation layer is proven in the VK tier1 (zero errors); capture runs keep their timing |
+| runs | three separate launches, lease-serialized, one install, one exe | the three-run all-pairs rule (`MIN_RUNS`) |
+| noise floor | per region the manifest `thresholds`; the all-pairs grade is the floor; a region that exceeds its own threshold run to run is refused, never loosened | thresholds are drift budgets for a candidate, so they must hold run to run |
+
+One-command bless (new in this lane: `bless.py --backend`): it refuses unless every run asked for the named backend, was drawn by it alone and
+declared `MC2_SMOKE_FREEZE_ANIM=1` plus the backend's own env (vulkan: the umbrella pair), and records `golden.json` `backend`.
+
+```
+py -3 tools/visual_verify/capture.py --install <lane install> --bookmarks all --out .claude/l2cap/vkgold-r1 \
+    --env MC2_RENDER_BACKEND=vulkan --env MC2_VK_SHARED_GBUFFER=1 --env MC2_SMOKE_FREEZE_ANIM=1      (then r2, r3)
+py -3 tools/visual_verify/bless.py --backend vulkan --run .claude/l2cap/vkgold-r1 --run .claude/l2cap/vkgold-r2 \
+    --run .claude/l2cap/vkgold-r3 --to tests/visual/goldens/golden-<exe sha12>-vk-1080p
+```
+
+Acceptance before the set becomes current: (1) `verify.py --golden <new set>` on run r2 = every blessed region PASS; (2) a person views every
+pose of r1 next to the same-exe GL capture (`tools/visual_verify/ab.py`) and the montage is committed under `.claude/l2cap/montages/`;
+(3) the refused list equals the keep column above plus anything new, each with a reason; (4) the three retired regions are deleted from
+`tools/visual_verify/regions/*.json` and region 8 re-authored in the same commit; (5) `render_resolution.CURRENT_GOLDEN` names the VK set;
+(6) both GL sets get a `RETIRED.md` row (`golden-e9e3f19d6-1080p`, `reset-50331d5`), deleted with the GL arms.
+
+Order: re-author region 8 and retire 2, 6, 13 (manifest edit, no capture) -> P1 -> the parity rows touching each pose -> three VK runs -> bless
+-> acceptance -> GL deletion step 1. An interim VK set may be blessed before every row closes, under its own name and never as CURRENT_GOLDEN,
+to give the GL-arm removal a VK reference; the final set is re-blessed after the last row closes.
+
+## 3. Follow-ups (not done here)
+- `verify.py` does not compare the golden's backend with the candidate's; add a refusal (with an explicit cross-backend switch for the
+  oracle use) when the VK set becomes current.
+- `capture_ab.py` uses two GL arms as its noise floor; switch to two VK arms (inventory section 12).
+- `tests/callers.json` is stale at the lane base 06f3e7296 (`tools/callers.py --check`); regenerate at merge.

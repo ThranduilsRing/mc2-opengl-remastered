@@ -177,6 +177,34 @@ MIN_RUNS = 3
 MIN_UNIQUE_COLORS = 8
 MIN_LUMA_STDDEV = 0.5
 
+# A golden that names its backend (--backend) is the reference for that backend only: the VK set replaces the GL set before GL is deleted
+# (tools/visual_verify/vk_golden_plan.md). Each backend lists the environment its runs must have declared, beside the animation freeze that
+# every named-backend golden needs (an unfrozen night pose is the run-to-run noise that refused 13 regions of the GL 1080p set).
+BACKEND_DECLARED_ENV = {
+    "gl": {},
+    "vulkan": {"MC2_RENDER_BACKEND": "vulkan", "MC2_VK_SHARED_GBUFFER": "1"},
+}
+FREEZE_ENV = {"MC2_SMOKE_FREEZE_ANIM": "1"}
+
+
+def require_backend(caps: "list[dict]", backend: str) -> None:
+    """SystemExit unless every capture manifest in `caps` asked for `backend`, was drawn by it alone and declared its environment."""
+    if backend not in BACKEND_DECLARED_ENV:
+        raise SystemExit(f"[vv-bless] unknown backend {backend!r} (known: {', '.join(sorted(BACKEND_DECLARED_ENV))})")
+    want_env = dict(FREEZE_ENV, **BACKEND_DECLARED_ENV[backend])
+    for i, cap in enumerate(caps, start=1):
+        rec = cap.get("backend") or {}
+        drew = rec.get("drew")
+        drew = [drew] if isinstance(drew, str) else list(drew or [])
+        if rec.get("requested") != backend or drew != [backend]:
+            raise SystemExit(f"[vv-bless] refusing to bless a {backend} golden: run {i} asked for {rec.get('requested')!r} and was drawn by "
+                             f"{drew or 'an unrecorded backend'}; only frames drawn by {backend} alone are evidence for it.")
+        declared = cap.get("declared_env") or {}
+        missing = [f"{k}={v}" for k, v in want_env.items() if str(declared.get(k)) != v]
+        if missing:
+            raise SystemExit(f"[vv-bless] refusing to bless a {backend} golden: run {i} did not declare {', '.join(missing)}; "
+                             f"recapture with capture.py --env for each.")
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -259,7 +287,7 @@ def _load_runs(run_dirs: "list[Path]") -> "list[dict]":
     return runs
 
 
-def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dict:
+def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS, named_backend: "str | None" = None) -> dict:
     run_dirs = [Path(r) for r in run_dirs]
 
     # ---- R1: three-run all-pairs rule, enforced before anything is written ----
@@ -329,6 +357,8 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
         if backend.get("requested") and drew and drew != [backend["requested"]]:
             raise SystemExit(f"[vv-bless] refusing to bless: run {i} asked for the {backend['requested']} backend and {drew} drew it; "
                              f"its frames are not evidence for the backend a golden names.")
+    if named_backend is not None:
+        require_backend([r["cap"] for r in runs], named_backend)
 
     to_dir = Path(to_dir).resolve()
     to_dir.mkdir(parents=True, exist_ok=True)
@@ -642,6 +672,8 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
         "declared_env": cap0.get("declared_env") or {},
         "backend": cap0.get("backend") or {},
     }
+    # The backend this golden is the reference for: the named one, else what run 1 asked for (a pre-flag golden records only capture_env).
+    golden["backend"] = named_backend or (cap0.get("backend") or {}).get("requested")
     golden["gate_state"] = {
         "source": "capture manifests",
         "effective_mc2_env": sorted(env_keys),
@@ -661,13 +693,17 @@ def main(argv=None) -> int:
                     help="golden dir (e.g. tests/visual/goldens/v0.5.1-baseline)")
     ap.add_argument("--min-runs", type=int, default=MIN_RUNS,
                     help=argparse.SUPPRESS)
+    ap.add_argument("--backend", choices=sorted(BACKEND_DECLARED_ENV), default=None,
+                    help="the backend this golden is the reference for: every run must have asked for it, been drawn by it alone and "
+                         "declared MC2_SMOKE_FREEZE_ANIM=1 plus the backend's own env (vulkan: the umbrella pair); recorded as golden.json `backend`")
     args = ap.parse_args(argv)
 
-    golden = bless([Path(r) for r in args.runs], Path(args.to), args.min_runs)
+    golden = bless([Path(r) for r in args.runs], Path(args.to), args.min_runs, named_backend=args.backend)
     kb = golden["total_crop_bytes"] / 1024.0
     print(f"[vv-bless] blessed {golden['n_regions']} region crops "
           f"({kb:.1f} KB) from {golden['capture_env']['runs']} runs "
           f"-> {args.to}")
+    print(f"[vv-bless] backend: {golden['backend']}")
     for r in golden["refused"]:
         print(f"[vv-bless] REFUSED {r['bookmark']}/{r['region']}: {r['reason']}")
     bp = (golden.get("identity") or {}).get("binary_provenance") or {}
