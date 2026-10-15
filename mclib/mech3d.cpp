@@ -191,14 +191,6 @@ void Mech3DAppearance::destroy (void)
 		delete rightArm;
 	rightArm = nullptr;
 
-#ifdef _DEBUG
-	if (logFile )
-	{
-		delete logFile;
-		logFile = NULL;
-	}
-
-#endif
 
 	for (long i=0;i<MAX_DUST_POOFS;i++)
 	{

@@ -297,16 +297,14 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 
 		#ifdef _DEBUG
 		if (numCells > MAX_STEPS_PER_MOVEPATH) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("longpath.dbg");
+			File pathDebugFile;
+			pathDebugFile.create("longpath.dbg");
 			char s[512];
 			mc2::fmt::to_buf(s, "Path Too Long: {:d} steps (Max = {:d}) (please save longpath.dbg file:)", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
-			pathDebugFile->writeString(s);
-			pathDebugFile->writeString("\n\n");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
+			pathDebugFile.writeString(s);
+			pathDebugFile.writeString("\n\n");
+			writeDebug(&pathDebugFile);
+			pathDebugFile.close();
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 		#endif
@@ -321,15 +319,13 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 
 			#ifdef _DEBUG
 			if (maxSteps > -1) {
-				File* pathDebugFile = new File;
-				pathDebugFile->create("longpath.dbg");
+				File pathDebugFile;
+				pathDebugFile.create("longpath.dbg");
 				char s[512];
 				mc2::fmt::to_buf(s, "New Longest Path: {:d} steps (Max = {:d})\n\n", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
-				pathDebugFile->writeString(s);
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
+				pathDebugFile.writeString(s);
+				writeDebug(&pathDebugFile);
+				pathDebugFile.close();
 			}
 			#endif
 
@@ -683,16 +679,14 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 
 #ifdef _DEBUG
 		if (numCells > MAX_STEPS_PER_MOVEPATH) {
-			File* pathDebugFile = new File;
-			pathDebugFile->create("longpath.dbg");
+			File pathDebugFile;
+			pathDebugFile.create("longpath.dbg");
 			char s[512];
 			mc2::fmt::to_buf(s, "Path Too Long: {:d} steps (Max = {:d}) (please save longpath.dbg file:)", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
-			pathDebugFile->writeString(s);
-			pathDebugFile->writeString("\n\n");
-			writeDebug(pathDebugFile);
-			pathDebugFile->close();
-			delete pathDebugFile;
-			pathDebugFile = nullptr;
+			pathDebugFile.writeString(s);
+			pathDebugFile.writeString("\n\n");
+			writeDebug(&pathDebugFile);
+			pathDebugFile.close();
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
@@ -707,15 +701,13 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 
 #ifdef _DEBUG
 			if (maxSteps > -1) {
-				File* pathDebugFile = new File;
-				pathDebugFile->create("longpath.dbg");
+				File pathDebugFile;
+				pathDebugFile.create("longpath.dbg");
 				char s[512];
 				mc2::fmt::to_buf(s, "New Longest Path: {:d} steps (Max = {:d})\n\n", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
-				pathDebugFile->writeString(s);
-				writeDebug(pathDebugFile);
-				pathDebugFile->close();
-				delete pathDebugFile;
-				pathDebugFile = nullptr;
+				pathDebugFile.writeString(s);
+				writeDebug(&pathDebugFile);
+				pathDebugFile.close();
 			}
 #endif
 			path->target = target;
