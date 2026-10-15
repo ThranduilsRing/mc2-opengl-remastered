@@ -5,6 +5,21 @@
 #include "doctest.h"
 
 #include "fit_number.h"
+#include "inifile.h"
+
+#include <cstring>
+
+namespace
+{
+// The editor extracts the FitIniFile bodies from inifile.cpp at configure time, so inifile.cpp keeps its own copy until the editor
+// includes fit_number.h; this probe keeps the two copies in lockstep.
+struct FitProbe : FitIniFile
+{
+	using FitIniFile::textToFloat;
+	using FitIniFile::textToLong;
+	using FitIniFile::textToULong;
+};
+}
 
 TEST_SUITE("FitNumber")
 {
@@ -40,6 +55,21 @@ TEST_CASE("plain values read as before")
 	char hex[] = "0x1F";
 	CHECK(mc2::fit::textToULong(hex) == 31ul);
 	CHECK(mc2::fit::textToFloat("2.5") == doctest::Approx(2.5f));
+}
+
+TEST_CASE("FitIniFile reads every pinned case as the shared readers do")
+{
+	const char* cases[] = { "7 // 0xff", "0x-1", "0X16", "42", "0x1F", "-12", "0xZZ", "2.5" };
+	FitProbe fit;
+	for (const char* c : cases)
+	{
+		char a[32], b[32];
+		strcpy(a, c); strcpy(b, c);
+		CHECK(fit.textToLong(a) == mc2::fit::textToLong(b));
+		strcpy(a, c); strcpy(b, c);
+		CHECK(fit.textToULong(a) == mc2::fit::textToULong(b));
+		CHECK(fit.textToFloat(c) == mc2::fit::textToFloat(c));
+	}
 }
 
 } // TEST_SUITE("FitNumber")
