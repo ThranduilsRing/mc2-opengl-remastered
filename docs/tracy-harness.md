@@ -80,9 +80,11 @@ recorder.
 | `gl` | (default backend) | the OpenGL frame |
 | `vk` | `MC2_RENDER_BACKEND=vulkan`, `MC2_VK_SHARED_GBUFFER=1`, `MC2_VK_SHADOW_INTEROP=0` | the Vulkan present path + shared-gbuffer island umbrella, the user's real config |
 
-The `vk` arm reflects the user's shipping config (backend + umbrella, shadow
-interop OFF). Override per-run with `--env KEY=VAL` (e.g.
-`--env MC2_VK_SHADOW_INTEROP=1` to measure the shadow island).
+The `vk` arm reflects the user's former config (backend + umbrella, shadow
+interop OFF). Since 2026-10-15 the VK shadow producers are ON by default under
+the umbrella (`MC2_VK_SHADOW_INTEROP` is now a kill switch), so this arm measures
+the frame without shadows; `--env MC2_VK_SHADOW_INTEROP=1` measures the default
+frame (the tool's own `=0` default is `tools/tracy_capture_compare.py`, not changed here).
 
 > **Scope note:** the VK interop islands (water/shadow/terrain) have **no Tracy
 > zones**. Their per-island timings come from `[VK_*_PERF]` log receipts parsed

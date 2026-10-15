@@ -6518,18 +6518,6 @@
    "new_array": 0,
    "owners": []
   },
-  "VulkanContext": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_context.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "WINDOW": {
    "delete": 2,
    "delete_array": 0,

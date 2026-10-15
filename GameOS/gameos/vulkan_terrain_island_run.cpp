@@ -174,7 +174,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // matNormalArray actually imported (else the FS uses the macro-slope-only
     // normal — still a big win over flat-up, and never a hole).
     u.detailEnabled  = (feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
-    u.detailReady    = s->matNormalReady ? 1 : 0;
+    // 0: not imported, 1: imported, 2: imported and carrying the cliff layer (layer 5), which the cliff material samples.
+    u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;

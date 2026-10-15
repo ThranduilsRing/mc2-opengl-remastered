@@ -41,6 +41,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <vector>
 
 namespace mc2vk {
@@ -63,11 +64,12 @@ void profileLog(std::string_view line) {
     std::fflush(stderr);
 }
 
-// The single process-wide shared context. It is heap-allocated and never freed: a static-duration object would run destroy() (island teardown, light
-// feed) during static destruction, when the other process-wide owners it depends on may already be gone. The explicit destroy() at engine shutdown is the
-// only teardown; a process that exits any other way leaves the device to the driver, as the OS reclaims it.
+// The single process-wide shared context. It is heap-allocated and deliberately released from its unique_ptr at birth, so no destructor of any duration
+// ever runs: a static-duration object would run destroy() (island teardown, light feed) during static destruction, when the other process-wide owners it
+// depends on may already be gone. The explicit destroy() at engine shutdown is the only teardown; a process that exits any other way leaves the device
+// to the driver, as the OS reclaims it.
 VulkanContext& engineContext() {
-    static VulkanContext* const context = new VulkanContext;
+    static VulkanContext* const context = std::make_unique<VulkanContext>().release();
     return *context;
 }
 

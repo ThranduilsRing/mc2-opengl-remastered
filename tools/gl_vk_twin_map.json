@@ -10,6 +10,7 @@
   "screen_shadow_static": {"gl": ["shadow_screen"], "why": "screen_shadow_static.frag header: static-only port of shaders/shadow_screen.frag"},
   "shadow_debug_overlay": {"gl": ["shadow_debug"], "why": "VK shadow debug overlay for the GL shadow_debug pass"},
   "shadow_prop": {"gl": ["shadow_static_prop", "shadow_instanced"], "why": "shadow_prop.vert header: reproduces shaders/shadow_static_prop.vert; .frag matches shadow_instanced.frag"},
+  "shadow_prop_alpha": {"gl": ["shadow_static_prop"], "why": "shadow_prop_alpha header: the alpha-tested variant of shaders/shadow_static_prop.* (MC2_SHADOW_PROP_ATLAS)"},
   "terrain_decal_tier1": {"gl": ["decal", "terrain_overlay"], "why": "terrain_decal_tier1.frag header: port of shaders/decal.frag; VS shared with terrain_overlay.vert"},
   "terrain_overlay_tier1": {"gl": ["terrain_overlay"], "why": "terrain_overlay_tier1 header: port of shaders/terrain_overlay.*"},
   "terrain_tier1": {"gl": ["terrain_lod_chunk", "gos_terrain"], "why": "terrain_tier1.vert header: port of terrain_lod_chunk.vert; terrain_tier1.frag ports gos_terrain.frag (glsl_port_diff lodNear)"},

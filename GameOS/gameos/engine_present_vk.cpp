@@ -1992,19 +1992,19 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                             0, 1, &s.compositeSet, 0, nullptr);
     float pc[16] = {
         exposure,
-        1.0f / (float)s.imgW,
-        1.0f / (float)s.imgH,
+        1.0f / static_cast<float>(s.imgW),
+        1.0f / static_cast<float>(s.imgH),
         fxaaEnabled ? 1.0f : 0.0f,
         fxaaSubpix,
         fxaaEdgeThreshold,
         fxaaEdgeThresholdMin,
         casEnabled ? 1.0f : 0.0f,
-        (float)viewMode,
+        static_cast<float>(viewMode),
         lowLightGain,
         lowLightTint ? lowLightTint[0] : 0.7f,
         lowLightTint ? lowLightTint[1] : 1.0f,
         lowLightTint ? lowLightTint[2] : 0.6f,
-        (float)engineIdxBase,
+        static_cast<float>(engineIdxBase),
         casSharpness,
         static_cast<float>(tonemapMode)
     };

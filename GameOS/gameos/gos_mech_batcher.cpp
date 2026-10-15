@@ -96,6 +96,8 @@ bool                         s_vkMechFrameReady        = false;
 // s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
 // Refreshed by uploadMechGeometryVbo(); cleared with the staging on map load.
 std::vector<uint8_t>         s_vkVboNativeCopy;
+// Bumped on every rebuild of that copy, so a consumer that keeps its own copy of the geometry (the VK shadow island) re-uploads exactly when it changed.
+uint32_t                     s_vkVboNativeGen = 0;
 #endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).

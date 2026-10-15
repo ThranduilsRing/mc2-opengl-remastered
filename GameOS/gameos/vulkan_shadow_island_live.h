@@ -188,12 +188,17 @@ unsigned int mc2_vk_shadow_island_run(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits);
 
+// Ends the frame's shadow recording and submits it, once, with no wait on the GPU. mc2_vk_shadow_island_run / _run_csm_array_layer / _run_csm_fullmap only
+// RECORD their passes into the frame's command buffer; this is called after the last of them and before any consumer reads a product (the accessors below
+// report a product ready only after it). A frame whose passes all declined submits nothing.
+void mc2_vk_shadow_island_submit_frame();
+
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side accessors for a same-process, same-device
 // VK consumer (the terrain island) to bind the shadow island's depth image directly —
 // no GL round-trip at all (neither the GL copy-to-VK-image the terrain island does
 // today, nor a GL sample). Valid ONLY for the frame just produced by
 // mc2_vk_shadow_island_run() (mc2_vk_shadow_island_dyn_shadow_ready()!=0 iff that
-// call produced+signalled+fenced this frame). The returned view/sampler are owned by
+// call recorded this frame and the frame was submitted; consumers run later on the same queue and the render pass dependencies order their reads). The returned view/sampler are owned by
 // the shadow island; the caller must NOT destroy them. Opaque void* to keep this
 // header GL/Vulkan-type-free for non-VK TUs; real type is VkImageView / VkSampler,
 // reinterpret_cast in the (VK-only) consumer TU. Same VkDevice as the terrain island

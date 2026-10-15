@@ -223,7 +223,8 @@ bool make_buffer(gosPostProcess::VkPostSsaoNative* s, mc2vk::OwnedBuffer& out, V
 // Releases the owned objects in reverse declaration order (the moved-to local's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostSsaoNative* s) {
     if (!s) return;
-    if (s->device != VK_NULL_HANDLE) mc2vk::getOrCreateEngineVulkanContext().waitIdle("post_ssao_destroy");
+    // A non-creating check: the deleter must run before the engine context is destroyed (gosPostProcess::destroy), and must never re-create it.
+    if (s->device != VK_NULL_HANDLE && mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().waitIdle("post_ssao_destroy");
     { auto dying = std::move(*s); (void)dying; }
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostSsaoNative{};

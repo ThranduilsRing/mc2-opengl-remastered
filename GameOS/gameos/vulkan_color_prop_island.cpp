@@ -258,7 +258,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint32_t      albedoLayers = 0;
     VkDeviceSize  layerCapBytes = 0;
     VkDeviceSize  hotCapBytes = 0;
-    bool          hotReady = false;         // the hot-colour table was uploaded this map
+    uint32_t      mapGeneration = 0;        // bumped at every map change; consumers of the albedo arrays rebind on a change
+    bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
     // VK-P11 STATIC-PROP MATERIAL alpha-ON (class 1): second copy-once array import +
@@ -785,7 +786,8 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(n * sizeof(float));
     bool rebound = false;
     if (s->hotBuf && bytes > s->hotCapBytes) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");   // a one-time stall: the placeholder grows into the real table on the first upload   // the old table may still be read by an in-flight submit
+        // The placeholder grows into the real table on the first upload (a one-time stall); the old table may still be read by an in-flight submit.
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");
         s->hotBuf.reset();
     }
     if (!s->hotBuf) {
@@ -1283,6 +1285,19 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->geomUploaded = false;
     s->packets.clear();
     s->typeRuns.clear();
+    // The albedo arrays and the hot-colour table belong to the map too: the next map's feed imports its own (the island itself outlives the map).
+    s->materialReady = false;
+    s->materialReadyOn = false;
+    s->hotReady = false;
+    ++s->mapGeneration;
+}
+
+extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation) {
+    const ColorPropIsland* s = parkedIsland();
+    if (!view || !generation || !s || !s->materialReadyOn || !s->albedoOnView) return 0;
+    *view = reinterpret_cast<void*>(s->albedoOnView.get());
+    *generation = s->mapGeneration;
+    return 1;
 }
 
 extern "C" int mc2_vk_color_prop_island_enabled() {
@@ -1339,7 +1354,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
             bool changed = false;
-            // The night emission colours of the type table, once per island lifetime (like the material arrays).
+            // The night emission colours of the type table, once per map (like the material arrays).
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
                 if (cp_upload_hot_table(s, std::span<const float>(mf.typeHotColors, static_cast<size_t>(mf.typeCount) * 12u))) {
                     s->hotReady = true;

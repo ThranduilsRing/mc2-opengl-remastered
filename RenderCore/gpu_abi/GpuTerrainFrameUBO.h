@@ -59,7 +59,7 @@ struct TerrainFrameUBO {
     // VK-TERRAIN-DETAIL sub-slice: terrain normal perturbation (macro slope + material
     // detail normal) so grass reads with NdotL relief like GL. LOCKSTEP with the frag.
     int32_t detailEnabled;   // MC2_VK_TERRAIN_DETAIL gate (requires lighting)
-    int32_t detailReady;   // matNormalArray 2D_ARRAY imported+bound
+    int32_t detailReady;   // matNormalArray 2D_ARRAY imported+bound (2: and it carries the cliff layer)
     float   nfhStrength;   // terrainNormalsFromHeightStrength (GL default 1.0)
     float   detailTiling;   // detailNormalTiling.x (GL default 1.0)
     float   detailStrength;   // detailNormalStrength.x (GL default 1.0)

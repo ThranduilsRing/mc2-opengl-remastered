@@ -776,6 +776,9 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->dynShadowDirect = false;
     if (!feed.lightingEnabled || !feed.dynShadowsEnabled) return false;
 
+    // The cascades serve the dynamic shadow whenever the island produced both of them this frame; the single map is then neither produced nor copied.
+    if (mc2_vk_shadow_island_csm_array_ready() && mc2_vk_shadow_island_csm_fullmap_ready()) return false;
+
     // Direct path: the shadow island already produced+fenced a VK-native depth image
     // this exact frame (same-queue, already retired -- see accessor doc comment).
     if (mc2_vk_shadow_island_dyn_shadow_ready()) {
