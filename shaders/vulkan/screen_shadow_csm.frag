@@ -156,4 +156,6 @@ void main()
     else if (u.enableDynamicShadows == 1 && u.propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))
         shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.4));
     FragColor = vec4(shadow, shadow, shadow, 1.0);
+    if (isStaticProp && u.propShadowReceive != 0)
+        FragColor = vec4(step(0.0, objN_stuff), 1.0);
 }

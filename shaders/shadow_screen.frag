@@ -365,4 +365,6 @@ void main()
 
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);
+    if (isStaticProp && propShadowReceive != 0)
+        FragColor = vec4(step(0.0, objN_stuff), 1.0);
 }
