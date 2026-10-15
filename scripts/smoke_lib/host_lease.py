@@ -282,11 +282,11 @@ def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[fl
     ttl_s = min(max(ttl_s, 1.0), MAX_BATCH_TTL_S)
     flags = 0x00000200 | 0x01000000 if sys.platform == "win32" else 0     # new process group, break away from the caller's job
     argv = [sys.executable, str(Path(__file__).resolve()), "_holder", "--tag", tag, "--ttl", str(ttl_s)]
-    kw = console_child.child_kwargs(redirected=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     try:
-        proc = subprocess.Popen(argv, **dict(kw, creationflags=kw.get("creationflags", 0) | flags))
+        proc = subprocess.Popen(argv, **console_child.child_kwargs(redirected=True, creationflags=flags, **quiet))
     except OSError:                                # the caller's job forbids breakaway: the holder then lives as long as that job
-        proc = subprocess.Popen(argv, **kw)
+        proc = subprocess.Popen(argv, **console_child.child_kwargs(redirected=True, creationflags=flags & ~0x01000000, **quiet))
     deadline = time.monotonic() + (timeout_s if timeout_s is not None else float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S))
     last = time.monotonic() - REPORT_EVERY_S + 2.0      # first line only after the holder had time to take a free lease
     while True:

@@ -46,6 +46,9 @@ HARNESS_NOTES = (
     "- `tools/tracy_capture_compare.py capture|baseline|regress|selfcheck|matrix` hold the host lease from before the first child to"
     " after the last; `--warmup-seconds N` adds one unrecorded launch of a freshly copied exe; the vk arm no longer forces"
     " `MC2_VK_SHADOW_INTEROP=0` (engine default; pass `--env` to pin an island).",
+    "- `scripts/parent_watchdog.py` `ParentWatch().gone()`: unbounded polling loops stop when the process that started them exits"
+    " (TaskStop kills the shell, not always its child). Inventory 2026-10-15: no tracked script runs `tail -f`; the two unbounded pollers,"
+    " `tools/dev_shell/watch.py` and the `scripts/game_auto.py` recorder, carry it; every other loop in scripts/ and tools/ is deadline-bounded.",
 )
 
 
