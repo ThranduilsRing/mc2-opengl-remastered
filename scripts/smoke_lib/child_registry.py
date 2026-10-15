@@ -161,15 +161,16 @@ def _record_path(pid: int) -> Path:
     return REGISTRY_DIR / f"{int(pid)}.json"
 
 
-def record(pid: int, exe, role: str = "engine", runner_pid: Optional[int] = None) -> None:
+def record(pid: int, exe, role: str = "engine", runner_pid: Optional[int] = None,
+           lease_holder: Optional[dict] = None) -> None:
     """Remember that THIS process started `pid`. Never raises: bookkeeping must not fail a launch."""
     if "pytest" in sys.modules and REGISTRY_DIR == _DEFAULT_DIR:
-        return      # a test must not write records (fake pids) into the shared directory
+        return
     try:
         REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
         rec = {"pid": int(pid), "exe": _norm(Path(str(exe)).resolve()), "role": role,
                "runner_pid": int(runner_pid if runner_pid is not None else os.getpid()),
-               "create_time": process_create_time(int(pid)), "recorded": time.time()}
+               "create_time": process_create_time(int(pid)), "recorded": time.time(), "lease_holder": lease_holder}
         _record_path(pid).write_text(json.dumps(rec), encoding="utf-8")
     except Exception:
         pass

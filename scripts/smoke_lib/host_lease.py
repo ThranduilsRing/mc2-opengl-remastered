@@ -1,26 +1,10 @@
 # scripts/smoke_lib/host_lease.py
-"""Host-wide engine lease: one lane's harness at a time may have an engine (mc2.exe / EditRel.exe) running on this host.
+"""FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
-WHAT: a process that is about to launch the game holds this lease for the rest of its life. Taking it waits until (1) no other live
-process holds the lease and (2) no game or editor process is running that this process did not start, whatever install it came from.
-The lease file lives at ONE fixed host-global path, outside every worktree and independent of every other harness setting: four lanes
-running the harness from four worktree copies contend for the same file.
-WHY: the deploy-folder lease only serialises two harnesses on the SAME install. Two lanes on different installs (or a lane next to a
-game the owner started) still ran two engines at once, and the second engine's window handling and cursor guard fought the first
-(2026-10-10). A captured frame, a timing or a determinism pair taken while another engine renders is not a measurement.
-WHY the lease never follows the cursor-guard switch: until 2026-10-12 `MC2_CURSOR_GUARD_OFF=1` (the test-tree isolation switch that the
-conftests and check-contracts set, and that lanes export for their smoke shells) also switched this lease off, so three lanes ran three
-engines at once with every runner call passing `--wait-timeout`. Test isolation is a private lease file (`MC2_HOST_LEASE_PATH`), never
-"no lease".
-
-  * default is to WAIT with a countdown line; `wait=False` / `--no-wait` raises HostLeaseBusy at once, naming the holder.
-  * a process that already holds the lease re-enters freely, so a runner that launches several games takes it once.
-  * a lease whose holder pid is dead is taken over (`clear-dead` does the same by hand); a live engine with no live lease holder is
-    never killed here (only `kill_orphans`, which child_registry restricts to provable orphans of a dead run).
-  * off only for the owner: `MC2_HOST_LEASE=off` together with `MC2_OWNER_NO_LEASE=1`; the first without the second is ignored aloud.
-
-CLI: `py -3 -m scripts.smoke_lib.host_lease status | clear-dead` (status exits 0 free, 1 held, 2 held by a dead process);
-`hold --tag X [--ttl S]` ... `release --tag X` keeps one lease across a chain of runs started with MC2_HOST_LEASE_BATCH=X.
+MC2_HOST_GAME_SLOTS selects 1..6 physical cores (default 4); cores 0..1 stay reserved.
+MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
+across a serial chain. Dead holders and tickets recover automatically. Private paths
+isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
 """
 from __future__ import annotations
 
@@ -30,6 +14,7 @@ import json
 import os
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -39,8 +24,7 @@ except ImportError:                       # imported as a top-level module from 
     import bounded_wait                   # type: ignore
     import child_registry                 # type: ignore
 
-#: The one lease file every lane on this host contends for. Fixed on purpose: not under a worktree, not derived from the child
-#: registry directory or any other overridable setting.
+# Slot zero retains the host-global path; the queue and other slots live beside it.
 LEASE_PATH = Path("A:/Games/mc2-opengl/.host_game_lease.json")
 PATH_ENV = "MC2_HOST_LEASE_PATH"          # tests only: a private lease file (the conftests set one per pytest process)
 OFF_ENV = "MC2_HOST_LEASE"                # "off" switches leasing off, owner only (see OWNER_ENV)
@@ -52,6 +36,86 @@ MAX_BATCH_TTL_S = 6 * 3600.0              # the lane cap: no batch outlives a la
 DEFAULT_TIMEOUT_S = 3600.0
 POLL_S = 2.0
 REPORT_EVERY_S = 30.0
+
+def slot_count() -> int:
+    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "4"))
+    if not 1 <= count <= 6:
+        raise ValueError("MC2_HOST_GAME_SLOTS must be between 1 and 6")
+    return count
+
+
+def slot_path(slot: int) -> Path:
+    path = lease_path()
+    return path if slot == 0 else path.with_name(path.stem + f".slot{slot}" + path.suffix)
+
+
+def affinity_mask(slot: int) -> int:
+    if not 0 <= slot < 6:
+        raise ValueError("slot must be between 0 and 5")
+    return 3 << (4 + slot * 2)
+
+
+@contextmanager
+def _queue_lock():
+    path = lease_path().with_suffix(".queue.lock")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as fh:
+        if sys.platform == "win32":
+            import msvcrt
+            if fh.tell() == 0:
+                fh.write(b"0")
+                fh.flush()
+            while True:
+                fh.seek(0)
+                try:
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    time.sleep(0.02)
+        else:
+            import fcntl
+            fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if sys.platform == "win32":
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+
+
+def _records():
+    return [(slot_path(i), _read(slot_path(i))) for i in range(6)]
+
+
+def _ours(rec):
+    return bool(rec and _holder_alive(rec) and (rec.get("pid") == os.getpid() or _batch_member(rec)))
+
+
+def _exclusive(value=None):
+    return os.environ.get("MC2_HOST_LEASE_EXCLUSIVE") == "1" if value is None else value
+
+
+def apply_affinity(proc) -> None:
+    """Pin an engine or its launcher; descendants inherit the core reservation."""
+    records = [rec for _, rec in _records() if _ours(rec)]
+    if not records:
+        return
+    mask = 0
+    for rec in records:
+        mask |= affinity_mask(rec.get("slot", 0))
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.SetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.c_size_t]
+        kernel.SetProcessAffinityMask.restype = wintypes.BOOL
+        if not kernel.SetProcessAffinityMask(int(proc._handle), mask):
+            proc.kill()
+            raise ctypes.WinError(ctypes.get_last_error())
+    elif hasattr(os, "sched_setaffinity"):
+        os.sched_setaffinity(proc.pid, {i for i in range(16) if mask & (1 << i)})
 
 
 class HostLeaseBusy(RuntimeError):
@@ -94,7 +158,8 @@ def disabled(log: Callable[[str], None] = _log_default) -> bool:
 
 def _read(path: Path) -> Optional[dict]:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else None
     except (OSError, ValueError):
         return None
 
@@ -102,12 +167,15 @@ def _read(path: Path) -> Optional[dict]:
 def _holder_alive(rec: Optional[dict]) -> bool:
     if not rec:
         return False
-    pid = int(rec.get("pid", 0))
+    try:
+        pid = int(rec.get("pid", 0))
+    except (TypeError, ValueError):
+        return False
     if not child_registry.pid_alive(pid):
         return False
     created = rec.get("created")
     now = child_registry.process_create_time(pid)
-    return created is None or now is None or int(created) == int(now)      # a reused pid is not the holder
+    return created is None or now is None or str(created) == str(now)
 
 
 def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
@@ -138,13 +206,10 @@ def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
 
 def release() -> None:
     """Give the lease back if this process holds it."""
-    path = lease_path()
-    rec = _read(path)
-    if rec and int(rec.get("pid", 0)) == os.getpid():
-        try:
-            path.unlink()
-        except OSError:
-            pass
+    with _queue_lock():
+        for path, rec in _records():
+            if rec and rec.get("pid") == os.getpid():
+                path.unlink(missing_ok=True)
 
 
 _registered = False
@@ -152,10 +217,7 @@ _registered = False
 
 def holds() -> bool:
     """True when this process already holds the lease, itself or as a member of the live batch named by MC2_HOST_LEASE_BATCH."""
-    if not _registered:
-        return False
-    rec = _read(lease_path()) or {}
-    return rec.get("pid") == os.getpid() or (_batch_member(rec) and _holder_alive(rec))
+    return any(_ours(rec) for _, rec in _records())
 
 
 def _batch_member(rec: Optional[dict]) -> bool:
@@ -181,55 +243,94 @@ def foreign_engines() -> List[Tuple[int, str]]:
 def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None, kill_orphans: bool = False,
             log: Callable[[str], None] = _log_default,
             sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic,
-            scan: Optional[Callable[..., List[Tuple[int, str]]]] = None) -> None:
+            scan: Optional[Callable[..., List[Tuple[int, str]]]] = None, exclusive: Optional[bool] = None) -> None:
     """Hold the host lease, or raise HostLeaseBusy. See the module docstring for the rules."""
     global _registered
     if disabled(log):
         log(f"[host-lease] OFF ({OFF_ENV}=off, owner): {label} launches without the host lease")
         return
+    exclusive = _exclusive(exclusive) or any(word in (label + " " + sys.argv[0]).lower()
+                                            for word in ("perf", "fps", "frame-time", "frametime", "tracy", "capture", "replay"))
+    if holds():
+        if exclusive and not all(_ours(_read(slot_path(i))) for i in range(6)):
+            raise HostLeaseBusy("cannot upgrade a held normal slot; release it before requesting exclusive")
+        return
     scan = scan or foreign_engines
     if timeout_s is None:
         timeout_s = float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S)
-    path = lease_path()
+    path = lease_path().with_suffix(".queue.json")
     deadline = clock() + timeout_s
     last_report = -REPORT_EVERY_S
-    already = (_read(path) or {}).get("pid") == os.getpid()
-    while True:
-        have, other = _try_take(path, label)
-        why = ""
-        if have:
-            foreign = scan()
-            if foreign and kill_orphans:
-                for pid, _img in foreign:
-                    killed, note = child_registry.kill_if_orphan(pid)
-                    log(f"[host-lease] game PID {pid}: {'killed, ' if killed else 'left running, '}{note}")
-                foreign = scan()
-            if not foreign:
-                if not _registered:
-                    atexit.register(release)
-                    _registered = True
-                return
-            why = "a game this process did not start is running: " + ", ".join(f"{img} pid {pid}" for pid, img in foreign)
-        else:
-            why = "the host game lease is held by " + _describe(other)
-        if not wait:
-            if have and not already:
-                release()
-            raise HostLeaseBusy(why + "; another lane is using the engine (rerun without --no-wait to queue)")
-        if clock() >= deadline:
-            if have and not already:
-                release()
-            raise HostLeaseBusy(f"gave up after {timeout_s:.0f} s: {why}")
-        if clock() - last_report >= REPORT_EVERY_S:
-            last_report = clock()
-            log(bounded_wait.countdown_line("host game lease", why, deadline - clock(), timeout_s))
-        sleep(POLL_S)
+    ticket = {"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()), "exclusive": exclusive}
+    granted = False
+    try:
+        while True:
+            with _queue_lock():
+                queue = [t for t in (_read(path) or {}).get("tickets", []) if _holder_alive(t)]
+                if ticket not in queue:
+                    queue.append(ticket)
+                records = _records()
+                for p, rec in records:
+                    if p.exists() and not _holder_alive(rec):
+                        p.unlink(missing_ok=True)
+                live = [(p, r) for p, r in records if _holder_alive(r)]
+                foreign = scan() if queue[0] == ticket else []
+                if foreign and kill_orphans:
+                    for pid, _img in foreign:
+                        killed, note = child_registry.kill_if_orphan(pid)
+                        log(f"[host-lease] game PID {pid}: {note}")
+                    foreign = scan()
+                managed = [r for _, r in live]
+                foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
+                free = [i for i in range(slot_count()) if not slot_path(i).exists()]
+                legacy = any("slot" not in rec for _, rec in live)
+                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free))
+                if eligible:
+                    for i in (range(6) if exclusive else free[:1]):
+                        taken, _ = _try_take(slot_path(i), label)
+                        if not taken:
+                            raise HostLeaseBusy("slot changed during allocation")
+                        rec = _read(slot_path(i))
+                        _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive))
+                    queue.pop(0)
+                _write_record(path, {"tickets": queue})
+                if eligible:
+                    granted = True
+                    if not _registered:
+                        atexit.register(release)
+                        _registered = True
+                    return
+                why = ("a game this process did not start is running: " + ", ".join(f"{img} pid {pid}" for pid, img in foreign)
+                       if foreign else "the host game lease is held by " + _describe(live[0][1] if live else None))
+            if not wait:
+                raise HostLeaseBusy(why + "; queued behind another lane")
+            if clock() >= deadline:
+                raise HostLeaseBusy(f"gave up after {timeout_s:.0f} s: {why}")
+            if clock() - last_report >= REPORT_EVERY_S:
+                last_report = clock()
+                log(bounded_wait.countdown_line("host game lease", why, deadline - clock(), timeout_s))
+            sleep(POLL_S)
+    finally:
+        with _queue_lock():
+            if not granted:
+                for p, rec in _records():
+                    if rec and rec.get("pid") == os.getpid():
+                        p.unlink(missing_ok=True)
+            queue = (_read(path) or {}).get("tickets", [])
+            _write_record(path, {"tickets": [t for t in queue if t != ticket and _holder_alive(t)]})
+
+
+def _managed_engine(pid, holders):
+    rec = child_registry.read_record(pid)
+    if not rec or rec.get("create_time") != child_registry.process_create_time(pid):
+        return False
+    identity = rec.get("lease_holder")
+    return any((identity == {key: holder.get(key) for key in ("pid", "created")} if identity else
+                rec.get("runner_pid") == holder["pid"]) for holder in holders)
 
 
 def ensure_held(label: str) -> None:
     """Hold the lease before an engine launch (re-entrant)."""
-    if holds():
-        return              # our own earlier launches are running; they are not foreign
     acquire(label)
 
 
@@ -245,18 +346,21 @@ def _write_record(path: Path, rec: dict) -> None:
     os.replace(tmp, path)
 
 
-def holder_loop(tag: str, ttl_s: float, *, log: Callable[[str], None] = _log_default, sleep: Callable[[float], None] = time.sleep,
+def holder_loop(tag: str, ttl_s: float, *, exclusive: Optional[bool] = None, log: Callable[[str], None] = _log_default, sleep: Callable[[float], None] = time.sleep,
                 clock: Callable[[], float] = time.time) -> int:
     """Body of the holder process: take the lease (waiting as usual), mark it as batch `tag`, keep it until it is released, taken
     away, or the TTL passes. -> 0 on a normal end, 4 when the lease could not be taken."""
     try:
-        acquire(f"batch {tag}", log=log)
+        acquire(f"batch {tag}", log=log, exclusive=exclusive)
     except HostLeaseBusy as exc:
         log(f"[host-lease] batch {tag}: {exc}")
         return 4
-    path = lease_path()
-    rec = dict(_read(path) or {}, batch=tag, expires=clock() + ttl_s, label=f"batch {tag}")
-    _write_record(path, rec)
+    with _queue_lock():
+        paths = [p for p, r in _records() if _ours(r)]
+        for path in paths:
+            rec = dict(_read(path) or {}, batch=tag, expires=clock() + ttl_s, label=f"batch {tag}")
+            _write_record(path, rec)
+    path = paths[0]
     while True:
         cur = _read(path)
         if not cur or cur.get("pid") != os.getpid() or cur.get("batch") != tag:
@@ -268,7 +372,7 @@ def holder_loop(tag: str, ttl_s: float, *, log: Callable[[str], None] = _log_def
         sleep(POLL_S)
 
 
-def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[float] = None,
+def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[float] = None, exclusive: Optional[bool] = None,
          log: Callable[[str], None] = _log_default) -> int:
     """Start the holder process and wait until it holds the lease. -> its pid. Raises HostLeaseBusy when it cannot."""
     import subprocess
@@ -282,6 +386,8 @@ def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[fl
     ttl_s = min(max(ttl_s, 1.0), MAX_BATCH_TTL_S)
     flags = 0x00000200 | 0x01000000 if sys.platform == "win32" else 0     # new process group, break away from the caller's job
     argv = [sys.executable, str(Path(__file__).resolve()), "_holder", "--tag", tag, "--ttl", str(ttl_s)]
+    if _exclusive(exclusive):
+        argv.append("--exclusive")
     quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     try:
         proc = subprocess.Popen(argv, **console_child.child_kwargs(redirected=True, creationflags=flags, **quiet))
@@ -290,7 +396,7 @@ def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[fl
     deadline = time.monotonic() + (timeout_s if timeout_s is not None else float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S))
     last = time.monotonic() - REPORT_EVERY_S + 2.0      # first line only after the holder had time to take a free lease
     while True:
-        rec = _read(lease_path())
+        rec = next((r for _, r in _records() if r and r.get("pid") == proc.pid), None)
         if rec and rec.get("pid") == proc.pid and rec.get("batch") == tag:
             return proc.pid
         if proc.poll() is not None:
@@ -306,15 +412,12 @@ def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[fl
 
 def release_batch(tag: str) -> Tuple[bool, Optional[dict]]:
     """End batch `tag`: remove its lease (the holder sees that and exits). -> (removed, the record). Another lease is left alone."""
-    path = lease_path()
-    rec = _read(path)
-    if not rec or rec.get("batch") != tag:
-        return False, rec
-    try:
-        path.unlink()
-    except OSError:
-        return False, rec
-    return True, rec
+    with _queue_lock():
+        records = _records()
+        matched = [(p, r) for p, r in records if r and r.get("batch") == tag]
+        for p, _ in matched:
+            p.unlink(missing_ok=True)
+        return bool(matched), matched[0][1] if matched else records[0][1]
 
 
 # ---------------------------------------------------------------- status / clear-dead
@@ -322,23 +425,23 @@ def release_batch(tag: str) -> Tuple[bool, Optional[dict]]:
 def status() -> dict:
     """What the lease looks like right now: the file, its holder (and whether that process is alive), the engines running."""
     path = lease_path()
-    rec = _read(path)
+    records = [r for _, r in _records() if r]
+    rec = next((r for r in records if _holder_alive(r)), records[0] if records else None)
     engines = [{"pid": pid, "image": img, "path": child_registry.image_path(pid)} for pid, img in foreign_engines()]
     return {"path": str(path), "holder": rec, "holder_alive": _holder_alive(rec) if rec else False,
-            "engines": engines, "off": disabled(lambda m: None), "private": redirected()}
+            "slots": records, "engines": engines, "off": disabled(lambda m: None), "private": redirected()}
 
 
 def clear_dead() -> Tuple[bool, Optional[dict]]:
     """Remove a lease whose holder process is gone. -> (removed, the record). A live holder is left alone: that lane is running."""
-    path = lease_path()
-    rec = _read(path)
-    if rec is None or _holder_alive(rec):
-        return False, rec
-    try:
-        path.unlink()
-    except OSError:
-        return False, rec
-    return True, rec
+    with _queue_lock():
+        removed = None
+        records = _records()
+        for path, rec in records:
+            if path.exists() and not _holder_alive(rec):
+                path.unlink(missing_ok=True)
+                removed = rec
+        return removed is not None, removed or next((r for _, r in records if r), None)
 
 
 def _print_status(st: dict) -> int:
@@ -365,22 +468,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub.add_parser("clear-dead", help="remove the lease when its holder process is dead; a live holder is left alone")
     h = sub.add_parser("hold", help="hold the lease for a chain of runs: start a holder process, print the env line the chain's runs need")
     h.add_argument("--tag", required=True, help="batch name; runs started with MC2_HOST_LEASE_BATCH=<tag> enter the held lease")
+    h.add_argument("--exclusive", action="store_true", default=None)
     h.add_argument("--ttl", type=float, default=DEFAULT_BATCH_TTL_S, help=f"seconds until the lease lapses (max {MAX_BATCH_TTL_S:.0f})")
     h.add_argument("--wait-timeout", type=float, default=None, help="seconds to wait for the lease (default MC2_HOST_LEASE_TIMEOUT or 3600)")
     r = sub.add_parser("release", help="end a batch lease taken with hold")
     r.add_argument("--tag", required=True)
     hl = sub.add_parser("_holder")                 # the holder process itself; started by hold
     hl.add_argument("--tag", required=True)
+    hl.add_argument("--exclusive", action="store_true", default=None)
     hl.add_argument("--ttl", type=float, required=True)
     argv = ["clear-dead" if a == "--clear-dead" else a for a in (sys.argv[1:] if argv is None else argv)]   # deploy_lease spelling
     args = ap.parse_args(argv)
     if args.cmd == "status":
         return _print_status(status())
     if args.cmd == "_holder":
-        return holder_loop(args.tag, args.ttl)
+        return holder_loop(args.tag, args.ttl, exclusive=args.exclusive)
     if args.cmd == "hold":
         try:
-            pid = hold(args.tag, args.ttl, timeout_s=args.wait_timeout)
+            pid = hold(args.tag, args.ttl, timeout_s=args.wait_timeout, exclusive=args.exclusive)
         except (HostLeaseBusy, ValueError) as exc:
             print(f"[host-lease] {exc}", file=sys.stderr)
             return 4

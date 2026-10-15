@@ -785,26 +785,22 @@ def main():
                 print(_exe_verdict.refusal(), file=sys.stderr, flush=True)
                 sys.exit(7)
 
-    # Host-wide engine lease (scripts/smoke_lib/host_lease.py) FIRST: one lane's harness at a time may have an engine running on this
-    # host, whatever install it uses and whatever test switches its shell carries. Nothing else (no deploy folder) is held while a run
-    # waits here, and a second run on the same install queues on this lease. Waits by default; --no-wait fails at once. Taken once;
-    # nofocus.spawn re-enters it for every engine launch. Runs that launch nothing (--verify-only, --resolve-only) skip it.
-    # Then the host-load gate: a build burst or a Defender scan beside the run is waited out (bounded, never a failure) and recorded in
-    # the report, so a timing-bucket flake carries its cause. Both waits precede every launch, so neither eats a mission's budget.
+    # Host slots precede install leases so queued runs do not reserve an install.
     _host_wait: dict = {"lease_wait_s": 0.0, "host_load": None}
     if not (args.verify_only or args.resolve_only):
         from scripts.smoke_lib import host_lease as _host_lease
         _t_lease = time.monotonic()
         try:
             _host_lease.acquire(f"run_smoke {args.deploy or args.exe or 'auto'}", wait=not args.no_wait, timeout_s=args.wait_timeout,
-                                kill_orphans=args.kill_existing)
+                                kill_orphans=args.kill_existing,
+                                exclusive=True if args.show_window or args.tier == "resolution" else None)
         except _host_lease.HostLeaseBusy as _busy:
             print(f"[runner] ERROR: {_busy}", file=sys.stderr)
             sys.exit(4)
         _host_wait["lease_wait_s"] = round(time.monotonic() - _t_lease, 1)
         if _host_lease.redirected():
             _host_wait["host_load"] = {"checked": False, "note": "private host lease (test): the real host is not sampled"}
-        else:
+        elif os.environ.get("MC2_HOST_LEASE_EXCLUSIVE") == "1" or args.show_window or args.tier == "resolution":
             from scripts.smoke_lib import host_load as _host_load
             _host_wait["host_load"] = _host_load.wait_until_quiet(timeout_s=0.0 if args.no_wait else None)
 
@@ -1201,7 +1197,7 @@ def main():
     if args.menu_canary:
         if args.tier or args.mission:
             ap.error("--menu-canary cannot be combined with --tier/--mission")
-        timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f") + f"-{os.getpid()}"
         artifact_dir = ARTIFACT_ROOT / timestamp
         artifact_dir.mkdir(parents=True, exist_ok=True)
         sys.exit(_run_menu_canary(Path(args.exe), Path(args.menu_script),
@@ -1252,9 +1248,10 @@ def main():
         sys.exit(2)
 
     baseline_data = baselines.load(BASELINE_PATH)
-    timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f") + f"-{os.getpid()}"
     artifact_dir = ARTIFACT_ROOT / timestamp
     artifact_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[runner] artifacts: {artifact_dir}", flush=True)
 
     menu_canary_rc = None
     if args.with_menu_canary:
@@ -1421,7 +1418,8 @@ def main():
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
-                **render_resolution.tier_size_env(tier, e.resolution),
+                **(render_resolution.tier_size_env(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window
+                   else {"MC2_WIDTH": "854", "MC2_HEIGHT": "480"}),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).
                 **_mod_env,
@@ -1587,7 +1585,8 @@ def main():
         key = baselines.key(cfg.profile, label, tier, duration)
         delta = baselines.destroys_delta(baseline_data, key, result.summary.destroys)
 
-        _asked = render_resolution.asked_size(tier, e.resolution)
+        _asked = (render_resolution.asked_size(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window
+                  else (854, 480))
         if _asked:
             # The size must have reached the engine: a clamped or ignored request would make this tier green without testing the size.
             _asked_w, _asked_h = _asked
