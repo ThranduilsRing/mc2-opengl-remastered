@@ -80,4 +80,31 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
     return true;
 }
 
+namespace {
+
+// A shore sidecar covers the map at most a few texels per vertex; beyond kMaxSide * 4 on an edge it is malformed.
+template <typename Texel>
+bool setImage(FieldImage<Texel>& image, const Texel* texels, int width, int height, size_t texelsPerPixel) {
+    if (!texels || width <= 0 || height <= 0 || width > kMaxSide * 4 || height > kMaxSide * 4) {
+        MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a shore sidecar of {:d}x{:d}", mc2::fmt::as_i32(width),
+                mc2::fmt::as_i32(height));
+        return false;
+    }
+    image.texels.assign(texels, texels + (size_t)width * (size_t)height * texelsPerPixel);
+    image.width = width;
+    image.height = height;
+    image.version = nextVersion();
+    return true;
+}
+
+}  // namespace
+
+bool TerrainFieldStore::setShorelineMask(const uint8_t* rgba, int width, int height) {
+    return setImage(shorelineMask_, rgba, width, height, 4);
+}
+
+bool TerrainFieldStore::setWaterShoreHeight(const float* heights, int width, int height) {
+    return setImage(waterShoreHeight_, heights, width, height, 1);
+}
+
 }  // namespace mc2terrain

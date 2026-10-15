@@ -202,38 +202,18 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     return true;
 }
 
-// VK-PARITY-WATER-SHORE-1: copy-once import of one GL shore texture (R32F height
-// or RGBA8 mask) into a sampled VK image. Mirrors ensure_hdri's pattern (GL
-// read-back on the render thread's current context, one staging upload). When
-// glTex is 0 (or the read fails) a 1x1 zero dummy is created instead and
-// *real is false. Caller device-idles beforehand.
-bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
+// VK-PARITY-WATER-SHORE-1: copy-once import of one shore sidecar (R32F height or RGBA8 mask, 4 bytes a texel) from the
+// terrain field store's CPU copy into a sampled VK image. With no texels (no sidecar, or height disabled) a 1x1 zero dummy is
+// created instead and *real is false. Caller device-idles beforehand.
+bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat,
                       mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, bool* real) {
     const VkFormat fmt = isFloat ? VK_FORMAT_R32_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
-    const size_t bpp = 4;
-    std::vector<unsigned char> bytes;
-    int w = 1, h = 1;
-    *real = false;
-    if (glTex != 0) {
-        GLint prevTex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-        GLint prevPack = 4; glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
-        glPixelStorei(GL_PACK_ALIGNMENT, 4);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-        GLint w0 = 0, h0 = 0, ifmt = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &w0);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h0);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
-        const GLint wantFmt = isFloat ? GL_R32F : GL_RGBA8;
-        if (w0 > 0 && h0 > 0 && ifmt == wantFmt) {
-            bytes.resize((size_t)w0 * (size_t)h0 * bpp);
-            if (isFloat) glGetTexImage(GL_TEXTURE_2D, 0, GL_RED,  GL_FLOAT,         bytes.data());
-            else         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes.data());
-            if (glGetError() == GL_NO_ERROR) { w = w0; h = h0; *real = true; }
-        }
-        glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
-    }
-    if (!*real) { w = 1; h = 1; bytes.assign(bpp, 0); }
+    static const uint32_t kZeroTexel = 0;
+    *real = texels != nullptr && texelsW > 0 && texelsH > 0;
+    const int w = *real ? texelsW : 1;
+    const int h = *real ? texelsH : 1;
+    const void* src = *real ? texels : &kZeroTexel;
+    const size_t byteCount = (size_t)w * (size_t)h * 4u;
 
     view.reset();
     img.reset();
@@ -257,13 +237,8 @@ bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
         vlog("shore: vkCreateImageView failed."); return false;
     }
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    if (!make_buffer(s, staging, (VkDeviceSize)bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
-    {
-        void* p = staging.map();
-        if (!p) return false;
-        std::memcpy(p, bytes.data(), bytes.size());
-        staging.unmap();
-    }
+    if (!make_buffer(s, staging, (VkDeviceSize)byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
+    if (!staging.upload(src, (VkDeviceSize)byteCount)) return false;
     const VkImage dst = img.get();
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
         VkImageMemoryBarrier bar{};
@@ -307,10 +282,15 @@ bool ensure_shore(WaterIsland* s) {
     vkGetPhysicalDeviceFormatProperties(s->phys, VK_FORMAT_R32_SFLOAT, &fp);
     const bool r32Linear = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
     if (!r32Linear) vlog("shore: R32_SFLOAT lacks linear filtering -- height shore disabled (mode-1 fallback).");
-    const unsigned int hTex = r32Linear ? gos_TerrainLodChunk_WaterShoreHeightTex() : 0u;
-    if (!import_shore_tex(s, hTex, true,  s->shHImage, s->shHView, &s->shHReal)) return false;
-    if (!import_shore_tex(s, gos_TerrainLodChunk_ShorelineMaskTex(), false,
-                          s->shMImage, s->shMView, &s->shMReal)) return false;
+    const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    const mc2terrain::FieldImage<float>* height = store && r32Linear ? &store->waterShoreHeight() : nullptr;
+    const mc2terrain::FieldImage<uint8_t>* mask = store ? &store->shorelineMask() : nullptr;
+    if (!import_shore_tex(s, height && !height->texels.empty() ? height->texels.data() : nullptr, height ? height->width : 0,
+                          height ? height->height : 0, true, s->shHImage, s->shHView, &s->shHReal))
+        return false;
+    if (!import_shore_tex(s, mask && !mask->texels.empty() ? mask->texels.data() : nullptr, mask ? mask->width : 0,
+                          mask ? mask->height : 0, false, s->shMImage, s->shMView, &s->shMReal))
+        return false;
     write_descriptors(s);
     vlog("shore import: height=%s mask=%s gen=%u (copy-once, zero per-frame cost).",
          s->shHReal ? "REAL" : "DUMMY", s->shMReal ? "REAL" : "DUMMY", gen);
