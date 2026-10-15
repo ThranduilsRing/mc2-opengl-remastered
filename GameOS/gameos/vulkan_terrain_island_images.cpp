@@ -473,16 +473,8 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 }
 
 // ---------------------------------------------------------------------------
-// VK-TERRAIN-LIGHTING sub-slice: STATIC sun shadow map. VK-SHADOW-COPY-ONCE-1 UPDATE:
-// the GL static shadow map is built ONCE PER MISSION (gos_StaticLightMatrixBuilt()
-// latch), not per frame -- the original "GL map updates every frame" premise below was
-// wrong for the STATIC map (it is correct for the DYNAMIC map, which is genuinely
-// re-rendered every frame from moving mechs/buildings and stays copy-per-frame). The
-// static copy is now gated on feed.staticShadowGeneration so it only re-copies when the
-// GL side actually rebuilt (mission load / re-arm). glGetTexImage on a DEPTH texture is
-// NOT a color readback, so it does not trip the co-write path's forbidden-readback
-// assert (that counts glGetTexImage/glReadPixels via g_forbidden, which this does not
-// bump — it is a distinct depth pull on the shadow FBO's texture, endorsed for a probe).
+// Shadow maps the terrain samples: the static sun map (binding 5), the single dynamic map (binding 7) and the cascades (bindings 8, 9). All of them
+// are the VK shadow island's images; this island only owns 1x1 dummies that keep each binding valid before the first product.
 // ---------------------------------------------------------------------------
 
 // Depth-COMPARE sampler: compareOp=LESS_OR_EQUAL, LINEAR HW PCF, CLAMP_TO_BORDER
@@ -501,11 +493,8 @@ bool ensure_shadow_sampler(TerrainIsland* s) {
     return mc2vk::create(s->shadowSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
-// (Re)create the VK D32 depth image at `dim` texels (idempotent when unchanged).
-// Leaves it in DEPTH SHADER_READ layout so binding 5 is always valid; the per-frame
-// copy re-transitions it. Frees the prior image on a size change.
-// Slot-parameterized D32 depth-compare image ensure (static uses shadowImg/View/Dim,
-// dynamic uses dynShadow*). Leaves DEPTH SHADER_READ so the binding is always valid.
+// A D32 depth-compare image of `dim` texels for one binding's dummy (static: shadowImg/View/Dim, dynamic: dynShadow*), idempotent when unchanged.
+// Left in DEPTH SHADER_READ so the binding is always valid.
 bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
                               mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, uint32_t* curDim) {
     if (dim == 0) dim = 1;
@@ -665,85 +654,16 @@ bool ensure_dummy_shadow(TerrainIsland* s) {
     return true;
 }
 
-// Slot-parameterized per-frame depth copy from a GL DEPTH_COMPONENT texture into a VK
-// D32 image. Shared by static (binding 5) and dynamic (binding 7) shadow maps. glGetTexImage
-// depth readback -> forbidden color counters untouched.
-bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, mc2vk::OwnedBuffer& stage, VkDeviceSize* stageBytes,
-                      bool perFrame) {
-    // Strict no-interop: never do the per-frame GL depth readback fallback (fail-soft
-    // to unshadowed for this frame). Copy-once static-shadow imports (perFrame=false)
-    // are still allowed.
-    if (perFrame && terrainNoInteropStrict()) return false;
-    const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * 4u;  // float32 per texel
-    if (!stage || bytes > *stageBytes) {
-        if (stage) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shadow_stage_grow");
-            stage.reset();
-        }
-        if (!make_buffer(s, stage, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging"))
-            return false;
-        *stageBytes = bytes;
-    }
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, stage.allocation(), &p) != VK_SUCCESS) return false;
-    // CSM-BLACKOUT-RECON-1 FIX (same GL depth-readback hazard class): save/restore the
-    // active unit's GL_TEXTURE_2D binding instead of stomping it to 0 mid-frame.
-    GLint prev2DBind = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2DBind);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
-    if (perFrame) terrainPerFrameReadback("copy_shadow_slot");  // H2b: dynamic/csm-fullmap fallback only
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prev2DBind);
-    vmaUnmapMemory(s->allocator, stage.allocation());
-
-    VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = img;
-    bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-    bar.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy rgn{};
-    rgn.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
-    rgn.imageExtent = {dim, dim, 1};
-    vkCmdCopyBufferToImage(cb, stage.get(), img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    end_oneshot(s, cb);
-    return true;
-}
-
-// VK-SHADOW-COPY-ONCE-1: copy-once-per-generation of the GL STATIC shadow depth texture
-// into the VK D32 image (binding 5). The GL static map is built ONCE per mission
-// (gos_StaticLightMatrixBuilt() latch; see gos_postprocess.h/.cpp), not per frame, so
-// feed.staticShadowGeneration only bumps on a real (re)build. Skipping the
-// glGetTexImage(4096^2 float)->staging->VK-upload on unchanged frames removes a fixed
-// per-frame tax with zero pixel change (same bytes end up in the VK image either way).
-bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.lightingEnabled || !feed.shadowsEnabled) { s->shadowReady = false; return false; }
-    if (feed.glStaticShadowTex == 0 || feed.staticShadowSize <= 0) { s->shadowReady = false; return false; }
-    const uint32_t dim = (uint32_t)feed.staticShadowSize;
-    if (!ensure_shadow_image(s, dim)) { s->shadowReady = false; return false; }
-
-    // Already have this generation's content in the VK image (and dim unchanged, else
-    // ensure_shadow_image would have recreated it and shadowReady/shadowGenCopied must be
-    // re-synced below since a size change invalidates the copied image contents).
-    if (s->shadowReady && s->shadowGenCopied == feed.staticShadowGeneration && s->shadowDim == dim)
-        return true;
-
-    if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg.get(),
-                          s->shadowStage, &s->shadowStageBytes,
-                          /*perFrame=*/false)) {  // copy-once per generation (guarded above)
-        s->shadowReady = false;
-        return false;
-    }
-    s->shadowGenCopied = feed.staticShadowGeneration;
+// The static sun shadow map (binding 5): the VK shadow island's own map, used only when its build is of the feed's generation, so the map and the
+// static light matrix in the UBO come from the same engine build. Between a rebake and its build (one frame) terrain has no static shadow.
+bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    s->shadowReady = false;
+    s->shadowExternalView = VK_NULL_HANDLE;
+    if (!feed.lightingEnabled || !feed.shadowsEnabled || feed.staticShadowGeneration == 0) return false;
+    if (mc2_vk_shadow_island_static_generation() != feed.staticShadowGeneration) return false;
+    void* view = mc2_vk_shadow_island_get_static_view();
+    if (view == nullptr) return false;
+    s->shadowExternalView = reinterpret_cast<VkImageView>(view);
     s->shadowReady = true;
     return true;
 }
@@ -772,7 +692,8 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
     }
 
-    // Expected on a mission's first frames; logged once so a map that never arrives is visible.
+    // Expected on the first mission's first frames; logged once per process, so a later mission whose map never arrives
+    // is silent.
     static bool s_noDynMapLogged = false;
     if (!s_noDynMapLogged) {
         s_noDynMapLogged = true;

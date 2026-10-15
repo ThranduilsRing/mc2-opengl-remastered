@@ -56,6 +56,7 @@
 #include "vk_depth_caster_pipeline.h"
 #include "vulkan_color_prop_island.h"
 #include "vulkan_shadow_mech_casters.h"
+#include "vulkan_shadow_static_map.h"
 #include "vk_shared_gbuffer_gate.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -299,8 +300,9 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline            pipe;
     mc2vk::OwnedPipeline            alphaPipe;   // foliage and fence casters: discards the texels the colour pass discards
     mc2vk::OwnedCommandPool         cpool;
-    // The mech casters share the render pass and the UBO above; declared last so they are released first.
+    // The mech casters share the render pass and the UBO above, the static map the render pass and the geometry; declared last so they are released first.
     mc2vk::ShadowMechCasters        mech;
+    mc2vk::ShadowStaticMap          staticMap;
 
     ShadowIsland() = default;
     // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
@@ -619,6 +621,9 @@ bool init_island(ShadowIsland* s, int size) {
     // ---- Mech casters: a failure leaves the island with static-prop casters only (logged by the casters). ----
     if (!s->mech.init(s->device, s->allocator, s->rpass.get(), s->ubo.get(), sizeof(ShadowFrameUBO), spv_dir()))
         vlog("mech casters unavailable: the cascades carry static-prop casters only.");
+    // ---- Static sun shadow map: a failure leaves terrain and objects without building and terrain shadows (logged by the map). ----
+    if (!s->staticMap.init(s->device, s->allocator, s->rpass.get(), spv_dir()))
+        vlog("static shadow map unavailable: no static sun shadow on this device.");
 
     // ---- Command pool + 2 command buffers (per parity). ----
     {
@@ -939,6 +944,11 @@ void diagDumpDepth(const char* mapName, const char* side, const std::vector<floa
     for (size_t i = 0; i < d.size(); ++i) g[i] = (unsigned char)std::lround(255.0f * (d[i] - mn) / span);
     char path[128]; std::snprintf(path, sizeof(path), "vk_shadowdiag_%s_%s.png", mapName, side);
     std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, diagWriteGrayPng(path, dim, dim, g) ? 1 : 0);
+    // The raw depths too: the PNG is normalized per map, so two runs' PNGs do not compare texel for texel.
+    std::snprintf(path, sizeof(path), "vk_shadowdiag_%s_%s.f32", mapName, side);
+    bool rawOk = false;
+    if (FILE* f = std::fopen(path, "wb")) { rawOk = std::fwrite(d.data(), sizeof(float), d.size(), f) == d.size(); std::fclose(f); }
+    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, rawOk ? 1 : 0);
     std::fflush(stderr);
 }
 // One-shot GL readback (DSA only, no binding changes). layer<0 => plain 2D.
@@ -1124,6 +1134,16 @@ static void refresh_alpha_casters(ShadowIsland* s) {
     s->alphaReady = s->alphaTableBuilt;
 }
 
+// Appends the static map's build to the frame's recording when the engine has a generation the map has not built (a map load, a destroy rebake): once
+// per generation, never per frame. It counts as a pass of the frame, so the frame is submitted even when every other pass declines.
+static void record_static_map_if_stale(ShadowIsland* s) {
+    if (!s->staticMap.stale()) return;
+    std::vector<uint32_t> firstPacket(s->typeRuns.size()), packetCount(s->typeRuns.size());
+    for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
+    mc2vk::StaticPropGeometryView geometry{s->vbo.get(), s->ibo.get(), s->packets, firstPacket, packetCount};
+    if (s->staticMap.record(s->cbuf[s->parity], geometry)) ++s->passCount;
+}
+
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
 static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCount) {
     ShadowIsland* s = parkedIsland();
@@ -1133,6 +1153,7 @@ static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCo
     if (!stage_instances(s, instances, instanceCount)) return nullptr;
     refresh_alpha_casters(s);
     s->mech.stage(g_shadowFrameEpoch);
+    record_static_map_if_stale(s);
     return s;
 }
 
@@ -1375,6 +1396,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     si.pCommandBuffers = &cb;
     ZoneScopedN("VKIsl.Shadow.Submit");
     if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    s->staticMap.markSubmitted();
 }
 
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
@@ -1409,6 +1431,17 @@ extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
     return productReady(g_csmFullMapReadyThisFrame) ? 1 : 0;
 }
 
+// The static sun shadow map of the last submitted build, in DEPTH_STENCIL_READ_ONLY, and the engine generation it was built from; null / 0 before the
+// first build of the map. A consumer pairs the view with the light matrix of the same generation.
+extern "C" void* mc2_vk_shadow_island_get_static_view() {
+    const ShadowIsland* s = parkedIsland();
+    return s ? reinterpret_cast<void*>(s->staticMap.view()) : nullptr;
+}
+extern "C" uint64_t mc2_vk_shadow_island_static_generation() {
+    const ShadowIsland* s = parkedIsland();
+    return s && s->staticMap.view() != VK_NULL_HANDLE ? s->staticMap.generation() : 0;
+}
+
 extern "C" void* mc2_vk_shadow_island_get_csm_array_view() {
     return productReady(g_csmArrayReadyThisFrame)
         ? reinterpret_cast<void*>(parkedIsland()->csmArrayView.get()) : nullptr;
@@ -1436,9 +1469,11 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
                                                unsigned glArrTex, unsigned glFullTex, int fullSize,
                                                float fullTexelWorld) {
     if (!diagOn()) return;
+    // The dump runs before a capture's frame (431 by default, after a 30-frame settle): the capture harness ends the process once it has its frame,
+    // so a later dump never reached the log.
     static int s_tick = 0; ++s_tick;
-    if (s_tick != 600 && s_tick != 1200) return;
-    const bool dump = (s_tick == 600);
+    if (s_tick != 200 && s_tick != 1200) return;
+    const bool dump = (s_tick == 200);
     std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] ==== tick=%d csmN=%d dynSize=%d arrSize=%d fullSize=%d fullTexelWorld=%.6g (all mats: 16 floats raw memory order, GLSL column-major load) ====\n",
                  s_tick, csmN, dynSize, arrSize, fullSize, fullTexelWorld);
     if (glDynMat) diagPrintMat("GL dynamic(getDynamicLightSpaceMatrix@tick)", glDynMat);
@@ -1453,11 +1488,15 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         diagPrintMat(tg, g_diagArr[i].m);
     }
     g_diagTerrainArm = true;   // terrain island prints its UBO sampling matrices next
-    if (ShadowIsland* parked = parkedIsland(); dump && parked && parked->inited) {
-        ShadowIsland* s = parked; std::vector<float> d;
+    // The GL side dumps in a GL run (the GL passes render the maps); the VK side in a VK run, where the island exists. Compare the two runs' files.
+    if (dump && parkedIsland() == nullptr) {
+        std::vector<float> d;
         diagGlRead(glDynTex, dynSize, -1, d);       diagDumpDepth("dyn", "gl", d, dynSize);
         diagGlRead(glArrTex, arrSize, 0, d);        diagDumpDepth("csm0", "gl", d, arrSize);
         diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
+    }
+    if (ShadowIsland* parked = parkedIsland(); dump && parked && parked->inited) {
+        ShadowIsland* s = parked; std::vector<float> d;
         if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image.get(), 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
         else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not ready this frame\n");
         if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg.get(), 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
@@ -1506,6 +1545,7 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
     ShadowIsland* parked = parkedIsland();
     if (!parked) return;
     release_geometry(parked);
+    parked->staticMap.invalidate();
     vlog("caster geometry invalidated (map boundary).");
 }
 

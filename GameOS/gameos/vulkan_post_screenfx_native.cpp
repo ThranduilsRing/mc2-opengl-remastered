@@ -66,6 +66,7 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"
+#include "static_shadow_spec.h"
 #include "vk_shared_gbuffer_gate.h"
 
 // Fixed-timestep clock so the animated cloud/foam time matches the GL path under smoke.
@@ -216,10 +217,7 @@ struct gosPostProcess::VkPostScreenFx {
     VkImageView      csmArrayView = VK_NULL_HANDLE;    // borrowed; shadow island owns it
     VkImageView      csmFullMapView = VK_NULL_HANDLE;  // borrowed; shadow island owns it
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
-    // VK-RUNG8-ITEM6: the static-shadow import substrate was RETIRED. A non-CSM
-    // static-only screen-shadow config now DECLINES to the GL screen-shadow pass
-    // (hasStaticShadow is always false below); CSM screen-shadow is unaffected
-    // (it samples the direct VK CSM array/full-map views).
+    // The static sun map comes from the shadow island (binding 2, rewritten every draw), the cascades too (bindings 4 and 5).
 
     VkDescriptorSet  cloudSet = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
     VkDescriptorSet  shoreSet = VK_NULL_HANDLE;
@@ -488,11 +486,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo staticShadowInfo{};
         staticShadowInfo.sampler = s->shadowCompareSampler.get();
-        // Binding 7 (static-shadow slot) is statically present in both shadow shaders.
-        // VK-RUNG8-ITEM6: the static-shadow import substrate is retired, so this slot
-        // always binds a valid depth view and the static-shadow branch is driven OFF
-        // via the UBO (enableShadows=0). This descriptor set is only built/used when
-        // CSM direct-chain is available; static-only configs decline to GL earlier.
+        // Binding 2 (the static map) starts on the scene depth so it is valid before the shadow island's first static build; each draw rewrites it.
         staticShadowInfo.imageView = s->depthSampleView.get();
         staticShadowInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorBufferInfo cloudUboInfo{ s->cloudUbo.get(), 0, VK_WHOLE_SIZE };
@@ -732,10 +726,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             return false;
         }
     }
-    // VK-RUNG8-ITEM6: static-shadow import substrate retired -> never available.
-    // A static-only (non-CSM) config therefore declines here (returns false) and the
-    // GL screen-shadow pass runs; CSM configs proceed with dynamic shadows only.
-    const bool hasStaticShadow = false;
+    // The static sun map is the shadow island's, used only when its build is of the engine's current generation, so it pairs with
+    // staticLightSpaceMatrix_ below. Without it and without the cascades this pass declines and the GL screen-shadow pass runs.
+    StaticShadowSpec staticSpec;
+    const VkImageView staticView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_static_view());
+    const bool hasStaticShadow = staticView != VK_NULL_HANDLE && gos_GetStaticShadowSpec(&staticSpec)
+        && mc2_vk_shadow_island_static_generation() == staticSpec.generation;
     if ((!hasStaticShadow && !csmDirectReady) || !s->shadowSet ||
         !s->shadowPipe || (csmDirectReady && !s->shadowCsmPipe)) {
         setFallback("static_shadow_substrate_not_ready");
@@ -775,6 +771,18 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if ((m = s->shadowUbo.map()) != nullptr) {
         std::memcpy(m, &p, sizeof(p));
         s->shadowUbo.unmap();
+    }
+    {   // binding 2: the static map, or the scene depth (never sampled: enableShadows=0) so the binding stays valid
+        VkDescriptorImageInfo staticInfo{};
+        staticInfo.sampler = s->shadowCompareSampler.get();
+        staticInfo.imageView = hasStaticShadow ? staticView : s->depthSampleView.get();
+        staticInfo.imageLayout = hasStaticShadow ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkWriteDescriptorSet w{};
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet = s->shadowSet; w.dstBinding = 2; w.descriptorCount = 1;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        w.pImageInfo = &staticInfo;
+        vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
     }
     if (csmDirectReady) {
         VkDescriptorImageInfo csmArrayInfo{};

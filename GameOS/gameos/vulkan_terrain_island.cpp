@@ -65,7 +65,7 @@ void vlog(const char* fmt, ...) {
 // fix the g_forbidden.glGetTexImage counter was DECLARED and printed but NEVER
 // incremented, so the run()-scope f0b/f0c snapshot check and the health-line counter were
 // always 0 (a realized false-pass). Copy-ONCE asset-feed imports (import_colormap /
-// import_cement / import_matnormal / copy_static_shadow, each guarded to fire once at
+// import_cement / import_matnormal, each guarded to fire once at
 // map/mission load) must NOT call this -- they are the allowed GL-dependent feed layer
 // documented in .claude/METAL-GATE-AUDIT-2.md. This bumps the counter the health line
 // asserts == 0 AND emits a one-time PERFRAME_READBACK trip-wire the hardened checker greps.
