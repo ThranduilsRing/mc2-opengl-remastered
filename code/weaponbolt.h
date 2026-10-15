@@ -193,14 +193,9 @@ class WeaponBolt : public GameObject
 			GameObjectWatchID	targetWID;
 			int32_t				targetHotSpot;
 
-			// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): set ONLY by fireWeapon (mech.cpp /
-			// gvehicl.cpp) under the gate when this bolt is a successful AIMED shot
-			// from an area-effect weapon. Stock connect() converts such bolts to
-			// position bolts (targetWID = 0), so the called location is lost and
-			// damage arrives as a randomly-located explosion. This WID lets the
-			// arrival path deliver weaponShot (hitLocation == called location)
-			// directly to the aimed target instead. Transient: NOT saved
-			// (WeaponBoltData unchanged); a loaded in-flight bolt reverts to stock.
+			// Only fireWeapon sets this for successful gated area-effect aimed shots,
+			// preserving the target lost by connect()'s position-bolt conversion.
+			// Transient: WeaponBoltData omits it; loaded bolts use stock splash.
 			GameObjectWatchID	aimedTargetWID;
 			Stuff::Vector3D		*targetPosition;
 			float				distanceToTarget;
@@ -234,22 +229,13 @@ class WeaponBolt : public GameObject
 			float				startUV;
 			float				goalHeight;
 
-			// B2 P2: per-frame position snapshot for GPU trail segment stamping.
-			// No longer used by the trail path after the ring-buffer fix; kept
-			// for potential future velocity-based shader fades.
+			// Reserved for velocity-based shader fades; unused by trails.
 			Stuff::Vector3D		prev_position;
 
-			// B2 P2: which GPU trail kind this bolt drives.  Hardcoded to
-			// MissileSmoke during P2 test pass; replaced by INI table in P3.
 			mc2::particles::GpuTrailKind gpu_trail_kind = mc2::particles::GpuTrailKind::None;
 
-			// B2 P2 fix: per-bolt trail history ring buffer. Stores last K world
-			// positions; each frame the full trail is re-stamped between consecutive
-			// pairs. Required because Batcher::Flush() clears staging each frame —
-			// without persistent particles, a per-frame segment vanishes instantly.
-			// K=64 ≈ 0.47s of history at 137 fps; enough to read as a smoke ribbon
-			// behind a moving missile. Tune up if trails look short, down if too long.
-			static constexpr int kTrailHistoryMax = 6;    // VFX-WEAPON-FX-RESTORE-OPUS-1: 6 positions = 5 segments; user-tuned ~0.1s trail
+			// History survives Batcher::Flush(), which clears staging each frame.
+			static constexpr int kTrailHistoryMax = 6;    // User-tuned ~0.1s trail.
 			Stuff::Vector3D trail_history[kTrailHistoryMax];
 			uint8_t trail_head     = 0;   // index of next slot to write
 			uint8_t trail_count    = 0;   // how many slots are populated (clamped to kTrailHistoryMax)
@@ -346,7 +332,7 @@ class WeaponBolt : public GameObject
 		{
 			ownerWID = source->getWatchID();
 			targetWID = dest->getWatchID();
-			aimedTargetWID = 0;		// ISSUE-9 S2: bolts are pool-reused; never carry a stale aimed flag
+			aimedTargetWID = 0;		// Pool reuse must not retain an aimed target.
 			
 			hotSpotNumber = sourceHS;
 			targetHotSpot = targetHS;
@@ -388,7 +374,7 @@ class WeaponBolt : public GameObject
 		{
 			ownerWID = source->getWatchID();
 			targetWID = 0;
-			aimedTargetWID = 0;		// ISSUE-9 S2: bolts are pool-reused; never carry a stale aimed flag
+			aimedTargetWID = 0;		// Pool reuse must not retain an aimed target.
 			hotSpotNumber = sourceHS;
 			
 			setTargetPosition(targetLoc);
@@ -404,17 +390,14 @@ class WeaponBolt : public GameObject
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
 
-		// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): flag this bolt as a successful aimed
-		// hit on tgtWID. Called by fireWeapon AFTER connect() (which resets the
-		// flag), only when the gate is on, aimLocation != -1 and the roll hit.
+		// fireWeapon calls after connect() resets the flag, only for gated successful aimed hits.
 		void setAimedTarget (GameObjectWatchID tgtWID)
 		{
 			aimedTargetWID = tgtWID;
 		}
 
 		// Delivers weaponShot to the aimed target on arrival (single-player only).
-		// Returns true if located damage was delivered — caller makes the
-		// area-effect explosion cosmetic (0 damage). Defined in weaponbolt.cpp.
+		// True requires a cosmetic (zero-damage) explosion to avoid duplicate damage.
 		bool deliverAimedAreaHit (void);
 
 		virtual void Save (PacketFilePtr file, long packetNum);
@@ -427,9 +410,9 @@ class WeaponBolt : public GameObject
 
         // Slot generations distinguish pool reuse without changing combat or save records.
         mc2::CombatTrace combatTrace;
-        void traceCombat(const char* event, const char* reason = "",
+        void traceCombat(std::string_view event, std::string_view reason = "",
                          GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
-        void traceCombatRetire(const char* reason);
+        void traceCombatRetire(std::string_view reason);
         void submitDamage(GameObjectPtr target);
 
 };

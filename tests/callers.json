@@ -2556,6 +2556,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tests/analyze/file_callsites.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tests/smoke/test_launcher_legacy_env.py",
           "line": 18,
           "evidence": "import",
@@ -6753,7 +6760,7 @@
       "callers_by_stem": [
         {
           "path": "tools/cxx17_ratchet/cxx17_ratchet.py",
-          "line": 594,
+          "line": 588,
           "evidence": "import",
           "reference": "test_cxx17_ratchet",
           "text": "import test_cxx17_ratchet as t"
@@ -11199,7 +11206,7 @@
       "callers_by_stem": [
         {
           "path": "tools/vfx_oracle/test_compare_combat_traces.py",
-          "line": 6,
+          "line": 8,
           "evidence": "import",
           "reference": "tools.vfx_oracle.compare_combat_traces",
           "text": "from tools.vfx_oracle.compare_combat_traces import ("
@@ -11211,7 +11218,15 @@
       "basename": "compare_frozen_snapshots.py",
       "stem": "compare_frozen_snapshots",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/vfx_oracle/test_compare_combat_traces.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.vfx_oracle.compare_frozen_snapshots",
+          "text": "from tools.vfx_oracle.compare_frozen_snapshots import main as compare_snapshots, records"
+        }
+      ]
     },
     {
       "path": "tools/vfx_oracle/evidence.py",
@@ -11232,7 +11247,15 @@
       "basename": "test_compare_combat_traces.py",
       "stem": "test_compare_combat_traces",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/test_vfx_parity_oracle.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.vfx_oracle.test_compare_combat_traces",
+          "text": "from tools.vfx_oracle.test_compare_combat_traces import ("
+        }
+      ]
     },
     {
       "path": "tools/vfx_parity_oracle.py",
@@ -11249,7 +11272,7 @@
         },
         {
           "path": "tools/test_vfx_parity_oracle.py",
-          "line": 12,
+          "line": 31,
           "evidence": "import",
           "reference": "vfx_parity_oracle",
           "text": "from vfx_parity_oracle import (acceptance, changed_pixels, compare, digest, montage,"

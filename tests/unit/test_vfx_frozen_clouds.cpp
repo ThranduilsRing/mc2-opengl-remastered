@@ -1,7 +1,6 @@
 #include "doctest.h"
 #include "gosfxheaders.hpp"
-#include "contract_test_support.h"
-#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 #include "mclib/det_rng.h"
 #include "particles/batcher.h"
 #include "mlr/mlrsortbyorder.hpp"
@@ -87,8 +86,8 @@ bool payloadMatches(std::span<const GpuParticle> actual, std::span<const GpuPart
 }
 
 struct FrozenPlatform {
-    // Production MLR caches this setting; a typed scoped override is still required from Gates.
-    ContractEnvironment mlrEnabled{"MC2_DISABLE_GOSFX", "0"};
+    // Fresh children set this before MLR first reads its process-lifetime cache.
+    mc2::gate::ScopedOverride<"MC2_DISABLE_GOSFX"> mlrEnabled{"0"};
     std::uint32_t seed = mc2_det_rng::hashMissionName("mc2_03");
     BridgeCapture capture;
     FrozenPlatform()

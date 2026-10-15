@@ -3,7 +3,7 @@
 #include "diagnostic_trace.h"
 #include <bit>
 #include <cstdint>
-#include <cstring>
+#include <string_view>
 #include <format>
 #include <string>
 
@@ -27,12 +27,12 @@ struct CombatTrace {
     }
 
     template<class Vector, class Flight, class Target, class Shot>
-    void write(const char* kind, long slot, long tick, const char* event, const char* reason,
+    void write(std::string_view kind, long slot, long tick, std::string_view event, std::string_view reason,
                const Vector& position, Flight getFlight, Target target, const Shot* shot)
     {
         if (!live || !mc2_diag::tagEnabled("VFX_COMBAT")) return;
         // Birth omits position: pooled objects have not acquired their new coordinates yet.
-        const bool birth = std::strcmp(event, "birth") == 0;
+        const bool birth = event == "birth";
         const auto* flight = birth ? nullptr : getFlight();
         const auto snapshot = birth ? std::string{} : std::format(
             ",\"position_bits\":[{},{},{}]", std::bit_cast<std::uint32_t>(position.x),
@@ -51,7 +51,7 @@ struct CombatTrace {
                 std::bit_cast<std::uint32_t>(targetPosition.x), std::bit_cast<std::uint32_t>(targetPosition.y),
                 std::bit_cast<std::uint32_t>(targetPosition.z));
         }
-        // Complete JSON keeps sequence and field order auditable; fixed buffers could truncate it.
+        // Complete JSON preserves sequence and field order; fixed buffers risk truncation.
         const auto data = std::format(
             "{{\"kind\":\"{}\",\"slot\":{},\"generation\":{},\"seq\":{},\"tick\":{},"
             "\"event\":\"{}\",\"reason\":\"{}\",\"effect_id\":{},\"type\":{}{}{}{}}}",

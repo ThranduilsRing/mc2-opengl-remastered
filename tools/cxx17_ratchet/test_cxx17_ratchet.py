@@ -295,6 +295,13 @@ class NameLiterals(unittest.TestCase):
         self.assertEqual(n('bool a = gate::is<"MC2_CONFIG_DUMP", "all">();\n', "LG20"), 0)
         self.assertEqual(n('auto t = gate::state<"MC2_Z">();\n', "LG20"), 0)
 
+    def test_typed_overrides_do_not_hide_untyped_setters(self):
+        self.assertEqual(n('mc2::gate::ScopedOverride<"MC2_X"> on{"1"};\n', "LG20"), 0)
+        self.assertEqual(n('gate::ScopedOverride<"MC2_X"> off{"0"};\n', "LG20"), 0)
+        self.assertEqual(n('ContractEnvironment on{"MC2_X", "1"};\n', "LG20"), 1)
+        self.assertEqual(n('gate::ScopedEnv on{"MC2_X", "1"};\n', "LG20"), 1)
+        self.assertEqual(n('mc2::gate::ScopedOverride<"MC2_X"> on{"1"}; setenv("MC2_Y", "0");\n', "LG20"), 1)
+
     def test_two_literals_on_one_line_count_once(self):
         self.assertEqual(n('a = f("MC2_A") && f("MC2_B");\n', "LG20"), 1)
 

@@ -866,14 +866,14 @@ void Carnage::render (void)
 
 
 // Combat diagnostics retain object identity and event order without owning gameplay state.
-void Carnage::traceCombat(const char* event, const char* reason,
+void Carnage::traceCombat(std::string_view event, std::string_view reason,
                               GameObjectPtr target, const WeaponShotInfo* shot)
 {
     combatTrace.write("carnage", getHandle(), turn, event, reason, position,
         [] { return static_cast<const Stuff::Vector3D*>(nullptr); }, target, shot);
 }
 
-void Carnage::traceCombatRetire(const char* reason)
+void Carnage::traceCombatRetire(std::string_view reason)
 {
     traceCombat("retire", reason);
     combatTrace.live = false;

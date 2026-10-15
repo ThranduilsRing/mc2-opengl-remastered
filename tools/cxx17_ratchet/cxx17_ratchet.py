@@ -47,19 +47,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 BASELINE = os.path.join(HERE, "baseline.json")
 
-# .clang-tidy owned dirs + the small seam dirs + the legacy tool dirs, which are scanned for the
-# MC2_ gate idioms only (GATE_ONLY_DIRS): the other idioms are not tracked there.
+# Directory groups restrict idioms: editor/gui/Viewer track gates; tools/tests track gate literals.
 DEFAULT_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime",
                 "RenderWorld", "GameAdapters", "HostServices", "EditorBridge", "tools", "tests",
                 "editor", "gui", "Viewer"]
 GATE_ONLY_DIRS = ("editor", "gui", "Viewer")
-# The launcher is a standalone exe that does not link the gate library, so its one raw MC2_IMPORTER_DIR read is a
-# legitimate exception; it is still counted (LG19, strict per file) so a second raw read cannot appear unseen.
+# The standalone launcher lacks Gates; its raw importer read stays counted to prevent growth.
 LG19_TOOL_PREFIXES = ("tools/mc2_launcher/",)
 # Scanned for LG20 only (the other idioms are not tracked in the harnesses and tools).
 LG20_ONLY_DIRS = ("tools", "tests")
-# LG19 only, warned on and never failed: dirs a baseline does not own yet. Empty since G8 moved editor/gui/Viewer
-# into the strict GATE_ONLY_DIRS (the deleted check-env-registry.sh used to fail the build for them).
+# Unowned directories warn on LG19 increases rather than fail.
 TRACKED_DIRS = []
 # LG19 may only be read raw inside the gate module itself (Gates/gate.cpp parses the environment).
 LG19_EXEMPT_PREFIXES = ("Gates/",)
@@ -172,18 +169,15 @@ R_INTTOK = re.compile(r"\b(?:u?int(?:32|64)_t|DWORD|ULONG|unsigned(?:\s+(?:int|l
 R_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)(?!\()\s+(.+?)\s*$")
 R_DEFVAL = re.compile(r"""^(?:[-+~(]|\d|0[xX]|\.\d|['"]|L["']|\w+\s*[-+*/|<]\s*[\w(])""")
 R_ENUM = re.compile(r"\benum\b(?!\s+(?:class|struct)\b)\s*(?:\w+\s*)?(?::\s*[\w ]+)?\s*(?:\{|$)")
-# LG19 runs on the comment-stripped line WITH strings kept: the gate name is the evidence. A non-literal
-# `getenv(name)` counts too (it can read any MC2_ variable); `getenv("PATH")` does not.
+# LG19 counts unknown names because they may read MC2_ variables; known unrelated names are exempt.
 R_ENVREAD = re.compile(
     r"""(?<![\w.>])(?:std::|::)?(?:getenv|_wgetenv)\s*\(\s*(?:L?"MC2_|[A-Za-z_])"""
     r"""|\bGetEnvironmentVariable[AW]?\s*\(\s*L?"MC2_"""
     r"""|\b_dupenv_s\b|\bgetenv_s\b|\b_wdupenv_s\b"""
     r"""|\b_environ\b|\bGetEnvironmentStrings[AW]?\b|\bSDL_getenv\b""")
-# LG20: every "MC2_NAME" literal that is not the first template argument of a typed reader. It is the net the
-# getenv matcher (LG19) cannot cast: helper calls (subGate("MC2_X"), envFlag("MC2_X")), #define lines, putenv
-# writes, tool and test code.
+# LG20 catches gate-name literals outside typed readers/overrides, including helpers and writes.
 R_MC2LIT = re.compile(r'''L?"MC2_[A-Z0-9_]+"''')
-R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|isNonEmpty|armed|regionTier1Armed|str|is)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
+R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|isNonEmpty|armed|regionTier1Armed|str|is|gate::ScopedOverride)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
 R_LEGACY = re.compile(r"\b(?:auto_ptr|bind1st|bind2nd|ptr_fun|mem_fun|mem_fun_ref|unary_function|binary_function|"
                       r"random_shuffle|register)\b|\)\s*throw\s*\([^)]*\)\s*(?:[{;]|$)")
 
