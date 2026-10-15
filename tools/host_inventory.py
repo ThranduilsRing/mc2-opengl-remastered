@@ -38,8 +38,8 @@ HARNESS_NOTES = (
     "- `tools/sim_determinism.py run|check|pairs-until-fail` and `tools/saveload_roundtrip.py resave|baseline|check|run` accept"
     " `--ref-exe PATH` / `--ref-commit SHA` and forward them to every run_smoke.py child (the fingerprint reference of an A/B exe).",
     "- run_smoke host-load gate (`scripts/smoke_lib/host_load.py`): after the host lease and before any launch, another engine, a"
-    " compiler/linker burst above `MC2_HOST_LOAD_BUILD_MAX` (4) or MsMpEng above `MC2_HOST_LOAD_DEFENDER_PCT` (50) is named in one line"
-    " and waited out up to `MC2_HOST_LOAD_WAIT_S` (300 s), then the run launches anyway; report.json `host_wait` records the lease and"
+    " compiler/linker burst above `MC2_HOST_LOAD_BUILD_MAX` (4) or MsMpEng above `MC2_HOST_LOAD_DEFENDER_PCT` (150) is named in one line"
+    " and waited out up to `MC2_HOST_LOAD_WAIT_S` (120 s), then the run launches anyway; report.json `host_wait` records the lease and"
     " load waits (neither counts against a mission budget). `MC2_HOST_LOAD=off` skips it.",
     "- Batch lease: `py -3 scripts/smoke_lib/host_lease.py hold --tag X [--ttl S]` parks the host lease in a holder process; runs"
     " started with `MC2_HOST_LEASE_BATCH=X` enter it, everyone else waits; `release --tag X`, the TTL (max 6 h) or a dead holder pid ends it.",

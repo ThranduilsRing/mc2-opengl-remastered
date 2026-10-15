@@ -9,7 +9,7 @@ scan now says so in its own report. The wait is bounded and never fails the run:
 Like the host-lease wait, this wait happens before the engine starts, so it never eats the mission's run budget (which starts at spawn).
 
 Knobs: MC2_HOST_LOAD=off (skip; the record says so), MC2_HOST_LOAD_BUILD_MAX (compiler/linker processes tolerated, default 4),
-MC2_HOST_LOAD_DEFENDER_PCT (MsMpEng CPU percent of one core tolerated, default 50), MC2_HOST_LOAD_WAIT_S (bound, default 300).
+MC2_HOST_LOAD_DEFENDER_PCT (MsMpEng CPU percent of one core tolerated, default 150, owner ruling 2026-10-15), MC2_HOST_LOAD_WAIT_S (bound, default 120).
 """
 from __future__ import annotations
 
@@ -22,8 +22,8 @@ BUILD_IMAGES = ("cl.exe", "clang-cl.exe", "link.exe", "lld-link.exe", "ninja.exe
 ENGINE_IMAGES = ("mc2.exe", "editrel.exe")
 DEFENDER_IMAGE = "msmpeng.exe"
 DEFAULT_BUILD_MAX = 4
-DEFAULT_DEFENDER_PCT = 50.0
-DEFAULT_WAIT_S = 300.0
+DEFAULT_DEFENDER_PCT = 150.0
+DEFAULT_WAIT_S = 120.0
 POLL_S = 5.0
 REPORT_EVERY_S = 30.0
 

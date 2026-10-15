@@ -10,7 +10,7 @@ from scripts.smoke_lib import host_load  # noqa: E402
 
 QUIET = {"builds": {"cl.exe": 2}, "engines": [], "defender_pct": 3.0}
 BUILD = {"builds": {"cl.exe": 7, "link.exe": 1}, "engines": [], "defender_pct": None}
-SCAN = {"builds": {}, "engines": [], "defender_pct": 90.0}
+SCAN = {"builds": {}, "engines": [], "defender_pct": 200.0}
 GAME = {"builds": {}, "engines": [(4242, "mc2.exe")], "defender_pct": None}
 
 
@@ -40,10 +40,17 @@ def run(samples, bound=60.0, monkeypatch=None):
     return rec, lines
 
 
+def test_ruled_defaults():
+    # owner ruling 2026-10-15: Defender tolerated up to 150% of one core, host-load wait capped at 120 s
+    assert host_load.DEFAULT_DEFENDER_PCT == 150.0 and host_load.DEFAULT_WAIT_S == 120.0
+    assert host_load.busy_reason({"builds": {}, "engines": [], "defender_pct": 140.0}) == ""
+    assert "MsMpEng at 160%" in host_load.busy_reason({"builds": {}, "engines": [], "defender_pct": 160.0})
+
+
 def test_reasons_name_each_cause():
     assert host_load.busy_reason(QUIET) == ""
     assert "build burst: 8" in host_load.busy_reason(BUILD)
-    assert "MsMpEng at 90%" in host_load.busy_reason(SCAN)
+    assert "MsMpEng at 200%" in host_load.busy_reason(SCAN)
     assert "mc2.exe pid 4242" in host_load.busy_reason(GAME)
     assert host_load.busy_reason({"builds": {}, "engines": [], "defender_pct": None}) == ""
 
