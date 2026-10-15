@@ -244,8 +244,7 @@ void FitIniFile::atClose (void)
 //---------------------------------------------------------------------------
 float FitIniFile::textToFloat (const char *num)
 {
-	float result = atof(num);
-	return(result);
+	return mc2::fit::textToFloat(num);
 }
 
 //---------------------------------------------------------------------------
@@ -310,53 +309,7 @@ int FitIniFile::textToInt (const char *num)
 //---------------------------------------------------------------------------
 long FitIniFile::textToLong (const char *num)
 {
-	long result = 0;
-	
-	//------------------------------------
-	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == nullptr)
-	{
-		result = atol(num);
-	}
-	else
-	{
-		hexOffset += 2;
-		int numDigits = static_cast<int>(strlen(hexOffset)-1);
-		for (int i=0; i<=numDigits; i++)
-		{
-			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
-			{
-				hexOffset[i] = 0;	// we've reach a "wrong" character. Either start of a comment or something illegal. Either way, stop evaluation here.
-				break;
-			}
-		}
-		numDigits = static_cast<int>(strlen(hexOffset)-1);
-		int power = 0;
-		for (int count = numDigits;count >= 0;count--,power++)
-		{
-			unsigned char currentDigit = toupper(hexOffset[count]);
-			
-			if (currentDigit >= 'A' && currentDigit <= 'F')
-			{
-				result += (currentDigit - 'A' + 10)<<(4*power);
-			}
-			else if (currentDigit >= '0' && currentDigit <= '9')
-			{
-				result += (currentDigit - '0')<<(4*power);
-			}
-			else
-			{
-				//---------------------------------------------------------
-				// There is a digit in here I don't understand.  Return 0.
-				result = 0;
-				break;
-			}
-		}
-	}
-
-	
-	return(result);
+	return mc2::fit::textToLong(num);
 }
 
 
@@ -466,52 +419,7 @@ char FitIniFile::textToChar (const char *num)
 //---------------------------------------------------------------------------
 unsigned long FitIniFile::textToULong (const char *num)
 {
-	unsigned long result = 0;
-	
-	//------------------------------------
-	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == nullptr)
-	{
-		result = atol(num);
-	}
-	else
-	{
-		hexOffset += 2;
-		long numDigits = static_cast<long>(strlen(hexOffset)-1);
-		for (int i=0; i<=numDigits; i++)
-		{
-			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
-			{
-				hexOffset[i] = 0;	// we've reach a "wrong" character. Either start of a comment or something illegal. Either way, stop evaluation here.
-				break;
-			}
-		}
-		numDigits = static_cast<long>(strlen(hexOffset)-1);
-		long power = 0;
-		for (long count = numDigits;count >= 0;count--,power++)
-		{
-			unsigned char currentDigit = toupper(hexOffset[count]);
-			
-			if (currentDigit >= 'A' && currentDigit <= 'F')
-			{
-				result += (currentDigit - 'A' + 10)<<(4*power);
-			}
-			else if (currentDigit >= '0' && currentDigit <= '9')
-			{
-				result += (currentDigit - '0')<<(4*power);
-			}
-			else
-			{
-				//---------------------------------------------------------
-				// There is a digit in here I don't understand.  Return 0.
-				result = 0;
-				break;
-			}
-		}
-	}
-	
-	return(result);
+	return mc2::fit::textToULong(num);
 }
 
 
