@@ -66,15 +66,16 @@ handle, `gos_GetTextureTexels` (tri-state, review S1), islands create BC7 images
 | VK tier1 17:15 | VOID: another deploy replaced v0.4's exe (6d4ff1bb3) inside my lease; rerun above |
 | [VRAM v1] VK run_end vs the 6d4ff1bb3 exe (void run) | 4057/4157/4175/4242/4607 vs 4057/4157/4175/4240/4607 MiB: unchanged |
 | [VRAM v1] GL run_end vs session-1 rerun | 3782/3901/3893/3957/4069 vs 3782/3901/3902/3957/4069: unchanged |
-| GL vs VK capture pair (BC7 texels) | NOT RUN: lease released 17:56 on coordinator request (scheduler window) |
+| build_all_targets --root-only | PASS (rc 0, 18:09) |
+| GL vs VK capture pair, mc2_10_saved_204523 --clean, same exe, 18:28-18:41 (viewed) | terrain, water, shoreline foam band and the base props match; the small hex props around the base read as wireframe-like in GL and solid in VK (no earlier pair to say whether this is new; next session: one pair on the 6d4ff1bb3 exe to bisect) |
 
 Tier1 imported no BC7 handle in any island (all `format=37`): the BC7 island path is unexercised by tier1; the HUD CPU decode
 is (FX sprites are BC7). The capture pair is what proves it.
 
 ## Open (next session, in order)
-1. GL vs VK capture pair on the final exe (`scratchpad chain_cap.sh` recipe: capture.py --clean, mc2_10_saved_204523, then
-   view both; an effects-heavy bookmark too). Question it answers: does glGetTexImage on an sRGB BC7 return encoded bytes
-   (then the HUD CPU decode is identical) and do the islands now sample like GL (BC7_SRGB view).
+1. Bisect the hex-prop look difference in the capture pair: the same pair on the 6d4ff1bb3 (nifty) exe; if it is new, the
+   suspect is the BC7_SRGB view in the islands (previously R8G8B8A8_UNORM of a readback). An effects-heavy bookmark for the
+   HUD CPU BC7 decode.
 2. T3 prop albedo arrays (GL mips by glGenerateMipmap: texel change, capture needed), T7 colormap atlas, T9 normal array,
    T8 cement atlas.
 3. Owners are still static-duration (terrain store, prop staging file static): fold into subsystem objects with step 4.
