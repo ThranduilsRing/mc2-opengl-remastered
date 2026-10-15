@@ -30,6 +30,8 @@ def blocks(data):
 
 
 def grade_crud_edit(before, after, operation):
+    if operation.startswith("entry-"):
+        return grade_entry_edit(before, after, operation)
     from editor.tests.objective_census import objective_fields
     from editor.tests.legacy_reference import typed_fields
     prefix, original, ending = blocks(before)
@@ -88,5 +90,42 @@ def grade_crud_edit(before, after, operation):
 
 def grade_crud_panel(directory):
     before = (directory / "fixture.fit").read_bytes()
-    for operation in ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down"):
+    from scripts.run_editor_smoke import PANEL_OPERATIONS
+    for operation in PANEL_OPERATIONS["objectives_crud_panel"]:
         grade_crud_edit(before, (directory / f"{operation}-edited.fit").read_bytes(), operation)
+
+
+def grade_entry_edit(before, after, operation):
+    prefix, expected, ending = blocks(before)
+    actual_prefix, actual, actual_ending = blocks(after)
+    if (prefix, ending) != (actual_prefix, actual_ending) or before == after:
+        raise ValueError("entry framing changed or no-op export")
+    _, number, action = operation.split("-")
+    index = int(number)
+    suffix = ("Condition", "Action", "FailureCondition", "FailureAction")[index]
+    key = ("NumConditions", "NumActions", "NumFailureConditions", "NumFailureActions")[index]
+    owner = "Team0Objective1"
+    base = owner + suffix
+    first, second = expected[base + "0"], expected[base + "1"]
+    count = 2
+    if action == "add":
+        count = 3
+        species = "BooleanFlagIsSet" if index % 2 == 0 else "SetBooleanFlag"
+        expected[base + "2"] = (f'\r\nst {suffix}SpeciesString = "{species}"\r\n'
+                                'st FlagID = ""\r\nb Value = TRUE\r\n').encode()
+    elif action == "delete":
+        count = 1
+        expected[base + "0"] = second
+        del expected[base + "1"]
+    elif action in ("up", "down"):
+        expected[base + "0"], expected[base + "1"] = second, first
+    elif action == "flag":
+        expected[base + "0"] = first.replace(b'"e6c-first"', f'"e6c-edited-{index}"'.encode()).replace(b"Value = FALSE", b"Value = TRUE")
+    else:
+        raise ValueError("unknown entry operation")
+    if count != 2:
+        expected[owner], changes = re.subn(rb"(ul " + key.encode() + rb"\s*=\s*)2\b", lambda m: m[1] + str(count).encode(), expected[owner])
+        if changes != 1:
+            raise ValueError("entry count fixture missing")
+    if actual != expected:
+        raise ValueError("entry count/order/flag payload/preserved bytes differ")

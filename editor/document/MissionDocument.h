@@ -42,6 +42,7 @@ struct Field {
     Value original, value;
     bool opaque{};
     std::string_view warning;
+    bool array{};
 };
 struct Section {
     NodeId id;
@@ -129,7 +130,39 @@ enum class ConditionSpecies : std::uint8_t {
 };
 enum class ActionSpecies : std::uint8_t { bik, wav, text, resourceText, flag, technology };
 // Unsupported entries are opaque data, never a fallback executable species.
-struct ObjectiveEntry { NodeId section; std::variant<ConditionSpecies, ActionSpecies, std::monostate> species; };
+enum class ReferenceKind { none, unit, building };
+enum class ReferenceStatus { Resolved, Missing, Ambiguous, RuntimeOnlyWid, Unsupported };
+struct ReferenceSource {
+    NodeId node;
+    std::string_view key;
+    std::string lexeme;
+};
+struct ObjectiveReference {
+    ReferenceKind kind = ReferenceKind::none;
+    ReferenceStatus status = ReferenceStatus::Unsupported;
+    std::optional<EntityId> target;
+    std::string_view reason = "no supported entity reference";
+    std::vector<ReferenceSource> sources;
+};
+inline std::size_t referenceStorage(const ObjectiveReference& reference) {
+    std::size_t bytes = reference.sources.capacity() * sizeof(ReferenceSource);
+    for (const auto& source : reference.sources) bytes += source.lexeme.capacity();
+    return bytes;
+}
+struct ObjectiveEntry {
+    NodeId section;
+    std::variant<ConditionSpecies, ActionSpecies, std::monostate> species;
+    ObjectiveReference reference;
+    struct Flag {
+        std::optional<std::string> id;
+        bool value = true;
+        bool indexFallback{};
+        std::optional<NodeId> idSource, valueSource;
+        std::string warning;
+    };
+    std::optional<Flag> flag;
+    std::string_view policy;
+};
 inline constexpr std::size_t objectiveTextLimit = 2000;
 struct ObjectiveFieldSpec {
     std::string_view key, prefix;
@@ -222,13 +255,19 @@ private:
     std::size_t terrainSide_{};
     std::uint64_t revision_{};
     std::uint64_t nextEntityId_ = 1, nextNodeId_ = 2 * nodeLimit + 1;
+    static std::expected<MissionDocument, LoadError> decodeSource(std::string fit,
+        std::vector<std::byte> pak, std::string mission, const Diagnostic& log,
+        std::span<const std::uint32_t> markerObjects, bool resolve);
+    std::expected<void, LoadError> decodeReferences(bool resolve, const Diagnostic& log);
+    bool referenceMatches(const Objective& objective, const ObjectiveEntry& entry, const Entity& entity) const;
     void rebuildIndex();
     bool isMarkerPacket(const Entity& entity) const;
     StructuralState structuralState() const;
     std::expected<void, LoadError> restore(const StructuralState& state);
     std::expected<StructuralState, LoadError> structuralCandidate(std::string fit,
         std::vector<std::byte> placements, const std::vector<EntityId>& ids,
-        const std::unordered_map<std::string, std::string>& renamed = {});
+        const std::unordered_map<std::string, std::string>& renamed = {},
+        NodeId resolving = {}, EntityId target = {});
     std::expected<void, LoadError> validateSemantics();
     std::expected<void, LoadError> decodeObjectiveScalars(Objective& objective);
     void preserveObjectiveField(NodeId id, std::string_view warning);

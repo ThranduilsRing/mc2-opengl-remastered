@@ -27,6 +27,7 @@ public:
         unit_ = {}; building_ = {}; player_ = {}; unitDraft_ = {}; buildingDraft_ = {};
         module_.clear(); status_.clear(); revision_ = ~std::uint64_t{};
         objective_ = {}; objectiveRevision_ = ~std::uint64_t{};
+        objectiveEntry_ = {}; entryRevision_ = ~std::uint64_t{}; showObjectiveEntries_ = false;
         refresh();
     }
     void persistence(std::function<void()> save, std::function<void()> reopen) {
@@ -34,6 +35,7 @@ public:
     }
 #ifdef MC2_EDITOR_SMOKE_HOST
     const std::map<std::string, Widget>& widgets() const { return widgets_; }
+    const std::vector<std::string>& objectiveRows() const { return objectiveRows_; }
 #endif
     const std::string& status() const { return status_; }
     document::EntityId unit() const { return unit_; }
@@ -67,12 +69,20 @@ private:
     std::size_t objectiveField_{};
     document::Scalar objectiveDraft_ = std::string{};
     std::uint64_t objectiveRevision_ = ~std::uint64_t{};
+    document::NodeId objectiveEntry_;
+    std::uint64_t entryRevision_ = ~std::uint64_t{};
+    std::string flagDraft_;
+    std::int64_t flagIndexDraft_{};
+    bool flagUseIndex_{}, flagValueDraft_ = true;
+    bool showObjectiveEntries_{};
+    std::size_t objectiveList_{};
     std::vector<document::CatalogSource> placementSources_;
     std::string module_, status_;
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};
     std::uint64_t revision_ = ~std::uint64_t{};
 #ifdef MC2_EDITOR_SMOKE_HOST
     std::map<std::string, Widget> widgets_;
+    std::vector<std::string> objectiveRows_;
 #endif
     std::function<void()> save_, reopen_;
     bool button(const char* key, const char* label);

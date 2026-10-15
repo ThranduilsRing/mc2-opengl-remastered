@@ -1,6 +1,6 @@
-# E6b-refs: typed entity references (deferred)
+# E6b-refs: typed entity references
 
-Reference delivery is deferred in full. CRUD preserves target lexemes; entity commands are reference-unaware. Passthrough and scalar census results do not prove resolution.
+E6b-refs-1 delivers the reference model, resolution once at document read, identity carry-through across structural candidates, referenced-delete rejection and resolved-move XY updates (including marker transforms) with undo/redo. E6b-refs-2 covers existing Part/Warrior insertion/compaction, objective copy/reorder, explicit resolution and objective panel rows. Entity copy has no command and is out of scope. Passthrough and scalar census results do not prove resolution.
 
 ## Authority and identity
 
@@ -21,16 +21,18 @@ XY uses float conversion and strict relative tolerance `abs(a-b)/max(abs(a),abs(
 
 Extend document-owned ObjectiveEntry with kind, explicit status, optional EntityId and source NodeIds/lexemes; retain XY/auxiliary spelling after resolution. Use StructuralState/CommandHistory and budget all dynamic reference storage; limits reject without truncation. No static registry or parallel model.
 
-Candidate decoding precedes final EntityId assignment in MissionStructure: resolve afterward or remap every target alongside entities. Remap source NodeIds too. Noncontiguous IDs must not resolve by accidental equality with export indices.
+Resolve only after final EntityId assignment at document read. Structural candidates carry status, target identity and source lexemes without re-resolution; remap source NodeIds too. Noncontiguous IDs must not resolve by accidental equality with export indices.
 
 | Command | Required behavior |
 |---|---|
 | Resolved move, including marker transform | Update every referring XY export atomically; retain auxiliary lexemes unless explicitly authored; undo restores entity and reference spelling. |
 | Referenced delete, including marker/chooser paths | Reject once with bytes, revision, dirty state, history and future IDs unchanged; never delete conditions implicitly. Removing the referring objective may unblock deletion; undo restores coherent references. |
 | Part/Warrior renumber | Retain EntityId identity and reference lexemes unless the resolved target changes. |
-| Objective copy / entity copy | Keep objective targets / never retarget existing objectives. |
+| Objective copy / entity insertion | Keep objective targets / refuse insertion that makes an existing resolved reference ambiguous. |
 | Objective reorder | Preserve prerequisite flags. |
 | Unresolved/ambiguous entry | Entity edits neither silently resolve nor retarget it; explicit resolution is a validated authoring command. |
+
+Explicit resolution accepts only Missing/Ambiguous entries, writes changed XY lexemes only, and replaces the carried status/target after a unique game-rule match. RuntimeOnlyWid/Unsupported entries cannot be resolved. Rejection, including history-budget failure, logs once and consumes no state or IDs.
 
 ## Required proof
 

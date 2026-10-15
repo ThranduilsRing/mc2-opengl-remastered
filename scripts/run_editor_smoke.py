@@ -645,7 +645,7 @@ def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, c
     before_pak = source.with_suffix(".pak").read_bytes()
     if crud:
         from editor.tests.objective_crud import grade_crud_edit
-        operation = source.name.removesuffix("-edited") if source.name != "widget-save" else "objective-down"
+        operation = source.name.removesuffix("-edited") if source.name != "widget-save" else PANEL_OPERATIONS["objectives_crud_panel"][-1]
         grade_crud_edit((source.parent / "fixture.fit").read_bytes(), before_fit, operation)
     else:
         grade_objective_edit((source.parent / "fixture.fit").read_bytes(), before_fit, "ResourcePoints")
@@ -1149,8 +1149,9 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
 
 
 PANEL_OPERATIONS = {
-    "objectives_crud_panel": ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down"),
-    "objectives_panel": tuple("objective-" + key.replace(" ", "_") for key in (
+    "objectives_crud_panel": ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down") +
+        tuple(f"entry-{i}-{action}" for i in range(4) for action in ("add", "flag", "delete", "up", "down")),
+    "objectives_panel": ("objective-resolve",) + tuple("objective-" + key.replace(" ", "_") for key in (
         "Title", "Description", "Priority", "ResourcePoints", "PreviousPrimaryObjectiveMustBeComplete",
         "AllPreviousPrimaryObjectivesMustBeComplete", "DisplayMarker", "MarkerX", "MarkerY", "HiddenTrigger",
         "ActivateOnFlag", "ActivateFlagID", "ResetStatusOnFlag", "ResetStatusFlagID", "TitleUseResourceString",
@@ -1258,7 +1259,8 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
     elif name == "marker_panel":
         grade_marker_edits(directory)
     elif name == "objectives_panel":
-        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit
+        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit, grade_reference_rows
+        grade_reference_rows(directory)
         for key in AUTHORING_KEYS:
             grade_objective_edit((directory / "fixture.fit").read_bytes(),
                                  (directory / ("objective-" + key.replace(" ", "_") + "-edited.fit")).read_bytes(), key)
@@ -1415,6 +1417,26 @@ def objective_negative_controls(directory):
                 path.write_bytes(original)
         if not caught:
             raise ValueError("objective wrong/no-op widget output was accepted")
+    row_path = directory / "objective-rows-resolved.tsv"
+    rows = row_path.read_bytes()
+    resolve_paths = [directory / f"objective-resolve-{stage}.fit" for stage in ("edited", "redone")]
+    resolved = [path.read_bytes() for path in resolve_paths]
+    controls = (rows.split(b"\n", 1)[1], rows.replace(b" / Part ", b" / WrongPart ", 1), None)
+    for control in controls:
+        caught = False
+        try:
+            if control is None:
+                for path in resolve_paths: path.write_bytes(baseline)
+            else:
+                row_path.write_bytes(control)
+            grade_panel("objectives_panel", directory, 0, require_render=rendered)
+        except ValueError:
+            caught = True
+        finally:
+            row_path.write_bytes(rows)
+            for path, original in zip(resolve_paths, resolved): path.write_bytes(original)
+        if not caught:
+            raise ValueError("objective missing row/wrong target/no-op resolve was accepted")
 
 
 def crud_negative_controls(directory):
@@ -1428,7 +1450,16 @@ def crud_negative_controls(directory):
             b"[Team0Objective1]", b"[Team0Objective0]", 1).replace(b"[swap]", b"[Team0Objective1]", 1)
         if wrong == originals[0]:
             raise ValueError("CRUD wrong-value negative control did not change output")
-        for data in (baseline, wrong, swapped):
+        controls = [baseline, wrong, swapped]
+        if operation.startswith("entry-"):
+            for source, replacement in ((b'e6c-first', b'wrong-id'), (b'Value = FALSE', b'Value = TRUE'),
+                                        (b'BooleanFlagIsSet', b'UnknownCondition'), (b'SetBooleanFlag', b'UnknownAction'),
+                                        (b'st FailureActionSpeciesString = "SetBooleanFlag"', b'ul FailureActionSpecies = 4')):
+                changed = originals[0].replace(source, replacement, 1)
+                if changed == originals[0]:
+                    raise ValueError("flag/species negative control did not mutate output")
+                controls.append(changed)
+        for data in controls:
             caught = False
             try:
                 for path in paths:

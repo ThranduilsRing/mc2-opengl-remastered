@@ -36,7 +36,7 @@ Text is limited to 2,000 characters after FIT assembly, before LF-to-CRLF conver
 
 PreviousObjectiveMustBeComplete supplies the previous-primary flag when the canonical key is absent/ignored; edits retain the alias. ActivateFlagIndex supplies a missing/ignored ActivateFlagID; ID edits add the canonical string without changing the index. Resource/flag IDs never rewrite string tables or ABL; model fields never regenerate one another.
 
-Saved state (IsActive, ActivationTime, IsResolved, ResolvedStatus, ChangedStatus) and TeamNBooleanFlags stay opaque. The game reads BooleanStringN/BooleanValueN until the first missing ID. Version, objective counts and four list counts are structural: version 2 uses unprefixed team-0 blocks; version 3 uses TeamN blocks for eight teams.
+Saved state (IsActive, ActivationTime, IsResolved, ResolvedStatus, ChangedStatus) and TeamNBooleanFlags stay opaque. The game reads BooleanStringN/BooleanValueN until the first missing ID. Version/counts are structural: version 2 uses ObjectiveN roots/success conditions and Team0ObjectiveN for the other lists; version 3 uses TeamN blocks for eight teams.
 
 ## Preservation, unsupported entries and references
 
@@ -49,6 +49,11 @@ Candidates validate before mutation. Rejections log once and preserve bytes, rev
 Independent typed decoding and expected changed outputs are required; passthrough alone proves neither semantics nor target resolution. Keep stock-pair, frozen-placement, real-reader, normal/ASan and widget gates. Reloads require fresh outputs and proven inputs; runtime trigger/reward/video outcomes need separate instrumentation.
 
 ## Follow-ups
+
+Only BooleanFlagIsSet/SetBooleanFlag gain payload authoring; other payloads and team-flag authoring/display are deferred with exact bytes retained.
+Unknown condition/action strings quarantine that entry with the actual DestroyAllEnemyUnits/PlayBIK fallback shown.
+Group predicates remain preserved and shown as skipped; numeric species fallback applies only to success conditions.
+Quarantined/skipped entries allow explicit deletion and whole-objective CRUD, but no individual edit/reorder; refuse tail awakening.
 
 | Work | Contract |
 |---|---|

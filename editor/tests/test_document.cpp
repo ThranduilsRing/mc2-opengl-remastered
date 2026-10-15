@@ -56,7 +56,7 @@ int q3DocumentTests()
             "[Objective0]\r\nul NumConditions = 1\r\nul NumActions = 1\r\n"
             "[Objective0Condition0]\r\nst ConditionSpeciesString = \"MoveAnyUnitToArea\"\r\n"
             "f TargetCenterX = 12.0\r\nf TargetCenterY = 3.0\r\nf TargetRadius = 5.0\r\n"
-            "[Objective0Action0]\r\nst ActionSpeciesString = \"DisplayTextMessage\"\r\nst Message = \"message\"\r\n");
+            "[Team0Objective0Action0]\r\nst ActionSpeciesString = \"DisplayTextMessage\"\r\nst Message = \"message\"\r\n");
         auto objectives = MissionDocument::decode(withObjective, fixturePak(), "unit", log);
         require(objectives && objectives->objectives().size() == 1 && objectives->objectives()[0].entries[0].size() == 1 &&
             std::get<ConditionSpecies>(objectives->objectives()[0].entries[0][0].species) == ConditionSpecies::moveAny, "typed_objective");
@@ -118,7 +118,7 @@ int q3DocumentTests()
         require(absentPart && absentPart->entities()[0].team == 0 && absentPart->entities()[0].position[2] == 0 && absentPart->entities()[0].rotation == 0,
             "absent_optional_part_defaults");
         for (const auto suffix : {"Condition", "Action"}) {
-            const auto entry = "Objective0" + std::string(suffix) + "0";
+            const auto entry = std::string(std::string_view(suffix) == "Condition" ? "Objective0" : "Team0Objective0") + suffix + "0";
             const auto species = std::string_view(suffix) == "Condition" ? "BooleanFlagIsSet" : "SetBooleanFlag";
             const auto flagFixture = [&](std::string declaration) {
                 auto input = fixture;
@@ -130,8 +130,13 @@ int q3DocumentTests()
             };
             for (const auto declaration : {"st FlagIndex = \"bad\"", "f FlagIndex = 1e30", "l FlagIndex = -1", "ul FlagIndex = 2147483648",
                      "ul FlagIndex = 4294967295", "l[2] FlagIndex = 0,1,"}) {
-                rejectField(flagFixture(declaration), entry + "/FlagIndex");
-                rejectField(flagFixture(std::string(declaration) + "\r\nst FlagID = \"valid\""), entry + "/FlagIndex");
+                for (const bool canonical : {false, true}) {
+                    const auto input = flagFixture(std::string(declaration) + (canonical ? "\r\nst FlagID = \"valid\"" : ""));
+                    auto preserved = MissionDocument::decode(input, fixturePak(), "preserved-flag", {});
+                    require(preserved && preserved->fitBytes() == input, "flag_alias_preserved_without_load_rejection");
+                    const auto& payload = preserved->objectives()[0].entries[std::string_view(suffix) == "Condition" ? 0 : 1][0].flag;
+                    require(payload.has_value() && (!canonical || (payload->id == "valid" && !payload->indexFallback)), "readable_flag_id_wins_over_any_alias");
+                }
             }
             for (const auto index : {"0", "2147483647"}) {
                 logs.clear(); auto valid = MissionDocument::decode(flagFixture("ul FlagIndex = " + std::string(index)), fixturePak(), "valid", log);
