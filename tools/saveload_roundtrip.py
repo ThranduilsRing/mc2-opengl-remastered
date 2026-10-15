@@ -148,6 +148,10 @@ def selftest() -> int:
         ok, rep = check_baseline_record(rec, baseline_record("m", 10, 20, f1, f3, fp))
         if ok or "re-save" not in " ".join(rep):
             fails.append("a baseline that was re-save identical must refuse a run that is not")
+        for broken in ({}, {"overall": "x"}, {"runs": []}, {"runs": "no", "overall": "x"}, []):
+            ok, rep = check_baseline_record(broken, rec)
+            if ok or "malformed baseline" not in " ".join(rep):
+                fails.append("a malformed baseline must be refused with one line, not raise: " + repr(broken))
         if json.loads(json.dumps(rec))["runs"] != rec["runs"]:
             fails.append("the baseline record must survive a JSON round trip")
         mask_path = os.path.join(td, "mask.json")
@@ -340,6 +344,8 @@ def baseline_record(mission: str, save_at: int, load_at: int, first: str, second
 def check_baseline_record(base: dict, cur: dict):
     """-> (ok, report lines): does a fresh round-trip save equal the recorded one, run for run?"""
     lines = []
+    if not isinstance(base, dict) or not isinstance(base.get("runs"), list) or not isinstance(base.get("overall"), str):
+        return False, ["malformed baseline: it needs a 'runs' list and an 'overall' digest; record it again with --baseline"]
     if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
         return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
     be, ce = base.get("exe") or {}, cur.get("exe") or {}
@@ -407,8 +413,12 @@ def cmd_fixture(args) -> int:
     if not os.path.exists(path):
         print(f"saveload_roundtrip check: no baseline for {args.mission} ({os.path.relpath(path, ROOT)}); record one with --baseline")
         return 1
-    with open(path, encoding="utf-8") as fh:
-        base = json.load(fh)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            base = json.load(fh)
+    except (OSError, ValueError) as err:
+        print(f"saveload_roundtrip check: malformed baseline {os.path.relpath(path, ROOT)} ({err}); record it again with --baseline")
+        return 1
     ok, lines = check_baseline_record(base, rec)
     print(("saveload_roundtrip check: PASS" if ok else "saveload_roundtrip check: FAIL") + "\n" + "\n".join(lines))
     return 0 if ok else 1

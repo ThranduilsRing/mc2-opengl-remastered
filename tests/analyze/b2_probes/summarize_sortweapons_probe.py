@@ -8,7 +8,7 @@ Exit 1 when a promise is broken or no call was seen.
 import re
 import sys
 
-LINE = re.compile(r"\[B2P3 v1\] simframe=(\d+) mover=(\d+) shape=(\w+) n=(\d+) rc=(-?\d+) ties=(\d) differ=(\d) scores_x1000=([-\d,]*) old=([-\d,]*) new=([-\d,]*)")
+LINE = re.compile(r"\[B2P3 v1\] simframe=(\d+) mover=(\d+) shape=(\w+) n=(\d+) rc=(-?\d+) ties=(\d) differ=(\d) scores_x1000=([-\d,]*) old=([-\d,]*) new=([-\d,]*)\s*$")
 
 
 def main(paths):
@@ -17,14 +17,30 @@ def main(paths):
     differ = {"all": 0, "list": 0}
     broken = []
     first_tie = None
+    malformed = 0
     for path in paths:
         for line in open(path, encoding="utf-8", errors="replace"):
-            m = LINE.search(line)
-            if not m:
+            if "[B2P3 v1]" not in line:
                 continue
-            frame, mover, shape, n, rc, tie, diff, scores, old, new = m.groups()
-            scores = [int(x) for x in scores.split(",")]
-            new_ids = [int(x) for x in new.split(",")]
+            m = LINE.search(line)
+            try:
+                if not m:
+                    raise ValueError("does not match the line shape")
+                frame, mover, shape, n, rc, tie, diff, scores, old, new = m.groups()
+                # an empty field is a call with no scored items: an empty list, not a parse error
+                scores = [int(x) for x in scores.split(",")] if scores else []
+                new_ids = [int(x) for x in new.split(",")] if new else []
+                if shape not in calls:
+                    raise ValueError("unknown shape " + shape)
+                if len(scores) != len(new_ids):
+                    raise ValueError("scores and ids differ in length")
+                if old:
+                    [int(x) for x in old.split(",")]
+            except ValueError as err:
+                malformed += 1
+                if malformed == 1:
+                    print(f"summarize_sortweapons_probe: malformed [B2P3 v1] line in {path} ({err}): {line.strip()[:200]}")
+                continue
             # ids as scored: all -> numOther + i (any base); list -> the same plus a trailing -1; recover the listed order from the scores' original order
             calls[shape] += 1
             ties[shape] += int(tie)
@@ -34,14 +50,14 @@ def main(paths):
             if rc != "0":
                 broken.append(f"rc {rc}: {line.strip()}")
                 continue
-            old_ids = [int(x) for x in old.split(",")]
+            old_ids = [int(x) for x in old.split(",")] if old else []
             if sorted(old_ids) != sorted(new_ids):
                 broken.append(f"the two orders hold different ids: {line.strip()}")
             by_id = dict(zip(sorted(new_ids, key=lambda i: (i == -1, i)), scores))
             vals = [by_id[i] for i in new_ids]
             if any(vals[i] < vals[i + 1] for i in range(len(vals) - 1)):
                 broken.append(f"new order is not descending: {line.strip()}")
-            if shape == "list" and new_ids[-1] != -1:
+            if shape == "list" and new_ids and new_ids[-1] != -1:
                 broken.append(f"the -1 slot is not last: {line.strip()}")
             # equal scores keep the listed (ascending id) order
             for i in range(len(vals) - 1):
@@ -49,6 +65,9 @@ def main(paths):
                     broken.append(f"equal scores out of listed order: {line.strip()}")
                     break
     total = calls["all"] + calls["list"]
+    if malformed:
+        print(f"MALFORMED {malformed}")
+        return 1
     for shape in ("all", "list"):
         print(f"shape {shape}: {calls[shape]} calls, {ties[shape]} with equal scores, {differ[shape]} where the old rule and the new rule order differently")
     if first_tie:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """apply_sortweapons_probe - patch a SCRATCH worktree with fixture P3 (Mover::sortWeapons on real mission data, old rule vs the tree's rule) and probe P4
-(which sort site sees equal scores, and when). Never run it on the main worktree.
+(which sort site sees equal scores, and when). Refuses the main worktree, and patches nothing unless every anchor is found (all edits are computed first,
+then written), so a missed anchor never leaves a half-patched tree.
 
 WHAT: P3 appends sortweapons_probe.inc to code/sim_identity.cpp and calls mc2B2SortWeaponsProbe(simFrame) from mc2SimIdentityTraceFrame, so every sim frame that
 is a multiple of 30 prints one [B2P3 v1] line per mover-with-a-target and call shape. P4 gives mclib/score_sort.h a sort_scored_at(tag, items, order) that prints
@@ -14,35 +15,15 @@ Run:  py -3 apply_sortweapons_probe.py WORKTREE   then build the worktree, run M
 import os
 import sys
 
-root = sys.argv[1]
-here = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.abspath(__file__))
 
+SITES = {
+    "code/ablmc2_camera.cpp": ["getMoversWithinRadius"],
+    "code/contact.cpp": ["getContacts"],
+    "code/mover_combat.cpp": ["calcOptimalRange", "sortWeapons_all", "sortWeapons_list"],
+}
 
-def read(rel):
-    raw = open(os.path.join(root, rel), "rb").read()
-    return raw.decode("utf-8").replace("\r\n", "\n"), b"\r\n" in raw
-
-
-def write(rel, text, crlf):
-    open(os.path.join(root, rel), "wb").write((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
-
-
-# ---- P3 ----
-text, crlf = read("code/sim_identity.cpp")
-if "mc2B2SortWeaponsProbe" in text:
-    sys.exit("already patched")
-needle = 'extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) {\n'
-assert text.count(needle) == 1
-inc = open(os.path.join(here, "sortweapons_probe.inc"), encoding="utf-8").read().replace("\r\n", "\n")
-# the definition goes in front of mc2SimIdentityTraceFrame so the call below sees it
-text = text.replace(needle, "#include <string>\n" + inc + "\n" + needle + "\tmc2B2SortWeaponsProbe(simFrame);\n")
-write("code/sim_identity.cpp", text, crlf)
-
-# ---- P4 ----
-header, crlf = read("mclib/score_sort.h")
-tail = "\n} // namespace mc2\n"
-assert header.rstrip("\n").endswith("} // namespace mc2")
-probe = r'''
+PROBE = r'''
 }
 
 extern float scenarioTime;
@@ -78,19 +59,69 @@ inline void sort_scored_at(const char* tag, std::span<Scored> items, SortOrder o
 	(void)copy;
 }
 '''
-header = header.rstrip("\n")[: -len("} // namespace mc2")].rstrip("\n") + "\n" + probe + "\n} // namespace mc2\n"
-header = header.replace("#include <span>\n", "#include <span>\n#include <cstdio>\n#include <vector>\n", 1)
-write("mclib/score_sort.h", header, crlf)
 
-SITES = {
-    "code/ablmc2_camera.cpp": ["getMoversWithinRadius"],
-    "code/contact.cpp": ["getContacts"],
-    "code/mover_combat.cpp": ["calcOptimalRange", "sortWeapons_all", "sortWeapons_list"],
-}
-for rel, tags in SITES.items():
-    t, crlf = read(rel)
-    assert t.count("mc2::sort_scored(") == len(tags), (rel, t.count("mc2::sort_scored("))
-    for tag in tags:
-        t = t.replace("mc2::sort_scored(", 'mc2::sort_scored_at("%s", ' % tag, 1)
-    write(rel, t, crlf)
-print("patched", root)
+
+def fail(message):
+    sys.exit("apply_sortweapons_probe: " + message)
+
+
+def read(root, rel):
+    path = os.path.join(root, rel)
+    if not os.path.isfile(path):
+        fail(rel + ": no such file in " + root)
+    raw = open(path, "rb").read()
+    return raw.decode("utf-8").replace("\r\n", "\n"), b"\r\n" in raw
+
+
+def plan(root):
+    """Every edit as {rel: (text, crlf)}, computed without touching the tree; a missed anchor exits before the first write."""
+    edits = {}
+    # P3
+    text, crlf = read(root, "code/sim_identity.cpp")
+    if "mc2B2SortWeaponsProbe" in text:
+        fail("code/sim_identity.cpp is already patched")
+    needle = 'extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) {\n'
+    if text.count(needle) != 1:
+        fail("code/sim_identity.cpp: the mc2SimIdentityTraceFrame anchor was found %dx, expected 1" % text.count(needle))
+    inc = open(os.path.join(HERE, "sortweapons_probe.inc"), encoding="utf-8").read().replace("\r\n", "\n")
+    # the definition goes in front of mc2SimIdentityTraceFrame so the call below sees it
+    edits["code/sim_identity.cpp"] = (text.replace(needle, "#include <string>\n" + inc + "\n" + needle + "\tmc2B2SortWeaponsProbe(simFrame);\n"), crlf)
+
+    # P4
+    header, crlf = read(root, "mclib/score_sort.h")
+    if not header.rstrip("\n").endswith("} // namespace mc2"):
+        fail("mclib/score_sort.h: the closing namespace anchor is missing")
+    if "#include <span>\n" not in header:
+        fail("mclib/score_sort.h: the <span> include anchor is missing")
+    if "sort_scored_at" in header:
+        fail("mclib/score_sort.h is already patched")
+    header = header.rstrip("\n")[: -len("} // namespace mc2")].rstrip("\n") + "\n" + PROBE + "\n} // namespace mc2\n"
+    header = header.replace("#include <span>\n", "#include <span>\n#include <cstdio>\n#include <vector>\n", 1)
+    edits["mclib/score_sort.h"] = (header, crlf)
+
+    for rel, tags in SITES.items():
+        t, crlf = read(root, rel)
+        found = t.count("mc2::sort_scored(")
+        if found != len(tags):
+            fail("%s: expected %d mc2::sort_scored( sites, found %d" % (rel, len(tags), found))
+        for tag in tags:
+            t = t.replace("mc2::sort_scored(", 'mc2::sort_scored_at("%s", ' % tag, 1)
+        edits[rel] = (t, crlf)
+    return edits
+
+
+def main():
+    if len(sys.argv) != 2 or not os.path.isdir(sys.argv[1]):
+        sys.exit(__doc__)
+    root = sys.argv[1]
+    if os.path.abspath(root).replace("\\", "/").lower().rstrip("/").endswith("/mc2-main"):
+        fail("refusing to patch the main worktree")
+    edits = plan(root)
+    for rel, (text, crlf) in edits.items():
+        with open(os.path.join(root, rel), "wb") as f:
+            f.write((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
+    print("patched", root, "(%d files)" % len(edits))
+
+
+if __name__ == "__main__":
+    main()
