@@ -49,3 +49,28 @@ TEST_CASE("MC2_SAVE_STRUCT: padding is zero on a dirty stack and constructor def
 		CHECK(kept);
 	}
 }
+
+namespace {
+
+struct Polymorphic {
+	int value = 7;
+	virtual void touch() {}
+	virtual ~Polymorphic() = default;
+};
+
+} // namespace
+
+TEST_CASE("mc2SaveClearVptr: the vftable pointer bytes are zero and the data members are untouched") {
+	MC2_SAVE_STRUCT(Polymorphic, p);
+	unsigned char before[sizeof(void*)];
+	std::memcpy(before, &p, sizeof(void*));
+	bool anyBefore = false;
+	for (unsigned char b : before)
+		anyBefore = anyBefore || b != 0;
+	CHECK(anyBefore);   // the constructor set a vftable pointer: the thing the file must not carry
+	mc2SaveClearVptr(p);
+	const unsigned char* raw = reinterpret_cast<const unsigned char*>(&p);
+	for (size_t i = 0; i < sizeof(void*); ++i)
+		CHECK(raw[i] == 0);
+	CHECK(p.value == 7);
+}

@@ -392,6 +392,8 @@ void Mover::CopyTo (MoverData *data)
 																							
 	data->control 						        = control;                                    
 	data->dynamics 						        = dynamics;                                   
+	mc2SaveClearVptr(data->control);
+	mc2SaveClearVptr(data->dynamics);
 																							
 	data->numWeaponHitsHandled                  = numWeaponHitsHandled;                       
 	data->timeLeft 						        = timeLeft;                                   
