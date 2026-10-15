@@ -6,6 +6,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "packet_exact.h"
 
 
 int GlobalMap::minRow = 0;
@@ -574,6 +575,8 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	GameMap = new MissionMap;
 	gosASSERT(GameMap != NULL);
 	long numMissionMapPackets = GameMap->init(packetFile, whichPacket);
+	if (numMissionMapPackets == 0)
+		Fatal(0, " MOVE_readData: the mission map was rejected; the mission is not loaded ");
 
 	if (!PathFindMap[SECTOR_PATHMAP])
 		Fatal(0, " MOVE_BuildData: Must call MOVE_Init()! ");
@@ -761,36 +764,26 @@ void MissionMap::rebuildTileMineCounts (void) {
 
 constexpr int NUM_MISSIONMAP_PACKETS = 4;
 
-// Reads packet `index` into `dst` only when the packet is exactly `bytes` long. WHY: the mission pak is mod content; a packet of
-// another size used to be copied whole into a fixed-size field or grid. A mismatch logs one line and leaves `dst` as it was.
-static bool readExactPacket (PacketFile* packetFile, long index, void* dst, size_t bytes, std::string_view what) {
-
-	packetFile->seekPacket(index);
-	const int size = packetFile->getPacketSize();
-	if (size < 0 || static_cast<size_t>(size) != bytes) {
-		MC2_LOG(Io, Error, "move: mission map {} packet {} is {} bytes, expected {}; it is not loaded", what, index, size, bytes);
-		return false;
-	}
-	packetFile->readPacket(index, static_cast<unsigned char*>(dst));
-	return true;
-}
-
 long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 
+	// Any rejected packet refuses the whole map (0 packets read): a mission on a stale planet or an all-clear grid plays on a
+	// passable-everywhere map. The first rejection is the only log line.
 	int32_t h = 0;
 	int32_t w = 0;
-	readExactPacket(packetFile, whichPacket++, &h, sizeof(h), "height");
-	readExactPacket(packetFile, whichPacket++, &w, sizeof(w), "width");
-	readExactPacket(packetFile, whichPacket++, &planet, sizeof(planet), "planet");
-	// The dimensions size the grid and index the terrain's per-cell coordinate tables, so an out-of-range pair loads an empty map.
+	if (!mc2::pak::readExact(*packetFile, whichPacket, &h, sizeof(h), "mission map height") ||
+		!mc2::pak::readExact(*packetFile, whichPacket + 1, &w, sizeof(w), "mission map width") ||
+		!mc2::pak::readExact(*packetFile, whichPacket + 2, &planet, sizeof(planet), "mission map planet"))
+		return 0;
+	// The dimensions size the grid and index the terrain's per-cell coordinate tables.
 	if (h <= 0 || w <= 0 || h > MAX_MAP_CELL_WIDTH || w > MAX_MAP_CELL_WIDTH) {
 		MC2_LOG(Io, Error, "move: mission map is {} x {} cells (valid 1..{}); the map is not loaded", h, w, MAX_MAP_CELL_WIDTH);
-		h = w = 0;
+		return 0;
 	}
 	init(h, w);
-	if (!map.empty() && !readExactPacket(packetFile, whichPacket, map.data(), map.size() * sizeof(MapCell), "cell"))
+	if (!mc2::pak::readExact(*packetFile, whichPacket + 3, map.data(), map.size() * sizeof(MapCell), "mission map cell")) {
 		std::fill(map.begin(), map.end(), MapCell{});
-	whichPacket++;
+		return 0;
+	}
 
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++) {

@@ -33,6 +33,7 @@
 
 #include<string.h>
 #include"../GameOS/gameos/utils/mc2log.h"
+#include"packet_exact.h"
 //---------------------------------------------------------------------------
 extern MemoryPtr 	LZPacketBuffer;
 extern unsigned int LZPacketBufferSize;
@@ -816,5 +817,24 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer)
 	}
 	
 	return BAD_WRITE_ERR;
+}
+
+//---------------------------------------------------------------------------
+bool mc2::pak::readExact (PacketFile& file, long index, void* dst, std::size_t bytes, std::string_view what)
+{
+	// A missing packet is malformed content too, so it is checked here instead of reaching seekPacket's out-of-range STOP.
+	const bool present = (index >= 0) && (index < file.getNumPackets());
+	const int size = (present && file.seekPacket(index) == NO_ERR) ? file.getPacketSize() : -1;
+	if (size < 0 || static_cast<std::size_t>(size) != bytes)
+	{
+		MC2_LOG(Io, Error, "pak: {} packet {} is {} bytes, expected {}; it is not loaded", what, index, size, bytes);
+		return false;
+	}
+	if (file.readPacket(index, static_cast<unsigned char*>(dst)) != size)
+	{
+		MC2_LOG(Io, Error, "pak: {} packet {} did not decode to {} bytes; it is not loaded", what, index, bytes);
+		return false;
+	}
+	return true;
 }
 
