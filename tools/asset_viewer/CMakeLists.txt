@@ -55,6 +55,7 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/fastfile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/ffile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/packet.cpp"
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/utils/mc2log.cpp"   # file.cpp / packet.cpp log malformed content through the facade
     "${CMAKE_SOURCE_DIR}/mclib/lzdecomp.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/fst_hash.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/heap.cpp"
