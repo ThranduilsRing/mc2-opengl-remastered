@@ -2228,7 +2228,7 @@
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 15,
+          "line": 16,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs"
@@ -3843,7 +3843,14 @@
         },
         {
           "path": "editor/tests/objective_census.py",
-          "line": 89,
+          "line": 108,
+          "evidence": "import",
+          "reference": "run_editor_smoke",
+          "text": "from run_editor_smoke import fit_fields"
+        },
+        {
+          "path": "editor/tests/objective_census.py",
+          "line": 199,
           "evidence": "import",
           "reference": "run_editor_smoke",
           "text": "from run_editor_smoke import fit_fields"
@@ -3864,21 +3871,21 @@
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 16,
+          "line": 17,
           "evidence": "import",
           "reference": "run_editor_smoke",
           "text": "from run_editor_smoke import StockInputs, STOCK_MISSIONS, compare_fit"
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 56,
+          "line": 57,
           "evidence": "import",
           "reference": "run_editor_smoke",
           "text": "from run_editor_smoke import fit_fields"
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 216,
+          "line": 229,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import grade_panel, panel_negative_controls"
