@@ -67,6 +67,7 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"
 #include "static_shadow_spec.h"
+#include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun, mc2ClampShadowSunAltitude
 #include "vk_shared_gbuffer_gate.h"
 
 // Fixed-timestep clock so the animated cloud/foam time matches the GL path under smoke.
@@ -761,6 +762,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         float len = sqrtf(lx*lx + ly*ly + lz*lz);
         if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; }
         p.lightDir[0] = -lx; p.lightDir[1] = -ly; p.lightDir[2] = -lz; p.lightDir[3] = 0.0f;
+        // The back-face guard takes the same altitude-clamped sun the shadow matrices were built with, as the GL screen shadow does
+        // (MC2_SHADOW_GUARD_CLAMPED_SUN): on a low-sun map the raw sun leaves the lit faces of props below the guard, so they never received.
+        if (mc2ShadowGuardClampedSun()) mc2ClampShadowSunAltitude(p.lightDir[0], p.lightDir[1], p.lightDir[2]);
     }
     p.screenSize[0] = (float)width_;
     p.screenSize[1] = (float)height_;
