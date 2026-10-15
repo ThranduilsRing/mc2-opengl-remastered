@@ -1541,10 +1541,6 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
     vlog("caster geometry invalidated (map boundary).");
 }
 
-extern "C" void mc2_vk_shadow_island_reread_building_casters() {
-    if (ShadowIsland* s = parkedIsland()) s->buildingsRead = false;
-}
-
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_shadow_island_destroy() {
     vlog("[VK_SHADOW_INTEROP] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
