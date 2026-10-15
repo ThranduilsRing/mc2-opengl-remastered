@@ -83,6 +83,7 @@ add_executable(mc2_tests
     test_vulkan_layout_chain.cpp  # VULKAN-LAYOUT-CHAIN-VALIDATOR-2: sampled-image layout-chain coverage/producer (offline)
     test_subgraph_contiguity.cpp  # SUBGRAPH-CONTIGUITY-GUARD-1: postprocess sub-pass contiguity rule (offline)
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
+    test_file_family_contract.cpp   # step 4 B3.0: the File family's name/child/buffer contract before B3.1
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
