@@ -27,6 +27,9 @@
 #include"dgamelog.h"
 #endif
 
+// File must be complete here: GameLog owns its output file.
+#include"file.h"
+
 //---------------------------------------------------------------------------
 
 inline constexpr int MAX_GAMELOGS = 6;

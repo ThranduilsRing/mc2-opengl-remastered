@@ -1,0 +1,2867 @@
+{
+ "objects": 1229,
+ "classes": {
+  "DIFF": 10,
+  "IDENTICAL": 304,
+  "LAYOUT-ONLY": 23,
+  "NOT-REBUILT": 699,
+  "ORDER-ONLY": 193
+ },
+ "not_identical": [
+  {
+   "source": "GameAdapters/MechRenderAdapter.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameAdapters/CMakeFiles/gameadapters.dir/MechRenderAdapter.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1174:.rdata",
+    "1175:.data$r",
+    "1175:.rdata",
+    "1176:.xdata$x",
+    "1177:.rdata",
+    "1177:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameAdapters/VegetationAdapter.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameAdapters/CMakeFiles/gameadapters.dir/VegetationAdapter.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "113:.text$mn",
+    "11:.text$mn",
+    "1362:.rdata",
+    "1363:.data$r",
+    "1363:.rdata",
+    "1364:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/draw_packet_emitter.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/draw_packet_emitter.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1284:.rdata",
+    "1285:.data$r",
+    "1285:.rdata",
+    "1286:.xdata$x",
+    "1287:.rdata",
+    "1287:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/draw_packet_emitter.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/draw_packet_emitter.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1284:.rdata",
+    "1285:.data$r",
+    "1285:.rdata",
+    "1286:.xdata$x",
+    "1287:.rdata",
+    "1287:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gameos_graphics.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gameos_graphics.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .rdata",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gameos_graphics.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gameos_graphics.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .rdata",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gameosmain_frame.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_main.dir/gameosmain_frame.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1615:.rdata",
+    "1616:.data$r",
+    "1616:.rdata",
+    "1617:.xdata$x",
+    "1618:.rdata",
+    "1618:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gameosmain_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_main.dir/gameosmain_init.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1653:.rdata",
+    "1654:.data$r",
+    "1654:.rdata",
+    "1655:.xdata$x",
+    "1656:.rdata",
+    "1656:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_crashbundle.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_crashbundle.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_crashbundle.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_crashbundle.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_mech_batcher.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1652:.rdata",
+    "1653:.data$r",
+    "1653:.rdata",
+    "1654:.xdata$x",
+    "1655:.rdata",
+    "1655:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_mech_batcher.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1652:.rdata",
+    "1653:.data$r",
+    "1653:.rdata",
+    "1654:.xdata$x",
+    "1655:.rdata",
+    "1655:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher_api.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_mech_batcher_api.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1344:.rdata",
+    "1345:.data$r",
+    "1345:.rdata",
+    "1346:.xdata$x",
+    "1347:.rdata",
+    "1347:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher_api.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_mech_batcher_api.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1344:.rdata",
+    "1345:.data$r",
+    "1345:.rdata",
+    "1346:.xdata$x",
+    "1347:.rdata",
+    "1347:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher_flush.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_mech_batcher_flush.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1833:.data$r",
+    "1833:.rdata",
+    "1834:.xdata$x",
+    "1835:.rdata",
+    "1835:.xdata$x",
+    "1836:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher_flush.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_mech_batcher_flush.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1833:.data$r",
+    "1833:.rdata",
+    "1834:.xdata$x",
+    "1835:.rdata",
+    "1835:.xdata$x",
+    "1836:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher_geometry.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_mech_batcher_geometry.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1589:.rdata",
+    "1590:.data$r",
+    "1590:.rdata",
+    "1591:.xdata$x",
+    "1592:.rdata",
+    "1592:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_mech_batcher_geometry.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_mech_batcher_geometry.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1589:.rdata",
+    "1590:.data$r",
+    "1590:.rdata",
+    "1591:.xdata$x",
+    "1592:.rdata",
+    "1592:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_object_parity.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_object_parity.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1781:.rdata",
+    "1782:.data$r",
+    "1782:.rdata",
+    "1783:.xdata$x",
+    "1784:.rdata",
+    "1784:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_object_parity.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_object_parity.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1781:.rdata",
+    "1782:.data$r",
+    "1782:.rdata",
+    "1783:.xdata$x",
+    "1784:.rdata",
+    "1784:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_finalize.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1852:.rdata",
+    "1853:.data$r",
+    "1853:.rdata",
+    "1854:.xdata$x",
+    "1855:.rdata",
+    "1855:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_finalize.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1852:.rdata",
+    "1853:.data$r",
+    "1853:.rdata",
+    "1854:.xdata$x",
+    "1855:.rdata",
+    "1855:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_finalize_textures.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1139:.xdata",
+    "1170:.xdata",
+    "132:.text$mn",
+    "2223:.rdata",
+    "2224:.data$r",
+    "2224:.rdata"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_finalize_textures.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1139:.xdata",
+    "1170:.xdata",
+    "132:.text$mn",
+    "2223:.rdata",
+    "2224:.data$r",
+    "2224:.rdata"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_flush.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1380:.data$r",
+    "1380:.rdata",
+    "1381:.xdata$x",
+    "1382:.rdata",
+    "1382:.xdata$x",
+    "1383:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_flush.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1380:.data$r",
+    "1380:.rdata",
+    "1381:.xdata$x",
+    "1382:.rdata",
+    "1382:.xdata$x",
+    "1383:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_flush_dispatch.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1679:.rdata",
+    "1680:.data$r",
+    "1680:.rdata",
+    "1681:.xdata$x",
+    "1682:.rdata",
+    "1682:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_flush_dispatch.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1679:.rdata",
+    "1680:.data$r",
+    "1680:.rdata",
+    "1681:.xdata$x",
+    "1682:.rdata",
+    "1682:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_flush_prep.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1459:.data$r",
+    "1459:.rdata",
+    "1460:.xdata$x",
+    "1461:.rdata",
+    "1461:.xdata$x",
+    "1462:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_flush_prep.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1459:.data$r",
+    "1459:.rdata",
+    "1460:.xdata$x",
+    "1461:.rdata",
+    "1461:.xdata$x",
+    "1462:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_mapload.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_mapload.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1526:.data$r",
+    "1526:.rdata",
+    "1527:.xdata$x",
+    "1528:.rdata",
+    "1528:.xdata$x",
+    "1529:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_mapload.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_mapload.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1526:.data$r",
+    "1526:.rdata",
+    "1527:.xdata$x",
+    "1528:.rdata",
+    "1528:.xdata$x",
+    "1529:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_program.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1663:.rdata",
+    "1664:.data$r",
+    "1664:.rdata",
+    "1665:.xdata$x",
+    "1666:.rdata",
+    "1666:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_program.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1663:.rdata",
+    "1664:.data$r",
+    "1664:.rdata",
+    "1665:.xdata$x",
+    "1666:.rdata",
+    "1666:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_seam.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_seam.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1810:.data$r",
+    "1810:.rdata",
+    "1811:.xdata$x",
+    "1812:.rdata",
+    "1812:.xdata$x",
+    "1813:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_seam.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_seam.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1810:.data$r",
+    "1810:.rdata",
+    "1811:.xdata$x",
+    "1812:.rdata",
+    "1812:.xdata$x",
+    "1813:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_shadow.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_shadow.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1796:.rdata",
+    "1797:.data$r",
+    "1797:.rdata",
+    "1798:.xdata$x",
+    "1799:.rdata",
+    "1799:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_shadow.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_shadow.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1796:.rdata",
+    "1797:.data$r",
+    "1797:.rdata",
+    "1798:.xdata$x",
+    "1799:.rdata",
+    "1799:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_submit.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_batcher_submit.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1913:.data$r",
+    "1913:.rdata",
+    "1914:.xdata$x",
+    "1915:.rdata",
+    "1915:.xdata$x",
+    "1916:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_batcher_submit.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_batcher_submit.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1913:.data$r",
+    "1913:.rdata",
+    "1914:.xdata$x",
+    "1915:.rdata",
+    "1915:.xdata$x",
+    "1916:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_registry_flush_range.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_registry_flush_range.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1593:.rdata",
+    "1594:.data$r",
+    "1594:.rdata",
+    "1595:.xdata$x",
+    "1596:.rdata",
+    "1596:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_registry_flush_range.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_registry_flush_range.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1593:.rdata",
+    "1594:.data$r",
+    "1594:.rdata",
+    "1595:.xdata$x",
+    "1596:.rdata",
+    "1596:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_registry_flush_tail.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_static_prop_registry_flush_tail.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1268:.data$r",
+    "1268:.rdata",
+    "1269:.xdata$x",
+    "1270:.rdata",
+    "1270:.xdata$x",
+    "1271:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_static_prop_registry_flush_tail.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_static_prop_registry_flush_tail.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1268:.data$r",
+    "1268:.rdata",
+    "1269:.xdata$x",
+    "1270:.rdata",
+    "1270:.xdata$x",
+    "1271:.data$r"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_visual_capture.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/gos_visual_capture.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "section .text$mn",
+    "section .xdata"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/gos_visual_capture.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/gos_visual_capture.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "section .text$mn",
+    "section .xdata"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/render_snapshot.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos.dir/render_snapshot.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1329:.rdata",
+    "1330:.data$r",
+    "1330:.rdata",
+    "1331:.xdata$x",
+    "1332:.rdata",
+    "1332:.xdata$x"
+   ]
+  },
+  {
+   "source": "GameOS/gameos/render_snapshot.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/GameOS/gameos/CMakeFiles/gameos_editor.dir/render_snapshot.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1329:.rdata",
+    "1330:.data$r",
+    "1330:.rdata",
+    "1331:.xdata$x",
+    "1332:.rdata",
+    "1332:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/ablmc2.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/ablmc2.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "108:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1433:.rdata",
+    "1434:.data$r",
+    "1434:.rdata"
+   ]
+  },
+  {
+   "source": "code/ablmc2_repro.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/ablmc2_repro.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1142:.rdata",
+    "1143:.data$r",
+    "1143:.rdata",
+    "1144:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/ablmc2_roster.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/ablmc2_roster.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "161:.text$mn",
+    "16:.text$mn"
+   ]
+  },
+  {
+   "source": "code/attributemeter.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/attributemeter.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1143:.rdata",
+    "1144:.data$r",
+    "1144:.rdata",
+    "1145:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/bldng.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/bldng.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1146:.text$mn",
+    "1188:.text$mn",
+    "1224:.xdata",
+    "1225:.pdata"
+   ]
+  },
+  {
+   "source": "code/brain_special_apply.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/brain_special_apply.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1640:.data$r",
+    "1640:.rdata",
+    "1641:.xdata$x",
+    "1642:.rdata",
+    "1642:.xdata$x",
+    "1643:.data$r"
+   ]
+  },
+  {
+   "source": "code/brain_special_dispatch.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/brain_special_dispatch.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1378:.xdata",
+    "155:.text$mn",
+    "167:.text$mn",
+    "1996:.rdata",
+    "1998:.xdata$x",
+    "2001:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/carnage.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/carnage.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "1070:.xdata",
+    "1084:.xdata",
+    "11:.text$mn",
+    "13:.text$mn",
+    "15:.text$mn"
+   ]
+  },
+  {
+   "source": "code/collsn.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/collsn.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "67:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/componentlistbox.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/componentlistbox.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1312:.rdata",
+    "1313:.data$r",
+    "1313:.rdata",
+    "1314:.xdata$x",
+    "1315:.rdata",
+    "1315:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/contact.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/contact.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "114:.text$mn",
+    "124:.text$mn",
+    "138:.text$mn",
+    "140:.text$mn",
+    "144:.text$mn",
+    "150:.text$mn"
+   ]
+  },
+  {
+   "source": "code/controlgui_hudtabs.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_hudtabs.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1246:.data$r",
+    "1246:.rdata",
+    "1247:.xdata$x",
+    "1248:.rdata"
+   ]
+  },
+  {
+   "source": "code/controlgui_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_init.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1379:.rdata",
+    "1380:.data$r",
+    "1380:.rdata",
+    "1381:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/controlgui_objectives.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_objectives.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "103:.text$mn",
+    "11:.text$mn",
+    "1241:.rdata",
+    "1242:.data$r",
+    "1242:.rdata",
+    "1243:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/controlgui_render.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_render.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "11:.text$mn",
+    "1334:.rdata",
+    "1335:.data$r",
+    "1335:.rdata",
+    "1336:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/controlgui_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1324:.rdata",
+    "1325:.data$r",
+    "1325:.rdata",
+    "1326:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/controlgui_vehicle.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/controlgui_vehicle.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1221:.rdata",
+    "1222:.data$r",
+    "1222:.rdata",
+    "1223:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/equipment_registry_engine.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/equipment_registry_engine.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1944:.rdata",
+    "1945:.rdata",
+    "1946:.rdata",
+    "1946:.xdata$x",
+    "1947:.rdata",
+    "1947:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/fire_executor_registry.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/fire_executor_registry.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1234:.rdata",
+    "1235:.rdata",
+    "1236:.rdata",
+    "1236:.xdata$x",
+    "1237:.rdata",
+    "1237:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/forcegroupbar.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/forcegroupbar.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1277:.rdata",
+    "1278:.data$r",
+    "1278:.rdata",
+    "1279:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/gamecam.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/gamecam.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "453:.text$x",
+    "466:.text$mn",
+    "72:.text$mn",
+    "96:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/gate.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/gate.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "108:.text$mn",
+    "1095:.text$mn",
+    "10:.text$mn",
+    "1137:.text$mn",
+    "1169:.xdata",
+    "1170:.pdata"
+   ]
+  },
+  {
+   "source": "code/ground_contact_blob.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/ground_contact_blob.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "103:.text$mn",
+    "1129:.rdata",
+    "1130:.data$r",
+    "1130:.rdata",
+    "1131:.xdata$x",
+    "1132:.rdata"
+   ]
+  },
+  {
+   "source": "code/group_goals.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/group_goals.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "109:.text$mn",
+    "1171:.rdata",
+    "1172:.data$r",
+    "1172:.rdata",
+    "1173:.xdata$x",
+    "1174:.rdata"
+   ]
+  },
+  {
+   "source": "code/gvehicl_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/gvehicl_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "60:.text$mn",
+    "71:.text$mn",
+    "91:.text$mn",
+    "97:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/gvehicl_weapons.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/gvehicl_weapons.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1312:.rdata",
+    "1313:.data$r",
+    "1313:.rdata"
+   ]
+  },
+  {
+   "source": "code/infowindow.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/infowindow.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "110:.text$mn",
+    "12:.text$mn",
+    "1428:.rdata",
+    "1429:.data$r",
+    "1429:.rdata"
+   ]
+  },
+  {
+   "source": "code/loadscreen.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/loadscreen.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1391:.rdata",
+    "1392:.data$r",
+    "1392:.rdata",
+    "1393:.xdata$x",
+    "1394:.rdata",
+    "1394:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logistics.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logistics.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "2446:.data"
+   ]
+  },
+  {
+   "source": "code/logisticsdata.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsdata.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1422:.rdata",
+    "1423:.data$r",
+    "1423:.rdata",
+    "1424:.xdata$x",
+    "1425:.rdata",
+    "1425:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsdata_availability.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsdata_availability.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1369:.rdata",
+    "1370:.data$r",
+    "1370:.rdata",
+    "1371:.xdata$x",
+    "1372:.rdata",
+    "1372:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsdata_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsdata_init.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "2839:.data"
+   ]
+  },
+  {
+   "source": "code/logisticsdata_save.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsdata_save.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1492:.rdata",
+    "1493:.data$r",
+    "1493:.rdata",
+    "1494:.xdata$x",
+    "1495:.rdata",
+    "1495:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsdialog.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsdialog.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "203:.text$mn",
+    "205:.text$mn",
+    "208:.text$mn",
+    "210:.text$x",
+    "211:.text$x",
+    "212:.text$mn"
+   ]
+  },
+  {
+   "source": "code/logisticsmech.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsmech.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1131:.rdata",
+    "1132:.data$r",
+    "1132:.rdata",
+    "1133:.xdata$x",
+    "1134:.rdata",
+    "1134:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsmechdisplay.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsmechdisplay.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1264:.rdata",
+    "1265:.data$r",
+    "1265:.rdata",
+    "1266:.xdata$x",
+    "1267:.rdata",
+    "1267:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsmechicon.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsmechicon.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "103:.text$mn",
+    "11:.text$mn",
+    "1287:.rdata",
+    "1288:.data$r",
+    "1288:.rdata",
+    "1289:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsmissioninfo.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsmissioninfo.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "116:.text$mn",
+    "12:.text$mn",
+    "1451:.rdata",
+    "1452:.data$r",
+    "1452:.rdata"
+   ]
+  },
+  {
+   "source": "code/logisticsmissioninfo_progress.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsmissioninfo_progress.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "106:.text$mn",
+    "10:.text$mn",
+    "1266:.rdata",
+    "1267:.data$r",
+    "1267:.rdata",
+    "1268:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticspilot.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticspilot.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "107:.text$mn",
+    "11:.text$mn",
+    "1287:.rdata",
+    "1288:.data$r",
+    "1288:.rdata",
+    "1289:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsvariant.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsvariant.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "11:.text$mn",
+    "1286:.rdata",
+    "1287:.data$r",
+    "1287:.rdata",
+    "1288:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/logisticsvariant_stats.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/logisticsvariant_stats.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1263:.rdata",
+    "1264:.data$r",
+    "1264:.rdata",
+    "1265:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mc2video.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mc2video.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "section .rdata"
+   ]
+  },
+  {
+   "source": "code/mech_damage.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mech_damage.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1259:.rdata",
+    "1260:.data$r",
+    "1260:.rdata",
+    "1261:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mech_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mech_init.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "1516:.rdata",
+    "1517:.data$r"
+   ]
+  },
+  {
+   "source": "code/mech_type.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mech_type.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "1024:.xdata",
+    "1025:.pdata",
+    "1026:.xdata",
+    "1027:.pdata",
+    "1028:.xdata"
+   ]
+  },
+  {
+   "source": "code/mech_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mech_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "14:.text$mn",
+    "28:.text$mn",
+    "32:.text$mn",
+    "46:.text$mn",
+    "54:.text$mn",
+    "58:.text$mn"
+   ]
+  },
+  {
+   "source": "code/mech_weapons.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mech_weapons.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1177:.rdata",
+    "1178:.data$r",
+    "1178:.rdata",
+    "1179:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mechbayscreen_mechs.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechbayscreen_mechs.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1296:.rdata",
+    "1297:.data$r",
+    "1297:.rdata",
+    "1298:.xdata$x",
+    "1299:.rdata",
+    "1299:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mechbayscreen_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechbayscreen_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1152:.rdata",
+    "1153:.data$r",
+    "1153:.rdata",
+    "1154:.xdata$x",
+    "1155:.rdata",
+    "1155:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mechcmd2.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechcmd2.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .pdata",
+    "section .rdata",
+    "section .text$mn",
+    "section .voltbl",
+    "section .xdata"
+   ]
+  },
+  {
+   "source": "code/mechcmd2_cmdline.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechcmd2_cmdline.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "code/mechcmd2_debugwins.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechcmd2_debugwins.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1369:.rdata",
+    "136:.text$mn",
+    "1370:.data$r",
+    "1370:.rdata"
+   ]
+  },
+  {
+   "source": "code/mechcmd2_frame.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechcmd2_frame.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1346:.rdata",
+    "1347:.data$r",
+    "1347:.rdata",
+    "1348:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mechlabscreen.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechlabscreen.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1546:.data$r",
+    "1546:.rdata",
+    "1547:.xdata$x",
+    "1548:.rdata",
+    "1548:.xdata$x",
+    "1549:.data$r"
+   ]
+  },
+  {
+   "source": "code/mechlistbox.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mechlistbox.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1489:.rdata",
+    "1490:.data$r",
+    "1490:.rdata"
+   ]
+  },
+  {
+   "source": "code/mission.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "13:.text$mn",
+    "15:.text$mn",
+    "175:.text$mn",
+    "17:.text$mn",
+    "19:.text$mn"
+   ]
+  },
+  {
+   "source": "code/mission_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission_init.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "138:.text$mn",
+    "14:.text$mn",
+    "1591:.rdata",
+    "1592:.data$r"
+   ]
+  },
+  {
+   "source": "code/mission_init_load.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission_init_load.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "140:.text$mn",
+    "14:.text$mn",
+    "16:.text$mn",
+    "1792:.rdata"
+   ]
+  },
+  {
+   "source": "code/mission_init_parts.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission_init_parts.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "116:.text$mn",
+    "12:.text$mn",
+    "1309:.rdata",
+    "1310:.data$r",
+    "1310:.rdata"
+   ]
+  },
+  {
+   "source": "code/mission_movers.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission_movers.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1161:.rdata",
+    "1162:.data$r",
+    "1162:.rdata",
+    "1163:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mission_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "135:.text$mn",
+    "145:.text$mn",
+    "152:.text$mn",
+    "158:.text$mn",
+    "160:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/mission_update_audit.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mission_update_audit.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1243:.rdata",
+    "1244:.data$r",
+    "1244:.rdata",
+    "1245:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/missiongui_debugkeys.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_debugkeys.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1487:.rdata",
+    "1488:.data$r",
+    "1488:.rdata"
+   ]
+  },
+  {
+   "source": "code/missiongui_diag.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_diag.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "120:.text$mn",
+    "1399:.rdata",
+    "1400:.data$r",
+    "1400:.rdata",
+    "1401:.xdata$x",
+    "1402:.rdata"
+   ]
+  },
+  {
+   "source": "code/missiongui_orders.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_orders.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1485:.rdata",
+    "1486:.data$r",
+    "1486:.rdata"
+   ]
+  },
+  {
+   "source": "code/missiongui_style.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_style.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "28:.text$mn",
+    "30:.text$mn",
+    "33:.text$mn",
+    "35:.text$mn",
+    "37:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "code/missiongui_support.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_support.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "159:.text$mn",
+    "1644:.rdata"
+   ]
+  },
+  {
+   "source": "code/missiongui_uicmd.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_uicmd.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "111:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "16:.text$mn",
+    "173:.text$mn"
+   ]
+  },
+  {
+   "source": "code/missiongui_uicmd_fixture.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_uicmd_fixture.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1445:.rdata",
+    "1446:.data$r",
+    "1446:.rdata"
+   ]
+  },
+  {
+   "source": "code/missiongui_uicmd_probe.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_uicmd_probe.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "2131:.data"
+   ]
+  },
+  {
+   "source": "code/missiongui_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missiongui_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "140:.text$mn",
+    "14:.text$mn",
+    "1602:.rdata",
+    "1603:.data$r"
+   ]
+  },
+  {
+   "source": "code/missionresults.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/missionresults.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1217:.rdata",
+    "1218:.data$r",
+    "1218:.rdata",
+    "1219:.xdata$x",
+    "1220:.rdata",
+    "1220:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mover.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mover.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "132:.text$mn",
+    "1452:.rdata",
+    "1453:.data$r",
+    "1453:.rdata"
+   ]
+  },
+  {
+   "source": "code/mover_combat.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mover_combat.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "112:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "1527:.rdata",
+    "1528:.data$r"
+   ]
+  },
+  {
+   "source": "code/mover_diag.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mover_diag.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "11:.text$mn",
+    "13:.text$mn",
+    "15:.text$mn",
+    "160:.text$mn",
+    "17:.text$mn"
+   ]
+  },
+  {
+   "source": "code/mover_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mover_init.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1134:.xdata",
+    "12:.text$mn",
+    "14:.text$mn",
+    "159:.text$mn"
+   ]
+  },
+  {
+   "source": "code/mover_path.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mover_path.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "32:.text$mn",
+    "36:.text$mn",
+    "38:.text$mn",
+    "40:.text$mn",
+    "42:.text$mn",
+    "56:.text$mn"
+   ]
+  },
+  {
+   "source": "code/mpconnectiontype.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mpconnectiontype.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1313:.rdata",
+    "1314:.data$r",
+    "1314:.rdata",
+    "1315:.xdata$x",
+    "1316:.rdata",
+    "1316:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mphostgame.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mphostgame.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1176:.rdata",
+    "1177:.data$r",
+    "1177:.rdata",
+    "1178:.xdata$x",
+    "1179:.rdata",
+    "1179:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/mploadmap.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mploadmap.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1426:.data$r",
+    "1426:.rdata",
+    "1427:.xdata$x",
+    "1428:.rdata",
+    "1428:.xdata$x",
+    "1429:.data$r"
+   ]
+  },
+  {
+   "source": "code/mpsetuparea.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/mpsetuparea.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1398:.rdata",
+    "1399:.data$r",
+    "1399:.rdata",
+    "1400:.xdata$x",
+    "1401:.rdata",
+    "1401:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/objective.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/objective.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1003:.xdata",
+    "1004:.pdata",
+    "1005:.xdata",
+    "1006:.pdata",
+    "1007:.xdata",
+    "1008:.pdata"
+   ]
+  },
+  {
+   "source": "code/objective_flags.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/objective_flags.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1199:.rdata",
+    "1200:.rdata",
+    "1201:.rdata",
+    "1201:.xdata$x",
+    "1202:.rdata",
+    "1202:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/objmgr_io.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/objmgr_io.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1092:.text$mn",
+    "10:.text$mn",
+    "1100:.text$mn",
+    "1297:.xdata",
+    "1298:.pdata",
+    "12:.text$mn"
+   ]
+  },
+  {
+   "source": "code/objmgr_pick.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/objmgr_pick.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1348:.rdata",
+    "1349:.data$r",
+    "1349:.rdata",
+    "1350:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/objmgr_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/objmgr_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "15:.text$mn",
+    "161:.text$mn",
+    "17:.text$mn",
+    "19:.text$mn",
+    "2103:.rdata",
+    "2104:.data$r"
+   ]
+  },
+  {
+   "source": "code/optionsscreenwrapper.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/optionsscreenwrapper.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1142:.rdata",
+    "1143:.data$r",
+    "1143:.rdata",
+    "1144:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/pausewindow.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/pausewindow.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.text$mn",
+    "10:.text$mn",
+    "1227:.rdata",
+    "1228:.data$r",
+    "1228:.rdata",
+    "1229:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/pilotreadyscreen.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/pilotreadyscreen.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1298:.data$r",
+    "1298:.rdata",
+    "1299:.xdata$x",
+    "1300:.rdata",
+    "1300:.xdata$x",
+    "1301:.data$r"
+   ]
+  },
+  {
+   "source": "code/prefs.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/prefs.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "12:.text$mn",
+    "14:.text$mn",
+    "1584:.rdata",
+    "1585:.data$r",
+    "1585:.rdata",
+    "1586:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/saveload.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/saveload.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1218:.rdata",
+    "1219:.data$r",
+    "1219:.rdata",
+    "1220:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/saveload_load.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/saveload_load.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1339:.rdata",
+    "1340:.data$r",
+    "1340:.rdata"
+   ]
+  },
+  {
+   "source": "code/sim_identity.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/sim_identity.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "123:.text$mn",
+    "13:.text$mn",
+    "1496:.rdata",
+    "1497:.data$r",
+    "1497:.rdata"
+   ]
+  },
+  {
+   "source": "code/simplecamera.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/simplecamera.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "162:.text$mn",
+    "16:.text$mn"
+   ]
+  },
+  {
+   "source": "code/simplecomponentlistbox.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/simplecomponentlistbox.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1146:.rdata",
+    "1147:.data$r",
+    "1147:.rdata",
+    "1148:.xdata$x",
+    "1149:.rdata",
+    "1149:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/ui_profile_registry.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/ui_profile_registry.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "216:.data",
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "code/unitprofile_fit.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/unitprofile_fit.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1737:.rdata",
+    "1738:.data$r",
+    "1738:.rdata",
+    "1739:.xdata$x",
+    "1740:.rdata",
+    "1740:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/warrior.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/warrior.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "185:.text$mn",
+    "2168:.rdata",
+    "2169:.data$r",
+    "2169:.rdata",
+    "2170:.xdata$x",
+    "2171:.rdata"
+   ]
+  },
+  {
+   "source": "code/warrior_core_orders.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/warrior_core_orders.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1296:.rdata",
+    "1297:.data$r",
+    "1297:.rdata",
+    "1298:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/warrior_move.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/warrior_move.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "1271:.rdata",
+    "1272:.data$r",
+    "1272:.rdata",
+    "1273:.xdata$x",
+    "1274:.rdata"
+   ]
+  },
+  {
+   "source": "code/warrior_state.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/warrior_state.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "136:.text$mn",
+    "14:.text$mn",
+    "1652:.rdata",
+    "1653:.data$r"
+   ]
+  },
+  {
+   "source": "code/weaponbolt.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/weaponbolt.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "1026:.xdata",
+    "1047:.xdata",
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn"
+   ]
+  },
+  {
+   "source": "code/weaponbolt_render.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/weaponbolt_render.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1189:.rdata",
+    "1190:.data$r",
+    "1190:.rdata",
+    "1191:.xdata$x"
+   ]
+  },
+  {
+   "source": "code/weaponbolt_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/CMakeFiles/mc2.dir/code/weaponbolt_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "62:.text$mn",
+    "84:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "editor/Action.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/Action.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.data$rs",
+    "108:.data$rs",
+    "112:.data$rs",
+    "552:.data$r",
+    "556:.data$r",
+    "558:.data$r"
+   ]
+  },
+  {
+   "source": "editor/CampaignData.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/CampaignData.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "1556:.bss",
+    "1557:.bss",
+    "1562:.bss",
+    "1563:.bss"
+   ]
+  },
+  {
+   "source": "editor/CampaignDialog.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/CampaignDialog.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "52:.data",
+    "77:.bss",
+    "78:.bss",
+    "79:.bss",
+    "80:.bss",
+    "81:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/CampaignSummaryPanel.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/CampaignSummaryPanel.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "77:.bss",
+    "78:.bss",
+    "79:.bss",
+    "80:.bss",
+    "81:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/Editor.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/Editor.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "25:.bss",
+    "26:.bss",
+    "28:.bss",
+    "29:.bss",
+    "32:.bss",
+    "33:.bss",
+    "42:.bss",
+    "43:.bss",
+    "52:.data",
+    "53:.data",
+    "61:.bss"
+   ]
+  },
+  {
+   "source": "editor/EditorData.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "37:.rdata",
+    "38:.rdata",
+    "symbols"
+   ]
+  },
+  {
+   "source": "editor/EditorData_save.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData_save.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "113:.rdata",
+    "36:.rdata",
+    "37:.rdata",
+    "58:.rdata",
+    "59:.rdata",
+    "59:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/EditorData_tacmap.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData_tacmap.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "143:.text$mn",
+    "145:.text$mn",
+    "1478:.rdata",
+    "1479:.data$r",
+    "1479:.rdata",
+    "147:.text$mn"
+   ]
+  },
+  {
+   "source": "editor/EditorData_terrain.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorData_terrain.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "1997:.data"
+   ]
+  },
+  {
+   "source": "editor/EditorGameOS.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorGameOS.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "147:.text$mn",
+    "149:.text$mn",
+    "153:.text$mn",
+    "155:.text$mn",
+    "157:.text$mn",
+    "159:.text$mn"
+   ]
+  },
+  {
+   "source": "editor/EditorObjectMgr_io.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/EditorObjectMgr_io.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "143:.text$mn",
+    "145:.text$mn",
+    "147:.text$mn",
+    "149:.text$mn",
+    "151:.text$mn",
+    "153:.text$mn"
+   ]
+  },
+  {
+   "source": "editor/GroupDialog.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/GroupDialog.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "24:.bss",
+    "34:.data",
+    "42:.bss",
+    "52:.data",
+    "77:.bss",
+    "78:.bss",
+    "79:.bss",
+    "80:.bss",
+    "81:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss"
+   ]
+  },
+  {
+   "source": "editor/MissionDefinitionSmoke.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/MissionDefinitionSmoke.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1098:.text$mn",
+    "1108:.text$mn",
+    "110:.rdata$r",
+    "1110:.text$x",
+    "1118:.text$mn",
+    "111:.data$rs"
+   ]
+  },
+  {
+   "source": "editor/MissionDialog.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/MissionDialog.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "77:.bss",
+    "78:.bss",
+    "79:.bss",
+    "80:.bss",
+    "81:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "editor/MissionFitBrainSource.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/MissionFitBrainSource.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "76:.rdata$r",
+    "78:.rdata",
+    "78:.rdata$r",
+    "79:.rdata$r",
+    "80:.rdata",
+    "80:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/Objective.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/Objective.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1005:.text$mn",
+    "1007:.text$mn",
+    "1009:.text$mn",
+    "1021:.text$mn",
+    "1043:.text$mn",
+    "1062:.text$mn"
+   ]
+  },
+  {
+   "source": "editor/ObjectiveDlg_text.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/ObjectiveDlg_text.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "143:.text$mn",
+    "1440:.rdata",
+    "1441:.rdata",
+    "1442:.rdata",
+    "1442:.xdata$x",
+    "1443:.rdata"
+   ]
+  },
+  {
+   "source": "editor/Objective_actions.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/Objective_actions.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "145:.text$mn",
+    "147:.text$mn",
+    "149:.text$mn",
+    "151:.text$mn",
+    "153:.text$mn",
+    "155:.text$mn"
+   ]
+  },
+  {
+   "source": "editor/Objective_conditions.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/Objective_conditions.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1000:.pdata",
+    "1001:.xdata",
+    "1002:.pdata",
+    "1003:.xdata",
+    "1004:.pdata",
+    "1005:.xdata"
+   ]
+  },
+  {
+   "source": "editor/ScatterBrush.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/ScatterBrush.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "310:.data"
+   ]
+  },
+  {
+   "source": "editor/shell/main.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditorShell.dir/shell/main.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "editor/sunDlg.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/sunDlg.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "89:.rdata$r",
+    "90:.data$rs",
+    "90:.rdata",
+    "91:.data$rs",
+    "91:.rdata$r",
+    "92:.rdata$r"
+   ]
+  },
+  {
+   "source": "editor/tgawnd.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditRel.dir/tgawnd.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "34:.data",
+    "77:.bss",
+    "78:.bss",
+    "79:.bss",
+    "80:.bss",
+    "81:.bss",
+    "95:.bss",
+    "96:.bss",
+    "97:.bss",
+    "98:.bss",
+    "99:.bss"
+   ]
+  },
+  {
+   "source": "gui/UiDefs_parse.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/gui/CMakeFiles/gui.dir/UiDefs_parse.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1090:.xdata",
+    "1550:.rdata",
+    "1552:.xdata$x",
+    "1553:.rdata",
+    "1555:.rdata",
+    "1556:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/apprtype.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/apprtype.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "108:.text$mn",
+    "10:.text$mn",
+    "1250:.data$r",
+    "1250:.rdata",
+    "1251:.xdata$x",
+    "1252:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/bdactor.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/bdactor.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "108:.text$mn",
+    "10:.text$mn",
+    "1288:.rdata",
+    "1289:.data$r",
+    "1289:.rdata",
+    "1290:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/camera_daylight.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/camera_daylight.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "110:.text$mn",
+    "1270:.rdata",
+    "1271:.data$r",
+    "1271:.rdata",
+    "1272:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/camera_project.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/camera_project.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1227:.rdata",
+    "1228:.data$r",
+    "1228:.rdata",
+    "1229:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/camera_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/camera_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "1232:.data$r",
+    "1232:.rdata",
+    "1233:.xdata$x",
+    "1234:.rdata",
+    "1234:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/cliff_decal_tuning.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/cliff_decal_tuning.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "1119:.rdata",
+    "1120:.data$r",
+    "1120:.rdata",
+    "1121:.xdata$x",
+    "1122:.rdata",
+    "1122:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/cmponent.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/cmponent.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "28:.bss",
+    "3:.bss",
+    "4:.bss",
+    "4:.data",
+    "5:.data"
+   ]
+  },
+  {
+   "source": "mclib/color.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/color.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "mclib/cone_glow.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/cone_glow.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "110:.text$mn",
+    "12:.text$mn",
+    "1420:.data$r",
+    "1420:.rdata",
+    "1421:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/csvfile.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/csvfile.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1381:.rdata",
+    "1382:.rdata",
+    "1383:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/fastfile.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/fastfile.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "mclib/file.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/file.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "6:.bss"
+   ]
+  },
+  {
+   "source": "mclib/gamelog.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/gamelog.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "4:.bss"
+   ]
+  },
+  {
+   "source": "mclib/genactor.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/genactor.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1279:.rdata",
+    "1280:.data$r",
+    "1280:.rdata",
+    "1281:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/gvactor.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/gvactor.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "103:.text$mn",
+    "11:.text$mn",
+    "1283:.rdata",
+    "1284:.data$r",
+    "1284:.rdata",
+    "1285:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/gvactor_geometry.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/gvactor_geometry.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1227:.rdata",
+    "1228:.data$r",
+    "1228:.rdata",
+    "1229:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/gvactor_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/gvactor_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "120:.text$mn",
+    "1275:.rdata",
+    "1276:.data$r",
+    "1276:.rdata",
+    "1277:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/heap.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/heap.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "11:.text$mn",
+    "13:.text$mn",
+    "1475:.rdata",
+    "1476:.rdata",
+    "1477:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/inifile.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/inifile.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "mclib/inifile_arrays.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/inifile_arrays.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1247:.rdata",
+    "1248:.rdata",
+    "1249:.rdata",
+    "1249:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/inifile_read.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/inifile_read.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1171:.rdata",
+    "1172:.rdata",
+    "1173:.rdata",
+    "1173:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/mapdata.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/mapdata.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "144:.text$mn",
+    "14:.text$mn",
+    "1535:.rdata",
+    "1537:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/mech3d_render.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/mech3d_render.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1375:.rdata",
+    "1376:.data$r",
+    "1376:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/mech3d_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/mech3d_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1340:.rdata",
+    "1341:.data$r",
+    "1341:.rdata",
+    "1342:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/move_globalmap_path.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/move_globalmap_path.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "106:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1323:.rdata",
+    "1324:.data$r",
+    "1324:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/move_movemap_escape.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/move_movemap_escape.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "108:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1400:.rdata",
+    "1401:.data$r",
+    "1401:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/move_movemap_path.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/move_movemap_path.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "1385:.rdata",
+    "1386:.data$r",
+    "1386:.rdata",
+    "1387:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/msl_anim.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/msl_anim.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "11:.text$mn",
+    "1234:.rdata",
+    "1235:.data$r",
+    "1235:.rdata",
+    "1236:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/msl_load.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/msl_load.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1323:.rdata",
+    "1324:.rdata",
+    "1325:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/msl_shape.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/msl_shape.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "102:.text$mn",
+    "10:.text$mn",
+    "1292:.rdata",
+    "1293:.data$r",
+    "1293:.rdata",
+    "1294:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/msl_transform.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/msl_transform.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "53:.text$mn",
+    "55:.text$mn",
+    "63:.text$mn",
+    "65:.text$mn",
+    "90:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "mclib/quad.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/quad.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "26:.text$mn",
+    "30:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "mclib/quad_draw.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/quad_draw.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "104:.text$mn",
+    "10:.text$mn",
+    "12:.text$mn",
+    "1386:.rdata",
+    "1387:.data$r",
+    "1387:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/soundsys.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/soundsys.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "3:.bss",
+    "3:.data",
+    "4:.bss",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "mclib/terrain.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrain.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "139:.text$mn",
+    "13:.text$mn",
+    "1410:.rdata",
+    "1411:.data$r",
+    "1411:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/terrain_geometry.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrain_geometry.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "101:.text$mn",
+    "105:.text$mn",
+    "120:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "mclib/terrain_init.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrain_init.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "14:.text$mn",
+    "150:.text$mn",
+    "16:.text$mn",
+    "18:.text$mn"
+   ]
+  },
+  {
+   "source": "mclib/terrain_render.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrain_render.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "12:.text$mn",
+    "144:.text$mn",
+    "1489:.rdata",
+    "1490:.data$r",
+    "1490:.rdata"
+   ]
+  },
+  {
+   "source": "mclib/terrain_update.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/terrain_update.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "13:.text$mn",
+    "15:.text$mn",
+    "161:.text$mn",
+    "1783:.rdata",
+    "1784:.data$r"
+   ]
+  },
+  {
+   "source": "mclib/tgl.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "1311:.bss",
+    "1312:.bss",
+    "1317:.bss",
+    "1318:.bss",
+    "4:.data"
+   ]
+  },
+  {
+   "source": "mclib/tgl_parse.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl_parse.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1234:.rdata",
+    "1235:.data$r",
+    "1235:.rdata",
+    "1236:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/tgl_render.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl_render.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "16:.text$mn",
+    "31:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "mclib/tgl_shadows.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl_shadows.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "10:.text$mn",
+    "14:.text$mn",
+    "24:.text$mn",
+    "symbols"
+   ]
+  },
+  {
+   "source": "mclib/tgl_transform.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl_transform.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "26:.text$mn",
+    "40:.text$mn",
+    "58:.text$mn",
+    "62:.text$mn",
+    "66:.text$mn",
+    "68:.text$mn"
+   ]
+  },
+  {
+   "source": "mclib/tgl_transform_light.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl_transform_light.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1220:.rdata",
+    "1221:.data$r",
+    "1221:.rdata",
+    "1222:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/tgl_types.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/tgl_types.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "100:.text$mn",
+    "10:.text$mn",
+    "1179:.rdata",
+    "1180:.rdata",
+    "1181:.data$r",
+    "1181:.xdata$x"
+   ]
+  },
+  {
+   "source": "mclib/userinput.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/mclib/CMakeFiles/mclib.dir/userinput.cpp.obj",
+   "class": "ORDER-ONLY",
+   "why": [
+    "11:.text$mn",
+    "137:.text$mn",
+    "13:.text$mn",
+    "1413:.rdata",
+    "1414:.data$r",
+    "1414:.rdata"
+   ]
+  },
+  {
+   "source": "text_tool/main.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/editor/CMakeFiles/EditorShell.dir/shell/main.cpp.obj",
+   "class": "DIFF",
+   "why": [
+    "symbol set",
+    "section .text$mn"
+   ]
+  },
+  {
+   "source": "tools/asset_viewer/AssetViewerApp.cpp",
+   "object": "A:/Games/mc2-main/build-alltargets/out/tools/asset_viewer/CMakeFiles/mc2_asset_viewer.dir/AssetViewerApp.cpp.obj",
+   "class": "LAYOUT-ONLY",
+   "why": [
+    "2463:.data",
+    "2464:.data"
+   ]
+  }
+ ]
+}
