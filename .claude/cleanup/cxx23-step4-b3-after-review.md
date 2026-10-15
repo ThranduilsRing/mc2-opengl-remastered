@@ -41,7 +41,7 @@ touched rejects malformed content with one log line: packet header, File image s
 2. B3.5 `ABLFile` (`ablenv.cpp`, `ablscan.cpp`, 8 rows): Codex track. The unit test of the ABL slot writer (review S2) does NOT exist on nifty at 82cff74b1 (`git grep` of `tests/` finds no ABL slot test); it is owed with B3.5.
 3. B3.6: no lane-1 site is left. `File::operator new/delete` goes when rows 1, 2 and the editor's 4 are gone; the `make_unique<File>` / `make_unique<PacketFile>` lines of B3.4 (notes 10.1) stop routing through the class allocator then, with no edit of their own.
 4. The seven `_DEBUG` `pathDebugFile` blocks (B3.3b): orchestrator's call.
-5. `Logistics::begin` still runs `initializeLogData` on a `std::async` thread while the main thread can read files (`code/logistics.cpp`, intro movie): the same shared-FastFile race class as row 37, not reached by the smoke path (`justStartMission`). Owed: serialise it or give FastFile a per-thread read path.
+5. CLOSED (ed0cc46c4). `Logistics::begin` ran `initializeLogData` on a `std::async` thread, but it joined the thread before the main thread did any file work (the intro movie does not run in between), so the thread gave no overlap and there was no live race; the hazard was only that a moved join would open the row 37 race class. The thread is gone: a direct call, `m_initFuture` and its three joins deleted.
 6. The oversized-FST test exists (`tests/unit/test_fst_roundtrip.cpp`, "an FST entry whose uncompressed size is implausible is rejected and released"), checked with every slot released since 110251737.
 
 ## 5. The race the proof found

@@ -1,5 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-15 -->
 # C++23 step 4, batch B4 (raw-buffer heaps): batch notes (census only; written by lane 1 on 2026-10-15, NOT yet read by a before-review, no code)
+BATCH STATUS (2026-10-15 night, lane 1): B4.0 DONE (a3d8ce85a: sealed census, before-review `cxx23-step4-b4-before-review.md`); B4.1a DONE (a2651bba3, MoveMap grid);
+B4.1b DONE (2f13054fc include-only, objhash identical; 8e49ebe5d + 889bd02fc, MissionMap grid and mine counts, size-checked pak reads). Census 331 -> 317. NEXT: B4.1c GlobalMap
+(about 58 sites, the pak counts need the malformed-pak test of before-review invariant 2). Proofs: `lane1-state.md`.
 
 WHAT: the scope and census of B4, the batch after B3 in the ownership plan's order (`cxx23-step4-ownership-plan.md` section 6: "B4 RAW-BUFFER heaps only
 (move_globalmap_* first, terrain, tile/colorMap, txm caches, crater, bitflag, sound, radio, collision)"). B4 moves buffers that a subsystem allocates from a named
