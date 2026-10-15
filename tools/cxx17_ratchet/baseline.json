@@ -49,22 +49,22 @@
   "GameOS": {
    "LG01": 10,
    "LG02": 191,
-   "LG03": 267,
+   "LG03": 265,
    "LG04": 6,
-   "LG05": 118,
-   "LG06": 497,
+   "LG05": 122,
+   "LG06": 506,
    "LG07": 0,
    "LG08": 257,
-   "LG09": 1975,
+   "LG09": 1979,
    "LG10": 39,
-   "LG11": 102,
+   "LG11": 101,
    "LG12a": 95,
    "LG12b": 30,
    "LG13": 315,
    "LG14": 61,
    "LG15": 0,
    "LG16": 7,
-   "LG17": 79,
+   "LG17": 85,
    "LG18": 10,
    "LG19": 1,
    "LG20": 12
@@ -395,7 +395,7 @@
   "GameOS/gameos/gameos_graphics_internal.h": {
    "LG03": 9,
    "LG06": 5,
-   "LG09": 7,
+   "LG09": 9,
    "LG16": 4,
    "LG17": 1
   },
@@ -441,9 +441,8 @@
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_texture.cpp": {
-   "LG03": 2,
-   "LG09": 6,
-   "LG11": 2
+   "LG06": 2,
+   "LG11": 1
   },
   "GameOS/gameos/gameos_graphics_tparams.cpp": {
    "LG05": 1,
@@ -597,7 +596,7 @@
   "GameOS/gameos/gos_mech_batcher_flush.cpp": {
    "LG05": 1,
    "LG08": 7,
-   "LG09": 36
+   "LG09": 37
   },
   "GameOS/gameos/gos_mech_batcher_geometry.cpp": {
    "LG08": 2,
@@ -860,7 +859,7 @@
    "LG10": 1
   },
   "GameOS/gameos/gos_terrain_lod_chunk_feed.cpp": {
-   "LG09": 6
+   "LG09": 7
   },
   "GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp": {
    "LG05": 2,
@@ -1005,6 +1004,13 @@
    "LG06": 2,
    "LG17": 1
   },
+  "GameOS/gameos/terrain_field_store.cpp": {
+   "LG09": 6,
+   "LG17": 1
+  },
+  "GameOS/gameos/terrain_field_store.h": {
+   "LG17": 1
+  },
   "GameOS/gameos/terrain_material_lib.cpp": {
    "LG06": 4,
    "LG08": 5,
@@ -1013,6 +1019,17 @@
   },
   "GameOS/gameos/terrain_material_lib.h": {
    "LG06": 1
+  },
+  "GameOS/gameos/texture_decode.cpp": {
+   "LG05": 2,
+   "LG06": 5,
+   "LG09": 7,
+   "LG17": 3
+  },
+  "GameOS/gameos/texture_decode.h": {
+   "LG05": 2,
+   "LG06": 2,
+   "LG17": 1
   },
   "GameOS/gameos/utils/Image.cpp": {
    "LG03": 29,
@@ -1158,7 +1175,7 @@
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
    "LG06": 2,
    "LG08": 2,
-   "LG09": 12,
+   "LG09": 10,
    "LG11": 1,
    "LG13": 2
   },
@@ -1167,7 +1184,7 @@
   },
   "GameOS/gameos/vulkan_mech_island.cpp": {
    "LG06": 2,
-   "LG09": 31,
+   "LG09": 30,
    "LG11": 1,
    "LG13": 2
   },
@@ -1231,7 +1248,7 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 29
+   "LG09": 27
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -1244,7 +1261,7 @@
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
    "LG08": 7,
-   "LG09": 18
+   "LG09": 16
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
    "LG06": 1,
@@ -5099,7 +5116,7 @@
    "LG20": 3
   }
  },
- "head": "29a2c89e6",
+ "head": "e84b5409f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
