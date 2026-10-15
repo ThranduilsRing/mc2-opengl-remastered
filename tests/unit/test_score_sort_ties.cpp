@@ -1,10 +1,10 @@
 // tests/unit/test_score_sort_ties.cpp
 //
-// The size of the B2.4 sort decision, pinned. golden/sortlist_ties.h holds the permutations the OLD SortList (MSVC CRT qsort over a padded slot array)
-// produced for tie patterns, recorded before the class was deleted (step 4 B2.0, .claude/cleanup/cxx23-step4-b2-notes.md section 2). The same patterns
+// The size of the sort-rule decision, pinned. golden/sortlist_ties.h holds the permutations the OLD SortList (MSVC CRT qsort over a padded slot array)
+// produced for tie patterns, recorded before the class was deleted. The same patterns
 // are run through mc2::sort_scored here: every row where the CRT order is not "score, then fill slot" is a place where the simulation's outcome can
 // change, and the number of such rows is pinned so that a change of the rule or of the table stays visible.
-// The table is a record: the class that generated it is gone (git history before the B2.4 commit holds it and the generator test).
+// The table is a record: the class that generated it is gone (git history before 29f95649a holds it and the generator test).
 
 #include "doctest.h"
 

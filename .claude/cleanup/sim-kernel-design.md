@@ -1,524 +1,148 @@
 # S1: one 30 Hz simulation kernel
-Tick count owns time; TacticalOrder owns command ingress; windowed and headless runs share the same state and digest.
-Design only, 2026-10-13; implementation belongs to the orchestrator's scheduled lane.
 
-## Contract and current evidence
-
-Owner rulings supersede the older lane/path instructions: this document was researched only in `A:/Games/mc2-codex`.
-There is one final release after migration, Vulkan and editor work; saves may break before it. Mod content remains supported.
-Use C++23 value types and explicit lifetime owners; no static-duration owners, legacy-shape wrappers or permanent feature gates.
-This implements target-architecture section 2.3 and program-review T3/S1b (week 2+, after ownership/load-path prerequisites).
-T3's buildings/turrets/ABL/count extension already exists here; verify it rather than implementing it twice.
-
-| Evidence in this checkout | Design consequence |
-|---|---|
-| `code/mechcmd2_frame.cpp:369`, `:391`, `:402`, `:427`, `:514` derive dt, override it for smoke, scale retail dt, poll input and call one mission update | Separate presentation pumping from zero-or-many fixed ticks. |
-| `code/mission_update.cpp:300`, `:320`, `:341`, `:1129` have two clocks, paused wall sampling and render-driven turn increments | Delete both clock branches after extracting their deterministic reference path. |
-| `code/ablmc2_camera.cpp:745` now returns mission milliseconds for GetLogisticsTime | Preserve a script clock derived exclusively from ticks. |
-| `code/weather.cpp:161`, `:282`, `:428` isolate weather RNG but use the camera for drops | Stream isolation alone does not make Weather a sim system. |
-| `mclib/cmponent.cpp:640` zeroes the table including unauthored disableLevel | Keep this initialization; never restore heap-dependent defaults to match an older baseline. |
-| `mclib/soundsys.cpp:1335`, `:1341`, `mclib/script_music.h:16` separate script music from device playback | Move the script state and duration metadata into mission-owned deterministic state. |
-| `mclib/appearance_rng.cpp:8`, `:13`, `mclib/mech3d_update.cpp:168` isolate appearance draws | Move that state out of static storage and finish removing presentation work from sim. |
-| `code/sim_identity.cpp:170`, `:202`, `:342` already collect objects, ABL statics and three RNG counts | Extend coverage and split authoritative/presentation digests. |
-
-The refreshed lane1-state records mc2_03/10/24/16 baseline passes, not the earlier hunt narrative.
-HANDOFF-LOG entries 2026-10-12 11:36 and 13:46 record 12 mc2_24 pairs, camera-park parity and deterministic script music.
-They are historical evidence, not fresh proofs of the design below. `docs/sim-trace.md` defines the compile-time DT hunt facility.
+Tick count owns time; TacticalOrder owns ingress. Windowed, editor and headless sessions share loaders, state and digests. Use C++23 values with explicit lifetime owners, no static-duration owners or permanent feature gates. Mods remain supported; the single final release follows migration, Vulkan and editor completion.
 
 ## Tick loop and snapshots
 
-`GameSession` owns `SimKernel`, the pacing scheduler and optional presentation; `SimKernel` owns mission systems and `Tick completed` (u64).
-Tick zero is the fully loaded initial state. `step()` sets `executing = completed + 1`, drains that tick's commands once and runs systems;
-then commits `completed = executing`, clears executing, publishes the immutable state and emits one authoritative digest.
-`executing` is kernel-owned transient context, absent between ticks and never saved. Never increment a tick on a render-only frame.
-All gameplay integrates with the same representable float `1.0f / 30.0f`; authoritative time is the integer tick, not accumulated float seconds.
-Seconds and ABL milliseconds are derived as `tick / 30.0` and `tick * (1000.0 / 30.0)` without a truncating 33 ms clock.
-Sim deadlines use ticks, rounding positive durations upward; an explicit phase within a tick replaces accidental render-order timing.
-Legacy float clock views exist only during extraction and disappear once users move to the tick context.
-
-The outer loop polls UI once, resolves commands against the latest immutable snapshot, then runs this scheduler:
-
-```text
-wallDelta = clamp(monotonicNow - previousWall, 0, 250 ms)
-previousWall = monotonicNow
-if paused: discard accumulated credit; pump presentation; return
-credit += wallDelta * rate                     // rational rate: 1/2, 1, 3/2, 2
-while credit >= 1/30 second and steps < 8:
-    kernel.step(); credit -= 1/30 second; steps += 1
-if credit >= 1/30 second: discard whole overdue credit; retain fraction; log overload
-present(latestSnapshot, presentationDelta)
-```
-
-Use integer/rational pacing arithmetic (e.g. nanoseconds multiplied by 30 and the rate numerator), carrying the remainder.
-The 8-tick cap bounds work; excess wall credit is lost, never simulated with a larger dt or skipped tick numbers.
-At sustained overload game time slows; it cannot recover an unbounded debt. The 250 ms clamp also prevents suspend/resume bursts.
-Speed buttons request 15, 30, 45 or 60 ticks per wall second; they never multiply physics dt or ABL time.
-Apply a rate change at a pump boundary after accounting for elapsed time at the old rate. Speed and wall credit are presentation settings.
-Pause/resume/load rebase the wall sample and clear credit; commands queued while paused remain due for the next executed tick.
-Audio, input double-click timers, camera smoothing and menu fades receive presentation dt, not sim `frameLength`.
-`mclib/timing.h:18` currently mixes sim floats, DWORD wall state and timers; replace it with separate sim time and platform timing headers.
-Gameplay Timer semantics move to tick deadlines; updateWhilePaused UI timers leave the kernel entirely.
-
-Initially render the latest snapshot without interpolation: the architecture chooses an RTS-tolerable 33 ms update interval,
-and this avoids blending across destruction, teleport, target changes or save/load while proving separation.
-Camera/UI remain responsive every presentation frame. Capture mode pins a completed tick and freezes cosmetic animations.
-Later interpolation may blend previous/current transforms inside presentation only; it must never feed targeting, LOS, collision or saves.
-Snapshots contain stable handles, world transforms, HP/status, HUD path polylines and event records, with no pointers to mutable sim objects.
-Use single-threaded ordered simulation first. Retain current system order from `code/mission_update.cpp:1144` through `:1174`;
-extract path, objects, collisions, sensors and mission brain without reordering their gameplay work in the extraction batches.
-Brain cadence (`code/warrior.cpp:80`, `:115`) uses owned integer schedules, saved once in Clock by stable system ID; ABL/Environment reference that registry, never a second clock.
+GameSession owns SimKernel, pacing and optional presentation; SimKernel owns systems and completed:u64. Tick zero is fully loaded state. A step opens executing=completed+1, drains once, runs systems in their existing order, commits completed, clears executing, publishes an immutable snapshot and emits one digest. Render-only pumps never advance ticks.
+Gameplay dt is exactly the representable float 1.0f/30.0f. Seconds and ABL milliseconds derive from tick/30.0 and tick*(1000.0/30.0); deadlines round positive durations upward. Replace accidental render timing with explicit tick phases; brain cadences share one saved integer schedule registry.
+Pacing uses integer/rational credit: clamp wall delta to 250 ms, apply rate 1/2, 1, 3/2 or 2, and execute at most eight ticks per pump. Discard excess whole-tick credit, retain the fraction and log overload. Never enlarge dt, skip tick numbers or accumulate unbounded debt; overload slows game time.
+Rates mean 15/30/45/60 ticks per wall second. Account elapsed time at the old rate before applying a pump-boundary change. Pause/resume/load clear credit and rebase wall time; pause retains commands for the next tick. Wall credit, pause and speed are presentation state.
+Audio, camera smoothing, menu fades and input timers use presentation time. Gameplay Timer deadlines use ticks; updateWhilePaused UI timers remain outside Sim.
+Initially present the latest snapshot without interpolation, avoiding blends across destruction, teleport or load. Capture pins a completed tick and freezes cosmetics. Later interpolation remains presentation-only.
+Snapshots carry stable handles, transforms, HP/status, HUD paths and events, never mutable-sim pointers. Preserve ordered single-threaded path/object/collision/sensor/brain work during extraction. Animation-driven damage and motion unlocks require deterministic sim events before appearances can be omitted.
 
 ### Editor session lifecycle
 
-An immutable editor document snapshot (including resolved content and chosen root seed) builds an isolated `GameSession` at tick zero.
-Play runs the same pacing scheduler; pause stops ticks; step is available only while paused and executes exactly one `kernel.step()`.
-Reset destroys that runtime and rebuilds it from the same snapshot and seed, restoring initial queues/receipts/schedules.
-Play, pause, step, runtime save/load and reset never mutate the editor document or its undo history. Edits remain document commands;
-an explicit new snapshot starts a new session to include them. Closing the session releases its runtime owners without document changes.
-Prove snapshot/document/undo hashes unchanged across play/step/reset, exactly one digest per step, and reset replay identical to tick zero.
+An immutable document/content/seed snapshot creates an isolated GameSession at tick zero. Play shares pacing; paused Step advances exactly once; Reset rebuilds the same snapshot and seed. These operations never mutate document or undo history; edits require a new explicit snapshot. Runtime save/load uses the same sim schema, excluding editor controls.
 
 ## TacticalOrder queue: one ingress
 
-The existing per-warrior waypoint queue (`code/warrior.h:759`) is execution state, not the new mission ingress queue.
-`code/missiongui_orders.cpp:705` presently expands selected units and either queues waypoints or calls handleTacticalOrder immediately (`:759`).
-ABL calls the imperative warrior order helpers (`code/ablmc2_orders.cpp:165`); those mutate goals and request paths (`code/warrior_orders.cpp:67`).
-Replace this ingress with owned, fully initialized TacticalOrder values; do not serialize the legacy packed words or copying quirks
-(`code/tacordr.h:249`). Keep tactical meanings, replace execution-stage and pointer fields with typed state.
-Target `TacticalOrder` is `{orderId, origin, kind, unitOrder, subOrder, move?, attack?, target:ObjectRef?, formationOrdinal, groupFlags}`;
-move/attack/support arms contain named values, never packed words. `OrderExecution` carries payload, issued/notBefore/lastUpdate ticks,
-typed stage/status, lastMoveGoal and optional point-unit ObjectRef. Ingress, execution queues and saves use these same types.
-
-```text
-OrderEnvelope { applyTick, sourceId, sequence, issuer, recipients[], queueMode, TacticalOrder payload }
-submit(OrderEnvelope) -> expected<OrderReceipt, OrderError>
-submitNext(source, sequence, issuer, recipients, mode, payload) -> receipt for (executing ? executing + 1 : completed + 1)
-beginTick(Tick) -> immutable ordered batch       // kernel-only drain, exactly once
-snapshotPending() / restorePending(validatedRecords)  // save/replay boundary
-```
-
-`submit` validates shape, finite coordinates, bounded lengths, source permissions, duplicate identity and capacity.
-At application revalidate live handle generations, authority and legal targets; record deterministic rejections without crashing.
-No silent drop on capacity exhaustion. Canonical ordering is `(applyTick, sourceId, sequence, recipient ordinal)`;
-recipient order is recorded explicitly in stable roster order, preserving formation/selectionIndex behavior.
-Track executing tick k explicitly: submissions during k target k+1; between ticks they target completed+1. Explicit submit may choose later.
-Commands due before that boundary reject. Future lockstep waits for a complete tick batch,
-it does not insert commands retroactively. Network transport remains compiled out; this protocol defines a future peer's input contract.
-
-UI polling (`mclib/userinput.cpp:228`) and picking (`code/missiongui_update.cpp:795`) stay outside sim.
-Capture recipient handles, target handle or canonical world point, attack range and waypoint modifiers at submission.
-Compute formation goals using sim data at application; never query live selection, screen coordinates or WAYPOINT_KEY during a tick.
-Single-player calls submitNext through precisely the ingress a peer/harness uses. Speed/pause/view actions belong to outer scheduling.
-Audit bypasses such as `code/controlgui_update.cpp:645`, airstrikes (`code/missiongui_orders.cpp:569`) and reinforcement/driver mutations.
-Support actions become typed command variants of the same ingress, including deterministic costs, spawn and mission-control actions.
-
-ABL order builtins submit with an instance source ID and saved sequence counter during tick k for k+1.
-Their synchronous result means validated/accepted, not already executed; apply results become deterministic script-visible receipt state.
-Preserve status-query builtins as queries. Internal execution suborders/path retries remain within the applying system, avoiding recursive enqueue.
-Audit scripts that issue then immediately inspect an order; test their behavior under the authorized next-tick semantics.
-Non-order script mutations remain deterministic VM host operations inside the tick, not external UI entry points.
-Harnesses feed the same validated envelopes from a versioned replay, never synthesize clicks or call warrior helpers directly.
-Replay header pins ruleset, digest schema, content manifest, mission seed, initial save digest and target tick; records use explicit fields.
-Save the pending queue, deduplication/sequence state and each warrior's execution queue at a completed-tick boundary.
-Source sequences are monotonic u64; save each stable source ID, next sequence and last admitted sequence for duplicate rejection.
-Receipts retain accepted/application status and per-recipient results until deterministic acknowledgement; ABL bindings save receipt IDs.
+The mission ingress queue is distinct from per-warrior execution queues. All UI, ABL, replay, support and future peer inputs use owned typed orders, never packed legacy words or execution pointers.
+TacticalOrder carries orderId/origin/kind/unitOrder/subOrder, optional move/attack/target, formationOrdinal and groupFlags. OrderExecution adds issued/notBefore/lastUpdate ticks, stage/status, lastMoveGoal and optional point-unit handle.
+OrderEnvelope is {applyTick,sourceId,sequence,issuer,recipients[],queueMode,payload}. submit validates shape, finite coordinates, bounds, permissions, identity and capacity; application revalidates live generations, authority and targets. Rejections are deterministic and logged, never crashes or silent drops.
+Canonical order is (applyTick,sourceId,sequence,recipient ordinal). Stable recorded roster order preserves formations/selectionIndex. During tick k, submitNext targets k+1; between ticks it targets completed+1. Explicit later ticks are allowed; earlier ones reject. Future lockstep waits for a complete batch rather than inserting retroactively; transport remains absent.
+Submission captures handles, canonical world points, range and modifiers outside Sim. Formation goals use sim data at application, never live selection, screen coordinates or waypoint keys. Speed/pause/view actions stay outside ingress.
+ABL order builtins submit with saved instance source/sequence; synchronous success means admission only. Application results are script-visible receipts; queries remain queries. Internal suborders/retries stay in the executing system, avoiding recursive enqueue; non-order mutations remain deterministic VM host operations.
+Replays use the same envelopes and pin ruleset, digest schema, resolved content, seed, initial-save digest and target tick. Receipt IDs follow admission order; replay preserves it and future peers must establish it before submission.
 
 ## Presentation dependencies and the headless runner
 
-`mc2 --headless --mission <name> --ticks N [--seed S] [--orders replay] [--load save]` is a shared application mode,
-with the same validating loaders, mission initialization, ABL host, tick function, command validation and digest encoder as windowed play.
-Ticks run to the exact requested endpoint without wall pacing; terminal mission results are recorded and early termination is explicit.
-No SDL window/input, GPU/backend startup, textures, shape baking, appearance updates, camera, HUD, audio device, video decode or presentation RNG owners.
-Load gameplay bounds, collision nodes, weapon timings and immutable audio/video duration metadata independently of visual assets.
-Never substitute dummy values for gameplay data formerly obtained from Appearance; extract such data and prove equality first.
-Bolt hit/damage (`code/weaponbolt_update.cpp:428`) and fall recovery (`code/mech_move.cpp:783`) stay in sim even if their visuals disappear.
-Move the four path projection calls (`code/mech_update.cpp:787`, `:789`, `code/gvehicl_update.cpp:791`, `:793`) to HUD rendering.
-Split terrain's collision/navigation data from camera visibility, texture updates, geometry, light baking and visual displacement damp.
-Retain gameplay craters only if they alter navigation/damage; cosmetic crater rotation is a presentation event parameter.
-
-Weather today changes lights, sound and camera-local drops; the consumer scan finds presentation reads, not gameplay weather effects.
-Give authored weather progression a deterministic Environment timeline; emit lighting/rain/thunder cues, with drops in RenderWeather.
-Environment runs in both modes independently of the effects option. Any discovered gameplay weather consumer reads Environment, never camera lighting.
-Music/voice/video logical requests and completion use tick deadlines plus validated content durations, never device end callbacks.
-Owner ruling: ABL camera getters return the last scripted camera value; setters emit presentation cues. Player camera motion never flows back.
-Stock mc2_01, mc2_10 and tut_01 save and restore the camera around cutscenes. mc2_01's mid-mission read now restores the scripted rotation, an accepted difference.
-The scripted cue host exposes core values rather than Camera types; physical camera state is unavailable to the kernel. forceMovieEnd and callout/voice queries (`code/ablmc2_camera.cpp:706`, `:734`) still require a host audit.
-Headless evaluates those logical completions and records cues. Windowed retains cinematic and in-mission video playback.
-Changing these bindings also requires windowed proof of campaign-start, won-mission and in-mission videos with `[VIDEO v1] play` controls.
-
-Extend `scripts/run_smoke.py` with an explicit headless branch before its host-lease acquisition (`:761` today).
-That branch invokes the harness-managed background process with console_child, per-run scratch, isolated save/log paths and an immutable install snapshot.
-It obtains no desktop/GPU host lease because it creates neither; this is a new runner policy, never `--no-lease` or an owner bypass.
-Require an executable capability/boot record proving the headless branch never initialized presentation; missing or contradictory records fail.
-Keep foreign-windowed-engine protection unchanged; classify harness-managed headless processes separately only after this capability proof.
-Retain install/deploy coordination so builds/deploys cannot modify live inputs; initially run missions sequentially to avoid shared-file assumptions.
-Tier2 reuses its 24-mission manifest and fixture inputs, with tick budgets replacing duration and frame-number injections.
-Grade load success, liveness/progress, exact tick completion, sim events, save/resume and digests. GPU/FPS/visual gates stay in windowed tier1/capture.
-Fingerprint, crash detection and malformed-mod rejection remain mandatory; headless success cannot prove rendered/video playback parity.
+The shared headless application mode accepts mission, exact tick budget, optional seed/replay/save and uses the windowed validating loader, ABL host, tick and digest. Terminal results are explicit; short runs cannot satisfy requested endpoints.
+Headless creates no window/input/GPU/textures/shapes/appearance/HUD/audio device/video decoder/presentation RNG owners. Bounds, collision, weapon timings and media durations load independently; never replace gameplay data formerly obtained from appearance with dummy values. Damage/fall recovery remain sim; path projection belongs to HUD.
+Separate terrain collision/navigation from visibility, textures, baking and visual displacement. Keep gameplay craters only where they affect navigation/damage; cosmetic rotation is presentation data.
+Environment deterministically owns authored weather progression and rain/trend/lightning deadlines, independently of effects settings. RenderWeather owns camera-local drops. Any gameplay weather consumer reads Environment, not lighting/camera.
+Logical music/voice/video requests complete from ticks and validated asset durations, never device callbacks. ABL camera getters return the last scripted value; setters emit cues, never expose the physical camera. mc2_01's changed mid-mission scripted rotation restore is accepted. forceMovieEnd/callout/voice host semantics still require audit.
+Windowed cinematic and in-mission videos remain required, including campaign-start/win/in-mission playback controls; headless logical completion cannot prove playback.
+The harness headless branch creates a background process with per-run scratch/log/save isolation and immutable install inputs. It requires a boot capability proving presentation never initialized before omitting the desktop/GPU lease; foreign windowed-engine protection and install/deploy coordination remain.
+Initially missions run sequentially. Tier2 retains its stock manifest/fixtures with tick budgets and tick-scheduled injections; grade load, progress, endpoint, events, save/resume, fingerprints and malformed-mod rejection. GPU/FPS/visual gates remain windowed.
 
 ## RNG streams and save ownership
 
-Preserve the current defined LCG arithmetic and shaping: `mclib/det_rng.h:21` advances a u32 with 1664525/1013904223, returns high 15 bits.
-Do not use implementation-dependent standard distributions. Validate ranges; invalid content logs a rejection without advancing a stream.
-Choose a random u32 root seed once outside the kernel for a normal fresh game; proofs/harnesses supply explicit seeds. Saves restore it verbatim.
-Current mission-name hashing (`code/mission_init.cpp:74`) is extraction evidence, not the target default; fresh-game randomness is the ownership-plan ruling at `cxx23-step4-ownership-plan.md:51`.
-Each system owns a value stream; SimKernel owns the stream inventory, not shared global mutable state. All draw counters become u64.
-For new streams derive initial u32 state as `rootSeed XOR streamId`; IDs below are fixed schema constants, never enum position or std::hash.
-Each stream record carries `{streamId, algorithmId, algorithmVersion, initialSeed:u32, state:u32, drawCount:u64}`; restore before any draw.
-The save also carries tick, scheduling phases, pending commands and script logical state. Seed alone cannot resume a stream.
+Preserve defined u32 LCG arithmetic: state=state*1664525+1013904223, output high 15 bits, with existing shaping; standard distributions are unsuitable. Invalid ranges reject without drawing.
+Choose a random u32 root seed once outside Sim for fresh games; harness seeds are explicit and saves restore verbatim. Each system owns its stream; SimKernel owns the inventory. New initial state is rootSeed XOR fixed streamId, never enum position or std::hash.
+Each stream record R is {streamId,algorithmId,algorithmVersion,initialSeed:u32,state:u32,drawCount:u64}, restored before draws. Seed alone cannot resume; initialSeed stays immutable and lifetime drawCount survives reseeds.
+Only ABL seedrandom reseeds ABL. Explicit seeds accept 0..INT32_MAX; below -1 rejects. For -1 derive from root seed, instance, executing tick and saved ordinal, never wall time. History records ordinal/instance/tick/requested/resolved seeds, starting at ordinal 1 with nondecreasing ticks.
 
 ## Shared sim/save contract
 
-This is the single contract table for S1 and [S3/B7](cxx23-step4-save-schema-design.md); owners are targets, citations are current-code evidence.
-`R` means the stream record above. Mission saves require all sim streams in RngState; optional streams live in Presentation, absent headless.
-Every authoritative row participates in the complete digest; every carried record has bit-exact roundtrip and malformed-input rejection proofs.
+This is the shared ownership contract with [S3/B7](cxx23-step4-save-schema-design.md). All authoritative rows participate in digests and validated bit-exact save roundtrips. Required RngState contains eight sim streams; optional Presentation streams are written windowed and discarded headless without sim draws.
 
-| Row | Owner | Kernel rule | What the save carries | Proof |
-|---|---|---|---|---|
-| Clocks/tick | SimKernel; GameSession pacing | Fixed 30 Hz; executing k admits k+1; speed is ticks/wall second | completedTick:u64, integer scheduling phases/next-due ticks, SimRules; derive seconds/ABL ms/turn; no executing tick, wall credit, pause or speed | Same replay at all rates/pumps; boundary restore matches uninterrupted ticks |
-| MissionInit RNG / 0x494E4954 | Mission loader/kernel | Authored generation (`code/mission_init_load.cpp:683`) | Required R, even after init | Init choices and next draws match |
-| Combat RNG / 0x434F4D42 | CombatSystem | Hit/critical rolls (`code/mech_weapons.cpp:170`, `code/mech_damage.cpp:227`) | Required R | Hit/critical continuation |
-| PilotChecks RNG / 0x50494C54 | WarriorSystem | Piloting/skills (`code/mech.cpp:321`, `code/warrior.cpp:727`) | Required R | Skill/check continuation |
-| AI RNG / 0x41494445 | DecisionSystem | Decision draws only; current tactical hash (`code/warrior.cpp:1390`) migrates to root seed/tick/handle | Required R; rootSeed is RngState's sole tactic seed | Choice and hash continuation |
-| Path RNG / 0x50415448 | PathSystem | Goal/reroute rolls (`code/mover_path.cpp:456`, `code/warrior_move.cpp:1079`) | Required R plus ordered path requests/results | Pending/retry continuation |
-| ABL RNG / 0x41424C52 | Mission ABL host | Random callbacks (`code/ablmc2.cpp:332`); only ABL reseeds | Required R plus ABL reseed ordinal/history | Explicit and -1 reseeds resume exactly |
-| Physical RNG / 0x50485953 | Physical/impact system | Gameplay fall/hit effects (`code/mech_move.cpp:783`, `code/weaponbolt_update.cpp:428`) | Required R | Fall/impact continuation |
-| Environment RNG / 0x454E5652 | Environment timeline | Trend/lightning (`code/weather.cpp:243`, `:317`), no drop draws | Required R; Environment deadlines separate | Camera/effects-option invariant draws |
-| Appearance RNG / 0x41505052 | RenderWorld appearance | Cosmetic only (`mclib/mech3d_update.cpp:168`) | Optional Presentation R | Visual restore; sim digest unchanged |
-| VFX RNG / 0x56465852 | RenderWorld effects | Cosmetic beam/tumble (`code/weaponbolt_update.cpp:974`, `mclib/mech3d_update.cpp:767`) | Optional Presentation R | Visual restore; sim digest unchanged |
-| Decals RNG / 0x4445434C | RenderWorld decals | Cosmetic rotation (`code/mech_update.cpp:459`, `code/weaponbolt_update.cpp:490`) | Optional Presentation R | Decal restore; sim digest unchanged |
-| RainDrops RNG / 0x5241494E | RenderWeather | Camera-local drops (`code/weather.cpp:428`) | Optional Presentation R | Camera changes never advance sim streams |
-| TerrainVisual RNG / 0x54564953 | Render terrain | Visual water bits (`mclib/mapdata.cpp:603`, `:644`) | Optional Presentation R plus visual rebuild recipe | Rebuild consumes no sim draws |
-| AudioVariation RNG / 0x41554452 | Presentation audio | Cosmetic acknowledgements (`code/tacordr.cpp:959`, `:989`, `:1021`) | Optional Presentation R; logical media separate | Device/ack variation cannot change sim |
-| Order queue + ingress | Kernel OrderIngress; warrior execution | Same typed TacticalOrder; canonical batch; executing k submits k+1, between ticks completed+1 | Pending envelopes, per-source next/last-admitted sequences, retained receipts/results/acknowledgements, active/queued OrderExecution | During/between-tick admission, duplicate/capacity rejection, queued save replay |
-| ABL state | Mission ABL environment/host | VM returns before boundary; deterministic queries/host operations | Module/instance order, typed eternals/statics/FSM/return/order flags, integer schedules, source/receipt bindings, reseedOrdinal:u64 and typed reseed history | Corpus roundtrip; issue/query/result and -1 reseed continuation |
-| Media/cue timelines | Kernel logical media/cue host | Tick completions from content durations; no device callback or physical Camera | Ordered requests, stable IDs/next sequence, kind/asset/source, start/end/duration ticks, loop/status, typed cue trajectories, completion/consumption latches | Mid-track/cue save matches headless/windowed; windowed campaign/won/in-mission video play |
-| Environment | Kernel Environment timeline | Required in both modes regardless of effects option; emits presentation cues | Authored progression, rain/trend/lightning values, check/thunder deadlines, scheduling phase, next cue sequence; no drops/camera fog | Mid-weather continuation, camera/effects-option invariant digest |
-| Editor session lifecycle | Editor document; isolated GameSession | Immutable snapshot; play/pause; paused step = one tick; reset rebuilds same snapshot/seed | Runtime uses same sim sections and snapshot fingerprint; no editor document/undo, wall pacing or editor control state | Document/undo unchanged; one-tick step; reset replay equality |
+| State / fixed ID | Owner and saved contract |
+|---|---|
+| Clocks | SimKernel: completedTick:u64, scheduling phases/next-due ticks and SimRules; derive other clock views. No executing tick, wall credit, pause or speed. |
+| MissionInit / 0x494E4954 | Loader/kernel: required R even after initialization. |
+| Combat / 0x434F4D42 | CombatSystem: required R for hit/critical rolls. |
+| PilotChecks / 0x50494C54 | WarriorSystem: required R for piloting/skills. |
+| AI / 0x41494445 | DecisionSystem: required R; tactical hash derives solely from root seed/tick/handle, not a separate seed. |
+| Path / 0x50415448 | PathSystem: required R and ordered requests/results/retries/cursors. |
+| ABL / 0x41424C52 | Mission VM host: required R plus reseed ordinal/history. |
+| Physical / 0x50485953 | Impact system: required R for gameplay falls/hits. |
+| Environment / 0x454E5652 | Environment: required R plus authored progression, rain/trend/lightning values, check/thunder deadlines, scheduling phase and next cue sequence. No camera/drop state. |
+| Appearance / 0x41505052 | RenderWorld appearance: optional R. |
+| VFX / 0x56465852 | RenderWorld effects: optional R. |
+| Decals / 0x4445434C | RenderWorld decals: optional R. |
+| RainDrops / 0x5241494E | RenderWeather: optional R. |
+| TerrainVisual / 0x54564953 | Render terrain: optional R and rebuild recipe; rebuilding consumes no sim draws. |
+| AudioVariation / 0x41554452 | Presentation audio: optional R; device/ack variation cannot affect logical media or Sim. |
+| Orders | Kernel ingress/warrior execution: pending envelopes, source next/last sequences, receipts/results/acknowledgements and active/queued OrderExecution. |
+| ABL state | Mission host: module/instance order, typed eternals/statics/FSM/return/order flags, integer schedules, source/receipt bindings and reseed state; VM returns before save boundary. |
+| Media/cues | Logical host: ordered requests, stable IDs/next sequence, kind/asset/source, start/end/duration ticks, loop/status, typed trajectories and completion/consumption latches. |
+| Editor session | Snapshot fingerprint and normal sim sections; never document/undo or editor/pacing controls. |
 
-Today RandomNumber/RollDice share GameOS state (`mclib/routines.cpp:74`, `:93`;
-`GameOS/gameos/gameos.cpp:290`); even view-only water/radio draws still consume it. Commented rand blocks are not live consumers.
-Audit every executable random call, including `code/weaponbolt.h:354` and `code/carnage.cpp:213`, before assigning its effects to a stream.
-Script `seedrandom(n)` reseeds only ABL; `-1` derives from root seed, instance ID, executing tick and saved reseed ordinal, replacing `time(nullptr)`.
-Record ordinal, instance, tick, requested seed and resolved seed; increment ordinal per accepted reseed. initialSeed stays immutable; drawCount counts lifetime draws across reseeds.
-It never reseeds combat or a global CRT (`code/ablmc2.cpp:187`, `code/warrior.cpp:328`). Invalid reseeds reject with a log line.
-Save readers validate required IDs, duplicates, supported algorithm versions, lengths and bounded queues before constructing owners.
-Unknown required RNG records fail with one reason log; presentation state is optional for headless and excluded from authoritative equality.
-Windowed writes its presentation streams too; headless loads/discards that section without consuming a sim draw.
+Readers validate required IDs, duplicates, algorithm versions, lengths and bounded queues before publishing owners. Unknown required RNG records reject once; optional presentation is excluded from authoritative equality. Every executable random consumer, including initialization and view-only calls, must belong to an explicit stream.
 
 ## Include and link firewall
 
-Create a `Sim/` target depending only on audited Core math, handles, readers, log sink and deterministic VM host interfaces.
-Game/presentation adapters may read snapshots and submit commands; Sim cannot include or reference Camera/eye/UserInput/SoundSystem,
-GameOS, RenderCore, RenderWorld, SDL, GPU, windows.h, platform Clock or chrono/system clocks, even through a PCH or transitively.
-Ban timeGetTime/GetTickCount/QueryPerformanceCounter/time/clock/gos_GetElapsedTime, CRT rand/srand and global gos_rand/gos_srand in Sim/VM.
-No function-pointer or extern shim granting sim camera/device/clock access. File IO occurs in loaders, not through a tick's environment.
-
-Extend `scripts/check-include-firewall.sh` (currently render-only scope at `:24`) with the sim scope and forbidden symbols,
-and a dependency walk over resolved includes for the exact Sim target (including generated headers and PCH).
-Use CMake's explicit sim source manifest during extraction so unrelocated sim TUs cannot escape a directory-only scan.
-Compiler include/dependency output plus AST symbol references must reject aliases/macros/indirect includes; missing manifest inputs fail closed.
-Check the target link graph for prohibited libraries and build the shared kernel with no presentation include directories or libraries.
-Negative fixtures cover direct/transitive Camera, a timing alias, VM wall seed, PCH leakage and an extern clock shim, with clean twins.
-Integrate this into the existing firewall contract row; subsume the narrower `scripts/check-sim-no-audio-reads.sh` once equivalent tests pass.
-No broad allowlist; temporary migration exceptions name a TU, dependency, reason and removal batch. Final kernel has zero exceptions.
+Sim depends only on audited Core math, handles, readers, logging and deterministic VM-host interfaces. Presentation reads snapshots/submits orders; Sim/VM cannot reach Camera/eye/input/audio, GameOS/RenderCore/RenderWorld/SDL/GPU/Windows, platform clocks, wall-time functions, CRT rand/srand or global gos RNG, even through aliases, macros, PCH, transitive includes, externs or function pointers.
+File IO belongs to loaders. Enforce explicit source manifests, resolved dependency/symbol walks and target link graphs; missing inputs fail closed. Integrate into the existing firewall row and subsume the narrower audio-read check only with equivalent coverage. Temporary exceptions name TU/dependency/reason/removal batch; the final kernel has none.
 
 ## SIMID v2 and proofs
 
-Keep the existing v1 encoder unchanged while adding v2 in parallel. Its whole-line comparator (`tools/sim_determinism.py:110`)
-currently includes app/weather counters; `visible_chain` (`:101`) strips only strict float bits, so it is not a headless oracle.
-V2 emits `{schema, ruleset, tick, authoritative, subsystem digests}` after each completed tick, including empty-mover missions.
-Hash explicit fixed-endian fields in stable handle/instance/stream-ID order, with no pointers, padding, unordered traversal or wall timestamps.
-Authoritative coverage includes live object existence/generation, transforms/physics, health/ammo/cooldowns, teams/objectives/resources,
-turret/building state, sensors/contacts, path requests/results/cursors, execution and ingress queues, script receipts,
-ABL FSM/statics/globals/arrays, schedules/reseed ordinal/history, logical media/cues, Environment, rootSeed and every sim RNG initialSeed/state/count/version.
-Do not hash cosmetic gestures/animation frames, camera, visibility caches, app/drop counters or presentation events already consumed.
-Separate presentation digests aid capture diagnosis; strict canonical sim float bits are required for same-build parity,
-while quantized/visual records remain useful diagnostics, never substitutes for authoritative lockstep equality.
-Save and digest share field definitions but distinct encodings; content identity and schema versions accompany the digest.
-Upgrade loose-data fingerprinting from path/size (`tools/sim_determinism.py:79`) to resolved content bytes and override precedence.
-Comparator requires matching ruleset, seed, manifest, initial state, order log, contiguous ticks and exact requested endpoint;
-missing fields, duplicate ticks, early exit or a short common prefix cannot pass. Keep first-difference subsystem/entity diagnostics and DT stacks.
+Keep v1 unchanged during extraction; its presentation counters and visible-chain float masking are unsuitable for headless equality. V2 emits schema/ruleset/tick/authoritative/subsystem digests after every completed tick, including empty-mover missions.
+Hash explicit fixed-endian fields in stable handle/instance/stream order, never padding/pointers/unordered traversal/wall stamps. Cover existence/generations, transforms/physics, health/ammo/cooldowns, teams/objectives/resources, buildings/turrets, sensors, paths, execution/ingress/receipts, ABL state, schedules/reseeds, logical media, Environment, root seed and all sim R fields.
+Exclude cosmetics/animation, camera, visibility caches, presentation counters and consumed presentation events. Same-build strict canonical float bits are authoritative; quantized/visual/presentation digests diagnose only. Save and digest share field definitions, with distinct encodings and explicit content/schema identity.
+Resolved fingerprints include content bytes and overlay precedence. Comparison requires matching ruleset/seed/manifest/initial state/order log, contiguous ticks and exact endpoint; missing/duplicate fields, early exit and short common prefixes fail. Preserve first-difference subsystem/entity diagnostics and trace stacks.
 
 ## Migration order and acceptance
 
-1. Freeze current content, seeds and mc2_03/10/24/16 baselines; verify zero-init, appearance split and music liveness.
-   Run existing check commands and 12 counted mc2_24 pairs beyond tick 4000; retain artifacts on first failure.
-2. Extract one-step kernel and separate UI/camera/HUD/visual work in small batches, preserving dt, call order and shared RNG sequence.
-   Dual-run/read-only shadow collectors prove v1 graded/objects/ABL unchanged at every batch; classify changed visual counters separately.
-   Loader extraction still performs current shared-stream initialization draws until streams are deliberately separated.
-3. Introduce v2 collectors and explicit owner-held RNG state without changing draw order; v1 remains byte-identical on the reference arm.
-   Move digest scratch vectors (`code/sim_identity.cpp:223`, `:228`) into the session's collector owner; no static-duration scratch owners remain.
-   Test forbidden-dependency fixtures and save/restore all newly owned state. No collector draws or mutates simulation.
-4. Activate tick-derived clocks, next-tick commands and independent streams as explicit ruleset changes, one change per reviewed batch.
-   Reconstructing time from ticks and splitting a shared RNG necessarily can change old trajectories; an unchanged old hash is not a valid claim.
-   For each change, freeze its new reference arm and prove the extracted kernel equals it tick-for-tick; show old/new first difference,
-   expected clock/order/draw cause and affected scenario tests. Never silently rebaseline to excuse an extraction regression.
-5. Add accumulator/speed scheduling around that reference kernel; same tick/order replay must have identical v2 at 0.5x/1x/1.5x/2x,
-   15/30/60/144 presentation fps, pauses, irregular pumps and capped stalls. No tick is skipped; deadlines/path fairness remain live.
-6. Switch to the shared loader/headless runner; same initial state and envelopes produce identical v2 at EVERY completed tick.
-   Save at K, resume to N in both modes and compare against uninterrupted N, including a pending order/path and mid-track script state.
-7. Run tier2 headless, keep windowed/video/editor floors, remove temporary exceptions and delete the obsolete retail path/gates.
-   Every subsequent ownership or math batch must keep the frozen authoritative digest unchanged; only reviewed ruleset changes replace baselines.
-
-Existing harness recipes (future implementation proofs; not run for this document):
-
-```text
-py -3 tools/sim_determinism.py check mc2_03
-py -3 tools/sim_determinism.py check mc2_10
-py -3 tools/sim_determinism.py check mc2_24
-py -3 tools/sim_determinism.py check mc2_16
-py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 12 --duration 60 --out scratch/s1-pairs
-py -3 tools/sim_determinism.py run mc2_10 --duration 60 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
-```
-
-Repeat the camera-park pair on mc2_24 and with effects disabled; require authoritative equality after parking at tick 300,
-while allowing presentation counters to differ. Existing fixtures are render-stamped; convert @300 to tick scheduling for the new harness.
-Use pairs-until-fail until 12 passes (30 at final acceptance); STARVED pairs do not count (`tools/sim_determinism.py:245`).
-Retain host-load ledger, manifests and both logs on FAIL; three consecutive STARVED runs are inconclusive, not success.
-Windowed proofs continue using normal host leases. New headless runs have exact tick budgets and process timeouts, not frame starvation excuses.
-Required implementation gates: offline contracts/doctest first, RelWithDebInfo build/all-targets, ASan, tier1, headless tier2 and save/resume parity.
-Render/video/editor checks remain necessary when extraction touches their paths; digest equality alone cannot detect missing presentation.
+Preserve dt, call order, shared draws and initialization draws during extraction; collectors never draw or mutate. Owned RNG/v2 collectors precede deliberate clock, next-tick and stream-splitting ruleset changes. Such changes may alter trajectories and need an explicit reference with explained first difference; never silently rebaseline an extraction regression.
+The reference kernel must replay identically at all supported speeds, presentation rates, pauses, irregular pumps and capped stalls, with live deadlines/path fairness. Windowed/headless equality applies at every completed tick; completed-boundary save/resume must match uninterrupted execution, including pending paths/orders and mid-track media.
+Retain stock mc2_03/10/24/16 coverage, camera/effects independence and exact-budget headless tier2, plus windowed/render/video/editor, offline contracts, RelWithDebInfo and relevant ASan checks. Starvation is inconclusive, never success. Only reviewed ruleset changes replace authoritative references.
+Delete retail/fixed/paused wall-clock branches, LastTimeGetTime, dynamicFrameTiming, forcedFrameRate sim adjustment and speed-dt multiplication after migration. Retire fixed-timestep/deterministic-RNG gates once unconditional; seed overrides and compile-time trace remain harness diagnostics. No variable-dt or CRT fallback ships.
 
 ## Retail wall-clock deletion, risks and owner decision
 
-Delete mission_update's fixed/retail/paused wall-clock branches, LastTimeGetTime, dynamicFrameTiming, forcedFrameRate sim adjustment
-and sim-speed dt multiplication in mechcmd2_frame. Move wall/sim ratio diagnostics to the scheduler.
-Retire MC2_SMOKE_FIXED_TIMESTEP and MC2_DETERMINISTIC_RNG after callers/baselines use the unconditional kernel;
-seed overrides and compile-time MC2_SIM_TRACE remain harness inputs/diagnostics. No hidden retail CRT or variable-dt fallback ships.
-Audit time calls and seed callbacks in the VM and startup; platform/UI clocks survive only outside the kernel.
+Open risks: animation timing coupled to damage/motion; mod ABL immediate-order/media semantics; initialization draws, float drift, ordering, pool reuse and path-budget phases; GPU/heap/timing defects invisible headless; scheduler overload responsiveness. Keep windowed/ASan coverage and deterministic repro inputs.
+Cross-platform strict floats remain unproven: pin compiler/FP policy now; Linux/macOS replay equality is a later gate. No raw struct/vtable dumps or physical camera state enter authoritative saves. Invalid readers log once and reject without crashing.
 
-Risks: animation events may trigger damage or unlock motion; separate event timing from display animation before skipping appearances.
-ABL camera/callout/audio reads and immediate order results can affect mod scripts; preserve documented logical semantics and test stock/mod corpora.
-Float-time drift, initialization draws, system ordering, pool reuse and path budget phases can move outcomes despite equal mover hashes.
-Headless can conceal GPU/heap/Tracy timing defects; keep windowed/ASan proofs and deterministic repro artifacts, not obsolete known-flake assumptions.
-The cap sacrifices wall-rate under load; stress-test responsiveness and tick fairness, and expose overload in diagnostics.
-Strict cross-platform floating identity is unproven; pin compiler/FP policy now and make Linux/macOS replay parity an explicit later acceptance gate.
+## Wire schema
 
-S3/B7's wire catalogue implements the shared table above. No raw struct/vtable dumps, pointers, wall accumulator or physical camera state enters authoritative saves.
-Readers reject malformed records/content with a log line and never crash; optional presentation cannot change authoritative equality.
+The standalone value APIs in mc2::sim are sim_rng and tactical_order_queue; ObjectRef={slot:u32,generation:u32}. Both TUs exclude the PCH unconditionally, enforced by scope metadata/firewall.
+RNG records sort by numeric stream ID. AblReseedState separately owns ordinal/history. For -1 reseeds, u32 v=rootSeed XOR instanceId XOR low32(tick) XOR high32(tick) XOR low32(ordinal) XOR high32(ordinal) XOR 0x41424C52; then v^=v>>16; v*=0x7FEB352D; v^=v>>15; v*=0x846CA68B; v^=v>>16, modulo 2^32.
 
-Owner ruling: camera-reading scripts receive the last scripted camera value. Live player-camera reads remain banned; mc2_01 restoring scripted rotation at its mid-mission read is an accepted compatibility difference.
+| Wire contract | Frozen values/invariants |
+|---|---|
+| Origins/kinds | Origins 0 player/1 commander/2 self; kinds 0..26 retain retail tags, 27 airstrike/28 reinforcement/29 mission control. Kind 0 cannot enter ingress. Other tactical enums retain explicit retail values. |
+| Scalars/variants | Support/issuer tags are one-based u8 in schema order; other enums u32 except FireRange:i32 (-4..3). WayPath encodes length, points, curPoint, exactly length modes. Support replaces move/attack optionals. |
+| Sources/issuers | Sources 1 UI/2 ABL/3 replay/4 peer/5 MissionContent. Only ABL carries instanceId and matching issuer; UI/peer use commander, replay either. Issuer tags 1 commander/2 instance. Required admission/application interfaces enforce permissions and live validity; peer is a protocol tag, not transport. |
+| Sequences/IDs | Sequences start 0 and admit exactly nextSequence, rejecting gaps/duplicates; receipts start 1. No counter/draw wraps. Capacity failure consumes neither. Restore nextReceiptId=1+overflow-checked sum of source nextSequence, even after retirement. |
+| Queue/status | Modes 1 replace/2 append/3 prepend; admission 1 accepted; application 0 pending/1 installed (Applied alias)/2 rejected/3 partial; recipients 1 applied/2 rejected. Reason 0 means success, nonzero rejection. Results retain canonical batch/roster order. |
+| Receipt payload | After recipient results: optional commandResult then acknowledged. Completed support has result {1 applied/2 rejected,reasonCode:u32} and no recipient results; completed unit orders only recipient results; pending neither. Command result/status agree. Invalid application outcomes use rejection 0xFFFFFFFF. Reasons survive restore. |
+| Bounds/lifecycle | 256 sources, 4096 pending, 8192 retained receipts, 128 recipients/waypoints/roster entries, 65536 reseeds. Acknowledge completed receipts only; retire acknowledged through a chosen ID while retaining source history. Save/restore only between ticks; endTick requires final results for its batch. Restore Clock's completed tick before cross-validation. |
+| Movement/targets | Kinds 2..10/19/20 require move; point/path movement needs points; Wait optionally carries move. Attack 16/17 requires attack. Targets required for 3/5/8/9/16/21/22/23/24/26; Guard 10 accepts target or nonempty point/path; others have none. |
+| Support | No recipients; reinforcement IDs are unique and preserve authored order. Strike tags 1 small/2 large/3 sensor. Mission-control argument/action tags 1 objective {objectiveId:u32,completed:bool}, 2 resource {commanderId:u32,resourcePoints:i32>=0}, 3 result {result:u32:0 running/1 won/2 lost}. Other actions require a schema extension. |
 
-## Q4 / CODEX-Q4-S1-STEP2 claimed amendment (2026-10-13)
+## Mission ingress
 
-The isolated API files are `code/sim_rng.{h,cpp}` and `code/tactical_order_queue.{h,cpp}`.
-Values live in `mc2::sim`; `ObjectRef` is the shared `{slot:u32,generation:u32}` representation.
-No live sim call sites change. Root CMake disables the PCH for these two TUs; scope metadata
-names those exclusions and the firewall verifies the unconditional source property declaration.
+Mission owns ingress, receipts and bindings by value. Destroy/reset clears them before actor teardown; session IDs come from a non-owning, never-wrapping process counter. Tokens {session:u64,receiptId:u64} require the expected session on submit/ack/query, so replacement even at the same address invalidates old tokens.
+Bind after actors, pilots and commanders exist. A generation-1 roster slot records original Part, watch mapping, actor/pilot addresses and runtime Part ID, independently of gated watch generations. Resolve verifies existence/destruction and both watch directions; mismatch permanently retires it. No dynamic/replacement rebinding; future watch-ID reuse requires unconditional incarnation notification.
+The simulation predicate is active && (!mc2SimTickFrozen(missionInterface) || MPlayer); freeze includes pause/freeze_movers, multiplayer retains its override. Drain before actor updates; contiguous completedTick is separate from retail turn. Every opened tick completes, including brain return 9999; inactive/frozen pumps neither drain nor increment.
+MissionContent tag 5 has no instanceId, requires Commander origin/issuer and forbids support. Production accepts MissionContent or UI for the recipient commander; UI requires Player origin. Other producer integration remains pending.
+The bounded adapter accepts Replace only, Stop=11, MoveToPoint=2, Patrol=7 and Traverse=6; origins map explicitly to retail Player=0/Commander=1. MoveTo is one finite point/cursor zero/Slow-or-Fast ordinary movement; reject jump/special/modifiers/formations/group/sub/unit payloads and orderId beyond signed32. Routes use the authored cap below.
+Admission/application require existence, pilot, commander and mobility. A temporary distinct slot-code marker proves a fresh synchronous handoff even if old content matches; suppression restores the old code and rejects. Installation must match origin/time/flags and every supported move parameter/mode. Legacy assignment omits id and selection can change delayedTime, so neither is an installation serial.
+MissionContent logs each rejection once, acknowledges completed receipts and retires after endTick, retaining source sequences. Authored diagnostics have one loader/receipt owner. Other consumers own acknowledgement; pending receipts cannot be acknowledged. Installed means slot handoff, not execution; evidence is captured synchronously before ABL replacement.
 
-The following previously unspecified values are frozen for these skeleton codecs:
+### Authored Part contract
 
-- RNG records use ascending numeric stream IDs. `RngState` contains exactly eight records.
-  The ABL host separately owns `AblReseedState {reseedOrdinal:u64,reseedHistory:AblReseed[]}`.
-  Accepted reseeds start at ordinal 1, have nondecreasing executing ticks and preserve lifetime draw counts.
-  For `-1`, let u32 `v = rootSeed XOR instanceId XOR low32(tick) XOR high32(tick)
-  XOR low32(ordinal) XOR high32(ordinal) XOR 0x41424C52`; then `v ^= v >> 16`,
-  `v *= 0x7FEB352D`, `v ^= v >> 15`, `v *= 0x846CA68B`, `v ^= v >> 16`.
-  Products wrap modulo 2^32. Explicit seeds accept 0..INT32_MAX; values below -1 reject.
-- Origin tags retain 0 player/1 commander/2 self; tactical kinds retain 0..26 from `tacordr.h`,
-  with 27 airstrike/28 reinforcement/29 mission control; kind 0 cannot be admitted.
-  Other tactical enum values preserve their named retail meanings, declared explicitly in the header.
-  Support kinds carry one tagged SupportCommand in place of the move/attack optionals.
-  Support and issuer variant tags are u8, one-based in their declared schema order; other enums are u32,
-  except FireRange:i32 (-4..3). WayPath carries points length, points, curPoint, then exactly that many mode tags.
-- Source tags are 1 UI/2 ABL/3 replay/4 future peer. Only ABL sources carry instanceId;
-  their issuer must match it. UI/peer issuers are commander IDs; replay can carry either.
-  Issuer tags are 1 commander/2 instance. A required admission interface supplies mission permissions;
-  a required application interface checks live authority, handle generations and legal targets before effects.
-  Peer registration is a protocol value only; it starts no transport.
-- Sequences start at 0, admit exactly nextSequence, reject previously admitted identities and gaps,
-  and never wrap. Receipt IDs start at 1. A draw or increment requiring an unrepresentable next value rejects.
-  Receipt IDs follow ingress call order; replay preserves that order, and a future peer must establish
-  a stable admission order before calling submit. Canonical drain order does not renumber issued receipts.
-  Queue-mode tags are 1 replace/2 append/3 prepend. Admission status is 1 accepted;
-  application status is 0 pending/1 applied/2 rejected/3 partial, recipient result 1 applied/2 rejected.
-  Reason 0 means applied; nonzero means rejected. Application and recipients follow canonical batch/roster order.
-  Receipt wire fields after recipient results are optional commandResult, then acknowledged. Completed support
-  receipts carry commandResult `{result:u32:1 applied/2 rejected,reasonCode:u32}` and no recipient results;
-  pending receipts carry neither, and completed unit receipts carry only recipient results. Command validation
-  and support application rejection reasons persist across restore; invalid application outcomes reject with
-  reason 0xFFFFFFFF, matching recipient failures. The command result must agree with application status.
-- Caps are 256 sources, 4096 pending envelopes, 8192 retained receipts, 128 recipients/waypoints/roster entries,
-  and 65536 ABL reseeds. Acknowledgement marks a completed receipt; explicit retirement releases acknowledged
-  records through a chosen ID, retaining source sequence state. On restore, nextReceiptId must equal
-  one plus the overflow-checked sum of all sources' nextSequence values, even after every receipt retires.
-  Capacity errors consume neither sequences nor IDs.
-  Completed tick comes from Clock when restoring OrderIngress; executing tick/drained batch are transient.
-  Queue save/restore is forbidden during a tick, and endTick requires final results for the drained batch.
-- Movement kinds 2..10/19/20 require move parameters; point/path movements require at least one point.
-  Wait may carry move parameters. Attack kinds 16/17 require attack parameters. Object-directed kinds
-  3/5/8/9/16/21/22/23/24/26 require a target. Guard (10) accepts either an object target or a valid
-  nonempty point/path in its move parameters, preserving retail Guard-at-point; other kinds carry no target.
-  Support commands have no recipient roster. Reinforcement IDs retain authored roster order and must be unique.
-  Strike tags are 1 small/2 large/3 sensor. Mission-control actions are 1 set objective `{objectiveId:u32,completed:bool}`,
-  2 set resource `{commanderId:u32,resourcePoints:i32 >= 0}`, 3 set mission result `{result:u32:0 running/1 won/2 lost}`;
-  argument tags match those action IDs. Additional mission-control actions need an explicit schema extension.
+Part keys remain the editor format, preserving untouched bytes and existing Brain/ABL assignments. An eligible Enhanced OPORD on the preserved original pilot wins, using the same predicate as OPORD population (gate, valid/live warrior, non-player archetype, supported primary type); suppression emits one info line naming the Part. Never dual-dispatch, position-match, auto-convert or mutate shared ABL.
 
-## S4-b1 mission ingress amendment (2026-10-14)
+| Field/identity | Contract |
+|---|---|
+| OrderType | Editor 0 None/no envelope, 1 Traverse once, 2 Patrol loop; these differ from queue kind tags. |
+| OrderStance | 0 Cautious/1 Conservative/2 Normal/3 Aggressive/4 Berserker/5 Suicidal. Retain mission-owned and in evidence; execution policy remains to be defined, with no legacy layout change. |
+| WaypointCount | None=0; routes=1..8. Queue cap 128 and legacy cap 15 do not widen authored content; reader/export changes must agree. |
+| Waypoint{i}X/Y/Z | Required typed finite floats; X/Y strictly inside map bounds, Z finite. Missing type/value, duplicate, invalid or stray/excess keys reject atomically once with selected Part and reason; no defaults/partial route/truncation. |
+| Presence | No order keys means absent; any without OrderType is malformed. |
+| Alternate | Parse selected block, retain original/selected IDs separately and preserve original pilot; bind/admit after commanders, never by position. |
 
-Scope: lifecycle, bounded production adapter and receipts. Part-key parsing/admission and
-patrol/traverse execution belong to S4-b2. No authored-route loader or queue save hook ships
-in this slice. Fable granted the mission_init.cpp initialization/reset/post-spawn call sites
-on 2026-10-14; they are applied directly. The prepared patch remains scratch only and is
-excluded from the commit deliverable.
-The reset belongs before initPrologue, so reinitialization invalidates old tokens before
-any actor teardown. Post-spawn binding belongs immediately after initSpawnActors, when
-the Part actors and their pilots exist. mission_init_load.cpp needs no additional hook.
+### Save/resume contract
 
-Ownership and ticks:
+A versioned Archive OrderIngress section must retain completed tick; sorted sources with tag/instance/next/last sequences; pending full envelopes/rosters; retained receipts with per-recipient reasons/status/acknowledgement; nextReceiptId; durable recipient Part/entity incarnation, generation and retirement state.
+Exclude pointers/raw watch IDs/live session tokens/atomic allocator/executing batch/applicationActive/socket/fixture state. Save after tick completion and receipt consumption; restore tick before receipt cross-validation. Sources survive receipt retirement.
+Validate candidates then publish atomically, one diagnostic on failure leaving live state intact. Rebind after Part/pilot reconstruction before updates, using fresh sessions and reacquired retained-receipt tokens; never restore by pointer or gated watch fallback. Save hooks require lane 1's claim release and remain unimplemented.
 
-- Mission owns MissionOrderIngress by value; its vectors and queue die with Mission.
-  Explicit destroy and the initialization reset discard pending orders, receipts
-  and recipient bindings. No static queue owner exists. The process-wide atomic counter
-  allocates session identities only; it owns no mission resources and never wraps.
-- The tick predicate is `active && (!mc2SimTickFrozen(missionInterface) || MPlayer)`.
-  mc2SimTickFrozen includes UI pause and freeze_movers. Multiplayer keeps the existing
-  override. The drain is in updateObjectManager's simulation branch, before actor updates.
-  Queue completedTick is the contiguous simulation counter; retail turn remains unchanged.
-  SimulationOrderCompletion in Mission::update closes every opened tick, including 9999.
-  Paused/inactive pumps neither drain nor increment completedTick.
-- Producers admitted during a tick target its successor. The batch remains immutable,
-  ordered by applyTick/sourceId/sequence. Admission never means execution completed.
+### Acceptance
 
-Identity and consumers:
-
-- MissionReceipt is `{session:u64,receiptId:u64}`. Submission carries the expected session;
-  acknowledgement checks it. Restart or even a replacement Mission at the same address
-  gets a fresh session, so local receipt ID 1 cannot alias an old token.
-- Recipient ObjectRef slots are a mission-owned post-spawn roster, generation 1, unrelated
-  to watch slot/generation tags. A binding records original Part ID, watch mapping, actor
-  address and pilot address. Resolve verifies all four, the actor's own watch ID (without
-  assigning one), and existence/destruction; failure permanently retires the binding.
-  The current manager assigns monotonically fresh watch IDs and clears the actor's ID on
-  free/trade, independently of the generation gate. Reverse-ID verification detects pool
-  reuse even if an old watch-list entry still points to that address. No replacement or
-  dynamically spawned actor is rebound in S4-b1. Any future watch-slot reuse policy must
-  add an unconditional incarnation notification before enabling reuse for these bindings.
-- Mission content source tag 5 extends the codec bound from 4 to 5. It has no instanceId,
-  requires a commander issuer and Commander origin, and cannot issue support commands.
-  The production adapter permits MissionContent and UI only, requires the recipient's
-  commander, and requires Player origin for UI. ABL/replay/peer integration is deferred.
-- The mission content consumer logs a completed rejected receipt once, acknowledges it,
-  and retires acknowledged receipts after endTick. It retains source sequence state.
-  UI/ABL consumers must explicitly acknowledge their own results before retirement;
-  no UI or ABL source is registered by this slice. Pending receipts cannot be acknowledged.
-
-Bounded application:
-
-- Production MoverOrderApplication is in mission.h and instantiated in
-  mission.cpp with actual ::TacticalOrder and Mover. It maps Stop to retail code 11 and
-  MoveToPoint to code 2; origins 0 Player and 1 Commander are explicit retail tags.
-  It supports Replace only: handleTacticalOrder(legacy, 0, false) reaches
-  pilot->setPlayerTacOrder (also clears the legacy player queue) or setGeneralTacOrder.
-  Append and Prepend reject explicitly. The legacy handler's player append branch exists
-  but its global pilot-queue capacity/locking policy is outside this bounded contract.
-  Self origin rejects because alarm priority arbitration can suppress the write.
-- MoveToPoint accepts one finite point, cursor 0, Slow/Fast mode and ordinary movement
-  only. It rejects jump, special movement, modifiers, formations and group/sub/unit orders;
-  orderId must fit signed 32 bits. PatrolPath/TraversePath and every other verb reject,
-  including success-only patrol helpers. No route is truncated or reported as applied.
-  Admission/apply check existence, pilot, commander and mobility. Before the synchronous
-  handoff, the adapter temporarily marks the destination slot code None (0), distinct from
-  both supported codes. A suppressed handler leaves that marker unchanged; the adapter
-  restores the previous code and rejects, preserving the previous record. A fresh installation
-  must replace the marker and match origin, time, flags and every supported move parameter,
-  including travel mode. The marker is confined to the synchronous Move/Stop handoff and
-  verification, before the next actor update. This works with the existing handler and requires no mover_combat.cpp
-  change. The legacy assignment does not copy id, and delayedTime may reflect mover selection;
-  neither field is used as an installation serial. The matching-slot suppression tests cover
-  both origins, MoveToPoint/Stop and matching/different travel modes.
-  Applied means installed in that pilot order slot, not completed movement.
-
-Content policy default, CONFIRMED by Fable on 2026-10-14:
-
-This supersedes the earlier requirement that a migrated route retire its Part keys and that
-every authored patrol export use Brain/ABL; editor-rework-design.md now records the confirmed
-Part-key format and precedence. Existing Brain/ABL assignments remain valid. The current editor's
-Part keys feed MissionContent ingress. When the original pilot has an Enhanced Brain OPORD,
-that OPORD wins: reject the selected Part-key order once with one diagnostic naming PartN.
-No automatic dual dispatch, conversion, nearest-position matching or shared ABL mutation.
-
-S4-b2's atomic reader contract is:
-
-- Editor ID 0 ORDER_NONE maps explicitly to OrderKind::None (no envelope); 1 ORDER_MOVE
-  maps to TraversePath (once); 2 ORDER_PATROL maps to PatrolPath (loop). Do not cast these
-  editor IDs to queue tags 0/1/2, which would mean None/Wait/MoveToPoint.
-- Stance values 0..5 are Cautious/Conservative/Normal/Aggressive/Berserker/Suicidal.
-  S4-b2a retains stance in the mission-owned authored route and synchronous installation
-  evidence. The legacy TacticalOrder has no stance field and no pilot stance API is
-  established. S4-b2b must define and apply that execution policy; b2a does not apply it.
-  Do not change TacticalOrder's raw saved layout to carry stance.
-- Part routes initially use 1..8 waypoints, matching the Enhanced Brain export cap;
-  None uses count 0. The typed queue cap 128 and legacy storage cap 15 do not authorize
-  more authored points. Any future widening changes both readers/exports deliberately.
-- No order-related keys means absent. Any present key without OrderType is malformed.
-  Present OrderType requires a valid stance/count and every counted X/Y/Z float, finite
-  and in the mission coordinate domain. Invalid type/stance/count/point, missing required
-  field, or excess/stray waypoint keys rejects the entire authored order exactly once.
-  No defaulting of malformed values, partial admission or truncation. Reject extra points
-  even if the prefix fits; the diagnostic names the selected Part and one failure reason.
-- Parse the selected alternate block after selection in initPartsLoad. Preserve the
-  original Part's pilot exactly as existing alternate loading does, and resolve OPORD
-  precedence using that preserved pilot. Retain original Part ID and selected content
-  Part ID separately. Bind/admit after the post-spawn boundary, never by position.
-
-Save/resume design only:
-
-- Add a versioned OrderIngress section through the existing save Archive section catalogue.
-  It contains completed simulation tick; sorted OrderSources including tag/instanceId,
-  nextSequence and lastAdmittedSequence; pending envelopes and full payload/recipient roster;
-  retained receipts including per-recipient reasons, status and acknowledgement;
-  nextReceiptId; and the mission recipient roster with durable Part/entity incarnation IDs,
-  generation and retirement state. No pointers, raw watch IDs, atomic allocator value,
-  executing batch, applicationActive, socket state or fixture state is serialized.
-- Save after completeSimulationTick and receipt consumption, at a completed-tick boundary;
-  existing queue serialization already rejects executing ticks. Completed tick must be
-  restored before pending-receipt cross-validation. Sources retain sequence history after
-  receipt retirement. The S4-a Part importer is not a queue save implementation.
-- Hook the writer alongside the authoritative mission/Part section export, and the reader
-  after Part restore and actor/pilot reconstruction, before active updates. The orchestrator
-  must grant saveload*.cpp after lane 1's quickload bisect. Validate into candidates and
-  publish atomically; malformed sections yield one diagnostic and leave the live state intact.
-  Restore durable entity references into a fresh process session; clients reacquire tokens
-  for retained receipt IDs. Old live-session tokens remain invalid. No restore-by-pointer
-  or gated-watch-generation fallback. Prove pending order and retained rejection at K/N.
-
-Proof checkpoint:
-
-Production sources are tactical_order_queue.cpp, the MoverOrderApplication template in
-mission.h, and the MissionRecipientBinding/SimulationOrderCompletion templates in
-tactical_order_queue.h, instantiated by mission.cpp/mission_update.cpp.
-test_mission_order_ingress.cpp exercises those same templates and the real legacy order
-type with an actor endpoint fixture; it does not link Mover's live implementation.
-test_tactical_order_queue.cpp adds the MissionContent codec/permission test.
-`tools/mission_order_ingress_witness.py` is the tracked live witness. It runs the background
-leased lane3 harness and submits three MissionContent MoveToPoint batches of 4096, 4096
-and 1 via the dev shell. Only Mission::updateObjectManager drains them and the completion
-guard in Mission::update consumes and retires their receipts. The check command requires
-all batch outcomes Applied, no pending/retained receipts and an unresolvable retired token.
-8193 admissions exceed the 8192 retained-receipt capacity; manual unit-test acknowledgement
-and retirement no longer serve as the production capacity proof. It proves installation
-and automatic retirement, not route traversal or movement completion.
-
-Runtime negative controls (orchestrator, committed/fingerprinted executables): remove only
-`beginOrderSimulationTick();` from updateObjectManager, then build/deploy lane3 and run the
-same witness: require exit 1, with no successful batch check (receipts stay Pending). In a
-separate control remove only `queue.retireAcknowledged(queue.nextReceiptId() - 1);` from
-completeOrderSimulationTick: require exit 1 (completed receipts stay retained). Restore both
-hooks and require exit 0 and three applied_retired fixture diagnostics with completed counts
-4096/4096/1, retained=0, sequence=4096/8192/8193. Removing the completion guard likewise
-leaves the first check false. Never suppress fingerprint validation to run these controls.
-The agent's pre-commit build is unit/syntax proof only; the live positive/negative results
-remain required at the orchestrator's commit-build-deploy checkpoint.
-
-Acceptance still requires the orchestrator to commit, build and
-pin exactly 606b584b3 and the resulting after commit binaries by SHA256, and use identical resolved
-lane3 content for strict-chain mc2_03/10/24/16 before/after and both stock camera pairs.
-Require identical content fingerprint, seed and resolved environment for each comparison;
-strict-only mismatches are failures too. No write-baseline command or SIMID re-record
-belongs to this run. S4-b2a adds the real initializer/handler/setter console seam and live
-authored Part fixtures; commands and the b2b execution policy are in sim-s4b2-execution.md.
-Save/resume remains future work. Installed authored orders flag a new general order; the
-next warrior update can clear paths/attack state and call execute even with route dispatch
-commented out. Stock parity depends on zero handoffs for absent/None/rejected/suppressed
-content, never on an assumption that installation is inert.
+Stock absent/None/rejected/suppressed content must cause zero handoffs: installation already flags new orders and can clear paths/attack state or call execute. The real initializer/handler/setter seam and disconnected-adapter oracle establish installation independently of receipts. The fingerprinted runtime witness must exceed retained-receipt capacity and fail when drain, completion or retirement is disconnected.
+Pin exactly 606b584b3 and post-commit SHA256 binaries; require identical resolved content, seed and environment for strict mc2_03/10/24/16 chains and both camera arms. Missing budgets/fingerprints/success or any strict mismatch fails; never rewrite baselines. See [execution decisions and claims](sim-s4b2-execution.md) for route arbitration, restore and the default-off OPORD gate question.

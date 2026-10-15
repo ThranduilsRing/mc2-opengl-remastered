@@ -1,6 +1,6 @@
 // tests/unit/test_gui_bridge.cpp
 //
-// Compile-time test of the widget text bridge (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md section 2). The bridge is a
+// Compile-time test of the widget text bridge. The bridge is a
 // const char* + const std::string& overload pair next to the EString one, so a caller holding std::string, a C string, a literal or an
 // EString all resolve to one overload, and the resource-id form setText(0L) is not stolen by a pointer overload. A std::string_view overload
 // would make every setText("literal") ambiguous, which is why there is none.

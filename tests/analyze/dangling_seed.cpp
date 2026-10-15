@@ -1,5 +1,5 @@
 // Seeded negative for tests/analyze/analyze_dangling.py: the three shapes in which a pointer into a std::string outlives the string,
-// the hazard EString's copy-on-write buffer hid (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md section 5). The gate script
+// the hazard EString's copy-on-write buffer hid. The gate script
 // compiles this file and FAILS if a shape produces no diagnostic; the same file doubles as the list of shapes the gate is trusted for.
 #include <string>
 

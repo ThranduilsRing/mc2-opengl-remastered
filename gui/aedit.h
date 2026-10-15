@@ -46,8 +46,8 @@ class aEdit: public aObject
 
 	
 		void getEntry(EString& str);
-		// Final-form accessors (step 4 batch B1): entry() replaces getEntry, the const char* / const std::string& setEntry pair stands in for
-		// the EString one until the widgets convert (B6). Callers moved to std::string use only these.
+		// Final-form accessors: entry() replaces getEntry, the const char* / const std::string& setEntry pair stands in for
+		// the EString one until the widgets convert. Callers moved to std::string use only these.
 		std::string entry() const;
 		void setEntry(const EString& str, BYTE byHighlight = 0);
 		void setEntry(const char* str, BYTE byHighlight = 0);
