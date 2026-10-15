@@ -53,6 +53,7 @@
 #include "vk_owned.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
+#include "vulkan_color_prop_island.h"
 #include "vulkan_shadow_mech_casters.h"
 #include "vk_shared_gbuffer_gate.h"
 
@@ -246,6 +247,18 @@ struct ShadowIsland : mc2vk::IslandState {
     const void* stagedInstances = nullptr;
     uint32_t    stagedInstanceCount = 0;
     std::vector<InstRun> instRuns;
+    // Foliage and fence casters. Per packet of the shared geometry: the layer of the colour island's alpha-ON array that the packet's colour-pass fragments sample,
+    // and the UV sub-region scale (layer < 0: an opaque packet). Built once per map from the colour island's material feed; the array view is re-bound whenever the
+    // colour island hands out a different one. Until both exist a frame draws those packets opaque (a solid shadow), as the first frames of a map always did.
+    struct PacketAlpha {
+        int32_t layer = -1;
+        float   scaleX = 1.0f;
+        float   scaleY = 1.0f;
+    };
+    std::vector<PacketAlpha> packetAlpha;
+    bool        alphaTableBuilt = false;
+    VkImageView alphaBoundView = VK_NULL_HANDLE;
+    bool        alphaReady = false;   // this frame: the array is bound and the table is built
     // The single dynamic map is only the fallback of a receiver that has no cascades, so its pass is held until the frame's cascades are known: it is recorded
     // at the submit when the cascade array and the full-map cascade were not both produced, and never otherwise.
     struct PendingDynamicMap {
@@ -272,11 +285,17 @@ struct ShadowIsland : mc2vk::IslandState {
     std::vector<mc2vk::OwnedFramebuffer> csmArrayFbs;
     mc2vk::OwnedFence       frameFence[2];   // signalled when the submit of parity p has retired; created signalled
     mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorSetLayout alphaDsl;   // set 1 of the caster layout: the colour island's alpha-ON albedo array
     mc2vk::OwnedDescriptorPool      pool;
+    mc2vk::OwnedDescriptorPool      alphaPool;
+    VkDescriptorSet                 alphaSet = VK_NULL_HANDLE;   // allocated from alphaPool, freed with it
+    mc2vk::OwnedSampler             alphaSampler;
     mc2vk::OwnedPipelineLayout      playout;
     mc2vk::OwnedShaderModule        vert;
     mc2vk::OwnedShaderModule        frag;
+    mc2vk::OwnedShaderModule        alphaVert, alphaFrag;
     mc2vk::OwnedPipeline            pipe;
+    mc2vk::OwnedPipeline            alphaPipe;   // foliage and fence casters: discards the texels the colour pass discards
     mc2vk::OwnedCommandPool         cpool;
     // The mech casters share the render pass and the UBO above; declared last so they are released first.
     mc2vk::ShadowMechCasters        mech;
@@ -360,6 +379,82 @@ bool ensure_inst_capacity(ShadowIsland* s, uint32_t parity, VkDeviceSize bytes) 
         return false;
     s->instCapBytes[parity] = cap;
     write_descriptors(s, parity);
+    return true;
+}
+
+// A depth-only caster pipeline over the shared static-prop vertex: one position stream (plus the UV for the alpha-tested kind), instanced, LESS forward-Z,
+// depth bias set dynamically per pass (GL's glPolygonOffset), no colour attachment, into the island's render pass and the shared caster layout.
+bool create_caster_pipeline(ShadowIsland* s, mc2vk::OwnedPipeline& out, VkShaderModule vert, VkShaderModule frag, bool withUv, std::string_view name) {
+    {
+        VkVertexInputBindingDescription vib{};
+        vib.binding = 0; vib.stride = mc2_static_prop_vertex_stride();  // pipeline is baked before geometry upload: s->vertexStride is still 0 here
+        vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputAttributeDescription via[2]{};
+        via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
+        via[1].location = 2; via[1].binding = 0; via[1].format = VK_FORMAT_R32G32_SFLOAT;    via[1].offset = 24;   // the UV of the shared static-prop vertex
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
+        vin.vertexAttributeDescriptionCount = withUv ? 2u : 1u; vin.pVertexAttributeDescriptions = via;
+
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode = VK_CULL_MODE_NONE;       // GL shadow pass cull none (ShadowMech/ShadowStaticProp)
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rs.depthBiasEnable = VK_TRUE;          // matches GL glEnable(GL_POLYGON_OFFSET_FILL)
+        rs.lineWidth = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        // Forward-Z: LESS + write on (NOT reverse-Z; the GL dynamic shadow map is
+        // forward-Z GL_LESS, glClearDepth(1.0)).
+        VkPipelineDepthStencilStateCreateInfo ds{};
+        ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        ds.depthTestEnable = VK_TRUE;
+        ds.depthWriteEnable = VK_TRUE;
+        ds.depthCompareOp = VK_COMPARE_OP_LESS;
+
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 0;   // depth-only
+
+        // Dynamic viewport/scissor + DEPTH BIAS (set per-frame to the engine's
+        // glPolygonOffset factor/units — the STOP-watch parity requirement).
+        VkDynamicState dyn[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
+                                  VK_DYNAMIC_STATE_DEPTH_BIAS };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 3; dsci.pDynamicStates = dyn;
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vert; stages[0].pName = "main";
+        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = frag; stages[1].pName = "main";
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount = 2; gp.pStages = stages;
+        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vps; gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dsci;
+        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        if (!mc2vk::create(out, s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            vlog("vkCreateGraphicsPipelines failed."); return false;
+        }
+        mc2vk::nameObject(s->device, out.get(), name);
+    }
     return true;
 }
 
@@ -526,88 +621,50 @@ bool init_island(ShadowIsland* s, int size) {
         }
     }
 
-    // ---- Pipeline: depth-only, one vec3 position stream, instanced, LESS forward-Z,
-    // depthBias set dynamically each frame (matches glPolygonOffset). ----
+    // ---- Pipelines: the opaque caster and the alpha-tested one share one layout (set 0 the frame UBO + instances, set 1 the alpha array, a push constant
+    // of the per-packet layer and UV scale), so the set 0 binding of a pass stays valid across a switch of pipeline. ----
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop.frag.spv"));
-        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
+        s->alphaVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop_alpha.vert.spv"));
+        s->alphaFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shadow_prop_alpha.frag.spv"));
+        if (!s->vert || !s->frag || !s->alphaVert || !s->alphaFrag) { setFallback("spv_load_failed"); return false; }
+
+        // Set 1: the alpha-ON albedo array the colour island imported (bound later, when it exists).
+        VkDescriptorSetLayoutBinding ab{};
+        ab.binding = 0; ab.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; ab.descriptorCount = 1; ab.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo alci{};
+        alci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        alci.bindingCount = 1; alci.pBindings = &ab;
+        if (!mc2vk::create(s->alphaDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &alci, nullptr, h); })) { vlog("alpha descriptor layout failed."); return false; }
+        VkDescriptorPoolSize aps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+        VkDescriptorPoolCreateInfo apci{};
+        apci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        apci.maxSets = 1; apci.poolSizeCount = 1; apci.pPoolSizes = &aps;
+        if (!mc2vk::create(s->alphaPool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &apci, nullptr, h); })) { vlog("alpha descriptor pool failed."); return false; }
+        const VkDescriptorSetLayout alphaLayout = s->alphaDsl.get();
+        VkDescriptorSetAllocateInfo adsai{};
+        adsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        adsai.descriptorPool = s->alphaPool.get(); adsai.descriptorSetCount = 1; adsai.pSetLayouts = &alphaLayout;
+        if (vkAllocateDescriptorSets(s->device, &adsai, &s->alphaSet) != VK_SUCCESS) { vlog("alpha descriptor set allocation failed."); return false; }
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR; sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        if (!mc2vk::create(s->alphaSampler, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { vlog("alpha sampler failed."); return false; }
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout setLayout = s->dsl.get();
-        plci.setLayoutCount = 1; plci.pSetLayouts = &setLayout;
+        const VkDescriptorSetLayout setLayouts[2] = {s->dsl.get(), s->alphaDsl.get()};
+        const VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16};   // vec2 uvScale, int layer, pad
+        plci.setLayoutCount = 2; plci.pSetLayouts = setLayouts;
+        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("vkCreatePipelineLayout failed."); return false;
         }
-
-        VkVertexInputBindingDescription vib{};
-        vib.binding = 0; vib.stride = mc2_static_prop_vertex_stride();  // pipeline is baked before geometry upload: s->vertexStride is still 0 here
-        vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        VkVertexInputAttributeDescription via{};
-        via.location = 0; via.binding = 0; via.format = VK_FORMAT_R32G32B32_SFLOAT; via.offset = 0;
-        VkPipelineVertexInputStateCreateInfo vin{};
-        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
-        vin.vertexAttributeDescriptionCount = 1; vin.pVertexAttributeDescriptions = &via;
-
-        VkPipelineInputAssemblyStateCreateInfo ia{};
-        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-        VkPipelineViewportStateCreateInfo vps{};
-        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        vps.viewportCount = 1; vps.scissorCount = 1;
-
-        VkPipelineRasterizationStateCreateInfo rs{};
-        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rs.polygonMode = VK_POLYGON_MODE_FILL;
-        rs.cullMode = VK_CULL_MODE_NONE;       // GL shadow pass cull none (ShadowMech/ShadowStaticProp)
-        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rs.depthBiasEnable = VK_TRUE;          // matches GL glEnable(GL_POLYGON_OFFSET_FILL)
-        rs.lineWidth = 1.0f;
-
-        VkPipelineMultisampleStateCreateInfo ms{};
-        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-        // Forward-Z: LESS + write on (NOT reverse-Z; the GL dynamic shadow map is
-        // forward-Z GL_LESS, glClearDepth(1.0)).
-        VkPipelineDepthStencilStateCreateInfo ds{};
-        ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        ds.depthTestEnable = VK_TRUE;
-        ds.depthWriteEnable = VK_TRUE;
-        ds.depthCompareOp = VK_COMPARE_OP_LESS;
-
-        VkPipelineColorBlendStateCreateInfo cb{};
-        cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        cb.attachmentCount = 0;   // depth-only
-
-        // Dynamic viewport/scissor + DEPTH BIAS (set per-frame to the engine's
-        // glPolygonOffset factor/units — the STOP-watch parity requirement).
-        VkDynamicState dyn[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
-                                  VK_DYNAMIC_STATE_DEPTH_BIAS };
-        VkPipelineDynamicStateCreateInfo dsci{};
-        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dsci.dynamicStateCount = 3; dsci.pDynamicStates = dyn;
-
-        VkPipelineShaderStageCreateInfo stages[2]{};
-        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
-        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
-        VkGraphicsPipelineCreateInfo gp{};
-        gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        gp.stageCount = 2; gp.pStages = stages;
-        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
-        gp.pViewportState = &vps; gp.pRasterizationState = &rs;
-        gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
-        gp.pDynamicState = &dsci;
-        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-        if (!mc2vk::create(s->pipe, s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
-            vlog("vkCreateGraphicsPipelines failed."); return false;
-        }
-        mc2vk::nameObject(s->device, s->pipe.get(), "shadow.pipe");
+        if (!create_caster_pipeline(s, s->pipe, s->vert.get(), s->frag.get(), false, "shadow.pipe")) return false;
+        if (!create_caster_pipeline(s, s->alphaPipe, s->alphaVert.get(), s->alphaFrag.get(), true, "shadow.alphaPipe")) return false;
     }
 
     // ---- Mech casters: a failure leaves the island with static-prop casters only (logged by the casters). ----
@@ -785,6 +842,8 @@ void release_geometry(ShadowIsland* s) {
     s->geomUploaded = false;
     s->packets.clear();
     s->typeRuns.clear();
+    s->packetAlpha.clear();
+    s->alphaTableBuilt = false;
 }
 
 // Copy the shared static-prop VBO/IBO into VK-owned buffers ONCE per map (P8a
@@ -1079,6 +1138,44 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
     return true;
 }
 
+// Makes this frame's alpha-tested casters possible: binds the colour island's alpha-ON array when it has one (a new view idles the device first, as the set
+// may still be read by a frame in flight; that is once per map) and builds the per-packet table from its material feed.
+static void refresh_alpha_casters(ShadowIsland* s) {
+    void* view = nullptr;
+    s->alphaReady = false;
+    if (!mc2_color_prop_island_get_alpha_array(&view) || !view) return;
+    const VkImageView arrayView = reinterpret_cast<VkImageView>(view);
+    if (arrayView != s->alphaBoundView) {
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_alpha_array");
+        VkDescriptorImageInfo info{s->alphaSampler.get(), arrayView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet w{};
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = s->alphaSet; w.dstBinding = 0; w.descriptorCount = 1;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
+        vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+        s->alphaBoundView = arrayView;
+    }
+    if (!s->alphaTableBuilt) {
+        Mc2ColorPropMaterialFeed mf{};
+        if (!mc2_color_prop_island_get_material_feed(&mf) || mf.bucketed || mf.glTexArrayOn == 0 || !mf.packetAlbedoLayer) return;
+        s->packetAlpha.assign(s->packets.size(), ShadowIsland::PacketAlpha{});
+        uint32_t alphaPackets = 0;
+        for (uint32_t t = 0; t < mf.typeCount && t < s->typeRuns.size(); ++t) {
+            if (mf.typeAlphaClass[t] != 1) continue;   // class 1 = the alpha-ON group
+            const TypeRun& tr = s->typeRuns[t];
+            for (uint32_t k = 0; k < tr.packetCount; ++k) {
+                const uint32_t pk = tr.firstPacket + k;
+                if (pk >= s->packets.size() || pk >= mf.packetCount || mf.packetAlbedoLayer[pk] < 0) continue;
+                s->packetAlpha[pk].layer = mf.packetAlbedoLayer[pk];
+                if (mf.packetUvScaleX && mf.packetUvScaleY) { s->packetAlpha[pk].scaleX = mf.packetUvScaleX[pk]; s->packetAlpha[pk].scaleY = mf.packetUvScaleY[pk]; }
+                ++alphaPackets;
+            }
+        }
+        s->alphaTableBuilt = true;
+        vlog("alpha-tested casters: %u packets cut their silhouette from the alpha-ON array.", alphaPackets);
+    }
+    s->alphaReady = s->alphaTableBuilt;
+}
+
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
 static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCount) {
     ShadowIsland* s = parkedIsland();
@@ -1086,6 +1183,7 @@ static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCo
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return nullptr; }
     if (!begin_frame(s, g_shadowFrameEpoch)) return nullptr;
     if (!stage_instances(s, instances, instanceCount)) return nullptr;
+    refresh_alpha_casters(s);
     s->mech.stage(g_shadowFrameEpoch);
     return s;
 }
@@ -1131,6 +1229,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     const VkDescriptorSet set = s->set[s->parity];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &dynamicOffset);
+    bool alphaBound = false;   // the alpha-tested pipeline and set 1 are bound
     const VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuf = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
@@ -1142,6 +1241,21 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
             const uint32_t pk = tr.firstPacket + k;
             if (pk >= s->packets.size()) break;
             const Mc2ShadowPacket& pkt = s->packets[pk];
+            const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
+            if (alphaPacket) {
+                if (!alphaBound) {
+                    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
+                    const VkDescriptorSet aset = s->alphaSet;
+                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
+                    alphaBound = true;
+                }
+                const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk];
+                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
+                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+            } else if (alphaBound) {
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+                alphaBound = false;
+            }
             vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.first);
         }
     }

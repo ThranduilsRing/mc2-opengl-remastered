@@ -1285,6 +1285,13 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->typeRuns.clear();
 }
 
+extern "C" int mc2_color_prop_island_get_alpha_array(void** view) {
+    const ColorPropIsland* s = parkedIsland();
+    if (!view || !s || !s->materialReadyOn || !s->albedoOnView) return 0;
+    *view = reinterpret_cast<void*>(s->albedoOnView.get());
+    return 1;
+}
+
 extern "C" int mc2_vk_color_prop_island_enabled() {
     // Either tier armed => the caller skips the GL prop color flush and calls run().
     return propColorTier1Requested() ? 1 : 0;

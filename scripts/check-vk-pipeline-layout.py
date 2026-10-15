@@ -57,6 +57,7 @@ SDK_DEFAULT = r"C:\VulkanSDK\1.4.350.0"
 VBO_CONTRACT = {
     "shadow_prop.vert": "mc2_static_prop_vertex_stride",
     "shadow_mech.vert": "mc2_mech_vertex_stride",
+    "shadow_prop_alpha.vert": "mc2_static_prop_vertex_stride",
     "color_prop_tier1.vert": "mc2_static_prop_vertex_stride",
     "mech_tier1.vert": "mc2_mech_vertex_stride",
 }
