@@ -1567,10 +1567,11 @@ class MoveMap {
 		int				    maxCol;
 		int				    maxWidth;
 		int				    maxHeight;
-		MoveMapNodePtr		map;
-		int*				mapRowStartTable;
-		int*				mapRowTable;
-		int*				mapColTable;
+		// The solve grid (maxWidth x maxHeight cells) and its index tables, sized by init(h, w) and empty until then; empty = not allocated.
+		std::vector<MoveMapNode>	map;
+		std::vector<int>			mapRowStartTable;	// first cell index of each row
+		std::vector<int>			mapRowTable;		// row of each cell index
+		std::vector<int>			mapColTable;		// column of each cell index
 		int				    moveLevel;
 		Stuff::Vector3D		start;
 		int				    startR;
@@ -1640,8 +1641,10 @@ class MoveMap {
 			maxRow = 0;
 			minCol = 0;
 			maxCol = 0;
-			map = NULL;
-			mapRowTable = NULL;
+			map.clear();
+			mapRowStartTable.clear();
+			mapRowTable.clear();
+			mapColTable.clear();
 			moveLevel = 0;
 			startR = -1;
 			startC = -1;

@@ -69,16 +69,8 @@ B4.1-move	mclib/move_globalmap_path.cpp:697	heap_free	systemHeap	systemHeap->Fre
 B4.1-move	mclib/move_globalmap_path.cpp:702	heap_free	systemHeap	systemHeap->Free(doorInfos);
 B4.1-move	mclib/move_globalmap_path.cpp:707	heap_free	systemHeap	systemHeap->Free(doorLinks);
 B4.1-move	mclib/move_globalmap_path.cpp:712	heap_free	systemHeap	systemHeap->Free(pathExistsTable);
-B4.1-move	mclib/move_movemap_escape.cpp:447	heap_free	systemHeap	systemHeap->Free(map);
-B4.1-move	mclib/move_movemap_escape.cpp:453	heap_free	systemHeap	systemHeap->Free(mapRowStartTable);
-B4.1-move	mclib/move_movemap_escape.cpp:459	heap_free	systemHeap	systemHeap->Free(mapRowTable);
-B4.1-move	mclib/move_movemap_escape.cpp:465	heap_free	systemHeap	systemHeap->Free(mapColTable);
 B4.1-move	mclib/move_movemap_goals.cpp:9	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
 B4.1-move	mclib/move_movemap_goals.cpp:15	heap_free	systemHeap	systemHeap->Free(us);
-B4.1-move	mclib/move_movemap_goals.cpp:23	heap_malloc	systemHeap	map = (MoveMapNodePtr)systemHeap->Malloc(mapByteSize);
-B4.1-move	mclib/move_movemap_goals.cpp:26	heap_malloc	systemHeap	mapRowStartTable = (int*)systemHeap->Malloc(maxHeight * sizeof(int));
-B4.1-move	mclib/move_movemap_goals.cpp:31	heap_malloc	systemHeap	mapRowTable = (int*)systemHeap->Malloc(maxHeight * maxWidth * sizeof(int));
-B4.1-move	mclib/move_movemap_goals.cpp:33	heap_malloc	systemHeap	mapColTable = (int*)systemHeap->Malloc(maxHeight * maxWidth * sizeof(int));
 B4.2-terrain	mclib/mapdata.cpp:141	heap_malloc	terrainHeap	void *result = Terrain::terrainHeap->Malloc(mySize);
 B4.2-terrain	mclib/mapdata.cpp:148	heap_free	terrainHeap	Terrain::terrainHeap->Free(us);
 B4.2-terrain	mclib/mapdata.cpp:230	heap_free	terrainHeap	Terrain::terrainHeap->Free(terrainFaceCache);
