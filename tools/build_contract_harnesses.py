@@ -128,12 +128,22 @@ def build_and_run_order_seam(run):
         return True
     exe = bdir / "RelWithDebInfo/mc2_authored_order_seam.exe"
     command = [str(exe), "--no-breaks"]
+    census = "AuthoredOrderProduction/read-only stock and mod mission Part census"
     env = dict(os.environ)
     env.pop("MC2_SEAM_DISCONNECT_ADAPTER", None)
-    positive = subprocess.run(command, cwd=REPO_ROOT, env=env, timeout=60,
+    env.pop("MC2_SEAM_DISCONNECT_EXECUTION", None)
+    positive = subprocess.run(command + ["--test-case-exclude=" + census], cwd=REPO_ROOT, env=env, timeout=60,
                               **console_child.child_kwargs())
     if positive.returncode:
         return False
+    if Path("A:/Games/mc2-opengl").is_dir():
+        census_result = subprocess.run(command + ["--test-case=" + census], cwd=REPO_ROOT,
+                                       env=env, timeout=60, **console_child.child_kwargs())
+        print(f"  [{'PASS' if census_result.returncode == 0 else 'FAIL'}] installed-content census")
+        if census_result.returncode:
+            return False
+    else:
+        print("  [SKIP] installed-content census (A:/Games/mc2-opengl absent)")
     env["MC2_SEAM_DISCONNECT_ADAPTER"] = "1"
     negative = subprocess.run(command + ["--test-case=AuthoredOrderProduction/parsed patrol and traverse reach real general setter"],
                               cwd=REPO_ROOT, env=env, capture_output=True,

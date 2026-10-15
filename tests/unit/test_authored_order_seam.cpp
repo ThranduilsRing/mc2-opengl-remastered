@@ -4,16 +4,22 @@
 #include "mover.h"
 #include "heap.h"
 #include "mission_init_frame.h"
+#include "mech.h"
+#include "movemgr.h"
 
 #include <cstdlib>
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <regex>
 #include <set>
 
 bool missionFitOpordApplies(const MissionFitBrain&, unsigned long, bool);
+extern bool InitWayPath;
 
 namespace {
 // Supply world resources without replacing production constructors or order handling.
@@ -22,6 +28,39 @@ struct Actor : Mover {
 };
 struct Pilot : MechWarrior {
     bool received() const { return newTacOrderReceived[ORDERSTATE_GENERAL]; }
+};
+struct RouteMech : BattleMech {
+    void attach(MechWarrior& warrior) { pilot = &warrior; watchID = 1; setExists(true); }
+};
+struct RouteActors {
+    struct Watches : GameObjectManager {
+        GameObject* entries[2]{};
+        Watches() { watchList = entries; nextWatchID = 2; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
+    } objects;
+    Pilot pilot;
+    RouteMech mech;
+    bool previousInit = InitWayPath;
+    RouteActors() {
+        ObjectManager = &objects;
+        objects.entries[1] = &mech;
+        mech.attach(pilot);
+        pilot.setVehicle(&mech);
+        InitWayPath = true;
+    }
+    ~RouteActors() { InitWayPath = previousInit; }
+    void path(TacticalOrderCode code) {
+        auto& order = *pilot.getCurTacOrder();
+        order.init(ORDER_ORIGIN_SELF, code, false);
+        auto& path = order.moveParams.wayPath;
+        path.numPoints = 3;
+        for (int i = 0; i < path.numPoints; ++i) {
+            path.points[3*i] = 100.0f * (i + 1);
+            path.points[3*i+1] = 200.0f;
+            path.points[3*i+2] = 0.0f;
+            path.mode[i] = TRAVEL_MODE_SLOW;
+        }
+        pilot.setMoveWayPath(&path, code == TACTICAL_ORDER_PATROL_PATH);
+    }
 };
 struct Access {
     Actor& actor;
@@ -66,6 +105,103 @@ struct SeamWorldResources {
         MechWarrior::warriorList[7] = previousPilot;
     }
 };
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warrior_move.cpp:743-770)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    actors.path(TACTICAL_ORDER_PATROL_PATH);
+    const int expected[] = {1, 2, 1, 0, 1};
+    for (const auto index : expected) {
+        Stuff::Vector3D next;
+        REQUIRE(actors.pilot.getNextWayPoint(next, false));
+        const auto cursor = actors.pilot.getMoveOrders()->curWayPt;
+        REQUIRE(actors.pilot.getNextWayPoint(next, false));
+        CHECK(actors.pilot.getMoveOrders()->curWayPt == cursor);
+        REQUIRE(actors.pilot.getNextWayPoint(next, true));
+        CHECK(next.x == 100.0f * (index + 1));
+        CHECK(next.y == 200.0f);
+        CHECK(actors.pilot.getMoveOrders()->curWayPt == index);
+        CHECK(actors.pilot.getCurTacOrder()->moveParams.wayPath.curPoint == index);
+    }
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech traverse consumes extra mode sentinel (warrior_move.cpp:732)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    actors.path(TACTICAL_ORDER_TRAVERSE_PATH);
+    auto& path = actors.pilot.getCurTacOrder()->moveParams.wayPath;
+    REQUIRE(path.numPoints < MAX_WAYPTS);
+    path.mode[path.numPoints] = TRAVEL_MODE_FAST;
+    Stuff::Vector3D next;
+    for (int index = 1; index < path.numPoints; ++index) {
+        REQUIRE(actors.pilot.getNextWayPoint(next, true));
+        CHECK(next.x == 100.0f * (index + 1));
+        CHECK_FALSE(actors.pilot.getMoveRun());
+    }
+    const auto last = next;
+    CHECK_FALSE(actors.pilot.getNextWayPoint(next, true));
+    CHECK(next.x == last.x);
+    CHECK(actors.pilot.getMoveRun());
+    CHECK(actors.pilot.getMoveOrders()->curWayPt == path.numPoints);
+    CHECK(path.curPoint == path.numPoints);
+    CHECK(actors.pilot.getCurTacOrder()->stage == 2);
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech waypoint reset depends on InitWayPath (warrior_move.cpp:186)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    actors.path(TACTICAL_ORDER_PATROL_PATH);
+    Stuff::Vector3D next;
+    REQUIRE(actors.pilot.getNextWayPoint(next, true));
+    auto& path = actors.pilot.getCurTacOrder()->moveParams.wayPath;
+    InitWayPath = false;
+    actors.pilot.setMoveWayPath(&path, true);
+    CHECK(actors.pilot.getMoveOrders()->curWayPt == 1);
+    InitWayPath = true;
+    actors.pilot.setMoveWayPath(&path, true);
+    CHECK(actors.pilot.getMoveOrders()->curWayPt == 0);
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech path orders cannot reach the queue (tacordr.cpp:868-884,1263)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    struct QueueScope {
+        MovePathManager* previous = PathManager;
+        long paths = MovePathManager::numPaths, peak = MovePathManager::peakPaths;
+        std::array<long, 50> tally;
+        std::unique_ptr<MovePathManager> manager;
+        QueueScope() {
+            std::copy_n(MovePathManager::sourceTally, tally.size(), tally.begin());
+            manager = std::make_unique<MovePathManager>();
+            PathManager = manager.get();
+        }
+        ~QueueScope() {
+            PathManager = previous;
+            MovePathManager::numPaths = paths;
+            MovePathManager::peakPaths = peak;
+            std::copy(tally.begin(), tally.end(), MovePathManager::sourceTally);
+        }
+    } queue;
+    for (const auto code : {TACTICAL_ORDER_TRAVERSE_PATH, TACTICAL_ORDER_PATROL_PATH}) {
+        auto& order = *actors.pilot.getCurTacOrder();
+        order.init(ORDER_ORIGIN_SELF, code, false);
+        order.moveParams.wayPath.numPoints = 2;
+        order.setWayPoint(0, Stuff::Vector3D(100.0f, 200.0f, 0.0f));
+        order.setWayPoint(1, Stuff::Vector3D(300.0f, 400.0f, 0.0f));
+        long message = 0;
+        CHECK(order.execute(&actors.pilot, message) == TACORDER_FAILURE);
+        CHECK(message == -1);
+        CHECK(order.status(&actors.pilot) == TACORDER_SUCCESS);
+        auto path = order.moveParams.wayPath;
+        CHECK(actors.pilot.orderTraversePath(false, true, ORDER_ORIGIN_SELF, &path, 0) == TACORDER_SUCCESS);
+        CHECK(actors.pilot.orderPatrolPath(false, true, ORDER_ORIGIN_SELF, &path) == TACORDER_SUCCESS);
+        CHECK(queue.manager->queueFront == nullptr);
+        CHECK(actors.pilot.getMovePathRequest() == nullptr);
+        CHECK(actors.pilot.getMoveOrders()->numWayPts == 0);
+        CHECK(actors.pilot.getMovePath(0)->numStepsWhenNotPaused == 0);
+        CHECK(actors.pilot.getMovePath(1)->numStepsWhenNotPaused == 0);
+    }
 }
 
 TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and records installation") {
