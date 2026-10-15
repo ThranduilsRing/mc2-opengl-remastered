@@ -84,7 +84,7 @@ TEST_CASE("placement/all nine catalog families save undo redo and reopen") {
         auto doc = baseline(); REQUIRE(doc);
         const auto& object = entry(catalog, id, name);
         const auto& recorded = reference["placements"][std::string(familyName(object.family))];
-        // The animated marker preview saved 4.5 degrees; replay that authored transform explicitly.
+        // Marker rotation comes from the frozen placement, not a default.
         const double rotation = recorded["building"].is_null() ? 0 : recorded["building"]["rotation"].get<double>();
         auto plan = policy->make(*doc, object, {0, 0, {{-4288, 4288, 200}, rotation}}); REQUIRE(plan);
         cycle(*doc, *plan, paths.placementOutput / ("e5_reference_" + std::string(familyName(object.family))));
@@ -181,7 +181,7 @@ TEST_CASE("placement/marker transform delete and renumber have exact atomic hist
     CHECK(reopened->find("NavMarkers", "NumNavMarkers")->value == Value{std::int64_t{0}});
     REQUIRE(reopened->save(paths.placementOutput / "marker-empty", {}));
     REQUIRE(reopenedHistory.undo()); REQUIRE(reopenedHistory.redo());
-    // A packet-only move must fail the same reader boundary as a malformed external mission.
+    // Packet-only moves violate FIT/packet marker ownership.
     auto corrupted = movedFit;
     const auto field = corrupted.find("f xPos = -4000"); REQUIRE(field != corrupted.npos);
     corrupted.replace(field, std::string("f xPos = -4000").size(), "f xPos = -2000");

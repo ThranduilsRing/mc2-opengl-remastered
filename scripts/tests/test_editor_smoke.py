@@ -25,18 +25,37 @@ class ObjectiveScalarGradingTests(unittest.TestCase):
         before = (FROZEN / "e5_reference_before.fit").read_bytes()
         start = before.index(b"[Team0Objective1]")
         end = before.index(b"\n[", start)
+        before = before[:start] + before[start:end].replace(b"ModelType = 0", b"ModelType = 14") + before[end:]
+        end = before.index(b"\n[", start)
         changed = before[:start] + before[start:end].replace(b"ResourcePoints = 7500", b"ResourcePoints = 17") + before[end:]
         self.assertNotEqual(changed, before)
         with scratch_directory() as directory:
             source = directory / "source"
+            (directory / "fixture.fit").write_bytes(before)
+            (directory / "input.fit").write_bytes(before)
             source.with_suffix(".fit").write_bytes(changed)
-            source.with_suffix(".pak").write_bytes((FROZEN / "e5_reference_before.pak").read_bytes())
-            for index, output in enumerate((changed, before, changed.replace(b"ResourcePoints = 17", b"ResourcePoints = 18"))):
+            pak = (FROZEN / "e5_reference_before.pak").read_bytes()
+            source.with_suffix(".pak").write_bytes(pak)
+            for name in ("fixture.pak", "input.pak"):
+                (directory / name).write_bytes(pak)
+            import hashlib
+            (directory / "gate.json").write_text(json.dumps(dict(result=dict(name="objectives_panel", passed=True),
+                provenance=dict(input_pak_sha256=hashlib.sha256(pak).hexdigest(), input_fit_sha256=hashlib.sha256(before).hexdigest()))))
+            for index, output in enumerate((changed, before, changed.replace(b"ResourcePoints = 17", b"ResourcePoints = 18"), None)):
                 deploy = directory / str(index)
                 report = deploy / "report"
                 report.mkdir(parents=True)
+                if output is None:
+                    stale = deploy / "terrain_gen_out/owned_objective_reload"
+                    stale.mkdir(parents=True)
+                    (stale / "reloaded.fit").write_bytes(changed)
+                    (stale / "reloaded.pak").write_bytes(pak)
                 def resave(*args):
                     target = deploy / "terrain_gen_out/owned_objective_reload"
+                    if output is None:
+                        self.assertFalse((target / "reloaded.fit").exists())
+                        self.assertFalse((target / "reloaded.pak").exists())
+                        return dict(passed=True, name="owned_objective_reload")
                     (target / "reloaded.fit").write_bytes(output)
                     (target / "reloaded.pak").write_bytes(source.with_suffix(".pak").read_bytes())
                     return dict(passed=True, name="owned_objective_reload")
@@ -645,19 +664,188 @@ class NewModelGateTests(unittest.TestCase):
             smoke.grade_new_model(self.rows, self.directory)
 
 
+def crud_edit_fixture(original, operation):
+    """Synthetic saves exercise the Python gate without invoking a native binary."""
+    from editor.tests.objective_crud import blocks, NEW_FIELDS
+    prefix, sections, ending = blocks(original)
+    count = int(re.search(rb"NumObjectives = (\d+)", sections["Team0Objectives"])[1])
+    output = []
+    copies = []
+    for name, body in sections.items():
+        match = re.fullmatch(r"Team0Objective(\d+)(\D.*)?", name)
+        if match:
+            index = int(match[1]); suffix = match[2] or ""
+            if operation == "objective-copy":
+                if index == 1:
+                    copies.append(("Team0Objective2" + suffix, body))
+                if index >= 2:
+                    index += 1
+            elif operation == "objective-delete":
+                if index == 1:
+                    continue
+                if index > 1:
+                    index -= 1
+            elif operation == "objective-up" and index in (0, 1):
+                index = 1 - index
+            elif operation == "objective-down" and index in (1, 2):
+                index = 3 - index
+            name = f"Team0Objective{index}{suffix}"
+        if name == "Team0Objectives":
+            delta = 1 if operation in ("objective-add", "objective-copy") else -1 if operation == "objective-delete" else 0
+            body = body.replace(f"NumObjectives = {count}".encode(), f"NumObjectives = {count + delta}".encode())
+        output.append((name, body))
+    if operation == "objective-add":
+        body = b"\r\n" + b"".join((value[0].split(" ", 1)[0] + " " + key + " = " + value[0].split(" ", 1)[1] + "\r\n").encode()
+                                  for key, value in NEW_FIELDS.items())
+        output.append((f"Team0Objective{count}", body))
+    return prefix + b"".join(b"[" + name.encode() + b"]" + body for name, body in output + copies) + ending
+
+
+class ObjectiveCrudGradingTests(unittest.TestCase):
+    def test_each_operation_rejects_consistently_wrong_noop_missing_and_corrupt_outputs(self):
+        directory = PanelGateTests().fixture("objectives_crud_panel")
+        smoke.grade_panel("objectives_crud_panel", directory, 0)
+        smoke.crud_negative_controls(directory)
+        smoke.grade_panel("objectives_crud_panel", directory, 0)
+        from editor.tests.objective_crud import grade_crud_edit
+        original = (directory / "fixture.fit").read_bytes()
+        added = (directory / "objective-add-edited.fit").read_bytes()
+        start = added.index(b"[Team0Objective9]")
+        for invalid in (b"ul Priority = 1\r\n", b"invalid garbage\r\n", b"x MissingType = raw\r\n"):
+            broken = added[:start] + added[start:].replace(b"ul Priority = 1\r\n", b"ul Priority = 1\r\n" + invalid, 1)
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                grade_crud_edit(original, broken, "objective-add")
+
+    def test_reload_requires_both_panel_inputs_and_expected_counts_order_content(self):
+        import hashlib
+        directory = PanelGateTests().fixture("objectives_crud_panel")
+        source = directory / "objective-copy-edited"
+        for extension in ("fit", "pak"):
+            (directory / f"input.{extension}").write_bytes((directory / f"fixture.{extension}").read_bytes())
+        gate = dict(result=dict(name="objectives_crud_panel", passed=True), provenance={
+            f"input_{ext}_sha256": hashlib.sha256((directory / f"input.{ext}").read_bytes()).hexdigest() for ext in ("fit", "pak")})
+        (directory / "gate.json").write_text(json.dumps(gate))
+        report = directory / "report"; report.mkdir()
+        expected = source.with_suffix(".fit").read_bytes()
+        for output in (expected, (directory / "fixture.fit").read_bytes(), expected.replace(b"NumObjectives = 10", b"NumObjectives = 11", 1)):
+            def resave(*args):
+                target = directory / "terrain_gen_out/owned_objective_crud_reload"
+                null = args[0].endswith("_null")
+                (target / ("null-reloaded.fit" if null else "reloaded.fit")).write_bytes((directory / "fixture.fit").read_bytes() if null else output)
+                (target / ("null-reloaded.pak" if null else "reloaded.pak")).write_bytes(source.with_suffix(".pak").read_bytes())
+                return dict(passed=True, name="owned_objective_crud_reload")
+            with patch.object(smoke, "run_case_with_retry", side_effect=resave) as launch:
+                row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                self.assertEqual(row["passed"], output == expected); self.assertEqual(launch.call_count, 2)
+                self.assertEqual(launch.call_args_list[0].args[1], launch.call_args_list[1].args[1])
+        from editor.tests.legacy_reference import packet, buildings
+        from collections import Counter
+        original_pak = source.with_suffix(".pak").read_bytes()
+        table = struct.unpack_from("<I", original_pak, 4)[0]
+        packet_count = table // 4 - 2
+
+        def repacked_pak(changed=False):
+            data = bytearray(original_pak[:table])
+            for index in range(packet_count):
+                struct.pack_into("<I", data, 8 + 4 * index, len(data))
+                decoded = packet(original_pak, index)
+                if index == 1:
+                    decoded = bytearray(decoded)
+                    struct.pack_into("<I", decoded, 8, struct.unpack_from("<I", decoded, 8)[0] ^ 1)
+                    if changed:
+                        decoded = decoded[:-1] + bytes([decoded[-1] ^ 1])
+                    else:
+                        records = [decoded[offset:offset + 40] for offset in range(4, len(decoded), 40)]
+                        decoded = decoded[:4] + b"".join(reversed(records))
+                if index == packet_count - 1:
+                    decoded = uuid.uuid4().bytes_le
+                data.extend(decoded)
+            return bytes(data)
+
+        null_pak = repacked_pak()
+        self.assertNotEqual(Counter(buildings(original_pak)), Counter(buildings(null_pak)))
+        for label, saved_pak, accepted in (("repacked", repacked_pak(), True),
+                                           ("corrupted", b"CORRUPTED PAK", False),
+                                           ("changed-record", repacked_pak(changed=True), False),
+                                           ("missing", None, False)):
+            target = directory / "terrain_gen_out/owned_objective_crud_reload/reloaded.pak"
+
+            def resave_pak(*args):
+                if args[0].endswith("_null"):
+                    target.with_name("null-reloaded.fit").write_bytes((directory / "fixture.fit").read_bytes())
+                    target.with_name("null-reloaded.pak").write_bytes(null_pak)
+                    return dict(passed=True, name="owned_objective_crud_reload_null")
+                target.with_suffix(".fit").write_bytes(expected)
+                if saved_pak is None:
+                    self.assertFalse(target.exists())
+                else:
+                    target.write_bytes(saved_pak)
+                return dict(passed=True, name="owned_objective_crud_reload")
+
+            with self.subTest(reloaded_pak=label), patch.object(smoke, "run_case_with_retry", side_effect=resave_pak) as launch:
+                row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                self.assertEqual(row["passed"], accepted)
+                if not accepted:
+                    self.assertEqual(row["bucket"], "owned_objective_reload_changed")
+                self.assertEqual(launch.call_count, 2)
+        with patch.object(smoke, "run_case_with_retry", return_value=dict(passed=False)) as launch:
+            row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+            self.assertFalse(row["passed"]); self.assertEqual(row["bucket"], "owned_objective_null_reload_failed")
+            launch.assert_called_once()
+        for stale_stem in ("null-reloaded", "reloaded"):
+            target = directory / "terrain_gen_out/owned_objective_crud_reload"
+            for stem in ("null-reloaded", "reloaded"):
+                (target / f"{stem}.fit").write_bytes((directory / "fixture.fit").read_bytes() if stem == "null-reloaded" else expected)
+                (target / f"{stem}.pak").write_bytes(null_pak)
+
+            def no_save(*args):
+                null = args[0].endswith("_null")
+                stem = "null-reloaded" if null else "reloaded"
+                self.assertFalse((target / f"{stem}.fit").exists())
+                self.assertFalse((target / f"{stem}.pak").exists())
+                if null and stale_stem == "reloaded":
+                    (target / "null-reloaded.fit").write_bytes((directory / "fixture.fit").read_bytes())
+                    (target / "null-reloaded.pak").write_bytes(null_pak)
+                return dict(passed=True)
+
+            with self.subTest(stale=stale_stem), patch.object(smoke, "run_case_with_retry", side_effect=no_save) as launch:
+                row = smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                self.assertFalse(row["passed"])
+                self.assertEqual(launch.call_count, 1 if stale_stem == "null-reloaded" else 2)
+        for name in ("fixture.fit", "fixture.pak", "input.fit", "input.pak", "objective-copy-edited.fit", "objective-copy-edited.pak", "gate.json"):
+            path = directory / name; original = path.read_bytes()
+            path.write_bytes(original + b"corrupt")
+            with self.subTest(name=name), patch.object(smoke, "run_case_with_retry") as launch:
+                with self.assertRaises((ValueError, OSError)):
+                    smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                launch.assert_not_called()
+            path.write_bytes(original)
+            retained = path.with_suffix(path.suffix + ".retained")
+            path.rename(retained)
+            try:
+                with self.subTest(missing=name), patch.object(smoke, "run_case_with_retry") as launch:
+                    with self.assertRaises((ValueError, OSError)):
+                        smoke.run_owned_objective_reload(directory / "fake.exe", directory, source, report, 3, 30, crud=True)
+                    launch.assert_not_called()
+            finally:
+                retained.rename(path)
+
+
 class PanelGateTests(unittest.TestCase):
     def fixture(self, name):
         directory = TEMP_ROOT / ("e3b-panel-" + uuid.uuid4().hex)
         directory.mkdir()
         original = b'FITini\nfixture\nFITend\n'
-        if name == "objectives_panel":
+        if name in ("objectives_panel", "objectives_crud_panel"):
             original = (SCRIPT.parents[1] / "editor/tests/goldens/e5a-stock/e5_reference_before.fit").read_bytes()
+        pak = ((SCRIPT.parents[1] / "editor/tests/goldens/e5a-stock/e5_reference_before.pak").read_bytes()
+               if name == "objectives_crud_panel" else b"original pak")
         hybrid = b'FITini\ncompatibilityMode = "Hybrid";\nFITend\n'
         for stage, fit in (("fixture", original), ("existing-hybrid", hybrid), ("hybrid-roundtrip", hybrid)):
             (directory / f"{stage}.fit").write_bytes(fit)
-            (directory / f"{stage}.pak").write_bytes(b"original pak")
+            (directory / f"{stage}.pak").write_bytes(pak)
         (directory / "widget-save.fit").write_bytes(hybrid if name == "brain_modes" else original)
-        (directory / "widget-save.pak").write_bytes(b"original pak")
+        (directory / "widget-save.pak").write_bytes(pak)
         lines = [f"[EDITOR_PANEL v1] name={name} result=PASS widgets=1 saved_widget=1 reopened_widget=1 rendered=1"]
         for operation in smoke.PANEL_OPERATIONS[name]:
             before = hybrid if operation == "brain-Legacy" else original
@@ -668,17 +856,19 @@ class PanelGateTests(unittest.TestCase):
                 kind, old = objective_fields(original)["Team0Objective1/" + key][0].split(" ", 1)
                 value = ('"\r\nE6a objective\r\n\r\nsecond line\r\n"' if key in ("Title", "Description") else '"E6a objective scalar"' if kind == "st" else
                          ("FALSE" if old == "TRUE" else "TRUE") if kind == "b" else
-                         "123.25" if kind == "f" else "2" if key == "Priority" else "17")
+                         "123.25" if kind == "f" else "2" if key == "Priority" else "13" if key == "ModelType" else "17")
                 start = original.index(b"[Team0Objective1]")
                 end = original.index(b"\n[", start)
                 body = re.sub(rb"(?m)(^\w+\s+" + re.escape(key.encode()) + rb"\s*=\s*)[^\r\n]*",
                               lambda m: m[1] + value.encode(), original[start:end])
                 edited = original[:start] + body + original[end:]
+            elif name == "objectives_crud_panel":
+                edited = crud_edit_fixture(original, operation)
             for stage, fit in (("edited", edited), ("undone", before), ("redone", edited)):
                 (directory / f"{operation}-{stage}.fit").write_bytes(fit)
-                (directory / f"{operation}-{stage}.pak").write_bytes(b"original pak")
+                (directory / f"{operation}-{stage}.pak").write_bytes(pak)
             lines.append(f"[EDITOR_PANEL_OPERATION v1] name={operation} changed=1 reopened=1 undo=1 redo=1 widgets=1")
-        if name == "objectives_panel":
+        if name in ("objectives_panel", "objectives_crud_panel"):
             (directory / "widget-save.fit").write_bytes(edited)
         (directory / "shell.log").write_text("\n".join(lines))
         (directory / "panels.bmp").write_bytes(b"BM" + bytes(52) + (bytes(range(256)) * (1440 * 960 * 3 // 256)))

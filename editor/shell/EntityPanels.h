@@ -63,6 +63,7 @@ private:
     bool showChooser_ = true;
     bool showObjectives_{};
     document::NodeId objective_;
+    std::uint32_t objectiveTeam_{};
     std::size_t objectiveField_{};
     document::Scalar objectiveDraft_ = std::string{};
     std::uint64_t objectiveRevision_ = ~std::uint64_t{};

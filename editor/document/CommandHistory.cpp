@@ -62,6 +62,10 @@ void CommandHistory::adopt(MissionDocument document)
 std::expected<void, LoadError> CommandHistory::setText(NodeId id, std::string text, std::string label)
 {
     const auto* field = document_.field(id);
+    if (field && !field->warning.empty()) {
+        if (log_) log_("[EDITOR_OBJECTIVE_REJECT v1] field=" + field->name + " reason=" + std::string(field->warning) + " rejected=1");
+        return std::unexpected(LoadError{field->name, std::string(field->warning), 0});
+    }
     if (!field || field->prefix != "st" || field->value.size() != 1) return std::unexpected(LoadError{"command", "invalid_text_field", 0});
     SetTextCommand command{id, field->value, {Scalar{std::move(text)}}, std::move(label)};
     if (command.before == command.after) return {};

@@ -184,7 +184,7 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
         }
     }
     const auto squad = unit.squad.value_or(static_cast<std::uint32_t>(nextSquad));
-    // Empty alternative cursors retain the legacy export value; existing authored references stay untouched.
+    // Empty alternative cursors use legacy defaults; authored references stay exact.
     std::int64_t alternativeStart = part - static_cast<std::int64_t>(alternatives.size()) + 2;
     for (const auto& entity : document_.entities()) if (entity.section && !alternatives.contains(*entity.exportedPart)) {
         const auto& section = *document_.section(*entity.section);
@@ -381,7 +381,7 @@ std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_
     const auto* original = document_.section(id);
     if (!original) return reject("missing_section");
     if (key != "compatibilityMode")
-        if (const auto* old = document_.find(id, key); old && old->value == Value{value}) return {};
+        if (const auto* old = document_.find(id, key); old && old->prefix == prefix && old->value == Value{value}) return {};
     auto fit = document_.fitBytes();
     auto syntax = decodeFit(fit);
     if (!syntax) return std::unexpected(syntax.error());
@@ -392,6 +392,14 @@ std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_
         std::format("{:.17g}", std::get<double>(value)) : formatValue(spelling, Value{std::move(value)});
     if (const auto* field = find(*syntax, section, key)) {
         std::vector<Edit> edits{{field->syntax, text}};
+        if (!section.parent && field->prefix != prefix) {
+            auto end = fit.rfind(field->name, field->syntax.begin);
+            auto begin = fit.find_last_of("\r\n;{}", end);
+            begin = begin == fit.npos ? 0 : begin + 1;
+            while (begin < end && (fit[begin] == ' ' || fit[begin] == '\t')) ++begin;
+            while (end && (fit[end - 1] == ' ' || fit[end - 1] == '\t')) --end;
+            edits.push_back({{begin, end}, std::string(prefix)});
+        }
         if (section.parent && key == "compatibilityMode") {
             // The game skips Brain's opening line and treats sub-block lines separately.
             // Only this declaration gains line boundaries; other authored bytes survive.

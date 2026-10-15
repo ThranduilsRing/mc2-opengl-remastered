@@ -41,6 +41,7 @@ struct Field {
     Span syntax;
     Value original, value;
     bool opaque{};
+    std::string_view warning;
 };
 struct Section {
     NodeId id;
@@ -142,6 +143,7 @@ struct ObjectiveScalar {
     std::string_view key;
     std::optional<NodeId> source;
     Scalar value;
+    std::string_view warning;
 };
 struct Objective {
     NodeId section;
@@ -228,7 +230,8 @@ private:
         std::vector<std::byte> placements, const std::vector<EntityId>& ids,
         const std::unordered_map<std::string, std::string>& renamed = {});
     std::expected<void, LoadError> validateSemantics();
-    std::expected<void, LoadError> decodeObjectiveScalars(Objective& objective) const;
+    std::expected<void, LoadError> decodeObjectiveScalars(Objective& objective);
+    void preserveObjectiveField(NodeId id, std::string_view warning);
     std::expected<void, LoadError> assign(NodeId id, Value value);
 };
 

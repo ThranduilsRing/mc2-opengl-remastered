@@ -51,10 +51,10 @@ def grade_objective_edit(before, after, key):
     elif prefix == "f":
         expected = "123.25"
     else:
-        expected = "2" if key == "Priority" else "17"
+        expected = "2" if key == "Priority" else "13" if key == "ModelType" else "17"
     if prefix != "st" and (path not in actual or typed_fields({path: [prefix + " " + expected]}) != typed_fields({path: actual[path]})):
         raise ValueError(f"objective scalar saved value wrong: {key}")
-    # Mask the one value span so unrelated lexemes, comments and opaque blocks must match exactly.
+    # Unedited spans, including comments and opaque fields, must be byte-identical.
     pattern = rb"(?m)(^\[Team0Objective1\]\r?\n(?:(?!^\[)[\s\S])*?^\w+[ \t]+" + re.escape(key.encode()) + rb'[ \t]*=[ \t]*)("[^"]*"|[^ \t/\r\n]+)'
     def masked(data):
         result, count = re.subn(pattern, lambda m: m[1] + b"<edited>", data)

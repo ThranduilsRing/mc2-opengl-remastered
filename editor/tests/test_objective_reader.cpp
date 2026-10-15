@@ -11,6 +11,26 @@ std::string bytes(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary); return {std::istreambuf_iterator<char>(file), {}};
 }
+
+void checkGameScalarReads()
+{
+    for (const auto& [wire, expected] : std::vector<std::pair<std::string, long>>{
+        {"0xffffffff", -1}, {"0x80000000", -2147483647L - 1}, {"0Xffffffff", 0}}) {
+        const auto fit = "FITini\r\n[Objective0]\r\nl BaseColor = " + wire + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+        FitIniFile reader; REQUIRE(reader.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+        REQUIRE(reader.seekBlock("Objective0") == NO_ERR);
+        long value{}; REQUIRE(reader.readIdLong("BaseColor", value) == NO_ERR); CHECK(value == expected);
+    }
+    for (const auto declaration : {"l ResourcePoints = 500", "ul ResourcePoints = -55000", "ul ResourcePoints = 2147483648"}) {
+        const auto fit = std::string("FITini\r\n[Objective0]\r\n") + declaration + "\r\n[End]\r\nul End = 0\r\nFITend\r\n";
+        FitIniFile reader; REQUIRE(reader.open(fit.data(), static_cast<int>(fit.size())) == NO_ERR);
+        REQUIRE(reader.seekBlock("Objective0") == NO_ERR);
+        unsigned long value{};
+        const auto result = reader.readIdULong("ResourcePoints", value);
+        if (declaration[0] == 'l') CHECK(result != NO_ERR);
+        else { CHECK(result == NO_ERR); CHECK(static_cast<std::int32_t>(value) == (std::string_view(declaration).find("-55000") != std::string_view::npos ? -55000 : 2147483647)); }
+    }
+}
 std::string memoryText(const std::string& file, const char* key)
 {
     FitIniFile reader;
@@ -71,6 +91,7 @@ TEST_CASE("reader/owned multiline edits match the real disk and RAM objective re
 
 TEST_CASE("reader/objective prefixes and imported multiline semantics match FitIniFile")
 {
+    checkGameScalarReads();
     using namespace editor::document;
     const auto& widgets = editor::tests::inputs().byteGradeDirectory;
     const auto original = bytes(widgets / "fixture.fit");
@@ -82,7 +103,7 @@ TEST_CASE("reader/objective prefixes and imported multiline semantics match FitI
         REQUIRE(reader.seekBlock("Team0Objective1") == NO_ERR);
         const auto key = std::string(spec.key);
         if (spec.prefix == "ul") { unsigned long value{}; REQUIRE(reader.readIdULong(key.c_str(), value) == NO_ERR); CHECK(value == (key == "Priority" ? 2UL : 17UL)); }
-        else if (spec.prefix == "l") { long value{}; REQUIRE(reader.readIdLong(key.c_str(), value) == NO_ERR); CHECK(value == 17); }
+        else if (spec.prefix == "l") { long value{}; REQUIRE(reader.readIdLong(key.c_str(), value) == NO_ERR); CHECK(value == (key == "ModelType" ? 13 : 17)); }
         else if (spec.prefix == "f") { float value{}; REQUIRE(reader.readIdFloat(key.c_str(), value) == NO_ERR); CHECK(value == 123.25f); }
         else if (spec.prefix == "b") {
             bool value{}; REQUIRE(reader.readIdBoolean(key.c_str(), value) == NO_ERR);

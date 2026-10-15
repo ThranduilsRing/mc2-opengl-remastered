@@ -114,6 +114,11 @@ std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fi
     document.rebuildIndex();
     auto valid = document.validateSemantics();
     if (!valid) { diagnostic(log, document.mission_, valid.error()); return std::unexpected(valid.error()); }
+    if (log) for (const auto& section : document.syntax_.sections) for (const auto id : section.fields) {
+        const auto& field = *document.field(id);
+        if (!field.warning.empty()) log(std::format("[EDITOR_OBJECTIVE_WARNING v1] field={}/{} warning={} preserved=1",
+            logText(section.name), logText(field.name), field.warning));
+    }
     document.savedFit_ = document.syntax_.originalBytes;
     document.savedPlacements_ = document.placements_ = document.pak_.packets[1].decoded;
     document.nextEntityId_ = document.entities_.size() + 1;
@@ -262,15 +267,23 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             if (!objective.section.value) return reject(name, "missing_objective_block");
             if (const auto* alias = find(name, "PreviousObjectiveMustBeComplete"); alias &&
                 (alias->prefix != "b" || !typed(name, "PreviousObjectiveMustBeComplete", 2)))
-                return reject(name + "/PreviousObjectiveMustBeComplete", "malformed_value");
-            if (const auto* alias = find(name, "ActivateFlagIndex"); alias &&
-                (alias->prefix != "ul" || !typed(name, "ActivateFlagIndex", 0) || number(alias).value_or(-1) < 0 || number(alias).value_or(0) > legacyFlagIndexMax))
-                return reject(name + "/ActivateFlagIndex", "out_of_range");
+                preserveObjectiveField(alias->id, "ignored by the game");
+            if (const auto* alias = find(name, "ActivateFlagIndex")) {
+                const auto wire = std::string_view(syntax_.originalBytes).substr(alias->syntax.begin, alias->syntax.end - alias->syntax.begin);
+                const auto value = number(alias).value_or(0);
+                const bool bits = (wire.starts_with("0x") && value >= 0 && value <= 4294967295.0) || wire.starts_with("0X");
+                if (alias->prefix != "ul" || !typed(name, "ActivateFlagIndex", 0) || (!bits && (value < -2147483648.0 || value > legacyFlagIndexMax)))
+                    preserveObjectiveField(alias->id, alias->prefix != "ul" ? "ignored by the game" :
+                        "outside signed 32-bit range; the game reader overflows or wraps this value");
+            }
             if (auto scalars = decodeObjectiveScalars(objective); !scalars) return scalars;
             if (!whole(name, "NumConditions")) return reject(name + "/NumConditions", "missing_required");
             for (std::size_t list = 0; list < 4; ++list) {
-                const auto entries = number(find(name, counts[list])).value_or(0);
-                if (find(name, counts[list]) && !whole(name, counts[list])) return reject(name + "/" + std::string(counts[list]), "malformed_count");
+                const auto* countField = find(name, counts[list]);
+                const bool ignored = list != 0 && countField && countField->prefix != "ul";
+                if (ignored) preserveObjectiveField(countField->id, "ignored by the game");
+                const auto entries = ignored ? 0 : number(countField).value_or(0);
+                if (countField && !ignored && !whole(name, counts[list])) return reject(name + "/" + std::string(counts[list]), "malformed_count");
                 if (entries < 0 || entries > nodeLimit || entries > syntax_.sections.size() || std::floor(entries) != entries) return reject(name + "/" + std::string(counts[list]), "invalid_count");
                 const bool condition = list % 2 == 0;
                 const std::span<const std::string_view> names = condition ? std::span<const std::string_view>(conditions) : std::span<const std::string_view>(actions);
