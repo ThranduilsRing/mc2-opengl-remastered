@@ -49,6 +49,7 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
+#include "texture_decode.h"              // gos_GetTextureRgba: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
@@ -245,22 +246,22 @@ struct MechIsland : mc2vk::IslandState {
     // 5=pool SSBO(FS), 6=AO map(FS), 7=normal map(FS)  (5-7: VK-PARITY-MECH-1).
 
     // MC2_VK_MECH_MATERIAL: per-actor paint-scheme VK-descriptor cache. Each distinct
-    // GL texture (slot-0 paint scheme, VK-PARITY-MECH-1: + per-type AO / normal map)
+    // gos texture (slot-0 paint scheme, VK-PARITY-MECH-1: + per-type AO / normal map)
     // gets ONE copy-once VkImage/view (texture cache); each distinct (albedo, ao,
     // normal) triple gets a descriptor set (set cache; bindings 3/6/7 differ). The
     // draw loop binds the set matching the run, so a mission with >1 distinct scheme
-    // shows the right scheme on each mech. A dummy 1x1 white texture (glTex sentinel
+    // shows the right scheme on each mech. A dummy 1x1 white texture (handle sentinel
     // 0) backs runs with no texture.
     bool        wantMaterial  = false;
     bool        materialReady = false;   // >=1 real scheme imported
     struct TexEntry {
-        uint32_t      glTex = 0;                 // 0 = dummy white
+        uint32_t      gosHandle = 0;             // 0 = dummy white
         mc2vk::OwnedImage img;
         mc2vk::OwnedImageView view;              // declared after the image: released first
     };
     std::vector<TexEntry> textures;      // [0] = dummy white, always present
     struct SchemeEntry {
-        uint32_t albedo = 0, ao = 0, nrm = 0;    // GL ids (0 = dummy)
+        uint32_t albedo = 0, ao = 0, nrm = 0;    // gos handles (0 = dummy)
         VkDescriptorSet set[2] = {};
     };
     std::vector<SchemeEntry> schemes;    // [0] = all-dummy set, always present
@@ -533,7 +534,7 @@ bool ensure_dummy_scheme(MechIsland* s) {
     if (!make_albedo_sampler(s)) return false;
     if (!s->schemes.empty()) return true;
     if (s->textures.empty()) {
-        MechIsland::TexEntry t; t.glTex = 0;
+        MechIsland::TexEntry t; t.gosHandle = 0;
         const uint8_t px[4] = {255, 255, 255, 255};   // white -> flat FS uses vArgb only
         if (!upload_scheme_image(s, t, 1, 1, px, sizeof(px))) return false;
         s->textures.push_back(std::move(t));
@@ -545,36 +546,33 @@ bool ensure_dummy_scheme(MechIsland* s) {
     return true;
 }
 
-// Copy-once GL->VK texture import (glGetTexImage on a MATERIAL texture -- paint scheme,
-// AO or normal map; a compressed BC7 source is decompressed by the driver -- NOT a
-// color surface) keyed on the GL id. Does NOT touch g_forbidden; mirrors the
-// terrain/prop material imports. Returns the dummy white view on 0 / failure / budget.
-VkImageView get_tex_view(MechIsland* s, uint32_t glTex) {
+// Copy-once import of a MATERIAL texture (paint scheme, AO or normal map) from the handle's
+// decoded texels, keyed on the gos handle. Not a colour surface, so g_forbidden is untouched.
+// Returns the dummy white view on 0 / failure / budget; sets *pending when the handle has no
+// texels yet, so the caller does not cache a set built on the dummy.
+VkImageView get_tex_view(MechIsland* s, uint32_t gosHandle, bool* pending) {
     VkImageView dummy = s->textures.empty() ? VK_NULL_HANDLE : s->textures[0].view.get();
-    if (glTex == 0) return dummy;
-    for (auto& t : s->textures) if (t.glTex == glTex) return t.view.get();
+    if (gosHandle == 0) return dummy;
+    for (auto& t : s->textures) if (t.gosHandle == gosHandle) return t.view.get();
     if (s->textures.size() >= MechIsland::kMaxTextures) return dummy;
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) { glBindTexture(GL_TEXTURE_2D, 0); return dummy; }
-    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-    MechIsland::TexEntry t; t.glTex = glTex;
-    if (!upload_scheme_image(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()))
+    uint32_t w = 0, h = 0;
+    bool unavailable = false;
+    const auto rgba = gos_GetTextureRgba(gosHandle, &w, &h, &unavailable);
+    if (!rgba) { if (!unavailable) *pending = true; return dummy; }   // a failed readback caches the dummy
+    if (w == 0 || h == 0 || w > 8192 || h > 8192) return dummy;
+    MechIsland::TexEntry t; t.gosHandle = gosHandle;
+    if (!upload_scheme_image(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()))
         return dummy;
     const VkImageView cachedView = t.view.get();
     s->textures.push_back(std::move(t));
-    vlog("texture cached: %dx%d glTex=%u (texture %zu/%u).", w, h, glTex,
+    vlog("texture cached: %ux%u handle=%u (texture %zu/%u).", w, h, gosHandle,
          s->textures.size() - 1, MechIsland::kMaxTextures);
     return cachedView;
 }
 
-// Per-run scheme-set lookup keyed on the (albedo, ao, normal) GL ids, importing any new
-// texture copy-once on first sight. Called for every run BEFORE recording (GL calls),
-// so the draw-loop lookup is a pure cache hit.
+// Per-run scheme-set lookup keyed on the (albedo, ao, normal) gos handles, importing any new
+// texture copy-once on first sight. Called for every run BEFORE recording, so the draw-loop
+// lookup is a pure cache hit.
 VkDescriptorSet get_scheme_set(MechIsland* s, uint32_t albedo, uint32_t ao, uint32_t nrm,
                                uint32_t par) {
     VkDescriptorSet dummySet = s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set[par];
@@ -582,9 +580,11 @@ VkDescriptorSet get_scheme_set(MechIsland* s, uint32_t albedo, uint32_t ao, uint
     for (auto& e : s->schemes)
         if (e.albedo == albedo && e.ao == ao && e.nrm == nrm) return e.set[par];
     if (s->schemes.size() >= MechIsland::kMaxSchemes) return dummySet;  // budget: draws unlit-ish
-    VkImageView va = get_tex_view(s, albedo);
-    VkImageView vo = get_tex_view(s, ao);
-    VkImageView vn = get_tex_view(s, nrm);
+    bool pending = false;
+    VkImageView va = get_tex_view(s, albedo, &pending);
+    VkImageView vo = get_tex_view(s, ao, &pending);
+    VkImageView vn = get_tex_view(s, nrm, &pending);
+    if (pending) return dummySet;   // a texture is not resident yet: retry next frame
     MechIsland::SchemeEntry e; e.albedo = albedo; e.ao = ao; e.nrm = nrm;
     if (!alloc_scheme_sets(s, va, vo, vn, e.set)) return dummySet;
     s->schemes.push_back(e);
@@ -1014,7 +1014,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     if (s->wantMaterial) {
         for (uint32_t r = 0; r < feed.runCount; ++r) {
             const Mc2MechDrawRun& rr = feed.runs[r];
-            get_scheme_set(s, rr.slot0GlTex, rr.aoGlTex, rr.normalGlTex, 0);
+            get_scheme_set(s, rr.slot0Tex, rr.aoTex, rr.normalTex, 0);
         }
     }
 
@@ -1211,7 +1211,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         const Mc2MechDrawRun& run = feed.runs[r];
         if (run.indexCount == 0 || run.instanceCount == 0) continue;
         VkDescriptorSet set = s->wantMaterial
-            ? get_scheme_set(s, run.slot0GlTex, run.aoGlTex, run.normalGlTex, par) : dummySet;
+            ? get_scheme_set(s, run.slot0Tex, run.aoTex, run.normalTex, par) : dummySet;
         if (set == VK_NULL_HANDLE) set = dummySet;
         if (set != boundSet) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 0, nullptr);

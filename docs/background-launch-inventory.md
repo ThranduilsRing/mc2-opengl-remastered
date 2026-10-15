@@ -10,15 +10,15 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | file | line | call | window |
 | --- | --- | --- | --- |
 | `scripts/camera_sweep_smoke.py` | 101 | `nofocus.spawn` | desktop-composite |
-| `scripts/game_auto.py` | 135 | `nofocus.spawn` | desktop-composite |
+| `scripts/game_auto.py` | 136 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 86 | `nofocus.spawn` | offscreen |
 | `scripts/mechbay_preview_harness.py` | 106 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 238 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 770 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1061 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1452 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 815 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1106 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1580 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 380 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 332 | `nofocus.spawn` | offscreen |

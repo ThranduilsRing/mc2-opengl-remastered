@@ -202,15 +202,36 @@ def build_and_deploy(install: str = INSTALL_DIR) -> None:
 MAX_DURATION = 60
 
 
-def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR) -> list:
+def smoke_target(install: str, ref_exe: str | None = None, ref_commit: str | None = None) -> list[str]:
+    """run_smoke.py arguments naming the exe and its fingerprint reference. The reference passes through so a run of an exe built from another
+    commit (an A/B across a refactor) is judged against that commit or those bytes instead of HEAD; without it run_smoke compares with HEAD."""
+    install = resolve_install(install)
+    lane = lane_model.lane_for(install)
+    target = ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe")]
+    if ref_exe and ref_commit:
+        raise ValueError("--ref-exe and --ref-commit are exclusive (run_smoke.py accepts one fingerprint reference)")
+    if ref_exe:
+        target += ["--ref-exe", ref_exe]
+    elif ref_commit:
+        target += ["--ref-commit", ref_commit]
+    return target
+
+
+def add_ref_args(p) -> None:
+    """--ref-exe / --ref-commit, forwarded to every run_smoke.py child (its fingerprint reference)."""
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--ref-exe", metavar="PATH", help="run_smoke fingerprint reference: require byte identity with this exe")
+    g.add_argument("--ref-commit", metavar="SHA", help="run_smoke fingerprint reference: a clean commit (default: HEAD)")
+
+
+def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR,
+                ref_exe: str | None = None, ref_commit: str | None = None) -> list:
     """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
     `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
     (the camera pose, an effects option) really does not; its "both" entry applies to the two runs (a mission fixture)."""
     if int(duration) > MAX_DURATION:
         sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
-    install = resolve_install(install)
-    lane = lane_model.lane_for(install)
-    target = ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe")]
+    target = smoke_target(install, ref_exe, ref_commit)
     logs = []
     for tag in ("a", "b"):
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
@@ -260,7 +281,7 @@ MAX_STARVED_IN_A_ROW = 3
 
 
 def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_frames: int, extra_env: dict | None = None,
-                     install: str = INSTALL_DIR) -> int:
+                     install: str = INSTALL_DIR, ref_exe: str | None = None, ref_commit: str | None = None) -> int:
     """Run pairs until one diverges or `max_pairs` have passed. A pair whose runs did not both reach `min_frames` is STARVED: it proves
     nothing either way, is not counted, and is retried (the host was busy); MAX_STARVED_IN_A_ROW of them end the loop with exit 2. A
     failing pair's artifacts stay in `<out>/pair_<n>`; every pair appends a line to `<out>/pairs.log`. -> 0 when all passed, 1 at the
@@ -273,7 +294,7 @@ def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_
         i += 1
         before, t0 = host_load(), time.time()
         pair_dir = os.path.join(out, f"pair_{i}")
-        la, lb = run_mission(mission, duration, pair_dir, extra_env, install=install)
+        la, lb = run_mission(mission, duration, pair_dir, extra_env, install=install, ref_exe=ref_exe, ref_commit=ref_commit)
         a, b = load_simid(la), load_simid(lb)
         starved = min(len(a), len(b)) < min_frames
         ok, msg = compare(a, b, min_frames)
@@ -400,6 +421,7 @@ def main(argv=None) -> int:
     r.add_argument("--out", help="keep both runs' artifacts here (default: a temporary directory)")
     env_args(r)
     install_arg(r)
+    add_ref_args(r)
     k = sub.add_parser("check", help="run twice and compare with the committed baseline (its recorded env is applied)")
     k.add_argument("mission")
     k.add_argument("--duration", default="30")
@@ -408,6 +430,7 @@ def main(argv=None) -> int:
     k.add_argument("--out")
     env_args(k)
     install_arg(k)
+    add_ref_args(k)
     u = sub.add_parser("pairs-until-fail", help="run pairs until one diverges (or --max pass); records host load per pair")
     u.add_argument("--mission", required=True)
     u.add_argument("--max", type=int, required=True, help="stop after this many passing pairs")
@@ -416,6 +439,7 @@ def main(argv=None) -> int:
     u.add_argument("--out", help="ledger and failing-pair artifacts go here (default: a temporary directory)")
     env_args(u)
     install_arg(u)
+    add_ref_args(u)
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
@@ -454,10 +478,11 @@ def main(argv=None) -> int:
     both = dict(_load_env(base) if base else {}, **dict(kv.split("=", 1) for kv in args.env))
     extra = {"both": both, "a": dict(kv.split("=", 1) for kv in args.env_a), "b": dict(kv.split("=", 1) for kv in args.env_b)}
     if args.cmd == "pairs-until-fail":
-        return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra, install=args.install)
+        return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra, install=args.install,
+                                ref_exe=args.ref_exe, ref_commit=args.ref_commit)
     if args.deploy:
         build_and_deploy(args.install)
-    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install)
+    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install, ref_exe=args.ref_exe, ref_commit=args.ref_commit)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)

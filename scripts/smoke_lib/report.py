@@ -19,6 +19,21 @@ class Row:
     render_options: Optional[dict] = None
 
 
+def _host_wait_line(host_wait: Optional[dict]) -> str:
+    """One line when the run waited for the host or launched on a loaded one; nothing on a quiet host."""
+    if not host_wait:
+        return ""
+    load = host_wait.get("host_load") or {}
+    lease = host_wait.get("lease_wait_s") or 0.0
+    if not lease and not load.get("first_reason"):
+        return ""
+    text = f"> **Host wait:** lease {lease:.0f} s"
+    if load.get("first_reason"):
+        text += (f"; host load {load.get('waited_s', 0):.0f} s ({load['first_reason']})"
+                 + ("; LAUNCHED LOADED after the bound: " + load.get("last_reason", "") if load.get("timed_out") else ""))
+    return text + "\n\n"
+
+
 def _options_line(rows: list[Row]) -> str:
     """One report line naming the render options of the run: 'all defaults', or the keys that differ from the table defaults."""
     from . import render_options_pin
@@ -77,7 +92,8 @@ def _resolution_line(tier: str) -> str:
 def render_markdown(rows: list[Row], *, tier: str, profile: str,
                     timestamp: str, show_window: bool = False,
                     run_failures: Optional[list[str]] = None,
-                    fingerprint: Optional[dict] = None) -> str:
+                    fingerprint: Optional[dict] = None,
+                    host_wait: Optional[dict] = None) -> str:
     """Render the smoke report.
 
     SMOKE-DEPLOY-TRAP-1: `run_failures` carries RUN-LEVEL failures that are not
@@ -116,6 +132,7 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
         for check in fingerprint["checks"]:
             head += "".join(f"> {check['mission']}: {line}\n" for line in check["lines"])
         head += "\n"
+    head += _host_wait_line(host_wait)
     head += _options_line(rows)
     head += _resolution_line(tier)
     head += _vram_line(rows)
@@ -150,7 +167,8 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
 def render_json(rows: list[Row], *, tier: str, profile: str,
                 timestamp: str, show_window: bool = False,
                 run_failures: Optional[list[str]] = None,
-                fingerprint: Optional[dict] = None) -> dict:
+                fingerprint: Optional[dict] = None,
+                host_wait: Optional[dict] = None) -> dict:
     run_failures = list(run_failures or [])
     _all_missions_passed = all(r.verdict.passed for r in rows) and bool(rows)
     return {
@@ -164,6 +182,9 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
         "overall_result": "PASS" if (_all_missions_passed and not run_failures) else "FAIL",
         "run_failures": run_failures,
         "fingerprint": fingerprint,
+        # Waits before the first launch (host lease, host load); excluded from every mission budget. A timing-bucket failure is read
+        # beside host_load.first_reason / timed_out.
+        "host_wait": host_wait,
         "fps_note": ("window visible; fps reflects foreground throughput subject to MC2_FPS_CAP/MC2_VSYNC"
                      if show_window else
                      "window minimized; SDL throttles rendering; fps reflects ~100fps cap not GPU throughput"),

@@ -36,6 +36,7 @@ private:
     void saveCheck(const std::string& stem);
     void chooserProof();
     void objectivesProof();
+    void objectiveCrudProof();
     std::string chooserView() const;
     void viewCheck(const std::string& family, const std::string& stage);
     std::string beforeView_;

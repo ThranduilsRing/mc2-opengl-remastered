@@ -636,40 +636,85 @@ def run_owned_marker_reload(exe, deploy, source, report, exit_sec, timeout, acti
     return row
 
 
-def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout):
-    """The legacy authoring reader must retain an identified owned scalar edit."""
+def run_owned_objective_reload(exe, deploy, source, report, exit_sec, timeout, crud=False):
+    """The legacy authoring reader must retain an independently graded owned edit."""
     from editor.tests.objective_census import grade_objective_edit, objective_fields
     from editor.tests.legacy_reference import FROZEN, typed_fields, verify_frozen
     verify_frozen()
     before_fit = source.with_suffix(".fit").read_bytes()
     before_pak = source.with_suffix(".pak").read_bytes()
-    grade_objective_edit((FROZEN / "e5_reference_before.fit").read_bytes(), before_fit, "ResourcePoints")
+    if crud:
+        from editor.tests.objective_crud import grade_crud_edit
+        operation = source.name.removesuffix("-edited") if source.name != "widget-save" else PANEL_OPERATIONS["objectives_crud_panel"][-1]
+        grade_crud_edit((source.parent / "fixture.fit").read_bytes(), before_fit, operation)
+    else:
+        grade_objective_edit((source.parent / "fixture.fit").read_bytes(), before_fit, "ResourcePoints")
     fixture_pak = (source.parent / "fixture.pak").read_bytes()
     panel_gate = read_json_object(source.parent / "gate.json")
-    if (panel_gate.get("result", {}).get("name") != "objectives_panel"
+    panel_name = "objectives_crud_panel" if crud else "objectives_panel"
+    if (panel_gate.get("result", {}).get("name") != panel_name
             or panel_gate.get("result", {}).get("passed") is not True
             or hashlib.sha256(fixture_pak).hexdigest() != panel_gate.get("provenance", {}).get("input_pak_sha256")
             or fixture_pak != (source.parent / "input.pak").read_bytes()):
         raise ValueError("objective reload fixture PAK does not match proven panel input")
+    fixture_fit = (source.parent / "fixture.fit").read_bytes()
+    if (hashlib.sha256(fixture_fit).hexdigest() != panel_gate.get("provenance", {}).get("input_fit_sha256")
+            or fixture_fit != (source.parent / "input.fit").read_bytes()):
+        raise ValueError("objective reload fixture FIT does not match proven panel input")
+    if crud:
+        grade_panel(panel_name, source.parent, 0)
     if before_pak != fixture_pak:
         raise ValueError("objective reload control changed the PAK")
-    directory = deploy / "terrain_gen_out/owned_objective_reload"
+    case = "owned_objective_crud_reload" if crud else "owned_objective_reload"
+    directory = deploy / "terrain_gen_out" / case
     directory.mkdir(parents=True, exist_ok=True)
+    null_reload = None
+    if crud:
+        for extension, data in (("fit", fixture_fit), ("pak", fixture_pak)):
+            (directory / f"null-input.{extension}").write_bytes(data)
+            (report / f"null-input.{extension}").write_bytes(data)
+        for extension in ("fit", "pak"):
+            (directory / f"null-reloaded.{extension}").unlink(missing_ok=True)
+        null_reload = run_case_with_retry(case + "_null", exe, deploy, exit_sec, timeout,
+            [f"-mission=terrain_gen_out/{case}/null-input.pak", f"-smoke-save=terrain_gen_out/{case}/null-reloaded.pak"], "saved")
+        if not null_reload["passed"] or any(not (directory / f"null-reloaded.{ext}").is_file() for ext in ("fit", "pak")):
+            return dict(name=case, passed=False, bucket="owned_objective_null_reload_failed", null_reload=null_reload)
     for extension, data in (("fit", before_fit), ("pak", before_pak)):
         (directory / f"input.{extension}").write_bytes(data)
         (report / f"input.{extension}").write_bytes(data)
-    row = run_case_with_retry("owned_objective_reload", exe, deploy, exit_sec, timeout,
-        ["-mission=terrain_gen_out/owned_objective_reload/input.pak", "-smoke-save=terrain_gen_out/owned_objective_reload/reloaded.pak"], "saved")
+    for extension in ("fit", "pak"):
+        (directory / f"reloaded.{extension}").unlink(missing_ok=True)
+    row = run_case_with_retry(case, exe, deploy, exit_sec, timeout,
+        [f"-mission=terrain_gen_out/{case}/input.pak", f"-smoke-save=terrain_gen_out/{case}/reloaded.pak"], "saved")
     row["input_sha256"] = {"fit": hashlib.sha256(before_fit).hexdigest(), "pak": hashlib.sha256(before_pak).hexdigest()}
+    if crud:
+        row["null_reload"] = null_reload
     if row["passed"]:
         try:
             after = (directory / "reloaded.fit").read_bytes()
+            after_pak = (directory / "reloaded.pak").read_bytes()
             if typed_fields(objective_fields(before_fit)) != typed_fields(objective_fields(after)):
                 raise ValueError("legacy reload changed objective scalar/list values")
-            for extension in ("fit", "pak"):
-                (report / f"reloaded.{extension}").write_bytes((directory / f"reloaded.{extension}").read_bytes())
-            row["detail"] = "Owned ResourcePoints edit accepted and re-saved by legacy reader; all objective scalar/list values retained. Runtime outcomes remain unproven."
-        except (OSError, ValueError, KeyError) as error:
+            if crud:
+                from editor.tests.legacy_reference import buildings, packet
+                null_fit = (directory / "null-reloaded.fit").read_bytes()
+                null_pak = (directory / "null-reloaded.pak").read_bytes()
+                if typed_fields(objective_fields(fixture_fit)) != typed_fields(objective_fields(null_fit)):
+                    raise ValueError("legacy null reload changed objective values")
+                # Legacy position quantization requires a same-run null-save control.
+                for data in (null_pak, after_pak):
+                    packet(data, 0)
+                    count = struct.unpack_from("<I", data, 4)[0] // 4 - 2
+                    for index in range(1, count):
+                        packet(data, index)
+                if Counter(buildings(after_pak)) != Counter(buildings(null_pak)):
+                    raise ValueError("legacy CRUD reload changed PAK placement records")
+                (report / "null-reloaded.fit").write_bytes(null_fit)
+                (report / "null-reloaded.pak").write_bytes(null_pak)
+            for extension, data in (("fit", after), ("pak", after_pak)):
+                (report / f"reloaded.{extension}").write_bytes(data)
+            row["detail"] = ("Owned CRUD edit" if crud else "Owned ResourcePoints edit") + " accepted and re-saved by legacy reader; all objective counts/order/content retained." + (" PAK placement records retained; archive packets decode." if crud else "") + " Runtime outcomes remain unproven."
+        except (OSError, ValueError, KeyError, struct.error) as error:
             row.update(passed=False, bucket="owned_objective_reload_changed", detail=str(error))
     return row
 
@@ -1104,7 +1149,9 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
 
 
 PANEL_OPERATIONS = {
-    "objectives_panel": tuple("objective-" + key.replace(" ", "_") for key in (
+    "objectives_crud_panel": ("objective-add", "objective-copy", "objective-delete", "objective-up", "objective-down") +
+        tuple(f"entry-{i}-{action}" for i in range(4) for action in ("add", "flag", "delete", "up", "down")),
+    "objectives_panel": ("objective-resolve",) + tuple("objective-" + key.replace(" ", "_") for key in (
         "Title", "Description", "Priority", "ResourcePoints", "PreviousPrimaryObjectiveMustBeComplete",
         "AllPreviousPrimaryObjectivesMustBeComplete", "DisplayMarker", "MarkerX", "MarkerY", "HiddenTrigger",
         "ActivateOnFlag", "ActivateFlagID", "ResetStatusOnFlag", "ResetStatusFlagID", "TitleUseResourceString",
@@ -1198,7 +1245,7 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
                 raise ValueError("existing Hybrid bytes changed")
         if b'compatibilityMode = "Hybrid";' not in (directory / "brain-Hybrid-edited.fit").read_bytes():
             raise ValueError("Hybrid assignment missing")
-    saved_baseline = (expected[-1] + "-edited" if name.startswith("chooser") or name == "objectives_panel" else
+    saved_baseline = (expected[-1] + "-edited" if name.startswith("chooser") or name in ("objectives_panel", "objectives_crud_panel") else
                       "existing-hybrid" if name == "brain_modes" else "fixture")
     for extension in ("fit", "pak"):
         if (directory / f"widget-save.{extension}").read_bytes() != (directory / f"{saved_baseline}.{extension}").read_bytes():
@@ -1212,10 +1259,14 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
     elif name == "marker_panel":
         grade_marker_edits(directory)
     elif name == "objectives_panel":
-        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit
+        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit, grade_reference_rows
+        grade_reference_rows(directory)
         for key in AUTHORING_KEYS:
             grade_objective_edit((directory / "fixture.fit").read_bytes(),
                                  (directory / ("objective-" + key.replace(" ", "_") + "-edited.fit")).read_bytes(), key)
+    elif name == "objectives_crud_panel":
+        from editor.tests.objective_crud import grade_crud_panel
+        grade_crud_panel(directory)
 
 
 def grade_marker_edits(directory):
@@ -1251,8 +1302,8 @@ def grade_chooser(name, directory, lines):
     from editor.tests.legacy_reference import PLACEMENTS, compare_frozen, inserted_unit, typed_fields, verify_frozen
     from editor.tests.run_catalog_proofs import oracle
     families = [operation.removeprefix("chooser-") for operation in PANEL_OPERATIONS[name]]
-    # These references save the very same placement; widget artifacts must match both byte streams.
-    # Frozen stock references are legacy exports and retain the existing semantic parity grade.
+    # Identical placements require identical widget/reference byte streams.
+    # Legacy parity compares decoded content, not archive encoding.
     for extension in ("fit", "pak"):
         if (directory / f"fixture.{extension}").read_bytes() != (directory / f"e5_reference_before.{extension}").read_bytes():
             raise ValueError(f"chooser widget/reference baseline bytes differ: {extension}")
@@ -1366,9 +1417,78 @@ def objective_negative_controls(directory):
                 path.write_bytes(original)
         if not caught:
             raise ValueError("objective wrong/no-op widget output was accepted")
+    row_path = directory / "objective-rows-resolved.tsv"
+    rows = row_path.read_bytes()
+    resolve_paths = [directory / f"objective-resolve-{stage}.fit" for stage in ("edited", "redone")]
+    resolved = [path.read_bytes() for path in resolve_paths]
+    controls = (rows.split(b"\n", 1)[1], rows.replace(b" / Part ", b" / WrongPart ", 1), None)
+    for control in controls:
+        caught = False
+        try:
+            if control is None:
+                for path in resolve_paths: path.write_bytes(baseline)
+            else:
+                row_path.write_bytes(control)
+            grade_panel("objectives_panel", directory, 0, require_render=rendered)
+        except ValueError:
+            caught = True
+        finally:
+            row_path.write_bytes(rows)
+            for path, original in zip(resolve_paths, resolved): path.write_bytes(original)
+        if not caught:
+            raise ValueError("objective missing row/wrong target/no-op resolve was accepted")
+
+
+def crud_negative_controls(directory):
+    rendered = (directory / "panels.bmp").exists()
+    baseline = (directory / "fixture.fit").read_bytes()
+    for operation in PANEL_OPERATIONS["objectives_crud_panel"]:
+        paths = [directory / f"{operation}-{stage}.fit" for stage in ("edited", "redone")]
+        originals = [path.read_bytes() for path in paths]
+        wrong = originals[0].replace(b"ResourcePoints = ", b"ResourcePoints = 9", 1)
+        swapped = originals[0].replace(b"[Team0Objective0]", b"[swap]", 1).replace(
+            b"[Team0Objective1]", b"[Team0Objective0]", 1).replace(b"[swap]", b"[Team0Objective1]", 1)
+        if wrong == originals[0]:
+            raise ValueError("CRUD wrong-value negative control did not change output")
+        controls = [baseline, wrong, swapped]
+        if operation.startswith("entry-"):
+            for source, replacement in ((b'e6c-first', b'wrong-id'), (b'Value = FALSE', b'Value = TRUE'),
+                                        (b'BooleanFlagIsSet', b'UnknownCondition'), (b'SetBooleanFlag', b'UnknownAction'),
+                                        (b'st FailureActionSpeciesString = "SetBooleanFlag"', b'ul FailureActionSpecies = 4')):
+                changed = originals[0].replace(source, replacement, 1)
+                if changed == originals[0]:
+                    raise ValueError("flag/species negative control did not mutate output")
+                controls.append(changed)
+        for data in controls:
+            caught = False
+            try:
+                for path in paths:
+                    path.write_bytes(data)
+                grade_panel("objectives_crud_panel", directory, 0, require_render=rendered)
+            except ValueError:
+                caught = True
+            finally:
+                for path, original in zip(paths, originals):
+                    path.write_bytes(original)
+            if not caught:
+                raise ValueError("CRUD consistently wrong/no-op artifact was accepted")
+        retained = paths[0].with_suffix(".missing-control.fit")
+        paths[0].rename(retained)
+        try:
+            try:
+                grade_panel("objectives_crud_panel", directory, 0, require_render=rendered)
+            except FileNotFoundError:
+                pass
+            else:
+                raise ValueError("CRUD missing artifact was accepted")
+        finally:
+            retained.rename(paths[0])
 
 
 def panel_negative_controls(name, directory):
+    if name == "objectives_crud_panel":
+        crud_negative_controls(directory)
+        return
     if name == "objectives_panel":
         objective_negative_controls(directory)
         return
@@ -1384,7 +1504,7 @@ def panel_negative_controls(name, directory):
         corrupted, count = re.subn(rb"(?m)^(ul\s+VariantNumber\s*=\s*)0", lambda match: match[1] + b"1", body)
         if count != 1: raise ValueError("chooser corruption control did not alter one placed field")
         corrupted = original[:start] + corrupted + original[end:]
-        # Corrupt matching history saves together so byte history facts alone still pass.
+        # Matching history artifacts alone cannot prove a correct edit.
         paths = [path, directory / "chooser-mech-redone.fit"]
         if len(PANEL_OPERATIONS[name]) == 1: paths.append(directory / "widget-save.fit")
         lines = (directory / "shell.log").read_text().splitlines()
@@ -1429,7 +1549,7 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
                                        **child_kwargs(redirected=True)).strip()
         fingerprint = exe_fingerprint.extract(exe)
-        if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12] or not exe_guard.exe_has_offscreen(exe):
+        if not fingerprint.get("present") or fingerprint.get("sha12") != head[:12] or fingerprint.get("dirty") or not exe_guard.exe_has_offscreen(exe):
             raise ValueError("panel shell fingerprint/background support does not match worktree HEAD")
         provenance = dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
         for extension in ("fit", "pak"):
@@ -1440,6 +1560,14 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
                 data = (FROZEN / f"e5_reference_{seed}.{extension}").read_bytes()
             else:
                 data = stock.read(f"data/missions/mc2_01.{extension}")
+            if name == "objectives_panel" and extension == "fit":
+                # Model-name edits require a camera-supported type in the fingerprinted input.
+                begin = data.index(b"[Team0Objective1]")
+                end = data.index(b"\n[", begin)
+                body, count = re.subn(rb"(?m)^(l\s+ModelType\s*=\s*)[^\r\n]*", lambda match: match[1] + b"14", data[begin:end])
+                if count != 1:
+                    raise ValueError("objective panel fixture needs one ModelType")
+                data = data[:begin] + body + data[end:]
             (directory / f"input.{extension}").write_bytes(data)
             provenance[f"input_{extension}_sha256"] = hashlib.sha256(data).hexdigest()
         host_lease.ensure_held("E3-b SDL panel widgets")
@@ -1486,6 +1614,7 @@ def main() -> int:
     ap.add_argument("--owned-marker-placement", type=Path, help="owned marker save stem for the explicit owned_marker_reload case")
     ap.add_argument("--owned-marker-action", choices=("inserted", "moved", "deleted"), default="inserted")
     ap.add_argument("--owned-objective-edit", type=Path, help="objective-ResourcePoints-edited save stem from objectives_panel")
+    ap.add_argument("--owned-objective-crud-edit", type=Path, help="objective-{add,copy,delete,up,down}-edited save stem from objectives_crud_panel")
     ap.add_argument("--exit-sec", type=int, default=12,
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
@@ -1506,6 +1635,8 @@ def main() -> int:
         ap.error("owned_marker_reload requires --owned-marker-placement from run_document_proofs.py")
     if args.case and "owned_objective_reload" in args.case and not args.owned_objective_edit:
         ap.error("owned_objective_reload requires --owned-objective-edit from objectives_panel")
+    if args.case and "owned_objective_crud_reload" in args.case and not args.owned_objective_crud_edit:
+        ap.error("owned_objective_crud_reload requires --owned-objective-crud-edit from objectives_crud_panel")
     if args.freeze_legacy_reference and args.freeze_legacy_reference.exists():
         ap.error("freeze directory already exists; frozen placement references are immutable")
     if args.freeze_legacy_reference and args.compare_legacy_reference:
@@ -1545,7 +1676,7 @@ def main() -> int:
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
     selected = args.case or ALL
     for c in selected:
-        if c not in ALL and c not in single_stock and c not in ("owned_marker_reload", "owned_objective_reload"):
+        if c not in ALL and c not in single_stock and c not in ("owned_marker_reload", "owned_objective_reload", "owned_objective_crud_reload"):
             print(f"ERROR: unknown case '{c}'. Valid: {', '.join(ALL)}")
             return 2
 
@@ -1590,12 +1721,13 @@ def main() -> int:
 
     results = []
     for c in selected:
-        if c == "owned_objective_reload":
+        if c in ("owned_objective_reload", "owned_objective_crud_reload"):
             control = rptdir / c
             control.mkdir()
             try:
                 provenance = marker_reload_provenance(exe)
-                row = run_owned_objective_reload(exe, deploy, args.owned_objective_edit, control, args.exit_sec, args.timeout)
+                source = args.owned_objective_crud_edit if c == "owned_objective_crud_reload" else args.owned_objective_edit
+                row = run_owned_objective_reload(exe, deploy, source, control, args.exit_sec, args.timeout, crud=c == "owned_objective_crud_reload")
                 row["provenance"] = provenance
             except (OSError, ValueError, KeyError, struct.error) as error:
                 row = dict(name=c, passed=False, bucket="owned_objective_control_invalid", detail=str(error), esmoke={})

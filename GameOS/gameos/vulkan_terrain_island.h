@@ -68,7 +68,7 @@ struct Mc2TerrainTier1Feed {
     float                       worldToClipGL[16]; // gos_GetTerrainMVPMat4()/dispatch — GL_FALSE
     int32_t                     mapSide;           // s_mapSide
     float                       halfMap;           // s_halfMap
-    uint32_t                    glHeightSsbo;      // GL name of the height SSBO (binding 23)
+    const float*                heightCpu;         // terrain field store: mapSide^2 heights (the GL binding-23 bytes)
     uint64_t                    heightBytes;       // mapSide*mapSide*sizeof(float)
     uint64_t                    heightVersion;     // bumps when the height field changes (snapshot key)
     // COLORMAP-BASE sub-slice: the GL colormap atlas texture (g_atlasGLTex) the VK
@@ -90,7 +90,7 @@ struct Mc2TerrainTier1Feed {
     int32_t                     useCement;             // 1 iff cement atlas ready AND cement SSBO live
     int32_t                     useTransitionMask;     // gos_terrain_indirect_isTransitionMaskReady()
     int32_t                     cementDiagConnect;     // MC2_TERRAIN_CEMENT_DIAG_CONNECT gate
-    uint32_t                    glCementSsbo;          // GL name of the per-vertex cement-word SSBO (binding 25)
+    const uint32_t*             cementCpu;             // terrain field store: per-vertex cement words (the GL binding-25 bytes)
     uint64_t                    cementBytes;           // mapSide*mapSide*sizeof(uint)
     uint64_t                    cementVersion;         // bumps when the cement-word field changes (snapshot key)
     // VK-TERRAIN-LIGHTING sub-slice: make the VK terrain LIT (directional relief + baked
@@ -159,7 +159,7 @@ struct Mc2TerrainTier1Feed {
     // vert reads (u_visualSide / u_visualDisplaceFar). All 0 when the sub-gate
     // (MC2_VK_TERRAIN_VISUALDISPLACE_FAR) is off or the bake isn't loaded -> island
     // draws undisplaced (fail-soft; GL also keeps displaced patches in that case).
-    uint32_t                    glVisualHeightSsbo;    // GL name of s_visualHeightSsbo (0 = not loaded)
+    const float*                visualHeightCpu;       // terrain field store: visual bake + mip maxes (null = not loaded)
     uint64_t                    visualHeightBytes;     // visualSide*visualSide*sizeof(float)
     uint64_t                    visualHeightVersion;   // bumps on UploadVisualHeightFull (snapshot key)
     int32_t                     visualSide;            // V = (mapSide-1)*4+1 (0 = bake not loaded)

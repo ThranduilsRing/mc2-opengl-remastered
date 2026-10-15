@@ -246,7 +246,7 @@ private:
 	// The three by-value lists are APPEND-ONLY and filled once while the front-end data loads (initComponents, initPilots, addBuilding): an element address handed out
 	// by &(*it) (getFirstAvailablePilot, the component and building arrays, LogisticsMech::setPilot) stays valid because std::deque never relocates its elements
 	// on push_back / pop_back. Nothing erases from the middle. The only way to empty `pilots` is clearPilots(), which needs an empty inventory, because every mech
-	// holds a LogisticsPilot* into it. (B6 replaces the pointer by a pilot id.)
+	// holds a LogisticsPilot* into it.
 	using COMPONENT_LIST = std::deque<LogisticsComponent>;
 	using PILOT_LIST = std::deque<LogisticsPilot>;
 	// Order is insertion order. variants and inventory lose elements through removeVariant / sellMech / the mech-list rewrites, which erase the pointer and delete the

@@ -52,6 +52,8 @@ add_executable(mc2_tests
     alloc_probe_new.cpp     # this binary's global operator new/delete, routed through the probe
     test_saved_objects_check.cpp  # SAVE-REJECT-1: object-packet run check of an in-mission save (offline)
     test_save_struct_zero.cpp  # SAVE-ZERO-1: MC2_SAVE_STRUCT zeroes struct padding on a dirty stack (offline)
+    test_fit_number.cpp     # FIT-NUMBER-1: the FIT number readers shared with the editor keep the game's quirks
+    test_save_pointer_pins.cpp  # SAVE-PTR-PIN-1: Gate closestObject and QueuedTacOrder marker are written as null (source pins)
     test_sim_identity.cpp   # SIM-IDENTITY-HASH-1: world-hash order/quantum kernel
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
@@ -112,6 +114,11 @@ add_executable(mc2_tests
     test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
     test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
+    test_texture_decode.cpp  # backend-neutral texture decode + upload policy (no GL)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/texture_decode.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)
+    test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
@@ -195,6 +202,7 @@ target_include_directories(mc2_tests PRIVATE
 # 3rdparty/lib/x64/zlib.lib is the static build -- no zlib1.dll needed at run time.
 target_link_libraries(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
+    ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
 )
 
 # Match main build's preprocessor environment so engine headers parse the
@@ -366,7 +374,7 @@ set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_pla
     PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_sources(mc2_tests PRIVATE
-    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp
+    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )

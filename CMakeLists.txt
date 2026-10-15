@@ -923,3 +923,28 @@ set_source_files_properties(
     "code/tactical_order_queue.cpp"
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
+
+# Separate engine linkage avoids the standalone tests' initializer/actor stubs.
+if(MC2_BUILD_TESTS)
+    get_target_property(_order_seam_sources mc2 SOURCES)
+    add_executable(mc2_authored_order_seam EXCLUDE_FROM_ALL
+        ${_order_seam_sources} tests/unit/test_authored_order_seam.cpp)
+    target_compile_definitions(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)
+    target_include_directories(mc2_authored_order_seam PRIVATE
+        $<TARGET_PROPERTY:mc2,INCLUDE_DIRECTORIES> "${CMAKE_SOURCE_DIR}/tests/unit")
+    target_link_libraries(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,LINK_LIBRARIES>)
+    target_link_options(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,LINK_OPTIONS>)
+    add_dependencies(mc2_authored_order_seam build_fingerprint)
+    foreach(_dll ${FFmpegLGPL_RUNTIME_DLLS})
+        add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_dll}" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
+    endforeach()
+    foreach(_t IN LISTS _mc2_runtime_dll_targets)
+        add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_t}>" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
+    endforeach()
+    foreach(_dll glew32.dll zlib1.dll)
+        add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll}" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
+    endforeach()
+endif()

@@ -12,6 +12,7 @@
 #define MISSION_H
 #include "save_archive.h"
 #include "tactical_order_queue.h"
+#include <algorithm>
 //----------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
@@ -39,7 +40,6 @@
 #endif
 
 namespace mc2::sim {
-// The same bounded conversion is instantiated with the engine's TacticalOrder and Mover.
 // Access resolves mission-owned recipient slots, independent of gated watch generations.
 template<class LegacyOrder, class Access>
 class MoverOrderApplication final : public OrderAdmissionValidator, public OrderApplication {
@@ -58,14 +58,18 @@ public:
         const auto& p = e.payload;
         if (p.origin != OrderOrigin::Player && p.origin != OrderOrigin::Commander)
             return reason(MoverOrderRejection::UnsupportedPayload);
-        if (p.kind != OrderKind::Stop && p.kind != OrderKind::MoveToPoint)
+        const bool route = p.kind == OrderKind::PatrolPath || p.kind == OrderKind::TraversePath;
+        if (p.kind != OrderKind::Stop && p.kind != OrderKind::MoveToPoint && !route)
             return reason(MoverOrderRejection::UnsupportedKind);
+        if ((route || p.kind == OrderKind::MoveToPoint) && !p.move)
+            return reason(MoverOrderRejection::UnsupportedPayload);
         if (p.orderId > 0x7fffffffULL || p.formationOrdinal || p.groupFlags || p.subOrder || p.unitOrder)
             return reason(MoverOrderRejection::UnsupportedPayload);
         if (p.move) {
             const auto& m = *p.move;
-            if (m.wayPath.points.size() != 1 || m.wayPath.curPoint != 0 ||
-                m.wayPath.mode.size() != 1 || m.wayPath.mode[0] == TravelMode::Jump ||
+            if (m.wayPath.points.empty() || m.wayPath.points.size() > (route ? 8u : 1u) || m.wayPath.curPoint != 0 ||
+                m.wayPath.mode.size() != m.wayPath.points.size() ||
+                std::ranges::any_of(m.wayPath.mode, [](auto mode) { return mode == TravelMode::Jump; }) ||
                 m.faceObject || m.wait || m.mode != MoveMode::Normal || m.escapeTile ||
                 m.jump || m.fromArea != -1 || m.keepMoving)
                 return reason(MoverOrderRejection::UnsupportedPayload);
@@ -80,7 +84,7 @@ public:
         if (!commander || mover->getCommanderId() < 0 ||
             commander->value != static_cast<std::uint32_t>(mover->getCommanderId()))
             return reason(MoverOrderRejection::Permission);
-        if (e.payload.kind == OrderKind::MoveToPoint && (mover->isDisabled() || !mover->canMove()))
+        if (e.payload.move && (mover->isDisabled() || !mover->canMove()))
             return reason(MoverOrderRejection::CannotMove);
         return 0;
     }
@@ -88,8 +92,8 @@ public:
         if (auto r = validateCommand(e)) return {RecipientStatus::Rejected, r};
         if (auto r = validateRecipient(e, ref, ordinal)) return {RecipientStatus::Rejected, r};
         LegacyOrder legacy;
-        // Explicit retail tag mapping; unsupported verbs never reach the success-only helpers.
-        legacy.code = static_cast<decltype(legacy.code)>(e.payload.kind == OrderKind::Stop ? 11 : 2);
+        // Admitted kind/origin tags match the legacy enums.
+        legacy.code = static_cast<decltype(legacy.code)>(e.payload.kind);
         legacy.origin = static_cast<decltype(legacy.origin)>(e.payload.origin);
         legacy.id = static_cast<decltype(legacy.id)>(e.payload.orderId);
         legacy.time = access_.simulationTime();
@@ -99,12 +103,14 @@ public:
         legacy.groupFlags = 0;
         if (e.payload.move) {
             const auto& m = *e.payload.move;
-            legacy.moveParams.wayPath.numPoints = 1;
+            legacy.moveParams.wayPath.numPoints = static_cast<long>(m.wayPath.points.size());
             legacy.moveParams.wayPath.curPoint = 0;
-            legacy.moveParams.wayPath.points[0] = m.wayPath.points[0].x;
-            legacy.moveParams.wayPath.points[1] = m.wayPath.points[0].y;
-            legacy.moveParams.wayPath.points[2] = m.wayPath.points[0].z;
-            legacy.moveParams.wayPath.mode[0] = static_cast<unsigned char>(m.wayPath.mode[0]);
+            for (std::size_t i = 0; i < m.wayPath.points.size(); ++i) {
+                legacy.moveParams.wayPath.points[i * 3] = m.wayPath.points[i].x;
+                legacy.moveParams.wayPath.points[i * 3 + 1] = m.wayPath.points[i].y;
+                legacy.moveParams.wayPath.points[i * 3 + 2] = m.wayPath.points[i].z;
+                legacy.moveParams.wayPath.mode[i] = static_cast<unsigned char>(m.wayPath.mode[i]);
+            }
             legacy.moveParams.faceObject = false;
             legacy.moveParams.wait = false;
             legacy.moveParams.mode = static_cast<decltype(legacy.moveParams.mode)>(0);
@@ -116,8 +122,7 @@ public:
         auto* mover = access_.resolve(ref);
         auto* stored = mover->getPilot()->getTacOrder(e.payload.origin == OrderOrigin::Player ? 1 : 0);
         const auto previousCode = stored->code;
-        // A distinct pre-state proves installation even when the previous order already matches.
-        // The synchronous handoff must replace this marker; suppression preserves the old order.
+        // A distinct marker detects suppressed handoffs even when the old order matches.
         stored->code = static_cast<decltype(stored->code)>(0);
         const auto result = mover->handleTacticalOrder(legacy, 0, false);
         const bool installed = stored->code != static_cast<decltype(stored->code)>(0);
@@ -129,7 +134,7 @@ public:
             stored->subOrder != legacy.subOrder || stored->selectionIndex != legacy.selectionIndex ||
             stored->groupFlags != legacy.groupFlags)
             return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
-        if (e.payload.move && (stored->moveParams.wayPath.numPoints != 1 ||
+        if (e.payload.move && (stored->moveParams.wayPath.numPoints != legacy.moveParams.wayPath.numPoints ||
             stored->moveParams.wayPath.curPoint != 0 ||
             stored->moveParams.wayPath.mode[0] != legacy.moveParams.wayPath.mode[0] ||
             stored->moveParams.wayPath.points[0] != legacy.moveParams.wayPath.points[0] ||
@@ -143,6 +148,16 @@ public:
             stored->moveParams.fromArea != legacy.moveParams.fromArea ||
             stored->moveParams.keepMoving != legacy.moveParams.keepMoving))
             return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
+        if (e.payload.move) {
+            for (std::size_t i = 0; i < e.payload.move->wayPath.points.size(); ++i) {
+                if (stored->moveParams.wayPath.mode[i] != legacy.moveParams.wayPath.mode[i])
+                    return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
+                for (std::size_t axis = 0; axis < 3; ++axis)
+                    if (stored->moveParams.wayPath.points[i * 3 + axis] != legacy.moveParams.wayPath.points[i * 3 + axis])
+                        return {RecipientStatus::Rejected, reason(MoverOrderRejection::HandlerFailure)};
+            }
+        }
+        if constexpr (requires { access_.installed(e, ref); }) access_.installed(e, ref);
         return {};
     }
     ApplicationOutcome applySupport(const OrderEnvelope&) override {
@@ -294,6 +309,10 @@ class Mission
 		mc2::sim::MissionOrderIngress orderIngress;
 		using OrderRecipientBinding = mc2::sim::MissionRecipientBinding<Mover, MechWarrior>;
 		std::vector<OrderRecipientBinding> orderRecipients;
+		std::string authoredMissionText;
+		std::vector<std::uint32_t> authoredOpordPilots;
+		std::vector<mc2::sim::AuthoredRoute> authoredRoutes;
+		std::vector<std::string> authoredDiagnostics;
 		std::optional<mc2::sim::MissionReceipt> orderFixtureReceipt;
 		bool orderFixtureApplied = false;
 		std::uint32_t orderFixtureSubmitted = 0, orderFixtureCompleted = 0;
@@ -422,6 +441,11 @@ class Mission
 
 		bool calcComplexDropZones (char* missionName, char dropZoneList[MAX_MC_PLAYERS]);
 		void resetOrderIngress();
+		void admitAuthoredRoutes();
+		void recordAuthoredInstallation(const mc2::sim::OrderEnvelope&, mc2::sim::ObjectRef);
+		std::string authoredRouteEvidence() const;
+		void diagnoseAuthoredRoute(std::uint32_t original, std::uint32_t selected, std::uint32_t pilot,
+			std::string_view status, std::string_view reason);
 		void bindOrderRecipients();
 		void beginOrderSimulationTick();
 		void completeOrderSimulationTick();

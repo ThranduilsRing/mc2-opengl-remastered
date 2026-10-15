@@ -237,6 +237,7 @@ void FitIniFile::atClose (void)
 	//-----------------------------
 	// Free up the fileBlocks; currentBlockId pointed into them.
 	m_fileBlocks.clear();
+	totalBlocks = 0;   // a seekBlock after close must see an empty table, not a count that indexes past it
 	currentBlockId = nullptr;
 }
 

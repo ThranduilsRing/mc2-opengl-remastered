@@ -1390,7 +1390,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			FullPathFileName listPath;
 			listPath.init(texturePath,localBaseName,".lst");
 
-			listTransitionFile = new File;
+			listTransitionFile = std::make_unique<File>();
 			listTransitionFile->create(listPath);
 		}
 
@@ -1728,8 +1728,7 @@ void TerrainTextures::update (void)
 		if (listTransitionFile)
 		{
 			listTransitionFile->close();
-			delete listTransitionFile;
-			listTransitionFile = nullptr;
+			listTransitionFile.reset();
 		}
 
 		localBaseName = nullptr;

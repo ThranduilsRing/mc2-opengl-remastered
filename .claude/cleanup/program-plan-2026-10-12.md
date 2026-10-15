@@ -54,7 +54,7 @@ Lanes: lane 1 = `A:/Games/mc2-main` (install `mc2-win64-v0.4`), lane 2 = `A:/Gam
 | T4 | 2 | Wed 14 - Thu 15 | Step 4 B4: raw-buffer heaps -> owned buffers (mclib) | 10 |
 | T5 | 1 | Fri 16 - Sat 17 | Step 4 B2: EList and value containers, SortList total order **[CLOSED 2026-10-14 for the game code: `cxx23-step4-b2-after-review.md`; the editor E-batches and B2.2c stay open]** | 10 |
 | T6 | 2 | Fri 16 - Sat 17 | mc2_15 writer fix (if page heap gave a stack) ELSE step 3 remainder (facade P3, value-used, lane-2 tags) | 8 |
-| T7 | 1 | Sun 18 | Step 4 B3 files/streams (if tier3 unblocked) ELSE B5 prep: one `TextureRef` behind the two release APIs | 8 |
+| T7 | 1 | Sun 18 | Step 4 B3 files/streams (if tier3 unblocked) ELSE B5 prep: one `TextureRef` behind the two release APIs **[CLOSED 2026-10-15 except the Sol / Codex / editor items: `cxx23-step4-b3-after-review.md`; next B4, census in `cxx23-step4-b4-notes.md`]** | 8 |
 | R1 | ro | Thu 15 eve | Fable reviewer: B0 + B1 against the step 4 checklist | 3 |
 | R2 | ro | Sat 17 eve | Fable reviewer: B4 + B2 | 3 |
 | M | ro | Mon 19 am | Fable meta-review of the week + next plan | 4 |

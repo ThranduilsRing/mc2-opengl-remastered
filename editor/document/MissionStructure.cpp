@@ -49,11 +49,11 @@ std::expected<void, LoadError> MissionDocument::restore(const StructuralState& s
 
 std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(std::string fit,
     std::vector<std::byte> placements, const std::vector<EntityId>& ids,
-    const std::unordered_map<std::string, std::string>& renamed)
+    const std::unordered_map<std::string, std::string>& renamed, NodeId resolving, EntityId target)
 {
     auto encoded = encodePlacements(pak_, placements);
     if (!encoded) return std::unexpected(encoded.error());
-    auto candidate = decode(std::move(fit), std::move(*encoded), mission_, {}, markerObjects_);
+    auto candidate = decodeSource(std::move(fit), std::move(*encoded), mission_, {}, markerObjects_, false);
     if (!candidate) return std::unexpected(candidate.error());
     if (candidate->entities_.size() != ids.size()) return std::unexpected(LoadError{"command", "entity_count_mismatch", 0});
     const auto oldKeys = sectionKeys(syntax_, renamed), newKeys = sectionKeys(candidate->syntax_, {});
@@ -83,9 +83,48 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
         entity.id = ids[i];
         for (auto* id : {&entity.section, &entity.warrior, &entity.brain}) if (*id) *id = remap.at((*id)->value);
     }
+    candidate->rebuildIndex();
+    std::unordered_map<std::uint64_t, const ObjectiveReference*> references;
+    std::unordered_map<std::uint64_t, const ObjectiveEntry*> previousEntries;
+    for (const auto& objective : objectives_) for (const auto& list : objective.entries) for (const auto& entry : list)
+    {
+        references.emplace(entry.section.value, &entry.reference);
+        previousEntries.emplace(entry.section.value, &entry);
+    }
     for (auto& objective : candidate->objectives_) {
         objective.section = remap.at(objective.section.value);
-        for (auto& list : objective.entries) for (auto& entry : list) entry.section = remap.at(entry.section.value);
+        if (section(objective.section) && !this->objective(objective.section))
+            return std::unexpected(LoadError{"objective", "would_awaken_ignored_objective", 0});
+        for (auto& list : objective.entries) for (auto& entry : list) {
+            entry.section = remap.at(entry.section.value);
+            if (section(entry.section) && !previousEntries.contains(entry.section.value))
+                return std::unexpected(LoadError{"objective", "would_awaken_ignored_entry", 0});
+            if (const auto old = previousEntries.find(entry.section.value); old != previousEntries.end())
+                if (!old->second->policy.empty() && (old->second->policy != entry.policy || old->second->species != entry.species))
+                    return std::unexpected(LoadError{"objective", "preserved_entry_reader_meaning_changed", 0});
+            if (entry.flag) for (auto* source : {&entry.flag->idSource, &entry.flag->valueSource})
+                if (*source) *source = remap.at((*source)->value);
+            for (auto& source : entry.reference.sources) source.node = remap.at(source.node.value);
+            if (const auto old = references.find(entry.section.value); old != references.end()) {
+                entry.reference.kind = old->second->kind;
+                entry.reference.status = old->second->status;
+                entry.reference.target = old->second->target;
+                entry.reference.reason = old->second->reason;
+            }
+            if (entry.section == resolving) {
+                entry.reference.status = ReferenceStatus::Resolved;
+                entry.reference.target = target;
+                entry.reference.reason = "unique eligible XY target";
+            }
+            if (entry.reference.status == ReferenceStatus::Resolved) {
+                std::size_t matches{};
+                for (const auto& entity : candidate->entities_) if (candidate->referenceMatches(objective, entry, entity)) {
+                    if (entity.id != entry.reference.target) return std::unexpected(LoadError{"command", "objective_reference", 0});
+                    ++matches;
+                }
+                if (matches != 1) return std::unexpected(LoadError{"command", "objective_reference", 0});
+            }
+        }
         for (auto& scalar : objective.scalars) if (scalar.source) scalar.source = remap.at(scalar.source->value);
     }
     return StructuralState{std::move(candidate->syntax_), std::move(candidate->entities_),

@@ -106,7 +106,7 @@ def grade_placements(output, evidence):
 def grade_outputs(inputs, output):
     from editor.tests.objective_census import grade_typed_objectives
     grade_typed_objectives(inputs, output)
-    print("Objective semantic grader: 173/173 typed models equal independently parsed stock authoring values", flush=True)
+    print("Objective semantic grader: 173/173 typed models equal independently parsed stock reader values", flush=True)
     for mission in STOCK_MISSIONS:
         original = (inputs / f"{mission}.fit").read_bytes()
         written = (output / f"{mission}.fit").read_bytes()
@@ -125,7 +125,8 @@ def grade_shipping_shell():
     for marker in (b"--panel-smoke", b"panel_fixture_seed_failed", b"[EDITOR_PANEL_OPERATION v1]",
                    b"Q3 long mission ", b"--file-smoke", b"file_fixture_seed_failed", b"[EDITOR_FILE v1]",
                    b"chooser_catalog_missing", b"[EDITOR_CHOOSER_VIEW v1]", b"marker_fixture_replace_failed",
-                   b"objective_fixture_missing", b"objective_widget_value_wrong"):
+                   b"objective_fixture_missing", b"objective_widget_value_wrong",
+                   b"objective_crud_fixture_missing", b"objective_crud_reopen_widget_wrong"):
         if marker in shipping or marker not in smoke:
             raise ValueError(f"shipping/smoke isolation failed: {marker!r}")
     print("Shipping shell: proof markers absent; smoke host: proof markers present", flush=True)
@@ -172,9 +173,9 @@ def main():
             command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
                         "--placement-goldens", str(FROZEN), "--placement-output", str(directory / "panel-placements")]
         if target == "editor_document_tests_asan":
-            # Separate allocation-heavy stock and placement proofs retain the same process bound and complete case coverage.
-            commands.append((command + ["--test-suite-exclude=placement-live"], 120, "editor_document_tests_asan-core-run"))
-            commands.append((command + ["--test-suite=placement-live"], 120, "editor_document_tests_asan-placement-run"))
+            # Memory-heavy ASan suites need headroom under host load and must cover every native case.
+            commands.append((command + ["--test-suite-exclude=placement-live"], 300, "editor_document_tests_asan-core-run"))
+            commands.append((command + ["--test-suite=placement-live"], 300, "editor_document_tests_asan-placement-run"))
         else:
             commands.append((command, 120, label))
     native_cases = 0
@@ -214,7 +215,7 @@ def main():
         elif label == "editor_panel_tests-run":
             from scripts.run_editor_smoke import grade_panel, panel_negative_controls
             rows = re.findall(r"\[EDITOR_WIDGET_ARTIFACT v1\] name=(\S+) directory=(\S+)", result.stdout)
-            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel"]:
+            if [name for name, _ in rows] != ["chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel", "objectives_crud_panel"]:
                 raise ValueError("chooser/marker native widget artifacts missing or duplicated")
             for name, path in rows:
                 grade_panel(name, ROOT / path, 0, require_render=False)
@@ -240,9 +241,9 @@ def main():
             print(reader.stdout + reader.stderr, end="", flush=True)
             if reader.returncode:
                 return reader.returncode
-            if not re.search(r"\[doctest\] test cases:\s+2\s+\|\s+2 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
+            if not re.search(r"\[doctest\] test cases:\s+6\s+\|\s+6 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
                 raise ValueError("real objective reader cases were skipped or omitted")
-            print("Widget graders: chooser frozen placements/provenance/player, marker edits and all 26 objective scalars PASS; render capture awaits smoke host", flush=True)
+            print("Widget graders: chooser/marker, 26 objective scalars, five parent and 20 four-list/flag operations PASS; six real FIT/text reader cases executed; species dispatch remains source-derived; render capture awaits smoke host", flush=True)
     if len(asan_cases) != 2 or sum(asan_cases) != native_cases:
         raise ValueError("ASan split did not cover the complete normal document suite")
     print(f"ASan coverage: {' + '.join(map(str, asan_cases))} = {native_cases} native cases; no cases omitted", flush=True)

@@ -528,7 +528,8 @@ class MissionMap {
 
 	public:
 
-		MapCellPtr			map;
+		// The cell grid, height x width, row-major; empty until init(h, w). Saved and loaded as one packet of raw cells.
+		std::vector<MapCell>	map;
         // those are read from packet file so cannot be longs on 64bit by definition
 		int32_t             height;
 		int32_t             width;
@@ -545,7 +546,7 @@ class MissionMap {
 		// mine field is non-zero. Maintained incrementally by setMine() and rebuilt
 		// from cell contents at the end of init(PacketFile*). Lets the per-frame
 		// terrain quad loop skip the inner cell scan for mine-free tiles.
-		unsigned char*      tileMineCount;
+		std::vector<unsigned char>	tileMineCount;
 		long                tileMineCountWidth;  // = width / MAPCELL_DIM (cached)
 
 	public:
@@ -554,7 +555,7 @@ class MissionMap {
 		void operator delete (void* us);
 
 		void init (void) {
-			map = NULL;
+			map.clear();
 			height = 0;
 			width = 0;
             planet = 0;
@@ -562,7 +563,7 @@ class MissionMap {
 			numPreservedCells = 0;
 			placeMoversCallback = NULL;
 			numDebugCells = 0;
-			tileMineCount = NULL;
+			tileMineCount.clear();
 			tileMineCountWidth = 0;
 		}
 		
@@ -682,7 +683,7 @@ class MissionMap {
 			// Maintain per-tile mine count: only cells transitioning between zero
 			// and non-zero affect the count. Updates between two non-zero values
 			// (1 <-> 2 = mine <-> blown) leave the count unchanged.
-			if (tileMineCount && ((oldMine == 0) != (mine == 0))) {
+			if (!tileMineCount.empty() && ((oldMine == 0) != (mine == 0))) {
 				const long tileIdx = (row / MAPCELL_DIM) * tileMineCountWidth + (col / MAPCELL_DIM);
 				if (mine == 0) --tileMineCount[tileIdx];
 				else           ++tileMineCount[tileIdx];
@@ -700,7 +701,7 @@ class MissionMap {
 		// Pre-rebuild (during init transient), returns true conservatively so callers
 		// fall back to the per-cell scan.
 		bool tileHasMines (long tileR, long tileC) const {
-			if (!tileMineCount) return true;
+			if (tileMineCount.empty()) return true;
 			if (tileR < 0 || tileC < 0) return false;
 			if (tileR >= (height / MAPCELL_DIM) || tileC >= tileMineCountWidth) return false;
 			return tileMineCount[tileR * tileMineCountWidth + tileC] > 0;
@@ -1567,10 +1568,11 @@ class MoveMap {
 		int				    maxCol;
 		int				    maxWidth;
 		int				    maxHeight;
-		MoveMapNodePtr		map;
-		int*				mapRowStartTable;
-		int*				mapRowTable;
-		int*				mapColTable;
+		// The solve grid (maxWidth x maxHeight cells) and its index tables, sized by init(h, w) and empty until then; empty = not allocated.
+		std::vector<MoveMapNode>	map;
+		std::vector<int>			mapRowStartTable;	// first cell index of each row
+		std::vector<int>			mapRowTable;		// row of each cell index
+		std::vector<int>			mapColTable;		// column of each cell index
 		int				    moveLevel;
 		Stuff::Vector3D		start;
 		int				    startR;
@@ -1640,8 +1642,10 @@ class MoveMap {
 			maxRow = 0;
 			minCol = 0;
 			maxCol = 0;
-			map = NULL;
-			mapRowTable = NULL;
+			map.clear();
+			mapRowStartTable.clear();
+			mapRowTable.clear();
+			mapColTable.clear();
 			moveLevel = 0;
 			startR = -1;
 			startC = -1;

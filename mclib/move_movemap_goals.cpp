@@ -19,19 +19,16 @@ void MoveMap::init (long maxW, long maxH) {
 
 	width = maxWidth = maxW;
 	height = maxHeight = maxH;
-	long mapByteSize = sizeof(MoveMapNode) * maxWidth * maxHeight;
-	map = (MoveMapNodePtr)systemHeap->Malloc(mapByteSize);
-	gosASSERT(map != nullptr);
+	// A second init on a sized map replaces the grid (it does not leak the first one).
+	const size_t cellCount = static_cast<size_t>(maxWidth) * static_cast<size_t>(maxHeight);
+	map.assign(cellCount, MoveMapNode{});
 
-	mapRowStartTable = (int*)systemHeap->Malloc(maxHeight * sizeof(int));
-	gosASSERT(mapRowStartTable != nullptr);
+	mapRowStartTable.assign(static_cast<size_t>(maxHeight), 0);
 	for (long r = 0; r < maxHeight; r++)
 		mapRowStartTable[r] = r * maxWidth;
 
-	mapRowTable = (int*)systemHeap->Malloc(maxHeight * maxWidth * sizeof(int));
-	gosASSERT(mapRowTable != nullptr);
-	mapColTable = (int*)systemHeap->Malloc(maxHeight * maxWidth * sizeof(int));
-	gosASSERT(mapColTable != nullptr);
+	mapRowTable.assign(cellCount, 0);
+	mapColTable.assign(cellCount, 0);
 	for (int r = 0; r < maxHeight; r++)
 		for (int c = 0; c < maxWidth; c++) {
 			int index = mapRowStartTable[r] + c;
@@ -335,7 +332,7 @@ long MoveMap::setUp (long mapULr,
 	// used as the current dimensions...
 	if ((params & MOVEPARAM_JUMP) && (jumpCellCost > 0))
 		jumpCellCost = clearCellCost;
-	if (!map) {
+	if (map.empty()) {
 		init(mapHeight, mapWidth);
 		setClearCost(clearCellCost);
 		setJumpCost(jumpCellCost, offsets);
@@ -481,7 +478,7 @@ long MoveMap::setUp (long level,
 
 	ZoneScopedN("GameLogic.PathManager.CalcPath2");
 
-	if (!map)
+	if (map.empty())
 		init(SECTOR_DIM*2, SECTOR_DIM*2);
 	else {
 		width = SECTOR_DIM*2;

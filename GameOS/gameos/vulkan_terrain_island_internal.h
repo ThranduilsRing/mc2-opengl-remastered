@@ -311,7 +311,8 @@ struct OvlTex {
     mc2vk::OwnedImage img;
     mc2vk::OwnedImageView view;   // declared after the image: released first
     VkDescriptorSet set = VK_NULL_HANDLE;   // freed with the pool
-    uint32_t glTex = 0;              // GL texture name this import came from
+    // The texels this import came from; a reloaded texture publishes a new vector, so identity says when to re-import.
+    std::shared_ptr<const std::vector<uint8_t>> source;
 };
 
 struct OvlPending {

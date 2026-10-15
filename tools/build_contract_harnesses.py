@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Build the shared doctest corpus and run the retained Python contract suites.
+"""Build/run doctest, the engine-linked order seam and Python contracts.
 
-Native contracts live in tests/unit/mc2_tests. --only selects their doctest
-case prefixes. --unit remains compatible with callers; --unit-only and --asan
-omit the Python suites. RelWithDebInfo preserves the release fatal-path proof.
+--only/--asan restrict runs to standalone doctests; --unit-only skips Python.
+--unit is compatibility syntax. RelWithDebInfo retains release fatal-path checks.
 """
 import argparse
 import os
@@ -111,6 +110,44 @@ def run_python_harnesses():
     return passed
 
 
+def build_and_run_order_seam(run):
+    """Separate linkage avoids the standalone TacticalOrder stubs."""
+    from bootstrap_worktree_build import cache_args
+    bdir = REPO_ROOT / "build64-order-seam"
+    commands = [
+        [cmake_exe(), "-S", str(REPO_ROOT), "-B", str(bdir), "-A", "x64", *cache_args(str(REPO_ROOT))],
+        [cmake_exe(), "--build", str(bdir), "--config", "RelWithDebInfo", "--target", "mc2_authored_order_seam"],
+    ]
+    for command in commands:
+        result = subprocess.run(command, cwd=REPO_ROOT, timeout=900, capture_output=True,
+                                text=True, **console_child.child_kwargs(redirected=True))
+        if result.returncode:
+            print(result.stdout + result.stderr)
+            return False
+    if not run:
+        return True
+    exe = bdir / "RelWithDebInfo/mc2_authored_order_seam.exe"
+    command = [str(exe), "--no-breaks"]
+    env = dict(os.environ)
+    env.pop("MC2_SEAM_DISCONNECT_ADAPTER", None)
+    positive = subprocess.run(command, cwd=REPO_ROOT, env=env, timeout=60,
+                              **console_child.child_kwargs())
+    if positive.returncode:
+        return False
+    env["MC2_SEAM_DISCONNECT_ADAPTER"] = "1"
+    negative = subprocess.run(command + ["--test-case=AuthoredOrderProduction/parsed patrol and traverse reach real general setter"],
+                              cwd=REPO_ROOT, env=env, capture_output=True,
+                              text=True, timeout=60,
+                              **console_child.child_kwargs(redirected=True))
+    # Only an installation assertion failure proves adapter dependence; a crash cannot.
+    controlled = negative.returncode == 1 and "CHECK( installed )" in negative.stdout
+    print(f"  [{'PASS' if controlled else 'FAIL'}] adapter-disconnected negative control "
+          f"(rc={negative.returncode}, positive installation assertion failed={controlled})")
+    if not controlled:
+        print(negative.stdout + negative.stderr)
+    return controlled
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build and optionally run doctest and Python contracts.")
     ap.add_argument("--run", action="store_true")
@@ -126,6 +163,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.asan and bd.is_clang(args.preset):
         ap.error("--asan runtime deployment is currently MSVC-only")
+    os.environ.setdefault("_MSPDBSRV_ENDPOINT_", f"sol-s4b2-contracts-{os.getpid()}")
     if args.only:
         unknown = set(args.only) - set(REGISTERED_HARNESSES)
         if unknown:
@@ -136,6 +174,15 @@ def main(argv=None):
     print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
     if not ok:
         return 1
+    if not (args.asan or args.only):
+        try:
+            ok = build_and_run_order_seam(args.run)
+        except subprocess.TimeoutExpired as error:
+            print(f"  [TIMEOUT] production seam ({error.timeout}s), not a compiler failure")
+            return 124
+        print(f"  [{'PASS' if ok else 'FAIL'}] mc2_authored_order_seam")
+        if not ok:
+            return 1
     if args.run and not (args.unit_only or args.asan or args.only):
         ok = run_python_harnesses()
     return 0 if ok else 1

@@ -170,7 +170,7 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
             std::get<std::int64_t>(field->value[0]) : fallback;
     };
     for (const auto& entity : document_.entities()) if (entity.section) {
-        const auto& section = *document_.section(*entity.section);
+        const auto& section = *root(*syntax, document_.section(*entity.section)->name);
         const auto squad = integer(section, "SquadNum", 0);
         if (squad < 0 || squad >= std::numeric_limits<std::uint32_t>::max()) return reject("invalid_squad");
         nextSquad = std::max(nextSquad, static_cast<std::uint64_t>(squad) + 1);
@@ -184,10 +184,10 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
         }
     }
     const auto squad = unit.squad.value_or(static_cast<std::uint32_t>(nextSquad));
-    // Empty alternative cursors retain the legacy export value; existing authored references stay untouched.
+    // Empty alternative cursors use legacy defaults; authored references stay exact.
     std::int64_t alternativeStart = part - static_cast<std::int64_t>(alternatives.size()) + 2;
     for (const auto& entity : document_.entities()) if (entity.section && !alternatives.contains(*entity.exportedPart)) {
-        const auto& section = *document_.section(*entity.section);
+        const auto& section = *root(*syntax, document_.section(*entity.section)->name);
         const auto player = integer(section, "CommanderID", 0), previousSquad = integer(section, "SquadNum", 0);
         if (player < unit.commander || (player == unit.commander && previousSquad <= squad))
             alternativeStart += 1 + integer(section, "NumAlternatives", 0);
@@ -221,10 +221,11 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
     body += "f Rotation = " + real(unit.transform.rotation) + nl;
     edits.push_back({{syntax->endMarker, syntax->endMarker}, std::move(body)});
     auto ids = identities(document_);
-    const EntityId id{document_.nextEntityId_++};
+    const EntityId id{document_.nextEntityId_};
     ids.push_back(id);
     auto applied = commitStructure(edited(std::move(fit), std::move(edits)), document_.placements_, ids, "Place unit");
     if (!applied) return std::unexpected(applied.error());
+    ++document_.nextEntityId_;
     return id;
 }
 
@@ -280,6 +281,20 @@ std::expected<void, LoadError> CommandHistory::transform(EntityId id, const Tran
         if (!absent.empty()) edits.push_back({{section->syntax.end, section->syntax.end}, nl + absent});
         fit = edited(std::move(fit), std::move(edits));
     }
+    auto syntax = decodeFit(fit);
+    if (!syntax) return std::unexpected(syntax.error());
+    std::vector<Edit> references;
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries) for (const auto& entry : list) {
+        if (entry.reference.status != ReferenceStatus::Resolved || entry.reference.target != id) continue;
+        const auto oldIndex = static_cast<std::size_t>(document_.section(entry.section) - document_.syntax().sections.data());
+        const auto& section = syntax->sections[oldIndex];
+        for (std::size_t i = 0; i < 2; ++i) {
+            if (transform.position[i] == entity->position[i]) continue;
+            const auto key = i == 0 ? "PositionX" : "PositionY";
+            references.push_back({find(*syntax, section, key)->syntax, real(transform.position[i])});
+        }
+    }
+    fit = edited(std::move(fit), std::move(references));
     return commitStructure(std::move(fit), std::move(placements), identities(document_), "Transform entity");
 }
 
@@ -287,6 +302,11 @@ std::expected<void, LoadError> CommandHistory::erase(EntityId id)
 {
     const auto* entity = document_.entity(id);
     if (!entity) return reject("missing_entity");
+    for (const auto& objective : document_.objectives()) for (const auto& list : objective.entries) for (const auto& entry : list)
+        if (entry.reference.status == ReferenceStatus::Resolved && entry.reference.target == id) {
+            if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=delete reason=objective_reference");
+            return reject("objective_reference");
+        }
     const auto marker = document_.markerReference(id);
     if (!marker) {
         if (log_) log_("[EDITOR_ENTITY_REJECT v1] action=delete reason=" + marker.error().reason);
@@ -381,7 +401,7 @@ std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_
     const auto* original = document_.section(id);
     if (!original) return reject("missing_section");
     if (key != "compatibilityMode")
-        if (const auto* old = document_.find(id, key); old && old->value == Value{value}) return {};
+        if (const auto* old = document_.find(id, key); old && old->prefix == prefix && old->value == Value{value}) return {};
     auto fit = document_.fitBytes();
     auto syntax = decodeFit(fit);
     if (!syntax) return std::unexpected(syntax.error());
@@ -392,6 +412,14 @@ std::expected<void, LoadError> CommandHistory::setScalar(NodeId id, std::string_
         std::format("{:.17g}", std::get<double>(value)) : formatValue(spelling, Value{std::move(value)});
     if (const auto* field = find(*syntax, section, key)) {
         std::vector<Edit> edits{{field->syntax, text}};
+        if (!section.parent && field->prefix != prefix) {
+            auto end = fit.rfind(field->name, field->syntax.begin);
+            auto begin = fit.find_last_of("\r\n;{}", end);
+            begin = begin == fit.npos ? 0 : begin + 1;
+            while (begin < end && (fit[begin] == ' ' || fit[begin] == '\t')) ++begin;
+            while (end && (fit[end - 1] == ' ' || fit[end - 1] == '\t')) --end;
+            edits.push_back({{begin, end}, std::string(prefix)});
+        }
         if (section.parent && key == "compatibilityMode") {
             // The game skips Brain's opening line and treats sub-block lines separately.
             // Only this declaration gains line boundaries; other authored bytes survive.

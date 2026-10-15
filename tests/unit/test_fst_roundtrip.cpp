@@ -186,4 +186,45 @@ TEST_CASE("fileExists reports loose (1) vs FST (2) tiers")
 	remove(fstPath.c_str());
 }
 
+// A corrupt archive entry that claims an image over the 1 GiB cap is refused before any allocation, and the entry is released so
+// the archive does not keep a handle open for a file that never opened.
+TEST_CASE("an FST entry whose uncompressed size is implausible is rejected and released")
+{
+	const std::string fstPath = scratchPath("archive3.fst");
+	authorFst(fstPath, kFstEntryName, kFstPayload, (int)strlen(kFstPayload));
+	remove(kFstEntryName);
+
+	// realSize of the first entry: after the 4-byte version and 4-byte count, at offset 8 inside FILEENTRY.
+	const DWORD lyingSize = 0x50000000u;
+	{
+		FILE *fp = fopen(fstPath.c_str(), "r+b");
+		REQUIRE(fp != nullptr);
+		REQUIRE(fseek(fp, FASTFILE_ENTRY_TABLE_START + 8, SEEK_SET) == 0);
+		REQUIRE(fwrite(&lyingSize, 1, sizeof(lyingSize), fp) == sizeof(lyingSize));
+		fclose(fp);
+	}
+
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+
+		long h = -1;
+		FastFile *ff = FastFileFind(kFstEntryName, h);
+		REQUIRE(ff != nullptr);
+		CHECK(ff->sizeFast(h) == (long)lyingSize);
+		ff->closeFast(h);
+
+		File f;
+		CHECK(f.open(kFstEntryName) == FILE_NOT_OPEN);
+		CHECK_FALSE(f.isOpen());
+		CHECK(f.getFilename() == nullptr);
+		// Whatever slot File::open took, no slot of the archive is left in use.
+		REQUIRE(ff->getNumFiles() > 0);
+		for (long slot = 0; slot < ff->getNumFiles(); ++slot)
+			CHECK(ff->sizeFast(slot) == -1);
+	}
+
+	remove(fstPath.c_str());
+}
+
 } // TEST_SUITE("FstRoundtrip")

@@ -37,6 +37,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from parent_watchdog import ParentWatch  # noqa: E402
 # VERIFY-INTEGRITY-3: do_click/do_rclick/do_move genuinely NEED to move the
 # pointer -- that is this tool's whole job -- but they previously left it
 # wherever the last scripted action dropped it, with no save/restore and no
@@ -375,8 +376,11 @@ def record_script(filepath: str):
     tracked_keys = sorted(VK_NAMES.keys())
     key_state = {vk: False for vk in tracked_keys}
     lines: list[str] = []
+    parent = ParentWatch()
 
     while True:
+        if parent.gone():  # the shell that started the recording was killed: save what we have instead of polling forever
+            break
         if vk_pressed(0x78):  # F9
             while vk_pressed(0x78):
                 time.sleep(0.05)

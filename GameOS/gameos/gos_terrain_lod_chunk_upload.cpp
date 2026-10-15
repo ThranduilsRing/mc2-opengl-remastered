@@ -3,6 +3,7 @@
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
+#include "terrain_field_store.h"
 
 
 // ---------------------------------------------------------------------------
@@ -18,25 +19,21 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
         fflush(stderr);
         return;
     }
-    if (!elevations || mapSide <= 0)
+    // The store keeps the CPU copy the VK terrain island draws from; GL uploads the same bytes.
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store || !store->setHeight(elevations, mapSide))
         return;
 
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
 
     s_heightSsbo.bind();
-    s_heightSsbo.bufferData((intptr_t)bytes, elevations,
+    s_heightSsbo.bufferData((intptr_t)bytes, store->height().data(),
                             RenderCore::GpuBufferUsage::DynamicDraw);
     s_heightSsbo.bindBase(TERRAIN_HEIGHT_SSBO_BINDING);
     s_heightSsbo.unbind();
 
     s_mapSide = mapSide;
     s_halfMap = (float)mapSide * 128.0f * 0.5f;
-
-#ifdef MC2_VULKAN_ISLAND
-    // VK-P10 TERRAIN TIER-1: the height field changed -> bump the snapshot key so the
-    // VK terrain island re-copies it (glGetBufferSubData map-load) on the next frame.
-    ++g_terrainHeightVersion;
-#endif
 
     // REGISTRY-TERRAIN-SSBO-1: register the live height SSBO (observe-only metadata;
     // never read by the draw path). Registered here (not at Init) because the byte
@@ -64,7 +61,9 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int V,
                                                 const float* mipMaxes, int mipFloats)
 {
-    if (!visualHeights || V <= 0)
+    if (!mipMaxes) mipFloats = 0;
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store || !store->setVisualHeight(visualHeights, V, mipMaxes, mipFloats))
         return;
     if (!s_visualHeightSsbo.created())
     {
@@ -78,25 +77,14 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     // TERRAIN-LOD-GEOMORPH-1: mips (when shipped) are appended to the SAME
     // buffer after the fine bake — shader offsets are computable from
     // u_visualSide/u_mapSide alone, no extra binding slot consumed.
-    if (!mipMaxes) mipFloats = 0;
-    GLsizeiptr fineBytes = (GLsizeiptr)V * (GLsizeiptr)V * (GLsizeiptr)sizeof(float);
-    GLsizeiptr mipBytes  = (GLsizeiptr)mipFloats * (GLsizeiptr)sizeof(float);
-    GLsizeiptr bytes     = fineBytes + mipBytes;
+    const std::vector<float>& field = store->visualHeight();   // fine bake then mip maxes
+    GLsizeiptr bytes = (GLsizeiptr)field.size() * (GLsizeiptr)sizeof(float);
     s_visualHeightSsbo.bind();
-    s_visualHeightSsbo.bufferData((intptr_t)bytes, nullptr,
+    s_visualHeightSsbo.bufferData((intptr_t)bytes, field.data(),
                                   RenderCore::GpuBufferUsage::StaticDraw);
-    s_visualHeightSsbo.bufferSubData(0, (intptr_t)fineBytes, visualHeights);
-    if (mipBytes > 0)
-        s_visualHeightSsbo.bufferSubData((intptr_t)fineBytes, (intptr_t)mipBytes, mipMaxes);
     s_visualHeightSsbo.unbind();
     s_visualSide      = V;   // remembered for the displaced draw (u_visualSide)
     s_visualMipFloats = (int)mipFloats;
-
-#ifdef MC2_VULKAN_ISLAND
-    // VK-TERRAIN-VISUALDISPLACE-FAR-1: the visual bake changed -> bump the snapshot key
-    // so the VK terrain island re-copies it (mission-load cadence, mirrors the height key).
-    ++g_terrainVisualHeightVersion;
-#endif
 
     // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: register the live visual-height SSBO
     // (observe-only metadata; never read by the draw path). Reached here only when
@@ -546,20 +534,17 @@ bool gos_TerrainShorelineLegacySuppressOn()
 // gos_terrain_indirect after the cement catalog atlas is ready (PopulateRecipeCementWords).
 void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int count, int mapSide)
 {
-    if (!s_cementSsbo.created() || !words || count <= 0 || mapSide <= 0)
+    if (!s_cementSsbo.created() || mapSide <= 0)
+        return;
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store || !store->setCementWords(words, count))
         return;
     GLsizeiptr bytes = (GLsizeiptr)count * sizeof(unsigned int);
     s_cementSsbo.bind();
-    s_cementSsbo.bufferData((intptr_t)bytes, words,
+    s_cementSsbo.bufferData((intptr_t)bytes, store->cementWords().data(),
                             RenderCore::GpuBufferUsage::DynamicDraw);
     s_cementSsbo.bindBase(TERRAIN_CEMENT_SSBO_BINDING);
     s_cementSsbo.unbind();
-
-#ifdef MC2_VULKAN_ISLAND
-    // VK-P10 CEMENT/ROAD sub-slice: the cement-word field changed -> bump the snapshot
-    // key so the VK terrain island re-copies it (glGetBufferSubData map-load) next frame.
-    ++g_terrainCementVersion;
-#endif
 
     // TERRAIN-LODCHUNK-SSBO-OWNER-1: register the live cement SSBO. Conditional by
     // construction -- this upload only runs when cement words actually exist, so
@@ -579,7 +564,11 @@ void gos_TerrainLodChunk_UploadHeightPatch(
     int quadCountX, int quadCountY,
     int mapSide)
 {
-    if (!s_heightSsbo.created() || !rowData || mapSide <= 0)
+    if (!s_heightSsbo.created())
+        return;
+    // The store bounds-checks the block against the map and changes the version the VK island re-copies on.
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store || !store->patchHeight(rowData, originX, originY, quadCountX, quadCountY, mapSide))
         return;
 
     s_heightSsbo.bind();

@@ -51,6 +51,10 @@
   "scripts/tests/test_gpu_abi_gen.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_harness_desktop_safety.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_host_lease.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_host_lease_batch.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_host_load.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_parent_watchdog.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_ref_passthrough.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_include_guards_unique.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_lane_names.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_nofocus_env.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
@@ -205,6 +209,7 @@
   "tools/test_git_util.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_handoff_append.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_kill_build_tree.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/test_journal_comment_ratchet.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_lane_merge.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_identity.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_tag_census.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
@@ -282,5 +287,6 @@
   "scripts/tests/test_tracy_capture_compare.py": "Pytest-discovered module through the scripts_tests board row.",
   "tools/vfx_oracle/compare_frozen_snapshots.py": "VFX parity oracle diagnostic, run by hand from the Sol G lane (DIAGNOSTIC status, no board row yet).",
   "tools/vfx_oracle/test_compare_combat_traces.py": "Pytest-discovered module through the scripts_tests board row.",
-  "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row."
+  "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/visual_verify/test_bless_backend.py": "Pytest-discovered module through the scripts_tests board row."
 }

@@ -323,6 +323,19 @@ def _config_refs(content):
     return refs
 
 
+def driven_target_sources(cmake: str, runner: str) -> set[str]:
+    """Sources explicitly registered to executables the runner builds and runs."""
+    cmake = re.sub(r'#[^\n]*', '', cmake)
+    runner = "\n".join(_remove_comment(line, ".py") for line in runner.splitlines())
+    covered = set()
+    for target, body in re.findall(r'\badd_executable\s*\(\s*(\w+)\b([^)]*)\)', cmake):
+        built = re.search(r'[\'"]--target[\'"]\s*,\s*[\'"]' + re.escape(target) + r'[\'"]', runner)
+        executed = re.search(r'[\'"][^\'"\n]*/' + re.escape(target) + r'\.exe[\'"]', runner)
+        if built and executed:
+            covered.update(re.findall(r'\btests/unit/(test_[\w]+\.cpp)\b', body))
+    return covered
+
+
 def build_inventory(root: Path, paths: list[str] | None = None, *, excluded=(), read_text=None) -> dict[str, Any]:
     root = Path(root).resolve()
     files = sorted(set(p.replace("\\", "/") for p in (tracked_files(root) if paths is None else paths)))

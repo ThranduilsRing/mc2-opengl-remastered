@@ -7,10 +7,6 @@ on a data name is `mc2::str::iequals`, and the one fold site that fires on stock
 remapped call-site count (381) equals the fresh deprecation census (381). Nothing needs a revert. One proof is weaker than its text says: the save
 noise set is defined by record CLASS, and at byte level the cross-build MechWarriorData difference is NOT inside the run-to-run noise (F1). The
 logistics writers and readers changed by B1.3 have no executed proof yet (F2). Read: the range's code and docs, notes sections 1-10 and 8b,
-lane1-state, both Sonnet reviews, `mc2str.h`, `objective_text.*`, `objective_flags.*`, the B1.3a/b diffs, the gui bridge, `team.cpp`, the
-tests, `analyze_dangling.py`, `estring_callsites.py`. Measured (read-only, no build or launch): byte offsets over the lane's own saves in
-`%TEMP%/b1save/{old_*,f_*,g_*,h_*}/save1.ims` through `tools/save_inspect.load`.
-
 Numbering: the lane swapped my B1.1 and B1.2 (lane B1.1 = objectives, B1.2 = texture cache) and split B1.3 by header (3a variant+mech, 3b pilot).
 This review uses the lane's numbers.
 
@@ -147,40 +143,6 @@ an ASan build turns any dangling `c_str()` on the logistics screens into a hard 
   sanctioned C-boundary parameters in `cxx17_ratchet`. With it, LG06 only ever moves down and an upward rewrite becomes a red flag again. This is
   lane 2's tool, so raise it at the next merge; it is not a B1 condition.
 - own_inventory (EString 1/1 -> 0/0 by deletion; `objective.cpp` 10 -> 8, the two deleted `delete`s), LG03/LG05/LG09 decreases, the log-tag
-  census (two new `MC2_LOG(Io, Warn)`), and the `callers.json` regeneration all match the code. None is a loosening.
-- Process note: B1.1's tier1 ran on a dirty-tree exe (the e5600b260 message says so; this breaks COMMIT -> BUILD -> DEPLOY). Later tier1 runs on
-  committed exes that contain B1.1 (06ea51611, 45f39522a) supersede it, so it needs no action. Do not repeat it.
-
-## 9. Fixes (concrete edits)
-- **F1 (medium, before B1.4's save diff)**: replace the class-level noise sentence (notes section 8 "B1.3a/b" proof and lane1-state "B1.3
-  save-diff explanation") with an offset mask. Build it as a JSON under `tests/` or `.claude/cleanup/`: per record class, the byte ranges that
-  differ between two runs of one exe, plus the vptr ranges of MechData/GroundVehicleData. The diff then reports "bytes outside the mask". Name the
-  MechWarriorData record-9 words (2192-3779, three `TacticalOrder` blocks, image-relative stale words) as a pre-existing writer defect for the
-  save-format arc, and state that MechWarriorData 0-2167 is byte-identical across builds. If the mask needs a `--mask` option in
-  `tools/save_inspect.py`, `check_conflict` first (`tools/` is lane 2's).
-- **F2 (low-medium, before B1.4b ends)**: an offline pilot-name order probe, the same as the variant probe. Take the stock pilot display names
-  from the string table and compare the sign of `CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE)` (via ctypes) against `icompare` for every
-  pair. Record the result in notes section 8 and list any pairs that move. If B1.5's mechlopedia sort is ready, run it over the encyclopedia names
-  in the same pass.
-- **F3 (low)**: add the unlisted behaviour changes to notes section 8:
-  - `CObjective::Save` and the condition/action `Save`s now write `"\r\n"` as `"\n"` (`objective_text::write`; the old code called
-    `writeIdString` raw), so the save bytes of multi-line objective text change;
-  - user-typed non-ASCII variant names no longer fold (cp1252);
-  - user-created variant names may reorder in the mechlist;
-  - `getVariant(csv, n)` with a null name now matches like `""` instead of reaching `strstr(null)`.
-- **F4 (low, with the next `objective_text` touch)**: `CBooleanArray::load` ends at the first over-long `BooleanString{i}` and silently drops
-  every later flag. Only the bad entry is malformed. Let the reader tell absent from malformed (for example `std::expected<std::string, ReadError>`)
-  and skip the malformed entry with its log line.
-- **F5 (nit)**: `logisticsvariant.cpp:178-180` `uiIconOverride[i] = up.icon.c_str()` -> `= up.icon`.
-
-## 10. B1.4: GO, with conditions
-- G1 F1's mask exists before the first B1.4 mission-save diff.
-- G2 The campaign-save round trip of section 6 (three exes plus a cross-load). If it needs a harness hook, add it in B1.4a's first commit as a
-  harness argument, not a new Feature gate (gate amnesty).
-- G3 Amendments A1-A6 go into notes 8b before code starts.
-- G4 F2 runs before B1.4b closes. It does not block B1.4a.
-- G5 For every batch: `analyze_dangling --check` over every edited TU, and the exact deprecation census at the end with remapped count = exact
-  count.
-- G6 The editor `-mission` leg of the R12 probe runs on the old editor before B1.6 starts.
-
-Owner questions: none. Every point above is decidable under the existing rulings (ASCII fold, saves may break before release, no new gates).
+## 9. Fixes and B1.4 conditions (status 2026-10-15)
+F1 (offset noise mask, `tools/save_noise_mask.json`), F2 (pilot-name order probe), F3 (unlisted behaviour changes in notes section 8), F4 (`CBooleanArray::load` skips one malformed entry) and F5 are applied; G1-G5 were met in B1.4 (notes section 8).
+Still open: **G6** the editor `-mission` leg of the R12 probe runs on the old editor before B1.6 starts.

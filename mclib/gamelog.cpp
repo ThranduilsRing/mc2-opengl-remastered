@@ -152,8 +152,7 @@ void GameLog::setup (void) {
 		files[i]->init();
 		files[i]->handle = i;
 		files[i]->inUse = false;
-		files[i]->filePtr = new File;
-		gosASSERT(files[i]->filePtr != nullptr);
+		files[i]->filePtr = std::make_unique<File>();
 	}
 }
 
@@ -170,8 +169,7 @@ void GameLog::cleanup (void) {
 		{
 			files[i]->close();
 			files[i]->filePtr->close();
-			delete files[i]->filePtr;
-			files[i]->filePtr = nullptr;
+			files[i]->filePtr.reset();
 			delete files[i];
 			files[i] = nullptr;
 		}

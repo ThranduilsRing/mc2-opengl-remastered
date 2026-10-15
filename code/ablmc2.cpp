@@ -80,39 +80,38 @@ void ablSymbolFreeCallback (void* memBlock) {
 	AblSymbolHeap->Free(memBlock);
 }
 
+// The ABL environment holds a script file as an opaque handle (void*): ablFileCreateCB / ablFileOpenCB make it, ablFileCloseCB is the only place
+// that frees it. These three are the single owner pair; every other callback only borrows the handle for the call.
 long ablFileCreateCB (void** file, const char* fName) {
 
-	*file = new File;
-	if (*file == nullptr)
-		Fatal(0, " unable to create ABL file");
-	if (((FilePtr)*file)->create(fName) != NO_ERR) {
+	auto created = std::make_unique<File>();
+	if (created->create(fName) != NO_ERR) {
 		char s[256];
 		mc2::fmt::to_buf(s, " ABL.ablFileOpenCB: unable to create file [{}] ", mc2::fmt::safe(fName));
 		Fatal(0, s);
 	}
+	*file = created.release();
 	return(NO_ERR);
 }
 
 long ablFileOpenCB (void** file, const char* fName) {
 
-	*file = new File;
-	if (*file == nullptr)
-		Fatal(0, " unable to create ABL file");
+	auto opened = std::make_unique<File>();
 
 	//Filenames MUST be all lowercase or Hash won't find 'em!
     char* tmpstr = strdup(fName);
 	CharLower(tmpstr);
-	if (((FilePtr)*file)->open(tmpstr) != NO_ERR)
+	if (opened->open(tmpstr) != NO_ERR)
 		STOP((" unable to open ABL File %s",fName));
     free(tmpstr);
+	*file = opened.release();
 	return(NO_ERR);
 }
 
 long ablFileCloseCB (void** file) {
 
-	((FilePtr)*file)->close();
-
-	delete (FilePtr)*file;
+	std::unique_ptr<File> owned(static_cast<File*>(*file));
+	owned->close();
 	*file = nullptr;
 
 	return(0);

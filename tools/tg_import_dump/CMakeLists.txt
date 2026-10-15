@@ -66,6 +66,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/fastfile.cpp
     ${MC2_ROOT}/mclib/ffile.cpp
     ${MC2_ROOT}/mclib/packet.cpp
+    ${MC2_ROOT}/GameOS/gameos/utils/mc2log.cpp   # file.cpp / packet.cpp log malformed content through the facade
     ${MC2_ROOT}/mclib/lzdecomp.cpp
     ${MC2_ROOT}/mclib/fst_hash.cpp
     ${MC2_ROOT}/mclib/heap.cpp

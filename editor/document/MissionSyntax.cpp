@@ -1,4 +1,5 @@
 #include "MissionDocument.h"
+#include "FitNumeric.h"
 
 #include <algorithm>
 #include <charconv>
@@ -81,7 +82,7 @@ std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
     return tokens;
 }
 
-std::expected<Scalar, LoadError> scalar(const Token& token, std::string_view prefix)
+std::expected<Scalar, LoadError> scalar(const Token& token, std::string_view prefix, bool objectiveInteger = false)
 {
     const auto bad = [&] { return std::unexpected(LoadError{"value", "malformed_value", token.span.begin}); };
     if (prefix == "st") {
@@ -105,10 +106,14 @@ std::expected<Scalar, LoadError> scalar(const Token& token, std::string_view pre
         bool hex = text.starts_with("0x") || text.starts_with("0X");
         if (hex) text.remove_prefix(2);
         auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), n, hex ? 16 : 10);
+        // Decimal overflow remains preservable syntax; the objective decoder marks it read-only.
+        if (objectiveInteger && !hex && ec == std::errc::result_out_of_range && end == text.data() + text.size())
+            return Scalar{text.starts_with('-') ? std::numeric_limits<std::int64_t>::min() : std::numeric_limits<std::int64_t>::max()};
         // Unsigned FIT values also use signed decimal spellings for stored bit patterns.
         const auto maximum = prefix == "uc" ? 255LL : prefix == "c" ? 127LL : prefix == "us" ? 65535LL : prefix == "s" ? 32767LL : prefix == "ul" ? 4294967295LL : 2147483647LL;
         const auto minimum = prefix == "c" ? -128LL : prefix == "uc" ? 0LL : prefix == "s" ? -32768LL : prefix == "us" ? 0LL : -2147483648LL;
-        if (ec != std::errc{} || end != text.data() + text.size() || n < minimum || n > maximum) return bad();
+        if (ec != std::errc{} || end != text.data() + text.size() ||
+            (!objectiveInteger && (n < minimum || n > maximum))) return bad();
         return Scalar{n};
     }
     return Scalar{token.value};
@@ -225,12 +230,49 @@ private:
         prefix = identifier(prefix);
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
         Field field{NodeId{result_.fields.size() + 1}, name, prefix, {peek().span.begin, peek().span.begin}, {}, {}, opaque};
+        field.array = array;
+        bool objectiveInteger{};
+        if (result_.sections[section].kind == SectionKind::objective) {
+            for (const auto& spec : objectiveSchema()) {
+                if (identifier(spec.key) == identifier(name) && prefix != spec.prefix && spec.key != "DisplayMarker") field.opaque = true;
+                if (identifier(spec.key) == identifier(name) && prefix == spec.prefix && spec.type == 0) objectiveInteger = true;
+            }
+            objectiveInteger |= (identifier(name) == "activateflagindex" || identifier(name) == "flagindex") && prefix == "ul";
+            if ((identifier(name) == "previousobjectivemustbecomplete" && prefix != "b") ||
+                (prefix != "ul" && (identifier(name) == "activateflagindex" || identifier(name) == "numactions" ||
+                    identifier(name) == "numfailureconditions" || identifier(name) == "numfailureactions"))) field.opaque = true;
+        }
         const auto path = result_.sections[section].name + "/" + name;
         if (!fieldNames_[section].insert(identifier(name)).second) return failure("duplicate_field");
         for (std::size_t i = 0; i < count; ++i) {
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
-            auto value = scalar(peek(), prefix);
+            auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
+            if (!array && result_.sections[section].kind == SectionKind::objective &&
+                (prefix == "ul" || prefix == "l" || prefix == "f")) {
+                const auto lineStart = result_.originalBytes.rfind('\n', peek().span.begin);
+                const auto lineEnd = std::min(result_.originalBytes.find_first_of("\r\n", peek().span.begin),
+                    (lineStart == std::string::npos ? 0 : lineStart + 1) + 254);
+                auto wire = result_.originalBytes.substr(peek().span.begin, lineEnd - peek().span.begin);
+                if (value && prefix != "f" && wire.find("0x") == wire.npos && wire.find("0X") == wire.npos)
+                    if (const auto* authored = std::get_if<std::int64_t>(&*value); authored &&
+                        (*authored < -2147483648LL || *authored > 2147483647LL))
+                        field.warning = "outside signed 32-bit range; the game reader overflows or wraps this value";
+                if (prefix == "f") value = Scalar{static_cast<double>(FitNumeric::textToFloat(wire.data()))};
+                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(FitNumeric::textToLong(wire.data()))};
+                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(FitNumeric::textToULong(wire.data())))};
+                if (prefix == "f" && !std::isfinite(std::get<double>(*value)))
+                    return std::unexpected(LoadError{path, "malformed_value", peek().span.begin});
+            }
+            if (!value && result_.sections[section].kind == SectionKind::objective &&
+                (identifier(name) == "positionx" || identifier(name) == "positiony" ||
+                    identifier(name) == "moverwid" || identifier(name) == "buildingwid" ||
+                    identifier(name) == "flagid" || identifier(name) == "flagindex" || identifier(name) == "value" ||
+                    identifier(name).ends_with("speciesstring"))) {
+                // Unreadable reader inputs remain visible, byte-exact syntax.
+                field.opaque = true;
+                value = Scalar{peek().value};
+            }
             if (!value) { auto err = value.error(); err.field = path; return std::unexpected(std::move(err)); }
             field.value.push_back(std::move(*value));
             field.syntax.end = peek().span.end;
@@ -240,6 +282,15 @@ private:
         }
         if (peek().kind != TokenKind::newline && peek().kind != TokenKind::semi && peek().kind != TokenKind::closeBrace && peek().kind != TokenKind::end)
             return failure("trailing_value_garbage");
+        if (!array && result_.sections[section].kind == SectionKind::objective && (prefix == "ul" || prefix == "l")) {
+            const auto lineEnd = result_.originalBytes.find_first_of("\r\n", field.syntax.end);
+            const auto tail = std::string_view(result_.originalBytes).substr(field.syntax.end, lineEnd - field.syntax.end);
+            // A hex-bearing comment is numeric input to FIT; replacing the value must remove it too.
+            if (tail.find("0x") != tail.npos) {
+                field.syntax.end += tail.size();
+                field.warning = "numeric comment consumed by game; rewriting value removes comment";
+            }
+        }
         field.original = field.value;
         result_.sections[section].fields.push_back(field.id);
         result_.fields.push_back(std::move(field));

@@ -70,9 +70,12 @@ def disabled_counts(text):
 
 def tier_problems(sources, cmakes, runners, pins=(6, 1)):
     cmakes = {path: re.sub(r'#[^\n]*', '', text) for path, text in cmakes.items()}
+    engine_sources = callers.driven_target_sources(cmakes.get("CMakeLists.txt", ""), runners)
     issues = [f"orphan test source: {name}" for name in sources
-              if name not in cmakes["tests/unit/CMakeLists.txt"]]
-    for text in cmakes.values():
+              if name not in cmakes["tests/unit/CMakeLists.txt"] and name not in engine_sources]
+    for path, text in cmakes.items():
+        if path == "CMakeLists.txt":
+            continue
         targets = re.findall(r'\badd_executable\s*\(\s*([\w]+)', text)
         targets += re.findall(r'\badd_test\s*\(\s*NAME\s+([\w]+)', text)
         for target in targets:
@@ -110,7 +113,7 @@ def test_contract_and_test_tier_coverage():
     issues = coverage_problems(checks, inventory, entries(read("scripts/manual-checks.allowlist"), ":"),
                                read("scripts/check-contracts.sh"), harnesses, registered,
                                entries(read("scripts/unregistered-harness-debt.txt"), "#"), tracked)
-    cmakes = {path: read(path) for path in ("tests/unit/CMakeLists.txt",
+    cmakes = {path: read(path) for path in ("CMakeLists.txt", "tests/unit/CMakeLists.txt",
               "tests/model_override/CMakeLists.txt", "tests/static_natural_skip/CMakeLists.txt")}
     sources = {path.name: path.read_text(encoding="utf-8")
                for path in (ROOT / "tests/unit").glob("test_*.cpp")}
@@ -163,6 +166,23 @@ def test_orphan_source_and_undriven_target_fail():
     issues = tier_problems({"test_new.cpp": "TEST_CASE(\"x\") {}"}, cmakes, "", pins=(0, 0))
     assert "orphan test source: test_new.cpp" in issues
     assert "undriven test target: lost" in issues
+
+
+def test_root_seam_sources_require_a_built_and_run_target():
+    sources = {"test_authored_order_seam.cpp": "", "test_authored_movement_fixture.cpp": ""}
+    cmakes = {
+        "tests/unit/CMakeLists.txt": "",
+        "CMakeLists.txt": """add_executable(engine engine.cpp)
+            add_executable(order_seam EXCLUDE_FROM_ALL ${engine_sources}
+                tests/unit/test_authored_order_seam.cpp
+                tests/unit/test_authored_movement_fixture.cpp)""",
+    }
+    build = '[cmake, "--build", bdir, "--target", "order_seam"]'
+    run = 'exe = bdir / "RelWithDebInfo/order_seam.exe"'
+    assert tier_problems(sources, cmakes, build + "\n" + run, pins=(0, 0)) == []
+    for runners in (build, run, '# "order_seam"'):
+        issues = tier_problems(sources, cmakes, runners, pins=(0, 0))
+        assert all(f"orphan test source: {name}" in issues for name in sources)
 
 
 def test_disabled_case_debt_is_two_way():
