@@ -84,6 +84,7 @@ void gosPostProcess::destroy()
         glDeleteTextures(1, &hdriTex_);
         hdriTex_ = 0;
     }
+    hdriCpu_.reset();
     if (hdriDummyVao_) {
         glDeleteVertexArrays(1, &hdriDummyVao_);
         hdriDummyVao_ = 0;

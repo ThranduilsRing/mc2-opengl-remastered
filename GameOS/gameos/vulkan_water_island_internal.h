@@ -23,6 +23,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_hdri_source.h"
 #include "vulkan_context.h"
 #include "gos_terrain_water_stream.h"
 
@@ -168,7 +169,7 @@ struct WaterIsland : mc2vk::IslandState {
     // same semantics GL uses when isHdriReady()==false).
     bool          hdriRealImported = false;   // real GL HDRI bytes present (not dummy)
     bool          hdriAttempted    = false;   // import tried once (success or fail)
-    unsigned int  hdriGlTexId      = 0;       // GL tex id the import came from
+    uint64_t      hdriGeneration   = 0;       // the CPU HDRI load generation the import came from
 
     // VK-PARITY-WATER-SHORE-1: copy-once imports of the GL water-shore textures
     // (binding 3 = R32F hi-res visual height, binding 4 = RGBA8 shoreline mask).
