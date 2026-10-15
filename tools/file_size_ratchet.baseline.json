@@ -18,8 +18,8 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2332,
   "GameOS/gameos/gpu_cull_compute.cpp": 1510,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1826,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1537,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1825,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1526,
   "GameOS/include/gameos.hpp": 3753,
   "RenderCore/RendererFeatureRegistry.h": 1741,
   "code/artlry.cpp": 1818,
@@ -55,14 +55,14 @@
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1833,
+  "mclib/move.h": 1837,
   "mclib/render_contract.cpp": 1530,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1777,
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "0597f71e5",
+ "head": "29a2c89e6",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -228,11 +228,11 @@
   },
   {
    "file": "mclib/move.h",
-   "lines": 1833
+   "lines": 1837
   },
   {
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1826
+   "lines": 1825
   },
   {
    "file": "code/artlry.cpp",

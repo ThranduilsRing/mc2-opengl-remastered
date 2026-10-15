@@ -55,7 +55,7 @@
    "LG06": 497,
    "LG07": 0,
    "LG08": 257,
-   "LG09": 1973,
+   "LG09": 1975,
    "LG10": 39,
    "LG11": 102,
    "LG12a": 95,
@@ -185,7 +185,7 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 422,
+   "LG01": 416,
    "LG02": 280,
    "LG03": 1077,
    "LG04": 15,
@@ -193,7 +193,7 @@
    "LG06": 674,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2126,
+   "LG09": 2115,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 210,
@@ -718,7 +718,7 @@
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": {
    "LG08": 3,
-   "LG09": 10
+   "LG09": 12
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
    "LG08": 15,
@@ -4278,16 +4278,16 @@
    "LG09": 14
   },
   "mclib/move.cpp": {
-   "LG01": 3,
+   "LG01": 1,
    "LG03": 24,
-   "LG09": 23,
+   "LG09": 16,
    "LG11": 1,
    "LG12a": 10,
    "LG16": 15,
    "LG17": 1
   },
   "mclib/move.h": {
-   "LG01": 26,
+   "LG01": 22,
    "LG02": 29,
    "LG05": 1,
    "LG09": 1,
@@ -4328,7 +4328,7 @@
    "LG16": 19
   },
   "mclib/move_movemap_goals.cpp": {
-   "LG09": 5,
+   "LG09": 1,
    "LG16": 6
   },
   "mclib/move_movemap_path.cpp": {
@@ -5099,7 +5099,7 @@
    "LG20": 3
   }
  },
- "head": "0597f71e5",
+ "head": "29a2c89e6",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
