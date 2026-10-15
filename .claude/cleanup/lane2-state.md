@@ -1,6 +1,44 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
-## EIGHTEENTH session (2026-10-14 ~19:00 CDT start after the host reboot, cap 5 h) -- pre-merge proofs, then VK parity rows
+## NINETEENTH session (2026-10-14 ~23:05 CDT start, cap 5 h) -- VulkanContext owner, shadows on VK (rows 17 / 20), row 14 mc2_05; nifty fast-forwarded at the start (152d6e152, nothing to regenerate)
+
+### Shadow design (written before the code)
+- WHAT casts into the VK cascades today: only the static-prop caster set (`dynShadowSet`, every registered non-building prop incl. trees, solid: no foliage alpha test), rendered by `vulkan_shadow_island_live.cpp` into the dynamic map, the near-cascade array layers and the full-map cascade. And only when three opt-in env rows (`MC2_VK_SHADOW_INTEROP`, `..._CSM_ARRAY_INTEROP`, `..._CSM_FULLMAP_INTEROP`) were set: the default umbrella frame produced NO cascade at all, so terrain (which samples the cascades in its own fragment shader) showed no prop, tree or mech shadow. Mechs never cast (their reverted attempt be08b5575 was perf-bad), buildings cast only through GL's world-fixed static map (imported once into the terrain island, so terrain does see building shadows).
+- WHAT GL's screen-shadow pass does: a full-screen multiply over the GL scene that, for object pixels only (terrain/decals shade themselves), applies the static building map and (mechs; props only with `PropShadowReceive`) the dynamic cascades. Under the umbrella it cannot write the VK-owned scene; the VK twin is `vulkan_post_screenfx_native.cpp` (opt-in `MC2_VK_POST_SCREENFX`, cascade input only, its static input retired).
+- ROUTE chosen: add casters to the VK cascades (mechs first, then foliage alpha test), make the VK producers part of the umbrella (the three rows become kill switches, default on), then make the VK screen-shadow arm the receiver for object pixels. Reason: it deletes GL later (the GL cascade passes, `flushShadow` drawers, the screen-shadow program and the static-map pass all have a VK owner afterwards), whereas porting GL's pass to write the VK scene would keep GL's cascade production as the caster source.
+- Mech casters live in their own TU (`vulkan_shadow_mech_casters.{h,cpp}`, shader `shadow_mech.vert/.frag`), lent the island's render pass and UBO, fed by `mc2_mech_island_get_shadow_feed` (the previous flush's instance / bone / run snapshots GL's `flushShadow` draws, geometry bytes + generation); staged once per frame epoch, drawn in the dynamic map, each cascade layer and the full-map pass.
+
+### Commits (this session, oldest first)
+e1ee3f402 VulkanContext released from a unique_ptr (own_inventory entry gone) | 8e2770972 mech casters | b0375f550 producers join the umbrella + one async submit per frame | b62d988be single map only when no cascades | c4af7c4f7 screen-shadow receiver on | b87a39ce2 foliage alpha-test casters | a1d368c49 helper dedupe + parity-2 review fixes + regenerated files | 1ba568ce9 checker-visible pipeline helper + fixture | this state/gaps commit. MERGEABLE TIP = the commit carrying this line (code = 1ba568ce9).
+
+### Results (every number printed by the tool named; same-exe GL oracle, 1080p, `MC2_SMOKE_FREEZE_ANIM=1`, montages viewed: `.claude/l2cap/montages/s11-*`, `s12-*`, `s13-*`)
+| Item | Before -> after |
+|---|---|
+| VK default vs GL, mc2_01 mech box 830,480 245x100 | 4.173 -> 2.466 (chain alone 2.788; screen-shadow receiver 2.466) |
+| mc2_01 full / mc2_10 204523 full | 1.348 -> 1.165 / 0.600 -> 0.583 |
+| with `SunAxisFix=TRUE,PropShadowReceive=1` both arms (the 5.289 arm of row 21) | mech box 2.505, full 1.195 / 0.584 |
+| fps mc2_01 VK, no validation, host quiet | 148 shadows off; 127 old inline-wait passes; 136-137 one submit per frame |
+| async refactor image identity | mech box 2.788 and full 1.283 vs 1.284 identical to the sync passes |
+| Row 14 mc2_05 isolation | not found, narrowed (gaps row 14): cliff changes 4.9% of pixels, dist to GL 16.5 -> 21.4, signed luma moves not additive |
+| Row 5 night | flat-light already ported (gaps row corrected); nightlow a 43.9, c 27.6, b 1.8 remain (lighting term, albedo darker in VK) |
+
+### Proof battery (exe 1ba568ce9, DEPLOY_FINGERPRINT clean)
+Battery 1 on b87a39ce2 (before the dedupe, host quiet): VK tier1 + validation 5/5 errors=0 warnings=0, 152/132/108/126/114 fps (`tests/smoke/artifacts/2026-10-15T00-49-59`); GL tier1 5/5 150/103/137/145/149 (`01-01-00`); early-exit (`MC2_VISUAL_DIFF_FRAME_N=100000`) `reason=early_exit stage=atexit` errors=0 (`01-00-49`); `MC2_VULKAN_VALIDATION=sync` mc2_10 errors=0 (`01-11-44`). Earlier chain run on 8e2770972: 5/5 errors=0 (`2026-10-14T23-53-42`..).
+Battery 2 on the final exe after the host reboot (Defender busy, fps depressed): see the table the next lines carry; failures there that are GL-only or host-timing are reruns noted below.
+
+### Open (session 19)
+1. Task: VK `ShadowCSM=FALSE` renders broken props (distance to GL 56.1 / 32.9), reproduces with `MC2_VK_SHADOW_INTEROP=0`: pre-existing, not the shadow island; GL fine. Suspect GL state left by the legacy dynamic pass read by the VK island feeds.
+2. Row 14 cause (see gaps), row 5 night apron lighting term, row 20 option oracle needs a pose with a mech shadow on a building, static building map still GL-owned (VK producer needed before GL deletion), objects do not receive it.
+3. Colour-island material arrays and hot table were never reset at a map change (a second mission in one process kept the first's textures); fixed in a1d368c49 by code reading, no two-mission run exists to prove it (BUGS row proposed in the final message).
+4. `tools/tracy_capture_compare.py` still forces `MC2_VK_SHADOW_INTEROP=0` in its vk arm (Sol/unowned): measures the no-shadow frame. Tracy pair NOT taken (host loaded, then rebooted).
+5. Scratch (mine): `scratch/` (scripts patch_*.py caps.sh rd*.py r14*.py battery*.sh, logs, blogs*/), `.claude/l2cap/s11-*` .. `s14-*` capture sets, install `saved_bookmarks/mc2_01_saved_bldg{A,B}.json`.
+
+### Lessons (19)
+- An inline `vkWaitForFences` after every submit serialised CPU and GPU: the shadow passes cost 15% fps; one submit per frame with parity fences cost 8% and rendered the identical image.
+- A helper that takes the vertex layout as a struct hides it from `check-vk-pipeline-layout.py` silently (it reported OK while a wrong format passed): mutate-and-recheck when moving pipeline code.
+- Debug views of GL and VK differ in encoding; per-channel means across them are not comparable.
+
+
 Every number below was printed by the tool named beside it in this session. Task 1 result: the tip `dafe472ad` plus the docs commit that carries this section is MERGEABLE (the code is the commit 71d2a3d29; everything after is docs).
 
 ### Commits (oldest first)
