@@ -1,5 +1,52 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTIETH session (2026-10-15 morning, cap 5 h) -- ShadowCSM=FALSE under VK, building shadows (row 17), row 20 receive arm, review nits 7/8, tracy tool; nifty NOT merged (no "merge lane2 6adecc763" in mc2-main at any checkpoint)
+
+### Commits (oldest first, after 6adecc763)
+9adb540d9 nits 7 + 8 | b1d4dc498 tracy tool vk arm | e628af503 building casters in the VK cascades (REVERTED, see row 17) | 85e2a3a21 colour-prop matrix diag under MC2_VK_SHADOW_MATRIX_DIAG | 37524b403 screen-shadow decline skips GL (REVERTED by 9a682565f: the hypothesis was wrong, it changed nothing) | 1b695abac building casters read from the registry (REVERTED) | eae98a21e TASK 1 FIX | 3b4ccb028 destroy re-read (REVERTED) | 0df0c8f6d regenerated files | 2bb4da291 ca2de0d8a 2bbada2df the three reverts | this state/gaps commit. MERGEABLE TIP = the commit carrying this line; net code vs 6adecc763 = nit 8 (mech geometry generation), nit 7 comment, the matrix diag, the terrain fix, the tracy tool.
+
+### Task 1: ShadowCSM=FALSE under VK (FIXED, eae98a21e)
+- Evidence chain: VK frame showed objects smeared over a frame with no terrain (mechs repeated along the camera path = the scene colour never cleared). `MC2_PROP_FIXB_MVP=0` and `MC2_SHADOW_ENABLE=0` did not change it (s20-csmoff-vk-nofixb / -noshadow identical), and the colour-prop matrix diag printed prop matrix == live camera matrix, so no matrix leak. The capture log had `[VK_TERRAIN_PERFRAME_READBACK v1] fn=copy_shadow_slot` then `[VK_TERRAIN_ISLAND] FATAL: a color readback fired on the co-write path - failing frame + disabling` BEFORE the shadow island initialised: on the first frame of a ShadowCSM=FALSE mission the VK single dynamic map does not exist yet, `copy_dynamic_shadow` fell back to the GL-copy (a per-frame GL depth readback), the co-write guard latched the whole terrain island off for the process.
+- Root = VK side. Fix: the single dynamic map comes only from the VK shadow island; a frame without it has no dynamic shadow on terrain. No GL state involved (the suspected legacy-pass state was not the cause).
+- Oracle (same exe GL, 1080p, FREEZE_ANIM, ShadowCSM=FALSE both arms): mc2_01 205644 56.126 -> 1.157 (mech box 0.936), mc2_10 204523 32.901 -> 0.586 (exe eae98a21e; final-exe recheck in the proof table below). Default ShadowCSM=TRUE unchanged: mc2_01 1.165, mc2_10 0.583 (s20-vk-nobldg = code identical to the tip). Montage `.claude/l2cap/montages/s20-t1-csmoff-gl-vk-after.png` (viewed; before: `s20-t1-csmoff-before-ref.png`).
+
+### Task 2 / row 17: building shadows from a VK producer (NOT closed; cascade route measured and reverted)
+- Built: the registry building set (257 on mc2_01, 477 on mc2_10) cast into every VK shadow pass. Measured against GL it moved VK AWAY on every pose (before = same code without the building set, after = with it; full frame): 205644 1.165 -> 1.204, 204523 0.583 -> 0.585, mz 2.310 -> 2.352, bldgA 1.032 -> 1.152, bldgB 0.634 -> 1.106; on the changed pixels bldgB 0.07 -> 47.41, bldgA 0.20 -> 39.01. Cause: GL drops the static map on pure concrete and keeps buildings out of its dynamic pass, so GL has no tent/hangar shadow on the apron; the cascades put one there (montage `s20-r17-bldgB-gl-vknobldg-vkbldg.png`, viewed). Reverted.
+- Design for the next session (gaps row 17 updated): a VK world-fixed static map producer (terrain full-map depth + registry buildings, built once per map and on `gos_ResetStaticLightMatrix`), sampled where GL samples its static map: terrain (concrete exemption) and the VK screen shadow's `shadowMap` binding (`hasStaticShadow`), so props and mechs receive buildings like GL. Two traps found: the static build runs before the shadow island exists (pull from `GpuStaticPropRegistry::getBuildingShadowInstances` inside the island, not a push), and destroys rebake (hook `gos_ResetStaticLightMatrix`).
+- Pose: no start position puts a mech inside a building shadow. Candidate bookmarks from `MC2_BRIDGE_MOVER_STATE=1` mover positions are in the install (`saved_bookmarks/mc2_10_saved_m{z,h,c}.json`, `mc2_01_saved_m{u,s}.json`); mz frames a Zeus beside a building shadow band (not inside). A spawn/teleport facility is needed for the required pose.
+
+### Row 20 (PropShadowReceive under VK): OPEN, the VK arm has no effect
+Same exe, option on vs off, pixels that change (>6 summed RGB): GL 1889 / 763 / 4981 / 3563 / 11990 on 205644 / 204523 / mz / bldgA / bldgB; VK 0 / 2 / 0 / 0 / 0. VK vs GL with the option on: 1.194 / 0.584 / 2.275 / 1.069 / 0.790 (off: 1.165 / 0.583 / 2.310 / 1.032 / 0.634). The VK pass gets `propShadowReceive` at the right UBO offset (404, both sides) and props write GBuffer1.a 0.25 (static-prop class), so the cause is downstream (suspect: the pass does not run its shadow draw at all, the log shows the cloud/shoreline init only; check `wantShadow` / `screenShadowEnabled_` and a RenderDoc of the multiply). No building bookmark with a mech shadow on it exists (same pose problem as row 17).
+
+### Nits 7 and 8, tracy tool
+- Nit 8: `s_vkVboNativeGen` renamed `s_vkMechGeomGen`, bumped after the IBO upload too. Nit 7: documented (the old map's albedo arrays stay until the next import because the per-parity descriptor sets still name their views; releasing them early would leave a set naming a destroyed view).
+- `tools/tracy_capture_compare.py` vk arm no longer forces `MC2_VK_SHADOW_INTEROP=0`. Tracy pair NOT taken: the host lease was held by lane 1 tier2, lane 3 smokes and the codex editor smoke nearly continuously (my first capture waited ~1 h).
+
+### Proof (final exe = tip code)
+| Evidence | Result |
+|---|---|
+| build_all_targets (`scratch/bat20.log`) | every stage built, exit 0 (on 3b4ccb028; the reverts only remove code) |
+| build_contract_harnesses --run --unit (`scratch/doctest_s20b.log`) | rc 0, doctest 3185 / 3185 passed, 2 skipped (10 failed assertions = the intended fatal_if_aborts case) |
+| VK tier1 + validation, exe 2bbada2df (`scratch/b20_vk_t1.log`) | errors=0 warnings=0 on all five; 4/5 PASS (mc2_01 110, mc2_03 82, mc2_10 68, mc2_17 116 fps); mc2_24 heartbeat_freeze_play under lane 1 / lane 3 host load, rerun NOT taken (the host lease stayed with lane 1 at session end) |
+| GL tier1, same exe (`scratch/b20_gl_t1.log`) | 5/5 PASS (79 / 94 / 143 / 146 / 141 fps) |
+| VK ShadowCSM=FALSE + validation smoke mc2_01 (`tests/smoke/artifacts/2026-10-15T10-57-16`) | errors=0 warnings=0, the frame renders, but heartbeat_freeze_play: avg 6.5 fps, p50 27 ms, p99 993 ms spikes (the previous session's same run also failed at 8 fps, with the island latched off): OPEN item 7 |
+| Oracle csmoff (exe eae98a21e, which still had the building casters) | 56.126 -> 1.157, 32.901 -> 0.586; the final-exe recapture was queued but not taken (lease); the building set changes default poses by 0.002-0.04 only |
+| Oracle default (s20-vk-nobldg = tip code) | mc2_01 1.165, mech box 2.466, mc2_10 0.583: identical to session 19 |
+| cxx17 ratchet --check | OK (24 fewer legacy sites than baseline) |
+| check-contracts (on 3b4ccb028, before the regenerations) | 115 passed, 8 failed: log_tag_census, background_launch, gated_layout_macros, script_callers regenerated in 0df0c8f6d (re-run green individually after the reverts: no further diff); container_callsites, doc_links, scripts_tests (test_editor_smoke legacy reload), tools_tests (the census test, regenerated) not this lane's or fixed by the regeneration |
+
+### BUGS rows proposed (orchestrator numbers them)
+- ShadowCSM=FALSE under VK: terrain island latched off on the first frame (GL-copy fallback = forbidden per-frame readback), scene never cleared, objects smeared; found 2026-10-15 lane 2; fix eae98a21e; proof csmoff 56.1 -> 1.16 / 32.9 -> 0.59.
+
+### Open (session 20)
+1. Row 17: VK static map producer (design above). 2. Row 20: VK receive arm inert (0 px). 3. Rows 14, 5: no lead this session (not entered). 4. Tracy pair. 5. `check-contracts` rows not this lane's: container_callsites, doc_links, scripts_tests (`test_editor_smoke` legacy reload). 7. VK ShadowCSM=FALSE runs at ~6.5 fps with 1 s spikes under validation (pre-existing; profile it: GL legacy single map + VK single map at 8192). 8. VK tier1 mc2_24 rerun and the final-exe csmoff recapture.
+6. Scratch (mine): `scratch/` (t1diag.sh movers.sh s20caps.sh battery20.sh final20.sh b20.bat vsil_keep.cpp, *.out, build_s20*.log, deploy_s20*.log, doctest_s20*.log, cc_s20.log, bat20.log, blogs20/), `.claude/l2cap/s20-*`, `s20f-*` capture sets, install `saved_bookmarks/mc2_10_saved_m{z,h,c}.json`, `mc2_01_saved_m{u,s}.json`.
+
+### Lessons (20)
+- A frozen frame that smears objects is a skipped clear, not a matrix: check the island latches (`FATAL` / `FAIL-SOFT` lines) before the matrices.
+- One fatal-guarded fallback on the first frame can latch an island off for the whole process; a fallback that is forbidden on the path should not exist on that path.
+- Parity beats physical plausibility: more shadow is a regression when GL does not draw it; measure on the changed pixels, not only the full frame.
+
 ## NINETEENTH session (2026-10-14 ~23:05 CDT start, cap 5 h) -- VulkanContext owner, shadows on VK (rows 17 / 20), row 14 mc2_05; nifty fast-forwarded at the start (152d6e152, nothing to regenerate)
 
 ### Shadow design (written before the code)

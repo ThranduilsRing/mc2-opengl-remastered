@@ -432,7 +432,7 @@ void uploadMechGeometryVbo() {
     // exists only under the VK backend (vkMechGateOn()), never in the pure-GL product.
     if (vkMechGateOn()) {
         s_vkVboNativeCopy = work;
-        ++s_vkVboNativeGen;
+        ++s_vkMechGeomGen;
     }
 #endif
 
@@ -494,6 +494,10 @@ void GpuMechBatcher::finalizeGeometry() {
     glBufferStorage(GL_ELEMENT_ARRAY_BUFFER,
                     (GLsizeiptr)(s_stagingIbo.size() * sizeof(uint32_t)),
                     s_stagingIbo.data(), 0);
+#ifdef MC2_VULKAN_ISLAND
+    // The VK shadow feed hands out s_stagingIbo too: a new index set is a new geometry generation.
+    if (vkMechGateOn()) ++s_vkMechGeomGen;
+#endif
 
     glBindVertexArray(0);
 

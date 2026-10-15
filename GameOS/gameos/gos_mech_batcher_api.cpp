@@ -55,7 +55,7 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
     out->vboCpu = s_vkVboNativeCopy.data(); out->vboBytes = static_cast<uint64_t>(s_vkVboNativeCopy.size());
     out->iboCpu = s_stagingIbo.data();      out->iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
     out->vertexStride = static_cast<uint32_t>(sizeof(GpuMechVertex));
-    out->geomGen = s_vkVboNativeGen;
+    out->geomGen = s_vkMechGeomGen;
     return 1;
 }
 

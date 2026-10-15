@@ -390,22 +390,6 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_depth_caster_pipeline.h:22`
-- Class: `DepthCasterVertexInput`  (data-member)
-- Member: `uint32_t stride;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_depth_caster_pipeline.h:23`
-- Class: `DepthCasterVertexInput`  (data-member)
-- Member: `std::span<const VkVertexInputAttributeDescription> attributes;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
 - Header: `GameOS/gameos/vk_image_resource.h:28`
 - Class: `VkImageResource`  (data-member)
 - Member: `mc2vk::OwnedRawImage     image;`
@@ -902,4 +886,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 112 guard(s) analyzed, 0 violation(s).
+Result: 110 guard(s) analyzed, 0 violation(s).
