@@ -10208,7 +10208,7 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 4
+   "count": 5
   },
   {
    "tag": "TERRAIN_HEIGHT_TEX",
@@ -10709,7 +10709,14 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 6
+   "count": 10
+  },
+  {
+   "tag": "TEXTURE_DECODE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
   },
   {
    "tag": "TEXTURE_RGBA",
@@ -11907,25 +11914,6 @@
     "serial",
     "wh",
     "verts"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id",
-    "err"
    ],
    "count": 1
   },
