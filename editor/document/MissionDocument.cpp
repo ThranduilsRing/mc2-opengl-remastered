@@ -320,7 +320,6 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     std::optional<std::string> speciesText;
                     if (speciesField && !speciesField->array && speciesField->prefix == "st" && typed(entry, speciesKey, 3)) {
                         auto text = std::get<std::string>(speciesField->value[0]);
-                        if (const auto first = text.find('\n'); first != text.npos) text.erase(first, 1);
                         if (text.size() <= objectiveTextLimit) speciesText = std::move(text);
                     }
                     if (speciesText) {
@@ -374,7 +373,6 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                         }
                         if (type == 3) {
                             auto text = std::get<std::string>(payload->value[0]);
-                            if (const auto first = text.find('\n'); first != text.npos) text.erase(first, 1);
                             if (text.size() > objectiveTextLimit) ignoredPayload = true;
                         }
                     }
@@ -384,8 +382,6 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     else value.species = static_cast<ActionSpecies>(species);
                     if (!ignoredPayload) for (const auto& field : objectivePayloadSchema(value)) {
                         auto scalar = find(entry, field.key)->value[0];
-                        if (auto* text = std::get_if<std::string>(&scalar))
-                            if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
                         value.payload.push_back(std::move(scalar));
                     }
                     if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {
@@ -394,7 +390,6 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                         const auto* id = find(entry, "FlagID");
                         if (id && !id->array && id->prefix == "st" && typed(entry, "FlagID", 3)) {
                             auto text = std::get<std::string>(id->value[0]);
-                            if (const auto first = text.find('\n'); first != text.npos) text.erase(first, 1);
                             if (text.size() <= objectiveTextLimit) { flag.id = std::move(text); flag.idSource = id->id; }
                         }
                         const auto* index = find(entry, "FlagIndex");

@@ -144,15 +144,14 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                 if (spec.key == "DisplayMarker")
                     return std::unexpected(LoadError{section(item.section)->name + "/DisplayMarker", "invalid_objective_prefix", 0});
                 warning = "ignored by the game";
-            } else if (field->opaque || field->value.size() != 1)
+            } else if (spec.type == 3 && field->warning == "reader_string_buffer_limit")
+                warning = "ignored by the game";
+            else if (field->opaque || field->value.size() != 1)
                 return std::unexpected(LoadError{section(item.section)->name + "/" + std::string(spec.key), "malformed_value", 0});
             else {
                 value = field->value[0];
                 if (field->warning.starts_with("outside signed")) warning = field->warning;
             }
-            // Imported text reflects FIT's first-line join.
-            if (auto* text = std::get_if<std::string>(&value))
-                if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
         }
         auto valid = validateObjectiveScalar(spec, value);
         if (!valid) {
@@ -209,11 +208,39 @@ std::expected<void, LoadError> CommandHistory::setObjectiveScalar(NodeId id, std
     // Preserve authored prerequisite aliases and legacy activation indices.
     const auto actualKey = old->source && document_.field(*old->source)->name != "ActivateFlagIndex" ?
         std::string_view(document_.field(*old->source)->name) : key;
+    const auto requested = value;
     if (auto* text = std::get_if<std::string>(&value); text && text->find('\n') != text->npos) {
         // FIT text needs an empty opening line and CRLF for lossless disk/RAM reads.
         std::string wire = "\r\n";
         for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
         *text = std::move(wire);
+    }
+    if (spec->type == 3) {
+        auto fit = document_.fitBytes();
+        const auto* section = document_.section(id);
+        Field spelling; spelling.prefix = spec->prefix;
+        const auto wire = formatValue(spelling, Value{value});
+        if (const auto* field = document_.find(id, actualKey)) {
+            fit.replace(field->syntax.begin, field->syntax.end - field->syntax.begin, wire);
+            if (field->prefix != spec->prefix) {
+                auto begin = fit.rfind('\n', field->syntax.begin);
+                begin = begin == fit.npos ? 0 : begin + 1;
+                while (fit[begin] == ' ' || fit[begin] == '\t') ++begin;
+                fit.replace(begin, field->prefix.size(), spec->prefix);
+            }
+        } else {
+            const auto nl = fit.find("\r\n") == fit.npos ? "\n" : "\r\n";
+            fit.insert(section->syntax.end, std::string(nl) + std::string(spec->prefix) + " " + std::string(actualKey) + " = " + wire + nl);
+        }
+        auto decoded = decodeFit(fit);
+        if (!decoded) return reject(decoded.error().reason);
+        const auto& fields = decoded->sections[static_cast<std::size_t>(section - document_.syntax().sections.data())].fields;
+        const auto field = std::ranges::find_if(decoded->fields, [&](const Field& field) {
+            return field.name == actualKey && std::ranges::find(fields, field.id) != fields.end();
+        });
+        if (field == decoded->fields.end() || field->opaque) return reject("reader_string_buffer_limit");
+        if (field->value != Value{requested}) return reject("reader_conversion_changes_value");
+        return commitObjectiveFit(std::move(fit), "Objective " + std::string(key));
     }
     auto result = setScalar(id, actualKey, spec->prefix, std::move(value), "Objective " + std::string(key), true);
     if (!result && result.error().reason == "history_budget") return reject(result.error().reason);

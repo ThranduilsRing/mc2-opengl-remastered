@@ -95,10 +95,9 @@ std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, st
     const auto wire = fieldSpec->type == 1 ? std::format("{:.9g}", std::get<double>(value)) : formatValue(*old, Value{encoded});
     fit.replace(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin, wire);
     auto check = decodeFit(fit);
-    if (!check) return reject("reader_conversion_changes_value");
+    if (!check) return reject(check.error().reason);
+    if (check->fields[index].warning == "reader_string_buffer_limit") return reject("reader_string_buffer_limit");
     auto decoded = check->fields[index].value[0];
-    if (auto* text = std::get_if<std::string>(&decoded))
-        if (const auto first = text->find('\n'); first != text->npos) text->erase(first, 1);
     if (decoded != value) return reject("reader_conversion_changes_value");
     return commitObjectiveFit(std::move(fit), "Edit objective payload");
 }

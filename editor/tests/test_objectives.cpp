@@ -1,11 +1,11 @@
 #include "../../tests/unit/doctest.h"
 #include "TestInputs.h"
 #include "CommandHistory.h"
-#include "../../mclib/fit_number.h"
 #include <algorithm>
 #include <chrono>
 #include <bit>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <format>
 #include <limits>
@@ -56,6 +56,76 @@ Scalar replacement(const ObjectiveFieldSpec& spec)
     if (spec.type == 2) return true;
     return std::string("Changed objective\nsecond line");
 }
+}
+
+namespace {
+std::string messageFixture(std::string wire = "\"old\"")
+{
+    auto fit = fixture();
+    const auto begin = fit.find("st ActionSpeciesString");
+    const auto end = fit.find("[Team0Objective0FailureCondition0]", begin);
+    fit.replace(begin, end - begin, "st ActionSpeciesString = \"DisplayTextMessage\"\r\nst Message = " + wire + "\r\n");
+    return fit;
+}
+}
+
+TEST_CASE("objectives/message assembly limit includes retained whitespace")
+{
+    auto fit = messageFixture();
+    fit.insert(fit.find("\"old\""), 100, ' ');
+    std::vector<std::string> logs;
+    auto doc = MissionDocument::decode(fit, packet(), "buffer", {}); REQUIRE(doc);
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+    const auto id = doc->objectives()[0].entries[1][0].section;
+    const auto result = history.setObjectivePayload(id, "Message", std::string(1998, 'x') + "\ny");
+    REQUIRE_FALSE(result);
+    CHECK(result.error().reason == "reader_string_buffer_limit");
+    CHECK(logs.size() == 1);
+    CHECK(doc->fitBytes() == fit);
+    CHECK_FALSE(history.canUndo());
+    REQUIRE(history.setObjectivePayload(id, "Message", std::string(1900, 'x') + "\ny"));
+    REQUIRE(history.undo());
+    const auto title = doc->find(doc->objectives()[0].section, "Title"); REQUIRE(title);
+    auto padded = fit;
+    padded.insert(title->syntax.begin, 100, ' ');
+    auto scalarDoc = MissionDocument::decode(padded, packet(), "scalar-buffer", {}); REQUIRE(scalarDoc);
+    CommandHistory scalarHistory(*scalarDoc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+    logs.clear();
+    const auto scalarResult = scalarHistory.setObjectiveScalar(scalarDoc->objectives()[0].section, "Title", std::string(1998, 'x') + "\ny");
+    REQUIRE_FALSE(scalarResult); CHECK(scalarResult.error().reason == "reader_string_buffer_limit");
+    CHECK(logs.size() == 1); CHECK(scalarDoc->fitBytes() == padded);
+}
+
+TEST_CASE("objectives/LF blank line collapse matches the RAM reader")
+{
+    const auto fit = messageFixture("\"a\n\nb\"");
+    auto doc = MissionDocument::decode(fit, packet(), "lf", {}); REQUIRE(doc);
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{std::string("ab")});
+    CHECK(doc->fitBytes() == fit);
+}
+
+TEST_CASE("objectives/quoted declaration lines remain authorable message text")
+{
+    auto doc = MissionDocument::decode(messageFixture(), packet(), "declaration", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto id = doc->objectives()[0].entries[1][0].section;
+    const std::string text = "hello\nul Count = 1";
+    REQUIRE(history.setObjectivePayload(id, "Message", text));
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{text});
+}
+
+TEST_CASE("objectives/imported closing quote keeps trailing bytes through edits")
+{
+    const auto fit = messageFixture("\"one\"two\"");
+    auto doc = MissionDocument::decode(fit, packet(), "quote", {}); REQUIRE(doc);
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{std::string("one")});
+    CHECK(doc->fitBytes() == fit);
+    CommandHistory history(*doc);
+    REQUIRE(history.setObjectivePayload(doc->objectives()[0].entries[1][0].section, "Message", std::string("new")));
+    auto expected = fit;
+    expected.replace(expected.find("\"one\""), 5, "\"new\"");
+    CHECK(doc->fitBytes() == expected);
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
 }
 
 TEST_CASE("objectives/all authoring scalars have independent defaults and exact commands")
@@ -109,8 +179,7 @@ TEST_CASE("objectives/all authoring scalars have independent defaults and exact 
         auto parsed = decodeFit(bytes(output / "edited.fit")); REQUIRE(parsed);
         const auto actual = std::ranges::find(parsed->fields, oldSource.value_or(std::string(spec.key)), &Field::name);
         REQUIRE(actual != parsed->fields.end());
-        const auto wireValue = spec.type == 3 ? Scalar{std::string("\nChanged objective\nsecond line")} : value;
-        CHECK(actual->value == Value{wireValue});
+        CHECK(actual->value == Value{value});
         auto reopened = MissionDocument::read(output / "edited.fit", output / "edited.pak", log); REQUIRE(reopened);
         CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, spec.key)->value == value);
         REQUIRE(history.undo()); CHECK(doc->fitBytes() == original); CHECK(doc->objective(id));
@@ -1090,8 +1159,10 @@ ExpectedReference outputOracle(const std::string& fit, std::span<const std::byte
                 const auto quote = wire.find('"');
                 return wire.substr(quote + 1, wire.find('"', quote + 1) - quote - 1);
             }
-            if (prefix == "f") return static_cast<double>(mc2::fit::textToFloat(wire.data()));
-            return static_cast<std::int64_t>(prefix == "ul" ? static_cast<std::int32_t>(mc2::fit::textToULong(wire.data())) : mc2::fit::textToLong(wire.data()));
+            if (prefix == "f") return static_cast<double>(static_cast<float>(std::strtod(wire.c_str(), nullptr)));
+            const auto hex = wire.find("0x");
+            if (hex == wire.npos) return static_cast<std::int64_t>(std::strtol(wire.c_str(), nullptr, 10));
+            return static_cast<std::int64_t>(static_cast<std::int32_t>(std::strtoul(wire.c_str() + hex + 2, nullptr, 16)));
         }
         FAIL("oracle field missing: " << section << "/" << key); return {};
     };

@@ -315,7 +315,8 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
         const auto targetBlock = doc->section(id)->name;
         CommandHistory history(*doc);
         for (const auto& authored : {std::string(1999, 'x'), std::string(2000, 'x'),
-                                    std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny"}) {
+                                    std::string(1998, 'x') + "\ny", std::string(1998, 'x') + "\r\ny",
+                                    std::string("hello\nul Count = 1")}) {
             REQUIRE(history.setObjectivePayload(id, key, authored));
             REQUIRE(doc->save(output / "authored", {}));
             const auto saved = bytes(output / "authored.fit");
@@ -342,8 +343,21 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
                 REQUIRE(reader.seekBlock("Text") == NO_ERR);
                 CHECK(objective_text::read(reader, key.c_str()) == expected);
             }
+            if (expected) {
+                auto imported = doc->fitBytes();
+                const auto* source = doc->find(id, key); REQUIRE(source);
+                imported.replace(source->syntax.begin, source->syntax.end - source->syntax.begin, wire);
+                auto decoded = MissionDocument::decode(imported, {doc->pakBytes().begin(), doc->pakBytes().end()}, "imported", {}, editor::tests::inputs().markerObjects);
+                REQUIRE(decoded);
+                CHECK(decoded->objectives()[1].entries[list][index].payload[0] == Scalar{objective_text::toFileBreaks(*expected)});
+                CHECK(decoded->fitBytes() == imported);
+            }
         }
     }
+    const auto lf = std::string("FITini\n[Text]\nst Message = \"a\n\nb\"\n[End]\nul End = 0\nFITend\n");
+    FitIniFile reader; REQUIRE(reader.open(lf.data(), static_cast<int>(lf.size())) == NO_ERR);
+    REQUIRE(reader.seekBlock("Text") == NO_ERR);
+    CHECK(objective_text::read(reader, "Message") == std::optional<std::string>{"ab"});
 }
 
 TEST_CASE("reader/owned multiline edits match the real disk and RAM objective readers")

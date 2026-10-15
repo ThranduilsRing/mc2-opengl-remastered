@@ -13,13 +13,34 @@ namespace {
 enum class TokenKind { word, text, openSquare, closeSquare, openBrace, closeBrace, equal, comma, semi, newline, end };
 struct Token { TokenKind kind; Span span; std::string value; };
 
-bool declarationBoundary(std::string_view line)
+std::expected<std::string, LoadError> readerText(const std::string& bytes, std::size_t equal)
 {
-    const auto space = line.find_first_of(" \t");
-    const auto equal = line.find('=');
-    if (space == std::string_view::npos || equal == std::string_view::npos || equal <= space) return false;
-    const auto type = identifier(line.substr(0, std::min(space, line.find('['))));
-    return type == "st" || type == "f" || type == "b" || type == "l" || type == "ul" || type == "c" || type == "uc" || type == "s" || type == "us";
+    const auto start = bytes.rfind('\n', equal);
+    std::size_t at = start == bytes.npos ? 0 : start + 1;
+    const auto line = [&]() {
+        const auto begin = at;
+        while (at < bytes.size() && at - begin < 2047 && bytes[at] != '\r' && bytes[at] != '\n') ++at;
+        auto result = bytes.substr(begin, at - begin);
+        if (at < bytes.size()) ++at;
+        // RAM readLine skips the next LF even when the terminator was itself LF.
+        if (at < bytes.size() && bytes[at] == '\n') ++at;
+        return result;
+    };
+    auto assembled = line();
+    const auto separator = assembled.find('=');
+    if (separator == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+    assembled.erase(0, separator + 1);
+    const auto open = assembled.find('"');
+    if (open == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+    while (assembled.find('"', open + 1) == assembled.npos && at < bytes.size()) {
+        auto next = line();
+        if (assembled.size() + next.size() + 1 >= 2048)
+            return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+        assembled += next + '\n';
+    }
+    const auto close = assembled.find('"', open + 1);
+    if (close == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+    return assembled.substr(open + 1, close - open - 1);
 }
 
 std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
@@ -51,20 +72,17 @@ std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
             const auto begin = p;
             while (p < bytes.size() && bytes[p] != '"') {
                 if (bytes[p] == '\0') return std::unexpected(LoadError{"literal", "embedded_nul", p});
-                if (bytes[p] == '\n') {
-                    auto next = p + 1;
-                    while (next < bytes.size() && (bytes[next] == ' ' || bytes[next] == '\t' || bytes[next] == '\r')) ++next;
-                    const auto end = bytes.find('\n', next);
-                    const auto line = std::string_view(bytes).substr(next, end == std::string::npos ? bytes.size() - next : end - next);
-                    if (line.starts_with('[') || line.starts_with('}') || identifier(line).starts_with("fitend") || declarationBoundary(line))
-                        return std::unexpected(LoadError{"literal", "unterminated_literal", start});
-                }
                 if (++p - begin > textByteLimit) return std::unexpected(LoadError{"literal", "text_limit", start});
             }
             if (p == bytes.size()) return std::unexpected(LoadError{"literal", "unterminated_literal", start});
             auto value = bytes.substr(begin, p - begin);
             std::erase(value, '\r');
             tokens.push_back({kind, {start, ++p}, std::move(value)});
+            const auto lineStart = bytes.rfind('\n', start);
+            const auto declaration = std::string_view(bytes).substr(lineStart == bytes.npos ? 0 : lineStart + 1,
+                start - (lineStart == bytes.npos ? 0 : lineStart + 1));
+            if (identifier(declaration.substr(0, 3)) == "st ")
+                while (p < bytes.size() && bytes[p] != '\r' && bytes[p] != '\n') ++p;
             continue;
         }
         default:
@@ -231,6 +249,7 @@ private:
             ++cursor_; return {};
         }
         if (peek().kind != TokenKind::equal) return failure("missing_equals");
+        const auto equal = peek().span.begin;
         ++cursor_;
         prefix = identifier(prefix);
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
@@ -254,6 +273,11 @@ private:
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
             auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
+            if (!array && prefix == "st" && result_.sections[section].kind == SectionKind::objective && peek().kind == TokenKind::text) {
+                auto text = readerText(result_.originalBytes, equal);
+                if (text) value = Scalar{std::move(*text)};
+                else { field.opaque = true; field.warning = "reader_string_buffer_limit"; }
+            }
             if (!array && result_.sections[section].kind == SectionKind::objective &&
                 (prefix == "ul" || prefix == "l" || prefix == "f")) {
                 const auto lineStart = result_.originalBytes.rfind('\n', peek().span.begin);
