@@ -37,6 +37,10 @@ HARNESS_NOTES = (
     " (0x00, 0x08, ...), mixed endings and CRLF/LF flips of tracked files; the board runs `--range`.",
     "- `tools/sim_determinism.py run|check|pairs-until-fail` and `tools/saveload_roundtrip.py resave|baseline|check|run` accept"
     " `--ref-exe PATH` / `--ref-commit SHA` and forward them to every run_smoke.py child (the fingerprint reference of an A/B exe).",
+    "- run_smoke host-load gate (`scripts/smoke_lib/host_load.py`): after the host lease and before any launch, another engine, a"
+    " compiler/linker burst above `MC2_HOST_LOAD_BUILD_MAX` (4) or MsMpEng above `MC2_HOST_LOAD_DEFENDER_PCT` (50) is named in one line"
+    " and waited out up to `MC2_HOST_LOAD_WAIT_S` (300 s), then the run launches anyway; report.json `host_wait` records the lease and"
+    " load waits (neither counts against a mission budget). `MC2_HOST_LOAD=off` skips it.",
 )
 
 

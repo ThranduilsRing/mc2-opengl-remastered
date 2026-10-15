@@ -789,14 +789,24 @@ def main():
     # host, whatever install it uses and whatever test switches its shell carries. Nothing else (no deploy folder) is held while a run
     # waits here, and a second run on the same install queues on this lease. Waits by default; --no-wait fails at once. Taken once;
     # nofocus.spawn re-enters it for every engine launch. Runs that launch nothing (--verify-only, --resolve-only) skip it.
+    # Then the host-load gate: a build burst or a Defender scan beside the run is waited out (bounded, never a failure) and recorded in
+    # the report, so a timing-bucket flake carries its cause. Both waits precede every launch, so neither eats a mission's budget.
+    _host_wait: dict = {"lease_wait_s": 0.0, "host_load": None}
     if not (args.verify_only or args.resolve_only):
         from scripts.smoke_lib import host_lease as _host_lease
+        _t_lease = time.monotonic()
         try:
             _host_lease.acquire(f"run_smoke {args.deploy or args.exe or 'auto'}", wait=not args.no_wait, timeout_s=args.wait_timeout,
                                 kill_orphans=args.kill_existing)
         except _host_lease.HostLeaseBusy as _busy:
             print(f"[runner] ERROR: {_busy}", file=sys.stderr)
             sys.exit(4)
+        _host_wait["lease_wait_s"] = round(time.monotonic() - _t_lease, 1)
+        if _host_lease.redirected():
+            _host_wait["host_load"] = {"checked": False, "note": "private host lease (test): the real host is not sampled"}
+        else:
+            from scripts.smoke_lib import host_load as _host_load
+            _host_wait["host_load"] = _host_load.wait_until_quiet(timeout_s=0.0 if args.no_wait else None)
 
     if not _lease_available or args.no_lease:
         # No-lease path: --exe is REQUIRED here (no default fallback anymore).
@@ -1711,12 +1721,14 @@ def main():
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
                                  profile=args.profile, timestamp=timestamp,
                                  show_window=args.show_window,
-                                 run_failures=_run_failures, fingerprint=_fp_record)
+                                 run_failures=_run_failures, fingerprint=_fp_record,
+                                 host_wait=_host_wait)
     (artifact_dir / "report.md").write_text(md, encoding="utf-8")
     _report_json = report.render_json(rows, tier=args.tier or "adhoc",
                                       profile=args.profile, timestamp=timestamp,
                                       show_window=args.show_window,
-                                      run_failures=_run_failures, fingerprint=_fp_record)
+                                      run_failures=_run_failures, fingerprint=_fp_record,
+                                 host_wait=_host_wait)
     # HARNESS-HYGIENE-3: record the env the run actually executed under, so a
     # deliberate ambient gate is auditable after the fact instead of refused
     # up front. Always present (empty dict = shipped default configuration).
