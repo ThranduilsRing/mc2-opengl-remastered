@@ -1060,15 +1060,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
       int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
       if (poolN > (int)kMaxPoolLights) poolN = (int)kMaxPoolLights;
-      if (poolN > 0) {
-          void* pp = nullptr;
-          if ((pp = s->poolBuf[par].map()) != nullptr) {
-              std::memcpy(pp, feed.poolLights48, (size_t)poolN * 48u);
-              s->poolBuf[par].unmap();
-          } else {
-              poolN = 0;
-          }
-      }
+      // Flushed because the sequential-write placement need not be host-coherent; a failed upload turns the term off.
+      if (poolN > 0 && !s->poolBuf[par].upload(feed.poolLights48, static_cast<VkDeviceSize>(poolN) * 48u)) poolN = 0;
       u.poolF[0] = feed.poolMoverDim; u.poolF[1] = feed.poolMoverScale; u.poolF[2] = feed.poolObjScale;
       u.poolI[0] = poolN;             u.poolI[1] = feed.poolSoft;
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;

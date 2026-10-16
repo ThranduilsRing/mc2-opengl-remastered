@@ -24,7 +24,7 @@ Should-fix 1 fixed (af54408bd): capture.py records the harness-set env per sweep
 ### BUGS rows proposed (BUGS-FOUND-FIXED.md shape; numbers to the orchestrator)
 | # | Found | Bug (symptom) | Root cause | Fix (sha) | Proof | Status |
 |---|---|---|---|---|---|---|
-| ? | 2026-10-16 | under VK, props and vehicles near night lamps stayed dark where GL lights them (mc2_10 airbase, 99.4% of the night VK-GL residue) | the VK colour prop FS never received GL's object light-pool term (POOL-CONSUMERS-1) | bcb9b5623 + 64084214e | nightlow a 4.665 -> 1.252, c 5.013 -> 0.519 mean abs RGB sum to the same-exe GL frame; VK tier1 mc2_10 122 fps, validation 0 | fixed |
+| ? | 2026-10-16 | under VK, static props near night lamps stayed dark where GL lights them (mc2_10 airbase, 99.4% of the night VK-GL residue) | the VK colour prop FS never received GL's object light-pool term (POOL-CONSUMERS-1) | bcb9b5623 + 64084214e | nightlow a 4.665 -> 1.252, c 5.013 -> 0.519 mean abs RGB sum to the same-exe GL frame; VK tier1 mc2_10 122 fps, validation 0 | fixed |
 | ? | 2026-10-16 | under VK the map perimeter cut a hard dark edge against the sky where GL hazes it out | VK terrain FS lacked TERRAIN-EDGE-FEATHER-1 (GL default on) | 8d7f14ec8 | mc2_10 205952 9.932 -> 2.787, mc2_05 205843 4.522 -> 0.519 | fixed |
 
 ### Proof
