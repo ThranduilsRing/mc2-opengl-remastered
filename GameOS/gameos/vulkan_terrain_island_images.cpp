@@ -241,6 +241,37 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // On failure the dummy stays bound (cementReady=false) -> FS uses colormap base.
 }
 
+// TERRAIN-SHORELINE-V3: binding 14 is always a valid descriptor; the dummy reads as "no modulation" and the FS ignores it
+// anyway while uT.shorelineHasMask is 0. Shares the colormap's linear clamp sampler (GL samples the mask the same way).
+bool ensure_dummy_shore_mask(TerrainIsland* s) {
+    if (!create_colormap_sampler(s)) return false;
+    if (s->shoreMaskView) return true;
+    const uint8_t px[4] = {0, 255, 255, 0};
+    if (!upload_sampled_image(s, s->shoreMaskImg, s->shoreMaskView, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
+    s->shoreMaskReady = false;
+    return true;
+}
+
+// Copy-once import of the mission's shoreline mask sidecar from the terrain field store, again whenever its version changes.
+// A mission without a sidecar keeps the dummy (pure elevation bands, as GL without one).
+void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if (!feed.shorelineMaskRgba || feed.shorelineMaskW <= 0 || feed.shorelineMaskH <= 0 || feed.shorelineMaskVersion == 0) return;
+    if (feed.shorelineMaskVersion == s->shoreMaskVersionImported) return;
+    s->shoreMaskVersionImported = feed.shorelineMaskVersion;   // a failed upload is not retried every frame
+    const auto w = static_cast<uint32_t>(feed.shorelineMaskW), h = static_cast<uint32_t>(feed.shorelineMaskH);
+    if (upload_sampled_image(s, s->shoreMaskImg, s->shoreMaskView, VK_FORMAT_R8G8B8A8_UNORM, w, h,
+                             feed.shorelineMaskRgba, static_cast<VkDeviceSize>(w) * h * 4u)) {
+        s->shoreMaskReady = true;
+        vlog("SHORELINE: imported the shoreline mask %ux%u from the terrain field store (version %llu).", w, h,
+             static_cast<unsigned long long>(feed.shorelineMaskVersion));
+    } else {
+        s->shoreMaskReady = false;
+        vlog("SHORELINE: shoreline mask %ux%u upload failed; bands draw unmodulated.", w, h);
+        ensure_dummy_shore_mask(s);
+    }
+    write_descriptors(s);
+}
+
 // ---------------------------------------------------------------------------
 // VK-TERRAIN-DETAIL: 2D_ARRAY sampled-image uploader (RGBA8, all layers at level 0).
 // Mirrors upload_sampled_image but with arrayLayers=layerCount and a 2D_ARRAY view.

@@ -196,6 +196,16 @@ struct PatchShape {
 namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 
 
+// TERRAIN-SHORELINE-V3/V4: the shoreline band knobs, one producer for the GL uniforms and the VK terrain feed.
+struct TerrainShorelineKnobs {
+    bool  on = false;            // MC2_TERRAIN_SHORELINE
+    float waterElevation = 0.f;  // water plane Z, world units
+    float timeSeconds = 0.f;     // shader clock (foam animation)
+    float strength = 1.f, foamStrength = 1.f;
+    float wetRun = 16.f, foamRun = 5.f, edgeJitter = 4.f;   // world units
+};
+TerrainShorelineKnobs gos_TerrainShorelineKnobs();
+
 // State and helpers shared between the pieces. Each is defined once, in the piece that owns it.
 bool glStateGuardTerrainEnabled();
 extern const bool kTglcForceColor;

@@ -183,6 +183,11 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler     cementSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint64_t      cementVersionImported = 0;      // field-store cement atlas version last imported (0 = none)
     bool          cementReady = false;            // set once the cement image is live
+    // TERRAIN-SHORELINE-V3: binding 14, the shoreline mask sidecar (dummy 1x1 until a mission ships one).
+    mc2vk::OwnedImage       shoreMaskImg;
+    mc2vk::OwnedImageView   shoreMaskView;
+    uint64_t      shoreMaskVersionImported = 0;   // field-store mask version last imported (0 = none)
+    bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
     mc2vk::OwnedBuffer      cementBuf;
     VkDeviceSize  cementCapBytes = 0;
     uint64_t      cementVersionCopied = UINT64_MAX; // last snapshotted cement-word version
@@ -348,6 +353,8 @@ bool ensure_dummy_colormap(TerrainIsland* s);
 void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_cement(TerrainIsland* s);
 void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_shore_mask(TerrainIsland* s);
+void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_shadow_sampler(TerrainIsland* s);
 bool ensure_dummy_shadow(TerrainIsland* s);

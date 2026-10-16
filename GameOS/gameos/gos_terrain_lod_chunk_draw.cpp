@@ -547,6 +547,26 @@ static void bindMaterialAndOverlay() {
 }
 
 // Bind the shoreline mask and set the wet/foam band uniforms.
+TerrainShorelineKnobs gos_TerrainShorelineKnobs() {
+    TerrainShorelineKnobs k;
+    k.on = gos_TerrainShorelineGateOn();
+    // The water plane the bands are placed against: the same source as the water fast path (Terrain::waterElevation,
+    // mirrored into gosPostProcess at mission load).
+    if (gosPostProcess* pp = getGosPostProcess()) k.waterElevation = pp->getWaterElevation();
+    k.timeSeconds  = gos_GetShaderClockSeconds();
+    k.strength     = mc2::gate::get<"MC2_TERRAIN_SHORELINE_STRENGTH">();
+    k.foamStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM">();
+    // Band widths are HORIZONTAL runs from the waterline (wet 16 wu, foam 5 wu by default); the legacy _HEIGHT names
+    // are aliases read only while the _RUN name is unset.
+    k.wetRun  = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_WET_RUN">()  ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_RUN">()
+                                                                     : mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_HEIGHT">();
+    k.foamRun = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_FOAM_RUN">() ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
+                                                                     : mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_HEIGHT">();
+    // Static world-XY jitter on the run so the lobes stop tracing the mesh waterline's straight segments; 0 = exact contour.
+    k.edgeJitter = mc2::gate::get<"MC2_TERRAIN_SHORELINE_EDGE_JITTER">();
+    return k;
+}
+
 static void bindShorelineMask() {
     // TERRAIN-SHORELINE-V3: elevation-placed wet/foam band. u_useShorelineMask
     // now gates the BAND ITSELF (MC2_TERRAIN_SHORELINE on), independent of
@@ -583,58 +603,14 @@ static void bindShorelineMask() {
                     glUniform4f(s_locShorelineBounds, s_shorelineBounds[0], s_shorelineBounds[1],
                                 s_shorelineBounds[2], s_shorelineBounds[3]);
             }
-            // TERRAIN-SHORELINE-V3: water elevation the bands are placed
-            // relative to -- SAME source as the water fast path
-            // (Terrain::waterElevation, mirrored into gosPostProcess at
-            // mission load via gos_SetWaterElevation).
-            if (s_locWaterElevation >= 0) {
-                gosPostProcess* pp = getGosPostProcess();
-                const float we = pp ? pp->getWaterElevation() : 0.0f;
-                glUniform1f(s_locWaterElevation, we);
-            }
-            if (s_locShaderTime >= 0)
-                glUniform1f(s_locShaderTime, gos_GetShaderClockSeconds());
-            // TERRAIN-SHORELINE-V3 (visual-quality pass): runtime intensity
-            // knobs, sampled once (feature gate is per-process anyway). Default
-            // 1.0 = the authored modest band in terrain_lod_chunk.frag; clamp to
-            // [0,2] so a bad env value can't blow the band out or invert it.
-            static const float s_shorelineStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_STRENGTH">();
-            static const float s_shorelineFoamStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM">();
-            if (s_locShorelineStrength >= 0)
-                glUniform1f(s_locShorelineStrength, s_shorelineStrength);
-            if (s_locShorelineFoamStrength >= 0)
-                glUniform1f(s_locShorelineFoamStrength, s_shorelineFoamStrength);
-            // TERRAIN-SHORELINE-V3 (horizontal-run fix): band widths are
-            // HORIZONTAL world-unit runs from the drawn waterline (the frag
-            // converts vertical rise -> horizontal run via the macro slope;
-            // see terrain_lod_chunk.frag). The c1593a1f conversion kept the
-            // old VERTICAL defaults (wet 3.0wu / foam 1.2wu) as horizontal
-            // runs -- ~1m of band, invisible at RTS zoom. Horizontal-native
-            // defaults: wet 16.0wu (~4.8m) run, foam 5.0wu (~1.5m) run.
-            // Primary knobs MC2_TERRAIN_SHORELINE_WET_RUN / _FOAM_RUN
-            // (horizontal wu); legacy _WET_HEIGHT / _FOAM_HEIGHT names still
-            // honored as aliases but are now interpreted as horizontal runs
-            // (unit change documented in docs/tier1_env_vars.md).
-            // MC2_TERRAIN_SHORELINE_WET_HEIGHT is the legacy alias, read only while WET_RUN is not set.
-            static const float s_shorelineWetHeight = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_WET_RUN">()
-                ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_RUN">()
-                : mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_HEIGHT">();
-            // MC2_TERRAIN_SHORELINE_FOAM_HEIGHT is the legacy alias, read only while FOAM_RUN is not set.
-            static const float s_shorelineFoamHeight = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
-                ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
-                : mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_HEIGHT">();
-            if (s_locShorelineWetHeight >= 0)
-                glUniform1f(s_locShorelineWetHeight, s_shorelineWetHeight);
-            if (s_locShorelineFoamHeight >= 0)
-                glUniform1f(s_locShorelineFoamHeight, s_shorelineFoamHeight);
-            // TERRAIN-SHORELINE-V4-STYLE (zigzag fix): static world-XY jitter
-            // amplitude (wu) for the band's distance-from-waterline, so the
-            // wet/foam lobes stop tracing the mesh waterline's straight
-            // diamond segments. 0 = exact V3 contour. Clamp [0,32] so a bad
-            // env value can't scatter the band across the whole beach.
-            static const float s_shorelineEdgeJitter = mc2::gate::get<"MC2_TERRAIN_SHORELINE_EDGE_JITTER">();
-            if (s_locShorelineEdgeJitter >= 0)
-                glUniform1f(s_locShorelineEdgeJitter, s_shorelineEdgeJitter);
+            const TerrainShorelineKnobs k = gos_TerrainShorelineKnobs();
+            if (s_locWaterElevation >= 0)        glUniform1f(s_locWaterElevation, k.waterElevation);
+            if (s_locShaderTime >= 0)            glUniform1f(s_locShaderTime, k.timeSeconds);
+            if (s_locShorelineStrength >= 0)     glUniform1f(s_locShorelineStrength, k.strength);
+            if (s_locShorelineFoamStrength >= 0) glUniform1f(s_locShorelineFoamStrength, k.foamStrength);
+            if (s_locShorelineWetHeight >= 0)    glUniform1f(s_locShorelineWetHeight, k.wetRun);
+            if (s_locShorelineFoamHeight >= 0)   glUniform1f(s_locShorelineFoamHeight, k.foamRun);
+            if (s_locShorelineEdgeJitter >= 0)   glUniform1f(s_locShorelineEdgeJitter, k.edgeJitter);
         }
     }
 }
