@@ -721,7 +721,6 @@ static void draw_screen( void )
         // [RENDER_PASS_TIME v1] post = whole endScene chain (HZB/SSAO/screen
         // shadow/shoreline/godrays/bloom/composite). Single outer scope: the
         // inner stages call each other, and GL_TIME_ELAPSED cannot nest.
-        gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Post);
         render_contract::beginPassScope(render_contract::PassIdentity::PostProcess,
                                         "gosPostProcess_endScene");
         // FRAME-GRAPH-EXECUTOR-ISLAND-1: validate→call-unchanged→validate.
@@ -732,7 +731,6 @@ static void draw_screen( void )
         mc2_executor_own_end_postprocess(pp);
         render_contract::endPassScope(render_contract::PassIdentity::PostProcess,
                                       "gosPostProcess_endScene");
-        gos_render_pass_timer::End(gos_render_pass_timer::Pass_Post);
     }
 
     // Stage 2.E visual-diff capture hook. Must fire AFTER pp->endScene() so the
@@ -754,7 +752,6 @@ static void draw_screen( void )
 
     // Replay buffered HUD draws to FB 0 (after post-process)
     gos_RendererFlushHUDBatch();
-    drainGLErrors("hud");
     //CHECK_GL_ERROR;
 #ifdef MC2_IMGUI
     // FB 0 depth starts at 1.0 (GL default); only sceneFBO_ gets cleared during
@@ -1283,7 +1280,6 @@ int main(int argc, char** argv)
             mc2_object_recon::drainPerFrame(g_mc2FrameCounter);
             projectz_frame_tick();
             projectz_overlay_begin_frame();
-            drainGLErrors("frame");
         }
 
     frameScreenshotOracle();

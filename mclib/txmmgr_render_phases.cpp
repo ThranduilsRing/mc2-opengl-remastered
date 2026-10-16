@@ -374,7 +374,6 @@ void MC_TextureManager::renderListsObjects3D (void)
 		ZoneScopedN("Render.3DObjects");
 		TracyGpuZone("Render.3DObjects");
 		GosGlLostDrawsScope _rlLost_("obj3d");
-		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Obj3d);
 		// SAME-ORDER-EXECUTOR-SLICE-2: validate-only ownership of MechOpaque top-level
 		// pass. Body sets its own state (no apply); this just validates ambient+FBO.
 		render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::OpaqueObject,
@@ -438,9 +437,7 @@ void MC_TextureManager::renderListsObjects3D (void)
 		}
 	}
 	gos_SetRenderState(gos_State_AlphaTest, 0);
-	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Obj3d);
 	} // end Render.3DObjects zone
-	drainGLErrors("objects_3d");
 }
 
 void MC_TextureManager::renderListsPostObjectsStateRestore (void)
@@ -486,7 +483,6 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 		ZoneScopedN("Shadow.StaticFullMapBuild");
 		TracyGpuZone("Shadow.StaticFullMapBuild");
 		GosGlLostDrawsScope _rlLost_("static_shadow_build");
-		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowStatic);
 
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
 		gos_MarkStaticLightMatrixBuilt();
@@ -524,7 +520,6 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 			GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
 			gos_EndShadowPrePass();
 		}
-		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowStatic);
 	}
 }
 

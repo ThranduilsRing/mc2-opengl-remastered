@@ -7,8 +7,8 @@ spec = importlib.util.spec_from_file_location("perf_baseline_report_under_test",
 pbr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pbr)
 
-LOG = ("noise\n[VRAM v1] phase=load_end backend=gl gl_ati_tex_free_mb=21000 gl_ati_tex_largest_free_mb=20000 gl_nvx_dedicated_mb=-1 "
-       "gl_nvx_available_mb=-1 vk_budget_mb=-1 vk_usage_mb=-1 vk_allocated_mb=-1 adapter_dedicated_mb=24560 proc_dedicated_mb=3100 proc_budget_mb=23000\n")
+LOG = ("noise\n[VRAM v1] phase=load_end backend=gl "
+       "vk_budget_mb=-1 vk_usage_mb=-1 vk_allocated_mb=-1 adapter_dedicated_mb=24560 proc_dedicated_mb=3100 proc_budget_mb=23000\n")
 
 
 def test_the_plot_is_summarised_over_the_steady_window_only():

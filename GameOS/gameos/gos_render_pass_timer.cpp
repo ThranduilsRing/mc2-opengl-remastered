@@ -1,8 +1,6 @@
 //============================================================================
 // gos_render_pass_timer — see gos_render_pass_timer.h.
 //============================================================================
-#include <GL/glew.h>
-#include <GL/gl.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -34,19 +32,6 @@ const char* const kPassKey[Pass_Count] = {
     "post",
 };
 
-const int kRing = 4;   // frames in flight; oldest is polled, never waited on
-
-struct Slot {
-    GLuint   q[Pass_Count];     // GL_TIME_ELAPSED query per pass (lazy-gen)
-    GLuint   tsBegin;           // GL_TIMESTAMP at first pass begin of the frame
-    GLuint   tsEnd;             // GL_TIMESTAMP at FrameEnd
-    unsigned ranMask;           // bit i set = pass i has a committed scope
-    bool     frameOpen;         // tsBegin issued this frame
-    bool     pending;           // submitted, awaiting harvest
-};
-
-Slot     s_ring[kRing];
-int      s_cur = 0;
 bool     s_inited = false;
 bool     s_envOn = false;       // MC2_RENDER_PASS_TIME=1 (drives the emit line)
 bool     s_collect = false;     // runtime collect flag (editor); no emit
@@ -55,9 +40,6 @@ bool     s_collect = false;     // runtime collect flag (editor); no emit
 // accumulator reset). Read by the editor Frame Inspector via LastMs/HasSample.
 double   s_publishedMs[Pass_Count] = {0};
 bool     s_publishedHas[Pass_Count] = {false};
-
-int      s_openPass = -1;       // pass whose scope is currently open (-1 none)
-bool     s_openReal = false;    // glBeginQuery actually issued for it
 
 // Window accumulators (reset at each emit).
 double   s_sumMs[Pass_Count] = {0};
@@ -76,27 +58,6 @@ int emitEvery()
         s_every = (n > 0) ? n : 60;
     }
     return s_every;
-}
-
-void harvest(Slot& s)
-{
-    for (int p = 0; p < Pass_Count; ++p) {
-        if (!(s.ranMask & (1u << p))) continue;
-        GLuint64 ns = 0;
-        glGetQueryObjectui64v(s.q[p], GL_QUERY_RESULT, &ns);
-        s_sumMs[p] += (double)ns / 1.0e6;
-        ++s_samples[p];
-    }
-    if (s.frameOpen && s.tsBegin && s.tsEnd) {
-        GLuint64 t0 = 0, t1 = 0;
-        glGetQueryObjectui64v(s.tsBegin, GL_QUERY_RESULT, &t0);
-        glGetQueryObjectui64v(s.tsEnd, GL_QUERY_RESULT, &t1);
-        if (t1 > t0) s_sumTotalMs += (double)(t1 - t0) / 1.0e6;
-    }
-    ++s_frames;
-    s.pending = false;
-    s.ranMask = 0;
-    s.frameOpen = false;
 }
 
 // Snapshot the window means into the published arrays the editor reads. Called
@@ -160,7 +121,7 @@ static void initEnv()
     s_envOn = mc2::gate::get<"MC2_RENDER_PASS_TIME">();
     s_inited = true;
     if (s_envOn) {
-        mc2::fmt::print_out("[RENDER_PASS_TIME v1] armed every={:d} ring={:d}\n", mc2::fmt::as_i32(emitEvery()), mc2::fmt::as_i32(kRing));
+        mc2::fmt::print_out("[RENDER_PASS_TIME v1] armed every={:d}\n", mc2::fmt::as_i32(emitEvery()));
         std::fflush(stdout);
     }
 }
@@ -194,6 +155,7 @@ void SubmitBackendFrame(const double ms[Pass_Count], const bool ran[Pass_Count])
     double total = 0.0;
     for (int p = 0; p < Pass_Count; ++p) {
         if (!ran[p]) continue;
+        gos_frame_pass_stats::MarkPassRan(static_cast<Pass>(p));
         s_sumMs[p] += ms[p];
         ++s_samples[p];
         total += ms[p];
@@ -205,108 +167,12 @@ void SubmitBackendFrame(const double ms[Pass_Count], const bool ran[Pass_Count])
 
 void SubmitBackendDropped() { ++s_dropped; }
 
-bool QueryActive()
-{
-    return Enabled() && s_openPass >= 0 && s_openReal;
-}
-
-void Begin(Pass p)
-{
-    // FramePassStats v1 shares the pass boundaries but is independently gated:
-    // capture per-pass GL state even when the GPU timer is OFF (own env check,
-    // OFF=zero cost). Done first so the state reflects exactly what the pass
-    // is about to render with.
-    gos_frame_pass_stats::RecordPassBegin(p);
-
-    if (!Enabled()) return;
-    if (vk_render_pass_timer::Active()) return;   // the VK islands time their own passes
-    if (p < 0 || p >= Pass_Count) return;
-    if (s_openPass >= 0) {
-        // Defensive: GL_TIME_ELAPSED cannot nest. Record the open pass so the
-        // matching End() is ignored; do not disturb the outer scope.
-        return;
-    }
-    Slot& s = s_ring[s_cur];
-    if (s.pending) {
-        // Ring lap caught an unharvested slot (GPU far behind): drop its
-        // measurements and reuse it rather than stall.
-        ++s_dropped;
-        s.pending = false;
-        s.ranMask = 0;
-        s.frameOpen = false;
-    }
-    if (!s.frameOpen) {
-        if (!s.tsBegin) glGenQueries(1, &s.tsBegin);
-        if (!s.tsEnd)   glGenQueries(1, &s.tsEnd);
-        glQueryCounter(s.tsBegin, GL_TIMESTAMP);
-        s.frameOpen = true;
-    }
-    if (s.ranMask & (1u << p)) {
-        // Pass already timed this frame (should not happen with the disjoint
-        // placement); keep the first measurement, skip re-begin.
-        s_openPass = p;
-        s_openReal = false;
-        return;
-    }
-    if (!s.q[p]) glGenQueries(1, &s.q[p]);
-    glBeginQuery(GL_TIME_ELAPSED, s.q[p]);
-    s_openPass = p;
-    s_openReal = true;
-}
-
-void End(Pass p)
-{
-    if (!Enabled()) return;
-    if (s_openPass != (int)p) return;   // unmatched / nested-skipped: ignore
-    if (s_openReal) {
-        glEndQuery(GL_TIME_ELAPSED);
-        s_ring[s_cur].ranMask |= (1u << (int)p);
-    }
-    s_openPass = -1;
-    s_openReal = false;
-}
-
 void FrameEnd()
 {
     if (!Enabled()) return;
-    if (vk_render_pass_timer::Active()) {
-        ++s_frameNo;
-        vk_render_pass_timer::FrameEnd();
-        if (s_frameNo % (unsigned long)emitEvery() == 0)
-            emitWindow();
-        return;
-    }
-    if (s_openPass >= 0) {
-        // Scope leaked across the frame boundary (should not happen): close it
-        // so the next frame starts clean.
-        if (s_openReal) {
-            glEndQuery(GL_TIME_ELAPSED);
-            s_ring[s_cur].ranMask |= (1u << s_openPass);
-        }
-        s_openPass = -1;
-        s_openReal = false;
-    }
+    if (!vk_render_pass_timer::Active()) return;   // the Vulkan islands are the only time source
     ++s_frameNo;
-
-    Slot& cur = s_ring[s_cur];
-    if (cur.frameOpen) {
-        glQueryCounter(cur.tsEnd, GL_TIMESTAMP);
-        cur.pending = true;
-        s_cur = (s_cur + 1) % kRing;
-    }
-    // else: no pass ran this frame (menus etc.) — keep the slot, nothing pending.
-
-    // Poll pending slots oldest-first; harvest every slot whose LAST query
-    // (tsEnd, issued after all pass queries) is available. Never block.
-    for (int i = 1; i <= kRing; ++i) {
-        Slot& s = s_ring[(s_cur + i) % kRing];
-        if (!s.pending) continue;
-        GLint avail = 0;
-        glGetQueryObjectiv(s.tsEnd, GL_QUERY_RESULT_AVAILABLE, &avail);
-        if (!avail) break;   // younger slots cannot be ready either
-        harvest(s);
-    }
-
+    vk_render_pass_timer::FrameEnd();
     if (s_frameNo % (unsigned long)emitEvery() == 0)
         emitWindow();
 }

@@ -25,11 +25,6 @@ namespace mc2::gpumem {
 
 namespace {
 
-// GL_ATI_meminfo and GL_NVX_gpu_memory_info enums (not every GL header carries them).
-constexpr GLenum kAtiTextureFreeMemory = 0x87FC;            // GL_TEXTURE_FREE_MEMORY_ATI: 4 ints, KiB
-constexpr GLenum kNvxDedicatedVidmem = 0x9047;              // GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
-constexpr GLenum kNvxCurrentAvailableVidmem = 0x9049;       // GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
-
 bool hasGlExtension(std::string_view name) {
     GLint n = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &n);
@@ -38,24 +33,6 @@ bool hasGlExtension(std::string_view name) {
         if (e && name == reinterpret_cast<const char*>(e)) return true;
     }
     return false;
-}
-
-void readGl(Snapshot& s) {
-    if (!SDL_GL_GetCurrentContext()) return;               // the queries need the context of this thread
-    static int ati = -1, nvx = -1;                          // -1 unknown, 0 absent, 1 present (extension lists do not change)
-    if (ati < 0) { ati = hasGlExtension("GL_ATI_meminfo") ? 1 : 0; nvx = hasGlExtension("GL_NVX_gpu_memory_info") ? 1 : 0; }
-    while (glGetError() != GL_NO_ERROR) {}                  // leave no stale error for the engine's own [GL_ERROR] accounting to blame on us
-    if (ati == 1) {
-        GLint v[4] = {0, 0, 0, 0};
-        glGetIntegerv(kAtiTextureFreeMemory, v);
-        if (glGetError() == GL_NO_ERROR) { s.glAtiTexFreeKb = v[0]; s.glAtiTexLargestFreeKb = v[1]; }
-    }
-    if (nvx == 1) {
-        GLint dedicated = 0, available = 0;
-        glGetIntegerv(kNvxDedicatedVidmem, &dedicated);
-        glGetIntegerv(kNvxCurrentAvailableVidmem, &available);
-        if (glGetError() == GL_NO_ERROR) { s.nvxDedicatedKb = dedicated; s.nvxCurrentAvailableKb = available; }
-    }
 }
 
 #ifdef MC2_VULKAN
@@ -153,7 +130,6 @@ void readDxgi(Snapshot& s) {
 }
 #endif
 
-int64_t kibToMib(int64_t v) { return v < 0 ? kUnavailable : v / 1024; }
 int64_t bytesToMib(int64_t v) { return v < 0 ? kUnavailable : v / (1024 * 1024); }
 
 }  // namespace
@@ -161,7 +137,6 @@ int64_t bytesToMib(int64_t v) { return v < 0 ? kUnavailable : v / (1024 * 1024);
 Snapshot take() {
     Snapshot s;
     s.backend = (mc2::renderBackend() == mc2::RenderBackend::Vulkan) ? "vk" : "gl";
-    readGl(s);
 #ifdef MC2_VULKAN
     readVulkan(s);
 #endif
@@ -174,12 +149,9 @@ Snapshot take() {
 std::string format(std::string_view phase, const Snapshot& s) {
     char buf[640];
     std::snprintf(buf, sizeof(buf),
-                  "[VRAM v1] phase=%s backend=%s gl_ati_tex_free_mb=%lld gl_ati_tex_largest_free_mb=%lld gl_nvx_dedicated_mb=%lld "
-                  "gl_nvx_available_mb=%lld vk_budget_mb=%lld vk_usage_mb=%lld vk_allocated_mb=%lld adapter_dedicated_mb=%lld "
+                  "[VRAM v1] phase=%s backend=%s vk_budget_mb=%lld vk_usage_mb=%lld vk_allocated_mb=%lld adapter_dedicated_mb=%lld "
                   "proc_dedicated_mb=%lld proc_budget_mb=%lld",
                   std::string(phase).c_str(), s.backend ? s.backend : "gl",
-                  static_cast<long long>(kibToMib(s.glAtiTexFreeKb)), static_cast<long long>(kibToMib(s.glAtiTexLargestFreeKb)),
-                  static_cast<long long>(kibToMib(s.nvxDedicatedKb)), static_cast<long long>(kibToMib(s.nvxCurrentAvailableKb)),
                   static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
@@ -189,12 +161,9 @@ std::string format(std::string_view phase, const Snapshot& s) {
 std::string toJson(const Snapshot& s) {
     char buf[640];
     std::snprintf(buf, sizeof(buf),
-                  "{\"backend\": \"%s\", \"gl_ati_tex_free_mb\": %lld, \"gl_ati_tex_largest_free_mb\": %lld, \"gl_nvx_dedicated_mb\": %lld, "
-                  "\"gl_nvx_available_mb\": %lld, \"vk_budget_mb\": %lld, \"vk_usage_mb\": %lld, \"vk_allocated_mb\": %lld, "
+                  "{\"backend\": \"%s\", \"vk_budget_mb\": %lld, \"vk_usage_mb\": %lld, \"vk_allocated_mb\": %lld, "
                   "\"adapter_dedicated_mb\": %lld, \"proc_dedicated_mb\": %lld, \"proc_budget_mb\": %lld}",
                   s.backend ? s.backend : "gl",
-                  static_cast<long long>(kibToMib(s.glAtiTexFreeKb)), static_cast<long long>(kibToMib(s.glAtiTexLargestFreeKb)),
-                  static_cast<long long>(kibToMib(s.nvxDedicatedKb)), static_cast<long long>(kibToMib(s.nvxCurrentAvailableKb)),
                   static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
