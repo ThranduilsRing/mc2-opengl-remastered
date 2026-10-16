@@ -492,12 +492,17 @@ class gosRenderer {
         void setTerrainMissionFlatLight(float r, float g, float b) { terrain_mission_flat_light_ = vec4(r, g, b, 0.0f); }
         const vec4& getTerrainMissionFlatLight() const { return terrain_mission_flat_light_; }
         void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
-        void setTerrainMaterialNormal(int idx, GLuint texId) {
-            if (idx >= 0 && idx < 9) {
-                terrain_mat_normal_[idx] = texId;
-                terrain_normal_array_dirty_ = true;
-            }
+        // Slot `idx` takes the gos texture `handle` (INVALID_TEXTURE_ID clears it) and owns it: the texture it replaces is deleted.
+        void setTerrainMaterialNormal(int idx, DWORD handle) {
+            if (idx < 0 || idx >= 9) return;
+            const bool valid = handle != INVALID_TEXTURE_ID && handle < textureList_.size() && textureList_[handle];
+            if (terrain_mat_normal_handle_[idx] != INVALID_TEXTURE_ID && terrain_mat_normal_handle_[idx] != handle)
+                deleteTexture(terrain_mat_normal_handle_[idx]);
+            terrain_mat_normal_handle_[idx] = valid ? handle : INVALID_TEXTURE_ID;
+            terrain_mat_normal_[idx] = valid ? textureList_[handle]->getTextureId() : 0;
+            terrain_normal_array_dirty_ = true;
         }
+        DWORD getTerrainMaterialNormalHandle(int idx) const { return idx >= 0 && idx < 9 ? terrain_mat_normal_handle_[idx] : INVALID_TEXTURE_ID; }
         void buildTerrainNormalArray() {
             // Require slots 0-4 (rock/grass/dirt/concrete/snow). Slots 5-8 are optional.
             for (int i = 0; i < 5; ++i) {
@@ -573,9 +578,6 @@ class gosRenderer {
             // neutral normal (128,128,255,255) so sampling them is always valid.
             std::vector<uint8_t> pixels;
             int levelsCopied = 0;
-            terrain_normal_array_cpu_ = {};
-            terrain_normal_array_cpu_.layers = 9;
-            terrain_normal_array_cpu_.vkFormat = mc2tex::kVkFormatRgba8Unorm;
             for (int level = baseLevel; level < baseLevel + numLevels; ++level) {
                 GLint mipW = 0, mipH = 0;
                 glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[0]);
@@ -591,8 +593,6 @@ class gosRenderer {
 
                 const size_t mipBytes = (size_t)mipW * mipH * 4;
                 pixels.resize(mipBytes);
-                if (levelsCopied == 1) { terrain_normal_array_cpu_.width = (uint32_t)mipW; terrain_normal_array_cpu_.height = (uint32_t)mipH; }
-                std::vector<uint8_t>& cpuLevel = terrain_normal_array_cpu_.levels.emplace_back(mipBytes * 9u);
 
                 for (int layer = 0; layer < 9; ++layer) {
                     if (terrain_mat_normal_[layer] != 0) {
@@ -610,7 +610,6 @@ class gosRenderer {
                                     0, 0, layer,
                                     mipW, mipH, 1,
                                     GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-                    std::memcpy(cpuLevel.data() + (size_t)layer * mipBytes, pixels.data(), mipBytes);
                 }
             }
 
@@ -637,8 +636,6 @@ class gosRenderer {
         // legacy terrain uses. Builds lazily if dirty/never-built; returns 0 until
         // required slots 0-4 are populated (slots 5-8 optional). GL context assumed
         // live (call from a draw, like the legacy bind sites).
-        // The CPU copy of the array (its copied levels from the base level on, every layer), for a backend that uploads its own.
-        const mc2tex::TextureArrayCpu& getTerrainNormalArrayCpu() const { return terrain_normal_array_cpu_; }
         GLuint getTerrainNormalArrayTexEnsureBuilt() {
             if (terrain_normal_array_dirty_ || terrain_normal_array_tex_ == 0)
                 buildTerrainNormalArray();
@@ -900,7 +897,9 @@ class gosRenderer {
         GLuint terrain_mat_normal_[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
         GLuint terrain_normal_array_tex_   = 0;     // GL_TEXTURE_2D_ARRAY; 0 = not built
         bool   terrain_normal_array_dirty_ = false; // rebuild needed at next bind
-        mc2tex::TextureArrayCpu terrain_normal_array_cpu_;   // the texels uploaded to terrain_normal_array_tex_
+        DWORD  terrain_mat_normal_handle_[9] = {INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID,
+                                                INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID,
+                                                INVALID_TEXTURE_ID};   // the gos textures behind terrain_mat_normal_
         float terrain_cell_scale_ = 8.0f;
         float terrain_cell_jitter_ = 0.8f;
         float terrain_cell_rotation_ = 1.0f;

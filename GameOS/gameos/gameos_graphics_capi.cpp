@@ -4,6 +4,7 @@
 #include "KtxLoader.h"          // kKtxMaxEdge: the edge bound every pre-compressed texture shares with the KTX2 parser
 #include "mc2fmt.h"
 #include "texture_decode.h"
+#include "vk_shared_gbuffer_gate.h"   // mc2vkgate::umbrellaOn: whether terrain normal texels are kept
 #include "utils/mc2log.h"
 
 
@@ -246,6 +247,30 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
 
     auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);
     gosTexture* ptex = new gosTexture(tex, gos_Texture_Solid, name, blockVkFormat, std::move(blocks));
+    return g_gos_renderer->addTexture(ptex);
+}
+
+DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
+{
+    if(!rgbaData || width <= 0 || width > (int)RenderCore::kKtxMaxEdge) {
+        MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected terrain normal texture: width {:d}", mc2::fmt::as_i32(width));
+        return INVALID_TEXTURE_ID;
+    }
+    const unsigned int id = gos_CreateTerrainNormalTexture(rgbaData, width);
+    if(id == 0)
+        return INVALID_TEXTURE_ID;
+    Texture tex;
+    tex.id = id;
+    tex.w = width;
+    tex.h = width;
+    tex.fmt_ = TF_RGBA8;
+    tex.type_ = TT_2D;
+    tex.format = GL_RGBA8;
+    tex.has_mipmaps = false;
+    gosTexture* ptex = new gosTexture(tex, gos_Texture_Alpha, "terrain_detail_normal", 0u, nullptr);
+    // WHY only under the umbrella: the texels are the Vulkan terrain island's upload source and nothing else reads them.
+    if(mc2vkgate::umbrellaOn())
+        ptex->adoptRgbaMirror(width, width, std::vector<uint8_t>(rgbaData, rgbaData + (size_t)width * (size_t)width * 4u));
     return g_gos_renderer->addTexture(ptex);
 }
 

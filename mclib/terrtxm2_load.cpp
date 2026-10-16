@@ -846,8 +846,8 @@ long TerrainColorMap::init (char *fileName)
 			mc2::fmt::print_out("[SPLATTING] all loaded OK, width={:d}, creating individual textures\n", mc2::fmt::as_i32(arrayWidth));
 			for (int i = 0; i < 9; i++) {
 				if (!normalLayers[i]) continue;  // optional slot absent
-				unsigned int nmId = gos_CreateTerrainNormalTexture(normalLayers[i], arrayWidth);
-				mc2::fmt::print_out("[SPLATTING] matNormal{:d} GL id={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(nmId));
+				const DWORD nmId = gos_NewTerrainNormalTexture(normalLayers[i], arrayWidth);
+				mc2::fmt::print_out("[SPLATTING] matNormal{:d} handle={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(nmId));
 				gos_SetTerrainMaterialNormal(i, nmId);
 			}
 		} else {

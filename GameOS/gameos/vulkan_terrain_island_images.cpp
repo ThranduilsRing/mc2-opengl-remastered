@@ -342,26 +342,52 @@ bool ensure_dummy_matnormal(TerrainIsland* s) {
     return true;
 }
 
-// Copy-once import of the terrain detail-normal array's first level (all layers, RGBA8) from its CPU copy, again whenever the GL
-// array is rebuilt (its name is the change key). The VK detail port samples no anti-tile mips. Fail-soft: a malformed copy is
-// rejected with a log line and the dummy stays bound.
+// Copy-once import of the terrain detail-normal array (level 0, one layer per slot), assembled from the slot textures' own texels
+// and dropped after the upload, so no CPU copy of the array outlives it; again whenever the GL array is rebuilt (its name is the
+// change key). Absent optional slots get the flat normal, as in GL's array. The VK detail port samples no anti-tile mips.
+// Fail-soft: a slot that is not RGBA8 at slot 0's size is rejected with a log line and the dummy stays bound.
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     const uint32_t glTex = feed.glMatNormalArrayTex;
-    const mc2tex::TextureArrayCpu* a = feed.matNormalArrayCpu;
-    if (glTex == 0 || !a) return;                  // array not built yet -> macro-slope only
+    if (glTex == 0) return;                        // array not built yet -> macro-slope only
     if (glTex == s->matNormalTexImported && s->matNormalReady) return; // already imported
-    if (a->levels.empty() || a->vkFormat != mc2tex::kVkFormatRgba8Unorm || a->levels[0].size() != mc2tex::textureArrayLevelBytes(*a, 0)) {
-        vlog("VK-TERRAIN-DETAIL: detail-normal array rejected: %ux%u layers=%u levels=%zu.", a->width, a->height, a->layers, a->levels.size());
-        return;
+    if (glTex == s->matNormalTexRejected) return;
+    constexpr uint32_t kSlots = 9;
+    GosTexels slots[kSlots];
+    for (uint32_t i = 0; i < kSlots; ++i) {
+        if (feed.matNormalHandles[i] == 0) continue;   // 0 = the invalid gos handle
+        slots[i] = gos_GetTextureTexels(feed.matNormalHandles[i]);
+        if (slots[i].status == GosTexels::Status::Pending) return;   // retried next frame
     }
-    if (upload_sampled_image_array(s, s->matNormalImg, s->matNormalView,
-                                   VK_FORMAT_R8G8B8A8_UNORM, a->width, a->height,
-                                   a->layers, a->levels[0].data(), (VkDeviceSize)a->levels[0].size())) {
+    const uint32_t w = slots[0].width, h = slots[0].height;
+    const size_t layerBytes = (size_t)w * h * 4u;
+    for (uint32_t i = 0; i < kSlots; ++i) {
+        const bool absent = feed.matNormalHandles[i] == 0;
+        if (absent && i >= 5) continue;            // GL requires slots 0-4 only
+        if (absent || slots[i].status != GosTexels::Status::Ready || slots[i].vkFormat != mc2tex::kVkFormatRgba8Unorm ||
+            slots[i].width != w || slots[i].height != h || w == 0 || h == 0 || !slots[i].bytes ||
+            slots[i].bytes->size() != layerBytes) {
+            vlog("VK-TERRAIN-DETAIL: detail-normal slot %u rejected (%ux%u fmt=%u, slot 0 %ux%u); macro slope only.",
+                 i, slots[i].width, slots[i].height, slots[i].vkFormat, w, h);
+            s->matNormalTexRejected = glTex;
+            return;
+        }
+    }
+    std::vector<uint8_t> px(layerBytes * kSlots);
+    for (uint32_t i = 0; i < kSlots; ++i) {
+        uint8_t* dst = px.data() + (size_t)i * layerBytes;
+        if (slots[i].bytes) {
+            std::memcpy(dst, slots[i].bytes->data(), layerBytes);
+        } else {
+            for (size_t t = 0; t < layerBytes; t += 4) { dst[t] = 128; dst[t + 1] = 128; dst[t + 2] = 255; dst[t + 3] = 255; }
+        }
+    }
+    if (upload_sampled_image_array(s, s->matNormalImg, s->matNormalView, VK_FORMAT_R8G8B8A8_UNORM, w, h, kSlots, px.data(),
+                                   (VkDeviceSize)px.size())) {
         s->matNormalTexImported = glTex;
-        s->matNormalLayers = a->layers;
+        s->matNormalLayers = kSlots;
         s->matNormalReady = true;
         write_descriptors(s);
-        vlog("VK-TERRAIN-DETAIL: imported the detail-normal array %ux%u x%u layers from its CPU copy.", a->width, a->height, a->layers);
+        vlog("VK-TERRAIN-DETAIL: imported the detail-normal array %ux%u x%u layers from the slot textures.", w, h, kSlots);
     }
     // On failure the dummy stays bound (matNormalReady=false) -> FS uses macro-slope only.
 }

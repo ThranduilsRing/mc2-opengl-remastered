@@ -249,6 +249,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   matNormalView;
     mc2vk::OwnedSampler     matNormalSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint32_t      matNormalTexImported = 0;          // GL array tex name last imported (0 = none)
+    uint32_t      matNormalTexRejected = 0;          // GL array tex name whose slot texels were rejected (logged once)
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
 
