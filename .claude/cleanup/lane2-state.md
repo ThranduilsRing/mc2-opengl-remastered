@@ -1,5 +1,33 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-FOURTH session (2026-10-16, cap 6 h, Opus 5.5) -- row 28 ported (highlight-on proof needs a capture hook: recipe in the row), water + vegetation field trace (no gap), VK pass timer implemented and proven, review s33 folded; nifty not merged (queued tips)
+
+### Commits (after 9ddea7e06; final exe = d066a9efb, later commits docs only)
+843417018 row 28 port | 425f80254 row 28 + water/vegetation census in the gaps file, allowlist | 36133eeaa VK pass timer | (ledger regen) | a11b7692f pass timer pool reset at creation (fixes VUID-...-09401) | d066a9efb review s33 S1/S2/N1 | this commit: state. MERGEABLE TIP = the commit carrying this line.
+
+### VK pass timer (implemented; the session-33 note's design, files by path: review s33 S3)
+`GameOS/gameos/vk_render_pass_timer.{h,cpp}` (new: pool in the context's new `IslandSlot::PassTimer`, `vulkan_context.{h,cpp}`; `OwnedQueryPool` in `vk_owned.h`), `gos_render_pass_timer.{h,cpp}` (`SubmitBackendFrame`, `SubmitBackendDropped`, `LastDropped`; GL queries skipped while VK times), `gos_dev_shell.cpp` (`pass_time_dropped` in framegraph collectors), island brackets in `vulkan_terrain_island_run.cpp` (TerrainChunk), `vulkan_color_prop_island.cpp` (SpColor), `vulkan_mech_island.cpp` (Mechs), `vulkan_shadow_island_live.cpp` (ShadowDyn), `vulkan_water_island_run.cpp` (Water), `vulkan_vfx_island.cpp` (AlphaVfx), `engine_present_vk.cpp` (Post: the composite only; the native post passes are not bracketed); doctest `tests/unit/test_vk_render_pass_timer.cpp`. gpu_total under VK = sum of the timed passes (no frame-wide pair across separate submits).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 28: fresh VK capture `.claude/l2cap/s34-vk` vs `--golden current` (`scratch/verify34.log`) | 36/36 regions, 10/10 poses, validation 0 on 40 logs; vs the pre-port capture 0 / 0 / 64 px over 15 (no highlight at golden poses); highlight-on pixels not proven (recipe in row 28) |
+| pass timer, first run (`scratch/b34_passtime.log`) | per-pass ms non-zero, but validation errors 9 (VUID-vkGetQueryPoolResults-None-09401): fixed by a11b7692f |
+| pass timer, rerun on the final exe (`scratch/b34b_passtime.log`, `scratch/s34b_framegraph.out`) | mc2_01 VK PASS, validation errors 0 warnings 0; dev-shell framegraph (12 replies): shadowDyn 0.184, terrainChunk 0.849, spColor 0.071, mechs 0.020, water 0.068, post 0.008 ms, `pass_time_dropped` 0; log `[RENDER_PASS_TIME v1] ... gpu_total=1.21` |
+| doctest | mc2_tests vk pass timer 3/3; suite run rc 0 |
+| tier1 VK + validation, final exe (`scratch/b34_vk_t1.log`) | 5/5 PASS, errors 0 warnings 0 all five, fingerprint PASS |
+| tier1 GL, final exe (`scratch/b34_gl_t1.log`) | 5/5 PASS, +0 destroys, fingerprint PASS (GL code moved: gos_render_pass_timer, comments) |
+| provers | coverage --check 0 new 0 stale (row 28 graded PORTED by member read); vk_ownership_ledger OK |
+
+### Open
+- Row 28 highlight-on proof (capture hook recipe), row 18 owner ruling; AlphaVfx showed no sample at mc2_01 (no VFX island submit in the window); the native post passes (fog / SSAO / screen FX) are outside the Post bracket.
+- Scratch (mine, deletable): `scratch/` s34*.sh/.out, s34*_framegraph.out (cited above until merge), r34move.py, build/deploy_s34*.log, b34*.log, verify34.log; `.claude/l2cap/s34-vk` (cited by row 28).
+
+### Lessons (34)
+- A query bracket can be recorded on a command buffer that is then re-recorded or never submitted: reset the whole pool once at creation so such reads are "not ready", not "uninitialized".
+- Check who actually sets a per-instance field before planning its visual proof: `setDrawColored` had no caller, so only damage flashes highlight buildings.
+- The dev-shell socket can be polled from the harness during a lease-held smoke; that is enough to prove an editor-facing readout without opening the editor.
+
 ## THIRTY-THIRD session (2026-10-16, cap 6 h, Opus 5.5) -- row 27 closed (dead GL arm deleted, not ported), ungated census done (row 28 opened and pinned by the coverage tool), VK pass-timer design note (not implemented, over the bar), review s32 folded; nifty not merged (f170964d8 queued at lane 1's session end)
 
 ### Commits (after f170964d8; final exe = 5e0ad4c1f, later commits tools/docs)
