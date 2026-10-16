@@ -101,7 +101,7 @@
    "LG06": 15,
    "LG07": 0,
    "LG08": 0,
-   "LG09": 40,
+   "LG09": 35,
    "LG10": 0,
    "LG11": 0,
    "LG12a": 2,
@@ -1477,8 +1477,7 @@
   },
   "RenderCore/KtxLoader.cpp": {
    "LG05": 1,
-   "LG06": 1,
-   "LG09": 5
+   "LG06": 1
   },
   "RenderCore/KtxLoader.h": {
    "LG05": 1,
@@ -5128,7 +5127,7 @@
    "LG20": 3
   }
  },
- "head": "a0614d7d2",
+ "head": "a58df2b76",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
