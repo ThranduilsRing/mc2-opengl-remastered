@@ -12,7 +12,7 @@ Subcommands:
       py -3 tools/tracy_capture_compare.py compare before.tracy after.tracy \
           [--zones DrawScreen,SwapWindow.SDL]
 
-  baseline -- capture BOTH arms (gl + vk) at a named pose and write a dated
+  baseline -- capture the vk arm (--arms gl,vk adds GL) at a named pose and write a dated
               baseline dir (traces + baseline.json + summary.md). Uncapped,
               free-timestep (the only hygienic FPS measurement -- see below):
       py -3 tools/tracy_capture_compare.py baseline \
@@ -106,7 +106,7 @@ MIN_STEADY_FRAMES = 60
 DEFAULT_POSE = "-6656,-6656,150.625,10.9094,6045.2358@600"
 DEFAULT_BASELINE_MISSION = "mc2_10"
 DEFAULT_BASELINE_SECONDS = 15  # 15s runs (standing launch rule); ~9s of parked frames
-DEFAULT_ARMS = ["gl", "vk"]
+DEFAULT_ARMS = ["vk"]   # the GL arm is opt-in (--arms gl,vk) while the selfcheck and matrix subcommands still measure on GL
 BASELINE_ROOT = Path("release_assets/tracy-baselines")  # gitignored; traces never committed
 REGRESS_WARN_PCT = 5.0   # frame-count drop that WARNs (exit 1)
 REGRESS_FAIL_PCT = 10.0  # frame-count drop that FAILs (exit 2)
@@ -959,7 +959,7 @@ def main() -> int:
                                               "(any other difference in the recorded render options is refused)")
     d.set_defaults(fn=cmd_compare)
 
-    b = sub.add_parser("baseline", help="capture BOTH arms at a pose -> dated baseline dir")
+    b = sub.add_parser("baseline", help="capture the arms (default vk) at a pose -> dated baseline dir")
     b.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
     b.add_argument("--arms", default=",".join(DEFAULT_ARMS),
                    help=f"comma-separated arms (default: {','.join(DEFAULT_ARMS)})")

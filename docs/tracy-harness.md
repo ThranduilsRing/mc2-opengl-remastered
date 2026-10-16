@@ -126,7 +126,7 @@ a human `summary.md` table.
 ```sh
 py -3 tools/tracy_capture_compare.py baseline \
     --install A:/Games/mc2-opengl/mc2-win64-0.4c
-# defaults: --mission mc2_10, the mc2_10 corner-park pose, 15s, arms gl,vk,
+# defaults: --mission mc2_10, the mc2_10 corner-park pose, 15s, arm vk (--arms gl,vk adds GL),
 #           --name <UTC date>, out-dir release_assets/tracy-baselines/<name>
 ```
 
