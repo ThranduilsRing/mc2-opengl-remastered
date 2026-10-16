@@ -93,6 +93,8 @@ def test_four_distinct_sources_keep_arm_and_repeat_order():
 def parity_case(monkeypatch):
     raw_log = logged_observations().encode()
     monkeypatch.setattr(Path, "read_bytes", lambda path: raw_log)
+    monkeypatch.setattr(Path, "read_text", lambda path, **kw: json.dumps(
+        {"backend": "vulkan", "readback_source": "vk_present", "deterministic": True, "seed": 0xC0FFEE}))
     stamp = {"fingerprint": "5636f22bc357", "bookmark": "visible-effect", "frame": 154}
     effect = {"class": "ppc", "rect": [0, 0, 8, 8],
               "images": {"mlr": ["mlr1.png", "mlr2.png"], "gpu": ["gpu1.png", "gpu2.png"]},
@@ -114,7 +116,7 @@ def parity_case(monkeypatch):
                 "process": f"{arm}-{index}", "effect_age": 0.25,
                 "rng": {"owner": "RenderWorld", "stream": "56465852", "version": 1, "seed": 42,
                         "algorithm": "LCG32-NR-next15", "state": 123, "draw_count": 9},
-                "backend": {"requested": "gl", "drawn": "gl", "readback": "gl_fbo"},
+                "backend": {"requested": "vulkan", "drawn": "vulkan", "readback": "vk_present"},
                 "assets": {"mc2.fx": "a" * 64}, "birth_transcript": extract(raw_log.decode())["birth_transcript"],
                 "log_sha256": hashlib.sha256(raw_log).hexdigest(), "log": f"{arm}-{index}.log",
                 "gates": {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": enabled,
@@ -151,17 +153,13 @@ def test_proven_nonempty_family_and_four_family_set_accept_parity(parity_case):
 ])
 def test_vulkan_parity_requires_present_readback_fixed_clock_and_seed(parity_case, monkeypatch, sidecar, accepted):
     effect, crops, _ = parity_case
-    for arm in ("mlr", "gpu"):
-        for record in [*effect["evidence"]["captures"][arm],
-                       effect["evidence"]["effect_free"][arm], effect["evidence"]["suppressed"][arm]]:
-            record["runtime"]["backend"] = {"requested": "vulkan", "drawn": "vulkan", "readback": "vk_present"}
     monkeypatch.setattr(Path, "read_text", lambda path, **kw: json.dumps(sidecar))
-    result = acceptance(effect, crops, Path("."), (8, 8), backend="vulkan")
+    result = acceptance(effect, crops, Path("."), (8, 8))
     assert result["parity_accepted"] is accepted
     assert result["status"] == ("PARITY" if accepted else "DIAGNOSTIC")
     if accepted:
         effect["evidence"]["captures"]["gpu"][0]["runtime"]["backend"]["drawn"] = "gl"
-        assert not acceptance(effect, crops, Path("."), (8, 8), backend="vulkan")["parity_accepted"]
+        assert not acceptance(effect, crops, Path("."), (8, 8))["parity_accepted"]
 
 
 def test_empty_effect_region_fails_even_with_repeatable_equal_arms(parity_case):
@@ -368,13 +366,12 @@ def test_todays_fixture_is_diagnostic_even_if_every_repeat_matches():
     assert summarize(rows) == {"status": "DIAGNOSTIC", "parity_accepted": False, "missing_families": []}
 
 
-@pytest.mark.parametrize("backend", ["gl", "vulkan"])
-def test_cli_never_exits_success_for_todays_fixture_even_with_matching_pixels(monkeypatch, capsys, backend):
+def test_cli_never_exits_success_for_todays_fixture_even_with_matching_pixels(monkeypatch, capsys):
     path = Path(__file__).parent / "vfx_oracle" / "regions.json"
     read_text = Path.read_text
     sidecar = {"backend": "vulkan", "readback_source": "vk_present", "deterministic": True, "seed": 0xC0FFEE}
     monkeypatch.setattr(Path, "read_text", lambda self, **kw: read_text(self, **kw) if self == path else json.dumps(sidecar))
-    monkeypatch.setattr(sys, "argv", ["vfx_parity_oracle.py", str(path), "--out", "unused-output", "--backend", backend])
+    monkeypatch.setattr(sys, "argv", ["vfx_parity_oracle.py", str(path), "--out", "unused-output"])
     monkeypatch.setattr(Image, "open", lambda path: Image.new("RGB", (1920, 1080)))
     monkeypatch.setattr(Image.Image, "save", lambda *a, **k: None)
     monkeypatch.setattr(Path, "mkdir", lambda *a, **k: None)
@@ -382,7 +379,7 @@ def test_cli_never_exits_success_for_todays_fixture_even_with_matching_pixels(mo
     monkeypatch.setattr(Path, "write_text", lambda self, text, **k: written.append(json.loads(text)))
     assert oracle.main() == 1
     assert written[0]["status"] == "DIAGNOSTIC" and not written[0]["parity_accepted"]
-    assert written[0]["backend"] == backend
+    assert written[0]["backend"] == "vulkan"
     assert all(row["parity_failures"] == ["family demonstration, provenance, effect-free and suppressed controls absent"]
                for row in written[0]["effects"])
     assert all(row["repeatable"] and row["cross_arm_equal"] for row in written[0]["effects"])

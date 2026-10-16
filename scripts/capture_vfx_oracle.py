@@ -1,4 +1,4 @@
-"""Run the VFX comparison on lane3 through the existing capture harness."""
+"""Run the VFX MLR-vs-GPU-particle comparison under Vulkan through the existing capture harness (--install picks the lane install)."""
 from __future__ import annotations
 
 import argparse
@@ -26,22 +26,19 @@ def park_value(pose: dict) -> str:
 
 def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "loop",
             camera_park: str | None = None, experiment: str = "master",
-            backend: str = "gl", install: str = "lane3") -> list[str]:
-    if backend not in {"gl", "vulkan"}:
-        raise ValueError("unknown render backend")
+            install: str = "lane3") -> list[str]:
     if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1"}:
         raise ValueError("unknown arm/fixture or negative frame")
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
            "--exe", str(INSTALL_ROOT / f"mc2-win64-{install}" / "mc2.exe"), "--bookmarks", str(bookmarks),
            "--out-dir", str(out), "--trigger-frame", str(frame),
            "--settle", "8", "--duration", "30", "--runs", "2"]
-    env = {"MC2_RENDER_BACKEND": backend, "MC2_SMOKE_FREEZE_ANIM": "1",
+    # The selector alone makes the engine force GL; the umbrella is what makes the capture a Vulkan one.
+    env = {"MC2_RENDER_BACKEND": "vulkan", "MC2_VK_SHARED_GBUFFER": "1", "MC2_SMOKE_FREEZE_ANIM": "1",
            "MC2_DETERMINISTIC_RNG": "1", "MC2_RNG_SEED": "0xC0FFEE",
            "MC2_FX_FORCE_SPAWN": fixture, "MC2_GPU_PARTICLES_LOG": "1",
            "MC2_GPU_PARTICLES": "1" if arm == "gpu" else "0"}
     env.update(gate_vector(arm, experiment))
-    if backend == "vulkan":
-        env["MC2_VK_SHARED_GBUFFER"] = "1"
     if camera_park is not None:
         env["MC2_CAMERA_PARK"] = camera_park
     for key, value in env.items():
@@ -74,7 +71,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--arm", choices=("mlr", "gpu", "both"), default="both")
     parser.add_argument("--fixture", choices=("loop", "1"), default="loop")
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
-    parser.add_argument("--backend", choices=("gl", "vulkan"), default="gl")
     parser.add_argument("--install", choices=("lane2", "lane3"), default="lane3")
     args = parser.parse_args(argv)
     if bool(args.bookmarks) == bool(args.plan):
@@ -95,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
             failed |= main([str(args.plan.parent / scene["bookmarks"]),
                             "--frame", str(scene["frame"]), "--fixture", scene["fixture"],
                             "--out", str(args.out / name), "--arm", args.arm,
-                            "--experiment", args.experiment, "--backend", args.backend,
+                            "--experiment", args.experiment,
                             "--install", args.install]) != 0
         return int(failed)
     if args.frame is None:
@@ -114,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     fingerprint_checks = []
     for arm in (("mlr", "gpu") if args.arm == "both" else (args.arm,)):
         cmd = command(args.bookmarks.resolve(), (args.out / arm).resolve(), args.frame, arm,
-                      args.fixture, camera_park, args.experiment, args.backend, args.install)
+                      args.fixture, camera_park, args.experiment, args.install)
         (args.out / f"{arm}-command.json").write_text(json.dumps(cmd, indent=2) + "\n", encoding="utf-8")
         rc = capture(cmd)
         failed |= rc != 0
@@ -123,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
             log_text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
             diagnostic = {**extract(log_text), "log": str(log.resolve()),
                           "log_sha256": hashlib.sha256(log.read_bytes()).hexdigest() if log.exists() else None,
-                          "experiment": args.experiment, "backend": args.backend,
+                          "experiment": args.experiment, "backend": "vulkan",
                           "gates": gate_vector(arm, args.experiment)}
             (args.out / f"{arm}-r{repeat}-runtime.json").write_text(
                 json.dumps(diagnostic, indent=2) + "\n", encoding="utf-8")
@@ -142,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def capture(cmd: list[str]) -> int:
     # Acquire the lease before timed capture so contention cannot exhaust its deadline.
-    host_lease.ensure_held("Q2 VFX oracle lane3")
+    host_lease.ensure_held("VFX oracle")
     previous = sys.argv
     try:
         sys.argv = cmd[1:]

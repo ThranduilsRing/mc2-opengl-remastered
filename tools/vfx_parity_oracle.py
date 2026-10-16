@@ -83,8 +83,7 @@ def provenance(record: dict) -> tuple:
     return fingerprint.lower(), bookmark, frame
 
 
-def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, primary=False,
-                       backend="gl") -> tuple:
+def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, primary=False) -> tuple:
     runtime = record.get("runtime")
     if not isinstance(runtime, dict):
         raise ValueError("bound VFX runtime evidence absent")
@@ -100,9 +99,8 @@ def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, prim
     age = runtime["effect_age"]
     if type(age) not in (int, float) or not math.isfinite(age) or age < 0:
         raise ValueError("effect age absent or invalid")
-    source = "vk_present" if backend == "vulkan" else "gl_fbo"
-    if runtime["backend"] != {"requested": backend, "drawn": backend, "readback": source}:
-        raise ValueError(f"{backend} oracle requires actual {backend} drawing and {source} readback")
+    if runtime["backend"] != {"requested": "vulkan", "drawn": "vulkan", "readback": "vk_present"}:
+        raise ValueError("the oracle requires actual Vulkan drawing and a vk_present readback")
     assets = runtime["assets"]
     if not isinstance(assets, dict) or not assets:
         raise ValueError("resolved asset hashes absent")
@@ -144,26 +142,23 @@ def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, prim
 
 
 def acceptance(effect: dict, crops: list[Image.Image], base: Path,
-               source_size: tuple[int, int], backend="gl") -> dict:
-    if backend not in {"gl", "vulkan"}:
-        raise ValueError("unknown render backend")
+               source_size: tuple[int, int]) -> dict:
     comparison = compare(crops)
     failures = []
-    if backend == "vulkan":
-        try:
-            paths = source_paths(base, effect["images"])
-            if effect.get("evidence"):
-                paths += [(base / effect["evidence"][kind][arm]["image"]).resolve()
-                          for kind in ("effect_free", "suppressed") for arm in ("mlr", "gpu")]
-            for path in paths:
-                sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
-                if not isinstance(sidecar, dict):
-                    raise ValueError("capture sidecar must be an object")
-                failures.extend(capture_backend.check(backend, [(str(path), sidecar)]))
-                if sidecar.get("deterministic") is not True or sidecar.get("seed") != 0xC0FFEE:
-                    failures.append(f"{path}: fixed clock and oracle seed unproven")
-        except (KeyError, TypeError, ValueError, OSError) as error:
-            failures.append(f"invalid Vulkan capture sidecar: {error}")
+    try:
+        paths = source_paths(base, effect["images"])
+        if effect.get("evidence"):
+            paths += [(base / effect["evidence"][kind][arm]["image"]).resolve()
+                      for kind in ("effect_free", "suppressed") for arm in ("mlr", "gpu")]
+        for path in paths:
+            sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+            if not isinstance(sidecar, dict):
+                raise ValueError("capture sidecar must be an object")
+            failures.extend(capture_backend.check(capture_backend.VULKAN, [(str(path), sidecar)]))
+            if sidecar.get("deterministic") is not True or sidecar.get("seed") != 0xC0FFEE:
+                failures.append(f"{path}: fixed clock and oracle seed unproven")
+    except (KeyError, TypeError, ValueError, OSError) as error:
+        failures.append(f"invalid Vulkan capture sidecar: {error}")
     if not comparison["repeatable"]:
         failures.append("same-arm repeats differ")
     if not comparison["cross_arm_equal"]:
@@ -186,7 +181,7 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                 checks["observed_draw_probes"][arm] = []
                 for record in records:
                     stamps.append(provenance(record))
-                    common, positive, process, log, probe = runtime_provenance(record, arm, evidence.get("experiment"), base, True, backend)
+                    common, positive, process, log, probe = runtime_provenance(record, arm, evidence.get("experiment"), base, True)
                     runtime_stamps.append(common)
                     positive_stamps.append(positive)
                     processes.append(process)
@@ -199,7 +194,7 @@ def acceptance(effect: dict, crops: list[Image.Image], base: Path,
                 for kind in ("effect_free", "suppressed"):
                     record = evidence[kind][arm]
                     stamps.append(provenance(record))
-                    common, _, process, log, _ = runtime_provenance(record, arm, evidence.get("experiment"), base, backend=backend)
+                    common, _, process, log, _ = runtime_provenance(record, arm, evidence.get("experiment"), base)
                     runtime_stamps.append(common)
                     processes.append(process)
                     logs.append(log)
@@ -264,7 +259,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--backend", choices=("gl", "vulkan"), default="gl")
     args = parser.parse_args()
     doc = json.loads(args.manifest.read_text(encoding="utf-8"))
     args.out.mkdir(parents=True, exist_ok=True)
@@ -284,7 +278,7 @@ def main() -> int:
                 source_size = im.size
                 crops.append(region(im, effect["rect"]))
         row = {"class": name, "rect": effect["rect"],
-               **acceptance(effect, crops, args.manifest.parent, source_size, args.backend),
+               **acceptance(effect, crops, args.manifest.parent, source_size),
                "images": effect["images"], "montage": f"{name}.png"}
         if "evidence" in effect:
             row["evidence"] = effect["evidence"]
@@ -294,7 +288,7 @@ def main() -> int:
     if not rows:
         raise ValueError("no effect regions")
     result = {"digest_method": "SHA256(LE u32 width, LE u32 height, row-major RGBA8)",
-              **summarize(rows), "backend": args.backend, "pixel_threshold": PIXEL_THRESHOLD,
+              **summarize(rows), "backend": "vulkan", "pixel_threshold": PIXEL_THRESHOLD,
               "min_changed_pixels": MIN_CHANGED_PIXELS,
               "manifest": str(args.manifest.resolve()), "effects": rows}
     (args.out / "digests.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

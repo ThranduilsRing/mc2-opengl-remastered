@@ -141,7 +141,7 @@ floor on two VK arms; the owner's fail-soft ruling (inventory section 14 questio
 
 ## 5. Follow-ups (not done here)
 - DONE 908e2ad90: `verify.py` refuses a candidate whose backend differs from the golden's.
-- DONE 2026-10-16 (session 29): `capture_ab.py` noise floor is two VK arms; the GL arm is behind `--gl-arm`.
+- DONE 2026-10-16 (session 29): `capture_ab.py` noise floor is two VK arms; the GL arm (`--gl-arm`) was deleted in session 38.
 - `tests/callers.json` is stale at the lane base 06f3e7296 (`tools/callers.py --check`); regenerate at merge.
 
 ## 6. Switched 2026-10-16 (session 29) and the owner rulings
