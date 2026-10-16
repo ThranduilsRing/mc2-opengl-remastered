@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "../GameOS/gameos/utils/mc2log.h"
 
 //---------------------------------------------------------------------------
 // static globals
