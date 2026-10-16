@@ -116,6 +116,25 @@ def test_existing_capture_output_is_rejected_before_launch(monkeypatch):
         runner.main(["poses.json", "--frame", "154", "--out", "captures"])
 
 
+def test_unknown_install_is_one_log_line_and_no_launch(monkeypatch, capsys):
+    monkeypatch.setattr(runner, "capture", lambda cmd: pytest.fail("capture launched for an unknown install"))
+    assert runner.main(["poses.json", "--frame", "154", "--out", "captures", "--install", "lane9"]) == 2
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1 and "lane9" in err and "usage:" not in err
+
+
+def test_install_lane2_reaches_the_exe_path_through_main(monkeypatch, tmp_path):
+    poses = tmp_path / "poses.json"
+    pose = {"pos": [1.0, 2.0, 0], "rot": 0.0, "proj": 85.0, "alt": 1600.0}
+    poses.write_text(json.dumps({"mission": "mc2_24", "bookmarks": [pose, pose]}), encoding="utf-8")
+    launched = []
+    monkeypatch.setattr(runner, "capture", lambda cmd: launched.append(cmd) or 0)
+    monkeypatch.setattr(runner.subprocess, "check_output", lambda *a, **k: "0" * 40)
+    runner.main([str(poses), "--frame", "154", "--out", str(tmp_path / "out"), "--arm", "gpu", "--install", "lane2"])
+    assert len(launched) == 1
+    assert launched[0][launched[0].index("--exe") + 1].replace(chr(92), "/").endswith("mc2-win64-lane2/mc2.exe")
+
+
 def test_duplicate_plan_ids_fail_before_any_capture(monkeypatch):
     root_main = runner.main
     monkeypatch.setattr(Path, "read_text", lambda *a, **k: json.dumps({"scenes": [{"id": "ppc"}] * 2}))
