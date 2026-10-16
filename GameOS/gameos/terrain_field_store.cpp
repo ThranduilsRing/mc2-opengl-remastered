@@ -112,18 +112,18 @@ bool TerrainFieldStore::setCementAtlas(const uint8_t* rgba, int width, int heigh
     return setImage(cementAtlas_, rgba, width, height, 4);
 }
 
-bool TerrainFieldStore::setColormapAtlas(const uint8_t* bytes, size_t byteCount, int width, int height, uint32_t vkFormat) {
+bool TerrainFieldStore::setColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat) {
     const bool bc7 = vkFormat == ColormapAtlas::kBc7Unorm || vkFormat == ColormapAtlas::kBc7Srgb;
     const bool sizeOk = width > 0 && height > 0 && width <= kMaxSide * 4 && height <= kMaxSide * 4;
     const size_t want = !sizeOk ? 0
                       : bc7     ? (size_t)((width + 3) / 4) * (size_t)((height + 3) / 4) * 16u
                       : vkFormat == ColormapAtlas::kRgba8 ? (size_t)width * (size_t)height * 4u : 0;
-    if (!bytes || want == 0 || byteCount != want) {
+    if (bytes.empty() || want == 0 || bytes.size() != want) {
         MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a colormap atlas of {:d}x{:d}, format {:d}, {:d} bytes",
-                mc2::fmt::as_i32(width), mc2::fmt::as_i32(height), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_size(byteCount));
+                mc2::fmt::as_i32(width), mc2::fmt::as_i32(height), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_size(bytes.size()));
         return false;
     }
-    colormapAtlas_.bytes.assign(bytes, bytes + byteCount);
+    colormapAtlas_.bytes.assign(bytes.begin(), bytes.end());
     colormapAtlas_.width = width;
     colormapAtlas_.height = height;
     colormapAtlas_.vkFormat = vkFormat;

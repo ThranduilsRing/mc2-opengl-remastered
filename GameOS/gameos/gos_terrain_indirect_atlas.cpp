@@ -182,11 +182,11 @@ namespace gos_terrain_indirect_detail {
 // The CPU copy of the colormap atlas the Vulkan terrain island imports, kept in the terrain field store.
 // WHY only under the umbrella: GL frees its CPU colormap after the upload (MC2_COLORMAP_CPU_RETIRE), and an RGBA8 atlas is
 // 100-150 MB that only the Vulkan island reads.
-static void keepColormapAtlas(const uint8_t* bytes, size_t byteCount, int width, int height, uint32_t vkFormat) {
+static void keepColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat) {
     if (!mc2vkgate::umbrellaOn())
         return;
     if (mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore())
-        store->setColormapAtlas(bytes, byteCount, width, height, vkFormat);
+        store->setColormapAtlas(bytes, width, height, vkFormat);
     else
         mc2::fmt::print_err("[TERRAIN_FIELDS v1] colormap atlas built with no terrain field store: the Vulkan terrain stays olive\n");
 }
@@ -254,7 +254,7 @@ void BuildColormapAtlas() {
 
             atlasSizeCapture = img.width;
             atlasBuilt = true;
-            keepColormapAtlas(img.pixels.data(), mip0Bytes, img.width, img.height, img.vkFormat);
+            keepColormapAtlas(std::span<const uint8_t>(img.pixels.data(), mip0Bytes), img.width, img.height, img.vkFormat);
 
             mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded {:d}x{:d} BC7 fmt=0x{:x} bytes={:d} gltex={:d}\n", mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)g_atlasGLTex));
 
@@ -310,7 +310,7 @@ void BuildColormapAtlas() {
                 rgba[i * 4 + 2] = tcm->cpuColorMap[i * 4 + 0];
                 rgba[i * 4 + 3] = tcm->cpuColorMap[i * 4 + 3];
             }
-            keepColormapAtlas(rgba.data(), rgba.size(), tcm->cpuColorMapSize, tcm->cpuColorMapSize,
+            keepColormapAtlas(rgba, tcm->cpuColorMapSize, tcm->cpuColorMapSize,
                               mc2terrain::ColormapAtlas::kRgba8);
         }
 

@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace mc2terrain {
@@ -69,9 +70,9 @@ public:
     bool setCementAtlas(const uint8_t* rgba, int width, int height);
     const FieldImage<uint8_t>& cementAtlas() const { return cementAtlas_; }   // 4 bytes a texel
 
-    // Rejected (with a log line, previous atlas kept) on a null input, an edge out of range, an unknown format or a byte count
+    // Rejected (with a log line, previous atlas kept) on an empty input, an edge out of range, an unknown format or a byte count
     // that is not one level of that format at that size.
-    bool setColormapAtlas(const uint8_t* bytes, size_t byteCount, int width, int height, uint32_t vkFormat);
+    bool setColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat);
     const ColormapAtlas& colormapAtlas() const { return colormapAtlas_; }
 
 private:
