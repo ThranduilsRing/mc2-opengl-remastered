@@ -96,7 +96,7 @@ void EndFrame(uint32_t frame, double dtMs) {
     if (dtMs < s_thresholdMs) return;
 
     // Primary summary line.
-    mc2::fmt::print_err("[HITCH] frame={:d} dt={:.2f} terrainSolid={:.2f} staticFlush={:.2f} staticSnapshot={:.2f} water={:.2f} glBufData={:d} glBufBytes={:d} glBufSubData={:d} glBufSubBytes={:d} glMapBuf={:d} glTexImage={:d} glTexImageBytes={:d} glBindTex={:d} glUseProgram={:d} glWaitSync={:d}(sig={:d} to={:d}) glFence={:d} glFinish={:d} glFlush={:d}\n",
+    mc2::fmt::print_err("[HITCH] frame={:d} dt={:.2f} terrainSolid={:.2f} staticFlush={:.2f} staticSnapshot={:.2f} water={:.2f} glBufData={:d} glBufBytes={:d} glBufSubData={:d} glBufSubBytes={:d} glMapBuf={:d} glTexImage={:d} glTexImageBytes={:d} glBindTex={:d} glUseProgram={:d} fenceWaitMs={:.2f} fenceWaits={:d}\n",
         mc2::fmt::as_u32(frame), dtMs,
         a.terrainSolidMs, a.staticFlushMs, a.staticSnapshotMs, a.waterMs,
         mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64((unsigned long long)a.glBufferDataBytes),
@@ -104,8 +104,7 @@ void EndFrame(uint32_t frame, double dtMs) {
         mc2::fmt::as_u32(a.glMapBufferCalls),
         mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexImageBytes),
         mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls),
-        mc2::fmt::as_u32(a.glClientWaitSyncCalls), mc2::fmt::as_u32(a.glClientWaitSyncSignaled), mc2::fmt::as_u32(a.glClientWaitSyncTimedOut),
-        mc2::fmt::as_u32(a.glFenceSyncCalls), mc2::fmt::as_u32(a.glFinishCalls), mc2::fmt::as_u32(a.glFlushCalls));
+        a.vkFence.totalMs, mc2::fmt::as_u32(a.vkFence.count));
 
     // Detail line: terrain solid dispatch.
     if (a.terrainSolidMs > 0.0 || a.terrainBinds || a.terrainUploads || a.terrainTexImageCalls) {
@@ -127,15 +126,19 @@ void EndFrame(uint32_t frame, double dtMs) {
     }
 
     // Detail line: GL totals.
-    mc2::fmt::print_err("[HITCH_GL] glBufferData={:d} glBufferDataBytes={:d} glBufferSubData={:d} glBufferSubDataBytes={:d} glMapBuffer={:d} glTexImage={:d} glTexImageBytes={:d} glTexSubImage={:d} glTexSubImageBytes={:d} glBindTexture={:d} glUseProgram={:d} glClientWaitSync={:d}(sig={:d} to={:d}) glFenceSync={:d} glFinish={:d} glFlush={:d}\n",
+    mc2::fmt::print_err("[HITCH_GL] glBufferData={:d} glBufferDataBytes={:d} glBufferSubData={:d} glBufferSubDataBytes={:d} glMapBuffer={:d} glTexImage={:d} glTexImageBytes={:d} glTexSubImage={:d} glTexSubImageBytes={:d} glBindTexture={:d} glUseProgram={:d}\n",
         mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64((unsigned long long)a.glBufferDataBytes),
         mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64((unsigned long long)a.glBufferSubDataBytes),
         mc2::fmt::as_u32(a.glMapBufferCalls),
         mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexImageBytes),
         mc2::fmt::as_u32(a.glTexSubImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexSubImageBytes),
-        mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls),
-        mc2::fmt::as_u32(a.glClientWaitSyncCalls), mc2::fmt::as_u32(a.glClientWaitSyncSignaled), mc2::fmt::as_u32(a.glClientWaitSyncTimedOut),
-        mc2::fmt::as_u32(a.glFenceSyncCalls), mc2::fmt::as_u32(a.glFinishCalls), mc2::fmt::as_u32(a.glFlushCalls));
+        mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls));
+
+    // Detail line: Vulkan frame-fence waits.
+    {
+        char line[160];
+        if (a.vkFence.format(line, sizeof line, frame) > 0) { std::fputs(line, stderr); }
+    }
 
     // H1c frame-phase attribution line.
     {
@@ -146,6 +149,12 @@ void EndFrame(uint32_t frame, double dtMs) {
     }
 
     fflush(stderr);
+}
+
+void RecordFenceWait(double ms) {
+    if (!g_mc2HitchEnabled) return;
+    if (!g_mc2HitchAccum.vkFence.record(ms))
+        mc2::fmt::print_err("[HITCH_VK] rejected fence wait sample {:.3f}ms\n", ms);
 }
 
 void SpanBegin(HitchSpanKind kind) {

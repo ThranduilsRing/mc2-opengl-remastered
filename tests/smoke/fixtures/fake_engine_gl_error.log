@@ -1,5 +1,0 @@
-[INSTR v1] enabled: smoke=1 build=fake
-[SMOKE v1] event=banner mode=passive mission=mc2_01 profile=stock duration=1 seed=0x0
-[TIMING v1] event=mission_ready elapsed_ms=500.0
-[GL_ERROR v1] code=0x0500 GL_INVALID_ENUM op=glDrawElements
-[SMOKE v1] event=summary result=pass duration_actual_ms=1000 frames=60

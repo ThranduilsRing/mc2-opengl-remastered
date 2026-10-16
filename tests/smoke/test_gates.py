@@ -17,11 +17,6 @@ def test_clean_pass():
     v = evaluate(_base(), CFG, exit_code=0, walltime_s=31)
     assert v.passed and v.buckets == []
 
-def test_gl_error_fails():
-    s = _base(); s.gl_errors = 1
-    v = evaluate(s, CFG, exit_code=0, walltime_s=31)
-    assert not v.passed and "gl_error" in v.buckets
-
 def test_missing_instr_banner_fails():
     s = _base(); s.instr_banner_seen = False
     v = evaluate(s, CFG, exit_code=0, walltime_s=31)
@@ -50,9 +45,9 @@ def test_timeout_bucket_when_walltime_cap_hit():
     assert v.buckets == ["timeout"]
 
 def test_multiple_buckets_reported():
-    s = _base(); s.gl_errors = 1; s.asset_oob = 1
+    s = _base(); s.pool_nulls = 1; s.asset_oob = 1
     v = evaluate(s, CFG, exit_code=0, walltime_s=31)
-    assert set(v.buckets) >= {"gl_error", "asset_oob"}
+    assert set(v.buckets) >= {"pool_null", "asset_oob"}
 
 # --- SMOKE-GATES-BUCKET-COVERAGE-1: buckets the original suite never asserted ---
 

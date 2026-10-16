@@ -127,8 +127,7 @@ SOFT_ENV: dict = {
 }
 
 POPPED_ENV: frozenset = frozenset({
-    # Deleted so the GL error drain always speaks during a smoke run.
-    "MC2_GL_ERROR_DRAIN_SILENT",
+    # Empty on purpose: no live gate needs its ambient value deleted. A name goes here only while a retired gate's stale shell value could still change a run.
 })
 
 

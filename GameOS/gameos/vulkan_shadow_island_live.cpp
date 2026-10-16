@@ -154,11 +154,7 @@ bool csmArrayInteropGateRequested() {
 // documenting that the depth images are non-exportable and consumed via VkImageView only.
 constexpr bool kShadowDirectChain = true;
 
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
+std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
     return vk_island_util::loadSpv(device, path, vlog);
@@ -1405,12 +1401,14 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     }
     s->pendingDyn.valid = false;
     s->recording = false;
+    // The bracket opened in begin_frame: it is cancelled on every return that does not submit, including the
+    // all-declined one just below.
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_ShadowDyn);
     if (s->passCount == 0) return;   // every pass declined: nothing to submit, the products stay not-ready
     auto disableFrame = [&]() {
         s->disabled = true;
         g_dynShadowReadyThisFrame = g_csmFullMapReadyThisFrame = g_csmArrayReadyThisFrame = false;
     };
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_ShadowDyn);
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_ShadowDyn);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); disableFrame(); return; }
     const VkFence fence = s->frameFence[s->parity].get();

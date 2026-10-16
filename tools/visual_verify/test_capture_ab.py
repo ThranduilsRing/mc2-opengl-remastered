@@ -42,13 +42,11 @@ def test_changed_block_is_found_but_noise_stays_zero(tmp_path):
     assert all("outside_box=400" in l and "max_cluster=20x20@10,10" in l for l in lines[1:])
 
 
-def test_the_gl_arm_is_off_unless_asked_for(tmp_path):
+def test_there_is_no_gl_arm(tmp_path):
     sets(tmp_path, True)
     assert not any(" GL " in l for l in capture_ab.compare(str(tmp_path), "b", "a", [BM]))
-    lines = capture_ab.compare(str(tmp_path), "b", "a", [BM], gl_arm=True)
-    assert len(lines) == 4 and "GL before->after" in lines[3] and "outside_box=400" in lines[3]
-    assert [n for n, _ in capture_ab.arms("t", False)] == ["t1-vk", "t2-vk"]
-    assert [n for n, _ in capture_ab.arms("t", True)] == ["t1-vk", "t2-vk", "t-gl"]
+    assert [n for n, _ in capture_ab.arms("t")] == ["t1-vk", "t2-vk"]
+    assert "--gl-arm" not in capture_ab.__doc__
 
 
 def test_missing_set_is_named(tmp_path):
@@ -103,9 +101,6 @@ def test_an_older_vk_set_is_read_through_its_readback_source(tmp_path):
 def test_a_gl_set_that_drew_vulkan_and_a_missing_sidecar_are_refused(tmp_path):
     backend_sets(tmp_path, {"backend": "vulkan", "readback_source": "vk_present"})
     assert capture_ab.check_backends(str(tmp_path), "b", "a", [BM]) == []
-    put_sidecar(tmp_path, "a-gl", backend="vulkan", readback_source="vk_present")
-    assert capture_ab.check_backends(str(tmp_path), "b", "a", [BM]) == []                     # the GL arm is not looked at unless asked for
-    assert any("a-gl" in m for m in capture_ab.check_backends(str(tmp_path), "b", "a", [BM], gl_arm=True))
     assert any("nope1-vk" in m for m in capture_ab.check_backends(str(tmp_path), "b", "nope", [BM]))
 
 

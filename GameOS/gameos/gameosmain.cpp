@@ -131,7 +131,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "utils/timing.h"
 #include "gos_postprocess.h"
 #include "gos_validate.h"
-#include "gos_screenshot.h"   // deterministic backbuffer->TGA capture (oracle)
+#include "gos_screenshot.h"   // TGA capture of the Vulkan present readback
 #include "gos_dev_shell.h"    // DEV-SHELL-1: localhost dev command socket (MC2_DEV_SHELL)
 #include "gos_visual_capture.h"  // [VISUAL_CAPTURE v1] S9 PNG+sidecar + bookmark replay
 #include "gos_static_prop_killswitch.h"

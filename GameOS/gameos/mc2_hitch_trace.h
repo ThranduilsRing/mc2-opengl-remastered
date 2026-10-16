@@ -9,6 +9,8 @@
 #include <chrono>
 #include <cstdint>
 
+#include "mc2_hitch_fence.h"
+
 namespace mc2_hitch {
 
 // ---------------------------------------------------------------------------
@@ -69,12 +71,9 @@ struct HitchFrameAccum {
     uint64_t glTexSubImageBytes       = 0;
     uint32_t glBindTextureCalls       = 0;
     uint32_t glUseProgramCalls        = 0;
-    uint32_t glClientWaitSyncCalls    = 0;
-    uint32_t glClientWaitSyncSignaled = 0;
-    uint32_t glClientWaitSyncTimedOut = 0;
-    uint32_t glFenceSyncCalls         = 0;
-    uint32_t glFinishCalls            = 0;
-    uint32_t glFlushCalls             = 0;
+
+    // Vulkan frame-fence waits (the present path's retire of the previous submit).
+    FenceWaitStats vkFence;
 
     // -----------------------------------------------------------------------
     // GPU-UPDATE-BUFFER-COUNTER-1 — per-owner orphan-on-write tally.
@@ -127,6 +126,8 @@ void BeginFrame(uint32_t frame);
 void EndFrame(uint32_t frame, double dtMs);
 void SpanBegin(HitchSpanKind kind);
 void SpanEnd(HitchSpanKind kind);
+// One wait on the Vulkan frame fence, in milliseconds. No-op while the trace is off.
+void RecordFenceWait(double ms);
 
 // ---------------------------------------------------------------------------
 // RAII scope — records wall-clock span for one sub-system.
@@ -159,8 +160,8 @@ extern bool                        g_mc2GpuBufAccumOn;
 // ---------------------------------------------------------------------------
 // MC2_GL_* macro wrappers.
 // Use these in place of the raw GL calls in instrumented TUs.
-// Value-returning calls (glClientWaitSync, glMapBufferRange, glFenceSync)
-// use a lambda so the return value passes through correctly.
+// Value-returning calls (glMapBufferRange) use a lambda so the return value
+// passes through correctly.
 // ---------------------------------------------------------------------------
 
 #define MC2_GL_BufferData(target, size, data, usage)                        \
@@ -241,33 +242,3 @@ extern bool                        g_mc2GpuBufAccumOn;
         glUseProgram(prog);                                                 \
     } while(0)
 
-#define MC2_GL_ClientWaitSync(sync, flags, timeout)                         \
-    [&]() -> GLenum {                                                       \
-        GLenum _r = glClientWaitSync(sync, flags, timeout);                 \
-        if (g_mc2HitchEnabled) {                                            \
-            ++g_mc2HitchAccum.glClientWaitSyncCalls;                        \
-            if (_r == GL_ALREADY_SIGNALED || _r == GL_CONDITION_SATISFIED)  \
-                ++g_mc2HitchAccum.glClientWaitSyncSignaled;                 \
-            else if (_r == GL_TIMEOUT_EXPIRED)                              \
-                ++g_mc2HitchAccum.glClientWaitSyncTimedOut;                 \
-        }                                                                   \
-        return _r;                                                          \
-    }()
-
-#define MC2_GL_FenceSync(condition, flags)                                  \
-    [&]() -> GLsync {                                                       \
-        if (g_mc2HitchEnabled) ++g_mc2HitchAccum.glFenceSyncCalls;         \
-        return glFenceSync(condition, flags);                               \
-    }()
-
-#define MC2_GL_Finish()                                                     \
-    do {                                                                    \
-        if (g_mc2HitchEnabled) ++g_mc2HitchAccum.glFinishCalls;            \
-        glFinish();                                                         \
-    } while(0)
-
-#define MC2_GL_Flush()                                                      \
-    do {                                                                    \
-        if (g_mc2HitchEnabled) ++g_mc2HitchAccum.glFlushCalls;             \
-        glFlush();                                                          \
-    } while(0)

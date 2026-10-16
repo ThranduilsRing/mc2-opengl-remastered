@@ -6505,40 +6505,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_GL_ERROR_DRAIN_SILENT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "GL_ERROR is default-on; the env var suppresses it.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:1230",
-     "idiom": "Presence(inv)"
-    },
-    {
-     "at": "GameOS/gameos/gos_crashbundle.cpp:678",
-     "idiom": "Presence"
-    },
-    {
-     "at": "GameOS/gameos/gos_validate.cpp:151",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_GOM_RECON",
    "kind": "Bool",
    "default": false,
@@ -16635,38 +16601,6 @@
    ],
    "numericRange": null,
    "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SCREENSHOT_SOURCE",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:2241",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "backbuffer"
-   ],
-   "numericRange": {
-    "enum": [
-     "backbuffer"
-    ]
-   },
-   "readerDefault": "",
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",

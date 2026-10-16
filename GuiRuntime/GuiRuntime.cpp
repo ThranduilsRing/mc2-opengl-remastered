@@ -2,6 +2,7 @@
 
 #include "GuiRuntime_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/debug_renderer.h"
 
 
 // TERRAIN-DECAL-SLICE-0C — live cliff mesh-decal tuning panel.
@@ -620,6 +621,7 @@ void GuiRuntime::NewFrame() {
 
     ImGui::NewFrame();
     s_frameActive = true;
+    DebugRenderer::drawFrozenPrimsToOverlay();
 
     // Editor dockspace (right-side panels) + scene-viewport-size feedback. Submitted
     // first so the panel windows dock into it this frame.

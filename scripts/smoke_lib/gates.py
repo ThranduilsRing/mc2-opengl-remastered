@@ -69,8 +69,6 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         else:
             buckets.append("crash_silent")
 
-    if s.gl_errors > 0:
-        buckets.append("gl_error"); details.append(f"{s.gl_errors} errors")
     if s.pool_nulls > 0:
         buckets.append("pool_null"); details.append(f"{s.pool_nulls} NULLs")
     if s.asset_oob > 0 and not cfg.allow_asset_oob:

@@ -18,6 +18,8 @@
 #include "gos_screenshot.h"
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "mc2fmt.h"
+#include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
+#include "vk_island_util.h"
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -345,11 +347,7 @@ void presentNativeStrictAbort(const char* reason) {
     std::abort();
 }
 
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
+std::string spv_dir() { return vk_island_util::spvDir(); }
 
 mc2vk::OwnedShaderModule loadSpv(VkDevice device, const std::string& path) {
     std::FILE* f = std::fopen(path.c_str(), "rb");
@@ -1937,12 +1935,17 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         using clk = std::chrono::steady_clock;
         const clk::time_point tWait0 = clk::now();
         const VkFence inFlightFence = s.inFlight.get();
-        if (vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
-                            5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-            return false;
+        const VkResult waitResult = vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
+                                                    5ull * 1000 * 1000 * 1000);
         health_.composite_wait_us_last =
             std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        // A failed or timed-out wait is the worst hitch there is, so it is recorded before the present declines.
+        if (waitResult != VK_SUCCESS) {
+            mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
+            return false;
+        }
         health_.composite_wait_us_accum += health_.composite_wait_us_last;
+        mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
         ++health_.composite_wait_samples;
         if ((health_.composite_wait_samples % 600) == 1)
             plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",

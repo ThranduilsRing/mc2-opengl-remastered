@@ -79,9 +79,9 @@ def run_checks() -> "list[str]":
         # ...but agreeing with the forced value is NOT a problem.
         expect(f"FORCED_ENV {name} agreeing is fine", {name: forced}, {}, [])
 
-    # 4. POPPED_ENV is undriveable at any value.
-    if not r.POPPED_ENV:
-        fails.append("POPPED_ENV is empty; the pop-path guard would never fire")
+    # 4. POPPED_ENV is undriveable at any value. An empty table is valid: it lists retired gates whose stale
+    #    shell values must still be dropped, and none is needed once the gates are gone (selftest control C
+    #    proves the pop path still refuses with a member present).
     for name in r.POPPED_ENV:
         expect(f"POPPED_ENV {name} refused", {name: "1"}, {}, [name])
 
@@ -142,13 +142,13 @@ def _selftest() -> int:
             print(f"{PREFIX} selftest ok: SOFT->FORCED demotion caught")
         r.FORCED_ENV.pop(soft_name, None)
 
-        # Control C: emptying POPPED_ENV must be reported.
-        r.POPPED_ENV = frozenset()
-        if not any("POPPED_ENV is empty" in f for f in run_checks()):
+        # Control C: a member added to POPPED_ENV must be exercised by the pop path and pass (the table may be empty).
+        r.POPPED_ENV = frozenset({"MC2_SELFTEST_POPPED"})
+        if run_checks():
             ok = False
-            print(f"{PREFIX} selftest BROKEN: empty POPPED_ENV not caught")
+            print(f"{PREFIX} selftest BROKEN: a POPPED_ENV member is not refused")
         else:
-            print(f"{PREFIX} selftest ok: empty POPPED_ENV caught")
+            print(f"{PREFIX} selftest ok: a POPPED_ENV member is refused")
         r.POPPED_ENV = saved_popped
 
         # Control D: the unmutated tree must PASS (positive control).

@@ -498,7 +498,7 @@ backend, session-reset, coverage or full-pipeline RNG attestations.
 
 For PARITY, each primary/control record additionally needs `runtime`: `process`,
 `effect_age`, `rng={owner:"RenderWorld",stream:"56465852",algorithm:"LCG32-NR-next15",version:1,seed,state,draw_count}`,
-`backend={requested:"gl",drawn:"gl",readback:"gl_fbo"}`, nonempty resolved `assets`
+`backend={requested:"vulkan",drawn:"vulkan",readback:"vk_present"}` (the GL arm was deleted in lane 2 session 38), nonempty resolved `assets`
 (path-to-SHA256), `birth_transcript`, `log`, `log_sha256`, and the exact six-entry `gates`
 dictionary (string "0"/"1" values). Positives also need
 `draw_probe={scope:"all_draw_flush_cull",unchanged:true,frozen_repeats:2}` or greater.

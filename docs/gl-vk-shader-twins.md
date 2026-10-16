@@ -78,8 +78,6 @@ same-name files, the `_tier1`/`_native` suffix rule, `tools/gl_vk_twin_map.json`
 | `shaders/building_pbr.vert` |
 | `shaders/cardcloud_sim.comp` |
 | `shaders/cluster_depth_pyramid.comp` |
-| `shaders/debug_prim.frag` |
-| `shaders/debug_prim.vert` |
 | `shaders/gos_terrain_lighting.comp` |
 | `shaders/gos_terrain_mask_solid.vert` |
 | `shaders/gos_terrain_mask_water.vert` |

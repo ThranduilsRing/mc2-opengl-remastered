@@ -167,7 +167,7 @@ void GpuStaticPropBatcher::prepareIndirectAndFence(StaticPropFlushFrame& f) {
     // Non-legacy mode: prepare-table already waited and cleared this fence;
     // skip to avoid a double-wait on the same sync object.
     if (s_globalPoolLegacy && s_coalesceFence[s_coalesceFrameSlot]) {
-        MC2_GL_ClientWaitSync(s_coalesceFence[s_coalesceFrameSlot],
+        glClientWaitSync(s_coalesceFence[s_coalesceFrameSlot],
                          GL_SYNC_FLUSH_COMMANDS_BIT,
                          GL_TIMEOUT_IGNORED);
         glDeleteSync(s_coalesceFence[s_coalesceFrameSlot]);

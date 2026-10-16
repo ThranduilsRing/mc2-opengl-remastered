@@ -1,5 +1,65 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-EIGHTH session (2026-10-16, Sonnet 5.5) -- VK VFX parity row 29 (cause found, not fixed), VFX oracle and capture_ab GL arms deleted, empty POPPED_ENV accepted, s37 review folded; nifty not merged
+
+### Commits (after 05f081b35; code tip 1d8be954e, later commit = baselines/docs only)
+85cdc3bc3 cherry-pick of Codex's d3787704e (the oracle VK arm was not on this branch) | 62652a62e parity row 29 + oracle `--install` | 488e402c8 oracle and capture_ab lose their GL arms | (check-env-drive-guard commit) | 1d8be954e s37 review fold (S1-S6) | baselines/docs commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 29: oracle, VK both arms, mc2_24 ppc frame 154, exe 85cdc3bc3 (`scratch/vo38/`) | both arms DEPLOY_FINGERPRINT OK, same-arm repeats byte-equal; crop 650x370: 8,800 px differ (7,471 over 8 levels), grade DIAGNOSTIC; montage viewed. Cause: the VK VFX island is untextured by design (radial falloff of vertex colour), the MLR arm draws the textured sprite atlas through the HUD tail. The white squares of Codex's run do not reproduce on this exe. Fix recipe ~250 lines (atlas import + shader), written in `.claude/VK-PARITY-GAPS.md` row 29, not attempted |
+| item 2/3 tooling | pytest oracle + visual_verify + anti_churn + tests/smoke: green except `test_tracy_capture_compare` / `test_tracy_driver_builds_the_pinned_env` (known); one more red in `scripts/tests/test_build_compiler_presets.py::test_default_corpus_commands_and_output_unchanged[False]` (the harness corpus now has an extra `order_seam` cmake pair; neither file is in this diff, not investigated); `check-env-drive-guard` selftest + check PASS (0 popped) |
+| harnesses + doctest at the fold | `build_contract_harnesses --run --unit` exit 0, doctest 3273 cases (3 new: screenshot slot) |
+| VK tier1 + validation, final exe 1d8be954e (`scratch/t38.log`, run 2026-10-16T16-08-13) | 5/5 PASS, DEPLOY_FINGERPRINT OK x5, validation errors 0 warnings 0 on all five |
+| debug overlay with the owned queue: VK mc2_01 `MC2_DEBUG_RENDERER=1 MC2_DEBUG_RENDERER_TEST=1 MC2_VK_IMGUI=1` + validation (`scratch/d38.log`) | PASS, 0/0, `[DEBUGDRAW v1] event=first_draw queued=67` (same count as session 37) |
+| ratchets | dup-lines OK (55274, no rewrite); log-tag census OK; own_inventory OK (0 rose); callers.json and background-launch inventory regenerated (the two background-launch findings are the same two files as session 37, not from this diff) |
+| not run | GL tier1 (no GL draw path moved), `check-contracts.sh`, the oracle re-run (no fix landed) |
+
+### Deleted
+VFX oracle GL arm (`--backend` flag, `gl_fbo` readback acceptance, GL tests), `capture_ab.py --gl-arm` and the `<TAG>-gl` set, the retired `MC2_GL_ERROR_DRAIN_SILENT` name from POPPED_ENV. Kept on purpose: `smoke_lib/capture_backend.py` still recognises the `gl_fbo` spelling (it must reject an old GL sidecar).
+
+### Review s37 folded (1d8be954e)
+S1 one-frame overlay lag in the comment and inventory section 19; S5 `DebugRenderer::Queue` owned by `gosRenderer` (free functions act on the live instance); S6 failed/timed-out fence wait recorded before the present declines; S2 `gos::screenshot::Slot` (header-only, doctests) and `tick()` before the Vulkan block; S3 printf corpus is a frozen format-equivalence corpus generated from its jsonl, left; S4 the dup-lines reason goes in the commit body whenever a baseline is rewritten (none this session).
+
+### Open
+- Row 29 fix (textured VFX island); MLR retirement waits on it or on an owner ruling that the untextured island is the standard.
+- Section 16 (b): lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY`, `gos_object_parity` GL readback, HZB probe, input probe GL reads, dev-shell `reload_shaders` GL path, terrain `tessDebug`.
+- `MC2_VK_IMGUI` default-off hides the debug overlay in a default VK run.
+- Scratch (mine, deletable): `scratch/` b38*.log, h38.log, t38.log, d38.log, vo38/ (oracle captures, ~100 MB).
+
+### Lessons (38)
+- The oracle's `--install` was parsed but unused (the exe path was a lane3 constant): check that a flag reaches the command before trusting a run's provenance.
+- A grader that stops reading sidecars for one backend hides an unchecked path: deleting the GL arm made the sidecar check unconditional and the old fixtures needed a sidecar.
+
+## THIRTY-SEVENTH session (2026-10-16, Sonnet 5.5) -- hitch trace and debug renderer off GL, two gate rows retired, s36 review folded; nifty not merged
+
+### Commits (after b951f2ca5; code tip 3b90168bd, later commit = docs/baselines only)
+4d1c840c0 hitch trace on the VK frame fence | 8e4d2bf2b s36 review fold (S1, S2, S5, nits) | c5b6fb023 debug_renderer on the ImGui overlay | 019ee0da7 mechbay harness on VK + gate rows MC2_GL_ERROR_DRAIN_SILENT / MC2_SCREENSHOT_SOURCE deleted | 3b90168bd pass-timer all-cancelled frame skipped + shared spvDir() | state/inventory/baselines commit. MERGEABLE TIP = the commit carrying this line. Detail: inventory section 18.
+- Coordinator note: the ratchet's "pass-timer bracket boilerplate copied nine times" was the per-island `spv_dir()` body, now `vk_island_util::spvDir()`; no timer-bracket helper was written (the shadow island's bracket spans two functions, so its guard stays at the submit function, now before the early return).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| item 1: VK mc2_01, `MC2_HITCH_TRACE=1 MC2_HITCH_MS=0.001`, validation (`scratch/v37a.log`, deployed 4d1c840c0, DEPLOY_FINGERPRINT OK) | PASS, errors 0 warnings 0; 5,588 `[HITCH_VK]` lines; `fenceWaitMs` 0.01-0.02 per frame, `fenceWaits=1` (a fast GPU: waits are short but non-zero); doctest 4 cases |
+| item 2: VK mc2_01 `MC2_DEBUG_RENDERER=1 MC2_DEBUG_RENDERER_TEST=1 MC2_VK_IMGUI=1 MC2_HZB_VIEW_FILE=scratch/view0.txt`, dev-shell `screenshot` (`dev_shell_out/d37_dbg4.tga`, viewed) | red X arm, white ring and the Y arm visible over the water, validation 0/0, `[DEBUGDRAW v1] event=first_draw queued=67`. Without `MC2_VK_IMGUI=1` the overlay is absent (ImGui draws on the GL context then): recorded, not hidden |
+| item 3: pytest `tests/smoke`, `scripts/tests`, `tools/repo_intel/test_anti_churn.py`; `gate_gen --check --rebuild` | 35 failures, all `test_tracy_capture_compare` / `test_tracy_driver_builds_the_pinned_env` (same failure on the previous tip, not touched); gate table consistent (976 gates); `check-env-drive-guard` PASS |
+| harnesses + doctest at 3b90168bd | `build_contract_harnesses --run --unit` exit 0 (mc2_tests incl. hitch fence, debug line project, all-cancelled frame) |
+| ratchets | dup-lines 55319 -> 55274 (baseline rewritten, the spv_dir dedupe); `own_inventory --check` ok; log-tag census rewritten (banner field, HITCH_VK); background-launch inventory regenerated (two findings in `tests/analyze/b5_asset_census.py` and `test_host_lease_batch.py` are not from this diff); `tests/callers.json` regenerated |
+| VK tier1 + validation, final exe 3b90168bd (`scratch/t37.log`) | 5/5 PASS, DEPLOY_FINGERPRINT OK on all five, errors 0 / warnings 0 on all five (fps 134 / 92 / 83 / 98 / 70, host shared) |
+| not run | GL tier1 (no GL draw path moved: only the static-prop fence call sites changed from the wrapper macro to the raw GL call), `check-contracts.sh`, the mechbay harness end to end, captures |
+
+### Open
+- `MC2_VK_IMGUI` default-off means the debug overlay (and the editor inspector's highlight) is invisible in a default VK run; flip it with the editor rework.
+- Hitch trace GL upload counters (`MC2_GL_BufferData*` and the `MC2_GPUBUF_COUNTER` tally, ~90 call sites in terrain / static-prop / light-SSBO files) go with their GL paths. POPPED_ENV keeps a retired name because `check-env-drive-guard` fails on an empty table (proof-standard question for the coordinator).
+- Section 16 (b) still open: lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (with the GL interop), `gos_object_parity` GL readback, HZB probe, input probe GL reads, dev-shell `reload_shaders` GL path, terrain `tessDebug`. VFX oracle VK arm, then the capture `gl_fbo` arm.
+- Scratch (mine, deletable): `scratch/` b37*.log, h37*.log, v37*.log, t37.log, d37*.log, gg*.log, shot37*, view0.txt, d37_dbg*.png; the TGAs are in the lane install's `dev_shell_out/`.
+
+### Lessons (37)
+- Never `git stash` while a build is running: the working tree flipped under ninja and the pop half-failed (recovered by checkout + pop; no loss).
+- `run_smoke.py --deploy lane2` does not deploy; run `deploy_payload.py --target game --ninja --allow-new-target <install>` after every commit-and-build or the fingerprint check fails.
+- `--duration` caps at 30; a dev-shell screenshot driver must poll `ping` and shoot ~8 s after the shell answers.
+
 ## THIRTY-SIXTH session (2026-10-16, Sonnet 5.5) -- GL deletion step 2 (a), gos_screenshot on the VK readback, s35 review should-fixes; nifty not merged
 
 ### Commits (after 3582651b6)

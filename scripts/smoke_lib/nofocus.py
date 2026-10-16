@@ -216,7 +216,7 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
     keep that list honest in both directions: a composite harness that does not
     declare `offscreen=False` fails the build, and a non-composite file that
     does fails it too. Converting a harness to the engine capture path
-    (MC2_VISUAL_CAPTURE / MC2_SCREENSHOT_SOURCE=backbuffer) retires its entry.
+    (MC2_VISUAL_CAPTURE / MC2_SCREENSHOT_PATH on the Vulkan backend) retires its entry.
 
     Declaring it is not the same as being granted it. In an agent session the
     request RAISES `DesktopOccupancyRefused`: a wallpaper golden and a stolen
@@ -246,8 +246,8 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
             "ImageGrab screenshot came back as wallpaper: that is the same "
             "defect seen from the other side -- port the harness to the engine "
             "readback path (MC2_VISUAL_CAPTURE=1 or "
-            "MC2_SCREENSHOT_SOURCE=backbuffer, see scripts/run_visual_capture.py "
-            "and scripts/mech_shot.py), which reads the GL drawable and is "
+            "MC2_SCREENSHOT_PATH, see scripts/run_visual_capture.py "
+            "and scripts/mech_shot.py), which reads the Vulkan present image and is "
             "unaffected by where the window sits.")
     for k, v in NOFOCUS_ENV.items():
         out.setdefault(k, v)

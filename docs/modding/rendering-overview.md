@@ -61,7 +61,7 @@ Shaders live in `shaders/`. Includes (shared library code) are in `shaders/inclu
 | Water (CPU) | `gos_tex_vertex.vert` | `gos_tex_vertex.frag` | Projected-space intentional |
 | Particles | `particle_billboard.vert` | `particle_billboard.frag` | View-aligned, ring-buffer |
 | Post-process | `postprocess.vert` | `postprocess.frag` | Bloom + tonemap + FXAA |
-| Debug prims | `debug_prim.vert` | `debug_prim.frag` | World-space, depth-tested |
+| Debug prims | (none: drawn on the ImGui overlay) | (none) | World-space lines projected to the window, not depth-tested |
 
 Key include files:
 - `shadow.hglsl` — `calcShadow()` variable-tap Poisson PCF

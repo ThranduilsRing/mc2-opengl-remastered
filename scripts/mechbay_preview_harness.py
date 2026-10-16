@@ -75,7 +75,9 @@ def main():
         "MC2_MENU_CANARY_SKIP_INTRO": "1",   # skip front-end videos (headless-safe)
         "MC2_SCREENSHOT_AT_FRAME": str(args.frame),
         "MC2_SCREENSHOT_PATH": str(out_tga),
-        "MC2_SCREENSHOT_SOURCE": "backbuffer",   # logistics/menu UI never touches sceneFBO_
+        # The screenshot is the Vulkan present readback (menus and HUD included); a GL run writes no TGA.
+        "MC2_RENDER_BACKEND": "vulkan",
+        "MC2_VK_SHARED_GBUFFER": "1",
         "MC2_LOG": "1",
         "MC2_LOG_PREVIEW": "1",
         # Stock MC2_BOOT_TO_BAY does NOT skip straight to logistics — it launches

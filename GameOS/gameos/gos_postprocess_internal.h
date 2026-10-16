@@ -13,7 +13,7 @@
 #include "gos_hdri.h"
 #include "../../RenderCore/IblHdriRegistry.h"  // HDRI-SKY-NUMBER-1
 #include "gos_profiler.h"
-#include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
+#include "gos_validate.h"  // validation entry points
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
 #include "vk_shared_gbuffer_gate.h"
 #include "gameos.hpp"      // gos_InvalidateRenderStateCache (RENDER_STATES v1)

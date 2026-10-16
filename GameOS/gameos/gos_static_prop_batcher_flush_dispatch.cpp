@@ -781,14 +781,14 @@ void GpuStaticPropBatcher::legacyCensus() {
 
 // Fence the ring slots and hand the parity slot to the dual-emit state.
 void GpuStaticPropBatcher::fenceAndParitySlot() {
-    s_fence[s_frameSlot] = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     // Plan v3.8 Step 11.9 — coalesce fence insert after all draws issued.
     // Independent of legacy s_fence[]: tracks s_coalesceInstanceSsbo's
     // ring-slot lifecycle so the next visit (RING_FRAMES frames from now)
     // can wait on this fence before overwriting the slot's CPU writes.
     if (IsCoalesceEnabled()) {
         // Step 4.4 — use s_coalesceFrameSlot (coalesce ring), not s_frameSlot (legacy ring).
-        s_coalesceFence[s_coalesceFrameSlot] = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        s_coalesceFence[s_coalesceFrameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     }
     // Stage 2.D.1: record this slot's parity-byte usage so the next visit
     // (RING_FRAMES frames from now) knows exactly how much to glGetBufferSubData.

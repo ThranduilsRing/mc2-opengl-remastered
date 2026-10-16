@@ -397,7 +397,7 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     // Wait for all in-flight frames before resizing.
     for (uint32_t i = 0; i < RING_FRAMES; ++i) {
         if (s_fence[i]) {
-            MC2_GL_ClientWaitSync(s_fence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
+            glClientWaitSync(s_fence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
             glDeleteSync(s_fence[i]);
             s_fence[i] = 0;
         }

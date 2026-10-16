@@ -94,6 +94,7 @@ public:
             if (!s.pending) continue;
             double ms[kPasses] = {};
             bool   has[kPasses] = {};
+            bool   any = false;
             ReadResult r = ReadResult::Ready;
             for (const Bracket& b : s.brackets) {
                 if (!b.closed) continue;
@@ -102,10 +103,14 @@ public:
                 if (r != ReadResult::Ready) break;
                 ms[b.pass] += one;
                 has[b.pass] = true;
+                any = true;
             }
             if (r == ReadResult::Ready) {
-                publish(ms, has);
-                ++c.published;
+                // A frame whose brackets were all cancelled has nothing to say: publishing it would report an empty frame as a sample.
+                if (any) {
+                    publish(ms, has);
+                    ++c.published;
+                }
             } else if (r == ReadResult::Error) {
                 ++c.errors;
             } else if (k == 0) {

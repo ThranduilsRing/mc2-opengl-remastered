@@ -8,6 +8,8 @@
 #ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -35,6 +37,14 @@ inline void vlogv512(const char* tag, const char* fmt, va_list ap) {
     std::vsnprintf(buf, sizeof(buf), fmt, ap);
     std::fprintf(stderr, "%s%s\n", tag, buf);
     std::fflush(stderr);
+}
+
+// The directory the SPIR-V modules load from, with a trailing separator (MC2_VULKAN_SPV_DIR; the row default
+// shaders/vulkan also applies to an empty value).
+inline std::string spvDir() {
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();
+    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
+    return d;
 }
 
 // Reads a .spv file into a VkShaderModule; returns VK_NULL_HANDLE (after logging the
