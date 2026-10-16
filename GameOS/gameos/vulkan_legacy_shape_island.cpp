@@ -43,6 +43,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <tracy/Tracy.hpp>
 
 const float* gos_GetProj2ScreenMat4();             // gosRenderer::projection_ (row-major, GL_TRUE)
@@ -124,6 +125,7 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool pool;
     TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
     std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
+    std::unordered_set<uint32_t> untexturedNodes;       // nodes whose texture has no CPU texels: drawn with the dummy
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];
@@ -245,13 +247,18 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
 }
 
 // Resolve (importing copy-once on first sight) the texture entry for a node.
-// Called BEFORE recording (a pre-compressed texture is read back once by its texture object); never inside the VK command buffer.
+// Called BEFORE recording (the import records its own one-shot upload); never inside the VK command buffer.
 TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
     auto it = s->texs.find(texNode);
     if (it != s->texs.end()) return &it->second;
+    if (s->untexturedNodes.contains(texNode)) return &s->dummyTex;
     if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
     const GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status == GosTexels::Status::Unavailable) {   // will never have texels: stop asking
+        s->untexturedNodes.insert(texNode);
+        return &s->dummyTex;
+    }
     if (texels.status != GosTexels::Status::Ready) return &s->dummyTex;    // not resident yet; retry next frame
     const uint32_t w = texels.width, h = texels.height;
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return &s->dummyTex;
@@ -654,6 +661,7 @@ extern "C" void mc2_vk_legacy_shape_island_reset() {
     // Texture node indices are reused by the next mission: drop the copy-once cache.
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_reset");
     s->texs.clear();
+    s->untexturedNodes.clear();
     // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
     if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
     s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;

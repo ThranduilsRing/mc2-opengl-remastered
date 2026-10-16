@@ -60,7 +60,8 @@ grid (VK-PARITY-GAPS row 1 is open for that reason).
 | T4-T6 | CLOSED: terrain field store | 242b9582c |
 | T10 / T11 | CLOSED: shore sidecars in the field store | 970156084 |
 | P4 / P7 | CLOSED: mech feeds carry no GL names; the FEED-AUDIT readbacks and `MC2_VK_MECH_FEED_AUDIT` are deleted | fe0de149c |
-| T3, T7, T8, T9 | OPEN (see below) | |
+| T3 | OPEN, step 1 done: the CPU mip filter (`mc2tex::boxDownsampleRgba8`, doctested) exists; the array builder and both uploads from it are not written (plan below) | ee6e0e77a |
+| T7, T8, T9 | OPEN (see below) | |
 
 Accepted cost (lane 2 review should-fix 1): the static-prop CPU geometry copy (the shared VBO + IBO staging) stays resident for
 the map's lifetime in every run, GL-only runs included, where nothing reads it. Measured from the `[VK_COLOR_PROP_ISLAND] prop
@@ -72,6 +73,15 @@ Open, in the order to take them:
 - T3 prop albedo arrays (largest: up to 47 MB for a 256x256x134 RGBA8 alpha-ON array on mc2_10, 2-9 MB elsewhere): GL builds
   the mips with `glGenerateMipmap`, so a CPU array builder changes texels unless it reproduces the driver's filter, or VK builds
   its own mips. Either is a texel change: needs the GL vs VK capture pair.
+  Plan (2026-10-15, session 3): `gos_static_prop_batcher_finalize_textures.cpp` assembles each group (alpha-OFF, alpha-ON) as
+  a CPU array object (edge, layer count, VK format, one blob per level with all layers, the pre-baked mip overrides applied
+  after the box chain); GL uploads every level from it with `glTexSubImage3D` (no `glGenerateMipmap`), the feed carries the
+  object instead of `glTexArrayOff/On`, and `cp_import_albedo_array` copies its levels (the `glGetTexImage` loop is deleted).
+  BC7 groups already carry their own pre-baked chains: keep the blocks per level. Cost: the RGBA8 chain is 4/3 of level 0 (mc2_10
+  alpha-ON about 63 MB); release it after both backends uploaded it, or accept it like the geometry copy (decision for the
+  orchestrator). Proof: GL capture before/after on the same bookmark (texel change only where the driver filter differed from
+  the box), then the GL vs VK pair; row 23 of VK-PARITY-GAPS is the alpha class of the same arrays and should be checked in
+  the same pair.
 - T7 terrain colormap atlas (BC7 or RGBA8, image not retained), T9 terrain detail-normal array, T8 cement atlas: neutral
   atlas/array owner keeping the decoded image; T7 BC7 can reuse the T1 block path.
 

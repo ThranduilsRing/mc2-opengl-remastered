@@ -10764,14 +10764,7 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 10
-  },
-  {
-   "tag": "TEXTURE_DECODE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
+   "count": 12
   },
   {
    "tag": "TEXTURE_RGBA",

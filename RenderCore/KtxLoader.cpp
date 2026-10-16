@@ -3,6 +3,8 @@
 // No GL headers. No external dependencies.
 
 #include "KtxLoader.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "../GameOS/include/mc2fmt.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -49,12 +51,13 @@ static constexpr std::size_t kLevelEntryBytes    = 24;
 
 static uint32_t readU32(const uint8_t* p)
 {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
+           (static_cast<uint32_t>(p[3]) << 24);
 }
 
 static uint64_t readU64(const uint8_t* p)
 {
-    return (uint64_t)readU32(p) | ((uint64_t)readU32(p + 4) << 32);
+    return static_cast<uint64_t>(readU32(p)) | (static_cast<uint64_t>(readU32(p + 4)) << 32);
 }
 
 // The byte length level `lvl` of a w x h image must have: 4x4 blocks of 16 bytes when block-compressed, else 4 bytes a pixel.
@@ -99,13 +102,13 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
     uint32_t fullChain = 1;
     for (uint32_t m = width > height ? width : height; m > 1; m >>= 1) ++fullChain;
     if (levels < 1 || levels > fullChain) { r.error = "level count out of range"; return r; }
-    if (size - kLevelIndexOffset < (std::size_t)levels * kLevelEntryBytes) { r.error = "truncated level index"; return r; }
+    if (size - kLevelIndexOffset < std::size_t{levels} * kLevelEntryBytes) { r.error = "truncated level index"; return r; }
 
     KtxImage img;
     img.mipByteOffsets.resize(levels);
     uint64_t total = 0;
     for (uint32_t lvl = 0; lvl < levels; ++lvl) {
-        const uint8_t* e = bytes + kLevelIndexOffset + (std::size_t)lvl * kLevelEntryBytes;
+        const uint8_t* e = bytes + kLevelIndexOffset + std::size_t{lvl} * kLevelEntryBytes;
         const uint64_t offset = readU64(e);
         const uint64_t length = readU64(e + 8);
         if (length != levelBytes(width, height, lvl, blockCompressed)) { r.error = "level byte length does not match the format"; return r; }
@@ -113,15 +116,15 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
         img.mipByteOffsets[lvl] = total;
         total += length;
     }
-    img.pixels.resize((std::size_t)total);
+    img.pixels.resize(static_cast<std::size_t>(total));
     for (uint32_t lvl = 0; lvl < levels; ++lvl) {
-        const uint8_t* e = bytes + kLevelIndexOffset + (std::size_t)lvl * kLevelEntryBytes;
-        std::memcpy(img.pixels.data() + img.mipByteOffsets[lvl], bytes + readU64(e), (std::size_t)readU64(e + 8));
+        const uint8_t* e = bytes + kLevelIndexOffset + std::size_t{lvl} * kLevelEntryBytes;
+        std::memcpy(img.pixels.data() + img.mipByteOffsets[lvl], bytes + readU64(e), static_cast<std::size_t>(readU64(e + 8)));
     }
-    img.width = (int)width;
-    img.height = (int)height;
+    img.width = static_cast<int>(width);
+    img.height = static_cast<int>(height);
     img.isSrgb = vkFormat == kVkFormatR8G8B8A8Srgb || vkFormat == kVkFormatBc7SrgbBlock;   // BC6H has no sRGB variant
-    img.mipCount = (int)levels;
+    img.mipCount = static_cast<int>(levels);
     img.vkFormat = vkFormat;
     img.isCompressed = blockCompressed;
     img.blockSizeBytes = blockCompressed ? 16u : 0u;
@@ -138,13 +141,17 @@ bool ktxLoadRgba8(const char* path, KtxImage& out)
     if (std::fseek(f, 0, SEEK_END) == 0) {
         const long n = std::ftell(f);
         if (n > 0 && std::fseek(f, 0, SEEK_SET) == 0) {
-            bytes.resize((std::size_t)n);
+            bytes.resize(static_cast<std::size_t>(n));
             if (std::fread(bytes.data(), 1, bytes.size(), f) != bytes.size()) bytes.clear();
         }
     }
     std::fclose(f);
     KtxParseResult parsed = ktxParse(bytes);
-    if (!parsed.image) return false;
+    if (!parsed.image) {
+        // A present but malformed sidecar is mod content the caller silently replaces with its fallback; say why.
+        MC2_LOG(Assets, Warn, "[TEXTURE_DECODE v1] rejected {}: {}", mc2::fmt::safe(path), parsed.error ? parsed.error : "unreadable");
+        return false;
+    }
     out = std::move(*parsed.image);
     return true;
 }

@@ -13,6 +13,7 @@
 #include "texture_decode.h"   // mc2tex::decodeBc7 for the pre-compressed RGBA8 mirror
 #include "utils/gl_utils.h"
 #include "utils/Image.h"
+#include "utils/mc2log.h"
 
 #include <GL/glew.h>
 #include <cstring>
@@ -258,8 +259,8 @@ class gosTexture {
             mirror_decode_serial_ = content_serial_;   // a failed decode is not retried per frame
             std::vector<uint8_t> rgba = mc2tex::decodeBc7(*blocks_, (uint32_t)tex_.w, (uint32_t)tex_.h);
             if (rgba.empty()) {
-                std::fprintf(stderr, "[TEXTURE_DECODE v1] %s: BC7 blocks do not decode at %dx%d; drawn untextured\n",
-                             texname_ ? texname_ : "NO NAME", tex_.w, tex_.h);
+                MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] {}: BC7 blocks do not decode at {:d}x{:d}; drawn untextured",
+                        texname_ ? texname_ : "NO NAME", tex_.w, tex_.h);
                 return false;
             }
             adoptRgbaMirror(tex_.w, tex_.h, std::move(rgba));

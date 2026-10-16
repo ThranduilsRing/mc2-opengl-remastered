@@ -72,12 +72,33 @@ handle, `gos_GetTextureTexels` (tri-state, review S1), islands create BC7 images
 Tier1 imported no BC7 handle in any island (all `format=37`): the BC7 island path is unexercised by tier1; the HUD CPU decode
 is (FX sprites are BC7). The capture pair is what proves it.
 
-## Open (next session, in order)
-1. Bisect the hex-prop look difference in the capture pair: the same pair on the 6d4ff1bb3 (nifty) exe; if it is new, the
-   suspect is the BC7_SRGB view in the islands (previously R8G8B8A8_UNORM of a readback). An effects-heavy bookmark for the
-   HUD CPU BC7 decode.
-2. T3 prop albedo arrays (GL mips by glGenerateMipmap: texel change, capture needed), T7 colormap atlas, T9 normal array,
-   T8 cement atlas.
+## Session 3 (2026-10-15 18:50-, Opus 5.5; last lane 6 session; merged nifty 5d8aa880c then a0614d7d2, both clean)
+Commits: 66e802840 KTX2 review S1 (`ktxLoadRgba8` logs path + reason at Warn; a missing file stays silent), S2 (overlay binds
+the dummy for Unavailable texels; legacy shape caches Unavailable nodes in `untexturedNodes`, cleared at mission reset), N1
+stale comment, N2 fprintf -> MC2_LOG, N3 three doctests (past-the-end offset, RGBA8, full BC7 chain offsets), gaps row 23;
+ee6e0e77a census T3 step 1 (`mc2tex::boxDownsampleRgba8`, doctested). N4 (field store edge bound 4 x 16384) left as is: the
+fine height bake and the shore sidecars are legitimately up to 4x the map side. N5 pre-existing, not touched.
+Hex props (gaps row 23): NOT lane 6. Lane 2's own s21 GL/VK pair (no lane 6 commits) shows the same difference; VK is the
+wrong backend (the original blends `textureAlpha` texels; GL's Bayer dither stands in for it). Suspect: the alpha-ON/OFF class
+split of the prop albedo arrays, the same arrays as T3.
+| proof (exe ee6e0e77a, install v0.4 deployed by name, FIFO lease batch lane6, 19:2x-19:5x) | result |
+|---|---|
+| VK tier1 + MC2_VULKAN_VALIDATION=1 | 5/5 PASS, errors=0 warnings=0 on all five, fingerprint OK x5 |
+| GL tier1 | 5/5 PASS, fingerprint OK |
+| [VRAM v1] run_end VK / GL MiB (01, 03, 10, 17, 24) | 3906/4007/4152/4219/4328 ; 3705/3824/3816/3874/3993. Lower than session 2 (VK 4057/4157/4175/4242/4607, GL 3782/3901/3893/3957/4069) on both backends alike: the base moved (nifty merge, game-slots default 854x480 offscreen); no lane 6 change allocates GPU memory |
+| GL vs VK capture pair mc2_10_saved_204523 --clean, same exe (sha d74afe47 unchanged across both) | viewed: terrain, water, foam band, base props match; the hex lattice props differ exactly as in session 2 and in lane 2's s21 pair (row 23) |
+The chain's capture step failed inside the batch lease (`capture.py` asks for an exclusive slot and cannot upgrade a held normal
+one); the pair ran right after on its own queue entry. Chain script: session scratchpad `lane6_proof_chain.sh`.
+Doctest after the second merge: `mc2_tests` 3236 passed, 0 failed, 2 skipped; the harness run is rc 1 only because nifty's new
+`tests/unit/test_authored_movement_fixture.cpp(189)` does not compile in `mc2_authored_order_seam` (`MissionMapPtr && vector`):
+a nifty defect (a0614d7d2), not lane 6.
+
+## Open (next owner, in order)
+1. T3 wiring per the plan in the census (CPU array object, GL uploads levels from it, VK copies it, readback deleted), then
+   the capture pair; check row 23 in the same pair.
+2. T7 colormap atlas, T9 normal array, T8 cement atlas (T8: atlasBuf is already a CPU RGBA8 image in
+   `BuildCementCatalogAtlas`; it needs an owner that outlives the build and exists when the build runs: the terrain field
+   store is created in `gos_TerrainLodChunk_Init`, check the order against `BuildDenseRecipe` first).
 3. Owners are still static-duration (terrain store, prop staging file static): fold into subsystem objects with step 4.
 4. callers.json reads "stale" in this worktree only because the inventory embeds the worktree root (A:/Games/mc2-main) in
    `reference`: a tool bug in non-main worktrees, not a real change.
