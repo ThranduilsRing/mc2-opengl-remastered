@@ -4,7 +4,7 @@
 // WHY: the sound system's own idea of "playing" comes from the audio device (gosAudio_GetChannelPlayMode), which is
 // wall-clock state. Every stock mission script branches on getCurrentMusicId == -1 and then draws from the simulation
 // RNG (`if (random(100) < 1) playDigitalMusic(...)`), so a tune that ended at a different wall moment in two runs of the
-// same mission forked the simulation (mc2_16, 2026-10-12). Ruling (orchestrator default, owner to confirm): the builtin
+// same mission forked the simulation (mc2_16). Rule: the builtin
 // reports what the SCRIPT asked for, and end-of-track is the scenario clock plus the track length read from the file.
 // Pure (no GameOS, no device): the doctest in tests/unit/test_script_music.cpp pins the semantics.
 #pragma once

@@ -511,11 +511,9 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 			
-				// VK-FIELD-VFX-4: the beam renders TEXTURED under the VK route too.
-				// Round-3 forced it untextured because the beam sprite (realized via
-				// the BC7 .ktx2 sidecar path in txmmgr, so no CPU rgba mirror) was
-				// per-draw-declined by the tail. flushHUDBatch now builds the mirror
-				// lazily by GPU readback (gosTexture::ensureRgbaMirrorFromGpu), and
+				// The beam renders TEXTURED under the VK route too: the beam sprite is a
+				// BC7 .ktx2 sidecar, whose RGBA8 mirror flushHUDBatch decodes from the
+				// texture's blocks on first use (gosTexture::ensureRgbaMirror), and
 				// if that ever fails the tail drops an AlphaMode-4 tri-batch to
 				// untextured vertex-coloured (round-3's proven look) instead of
 				// declining — the beam can no longer vanish. GL / umbrella-off

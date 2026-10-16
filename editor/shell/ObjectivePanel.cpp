@@ -34,7 +34,7 @@ void EntityPanels::objectives()
             objective_ = item.section; selected = &item; objectiveRevision_ = ~std::uint64_t{}; break;
         }
     }
-    const bool open = ImGui::BeginCombo("Existing objective", selected ? label(*selected).c_str() : "No objectives");
+    const bool open = ImGui::BeginCombo("Existing objective", selected ? label(*selected).c_str() : "No objectives", ImGuiComboFlags_HeightLargest);
     record("objective.select", open);
     if (open) {
         for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_)
@@ -168,8 +168,35 @@ void EntityPanels::objectives()
             ImGui::PushID(static_cast<int>(i));
             ImGui::Text("%s: %zu", lists[i], selected->entries[i].size());
             const auto key = "objective.entry." + std::to_string(i);
-            if (button((key + ".add").c_str(), i % 2 == 0 ? "Add BooleanFlagIsSet" : "Add SetBooleanFlag")) {
-                const auto result = history_.addObjectiveEntry(objective_, i);
+            if (i % 2 == 0) {
+                const auto schema = conditionSchema();
+                const bool speciesOpen = ImGui::BeginCombo("Condition species", conditionCreation_ == 0 ? "BooleanFlagIsSet" : schema[conditionCreation_ - 1].name.data(), ImGuiComboFlags_HeightLargest);
+                record(key + ".species", speciesOpen);
+                if (speciesOpen) {
+                    if (choice(key + ".species.BooleanFlagIsSet", "BooleanFlagIsSet", conditionCreation_ == 0)) conditionCreation_ = 0;
+                    for (std::size_t s = 0; s < schema.size(); ++s)
+                        if (choice(key + ".species." + std::string(schema[s].name), schema[s].name.data(), conditionCreation_ == static_cast<int>(s + 1))) conditionCreation_ = static_cast<int>(s + 1);
+                    ImGui::EndCombo();
+                }
+            }
+            if (i % 2 == 0 && conditionCreation_ != 0 && conditionSchema()[conditionCreation_ - 1].reference) {
+                const auto* target = conditionTarget_ ? document_.entity(*conditionTarget_) : nullptr;
+                const auto label = target ? std::to_string(target->id.value) : "Choose target";
+                const bool targetOpen = ImGui::BeginCombo("New condition target", label.c_str(), ImGuiComboFlags_HeightLargest);
+                record(key + ".target", targetOpen);
+                if (targetOpen) {
+                    for (const auto& entity : document_.entities()) {
+                        if (entity.exportedPart.has_value() == conditionSchema()[conditionCreation_ - 1].name.ends_with("Structure")) continue;
+                        const auto name = std::to_string(entity.id.value);
+                        if (choice(key + ".target." + name, name.c_str(), conditionTarget_ == entity.id)) conditionTarget_ = entity.id;
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+            if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add SetBooleanFlag")) {
+                const auto result = i % 2 == 0 && conditionCreation_ != 0 ?
+                    history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species, conditionTarget_) :
+                    history_.addObjectiveEntry(objective_, i);
                 if (result) { objectiveEntry_ = *result; status_ = "Applied"; } else status_ = result.error().reason;
                 ImGui::PopID(); ImGui::PopID(); return;
             }
@@ -215,7 +242,29 @@ void EntityPanels::objectives()
                         ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
                     }
                     ImGui::EndDisabled();
-                } else if (entry.policy.empty()) ImGui::TextUnformatted("Payload authoring for this species is deferred.");
+                } else if (entry.policy.empty()) {
+                    const auto fields = objectivePayloadSchema(entry);
+                    if (!fields.empty()) {
+                        if (entryRevision_ != document_.revision()) {
+                            for (std::size_t f = 0; f < fields.size(); ++f)
+                                payloadDraft_[f] = entry.payload[f];
+                            entryRevision_ = document_.revision();
+                        }
+                        for (std::size_t f = 0; f < fields.size(); ++f) {
+                            const auto& field = fields[f];
+                            const auto* source = document_.find(entry.section, field.key);
+                            if (!source->warning.empty()) ImGui::TextWrapped("%s: %s; authored bytes preserved", field.key.data(), source->warning.data());
+                            if (field.type == 0) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_S64, &std::get<std::int64_t>(payloadDraft_[f])));
+                            else if (field.type == 1) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
+                            else record(key + "." + std::string(field.key), ImGui::InputTextMultiline(field.key.data(), &std::get<std::string>(payloadDraft_[f]), ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine));
+                            if (button((key + ".apply." + std::string(field.key)).c_str(), ("Apply " + std::string(field.key)).c_str())) {
+                                report(history_.setObjectivePayload(entry.section, field.key, payloadDraft_[f]));
+                                ImGui::PopID(); ImGui::PopID(); return;
+                            }
+                        }
+                    } else if (entry.reference.kind != ReferenceKind::none) ImGui::TextUnformatted("Use the objective reference rows to resolve the target.");
+                    else ImGui::TextUnformatted("Payload authoring for this species is deferred.");
+                }
                 if (ImGui::TreeNode("Authored bytes (preserved declarations included)")) {
                     const auto span = document_.section(entry.section)->syntax;
                     const auto& source = document_.syntax().originalBytes;
@@ -229,6 +278,8 @@ void EntityPanels::objectives()
                 for (const auto& section : document_.syntax().sections) {
                     if (section.parent) continue;
                     auto name = identifier(section.name);
+                    name.erase(0, name.find_first_not_of(" \t"));
+                    name.erase(name.find_last_not_of(" \t") + 1);
                     if (version == 2 && name.starts_with("team0")) name.erase(0, 5);
                     if (!name.starts_with(base) || name.size() == base.size() ||
                         !std::ranges::all_of(std::string_view(name).substr(base.size()), [](char c) { return c >= '0' && c <= '9'; }) ||

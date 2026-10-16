@@ -1,4 +1,4 @@
-// FIT-NUMBER-1: the FIT number readers that the mission editor shares with the game. The three cases are the divergences the
+// The FIT number readers that the mission editor shares with the game. The three cases are the divergences the
 // editor review found between these readers and a strtol reading; stock and mod data depend on them, so they are pinned.
 // The readers write into their argument, so every input is a writable array.
 
@@ -55,11 +55,12 @@ TEST_CASE("plain values read as before")
 	char hex[] = "0x1F";
 	CHECK(mc2::fit::textToULong(hex) == 31ul);
 	CHECK(mc2::fit::textToFloat("2.5") == doctest::Approx(2.5f));
+	CHECK(mc2::fit::textToFloat("0x1p3") == doctest::Approx(8.0f));   // atof reads C99 hex floats
 }
 
 TEST_CASE("FitIniFile reads every pinned case as the shared readers do")
 {
-	const char* cases[] = { "7 // 0xff", "0x-1", "0X16", "42", "0x1F", "-12", "0xZZ", "2.5" };
+	const char* cases[] = { "7 // 0xff", "0x-1", "0X16", "42", "0x1F", "-12", "0xZZ", "2.5", "0x1p3" };
 	FitProbe fit;
 	for (const char* c : cases)
 	{
@@ -68,6 +69,7 @@ TEST_CASE("FitIniFile reads every pinned case as the shared readers do")
 		CHECK(fit.textToLong(a) == mc2::fit::textToLong(b));
 		strcpy(a, c); strcpy(b, c);
 		CHECK(fit.textToULong(a) == mc2::fit::textToULong(b));
+		// Exact equality: both sides are the same atof call, and "0x1p3" pins its hex-float parse on both.
 		CHECK(fit.textToFloat(c) == mc2::fit::textToFloat(c));
 	}
 }

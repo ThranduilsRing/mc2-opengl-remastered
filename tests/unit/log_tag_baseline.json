@@ -4214,7 +4214,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 8
+   "count": 7
   },
   {
    "tag": "GPUPROPS",
@@ -4236,6 +4236,15 @@
     "multi_packet",
     "alpha_on_fallback",
     "no_primary"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cpu_geometry_bytes"
    ],
    "count": 1
   },
@@ -6554,7 +6563,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 7
+   "count": 6
   },
   {
    "tag": "MOVE_BD",
@@ -8639,6 +8648,42 @@
    "count": 1
   },
   {
+   "tag": "ROUTE_EXECUTION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "execution"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ROUTE_EXECUTION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "execution",
+    "revision",
+    "sequence",
+    "tick",
+    "action"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ROUTE_EXECUTION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "execution",
+    "revision",
+    "sequence",
+    "tick",
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SALVAGE",
    "ver": -1,
    "stream": "stdout",
@@ -9238,6 +9283,16 @@
     "nabl",
     "abl",
     "rng"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_SPEED",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "steps_per_frame",
+    "frame"
    ],
    "count": 1
   },
@@ -10204,6 +10259,13 @@
    "count": 1
   },
   {
+   "tag": "TERRAIN_FIELDS",
+   "ver": 1,
+   "stream": "log",
+   "keys": [],
+   "count": 5
+  },
+  {
    "tag": "TERRAIN_HEIGHT_TEX",
    "ver": -1,
    "stream": "stderr",
@@ -10694,6 +10756,20 @@
    "tag": "TEXMGR_KTX_PRIMARY",
    "ver": -1,
    "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEXTURE_DECODE",
+   "ver": 1,
+   "stream": "log",
+   "keys": [],
+   "count": 12
+  },
+  {
+   "tag": "TEXTURE_RGBA",
+   "ver": 1,
+   "stream": "log",
    "keys": [],
    "count": 1
   },
@@ -11890,25 +11966,6 @@
    "count": 1
   },
   {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id",
-    "err"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_HUD_SKIP",
    "ver": 1,
    "stream": "stderr",
@@ -12207,7 +12264,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "VK_SHADOW_MATRIX",
@@ -12257,7 +12314,7 @@
    "keys": [
     "ok"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_SHADOW_MATRIX",
@@ -12279,6 +12336,26 @@
    "stream": "stderr",
    "keys": [],
    "count": 10
+  },
+  {
+   "tag": "VK_SHADOW_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "VK_SHADOW_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "generation",
+    "size",
+    "terrain_tris",
+    "building_instances",
+    "building_draws"
+   ],
+   "count": 1
   },
   {
    "tag": "VK_SHARED_SCENE_COLOR",
@@ -13112,6 +13189,7 @@
   "DEPLOY_GUARD",
   "DESTROY",
   "DET_RNG",
+  "DHRF",
   "EDITOR_CHOOSER_VIEW",
   "EDITOR_DEFINITIONS",
   "EDITOR_DOCUMENT",

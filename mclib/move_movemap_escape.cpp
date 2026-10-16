@@ -442,28 +442,10 @@ void MoveMap::writeDebug (File* debugFile) {
 
 void MoveMap::destroy (void) {
 
-	if (map) 
-	{
-		systemHeap->Free(map);
-		map = nullptr;
-	}
-
-	if (mapRowStartTable)
-	{
-		systemHeap->Free(mapRowStartTable);
-		mapRowStartTable = nullptr;
-	}
-
-	if (mapRowTable)
-	{
-		systemHeap->Free(mapRowTable);
-		mapRowTable = nullptr;
-	}
-
-	if (mapColTable)
-	{
-		systemHeap->Free(mapColTable);
-		mapColTable = nullptr;
-	}
+	// Frees the grid now; the next solve re-sizes it.
+	map = {};
+	mapRowStartTable = {};
+	mapRowTable = {};
+	mapColTable = {};
 
 }

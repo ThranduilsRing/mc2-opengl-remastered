@@ -677,15 +677,12 @@ void gosRenderer::flushHUDBatch()
                     draw.textureHeight = (uint32_t)ti.height_;
                     draw.textureFormat = (uint32_t)ti.format_;
                     draw.textureSerial = tex->getContentSerial();
-                    // VK-FIELD-VFX-4: textures whose upload path never set a CPU
-                    // mirror (BC7 .ktx2 sidecar realize — effect sprites) get one
-                    // built lazily by GPU readback, once per content serial, so
-                    // textured beams/effects composite instead of self-declining.
+                    // Pre-compressed textures (BC7 .ktx2 sidecars: effect sprites) get their RGBA8 mirror decoded from
+                    // their blocks on first use, so textured beams / effects composite instead of self-declining.
                     // Gated on the VFX umbrella sub-gate; GL byte-identical when off.
-                    // (hudVfxGate hoisted per-flush: VK-HUD-GATE-HOIST-1.)
                     if (hudVfxGate && draw.textureWidth != 0 &&
                         draw.textureHeight != 0 && !tex->hasRgbaMirror())
-                        tex->ensureRgbaMirrorFromGpu();
+                        tex->ensureRgbaMirror();
                     if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
                         draw.textureRgba = tex->getRgbaMirror();
                 }

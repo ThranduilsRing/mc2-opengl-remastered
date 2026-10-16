@@ -20,7 +20,6 @@
 #endif
 
 #include"logisticsdata.h"
-#include<future>
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -50,7 +49,6 @@ class Logistics
 		
 		MissionResults*					missionResults;
 		MissionBegin*					missionBegin;
-		std::future<void>				m_initFuture;
 	
 	public:
 	

@@ -1,4 +1,4 @@
-// SAVE-PTR-PIN-1: the two process pointers that a mission save must carry as null, pinned in the source of the functions that write and read them.
+// The two process pointers that a mission save must carry as null, pinned in the source of the functions that write and read them.
 //
 // WHAT: Gate::CopyTo writes GateData::closestObject as null and Gate::Load drops a nonzero value of an older save with one log line;
 // MechWarrior::copyToData writes every QueuedTacOrder::marker of the queue as null.

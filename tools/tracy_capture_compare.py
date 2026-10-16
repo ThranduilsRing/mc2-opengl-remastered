@@ -111,9 +111,10 @@ BASELINE_ROOT = Path("release_assets/tracy-baselines")  # gitignored; traces nev
 REGRESS_WARN_PCT = 5.0   # frame-count drop that WARNs (exit 1)
 REGRESS_FAIL_PCT = 10.0  # frame-count drop that FAILs (exit 2)
 
-# The vk arm = backend + umbrella; every VK island takes the engine's own default (lane 2 owns those semantics). Until 2026-10-15 this
-# arm also forced MC2_VK_SHADOW_INTEROP=0, so a trace never measured the shadow path the engine actually ships; a capture that needs a
-# specific island state says so with --env (e.g. --env MC2_VK_SHADOW_INTEROP=0), which the capture prints as an `[capture] extra env` line.
+# The vk arm measures the shipped VK frame: backend + shared GBuffer, every umbrella member
+# at its default (the shadow producers are default-on kill switches since the one-submit-
+# per-frame rework, so forcing MC2_VK_SHADOW_INTEROP=0 would measure a frame without shadows).
+# Per-capture overrides go through --env (e.g. --env MC2_VK_SHADOW_INTEROP=0 for a no-shadow arm).
 VK_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_VK_SHARED_GBUFFER": "1",
@@ -239,7 +240,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
 
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
-                  show_window: bool = True, warmup_s: int = 0) -> int:
+                  show_window: bool = True) -> int:
     """Record ONE headless Tracy trace. Shared by capture/baseline/regress.
 
     fixed_timestep=True  -> MC2_SMOKE_FIXED_TIMESTEP=1 (deterministic frames; NOT
@@ -247,7 +248,6 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     fixed_timestep=False -> free wall-clock timestep (hygienic FPS measurement).
     fps_cap=0            -> MC2_FPS_CAP=0 (uncapped, render-bound).
     pose="x,y,..."       -> MC2_CAMERA_PARK pin.
-    warmup_s=N           -> one unrecorded N-second launch first (a freshly copied exe).
     show_window=True     -> SW_SHOWNOACTIVATE: the window is VISIBLE but never
                             steals focus. REQUIRED for any fragment-bound
                             measurement -- see PERF-HARNESS-TRUTH-1 below.
@@ -286,27 +286,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env)   # before the recorder starts: a refused --env must leave nothing running
 
     with ExitStack() as cleanup:
-        # The recorder must share the game's host lease so another lane cannot feed it a trace. A multi-arm command already holds it
-        # for its whole chain (main), and then this capture neither takes nor gives it back.
-        if not host_lease.holds():
-            host_lease.acquire(f"Tracy capture {arm} {mission}")
-            cleanup.callback(host_lease.release)
-
-        if warmup_s:
-            # A freshly copied exe pays its first-run costs (OS file cache, driver shader/pipeline caches) inside the first trace;
-            # one unrecorded launch with the same environment takes them first.
-            warm_log = out.with_suffix(".warmup.log")
-            warm_lf = cleanup.enter_context(open(warm_log, "w", encoding="utf-8", errors="replace"))
-            print(f"[capture] warm-up launch {warmup_s}s (not recorded) -> {warm_log}")
-            wp = nofocus.spawn([str(game), "--profile", "stock", "--mission", mission, "--duration", str(warmup_s)],
-                               stdout=warm_lf, stderr=subprocess.STDOUT, cwd=str(install), env=env,
-                               show_window=show_window, small_window=False)
-            try:
-                wp.wait(timeout=warmup_s + 90)
-            except subprocess.TimeoutExpired:
-                print(f"WARN: warm-up exceeded its budget -- killing OUR spawned pid {wp.pid} only", file=sys.stderr)
-                wp.kill()
-                wp.wait(timeout=30)
+        # The recorder must share the game's host lease so another lane cannot feed it a trace.
+        host_lease.acquire(f"Tracy capture {arm} {mission}")
+        cleanup.callback(host_lease.release)
 
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
@@ -379,7 +361,7 @@ def cmd_capture(args: argparse.Namespace) -> int:
         Path(args.install), args.arm, args.mission, args.seconds,
         Path(args.output), extra_env=args.env, pose=args.pose,
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
-        show_window=args.show_window, warmup_s=args.warmup_seconds,
+        show_window=args.show_window,
     )
 
 
@@ -695,11 +677,10 @@ def cmd_baseline(args: argparse.Namespace) -> int:
           f"seconds={args.seconds} -> {out_dir}")
     arm_results = {}
     rc = 0
-    for i, arm in enumerate(arms):
+    for arm in arms:
         trace = out_dir / f"{name}-{arm}.tracy"
         r = capture_trace(install, arm, args.mission, args.seconds, trace,
-                          pose=args.pose, fixed_timestep=False, fps_cap=0,
-                          warmup_s=args.warmup_seconds if i == 0 else 0)
+                          pose=args.pose, fixed_timestep=False, fps_cap=0)
         rc = rc or r
         arm_results[arm] = measure_arm(trace, zones, args.seconds, export_exe)
         arm_results[arm]["options"] = (render_options_pin.read(options_sidecar(trace)) or {}).get("values")
@@ -770,11 +751,10 @@ def cmd_regress(args: argparse.Namespace) -> int:
           "| arm | base frames | new frames | Δfps | Δframes | verdict |",
           "|---|--:|--:|--:|--:|---|"]
 
-    for i, arm in enumerate(arms):
+    for arm in arms:
         trace = out_dir / f"regress-{arm}.tracy"
         capture_trace(install, arm, base["mission"], seconds, trace,
-                      pose=base["pose"], fixed_timestep=False, fps_cap=0,
-                      warmup_s=args.warmup_seconds if i == 0 else 0)
+                      pose=base["pose"], fixed_timestep=False, fps_cap=0)
         base_arm = base["arms"].get(arm, {})
         try:
             render_options_pin.require_same({"values": base_arm.get("options")}, render_options_pin.read(options_sidecar(trace)),
@@ -940,7 +920,7 @@ def cmd_matrix(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv=None) -> int:
+def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -966,7 +946,7 @@ def main(argv=None) -> int:
     c.set_defaults(show_window=True)
     c.add_argument("--env", action="append", default=[], metavar="KEY=VAL",
                    help="extra env var(s) for the game, applied AFTER the arm's "
-                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHADOW_INTEROP=1). "
+                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHADOW_INTEROP=0). "
                         "Repeatable.")
     c.set_defaults(fn=cmd_capture)
 
@@ -1028,20 +1008,8 @@ def main(argv=None) -> int:
     m.add_argument("--out-dir", required=True)
     m.set_defaults(fn=cmd_matrix)
 
-    for p in (c, b, r):
-        p.add_argument("--warmup-seconds", type=int, default=0, metavar="N",
-                       help="before the first trace, launch the game once for N s unrecorded (a freshly copied exe pays its "
-                            "first-run cache costs there, not in the trace); default 0 = no warm-up")
-    args = ap.parse_args(argv)
-    if args.cmd == "compare":
-        return args.fn(args)
-    # Every launching command holds the host lease from before its first child to after its last, so the arms of one baseline or
-    # regress (and their warm-up) are never interleaved with another lane's engine.
-    host_lease.acquire(f"tracy_capture_compare {args.cmd}")
-    try:
-        return args.fn(args)
-    finally:
-        host_lease.release()
+    args = ap.parse_args()
+    return args.fn(args)
 
 
 if __name__ == "__main__":

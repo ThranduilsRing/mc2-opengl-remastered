@@ -1,5 +1,4 @@
-// mc2str.h -- the string helpers that replace the behaviour EString gave for free (step 4 batch B1,
-// .claude/cleanup/cxx23-step4-b1-notes.md).
+// mc2str.h -- the string helpers that replace the behaviour EString gave for free.
 //
 // WHAT: from_c turns a possibly-null C string into a std::string; iequals / icompare compare names that
 // come from data (file names, mech / pilot / variant / mission names, flag IDs) ignoring ASCII case; ci_total_less is the

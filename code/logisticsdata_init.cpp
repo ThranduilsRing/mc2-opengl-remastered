@@ -4,6 +4,8 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
+#include <chrono>
+
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
 // SMART-LOAD-DEFAULT-ON-1: default flipped ON (was default-OFF). Kill-switch preserved --
@@ -449,38 +451,43 @@ void LogisticsData::initVariants()
 
 	}
 
-	// --- Parallel phase: open + parse each mech CSV concurrently ---
-	// Safety: CSVFile/File use read-only FastFile globals and g_modIndex.
-	// LogisticsChassis::init() writes only to 'this'. LogisticsVariant::init()
-	// reads LogisticsData::components (read-only after initComponents()).
-	// pChassis->refCount++ is per-chassis so only one thread touches each chassis.
-	std::vector<std::future<void>> mechFutures;
-	mechFutures.reserve(mechJobs.size());
+	// The mech CSVs are parsed on this thread, one after another. WHY: a FastFile archive reads through one shared FILE*
+	// (seek then read) and one shared LZ buffer, so parsing them concurrently let one thread's seek land between another's
+	// seek and read. Under host load a chassis file then failed to parse, its variants were missing, and every mech of that
+	// variant got the 10 C-Bill fallback in Mech::init (mc2_16 save, BUGS-FOUND-FIXED).
+	const auto parseStart = std::chrono::steady_clock::now();
 	for (auto& job : mechJobs) {
-		mechFutures.push_back(std::async(std::launch::async, [&job, this]() {
-			CSVFile mechFile;
-			if (NO_ERR != mechFile.open(job.path.c_str()))
-				return;
+		CSVFile mechFile;
+		if (const long openResult = mechFile.open(job.path.c_str()); openResult != NO_ERR)
+		{
+			MC2_LOG(Io, Warn, "logistics: mech file {} did not open (error {:#x}); its chassis and variants are skipped", job.path, static_cast<unsigned long>(openResult));
+			continue;
+		}
 
-			job.chassis = new LogisticsChassis();
-			job.chassis->init(&mechFile, job.chassisId);
-			job.chassis->setFitID(job.fitID);
-			job.chassis->setScale(job.scale);
+		job.chassis = new LogisticsChassis();
+		job.chassis->init(&mechFile, job.chassisId);
+		job.chassis->setFitID(job.fitID);
+		job.chassis->setScale(job.scale);
 
-			int row = 23;
-			char buffer[256];
-			int varCount = 0;
-			while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
-				LogisticsVariant* pVariant = new LogisticsVariant;
-				if (0 == pVariant->init(&mechFile, job.chassis, varCount++))
-					job.varList.push_back(pVariant);
-				else
-					delete pVariant;
-				row += 97;
+		int row = 23;
+		char buffer[256];
+		int varCount = 0;
+		while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
+			LogisticsVariant* pVariant = new LogisticsVariant;
+			if (0 == pVariant->init(&mechFile, job.chassis, varCount))
+				job.varList.push_back(pVariant);
+			else
+			{
+				MC2_LOG(Io, Warn, "logistics: mech file {} variant {} (CSV row {}) is malformed and is skipped", job.path, varCount, row);
+				delete pVariant;
 			}
-		}));
+			varCount++;
+			row += 97;
+		}
 	}
-	for (auto& f : mechFutures) f.get();
+	// One line per load: the serial parse is on the startup (or first mech-bay) path, so its cost stays visible.
+	MC2_LOG(Io, Info, "logistics: parsed {} mech files in {} ms", mechJobs.size(),
+		std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - parseStart).count());
 
 	// Serial merge in original buildings.csv order.
 	for (auto& job : mechJobs) {

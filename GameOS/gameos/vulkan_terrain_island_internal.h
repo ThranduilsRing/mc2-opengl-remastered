@@ -188,23 +188,16 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t      cementVersionCopied = UINT64_MAX; // last snapshotted cement-word version
     bool          cementWordsReady = false;       // set once the cement SSBO has a real snapshot
 
-    // VK-TERRAIN-LIGHTING sub-slice: the STATIC sun shadow map. A VK-owned D32_SFLOAT
-    // depth image the island copies the GL static shadow depth texture INTO per frame
-    // (glGetTexImage(GL_DEPTH_COMPONENT,GL_FLOAT) -> staging -> vkCmdCopyBufferToImage).
-    // Sampled through a depth-COMPARE sampler (compareOp=LESS_OR_EQUAL, LINEAR HW PCF,
-    // CLAMP_TO_BORDER white=1.0) at binding 5, exactly like the GL sampler2DShadow. The
-    // GL map is DEPTH_COMPONENT24 but the readback is normalized float, so D32 is exact.
+    // The STATIC sun shadow map at binding 5: the VK shadow island's map (shadowExternalView) when its build matches the frame's generation, else this
+    // island's 1x1 dummy (shadowImg / shadowView) with enableShadows=0. Sampled through a depth-COMPARE sampler (compareOp=LESS_OR_EQUAL, LINEAR HW
+    // PCF, CLAMP_TO_BORDER white=1.0), exactly like the GL sampler2DShadow.
     mc2vk::OwnedImage       shadowImg;
     mc2vk::OwnedImageView   shadowView;
     mc2vk::OwnedSampler     shadowSamp;  // depth-compare, LESS_OR_EQUAL, LINEAR (shared)
-    uint32_t      shadowDim   = 0;               // current VK shadow image edge (texels)
-    bool          shadowReady = false;           // a real GL map was copied this frame
-    mc2vk::OwnedBuffer      shadowStage;
-    VkDeviceSize  shadowStageBytes = 0;
-    // VK-SHADOW-COPY-ONCE-1: last feed.staticShadowGeneration actually copied. The GL
-    // static map only changes when this generation bumps (mission load / re-arm), so we
-    // skip the glGetTexImage+VK-upload entirely on frames where it is unchanged.
-    uint64_t      shadowGenCopied = UINT64_MAX;  // sentinel: never copied yet
+    uint32_t      shadowDim   = 0;               // the dummy's edge (texels)
+    bool          shadowReady = false;           // binding 5 holds the island's map of this frame's generation
+    VkImageView   shadowExternalView = VK_NULL_HANDLE;   // the shadow island's static map this frame, or null
+    VkImageView   shadowBoundView = VK_NULL_HANDLE;      // what binding 5 was last written with
 
     // VK-TERRAIN-DYNSHADOW: second D32 depth-COMPARE image for the DYNAMIC (building/mech)
     // shadow map at binding 7 (shares shadowSamp). Same copy-per-frame mechanism as static.
@@ -212,8 +205,6 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   dynShadowView;
     uint32_t      dynShadowDim  = 0;
     bool          dynShadowReady = false;
-    mc2vk::OwnedBuffer      dynShadowStage;
-    VkDeviceSize  dynShadowStageBytes = 0;
 
     // VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island produced+fenced this
     // frame's dynamic shadow depth (mc2_vk_shadow_island_dyn_shadow_ready()), binding 7
@@ -313,7 +304,8 @@ struct OvlTex {
     mc2vk::OwnedImage img;
     mc2vk::OwnedImageView view;   // declared after the image: released first
     VkDescriptorSet set = VK_NULL_HANDLE;   // freed with the pool
-    uint32_t glTex = 0;              // GL texture name this import came from
+    // The texels this import came from; a reloaded texture publishes a new vector, so identity says when to re-import.
+    std::shared_ptr<const std::vector<uint8_t>> source;
 };
 
 struct OvlPending {
@@ -358,13 +350,10 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_shadow_sampler(TerrainIsland* s);
 bool ensure_dummy_shadow(TerrainIsland* s);
-bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_csm(TerrainIsland* s);
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, mc2vk::OwnedBuffer& stage, VkDeviceSize* stageBytes,
-                      bool perFrame);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
@@ -386,8 +375,6 @@ extern bool g_ovlDeclined;
 extern std::vector<OvlPending> g_ovlPending;
 void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
-bool terrainNoInteropStrict();
-void terrainPerFrameReadback(std::string_view fn);
 bool terrainFenceDeferEnabled();
 bool terrainPerfGateRequested();
 bool terrainTier1Requested();

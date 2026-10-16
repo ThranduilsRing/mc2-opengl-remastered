@@ -42,7 +42,7 @@ Saved state (IsActive, ActivationTime, IsResolved, ResolvedStatus, ChangedStatus
 
 Species names match exactly; unsupported strings/numbers and unimplemented group predicates use monostate, never the game's unknown-string executable fallback. Valid unknown keys/payloads stay byte-exact. Scalar edits change only the chosen value/declaration and explicitly authored prefix; unrelated syntax and PAK bytes stay exact.
 
-Candidates validate before mutation. Rejections log once and preserve bytes, revision, dirty state, history and future IDs; limits reject without truncation. No-ops retain redo. Bounded history restores exact original/changed bytes through undo/redo and save/reopen. [CRUD](OBJECTIVES-E6b.md) permits necessary header/count changes; [typed references](OBJECTIVES-E6b-refs.md) remain deferred, so entity commands do not follow objective targets.
+Candidates validate before mutation. Rejections log once and preserve bytes, revision, dirty state, history and future IDs; limits reject without truncation. No-ops retain redo. Bounded history restores exact original/changed bytes through undo/redo and save/reopen. [CRUD](OBJECTIVES-E6b.md) permits necessary header/count changes; completed [typed references](OBJECTIVES-E6b-refs.md) follow resolved entity targets atomically.
 
 ## Acceptance
 
@@ -64,7 +64,7 @@ Independent typed decoding and expected changed outputs are required; passthroug
 
 ## Follow-ups
 
-Only BooleanFlagIsSet/SetBooleanFlag gain payload authoring; other payloads and team-flag authoring/display are deferred with exact bytes retained.
+Boolean payloads, condition Num/Time/area fields and existing WAV/text/technology/BIK/resource-text actions support authoring; numeric edits must round-trip through FIT conversion exactly. Action text keeps authored paths without runtime prefixes. Condition creation is restricted to condition lists and supplies required payloads atomically, including XY for specific targets and Guard. References use the existing resolution commands. Species-selectable action creation, `_RemoveStructure` and team-flag authoring/display remain deferred with exact bytes retained.
 Unknown condition/action strings quarantine that entry with the actual DestroyAllEnemyUnits/PlayBIK fallback shown.
 Group predicates remain preserved and shown as skipped; numeric species fallback applies only to success conditions.
 Quarantined/skipped entries allow explicit deletion and whole-objective CRUD, but no individual edit/reorder; refuse tail awakening.

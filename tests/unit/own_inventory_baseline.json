@@ -2065,38 +2065,6 @@
    "new_array": 0,
    "owners": []
   },
-  "File": {
-   "delete": 9,
-   "delete_array": 0,
-   "files": {
-    "code/gameobj.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mech3d.cpp": {
-     "delete": 1
-    },
-    "mclib/mech3d_update.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/move_movemap_escape.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "mclib/move_movemap_path.cpp": {
-     "delete": 4,
-     "new": 4
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mech3DAppearance",
-    "MoveMap"
-   ]
-  },
   "FileStatPlug": {
    "delete": 0,
    "delete_array": 0,
@@ -2149,7 +2117,7 @@
    "owners": []
   },
   "FitIniFile": {
-   "delete": 5,
+   "delete": 4,
    "delete_array": 0,
    "files": {
     "code/mission_init.cpp": {
@@ -2158,18 +2126,12 @@
     "code/mission_init_load.cpp": {
      "delete": 2
     },
-    "code/saveload.cpp": {
-     "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "delete": 1
-    },
     "editor/Editor.cpp": {
      "delete": 2,
      "new": 2
     }
    },
-   "new": 5,
+   "new": 4,
    "new_array": 0,
    "owners": [
     "",
@@ -7702,7 +7664,6 @@
   "GameOS/gameos/gameos_graphics_internal.h": 4,
   "GameOS/gameos/gameos_graphics_material_internal.h": 8,
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
-  "GameOS/gameos/gameos_graphics_texture.cpp": 1,
   "GameOS/gameos/gameos_sound.cpp": 6,
   "GameOS/gameos/gameosmain.cpp": 1,
   "GameOS/gameos/gos_cardcloud_sim.cpp": 3,

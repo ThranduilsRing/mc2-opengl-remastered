@@ -59,8 +59,10 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_coalesceFrameSlot = 0;  // reset coalesce ring slot per-mission for hygiene
     s_typeIndex.clear();
     s_typeDescTable.clear();
-    s_stagingVbo.clear();
-    s_stagingIbo.clear();
+    // Release (not just clear) the previous map's CPU geometry copy so it is freed at map change, not kept at the largest
+    // map's capacity.
+    std::vector<uint8_t>().swap(s_stagingVbo);
+    std::vector<uint32_t>().swap(s_stagingIbo);
     s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
     s_sharedIboBytes = 0;
 #ifdef MC2_VULKAN_ISLAND

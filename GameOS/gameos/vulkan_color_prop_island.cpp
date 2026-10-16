@@ -44,6 +44,8 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"   // TIER-1: fetch shared scene depth (island accessors)
 
+extern const float* gos_GetTerrainMVPMat4();   // live camera matrix (matrix diag only)
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -1226,29 +1228,24 @@ bool upload_geometry_once(ColorPropIsland* s) {
     if (s->geomUploaded) return true;
     Mc2ShadowGeomFeed feed{};
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
-    if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
-
-    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "colorprop.vbo")) return false;
-    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "colorprop.ibo")) return false;
-    std::vector<uint8_t> scratch;
-    { void* p = nullptr;
-      if ((p = s->vbo.map()) != nullptr) {
-          scratch.resize((size_t)feed.vboBytes);
-          glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-          glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-          glBindBuffer(GL_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          s->vbo.unmap();
-      } }
-    { void* p = nullptr;
-      if ((p = s->ibo.map()) != nullptr) {
-          scratch.resize((size_t)feed.iboBytes);
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-          glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          s->ibo.unmap();
-      } }
+    // The vertex / index bytes come from the batcher's CPU copy (the bytes the GL buffers were created from).
+    const void* vboCpu = nullptr; const void* iboCpu = nullptr;
+    uint64_t vboBytes = 0, iboBytes = 0;
+    if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
+    // The accessor never reports empty staging; a size that differs from the feed means the two describe different maps.
+    if (vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
+        vlog("geometry declined: the CPU copy (%llu / %llu bytes) does not match the feed (%llu / %llu).",
+             (unsigned long long)vboBytes, (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes,
+             (unsigned long long)feed.iboBytes);
+        return false;
+    }
+    // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing.
+    if (!s->vbo.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "colorprop.vbo") ||
+        !s->ibo.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "colorprop.ibo")) {
+        vlog("geometry upload failed (buffer creation or map); retrying next frame.");
+        s->vbo.reset();
+        return false;
+    }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
     s->typeRuns.clear();
@@ -1286,6 +1283,8 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->packets.clear();
     s->typeRuns.clear();
     // The albedo arrays and the hot-colour table belong to the map too: the next map's feed imports its own (the island itself outlives the map).
+    // The previous map's two albedo arrays stay allocated until that import replaces them: the per-parity descriptor sets still name their views, and a set
+    // naming a destroyed view must not be bound by a draw before the rewrite, so the GPU memory is retained across a menu stay rather than released here.
     s->materialReady = false;
     s->materialReadyOn = false;
     s->hotReady = false;
@@ -1320,6 +1319,19 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     Mc2ColorPropFeed feed{};
     if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
     if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
+    // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
+    if (mc2_vk_shadow_matrix_diag_enabled()) {
+        static int diagPrints = 0;
+        if (diagPrints < 3) {
+            ++diagPrints;
+            const float* live = gos_GetTerrainMVPMat4();
+            const float* f = feed.worldToClipGL;
+            vlog("matrix diag: prop row0=[%.4f %.4f %.4f %.4f] row3=[%.4f %.4f %.4f %.4f] live row0=[%.4f %.4f %.4f %.4f] row3=[%.4f %.4f %.4f %.4f]",
+                 f[0], f[1], f[2], f[3], f[12], f[13], f[14], f[15],
+                 live ? live[0] : 0.0f, live ? live[1] : 0.0f, live ? live[2] : 0.0f, live ? live[3] : 0.0f,
+                 live ? live[12] : 0.0f, live ? live[13] : 0.0f, live ? live[14] : 0.0f, live ? live[15] : 0.0f);
+        }
+    }
 
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();

@@ -3,6 +3,8 @@
 // No GL headers. No external dependencies.
 
 #include "KtxLoader.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "../GameOS/include/mc2fmt.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -40,154 +42,117 @@ static constexpr uint32_t kVkFormatBc6hSfloat = 144;  // VK_FORMAT_BC6H_SFLOAT_B
 static constexpr uint32_t kVkFormatBc7UnormBlock = 145;
 static constexpr uint32_t kVkFormatBc7SrgbBlock  = 146;
 
-// KTX2 header fields we need (all uint32, little-endian, file offsets 12-44).
-// We do NOT use the struct approach for the full header because mixing
-// uint32_t and uint64_t fields causes compiler padding before the uint64_t
-// members, making sizeof() != the on-disk layout.
-// Strategy: read the 9 essential uint32 fields (36 bytes), then fseek to
-// file offset 80 (start of level index) to skip the rest of the header.
-// KTX2 level index starts at file offset 80 by spec:
-//   12 (magic) + 9*4 + 4*4 + 2*8 = 12 + 36 + 16 + 16 = 80.
-struct Ktx2Fields {
-    uint32_t vkFormat;
-    uint32_t typeSize;
-    uint32_t pixelWidth;
-    uint32_t pixelHeight;
-    uint32_t pixelDepth;
-    uint32_t layerCount;
-    uint32_t faceCount;
-    uint32_t levelCount;
-    uint32_t supercompressionScheme;
-};
-static_assert(sizeof(Ktx2Fields) == 36, "Ktx2Fields must be 36 bytes (all uint32)");
+// KTX2 layout: 12-byte magic, nine uint32 header fields (format .. supercompression), four uint32 + two uint64 index fields we
+// do not use, then the level index at offset 80: one {byteOffset, byteLength, uncompressedByteLength} uint64 triple per level,
+// largest level first. All little-endian.
+static constexpr std::size_t kHeaderFieldsOffset = 12;
+static constexpr std::size_t kLevelIndexOffset   = 80;
+static constexpr std::size_t kLevelEntryBytes    = 24;
 
-// Helper: read exactly `n` bytes; return false on short read or error.
-static bool readExact(std::FILE* f, void* buf, std::size_t n)
+static uint32_t readU32(const uint8_t* p)
 {
-    return std::fread(buf, 1, n, f) == n;
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
+           (static_cast<uint32_t>(p[3]) << 24);
+}
+
+static uint64_t readU64(const uint8_t* p)
+{
+    return static_cast<uint64_t>(readU32(p)) | (static_cast<uint64_t>(readU32(p + 4)) << 32);
+}
+
+// The byte length level `lvl` of a w x h image must have: 4x4 blocks of 16 bytes when block-compressed, else 4 bytes a pixel.
+static uint64_t levelBytes(uint32_t w, uint32_t h, uint32_t lvl, bool blockCompressed)
+{
+    const uint64_t lw = (w >> lvl) ? (w >> lvl) : 1u;
+    const uint64_t lh = (h >> lvl) ? (h >> lvl) : 1u;
+    return blockCompressed ? ((lw + 3u) / 4u) * ((lh + 3u) / 4u) * 16u : lw * lh * 4u;
+}
+
+KtxParseResult ktxParse(std::span<const uint8_t> file)
+{
+    const uint8_t* bytes = file.data();
+    const std::size_t size = file.size();
+    KtxParseResult r;
+    if (!bytes || size < kLevelIndexOffset || std::memcmp(bytes, kKtx2Magic, sizeof(kKtx2Magic)) != 0) {
+        r.error = "not a KTX2 file (no magic or shorter than the header)";
+        return r;
+    }
+    const uint8_t* h = bytes + kHeaderFieldsOffset;
+    const uint32_t vkFormat = readU32(h + 0);
+    const uint32_t typeSize = readU32(h + 4);
+    const uint32_t width = readU32(h + 8);
+    const uint32_t height = readU32(h + 12);
+    const uint32_t depth = readU32(h + 16);
+    const uint32_t layers = readU32(h + 20);
+    const uint32_t faces = readU32(h + 24);
+    const uint32_t levels = readU32(h + 28);
+    const uint32_t supercompression = readU32(h + 32);
+
+    const bool isRgba8 = vkFormat == kVkFormatR8G8B8A8Unorm || vkFormat == kVkFormatR8G8B8A8Srgb;
+    const bool isBc6h = vkFormat == kVkFormatBc6hUfloat || vkFormat == kVkFormatBc6hSfloat;
+    const bool isBc7 = vkFormat == kVkFormatBc7UnormBlock || vkFormat == kVkFormatBc7SrgbBlock;
+    const bool blockCompressed = isBc6h || isBc7;   // both 4x4 blocks of 16 bytes
+    if (!isRgba8 && !blockCompressed) { r.error = "unsupported vkFormat"; return r; }
+    // typeSize is 1 for both the 8-bit RGBA formats and the block formats.
+    if (typeSize != 1 || depth != 0 || layers > 1 || faces != 1 || supercompression != 0) {
+        r.error = "not a stored 2D single-layer single-face image";
+        return r;
+    }
+    if (width == 0 || height == 0 || width > kKtxMaxEdge || height > kKtxMaxEdge) { r.error = "edge out of range"; return r; }
+    uint32_t fullChain = 1;
+    for (uint32_t m = width > height ? width : height; m > 1; m >>= 1) ++fullChain;
+    if (levels < 1 || levels > fullChain) { r.error = "level count out of range"; return r; }
+    if (size - kLevelIndexOffset < std::size_t{levels} * kLevelEntryBytes) { r.error = "truncated level index"; return r; }
+
+    KtxImage img;
+    img.mipByteOffsets.resize(levels);
+    uint64_t total = 0;
+    for (uint32_t lvl = 0; lvl < levels; ++lvl) {
+        const uint8_t* e = bytes + kLevelIndexOffset + std::size_t{lvl} * kLevelEntryBytes;
+        const uint64_t offset = readU64(e);
+        const uint64_t length = readU64(e + 8);
+        if (length != levelBytes(width, height, lvl, blockCompressed)) { r.error = "level byte length does not match the format"; return r; }
+        if (offset > size || length > size - offset) { r.error = "level data runs past the end of the file"; return r; }
+        img.mipByteOffsets[lvl] = total;
+        total += length;
+    }
+    img.pixels.resize(static_cast<std::size_t>(total));
+    for (uint32_t lvl = 0; lvl < levels; ++lvl) {
+        const uint8_t* e = bytes + kLevelIndexOffset + std::size_t{lvl} * kLevelEntryBytes;
+        std::memcpy(img.pixels.data() + img.mipByteOffsets[lvl], bytes + readU64(e), static_cast<std::size_t>(readU64(e + 8)));
+    }
+    img.width = static_cast<int>(width);
+    img.height = static_cast<int>(height);
+    img.isSrgb = vkFormat == kVkFormatR8G8B8A8Srgb || vkFormat == kVkFormatBc7SrgbBlock;   // BC6H has no sRGB variant
+    img.mipCount = static_cast<int>(levels);
+    img.vkFormat = vkFormat;
+    img.isCompressed = blockCompressed;
+    img.blockSizeBytes = blockCompressed ? 16u : 0u;
+    r.image = std::move(img);
+    return r;
 }
 
 bool ktxLoadRgba8(const char* path, KtxImage& out)
 {
-    std::FILE* f = std::fopen(path, "rb");
+    std::FILE* f = path ? std::fopen(path, "rb") : nullptr;
     if (!f)
         return false;
-
-    // ---- 1. Magic check ----
-    uint8_t magic[12];
-    if (!readExact(f, magic, 12) || std::memcmp(magic, kKtx2Magic, 12) != 0) {
-        std::fclose(f);
-        return false;
-    }
-
-    // ---- 2. Read the 9 essential uint32 fields (36 bytes) ----
-    Ktx2Fields hdr{};
-    if (!readExact(f, &hdr, sizeof(hdr))) {
-        std::fclose(f);
-        return false;
-    }
-
-    // ---- 3. Validate ----
-    const bool isRgba8 = (hdr.vkFormat == kVkFormatR8G8B8A8Unorm ||
-                          hdr.vkFormat == kVkFormatR8G8B8A8Srgb);
-    const bool isBc6h  = (hdr.vkFormat == kVkFormatBc6hUfloat ||
-                          hdr.vkFormat == kVkFormatBc6hSfloat);
-    const bool isBc7   = (hdr.vkFormat == kVkFormatBc7UnormBlock ||
-                          hdr.vkFormat == kVkFormatBc7SrgbBlock);
-    // BC6H and BC7 both use 4x4 blocks of 16 bytes — same block geometry.
-    const bool isBlockCompressed = isBc6h || isBc7;
-    if (!isRgba8 && !isBlockCompressed) {
-        std::fclose(f);
-        return false;
-    }
-    // typeSize for block-compressed formats is 1 by KTX2 spec; for RGBA8 it is
-    // the size of the channel type (1 byte). Either way we require 1.
-    if (hdr.typeSize != 1 ||
-        hdr.pixelDepth != 0 ||
-        hdr.faceCount  != 1 ||
-        hdr.levelCount  < 1 ||
-        hdr.supercompressionScheme != 0) {   // stored only -- no transcoding
-        std::fclose(f);
-        return false;
-    }
-
-    // ---- 4. Seek to level index at file offset 80 ----
-    // Skips dfdByteOffset/Length, kvdByteOffset/Length (4*4=16 bytes) and
-    // sgdByteOffset/Length (2*8=16 bytes). Total header = 12+36+16+16 = 80.
-    if (std::fseek(f, 80, SEEK_SET) != 0) {
-        std::fclose(f);
-        return false;
-    }
-
-    // ---- 5. Level index: read ALL levelCount entries ----
-    // Each entry: byteOffset (uint64), byteLength (uint64), uncompressedByteLength (uint64)
-    // Spec: level index is ordered largest-mip-first (mip 0 = entry[0]).
-    struct LevelEntry {
-        uint64_t byteOffset;
-        uint64_t byteLength;
-        uint64_t uncompressedByteLength;
-    };
-    std::vector<LevelEntry> entries(hdr.levelCount);
-    if (!readExact(f, entries.data(),
-                   sizeof(LevelEntry) * static_cast<std::size_t>(hdr.levelCount))) {
-        std::fclose(f);
-        return false;
-    }
-
-    // ---- 6. Validate each level's byteLength against expected RGBA8 size,
-    //         and accumulate the concatenated buffer size (level 0 first). ----
-    out.mipByteOffsets.clear();
-    out.mipByteOffsets.resize(hdr.levelCount);
-    uint64_t totalBytes = 0;
-    for (uint32_t lvl = 0; lvl < hdr.levelCount; ++lvl) {
-        const uint32_t lw = (hdr.pixelWidth  >> lvl) ? (hdr.pixelWidth  >> lvl) : 1u;
-        const uint32_t lh = (hdr.pixelHeight >> lvl) ? (hdr.pixelHeight >> lvl) : 1u;
-        uint64_t expected;
-        if (isBlockCompressed) {
-            // BC6H and BC7: identical 4x4 blocks, 16 bytes/block.
-            // ceil(lw/4)*ceil(lh/4)*16.
-            const uint64_t bw = (static_cast<uint64_t>(lw) + 3u) / 4u;
-            const uint64_t bh = (static_cast<uint64_t>(lh) + 3u) / 4u;
-            expected = bw * bh * 16u;
-        } else {
-            expected = static_cast<uint64_t>(lw) * static_cast<uint64_t>(lh) * 4u;
-        }
-        if (entries[lvl].byteLength != expected) {
-            std::fclose(f);
-            return false;   // pre-baked mip chain mismatch -> fail; caller falls back.
-        }
-        out.mipByteOffsets[lvl] = totalBytes;   // level 0 -> offset 0
-        totalBytes += expected;
-    }
-
-    // ---- 7. Read each level's bytes into the concatenated buffer ----
-    out.pixels.resize(static_cast<std::size_t>(totalBytes));
-    for (uint32_t lvl = 0; lvl < hdr.levelCount; ++lvl) {
-        if (std::fseek(f, static_cast<long>(entries[lvl].byteOffset), SEEK_SET) != 0) {
-            std::fclose(f);
-            return false;
-        }
-        const std::size_t off = static_cast<std::size_t>(out.mipByteOffsets[lvl]);
-        const std::size_t len = static_cast<std::size_t>(entries[lvl].byteLength);
-        if (!readExact(f, out.pixels.data() + off, len)) {
-            std::fclose(f);
-            return false;
+    std::vector<uint8_t> bytes;
+    if (std::fseek(f, 0, SEEK_END) == 0) {
+        const long n = std::ftell(f);
+        if (n > 0 && std::fseek(f, 0, SEEK_SET) == 0) {
+            bytes.resize(static_cast<std::size_t>(n));
+            if (std::fread(bytes.data(), 1, bytes.size(), f) != bytes.size()) bytes.clear();
         }
     }
-
     std::fclose(f);
-
-    // ---- 8. Fill output ----
-    out.width          = static_cast<int>(hdr.pixelWidth);
-    out.height         = static_cast<int>(hdr.pixelHeight);
-    out.isSrgb         = (hdr.vkFormat == kVkFormatR8G8B8A8Srgb ||
-                          hdr.vkFormat == kVkFormatBc7SrgbBlock);
-    // BC6H is always linear HDR; it has no sRGB variant.
-    out.mipCount       = static_cast<int>(hdr.levelCount);
-    out.vkFormat       = hdr.vkFormat;
-    out.isCompressed   = isBlockCompressed;  // true for BC6H (143/144) and BC7 (145/146)
-    out.blockSizeBytes = isBlockCompressed ? 16u : 0u;
-
+    KtxParseResult parsed = ktxParse(bytes);
+    if (!parsed.image) {
+        // A present but malformed sidecar is mod content the caller silently replaces with its fallback; say why.
+        MC2_LOG(Assets, Warn, "[TEXTURE_DECODE v1] rejected {}: {}", mc2::fmt::safe(path), parsed.error ? parsed.error : "unreadable");
+        return false;
+    }
+    out = std::move(*parsed.image);
     return true;
 }
 

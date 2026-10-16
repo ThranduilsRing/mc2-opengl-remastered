@@ -28,17 +28,12 @@ struct Mc2ShadowPacket {
     uint32_t baseVertex;   // into shared VBO
 };
 
-// One-shot geometry feed for the shadow island. The shared VBO/IBO live only as
-// immutable GL buffers after finalize (the CPU staging is freed), so the feed hands
-// out the GL buffer HANDLES + byte sizes; the island pulls the bytes ONCE per map
-// via glGetBufferSubData (a one-time map-load copy, NOT the per-frame shadow-map
-// surface — so it does not touch the zero-copy shadow-map invariant). The packet /
-// type arrays are batcher-owned and valid until onMapUnload().
+// One-shot geometry feed for the shadow and colour islands: the shared VBO/IBO byte sizes plus the packet / type ranges.
+// The bytes themselves come from mc2_static_prop_geometry_cpu (backend-neutral; no GL readback); the sizes here let a
+// reader reject a CPU copy that does not match. The packet / type arrays are batcher-owned and valid until onMapUnload().
 struct Mc2ShadowGeomFeed {
-    uint32_t       glVbo;           // GL name of the shared static-prop VBO (s_sharedVbo)
     uint64_t       vboBytes;
-    uint32_t       glIbo;           // GL name of the shared static-prop IBO (uint32 indices)
-    uint64_t       iboBytes;
+    uint64_t       iboBytes;   // uint32 indices
     uint32_t       vertexStride;    // kVertexStride (position at offset 0, vec3 float)
     const Mc2ShadowPacket* packets; // per-packet ranges (length packetCount)
     uint32_t       packetCount;
@@ -239,6 +234,11 @@ void* mc2_vk_shadow_island_get_csm_array_view();
 void* mc2_vk_shadow_island_get_csm_array_image();
 int   mc2_vk_shadow_island_csm_array_ready();
 
+// The world-fixed static sun shadow map (terrain + registry buildings), built once per engine static-map generation (map load, destroy rebake). The
+// view is a D32 image in DEPTH_STENCIL_READ_ONLY; null and 0 until the map's first build has been submitted.
+void*    mc2_vk_shadow_island_get_static_view();
+uint64_t mc2_vk_shadow_island_static_generation();
+
 // MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF = zero cost): one-shot matrix/depth-map
 // evidence for the GL-vs-VK shadow producer/consumer comparison. enabled() is a cached getenv.
 int  mc2_vk_shadow_matrix_diag_enabled();
@@ -247,7 +247,7 @@ int  mc2_vk_shadow_matrix_diag_enabled();
 void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
                                     const float* glCascMats, int csmN, int arrSize,
                                     unsigned glArrTex, unsigned glFullTex, int fullSize,
-                                    float fullTexelWorld);
+                                    float fullTexelWorld, unsigned glStaticTex, int staticSize);
 // Terrain island: returns 1 exactly once after a tick armed a log (consumes the latch).
 int  mc2_vk_shadow_matrix_diag_take_terrain_arm();
 

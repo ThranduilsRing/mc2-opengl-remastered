@@ -10,35 +10,23 @@
 // includes this batcher). Geometry is copy-once; the per-frame feed points at
 // the persistent snapshots built at flush() end. Return 0 if not ready.
 // ---------------------------------------------------------------------------
-// VK-MECH-MATERIAL-LIGHTING-1: GL-owner accessors for the calc_light + fog feed.
-extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes);
 extern "C" void mc2GetSceneFogColorRGB(float out[3]);
 
 extern "C" uint32_t mc2_mech_vertex_stride(void) { return (uint32_t)sizeof(GpuMechVertex); }
 
 extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
-    if (!vkMechGateOn() || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)
-        return 0;
-    // Byte sizes from the staged CPU geometry (uploaded verbatim to the GL buffers).
+    if (!vkMechGateOn() || !s_geometryFinalized) return 0;
+    // The CPU bytes the GL buffers are uploaded from: the normals-recomputed vertex blob and the staged indices.
     const uint64_t vboBytes = (uint64_t)s_stagingVbo.size();
     const uint64_t iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
     if (vboBytes == 0 || iboBytes == 0) return 0;
-    out->glVbo        = s_sharedVbo;
-    out->glIbo        = s_sharedIbo;
     out->vboBytes     = vboBytes;
     out->iboBytes     = iboBytes;
     out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
-    // VK-RUNG8 item-9: CPU byte sources are now the ONLY mech geometry feed (the GL
-    // buffer-readback fallback was deleted from the island). Populate whenever the VK
-    // mech island is active (we are already past the vkMechGateOn() guard above). A
-    // size mismatch means a normals rebuild raced this accessor -> leave vboCpu null;
-    // the island declines this frame and retries next frame (no GL readback rescue).
-    out->vboCpu = nullptr;
-    out->iboCpu = nullptr;
-    if ((uint64_t)s_vkVboNativeCopy.size() == vboBytes)
-        out->vboCpu = s_vkVboNativeCopy.data();
-    out->iboCpu = s_stagingIbo.data();   // uploaded verbatim to s_sharedIbo
+    // A size mismatch means a normals rebuild is in flight: no vertex bytes this frame, the island retries.
+    out->vboCpu = (uint64_t)s_vkVboNativeCopy.size() == vboBytes ? s_vkVboNativeCopy.data() : nullptr;
+    out->iboCpu = s_stagingIbo.data();
     return 1;
 }
 
@@ -55,7 +43,7 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
     out->vboCpu = s_vkVboNativeCopy.data(); out->vboBytes = static_cast<uint64_t>(s_vkVboNativeCopy.size());
     out->iboCpu = s_stagingIbo.data();      out->iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
     out->vertexStride = static_cast<uint32_t>(sizeof(GpuMechVertex));
-    out->geomGen = s_vkVboNativeGen;
+    out->geomGen = s_vkMechGeomGen;
     return 1;
 }
 
@@ -75,7 +63,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     // unchanged — units idle), that snapshot is STALE, but a camera PAN still changes
     // the view/proj. The island then draws mechs with last frame's MVP -> mechs FREEZE
     // in screen space while the terrain (which re-projects live) pans beneath them.
-    // This accessor runs in the GL context (see gos_LightDataSsbo_GetInterop below), so
+    // This accessor runs on the render thread after the camera update, so
     // gos_GetMechFixBMVPMat4() returns the current-frame MVP here. Instances may be one
     // frame stale (imperceptible when idle); the PROJECTION is always current -> no
     // screen-space stick. Falls back to the snapshot if the live accessor returns null.
@@ -84,18 +72,9 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     else
         std::memcpy(out->worldToClipGL, s_vkMechWorldToClipGL, sizeof(out->worldToClipGL));
     out->objectDepthBias = s_vkMechObjectDepthBias;
-    // VK-MECH-MATERIAL-LIGHTING-1: LightsData SSBO name/size + fog color for the
-    // island's calc_light + fog port. Both from GL owners (this runs in GL context).
-    out->lightDataGlSsbo = 0; out->lightDataBytes = 0;
-    { unsigned int nm = 0; unsigned long long by = 0;
-      gos_LightDataSsbo_GetInterop(&nm, &by);
-      out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
+    // Fog colour and the game's CPU LightsData array (the bytes the GL SSBO is uploaded from) for calc_light + fog.
     out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
     mc2GetSceneFogColorRGB(out->fogColorRGB);
-    // VK-RUNG8 item-9: the game's CPU LightsData array (the byte source of the GL
-    // SSBO upload, txmmgr renderLists) is now the ONLY per-frame lighting feed. The
-    // island's GL SSBO-readback fallback was deleted. lightDataGlSsbo/Bytes above are
-    // still exposed for the verification-only FEED-AUDIT byte-compare.
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
     if (mcTextureManager) {

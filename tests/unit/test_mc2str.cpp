@@ -1,7 +1,7 @@
 // tests/unit/test_mc2str.cpp
 //
-// mc2::str (mclib/mc2str.h): the helpers that carry EString's null-is-empty and case-insensitive-name behaviour over to std::string
-// (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md section 3a). The old class is the oracle: the corpus test runs the stock
+// mc2::str (mclib/mc2str.h): the helpers that carry EString's null-is-empty and case-insensitive-name behaviour over to std::string.
+// The old class is the oracle: the corpus test runs the stock
 // identifiers through EString::Compare (the Windows lstrcmpi) and through the new helpers and lists where they disagree.
 
 #include "doctest.h"

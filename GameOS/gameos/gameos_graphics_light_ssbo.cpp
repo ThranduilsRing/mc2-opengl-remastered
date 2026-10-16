@@ -474,14 +474,3 @@ void __stdcall gos_LightDataSsbo_Destroy()
 	}
 }
 
-#ifdef MC2_VULKAN_ISLAND
-// VK-MECH-MATERIAL-LIGHTING-1: expose the live LightsData GL SSBO name + byte size so
-// the VK mech island can copy it (glGetBufferSubData) into a VK SSBO for its calc_light
-// port. Read-only view of the owner handle; matches gos_LightDataSsbo_Upload lifetime.
-extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes)
-{
-	if (glName) *glName = static_cast<unsigned int>(s_lightDataSsbo);
-	if (bytes)  *bytes  = static_cast<unsigned long long>(s_lightDataSsboBytes);
-}
-#endif
-

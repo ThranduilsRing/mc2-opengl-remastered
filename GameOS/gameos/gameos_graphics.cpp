@@ -6,6 +6,8 @@
 
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "texture_decode.h"
+#include "utils/mc2log.h"
 
 
 
@@ -876,6 +878,34 @@ uint32_t gos_GetGLTextureId(uint32_t gosHandle) {
     if (gosHandle >= g_gos_renderer->getTextureListSize()) return 0;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
     return tex ? tex->getTextureId() : 0;
+}
+
+GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
+    GosTexels out;
+    if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return out;
+    if (gosHandle >= g_gos_renderer->getTextureListSize()) return out;
+    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
+    if (!tex || tex->getTextureId() == 0) return out;   // not loaded yet: the caller retries next frame
+    gosTextureInfo info;
+    tex->getTextureInfo(&info);
+    out.width = (uint32_t)info.width_;
+    out.height = (uint32_t)info.height_;
+    if (auto blocks = tex->getBlocks()) {
+        out.vkFormat = tex->getBlockVkFormat();
+        out.bytes = std::move(blocks);
+    } else if (tex->hasRgbaMirror()) {
+        out.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+        out.bytes = tex->getRgbaMirror();
+    } else {
+        static int s_noTexelLogs = 0;
+        if (++s_noTexelLogs <= 8)
+            MC2_LOG(Core, Warn, "[TEXTURE_RGBA v1] handle {:d} has no CPU texels; the importers draw it untextured",
+                    mc2::fmt::as_u32(gosHandle));
+        out.status = GosTexels::Status::Unavailable;
+        return out;
+    }
+    out.status = GosTexels::Status::Ready;
+    return out;
 }
 
 // P1-1: FX-GPU-1 Phase 1 — narrow GL-name resolver for the GPU particle

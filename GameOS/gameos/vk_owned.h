@@ -107,6 +107,9 @@ public:
                 int i0 = -1, int i1 = -1);
     // A host-visible buffer the CPU writes in random order (a per-frame feed, a copy of CPU geometry).
     bool createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
+    // A host-writable buffer holding a copy of `bytes` of CPU data (copy-once geometry). On any failure the buffer is left empty,
+    // so a caller that retries later never holds a half-filled buffer.
+    bool createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name);
     void reset() noexcept;
 
     VkBuffer get() const noexcept { return buffer_; }
@@ -148,6 +151,10 @@ public:
 
     bool create(VmaAllocator allocator, VkDevice device, const VkImageCreateInfo& info, const VmaAllocationCreateInfo& alloc, std::string_view name,
                 int i0 = -1, int i1 = -1);
+    // A device-local, optimally tiled 2D texture that is filled by transfer and then sampled (`extraUsage` adds e.g. TRANSFER_SRC
+    // for blit-generated mips).
+    bool createSampled2D(VmaAllocator allocator, VkDevice device, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels,
+                         VkImageUsageFlags extraUsage, std::string_view name);
     void reset() noexcept;
 
     VkImage get() const noexcept { return image_; }
@@ -164,6 +171,16 @@ private:
     VmaAllocation allocation_ = nullptr;
     VmaAllocator allocator_ = nullptr;
 };
+
+// The image format for texels a gos texture handle reports (gos_GetTextureTexels: RGBA8, or BC7 blocks with their colour space
+// kept, so the image samples what GL samples).
+inline VkFormat texelFormat(uint32_t vkFormat) {
+    switch (vkFormat) {
+        case VK_FORMAT_BC7_UNORM_BLOCK: return VK_FORMAT_BC7_UNORM_BLOCK;
+        case VK_FORMAT_BC7_SRGB_BLOCK: return VK_FORMAT_BC7_SRGB_BLOCK;
+        default: return VK_FORMAT_R8G8B8A8_UNORM;
+    }
+}
 
 }  // namespace mc2vk
 

@@ -2,6 +2,7 @@
 other processes still wait; the lease ends on release, at the TTL, and when the holder pid dies. Private lease file, no engine."""
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -17,6 +18,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 @pytest.fixture()
 def lease(tmp_path, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
     monkeypatch.delenv(host_lease.BATCH_ENV, raising=False)
     monkeypatch.setattr(host_lease, "_registered", False)
@@ -44,11 +46,13 @@ def _wait_gone(pid, s=15.0):
     return not child_registry.pid_alive(pid)
 
 
-def test_hold_chain_enters_others_wait_release_ends(lease):
-    pid = host_lease.hold("proof-a", ttl_s=120, timeout_s=20, log=lambda m: None)
+@pytest.mark.parametrize("exclusive", [False, True])
+def test_hold_chain_enters_others_wait_release_ends(lease, exclusive):
+    pid = host_lease.hold("proof-a", ttl_s=120, timeout_s=20, log=lambda m: None, exclusive=exclusive)
     try:
         rec = json.loads(lease.read_text())
         assert rec["pid"] == pid and rec["batch"] == "proof-a" and pid != os.getpid()
+        assert sum(bool(r) for _, r in host_lease._records()) == (6 if exclusive else 1)
         assert _try_child("proof-a") == 0            # a chain step enters
         assert _try_child("proof-a") == 0            # and the next one: the lease survived the first step's exit
         assert _try_child() == 3                     # another lane waits
@@ -56,13 +60,13 @@ def test_hold_chain_enters_others_wait_release_ends(lease):
     finally:
         removed, _ = host_lease.release_batch("proof-a")
     assert removed and not lease.exists()
+    assert not any(r for _, r in host_lease._records())
     assert _wait_gone(pid)                           # the holder notices and exits
 
 
 def test_dead_holder_expires(lease):
     pid = host_lease.hold("proof-b", ttl_s=120, timeout_s=20, log=lambda m: None)
-    subprocess.run(["taskkill", "/F", "/PID", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
-                   **console_child.child_kwargs(redirected=True))
+    os.kill(pid, signal.SIGTERM)
     assert _wait_gone(pid)
     assert _try_child() == 0                         # the usual dead-pid takeover
 

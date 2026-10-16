@@ -68,7 +68,7 @@ struct Mc2TerrainTier1Feed {
     float                       worldToClipGL[16]; // gos_GetTerrainMVPMat4()/dispatch — GL_FALSE
     int32_t                     mapSide;           // s_mapSide
     float                       halfMap;           // s_halfMap
-    uint32_t                    glHeightSsbo;      // GL name of the height SSBO (binding 23)
+    const float*                heightCpu;         // terrain field store: mapSide^2 heights (the GL binding-23 bytes)
     uint64_t                    heightBytes;       // mapSide*mapSide*sizeof(float)
     uint64_t                    heightVersion;     // bumps when the height field changes (snapshot key)
     // COLORMAP-BASE sub-slice: the GL colormap atlas texture (g_atlasGLTex) the VK
@@ -90,23 +90,17 @@ struct Mc2TerrainTier1Feed {
     int32_t                     useCement;             // 1 iff cement atlas ready AND cement SSBO live
     int32_t                     useTransitionMask;     // gos_terrain_indirect_isTransitionMaskReady()
     int32_t                     cementDiagConnect;     // MC2_TERRAIN_CEMENT_DIAG_CONNECT gate
-    uint32_t                    glCementSsbo;          // GL name of the per-vertex cement-word SSBO (binding 25)
+    const uint32_t*             cementCpu;             // terrain field store: per-vertex cement words (the GL binding-25 bytes)
     uint64_t                    cementBytes;           // mapSide*mapSide*sizeof(uint)
     uint64_t                    cementVersion;         // bumps when the cement-word field changes (snapshot key)
     // VK-TERRAIN-LIGHTING sub-slice: make the VK terrain LIT (directional relief + baked
     // static sun shadow) to match GL. Gate MC2_VK_TERRAIN_LIGHTING (requires TIER1).
     int32_t                     lightingEnabled;       // 1 iff MC2_VK_TERRAIN_LIGHTING gate on
     float                       terrainLightDir[3];    // gos_GetTerrainLightDir() (sun dir)
-    // STATIC sun shadow map: the GL depth texture (gos_postprocess getShadowTexture(),
-    // GL_DEPTH_COMPONENT24). VK-SHADOW-COPY-ONCE-1: the GL map is built ONCE per mission
-    // (gos_StaticLightMatrixBuilt() latch, gos_MarkStaticLightMatrixBuilt() bumps
-    // staticShadowGeneration below) -- NOT per-frame -- so the island copy-once-per-
-    // generation instead of copying every frame. staticLightSpaceMatrix
-    // (pp->getLightSpaceMatrix(), row-major GL_FALSE, z already [0,1]). All 0/false when
-    // shadows are off -> VK terrain is lit but unshadowed.
-    int32_t                     shadowsEnabled;        // pp->shadowsEnabled_ (1 -> map is valid to sample)
-    uint32_t                    glStaticShadowTex;     // GL name of shadowDepthTex_ (0 = not ready)
-    int32_t                     staticShadowSize;      // shadowMapSize_ (edge in texels, 4096)
+    // STATIC sun shadow map: the VK shadow island renders it once per engine generation (map load, destroy rebake); terrain samples it only when the
+    // island's build is of this frame's generation, so the map and staticLightSpaceMatrix always belong together. All 0/false when shadows are off ->
+    // VK terrain is lit but unshadowed.
+    int32_t                     shadowsEnabled;        // the engine's static shadow is on and its light matrix is built
     uint64_t                    staticShadowGeneration; // gos_GetStaticShadowGeneration() (bumps on rebuild only)
     float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
     float                       shadowSoftness;        // GL default 2.5
@@ -117,7 +111,6 @@ struct Mc2TerrainTier1Feed {
     // pure concrete shadow = dyn (static dropped, dynamic kept). Gate MC2_VK_TERRAIN_DYNSHADOW
     // (requires MC2_VK_TERRAIN_LIGHTING). 0/false -> no dynamic shadow (lit-only), no hole.
     int32_t                     dynShadowsEnabled;     // pp->shadowsEnabled_ && getDynamicShadowFBO() && !CSM
-    uint32_t                    glDynamicShadowTex;    // GL name of pp->getDynamicShadowTexture() (0 = not ready)
     int32_t                     dynamicShadowSize;     // dynamic shadow map edge in texels
     float                       dynamicLightSpaceMatrix[16]; // pp->getDynamicLightSpaceMatrix()
     // VK-TERRAIN-DETAIL sub-slice: perturb the terrain normal (macro slope + material
@@ -147,13 +140,11 @@ struct Mc2TerrainTier1Feed {
     // csmEnabled=0 -> VK frag skips the CSM path entirely (falls back to the legacy
     // single-map dynShadowsEnabled path above, unchanged).
     int32_t                     csmEnabled;            // 1 iff gate on AND GL CSM is actually active+ready
-    uint32_t                    glCsmArrayTex;         // GL name of dynShadowArrayTex_ (0 = not ready)
     int32_t                     csmArraySize;           // dynShadowMapSize_ (near-cascade array edge, texels)
     int32_t                     csmCount;               // pp->getDynamicShadowCascadeCount() (1..3)
     float                       csmCascadeMatrices[16 * 3]; // pp->getDynamicCascadeMatrices() (row-major GL_FALSE)
     float                       csmCascadeTexelWorld[3];    // pp->getDynamicCascadeTexelWorld()
     float                       csmDepthSpan;           // pp->getCsmDepthSpan()
-    uint32_t                    glCsmFullMapTex;        // GL name of dynamicFullMapTex_ (0 = not ready)
     int32_t                     csmFullMapSize;         // pp->getDynamicFullMapSize()
     float                       csmFullMapTexelWorld;   // pp->getDynamicFullMapTexelWorld()
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): the 4x-finer VISUAL heightfield bake
@@ -162,7 +153,7 @@ struct Mc2TerrainTier1Feed {
     // vert reads (u_visualSide / u_visualDisplaceFar). All 0 when the sub-gate
     // (MC2_VK_TERRAIN_VISUALDISPLACE_FAR) is off or the bake isn't loaded -> island
     // draws undisplaced (fail-soft; GL also keeps displaced patches in that case).
-    uint32_t                    glVisualHeightSsbo;    // GL name of s_visualHeightSsbo (0 = not loaded)
+    const float*                visualHeightCpu;       // terrain field store: visual bake + mip maxes (null = not loaded)
     uint64_t                    visualHeightBytes;     // visualSide*visualSide*sizeof(float)
     uint64_t                    visualHeightVersion;   // bumps on UploadVisualHeightFull (snapshot key)
     int32_t                     visualSide;            // V = (mapSide-1)*4+1 (0 = bake not loaded)

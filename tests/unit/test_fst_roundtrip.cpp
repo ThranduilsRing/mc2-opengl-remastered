@@ -218,7 +218,10 @@ TEST_CASE("an FST entry whose uncompressed size is implausible is rejected and r
 		CHECK(f.open(kFstEntryName) == FILE_NOT_OPEN);
 		CHECK_FALSE(f.isOpen());
 		CHECK(f.getFilename() == nullptr);
-		CHECK(ff->sizeFast(h) == -1);   // the entry is no longer in use
+		// Whatever slot File::open took, no slot of the archive is left in use.
+		REQUIRE(ff->getNumFiles() > 0);
+		for (long slot = 0; slot < ff->getNumFiles(); ++slot)
+			CHECK(ff->sizeFast(slot) == -1);
 	}
 
 	remove(fstPath.c_str());

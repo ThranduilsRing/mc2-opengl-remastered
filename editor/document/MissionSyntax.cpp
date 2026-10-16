@@ -1,5 +1,5 @@
 #include "MissionDocument.h"
-#include "FitNumeric.h"
+#include "fit_number.h"
 
 #include <algorithm>
 #include <charconv>
@@ -13,13 +13,34 @@ namespace {
 enum class TokenKind { word, text, openSquare, closeSquare, openBrace, closeBrace, equal, comma, semi, newline, end };
 struct Token { TokenKind kind; Span span; std::string value; };
 
-bool declarationBoundary(std::string_view line)
+std::expected<std::string, LoadError> readerText(const std::string& bytes, std::size_t equal)
 {
-    const auto space = line.find_first_of(" \t");
-    const auto equal = line.find('=');
-    if (space == std::string_view::npos || equal == std::string_view::npos || equal <= space) return false;
-    const auto type = identifier(line.substr(0, std::min(space, line.find('['))));
-    return type == "st" || type == "f" || type == "b" || type == "l" || type == "ul" || type == "c" || type == "uc" || type == "s" || type == "us";
+    const auto start = bytes.rfind('\n', equal);
+    std::size_t at = start == bytes.npos ? 0 : start + 1;
+    const auto line = [&]() {
+        const auto begin = at;
+        while (at < bytes.size() && at - begin < 2047 && bytes[at] != '\r' && bytes[at] != '\n') ++at;
+        auto result = bytes.substr(begin, at - begin);
+        if (at < bytes.size()) ++at;
+        // RAM readLine skips the next LF even when the terminator was itself LF.
+        if (at < bytes.size() && bytes[at] == '\n') ++at;
+        return result;
+    };
+    auto assembled = line();
+    const auto separator = assembled.find('=');
+    if (separator == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+    assembled.erase(0, separator + 1);
+    const auto open = assembled.find('"');
+    if (open == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+    while (assembled.find('"', open + 1) == assembled.npos && at < bytes.size()) {
+        auto next = line();
+        if (assembled.size() + next.size() + 1 >= 2048)
+            return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+        assembled += next + '\n';
+    }
+    const auto close = assembled.find('"', open + 1);
+    if (close == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
+    return assembled.substr(open + 1, close - open - 1);
 }
 
 std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
@@ -51,20 +72,17 @@ std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
             const auto begin = p;
             while (p < bytes.size() && bytes[p] != '"') {
                 if (bytes[p] == '\0') return std::unexpected(LoadError{"literal", "embedded_nul", p});
-                if (bytes[p] == '\n') {
-                    auto next = p + 1;
-                    while (next < bytes.size() && (bytes[next] == ' ' || bytes[next] == '\t' || bytes[next] == '\r')) ++next;
-                    const auto end = bytes.find('\n', next);
-                    const auto line = std::string_view(bytes).substr(next, end == std::string::npos ? bytes.size() - next : end - next);
-                    if (line.starts_with('[') || line.starts_with('}') || identifier(line).starts_with("fitend") || declarationBoundary(line))
-                        return std::unexpected(LoadError{"literal", "unterminated_literal", start});
-                }
                 if (++p - begin > textByteLimit) return std::unexpected(LoadError{"literal", "text_limit", start});
             }
             if (p == bytes.size()) return std::unexpected(LoadError{"literal", "unterminated_literal", start});
             auto value = bytes.substr(begin, p - begin);
             std::erase(value, '\r');
             tokens.push_back({kind, {start, ++p}, std::move(value)});
+            const auto lineStart = bytes.rfind('\n', start);
+            const auto declaration = std::string_view(bytes).substr(lineStart == bytes.npos ? 0 : lineStart + 1,
+                start - (lineStart == bytes.npos ? 0 : lineStart + 1));
+            if (identifier(declaration.substr(0, 3)) == "st ")
+                while (p < bytes.size() && bytes[p] != '\r' && bytes[p] != '\n') ++p;
             continue;
         }
         default:
@@ -124,7 +142,7 @@ SectionKind sectionKind(std::string_view name)
     if (name == "MissionSettings" || name == "Script" || name == "Music") return SectionKind::settings;
     if (name == "Terrain") return SectionKind::terrain;
     if (name.starts_with("Part")) return SectionKind::entity;
-    if (name.find("Objective") != std::string_view::npos) return SectionKind::objective;
+    if (identifier(name).find("objective") != std::string::npos) return SectionKind::objective;
     if (name.starts_with("Team")) return SectionKind::team;
     if (name.starts_with("Player")) return SectionKind::player;
     if (name.starts_with("Warrior") || name == "Brain") return SectionKind::brain;
@@ -148,12 +166,17 @@ public:
                 const auto start = peek().span.begin;
                 if (section) result_.sections[*section].syntax.end = start;
                 ++cursor_;
-                const auto nameStart = peek().span.begin;
+                auto nameStart = peek().span.begin;
                 if (peek().kind != TokenKind::word) return failure("invalid_block");
                 std::string name = tokens_[cursor_++].value;
                 while (peek().kind == TokenKind::word) { name += ' ' + peek().value; ++cursor_; }
-                if (peek().kind != TokenKind::closeSquare || !topNames_.insert(identifier(name)).second) return failure("invalid_or_duplicate_block");
-                const auto nameEnd = tokens_[cursor_ - 1].span.end;
+                if (peek().kind != TokenKind::closeSquare) return failure("invalid_or_duplicate_block");
+                auto nameEnd = tokens_[cursor_ - 1].span.end;
+                if (sectionKind(name) == SectionKind::objective) {
+                    nameStart = start + 1; nameEnd = peek().span.begin;
+                    name = result_.originalBytes.substr(nameStart, nameEnd - nameStart);
+                }
+                if (!topNames_.insert(sectionKind(name) == SectionKind::objective ? name : identifier(name)).second) return failure("invalid_or_duplicate_block");
                 ++cursor_;
                 section = addSection(name, std::nullopt);
                 result_.sections[*section].syntax.begin = start;
@@ -226,6 +249,7 @@ private:
             ++cursor_; return {};
         }
         if (peek().kind != TokenKind::equal) return failure("missing_equals");
+        const auto equal = peek().span.begin;
         ++cursor_;
         prefix = identifier(prefix);
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
@@ -238,6 +262,7 @@ private:
                 if (identifier(spec.key) == identifier(name) && prefix == spec.prefix && spec.type == 0) objectiveInteger = true;
             }
             objectiveInteger |= (identifier(name) == "activateflagindex" || identifier(name) == "flagindex") && prefix == "ul";
+            objectiveInteger |= identifier(name) == "num" && prefix == "ul";
             if ((identifier(name) == "previousobjectivemustbecomplete" && prefix != "b") ||
                 (prefix != "ul" && (identifier(name) == "activateflagindex" || identifier(name) == "numactions" ||
                     identifier(name) == "numfailureconditions" || identifier(name) == "numfailureactions"))) field.opaque = true;
@@ -248,6 +273,11 @@ private:
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
             auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
+            if (!array && prefix == "st" && result_.sections[section].kind == SectionKind::objective && peek().kind == TokenKind::text) {
+                auto text = readerText(result_.originalBytes, equal);
+                if (text) value = Scalar{std::move(*text)};
+                else { field.opaque = true; field.warning = "reader_string_buffer_limit"; }
+            }
             if (!array && result_.sections[section].kind == SectionKind::objective &&
                 (prefix == "ul" || prefix == "l" || prefix == "f")) {
                 const auto lineStart = result_.originalBytes.rfind('\n', peek().span.begin);
@@ -258,9 +288,9 @@ private:
                     if (const auto* authored = std::get_if<std::int64_t>(&*value); authored &&
                         (*authored < -2147483648LL || *authored > 2147483647LL))
                         field.warning = "outside signed 32-bit range; the game reader overflows or wraps this value";
-                if (prefix == "f") value = Scalar{static_cast<double>(FitNumeric::textToFloat(wire.data()))};
-                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(FitNumeric::textToLong(wire.data()))};
-                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(FitNumeric::textToULong(wire.data())))};
+                if (prefix == "f") value = Scalar{static_cast<double>(mc2::fit::textToFloat(wire.data()))};
+                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(mc2::fit::textToLong(wire.data()))};
+                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(mc2::fit::textToULong(wire.data())))};
                 if (prefix == "f" && !std::isfinite(std::get<double>(*value)))
                     return std::unexpected(LoadError{path, "malformed_value", peek().span.begin});
             }
@@ -268,7 +298,9 @@ private:
                 (identifier(name) == "positionx" || identifier(name) == "positiony" ||
                     identifier(name) == "moverwid" || identifier(name) == "buildingwid" ||
                     identifier(name) == "flagid" || identifier(name) == "flagindex" || identifier(name) == "value" ||
-                    identifier(name).ends_with("speciesstring"))) {
+                    identifier(name).ends_with("speciesstring") ||
+                    identifier(result_.sections[section].name).find("condition") != std::string::npos ||
+                    identifier(result_.sections[section].name).find("action") != std::string::npos)) {
                 // Unreadable reader inputs remain visible, byte-exact syntax.
                 field.opaque = true;
                 value = Scalar{peek().value};

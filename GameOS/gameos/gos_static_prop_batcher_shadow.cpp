@@ -692,10 +692,7 @@ extern "C" uint32_t gos_getStaticPropShadowInstDrawn() {
 extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
-    // CPU staging is freed at finalize; the geometry lives only in the immutable GL
-    // buffers now, so require those + the captured byte sizes instead.
-    if (s_sharedVbo == 0 || s_sharedIbo == 0 ||
-        s_sharedVboBytes == 0 || s_sharedIboBytes == 0 || s_packets.empty()) return 0;
+    if (s_sharedVboBytes == 0 || s_sharedIboBytes == 0 || s_packets.empty()) return 0;
 
     // Per-packet ranges (subset of GpuStaticPropPacket) + per-type packet spans.
     // Rebuilt when the packet/type count changes (finalize is once per map).
@@ -723,9 +720,7 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
         s_feedTypeGen = s_types.size();
     }
 
-    out->glVbo           = s_sharedVbo;
     out->vboBytes        = s_sharedVboBytes;
-    out->glIbo           = s_sharedIbo;
     out->iboBytes        = s_sharedIboBytes;
     out->vertexStride    = (uint32_t)kVertexStride;
     out->packets         = s_feedPackets.data();

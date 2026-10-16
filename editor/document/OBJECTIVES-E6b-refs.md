@@ -1,6 +1,6 @@
 # E6b-refs: typed entity references
 
-E6b-refs-1 delivers the reference model, resolution once at document read, identity carry-through across structural candidates, referenced-delete rejection and resolved-move XY updates (including marker transforms) with undo/redo. E6b-refs-2 covers existing Part/Warrior insertion/compaction, objective copy/reorder, explicit resolution and objective panel rows. Entity copy has no command and is out of scope. Passthrough and scalar census results do not prove resolution.
+References resolve at document read; structural edits preserve their ordered candidates and entity identities or refuse once. Specific-target creation requires a unique eligible target in the same command. Entity copy has no command and is out of scope. Passthrough and scalar census results do not prove resolution.
 
 ## Authority and identity
 
@@ -25,14 +25,14 @@ Resolve only after final EntityId assignment at document read. Structural candid
 
 | Command | Required behavior |
 |---|---|
-| Resolved move, including marker transform | Update every referring XY export atomically; retain auxiliary lexemes unless explicitly authored; undo restores entity and reference spelling. |
+| Resolved move, including marker transform | Refuse any change to reference candidates; reference XY changes only through explicit resolution. |
 | Referenced delete, including marker/chooser paths | Reject once with bytes, revision, dirty state, history and future IDs unchanged; never delete conditions implicitly. Removing the referring objective may unblock deletion; undo restores coherent references. |
 | Part/Warrior renumber | Retain EntityId identity and reference lexemes unless the resolved target changes. |
-| Objective copy / entity insertion | Keep objective targets / refuse insertion that makes an existing resolved reference ambiguous. |
+| Objective copy / entity insertion | Copy reader status by entry identity; refuse insertion that changes any existing reference candidates. |
 | Objective reorder | Preserve prerequisite flags. |
-| Unresolved/ambiguous entry | Entity edits neither silently resolve nor retarget it; explicit resolution is a validated authoring command. |
+| Unresolved/ambiguous entry | Refuse entity edits that gain, lose or reorder candidates; explicit resolution is a validated authoring command. |
 
-Explicit resolution accepts only Missing/Ambiguous entries, writes changed XY lexemes only, and replaces the carried status/target after a unique game-rule match. RuntimeOnlyWid/Unsupported entries cannot be resolved. Rejection, including history-budget failure, logs once and consumes no state or IDs.
+Explicit resolution accepts only Missing/Ambiguous entries, writes changed XY lexemes only, and replaces the carried status/target after a unique game-rule match. RuntimeOnlyWid/Unsupported entries cannot be resolved; runtime watch IDs block entity insertion/deletion/renumbering because their mapping has no document identity. Rejection, including history-budget failure, logs once and consumes no state or IDs.
 
 ## Required proof
 

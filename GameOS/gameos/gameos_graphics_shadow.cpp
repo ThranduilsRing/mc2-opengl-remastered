@@ -2,6 +2,9 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "static_shadow_spec.h"
+
+#include <cstring>
 
 //
 // Trace is gated on MC2_SHADOW_STATE_TRACE=1: default OFF = zero lines, and the
@@ -718,6 +721,16 @@ void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material)
 uint64_t gos_GetStaticShadowGeneration() {
     gosPostProcess* pp = getGosPostProcess();
     return pp ? pp->staticShadowGeneration() : 0;
+}
+bool gos_GetStaticShadowSpec(StaticShadowSpec* out) {
+    gosPostProcess* pp = getGosPostProcess();
+    if (!out || !pp || !pp->shadowsEnabled_ || !pp->staticLightMatrixBuilt() || pp->staticShadowGeneration() == 0) return false;
+    std::memcpy(out->lightSpace, pp->getLightSpaceMatrix(), sizeof(out->lightSpace));
+    out->size = pp->getShadowMapSize();
+    out->biasFactor = pp->getShadowBiasFactor();
+    out->biasUnits = pp->getShadowBiasUnits();
+    out->generation = pp->staticShadowGeneration();
+    return out->size > 0;
 }
 bool gos_BeginShadowPrePass(bool clearDepth) {
     // Report whether the prepass actually binds the shadow FBO + sets state.

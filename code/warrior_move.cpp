@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
 #include "mc2fmt.h"
+#include "mission.h"
 
 
 long MechWarrior::setMoveGoal (unsigned long type, Stuff::Vector3D* location, GameObjectPtr obj) {
@@ -215,26 +216,58 @@ void MechWarrior::setMoveGlobalPath (GlobalPathStepPtr path, long numSteps) {
 
 long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 
+    mc2::sim::RouteExecution* route = nullptr;
+    if (mission) if (auto* r = mission->ownedRoute(this)) {
+        if (getOrderState() == ORDERSTATE_GENERAL && r->state == mc2::sim::RouteState::Active &&
+            r->pendingSegment && !(moveParams & MOVEPARAM_ESCAPE_TILE)) {
+            Stuff::Vector3D goal;
+            getMoveGoal(&goal);
+            const auto& p = r->path.points[r->path.curPoint];
+            if (r->pendingSegment->cursor == r->path.curPoint && r->pendingSegment->revision == r->revision &&
+                goal.x == p.x && goal.y == p.y && goal.z == p.z) {
+                if (!mission->routeMapsReady(this)) { r->awaitingMaps = true; return NO_ERR; }
+                route = r;
+                if (r->pendingSegment->reinit) {
+                    moveParams |= MOVEPARAM_INIT;
+                    r->pendingSegment->reinit = false;
+                }
+            }
+        }
+    }
+
+    if (mission && mission->endedRouteOrder(this)) return NO_ERR;
+
 	if (g_moveReconEnabled) g_moveRecon_calcMovePath_calls++;
 	ZoneScopedN("GameLogic.Warrior.Path");
 
  	MoverPtr myVehicle = getVehicle();
 	bool flying = (myVehicle->getMoveLevel() > 0);
 
-	// Mod-tolerance: GlobalMap::init may have bailed (badLoad) when mod pak
-	// contained oversized move-data packets (see mclib/move.cpp GlobalMap
-	// bail + per-packet bounds in ae20c72). In that state, GlobalMoveMap[N]
-	// exists as a partially-constructed object where areas/doors arrays are
-	// NULL. Pathfinding can't run without that data — attempting it reads
-	// at `0x14` (areas[startArea].open offset against NULL areas pointer).
-	// Bail early with 0 steps so the mover stays put but the game keeps
-	// running instead of crashing at warrior.cpp on player click.
+    // Rejected mod move data can leave an incomplete map; the mover must stay put safely.
 	long moveLevel = myVehicle->getMoveLevel();
 	if (!GlobalMoveMap[moveLevel] || GlobalMoveMap[moveLevel]->badLoad
 			|| !GlobalMoveMap[moveLevel]->areas) {
 		return 0;
 	}
 
+    long pathNum = -1;
+    struct Classify {
+        MechWarrior* pilot;
+        mc2::sim::RouteExecution* route;
+        long& buffer;
+        ~Classify() {
+            if (!route || mission->ownedRoute(pilot) != route ||
+                pilot->getOrderState() != ORDERSTATE_GENERAL || route->state != mc2::sim::RouteState::Active ||
+                !route->pendingSegment || route->pendingSegment->cursor != route->path.curPoint ||
+                route->pendingSegment->revision != route->revision || buffer < 0) return;
+            const auto& p = route->path.points[route->path.curPoint];
+            Stuff::Vector3D goal(p.x, p.y, p.z);
+            const bool accepted = (LastMoveCalcErr == NO_ERR && pilot->getMovePath(buffer)->numStepsWhenNotPaused > 0) ||
+                pilot->getVehicle()->cellDistanceFrom(goal) == 0;
+            route->pendingSegment.reset();
+            mission->signalRoute(*route, accepted ? mc2::sim::RouteAction::PathAccepted : mc2::sim::RouteAction::Unreachable);
+        }
+    } classify{this, route, pathNum};
 	Stuff::Vector3D jumpGoal;
 	bool jumping = isJumping(&jumpGoal);
 
@@ -284,7 +317,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		}
 	}
 
-	long pathNum = -1;
 
 	if (moveParams & MOVEPARAM_INIT) {
 		moveOrders.pathType = MOVEPATH_UNDEFINED;
@@ -717,6 +749,21 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 
 bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint) {
 
+    if (mission) if (auto* r = mission->ownedRoute(this)) {
+        if (getOrderState() == ORDERSTATE_GENERAL && curTacOrder.code == static_cast<int>(r->kind)) {
+            if (incWayPoint) mission->signalRoute(*r, mc2::sim::RouteAction::Arrived);
+            if (r->terminal()) return false;
+            const auto& p = r->path.points[r->path.curPoint];
+            nextPoint = Stuff::Vector3D(p.x, p.y, p.z);
+            if (incWayPoint) {
+                setMoveRun(r->path.mode[r->path.curPoint] == mc2::sim::TravelMode::Fast);
+                curTacOrder.moveParams.wayPath.curPoint = r->path.curPoint;
+                r->pendingSegment = {r->path.curPoint, r->revision, true};
+            }
+            return true;
+        }
+    }
+    if (mission && mission->endedRouteOrder(this)) return false;
 	if (!curTacOrder.isWayPathOrder())
 		return(false);
 
@@ -910,6 +957,10 @@ bool MechWarrior::movementDecisionTree (void) {
 	unsigned long goalType = getMoveGoal(nullptr, &goalObject);
 
 	if (goalType == MOVEGOAL_NONE) {
+        if (mission) if (auto* r = mission->ownedRoute(this)) {
+            if (getOrderState() == ORDERSTATE_GENERAL && r->state == mc2::sim::RouteState::Active && !r->pendingSegment)
+                mission->dispatchOwnedRoute(this, *r);
+        }
 		if (curTacOrder.code == TACTICAL_ORDER_WITHDRAW) {
 			Stuff::Vector3D escapeGoal = calcWithdrawGoal();
 			setMoveGoal(MOVEGOAL_LOCATION, &escapeGoal);

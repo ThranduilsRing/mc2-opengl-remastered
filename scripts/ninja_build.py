@@ -24,6 +24,10 @@ def main():
     argv = sys.argv[1:]
     if not any(not a.startswith("-") for a in argv):
         argv += DEFAULT_TARGETS
+    # The host is shared by several lanes and the owner; an uncapped ninja pegs every core. MC2_BUILD_JOBS (owner default 2,
+    # 2026-10-15) caps a build that names no -j of its own.
+    if not any(a.startswith("-j") for a in argv):
+        argv.insert(0, "-j" + os.environ.get("MC2_BUILD_JOBS", "2"))
     # MC2_NINJA_TREE names another tree under the repo root (lane_merge's verify builds in build-merge/ so it never collides with a lane's own
     # build); it is configured on first use.
     tree = os.environ.get("MC2_NINJA_TREE") or DEFAULT_TREE

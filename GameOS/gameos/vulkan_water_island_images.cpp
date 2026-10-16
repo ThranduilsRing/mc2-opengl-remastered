@@ -7,25 +7,19 @@
 
 namespace vk_water_detail {
 
-// RUNG-6.5 WATER-REFLECTION: COPY-ONCE HDRI equirect import (NOT per-frame).
-// Mirrors gos_hdri.cpp's two upload paths:
-//   - BC6H .ktx2 sidecar (field default, MC2_HDRI_BC6H on): single mip 0
-//     (GL_TEXTURE_MAX_LEVEL=0), byte-copied via glGetCompressedTexImage ->
-//     VK_FORMAT_BC6H_{U,S}FLOAT_BLOCK. GL's textureLod at LOD 4 clamps to mip 0
-//     on this texture, so a 1-mip VK image is exact parity.
-//   - RGBA16F tinyexr fallback: full glGenerateMipmap chain, each level
-//     byte-copied via glGetTexImage(GL_HALF_FLOAT) -> VK_FORMAT_R16G16B16A16_SFLOAT.
-// COST (honest): one-time ~24MB (BC6H 4K mip0) or ~85MB (RGBA16F 4K + chain) CPU
-// staging + one upload submit at first armed-water frame after HDRI ready. Zero
-// per-frame cost afterwards. Fail-soft: bind a 1x1 black dummy + patch the FS
-// UBO's u_waterHdriLod to -1 (SH-L2 fallback) — same semantics as GL !isHdriReady().
-// Not counted in g_forbidden: those counters guard per-frame scene-surface
-// copies; this is a one-time content-texture import (same class as the prop
-// island's copy-once albedo array).
+// COPY-ONCE HDRI equirect import (not per frame) from the engine's CPU copy, in gos_hdri.cpp's two forms:
+//   - BC6H .ktx2 sidecar (field default, MC2_HDRI_BC6H on): mip 0 only. GL's textureLod at LOD 4 clamps to mip 0 on
+//     that texture (GL_TEXTURE_MAX_LEVEL=0), so a 1-mip VK image is exact parity.
+//   - RGBA16F tinyexr fallback: the full mip chain, built on the CPU with glGenerateMipmap's box filter.
+// Cost: one ~24 MB (BC6H 4K mip 0) or ~85 MB (RGBA16F 4K + chain) staging copy and one upload submit, once per load.
+// Fail-soft: bind a 1x1 black dummy and patch the FS UBO's u_waterHdriLod to -1 (SH-L2 fallback), as GL does when
+// !isHdriReady().
 bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
-    if (s->hdriAttempted && s->hdriGlTexId == hdriGlTex) return static_cast<bool>(s->hdriView);
+    // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
+    const uint64_t generation = hdriGlTex != 0 ? mc2vk::hdriCpuGeneration() : 0;
+    if (s->hdriAttempted && s->hdriGeneration == generation) return static_cast<bool>(s->hdriView);
     s->hdriAttempted = true;
-    s->hdriGlTexId   = hdriGlTex;
+    s->hdriGeneration = generation;
     s->hdriRealImported = false;
     // Re-import (tex id changed, e.g. dummy -> real after late HDRI load):
     // drop the old image first. Cheap + rare; idle the device so no pending
@@ -50,69 +44,18 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
         }
     }
 
-    // Gather GL-side facts + bytes.
     VkFormat fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
     int w = 1, h = 1;
     uint32_t mips = 1;
     std::vector<std::vector<unsigned char>> levels;   // per-mip raw bytes
     std::vector<std::pair<int,int>> levelDims;
     bool haveReal = false;
-    if (hdriGlTex != 0) {
-        GLint prevTex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)hdriGlTex);
-        GLint ifmt = 0, compressed = 0, w0 = 0, h0 = 0, maxLevel = 1000;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &w0);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h0);
-        glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, &maxLevel);
-        if (w0 > 0 && h0 > 0) {
-            if (compressed &&
-                (ifmt == GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT ||
-                 ifmt == GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)) {
-                // BC6H path — respect the device feature (MoltenVK/Metal may lack BC).
-                VkPhysicalDeviceFeatures feats{};
-                vkGetPhysicalDeviceFeatures(s->phys, &feats);
-                if (feats.textureCompressionBC) {
-                    fmt = (ifmt == GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)
-                        ? VK_FORMAT_BC6H_SFLOAT_BLOCK : VK_FORMAT_BC6H_UFLOAT_BLOCK;
-                    GLint sz = 0;
-                    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0,
-                        GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &sz);
-                    if (sz > 0) {
-                        levels.emplace_back((size_t)sz);
-                        glGetCompressedTexImage(GL_TEXTURE_2D, 0, levels[0].data());
-                        levelDims.emplace_back(w0, h0);
-                        w = w0; h = h0; mips = 1;
-                        haveReal = (glGetError() == GL_NO_ERROR);
-                    }
-                } else {
-                    vlog("hdri: device lacks textureCompressionBC — SH-L2 fallback.");
-                }
-            } else if (ifmt == GL_RGBA16F) {
-                // RGBA16F + full glGenerateMipmap chain.
-                fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
-                w = w0; h = h0;
-                int lw = w0, lh = h0;
-                for (int lvl = 0; lvl <= maxLevel; ++lvl) {
-                    GLint tw = 0;
-                    glGetTexLevelParameteriv(GL_TEXTURE_2D, lvl, GL_TEXTURE_WIDTH, &tw);
-                    if (tw <= 0) break;
-                    lw = (w0 >> lvl) > 0 ? (w0 >> lvl) : 1;
-                    lh = (h0 >> lvl) > 0 ? (h0 >> lvl) : 1;
-                    levels.emplace_back((size_t)lw * lh * 8);
-                    glGetTexImage(GL_TEXTURE_2D, lvl, GL_RGBA, GL_HALF_FLOAT,
-                                  levels.back().data());
-                    levelDims.emplace_back(lw, lh);
-                    if (lw == 1 && lh == 1) break;
-                }
-                mips = (uint32_t)levels.size();
-                haveReal = (mips > 0) && (glGetError() == GL_NO_ERROR);
-            } else {
-                vlog("hdri: unexpected GL internal format 0x%x — SH-L2 fallback.", ifmt);
-            }
-        }
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    if (generation != 0) {
+        uint64_t gotGeneration = 0;
+        const char* reason = "";
+        haveReal = mc2vk::hdriFromCpu(s->phys, fmt, levels, levelDims, gotGeneration, reason);
+        if (haveReal) { w = levelDims[0].first; h = levelDims[0].second; mips = static_cast<uint32_t>(levels.size()); }
+        else vlog("hdri: not imported (%s) -- SH-L2 fallback.", reason);
     }
     if (!haveReal) {
         // 1x1 black RGBA16F dummy (keeps the statically-used binding valid;
@@ -202,38 +145,18 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     return true;
 }
 
-// VK-PARITY-WATER-SHORE-1: copy-once import of one GL shore texture (R32F height
-// or RGBA8 mask) into a sampled VK image. Mirrors ensure_hdri's pattern (GL
-// read-back on the render thread's current context, one staging upload). When
-// glTex is 0 (or the read fails) a 1x1 zero dummy is created instead and
-// *real is false. Caller device-idles beforehand.
-bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
+// VK-PARITY-WATER-SHORE-1: copy-once import of one shore sidecar (R32F height or RGBA8 mask, 4 bytes a texel) from the
+// terrain field store's CPU copy into a sampled VK image. With no texels (no sidecar, or height disabled) a 1x1 zero dummy is
+// created instead and *real is false. Caller device-idles beforehand.
+bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat,
                       mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, bool* real) {
     const VkFormat fmt = isFloat ? VK_FORMAT_R32_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
-    const size_t bpp = 4;
-    std::vector<unsigned char> bytes;
-    int w = 1, h = 1;
-    *real = false;
-    if (glTex != 0) {
-        GLint prevTex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-        GLint prevPack = 4; glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
-        glPixelStorei(GL_PACK_ALIGNMENT, 4);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-        GLint w0 = 0, h0 = 0, ifmt = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &w0);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h0);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
-        const GLint wantFmt = isFloat ? GL_R32F : GL_RGBA8;
-        if (w0 > 0 && h0 > 0 && ifmt == wantFmt) {
-            bytes.resize((size_t)w0 * (size_t)h0 * bpp);
-            if (isFloat) glGetTexImage(GL_TEXTURE_2D, 0, GL_RED,  GL_FLOAT,         bytes.data());
-            else         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes.data());
-            if (glGetError() == GL_NO_ERROR) { w = w0; h = h0; *real = true; }
-        }
-        glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
-    }
-    if (!*real) { w = 1; h = 1; bytes.assign(bpp, 0); }
+    static const uint32_t kZeroTexel = 0;
+    *real = texels != nullptr && texelsW > 0 && texelsH > 0;
+    const int w = *real ? texelsW : 1;
+    const int h = *real ? texelsH : 1;
+    const void* src = *real ? texels : &kZeroTexel;
+    const size_t byteCount = (size_t)w * (size_t)h * 4u;
 
     view.reset();
     img.reset();
@@ -257,13 +180,8 @@ bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
         vlog("shore: vkCreateImageView failed."); return false;
     }
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    if (!make_buffer(s, staging, (VkDeviceSize)bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
-    {
-        void* p = staging.map();
-        if (!p) return false;
-        std::memcpy(p, bytes.data(), bytes.size());
-        staging.unmap();
-    }
+    if (!make_buffer(s, staging, (VkDeviceSize)byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
+    if (!staging.upload(src, (VkDeviceSize)byteCount)) return false;
     const VkImage dst = img.get();
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
         VkImageMemoryBarrier bar{};
@@ -307,10 +225,15 @@ bool ensure_shore(WaterIsland* s) {
     vkGetPhysicalDeviceFormatProperties(s->phys, VK_FORMAT_R32_SFLOAT, &fp);
     const bool r32Linear = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
     if (!r32Linear) vlog("shore: R32_SFLOAT lacks linear filtering -- height shore disabled (mode-1 fallback).");
-    const unsigned int hTex = r32Linear ? gos_TerrainLodChunk_WaterShoreHeightTex() : 0u;
-    if (!import_shore_tex(s, hTex, true,  s->shHImage, s->shHView, &s->shHReal)) return false;
-    if (!import_shore_tex(s, gos_TerrainLodChunk_ShorelineMaskTex(), false,
-                          s->shMImage, s->shMView, &s->shMReal)) return false;
+    const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    const mc2terrain::FieldImage<float>* height = store && r32Linear ? &store->waterShoreHeight() : nullptr;
+    const mc2terrain::FieldImage<uint8_t>* mask = store ? &store->shorelineMask() : nullptr;
+    if (!import_shore_tex(s, height && !height->texels.empty() ? height->texels.data() : nullptr, height ? height->width : 0,
+                          height ? height->height : 0, true, s->shHImage, s->shHView, &s->shHReal))
+        return false;
+    if (!import_shore_tex(s, mask && !mask->texels.empty() ? mask->texels.data() : nullptr, mask ? mask->width : 0,
+                          mask ? mask->height : 0, false, s->shMImage, s->shMView, &s->shMReal))
+        return false;
     write_descriptors(s);
     vlog("shore import: height=%s mask=%s gen=%u (copy-once, zero per-frame cost).",
          s->shHReal ? "REAL" : "DUMMY", s->shMReal ? "REAL" : "DUMMY", gen);

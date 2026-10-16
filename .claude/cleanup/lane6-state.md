@@ -1,0 +1,111 @@
+<!-- doc-status: current | 2026-10-15 | lane 6 -->
+# Lane 6 state (VK producers)
+
+Worktree `A:/Games/mc2-lane6`, branch `claude/lane6-producers` (from nifty e6f9ac11e). Install: none used.
+Goal: VK standalone on the data side so the GL producers can be deleted. Census: `vk-producer-census-2026-10-15.md`
+(14 true GL dependencies: 11 lane 6, 3 lane 2; 13 placement-only).
+
+## Done
+- baa0b195a census (docs).
+- 242b9582c census T1 (gos-handle textures), T4-T6 (terrain fields), T2 consumer half (colour-prop geometry):
+  `texture_decode.cpp`, `terrain_field_store.cpp`, `mc2_static_prop_geometry_cpu`, `gos_GetTextureRgba`.
+  Bug fixed on the way: `gos_TerrainLodChunk_UploadHeightPatch` never bumped the VK snapshot version, so the VK terrain kept
+  pre-patch heights after a runtime height edit (BUGS-FOUND-FIXED row: orchestrator to add after the runtime proof).
+
+- 9d013a81f review B1/B2/S1/S2 (`reviews/lane6-2026-10-15-producers-cleanup.md`): TGA header bounds (edge <= 16384, RLE
+  only 24/32 bpp) on the memory AND file paths; `gos_GetTextureRgba` tells not-loaded from failed readback (`*unavailable`,
+  logged), all-zero pre-compressed readbacks are real texels for the islands; doctests for 16-bit RLE, oversized RLE, .tga
+  files. 9039b3ae8 regenerated gl_shader_variants.json (line shift).
+
+## Runtime proof (install mc2-win64-v0.4, batch lease lane6)
+Before exe sha256 79f14474...df9fc66 (src 55f62bc4); after exe bd5b0ed7...641713 (tip 9039b3ae8).
+
+| run | result | VRAM load_end / run_end MiB (01, 03, 10, 17, 24) |
+|---|---|---|
+| GL tier1, before exe | 5/5 | 1985/3782, 1862/3901, 1639/3902, 1964/3957, 2060/4069 |
+| GL tier1, after (13:59) | 4/5, mc2_24 heartbeat_freeze_play (known flake class, tier1-flake-log) | 1985/3782, 1865/3901, 1908/3902, 1964/3957, 2062/4060 |
+| VK tier1 + validation, after (14:11) | 4/5, mc2_03 heartbeat_freeze_play; validation errors=0 warnings=0 on all 5 | vk 1706, 1678, 1721, 1778, 1817 at load_end |
+| GL tier1, after, the one rerun (15:25) | **5/5** | 1885/3782, 1865/3901, 1908/3902, 1964/3957, 2062/4069 |
+| VK tier1 + validation, after, the one rerun (15:36) | **5/5, errors=0 warnings=0 on all 5** | vk 1806, 1678, 1721, 1778, 1817 at load_end |
+
+Every after-run mission (20 of 20) logged `[DEPLOY_FINGERPRINT] OK: exe sha=9039b3ae84a9` matching worktree HEAD; the chain
+redeployed under the lease right before each pair (lane 2 overwrote v0.4 at 12:05-12:06; no reported run used that window).
+The first after-pair failures (GL mc2_24, VK mc2_03, heartbeat_freeze_play) did not repeat on the rerun.
+VRAM: GL run_end identical to the before exe on all five missions (max diff 0 MiB on the rerun); load_end differences
+(mc2_01 1985->1885, mc2_10 1639->1908) are sample timing, run_end is unchanged. No VRAM change, as expected (the change
+moved bytes to CPU-retained copies).
+The 12:19 after-run attempt is void: deploy_payload failed (mc2-launcher not built), the runner HARD-FAILed the fingerprint.
+`mc2_static_prop_geometry_cpu` declaration is byte-identical to lane 2's e1e21176b, and lane 2's commit does the shadow-island
+switch listed under "Seams needed from lane 2" below (that seam is closed once both merge).
+
+## Build proof
+| check | result |
+|---|---|
+| ninja mc2 (build64-ninja) | PASS |
+| build_all_targets --root-only | PASS (1673/1673) |
+| doctest (build_contract_harnesses --run --unit-only) | PASS 3201 cases, incl. new test_texture_decode / test_terrain_field_store |
+| check-contracts ratchets (cxx17, dup_lines, file_size, axis_swizzle) | OK, unchanged |
+| gl_shader_variants | was STALE from a one-line shift; regenerated in 242b9582c |
+| check-contracts other FAILs | container_callsites (editor/ObjectivesSummaryPanel.cpp), background-launch inventory, gated_layout_macros (fails on the base too), tools_tests row for the variants check: none in lane 6 files |
+| GL tier1 + VK tier1 (MC2_VULKAN_VALIDATION=1) + [VRAM v1] before/after | NOT RUN: the host lease was held by lane 1 (batch, pid 616) on mc2-win64-v0.4 for the whole window |
+
+## Session 2 (2026-10-15 16:03-18:xx, Opus 5.5; merged nifty dea1868a5 then 7daec782c, both fast-forward/clean)
+Commits: 3c5172001 review nits N1-N4 (prop staging released at map change, colour-prop retry frees its buffers, decode
+failures at Warn, field-store versions unique per process); fe0de149c mech island geometry only from the CPU copy, FEED-AUDIT
+readbacks + `MC2_VK_MECH_FEED_AUDIT` deleted; e80153837 KTX2 `ktxParse` (bounded, doctests), BC7 blocks kept by the gos
+handle, `gos_GetTextureTexels` (tri-state, review S1), islands create BC7 images, HUD decodes BC7 on the CPU,
+`ensureRgbaMirrorFromGpu` deleted, texture_decode returns `std::optional` (clears the LG05 rise routed here);
+970156084 census T10/T11 shore sidecars in the field store. Census status table + accepted geometry cost: census file.
+
+| proof (exe 970156084, install v0.4, batch lease lane6) | result |
+|---|---|
+| ninja mc2 / doctest | PASS / 3217 cases |
+| cxx17, dup_lines ratchets (worktree) | OK, both below baseline |
+| VK tier1 + validation 17:43 | 5/5, errors=0 warnings=0 all five; fingerprint OK |
+| GL tier1 17:30 | 5/5; fingerprint OK |
+| VK tier1 17:15 | VOID: another deploy replaced v0.4's exe (6d4ff1bb3) inside my lease; rerun above |
+| [VRAM v1] VK run_end vs the 6d4ff1bb3 exe (void run) | 4057/4157/4175/4242/4607 vs 4057/4157/4175/4240/4607 MiB: unchanged |
+| [VRAM v1] GL run_end vs session-1 rerun | 3782/3901/3893/3957/4069 vs 3782/3901/3902/3957/4069: unchanged |
+| build_all_targets --root-only | PASS (rc 0, 18:09) |
+| GL vs VK capture pair, mc2_10_saved_204523 --clean, same exe, 18:28-18:41 (viewed) | terrain, water, shoreline foam band and the base props match; the small hex props around the base read as wireframe-like in GL and solid in VK (no earlier pair to say whether this is new; next session: one pair on the 6d4ff1bb3 exe to bisect) |
+
+Tier1 imported no BC7 handle in any island (all `format=37`): the BC7 island path is unexercised by tier1; the HUD CPU decode
+is (FX sprites are BC7). The capture pair is what proves it.
+
+## Session 3 (2026-10-15 18:50-, Opus 5.5; last lane 6 session; merged nifty 5d8aa880c then a0614d7d2, both clean)
+Commits: 66e802840 KTX2 review S1 (`ktxLoadRgba8` logs path + reason at Warn; a missing file stays silent), S2 (overlay binds
+the dummy for Unavailable texels; legacy shape caches Unavailable nodes in `untexturedNodes`, cleared at mission reset), N1
+stale comment, N2 fprintf -> MC2_LOG, N3 three doctests (past-the-end offset, RGBA8, full BC7 chain offsets), gaps row 23;
+ee6e0e77a census T3 step 1 (`mc2tex::boxDownsampleRgba8`, doctested). N4 (field store edge bound 4 x 16384) left as is: the
+fine height bake and the shore sidecars are legitimately up to 4x the map side. N5 pre-existing, not touched.
+Hex props (gaps row 23): NOT lane 6. Lane 2's own s21 GL/VK pair (no lane 6 commits) shows the same difference; VK is the
+wrong backend (the original blends `textureAlpha` texels; GL's Bayer dither stands in for it). Suspect: the alpha-ON/OFF class
+split of the prop albedo arrays, the same arrays as T3.
+| proof (exe ee6e0e77a, install v0.4 deployed by name, FIFO lease batch lane6, 19:2x-19:5x) | result |
+|---|---|
+| VK tier1 + MC2_VULKAN_VALIDATION=1 | 5/5 PASS, errors=0 warnings=0 on all five, fingerprint OK x5 |
+| GL tier1 | 5/5 PASS, fingerprint OK |
+| [VRAM v1] run_end VK / GL MiB (01, 03, 10, 17, 24) | 3906/4007/4152/4219/4328 ; 3705/3824/3816/3874/3993. Lower than session 2 (VK 4057/4157/4175/4242/4607, GL 3782/3901/3893/3957/4069) on both backends alike: the base moved (nifty merge, game-slots default 854x480 offscreen); no lane 6 change allocates GPU memory |
+| GL vs VK capture pair mc2_10_saved_204523 --clean, same exe (sha d74afe47 unchanged across both) | viewed: terrain, water, foam band, base props match; the hex lattice props differ exactly as in session 2 and in lane 2's s21 pair (row 23) |
+The chain's capture step failed inside the batch lease (`capture.py` asks for an exclusive slot and cannot upgrade a held normal
+one); the pair ran right after on its own queue entry. Chain script: session scratchpad `lane6_proof_chain.sh`.
+Doctest after the second merge: `mc2_tests` 3236 passed, 0 failed, 2 skipped; the harness run is rc 1 only because nifty's new
+`tests/unit/test_authored_movement_fixture.cpp(189)` does not compile in `mc2_authored_order_seam` (`MissionMapPtr && vector`):
+a nifty defect (a0614d7d2), not lane 6.
+
+## Open (next owner, in order)
+1. T3 wiring per the plan in the census (CPU array object, GL uploads levels from it, VK copies it, readback deleted), then
+   the capture pair; check row 23 in the same pair.
+2. T7 colormap atlas, T9 normal array, T8 cement atlas (T8: atlasBuf is already a CPU RGBA8 image in
+   `BuildCementCatalogAtlas`; it needs an owner that outlives the build and exists when the build runs: the terrain field
+   store is created in `gos_TerrainLodChunk_Init`, check the order against `BuildDenseRecipe` first).
+3. Owners are still static-duration (terrain store, prop staging file static): fold into subsystem objects with step 4.
+4. callers.json reads "stale" in this worktree only because the inventory embeds the worktree root (A:/Games/mc2-main) in
+   `reference`: a tool bug in non-main worktrees, not a real change.
+
+## Seams needed from lane 2
+- None open from lane 6. T12-T14 (static / dynamic / CSM shadow maps, HDRI) are lane 2 producers.
+
+## Scratch
+Mine (session scratchpad, deleted by the harness): cfg/build/unit/cc logs. In the worktree: `build64-ninja/`,
+`build-alltargets/`, the unit build tree (untracked build trees, lane 6 created them; delete at lane close).

@@ -459,6 +459,8 @@ long Mech3DAppearance::update (bool animate)
 			: inView;
 		if ((turn < 3) || gpuVis || (currentGestureId == GestureJump) || g_useGpuStaticProps)
 			updateGeometry();
+		else
+			updateSimPose();
 
 		// Slice B1: refresh per-actor LightsData UBO slot index for the
 		// GPU mech batcher path. Mirrors bdactor.cpp pattern. No-op

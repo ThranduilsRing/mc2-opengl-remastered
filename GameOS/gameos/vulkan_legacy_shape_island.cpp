@@ -5,7 +5,7 @@
 // parity-fenced submit) with a much simpler feed:
 //   * geometry: the node's CPU gos_VERTEX array (pre-transformed screen-space,
 //     CPU-lit) is memcpy'd each frame into a per-parity host-visible vertex buffer;
-//   * textures: copy-once glGetTexImage import keyed on the mcTextureManager node;
+//   * textures: copy-once import of the handle's decoded texels, keyed on the mcTextureManager node;
 //   * no lights / no instancing: vertex colour is already CPU-lit.
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
@@ -18,7 +18,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
-#include <GL/glew.h>
+#include "texture_decode.h"   // gos_GetTextureTexels
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -43,9 +43,9 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <tracy/Tracy.hpp>
 
-uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // defined in gameos_graphics.cpp
 const float* gos_GetProj2ScreenMat4();             // gosRenderer::projection_ (row-major, GL_TRUE)
 
 namespace {
@@ -125,6 +125,7 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool pool;
     TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
     std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
+    std::unordered_set<uint32_t> untexturedNodes;       // nodes whose texture has no CPU texels: drawn with the dummy
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];
@@ -190,20 +191,13 @@ void cp_end(Island* s, VkCommandBuffer cb) {
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
-bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+// One level of RGBA8 or BC7 texels, copied as they are into a sampled image of `fmt`.
+bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "legacyshape.staging")) return false;
     if (!upload_host(stg, bytes, (size_t)byteCount)) return false;
 
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-    ici.extent = {w, h, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!e.img.create(s->allocator, s->device, ici, aci, "legacyshape.texture")) return false;
+    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "legacyshape.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
     if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
@@ -226,7 +220,7 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* by
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
@@ -253,37 +247,31 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
 }
 
 // Resolve (importing copy-once on first sight) the texture entry for a node.
-// Called BEFORE recording (GL calls); never inside the VK command buffer.
+// Called BEFORE recording (the import records its own one-shot upload); never inside the VK command buffer.
 TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
     auto it = s->texs.find(texNode);
     if (it != s->texs.end()) return &it->second;
+    if (s->untexturedNodes.contains(texNode)) return &s->dummyTex;
     if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
-    const uint32_t glTex = gos_GetGLTextureId(gosHandle);
-    if (glTex == 0) return &s->dummyTex;    // not resident yet; retry next frame
-
-    GLint prevTex = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) {
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    const GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status == GosTexels::Status::Unavailable) {   // will never have texels: stop asking
+        s->untexturedNodes.insert(texNode);
         return &s->dummyTex;
     }
-    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    if (texels.status != GosTexels::Status::Ready) return &s->dummyTex;    // not resident yet; retry next frame
+    const uint32_t w = texels.width, h = texels.height;
+    if (w == 0 || h == 0 || w > 8192 || h > 8192) return &s->dummyTex;
 
     TexEntry t;
-    if (!upload_image(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
+    if (!upload_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
+                      (VkDeviceSize)texels.bytes->size()) ||
         !alloc_tex_sets(s, t)) {
         return &s->dummyTex;   // `t` releases whatever it created
     }
     ++g_health.texUploads;
     auto ins = s->texs.emplace(texNode, std::move(t));
-    vlog("texture cached: node=%u glTex=%u %dx%d (%zu/%u).", texNode, glTex, (int)w, (int)h,
+    vlog("texture cached: node=%u handle=%u %ux%u format=%u (%zu/%u).", texNode, gosHandle, w, h, texels.vkFormat,
          s->texs.size(), kMaxTextures);
     return &ins.first->second;
 }
@@ -409,7 +397,7 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { setFallback("pool_failed"); return false; }
 
         const uint8_t px[4] = {255, 255, 255, 255};
-        if (!upload_image(s, s->dummyTex, 1, 1, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
+        if (!upload_image(s, s->dummyTex, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
             setFallback("dummy_tex_failed"); return false;
         }
     }
@@ -561,7 +549,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     Island* s = parkedIsland();
     if (s->disabled || !s->inited) return 0;
 
-    // Resolve textures (GL calls) BEFORE recording; total the vertex bytes.
+    // Resolve textures BEFORE recording; total the vertex bytes.
     struct Resolved { TexEntry* t; const Mc2LegacyMlrDraw* d; VkDeviceSize byteOff; };
     std::vector<Resolved> list;
     list.reserve(draws.size());
@@ -673,6 +661,7 @@ extern "C" void mc2_vk_legacy_shape_island_reset() {
     // Texture node indices are reused by the next mission: drop the copy-once cache.
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_reset");
     s->texs.clear();
+    s->untexturedNodes.clear();
     // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
     if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
     s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;

@@ -5,6 +5,8 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "move_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "packet_exact.h"
 
 
 int GlobalMap::minRow = 0;
@@ -447,8 +449,8 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	else
 		GameMap->init( height, width );
 
-	if (!GameMap->map) { printf("[MOVE_BD] FATAL: GameMap->map is NULL after init — systemHeap exhausted?\n"); fflush(stdout); return; }
-	printf("[MOVE_BD] GameMap->init OK map=%p\n", (void*)GameMap->map); fflush(stdout);
+	if (GameMap->map.empty()) { MC2_LOG(Io, Error, "move: the built mission map is {} x {} cells, so it is empty; no move data is built", height, width); return; }
+	printf("[MOVE_BD] GameMap->init OK map=%p\n", (void*)GameMap->map.data()); fflush(stdout);
 
 	long numOffMap = 0;
 	for (long r = 0; r < height; r++)
@@ -573,6 +575,8 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	GameMap = new MissionMap;
 	gosASSERT(GameMap != NULL);
 	long numMissionMapPackets = GameMap->init(packetFile, whichPacket);
+	if (numMissionMapPackets == 0)
+		Fatal(0, " MOVE_readData: the mission map was rejected; the mission is not loaded ");
 
 	if (!PathFindMap[SECTOR_PATHMAP])
 		Fatal(0, " MOVE_BuildData: Must call MOVE_Init()! ");
@@ -730,38 +734,20 @@ void MissionMap::init (long h, long w) {
 	for (int i = 0; i < width; i++)
 		Terrain::cellColToWorldCoord[i] = (i * Terrain::worldUnitsPerCell) - (Terrain::worldUnitsMapSide / 2.0);
 
-	if (map) {
-		systemHeap->Free(map);
-		map = nullptr;
-	}
-	long mapSize = sizeof(MapCell) * width * height;
-	if (mapSize > 0)
-		map = (MapCellPtr)systemHeap->Malloc(sizeof(MapCell) * width * height);
-	gosASSERT(map != NULL);
-	memclear(map, sizeof(MapCell) * width * height);
+	const size_t cellCount = (width > 0 && height > 0) ? static_cast<size_t>(width) * static_cast<size_t>(height) : 0;
+	map.assign(cellCount, MapCell{});
 
-	// Per-tile mine count tracking — sized to the tile grid (cells / MAPCELL_DIM
-	// per dim). Allocated zero-filled; populated by setMine() during cell load
-	// or by rebuildTileMineCounts() after a packet readPacket().
-	if (tileMineCount) {
-		systemHeap->Free(tileMineCount);
-		tileMineCount = nullptr;
-	}
+	// Per-tile mine count, one counter per MAPCELL_DIM x MAPCELL_DIM tile, all zero here: setMine() keeps it current during
+	// cell load and rebuildTileMineCounts() rebuilds it after a packet load (which bypasses setMine).
 	tileMineCountWidth = w / MAPCELL_DIM;
 	const long tileMineHeight = h / MAPCELL_DIM;
 	const long tileMineSize = tileMineCountWidth * tileMineHeight;
-	if (tileMineSize > 0) {
-		tileMineCount = (unsigned char*)systemHeap->Malloc(tileMineSize);
-		gosASSERT(tileMineCount != NULL);
-		memclear(tileMineCount, tileMineSize);
-	}
+	tileMineCount.assign(tileMineSize > 0 ? static_cast<size_t>(tileMineSize) : 0, 0);
 }
 
 void MissionMap::rebuildTileMineCounts (void) {
-	if (!tileMineCount || !map) return;
-	const long tileMineHeight = height / MAPCELL_DIM;
-	const long tileMineSize = tileMineCountWidth * tileMineHeight;
-	memclear(tileMineCount, tileMineSize);
+	if (tileMineCount.empty() || map.empty()) return;
+	std::fill(tileMineCount.begin(), tileMineCount.end(), 0);
 	for (long r = 0; r < height; ++r) {
 		for (long c = 0; c < width; ++c) {
 			if (map[r * width + c].getMine() != 0) {
@@ -780,11 +766,24 @@ constexpr int NUM_MISSIONMAP_PACKETS = 4;
 
 long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 
-	packetFile->readPacket(whichPacket++, (unsigned char*)&height);
-	packetFile->readPacket(whichPacket++, (unsigned char*)&width);
-	packetFile->readPacket(whichPacket++, (unsigned char*)&planet);
-	init(height, width);
-	packetFile->readPacket(whichPacket++, (unsigned char*)map);
+	// Any rejected packet refuses the whole map (0 packets read): a mission on a stale planet or an all-clear grid plays on a
+	// passable-everywhere map. The first rejection is the only log line.
+	int32_t h = 0;
+	int32_t w = 0;
+	if (!mc2::pak::readExact(*packetFile, whichPacket, &h, sizeof(h), "mission map height") ||
+		!mc2::pak::readExact(*packetFile, whichPacket + 1, &w, sizeof(w), "mission map width") ||
+		!mc2::pak::readExact(*packetFile, whichPacket + 2, &planet, sizeof(planet), "mission map planet"))
+		return 0;
+	// The dimensions size the grid and index the terrain's per-cell coordinate tables.
+	if (h <= 0 || w <= 0 || h > MAX_MAP_CELL_WIDTH || w > MAX_MAP_CELL_WIDTH) {
+		MC2_LOG(Io, Error, "move: mission map is {} x {} cells (valid 1..{}); the map is not loaded", h, w, MAX_MAP_CELL_WIDTH);
+		return 0;
+	}
+	init(h, w);
+	if (!mc2::pak::readExact(*packetFile, whichPacket + 3, map.data(), map.size() * sizeof(MapCell), "mission map cell")) {
+		std::fill(map.begin(), map.end(), MapCell{});
+		return 0;
+	}
 
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++) {
@@ -814,7 +813,7 @@ long MissionMap::write (PacketFile* packetFile, long whichPacket) {
 	result = packetFile->writePacket(whichPacket++, planet);
 	if (result <= 0)
 		Fatal(result, " MissionMap.write: Unable to write planet packet ");
-	result = packetFile->writePacket(whichPacket++, (unsigned char*)map, sizeof(MapCell) * height * width);
+	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(map.data()), static_cast<unsigned int>(map.size() * sizeof(MapCell)));
 	if (result <= 0)
 		Fatal(result, " MissionMap.write: Unable to write map packet ");
 	return(NUM_MISSIONMAP_PACKETS);
@@ -829,13 +828,13 @@ bool MissionMap::getPassable (Stuff::Vector3D cellPosition) {
 
 long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionMapCellInfo* mapData) {
 
-	if (!map)
+	if (map.empty())
 		init(cellHeight, cellWidth);
 
 	planet = curPlanet;
 
-	// Be damned sure map is empty.  This is required or mines will NOT go away.
-	memset(map, 0, sizeof(MapCell) * width * height);
+	// Every cell starts clear: a reused grid would otherwise keep the previous mission's mines.
+	std::fill(map.begin(), map.end(), MapCell{});
 
 	long terrainTypes[1024];
 	long overlayTypes[1024];
@@ -1018,14 +1017,8 @@ void MissionMap::print (char* fileName) {
 
 void MissionMap::destroy (void) {
 
-	if (map) {
-		systemHeap->Free(map);
-		map = nullptr;
-	}
-	if (tileMineCount) {
-		systemHeap->Free(tileMineCount);
-		tileMineCount = nullptr;
-	}
+	map = {};
+	tileMineCount = {};
 }
 
 // MOVE PATH class

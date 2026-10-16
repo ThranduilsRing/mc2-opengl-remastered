@@ -3,9 +3,8 @@
 // EString::Format sizes its buffer with the C runtime's own format parser (vsnprintf with a null buffer). The hand-rolled
 // %-scanner it replaced did not know ll / z / j and then vsprintf wrote into a buffer sized by that guess.
 //
-// The second half pins what the class does today (step 4 batch B1, .claude/cleanup/cxx23-step4-b1-notes.md, hazards H1-H15) so
-// that converting a caller to std::string is judged against recorded behaviour. Those tests describe the OLD class and stay
-// until the class is deleted with the gui widgets (B6).
+// The second half pins what the class does today so that converting a caller to std::string is judged against recorded
+// behaviour. Those tests describe the OLD class and stay until the class is deleted with the gui widgets.
 
 #include "doctest.h"
 
@@ -52,7 +51,7 @@ TEST_CASE("Format of an empty template and of a width-padded argument")
 	CHECK(std::strcmp(s.Data(), "ab      |      cd|") == 0);
 }
 
-// H1: Data() is null for a string that was never assigned or was emptied; ANY assignment of a literal, even "", allocates.
+// Data() is null for a string that was never assigned or was emptied; ANY assignment of a literal, even "", allocates.
 TEST_CASE("H1: Data() is null only for a never-assigned or emptied string")
 {
 	EString never;
@@ -86,7 +85,7 @@ TEST_CASE("H1: Data() is null only for a never-assigned or emptied string")
 	CHECK(assignedNull.IsEmpty());
 }
 
-// H13: a null C string is a legal, empty EString. std::string(nullptr) is undefined, so converted code goes through mc2::str::from_c.
+// A null C string is a legal, empty EString. std::string(nullptr) is undefined, so converted code goes through mc2::str::from_c.
 TEST_CASE("H13: EString of a null pointer is empty, not undefined")
 {
 	const char* np = nullptr;
@@ -96,7 +95,7 @@ TEST_CASE("H13: EString of a null pointer is empty, not undefined")
 	CHECK(viaCtor == "");
 }
 
-// H2 / H3: equality, the case-flagged Compare and operator< all end in the Windows lstrcmpi, so they ignore case. Even Compare(x, true)
+// Equality, the case-flagged Compare and operator< all end in the Windows lstrcmpi, so they ignore case. Even Compare(x, true)
 // ("case sensitive") only short-circuits on identical leading bytes and otherwise falls through to the case-insensitive compare.
 TEST_CASE("H2/H3: equality and order ignore case")
 {
@@ -122,12 +121,12 @@ TEST_CASE("H2/H3: equality and order ignore case")
 	CHECK(EString("a").Compare("") > 0);
 	CHECK_FALSE(EString("abc") == "abcd");
 
-	// H3: the free operator<= with a C string on the left is a strict less-than (an equal pair is not "<=").
+	// The free operator<= with a C string on the left is a strict less-than (an equal pair is not "<=").
 	CHECK_FALSE("abc" <= EString("abc"));
 	CHECK("abc" <= EString("abd"));
 }
 
-// H12: MakeUpper / MakeLower go through the ANSI code page (CharUpper / CharLower), so a byte above 0x7F changes case under cp1252.
+// MakeUpper / MakeLower go through the ANSI code page (CharUpper / CharLower), so a byte above 0x7F changes case under cp1252.
 // std::string has no such behaviour: mc2::str::ascii_upper leaves those bytes alone (tests/unit/test_mc2str.cpp).
 TEST_CASE("H12: MakeUpper and MakeLower follow the ANSI code page")
 {
@@ -145,7 +144,7 @@ TEST_CASE("H12: MakeUpper and MakeLower follow the ANSI code page")
 	}
 }
 
-// H6: index conventions. SubString and Remove take an INCLUSIVE end index; Left / Right take counts; Find returns -1; Replace overwrites.
+// Index conventions. SubString and Remove take an INCLUSIVE end index; Left / Right take counts; Find returns -1; Replace overwrites.
 TEST_CASE("H6: index conventions of SubString, Remove, Left, Right, Find, Replace, Insert")
 {
 	EString s("hello");
@@ -186,7 +185,7 @@ TEST_CASE("H6: index conventions of SubString, Remove, Left, Right, Find, Replac
 	CHECK(std::strcmp(inserted.Data(), ">hello! ok") == 0);
 }
 
-// H7: Length() stops at an embedded NUL (lstrlen); Size() is the stored count.
+// Length() stops at an embedded NUL (lstrlen); Size() is the stored count.
 TEST_CASE("H7: Length stops at an embedded NUL, Size does not")
 {
 	EString s("abc");
@@ -195,15 +194,15 @@ TEST_CASE("H7: Length stops at an embedded NUL, Size does not")
 	CHECK(s.Size() == 3);
 }
 
-// H8: Compare(x, true) reads strlen(x) bytes from the receiver before it looks at the receiver's length, so an argument longer than the
+// Compare(x, true) reads strlen(x) bytes from the receiver before it looks at the receiver's length, so an argument longer than the
 // receiver's allocation over-reads. Only an in-bounds case is run here; std::string has no such read.
 TEST_CASE("H8: a shorter receiver compares smaller than a longer argument")
 {
 	CHECK(EString("ab").Compare("abc", true) < 0);
 }
 
-// H14: copies share one buffer, so a pointer taken from one copy outlives the original. A std::string pointer does not
-// (the lifetime gate and the accessor rule cover that, .claude/cleanup/cxx23-step4-b1-notes.md section 5).
+// Copies share one buffer, so a pointer taken from one copy outlives the original. A std::string pointer does not
+// (the clang-cl lifetime gate, tests/analyze/analyze_dangling.py, and the accessor rule cover that).
 TEST_CASE("H14: a pointer into a shared buffer outlives the source string")
 {
 	auto* source = new EString("shared text");
@@ -214,7 +213,7 @@ TEST_CASE("H14: a pointer into a shared buffer outlives the source string")
 	CHECK(p == copy.Data());
 }
 
-// H4: a by-value accessor returns a copy that shares the member's buffer, so the caller's `const char*` stays valid as long as the owner lives.
+// A by-value accessor returns a copy that shares the member's buffer, so the caller's `const char*` stays valid as long as the owner lives.
 TEST_CASE("H4: a pointer from a by-value accessor stays valid while the owner lives")
 {
 	struct Holder

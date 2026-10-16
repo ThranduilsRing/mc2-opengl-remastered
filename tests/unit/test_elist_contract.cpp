@@ -1,7 +1,7 @@
 // tests/unit/test_elist_contract.cpp
 //
-// Characterization of mclib/elist.h AS IT IS TODAY (step 4 batch B2.0, .claude/cleanup/cxx23-step4-b2-notes.md section 2, HE1-HE12).
-// WHY: B2.2/B2.3 replace EList by std::vector / std::deque / composition. Call sites rely on properties the class never documented (element addresses
+// Characterization of mclib/elist.h AS IT IS TODAY (cases HE1-HE12).
+// WHY: the conversions replace EList by std::vector / std::deque / composition. Call sites rely on properties the class never documented (element addresses
 // that stay valid across Append and Delete of OTHER elements, End() being the tail element and not past-the-end, postfix ++ returning the new position,
 // Insert-before, [a,b) ranges, deep copy of values). Each case states one property; the cases that name a std container run the same body on it so the
 // difference (the property `vector` loses) is on record.

@@ -312,6 +312,10 @@ class Mission
 		std::string authoredMissionText;
 		std::vector<std::uint32_t> authoredOpordPilots;
 		std::vector<mc2::sim::AuthoredRoute> authoredRoutes;
+		std::vector<mc2::sim::RouteExecution> routeExecutions;
+		std::vector<mc2::sim::RouteSignal> rejectedRouteSignals;
+		std::uint64_t nextPartIncarnation = 1, nextPilotIncarnation = 1;
+		std::uint64_t nextRouteExecution = 1, nextOrderRevision = 1;
 		std::vector<std::string> authoredDiagnostics;
 		std::optional<mc2::sim::MissionReceipt> orderFixtureReceipt;
 		bool orderFixtureApplied = false;
@@ -443,6 +447,15 @@ class Mission
 		void resetOrderIngress();
 		void admitAuthoredRoutes();
 		void recordAuthoredInstallation(const mc2::sim::OrderEnvelope&, mc2::sim::ObjectRef);
+		std::optional<mc2::sim::RouteTransition> onRouteEvent(const mc2::sim::RouteSignal&);
+        mc2::sim::RouteExecution* ownedRoute(const MechWarrior*);
+        bool endedRouteOrder(MechWarrior*) const;
+        bool routeLive(const mc2::sim::RouteExecution&);
+        bool routeMapsReady(MechWarrior*) const;
+        void signalRoute(mc2::sim::RouteExecution&, mc2::sim::RouteAction, bool mapsReady = false);
+        void dispatchOwnedRoute(MechWarrior*, mc2::sim::RouteExecution&);
+		const mc2::sim::RouteExecution* routeExecution(mc2::sim::RouteKey) const;
+		std::span<const mc2::sim::RouteExecution> authoredExecutions() const { return routeExecutions; }
 		std::string authoredRouteEvidence() const;
 		void diagnoseAuthoredRoute(std::uint32_t original, std::uint32_t selected, std::uint32_t pilot,
 			std::string_view status, std::string_view reason);

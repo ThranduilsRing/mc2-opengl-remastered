@@ -16,7 +16,8 @@
 // test_fit_number.cpp holds the two in lockstep.
 // The quirks are the game's contract with stock and mod data, so they are kept: hex is any text after the first lowercase "0x"
 // (a comment "7 // 0xff" reads 255), "0X" is not hex (atol reads "0X16" as 0), and hex stops at the first non-hex character.
-// The hex scan writes a terminator into the caller's text at that character, so the argument must be writable.
+// The hex scan writes a terminator into the caller's text at that character, so the argument must be writable: the const in the
+// signatures is not honoured, and stays only so the FitIniFile members' callers compile unchanged.
 namespace mc2::fit
 {
 

@@ -86,6 +86,7 @@ add_executable(mc2_tests
     test_subgraph_contiguity.cpp  # SUBGRAPH-CONTIGUITY-GUARD-1: postprocess sub-pass contiguity rule (offline)
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
     test_file_family_contract.cpp   # step 4 B3.0: the File family's name/child/buffer contract before B3.1
+    test_pak_read_exact.cpp     # step 4 B4.1: mc2::pak::readExact, the size-checked packet read of the move maps (malformed pak rejected with one log line)
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
@@ -110,10 +111,18 @@ add_executable(mc2_tests
     test_hud_tab_registry.cpp  # HUD-IMGUI slice C: tab registry order/cycle invariants (offline)
     test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
     test_terrain_material.cpp  # TERRAIN-MATERIAL-SINGLE-SOURCE: terrain type -> material table (type 20 = Concrete)
+    test_sim_substeps.cpp   # sim steps per rendered frame under the harness clock (MC2_SIM_SPEED)
     test_mc2log.cpp         # LOGGING-FACADE-P0: mc2::log facade (level gate, vformat fail-soft, MC2_EVENT bytes, MC2_LOG spec)
     test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
     test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
+    test_texture_decode.cpp  # backend-neutral texture decode + upload policy (no GL)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/texture_decode.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)
+    test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
+    test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)
+    ${MC2_WORKTREE_ROOT}/RenderCore/KtxLoader.cpp
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
@@ -197,6 +206,7 @@ target_include_directories(mc2_tests PRIVATE
 # 3rdparty/lib/x64/zlib.lib is the static build -- no zlib1.dll needed at run time.
 target_link_libraries(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
+    ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
 )
 
 # Match main build's preprocessor environment so engine headers parse the

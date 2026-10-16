@@ -36,7 +36,6 @@
 #endif
 
 #include <volk.h>
-#include <GL/glew.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg SunAxisFix
@@ -49,6 +48,7 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
+#include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
@@ -157,25 +157,6 @@ bool mechLightingRequested() {
 // CPU geometry + LightsData feed is unconditional under the VK mech island.
 // The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
 
-// VK-MECH-FEED-AUDIT-1: verification-only (default-OFF safety gate). With the
-// native feed armed, ALSO read the GL
-// buffers back and byte-compare against the CPU sources -- proves the native
-// feed carries the exact bytes GL rendered with.
-bool mechFeedAuditRequested() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_MECH_FEED_AUDIT">() ? 1 : 0;
-    return state == 1;
-}
-
-// VK-MECH-FEED-AUDIT-1 tallies (reported via vlog; nonzero mismatch = feed bug).
-struct FeedNativeStats {
-    unsigned long nativeGeomCopies  = 0;   // geometry copied from CPU source
-    unsigned long nativeLightFrames = 0;   // LightsData frames copied from CPU source
-    unsigned long auditRuns         = 0;
-    unsigned long auditMismatches   = 0;
-};
-FeedNativeStats g_feedNative;
 
 std::string spv_dir() {
     std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
@@ -245,22 +226,22 @@ struct MechIsland : mc2vk::IslandState {
     // 5=pool SSBO(FS), 6=AO map(FS), 7=normal map(FS)  (5-7: VK-PARITY-MECH-1).
 
     // MC2_VK_MECH_MATERIAL: per-actor paint-scheme VK-descriptor cache. Each distinct
-    // GL texture (slot-0 paint scheme, VK-PARITY-MECH-1: + per-type AO / normal map)
+    // gos texture (slot-0 paint scheme, VK-PARITY-MECH-1: + per-type AO / normal map)
     // gets ONE copy-once VkImage/view (texture cache); each distinct (albedo, ao,
     // normal) triple gets a descriptor set (set cache; bindings 3/6/7 differ). The
     // draw loop binds the set matching the run, so a mission with >1 distinct scheme
-    // shows the right scheme on each mech. A dummy 1x1 white texture (glTex sentinel
+    // shows the right scheme on each mech. A dummy 1x1 white texture (handle sentinel
     // 0) backs runs with no texture.
     bool        wantMaterial  = false;
     bool        materialReady = false;   // >=1 real scheme imported
     struct TexEntry {
-        uint32_t      glTex = 0;                 // 0 = dummy white
+        uint32_t      gosHandle = 0;             // 0 = dummy white
         mc2vk::OwnedImage img;
         mc2vk::OwnedImageView view;              // declared after the image: released first
     };
     std::vector<TexEntry> textures;      // [0] = dummy white, always present
     struct SchemeEntry {
-        uint32_t albedo = 0, ao = 0, nrm = 0;    // GL ids (0 = dummy)
+        uint32_t albedo = 0, ao = 0, nrm = 0;    // gos handles (0 = dummy)
         VkDescriptorSet set[2] = {};
     };
     std::vector<SchemeEntry> schemes;    // [0] = all-dummy set, always present
@@ -466,25 +447,17 @@ bool make_albedo_sampler(MechIsland* s) {
     return mc2vk::create(s->albedoSamp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
-// Upload a single 2D RGBA8 image (w*h*4 bytes) into a fresh VkImage+view stored in the
+// Upload one level of RGBA8 or BC7 texels, as they are, into a fresh VkImage+view of `fmt` stored in the
 // given TexEntry (copy-once texture cache slot).
 bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
-                         uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+                         uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "mech.staging")) return false;
     { void* p = stg.map();
       if (!p) return false;
       std::memcpy(p, bytes, (size_t)byteCount); stg.unmap(); }
 
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-    ici.extent = {w, h, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!e.img.create(s->allocator, s->device, ici, aci, "mech.texture")) return false;
+    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "mech.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
     if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
@@ -507,7 +480,7 @@ bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
@@ -533,9 +506,9 @@ bool ensure_dummy_scheme(MechIsland* s) {
     if (!make_albedo_sampler(s)) return false;
     if (!s->schemes.empty()) return true;
     if (s->textures.empty()) {
-        MechIsland::TexEntry t; t.glTex = 0;
+        MechIsland::TexEntry t; t.gosHandle = 0;
         const uint8_t px[4] = {255, 255, 255, 255};   // white -> flat FS uses vArgb only
-        if (!upload_scheme_image(s, t, 1, 1, px, sizeof(px))) return false;
+        if (!upload_scheme_image(s, t, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px))) return false;
         s->textures.push_back(std::move(t));
     }
     MechIsland::SchemeEntry e;
@@ -545,36 +518,34 @@ bool ensure_dummy_scheme(MechIsland* s) {
     return true;
 }
 
-// Copy-once GL->VK texture import (glGetTexImage on a MATERIAL texture -- paint scheme,
-// AO or normal map; a compressed BC7 source is decompressed by the driver -- NOT a
-// color surface) keyed on the GL id. Does NOT touch g_forbidden; mirrors the
-// terrain/prop material imports. Returns the dummy white view on 0 / failure / budget.
-VkImageView get_tex_view(MechIsland* s, uint32_t glTex) {
+// Copy-once import of a MATERIAL texture (paint scheme, AO or normal map) from the handle's
+// decoded texels, keyed on the gos handle. Not a colour surface, so g_forbidden is untouched.
+// Returns the dummy white view on 0 / failure / budget; sets *pending when the handle has no
+// texels yet, so the caller does not cache a set built on the dummy.
+VkImageView get_tex_view(MechIsland* s, uint32_t gosHandle, bool* pending) {
     VkImageView dummy = s->textures.empty() ? VK_NULL_HANDLE : s->textures[0].view.get();
-    if (glTex == 0) return dummy;
-    for (auto& t : s->textures) if (t.glTex == glTex) return t.view.get();
+    if (gosHandle == 0) return dummy;
+    for (auto& t : s->textures) if (t.gosHandle == gosHandle) return t.view.get();
     if (s->textures.size() >= MechIsland::kMaxTextures) return dummy;
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) { glBindTexture(GL_TEXTURE_2D, 0); return dummy; }
-    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-    MechIsland::TexEntry t; t.glTex = glTex;
-    if (!upload_scheme_image(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()))
+    const GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status == GosTexels::Status::Pending) { *pending = true; return dummy; }
+    if (texels.status == GosTexels::Status::Unavailable) return dummy;   // no CPU texels: the set caches the dummy
+    const uint32_t w = texels.width, h = texels.height;
+    if (w == 0 || h == 0 || w > 8192 || h > 8192) return dummy;
+    MechIsland::TexEntry t; t.gosHandle = gosHandle;
+    if (!upload_scheme_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
+                             (VkDeviceSize)texels.bytes->size()))
         return dummy;
     const VkImageView cachedView = t.view.get();
     s->textures.push_back(std::move(t));
-    vlog("texture cached: %dx%d glTex=%u (texture %zu/%u).", w, h, glTex,
+    vlog("texture cached: %ux%u handle=%u (texture %zu/%u).", w, h, gosHandle,
          s->textures.size() - 1, MechIsland::kMaxTextures);
     return cachedView;
 }
 
-// Per-run scheme-set lookup keyed on the (albedo, ao, normal) GL ids, importing any new
-// texture copy-once on first sight. Called for every run BEFORE recording (GL calls),
-// so the draw-loop lookup is a pure cache hit.
+// Per-run scheme-set lookup keyed on the (albedo, ao, normal) gos handles, importing any new
+// texture copy-once on first sight. Called for every run BEFORE recording, so the draw-loop
+// lookup is a pure cache hit.
 VkDescriptorSet get_scheme_set(MechIsland* s, uint32_t albedo, uint32_t ao, uint32_t nrm,
                                uint32_t par) {
     VkDescriptorSet dummySet = s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set[par];
@@ -582,9 +553,11 @@ VkDescriptorSet get_scheme_set(MechIsland* s, uint32_t albedo, uint32_t ao, uint
     for (auto& e : s->schemes)
         if (e.albedo == albedo && e.ao == ao && e.nrm == nrm) return e.set[par];
     if (s->schemes.size() >= MechIsland::kMaxSchemes) return dummySet;  // budget: draws unlit-ish
-    VkImageView va = get_tex_view(s, albedo);
-    VkImageView vo = get_tex_view(s, ao);
-    VkImageView vn = get_tex_view(s, nrm);
+    bool pending = false;
+    VkImageView va = get_tex_view(s, albedo, &pending);
+    VkImageView vo = get_tex_view(s, ao, &pending);
+    VkImageView vn = get_tex_view(s, nrm, &pending);
+    if (pending) return dummySet;   // a texture is not resident yet: retry next frame
     MechIsland::SchemeEntry e; e.albedo = albedo; e.ao = ao; e.nrm = nrm;
     if (!alloc_scheme_sets(s, va, vo, vn, e.set)) return dummySet;
     s->schemes.push_back(e);
@@ -877,51 +850,19 @@ bool upload_geometry_once(MechIsland* s) {
     if (s->geomUploaded) return true;
     Mc2MechGeomFeed feed{};
     if (!mc2_mech_island_get_geometry_feed(&feed)) return false;
-    if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
-    // VK-RUNG8 item-9: the CPU byte sources are now the ONLY mech geometry feed; the
-    // GL glGetBufferSubData readback fallback was deleted. If the CPU sources aren't
-    // ready yet (a normals rebuild raced the batcher accessor -> vboCpu null), decline
-    // this frame and retry next frame -- do NOT allocate the VK buffers first. This is
-    // the explicit fail-hard-with-retry replacement for the old per-frame GL rescue.
-    if (!feed.vboCpu || !feed.iboCpu) return false;
+    // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from). A null source means a
+    // normals rebuild raced the accessor: decline this frame and retry before allocating anything.
+    if (feed.vboBytes == 0 || feed.iboBytes == 0 || !feed.vboCpu || !feed.iboCpu) return false;
     if (feed.vertexStride != mc2_mech_vertex_stride())
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
 
-    if (!make_buffer(s, s->vbo, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "mech.vbo")) return false;
-    if (!make_buffer(s, s->ibo, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "mech.ibo")) return false;
-
-    { void* p = nullptr;
-      if ((p = s->vbo.map()) != nullptr) {
-          std::memcpy(p, feed.vboCpu, (size_t)feed.vboBytes);
-          s->vbo.unmap();
-      } }
-    { void* p = nullptr;
-      if ((p = s->ibo.map()) != nullptr) {
-          std::memcpy(p, feed.iboCpu, (size_t)feed.iboBytes);
-          s->ibo.unmap();
-      } }
-    ++g_feedNative.nativeGeomCopies;
-    // VK-MECH-FEED-AUDIT-1: verification-only byte-compare of the CPU sources vs the
-    // GL buffers (proves the native feed carries the exact bytes GL rendered with).
-    if (mechFeedAuditRequested()) {
-        ++g_feedNative.auditRuns;
-        unsigned long mism = 0;
-        std::vector<uint8_t> scratch;
-        scratch.resize((size_t)feed.vboBytes);
-        glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-        glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        if (std::memcmp(scratch.data(), feed.vboCpu, (size_t)feed.vboBytes) != 0) ++mism;
-        scratch.resize((size_t)feed.iboBytes);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-        glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        if (std::memcmp(scratch.data(), feed.iboCpu, (size_t)feed.iboBytes) != 0) ++mism;
-        g_feedNative.auditMismatches += mism;
-        vlog("FEED-AUDIT geometry: vbo=%llu B ibo=%llu B mismatch_buffers=%lu %s",
-             (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,
-             mism, mism ? "*** NATIVE FEED DIVERGES FROM GL ***" : "(byte-identical)");
+    // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing instead of drawing unfilled buffers.
+    if (!s->vbo.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "mech.vbo") ||
+        !s->ibo.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "mech.ibo")) {
+        vlog("mech geometry upload failed (buffer creation or map); retrying next frame.");
+        s->vbo.reset();
+        return false;
     }
     g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
     s->geomUploaded = true;
@@ -1014,7 +955,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     if (s->wantMaterial) {
         for (uint32_t r = 0; r < feed.runCount; ++r) {
             const Mc2MechDrawRun& rr = feed.runs[r];
-            get_scheme_set(s, rr.slot0GlTex, rr.aoGlTex, rr.normalGlTex, 0);
+            get_scheme_set(s, rr.slot0Tex, rr.aoTex, rr.normalTex, 0);
         }
     }
 
@@ -1081,7 +1022,6 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
                                                                      feed.lightDataCpuBytes)) {
             bind_light_buffer_all(s, par, sharedLight);
             s->lightingReady = true;
-            ++g_feedNative.nativeLightFrames;
         } else {
             ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (twin-copy path)
             const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
@@ -1092,34 +1032,6 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
                 // Restore the own-buffer bindings after any shared frames.
                 bind_light_buffer_all(s, par, s->lightBuf[par].get());
                 s->lightingReady = true;
-                ++g_feedNative.nativeLightFrames;
-            }
-        }
-        // VK-MECH-FEED-AUDIT-1: byte-compare the shared prefix of the CPU array vs
-        // the GL SSBO (sizes may differ: the GL SSBO is capacity-sized / uploaded at
-        // renderLists, the CPU count is live -- compare min()).
-        if (s->lightingReady && mechFeedAuditRequested()
-            && feed.lightDataGlSsbo != 0 && feed.lightDataBytes >= 3600ull) {
-            ++g_feedNative.auditRuns;
-            const unsigned long long cmp64 =
-                feed.lightDataCpuBytes < feed.lightDataBytes ? feed.lightDataCpuBytes
-                                                             : feed.lightDataBytes;
-            const size_t cmp = (size_t)cmp64;
-            std::vector<uint8_t> glCopy(cmp);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.lightDataGlSsbo);
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)cmp, glCopy.data());
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            const bool diff = std::memcmp(glCopy.data(), feed.lightDataCpu, cmp) != 0;
-            if (diff) ++g_feedNative.auditMismatches;
-            static unsigned long s_auditLogged = 0;
-            if (diff || s_auditLogged < 3) {
-                ++s_auditLogged;
-                vlog("FEED-AUDIT lights: cpu=%llu B gl=%llu B cmp=%zu B %s "
-                     "(runs=%lu mismatches=%lu)",
-                     (unsigned long long)feed.lightDataCpuBytes,
-                     (unsigned long long)feed.lightDataBytes, cmp,
-                     diff ? "*** NATIVE FEED DIVERGES FROM GL ***" : "byte-identical",
-                     g_feedNative.auditRuns, g_feedNative.auditMismatches);
             }
         }
     }
@@ -1211,7 +1123,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         const Mc2MechDrawRun& run = feed.runs[r];
         if (run.indexCount == 0 || run.instanceCount == 0) continue;
         VkDescriptorSet set = s->wantMaterial
-            ? get_scheme_set(s, run.slot0GlTex, run.aoGlTex, run.normalGlTex, par) : dummySet;
+            ? get_scheme_set(s, run.slot0Tex, run.aoTex, run.normalTex, par) : dummySet;
         if (set == VK_NULL_HANDLE) set = dummySet;
         if (set != boundSet) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 0, nullptr);

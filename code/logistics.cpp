@@ -163,16 +163,11 @@ void Logistics::start (long startMode)
 				}
 			}
 
-			// Join any previous bg init thread before (re-)launching.
-			if (m_initFuture.valid())
-				m_initFuture.get();
-
-			// Launch LogisticsData::init() (mech/variant/availability scan) on a
-			// background thread so the intro movie starts without waiting for it.
-			// Safety: FastFile globals and g_modIndex are read-only by this point.
-			// LogisticsData::init() has an early-return guard after first run.
-			// Main thread joins in update() before any interactive LogisticsData use.
-			m_initFuture = std::async(std::launch::async, [this]{ initializeLogData(); });
+			// On the main thread: FastFile archives read through one shared FILE* and LZ
+			// buffer, so a concurrent reader corrupts the parse (BUGS row 37's race class).
+			// MissionSelectionScreen::begin() below needs the logistics data populated. The serial parse
+			// costs about 150 ms once per load (BUGS row 37), so the intro movie starts that much later.
+			initializeLogData();
 
 			bool bTestScript = false;
 			if ( bTestScript )
@@ -189,16 +184,6 @@ void Logistics::start (long startMode)
 
 			active = TRUE;
 			setLogisticsState(log_SPLASH);
-
-			// [STARTUP-INIT-ASYNC-1 FIX] missionBegin->init() below synchronously
-			// reaches MissionSelectionScreen::begin(), which reads logistics mission
-			// data (getCurrentOperationFile etc.). Join the bg init future first: a
-			// skipped or fast intro otherwise reaches that read before
-			// initializeLogData() populates missionInfo->groups -> null-deref crash
-			// at LogisticsMissionInfo::getCurrentOperationFile. Normal play (intro
-			// plays >5s) finds the future already done, so this join is ~instant.
-			if (m_initFuture.valid())
-				m_initFuture.get();
 
 			if ( !missionBegin )
 			{
@@ -387,13 +372,6 @@ long Logistics::update (void)
 	}
 	else if ( logisticsState != log_DONE )
 	{
-		// Join bg init thread (once) before driving the main menu.
-		// Runs in parallel with MissionBegin::begin() + initDialogs in InitializeGameEngine,
-		// so this join is usually instant (thread done before first update() call).
-		// Blocks at most (T_init - T_missionBeginSetup) on the very first update() frame.
-		if (m_initFuture.valid())
-			m_initFuture.get();
-
 		if ( missionBegin )
 		{
 			const char* pVid =  missionBegin->update();

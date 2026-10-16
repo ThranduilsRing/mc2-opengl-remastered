@@ -1,7 +1,7 @@
 // tests/unit/test_objective_text.cpp
 //
-// The objective text reader / writer (code/objective_text.cpp) and the boolean flag table (code/objective_flags.cpp), step 4 batch B1.1
-// (.claude/cleanup/cxx23-step4-b1-notes.md, hazards H1, H2, H15). Both are leaf TUs over FitIniFile, so the real file stack runs here.
+// The objective text reader / writer (code/objective_text.cpp) and the boolean flag table (code/objective_flags.cpp).
+// Both are leaf TUs over FitIniFile, so the real file stack runs here.
 //
 // The rules pinned below:
 //  - a missing or over-long key is an empty optional, so a missing ObjectiveModel never takes the text of the key read before it;

@@ -2195,7 +2195,10 @@ void GameObject::CopyTo (GameObjectData *data)
 	data->collisionFreeFromWID = collisionFreeFromWID;
 	data->collisionFreeTime = collisionFreeTime;
 	data->screenPos = screenPos;
-	data->windowsVisible = windowsVisible;
+	// windowsVisible is the turn the camera last saw the object (stamped by the render pass or a camera bounds test) and
+	// Load resets it, so the save carries zero: a saved stamp made the save depend on the camera and on how many sim steps
+	// ran since the last drawn frame.
+	data->windowsVisible = 0;
 	data->explRadius = explRadius;
 	data->explDamage = explDamage;
 	data->maxCV = maxCV;

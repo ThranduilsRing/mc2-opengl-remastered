@@ -7,24 +7,20 @@
 
 namespace vk_terrain_detail {
 
-// Snapshot the GL height SSBO into the VK-owned buffer when the feed version changes.
-// Map-load copy (glGetBufferSubData -> vmaMap), NOT a per-frame handoff readback.
+// Copy the store's height field into the VK-owned buffer when the feed version changes
+// (map load and every height patch), never per frame.
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
-    if (feed.glHeightSsbo == 0 || feed.heightBytes == 0) return false;
+    if (!feed.heightCpu || feed.heightBytes == 0) return false;
     if (!ensure_height_capacity(s, (VkDeviceSize)feed.heightBytes)) return false;
     // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
     // rare rewrite: mission load / crater deform). Under the deferred retire a prior
     // terrain submit may still be reading it — device-idle before rewriting in place.
     // (The old inline post-submit fence wait used to provide this guarantee for free.)
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
-    std::vector<uint8_t> scratch((size_t)feed.heightBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, scratch.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, scratch.data(), (size_t)feed.heightBytes);
+    std::memcpy(p, feed.heightCpu, (size_t)feed.heightBytes);
     vmaUnmapMemory(s->allocator, s->heightBuf.allocation());
     s->heightVersionCopied = feed.heightVersion;
     ++g_health.heightSnapshots;
@@ -403,10 +399,10 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // On failure the dummy stays bound (matNormalReady=false) -> FS uses macro-slope only.
 }
 
-// Snapshot the GL cement-word SSBO into the VK-owned buffer when the feed version
-// changes. Map-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_height.
+// Copy the store's cement words into the VK-owned buffer when the feed version changes
+// (map load), mirroring snapshot_height. A map without words gets an all-zero field.
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (feed.glCementSsbo == 0 || feed.cementBytes == 0) return false;  // not live yet
+    if (feed.cementBytes == 0) return false;  // no map yet
     if (feed.cementVersion == s->cementVersionCopied && s->cementWordsReady) return true;
     // Ensure capacity (grow-only, like the height buffer).
     if (!s->cementBuf || (VkDeviceSize)feed.cementBytes > s->cementCapBytes) {
@@ -424,27 +420,24 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (map-load version bump)
     // — device-idle before writing in place (see snapshot_height).
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_snapshot");
-    std::vector<uint8_t> scratch((size_t)feed.cementBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glCementSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.cementBytes, scratch.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->cementBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, scratch.data(), (size_t)feed.cementBytes);
+    if (feed.cementCpu) std::memcpy(p, feed.cementCpu, (size_t)feed.cementBytes);
+    else std::memset(p, 0, (size_t)feed.cementBytes);
     vmaUnmapMemory(s->allocator, s->cementBuf.allocation());
     s->cementVersionCopied = feed.cementVersion;
     s->cementWordsReady = true;
     return true;
 }
 
-// VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshot the GL 4x visual-heightfield bake SSBO
-// (binding 26) into the VK-owned buffer when the feed version changes. Version-gated
-// mission-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_cement — the
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: copy the store's 4x visual-heightfield bake (the GL
+// binding-26 bytes) into the VK-owned buffer when the feed version changes. Version-gated
+// mission-load copy, mirroring snapshot_cement — the
 // bake is uploaded once per mission (gos_TerrainLodChunk_UploadVisualHeightFull), so
 // this is a cheap no-op on every other frame. Fail-soft: on any failure
 // visualHeightReady stays false -> UBO visualMode forced 0 -> VS draws undisplaced.
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (feed.glVisualHeightSsbo == 0 || feed.visualHeightBytes == 0) return false;  // bake not live
+    if (!feed.visualHeightCpu || feed.visualHeightBytes == 0) return false;  // bake not live
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
     if (!s->visualHeightBuf || (VkDeviceSize)feed.visualHeightBytes > s->visualHeightCapBytes) {
@@ -462,19 +455,15 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (once-per-mission bake)
     // — device-idle before writing in place (see snapshot_height).
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_snapshot");
-    std::vector<uint8_t> scratch((size_t)feed.visualHeightBytes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glVisualHeightSsbo);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.visualHeightBytes, scratch.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->visualHeightBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, scratch.data(), (size_t)feed.visualHeightBytes);
+    std::memcpy(p, feed.visualHeightCpu, (size_t)feed.visualHeightBytes);
     vmaUnmapMemory(s->allocator, s->visualHeightBuf.allocation());
     s->visualHeightVersionCopied = feed.visualHeightVersion;
     s->visualHeightReady = true;
     static bool s_first = false;
     if (!s_first) {
-        vlog("VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshotted GL visual-height bake "
+        vlog("VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshotted the visual-height bake "
              "(V=%d bytes=%llu ver=%llu); VK far bands now Z-swap like GL mode 2.",
              feed.visualSide, (unsigned long long)feed.visualHeightBytes,
              (unsigned long long)feed.visualHeightVersion);
@@ -484,16 +473,8 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 }
 
 // ---------------------------------------------------------------------------
-// VK-TERRAIN-LIGHTING sub-slice: STATIC sun shadow map. VK-SHADOW-COPY-ONCE-1 UPDATE:
-// the GL static shadow map is built ONCE PER MISSION (gos_StaticLightMatrixBuilt()
-// latch), not per frame -- the original "GL map updates every frame" premise below was
-// wrong for the STATIC map (it is correct for the DYNAMIC map, which is genuinely
-// re-rendered every frame from moving mechs/buildings and stays copy-per-frame). The
-// static copy is now gated on feed.staticShadowGeneration so it only re-copies when the
-// GL side actually rebuilt (mission load / re-arm). glGetTexImage on a DEPTH texture is
-// NOT a color readback, so it does not trip the co-write path's forbidden-readback
-// assert (that counts glGetTexImage/glReadPixels via g_forbidden, which this does not
-// bump — it is a distinct depth pull on the shadow FBO's texture, endorsed for a probe).
+// Shadow maps the terrain samples: the static sun map (binding 5), the single dynamic map (binding 7) and the cascades (bindings 8, 9). All of them
+// are the VK shadow island's images; this island only owns 1x1 dummies that keep each binding valid before the first product.
 // ---------------------------------------------------------------------------
 
 // Depth-COMPARE sampler: compareOp=LESS_OR_EQUAL, LINEAR HW PCF, CLAMP_TO_BORDER
@@ -512,11 +493,8 @@ bool ensure_shadow_sampler(TerrainIsland* s) {
     return mc2vk::create(s->shadowSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
-// (Re)create the VK D32 depth image at `dim` texels (idempotent when unchanged).
-// Leaves it in DEPTH SHADER_READ layout so binding 5 is always valid; the per-frame
-// copy re-transitions it. Frees the prior image on a size change.
-// Slot-parameterized D32 depth-compare image ensure (static uses shadowImg/View/Dim,
-// dynamic uses dynShadow*). Leaves DEPTH SHADER_READ so the binding is always valid.
+// A D32 depth-compare image of `dim` texels for one binding's dummy (static: shadowImg/View/Dim, dynamic: dynShadow*), idempotent when unchanged.
+// Left in DEPTH SHADER_READ so the binding is always valid.
 bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
                               mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, uint32_t* curDim) {
     if (dim == 0) dim = 1;
@@ -640,8 +618,7 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->csmArrayDirect = false;
     s->csmFullMapExternalView = VK_NULL_HANDLE;
     s->csmFullMapDirect = false;
-    if (!feed.csmEnabled || feed.glCsmArrayTex == 0 || feed.csmArraySize <= 0
-        || feed.glCsmFullMapTex == 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
+    if (!feed.csmEnabled || feed.csmArraySize <= 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
         return false;
 
     // Near-cascade array: direct VK shadow-island view only (warmup-declines to legacy).
@@ -677,99 +654,24 @@ bool ensure_dummy_shadow(TerrainIsland* s) {
     return true;
 }
 
-// Slot-parameterized per-frame depth copy from a GL DEPTH_COMPONENT texture into a VK
-// D32 image. Shared by static (binding 5) and dynamic (binding 7) shadow maps. glGetTexImage
-// depth readback -> forbidden color counters untouched.
-bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, mc2vk::OwnedBuffer& stage, VkDeviceSize* stageBytes,
-                      bool perFrame) {
-    // Strict no-interop: never do the per-frame GL depth readback fallback (fail-soft
-    // to unshadowed for this frame). Copy-once static-shadow imports (perFrame=false)
-    // are still allowed.
-    if (perFrame && terrainNoInteropStrict()) return false;
-    const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * 4u;  // float32 per texel
-    if (!stage || bytes > *stageBytes) {
-        if (stage) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shadow_stage_grow");
-            stage.reset();
-        }
-        if (!make_buffer(s, stage, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging"))
-            return false;
-        *stageBytes = bytes;
-    }
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, stage.allocation(), &p) != VK_SUCCESS) return false;
-    // CSM-BLACKOUT-RECON-1 FIX (same GL depth-readback hazard class): save/restore the
-    // active unit's GL_TEXTURE_2D binding instead of stomping it to 0 mid-frame.
-    GLint prev2DBind = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2DBind);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
-    if (perFrame) terrainPerFrameReadback("copy_shadow_slot");  // H2b: dynamic/csm-fullmap fallback only
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prev2DBind);
-    vmaUnmapMemory(s->allocator, stage.allocation());
-
-    VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = img;
-    bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-    bar.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy rgn{};
-    rgn.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
-    rgn.imageExtent = {dim, dim, 1};
-    vkCmdCopyBufferToImage(cb, stage.get(), img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    end_oneshot(s, cb);
-    return true;
-}
-
-// VK-SHADOW-COPY-ONCE-1: copy-once-per-generation of the GL STATIC shadow depth texture
-// into the VK D32 image (binding 5). The GL static map is built ONCE per mission
-// (gos_StaticLightMatrixBuilt() latch; see gos_postprocess.h/.cpp), not per frame, so
-// feed.staticShadowGeneration only bumps on a real (re)build. Skipping the
-// glGetTexImage(4096^2 float)->staging->VK-upload on unchanged frames removes a fixed
-// per-frame tax with zero pixel change (same bytes end up in the VK image either way).
-bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.lightingEnabled || !feed.shadowsEnabled) { s->shadowReady = false; return false; }
-    if (feed.glStaticShadowTex == 0 || feed.staticShadowSize <= 0) { s->shadowReady = false; return false; }
-    const uint32_t dim = (uint32_t)feed.staticShadowSize;
-    if (!ensure_shadow_image(s, dim)) { s->shadowReady = false; return false; }
-
-    // Already have this generation's content in the VK image (and dim unchanged, else
-    // ensure_shadow_image would have recreated it and shadowReady/shadowGenCopied must be
-    // re-synced below since a size change invalidates the copied image contents).
-    if (s->shadowReady && s->shadowGenCopied == feed.staticShadowGeneration && s->shadowDim == dim)
-        return true;
-
-    if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg.get(),
-                          s->shadowStage, &s->shadowStageBytes,
-                          /*perFrame=*/false)) {  // copy-once per generation (guarded above)
-        s->shadowReady = false;
-        return false;
-    }
-    s->shadowGenCopied = feed.staticShadowGeneration;
+// The static sun shadow map (binding 5): the VK shadow island's own map, used only when its build is of the feed's generation, so the map and the
+// static light matrix in the UBO come from the same engine build. Between a rebake and its build (one frame) terrain has no static shadow.
+bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    s->shadowReady = false;
+    s->shadowExternalView = VK_NULL_HANDLE;
+    if (!feed.lightingEnabled || !feed.shadowsEnabled || feed.staticShadowGeneration == 0) return false;
+    if (mc2_vk_shadow_island_static_generation() != feed.staticShadowGeneration) return false;
+    void* view = mc2_vk_shadow_island_get_static_view();
+    if (view == nullptr) return false;
+    s->shadowExternalView = reinterpret_cast<VkImageView>(view);
     s->shadowReady = true;
     return true;
 }
 
-// Per-frame copy of the GL DYNAMIC (building/mech) shadow depth texture into the 2nd VK
-// D32 image (binding 7). Same mechanism as static; gated by MC2_VK_TERRAIN_DYNSHADOW feed.
-//
-// VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island (MC2_VK_SHADOW_INTEROP) produced
-// this frame's dynamic shadow depth, skip the glGetTexImage+vkCmdCopyBufferToImage
-// round-trip entirely and point binding 7 at the shadow island's own VkImageView
-// (dynShadowExternalView; write_descriptors() picks it up). Falls back to the existing
-// GL-copy mechanism whenever the shadow island declined this frame (fail-soft, never a
-// hole — matches the umbrella's existing per-frame fail-soft convention). This is a
-// dyn-shadow-CONSUME optimization only; the interop gate + producer are unchanged.
+// The single dynamic shadow map (binding 7) for frames without cascades (ShadowCSM=FALSE): the VK shadow island's own depth view when it produced one this
+// frame, else no dynamic shadow on terrain this frame. There is no GL-copy fallback: it was a per-frame GL depth readback, which the co-write path treats
+// as fatal, so the first frame of a ShadowCSM=FALSE mission (shadow island not yet up) latched the whole terrain island off and the VK scene was never
+// cleared again (objects smeared over a frame with no terrain).
 bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->dynShadowReady = false;
     s->dynShadowExternalView = VK_NULL_HANDLE;
@@ -779,8 +681,7 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // The cascades serve the dynamic shadow whenever the island produced both of them this frame; the single map is then neither produced nor copied.
     if (mc2_vk_shadow_island_csm_array_ready() && mc2_vk_shadow_island_csm_fullmap_ready()) return false;
 
-    // Direct path: the shadow island already produced+fenced a VK-native depth image
-    // this exact frame (same-queue, already retired -- see accessor doc comment).
+    // The shadow island recorded this frame's map into its one submit; the same queue and its render-pass dependencies order this read behind the write.
     if (mc2_vk_shadow_island_dyn_shadow_ready()) {
         void* rawView = mc2_vk_shadow_island_get_dyn_shadow_view();
         if (rawView != nullptr) {
@@ -791,15 +692,14 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
     }
 
-    // Fallback: existing GL-copy mechanism (unchanged).
-    if (feed.glDynamicShadowTex == 0 || feed.dynamicShadowSize <= 0) return false;
-    const uint32_t dim = (uint32_t)feed.dynamicShadowSize;
-    if (!ensure_shadow_image_slot(s, dim, s->dynShadowImg, s->dynShadowView, &s->dynShadowDim)) return false;
-    if (!copy_shadow_slot(s, feed.glDynamicShadowTex, dim, s->dynShadowImg.get(),
-                          s->dynShadowStage, &s->dynShadowStageBytes,
-                          /*perFrame=*/true)) return false;  // H2b: per-frame fallback (direct-chain declined)
-    s->dynShadowReady = true;
-    return true;
+    // Expected on the first mission's first frames; logged once per process, so a later mission whose map never arrives
+    // is silent.
+    static bool s_noDynMapLogged = false;
+    if (!s_noDynMapLogged) {
+        s_noDynMapLogged = true;
+        vlog("dynamic shadow: no VK dynamic map yet; terrain has no dynamic shadow this frame");
+    }
+    return false;
 }
 
 } // namespace

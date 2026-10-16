@@ -332,28 +332,20 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
 
-    // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the GL 4x
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake
     // version changed). Fail-soft: not-ready -> UBO visualMode forced 0 (undisplaced).
-    if (feed.glVisualHeightSsbo != 0)
+    if (feed.visualHeightCpu)
         snapshot_visual_height(s, feed);
 
-    // VK-TERRAIN-LIGHTING: copy-once-per-generation of the GL static sun shadow map into
-    // the VK D32 depth-compare image (VK-SHADOW-COPY-ONCE-1: the GL map is built once per
-    // mission, so this call is a cheap no-op on unchanged frames -- see
-    // feed.staticShadowGeneration / copy_static_shadow above). No-op (shadowReady=false)
-    // when the lighting gate is off or the GL map isn't live -> VK terrain is lit but
-    // unshadowed (fail-soft, never a hole). Runs on the GL/render thread.
+    // Binding 5 is the VK shadow island's static sun map of this frame's generation, or no static shadow (lit, never a hole).
     {
         const clk::time_point t0 = clk::now();
-        copy_static_shadow(s, feed);
+        bind_static_shadow(s, feed);
         if (s_copyStatsOn) subStaticUs = usSince(t0);
     }
 
-    // VK-TERRAIN-DYNSHADOW: per-frame copy of the GL DYNAMIC (building/mech) shadow map
-    // into the 2nd VK D32 depth-compare image. No-op (dynShadowReady=false) when the
-    // sub-gate is off or the GL dynamic map isn't live -> VK terrain has no dynamic
-    // shadow (fail-soft, never a hole). Same mechanism as the static copy above.
+    // Binding 7 is the VK shadow island's single dynamic map this frame, or no dynamic shadow at all.
     {
         const clk::time_point t0 = clk::now();
         copy_dynamic_shadow(s, feed);
@@ -370,17 +362,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (s_copyStatsOn) subCsmUs = usSince(t0);
     }
 
-    // VK-SHADOW-DIRECT-CONSUME-1: the direct view's underlying VkImageView handle is
-    // stable across frames (owned by the shadow island's persistent ShadowIsland), but
-    // binding 7 must still be refreshed via write_descriptors() the FIRST frame it
-    // switches to/from the direct view (the descriptor set otherwise still points at
-    // whatever was last written -- unlike the owned dynShadowView image, whose CONTENTS
-    // change per-frame via copy_shadow_slot without needing a new descriptor write).
+    // The shadow island's views are stable across frames, but bindings 5, 7, 8 and 9 are rewritten (write_descriptors) on the frame a binding switches
+    // between the island's view and this island's dummy: the descriptor set otherwise still names whatever was last written.
     {
+        const VkImageView wantStaticView = s->shadowExternalView != VK_NULL_HANDLE ? s->shadowExternalView : s->shadowView.get();
         const VkImageView wantView = s->dynShadowDirect ? s->dynShadowExternalView : s->dynShadowView.get();
         const VkImageView wantCsmArrayView = s->csmArrayDirect ? s->csmArrayExternalView : s->csmArrayView.get();
         const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView.get();
-        if (wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
+        if (wantStaticView != s->shadowBoundView || wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
             || wantCsmFullMapView != s->csmFullMapBoundView) {
             // VK-TERRAIN-FENCE-DEFER-1: a prior terrain submit may still be in flight
             // using these sets under the deferred retire (the old inline wait made
@@ -388,6 +377,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
             // of a direct-consume switch / warmup transitions) — device-idle first.
             mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_bound_view_switch");
             write_descriptors(s);
+            s->shadowBoundView = wantStaticView;
             s->dynShadowBoundView = wantView;
             s->csmArrayBoundView = wantCsmArrayView;
             s->csmFullMapBoundView = wantCsmFullMapView;

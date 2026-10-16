@@ -45,7 +45,7 @@
 # blob 6c0851270e1f04dfee533939d6d4dcac7dcea01f code/gvehicl_control.cpp
 # blob 4a4a71f30445711f4846d7013b35f164fc423334 code/light.cpp
 # blob 8413920270f8a05c56f7b225084e5652fcac8013 code/logisticsdata.cpp
-# blob 58c47be6fceb8471a2806fb8e4c6e7d208447467 code/logisticsdata_init.cpp
+# blob fc24a1575546911b3c7179033209e1ce6e79f2da code/logisticsdata_init.cpp
 # blob e4c01f7f531b7086d3f3508a3da522a4583008b2 code/mech_type.cpp
 # blob c45f805f4979bda5847106e091676241140cffeb code/mission_init.cpp
 # blob 236c9c677b163b1aa7d4071b52f5d0f3abd2c98a code/mission_movers.cpp
@@ -69,7 +69,7 @@ code/gvehicl.cpp:125:FitIniFile::open
 code/gvehicl_control.cpp:89:FitIniFile::open
 code/light.cpp:56:FitIniFile::open
 code/logisticsdata.cpp:324:FitIniFile::open
-code/logisticsdata_init.cpp:527:FitIniFile::open
+code/logisticsdata_init.cpp:524:FitIniFile::open
 code/mech_type.cpp:166:FitIniFile::open
 code/mission_init.cpp:170:File::operator delete
 code/mission_init.cpp:170:File::operator new

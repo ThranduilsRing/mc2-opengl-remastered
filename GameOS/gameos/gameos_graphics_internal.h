@@ -10,8 +10,10 @@
 
 #include "gameos.hpp"
 #include "gos_font.h"
+#include "texture_decode.h"   // mc2tex::decodeBc7 for the pre-compressed RGBA8 mirror
 #include "utils/gl_utils.h"
 #include "utils/Image.h"
+#include "utils/mc2log.h"
 
 #include <GL/glew.h>
 #include <cstring>
@@ -142,12 +144,11 @@ class gosTexture {
             mirror_h_ = 0;
         }
 
-        // TEXMGR-COMPRESSED-UPLOAD-1: wrap a pre-built (already GL-uploaded)
-        // Texture so the handle integrates with textureList_/bind/destroy
-        // exactly like the other gosTexture flavors. No createHardwareTexture()
-        // call — the GL object is supplied ready. Used by
-        // gos_NewCompressedTexture2D for BC7 .ktx2 sidecar uploads.
-        gosTexture(const Texture& prebuilt, gos_TextureFormat fmt, const char* name)
+        // A pre-compressed texture (gos_NewCompressedTexture2D, BC7 .ktx2 sidecars): the GL object arrives ready, and the
+        // level-0 blocks it was uploaded from stay with the handle as its CPU texels (vkFormat 145 / 146).
+        gosTexture(const Texture& prebuilt, gos_TextureFormat fmt, const char* name, uint32_t blockVkFormat,
+                   std::shared_ptr<const std::vector<uint8_t>> blocks)
+            : blocks_(std::move(blocks)), block_vk_format_(blockVkFormat)
         {
             format_ = fmt;
             if(name) {
@@ -232,55 +233,37 @@ class gosTexture {
             rgba_mirror_ = std::move(fresh);
         }
 
-        // VK-FIELD-VFX-4: lazily build the HUD rgba mirror by reading the texel
-        // content back from the GPU. Covers textures whose upload path never set
-        // a CPU mirror — above all the BC7 .ktx2 sidecar path
-        // (gos_NewCompressedTexture2D in txmmgr realize), which effect sprites
-        // (weapon-beam gradients etc.) take; the VK present tail then declined
-        // them as textured draws. glGetTexImage with GL_RGBA/GL_UNSIGNED_BYTE is
-        // legal on a BPTC-compressed texture (the driver decompresses); guard the
-        // result (GL error / all-zero alpha+rgb) so a driver that can't decode
-        // just leaves the mirror empty and behavior is unchanged (per-draw
-        // decline, as today). Attempted at most once per content serial.
-        bool ensureRgbaMirrorFromGpu() {
+        // Publishes already-RGBA8 texels as the mirror without a copy (the decoded upload source).
+        void adoptRgbaMirror(int w, int h, std::vector<uint8_t>&& rgba) {
+            if (w <= 0 || h <= 0 || rgba.size() != (size_t)w * (size_t)h * 4u) {
+                setRgbaMirror(0, 0, TF_RGBA8, nullptr);
+                return;
+            }
+            mirror_w_ = w;
+            mirror_h_ = h;
+            rgba_mirror_ = std::make_shared<const std::vector<uint8_t>>(std::move(rgba));
+        }
+
+        // The level-0 BC7 blocks of a pre-compressed texture (null for every other flavour) and their VK_FORMAT (145 / 146).
+        std::shared_ptr<const std::vector<uint8_t>> getBlocks() const { return blocks_; }
+        uint32_t getBlockVkFormat() const { return block_vk_format_; }
+
+        // Gives a pre-compressed texture an RGBA8 mirror for the consumers that only take RGBA8 (the Vulkan HUD / VFX tail):
+        // its blocks decoded on the CPU, once per content. Every other flavour sets its mirror at upload, so false means the
+        // texture has no CPU texels at all.
+        bool ensureRgbaMirror() {
             if (hasRgbaMirror())
                 return true;
-            if (mirror_gpu_attempt_serial_ == content_serial_)
-                return false; // already tried this content; don't retry per frame
-            mirror_gpu_attempt_serial_ = content_serial_;
-            if (tex_.w <= 0 || tex_.h <= 0 || tex_.id == 0 ||
-                tex_.type_ != TT_2D)
+            if (!blocks_ || mirror_decode_serial_ == content_serial_ || tex_.w <= 0 || tex_.h <= 0)
                 return false;
-            const size_t bytes = (size_t)tex_.w * (size_t)tex_.h * 4u;
-            std::vector<uint8_t> px(bytes, 0u);
-            {
-                GlPixelStoreGuard pixelStoreGuard;
-                while (glGetError() != GL_NO_ERROR) {} // clear stale errors
-                glBindTexture(GL_TEXTURE_2D, tex_.id);
-                glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
-                const GLenum err = glGetError();
-                glBindTexture(GL_TEXTURE_2D, 0);
-                if (err != GL_NO_ERROR) {
-                    static int s_mirrorReadFails = 0;
-                    if (++s_mirrorReadFails <= 3)
-                        std::fprintf(stderr,
-                            "[VK_HUD_MIRROR v1] gpu readback FAILED id=%u err=0x%x\n",
-                            tex_.id, (unsigned)err);
-                    return false;
-                }
+            mirror_decode_serial_ = content_serial_;   // a failed decode is not retried per frame
+            std::vector<uint8_t> rgba = mc2tex::decodeBc7(*blocks_, (uint32_t)tex_.w, (uint32_t)tex_.h);
+            if (rgba.empty()) {
+                MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] {}: BC7 blocks do not decode at {:d}x{:d}; drawn untextured",
+                        texname_ ? texname_ : "NO NAME", tex_.w, tex_.h);
+                return false;
             }
-            bool anyNonZero = false;
-            for (size_t i = 0; i < bytes; ++i) {
-                if (px[i] != 0u) { anyNonZero = true; break; }
-            }
-            if (!anyNonZero)
-                return false; // silently-unwritten readback: keep declining
-            setRgbaMirror(tex_.w, tex_.h, TF_RGBA8, px.data());
-            static int s_mirrorReadOk = 0;
-            if (++s_mirrorReadOk <= 8)
-                std::fprintf(stderr,
-                    "[VK_HUD_MIRROR v1] gpu readback mirror built id=%u %dx%d\n",
-                    tex_.id, tex_.w, tex_.h);
+            adoptRgbaMirror(tex_.w, tex_.h, std::move(rgba));
             return true;
         }
 
@@ -385,9 +368,9 @@ class gosTexture {
         std::shared_ptr<const std::vector<uint8_t>> rgba_mirror_;   // VK-HUD-MIRRORCOPY-1: immutable-after-publication
         int mirror_w_;
         int mirror_h_;
-        // VK-FIELD-VFX-4: content serial of the last GPU-readback mirror attempt
-        // (ensureRgbaMirrorFromGpu), so a failed readback is not retried per frame.
-        uint32_t mirror_gpu_attempt_serial_ = 0xffffffffu;
+        std::shared_ptr<const std::vector<uint8_t>> blocks_;   // pre-compressed level 0, immutable
+        uint32_t block_vk_format_ = 0;
+        uint32_t mirror_decode_serial_ = 0xffffffffu;   // content serial of the last blocks -> RGBA8 decode attempt
 };
 
 class gosFont {
