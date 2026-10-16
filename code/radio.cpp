@@ -120,16 +120,17 @@ long Radio::init (char *fileName, unsigned long heapSize, char *movie)
 }
 		
 constexpr int NO_PLAY = -1;
-// Reads packet `id` of `file` into `clip`. The clip counts as requested either way; it stays empty when the packet is
-// oversized or unreadable, and the message then plays without that sample.
-static bool loadRadioClip (PacketFilePtr file, long id, RadioClip& clip)
+// Reads packet `id` of `file`. The clip counts as requested either way; it stays empty when the packet is oversized or
+// unreadable, and the message then plays without that sample.
+static RadioClip loadRadioClip (PacketFilePtr file, long id)
 {
+	RadioClip clip;
 	clip.requested = true;
 	unsigned long size = file->getPacketSize();
 	if (size == 0 || size > MAX_RADIO_CLIP_BYTES)
 	{
 		MC2_LOG(Audio, Warn, "radio: packet {} has a bad size ({} bytes); the message plays without it", id, size);
-		return false;
+		return clip;
 	}
 
 	clip.bytes.resize(size);
@@ -137,9 +138,8 @@ static bool loadRadioClip (PacketFilePtr file, long id, RadioClip& clip)
 	{
 		MC2_LOG(Audio, Warn, "radio: packet {} could not be read; the message plays without it", id);
 		clip.bytes.clear();
-		return false;
 	}
-	return true;
+	return clip;
 }
 
 //------------------------------------------------------------------------------------------
@@ -228,17 +228,17 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 	{
 		if (messagesFile[radioID]->seekPacket(callsign) == NO_ERR)
 		{
-			loadRadioClip(messagesFile[radioID],callsign,msgData->data[fragmentNum]);
+			msgData->data[fragmentNum] = loadRadioClip(messagesFile[radioID],callsign);
 			fragmentNum++;
 		}
 	}
 
 	if (messagesFile[radioID]->seekPacket(msgData->msgId) == NO_ERR)
 	{
-		loadRadioClip(messagesFile[radioID],msgData->msgId,msgData->data[fragmentNum]);
+		msgData->data[fragmentNum] = loadRadioClip(messagesFile[radioID],msgData->msgId);
 
 		if (noiseFile->seekPacket(msgData->noiseId) == NO_ERR)
-			loadRadioClip(noiseFile,msgData->noiseId,msgData->noise[0]);
+			msgData->noise[0] = loadRadioClip(noiseFile,msgData->noiseId);
 	}
 	
 	// A full queue refuses the message; it is dropped here instead of playing late.

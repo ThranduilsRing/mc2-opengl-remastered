@@ -380,6 +380,37 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
 }
 
 //---------------------------------------------------------------------------
+// Creates the audio resource for a wave held in memory. A wave without a readable header creates nothing and is logged, so a
+// damaged sample is silent instead of read past its buffer.
+bool SoundSystem::createWaveResource (HGOSAUDIO *handle, const std::vector<uint8_t>& wave)
+{
+	constexpr size_t MIN_WAVE_BYTES = 44;			// RIFF header plus the format chunk
+	MC2_WAVEFORMATEX *waveFormat = nullptr;
+	MemoryPtr dataOffset = nullptr;
+	DWORD length = 0;
+
+	if (wave.size() < MIN_WAVE_BYTES ||
+		!wave_ParseWaveMemory(const_cast<MemoryPtr>(wave.data()),&waveFormat,&dataOffset,&length) ||
+		!waveFormat || !dataOffset || waveFormat->nChannels == 0)
+	{
+		MC2_LOG(Audio, Warn, "sound: a sample of {} bytes has no readable wave header; it is not played", wave.size());
+		return false;
+	}
+
+	gosAudio_Format soundFormat;
+	soundFormat.wFormatTag = 1;				//PCM
+	soundFormat.nChannels = waveFormat->nChannels;
+	soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
+	soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
+	soundFormat.nBlockAlign = waveFormat->nBlockAlign;
+	soundFormat.wBitsPerSample = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
+	soundFormat.cbSize = 0;
+
+	gosAudio_CreateResource(handle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
+	return true;
+}
+
+//---------------------------------------------------------------------------
 void SoundSystem::preloadSoundBite (long soundId)
 {
 	long result = soundDataFile->seekPacket(soundId);
@@ -411,34 +442,8 @@ void SoundSystem::preloadSoundBite (long soundId)
 			return;
 		}
 		
-		//--------------------------------------------------------------------
-		// Hand GOS sound the data it needs to create the resource Handle
-		gosAudio_Format soundFormat;
-		soundFormat.wFormatTag = 1;				//PCM
-
-		MC2_WAVEFORMATEX *waveFormat = nullptr;
-		MemoryPtr dataOffset = nullptr;
-		DWORD length = 0;
-		DWORD bitsPerSec = 0;
-		wave_ParseWaveMemory(thisSoundBite->biteData.data(),&waveFormat,&dataOffset,&length);
-	   
-		if (waveFormat && dataOffset && waveFormat->nChannels)
-		{
-			bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-
-			soundFormat.nChannels = waveFormat->nChannels;
-			soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-			soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-			soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-			soundFormat.wBitsPerSample = bitsPerSec;
-			soundFormat.cbSize = 0;
-
-			gosAudio_CreateResource(&thisSoundBite->resourceHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
-		}
-		else
-		{
+		if (!createWaveResource(&thisSoundBite->resourceHandle,thisSoundBite->biteData))
 			thisSoundBite->resourceHandle = nullptr;
-		}
 	}
 }
 
@@ -900,33 +905,11 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 			return(-1);
 		}
 		
-		//--------------------------------------------------------------------
-		// Hand GOS sound the data it needs to create the resource Handle
-		gosAudio_Format soundFormat;
-		soundFormat.wFormatTag = 1;				//PCM
-		
-		MC2_WAVEFORMATEX *waveFormat = nullptr;
-		MemoryPtr dataOffset = nullptr;
-		DWORD length = 0;
-		DWORD bitsPerSec = 0;
-		wave_ParseWaveMemory(bettySoundBite.data(),&waveFormat,&dataOffset,&length);
-		if (!waveFormat || !waveFormat->nChannels)
+		if (!createWaveResource(&bettyHandle,bettySoundBite))
 		{
-			MC2_LOG(Audio, Warn, "sound: betty sample {} has no readable wave header; it is not played", bettySampleId);
 			bettySoundBite.clear();
 			return(-1);
 		}
-		
-		bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-
-		soundFormat.nChannels = waveFormat->nChannels;
-		soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-		soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-		soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-		soundFormat.wBitsPerSample = bitsPerSec;
-		soundFormat.cbSize = 0;
-
-		gosAudio_CreateResource(&bettyHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
 		gosAudio_AssignResourceToChannel( ourChannel, bettyHandle );
 		gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
 			
@@ -981,33 +964,11 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 			}
 		}
 		
-		//--------------------------------------------------------------------
-		// Hand GOS sound the data it needs to create the resource Handle
-		gosAudio_Format soundFormat;
-		soundFormat.wFormatTag = 1;				//PCM
-		
-		MC2_WAVEFORMATEX *waveFormat = nullptr;
-		MemoryPtr dataOffset = nullptr;
-		DWORD length = 0;
-		DWORD bitsPerSec = 0;
-		wave_ParseWaveMemory(supportSoundBite.data(),&waveFormat,&dataOffset,&length);
-		if (!waveFormat || !waveFormat->nChannels)
+		if (!createWaveResource(&supportHandle,supportSoundBite))
 		{
-			MC2_LOG(Audio, Warn, "sound: support sample {} has no readable wave header; it is not played", supportSampleId);
 			supportSoundBite.clear();
 			return -1;
 		}
-		
-		bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-
-		soundFormat.nChannels = waveFormat->nChannels;
-		soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-		soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-		soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-		soundFormat.wBitsPerSample = bitsPerSec;
-		soundFormat.cbSize = 0;
-
-		gosAudio_CreateResource(&supportHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
 		gosAudio_AssignResourceToChannel( ourChannel, supportHandle );
 		gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
 			

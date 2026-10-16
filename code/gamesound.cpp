@@ -28,8 +28,6 @@
 //---------------------------------------------------------------------------
 GameSoundSystem *soundSystem = nullptr;
 
-extern bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWaveHeader, MemoryPtr* lplpWaveSamples,DWORD *lpcbWaveSize);
-
 bool friendlyDestroyed = false;
 bool enemyDestroyed = false;
 extern bool GeneralAlarm;
@@ -274,29 +272,8 @@ long i;
 // damaged radio file silences that sample instead of reading past the buffer.
 bool GameSoundSystem::playClip (const RadioClip& clip)
 {
-	constexpr size_t MIN_WAVE_BYTES = 44;			// RIFF header plus the format chunk
-	MC2_WAVEFORMATEX *waveFormat = nullptr;
-	MemoryPtr dataOffset = nullptr;
-	DWORD length = 0;
-
-	if (clip.bytes.size() < MIN_WAVE_BYTES ||
-		!wave_ParseWaveMemory(const_cast<MemoryPtr>(clip.bytes.data()),&waveFormat,&dataOffset,&length) ||
-		!waveFormat || waveFormat->nChannels == 0)
-	{
-		MC2_LOG(Audio, Warn, "radio: a clip of {} bytes has no readable wave header; it is not played", clip.bytes.size());
+	if (!createWaveResource(&radioHandle,clip.bytes))
 		return false;
-	}
-
-	gosAudio_Format soundFormat;
-	soundFormat.wFormatTag = 1;				//PCM
-	soundFormat.nChannels = waveFormat->nChannels;
-	soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-	soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-	soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-	soundFormat.wBitsPerSample = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-	soundFormat.cbSize = 0;
-
-	gosAudio_CreateResource(&radioHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
 	
 	if (isChannelPlaying(BETTY_CHANNEL))
 		gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
