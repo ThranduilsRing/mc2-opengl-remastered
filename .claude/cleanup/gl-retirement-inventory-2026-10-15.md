@@ -307,3 +307,31 @@ VK, and the owner has ruled on the fail-soft policy. Each step deletes whole fil
 | capture `gl_fbo` arm (`gos_visual_capture.cpp`, `gos_screenshot.cpp`) | STOPPED (session 30): it is the only readback of a GL-backend frame, and the same-exe GL capture is still the oracle of every open parity row (3, 5-22, 24: row 24 used it this session) and of the VFX oracle. Goes with the last GL capture consumer |
 | 10 debug views | STOPPED (session 30), each has a live reader or a ruling: lost-draws + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP by orchestrator ruling 2026-10-12: the proof that no GL draw reaches the VK scene before the GL interop goes; a full deletion was made and reverted); `gos_render_pass_timer` + `gos_frame_pass_stats` (editor Frame Inspector, dev-shell `framegraph`); `gos_dev_shell` (`tools/dev_shell`, `mission_order_ingress_witness.py`); `debug_renderer` (KEEP-LIVE, viewmode matrix + inspector toggle); HZB probe in `gos_postprocess_diag` (KEEP-LIVE, `hzb.json`); `gpu_memory_report` (`smoke_lib/vram.py`); `gos_validate` (`runner.py` `MC2_GL_ERROR_DRAIN_SILENT`); `gos_renderer_input_probe` (UI probe commands); `gos_object_parity` (checks the GPU static-prop producer the VK prop island also consumes); `mc2_hitch_trace` (hitch attribution, no VK equivalent). Each needs a VK port or an owner decision (section 14 question 3) |
 | `golden-e350d0b4a5c6-vk-1080p` | DONE (session 30, 91c1e0502): archived (tarball + sha256) and removed, RETIRED.md row |
+
+## 16. Session 35 (2026-10-16): the capture gl_fbo arm, and the step-2 list for the owner
+
+### Capture `gl_fbo` arm: NOT retired (task stopped, its consumers listed)
+The parity rows no longer need it once row 28's oracle (this session) is on record, but four consumers remain:
+| consumer | why it needs a GL-frame readback | what unblocks the deletion |
+|---|---|---|
+| VFX parity oracle (`tools/vfx_parity_oracle.py`, `scripts/capture_vfx_oracle.py`, `tools/test_vfx_parity_oracle.py`) | refuses anything but `readback: gl_fbo`; it is the MLR-vs-GPU-particle proof the MLR retirement waits on | a VK readback arm for the oracle (section 15 row "VFX oracle GL arm"), or the MLR retirement landing first |
+| `tools/visual_verify/capture_ab.py --gl-arm` | the GL noise-floor arm, kept while a GL exe ships | drop the flag with the arm (no caller in the lanes' scripts today) |
+| row 18 (cliff decal fill), if the owner rules "port" | the parity method needs a same-exe GL capture | the owner's row 18 ruling ("delete with GL" removes the need) |
+| `gos_screenshot.cpp` (dev-shell `screenshot`, GL `glReadPixels`) | the dev shell's only screenshot path | port to the VK present readback (`engine_present_vk.cpp` readback cbuf) |
+Order: port `gos_screenshot`, rule row 18, give the VFX oracle a VK arm; then the arm (`gos_visual_capture.cpp` `gl_fbo` branch, `scripts/smoke_lib/capture_backend.py` GL spellings, `capture_index.py` GL rows, their tests) goes in one commit.
+
+### GL deletion step 2 (debug views and diagnostics): what needs no ruling, what does
+(a) Deletable now, no ruling: a VK equivalent exists or nothing live reads the GL half.
+- `gos_render_pass_timer` GL `GL_TIME_ELAPSED` half: the VK source (`vk_render_pass_timer`, sessions 34-35) feeds the same `LastMs` / log / framegraph.
+- `gos_validate` GL error drain (`MC2_GL_ERROR_DRAIN_SILENT` in `runner.py`): the VK validation layer is the error oracle every VK smoke reads; the drain goes with the GL context.
+- `gpu_memory_report` GL counters (`GL_TEXTURE_FREE_MEMORY_ATI`, `GL_NVX_gpu_memory_info`): the VMA budget / usage half already reports under VK; `smoke_lib/vram.py` reads either.
+- `gos_frame_pass_stats` GL-state fields (FBO, viewport, depth, blend, cull read back with `glGet*`): no VK meaning; the draw / instance counts are CPU aggregates both backends fill and stay.
+(b) Need an owner ruling, with the proposed Fable default.
+- `debug_renderer` (lines / boxes, view-mode matrix, editor inspector toggle): default PORT to a VK line pipeline, because the editor rework keeps the inspector.
+- lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP ruling 2026-10-12): default DELETE in the same commit that removes the GL interop it proves absent.
+- `gos_object_parity` (checks the GPU static-prop producer both backends consume): default KEEP the CPU comparison, DELETE its GL buffer readback.
+- `mc2_hitch_trace` (GL fences for hitch attribution): default PORT to the VK island fences / timestamps, CPU phases unchanged.
+- HZB probe in `gos_postprocess_diag` (`hzb.json`): default DELETE with the GL HZB, because the VK HZB pass is opt-in off; re-add on VK only if the VK HZB is turned on.
+- `gos_renderer_input_probe` (UI probe commands): default KEEP, dropping its GL state reads (the probe is input / UI, not rendering).
+- `gos_dev_shell` GL calls: default KEEP the shell, port `screenshot` (above) and drop the GL `reload_shaders` path with the GL shaders.
+- terrain `tessDebug` view modes (section 3): default DELETE with the GL terrain path; VK has `MC2_VK_TERRAIN_CSM_DEBUG` channel views.

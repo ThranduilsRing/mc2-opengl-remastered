@@ -1954,6 +1954,22 @@
    "count": 1
   },
   {
+   "tag": "CAPTURE_HIGHLIGHT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CAPTURE_HIGHLIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "CEMENT_DIAG",
    "ver": -1,
    "stream": "stdout",
@@ -8389,6 +8405,20 @@
   {
    "tag": "RENDER_PASS_TIME",
    "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
    "stream": "stdout",
    "keys": [
     "every",
@@ -8404,6 +8434,17 @@
     "frame",
     "n",
     "dropped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "ring",
+    "brackets",
+    "ns_per_tick"
    ],
    "count": 1
   },
@@ -11945,7 +11986,7 @@
    "keys": [
     "start"
    ],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "VK_GL_LOST_DRAWS",
@@ -12103,6 +12144,13 @@
     "fence_wait_us",
     "island_total_us"
    ],
+   "count": 1
+  },
+  {
+   "tag": "VK_ONE_SHOT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
    "count": 1
   },
   {

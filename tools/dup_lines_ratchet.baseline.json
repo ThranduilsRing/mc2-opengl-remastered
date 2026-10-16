@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 5171,
+  "GameOS": 5176,
   "GuiRuntime": 64,
   "HostServices": 0,
-  "RenderCore": 581,
+  "RenderCore": 577,
   "RenderWorld": 0,
   "code": 14688,
   "mclib": 31736,
-  "shaders": 3086
+  "shaders": 3078
  },
  "dirs": [
   "code",
@@ -87,10 +87,10 @@
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": 178,
   "GameOS/gameos/vulkan_mech_island.cpp": 238,
-  "GameOS/gameos/vulkan_post_fog_native.cpp": 201,
+  "GameOS/gameos/vulkan_post_fog_native.cpp": 203,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 58,
-  "GameOS/gameos/vulkan_post_screenfx_native.cpp": 257,
-  "GameOS/gameos/vulkan_post_ssao_native.cpp": 261,
+  "GameOS/gameos/vulkan_post_screenfx_native.cpp": 258,
+  "GameOS/gameos/vulkan_post_ssao_native.cpp": 263,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 115,
   "GameOS/gameos/vulkan_shadow_island_live.h": 8,
   "GameOS/gameos/vulkan_shadow_static_map.cpp": 8,
@@ -118,7 +118,7 @@
   "GuiRuntime/GuiRuntime_draw.cpp": 9,
   "RenderCore/PipelineRegistry.cpp": 327,
   "RenderCore/bcdec.h": 143,
-  "RenderCore/gpu_abi/GpuTerrainFrameUBO.h": 17,
+  "RenderCore/gpu_abi/GpuTerrainFrameUBO.h": 13,
   "RenderCore/postprocess_subgraph.h": 24,
   "RenderCore/render_state_desc.h": 24,
   "RenderCore/terrain_subpass_contract.h": 30,
@@ -625,7 +625,6 @@
   "shaders/vulkan/hud_tex.frag": 10,
   "shaders/vulkan/hud_tex.vert": 14,
   "shaders/vulkan/include/lighting_shadow_vk.glsl": 120,
-  "shaders/vulkan/include/terrain_frame_ubo_vk.glsl": 8,
   "shaders/vulkan/include/terrain_frame_vk.glsl": 18,
   "shaders/vulkan/include/terrain_overlay_vs.glsl": 11,
   "shaders/vulkan/mech_tier1.frag": 10,
@@ -645,8 +644,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "b96ceca20",
+ "head": "18a0fa4f0",
  "n": 8,
- "total": 55326,
+ "total": 55319,
  "version": 1
 }

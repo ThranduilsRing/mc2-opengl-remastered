@@ -1,5 +1,37 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-FIFTH session (2026-10-16, cap 6 h, Opus 5.5) -- s34 review M1 fixed first (fix-then-merge), row 28 closed with numbers, Post covers the native passes, gl_fbo arm NOT retired (consumers listed), step-2 list for the owner; nifty not merged (queued tips)
+
+### Commits (after 3a7322523; final exe = 77b0d2a80, later commits docs / baselines only)
+6e8646f8d capture-only building highlight hook | decc5aeae gate row order + doc length (first build failed the table asserts) | 18a0fa4f0 review s34 M1 + S1/S2/S3/N1-N3 + Post on fog / SSAO / screen FX, composite unbracketed | 77b0d2a80 `mc2vk::submitOneShot` (vk_one_shot.{h,cpp}): vk_first_layout and the timer's pool reset share one setup submit (the timer had copied it) | this commit: gaps row 28 closed, inventory section 16, ledger, log-tag census ([VK_ONE_SHOT], the timer's and the hook's lines), dup-lines baseline, state. MERGEABLE TIP = the commit carrying this line.
+- dup-lines baseline rewritten (55326 -> 55319 total): the total fell (the shared one-shot submit), but GameOS rose +5 because the timer's Begin/End lines sit inside the fog / SSAO / screen-FX record functions, which were already a three-way near-copy; the calls are not reshaped to dodge the counter.
+
+### Review s34 (FIX-THEN-MERGE) folded
+- M1: `vk_render_pass_timer::Cancel(pass)`; the VFX island cancels on its nothing-to-draw path; the present composite (recorded in one frame, submitted or dropped later: resize, re-record, skipped present) no longer carries a bracket. Audit of the other islands: terrain / props / mechs / shadow / water / fog / SSAO / screen FX return between End and submit only on error paths that disable the island (accepted by the review).
+- S1: `vk_render_pass_timer_ring.h` (Vulkan-free ring: bracket query pairs, cancel, drop at reuse, younger slots wait, hard errors apart, overflow count) with doctests incl. the M1 case (8 cases / 50 assertions pass). S2: a hard result-read error discards the frame and logs once. S3: the unsupported verdict is keyed to the device handle. N1: overflow logged once. N2/N3: comments say why.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| build + deploy (`scratch/build_s35b.log`) | exit 0 at 18a0fa4f0; mc2_tests suite rc 0 |
+| M1 proof: VK mc2_01 + validation + `MC2_RENDER_PASS_TIME=1`, framegraph polled 12 times over the run (`scratch/b35_passtime.log`, `scratch/s35_framegraph.out`) | PASS, errors 0 warnings 0; AlphaVfx absent in every poll (no stale value after thousands of ring wraps), `pass_time_dropped` 0; post 0.023 ms now covers fog / SSAO / screen FX (was 0.008, composite only); shadowDyn ~0.19, terrainChunk ~0.85, spColor 0.07, mechs 0.02, water 0.068 |
+| row 28 oracle (hook 0x40406000 vs off, mc2_01 205644, both backends) | GL term 17,829 px, VK 17,811, shared 17,808, err 0.83 / 48.54; montage viewed |
+| verify.py, fresh VK capture `s35-vk` (`scratch/verify35.log`) | 36/36 regions, 10/10 poses |
+| tier1 VK + validation, final exe (`scratch/b35_vk_t1.log`) | 5/5 PASS, errors 0 warnings 0 all five, fingerprint PASS (fps low: host shared) |
+| tier1 GL, final exe, first run (`scratch/b35_gl_t1.log`) | 3/5: mc2_10 and mc2_17 `heartbeat_freeze_play` with all 8,192 frames done, exit 0, last heartbeat 4 s before exit (the session-31 shape), host shared with other lanes |
+| tier1 GL, rerun on 18a0fa4f0 (`scratch/b35b_gl_t1.log`) | 5/5 PASS, fingerprint PASS |
+| final exe 77b0d2a80 (the one-shot refactor): tier1 VK + validation (`scratch/b35c_vk_t1.log`) | 5/5 PASS, errors 0 warnings 0 all five, fingerprint PASS; every VK run executes the shared submit through vk_first_layout. The timer's reset path on this exe was not re-run under `MC2_RENDER_PASS_TIME` (proved on 18a0fa4f0; the refactor moves the same calls) |
+| final exe 77b0d2a80: tier1 GL (`scratch/b35c_gl_t1.log`) | 5/5 PASS, +0 destroys, fingerprint PASS |
+
+### Open
+- Row 18 (owner); the gl_fbo arm's four consumers (inventory section 16); step-2 owner rulings (inventory section 16 (b)).
+- Scratch (mine, deletable): `scratch/` s35b.sh/.out, build/deploy_s35*.log, b35*.log, verify35.log, build_s35_tests.log; s34 leftovers r34move.py, b34*.log, verify34.log, build/deploy_s34*.log; KEEP `scratch/s35_framegraph.out` (cited above until merge), `.claude/l2cap/s35-{gl,vk}{,-hl}` and the montage (row 28 cites them).
+
+### Lessons (35)
+- A bracket must live on a command buffer whose submit is decided in the same function; a buffer recorded now and submitted (or dropped) later cannot be timed safely by a frame ring.
+- The gate table enforces name order and a 160-character doc; `gate_gen --sync-verified` refreshes the JSON from the compiler.
+- Prefer an alpha-carrying forced value in a capture hook (0x40406000), so both GL terms (vertex add and alpha-weighted fragment add) are in the oracle.
+
 ## THIRTY-FOURTH session (2026-10-16, cap 6 h, Opus 5.5) -- row 28 ported (highlight-on proof needs a capture hook: recipe in the row), water + vegetation field trace (no gap), VK pass timer implemented and proven, review s33 folded; nifty not merged (queued tips)
 
 ### Commits (after 9ddea7e06; final exe = d066a9efb, later commits docs only)
