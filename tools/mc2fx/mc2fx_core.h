@@ -82,7 +82,7 @@ std::string dumpFullJson(mc2::particles::SpecLibrary* lib);
 
 // ---- build / patch ----------------------------------------------------------
 // One field edit parsed from a patch.json. `curveType` is "constant" (only type
-// supported in slice 1). `value` is the scalar to store.
+// supported curve type). `value` is the scalar to store.
 struct PatchEdit {
     std::string effect;     // effect name to match (m_name)
     std::string field;      // member name, e.g. "m_lifeSpan", "m_scale"

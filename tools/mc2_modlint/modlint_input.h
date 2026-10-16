@@ -1,6 +1,6 @@
 #ifndef MC2_MODLINT_INPUT_H
 #define MC2_MODLINT_INPUT_H
-// UNIT-MODLINT-CLI-1 (Phase-3 slice 3). Facts-JSON -> UnitDefinitionValidationInputs.
+// Facts-JSON -> UnitDefinitionValidationInputs.
 //
 // The modder feeds modlint a small JSON describing a unit's already-extracted
 // facts (the converter did the impure extraction; modlint does the pure

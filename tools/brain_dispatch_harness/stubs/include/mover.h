@@ -1,7 +1,7 @@
 #pragma once
 #ifndef MOVER_H
 #define MOVER_H
-// HARNESS-STUB-REPAIR-1: mover.h stub (BRAIN-ENGAGE-1 / BRAIN-OPORD-MOVE-1 deps).
+// mover.h stub.
 // Defines MOVER_H so the engine code/mover.h (which pulls mclib.h) is skipped.
 // Provides only what brain_special_dispatch.cpp's tick functions reference.
 // The harness never enables MC2_BRAIN_ENGAGE and stub getVehicle() returns nullptr,

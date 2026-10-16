@@ -1,6 +1,6 @@
 // GameAdapters/SkyRenderAdapter.h
 //
-// Slice HDRI-SKY-1 (v1): sky rendering firewall bridge.
+// Sky rendering firewall bridge.
 // Spec: docs/superpowers/specs/2026-05-22-renderworld-boundary-spec.md (section 10)
 //
 // Include discipline (load-bearing):
@@ -51,7 +51,7 @@ void renderHdriBasis(const float* camFwd, const float* camRight,
 // invWorldToClipGL * vec4(ndc, depth, 1.0).
 void renderHdriInvVP(const float* invVP16);
 
-// HDRI-SKY-NUMBER-1: notify the sky renderer of the mission's theSkyNumber
+// notify the sky renderer of the mission's theSkyNumber
 // (read from [TheSky] SkyNumber in the .fit file).  Swaps the loaded HDRI
 // texture to the mood-appropriate asset (IblHdriRegistry).
 // Call once at mission load, after mission->theSkyNumber is known.

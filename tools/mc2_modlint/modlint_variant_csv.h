@@ -1,6 +1,5 @@
 #ifndef MC2_MODLINT_VARIANT_CSV_H
 #define MC2_MODLINT_VARIANT_CSV_H
-// UNIT-VARIANT-ADD-1 (S4 of the ADD-path ladder, .claude/ADD-PATH-RECON-1.md).
 //
 // Pure, offline validator for the LEGACY per-chassis variant CSV
 // (data/objects/<mech>.csv) — the file a mod whole-file-shadows to ADD a new

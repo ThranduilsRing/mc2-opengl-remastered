@@ -1,6 +1,6 @@
 #ifndef MC2_MODLINT_REPORT_H
 #define MC2_MODLINT_REPORT_H
-// UNIT-MODLINT-CLI-1 (Phase-3 slice 3). Pure finding -> modder-readable text.
+// Pure finding -> modder-readable text.
 //
 // Turns the authoritative validator's std::vector<UnitProfileFinding> into the
 // lines a modder reads, using the ONE reason-code -> message table

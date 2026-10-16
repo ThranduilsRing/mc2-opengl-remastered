@@ -145,7 +145,7 @@ void destroyStaticPropByIndex(int32_t recipeIndex);
 // recipeIndex comes from LookupResult::gameObjectId (M1.6 sentinel: -1 == invalid).
 void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen);
 
-// RENDERER-INPUT-READBACK-1: five narrow read-only recipe accessors for the
+// five narrow read-only recipe accessors for the
 // `draw_path` / `shadow_feed` / `ground` / `light_row` command-channel verbs.
 //
 // They exist HERE rather than as a direct

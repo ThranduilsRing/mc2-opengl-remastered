@@ -23,7 +23,7 @@
 // GameOS (gos_VERTEX, gos_DrawLines, gos_SetRenderState, gos_GetViewport, Environment)
 #include "../GameOS/include/gameos.hpp"
 
-// GPU-internal headers (EDITOR-BRIDGE-GPU-FIREWALL-1). This carve-out TU is the
+// GPU-internal headers. This carve-out TU is the
 // ONLY editor-facing seam allowed to include these; editor/ TUs route through
 // the lifecycle passthroughs below instead of including them directly.
 #include "../GameOS/gameos/gos_static_prop_batcher.h"   // GpuStaticPropBatcher, batcher_getTypeCount, TG_TypeMultiShape
@@ -310,7 +310,7 @@ void drawTerrainTileOutline(const TerrainTileOverlayDesc& desc) {
     popOverlayState();
 }
 
-// ---- Mission render-resource lifecycle (EDITOR-BRIDGE-GPU-FIREWALL-1) ----
+// Mission render-resource lifecycle.
 // Deliberately NOT gated on s_enabled: the batcher/registry/cull lifecycle must
 // run whenever the editor loads a map, independent of the pick-bridge enable
 // flag (which only gates pickAt/queryVisibility/overlay draws).

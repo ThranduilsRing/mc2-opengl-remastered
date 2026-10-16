@@ -12,7 +12,7 @@
 //   - static_props_visible: GpuStaticPropRegistry::getLastFlushLiveCount()
 //   - mechs_visible:        batcher_getLastFlushSubmitCount()
 //   - gpu_visible:          deferred (GPU readback, V1B)
-//   - valid flags always true in V1A-1; GPU valid = false until V1B
+//   - CPU validity flags are always true; GPU results may be unavailable
 //
 // Forbidden (V1A scope, same as v0):
 //   - replace terrain / mech / static-prop culling
@@ -51,7 +51,7 @@ struct VisibilityRequest {
 // V1A fields: per-frame visible/submitted counts from flush-entry latches.
 //
 // Valid flags:
-//   static_props_visible_valid / mechs_visible_valid — always true in V1A-1;
+//   static_props_visible_valid / mechs_visible_valid are always true;
 //     value is 0 before first flush (mission not loaded), which is genuine.
 //   gpu_visible_valid — false until GPU compute readback is wired (V1B).
 struct VisibilityResult {
@@ -76,8 +76,8 @@ struct VisibilityResult {
     // vfx      -> prohibited (no stable object identity)
     // overlay  -> undefined
 
-    bool static_props_visible_valid = true;  // V1A-1: always true; 0 = genuine pre-mission
-    bool mechs_visible_valid        = true;  // V1A-1: always true; 0 = genuine pre-mission
+    bool static_props_visible_valid = true;  // always true; 0 = genuine pre-mission
+    bool mechs_visible_valid        = true;  // always true; 0 = genuine pre-mission
     bool gpu_visible_valid          = false; // false until V1B; MUST NOT interpret 0 as "zero visible"
 };
 

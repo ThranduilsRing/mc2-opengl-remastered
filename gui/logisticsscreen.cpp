@@ -21,7 +21,7 @@ extern long helpTextID;
 extern long helpTextHeaderID;
 extern float frameLength;
 
-// EQUIP-ADD-UI-NAME-1 (S3): see logisticsscreen.h. Default null = stock path.
+// see logisticsscreen.h. Default null = stock path.
 const char* (*gEquipmentUiTextHook)(long stringId) = nullptr;
 
 
@@ -383,7 +383,7 @@ void LogisticsScreen::update()
 		//		helpText += '\n';
 		//	}
 
-			// EQUIP-ADD-UI-NAME-1 (S3): an ADD-filled component's help id has no
+			// an ADD-filled component's help id has no
 			// string-table entry; the hook (installed by the game, null in
 			// EditRel) resolves it from the def. Miss -> stock path unchanged.
 			const char* addText =
@@ -445,8 +445,8 @@ bool LogisticsScreen::hasDefsUiPage() const
 	return defsUiPage && defsUiPage->isLoaded();
 }
 
-// UI-DEFS-LOCKSTEP-HARDEN-1: a loaded page that rendered zero draw commands
-// (version-skewed defs/ui package, BLACK-MENU-BISECT-1) must not own the
+// a loaded page that rendered zero draw commands
+// (version-skewed defs/ui package) must not own the
 // screen -- render()/update() fall back to the legacy path. The page renders
 // once to be measured (first frame), then yields.
 bool LogisticsScreen::defsUiPageUsable() const
@@ -457,7 +457,7 @@ bool LogisticsScreen::defsUiPageUsable() const
 
 bool LogisticsScreen::rendersDefsPageOverlay() const
 {
-	// LEGACY-FRONTEND-COMPOSITE-1: see header. ImGui-layer content only when
+	// see header. ImGui-layer content only when
 	// the page is usable AND not a passthrough (passthrough renders the
 	// legacy widget set in the GameOS layer beneath ImGui).
 	return defsUiPageUsable() && defsUiPage && !defsUiPage->isLegacyPassthrough();
@@ -474,7 +474,7 @@ bool LogisticsScreen::allAnimObjectsDone() const
 }
 
 
-// UI-LAYER-CONTRACT-2: inverted bridging for defs-page screens.
+// inverted bridging for defs-page screens.
 // 1) blackClearLegacyLayer: opaque black quad in the LEGACY (GameOS HUD)
 //    layer so stray/stale legacy draws can never ghost through beneath the
 //    ImGui page. Front-end only -- in mission (HUD scale active) the screen
@@ -535,7 +535,7 @@ void LogisticsScreen::render()
 	if ( !isShowing() )
 		return;
 
-	// UI-DEFS-LOCKSTEP-HARDEN-1: defsUiPageUsable() (not just isLoaded()) --
+	// defsUiPageUsable (not just isLoaded) --
 	// a page that rendered zero draw commands yields the screen back to the
 	// legacy path below instead of black-clearing over nothing.
 	if (defsUiPageUsable())
@@ -575,7 +575,7 @@ void LogisticsScreen::render()
 		// Static GuiAnimation snapshots stand down when the screen owns live
 		// legacy animObjects; the aObject GUI bridge below renders the real
 		// objects with their actual keyframe playback (fades, slides).
-		// UI-LAYER-CONTRACT-2: black-clear the legacy layer beneath the page.
+		// black-clear the legacy layer beneath the page.
 		if ( !defsUiPage->isLegacyPassthrough() )
 			blackClearLegacyLayer();
 
@@ -586,7 +586,7 @@ void LogisticsScreen::render()
 		// parent's global position is folded into the scale transform here.
 		defsUiPage->render(globalX(), globalY());
 
-		// UI-LAYER-CONTRACT-2: legacy widgets the page does NOT cover render
+		// legacy widgets the page does NOT cover render
 		// bridged on top (visible by default; page coverage = opt-out).
 		renderUncoveredLegacyWidgets( 0, 0 );
 
@@ -594,7 +594,7 @@ void LogisticsScreen::render()
 		{
 			// animObject coordinates live in legacy Environment space; the
 			// ImGui HUD layer draws in display space.
-			// UI-LAYER-CONTRACT-2: canvas-aware bridge (matches the page transform).
+			// canvas-aware bridge (matches the page transform).
 			aObject::beginGuiBridgeCanvas();
 			for ( int i = 0; i < animObjectsCount; i++ )
 				animObjects[i].render();
@@ -609,7 +609,7 @@ void LogisticsScreen::render()
 			fadeTime += frameLength;
 			long color = interpolateColor( 0,fadeOutMaxColor, fadeTime/fadeOutTime );
 			{
-				// FADE-RECT-DISPLAY-1: DrawUiRect takes DISPLAY pixels; Environment
+				// DrawUiRect takes DISPLAY pixels; Environment
 				// is the 800x600 logical canvas, so this fade only dimmed the
 				// top-left 800x600 corner of a real-res display (transient corner
 				// dim during fade-in). Cover the whole display, flanks included.
@@ -623,7 +623,7 @@ void LogisticsScreen::render()
 			fadeTime += frameLength;
 			long color = interpolateColor( fadeOutMaxColor, 0, fadeTime/fadeInTime );
 			{
-				// FADE-RECT-DISPLAY-1: DrawUiRect takes DISPLAY pixels; Environment
+				// DrawUiRect takes DISPLAY pixels; Environment
 				// is the 800x600 logical canvas, so this fade only dimmed the
 				// top-left 800x600 corner of a real-res display (transient corner
 				// dim during fade-in). Cover the whole display, flanks included.
@@ -747,7 +747,7 @@ void LogisticsScreen::render( int xOffset, int yOffset )
 	if ( !isShowing() )
 		return;
 
-	// UI-DEFS-LOCKSTEP-HARDEN-1: same zero-draw fail-soft as render() above.
+	// same zero-draw fail-soft as render above.
 	if (defsUiPageUsable())
 	{
 		// Passthrough: render legacy first so it appears beneath the overlay.
@@ -789,7 +789,7 @@ void LogisticsScreen::render( int xOffset, int yOffset )
 			}
 		}
 
-		// UI-LAYER-CONTRACT-2: black-clear + uncovered-widget pass (see render()).
+		// black-clear + uncovered-widget pass (see render).
 		if ( !defsUiPage->isLegacyPassthrough() )
 			blackClearLegacyLayer();
 
@@ -800,7 +800,7 @@ void LogisticsScreen::render( int xOffset, int yOffset )
 
 		if ( animObjectsCount > 0 )
 		{
-			// UI-LAYER-CONTRACT-2: canvas-aware bridge (matches the page transform).
+			// canvas-aware bridge (matches the page transform).
 			aObject::beginGuiBridgeCanvas();
 			for ( int i = 0; i < animObjectsCount; i++ )
 			{
@@ -820,7 +820,7 @@ void LogisticsScreen::render( int xOffset, int yOffset )
 			fadeTime += frameLength;
 			long color = interpolateColor( 0,0xff000000, fadeTime/fadeOutTime );
 			{
-				// FADE-RECT-DISPLAY-1: DrawUiRect takes DISPLAY pixels; Environment
+				// DrawUiRect takes DISPLAY pixels; Environment
 				// is the 800x600 logical canvas, so this fade only dimmed the
 				// top-left 800x600 corner of a real-res display (transient corner
 				// dim during fade-in). Cover the whole display, flanks included.
@@ -834,7 +834,7 @@ void LogisticsScreen::render( int xOffset, int yOffset )
 			fadeTime += frameLength;
 			long color = interpolateColor( 0xff000000, 0, fadeTime/fadeInTime );
 			{
-				// FADE-RECT-DISPLAY-1: DrawUiRect takes DISPLAY pixels; Environment
+				// DrawUiRect takes DISPLAY pixels; Environment
 				// is the 800x600 logical canvas, so this fade only dimmed the
 				// top-left 800x600 corner of a real-res display (transient corner
 				// dim during fade-in). Cover the whole display, flanks included.

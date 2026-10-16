@@ -1,4 +1,4 @@
-// BRAIN-DISPATCH-HARNESS-1: FitIniFile stub implementation.
+// FitIniFile stub implementation.
 // Minimal bracket-form parser for legacy _specials.fit fixtures.
 // Supports: [Section], st KEY = "VALUE"
 //

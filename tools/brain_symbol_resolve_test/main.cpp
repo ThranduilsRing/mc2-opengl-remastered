@@ -1,4 +1,4 @@
-// UNITQUERY-SETTARGETPRIORITY-1: unit test for the pure brain symbol resolver.
+// unit test for the pure brain symbol resolver.
 // Table-driven. No engine link — compiles code/brain_symbol_resolve.cpp only.
 // Exit 0 = all pass; exit 1 = at least one failure (CI gate).
 #include "brain_symbol_resolve.h"

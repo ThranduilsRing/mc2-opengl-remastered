@@ -1,4 +1,4 @@
-// MECH-IMPORT-TGDUMP-1 — game-free inspector over the REAL engine import path.
+// game-free inspector over the REAL engine import path.
 //
 // Runs the actual mclib ImportGeometryFromFile on a GLB/FBX and dumps the
 // resulting TG_TypeMultiShape as JSON: shape/texture counts, per-shape verts/

@@ -1,6 +1,6 @@
 // GameAdapters/SkyRenderAdapter.cpp
 //
-// Slice HDRI-SKY-1 (v1): the ONLY TU that may include both the adapter
+// The only TU that may include both the adapter
 // header AND the engine-side gos_postprocess.h.
 //
 // Spec: docs/superpowers/specs/2026-05-22-renderworld-boundary-spec.md (section 10)

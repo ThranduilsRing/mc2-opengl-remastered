@@ -48,10 +48,10 @@ public:
     // draws the real content (options sub-tabs, planet background, etc.).
     bool isLegacyPassthrough() const;
 
-    // UI-DEFS-LOCKSTEP-HARDEN-1: false when the page has rendered at least
+    // false when the page has rendered at least
     // once and emitted zero draw commands (non-passthrough). Owning screens
     // must then fail-soft to the legacy render path instead of black-clearing
-    // over an empty page (BLACK-MENU-BISECT-1). True before the first render.
+    // over an empty page. True before the first render.
     bool lastRenderProducedOutput() const;
 
     // Overrides the display text of the element with the given key at runtime.
@@ -77,7 +77,7 @@ public:
     // On-screen rect of an element (using the current page scale) so game code can
     // overlay dynamic content (e.g. mission-briefing objective markers) aligned to it.
     bool getElementScreenRect(const std::string& key, float& x, float& y, float& w, float& h);
-    // UI-LAYER-CONTRACT-2: page mirrors this legacy control section?
+    // page mirrors this legacy control section?
     bool coversLegacySection(const char* section) const;
     // kind ("Rect"/"Static"/"Text"/"Button") + index, prefix-agnostic.
     bool coversLegacyControl(const char* kind, int index) const;
@@ -105,7 +105,7 @@ public:
     // time they change. elementKey is the GuiList element's "key" field
     // (e.g. "game.mcl_mp_loadmap_list0.list.map").
     bool setListItems(const std::string& elementKey, const std::vector<std::string>& items);
-    // BRIEFING-WRAP-1: split text into the exact lines a row of this GuiList
+    // split text into the exact lines a row of this GuiList
     // wraps to at the CURRENT display scale (same font, size, and pixel width
     // the row renderer uses), so pre-wrapped items pushed via setListItems
     // never re-wrap inside their fixed-height row and overlap the next one.

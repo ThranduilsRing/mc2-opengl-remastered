@@ -226,7 +226,7 @@ void drawMechSection() {
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##pbras")) batcher_setPbrAmbientSpecularStrength(0.25f);
 
-        // PBR-IBL-MECH-1: IBL SH ambient status.
+        // IBL SH ambient status.
         // Strength slider lives in Static Prop Tuning (shared g_iblShStrength).
         {
             bool mechIblOn = mc2::gate::get<"MC2_MECH_IBL_SH">();
@@ -242,7 +242,7 @@ void drawMechSection() {
                                   "Strength shared with Static Prop IBL SH slider.");
         }
 
-        // MECH-BACK-FILL-1: cool-sky fill for shadow hemisphere.
+        // cool-sky fill for shadow hemisphere.
         float bf = batcher_getMechBackFillStrength();
         if (ImGui::SliderFloat("Back fill##pbr", &bf, 0.0f, 4.0f, "%.2f"))
             batcher_setMechBackFillStrength(bf);
@@ -286,7 +286,7 @@ void drawMechSection() {
 }
 
 
-// VFX-TUNING-UI-1: GPU particle look tuning. All scales default 1.0 (no-op,
+// GPU particle look tuning. All scales default 1.0 (no-op,
 // byte-identical default frame). Look-only — no emission/lifetime/sorting
 // change. Tuning is invisible when MC2_GPU_PARTICLES=0 (legacy CPU FX) or in
 // scenes with no routed (Card/CardCloud/Point/Shard/Tube) particles.
@@ -350,7 +350,7 @@ void drawVfxTuningSection() {
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##vfxa")) gos_vfx_setAlphaScale(1.0f);
 
-        // VFX-SOFT-PARTICLES-MVP-1: depth-fade enable + world-unit fade band.
+        // depth-fade enable + world-unit fade band.
         ImGui::Separator();
         bool softOn = gos_vfx_getSoftEnabled() != 0;
         if (ImGui::Checkbox("Soft particles##vfx", &softOn))

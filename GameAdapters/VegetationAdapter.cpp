@@ -5,7 +5,7 @@
 // (mclib/) and engine-side headers (GameOS/gameos/).
 
 #include "VegetationAdapter.h"
-#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 
 // Engine side.

@@ -1,5 +1,4 @@
 // tools/mc2_modlint/mc2_modlint.cpp
-// UNIT-MODLINT-CLI-1 (Phase-3 slice 3 of the UNIT-PROFILE arc).
 //
 // Standalone, OFFLINE modder tool: validate a unit's facts WITHOUT launching the
 // game. It reads a facts-JSON (or the converter's summary report json), calls the
@@ -17,9 +16,9 @@
 //   mc2_modlint --equipment-roster <report.json>  lint an equipment converter --json report
 //   mc2_modlint --unit - < facts.json             read from stdin
 //
-// The --equipment* paths (WEAPON-MODLINT-1, equipment arc slice 7) wrap the SAME
-// authoritative pure validateEquipmentDefinition() the engine will use (single
-// source of truth). The --unit* paths are unchanged (UNIT-MODLINT-CLI-1).
+// The --equipment* paths use the same
+// authoritative pure validateEquipmentDefinition() as the engine (single
+// source of truth).
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
@@ -40,9 +39,9 @@
 #include "modlint_equipment_report.h"
 
 #include "modlint_manifest.h"
-#include "modlint_variant_csv.h" // UNIT-VARIANT-ADD-1: legacy chassis-CSV variant-block validator
-#include "mod_conflict.h"   // MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure classifier shared with the engine
-#include "modder_finding.h" // MODDER-FIRST-ERROR-SURFACE-1: shared modder-finding context format
+#include "modlint_variant_csv.h" // legacy chassis-CSV variant-block validator
+#include "mod_conflict.h"   // pure classifier shared with the engine
+#include "modder_finding.h" // shared modder-finding context format
 
 static void usage() {
     std::fprintf(stderr,
@@ -139,7 +138,7 @@ static int lintManifest(const std::string& text, bool* parseOk, const std::strin
     return (int)findings.size();
 }
 
-// --variant-csv: one legacy chassis CSV -> VARC_ findings (UNIT-VARIANT-ADD-1).
+// --variant-csv: one legacy chassis CSV -> VARC_ findings.
 // compbasText empty = skip loadout-ref resolution (structure checks still run).
 static int lintVariantCsv(const std::string& text, const std::string& compbasText,
                           const std::string& src, const std::string& modId) {
@@ -177,7 +176,7 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
                 if (!f.id.empty()) return f.id;
             }
         }
-        // MODDER-FIRST-ERROR-SURFACE-1: the loader-mirroring fallback (folder
+        // the loader-mirroring fallback (folder
         // name as id) is never silent — say which mod.json failed and why.
         ModderFinding f;
         f.message  = readable
@@ -240,7 +239,7 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
     for (const std::string& line : formatModConflictReport(findings))
         std::cout << line << "\n";
 
-    // UNIT-VARIANT-ADD-1: any shadowed legacy chassis CSV (data/objects/<mech>.csv
+    // any shadowed legacy chassis CSV (data/objects/<mech>.csv
     // carrying a "VariantName" label) gets its 23+97*n variant blocks validated.
     // compbas for the loadout-ref check: the mods' own shadowed compbas wins,
     // else <stockRoot>/data/objects/compbas.csv, else the check is skipped.
@@ -335,7 +334,7 @@ int main(int argc, char** argv) {
     }
 
     if (!parseOk) {
-        // MODDER-FIRST-ERROR-SURFACE-1: say WHICH file failed to parse and that
+        // say WHICH file failed to parse and that
         // nothing was validated (the fallback), one consistent context format.
         ModderFinding f;
         f.message  = "malformed JSON input — file could not be parsed";
