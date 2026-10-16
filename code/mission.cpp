@@ -842,13 +842,10 @@ void Mission::start (void)
 void Mission::initTGLForMission()
 {
 	ZoneScopedN("Mission::initTGLForMission");
-	//---------------------------------------------------------
-	// End the Tiny Geometry Layer Heap for Logistics
 	if (TG_Shape::tglHeap)
 	{
 		ZoneScopedN("Mission::initTGLForMission shutdown");
 		logTglPoolPeaks("mission_unload");
-		//Shut down the TGL RAM pools.
 		if (colorPool)
 		{
 			colorPool->destroy();
@@ -886,42 +883,24 @@ void Mission::initTGLForMission()
 		
 		TG_Shape::tglHeap->destroy();
 
-		delete TG_Shape::tglHeap;
+		mission->tglHeapOwner.reset();
 		TG_Shape::tglHeap = nullptr;
 	}
 
 	loadProgress += 1.0f;
 
-	//------------------------------------------------------
-	// Start the Tiny Geometry Layer Heap for the Mission.
 	if ( !TG_Shape::tglHeap )
 	{
 		ZoneScopedN("Mission::initTGLForMission startup");
-		//---------------------------------------------------------
-		// Bumped from 40MB to 128MB to accommodate the scaled-up TGL
-		// pools below (500K vertex/color/shadow, 200K face/triangle).
-		// Total pool footprint is ~60MB; headroom for per-shape
-		// allocations via tglHeap->Malloc.
+		// Shape allocations need headroom beyond the per-frame pools.
 		unsigned long tglHeapSize = 128 * 1024 * 1024;
 
-		TG_Shape::tglHeap = new UserHeap;
+		mission->tglHeapOwner = std::make_unique<UserHeap>();
+		TG_Shape::tglHeap = mission->tglHeapOwner.get();
 		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
 		
-		//Start up the TGL RAM pools.
-		// Sizes scaled up from the original 30K/40K to support the GPU
-		// static-prop path (RAlt+0) which forces all buildings/trees/
-		// generics in active blocks to TransformShape regardless of
-		// inView. At wolfman zoom on large maps the original 30K vertex
-		// pool exhausted before mechs allocated, silently dropping every
-		// shape whose getVerticesFromPool hit NULL (tgl.h:1022). That
-		// manifested as "half the mechs don't render" because mechs
-		// iterate AFTER buildings and got the empty pool.
-		// MODEL-OVERRIDE: pools sized for modder model overrides. The old
-		// 500k/200k caps were CPU-era limits; per-instance vertex/color/shadow
-		// storage scales with override mesh complexity x instance count (e.g.
-		// ~1000 trees x ~12k verts = ~12M). Static props/trees are GPU-batched,
-		// but the per-instance lighting/transform buffers still draw from these
-		// pools. Sized to fit a detailed-tree forest with headroom.
+		// Pools cover detailed model overrides across active blocks, including
+		// offscreen static props, so early props cannot exhaust storage for mechs.
 		colorPool 		= new TG_VertexPool;
 		colorPool->init(32000000);
 
@@ -940,8 +919,7 @@ void Mission::initTGLForMission()
 
 	loadProgress += 4.0f;
 
-	//Stupid hack for now.  Should really get from prefs!!
-	// Needed cause Heidi resets in logistics.
+	// Logistics resets the render settings needed by the mission.
 	useFog = true;
 	useShadows = prefs.useShadows;
 }
@@ -1076,24 +1054,6 @@ void Mission::destroy (bool initLogistics)
 	}
 
 
-	if (GVAppearanceType::SensorTriangleShape)
-	{
-		delete GVAppearanceType::SensorTriangleShape;
-		GVAppearanceType::SensorTriangleShape = nullptr;
-	}
-
-	if (GVAppearanceType::SensorCircleShape)
-	{
-		delete GVAppearanceType::SensorCircleShape;
-		GVAppearanceType::SensorCircleShape = nullptr;
-	}
-
-	if (Mech3DAppearanceType::SensorSquareShape)
-	{
-		delete Mech3DAppearanceType::SensorSquareShape;
-		Mech3DAppearanceType::SensorSquareShape = nullptr;
-	}
-
 	if (MasterComponent::masterList)
 	{
 		MasterComponent::freeMasterList();
@@ -1136,12 +1096,9 @@ void Mission::destroy (bool initLogistics)
 		missionHeap = nullptr;
 	}
 
-	if ( appearanceTypeList )
-	{
-		appearanceTypeList->destroy();
-		delete appearanceTypeList;
-		appearanceTypeList = nullptr;
-	}
+	// The registry destructor releases types, its appearance heap and the Sensor shapes.
+	appearanceTypes.reset();
+	appearanceTypeList = nullptr;
 
 	if (initLogistics)
 		initTGLForLogistics();
@@ -1187,7 +1144,7 @@ void Mission::destroy (bool initLogistics)
 
 			TG_Shape::tglHeap->destroy();
 
-			delete TG_Shape::tglHeap;
+			tglHeapOwner.reset();
 			TG_Shape::tglHeap = nullptr;
 		}
 	}
