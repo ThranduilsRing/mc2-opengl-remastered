@@ -42,12 +42,12 @@
   "code/tacordr.cpp": 2117,
   "code/terrobj.cpp": 1735,
   "code/turret.cpp": 2338,
-  "code/warrior.cpp": 2687,
+  "code/warrior.cpp": 2686,
   "code/warrior.h": 2173,
   "editor/tests/test_objectives.cpp": 1601,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1615,
-  "mclib/ablrtn.cpp": 1778,
+  "mclib/ablenv.cpp": 1608,
+  "mclib/ablrtn.cpp": 1735,
   "mclib/assimp_importer.cpp": 1589,
   "mclib/camera.h": 1812,
   "mclib/file.cpp": 2599,
@@ -63,7 +63,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "885644373",
+ "head": "13f2efe43",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -114,7 +114,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 596,
+   "files": 597,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2629
@@ -141,7 +141,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2687
+   "lines": 2686
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -244,16 +244,16 @@
    "lines": 1807
   },
   {
-   "file": "mclib/ablrtn.cpp",
-   "lines": 1778
-  },
-  {
    "file": "mclib/terrtxm.cpp",
    "lines": 1771
+  },
+  {
+   "file": "code/terrobj.cpp",
+   "lines": 1735
   }
  ],
  "total": {
-  "files": 1908,
+  "files": 1909,
   "files_over_1500": 49,
   "files_over_3000": 1,
   "max_lines": 3757
