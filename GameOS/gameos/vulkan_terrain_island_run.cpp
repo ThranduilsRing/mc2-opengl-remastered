@@ -279,6 +279,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     std::memcpy(u.tintSnow,     feed.tintSnow,     sizeof(u.tintSnow));
     u.tintStrengthScale    = feed.tintStrengthScale;
     u.snowBrightnessDampen = feed.snowBrightnessDampen;
+    u.edgeFeatherStrength  = feed.edgeFeatherStrength;
 }
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {

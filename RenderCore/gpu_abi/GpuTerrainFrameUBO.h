@@ -140,7 +140,8 @@ struct TerrainFrameUBO {
     float   tintSnow[3];  // @rgb
     float   tintStrengthScale;
     float   snowBrightnessDampen;
-    int32_t _pad[63];  // @cpp_only slot tail padding to the 1024B stride
+    float   edgeFeatherStrength;   // TERRAIN-EDGE-FEATHER-1: map-edge haze amount (0 = off)
+    int32_t _pad[62];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

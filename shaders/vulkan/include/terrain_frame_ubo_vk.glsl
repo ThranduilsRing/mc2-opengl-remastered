@@ -97,5 +97,6 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float tintSnowB;  // off 760
     float tintStrengthScale;  // off 764
     float snowBrightnessDampen;  // off 768
+    float edgeFeatherStrength;  // off 772
 } uT;
 #endif

@@ -87,4 +87,5 @@ static_assert(offsetof(TerrainFrameUBO, tintConcrete) == 740, "tintConcrete offs
 static_assert(offsetof(TerrainFrameUBO, tintSnow) == 752, "tintSnow offset");
 static_assert(offsetof(TerrainFrameUBO, tintStrengthScale) == 764, "tintStrengthScale offset");
 static_assert(offsetof(TerrainFrameUBO, snowBrightnessDampen) == 768, "snowBrightnessDampen offset");
-static_assert(offsetof(TerrainFrameUBO, _pad) == 772, "_pad offset");
+static_assert(offsetof(TerrainFrameUBO, edgeFeatherStrength) == 772, "edgeFeatherStrength offset");
+static_assert(offsetof(TerrainFrameUBO, _pad) == 776, "_pad offset");

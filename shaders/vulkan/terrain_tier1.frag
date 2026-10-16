@@ -37,6 +37,7 @@
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
+#include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -693,6 +694,13 @@ void main() {
         // fully composited lighting. moverContact==0 unless MC2_MOVER_CONTACT_SHADOW>0.
         if (moverContact > 0.0)
             lit *= (1.0 - 0.55 * moverContact);
+
+        // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
+        // colour so the straight map perimeter does not cut a hard edge. halfMap 0 means the map size is not known yet.
+        if (uT.edgeFeatherStrength > 0.0 && uT.halfMap > 0.0) {
+            float haze = edgeHazeAmount(v_worldPos.xy, uT.halfMap) * uT.edgeFeatherStrength;
+            lit = mix(lit, EDGE_HAZE_SKY, clamp(haze, 0.0, 1.0));
+        }
 
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
         // Bypasses the normal composite entirely so each channel can be inspected in

@@ -208,6 +208,8 @@ struct Mc2TerrainTier1Feed {
     float                       tintSnow[3];
     float                       tintStrengthScale;
     float                       snowBrightnessDampen;
+    // TERRAIN-EDGE-FEATHER-1: the GL map-edge haze strength, 0 when the feather is off.
+    float                       edgeFeatherStrength;
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this
