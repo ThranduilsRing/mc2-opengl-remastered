@@ -313,14 +313,18 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot() {
 ColorPropIsland* parkedIsland() { return static_cast<ColorPropIsland*>(islandSlot().get()); }
 
 
+// gpuReadHeavy: a host-written buffer the GPU reads many times per frame (the night pool, walked by every prop fragment) is written
+// sequentially so VMA can place it in device-local, host-visible memory instead of system memory read across the bus.
 bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1, bool gpuReadHeavy = false) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    aci.flags = !hostVisible ? 0
+              : gpuReadHeavy ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+                             : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -876,7 +880,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     if (!make_buffer(s, s->ubo[0], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 0)) return false;
     if (!make_buffer(s, s->ubo[1], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 1)) return false;
     for (uint32_t i = 0; s->tier1 && i < 2; ++i)
-        if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.poolBuf", static_cast<int>(i))) return false;
+        if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.poolBuf", static_cast<int>(i), -1, true)) return false;
 
     if (s->tier1) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
