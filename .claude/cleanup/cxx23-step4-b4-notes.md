@@ -82,3 +82,6 @@ Deletion candidate after audit: none left. The per-node terrain extras were the 
 
 ## 6. Status (2026-10-16 fourth session)
 B4 is CLOSED except the Sol items (class A, 16 rows) and the items other tracks carry (class B to B5-B7, class C to B7 / lane 2 / B4.2c, class D to B5). After-review: `cxx23-step4-b4-after-review.md`.
+
+## 7. After the close (2026-10-16 fifth session)
+B4.5 crater DONE: `CraterManager` is built by placement new at both of Sol's sites (70a72fbf4) and destroyed through `~CraterManager` in Mission, so its texture index and handle tables are vector members (no static-duration owner); class A loses 4 rows (12 left: the footprint scratch 4, the terrain block lists 8). Census 116 -> 110 with the merged tips.
