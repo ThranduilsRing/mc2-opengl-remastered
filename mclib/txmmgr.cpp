@@ -159,26 +159,21 @@ void MC_TextureManager::start (void)
 	ZoneScopedN("MC_TextureManager::start");
 	init();
 
-	// Create nodes from systemHeap.
-	long nodeRAM = MC_MAXTEXTURES * sizeof(MC_TextureNode);
-	masterTextureNodes = (MC_TextureNode *)systemHeap->Malloc(nodeRAM);
-	gosASSERT(masterTextureNodes != NULL);
+	// The node arrays live in vectors owned by the manager; the vertex node types are zero-filled by value-initialisation,
+	// as the memsets they replace were.
+	static_assert(std::is_trivially_default_constructible_v<MC_VertexArrayNode> && std::is_trivially_default_constructible_v<MC_HardwareVertexArrayNode>,
+		"value-initialisation must equal the zero fill of the old node arrays");
+	masterTextureNodeStore.assign(MC_MAXTEXTURES, MC_TextureNode{});
+	masterTextureNodes = masterTextureNodeStore.data();
 
 	for (long i=0;i<MC_MAXTEXTURES;i++)
 		masterTextureNodes[i].init();
 		
-	// Create VertexNodes from systemHeap
-	nodeRAM = MC_MAXTEXTURES * sizeof(MC_VertexArrayNode);
-	masterVertexNodes = (MC_VertexArrayNode *)systemHeap->Malloc(nodeRAM);
-	gosASSERT(masterVertexNodes != NULL);
-	
-	memset(masterVertexNodes,0,nodeRAM);
+	masterVertexNodeStore.assign(MC_MAXTEXTURES, MC_VertexArrayNode{});
+	masterVertexNodes = masterVertexNodeStore.data();
 
-	nodeRAM = MC_MAXTEXTURES * sizeof(MC_HardwareVertexArrayNode);
-	masterHardwareVertexNodes = (MC_HardwareVertexArrayNode *)systemHeap->Malloc(nodeRAM);
-	gosASSERT(masterHardwareVertexNodes != NULL);
-	
-	memset(masterHardwareVertexNodes,0,nodeRAM);
+	masterHardwareVertexNodeStore.assign(MC_MAXTEXTURES, MC_HardwareVertexArrayNode{});
+	masterHardwareVertexNodes = masterHardwareVertexNodeStore.data();
 
 	textureCacheHeap = new UserHeap;
 	textureCacheHeap->init(TEXTURE_CACHE_SIZE,"TXMCache");
@@ -204,7 +199,8 @@ void MC_TextureManager::start (void)
 		textureManagerInstrumented = true;
 	}
 	
-	indexArray = (WORD *)systemHeap->Malloc(sizeof(WORD) * MC_MAXFACES);
+	indexArrayStore.resize(MC_MAXFACES);
+	indexArray = indexArrayStore.data();
 	for (int i=0;i<MC_MAXFACES;i++)
 		indexArray[i] = i;
 		
@@ -282,12 +278,15 @@ void MC_TextureManager::destroy (void)
 
 	gos_PopCurrentHeap();
 
-	// free SystemHeap Memory
-	systemHeap->Free(masterTextureNodes);
+	// Release the node storage; every view into it ends here.
 	masterTextureNodes = nullptr;
-	
-	systemHeap->Free(masterVertexNodes);
 	masterVertexNodes = nullptr;
+	masterHardwareVertexNodes = nullptr;
+	indexArray = nullptr;
+	std::vector<MC_TextureNode>().swap(masterTextureNodeStore);
+	std::vector<MC_VertexArrayNode>().swap(masterVertexNodeStore);
+	std::vector<MC_HardwareVertexArrayNode>().swap(masterHardwareVertexNodeStore);
+	std::vector<WORD>().swap(indexArrayStore);
 	
 	delete textureCacheHeap;
 	textureCacheHeap = nullptr;
@@ -489,18 +488,16 @@ void MC_TextureManager::flush (bool justTextures)
 		STOP(("Could not find MC2.fx"));
 		
 	long effectsSize = effectFile.fileSize();
-	MemoryPtr effectsData = (MemoryPtr)systemHeap->Malloc(effectsSize);
-	effectFile.read(effectsData,effectsSize);
+	std::vector<unsigned char> effectsData(static_cast<size_t>(effectsSize));
+	effectFile.read(effectsData.data(),effectsSize);
 	effectFile.close();
 	
-	effectStream = new Stuff::MemoryStream(effectsData,effectsSize);
+	effectStream = new Stuff::MemoryStream(effectsData.data(),effectsSize);
 	gosFX::EffectLibrary::Instance->Load(effectStream);
 	
 	gosFX::LightManager::Instance = new gosFX::LightManager();
 
 	gos_PopCurrentHeap();
-
-	systemHeap->Free(effectsData);
 }
 
 void MC_TextureManager::removeTextureNode (DWORD textureNode)

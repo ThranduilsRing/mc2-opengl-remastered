@@ -429,6 +429,13 @@ class MC_TextureManager
 		
 		WORD							*indexArray;				//Master Vertex Index array.
 
+		// Owners of the node arrays and the vertex index table. The raw pointers named above are views into them: valid from
+		// start() until destroy(), and the stores are sized once in start(), never grown while a view is held.
+		std::vector<MC_TextureNode>				masterTextureNodeStore;
+		std::vector<MC_VertexArrayNode>			masterVertexNodeStore;
+		std::vector<MC_HardwareVertexArrayNode>	masterHardwareVertexNodeStore;
+		std::vector<WORD>						indexArrayStore;
+
 																	//Upto four different kinds of untextured triangle!
 		MC_VertexArrayNode 				*vertexData;				//This holds the vertex draw data for UNTEXTURED triangles!
 		MC_VertexArrayNode				*vertexData2;				//This holds the vertex draw data for UNTEXTURED triangles!
