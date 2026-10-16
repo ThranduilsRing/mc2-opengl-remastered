@@ -241,40 +241,11 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True) -> int:
-    """Record ONE headless Tracy trace. Shared by capture/baseline/regress.
+    """Record one trace under the host lease; retain a caller's existing lease.
 
-    fixed_timestep=True  -> MC2_SMOKE_FIXED_TIMESTEP=1 (deterministic frames; NOT
-                            valid for FPS/frame-count measurement).
-    fixed_timestep=False -> free wall-clock timestep (hygienic FPS measurement).
-    fps_cap=0            -> MC2_FPS_CAP=0 (uncapped, render-bound).
-    pose="x,y,..."       -> MC2_CAMERA_PARK pin.
-    show_window=True     -> SW_SHOWNOACTIVATE: the window is VISIBLE but never
-                            steals focus. REQUIRED for any fragment-bound
-                            measurement -- see PERF-HARNESS-TRUTH-1 below.
-    Returns 0 on success; non-zero if a spawned process had to be killed.
-
-    PERF-HARNESS-TRUTH-1 (2026-07-25) -- why this function looks paranoid:
-
-      1. The game loop THROTTLES itself when its window is minimized or hidden:
-         gameosmain.cpp `windowInvisible` -> `timing::sleep(10ms)` per frame,
-         inside a Tracy zone named `Frame.BackgroundThrottle`. A capture taken
-         against an invisible window measures a 10ms sleep, not the renderer,
-         and a fragment-bound cost (light pools, fill rate, post) becomes
-         completely invisible. We therefore launch SW_SHOWNOACTIVATE by default
-         and PROVE visibility after the fact from the trace itself
-         (`assert_window_was_visible`), refusing the numbers if the throttle
-         zone ever fired. Loud refusal, not a warning: this class of defect
-         produced a full 3-arm x 3-pose table of silent nonsense once already.
-
-      2. MC2_LOG=1 is now ALWAYS set. The engine redirects stdout to NUL unless
-         this gate is on, so every prior capture wrote a ZERO-BYTE game log --
-         no receipt that the pose applied, that the gate under test applied, or
-         that the mission was even the right one. Unverifiable runs are worse
-         than no runs, because they get cited.
-
-      Neither defect involved MC2_SMOKE_MODE minimizing anything -- it does not,
-      and never did (no window consumer reads it). The throttle is driven purely
-      by the OS show-state we pass in STARTUPINFO.
+    Free timestep and an uncapped FPS limit measure renderer throughput.
+    A visible, non-activating window avoids the engine's background throttle.
+    MC2_LOG preserves mission and option receipts. Return nonzero on timeout.
     """
     game = install / "mc2.exe"
     if not game.is_file():
@@ -287,8 +258,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
     with ExitStack() as cleanup:
         # The recorder must share the game's host lease so another lane cannot feed it a trace.
-        host_lease.acquire(f"Tracy capture {arm} {mission}")
-        cleanup.callback(host_lease.release)
+        if not host_lease.holds():
+            host_lease.acquire(f"Tracy capture {arm} {mission}")
+            cleanup.callback(host_lease.release)
 
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",

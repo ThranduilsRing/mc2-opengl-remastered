@@ -14,6 +14,13 @@ import build_contract_harnesses as bch
 import build_driver as bd
 
 
+@pytest.fixture(autouse=True)
+def production_seam(monkeypatch):
+    seam = Mock(return_value=True)
+    monkeypatch.setattr(bch, "build_and_run_order_seam", seam)
+    return seam
+
+
 def record_runs(monkeypatch, module):
     calls = []
     def run(cmd, root, stage, phase, *args, **kwargs):
@@ -126,7 +133,8 @@ def test_default_corpus_commands_and_output_unchanged(monkeypatch, capsys, asan)
                            **bch.console_child.child_kwargs(redirected=True))
     assert all(kw == expected_kwargs for _, kw in calls)
     driver.assert_not_called()
-    assert capsys.readouterr().out == "  [PASS] mc2_tests: built in 0s\n"
+    assert capsys.readouterr().out == "  [PASS] mc2_tests: built in 0s\n" + (
+        "" if asan else "  [PASS] mc2_authored_order_seam\n")
 
 
 @pytest.mark.parametrize("argv,python_runs", [
@@ -135,12 +143,13 @@ def test_default_corpus_commands_and_output_unchanged(monkeypatch, capsys, asan)
     (["--run", "--asan"], False),
     (["--run", "--only", "camera_frustum_harness"], False),
 ])
-def test_python_suite_selection_remains_compatible(monkeypatch, argv, python_runs):
+def test_python_suite_selection_remains_compatible(monkeypatch, argv, python_runs, production_seam):
     monkeypatch.setattr(bch, "build_and_run_unit_tests", lambda *a, **kw: (True, "passed"))
     python = Mock(return_value=False)
     monkeypatch.setattr(bch, "run_python_harnesses", python)
     assert bch.main(argv) == (1 if python_runs else 0)
     assert python.call_count == int(python_runs)
+    assert production_seam.call_count == int("--asan" not in argv and "--only" not in argv)
 
 
 def test_root_preset_trees_match_cli_and_keep_full_product_scope():

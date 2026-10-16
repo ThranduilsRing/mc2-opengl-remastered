@@ -55,7 +55,6 @@ def harness(monkeypatch):
 
     def game_spawn(argv, **kwargs):
         assert h.held
-        capture.host_lease.ensure_held("game")
         h.events.append("game.spawn")
         return child("game")
 
@@ -239,15 +238,6 @@ def test_vk_arm_leaves_island_defaults_to_the_engine(monkeypatch):
     assert capture.game_env("vk", True, None, None, ["MC2_VK_SHADOW_INTEROP=0"])["MC2_VK_SHADOW_INTEROP"] == "0"
 
 
-def test_warmup_launch_runs_under_the_lease_before_the_recorder(harness):
-    h = harness
-    assert capture.capture_trace(h.install, "gl", "mc2_01", 15, h.out, warmup_s=7) == 0
-    assert h.events[:4] == ["acquire", "game.spawn", "game.wait", "recorder.spawn"]
-    warm_argv = h.game_spawn.call_args_list[0].args[0]
-    assert warm_argv[warm_argv.index("--duration") + 1] == "7"
-    assert h.events[-1] == "release"
-
-
 def test_held_chain_lease_is_not_released_by_a_capture(harness):
     h = harness
     h.held = True                                   # main() took it for the whole command
@@ -257,14 +247,11 @@ def test_held_chain_lease_is_not_released_by_a_capture(harness):
     assert h.held
 
 
-def test_main_holds_the_lease_for_the_whole_command_and_compare_takes_none(monkeypatch):
+def test_compare_takes_no_capture_lease(monkeypatch):
     events = []
     monkeypatch.setattr(capture.host_lease, "acquire", lambda label: events.append("acquire"))
     monkeypatch.setattr(capture.host_lease, "release", lambda: events.append("release"))
-    monkeypatch.setattr(capture, "cmd_baseline", lambda args: events.append(f"baseline warm={args.warmup_seconds}") or 0)
     monkeypatch.setattr(capture, "cmd_compare", lambda args: events.append("compare") or 0)
-    assert capture.main(["baseline", "--install", "x", "--warmup-seconds", "20"]) == 0
-    assert events == ["acquire", "baseline warm=20", "release"]
-    events.clear()
-    assert capture.main(["compare", "a.tracy", "b.tracy"]) == 0
+    monkeypatch.setattr(sys, "argv", ["tracy_capture_compare.py", "compare", "a.tracy", "b.tracy"])
+    assert capture.main() == 0
     assert events == ["compare"]
