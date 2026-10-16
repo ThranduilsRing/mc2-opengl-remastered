@@ -366,5 +366,5 @@ void main()
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);
     if (isStaticProp && propShadowReceive != 0)
-        FragColor = vec4(step(0.0, objN_stuff), 1.0);
+        FragColor = vec4(step(0.05, dot(objN, lightDir)), sampleDynamicShadow(worldPos, objN, mechSoft, 0.0) < 0.99 ? 1.0 : 0.0, step(0.0, lightDir.x), 1.0);
 }

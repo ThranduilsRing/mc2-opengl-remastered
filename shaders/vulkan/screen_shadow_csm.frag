@@ -157,5 +157,5 @@ void main()
         shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.4));
     FragColor = vec4(shadow, shadow, shadow, 1.0);
     if (isStaticProp && u.propShadowReceive != 0)
-        FragColor = vec4(step(0.0, objN_stuff), 1.0);
+        FragColor = vec4(step(0.05, dot(objN, u.lightDir.xyz)), sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.0) < 0.99 ? 1.0 : 0.0, step(0.0, u.lightDir.x), 1.0);
 }
