@@ -13,6 +13,7 @@
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
+#include<vector>
 #endif
 
 #ifndef DCOLLSN_H
@@ -53,6 +54,7 @@ class GlobalCollisionAlert
 	//Data Members
 	//-------------
 	protected:
+		std::vector<CollisionAlertRecord>	alertStore;		//Owns the records collisionAlerts views.
 		CollisionAlertRecordPtr		collisionAlerts;
 		unsigned long				maxAlerts;
 		unsigned long				nextRecord;
@@ -97,6 +99,8 @@ class CollisionGrid
 		unsigned long			maxObjects;			//Max number of objects in world.
 		
 		CollisionGridNodePtr	giantObjects;		//Collection of objects larger than maxGridRadius
+		std::vector<CollisionGridNodePtr>	gridStore;	//Owns the cells grid views.
+		std::vector<CollisionGridNode>		nodeStore;	//Owns the nodes the nodes pointer views.
 		CollisionGridNodePtr	*grid;				//Pointer to array of gridNodes layed out in space
 		CollisionGridNodePtr	nodes;				//Actual grid nodes available to layout in space.
 		

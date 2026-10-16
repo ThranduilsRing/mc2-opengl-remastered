@@ -57,8 +57,8 @@ long GlobalCollisionAlert::init (unsigned long maxCollisionAlerts)
 {
 	maxAlerts = maxCollisionAlerts;
 	
-	collisionAlerts = (CollisionAlertRecordPtr)systemHeap->Malloc(sizeof(CollisionAlertRecord) * maxAlerts);
-	gosASSERT(collisionAlerts != NULL);
+	alertStore.assign(maxAlerts ? maxAlerts : 1, CollisionAlertRecord{});
+	collisionAlerts = alertStore.data();
 
 	purgeRecords();
 	
@@ -68,8 +68,8 @@ long GlobalCollisionAlert::init (unsigned long maxCollisionAlerts)
 //------------------------------------------------------------------------------
 void GlobalCollisionAlert::destroy (void)
 {
-	systemHeap->Free(collisionAlerts);
 	collisionAlerts = nullptr;
+	std::vector<CollisionAlertRecord>().swap(alertStore);
 	maxAlerts = nextRecord = 0;
 }
 
@@ -176,15 +176,10 @@ long CollisionGrid::init (Stuff::Vector3D &newOrigin)
 		gridSize = sizeof(CollisionGridNodePtr) * xGridWidth * yGridWidth;
 		nodeSize = sizeof(CollisionGridNode) * maxObjects;
 		
-		if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-			grid = (CollisionGridNodePtr *)CollisionSystem::collisionHeap->Malloc(gridSize);
-		
-		gosASSERT(grid != NULL);
-		
-		if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-			nodes = (CollisionGridNodePtr)CollisionSystem::collisionHeap->Malloc(nodeSize);
-		
-		gosASSERT(nodes != NULL);
+		gridStore.assign((size_t)xGridWidth * yGridWidth, nullptr);
+		grid = gridStore.data();
+		nodeStore.assign(maxObjects ? maxObjects : 1, CollisionGridNode{});
+		nodes = nodeStore.data();
 		
 		gridXOffset = ((xGridWidth + 1) * maxGridRadius) / 2;
 		gridYOffset = ((yGridWidth + 1) * maxGridRadius) / 2;
@@ -213,15 +208,9 @@ void CollisionGrid::destroy (void)
 {
 	if (gridIsGo)
 	{
-		if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-		{
-			CollisionSystem::collisionHeap->Free(nodes);
-			nodes = nullptr;
-			
-			CollisionSystem::collisionHeap->Free(grid);
-			grid = nullptr;			
-		}
-		
+		std::vector<CollisionGridNode>().swap(nodeStore);
+		std::vector<CollisionGridNodePtr>().swap(gridStore);
+
 		gridIsGo = FALSE;
 		init();
 	}
