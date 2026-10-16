@@ -4703,6 +4703,42 @@
    "count": 1
   },
   {
+   "tag": "HDRI_SKY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "reason",
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDRI_SKY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "reason",
+    "path",
+    "err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDRI_SKY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "reason",
+    "path",
+    "rc",
+    "err"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HDRI_SUN_SYNC",
    "ver": -1,
    "stream": "stderr",
