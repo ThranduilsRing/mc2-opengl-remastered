@@ -27,6 +27,7 @@
 #endif
 
 #include<stuff/stuffheaders.hpp>
+#include<string>
 
 //---------------------------------------------------------------------------
 // Macro definitions
