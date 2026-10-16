@@ -13,8 +13,9 @@
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
-#include<vector>
 #endif
+
+#include<vector>
 
 #ifndef DCOLLSN_H
 #include"dcollsn.h"
