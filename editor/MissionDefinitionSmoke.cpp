@@ -132,7 +132,7 @@ bool EditorInterface::runDefinitionSmoke()
     CSpecificStructureObjectiveCondition* targetCondition = nullptr;
     auto& objectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef();
     for (auto objective = objectives.Begin(); !objective.IsDone() && !targetCondition; objective++)
-        for (auto condition = (*objective)->Begin(); !condition.IsDone() && !targetCondition; condition++)
+        for (auto condition = (*objective)->m_conditions.entries.begin(); condition != (*objective)->m_conditions.entries.end() && !targetCondition; condition++)
             targetCondition = dynamic_cast<CSpecificStructureObjectiveCondition*>(*condition);
     ok = verifyTransform(targetCondition ? targetCondition->BuildingPtr() : nullptr,
         [targetCondition](FitIniFile& file) { file.writeBlock("Reference"); return targetCondition->Save(&file); },

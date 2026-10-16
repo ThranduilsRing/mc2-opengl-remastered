@@ -138,7 +138,7 @@ static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListB
 		// At-a-glance validation warnings (data-only; read-only logic).
 		std::string warnEStr;
 		bool firstWarn = true;
-		if ((*it)->Count() == 0) {
+		if ((*it)->m_conditions.entries.size() == 0) {
 			if (!firstWarn) { warnEStr += _TEXT("; "); }
 			warnEStr += _TEXT("no success condition");
 			firstWarn = false;
@@ -200,12 +200,10 @@ void ObjectivesDlg::OnObjectivesAddButton()
 	CObjective *pNewObjective = new CObjective(m_ModifiedObjectives.Alignment());
 	assert(pNewObjective);
 
-	/* This call may set the editor into ObjectSelectOnlyMode (i.e.: set the  value of
-	EditorInterface::instance()->ObjectSelectOnlyMode() to true) */
+	// Editing may require a map selection outside the modal dialog.
 	bool result = pNewObjective->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* close the dialog and enter ObjectSelectOnlyMode */
 		UpdateData(TRUE);
 		EditorInterface::instance()->objectivesEditState.objectiveFunction = CObjectivesEditState::ADD;
 		EditorInterface::instance()->objectivesEditState.alignment = m_ModifiedObjectives.Alignment();
@@ -227,16 +225,7 @@ void ObjectivesDlg::OnObjectivesAddButton()
 	}
 }
 
-// Slice 1 "Add from Template..." -- pre-populate a CObjective for the chosen
-// PICK-FREE preset, then ride the IDENTICAL ADD path: call EditDialog() and reuse
-// the same ObjectSelectOnlyMode re-entry / append-on-true tail as
-// OnObjectivesAddButton. No new objectiveFunction value, no new edit-state field;
-// because the preset is fully applied BEFORE the first EditDialog(), this is a
-// normal ADD that happens to start with content. None of the Slice 1 presets call
-// a map-pick on construction, so they never enter ObjectSelectOnlyMode at all --
-// but if the user triggers a pick from inside CObjective::EditDialog (e.g. the area
-// "Pick center"), the existing ADD replay path carries the pre-populated objective
-// through unchanged.
+// Templates provide initial objective content before the ordinary edit dialog opens.
 void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 {
 	// In ObjectSelectOnlyMode the dialog is mid-handoff (re-opened to replay an
@@ -275,12 +264,12 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 		CObjectiveCondition *pCond =
 			CObjective::new_CObjectiveCondition(BOOLEAN_FLAG_IS_SET, alignment);
 		if (0 != pCond) {
-			pNewObjective->Append(pCond);
+			pNewObjective->m_conditions.entries.push_back(pCond);
 		}
 		CObjectiveAction *pAct =
 			CObjective::new_CObjectiveAction(SET_BOOLEAN_FLAG, alignment);
 		if (0 != pAct) {
-			pNewObjective->m_actionList.Append(pAct);
+			pNewObjective->m_actionList.entries.push_back(pAct);
 		}
 		break;
 	}
@@ -298,7 +287,7 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 			if (0 != pNum) {
 				pNum->Num(1);
 			}
-			pNewObjective->Append(pCond);
+			pNewObjective->m_conditions.entries.push_back(pCond);
 		}
 		break;
 	}
@@ -318,7 +307,7 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 				pArea->TargetCenterY(0.0f);
 				pArea->TargetRadius(256.0f);
 			}
-			pNewObjective->Append(pCond);
+			pNewObjective->m_conditions.entries.push_back(pCond);
 		}
 		break;
 	}
@@ -331,7 +320,6 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 	bool result = pNewObjective->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* close the dialog and enter ObjectSelectOnlyMode */
 		UpdateData(TRUE);
 		EditorInterface::instance()->objectivesEditState.objectiveFunction = CObjectivesEditState::ADD;
 		EditorInterface::instance()->objectivesEditState.alignment = m_ModifiedObjectives.Alignment();
@@ -357,7 +345,6 @@ void ObjectivesDlg::OnObjectivesRemoveButton()
 {
 	nSelectionIndex = m_List.GetCurSel();
 	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.Count() > nSelectionIndex)) {
-		// should put up confirmation box here
 		delete *(m_ModifiedObjectives.Iterator(nSelectionIndex));
 		m_ModifiedObjectives.Delete(nSelectionIndex);
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
@@ -388,8 +375,7 @@ void ObjectivesDlg::OnObjectivesEditButton()
 	assert(0 != pSelectedObjective);
 	assert(0 <= nSelectionIndex);
 
-	/* This call may set the editor into ObjectSelectOnlyMode (i.e.: set the  value of
-	EditorInterface::instance()->ObjectSelectOnlyMode() to true) */
+	// Editing may require a map selection outside the modal dialog.
 	pSelectedObjective->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {

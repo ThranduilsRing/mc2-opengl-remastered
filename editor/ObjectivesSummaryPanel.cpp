@@ -121,7 +121,7 @@ static int objCollectWarnings(CObjective* obj, const char* warn[OBJ_MAX_WARNINGS
         return 0;
 
     // No completion (success) condition: the objective can never be completed.
-    if (obj->Count() == 0 && n < OBJ_MAX_WARNINGS)
+    if (obj->m_conditions.entries.size() == 0 && n < OBJ_MAX_WARNINGS)
         warn[n++] = "No completion condition -- objective can never be met.";
 
     // Hidden trigger that also asks to show a marker: the marker is meaningless
@@ -235,8 +235,8 @@ static void objBadges(CObjective* obj, char* out, size_t cap)
     if (obj->ActivateOnFlag()) OBJ_APPEND("[Flag-gated]");
 
     // No failure path at all.
-    if (obj->m_failureConditionList.Count() == 0 &&
-        obj->m_failureActionList.Count() == 0)
+    if (obj->m_failureConditionList.entries.size() == 0 &&
+        obj->m_failureActionList.entries.size() == 0)
         OBJ_APPEND("[No Failure]");
 
     // Warning marker.
@@ -345,36 +345,36 @@ static void objDrawFlow(CObjective* obj)
     // completion conditions.
     ImGui::Separator();
     ImGui::TextUnformatted("WHEN (Completion conditions)");
-    if (obj->Count() == 0)
+    if (obj->m_conditions.entries.size() == 0)
         ImGui::TextDisabled("  (no completion conditions)");
     else
-        for (CObjective::condition_list_type::EIterator it = obj->Begin(); !it.IsDone(); it++)
+        for (auto it = obj->m_conditions.entries.begin(); it != obj->m_conditions.entries.end(); it++)
             objDrawCondition(*it);
 
     // THEN: actions fired on completion.
     ImGui::TextUnformatted("THEN (actions)");
-    if (obj->m_actionList.Count() == 0)
+    if (obj->m_actionList.entries.size() == 0)
         ImGui::TextDisabled("  (no actions)");
     else
-        for (CObjective::action_list_type::EIterator it = obj->m_actionList.Begin(); !it.IsDone(); it++)
+        for (auto it = obj->m_actionList.entries.begin(); it != obj->m_actionList.entries.end(); it++)
             objDrawAction(*it);
 
     // Failure block (only if present).
-    if (obj->m_failureConditionList.Count() > 0 || obj->m_failureActionList.Count() > 0)
+    if (obj->m_failureConditionList.entries.size() > 0 || obj->m_failureActionList.entries.size() > 0)
     {
         ImGui::Separator();
         ImGui::TextUnformatted("Failure conditions");
-        if (obj->m_failureConditionList.Count() == 0)
+        if (obj->m_failureConditionList.entries.size() == 0)
             ImGui::TextDisabled("  (none)");
         else
-            for (CObjective::condition_list_type::EIterator it = obj->m_failureConditionList.Begin(); !it.IsDone(); it++)
+            for (auto it = obj->m_failureConditionList.entries.begin(); it != obj->m_failureConditionList.entries.end(); it++)
                 objDrawCondition(*it);
 
         ImGui::TextUnformatted("Failure actions");
-        if (obj->m_failureActionList.Count() == 0)
+        if (obj->m_failureActionList.entries.size() == 0)
             ImGui::TextDisabled("  (none)");
         else
-            for (CObjective::action_list_type::EIterator it = obj->m_failureActionList.Begin(); !it.IsDone(); it++)
+            for (auto it = obj->m_failureActionList.entries.begin(); it != obj->m_failureActionList.entries.end(); it++)
                 objDrawAction(*it);
     }
     else
@@ -415,10 +415,10 @@ static void objDrawInspector(CObjective* obj)
         ImGui::Text("Reset flag id:       %s", (f && f[0]) ? f : "(none)");
     }
     ImGui::Separator();
-    ImGui::Text("Completion conds:    %lu", (unsigned long)obj->Count());
-    ImGui::Text("Completion actions:  %lu", (unsigned long)obj->m_actionList.Count());
-    ImGui::Text("Failure conditions:  %lu", (unsigned long)obj->m_failureConditionList.Count());
-    ImGui::Text("Failure actions:     %lu", (unsigned long)obj->m_failureActionList.Count());
+    ImGui::Text("Completion conds:    %lu", (unsigned long)obj->m_conditions.entries.size());
+    ImGui::Text("Completion actions:  %lu", (unsigned long)obj->m_actionList.entries.size());
+    ImGui::Text("Failure conditions:  %lu", (unsigned long)obj->m_failureConditionList.entries.size());
+    ImGui::Text("Failure actions:     %lu", (unsigned long)obj->m_failureActionList.entries.size());
     ImGui::Separator();
     ImGui::Text("Title resource str:  %s", obj->TitleUseResourceString() ? "yes" : "no");
     ImGui::Text("Model ID:            %ld", obj->ModelID());

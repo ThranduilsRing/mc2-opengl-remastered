@@ -212,7 +212,7 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	objective->ActivateOnFlag(true);
 	objective->ActivateFlagID("E0_flag");
 	auto condition = std::make_unique<CDestroyAllEnemyUnits>(0);
-	objective->Append(condition.get());
+	objective->m_conditions.entries.push_back(condition.get());
 	condition.release();
 	objectives.Append(objective.get());
 	objective.release();

@@ -1,39 +1,36 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 149 sites in 8 files
+# total 54 sites in 7 files
 # per kind:
-#      46  EList::Begin
-#      43  EList::Count
-#      21  EList::Append
-#      10  EList::Delete
-#      10  EList::Iterator
-#       5  EList
-#       4  EList::Clear
-#       3  EList::~EList
+#      15  EList::Begin
+#      11  EList::Count
+#       7  EList::Append
+#       6  EList::Iterator
+#       4  EList::Delete
+#       3  EList
 #       3  EList::EList
-#       2  EList::End
+#       2  EList::Clear
 #       2  EList::Insert
+#       1  EList::~EList
 # per batch (cxx23-step4-b2-files.json):
 #       1  B2.3
 #       6  B6
-#     142  E1
+#      47  E1
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
-#      56  editor/Objective.cpp
-#      28  editor/ObjectiveDlg.cpp
-#      27  editor/ObjectivesDlg.cpp
-#      20  editor/ObjectivesSummaryPanel.cpp
-#      11  editor/Objective.h
+#      22  editor/ObjectivesDlg.cpp
+#      15  editor/Objective.cpp
+#       6  editor/Objective.h
 #       5  code/mpparameterscreen.cpp
+#       4  editor/ObjectivesSummaryPanel.cpp
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
 # blob e5eb973f75d5b9dd9a5f240099990aabe605157c code/mission_update.cpp
 # blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
-# blob 1ed87ad1d854026d0cfe4055ddec68c11cafbba7 editor/Objective.cpp
-# blob e66ca41422e6bff99c5fcb9d38c9bbc7449bb722 editor/Objective.h
-# blob 7e7ab4592f2e735a68be2b3a8f5ec2eaafd75857 editor/ObjectiveDlg.cpp
-# blob 945de4f932649474771b7eaacf9aedc6c6faa4a9 editor/ObjectivesDlg.cpp
-# blob 40a6e8664fb78547a7de3d2f8c722247ed94ea1f editor/ObjectivesSummaryPanel.cpp
+# blob e9e78a3f21e14b577e01cf92ef2b5e0c964e25d8 editor/Objective.cpp
+# blob 75b1a15db8c4cd0d8eec7980331bd9dc9336b837 editor/Objective.h
+# blob 95daf061295d2d65cba58d74efac1014b7100e79 editor/ObjectivesDlg.cpp
+# blob d54c24fdf71197c0f732f64d9664db2a0ab82a87 editor/ObjectivesSummaryPanel.cpp
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 0
 # file:line:kind
 code/mission_update.cpp:625:EList::Count
@@ -43,40 +40,6 @@ code/mpparameterscreen.cpp:2323:EList::Delete
 code/mpparameterscreen.cpp:2351:EList::Begin
 code/mpparameterscreen.cpp:2369:EList::Begin
 code/mpparameterscreen.h:102:EList
-editor/Objective.cpp:28:EList::Begin
-editor/Objective.cpp:33:EList::Append
-editor/Objective.cpp:41:EList::Count
-editor/Objective.cpp:44:EList::Begin
-editor/Objective.cpp:45:EList::Begin
-editor/Objective.cpp:60:EList::Begin
-editor/Objective.cpp:65:EList::Clear
-editor/Objective.cpp:69:EList::Begin
-editor/Objective.cpp:74:EList::Append
-editor/Objective.cpp:82:EList::Count
-editor/Objective.cpp:85:EList::Begin
-editor/Objective.cpp:86:EList::Begin
-editor/Objective.cpp:101:EList::Begin
-editor/Objective.cpp:106:EList::Clear
-editor/Objective.cpp:291:EList::Begin
-editor/Objective.cpp:299:EList::Begin
-editor/Objective.cpp:307:EList::Begin
-editor/Objective.cpp:315:EList::Begin
-editor/Objective.cpp:422:EList::Append
-editor/Objective.cpp:441:EList::Append
-editor/Objective.cpp:464:EList::Append
-editor/Objective.cpp:483:EList::Append
-editor/Objective.cpp:537:EList::Count
-editor/Objective.cpp:538:EList::Count
-editor/Objective.cpp:539:EList::Count
-editor/Objective.cpp:540:EList::Count
-editor/Objective.cpp:555:EList::Begin
-editor/Objective.cpp:570:EList::Begin
-editor/Objective.cpp:585:EList::Begin
-editor/Objective.cpp:600:EList::Begin
-editor/Objective.cpp:646:EList::Begin
-editor/Objective.cpp:656:EList::Begin
-editor/Objective.cpp:671:EList::Begin
-editor/Objective.cpp:681:EList::Begin
 editor/Objective.cpp:733:EList::Begin
 editor/Objective.cpp:737:EList::Append
 editor/Objective.cpp:747:EList::Count
@@ -88,99 +51,38 @@ editor/Objective.cpp:775:EList::Begin
 editor/Objective.cpp:820:EList::Append
 editor/Objective.cpp:831:EList::Count
 editor/Objective.cpp:833:EList::Begin
-editor/Objective.cpp:874:EList::Count
-editor/Objective.cpp:877:EList::Begin
-editor/Objective.cpp:880:EList::Count
-editor/Objective.cpp:881:EList::End
-editor/Objective.cpp:891:EList::Delete
-editor/Objective.cpp:903:EList::Count
-editor/Objective.cpp:904:EList::End
-editor/Objective.cpp:914:EList::Delete
-editor/Objective.cpp:932:EList::Begin
-editor/Objective.cpp:945:EList::Begin
-editor/Objective.cpp:958:EList::Begin
-editor/Objective.h:548:EList
-editor/Objective.h:550:EList::~EList
-editor/Objective.h:556:EList
-editor/Objective.h:558:EList::~EList
-editor/Objective.h:620:EList::Count
-editor/Objective.h:671:EList
-editor/Objective.h:673:EList
-editor/Objective.h:676:EList::EList
-editor/Objective.h:677:EList::EList
-editor/Objective.h:678:EList::EList
-editor/Objective.h:679:EList::~EList
-editor/ObjectiveDlg.cpp:133:EList::Begin
-editor/ObjectiveDlg.cpp:145:EList::Begin
-editor/ObjectiveDlg.cpp:674:EList::Count
-editor/ObjectiveDlg.cpp:680:EList::Begin
-editor/ObjectiveDlg.cpp:801:EList::Append
-editor/ObjectiveDlg.cpp:814:EList::Count
-editor/ObjectiveDlg.cpp:816:EList::Iterator
-editor/ObjectiveDlg.cpp:817:EList::Delete
-editor/ObjectiveDlg.cpp:856:EList::Append
-editor/ObjectiveDlg.cpp:869:EList::Count
-editor/ObjectiveDlg.cpp:871:EList::Iterator
-editor/ObjectiveDlg.cpp:872:EList::Delete
-editor/ObjectiveDlg.cpp:1147:EList::Append
-editor/ObjectiveDlg.cpp:1160:EList::Count
-editor/ObjectiveDlg.cpp:1162:EList::Iterator
-editor/ObjectiveDlg.cpp:1163:EList::Delete
-editor/ObjectiveDlg.cpp:1202:EList::Append
-editor/ObjectiveDlg.cpp:1215:EList::Count
-editor/ObjectiveDlg.cpp:1217:EList::Iterator
-editor/ObjectiveDlg.cpp:1218:EList::Delete
-editor/ObjectiveDlg.cpp:1232:EList::Count
-editor/ObjectiveDlg.cpp:1233:EList::Begin
-editor/ObjectiveDlg.cpp:1247:EList::Count
-editor/ObjectiveDlg.cpp:1248:EList::Begin
-editor/ObjectiveDlg.cpp:1262:EList::Count
-editor/ObjectiveDlg.cpp:1263:EList::Begin
-editor/ObjectiveDlg.cpp:1277:EList::Count
-editor/ObjectiveDlg.cpp:1278:EList::Begin
+editor/Objective.cpp:873:EList::Begin
+editor/Objective.cpp:889:EList::Begin
+editor/Objective.cpp:902:EList::Begin
+editor/Objective.cpp:915:EList::Begin
+editor/Objective.h:678:EList
+editor/Objective.h:680:EList
+editor/Objective.h:683:EList::EList
+editor/Objective.h:684:EList::EList
+editor/Objective.h:685:EList::EList
+editor/Objective.h:686:EList::~EList
 editor/ObjectivesDlg.cpp:111:EList::Begin
-editor/ObjectivesDlg.cpp:141:EList::Count
-editor/ObjectivesDlg.cpp:219:EList::Append
-editor/ObjectivesDlg.cpp:278:EList::Append
-editor/ObjectivesDlg.cpp:283:EList::Append
-editor/ObjectivesDlg.cpp:301:EList::Append
-editor/ObjectivesDlg.cpp:321:EList::Append
-editor/ObjectivesDlg.cpp:345:EList::Append
-editor/ObjectivesDlg.cpp:359:EList::Count
-editor/ObjectivesDlg.cpp:361:EList::Iterator
-editor/ObjectivesDlg.cpp:362:EList::Delete
-editor/ObjectivesDlg.cpp:379:EList::Count
-editor/ObjectivesDlg.cpp:380:EList::Iterator
-editor/ObjectivesDlg.cpp:386:EList::Iterator
-editor/ObjectivesDlg.cpp:417:EList::Count
-editor/ObjectivesDlg.cpp:419:EList::Iterator
-editor/ObjectivesDlg.cpp:425:EList::Append
-editor/ObjectivesDlg.cpp:435:EList::Count
-editor/ObjectivesDlg.cpp:437:EList::Iterator
-editor/ObjectivesDlg.cpp:440:EList::Delete
-editor/ObjectivesDlg.cpp:441:EList::Insert
-editor/ObjectivesDlg.cpp:451:EList::Count
-editor/ObjectivesDlg.cpp:453:EList::Iterator
-editor/ObjectivesDlg.cpp:456:EList::Delete
-editor/ObjectivesDlg.cpp:457:EList::Count
-editor/ObjectivesDlg.cpp:458:EList::Append
-editor/ObjectivesDlg.cpp:460:EList::Insert
-editor/ObjectivesSummaryPanel.cpp:124:EList::Count
-editor/ObjectivesSummaryPanel.cpp:238:EList::Count
-editor/ObjectivesSummaryPanel.cpp:239:EList::Count
-editor/ObjectivesSummaryPanel.cpp:348:EList::Count
-editor/ObjectivesSummaryPanel.cpp:351:EList::Begin
-editor/ObjectivesSummaryPanel.cpp:356:EList::Count
-editor/ObjectivesSummaryPanel.cpp:359:EList::Begin
-editor/ObjectivesSummaryPanel.cpp:363:EList::Count
-editor/ObjectivesSummaryPanel.cpp:367:EList::Count
-editor/ObjectivesSummaryPanel.cpp:370:EList::Begin
-editor/ObjectivesSummaryPanel.cpp:374:EList::Count
-editor/ObjectivesSummaryPanel.cpp:377:EList::Begin
-editor/ObjectivesSummaryPanel.cpp:418:EList::Count
-editor/ObjectivesSummaryPanel.cpp:419:EList::Count
-editor/ObjectivesSummaryPanel.cpp:420:EList::Count
-editor/ObjectivesSummaryPanel.cpp:421:EList::Count
+editor/ObjectivesDlg.cpp:217:EList::Append
+editor/ObjectivesDlg.cpp:333:EList::Append
+editor/ObjectivesDlg.cpp:347:EList::Count
+editor/ObjectivesDlg.cpp:348:EList::Iterator
+editor/ObjectivesDlg.cpp:349:EList::Delete
+editor/ObjectivesDlg.cpp:366:EList::Count
+editor/ObjectivesDlg.cpp:367:EList::Iterator
+editor/ObjectivesDlg.cpp:373:EList::Iterator
+editor/ObjectivesDlg.cpp:403:EList::Count
+editor/ObjectivesDlg.cpp:405:EList::Iterator
+editor/ObjectivesDlg.cpp:411:EList::Append
+editor/ObjectivesDlg.cpp:421:EList::Count
+editor/ObjectivesDlg.cpp:423:EList::Iterator
+editor/ObjectivesDlg.cpp:426:EList::Delete
+editor/ObjectivesDlg.cpp:427:EList::Insert
+editor/ObjectivesDlg.cpp:437:EList::Count
+editor/ObjectivesDlg.cpp:439:EList::Iterator
+editor/ObjectivesDlg.cpp:442:EList::Delete
+editor/ObjectivesDlg.cpp:443:EList::Count
+editor/ObjectivesDlg.cpp:444:EList::Append
+editor/ObjectivesDlg.cpp:446:EList::Insert
 editor/ObjectivesSummaryPanel.cpp:462:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:480:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:534:EList::Count

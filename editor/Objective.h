@@ -8,6 +8,7 @@ Objective.h			: Interface for the Objective component.
 \*************************************************************************************************/
 
 #include "elist.h"
+#include <vector>
 #include <string>
 #include <utility>
 #include "tchar.h"
@@ -545,25 +546,30 @@ public:
 	const std::string& PurchaseFile() const { return m_purchaseFilePathname; }
 };
 
-class  CObjectiveConditionList : public EList <CObjectiveCondition *, CObjectiveCondition *> {
+class  CObjectiveConditionList {
 public:
-	virtual ~CObjectiveConditionList() { Clear(); }
-	virtual CObjectiveConditionList &operator=(const CObjectiveConditionList &master);
-	virtual bool operator==(const CObjectiveConditionList &rhs) const;
-	virtual void Clear();
+	std::vector<CObjectiveCondition*> entries;
+	CObjectiveConditionList() = default;
+	CObjectiveConditionList(const CObjectiveConditionList& master) { *this = master; }
+	~CObjectiveConditionList() { Clear(); }
+	CObjectiveConditionList &operator=(const CObjectiveConditionList &master);
+	bool operator==(const CObjectiveConditionList &rhs) const;
+	void Clear();
 };
 
-class  CObjectiveActionList : public EList <CObjectiveAction *, CObjectiveAction *> {
+class  CObjectiveActionList {
 public:
-	virtual ~CObjectiveActionList() { Clear(); }
-	virtual CObjectiveActionList &operator=(const CObjectiveActionList &master);
-	virtual bool operator==(const CObjectiveActionList &rhs) const;
-	virtual void Clear();
+	std::vector<CObjectiveAction*> entries;
+	CObjectiveActionList() = default;
+	CObjectiveActionList(const CObjectiveActionList& master) { *this = master; }
+	~CObjectiveActionList() { Clear(); }
+	CObjectiveActionList &operator=(const CObjectiveActionList &master);
+	bool operator==(const CObjectiveActionList &rhs) const;
+	void Clear();
 };
 
-class CObjective : public/*maybe protected*/ CObjectiveConditionList {
+class CObjective {
 private:
-	typedef CObjectiveConditionList inherited;
 	int m_alignment;
 	std::string m_title;
 	bool m_titleUseResourceString;
@@ -597,6 +603,7 @@ public: /* we could make this protected if only the editdialog is to acces these
 public:
 	typedef CObjectiveConditionList condition_list_type;
 	typedef CObjectiveActionList action_list_type;
+	condition_list_type m_conditions;
 	action_list_type m_actionList;
 	condition_list_type m_failureConditionList;
 	action_list_type m_failureActionList;
@@ -617,7 +624,7 @@ public:
 	bool EditDialog();
 	bool NoteThePositionsOfObjectsReferenced();
 	bool RestoreObjectPointerReferencesFromNotedPositions();
-	bool ThisObjectiveHasNoConditions() { return ((0 == Count()) && (0 == m_failureConditionList.Count())); }
+	bool ThisObjectiveHasNoConditions() { return (m_conditions.entries.empty() && m_failureConditionList.entries.empty()); }
 	const std::string& Title() const { return m_title; }
 	void Title(std::string title) { m_title = std::move(title); }
 	bool TitleUseResourceString() const { return m_titleUseResourceString; }
