@@ -649,6 +649,8 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
             }
             {
                 ZoneScopedN("SwapWindow.SDL");
+                // Outside the Vulkan block so a request expires on a run whose Vulkan present is down or never entered.
+                gos::screenshot::tick();
 #ifdef MC2_VULKAN
                 // VK-P13 T3: present intercept. When MC2_RENDER_BACKEND=vulkan AND
                 // the VK present path is up, present the finished GL frame (FBO-0,
@@ -721,7 +723,6 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                             (firePin > 0 &&
                              g_mc2FrameCounter >= firePin &&
                              g_mc2FrameCounter < firePin + 600);
-                        gos::screenshot::tick();
                         const bool verify =
                             ((mc2::gate::get<"MC2_VK_PRESENT_VERIFY">()) &&
                              inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||

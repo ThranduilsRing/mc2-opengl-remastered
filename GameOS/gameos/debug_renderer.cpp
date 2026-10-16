@@ -20,8 +20,6 @@ namespace DebugRenderer {
 // Internal types
 // ---------------------------------------------------------------------------
 
-struct DbgVert { float x, y, z; uint32_t rgba; };
-
 // Segments kept per frame; a frame that queues more is truncated with one log line.
 static constexpr size_t kVertCapacity = 65536;
 
@@ -29,18 +27,28 @@ static constexpr size_t kVertCapacity = 65536;
 // State
 // ---------------------------------------------------------------------------
 
-static bool              s_enabled       = mc2::gate::get<"MC2_DEBUG_RENDERER">();
-static bool              s_testCanary    = mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">();
-static bool              s_capWarnedOnce = false;
+// The live queue: a non-owning pointer to the instance the render context owns (set by its constructor, cleared by
+// its destructor). Primitives collect in verts during the scene; flushWorldPrims freezes them with the frame's matrix
+// and the overlay pass draws the frozen set once the UI frame is open.
+static Queue* s_active = nullptr;
 
-// Primitives collect in s_verts during the scene; flushWorldPrims freezes them with the frame's matrix and the
-// overlay pass draws the frozen set once the UI frame is open.
-static std::vector<DbgVert> s_verts;
-static std::vector<DbgVert> s_frozen;
-static float                s_frozenMvp[16];
+Queue::Queue()
+    : enabled(mc2::gate::get<"MC2_DEBUG_RENDERER">()),
+      testCanary(mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">()) {
+    s_active = this;
+}
+
+Queue::~Queue() {
+    if (s_active == this) s_active = nullptr;
+}
 
 static DbgVert makeVert(float x, float y, float z, uint32_t rgba) {
     return DbgVert{x, y, z, rgba};
+}
+
+// The queue to append to, or null when the debug renderer is off or no render context exists.
+static Queue* sink() {
+    return (s_active && s_active->enabled) ? s_active : nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,13 +56,15 @@ static DbgVert makeVert(float x, float y, float z, uint32_t rgba) {
 // ---------------------------------------------------------------------------
 
 void drawLineWorld(Vec3 a, Vec3 b, uint32_t rgba) {
-    if (!s_enabled) return;
-    s_verts.push_back(makeVert(a.x, a.y, a.z, rgba));
-    s_verts.push_back(makeVert(b.x, b.y, b.z, rgba));
+    Queue* q = sink();
+    if (!q) return;
+    q->verts.push_back(makeVert(a.x, a.y, a.z, rgba));
+    q->verts.push_back(makeVert(b.x, b.y, b.z, rgba));
 }
 
 void drawAabbWorld(Vec3 mn, Vec3 mx, uint32_t rgba) {
-    if (!s_enabled) return;
+    Queue* q = sink();
+    if (!q) return;
     // 8 corners: bit0=X, bit1=Y, bit2=Z
     float cx[8], cy[8], cz[8];
     for (int i = 0; i < 8; ++i) {
@@ -73,24 +83,25 @@ void drawAabbWorld(Vec3 mn, Vec3 mx, uint32_t rgba) {
     };
     for (const auto& e : kEdges) {
         int a = e[0], b = e[1];
-        s_verts.push_back(makeVert(cx[a], cy[a], cz[a], rgba));
-        s_verts.push_back(makeVert(cx[b], cy[b], cz[b], rgba));
+        q->verts.push_back(makeVert(cx[a], cy[a], cz[a], rgba));
+        q->verts.push_back(makeVert(cx[b], cy[b], cz[b], rgba));
     }
 }
 
 void drawRingWorld(Vec3 center, float radius, int segments, uint32_t rgba) {
-    if (!s_enabled) return;
+    Queue* q = sink();
+    if (!q) return;
     if (segments < 3)   segments = 3;
     if (segments > 256) segments = 256;
     const float step = 6.2831853f / (float)segments;  // 2*PI
     for (int i = 0; i < segments; ++i) {
         float a0 = step * i;
         float a1 = step * (i + 1);
-        s_verts.push_back(makeVert(
+        q->verts.push_back(makeVert(
             center.x + radius * cosf(a0),
             center.y,
             center.z + radius * sinf(a0), rgba));
-        s_verts.push_back(makeVert(
+        q->verts.push_back(makeVert(
             center.x + radius * cosf(a1),
             center.y,
             center.z + radius * sinf(a1), rgba));
@@ -98,7 +109,8 @@ void drawRingWorld(Vec3 center, float radius, int segments, uint32_t rgba) {
 }
 
 void drawRingWorld(Vec3 center, Vec3 normal, float radius, int segments, uint32_t rgba) {
-    if (!s_enabled) return;
+    Queue* q = sink();
+    if (!q) return;
     if (segments < 3)   segments = 3;
     if (segments > 256) segments = 256;
 
@@ -136,17 +148,17 @@ void drawRingWorld(Vec3 center, Vec3 normal, float radius, int segments, uint32_
         const float s0 = sinf(step *  i)      * radius;
         const float c1 = cosf(step * (i + 1)) * radius;
         const float s1 = sinf(step * (i + 1)) * radius;
-        s_verts.push_back(makeVert(center.x + c0*tx + s0*bx,
-                                   center.y + c0*ty + s0*by,
-                                   center.z + c0*tz + s0*bz, rgba));
-        s_verts.push_back(makeVert(center.x + c1*tx + s1*bx,
-                                   center.y + c1*ty + s1*by,
-                                   center.z + c1*tz + s1*bz, rgba));
+        q->verts.push_back(makeVert(center.x + c0*tx + s0*bx,
+                                    center.y + c0*ty + s0*by,
+                                    center.z + c0*tz + s0*bz, rgba));
+        q->verts.push_back(makeVert(center.x + c1*tx + s1*bx,
+                                    center.y + c1*ty + s1*by,
+                                    center.z + c1*tz + s1*bz, rgba));
     }
 }
 
 void drawCrossWorld(Vec3 center, float halfSize, uint32_t rgba) {
-    if (!s_enabled) return;
+    if (!sink()) return;
     drawLineWorld({center.x - halfSize, center.y,            center.z           },
                   {center.x + halfSize, center.y,            center.z           }, rgba);
     drawLineWorld({center.x,            center.y - halfSize, center.z           },
@@ -156,7 +168,7 @@ void drawCrossWorld(Vec3 center, float halfSize, uint32_t rgba) {
 }
 
 void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, uint32_t rgba) {
-    if (!s_enabled) return;
+    if (!sink()) return;
     if (rings < 1)  rings = 1;
     if (rings > 16) rings = 16;
 
@@ -180,11 +192,12 @@ void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba) {
 }
 
 void flushWorldPrims() {
-    if (!s_enabled) return;
+    Queue* q = sink();
+    if (!q) return;
 
     // Test canary: enqueue BEFORE empty check so MC2_DEBUG_RENDERER_TEST=1
     // produces output even when no other callers have queued verts.
-    if (s_testCanary) {
+    if (q->testCanary) {
         // World axis tripod at origin: X=red, Y=green, Z=blue, 50-unit arms
         drawLineWorld({0,0,0}, {50,0,0},  0xFF0000FFu);  // X red
         drawLineWorld({0,0,0}, {0,50,0},  0x00FF00FFu);  // Y green
@@ -193,42 +206,43 @@ void flushWorldPrims() {
         drawRingWorld({0, 50, 0}, 30.0f, 64, 0xFFFFFFFFu);
     }
 
-    if (s_verts.empty()) return;
+    if (q->verts.empty()) return;
 
     const float* vp = gos_GetTerrainMVPMat4();
     if (!vp) {
-        s_verts.clear();
+        q->verts.clear();
         return;
     }
 
-    if (s_verts.size() > kVertCapacity) {
-        if (!s_capWarnedOnce) {
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32((int)kVertCapacity), mc2::fmt::as_i32((int)s_verts.size()));
-            s_capWarnedOnce = true;
+    if (q->verts.size() > kVertCapacity) {
+        if (!q->capWarned) {
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32((int)kVertCapacity), mc2::fmt::as_i32((int)q->verts.size()));
+            q->capWarned = true;
         }
-        s_verts.resize(kVertCapacity);
+        q->verts.resize(kVertCapacity);
     }
-    if (s_verts.size() % 2 != 0) s_verts.pop_back();   // segments come in pairs
+    if (q->verts.size() % 2 != 0) q->verts.pop_back();   // segments come in pairs
 
-    s_frozen.swap(s_verts);
-    s_verts.clear();
-    for (int i = 0; i < 16; ++i) s_frozenMvp[i] = vp[i];
+    q->frozen.swap(q->verts);
+    q->verts.clear();
+    for (int i = 0; i < 16; ++i) q->frozenMvp[i] = vp[i];
 }
 
 void drawFrozenPrimsToOverlay() {
-    if (s_frozen.empty()) return;
+    Queue* q = s_active;
+    if (!q || q->frozen.empty()) return;
     ImDrawList* dl = ImGui::GetForegroundDrawList();
     const ImVec2 size = ImGui::GetIO().DisplaySize;
-    if (!dl || !(size.x > 0.0f) || !(size.y > 0.0f)) { s_frozen.clear(); return; }
+    if (!dl || !(size.x > 0.0f) || !(size.y > 0.0f)) { q->frozen.clear(); return; }
     static bool s_firstDrawLogged = false;
     size_t drawn = 0;
-    for (size_t i = 0; i + 1 < s_frozen.size(); i += 2) {
-        const DbgVert& a = s_frozen[i];
-        const DbgVert& b = s_frozen[i + 1];
+    for (size_t i = 0; i + 1 < q->frozen.size(); i += 2) {
+        const DbgVert& a = q->frozen[i];
+        const DbgVert& b = q->frozen[i + 1];
         const float pa[3] = {a.x, a.y, a.z};
         const float pb[3] = {b.x, b.y, b.z};
         ScreenSegment seg;
-        if (!projectSegment(s_frozenMvp, pa, pb, size.x, size.y, &seg)) continue;
+        if (!projectSegment(q->frozenMvp, pa, pb, size.x, size.y, &seg)) continue;
         // Colour packs r,g,b,a from the top byte down.
         const uint32_t c = a.rgba;
         const ImU32 col = IM_COL32((c >> 24) & 0xFF, (c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
@@ -236,15 +250,15 @@ void drawFrozenPrimsToOverlay() {
         ++drawn;
         if (!s_firstDrawLogged) {
             s_firstDrawLogged = true;
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=first_draw queued={:d} display={:.0f}x{:.0f} seg0=({:.1f},{:.1f})-({:.1f},{:.1f})\n", mc2::fmt::as_i32((int)(s_frozen.size() / 2)), size.x, size.y, seg.x0, seg.y0, seg.x1, seg.y1);
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=first_draw queued={:d} display={:.0f}x{:.0f} seg0=({:.1f},{:.1f})-({:.1f},{:.1f})\n", mc2::fmt::as_i32((int)(q->frozen.size() / 2)), size.x, size.y, seg.x0, seg.y0, seg.x1, seg.y1);
         }
     }
     static bool s_cullLogged = false;
     if (drawn == 0 && !s_cullLogged) {
         s_cullLogged = true;
-        mc2::fmt::print_err("[DEBUGDRAW v1] event=all_culled queued={:d}\n", mc2::fmt::as_i32((int)(s_frozen.size() / 2)));
+        mc2::fmt::print_err("[DEBUGDRAW v1] event=all_culled queued={:d}\n", mc2::fmt::as_i32((int)(q->frozen.size() / 2)));
     }
-    s_frozen.clear();
+    q->frozen.clear();
 }
 
 void flushScreenPrims() {

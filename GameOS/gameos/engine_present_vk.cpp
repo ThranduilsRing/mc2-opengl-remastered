@@ -1935,11 +1935,15 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         using clk = std::chrono::steady_clock;
         const clk::time_point tWait0 = clk::now();
         const VkFence inFlightFence = s.inFlight.get();
-        if (vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
-                            5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-            return false;
+        const VkResult waitResult = vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
+                                                    5ull * 1000 * 1000 * 1000);
         health_.composite_wait_us_last =
             std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        // A failed or timed-out wait is the worst hitch there is, so it is recorded before the present declines.
+        if (waitResult != VK_SUCCESS) {
+            mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
+            return false;
+        }
         health_.composite_wait_us_accum += health_.composite_wait_us_last;
         mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
         ++health_.composite_wait_samples;

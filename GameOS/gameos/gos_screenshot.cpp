@@ -12,14 +12,8 @@ namespace gos { namespace screenshot {
 
 namespace {
 
-struct Request {
-    bool pending = false;
-    std::string path;
-    DoneFn done = nullptr;
-    unsigned int framesWaited = 0;
-};
-constexpr unsigned int kMaxFramesPending = 300;
-Request g_req;
+// The single pending request (a path string and a function pointer; no handle to release).
+Slot g_slot;
 
 }  // namespace
 
@@ -32,33 +26,27 @@ bool request(const char* path, DoneFn done) {
         mc2::fmt::print_err("[SCREENSHOT v1] request rejected: the Vulkan backend is not drawing\n");
         return false;
     }
-    if (g_req.pending) {
-        mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {} still pending\n", mc2::fmt::safe(g_req.path.c_str()));
+    if (g_slot.pending()) {
+        mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {} still pending\n", mc2::fmt::safe(g_slot.path().c_str()));
         return false;
     }
-    g_req.pending = true;
-    g_req.path = path;
-    g_req.done = done;
-    return true;
+    return g_slot.begin(path, done);
 }
 
-bool pending() { return g_req.pending; }
+bool pending() { return g_slot.pending(); }
 
 void tick() {
-    if (!g_req.pending) return;
-    if (++g_req.framesWaited < kMaxFramesPending) return;
     // The present never reached its readback (a failed or declined present, a fallback): free the slot so
     // the next request is not rejected for the rest of the run.
-    const Request req = g_req;
-    g_req = Request{};
-    mc2::fmt::print_err("[SCREENSHOT v1] request for {} expired after {:d} frames without a readback\n", mc2::fmt::safe(req.path.c_str()), mc2::fmt::as_u32(kMaxFramesPending));
+    Slot::Request req;
+    if (!g_slot.tick(&req)) return;
+    mc2::fmt::print_err("[SCREENSHOT v1] request for {} expired after {:d} frames without a readback\n", mc2::fmt::safe(req.path.c_str()), mc2::fmt::as_u32(Slot::kMaxFramesPending));
     if (req.done) req.done(req.path.c_str(), false, 0, 0);
 }
 
 void deliver(unsigned int w, unsigned int h, const unsigned char* rgba) {
-    if (!g_req.pending) return;
-    const Request req = g_req;
-    g_req = Request{};
+    if (!g_slot.pending()) return;
+    const Slot::Request req = g_slot.take();
     bool ok = false;
     if (!rgba || w == 0 || h == 0 || w > 0xFFFFu || h > 0xFFFFu) {
         mc2::fmt::print_err("[SCREENSHOT v1] readback rejected: {:d}x{:d} pixels={}\n", mc2::fmt::as_u32(w), mc2::fmt::as_u32(h), mc2::fmt::safe(rgba ? "set" : "null"));

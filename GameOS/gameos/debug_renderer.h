@@ -1,9 +1,30 @@
 #pragma once
 #include <cstdint>
+#include <vector>
 
 namespace DebugRenderer {
 
 struct Vec3 { float x, y, z; };
+
+struct DbgVert { float x, y, z; uint32_t rgba; };
+
+// The segments queued during a frame and the set frozen for the overlay. One instance exists, owned by the render
+// context (gosRenderer), so the buffers live and die with the renderer and not with the process. The free functions
+// below act on the instance that is alive and do nothing when there is none.
+class Queue {
+public:
+    Queue();
+    ~Queue();
+    Queue(const Queue&) = delete;
+    Queue& operator=(const Queue&) = delete;
+
+    bool enabled;                // MC2_DEBUG_RENDERER, read once when the renderer is created
+    bool testCanary;             // MC2_DEBUG_RENDERER_TEST
+    bool capWarned = false;
+    std::vector<DbgVert> verts;  // collecting during the scene
+    std::vector<DbgVert> frozen; // frozen by flushWorldPrims, drawn at the next UI frame
+    float frozenMvp[16] = {};
+};
 
 // Enqueue a world-space line segment. No-op when MC2_DEBUG_RENDERER is unset.
 void drawLineWorld(Vec3 a, Vec3 b, uint32_t rgba);
@@ -39,7 +60,9 @@ void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba);
 void flushWorldPrims();
 
 // Draw the frozen primitives on the UI overlay (the layer the Vulkan present draws over the scene). Call once per
-// frame after the UI frame has begun. Lines are not depth-tested. No-op when nothing is frozen. Under Vulkan the overlay
+// frame after the UI frame has begun. The UI frame opens at the top of the frame, before the scene queues anything,
+// so the overlay shows the previous frame's primitives with the previous frame's matrix (one frame of lag, no skew).
+// Lines are not depth-tested. No-op when nothing is frozen. Under Vulkan the overlay
 // is visible only while the Vulkan ImGui renderer is on (MC2_VK_IMGUI).
 void drawFrozenPrimsToOverlay();
 

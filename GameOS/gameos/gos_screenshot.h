@@ -6,10 +6,9 @@
 // on the GL backend rejects the request with a log line and writes no file.
 #pragma once
 
-namespace gos { namespace screenshot {
+#include "gos_screenshot_slot.h"   // DoneFn
 
-// Called once the file is written (ok) or the write failed (!ok); w/h are the presented frame size.
-using DoneFn = void (*)(const char* path, bool ok, int w, int h);
+namespace gos { namespace screenshot {
 
 // Queue a TGA of the next presented frame. Returns false (and logs why) when a request is already pending, the path is empty, or the
 // Vulkan backend is not the one drawing. `done` may be null.
