@@ -11,6 +11,8 @@
 // Include files
 #ifndef GAMESOUND_H
 #include"gamesound.h"
+
+#include"../GameOS/gameos/utils/mc2log.h"
 #endif
 
 #ifndef WARRIOR_H
