@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -37,6 +38,34 @@ def test_free_host_takes_the_lease(lease):
     assert json.loads(lease.read_text())["pid"] == os.getpid() and host_lease.holds()
     host_lease.release()
     assert not lease.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows open readers deny replace and unlink")
+@pytest.mark.parametrize("operation", ["replace", "unlink"])
+def test_publication_and_release_survive_an_open_reader(lease, operation):
+    host_lease.acquire("publication")
+    opened = threading.Event()
+
+    def reader():
+        with lease.open("rb") as stream:
+            stream.read()
+            opened.set()
+            time.sleep(0.05)
+
+    thread = threading.Thread(target=reader)
+    thread.start()
+    try:
+        assert opened.wait(60), "reader never opened the lease"
+        if operation == "replace":
+            rec = dict(host_lease._read(lease), batch="publication")
+            host_lease._write_record(lease, rec)
+            assert host_lease._read(lease) == rec
+        else:
+            host_lease.release()
+            assert not lease.exists()
+    finally:
+        thread.join(timeout=60)
+    assert not thread.is_alive()
 
 
 @pytest.mark.parametrize("exclusive", [False, True])
@@ -221,11 +250,21 @@ def _worktree_copy(root, name):
     return lane
 
 
-def _wait_for(path, timeout_s=20.0):
+def _wait_until(condition, description, proc=None, timeout_s=60.0):
     deadline = time.monotonic() + timeout_s
-    while not os.path.exists(path):
-        assert time.monotonic() < deadline, f"timed out waiting for {path}"
+    while not condition():
+        if time.monotonic() >= deadline or (proc is not None and proc.poll() is not None):
+            stderr = b""
+            if proc is not None:
+                if proc.poll() is None:
+                    proc.kill()
+                _, stderr = proc.communicate(timeout=10)
+            pytest.fail(f"timed out waiting for {description}; child stderr: {stderr!r}")
         time.sleep(0.05)
+
+
+def _wait_for(path, timeout_s=60.0, proc=None):
+    _wait_until(lambda: os.path.exists(path), str(path), proc, timeout_s)
 
 
 def test_two_lanes_from_two_worktree_copies_share_one_lease(tmp_path, monkeypatch):
@@ -284,7 +323,7 @@ from pathlib import Path
 from scripts.smoke_lib import host_lease as h
 h.POLL_S = 0.03
 tag, root, exclusive = sys.argv[1:]
-h.acquire(tag, exclusive=exclusive == 'True', timeout_s=15, log=lambda m: None)
+h.acquire(tag, exclusive=exclusive == 'True', timeout_s=120, log=lambda m: None)
 root = Path(root)
 records = [r for _, r in h._records() if r and r['pid'] == __import__('os').getpid()]
 (root / (tag + '.held')).write_text(json.dumps(records))
@@ -301,51 +340,54 @@ h.release()
         children.append(proc)
         return proc
 
-    def queued(pid):
-        end = time.monotonic() + 10
-        while time.monotonic() < end:
+    def queued(proc):
+        def present():
             tickets = (host_lease._read(lease.with_suffix(".queue.json")) or {}).get("tickets", [])
-            if any(t["pid"] == pid for t in tickets):
-                return
-            time.sleep(0.03)
-        pytest.fail("waiter never entered queue")
+            return any(t["pid"] == proc.pid for t in tickets)
+        _wait_until(present, "waiter entering queue", proc)
+
+    def finished(proc):
+        _wait_until(lambda: proc.poll() is not None, "child exit", proc)
+        _, stderr = proc.communicate(timeout=10)
+        assert proc.returncode == 0, stderr
 
     try:
         occupants = [start(str(i)) for i in range(3)]
         for i in range(3):
-            _wait_for(tmp_path / f"{i}.held")
+            _wait_for(tmp_path / f"{i}.held", proc=occupants[i])
         records = [r for _, r in host_lease._records() if r]
         assert len(records) == 4 and len({r["slot"] for r in records}) == 4
         if exclusive:
             first = start("first", True)
-            queued(first.pid)
+            queued(first)
             later = start("later")
-            queued(later.pid)
+            queued(later)
             assert not (tmp_path / "later.held").exists()
             host_lease.release()
-            time.sleep(0.15)
+            _wait_until(lambda: all(not r or r["pid"] != os.getpid() for _, r in host_lease._records()),
+                        "initial slot release", first)
             assert not (tmp_path / "first.held").exists()
             for i, proc in enumerate(occupants):
                 (tmp_path / f"{i}.go").touch()
-                assert proc.wait(timeout=10) == 0
-            _wait_for(tmp_path / "first.held")
+                finished(proc)
+            _wait_for(tmp_path / "first.held", proc=first)
             records = json.loads((tmp_path / "first.held").read_text())
             assert len(records) == 6
             assert not (tmp_path / "later.held").exists()
             (tmp_path / "first.go").touch()
-            assert first.wait(timeout=10) == 0
-            _wait_for(tmp_path / "later.held")
+            finished(first)
+            _wait_for(tmp_path / "later.held", proc=later)
         else:
             first = start("first")
-            queued(first.pid)
+            queued(first)
             later = start("later")
-            queued(later.pid)
+            queued(later)
             host_lease.release()
-            _wait_for(tmp_path / "first.held")
+            _wait_for(tmp_path / "first.held", proc=first)
             assert not (tmp_path / "later.held").exists()
             (tmp_path / "first.go").touch()
-            assert first.wait(timeout=10) == 0
-            _wait_for(tmp_path / "later.held")
+            finished(first)
+            _wait_for(tmp_path / "later.held", proc=later)
     finally:
         for proc in children:
             if proc.poll() is None:

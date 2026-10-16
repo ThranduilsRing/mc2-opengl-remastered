@@ -120,6 +120,7 @@
  },
  "image_kill": {},
  "os_kill": {
+  "scripts/tests/test_host_lease_batch.py": "intentionally terminates its own fake batch holder to prove dead-holder takeover; never a liveness probe or engine kill",
   "scripts/smoke_lib/child_registry.py": "POSIX-only branch of pid_alive (signal 0 is a probe there); the Windows path uses OpenProcess"
  },
  "user_tools": {

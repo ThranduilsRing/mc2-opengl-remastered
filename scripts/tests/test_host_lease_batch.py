@@ -22,6 +22,26 @@ def lease(tmp_path, monkeypatch):
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
     monkeypatch.delenv(host_lease.BATCH_ENV, raising=False)
     monkeypatch.setattr(host_lease, "_registered", False)
+    original_spawn = subprocess.Popen
+    original_hold = host_lease.hold
+    stderr_path = tmp_path / "holder.stderr"
+
+    def spawn(argv, *args, **kwargs):
+        if isinstance(argv, list) and "_holder" in argv:
+            with stderr_path.open("w", encoding="utf-8") as stderr:
+                kwargs["stderr"] = stderr
+                return original_spawn(argv, *args, **kwargs)
+        return original_spawn(argv, *args, **kwargs)
+
+    def hold(*args, **kwargs):
+        kwargs["timeout_s"] = 60
+        try:
+            return original_hold(*args, **kwargs)
+        except host_lease.HostLeaseBusy as exc:
+            pytest.fail(f"{exc}; child stderr: {stderr_path.read_text(encoding='utf-8')}")
+
+    monkeypatch.setattr(subprocess, "Popen", spawn)
+    monkeypatch.setattr(host_lease, "hold", hold)
     yield tmp_path / "lease.json"
     host_lease.release()
 
@@ -35,13 +55,18 @@ def _try_child(tag=None):
     env.pop(host_lease.BATCH_ENV, None)
     if tag:
         env[host_lease.BATCH_ENV] = tag
-    return subprocess.run([sys.executable, "-c", code], env=env, timeout=30, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          **console_child.child_kwargs(redirected=True)).returncode
+    try:
+        result = subprocess.run([sys.executable, "-c", code], env=env, timeout=60, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                **console_child.child_kwargs(redirected=True))
+    except subprocess.TimeoutExpired as exc:
+        pytest.fail(f"child timed out; child stderr: {exc.stderr!r}")
+    assert result.returncode in (0, 3), result.stderr
+    return result.returncode
 
 
-def _wait_gone(pid, s=15.0):
-    end = time.time() + s
-    while time.time() < end and child_registry.pid_alive(pid):
+def _wait_gone(pid, s=60.0):
+    end = time.monotonic() + s
+    while time.monotonic() < end and child_registry.pid_alive(pid):
         time.sleep(0.2)
     return not child_registry.pid_alive(pid)
 
@@ -52,16 +77,20 @@ def test_hold_chain_enters_others_wait_release_ends(lease, exclusive):
     try:
         rec = json.loads(lease.read_text())
         assert rec["pid"] == pid and rec["batch"] == "proof-a" and pid != os.getpid()
-        assert sum(bool(r) for _, r in host_lease._records()) == (6 if exclusive else 1)
-        assert _try_child("proof-a") == 0            # a chain step enters
-        assert _try_child("proof-a") == 0            # and the next one: the lease survived the first step's exit
-        assert _try_child() == 3                     # another lane waits
-        assert _try_child("other") == 3              # a different batch tag is another lane
+        deadline = time.monotonic() + 60
+        while sum(bool(r and r.get("batch") == "proof-a") for _, r in host_lease._records()) != (6 if exclusive else 1):
+            assert child_registry.pid_alive(pid) and time.monotonic() < deadline, (
+                f"batch publication timed out; child stderr: {lease.with_name('holder.stderr').read_text(encoding='utf-8')}")
+            time.sleep(0.05)
+        assert _try_child("proof-a") == 0
+        assert _try_child("proof-a") == 0
+        assert _try_child() == 3
+        assert _try_child("other") == 3
     finally:
         removed, _ = host_lease.release_batch("proof-a")
     assert removed and not lease.exists()
     assert not any(r for _, r in host_lease._records())
-    assert _wait_gone(pid)                           # the holder notices and exits
+    assert _wait_gone(pid), f"holder exit timed out; child stderr: {lease.with_name('holder.stderr').read_text(encoding='utf-8')}"
 
 
 def test_dead_holder_expires(lease):

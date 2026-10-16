@@ -2,12 +2,20 @@
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+from unittest.mock import Mock
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from tools import build_contract_harnesses as builder
+
+
+@pytest.fixture(autouse=True)
+def production_seam(monkeypatch):
+    seam = Mock(return_value=True)
+    monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
+    return seam
 
 
 def record_runs(monkeypatch, codes):
@@ -33,10 +41,11 @@ def test_selection_filters_the_shared_binary(monkeypatch):
 
 
 @pytest.mark.parametrize("codes,expected_calls", [([1], 1), ([0, 1], 2), ([0, 0, 1], 3)])
-def test_native_failures_do_not_run_stale_binaries_or_python(monkeypatch, codes, expected_calls):
+def test_native_failures_do_not_run_stale_binaries_or_python(monkeypatch, codes, expected_calls, production_seam):
     commands = record_runs(monkeypatch, codes)
     assert builder.main(["--run", "--unit"]) == 1
     assert len(commands) == expected_calls
+    production_seam.assert_not_called()
 
 
 def test_default_run_keeps_all_python_contracts_and_reports_failure(monkeypatch):

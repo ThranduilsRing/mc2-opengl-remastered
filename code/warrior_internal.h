@@ -182,6 +182,8 @@ long SignedRandomNumber (long range);
 long GetMissionTurn (void);
 
 // Free functions defined in the split pieces.
+bool absorbsGeneralOrder(MechWarrior* pilot, long origin);
+void suspendAuthoredRoute(MechWarrior* warrior);
 long compareTacOrderId (long id1, long id2);
 long orderOrbitObject (GameObjectPtr target);
 long orderUseOrbitRange (long type, float range);
