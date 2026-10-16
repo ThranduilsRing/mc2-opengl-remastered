@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 392,
+   "LG01": 389,
    "LG02": 280,
    "LG03": 1077,
    "LG04": 15,
-   "LG05": 134,
-   "LG06": 675,
+   "LG05": 138,
+   "LG06": 679,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2103,
+   "LG09": 2070,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 209,
@@ -4881,7 +4881,7 @@
    "LG01": 21,
    "LG03": 4,
    "LG06": 4,
-   "LG09": 46,
+   "LG09": 43,
    "LG11": 1,
    "LG12a": 3,
    "LG12b": 29
@@ -4912,7 +4912,7 @@
   "mclib/terrtxm2_bake.cpp": {
    "LG03": 4,
    "LG06": 8,
-   "LG09": 44
+   "LG09": 34
   },
   "mclib/terrtxm2_internal.h": {
    "LG05": 8,
@@ -4925,14 +4925,22 @@
   },
   "mclib/terrtxm2_load.cpp": {
    "LG03": 5,
+   "LG05": 2,
    "LG06": 1,
-   "LG09": 65
+   "LG09": 50
   },
   "mclib/tex_resolve_table.cpp": {
    "LG09": 13
   },
   "mclib/tex_resolve_table.h": {
    "LG09": 1
+  },
+  "mclib/tga_scratch.cpp": {
+   "LG06": 2
+  },
+  "mclib/tga_scratch.h": {
+   "LG05": 2,
+   "LG06": 2
   },
   "mclib/tgainfo.cpp": {
    "LG04": 2,
@@ -5000,11 +5008,11 @@
    "LG02": 3
   },
   "mclib/txmmgr.cpp": {
-   "LG01": 4,
+   "LG01": 1,
    "LG03": 29,
    "LG06": 2,
    "LG08": 1,
-   "LG09": 13,
+   "LG09": 8,
    "LG11": 1,
    "LG12a": 7,
    "LG12b": 3
@@ -5126,7 +5134,7 @@
    "LG20": 3
   }
  },
- "head": "5e7440c75",
+ "head": "d2913b12e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
