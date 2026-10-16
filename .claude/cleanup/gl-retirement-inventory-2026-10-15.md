@@ -295,15 +295,15 @@ VK, and the owner has ruled on the fail-soft policy. Each step deletes whole fil
 5. Current scope of the VK terrain island (LOD0 only per its header, or all bands); decides how much of section 3 is a port, not a deletion.
 6. Row 18 (decal fill) has no stock content: port blind, or delete the GL feature with GL?
 
-## 15. Step 1 status (lane 2 session 29, 2026-10-16)
+## 15. Step 1 status (lane 2 sessions 29-30, 2026-10-16)
 
 | item | state |
 |---|---|
 | CURRENT_GOLDEN | switched to `golden-d9e1f3801716-vk-1080p`; the two GL golden sets archived and removed |
 | `capture_ab.py` noise floor | two VK arms; GL arm behind `--gl-arm` (kept while a GL exe ships) |
-| Tracy compare GL arm | PARTIAL: `baseline` defaults to vk. The `selfcheck` and `matrix` subcommands still measure on GL: the selfcheck proves harness sensitivity with `MC2_LIGHT_POOL_MAX`, a GL terrain knob (`gos_terrain_lighting.cpp`) with no VK equivalent, so deleting the arm would blind that proof. Needs a VK-visible known cost first |
+| Tracy compare GL arm | DONE (session 30, f4d0204b4): every subcommand measures VK; `selfcheck` proves sensitivity with 1080p vs 4K (33.0% p50 apart on mc2_10; the old `MC2_LIGHT_POOL_MAX` 64 vs 256 pair moves the VK frame only 1.3%), refuses a run without the VK receipt or with a fail-soft; `game_env` refuses any other arm |
 | VFX oracle GL arm | NOT DONE: `capture_vfx_oracle.py` runs `MC2_RENDER_BACKEND=gl` and compares MLR vs GPU particles; it is the proof the MLR retirement waits on, and no VK readback arm exists. Needs the VK arm (not a deletion) |
 | GL-reference provers (`glsl_port_diff`, `gl_vk_feature_coverage`, `vk_not_ported.allowlist`) | NOT DONE: rows 3, 5-22 and 24 of `.claude/VK-PARITY-GAPS.md` are still open and these provers are what pins them; delete after the last row closes |
-| capture `gl_fbo` arm (`gos_visual_capture.cpp`, `gos_screenshot.cpp`) | NOT DONE: GameOS code, outside this session; `capture_backend.py` keeps the `gl_fbo` mapping for old sidecars |
-| 10 debug views | NOT DONE: every file is in `GameOS/gameos`; a decision per view is still open (section 14 question 3) |
-| `golden-e350d0b4a5c6-vk-1080p` | candidate: interim VK set superseded by `golden-d9e1f3801716-vk-1080p`; not in the step-1 list, left in place |
+| capture `gl_fbo` arm (`gos_visual_capture.cpp`, `gos_screenshot.cpp`) | STOPPED (session 30): it is the only readback of a GL-backend frame, and the same-exe GL capture is still the oracle of every open parity row (3, 5-22, 24: row 24 used it this session) and of the VFX oracle. Goes with the last GL capture consumer |
+| 10 debug views | STOPPED (session 30), each has a live reader or a ruling: lost-draws + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP by orchestrator ruling 2026-10-12: the proof that no GL draw reaches the VK scene before the GL interop goes; a full deletion was made and reverted); `gos_render_pass_timer` + `gos_frame_pass_stats` (editor Frame Inspector, dev-shell `framegraph`); `gos_dev_shell` (`tools/dev_shell`, `mission_order_ingress_witness.py`); `debug_renderer` (KEEP-LIVE, viewmode matrix + inspector toggle); HZB probe in `gos_postprocess_diag` (KEEP-LIVE, `hzb.json`); `gpu_memory_report` (`smoke_lib/vram.py`); `gos_validate` (`runner.py` `MC2_GL_ERROR_DRAIN_SILENT`); `gos_renderer_input_probe` (UI probe commands); `gos_object_parity` (checks the GPU static-prop producer the VK prop island also consumes); `mc2_hitch_trace` (hitch attribution, no VK equivalent). Each needs a VK port or an owner decision (section 14 question 3) |
+| `golden-e350d0b4a5c6-vk-1080p` | DONE (session 30, 91c1e0502): archived (tarball + sha256) and removed, RETIRED.md row |
