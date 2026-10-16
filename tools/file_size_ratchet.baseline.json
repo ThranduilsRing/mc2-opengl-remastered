@@ -13,12 +13,12 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2669,
+  "GameOS/gameos/engine_present_vk.cpp": 2672,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1696,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2328,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1812,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1588,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1808,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1586,
   "GameOS/include/gameos.hpp": 3757,
   "RenderCore/RendererFeatureRegistry.h": 1734,
   "code/artlry.cpp": 1818,
@@ -47,7 +47,7 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1608,
   "mclib/ablrtn.cpp": 1798,
-  "mclib/assimp_importer.cpp": 1589,
+  "mclib/assimp_importer.cpp": 1577,
   "mclib/camera.h": 1812,
   "mclib/file.cpp": 2599,
   "mclib/gosfx/fcurve.cpp": 1923,
@@ -59,10 +59,10 @@
   "mclib/render_contract.cpp": 1530,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1771,
-  "mclib/tgl.h": 1724,
+  "mclib/tgl.h": 1734,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "b8fcd2986",
+ "head": "de32908d9",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -71,7 +71,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 353,
+   "files": 356,
    "files_over_1500": 7,
    "files_over_3000": 1,
    "max_lines": 3757
@@ -119,7 +119,7 @@
    "max_lines": 2629
   },
   "shaders": {
-   "files": 176,
+   "files": 174,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 2096
@@ -144,7 +144,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2669
+   "lines": 2672
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -239,12 +239,12 @@
    "lines": 1818
   },
   {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "file": "mclib/camera.h",
    "lines": 1812
   },
   {
-   "file": "mclib/camera.h",
-   "lines": 1812
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1808
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1922,
+  "files": 1923,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757
