@@ -233,8 +233,8 @@ def parse_log(text: str,
         line_wall = line_wallclocks[idx] if line_wallclocks and idx < len(line_wallclocks) else None
         if "[INSTR v1] enabled:" in line:
             s.instr_banner_seen = True
-        if line.startswith("[SIMID v1] simframe="):
-            simid.update(line.rstrip().encode("utf-8", "replace"))
+        for record in re.finditer(r"\[SIMID v1\] simframe=[^\r\n\[]*", line):
+            simid.update(record.group().rstrip().encode("utf-8", "replace"))
             s.simid_frames += 1
         if "[VRAM v1]" in line:
             s.vram.extend(vram.parse(line))
@@ -276,7 +276,6 @@ def parse_log(text: str,
         if "[ASSET_SCALE v1] event=oob_blit" in line: s.asset_oob += 1
         if "[DESTROY v1]" in line and "event=destroy" in line: s.destroys += 1
 
-        # META-FIX INFRA-3: registered marker-bucket scan.
         for mb in MARKER_BUCKETS:
             if mb.pattern.search(line):
                 s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1

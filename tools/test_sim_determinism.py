@@ -1,5 +1,6 @@
 """sim_determinism: the comparator that proves two runs (or two commits) agree on the simulation."""
 import os
+from io import StringIO
 from pathlib import Path
 import shutil
 import sys
@@ -31,6 +32,21 @@ def test_a_log_without_simid_has_no_chain():
     from scripts.smoke_lib.logparse import parse_log
     s = parse_log("[HEARTBEAT] frames=1\n")
     assert s.simid_frames == 0 and s.simid_chain is None
+
+
+def test_glued_simid_records_are_not_dropped(monkeypatch):
+    from scripts.smoke_lib.logparse import parse_log
+    import saveload_roundtrip as rt
+
+    frames = [f"{sd.PREFIX}{i} t=0.0 n=1 graded=a visual=b strict=c" for i in range(2)]
+    detail = "[SIMID v1 mover] simframe=1 id=7 gesture=1 pstep=0/3"
+    clean = frames + [detail]
+    glued = "PAUSEtxmmgr: Bad texture handle!" + "".join(clean) + "\n"
+    monkeypatch.setattr(sd, "open", lambda *a, **k: StringIO(glued), raising=False)
+    assert sd.load_simid("unused.log") == frames
+    summary = parse_log(glued)
+    assert summary.simid_frames == len(frames) and summary.simid_chain == sd.chain(frames)
+    assert rt.parse([glued]) == rt.parse(clean)
 
 
 @pytest.mark.parametrize("command", ["check", "run", "pairs-until-fail"])
