@@ -2338,15 +2338,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "event"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DEBUGDRAW",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
     "event",
     "cap",
     "requested"
@@ -2359,7 +2350,7 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "enabled"
+    "queued"
    ],
    "count": 1
   },
@@ -2369,33 +2360,9 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "exp",
-    "got",
-    "exp",
-    "got",
-    "exp",
-    "got"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DEBUGDRAW",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "expected",
-    "got"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DEBUGDRAW",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "name"
+    "queued",
+    "display",
+    "seg0"
    ],
    "count": 1
   },
@@ -2515,7 +2482,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 6
+   "count": 5
   },
   {
    "tag": "DEV_SHELL",
@@ -4774,12 +4741,8 @@
     "glTexImageBytes",
     "glBindTex",
     "glUseProgram",
-    "glWaitSync",
-    "sig",
-    "to",
-    "glFence",
-    "glFinish",
-    "glFlush"
+    "fenceWaitMs",
+    "fenceWaits"
    ],
    "count": 1
   },
@@ -4798,13 +4761,7 @@
     "glTexSubImage",
     "glTexSubImageBytes",
     "glBindTexture",
-    "glUseProgram",
-    "glClientWaitSync",
-    "sig",
-    "to",
-    "glFenceSync",
-    "glFinish",
-    "glFlush"
+    "glUseProgram"
    ],
    "count": 1
   },
@@ -4858,6 +4815,25 @@
     "uploads",
     "texImageCalls"
    ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_VK",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "fenceWaitMs",
+    "fenceWaitMax",
+    "fenceWaits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_VK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
    "count": 1
   },
   {
@@ -5137,7 +5113,6 @@
    "keys": [
     "tgl_pool",
     "destroy",
-    "gl_error_print",
     "smoke",
     "water_fp",
     "water_parity",
@@ -8810,7 +8785,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "SCREENSHOT",
@@ -13255,7 +13230,6 @@
   "EDITOR_SHELL",
   "ESMOKE",
   "GLP",
-  "GL_ERROR",
   "GPUPROPS",
   "HEARTBEAT",
   "INSTR",

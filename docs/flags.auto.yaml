@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 978
+gate_count: 976
 registry_entry_count: 203
-verified_count: 969
+verified_count: 967
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1781,13 +1781,6 @@ flags:
     owner: gameos
     doc: "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH."
     smoke_passthrough: true
-    verified: true
-  - name: MC2_GL_ERROR_DRAIN_SILENT
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "GL_ERROR is default-on; the env var suppresses it."
     verified: true
   - name: MC2_GOM_RECON
     kind: Bool
@@ -4534,14 +4527,6 @@ flags:
     owner: gameos
     doc: "Oracle: deterministic backbuffer screenshot at a target frame."
     smoke_passthrough: true
-    verified: true
-  - name: MC2_SCREENSHOT_SOURCE
-    kind: Enum
-    default: ""
-    rule: Std
-    owner: gameos
-    doc: ""
-    tokens: "|backbuffer"
     verified: true
   - name: MC2_SCREENXY_PREDICATE_MODE
     kind: Enum

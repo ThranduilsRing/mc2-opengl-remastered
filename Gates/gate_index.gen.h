@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 978;
+inline constexpr std::size_t kGateCount = 976;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -243,7 +243,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GLTF_YOFF", Kind::Float, Rule::Prefix, {}},
     {"MC2_GL_DEBUG", Kind::Bool, Rule::Presence, {}},
     {"MC2_GL_DEBUG_FATAL", Kind::Bool, Rule::Presence, {}},
-    {"MC2_GL_ERROR_DRAIN_SILENT", Kind::Bool, Rule::Presence, {}},
     {"MC2_GOM_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_GOM_UPDATE_COST_SPLIT", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_GOSFX_GROUP_LOG", Kind::Bool, Rule::Lead1, {}},
@@ -601,7 +600,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SCENE_LIGHTING_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SCREENSHOT_AT_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_SCREENSHOT_PATH", Kind::String, Rule::Std, {}},
-    {"MC2_SCREENSHOT_SOURCE", Kind::Enum, Rule::Std, "|backbuffer"},
     {"MC2_SCREENXY_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy|Modern"},
     {"MC2_SELECTION_PICKING_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy|Modern"},
     {"MC2_SENSOR_SCAN_FACTS", Kind::Bool, Rule::Lead0, {}},

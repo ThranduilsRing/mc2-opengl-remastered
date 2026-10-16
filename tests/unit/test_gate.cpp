@@ -1189,7 +1189,6 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK_FALSE(g1b::rowNamed("MC2_STATIC_UPDATE_TRACE").defBool);
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
-    CHECK(gate::rows::tokenListHas(g1b::rowNamed("MC2_SCREENSHOT_SOURCE").tokens, "backbuffer"));
 
     EnvVar env("MC2_BOX_DECAL");   // envText reads any name at run time, uncached
     env.set(nullptr);

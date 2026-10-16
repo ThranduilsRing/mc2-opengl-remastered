@@ -32,7 +32,7 @@
   **No pixel effect.** The GL drawable keeps its full size, so `glReadPixels`/FBO readback — the golden visual-capture path — is unaffected, unlike minimizing (which makes SDL throttle and can zero the drawable). Golden capture resolution is preserved, so window *size* stops mattering.
   **Harness side:** `scripts/smoke_lib/nofocus.py` applies it via `OFFSCREEN_ENV` from `apply_env(offscreen=True)`, which is the parameter's default for agent launches. Three delivery paths do **not** go through `apply_env` and set it themselves, because a var the launcher never delivers is the same as no fix at all (NOFOCUS-FINISH-1): `smoke_lib/runner.FORCED_ENV` (the tier-1 smoke path — its own `STARTUPINFO` + `Popen`), `run_visual_capture.py` (env built by `mc2_env_pin.build_pinned_env`, so the var is also in `mc2_env_pin.HARNESS_CONTROL` or the deny-by-default scrub removes it), and `tools/tracy_capture_compare.py` (own `Popen`). `scripts/check-background-launch.py` RULE 2 and RULE 8 fail the build if any of them stops delivering it.
   **`show_window` is orthogonal.** An offscreen window is neither `SDL_WINDOW_MINIMIZED` nor `SDL_WINDOW_HIDDEN`, and `gameosmain.cpp`'s 10 ms background throttle keys on exactly those two flags — so a perf capture can be offscreen *and* unthrottled. `nofocus.spawn`/`run` therefore keep `offscreen` at `True` even when `show_window=True`; the old `offscreen = not show_window` coupling silently put perf-run and menu-oracle windows back on the user's desktop.
-  > **CAVEAT — desktop-composite harnesses.** Any harness that screenshots the **desktop composite** (`pyautogui`/`mss`/`PIL.ImageGrab`) rather than reading the engine FBO gets *no pixels* from an offscreen window and would capture the user's wallpaper — a confident wrong visual verdict, which is worse than a visible window. Those call sites are enumerated in `check-background-launch.COMPOSITE_CAPTURE_FILES` (8 today) and must pass `offscreen=False`; RULE 6/RULE 7 keep the list honest in both directions. Declaring it is not being granted it: `nofocus.apply_env` raises `DesktopOccupancyRefused` unless the session is user-present (`MC2_HARNESS_ALLOW_FOREGROUND=1`), so an agent run aborts instead of blessing wallpaper. Converting a harness to the engine capture path (`MC2_VISUAL_CAPTURE` / `MC2_SCREENSHOT_SOURCE=backbuffer`) retires its entry.
+  > **CAVEAT — desktop-composite harnesses.** Any harness that screenshots the **desktop composite** (`pyautogui`/`mss`/`PIL.ImageGrab`) rather than reading the engine FBO gets *no pixels* from an offscreen window and would capture the user's wallpaper — a confident wrong visual verdict, which is worse than a visible window. Those call sites are enumerated in `check-background-launch.COMPOSITE_CAPTURE_FILES` (8 today) and must pass `offscreen=False`; RULE 6/RULE 7 keep the list honest in both directions. Declaring it is not being granted it: `nofocus.apply_env` raises `DesktopOccupancyRefused` unless the session is user-present (`MC2_HARNESS_ALLOW_FOREGROUND=1`), so an agent run aborts instead of blessing wallpaper. Converting a harness to the engine capture path (`MC2_VISUAL_CAPTURE` / `MC2_SCREENSHOT_PATH` on the Vulkan backend) retires its entry.
 
 ## Force all units visible for automated captures (FORCE-ALL-VISIBLE-1)
 
@@ -153,7 +153,7 @@ The OS/PrintWindow grab of a VK swapchain returns only the clear colour, and the
 - `MC2_VK_PRESENT_DUMP_ON_FIRE=1` — DYNAMIC fire-event pin (VFX-5). With `MC2_FX_FORCE_SPAWN=loop` the fixture's FIRST volley arms the PPM capture ~0.5s (30 frames) after itself (`g_mc2FxFireCaptureFrame`), so the capture always lands mid-volley — no static-pin roulette against a mission's intro/scenario clock. Ignored when `MC2_VK_PRESENT_DUMP_FRAME` is set (static pin wins).
 - `MC2_VISUAL_CAPTURE_ON_FIRE=1` — GL twin of the above (VFX-8). The engine visual capture (`MC2_VISUAL_CAPTURE_FRAME/_DIR`, smoke mode) triggers at the same fixture-armed fire frame instead of the static pin, so GL-vs-VK weapon-class pairs capture the same fire-relative instant on both backends.
 - `MC2_VISUAL_CAPTURE_POST=1` — GL-only capture fixture (VK-PARITY-F2). Visual capture reads the composited GL back buffer (post exposure + sunset grade, i.e. what the player sees) instead of the pre-composite scene FBO, so GL captures are directly comparable with VK captures (which read the presented image). Default OFF = byte-identical.
-- **Capture recipe gotchas:** `MC2_LOG=1` or all game stdout/stderr goes to NUL; PPM dump path must be ABSOLUTE (mission load chdirs); never combine `MC2_SMOKE_MODE` with the PPM oracle (VK present never runs under it, and standalone smoke mode needs `--mission` double-dash). For the full HUD headless, `MC2_SCREENSHOT_SOURCE=backbuffer` reads FBO 0 (with HUD + ImGui) instead of the pre-HUD scene FBO.
+- **Capture recipe gotchas:** `MC2_LOG=1` or all game stdout/stderr goes to NUL; PPM dump path must be ABSOLUTE (mission load chdirs); never combine `MC2_SMOKE_MODE` with the PPM oracle (VK present never runs under it, and standalone smoke mode needs `--mission` double-dash). For the full HUD headless, `MC2_SCREENSHOT_PATH` (Vulkan backend) reads back the presented frame, HUD included.
 
 ### VK fail-soft semantics (VK-FAILSOFT-DISARM-1/2, 2026-07-14)
 
@@ -244,7 +244,6 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 
 - `MC2_TGL_POOL_TRACE=1` — TGL pool NULL trace
 - `MC2_DESTROY_TRACE=1` — per-destruction lifecycle snapshot
-- `MC2_GL_ERROR_DRAIN_SILENT=1` — suppress first-error prints
 - `MC2_HEARTBEAT=1` — stderr heartbeat per second
 - `MC2_REVERSE_Z_TRACE=1` — reverse-Z lifecycle prints
 - `MC2_GL_DEBUG_FATAL=1` — abort on GL_DEBUG_SEVERITY_HIGH
@@ -471,7 +470,6 @@ Gates found in source but missing from check-env-registry.sh (retired in G8; the
 - `MC2_PREVIEW_NOCULL=1` — panel-preview force-disable `GL_CULL_FACE` (FBO winding-order debug).
 - `MC2_PNG_MAGENTA_KEY=0` — killswitch for PNG magenta→alpha keying at decode. Default **ON**.
 - `MC2_LEGACY_LOAD_BANNER=1` — restore the retired world-floating blue load banner overlay.
-- `MC2_SCREENSHOT_SOURCE=backbuffer` — `MC2_SCREENSHOT_AT_FRAME` capture reads FBO 0 backbuffer instead of sceneFBO (needed for logistics/menu screens; requires non-minimized window).
 - `MC2_SHOT_RESULTS=1` — RESULTS-CAPTURE-1: deterministic AAR screenshots of results screens after 30 settled frames (pairs with `MC2_DEV_SHELL=1`).
 - `MC2_SOAK_STOP_AT_BAY=1` — soak harness parks at the mech bay instead of auto-advancing (requires `MC2_SOAK_AUTOWIN`).
 - `MC2_DRAW_PACKET_V3=1` — static-prop DrawPacket v3 candidate→`RenderCore::DrawPacket[]` ABI promotion (no dispatch; legacy flush unchanged).

@@ -127,7 +127,8 @@ SOFT_ENV: dict = {
 }
 
 POPPED_ENV: frozenset = frozenset({
-    # Deleted so the GL error drain always speaks during a smoke run.
+    # Retired gate (the GL error drain is gone): a stale ambient value is still dropped, and the table keeps one
+    # member so check-env-drive-guard keeps exercising the pop path.
     "MC2_GL_ERROR_DRAIN_SILENT",
 })
 
