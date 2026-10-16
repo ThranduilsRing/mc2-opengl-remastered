@@ -2234,6 +2234,13 @@
           "text": "from console_child import child_kwargs"
         },
         {
+          "path": "editor/tests/test_placement_proofs.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts.console_child import child_kwargs"
+        },
+        {
           "path": "scripts/bake_colormap_ktx2.py",
           "line": 51,
           "evidence": "import",
@@ -3481,7 +3488,7 @@
         },
         {
           "path": "tools/gl_vk_feature_coverage.py",
-          "line": 457,
+          "line": 493,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader as gtr"
@@ -3892,35 +3899,35 @@
         },
         {
           "path": "editor/tests/run_document_proofs.py",
-          "line": 229,
+          "line": 230,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import grade_panel, panel_negative_controls"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 133,
+          "line": 1006,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import main"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 152,
+          "line": 1025,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import run_owned_marker_reload"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 183,
+          "line": 1056,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import run_owned_objective_reload"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 248,
+          "line": 1121,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import marker_reload_provenance"
@@ -8299,6 +8306,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/objective_outcomes.py",
+      "basename": "objective_outcomes.py",
+      "stem": "objective_outcomes",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_objective_outcomes.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "objective_outcomes",
+          "text": "from objective_outcomes import MAX_RECORD_BYTES, PREFIX, Path, compare, main"
+        }
+      ]
+    },
+    {
       "path": "tools/objhash.py",
       "basename": "objhash.py",
       "stem": "objhash",
@@ -10174,6 +10196,13 @@
       "path": "tools/test_montage_compact.py",
       "basename": "test_montage_compact.py",
       "stem": "test_montage_compact",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_objective_outcomes.py",
+      "basename": "test_objective_outcomes.py",
+      "stem": "test_objective_outcomes",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

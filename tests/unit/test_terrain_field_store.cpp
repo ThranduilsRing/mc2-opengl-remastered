@@ -68,6 +68,9 @@ TEST_CASE("terrain fields: the shore sidecars keep their bytes and reject a bad 
     CHECK_FALSE(store.setShorelineMask(mask, 0, 1));
     CHECK_FALSE(store.setShorelineMask(nullptr, 2, 1));
     CHECK(store.shorelineMask().version == v);
+    // The VK terrain island re-imports the mask on a version change, so a reload of identical bytes must still bump it.
+    REQUIRE(store.setShorelineMask(mask, 2, 1));
+    CHECK(store.shorelineMask().version > v);
 
     const float heights[3] = {1.5f, 2.5f, 3.5f};
     REQUIRE(store.setWaterShoreHeight(heights, 3, 1));

@@ -298,6 +298,23 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->snowBrightnessDampen = gos_TerrainSnowBrightnessDampen();
     }
     out->edgeFeatherStrength = kTglcEdgeFeather ? kTglcEdgeFeatherStr : 0.0f;   // the GL u_edgeFeather / u_edgeFeatherStrength pair
+    out->cementAtlasSeamFix  = kTglcCementAtlasSeamFix;                           // the GL u_cementAtlasSeamFix
+    {
+        const TerrainShorelineKnobs k = gos_TerrainShorelineKnobs();
+        out->shorelineOn = k.on;
+        out->shorelineWaterElev = k.waterElevation;   out->shorelineTime = k.timeSeconds;
+        out->shorelineStrength = k.strength;          out->shorelineFoamStrength = k.foamStrength;
+        out->shorelineWetRun = k.wetRun;              out->shorelineFoamRun = k.foamRun;
+        out->shorelineEdgeJitter = k.edgeJitter;
+        const auto& mask = fields->shorelineMask();
+        const bool have = !mask.texels.empty() && mask.width > 0 && mask.height > 0;
+        out->shorelineMaskRgba    = have ? mask.texels.data() : nullptr;
+        out->shorelineMaskW       = have ? mask.width : 0;
+        out->shorelineMaskH       = have ? mask.height : 0;
+        out->shorelineMaskVersion = have ? mask.version : 0;
+        const float* b = gos_TerrainLodChunk_ShorelineMaskBounds();
+        for (int i = 0; i < 4; ++i) out->shorelineBounds[i] = b ? b[i] : 0.0f;
+    }
     {
         float fr = 1.f, fg = 1.f, fb = 1.f;
         gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);

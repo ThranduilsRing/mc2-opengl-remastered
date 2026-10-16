@@ -55,6 +55,8 @@ layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBufFS {
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
 // (uT.detailReady gates the sample).
 layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
+// TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while uT.shorelineHasMask != 0.
+layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
 #define MAT_LAYER_ROCK     0
@@ -394,6 +396,7 @@ void main() {
     // solid-cement hit -> flat-lit + no static shadow. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
+    bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
         // Mirror terrain_lod_chunk.frag:466-482 EXACTLY (world-XY -> atlas-UV, then
         // the 9-tap disc blur) so the VK base color matches GL's colormap sample.
@@ -426,7 +429,6 @@ void main() {
     // uT.useCement==0 (gate off / atlas or words not ready) -> whole block skipped ->
     // colormap base only, byte-identical to the colormap-only frame.
     if (uT.useCement != 0) {
-        bool cementHit = false;
         int  ctX = clamp(int(floor((v_worldPos.x + uT.halfMap) / 128.0)), 0, uT.mapSide - 1);
         int  ctY = clamp(int(floor((uT.halfMap - v_worldPos.y) / 128.0)), 0, uT.mapSide - 1);
         uint cw  = uC.cementWordsF[ctX + ctY * uT.mapSide];
@@ -438,7 +440,14 @@ void main() {
             int  cCol = int(cLayerIdx) % cGridSide;
             int  cRow = int(cLayerIdx) / cGridSide;
             vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
-            vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
+            // CEMENT-ATLAS-SEAM-1 (terrain_lod_chunk.frag): half-texel inset for sampling only; the
+            // transition mask below keeps the true intra-tile position cTileUV.
+            vec2 cSampleUV = cTileUV;
+            if (uT.cementAtlasSeamFix != 0) {
+                float cInset = 0.5 / max(float(textureSize(u_cementAtlas, 0).x) / float(cGridSide), 1.0);
+                cSampleUV = clamp(cTileUV, vec2(cInset), vec2(1.0 - cInset));
+            }
+            vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
             vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -529,9 +538,15 @@ void main() {
                     uint dLayerIdx = dnw & 0xFFFFu;
                     int  dCol = int(dLayerIdx) % dGridSide;
                     int  dRow = int(dLayerIdx) / dGridSide;
-                    vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
+                    vec2 dSampleUV = dTileUV;   // CEMENT-ATLAS-SEAM-1: same inset as the main cement branch
+                    if (uT.cementAtlasSeamFix != 0) {
+                        float dInset = 0.5 / max(float(textureSize(u_cementAtlas, 0).x) / float(dGridSide), 1.0);
+                        dSampleUV = clamp(dTileUV, vec2(dInset), vec2(1.0 - dInset));
+                    }
+                    vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
                     base = texture(u_cementAtlas, dAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
+                    cementHit = true;   // as GL's diag-connect branch
                 }
             }
         }
@@ -700,6 +715,52 @@ void main() {
         if (uT.edgeFeatherStrength > 0.0 && uT.halfMap > 0.0) {
             float haze = edgeHazeAmount(v_worldPos.xy, uT.halfMap) * uT.edgeFeatherStrength;
             lit = mix(lit, EDGE_HAZE_SKY, clamp(haze, 0.0, 1.0));
+        }
+
+        // TERRAIN-SHORELINE-V3/V4 (terrain_lod_chunk.frag, after the edge feather): wet and foam bands measured as the
+        // HORIZONTAL run from the waterline through the macro slope, with static fbm jitter on the run, a fade-in over the
+        // first 1.5 wu above the water, the optional mask modulator, a 12-20 deg slope guard and a beach affinity term.
+        if (uT.shorelineOn != 0) {
+            float aboveWater = v_worldPos.z - uT.shorelineWaterElev;
+            vec3  macroN     = mv_smoothTerrainNormal(v_worldPos.xy);
+            float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
+            float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
+            float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);
+            float horizDistJ = max(horizDist + fbm(v_worldPos.xy * 0.055, 2) * uT.shorelineEdgeJitter, 0.0);
+            float slWet  = 1.0 - smoothstep(0.0, max(uT.shorelineWetRun, 1e-4), horizDistJ);
+            float slFoam = 1.0 - smoothstep(0.0, max(uT.shorelineFoamRun, 1e-4), horizDistJ);
+            float aboveFade = smoothstep(0.0, 1.5, horizDist);
+            slWet  *= aboveFade;
+            slFoam *= aboveFade;
+            if (uT.shorelineHasMask != 0) {
+                vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
+                                 (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
+                if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+                    vec4 sl = texture(u_shorelineMask, slUV);
+                    slWet  *= mix(1.0, clamp(sl.g, 0.0, 1.0), sl.a);
+                    slFoam *= mix(1.0, clamp(sl.b, 0.0, 1.0), sl.a);
+                }
+            }
+            float slopeAtten = clamp((N.z - 0.940) / (0.978 - 0.940), 0.0, 1.0);   // full at 12 deg, zero at 20 deg
+            vec4 slW; float slSnow;
+            mv_weights(base, slW, slSnow);
+            slW = mix(slW, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
+            slSnow *= (1.0 - F3pc);
+            float litLuma       = dot(lit, vec3(0.299, 0.587, 0.114));
+            float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
+            if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+                float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
+                lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
+            }
+            if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+                float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
+                float foamPulse  = fbm(v_worldPos.xy * 0.20 - uT.shorelineTime * 0.22 + 19.0, 2) * 0.5 + 0.5;
+                float foamNoise  = clamp(mix(foamScroll, foamPulse, 0.5), 0.0, 1.0);
+                float slF        = clamp(slFoam, 0.0, 1.0);
+                float coverage   = smoothstep(1.0 - slF * 0.85, 1.0, foamNoise + (1.0 - slF) * 0.15);
+                float foamAmt    = coverage * slopeAtten * uT.shorelineFoamStrength * shoreAffinity;
+                lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
+            }
         }
 
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).

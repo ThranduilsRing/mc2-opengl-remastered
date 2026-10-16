@@ -170,7 +170,7 @@ void write_descriptors(TerrainIsland* s) {
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo[i].get(), 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf.get(), 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[14]{};
+    VkWriteDescriptorSet w[15]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -280,6 +280,15 @@ void write_descriptors(TerrainIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 11 + k; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lpInfo[k]; ++n;
+    }
+    // TERRAIN-SHORELINE-V3: binding 14 shoreline mask (dummy until a mission ships one; uT.shorelineHasMask gates use).
+    VkDescriptorImageInfo smInfo{};
+    if (s->shoreMaskView && s->colormapSamp) {
+        smInfo.sampler = s->colormapSamp.get(); smInfo.imageView = s->shoreMaskView.get();
+        smInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+        w[n].dstBinding = 14; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &smInfo; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     }   // per-parity set loop
@@ -508,6 +517,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // are valid descriptors from frame 1 (useCement stays 0 until the real atlas+words
     // are ready -> FS ignores the cement branch -> colormap base, no hole).
     if (!ensure_dummy_cement(s)) { setFallback("cement_dummy_failed"); return false; }
+    if (!ensure_dummy_shore_mask(s)) { setFallback("shore_mask_dummy_failed"); return false; }
     if (!s->cementBuf) {
         if (!make_buffer(s, s->cementBuf, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.cementBuf")) {
             setFallback("cement_dummy_ssbo_failed"); return false;
@@ -555,7 +565,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[14]{};
+        VkDescriptorSetLayoutBinding b[15]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -595,9 +605,12 @@ bool init_island(TerrainIsland* s, int w, int h) {
             b[k].binding = (uint32_t)k; b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[k].descriptorCount = 1; b[k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         }
+        // TERRAIN-SHORELINE-V3: binding 14 = shoreline mask sidecar sampler2D (FS).
+        b[14].binding = 14; b[14].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[14].descriptorCount = 1; b[14].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 14; lci.pBindings = b;
+        lci.bindingCount = 15; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -605,7 +618,9 @@ bool init_island(TerrainIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 12; // (height + cement + visual-height + pool + grid hdr + grid idx) x2
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 14; // (colormap + cement + static shadow + matNormalArray + dyn shadow + csm array + csm fullmap) x2
+        // Image samplers per set: colormap, cement, static shadow, matNormalArray, dyn shadow, csm array, csm full map,
+        // shoreline mask; two sets.
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 16;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;

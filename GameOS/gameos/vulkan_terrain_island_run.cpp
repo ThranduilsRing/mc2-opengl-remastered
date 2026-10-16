@@ -280,6 +280,18 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.tintStrengthScale    = feed.tintStrengthScale;
     u.snowBrightnessDampen = feed.snowBrightnessDampen;
     u.edgeFeatherStrength  = feed.edgeFeatherStrength;
+    u.cementAtlasSeamFix   = feed.cementAtlasSeamFix ? 1 : 0;
+    u.shorelineOn           = feed.shorelineOn ? 1 : 0;
+    u.shorelineHasMask      = s->shoreMaskReady ? 1 : 0;
+    u.shorelineWaterElev    = feed.shorelineWaterElev;
+    u.shorelineTime         = feed.shorelineTime;
+    u.shorelineStrength     = feed.shorelineStrength;
+    u.shorelineFoamStrength = feed.shorelineFoamStrength;
+    u.shorelineWetRun       = feed.shorelineWetRun;
+    u.shorelineFoamRun      = feed.shorelineFoamRun;
+    u.shorelineEdgeJitter   = feed.shorelineEdgeJitter;
+    u.shorelineBoundsX = feed.shorelineBounds[0]; u.shorelineBoundsY = feed.shorelineBounds[1];
+    u.shorelineBoundsW = feed.shorelineBounds[2]; u.shorelineBoundsH = feed.shorelineBounds[3];
 }
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
@@ -332,6 +344,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // the GL/render thread (GL context current) — same as the colormap/height copies.
     import_cement(s, feed);
     snapshot_cement(s, feed);
+    import_shore_mask(s, feed);
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake

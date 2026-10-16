@@ -141,7 +141,22 @@ struct TerrainFrameUBO {
     float   tintStrengthScale;
     float   snowBrightnessDampen;
     float   edgeFeatherStrength;   // TERRAIN-EDGE-FEATHER-1: map-edge haze amount (0 = off)
-    int32_t _pad[62];  // @cpp_only slot tail padding to the 1024B stride
+    int32_t cementAtlasSeamFix;    // CEMENT-ATLAS-SEAM-1: 1 = half-texel inset on cement atlas samples (gutter-less atlas bleed)
+    // TERRAIN-SHORELINE-V3/V4 (LOCKSTEP with terrain_tier1.frag); producer gos_TerrainShorelineKnobs().
+    int32_t shorelineOn;           // MC2_TERRAIN_SHORELINE: wet / foam elevation bands drawn
+    int32_t shorelineHasMask;      // the mask sidecar (binding 14) is real, not the dummy
+    float   shorelineWaterElev;    // water plane Z (world units)
+    float   shorelineTime;         // shader clock seconds (foam animation)
+    float   shorelineStrength;     // wet darken multiplier
+    float   shorelineFoamStrength; // foam rim multiplier
+    float   shorelineWetRun;       // wet lobe horizontal run (wu)
+    float   shorelineFoamRun;      // foam lobe horizontal run (wu)
+    float   shorelineEdgeJitter;   // static fbm jitter on the run (wu)
+    float   shorelineBoundsX;      // mask bounds, world units: top-left X
+    float   shorelineBoundsY;      // top-left Y (= max Y)
+    float   shorelineBoundsW;      // size X
+    float   shorelineBoundsH;      // size Y
+    int32_t _pad[48];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

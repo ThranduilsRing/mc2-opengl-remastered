@@ -4,3 +4,7 @@
 # Built in already: 3rdparty/, shaders/spv/, *.gen.h, *.gen.hglsl, linguist-generated paths.
 # Add vendored or machine-written sources here with a reason; do NOT add first-party
 # copy-paste to hide it -- that is exactly what the ratchet exists to surface.
+
+# The VK frame-UBO includes are written by tools/gpu_abi_gen.py from RenderCore/gpu_abi/*.h (the
+# *.gen.hglsl siblings are already built in); their lines mirror the source header by construction.
+shaders/vulkan/include/*_frame_ubo_vk.glsl

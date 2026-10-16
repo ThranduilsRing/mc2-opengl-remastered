@@ -210,6 +210,17 @@ struct Mc2TerrainTier1Feed {
     float                       snowBrightnessDampen;
     // TERRAIN-EDGE-FEATHER-1: the GL map-edge haze strength, 0 when the feather is off.
     float                       edgeFeatherStrength;
+    // CEMENT-ATLAS-SEAM-1: the GL half-texel cement sampling inset is on (MC2_CEMENT_ATLAS_SEAM_FIX).
+    bool                        cementAtlasSeamFix;
+    // TERRAIN-SHORELINE-V3/V4: band knobs (gos_TerrainShorelineKnobs) and the optional mask sidecar (RGBA8: G wet, B foam,
+    // A valid) from the terrain field store; null mask = pure elevation bands, as GL without a sidecar.
+    bool                        shorelineOn;
+    float                       shorelineWaterElev, shorelineTime, shorelineStrength, shorelineFoamStrength;
+    float                       shorelineWetRun, shorelineFoamRun, shorelineEdgeJitter;
+    const uint8_t*              shorelineMaskRgba;
+    int32_t                     shorelineMaskW, shorelineMaskH;
+    uint64_t                    shorelineMaskVersion;  // changes on every load; the island re-imports on a change
+    float                       shorelineBounds[4];    // topLeftX, topLeftY (= max Y), sizeX, sizeY (world units)
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

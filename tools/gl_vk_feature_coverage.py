@@ -49,12 +49,27 @@ CPP_DIRS = ("GameOS/", "mclib/", "code/", "RenderCore/", "RenderWorld/", "GameAd
 VK_CPP_GLOBS = (("GameOS/gameos/vulkan_", (".cpp", ".h")), ("GameOS/gameos/engine_present_vk", (".cpp", ".h")),
                 ("RenderCore/gpu_abi/", (".h",)))
 MIN_STEM = 6            # shorter stems ("tex", "mode") match too much to count as evidence
+# Live GL features that no MC2_* gate drives, so the gate trace cannot find them: (GL shader, the name the VK twin must
+# carry, the .claude/VK-PARITY-GAPS.md row). Graded under the pseudo-gate UNGATED.
+UNGATED_GATE = "UNGATED"
+UNGATED_FEATURES = (
+    ("shaders/static_prop.vert", "aRGBHighlight", "row 28"),
+)
 # GL features a closed parity row proved ported under a VK spelling no stem rule derives: GL name -> (the VK identifier
 # that must still appear in the twin family, the row of .claude/VK-PARITY-GAPS.md whose oracle proved it). The VK
-# identifier is re-checked on every run, so deleting the port turns the row NOT_PORTED again.
+# identifier is re-checked on every run, so deleting the port turns the row NOT_PORTED again; with its allowlist entry
+# gone, that row then fails the check as a NEW gap, which is how a vanished port is caught.
 PORTED_AS = {
     "u_edgeFeather": ("edgeFeatherStrength", "row 9"),
     "MC2_SHADOW_STATIC_BANDFIX_V2": ("LSVK_KNOB_BANDFIX_V2", "row 4"),
+    # Row 26: the shoreline bands read TerrainFrameUBO fields named for what they hold (runs, not heights).
+    "u_useShorelineMask": ("shorelineOn", "row 26"),
+    "u_hasShorelineMask": ("shorelineHasMask", "row 26"),
+    "u_shorelineBounds": ("shorelineBoundsX", "row 26"),
+    "u_shorelineWetHeight": ("shorelineWetRun", "row 26"),
+    "u_shorelineFoamHeight": ("shorelineFoamRun", "row 26"),
+    "u_shaderTime": ("shorelineTime", "row 26"),
+    "u_waterElevation": ("shorelineWaterElev", "row 26"),
 }
 RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 _IDENT = re.compile(r"[A-Za-z_]\w*")
@@ -147,6 +162,16 @@ class VkEvidence:
         """{documented name: UBO member} for members declared with a `// (a, b, c, d)` comment
         and read in code, e.g. the water FS packs u_waterEdgeFeather into F.f8."""
         return self._load(vk_path)[1]
+
+    def reads_member(self, gl_path, member):
+        """(found, vk file): some file of the VK twin family reads `<expr>.member` in code (comments blanked). A shared
+        struct declaring the member does not count: an ungated feature is ported only where the twin uses it."""
+        rx = re.compile(r"\.\s*" + re.escape(member) + r"(?![A-Za-z0-9_])")
+        for f in self.family_files(gl_path):
+            text, _ = tw.expand_includes(self.src, f)
+            if rx.search(text):
+                return True, f
+        return False, ""
 
     def family_files(self, gl_path):
         out = []
@@ -326,6 +351,17 @@ def build_rows(src, twins, files, ginfo, ndefs=None):
                         if sf in gl_toggles and d in gl_toggles[sf]:
                             add(gate, sf, d, "define", c, "%s group '%s' (%d hop%s)" % (
                                 src_path, cond, hops, "" if hops == 1 else "s"))
+    # Live GL features no gate drives (the 2026-10-16 ungated census): graded like any feature under the pseudo-gate
+    # UNGATED, so an open one must sit in the allowlist and a ported one turns its entry stale.
+    for gl, feat, row in UNGATED_FEATURES:
+        if not twins.vk_family_for_gl(gl):
+            continue
+        found, vkf = ev.reads_member(gl, feat)
+        rows[(UNGATED_GATE, gl, feat, "ungated")] = {
+            "gate": UNGATED_GATE, "gl_shader": gl, "feature": feat, "kind": "ungated",
+            "vk_twin": vkf or ", ".join("shaders/vulkan/%s.*" % s for s in twins.vk_family_for_gl(gl)),
+            "status": "PORTED" if found else "NOT_PORTED", "confidence": "HIGH", "gate_default_on": True,
+            "gate_evidence": "ungated census, " + row, "vk_evidence": ("member-read:" + feat) if found else "absent"}
     return sorted(rows.values(), key=lambda r: (r["gate"], r["gl_shader"], r["feature"], r["kind"]))
 
 
