@@ -27,7 +27,7 @@
 #ifndef INIFILE_H
 #include"inifile.h"
 #endif
-
+#include "tga_scratch.h"
 #include"../GameOS/gameos/gos_profiler.h"
 
 #ifndef TGAINFO_H

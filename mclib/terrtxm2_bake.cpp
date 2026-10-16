@@ -3,8 +3,8 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
+#include "tga_scratch.h"
 #include "appearance_rng.h"
-
 
 //---------------------------------------------------------------------------
 inline void fractalPass (float *heightMap, long edgeSize, long THRESHOLD, long NOISE)

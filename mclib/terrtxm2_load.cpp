@@ -2,7 +2,7 @@
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
-
+#include "tga_scratch.h"
 
 //---------------------------------------------------------------------------
 //Used by editor for TacMap
