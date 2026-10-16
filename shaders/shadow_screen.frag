@@ -73,6 +73,8 @@ uniform mat4 lightSpaceMatrix;
 #define MC2_SHADOW_CSM_MAX 3
 #endif
 uniform sampler2DArrayShadow dynamicShadowArray;
+uniform sampler2DArray dynamicShadowArrayRaw;
+uniform sampler2D dynamicFullMapRaw;
 uniform mat4 dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX];
 uniform int  dynamicCsmCount;
 uniform float dynamicCascadeTexelWorld[MC2_SHADOW_CSM_MAX]; // 2*cRad/mapSize, world units
@@ -365,4 +367,38 @@ void main()
 
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);
+    if (enableDynamicShadows == 1 && !isStaticProp)
+    {
+        // TEMP row-24 per-tap diag (mech pixels): R = some tap's compare result disagrees with the same tap's raw-depth test,
+        // G = compare taps mostly occluded, B = raw taps mostly occluded (selected cascade, sampleDynamicShadow's taps).
+        float mism = 0.0, cmpSum = 0.0, rawSum = 0.0; int nt = 0;
+        float dNdotL = max(dot(objN, lightDir), 0.0);
+        int dCount = clamp(dynamicCsmCount, 1, MC2_SHADOW_CSM_MAX);
+        for (int c = 0; c < dCount && dNdotL >= 0.05; ++c) {
+            bool isFull = (c == dCount - 1);
+            float tw = isFull ? dynamicFullMapTexelWorld : dynamicCascadeTexelWorld[c];
+            vec3 sp = worldPos + objN * (objNormalBiasScale * tw * dNdotL);
+            vec4 lp = dynamicCascadeMatrices[c] * vec4(sp, 1.0);
+            vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
+            if (pc.z > 1.0 || pc.z < 0.0) continue;
+            if (pc.xy != clamp(pc.xy, 0.0, 1.0)) continue;
+            float cur = pc.z - (0.0012 + 1.5 * tw / max(csmDepthSpan, 1.0) + 0.0005 * (1.0 - dNdotL));
+            float ang = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+            mat2 rot = mat2(cos(ang), sin(ang), -sin(ang), cos(ang));
+            vec2 ts = isFull ? (1.0 / vec2(textureSize(dynamicFullMapShadow, 0).xy)) : (1.0 / vec2(textureSize(dynamicShadowArray, 0).xy));
+            float radius = max(shadowSoftness, 0.5) * (1.0 + 2.0 * mechSoft);
+            nt = (mechSoft > 0.0) ? 8 : 4;
+            for (int i = 0; i < nt; i++) {
+                vec2 uv = pc.xy + rot * poissonDisk[i] * radius * ts;
+                float cmp = isFull ? texture(dynamicFullMapShadow, vec3(uv, cur)) : texture(dynamicShadowArray, vec4(uv, float(c), cur));
+                float st = isFull ? texture(dynamicFullMapRaw, uv).r : texture(dynamicShadowArrayRaw, vec3(uv, float(c))).r;
+                float rawLit = (cur <= st) ? 1.0 : 0.0;
+                cmpSum += cmp; rawSum += rawLit;
+                if (abs(cmp - rawLit) > 0.5) mism = 1.0;
+            }
+            break;
+        }
+        float n = max(float(nt), 1.0);
+        FragColor = vec4(mism, (nt > 0 && cmpSum / n < 0.5) ? 1.0 : 0.0, (nt > 0 && rawSum / n < 0.5) ? 1.0 : 0.0, 1.0);
+    }
 }
