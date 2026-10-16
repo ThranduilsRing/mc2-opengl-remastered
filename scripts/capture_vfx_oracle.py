@@ -16,7 +16,7 @@ import run_visual_capture
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from vfx_oracle.evidence import extract
-INSTALL = Path("A:/Games/mc2-opengl/mc2-win64-lane3")
+INSTALL_ROOT = Path("A:/Games/mc2-opengl")
 
 
 def park_value(pose: dict) -> str:
@@ -26,13 +26,13 @@ def park_value(pose: dict) -> str:
 
 def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "loop",
             camera_park: str | None = None, experiment: str = "master",
-            backend: str = "gl") -> list[str]:
+            backend: str = "gl", install: str = "lane3") -> list[str]:
     if backend not in {"gl", "vulkan"}:
         raise ValueError("unknown render backend")
     if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1"}:
         raise ValueError("unknown arm/fixture or negative frame")
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
-           "--exe", str(INSTALL / "mc2.exe"), "--bookmarks", str(bookmarks),
+           "--exe", str(INSTALL_ROOT / f"mc2-win64-{install}" / "mc2.exe"), "--bookmarks", str(bookmarks),
            "--out-dir", str(out), "--trigger-frame", str(frame),
            "--settle", "8", "--duration", "30", "--runs", "2"]
     env = {"MC2_RENDER_BACKEND": backend, "MC2_SMOKE_FREEZE_ANIM": "1",
@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fixture", choices=("loop", "1"), default="loop")
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
     parser.add_argument("--backend", choices=("gl", "vulkan"), default="gl")
-    parser.add_argument("--install", choices=("lane3",), default="lane3")
+    parser.add_argument("--install", choices=("lane2", "lane3"), default="lane3")
     args = parser.parse_args(argv)
     if bool(args.bookmarks) == bool(args.plan):
         parser.error("provide one bookmark file or --plan")
@@ -114,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     fingerprint_checks = []
     for arm in (("mlr", "gpu") if args.arm == "both" else (args.arm,)):
         cmd = command(args.bookmarks.resolve(), (args.out / arm).resolve(), args.frame, arm,
-                      args.fixture, camera_park, args.experiment, args.backend)
+                      args.fixture, camera_park, args.experiment, args.backend, args.install)
         (args.out / f"{arm}-command.json").write_text(json.dumps(cmd, indent=2) + "\n", encoding="utf-8")
         rc = capture(cmd)
         failed |= rc != 0
