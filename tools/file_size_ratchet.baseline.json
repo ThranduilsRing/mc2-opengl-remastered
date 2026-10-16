@@ -21,7 +21,7 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1823,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1576,
   "GameOS/include/gameos.hpp": 3753,
-  "RenderCore/RendererFeatureRegistry.h": 1741,
+  "RenderCore/RendererFeatureRegistry.h": 1734,
   "code/artlry.cpp": 1818,
   "code/bldng.cpp": 1692,
   "code/brain_special_dispatch.cpp": 2770,
@@ -63,7 +63,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "a0614d7d2",
+ "head": "21ad1da90",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -87,7 +87,7 @@
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1741
+   "max_lines": 1734
   },
   "RenderWorld": {
    "files": 6,
