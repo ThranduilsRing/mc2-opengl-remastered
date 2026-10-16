@@ -10,6 +10,8 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include <cstdlib>
+#include <cstring>
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef VERSION_H
@@ -1148,6 +1150,15 @@ void __stdcall InitializeGameEngine()
 
 		if (justStartMission)
 		{
+#ifdef _WIN32
+			for (int arg = 1; arg < __argc; ++arg) {
+				if (std::strcmp(__argv[arg], "--objective-logistics") == 0 &&
+				    !logistics->initObjectiveFixture(missionName)) {
+					gos_TerminateApplication();
+					return;
+				}
+			}
+#endif
 			logistics->setLogisticsState(log_STARTMISSIONFROMCMDLINE);
 			char commandersToLoad[MAX_MC_PLAYERS][3] = {{0, 0, 0}, {1, 1, 1}, {2, 0, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7}};
 			mission->init(missionName, MISSION_LOAD_SP_QUICKSTART, 0, nullptr, commandersToLoad, 2);

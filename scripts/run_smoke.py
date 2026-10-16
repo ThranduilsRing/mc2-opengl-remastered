@@ -557,6 +557,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["tier1", "tier2", "tier3", "resolution"])
     ap.add_argument("--mission", action="append", default=[])
+    ap.add_argument("--objective-logistics", action="store_true",
+                    help="initialize and settle logistics for the objectives_e6e fixtures")
     ap.add_argument("--allow-any-mission", action="store_true",
                     help="allow --mission stems not present in "
                          "tests/smoke/smoke_missions.txt, as long as a matching "
@@ -1401,7 +1403,7 @@ def main():
         # The `resolution` tier runs one stem once per size, so its rows, logs and baseline keys carry the size.
         label = f"{e.stem}@{e.resolution}" if e.resolution else e.stem
         cfg = RunConfig(
-            exe=[args.exe],
+            exe=[args.exe] + (["--objective-logistics"] if args.objective_logistics else []),
             profile=e.profile or args.profile,
             stem=e.stem,
             duration=duration,

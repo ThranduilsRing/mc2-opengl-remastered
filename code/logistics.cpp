@@ -11,6 +11,8 @@
 
 #include "logistics_internal.h"
 #include "mc2fmt.h"
+#include "gos_smoke.h"
+#include "Gates/gate_cold.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <string>
 #include <string_view>
@@ -35,30 +37,49 @@ void Logistics::destroy (void)
 }	
 		
 //----------------------------------------------------------------------------------
+bool Logistics::initObjectiveFixture(const char* missionName)
+{
+	if (!SmokeMode::state().enabled ||
+	    mc2::gate::str<"MC2_ACTIVE_MOD">() != "objectives_e6e" ||
+	    (std::string_view(missionName) != "e6e_win" && std::string_view(missionName) != "e6e_loss") ||
+	    mc2::gate::get<"MC2_SOAK_AUTOWIN">() ||
+	    mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() ||
+	    mc2::gate::get<"MC2_PURCHASE_ALL">()) {
+		mc2::fmt::print_err("[OBJECTIVE_FIXTURE] incompatible boot configuration\n");
+		return false;
+	}
+
+	logisticsData.init();
+	if (logisticsData.setCurrentMission(missionName) != NO_ERR) {
+		mc2::fmt::print_err("[OBJECTIVE_FIXTURE] mission missing from fixture campaign\n");
+		return false;
+	}
+	objectiveFixture = true;
+	return true;
+}
+
 void Logistics::start (long startMode)
 {
 	ZoneScopedN("Logistics::start");
+	if (startMode == log_RESULTS && objectiveFixture) {
+		// Settlement must retain the tactical objectives and their observation until availability is applied.
+		if (scenarioResult == mis_PLAYER_WIN_BIG) {
+			logisticsData.setMissionCompleted();
+			logisticsData.updateAvailability();
+		}
+		quitGame = true;
+		return;
+	}
 	bMissionLoaded  = 0;
 	userInput->setMouseCursor( mState_LOGISTICS );
-//	userInput->mouseOn();
-
-	// ---- MC2_LOG_CURSOR diagnostics (instrumentation only) ----
-	// Logistics::start does NOT call mouseOn() (it is commented out) -- it relies
-	// on drawMouse already being true from mainmenu.begin / loadscreen. If DEE
-	// reaches here with drawMouse==false, the cursor stays invisible the whole
-	// logistics/deployment screen. This logs the inherited state on entry.
+	// Record the inherited cursor state to diagnose missing cursors after loading.
 	if ( mc2::gate::get<"MC2_LOG_CURSOR">() )
 	{
 		FILE* f = fopen("cursor_debug.log", "a");
 		if (f) { mc2::fmt::print(f, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}\n", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32((int)UserInput::drawMouse)); fflush(f); fclose(f); }
 	}
 
-	// FIX (DEE / old-MC2X no-intro-video flow): loadscreen turns the mouse cursor OFF
-	// during mission load (loadscreen.cpp:~397) and the original line 115 mouseOn() is
-	// commented out -- logistics relied on the cursor already being on from the intro
-	// movie / menu path. Campaigns with empty Video fields (DEE/DWE/HPE) skip that path
-	// and reach the deployment screen with drawMouse==false -> no cursor for the whole
-	// screen. Force it on here: a no-op for stock (already on), restores it for these.
+	// Campaigns without intro videos still need a cursor after the load screen hides it.
 	userInput->mouseOn();
 
 	DWORD localRenderer = prefs.renderer;
@@ -72,9 +93,8 @@ void Logistics::start (long startMode)
 
 	switch (startMode)
 	{
-		case log_RESULTS: // pull out results later...
+		case log_RESULTS:
 			active = true;
-			//Heading back to logistics now.  Change screen back to 800x600
 			if (prefs.renderer == 3)
 				gos_SetScreenMode(800,600,16,0,0,0,true,localFullScreen,0,localWindow,0,localRenderer);
 			else
@@ -94,20 +114,16 @@ void Logistics::start (long startMode)
 				if ( !MPlayer )
 					LogisticsData::instance->setMissionCompleted( );
 
-				// if mission is over, play video then quit when  done
 				if ( LogisticsData::instance->campaignOver() && !MPlayer && !LogisticsData::instance->isSingleMission() )
 				{
-					// CRASH-SOAK harness: campaign reached its end. Under the soak,
-					// terminate cleanly instead of running final-video -> splash ->
-					// main-menu (which would idle until the harness timed out). The
-					// run ends and the parent sees the process exit.
+					// A completed soak exits instead of idling at the main menu.
 					if ( mc2::gate::get<"MC2_SOAK_AUTOWIN">() )
 					{
 						mc2::fmt::print_out("[SOAK] campaign-complete -- terminating\n");
 						fflush(stdout);
 						mission->destroy();
 						gos_TerminateApplication();
-						break; // skip final video + splash; clean exit
+						break;
 					}
 					mission->destroy();
 					playFullScreenVideo( LogisticsData::instance->getFinalVideo().c_str() );
@@ -141,7 +157,7 @@ void Logistics::start (long startMode)
 				missionResults->bDone = true;
 				logisticsState = log_RESULTS;
 			}
-			else // end the game
+			else
 				quitGame = true;
 
 			break;
@@ -163,16 +179,13 @@ void Logistics::start (long startMode)
 				}
 			}
 
-			// On the main thread: FastFile archives read through one shared FILE* and LZ
-			// buffer, so a concurrent reader corrupts the parse (BUGS row 37's race class).
-			// MissionSelectionScreen::begin() below needs the logistics data populated. The serial parse
-			// costs about 150 ms once per load (BUGS row 37), so the intro movie starts that much later.
+			// Logistics data must be ready for mission selection. FastFile's shared file and
+			// decompression buffer require loading on the main thread to avoid corrupt reads.
 			initializeLogData();
 
 			bool bTestScript = false;
 			if ( bTestScript )
 			{
-				// bTestScript is always false — dead code retained for reference.
 				FitIniFile loadFile;
 				loadFile.open( "data" PATH_SEPARATOR "missions" PATH_SEPARATOR "save.fit" );
 				LogisticsData::instance->load( loadFile );
