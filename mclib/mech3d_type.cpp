@@ -370,8 +370,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 
 	if (numJumpNodes+numWeaponNodes+numSmokeNodes+numFootNodes)
 	{
-		nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numJumpNodes+numWeaponNodes+numSmokeNodes+numFootNodes));
-		gosASSERT(nodeData != NULL);
+		nodeDataStore = std::make_unique<NodeData[]>(numJumpNodes+numWeaponNodes+numSmokeNodes+numFootNodes);
+		nodeData = nodeDataStore.get();
 		
 		for (int i=0;i<numSmokeNodes;i++)
 		{
@@ -384,10 +384,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 			result = mechFile.readIdString("SmokeNodeName",smokeName,511);
 			gosASSERT(result == NO_ERR);
 			
-			nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(smokeName)+1); 
-			gosASSERT(nodeData[i].nodeId != NULL);
-			
-			strcpy(nodeData[i].nodeId,smokeName);
+			nodeData[i].setNodeId(smokeName);
 			nodeData[i].weaponType = MECH3D_WEAPONTYPE_NONE;
 		}
 		
@@ -406,10 +403,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 			result = mechFile.readIdLong("WeaponType",weaponType);
 			gosASSERT(result == NO_ERR);
 			
-			nodeData[i+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1); 
-			gosASSERT(nodeData[i+numSmokeNodes].nodeId != NULL);
-			
-			strcpy(nodeData[i+numSmokeNodes].nodeId,weaponName);
+			nodeData[i+numSmokeNodes].setNodeId(weaponName);
 			nodeData[i+numSmokeNodes].weaponType = weaponType;
 			
  		}
@@ -425,10 +419,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 			result = mechFile.readIdString("JumpNodeName",jumpName,511);
 			gosASSERT(result == NO_ERR);
 			
-			nodeData[i+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(jumpName)+1); 
-			gosASSERT(nodeData[i+numSmokeNodes+numWeaponNodes].nodeId != NULL);
-			
-			strcpy(nodeData[i+numSmokeNodes+numWeaponNodes].nodeId,jumpName);
+			nodeData[i+numSmokeNodes+numWeaponNodes].setNodeId(jumpName);
 			nodeData[i+numSmokeNodes+numWeaponNodes].weaponType = MECH3D_WEAPONTYPE_NONE;
 		}
 		
@@ -443,10 +434,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 			result = mechFile.readIdString("FootNodeName",footName,511);
 			gosASSERT(result == NO_ERR);
 			
-			nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(footName)+1); 
-			gosASSERT(nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].nodeId != NULL);
-			
-			strcpy(nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].nodeId,footName);
+			nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].setNodeId(footName);
 			nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].weaponType = MECH3D_WEAPONTYPE_NONE;
 		}
 	}
@@ -634,14 +622,7 @@ void Mech3DAppearanceType::destroy (void)
 		mechAnim[i] = nullptr;
 	}
 	
-	for (i=0;i<getTotalNodes();i++)
-	{
-		AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-		nodeData[i].nodeId = nullptr;
-	}
-
-	AppearanceTypeList::appearanceHeap->Free(nodeData);
-	
+	nodeDataStore.reset();
 	nodeData = nullptr;
 	numSmokeNodes = numWeaponNodes = numJumpNodes = 0;
 }

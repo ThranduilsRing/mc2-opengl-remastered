@@ -395,8 +395,8 @@ void BldgAppearanceType::init (const char * fileName)
 	result = iniFile.seekBlock("WeaponNode");
 	if (result == NO_ERR)
 	{
-		nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(MAX_WEAPON_NODES));
-		gosASSERT(nodeData != nullptr);
+		nodeDataStore = std::make_unique<NodeData[]>(MAX_WEAPON_NODES);
+		nodeData = nodeDataStore.get();
 		
 		for (int i=0;i<MAX_WEAPON_NODES;i++)
 		{
@@ -410,10 +410,7 @@ void BldgAppearanceType::init (const char * fileName)
 				strcpy(weaponName,"NONE");
 			}
 			
-			nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
-			gosASSERT(nodeData[i].nodeId != nullptr);
-				
-			strcpy(nodeData[i].nodeId,weaponName);
+			nodeData[i].setNodeId(weaponName);
 			nodeData[i].weaponType = 0;
 			numWeaponNodes++;
  		}
@@ -429,6 +426,9 @@ void BldgAppearanceType::init (const char * fileName)
 void BldgAppearanceType::destroy (void)
 {
 	AppearanceType::destroy();
+
+	nodeDataStore.reset();
+	nodeData = nullptr;
 
 	for (long i=0;i<MAX_LODS;i++)
 	{

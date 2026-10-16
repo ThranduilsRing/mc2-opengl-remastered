@@ -39,10 +39,22 @@ inline constexpr int MECH3D_WEAPONTYPE_DIRECT = 5;
 
 typedef struct _NodeData
 {
-	char 			*nodeId;				//Used to determine where jumpjets, smoke and weapon fire come from.
-	long			weaponType;				//What kind of weapon can use this node
-	bool			isRArmNode;				//Used to stop firing from node when RArm is gone.
-	bool			isLArmNode;				//Used to stop firing from node when LArm is gone.
+	char 			*nodeId = nullptr;		//Used to determine where jumpjets, smoke and weapon fire come from.  A view of nodeName.
+	long			weaponType = 0;			//What kind of weapon can use this node
+	bool			isRArmNode = false;		//Used to stop firing from node when RArm is gone.
+	bool			isLArmNode = false;		//Used to stop firing from node when LArm is gone.
+	std::string		nodeName;				//Owns the node id text.
+
+	// nodeId points into nodeName, so a node is neither copied nor moved: the owner builds the array once and fills each id with setNodeId.
+	_NodeData (void) = default;
+	_NodeData (const _NodeData&) = delete;
+	_NodeData& operator= (const _NodeData&) = delete;
+
+	void setNodeId (const char *name)
+	{
+		nodeName = name ? name : "";
+		nodeId = nodeName.data();
+	}
 } NodeData;
 
 /**************************************************************************************************

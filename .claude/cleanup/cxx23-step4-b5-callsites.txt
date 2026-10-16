@@ -105,8 +105,6 @@ B5.3-appearance	mclib/bdactor_type.cpp:254	asset_delete	delete bldgDmgShape;
 B5.1-texture	mclib/bdactor_type.cpp:284	tex_acquire	DWORD gosHandle = mcTextureManager->loadTexture(
 B5.1-texture	mclib/bdactor_type.cpp:293	tex_acquire	DWORD gosHandle = mcTextureManager->loadTexture(
 B5.3-appearance	mclib/bdactor_type.cpp:360	asset_new	bdAnimData[i] = new TG_AnimateShape;
-B5.3-appearance	mclib/bdactor_type.cpp:398	heap_malloc	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(MAX_WEAPON_NODES));
-B5.3-appearance	mclib/bdactor_type.cpp:413	heap_malloc	nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
 B5.3-appearance	mclib/bdactor_type.cpp:437	asset_delete	delete bldgShape[i];
 B5.3-appearance	mclib/bdactor_type.cpp:445	asset_delete	delete bldgRenderShape;
 B5.3-appearance	mclib/bdactor_type.cpp:468	asset_delete	delete bldgDmgShape;
@@ -145,35 +143,29 @@ B5.3-appearance	mclib/gvactor.cpp:161	asset_new	gvShadowShape = new TG_TypeMulti
 B5.3-appearance	mclib/gvactor.cpp:180	asset_new	gvDmgShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/gvactor.cpp:186	asset_delete	delete gvDmgShape;
 B5.3-appearance	mclib/gvactor.cpp:246	asset_new	gvAnimData[i] = new TG_AnimateShape;
-B5.3-appearance	mclib/gvactor.cpp:283	heap_malloc	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numWeaponNodes+numSmokeNodes+numFoot
-B5.3-appearance	mclib/gvactor.cpp:292	heap_malloc	nodeData[i-1].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
-B5.3-appearance	mclib/gvactor.cpp:304	heap_malloc	nodeData[(i-1)+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
-B5.3-appearance	mclib/gvactor.cpp:317	heap_malloc	nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)
-B5.3-appearance	mclib/gvactor.cpp:331	asset_new	SensorCircleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/gvactor.cpp:344	asset_new	SensorTriangleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/gvactor.cpp:361	asset_delete	delete gvShape[i];
-B5.3-appearance	mclib/gvactor.cpp:368	asset_delete	delete gvShadowShape;
-B5.3-appearance	mclib/gvactor.cpp:374	asset_delete	delete gvDmgShape;
-B5.3-appearance	mclib/gvactor.cpp:388	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-B5.3-appearance	mclib/gvactor.cpp:392	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData);
-B5.1-texture	mclib/gvactor.cpp:781	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:787	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor.cpp:799	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:805	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor.cpp:839	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:846	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:881	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:887	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:917	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:923	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.3-appearance	mclib/gvactor.cpp:1001	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-B5.3-appearance	mclib/gvactor.cpp:1005	heap_malloc	nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-B5.3-appearance	mclib/gvactor.cpp:1075	asset_delete	delete gvShape;
-B5.3-appearance	mclib/gvactor.cpp:1088	asset_delete	delete gvShape;
-B5.1-texture	mclib/gvactor.cpp:1118	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:1124	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor.cpp:1136	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:1142	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
+B5.3-appearance	mclib/gvactor.cpp:321	asset_new	SensorCircleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/gvactor.cpp:334	asset_new	SensorTriangleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/gvactor.cpp:351	asset_delete	delete gvShape[i];
+B5.3-appearance	mclib/gvactor.cpp:358	asset_delete	delete gvShadowShape;
+B5.3-appearance	mclib/gvactor.cpp:364	asset_delete	delete gvDmgShape;
+B5.1-texture	mclib/gvactor.cpp:762	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:768	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
+B5.1-texture	mclib/gvactor.cpp:780	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:786	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
+B5.1-texture	mclib/gvactor.cpp:820	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:827	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:862	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:868	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:898	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:904	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.3-appearance	mclib/gvactor.cpp:982	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
+B5.3-appearance	mclib/gvactor.cpp:986	heap_malloc	nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
+B5.3-appearance	mclib/gvactor.cpp:1056	asset_delete	delete gvShape;
+B5.3-appearance	mclib/gvactor.cpp:1069	asset_delete	delete gvShape;
+B5.1-texture	mclib/gvactor.cpp:1099	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:1105	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
+B5.1-texture	mclib/gvactor.cpp:1117	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:1123	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
 B5.1-texture	mclib/gvactor_geometry.cpp:171	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
 B5.1-texture	mclib/gvactor_geometry.cpp:193	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
 B5.3-appearance	mclib/gvactor_geometry.cpp:598	asset_delete	delete gvShape;
@@ -225,20 +217,13 @@ B5.3-appearance	mclib/mech3d_type.cpp:260	asset_delete	delete mechForwardDmgShap
 B5.3-appearance	mclib/mech3d_type.cpp:269	asset_new	mechBackwardDmgShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/mech3d_type.cpp:275	asset_delete	delete mechBackwardDmgShape;
 B5.3-appearance	mclib/mech3d_type.cpp:310	asset_new	mechAnim[i] = new TG_AnimateShape;
-B5.3-appearance	mclib/mech3d_type.cpp:373	heap_malloc	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numJumpNodes+numWeaponNodes+numSmoke
-B5.3-appearance	mclib/mech3d_type.cpp:387	heap_malloc	nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(smokeName)+1);
-B5.3-appearance	mclib/mech3d_type.cpp:409	heap_malloc	nodeData[i+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
-B5.3-appearance	mclib/mech3d_type.cpp:428	heap_malloc	nodeData[i+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(jumpName)+1)
-B5.3-appearance	mclib/mech3d_type.cpp:446	heap_malloc	nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen
-B5.3-appearance	mclib/mech3d_type.cpp:461	asset_new	SensorSquareShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/mech3d_type.cpp:474	asset_new	GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/mech3d_type.cpp:486	asset_new	GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/mech3d_type.cpp:596	asset_delete	delete mechShape[i];
-B5.3-appearance	mclib/mech3d_type.cpp:603	asset_delete	delete mechShadowShape;
-B5.3-appearance	mclib/mech3d_type.cpp:621	asset_delete	delete mechForwardDmgShape;
-B5.3-appearance	mclib/mech3d_type.cpp:627	asset_delete	delete mechBackwardDmgShape;
-B5.3-appearance	mclib/mech3d_type.cpp:639	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-B5.3-appearance	mclib/mech3d_type.cpp:643	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData);
+B5.3-appearance	mclib/mech3d_type.cpp:449	asset_new	SensorSquareShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/mech3d_type.cpp:462	asset_new	GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/mech3d_type.cpp:474	asset_new	GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/mech3d_type.cpp:584	asset_delete	delete mechShape[i];
+B5.3-appearance	mclib/mech3d_type.cpp:591	asset_delete	delete mechShadowShape;
+B5.3-appearance	mclib/mech3d_type.cpp:609	asset_delete	delete mechForwardDmgShape;
+B5.3-appearance	mclib/mech3d_type.cpp:615	asset_delete	delete mechBackwardDmgShape;
 B5.1-texture	mclib/mlr/gosimage.cpp:58	tex_acquire	mcTextureNodeIndex = mcTextureManager->loadTexture(name,gos_Texture_Detect,ipHints);
 B5.1-texture	mclib/mlr/gosimagepool.cpp:143	tex_acquire	DWORD nodeIndex = mcTextureManager->loadTexture(file_name,gos_Texture_Detect, hint);
 B5.5-heap-owner	mclib/mlr/mlrtexturepool.cpp:42	asset_delete	delete MLRTexturePool::Instance;

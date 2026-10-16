@@ -136,7 +136,8 @@ class Mech3DAppearanceType: public AppearanceType
 		long						numJumpNodes;
 		long						numWeaponNodes;
 		long						numFootNodes;
-		NodeData					*nodeData;
+		NodeData					*nodeData;			//View of nodeDataStore
+		std::unique_ptr<NodeData[]>	nodeDataStore;		//Owns the node table, built once by init(file)
 
 		// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): OPTIONAL, data-declared
 		// presentation-socket table. Populated ONLY from an optional
