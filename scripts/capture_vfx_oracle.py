@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from vfx_oracle.evidence import extract
 INSTALL_ROOT = Path("A:/Games/mc2-opengl")
+INSTALLS = ("lane2", "lane3")   # the lane installs the oracle may run against
 
 
 def park_value(pose: dict) -> str:
@@ -71,8 +72,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--arm", choices=("mlr", "gpu", "both"), default="both")
     parser.add_argument("--fixture", choices=("loop", "1"), default="loop")
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
-    parser.add_argument("--install", choices=("lane2", "lane3"), default="lane3")
+    parser.add_argument("--install", default="lane3")
     args = parser.parse_args(argv)
+    if args.install not in INSTALLS:
+        print(f"[capture_vfx_oracle] unknown --install {args.install!r}; known installs: {', '.join(INSTALLS)}",
+              file=sys.stderr)
+        return 2
     if bool(args.bookmarks) == bool(args.plan):
         parser.error("provide one bookmark file or --plan")
     if args.plan:

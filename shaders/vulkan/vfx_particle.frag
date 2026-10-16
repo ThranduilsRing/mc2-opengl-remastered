@@ -1,9 +1,8 @@
-// VK-FIELD-VFX-1 -- untextured colored soft-billboard FS for the VK particle
-// island. The GL path samples a per-group sprite texture and modulates by the
-// per-particle color; this UNTEXTURED slice approximates a generic soft sprite
-// with a radial alpha falloff so weapon tracers / muzzle flashes / impact glows
-// read as round soft blobs (bright combat activity) rather than hard squares.
-// Textured sprite fidelity is the documented deferred remainder.
+// VK-FIELD-VFX-1 -- textured billboard FS for the VK particle island: the
+// default-mode body of shaders/particle_billboard.frag (sprite sample times the
+// per-particle tint, colour-key discard, head brighten, low-alpha discard). The
+// GL debug views and the soft / lit / distortion / blackbody options are not
+// ported; each is off by default in GL.
 //
 // Straight-alpha output (rgb, a): the pipeline blend factors are
 //   alpha    group: SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (matches GL alpha)
@@ -11,18 +10,23 @@
 // so the FS emits straight color; the src-alpha factor premultiplies in HW.
 #version 450
 
-layout(location = 0) in vec4 v_color;
-layout(location = 1) in vec2 v_corner;
+layout(set = 1, binding = 0) uniform sampler2D uAtlas;   // the draw group's sprite page
+
+layout(location = 0) in vec2 v_uv;
+layout(location = 1) in vec4 v_color;
+layout(location = 2) flat in uint v_is_head;
 
 layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 
 void main() {
-    // Radial falloff: 0 at center, 1 at corner distance. Smooth soft edge.
-    float d = length(v_corner - vec2(0.5)) * 2.0;   // 0..~1.414
-    float soft = 1.0 - smoothstep(0.55, 1.0, d);
-    float a = clamp(v_color.a * soft, 0.0, 1.0);
-    if (a <= 0.003) discard;
-    o_color  = vec4(v_color.rgb, a);
+    vec4 tex = textureLod(uAtlas, v_uv, 0.0);
+    // MC2 sprite pages mark transparent texels with magenta (0xFF00FF).
+    if (tex.r > 0.9 && tex.g < 0.1 && tex.b > 0.9) discard;
+    vec4 c = tex * v_color;
+    // Head sprites (the bright leading particle of a beam / trail) draw 1.5x brighter.
+    if (v_is_head == 1u) c.rgb *= 1.5;
+    if (c.a < 0.01) discard;
+    o_color  = c;
     o_normal = vec4(0.0);   // GL VFX writes nothing to the normal target
 }

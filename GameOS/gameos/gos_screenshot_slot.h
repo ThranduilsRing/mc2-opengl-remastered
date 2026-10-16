@@ -25,6 +25,15 @@ public:
     bool pending() const { return pending_; }
     const std::string& path() const { return req_.path; }
 
+    // Why a request for `path` cannot be queued now, or nullptr when it can. WHY here: the predicate is engine-free, so a
+    // doctest pins each refusal; the caller only supplies whether the Vulkan backend is the one drawing.
+    const char* refusal(const char* path, bool vulkanDrawing) const {
+        if (!path || !path[0]) return "empty path";
+        if (!vulkanDrawing) return "the Vulkan backend is not drawing";
+        if (pending_) return "a request is still pending";
+        return nullptr;
+    }
+
     // False when a request is already waiting.
     bool begin(const char* path, DoneFn done) {
         if (pending_) return false;

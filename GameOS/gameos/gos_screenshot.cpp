@@ -18,16 +18,8 @@ Slot g_slot;
 }  // namespace
 
 bool request(const char* path, DoneFn done) {
-    if (!path || !path[0]) {
-        mc2::fmt::print_err("[SCREENSHOT v1] request rejected: empty path\n");
-        return false;
-    }
-    if (mc2::renderBackend() != mc2::RenderBackend::Vulkan) {
-        mc2::fmt::print_err("[SCREENSHOT v1] request rejected: the Vulkan backend is not drawing\n");
-        return false;
-    }
-    if (g_slot.pending()) {
-        mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {} still pending\n", mc2::fmt::safe(g_slot.path().c_str()));
+    if (const char* why = g_slot.refusal(path, mc2::renderBackend() == mc2::RenderBackend::Vulkan)) {
+        mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {}\n", mc2::fmt::safe(why));
         return false;
     }
     return g_slot.begin(path, done);

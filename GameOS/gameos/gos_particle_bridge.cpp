@@ -363,14 +363,9 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
     if (s_prog == nullptr || s_prog->shp_ == 0) return;
 
 #ifdef MC2_VULKAN_ISLAND
-    // VK-FIELD-VFX-1: under the VK shared-GBuffer umbrella the GL particle draw
-    // renders into the DISCARDED GL backbuffer (the native VK composite samples
-    // only the shared color0), so weapon fire VANISHES. When the VFX island is
-    // armed (MC2_VK_VFX, default-ON under MC2_VK_SHARED_GBUFFER), render the SAME
-    // billboard stream into the shared scene color0 via VK (depth-tested against
-    // the shared depth) and SKIP the GL draw. UNTEXTURED slice — textured sprite
-    // atlases, the tube-ribbon beams, and the gosFX MESH shapes are the documented
-    // deferred remainder. Umbrella OFF -> island gate OFF -> GL draw (byte-identical).
+    // Under the VK umbrella the GL draw lands in a discarded backbuffer, so the
+    // armed VFX island draws this billboard stream into the shared scene colour
+    // instead and the GL draw is skipped. Umbrella off: GL draw unchanged.
     if (mc2_vk_vfx_island_enabled() && groups != nullptr && numGroups > 0) {
         gosPostProcess* ppVk = getGosPostProcess();
         const int vkW = ppVk ? (int)ppVk->getWidth()  : 0;
@@ -384,6 +379,10 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                 d.start    = groups[gi].start;
                 d.count    = groups[gi].count;
                 d.additive = (groups[gi].blendMode == 1) ? 1u : 0u;
+                d.texture  = groups[gi].handle;
+                d.u0 = groups[gi].u0;  d.v0 = groups[gi].v0;
+                d.us = groups[gi].us;  d.vs = groups[gi].vs;
+                d.atlasColumns = groups[gi].atlasColumns;
                 vkDraws.push_back(d);
             }
             if (mc2_vk_vfx_island_run(records, count, vkDraws.data(),

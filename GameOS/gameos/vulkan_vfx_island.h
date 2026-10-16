@@ -2,9 +2,9 @@
 //
 // Renders the GPU-particle billboard stream (gos_particle_bridge) into the SHARED
 // scene GBuffer color0 as translucent, depth-tested (GEQUAL, no-write), colored
-// soft billboards — the "weapon fire survives the VK umbrella" slice. UNTEXTURED
-// (per-particle color + radial soft falloff); textured sprite fidelity, the tube-
-// ribbon beams, and the gosFX MESH shapes are the documented deferred remainder.
+// billboards textured with the group's sprite page (imported once from the texels
+// the GL path uploads) — the "weapon fire survives the VK umbrella" slice. The
+// tube-ribbon beams and the gosFX MESH shapes are the documented deferred remainder.
 //
 // Consumed under #ifdef MC2_VULKAN_ISLAND from gos_particle_bridge.cpp.
 
@@ -14,12 +14,16 @@
 #include <cstdint>
 
 // One contiguous same-blend sub-range of the particle array (mirrors the fields
-// of mc2::particles::GroupInfo the untextured slice needs). start/count are in
-// PARTICLES (the island multiplies by 6 for the vertex draw range).
+// of mc2::particles::GroupInfo). start/count are in PARTICLES (the island
+// multiplies by 6 for the vertex draw range).
 struct VfxParticleDraw {
     uint32_t start;      // index of first particle in the flat array
     uint32_t count;      // number of particles in this group
     uint32_t additive;   // 1 = additive (SRC_ALPHA/ONE), 0 = alpha (SRC_ALPHA/1-SRC_ALPHA)
+    uint32_t texture;    // gos texture handle of the group's sprite page; 0 = none (group skipped, as GL does)
+    float    u0, v0;     // sprite sub-rect origin
+    float    us, vs;     // sprite sub-rect size (per tile for a flipbook)
+    uint32_t atlasColumns;  // > 1: per-particle frame index selects the tile; else static
 };
 
 extern "C" {
