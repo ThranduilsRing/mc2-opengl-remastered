@@ -251,7 +251,7 @@ def test_runner_env_policy_live_repo():
     assert p["inherits"] is True
     assert "MC2_SMOKE_MODE" in p["forced"]
     assert "MC2_FORCE_ALL_VISIBLE" in p["soft"]
-    assert "MC2_GL_ERROR_DRAIN_SILENT" in p["popped"]
+    assert p["popped"] == set()
 
 
 def test_gate_status_no_false_env_drop_while_inheriting():
@@ -276,13 +276,16 @@ def test_gate_status_no_false_env_drop_while_inheriting():
                 f"{var}: tuple gap reported without the correction: {r['parse_notes']}"
 
 
-def test_gate_status_flags_genuinely_undriveable():
+def test_gate_status_flags_genuinely_undriveable(monkeypatch):
     """POPPED_ENV / FORCED_ENV vars ARE undeliverable — that must still fire.
 
     This is the true half of the old flag, and the old tool never reported it:
-    MC2_GL_ERROR_DRAIN_SILENT is deleted from the child env outright, so an A/B
-    arm that sets it really does not run.
+    a POPPED_ENV name is deleted from the child env outright, so an A/B arm that
+    sets it really does not run. The shipped table is empty, so one member is injected.
     """
+    real = gs.parse_runner_env_policy
+    monkeypatch.setattr(gs, "parse_runner_env_policy",
+                        lambda root: {**real(root), "popped": {"MC2_GL_ERROR_DRAIN_SILENT"}})
     r = gs.gate_status(REPO_ROOT, "MC2_GL_ERROR_DRAIN_SILENT")
     assert r["smoke_env_popped"] is True
     assert any(f.startswith("ENV_UNDRIVEABLE") for f in r["flags"])

@@ -127,9 +127,7 @@ SOFT_ENV: dict = {
 }
 
 POPPED_ENV: frozenset = frozenset({
-    # Retired gate (the GL error drain is gone): a stale ambient value is still dropped, and the table keeps one
-    # member so check-env-drive-guard keeps exercising the pop path.
-    "MC2_GL_ERROR_DRAIN_SILENT",
+    # Empty on purpose: no live gate needs its ambient value deleted. A name goes here only while a retired gate's stale shell value could still change a run.
 })
 
 
