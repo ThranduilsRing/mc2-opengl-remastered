@@ -664,7 +664,7 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 
 	data->hitLeft = hitLeft;
 	data->mcTextureHandle = mcTextureHandle;
-	data->gosTextureHandle = gosTextureHandle;
+	data->gosTextureHandle = 0; // Runtime texture creation order must not affect saves; Load ignores this field.
 	data->startUV = startUV;
 	data->goalHeight = goalHeight;
 
