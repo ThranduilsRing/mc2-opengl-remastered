@@ -62,7 +62,7 @@ recorder.
   on this host, so traces and `release_assets/tracy-baselines` taken before that date are 4K and are **not comparable** with a new trace: re-take
   the baseline before a `regress`.
 - **The render options are an input.** Each trace gets a `<trace>.options.json` (the install's options.cfg render options plus
-  `MC2_OPTIONS_OVERRIDE`, `scripts/smoke_lib/render_options_pin.py`); `baseline.json` keeps them per arm. `compare` and `regress` refuse two runs whose
+  `MC2_OPTIONS_OVERRIDE`, `scripts/smoke_lib/render_options_pin.py`); `baseline.json` keeps them with the measurement. `compare` and `regress` refuse two runs whose
   options differ (`StaticPropPbr` on one side only is a different frame cost, not a regression) and refuse a run with no record; `--vary Key,Key`
   names the options that differ on purpose.
 - **GPU memory is recorded next to the frame rate.** The engine plots the process's dedicated video memory to Tracy as `VRAM.Process.MB` (DXGI
@@ -150,7 +150,7 @@ py -3 tools/tracy_capture_compare.py regress \
     --install A:/Games/mc2-opengl/mc2-win64-0.4c
 ```
 
-Thresholds (on frame-count **drop**, per arm):
+Thresholds (on frame-count **drop**):
 
 | drop | verdict | exit |
 |---|---|---|

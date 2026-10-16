@@ -46,8 +46,8 @@ Facts baked in (recon 2026-07-18):
   * SCOPE NOTE: the VK islands (water/shadow/terrain interop) have NO Tracy zones.
     Their per-island timings come from [VK_*_PERF] log receipts, parsed by
     .claude/fence-defer/measure.py -- out of scope for this tool. The default zone
-    allowlist here covers the GL-side frame: DrawScreen, renderWaterFastPath,
-    SwapWindow.SDL, Camera.UpdateRenderers, Terrain::IndirectDraw.
+    allowlist covers the CPU frame zones the VK frame still runs: DrawScreen,
+    renderWaterFastPath, SwapWindow.SDL, Camera.UpdateRenderers, Terrain::IndirectDraw.
 
 MEASUREMENT HYGIENE (baseline/regress enforce this; capture opts in via flags):
   * NEVER fixed-timestep for FPS/frame-count comparison -- fixed timestep decouples
@@ -981,7 +981,7 @@ def main() -> int:
     b = sub.add_parser("baseline", help="capture the arms (default vk) at a pose -> dated baseline dir")
     b.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
     b.add_argument("--arms", default=",".join(DEFAULT_ARMS),
-                   help=f"comma-separated arms (default: {','.join(DEFAULT_ARMS)})")
+                   help="arms to measure; the only arm is vk since the GL arm was retired (any other value is refused)")
     b.add_argument("--mission", default=DEFAULT_BASELINE_MISSION)
     b.add_argument("--pose", default=DEFAULT_POSE, metavar="X,Y,ROT,PROJ,ALT[@FRAME]")
     b.add_argument("--seconds", type=int, default=DEFAULT_BASELINE_SECONDS,
