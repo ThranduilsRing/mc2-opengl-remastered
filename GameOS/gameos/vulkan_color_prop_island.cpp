@@ -1540,18 +1540,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
         u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
-        // Night light pools: this frame's pool copy (GL caps the set at 256); a failed map turns the term off.
+        // Night light pools: this frame's pool copy (GL caps the set at 256), flushed because the sequential-write placement need not be
+        // host-coherent; a failed upload turns the term off.
         int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
         if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
-        if (poolN > 0) {
-            void* pp = s->poolBuf[par] ? s->poolBuf[par].map() : nullptr;
-            if (pp) {
-                std::memcpy(pp, lightFeed.poolLights48, static_cast<size_t>(poolN) * 48u);
-                s->poolBuf[par].unmap();
-            } else {
-                poolN = 0;
-            }
-        }
+        if (poolN > 0 && !s->poolBuf[par].upload(lightFeed.poolLights48, static_cast<VkDeviceSize>(poolN) * 48u)) poolN = 0;
         u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = 0.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;

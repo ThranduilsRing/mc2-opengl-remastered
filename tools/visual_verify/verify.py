@@ -192,7 +192,43 @@ def check_render_options(golden_dir: Path, cap: dict, vary: "list[str]") -> dict
     return {"golden": golden_opts, "candidate": cand_opts, "vary": list(vary)}
 
 
-def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool, vary: "list[str] | None" = None) -> dict:
+def golden_backend(golden_json: dict) -> "str | None":
+    """The backend a golden is the reference for: the named one (bless.py --backend), else the one its source captures asked for; None for a
+    golden blessed before captures recorded a backend."""
+    named = golden_json.get("backend")
+    if isinstance(named, str) and named:
+        return named
+    rec = (golden_json.get("capture_env") or {}).get("backend") or {}
+    return rec.get("requested") or None
+
+
+def check_backend(golden_dir: Path, cap: dict, allow_mismatch: bool) -> dict:
+    """The candidate must have been drawn by the golden's backend alone: a GL frame graded against a VK golden (or the reverse) measures the
+    backend gap, not a regression. Raises SystemExit on a mismatch or an unrecorded candidate backend unless `allow_mismatch`, which is logged
+    and carried in the report. A golden without a backend record is graded as before, with a log line."""
+    try:
+        gj = json.loads((Path(golden_dir) / "golden.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        gj = {}
+    want = golden_backend(gj)
+    drew = (cap.get("backend") or {}).get("drew")
+    record = {"golden": want, "candidate_drew": drew, "mismatch_allowed": False}
+    if want is None:
+        print(f"[vv-verify] golden {Path(golden_dir).name} records no backend; backend not checked", file=sys.stderr)
+        return record
+    if drew == [want]:
+        return record
+    what = (f"the candidate was drawn by {drew}" if drew else "the candidate capture records no backend")
+    if not allow_mismatch:
+        raise SystemExit(f"[vv-verify] BACKEND MISMATCH: golden {Path(golden_dir).name} is the {want} reference and {what}; "
+                         f"capture with the golden's backend, or pass --allow-backend-mismatch to grade across backends on purpose.")
+    print(f"[vv-verify] WARNING --allow-backend-mismatch: golden is {want}, {what}; verdicts measure the backend gap", file=sys.stderr)
+    record["mismatch_allowed"] = True
+    return record
+
+
+def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool, vary: "list[str] | None" = None,
+               allow_backend_mismatch: bool = False) -> dict:
     run_dir = Path(run_dir).resolve()
     manifest_path = run_dir / "capture_run.json"
     if not manifest_path.exists():
@@ -247,8 +283,10 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool, vary: "
 
     # The render options of the golden and of the candidate must agree (--vary names a deliberate difference); the report carries both records.
     options_record = None
+    backend_record = None
     if golden_dir is not None and not baseline:
         options_record = check_render_options(golden_dir, cap, vary or [])
+        backend_record = check_backend(golden_dir, cap, allow_backend_mismatch)
 
     # CAPTURE-RESOLUTION-ASSERT-1 (HARNESS-HYGIENE-3). Region rects are
     # normalized fractions and diff_crops() below silently upscales a smaller
@@ -367,6 +405,7 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool, vary: "
         "golden_dir": str(golden_dir) if golden_dir else None,
         "baseline_mode": baseline,
         "render_options": options_record,
+        "backend": backend_record,
         "install": cap.get("install"),
         "exe": cap.get("exe"),
         "frame": cap.get("frame"),
@@ -422,6 +461,10 @@ def _write_md(path: Path, report: dict) -> None:
     if ro:
         shown = render_options_pin.describe(ro["candidate"])
         lines.append(f"- render options: {shown} (the golden recorded the same" + (f", except --vary {','.join(ro['vary'])}" if ro["vary"] else "") + ")")
+    be = report.get("backend")
+    if be and be.get("golden"):
+        lines.append(f"- backend: golden {be['golden']}, candidate drew {be['candidate_drew']}"
+                     + (" (MISMATCH ALLOWED by --allow-backend-mismatch)" if be["mismatch_allowed"] else ""))
     s = report["summary"]
     lines.append("")
     lines.append(f"**Pose verdicts:** " +
@@ -469,6 +512,8 @@ def main(argv=None) -> int:
                          "into --golden (all regions verdict NEW).")
     ap.add_argument("--vary", default="",
                     help="comma-separated options.cfg keys that differ between the golden and this capture on purpose (any other difference is refused)")
+    ap.add_argument("--allow-backend-mismatch", action="store_true",
+                    help="grade a capture drawn by a backend other than the golden's (logged; the verdicts then measure the backend gap)")
     args = ap.parse_args(argv)
 
     if args.golden == "current":      # the golden set blessed at the pinned capture size (scripts/smoke_lib/render_resolution.py)
@@ -480,7 +525,8 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
 
-    report = verify_run(Path(args.run), golden, args.baseline, [k for k in args.vary.split(",") if k])
+    report = verify_run(Path(args.run), golden, args.baseline, [k for k in args.vary.split(",") if k],
+                        allow_backend_mismatch=args.allow_backend_mismatch)
     s = report["summary"]
     print(f"[vv-verify] poses: " +
           ", ".join(f"{k}={v}" for k, v in sorted(s["pose_verdicts"].items())))

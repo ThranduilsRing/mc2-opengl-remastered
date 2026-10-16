@@ -119,8 +119,23 @@ GL deletion step 1 then needs: the capture and tooling GL arms of `.claude/clean
 (`capture_ab.py` noise floor on two VK arms, `ab.py` and the term-oracle scripts kept only as long as a GL exe exists, the GL tier1 arm
 dropped from the per-row proof), with this set as the regression guard: `verify.py` 36/36 on a VK run of the post-deletion exe.
 
+### CURRENT_GOLDEN recommendation (2026-10-16, session 28): SWITCH to `golden-d9e1f3801716-vk-1080p`
+Every condition above is met: (1) row 2 is proven on the close-up bookmarks `mc2_01_saved_mechday` / `mc2_10_saved_mechnight` (specular
+term VK vs GL 0.11 on 26.46 by day, 0.32 on 10.21 at night once GL's whole-pixel face multiplier, now row 24, is divided out) with no VK
+code change; (2) so no golden pose moves and no re-bless is needed: the final exe 67b4b029a grades 36/36 against this set (`s28e-vk`), as
+d37588c7c did (`s28c-vk`, every pose within the noise floor of `s27d-vk`); (3) open rows that could move these poses: 24 (GL-only face
+darkening, mechs are a few dozen px here) and 18 (no stock content), neither a VK change pending; (4) `verify.py` refuses a candidate drawn
+by another backend (908e2ad90, `--allow-backend-mismatch` to override, logged; pytest `test_verify_backend.py`).
+The switch commit (orchestrator, not a lane): in `scripts/smoke_lib/render_resolution.py` replace
+`CURRENT_GOLDEN = "golden-e9e3f19d6-1080p"` with `CURRENT_GOLDEN = "golden-d9e1f3801716-vk-1080p"` and the comment line above it with
+"the VK set blessed at the pinned size; the GL sets are retired (RETIRED.md)"; add `RETIRED.md` rows for `golden-e9e3f19d6-1080p` (GL,
+superseded by the VK set) and `reset-50331d5` (GL, 4K); run `tests/smoke/test_resolution_tier.py` and
+`scripts/check-capture-resolution.py --current`. After it, `verify.py --golden current` refuses GL captures, so any GL A/B goes through
+`capture_ab.py` / the term oracle, not the golden.
+GL deletion step 1 prerequisites: this switch; the step-1 list in `.claude/cleanup/lane2-state.md` (session 28); `capture_ab.py` noise
+floor on two VK arms; the owner's fail-soft ruling (inventory section 14 question 1).
+
 ## 5. Follow-ups (not done here)
-- `verify.py` does not compare the golden's backend with the candidate's; add a refusal (with an explicit cross-backend switch for the
-  oracle use) when the VK set becomes current.
+- DONE 908e2ad90: `verify.py` refuses a candidate whose backend differs from the golden's.
 - `capture_ab.py` uses two GL arms as its noise floor; switch to two VK arms (inventory section 12).
 - `tests/callers.json` is stale at the lane base 06f3e7296 (`tools/callers.py --check`); regenerate at merge.

@@ -289,6 +289,7 @@
   "tools/vfx_oracle/test_compare_combat_traces.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row.",
   "tools/visual_verify/test_bless_backend.py": "Pytest-discovered module through the scripts_tests board row.",
+  "tools/visual_verify/test_verify_backend.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/check-deploy-target.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/check_shader_bom.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/smoke_lib/baselines.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",

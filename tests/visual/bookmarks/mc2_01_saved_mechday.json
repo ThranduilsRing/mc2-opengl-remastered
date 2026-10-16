@@ -1,0 +1,9 @@
+{
+ "schema_v": 1,
+ "mission": "mc2_01",
+ "_note": "mech close-up, day: the player Werewolf at its spawn (2496,-1941) fills about a fifth of the frame (parity row 2, mech specular oracle). Duplicate entry keeps >=2 bookmarks (single-pose files silently fail).",
+ "bookmarks": [
+  {"name": "saved_mechday", "pos": [2496.0, -1941.0, 0.0], "rot": 45.0, "proj": 24.0, "alt": 200.0, "covers": ["mech"]},
+  {"name": "saved_mechday_dup", "pos": [2496.0, -1941.0, 0.0], "rot": 45.0, "proj": 24.0, "alt": 200.0, "covers": ["mech"]}
+ ]
+}
