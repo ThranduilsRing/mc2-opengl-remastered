@@ -113,6 +113,15 @@ TEST_CASE("a refused map's packet count is its layout size, saturating, with a f
 	CHECK(gm::layoutPacketCount(0x7fffffff, 0x7fffffff, 2, 9) == 0x7fffffff);
 }
 
+TEST_CASE("the packet cursor saturates instead of overflowing when a refused map reports a huge layout size")
+{
+	CHECK(gm::advanceCursor(4, 124) == 128);
+	CHECK(gm::advanceCursor(0x7fffffff, 1) == 0x7fffffff);
+	CHECK(gm::advanceCursor(124, 0x7fffffff) == 0x7fffffff);
+	CHECK(gm::advanceCursor(gm::advanceCursor(4, 0x7fffffff), 0x7fffffff) == 0x7fffffff);
+	CHECK(gm::advanceCursor(5, -9) == 0);
+}
+
 TEST_CASE("ownZeroed gives a zeroed non-null view even for a count of zero")
 {
 	std::vector<int16_t> store;

@@ -599,7 +599,8 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		if (!GlobalMoveMap[1])
 			Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap1 ");
 		GlobalMoveMap[1]->hover = true;
-		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets);
+		const long map1Start = mc2::globalmap::advanceCursor(whichPacket + numMissionMapPackets, numGlobalMap0Packets);
+		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, map1Start);
 
 		// Let's read the helicoptor move map...
 		if (GlobalMoveMap[2]) {
@@ -610,11 +611,13 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		if (!GlobalMoveMap[2])
 			Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap2 ");
 		GlobalMoveMap[2]->blank = true;
-		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets);
+		const long map2Start = mc2::globalmap::advanceCursor(map1Start, numGlobalMap1Packets);
+		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, map2Start);
 		// Delete the pathExistsTable for this one, since we don't use it...
 		GlobalMoveMap[2]->releasePathExistsTable();
 
-		long numBytes = packetFile->readPacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, (unsigned char*)&tempNumSpecialAreas);
+		const long specialAreaPkt = mc2::globalmap::advanceCursor(map2Start, numGlobalMap2Packets);
+		long numBytes = packetFile->readPacket(specialAreaPkt, (unsigned char*)&tempNumSpecialAreas);
 		if (numBytes <= 0)
 			Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
 		if (tempSpecialAreaFootPrints) {
@@ -629,7 +632,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 			// caused a 4864-byte heap overflow and non-deterministic crash.
 			// Fix: allocate max(packetSize, sizeof*N) — same pattern as GlobalMap
 			// mod-tolerance.
-			long footprintPkt = whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 1;
+			long footprintPkt = mc2::globalmap::advanceCursor(specialAreaPkt, 1);
 			packetFile->seekPacket(footprintPkt);
 			size_t packetSize = (size_t)packetFile->getPacketSize();
 			size_t expectedSize = sizeof(GameObjectFootPrint) * (size_t)tempNumSpecialAreas;
@@ -658,7 +661,10 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		mc2_path_trace::emitMap(areas, doors, (int)tempNumSpecialAreas, cellW, cellH);
 	}
 
-	return(numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 2);
+	long packetsRead = mc2::globalmap::advanceCursor(numMissionMapPackets, numGlobalMap0Packets);
+	packetsRead = mc2::globalmap::advanceCursor(packetsRead, numGlobalMap1Packets);
+	packetsRead = mc2::globalmap::advanceCursor(packetsRead, numGlobalMap2Packets);
+	return mc2::globalmap::advanceCursor(packetsRead, 2);
 }
 
 void MOVE_cleanup (void) {

@@ -83,6 +83,14 @@ inline long layoutPacketCount (long numDoorInfos, long numDoors, long doorOffset
 	return total > 0x7fffffffLL ? 0x7fffffff : static_cast<long>(total);
 }
 
+// The packet index `count` packets after `cursor`, saturating at LONG_MAX instead of overflowing: a hostile layout size from a
+// refused map must not wrap the next read position, and an index that large is past the end of any pak so the next read fails.
+inline long advanceCursor (long cursor, long count)
+{
+	const long long next = static_cast<long long>(cursor) + count;
+	return next > 0x7fffffffLL ? 0x7fffffff : (next < 0 ? 0 : static_cast<long>(next));
+}
+
 // The buffer size for a packet that may be larger than the struct array the reader expects: kRefused when the packet is more than
 // kMaxPacketSlack times the expected size plus the floor, else the larger of the two.
 inline std::size_t tolerantBytes (std::size_t packetBytes, std::size_t expectedBytes)
