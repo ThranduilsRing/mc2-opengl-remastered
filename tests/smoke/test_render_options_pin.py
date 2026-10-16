@@ -105,14 +105,14 @@ def test_capture_ab_refuses_sets_with_different_options(tmp_path):
         d.mkdir()
         (d / "capture_run.json").write_text(json.dumps({"render_options": vals}), encoding="utf-8")
 
-    for n in ("b1-gl", "b2-gl", "b-vk", "a1-gl", "a2-gl"):
+    for n in ("b1-vk", "b2-vk", "a1-vk"):
         put(n, values())
-    put("a-vk", values(VfxSoftParticles=True))
+    put("a2-vk", values(VfxSoftParticles=True))
     with pytest.raises(capture_ab.render_options_pin.OptionsMismatch) as e:
         capture_ab.check_options(str(tmp_path), "b", "a", [])
     assert "VfxSoftParticles" in str(e.value)
     capture_ab.check_options(str(tmp_path), "b", "a", ["VfxSoftParticles"])
-    (tmp_path / "a-vk" / "capture_run.json").unlink()                         # an unrecorded set is refused too
+    (tmp_path / "a2-vk" / "capture_run.json").unlink()                         # an unrecorded set is refused too
     with pytest.raises(capture_ab.render_options_pin.OptionsMismatch):
         capture_ab.check_options(str(tmp_path), "b", "a", [])
 
