@@ -59,6 +59,20 @@ size_t bc7LevelBytes(uint32_t width, uint32_t height);
 // The bytes come out as stored: an sRGB-encoded level stays sRGB-encoded. Empty when the byte count does not match the size.
 std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t width, uint32_t height);
 
+// The extent of mip level `level` of a `size` edge: halved per level, never below 1.
+constexpr uint32_t mipExtent(uint32_t size, uint32_t level) {
+    const uint32_t e = level < 32u ? size >> level : 0u;
+    return e ? e : 1u;
+}
+
+// The next mip level of an RGBA8 (UNORM) level: each texel the rounded mean of its 2x2 source footprint, per channel, on the
+// stored bytes. A 1-texel edge pairs the texel with itself; an odd edge above 1 leaves its last row / column out (the floor
+// halving every level takes; drivers differ there, so parity is claimed for even edges only).
+// WHY: the static-prop albedo arrays are GL_RGBA8 (not sRGB), mipmapped by glGenerateMipmap, whose filter on that format is
+// this box; a CPU copy of the chain built with it lets a backend without GL upload the same texels.
+// Empty when `src` is not width * height * 4 bytes or an edge is 0 or above RenderCore::kKtxMaxEdge.
+std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height);
+
 }  // namespace mc2tex
 
 // The level-0 texels of a gos texture handle as its upload took them, for a backend that uploads its own copy: RGBA8 for decoded

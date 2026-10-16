@@ -151,3 +151,42 @@ TEST_CASE("texture decode: BC7 blocks decode to RGBA8 only when the byte count m
     CHECK(mc2tex::decodeBc7(block, 8, 8).empty());   // 4 blocks needed, 1 given
     CHECK(mc2tex::decodeBc7(block, 0, 4).empty());
 }
+
+TEST_CASE("mip box filter: a 4x4 RGBA8 level halves to the rounded 2x2 means, then to one texel") {
+    // Each 2x2 quadrant has distinct channel values; red and alpha test round-half-up ((sum + 2) / 4).
+    std::vector<uint8_t> src(4 * 4 * 4);
+    auto put = [&](int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        uint8_t* p = &src[(size_t)(y * 4 + x) * 4];
+        p[0] = r; p[1] = g; p[2] = b; p[3] = a;
+    };
+    for (int y = 0; y < 4; ++y)
+        for (int x = 0; x < 4; ++x) put(x, y, 0, 0, 0, 0);
+    put(0, 0, 1, 10, 0, 255); put(1, 0, 0, 20, 0, 255); put(0, 1, 0, 30, 0, 255); put(1, 1, 1, 40, 0, 0);    // r 2/4 -> 1, a 765/4 -> 191
+    put(2, 0, 255, 0, 0, 255); put(3, 0, 255, 0, 0, 255); put(2, 1, 255, 0, 0, 255); put(3, 1, 255, 0, 0, 255);
+    put(0, 2, 0, 0, 7, 0); put(1, 2, 0, 0, 0, 0); put(0, 3, 0, 0, 0, 0); put(1, 3, 0, 0, 0, 0);          // b 7/4 -> 2 (1.75 rounds up)
+    put(2, 2, 3, 3, 3, 3); put(3, 2, 3, 3, 3, 3); put(2, 3, 3, 3, 3, 3); put(3, 3, 2, 2, 2, 2);          // 11/4 = 2.75 -> 3
+
+    const auto l1 = mc2tex::boxDownsampleRgba8(src, 4, 4);
+    REQUIRE(l1.size() == 2 * 2 * 4);
+    const std::vector<uint8_t> want1 = {1, 25, 0, 191,   255, 0, 0, 255,   0, 0, 2, 0,   3, 3, 3, 3};
+    CHECK(l1 == want1);
+
+    const auto l2 = mc2tex::boxDownsampleRgba8(l1, 2, 2);
+    REQUIRE(l2.size() == 4);
+    // r (1+255+0+3+2)/4 = 65, g (25+0+0+3+2)/4 = 7, b (0+0+2+3+2)/4 = 1, a (191+255+0+3+2)/4 = 112
+    const std::vector<uint8_t> want2 = {65, 7, 1, 112};
+    CHECK(l2 == want2);
+}
+
+TEST_CASE("mip box filter: non-square and 1-texel edges, malformed input rejected") {
+    std::vector<uint8_t> row = {10, 0, 0, 0, 20, 0, 0, 0, 30, 0, 0, 0, 41, 0, 0, 0};   // 4x1
+    const auto half = mc2tex::boxDownsampleRgba8(row, 4, 1);
+    REQUIRE(half.size() == 2 * 4);
+    CHECK(half[0] == 15);   // (10+20+10+20+2)/4: the single row pairs with itself
+    CHECK(half[4] == 36);   // (30+41+30+41+2)/4 = 36
+    CHECK(mc2tex::mipExtent(4, 2) == 1);
+    CHECK(mc2tex::mipExtent(1, 5) == 1);
+    CHECK(mc2tex::mipExtent(256, 3) == 32);
+    CHECK(mc2tex::boxDownsampleRgba8(row, 4, 2).empty());   // byte count does not match the size
+    CHECK(mc2tex::boxDownsampleRgba8({}, 0, 0).empty());
+}
