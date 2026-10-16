@@ -73,8 +73,6 @@ uniform mat4 lightSpaceMatrix;
 #define MC2_SHADOW_CSM_MAX 3
 #endif
 uniform sampler2DArrayShadow dynamicShadowArray;
-uniform sampler2DArray dynamicShadowArrayRaw;
-uniform sampler2D dynamicFullMapRaw;
 uniform mat4 dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX];
 uniform int  dynamicCsmCount;
 uniform float dynamicCascadeTexelWorld[MC2_SHADOW_CSM_MAX]; // 2*cRad/mapSize, world units
@@ -367,24 +365,4 @@ void main()
 
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);
-    if (isStaticProp && propShadowReceive != 0)
-    {
-        int selC = -1; float rawLess = 0.0;
-        float dNdotL = max(dot(objN, lightDir), 0.0);
-        int dCount = clamp(dynamicCsmCount, 1, MC2_SHADOW_CSM_MAX);
-        for (int c = 0; c < dCount && dNdotL >= 0.05; ++c) {
-            bool isFull = (c == dCount - 1);
-            float tw = isFull ? dynamicFullMapTexelWorld : dynamicCascadeTexelWorld[c];
-            vec3 sp = worldPos + objN * (objNormalBiasScale * tw * dNdotL);
-            vec4 lp = dynamicCascadeMatrices[c] * vec4(sp, 1.0);
-            vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
-            if (pc.z > 1.0 || pc.z < 0.0) continue;
-            if (pc.xy != clamp(pc.xy, 0.0, 1.0)) continue;
-            float cur = pc.z - (0.0012 + 1.5 * tw / max(csmDepthSpan, 1.0) + 0.0005 * (1.0 - dNdotL));
-            float stored = isFull ? texture(dynamicFullMapRaw, pc.xy).r : texture(dynamicShadowArrayRaw, vec3(pc.xy, float(c))).r;
-            selC = c; rawLess = stored < cur ? 1.0 : 0.0;
-            break;
-        }
-        FragColor = vec4(selC == 0 ? 1.0 : 0.0, selC == dCount - 1 ? 1.0 : 0.0, rawLess, 1.0);
-    }
 }
