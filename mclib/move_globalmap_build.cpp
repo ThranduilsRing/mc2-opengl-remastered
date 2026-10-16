@@ -140,10 +140,12 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		const mc2::globalmap::HeaderCounts counts{height, width, sectorHeight, sectorWidth, numAreas, numDoors, numDoorInfos, numDoorLinks};
 		if (const char* badCount = mc2::globalmap::rejectHeaderCounts(counts)) {
 			MC2_LOG(Io, Error, "move: global move map at packet {}: {} is out of range; the map is not loaded", startPacket, badCount);
+			// The cursor still has to step over this map's packets, so the layout size is taken from the raw counts before they are cleared.
+			const long layoutPackets = mc2::globalmap::layoutPacketCount(numDoorInfos, numDoors, NUM_DOOR_OFFSETS, whichPacket - startPacket);
 			height = width = sectorHeight = sectorWidth = 0;
 			numAreas = numDoors = numDoorInfos = numDoorLinks = 0;
 			badLoad = true;
-			return(whichPacket - startPacket);
+			return(layoutPackets);
 		}
 	}
 

@@ -41,7 +41,7 @@ TEST_CASE("a header with in-range counts is accepted, including the limits thems
 	top.numAreas = gm::kMaxAreas;
 	top.numDoors = gm::kMaxDoors;
 	top.numDoorInfos = gm::kMaxAreas * gm::kMaxDoorsPerArea;
-	top.numDoorLinks = (gm::kMaxDoors + 2) * 2 * gm::kMaxLinksPerDoorSide;
+	top.numDoorLinks = (gm::kMaxDoors + gm::kDoorScratchLinks) * 2 * gm::kMaxLinksPerDoorSide;
 	CHECK(gm::rejectHeaderCounts(top) == nullptr);
 }
 
@@ -62,9 +62,11 @@ TEST_CASE("each header count outside its range is named and refused")
 		{"numDoors", [](gm::HeaderCounts& c) { c.numDoors = -1; }},
 		{"numDoors", [](gm::HeaderCounts& c) { c.numDoors = gm::kMaxDoors + 1; }},
 		{"numDoorInfos", [](gm::HeaderCounts& c) { c.numDoorInfos = -1; }},
-		{"numDoorInfos", [](gm::HeaderCounts& c) { c.numDoorInfos = gm::kMaxAreas * gm::kMaxDoorsPerArea + 1; }},
+		{"numDoorInfos", [](gm::HeaderCounts& c) { c.numDoorInfos = c.numAreas * gm::kMaxDoorsPerArea + 1; }},
+		{"numDoorInfos", [](gm::HeaderCounts& c) { c.numAreas = 0; c.numDoorInfos = 1; }},
 		{"numDoorLinks", [](gm::HeaderCounts& c) { c.numDoorLinks = -1; }},
-		{"numDoorLinks", [](gm::HeaderCounts& c) { c.numDoorLinks = (gm::kMaxDoors + 2) * 2 * gm::kMaxLinksPerDoorSide + 1; }},
+		{"numDoorLinks", [](gm::HeaderCounts& c) { c.numDoorLinks = (c.numDoors + gm::kDoorScratchLinks) * 2 * gm::kMaxLinksPerDoorSide + 1; }},
+		{"numDoorLinks", [](gm::HeaderCounts& c) { c.numDoors = 0; c.numDoorLinks = 2 * 2 * gm::kMaxLinksPerDoorSide + 1; }},
 		{"numDoorLinks", [](gm::HeaderCounts& c) { c.numDoorLinks = 0x7fffffff; }},
 	};
 	for (const Case& tc : cases)
@@ -100,6 +102,15 @@ TEST_CASE("a packet larger than the struct array is tolerated within the slack a
 	CHECK(gm::tolerantBytes(100 * gm::kMaxPacketSlack + 4097, 100) == 0);
 	CHECK(gm::tolerantBytes(std::size_t(1) << 40, 360000) == 0);
 	CHECK(gm::tolerantBytes(8192, 0) == 0);
+}
+
+TEST_CASE("a refused map's packet count is its layout size, saturating, with a fallback for counts that describe no layout")
+{
+	CHECK(gm::layoutPacketCount(800, 400, 2, -1) == 13 + 800 + (400 + 2) * 2);
+	CHECK(gm::layoutPacketCount(0, 0, 2, -1) == 13 + 4);
+	CHECK(gm::layoutPacketCount(-1, 400, 2, 9) == 9);
+	CHECK(gm::layoutPacketCount(800, -1, 2, 9) == 9);
+	CHECK(gm::layoutPacketCount(0x7fffffff, 0x7fffffff, 2, 9) == 0x7fffffff);
 }
 
 TEST_CASE("ownZeroed gives a zeroed non-null view even for a count of zero")

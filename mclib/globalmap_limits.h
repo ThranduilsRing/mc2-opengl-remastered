@@ -9,15 +9,20 @@
 namespace mc2::globalmap
 {
 // The design limits of the map builder (move.h MAX_GLOBALMAP_AREAS / MAX_GLOBALMAP_DOORS, terrain.h MAX_MAP_CELL_WIDTH);
-// move.cpp pins them equal with static_asserts.
+// move_internal.h pins them equal with a static_assert.
 inline constexpr long kMaxCellsPerSide = 720;
 inline constexpr long kMaxAreas = 10000;
 inline constexpr long kMaxDoors = 10000;
-// The builder refuses an area with more than 255 doors, so a door side links at most 255 other doors plus two scratch links.
+// The builder refuses an area with more than 255 doors, so a door side links at most 255 other doors plus the start and goal scratch links.
 inline constexpr long kMaxDoorsPerArea = 255;
-inline constexpr long kMaxLinksPerDoorSide = kMaxDoorsPerArea + 2;
-// A mod packet may be larger than the shipped struct (extended schemas); it is accepted up to this many times the expected size.
+inline constexpr long kDoorScratchLinks = 2;
+inline constexpr long kMaxLinksPerDoorSide = kMaxDoorsPerArea + kDoorScratchLinks;
+// A mod packet may be larger than the shipped struct (extended schemas); it is accepted up to this many times the expected size,
+// plus a fixed floor so a tiny struct still has room for one extra field.
 inline constexpr std::size_t kMaxPacketSlack = 16;
+inline constexpr std::size_t kPacketSlackFloor = 4096;
+// tolerantBytes() result for a packet beyond the slack.
+inline constexpr std::size_t kRefused = 0;
 
 struct HeaderCounts
 {
@@ -46,9 +51,11 @@ inline const char* rejectHeaderCounts (const HeaderCounts& c)
 		return "numAreas";
 	if (c.numDoors < 0 || c.numDoors > kMaxDoors)
 		return "numDoors";
-	if (c.numDoorInfos < 0 || c.numDoorInfos > kMaxAreas * kMaxDoorsPerArea)
+	// The info and link tables are bounded by this map's own area and door counts, so a header cannot size a table larger
+	// than the map it describes.
+	if (c.numDoorInfos < 0 || c.numDoorInfos > c.numAreas * kMaxDoorsPerArea)
 		return "numDoorInfos";
-	if (c.numDoorLinks < 0 || c.numDoorLinks > (kMaxDoors + 2) * 2 * kMaxLinksPerDoorSide)
+	if (c.numDoorLinks < 0 || c.numDoorLinks > (c.numDoors + kDoorScratchLinks) * 2 * kMaxLinksPerDoorSide)
 		return "numDoorLinks";
 	return nullptr;
 }
@@ -65,12 +72,23 @@ inline bool doorLinkCountInRange (long numLinks)
 	return numLinks >= 0 && numLinks <= kMaxDoorsPerArea;
 }
 
-// The buffer size for a packet that may be larger than the struct array the reader expects: 0 when the packet is more than
-// kMaxPacketSlack times the expected size (a refusal), else the larger of the two.
+// The number of packets one global map occupies in the pak, from its header counts: the 13 fixed packets, the door infos, and two
+// per door (links and offsets). A refused map still advances the caller's cursor by this much so the next map is read from the
+// right packet; `fallback` is returned when the counts cannot describe a layout (negative), and the result saturates at LONG_MAX.
+inline long layoutPacketCount (long numDoorInfos, long numDoors, long doorOffsets, long fallback)
+{
+	if (numDoorInfos < 0 || numDoors < 0)
+		return fallback;
+	const long long total = 13LL + numDoorInfos + (static_cast<long long>(numDoors) + doorOffsets) * 2;
+	return total > 0x7fffffffLL ? 0x7fffffff : static_cast<long>(total);
+}
+
+// The buffer size for a packet that may be larger than the struct array the reader expects: kRefused when the packet is more than
+// kMaxPacketSlack times the expected size plus the floor, else the larger of the two.
 inline std::size_t tolerantBytes (std::size_t packetBytes, std::size_t expectedBytes)
 {
-	if (packetBytes > expectedBytes * kMaxPacketSlack + 4096)
-		return 0;
+	if (packetBytes > expectedBytes * kMaxPacketSlack + kPacketSlackFloor)
+		return kRefused;
 	return packetBytes > expectedBytes ? packetBytes : expectedBytes;
 }
 
