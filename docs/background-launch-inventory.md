@@ -19,6 +19,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_editor_smoke.py` | 815 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 1106 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 1617 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke.py` | 380 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 332 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 224 | `nofocus.spawn` | offscreen |
@@ -41,7 +42,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 412 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 465 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 31
+Total engine launch sites: 32
 
 ## Shell launchers (RULE 9)
 
