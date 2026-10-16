@@ -1,14 +1,6 @@
 // MechWarrior: order* entry points and the event handlers.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
-#include "mission.h"
-
-namespace {
-bool absorbsGeneralOrder(MechWarrior* pilot, long origin) {
-    // ABL reissues cannot steer the standing route, even during an alarm.
-    return origin == ORDER_ORIGIN_COMMANDER && mission && mission->ownedRoute(pilot);
-}
-}
 
 
 long MechWarrior::orderWait (bool unitOrder, long origin, long seconds, bool clearLastTarget) {

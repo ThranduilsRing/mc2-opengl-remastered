@@ -6,6 +6,11 @@
 
 
 
+bool absorbsGeneralOrder(MechWarrior* pilot, long origin) {
+    // ABL reissues cannot steer the standing route, even during an alarm.
+    return origin == ORDER_ORIGIN_COMMANDER && mission && mission->ownedRoute(pilot);
+}
+
 void suspendAuthoredRoute(MechWarrior* warrior) {
     if (mission) if (auto* r = mission->ownedRoute(warrior))
         mission->signalRoute(*r, mc2::sim::RouteAction::Alarm);
