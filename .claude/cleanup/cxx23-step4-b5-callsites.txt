@@ -25,10 +25,9 @@ B5.5-heap-owner	code/objmgr.cpp:1051	asset_delete	delete objTypeManager;
 B5.4-objecttype	code/objtype.cpp:86	class_op	void* ObjectType::operator new (size_t ourSize) {
 B5.4-objecttype	code/objtype.cpp:94	class_op	void ObjectType::operator delete (void* us) {
 B5.4-objecttype	code/objtype.cpp:94	asset_delete	void ObjectType::operator delete (void* us) {
-B5.4-objecttype	code/objtype.cpp:295	asset_delete	delete objectTypeCache;
-B5.4-objecttype	code/objtype.cpp:408	asset_new	objType = new TerrainObjectType;
-B5.4-objecttype	code/objtype.cpp:415	asset_new	objType = new TerrainObjectType;
-B5.4-objecttype	code/objtype.cpp:526	asset_delete	delete table[objTypeNum];
+B5.4-objecttype	code/objtype.cpp:299	asset_delete	delete objectTypeCache;
+B5.4-objecttype	code/objtype.cpp:412	asset_new	objType = new TerrainObjectType;
+B5.4-objecttype	code/objtype.cpp:419	asset_new	objType = new TerrainObjectType;
 B5.1-texture	code/pausewindow.cpp:346	tex_acquire	s_frameMcH = mcTextureManager->loadTexture(
 B5.1-texture	code/pausewindow.cpp:538	tex_acquire	s_dlgFrameMcH = mcTextureManager->loadTexture(
 B5.5-heap-owner	code/simplecamera.cpp:83	asset_delete	delete GVAppearanceType::SensorTriangleShape;
@@ -238,14 +237,14 @@ B5.2-tg	mclib/msl_anim.cpp:13	heap_malloc	void *result = TG_Shape::tglHeap->Mall
 B5.2-tg	mclib/msl_anim.cpp:18	class_op	void TG_AnimateShape::operator delete (void *us)
 B5.2-tg	mclib/msl_anim.cpp:18	asset_delete	void TG_AnimateShape::operator delete (void *us)
 B5.2-tg	mclib/msl_anim.cpp:20	heap_free	TG_Shape::tglHeap->Free(us);
-B5.2-tg	mclib/msl_load.cpp:93	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
-B5.2-tg	mclib/msl_load.cpp:100	asset_new	listOfTypeShapes[i] = new TG_TypeNode;
-B5.2-tg	mclib/msl_load.cpp:133	asset_delete	delete listOfTypeShapes[i];
-B5.2-tg	mclib/msl_load.cpp:225	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
-B5.2-tg	mclib/msl_load.cpp:370	asset_delete	delete listOfTypeShapes[i];
-B5.2-tg	mclib/msl_load.cpp:401	heap_free	TG_Shape::tglHeap->Free(listOfShapes[i].node);
-B5.2-tg	mclib/msl_load.cpp:761	asset_new	listOfTypeShapes[startIndex] = new TG_TypeNode;
-B5.2-tg	mclib/msl_load.cpp:837	asset_new	listOfTypeShapes[startIndex] = new TG_TypeShape;
+B5.2-tg	mclib/msl_load.cpp:95	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
+B5.2-tg	mclib/msl_load.cpp:109	asset_new	listOfTypeShapes[i] = new TG_TypeNode;
+B5.2-tg	mclib/msl_load.cpp:142	asset_delete	delete listOfTypeShapes[i];
+B5.2-tg	mclib/msl_load.cpp:234	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
+B5.2-tg	mclib/msl_load.cpp:379	asset_delete	delete listOfTypeShapes[i];
+B5.2-tg	mclib/msl_load.cpp:410	heap_free	TG_Shape::tglHeap->Free(listOfShapes[i].node);
+B5.2-tg	mclib/msl_load.cpp:770	asset_new	listOfTypeShapes[startIndex] = new TG_TypeNode;
+B5.2-tg	mclib/msl_load.cpp:852	asset_new	listOfTypeShapes[startIndex] = new TG_TypeShape;
 B5.2-tg	mclib/msl_shape.cpp:9	class_op	void *TG_MultiShape::operator new (size_t mySize)
 B5.2-tg	mclib/msl_shape.cpp:11	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
 B5.2-tg	mclib/msl_shape.cpp:16	class_op	void TG_MultiShape::operator delete (void *us)
@@ -292,10 +291,8 @@ B5.2-tg	mclib/tgl_types.cpp:101	heap_malloc	void *result = TG_Shape::tglHeap->Ma
 B5.2-tg	mclib/tgl_types.cpp:105	class_op	void TG_TypeNode::operator delete (void *us)
 B5.2-tg	mclib/tgl_types.cpp:105	asset_delete	void TG_TypeNode::operator delete (void *us)
 B5.2-tg	mclib/tgl_types.cpp:107	heap_free	TG_Shape::tglHeap->Free(us);
-B5.2-tg	mclib/tgl_types.cpp:120	heap_malloc	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-B5.2-tg	mclib/tgl_types.cpp:276	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-B5.2-tg	mclib/tgl_types.cpp:300	heap_malloc	newShape->listOfShadowVertices = (TG_ShadowVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertex) * numTypeVertices
-B5.2-tg	mclib/tgl_types.cpp:622	heap_free	tglHeap->Free(listOfShadowVertices);
+B5.2-tg	mclib/tgl_types.cpp:120	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+B5.2-tg	mclib/tgl_types.cpp:278	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 B5.5-heap-owner	mclib/txmmgr.cpp:261	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
 B5.5-heap-owner	mclib/txmmgr.cpp:293	asset_delete	delete textureCacheHeap;
 B5.5-heap-owner	mclib/txmmgr.cpp:296	asset_delete	delete textureStringHeap;

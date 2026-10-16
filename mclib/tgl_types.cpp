@@ -117,9 +117,10 @@ void TG_TypeNode::destroy (void)
 TG_ShapePtr TG_TypeNode::CreateFrom (void)
 {
 	TG_ShapePtr newShape = nullptr;
-	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+	newShape = ::new(memarea) TG_Shape();
 	gosASSERT(newShape != nullptr);
-	
+
 	//listOfVertices
 	newShape->numVertices = 0;
 	newShape->listOfColors = nullptr;
@@ -298,8 +299,8 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	{
 		//These are UNIQUE to each instance and do not change much per frame.
 		// Thus, store them between frames to save processing time!
-		newShape->listOfShadowVertices = (TG_ShadowVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
-		gosASSERT(newShape->listOfShadowVertices != nullptr);
+		newShape->shadowVertexStore.resize(static_cast<size_t>(numTypeVertices) * MAX_SHADOWS);
+		newShape->listOfShadowVertices = newShape->shadowVertexStore.data();
 
 		memset(newShape->listOfShadowVertices,0xff,sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
 		
@@ -620,8 +621,7 @@ void TG_Shape::destroy (void)
 	listOfVisibleShadows = nullptr;
 	listOfShadowTVertices = nullptr;
 
-	if (listOfShadowVertices)
-		tglHeap->Free(listOfShadowVertices);
+	std::vector<TG_ShadowVertex>().swap(shadowVertexStore);
 	listOfShadowVertices = nullptr;
 
 	numVertices = numTriangles = numVisibleFaces = 0;

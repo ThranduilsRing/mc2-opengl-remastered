@@ -868,7 +868,8 @@ class TG_Shape
 		Stuff::Matrix4D			cur_shape2clip;
         TG_HWLightsData         lightData_;
 
-		TG_ShadowVertexPtr		listOfShadowVertices;		//Stores shadow vertex information for the shape.
+		std::vector<TG_ShadowVertex>	shadowVertexStore;	//Owns the shadow vertices (built in CreateFrom, released in destroy(): the instance memory is freed without a destructor).
+		TG_ShadowVertexPtr		listOfShadowVertices;		//Stores shadow vertex information for the shape.  A view of shadowVertexStore.
 															//We just use existing listOfTriangles to draw!
 															
 		TG_ShadowVertexTempPtr	listOfShadowTVertices;		//Stores just the Volatile data.  Comes from a pool!!
