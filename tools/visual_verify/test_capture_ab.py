@@ -22,16 +22,16 @@ def sets(tmp_path, changed):
     other = base.copy()
     if changed:
         other[10:30, 10:30] = 200
-    for s in ("b1-gl", "b2-gl", "b-vk"):
+    for s in ("b1-vk", "b2-vk", "b-gl"):
         put(tmp_path, s, base)
-    for s in ("a1-gl", "a2-gl", "a-vk"):
+    for s in ("a1-vk", "a2-vk", "a-gl"):
         put(tmp_path, s, other)
 
 
 def test_identical_sets_read_as_zero(tmp_path):
     sets(tmp_path, False)
     lines = capture_ab.compare(str(tmp_path), "b", "a", [BM])
-    assert len(lines) == 4 and lines[0].split()[1] == "NOISE"
+    assert len(lines) == 3 and lines[0].split()[1] == "NOISE" and "VK" in lines[0]
     assert all("outside_box=0 clusters=0" in l for l in lines)
 
 
@@ -40,6 +40,15 @@ def test_changed_block_is_found_but_noise_stays_zero(tmp_path):
     lines = capture_ab.compare(str(tmp_path), "b", "a", [BM])
     assert "outside_box=0" in lines[0]
     assert all("outside_box=400" in l and "max_cluster=20x20@10,10" in l for l in lines[1:])
+
+
+def test_the_gl_arm_is_off_unless_asked_for(tmp_path):
+    sets(tmp_path, True)
+    assert not any(" GL " in l for l in capture_ab.compare(str(tmp_path), "b", "a", [BM]))
+    lines = capture_ab.compare(str(tmp_path), "b", "a", [BM], gl_arm=True)
+    assert len(lines) == 4 and "GL before->after" in lines[3] and "outside_box=400" in lines[3]
+    assert [n for n, _ in capture_ab.arms("t", False)] == ["t1-vk", "t2-vk"]
+    assert [n for n, _ in capture_ab.arms("t", True)] == ["t1-vk", "t2-vk", "t-gl"]
 
 
 def test_missing_set_is_named(tmp_path):
@@ -66,22 +75,22 @@ def record_options(tmp_path):
     """The default option values as every set's capture_run.json (compare refuses a set with no option record before it looks at backends)."""
     from smoke_lib import render_options_pin as rop
     values = {o.key: o.default for o in rop.table()}
-    for s in ("b1-gl", "b2-gl", "b-vk", "a1-gl", "a2-gl", "a-vk"):
+    for s in ("b1-vk", "b2-vk", "b-gl", "a1-vk", "a2-vk", "a-gl"):
         (tmp_path / s / "capture_run.json").write_text(__import__("json").dumps({"render_options": values}), encoding="utf-8")
 
 
 def backend_sets(tmp_path, vk_fields):
-    for s in ("b1-gl", "b2-gl", "a1-gl", "a2-gl"):
+    for s in ("b-gl", "a-gl"):
         put_sidecar(tmp_path, s, backend="gl", readback_source="gl_fbo")
-    for s in ("b-vk", "a-vk"):
+    for s in ("b1-vk", "b2-vk", "a1-vk", "a2-vk"):
         put_sidecar(tmp_path, s, **vk_fields)
 
 
 def test_a_vk_set_that_drew_gl_is_refused_as_unproven(tmp_path):
     backend_sets(tmp_path, {"backend": "gl", "readback_source": "gl_fbo"})
     out = capture_ab.check_backends(str(tmp_path), "b", "a", [BM])
-    assert len(out) == 2 and all("VK arm UNPROVEN" in m for m in out)
-    assert ("b-vk" in out[0]) and ("a-vk" in out[1])
+    assert len(out) == 4 and all("VK arm UNPROVEN" in m for m in out)
+    assert ("b1-vk" in out[0]) and ("a2-vk" in out[3])
 
 
 def test_an_older_vk_set_is_read_through_its_readback_source(tmp_path):
@@ -94,9 +103,10 @@ def test_an_older_vk_set_is_read_through_its_readback_source(tmp_path):
 def test_a_gl_set_that_drew_vulkan_and_a_missing_sidecar_are_refused(tmp_path):
     backend_sets(tmp_path, {"backend": "vulkan", "readback_source": "vk_present"})
     assert capture_ab.check_backends(str(tmp_path), "b", "a", [BM]) == []
-    put_sidecar(tmp_path, "a1-gl", backend="vulkan", readback_source="vk_present")
-    assert any("a1-gl" in m for m in capture_ab.check_backends(str(tmp_path), "b", "a", [BM]))
-    assert any("nope1-gl" in m for m in capture_ab.check_backends(str(tmp_path), "b", "nope", [BM]))
+    put_sidecar(tmp_path, "a-gl", backend="vulkan", readback_source="vk_present")
+    assert capture_ab.check_backends(str(tmp_path), "b", "a", [BM]) == []                     # the GL arm is not looked at unless asked for
+    assert any("a-gl" in m for m in capture_ab.check_backends(str(tmp_path), "b", "a", [BM], gl_arm=True))
+    assert any("nope1-vk" in m for m in capture_ab.check_backends(str(tmp_path), "b", "nope", [BM]))
 
 
 def test_compare_exits_1_for_a_vk_set_that_is_gl_and_0_for_a_real_one(tmp_path, capsys):
