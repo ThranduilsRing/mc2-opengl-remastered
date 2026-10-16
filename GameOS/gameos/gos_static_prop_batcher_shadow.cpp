@@ -939,6 +939,7 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     out->ambientV1Strength = staticPropAmbientV1Enabled() ? 1.0f : 0.0f;
     // The GL upload zeroes the strength when the view-uniform block is off; the island always has the eye position.
     out->pbrV1Strength = pbrV1Enabled() ? g_pbrV1Strength : 0.0f;
+    out->pbrV1RoughnessOverride = g_pbrV1RoughnessOverrideEnabled ? g_pbrV1RoughnessOverrideValue : -1.0f;
     const RenderCore::ViewUniforms& vu = RenderCore::getCurrentView().viewUniforms;
     for (int k = 0; k < 4; ++k) out->cameraWorldPos[k] = vu.cameraWorldPos[k];
     return 1;

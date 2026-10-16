@@ -39,7 +39,7 @@ struct ColorFrameUBO {
     float   ambientV1Strength;  // StaticPropAmbient option: strength of the hemisphere ambient fill (0 = off)
     int32_t hotTableReady;      // 1 = the per-type hot-colour table is the real one (else the one-entry placeholder)
     float   pbrV1Strength;      // StaticPropPbr option: strength of the Schlick-Fresnel sun specular (0 = off)
-    float   _padEye;            // keeps the eye position 16-byte aligned
+    float   pbrV1RoughnessOverride;  // StaticPropPbr roughness override (the tuning slider): >= 0 replaces the literal roughness, < 0 keeps it
     float   cameraWorldPos[4];  // @vec4 GL world eye position (ViewUniforms.cameraWorldPos); .w pad
 };
 

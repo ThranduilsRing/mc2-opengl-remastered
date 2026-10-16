@@ -19,5 +19,5 @@ static_assert(offsetof(ColorFrameUBO, nightFactor) == 252, "nightFactor offset")
 static_assert(offsetof(ColorFrameUBO, ambientV1Strength) == 256, "ambientV1Strength offset");
 static_assert(offsetof(ColorFrameUBO, hotTableReady) == 260, "hotTableReady offset");
 static_assert(offsetof(ColorFrameUBO, pbrV1Strength) == 264, "pbrV1Strength offset");
-static_assert(offsetof(ColorFrameUBO, _padEye) == 268, "_padEye offset");
+static_assert(offsetof(ColorFrameUBO, pbrV1RoughnessOverride) == 268, "pbrV1RoughnessOverride offset");
 static_assert(offsetof(ColorFrameUBO, cameraWorldPos) == 272, "cameraWorldPos offset");
