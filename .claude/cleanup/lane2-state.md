@@ -1,5 +1,76 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-SIXTH session (2026-10-16, Sonnet 5.5) -- GL deletion step 2 (a), gos_screenshot on the VK readback, s35 review should-fixes; nifty not merged
+
+### Commits (after 3582651b6)
+806488128 step 2 (a): GL pass-timer half, GL error drain, GL memory counters, GL frame-pass-stats fields | 2dbb4965b s35 review S1 + S3 | 0c31da555 gos_screenshot on the VK present readback | state/inventory/baselines commit after it.
+- Deleted (item 1): `gos_render_pass_timer` ring + Begin/End/QueryActive (27 call sites, two spike-timer guards); `drainGLErrors` (9 call sites) + exit-time drain + `gl_errors` key; `[VRAM v1]` GL_ATI / GL_NVX keys (`vram.py`, tests); FramePassStats FBO / viewport / depth / blend / cull (dev-shell framegraph keys, debug-state-dump keys, four Frame Inspector columns). Pass `ran` is set from the VK timer's harvest.
+- Item 2: `gos::screenshot::request(path, done)` / `pending()` / `deliver(w,h,rgbaBottomUp)`; `engine_present_vk.cpp` delivers next to the capture hook, `frameSwapWindow` reads the frame back while a request is pending. Callers: dev-shell, `MC2_SCREENSHOT_PATH`, VisualDiff, `--validate --screenshot`. `source=backbuffer` and the `scheduleScreenshot` flag are gone.
+- Review s35: S1 `vk_render_pass_timer::CancelUnlessSubmitted` (over the testable `SubmitGuard` in the ring header) on every island, the VFX island's one-off Cancel folded in; the dynamic shadow pass opens the bracket in its begin function and guards in the submit function. S2 accepted: the session 35 dup-lines baseline rewrite was GameOS +5 lines from the timer Begin/End inside the three near-copy record functions (reason belongs in the commit message; it is now in this file and in 2dbb4965b). S3 exactly eight hex digits. Nit (skip a frame whose brackets were all cancelled) not done.
+- Proof: build exit 0 per tree state; `build_contract_harnesses --run --unit` green (doctest 3261 cases); mc2_01 VK + `MC2_VULKAN_VALIDATION=1` + `MC2_DEV_SHELL=1` at 0c31da555: PASS, validation errors 0 warnings 0, dev-shell `screenshot` wrote `dev_shell_out/s36_vk.tga` 854x480 (the present size), viewed (non-black mission frame with HUD); VK tier1 with validation on the final exe (cc168dace, DEPLOY_FINGERPRINT OK): run 2026-10-16T14-02-42-037700-9048 PASS 5/5, validation errors 0 / warnings 0 on all five (fps 147 / 110 / 92 / 115 / 98), no GL tier1 (no GL draw path moved). Not proven: the framegraph runtime rows' VK ms were not read out in that run (collectors reported pass_time on, dropped 0); `check-contracts.sh` not run this session. Owner rulings of 2026-10-16 (row 18 closed, step 2 (b) RULED) are in inventory section 16 and `VK-PARITY-GAPS.md`; `gos_object_parity` readback drop not taken (over 50 lines, lane 3 files).
+- Lessons: (1) the Bash tool halves doubled backslashes, so a python heredoc writing `\n` into C++ produced raw newlines in string literals (the compile error is the only signal): write C++ with the Edit/Write tools or `chr(92)`; (2) a python `index()` of a function name hit the non-Windows stub first and a slice replace wiped 500 lines of gos_dev_shell.cpp (restored from git): anchor slices on unique text and diff after every scripted edit; (3) entangled files were split into two commits through temp blobs (`git hash-object` + `update-index --cacheinfo`).
+- Open: gate rows `MC2_GL_ERROR_DRAIN_SILENT` and `MC2_SCREENSHOT_SOURCE` (see inventory section 17); section 16 (b) rulings; row 18; VFX oracle VK arm; capture `gl_fbo` arm.
+
+## THIRTY-FIFTH session (2026-10-16, cap 6 h, Opus 5.5) -- s34 review M1 fixed first (fix-then-merge), row 28 closed with numbers, Post covers the native passes, gl_fbo arm NOT retired (consumers listed), step-2 list for the owner; nifty not merged (queued tips)
+
+### Commits (after 3a7322523; final exe = 77b0d2a80, later commits docs / baselines only)
+6e8646f8d capture-only building highlight hook | decc5aeae gate row order + doc length (first build failed the table asserts) | 18a0fa4f0 review s34 M1 + S1/S2/S3/N1-N3 + Post on fog / SSAO / screen FX, composite unbracketed | 77b0d2a80 `mc2vk::submitOneShot` (vk_one_shot.{h,cpp}): vk_first_layout and the timer's pool reset share one setup submit (the timer had copied it) | this commit: gaps row 28 closed, inventory section 16, ledger, log-tag census ([VK_ONE_SHOT], the timer's and the hook's lines), dup-lines baseline, state. MERGEABLE TIP = the commit carrying this line.
+- dup-lines baseline rewritten (55326 -> 55319 total): the total fell (the shared one-shot submit), but GameOS rose +5 because the timer's Begin/End lines sit inside the fog / SSAO / screen-FX record functions, which were already a three-way near-copy; the calls are not reshaped to dodge the counter.
+
+### Review s34 (FIX-THEN-MERGE) folded
+- M1: `vk_render_pass_timer::Cancel(pass)`; the VFX island cancels on its nothing-to-draw path; the present composite (recorded in one frame, submitted or dropped later: resize, re-record, skipped present) no longer carries a bracket. Audit of the other islands: terrain / props / mechs / shadow / water / fog / SSAO / screen FX return between End and submit on error paths. CORRECTION (s35 review, fixed in session 36, 2dbb4965b): not all of them disable the island; the static-shadow post pass (`runVkPostScreenShadowStaticNative`) returns false without `disabled` and retries next frame, and the other islands could publish one stale frame before disabling.
+- S1: `vk_render_pass_timer_ring.h` (Vulkan-free ring: bracket query pairs, cancel, drop at reuse, younger slots wait, hard errors apart, overflow count) with doctests incl. the M1 case (8 cases / 50 assertions pass). S2: a hard result-read error discards the frame and logs once. S3: the unsupported verdict is keyed to the device handle. N1: overflow logged once. N2/N3: comments say why.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| build + deploy (`scratch/build_s35b.log`) | exit 0 at 18a0fa4f0; mc2_tests suite rc 0 |
+| M1 proof: VK mc2_01 + validation + `MC2_RENDER_PASS_TIME=1`, framegraph polled 12 times over the run (`scratch/b35_passtime.log`, `scratch/s35_framegraph.out`) | PASS, errors 0 warnings 0; AlphaVfx absent in every poll (no stale value after thousands of ring wraps), `pass_time_dropped` 0; post 0.023 ms now covers fog / SSAO / screen FX (was 0.008, composite only); shadowDyn ~0.19, terrainChunk ~0.85, spColor 0.07, mechs 0.02, water 0.068 |
+| row 28 oracle (hook 0x40406000 vs off, mc2_01 205644, both backends) | GL term 17,829 px, VK 17,811, shared 17,808, err 0.83 / 48.54; montage viewed |
+| verify.py, fresh VK capture `s35-vk` (`scratch/verify35.log`) | 36/36 regions, 10/10 poses |
+| tier1 VK + validation, final exe (`scratch/b35_vk_t1.log`) | 5/5 PASS, errors 0 warnings 0 all five, fingerprint PASS (fps low: host shared) |
+| tier1 GL, final exe, first run (`scratch/b35_gl_t1.log`) | 3/5: mc2_10 and mc2_17 `heartbeat_freeze_play` with all 8,192 frames done, exit 0, last heartbeat 4 s before exit (the session-31 shape), host shared with other lanes |
+| tier1 GL, rerun on 18a0fa4f0 (`scratch/b35b_gl_t1.log`) | 5/5 PASS, fingerprint PASS |
+| final exe 77b0d2a80 (the one-shot refactor): tier1 VK + validation (`scratch/b35c_vk_t1.log`) | 5/5 PASS, errors 0 warnings 0 all five, fingerprint PASS; every VK run executes the shared submit through vk_first_layout. The timer's reset path on this exe was not re-run under `MC2_RENDER_PASS_TIME` (proved on 18a0fa4f0; the refactor moves the same calls) |
+| final exe 77b0d2a80: tier1 GL (`scratch/b35c_gl_t1.log`) | 5/5 PASS, +0 destroys, fingerprint PASS |
+
+### Open
+- Row 18 (owner); the gl_fbo arm's four consumers (inventory section 16); step-2 owner rulings (inventory section 16 (b)).
+- Scratch (mine, deletable): `scratch/` s35b.sh/.out, build/deploy_s35*.log, b35*.log, verify35.log, build_s35_tests.log; s34 leftovers r34move.py, b34*.log, verify34.log, build/deploy_s34*.log; KEEP `scratch/s35_framegraph.out` (cited above until merge), `.claude/l2cap/s35-{gl,vk}{,-hl}` and the montage (row 28 cites them).
+
+### Lessons (35)
+- A bracket must live on a command buffer whose submit is decided in the same function; a buffer recorded now and submitted (or dropped) later cannot be timed safely by a frame ring.
+- The gate table enforces name order and a 160-character doc; `gate_gen --sync-verified` refreshes the JSON from the compiler.
+- Prefer an alpha-carrying forced value in a capture hook (0x40406000), so both GL terms (vertex add and alpha-weighted fragment add) are in the oracle.
+
+## THIRTY-FOURTH session (2026-10-16, cap 6 h, Opus 5.5) -- row 28 ported (highlight-on proof needs a capture hook: recipe in the row), water + vegetation field trace (no gap), VK pass timer implemented and proven, review s33 folded; nifty not merged (queued tips)
+
+### Commits (after 9ddea7e06; final exe = d066a9efb, later commits docs only)
+843417018 row 28 port | 425f80254 row 28 + water/vegetation census in the gaps file, allowlist | 36133eeaa VK pass timer | (ledger regen) | a11b7692f pass timer pool reset at creation (fixes VUID-...-09401) | d066a9efb review s33 S1/S2/N1 | this commit: state. MERGEABLE TIP = the commit carrying this line.
+
+### VK pass timer (implemented; the session-33 note's design, files by path: review s33 S3)
+`GameOS/gameos/vk_render_pass_timer.{h,cpp}` (new: pool in the context's new `IslandSlot::PassTimer`, `vulkan_context.{h,cpp}`; `OwnedQueryPool` in `vk_owned.h`), `gos_render_pass_timer.{h,cpp}` (`SubmitBackendFrame`, `SubmitBackendDropped`, `LastDropped`; GL queries skipped while VK times), `gos_dev_shell.cpp` (`pass_time_dropped` in framegraph collectors), island brackets in `vulkan_terrain_island_run.cpp` (TerrainChunk), `vulkan_color_prop_island.cpp` (SpColor), `vulkan_mech_island.cpp` (Mechs), `vulkan_shadow_island_live.cpp` (ShadowDyn), `vulkan_water_island_run.cpp` (Water), `vulkan_vfx_island.cpp` (AlphaVfx), `engine_present_vk.cpp` (Post: the composite only; the native post passes are not bracketed); doctest `tests/unit/test_vk_render_pass_timer.cpp`. gpu_total under VK = sum of the timed passes (no frame-wide pair across separate submits).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 28: fresh VK capture `.claude/l2cap/s34-vk` vs `--golden current` (`scratch/verify34.log`) | 36/36 regions, 10/10 poses, validation 0 on 40 logs; vs the pre-port capture 0 / 0 / 64 px over 15 (no highlight at golden poses); highlight-on pixels not proven (recipe in row 28) |
+| pass timer, first run (`scratch/b34_passtime.log`) | per-pass ms non-zero, but validation errors 9 (VUID-vkGetQueryPoolResults-None-09401): fixed by a11b7692f |
+| pass timer, rerun on the final exe (`scratch/b34b_passtime.log`, `scratch/s34b_framegraph.out`) | mc2_01 VK PASS, validation errors 0 warnings 0; dev-shell framegraph (12 replies): shadowDyn 0.184, terrainChunk 0.849, spColor 0.071, mechs 0.020, water 0.068, post 0.008 ms, `pass_time_dropped` 0; log `[RENDER_PASS_TIME v1] ... gpu_total=1.21` |
+| doctest | mc2_tests vk pass timer 3/3; suite run rc 0 |
+| tier1 VK + validation, final exe (`scratch/b34_vk_t1.log`) | 5/5 PASS, errors 0 warnings 0 all five, fingerprint PASS |
+| tier1 GL, final exe (`scratch/b34_gl_t1.log`) | 5/5 PASS, +0 destroys, fingerprint PASS (GL code moved: gos_render_pass_timer, comments) |
+| provers | coverage --check 0 new 0 stale (row 28 graded PORTED by member read); vk_ownership_ledger OK |
+
+### Open
+- Row 28 highlight-on proof (capture hook recipe), row 18 owner ruling; AlphaVfx showed no sample at mc2_01 (no VFX island submit in the window); the native post passes (fog / SSAO / screen FX) are outside the Post bracket.
+- Scratch (mine, deletable): `scratch/` s34*.sh/.out, s34*_framegraph.out (cited above until merge), r34move.py, build/deploy_s34*.log, b34*.log, verify34.log; `.claude/l2cap/s34-vk` (cited by row 28).
+
+### Lessons (34)
+- A query bracket can be recorded on a command buffer that is then re-recorded or never submitted: reset the whole pool once at creation so such reads are "not ready", not "uninitialized".
+- Check who actually sets a per-instance field before planning its visual proof: `setDrawColored` had no caller, so only damage flashes highlight buildings.
+- The dev-shell socket can be polled from the harness during a lease-held smoke; that is enough to prove an editor-facing readout without opening the editor.
+
 ## THIRTY-THIRD session (2026-10-16, cap 6 h, Opus 5.5) -- row 27 closed (dead GL arm deleted, not ported), ungated census done (row 28 opened and pinned by the coverage tool), VK pass-timer design note (not implemented, over the bar), review s32 folded; nifty not merged (f170964d8 queued at lane 1's session end)
 
 ### Commits (after f170964d8; final exe = 5e0ad4c1f, later commits tools/docs)

@@ -47,7 +47,18 @@ struct State {
 };
 State s_state;
 
-void doCapture(int viewportW, int viewportH) {
+// The presented frame was read back and written (or the write failed).
+void onCaptureDone(const char* path, bool ok, int w, int h) {
+    if (ok) {
+        const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_done out={} w={:d} h={:d} mission={}\n", mc2::fmt::safe(path), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::safe(mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)"));
+    } else {
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_failed reason=write_tga out={}\n", mc2::fmt::safe(path));
+    }
+    fflush(stderr);
+}
+
+void doCapture() {
     const std::string outPathText = mc2::gate::str<"MC2_VISUAL_DIFF_OUT">();   // "" when unset or empty
     const char* outPath = outPathText.c_str();
     if (!outPath[0]) {
@@ -55,14 +66,10 @@ void doCapture(int viewportW, int viewportH) {
         fflush(stderr);
         return;
     }
-    bool ok = gos::screenshot::writeTGA(outPath, viewportW, viewportH);
-    if (ok) {
-        const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
-        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_done out={} w={:d} h={:d} mission={}\n", mc2::fmt::safe(outPath), mc2::fmt::as_i32(viewportW), mc2::fmt::as_i32(viewportH), mc2::fmt::safe(mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)"));
-    } else {
-        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_failed reason=write_tga out={}\n", mc2::fmt::safe(outPath));
+    if (!gos::screenshot::request(outPath, onCaptureDone)) {
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_failed reason=request_rejected out={}\n", mc2::fmt::safe(outPath));
+        fflush(stderr);
     }
-    fflush(stderr);
 }
 
 }  // anonymous namespace
@@ -79,7 +86,7 @@ void onMissionLoad() {
     s_state = State{};
 }
 
-void onFrameTick(int viewportW, int viewportH) {
+void onFrameTick() {
     if (!isCaptureEnabled()) return;
     if (s_state.phase == Phase::Done) return;
 
@@ -128,7 +135,7 @@ void onFrameTick(int viewportW, int viewportH) {
 
     // Capture at frameN.
     if (framesSinceStart >= s_state.frameN) {
-        doCapture(viewportW, viewportH);
+        doCapture();
         s_state.phase = Phase::Done;
     }
 }

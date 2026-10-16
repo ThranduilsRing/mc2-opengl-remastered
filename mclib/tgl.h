@@ -24,6 +24,7 @@
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
 #include <memory>   // the per-frame pools own their storage
+#include <vector>   // an animation owns its key tracks
 #include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 
 //-------------------------------------------------------------------------------
@@ -407,11 +408,21 @@ typedef struct _TG_Animation
 	DWORD						numFrames;				//Number of Frames of animation.
 	float 						frameRate;				//Number of Frames Per Second.
 	float						tickRate;				//Number of Ticks Per Second.
-	Stuff::UnitQuaternion		*quat;					//Stores animation offset in Quaternion rotation.
-	Stuff::Point3D				*pos;					//Stores Positional offsets if present.  OTHERWISE NULL!!!!!!!!
-	
+	Stuff::UnitQuaternion		*quat = nullptr;		//Stores animation offset in Quaternion rotation.  A view of quatStore.
+	Stuff::Point3D				*pos = nullptr;			//Stores Positional offsets if present.  OTHERWISE NULL!!!!!!!!  A view of posStore.
+	std::vector<Stuff::UnitQuaternion>	quatStore;		//Owns the rotation track; sized once (numFrames) before quat is taken.
+	std::vector<Stuff::Point3D>			posStore;		//Owns the position track.
+
+	// A copy would leave the views pointing at the original's tracks; a move keeps the buffers.
+	_TG_Animation (void) = default;
+	_TG_Animation (const _TG_Animation&) = delete;
+	_TG_Animation& operator= (const _TG_Animation&) = delete;
+	_TG_Animation (_TG_Animation&&) noexcept = default;
+	_TG_Animation& operator= (_TG_Animation&&) noexcept = default;
+
 	void SaveBinaryCopy (File *binFile);
-	void LoadBinaryCopy (File *binFile);
+	// False when the file claims a frame count or track size the animation cannot hold; the animation is left empty.
+	bool LoadBinaryCopy (File *binFile);
 	
 } TG_Animation;
 

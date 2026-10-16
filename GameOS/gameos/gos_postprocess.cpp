@@ -1197,7 +1197,6 @@ void gosPostProcess::endScene()
     // gets a full state re-apply, not a stale-cache short-circuit.
     gos_InvalidateRenderStateCache();
 
-    drainGLErrors("post_process");
 
     // GLSTATE-VAO-RESTORE-1: restore the caller's VAO (see capture above).
     glBindVertexArray((GLuint)prevVAO);

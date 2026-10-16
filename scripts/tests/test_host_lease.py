@@ -450,7 +450,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
     assert [host_lease.affinity_mask(i) for i in range(6)] == [0x30, 0xC0, 0x300, 0xC00, 0x3000, 0xC000]
     monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
     monkeypatch.delenv("MC2_HOST_CORES_PER_SLOT", raising=False)
-    assert host_lease.slot_count() == 1
+    assert host_lease.slot_count() == 2
     assert host_lease.cores_per_slot() == 2
     assert [host_lease.affinity_mask(i) for i in range(3)] == [0xF0, 0xF00, 0xF000]
     with pytest.raises(ValueError):

@@ -83,3 +83,14 @@ Sealed census 400 sites; each batch states its own before / after. Expected: B5.
 1. The render-proof assignment for B5.1b onward (section 4): stands as for B4, or lane 6 / lane 2 runs it.
 2. B5.5 needs the `code/mission.cpp` owner sites: Sol's claim.
 3. Whether the editor E-batches take the editor's `removeTexture*` / asset-heap rows (none today use the texture release APIs: `git grep` over `editor/` finds no call).
+
+## 9. Results (lane 1, 2026-10-16 fifth session)
+| batch | sha | content | census |
+|---|---|---|---|
+| review fixes | 7e8d96bea | BUGS row 47, node-0 guards, `releaseNode` double-release log line, census input errors (exit 2), `releaseThrough` null-manager doctest | |
+| B5.1c | ef02d3a14, 3b87c4835 | colour map node members are `TextureRef` (include-only first, objhash 0 differing bytes); `removeTextureNode` deleted; the tile arena struct and cellip's file-static keep an index and call `releaseNode` (rule F9: no uninitialised or static-duration owner) | 388 -> 374 |
+| B5.2a | 2f4bd7996 | the five per-frame TG pools own `unique_ptr<T[]>` made uninitialised; ASE parser scratch to vectors | 374 -> 360 |
+| B5.2b | a73817ce7 | `TG_Animation` tracks and `TG_AnimateShape` list are vectors; `.anm` loader checks counts and track sizes (`[ANIM_TRACK_BAD]`) | 360 -> 351 |
+Include-only commits: `<memory>`, `<vector>` in tgl.h, mc2log.h in msl_anim.cpp (objhash: executable bytes identical; the msl_anim.cpp object differs only in four std::numpunct comdat instantiations that the logging header pulls in). Open in B5.2: the msl_load / tgl_types / msl_shape type and texture arrays and the class `operator new/delete` rows (B5.5). B5.3 (appearance types, registry teardown order: the one place the review asks for an Opus read) not started.
+Baselines: the four saveload baselines other than mc2_10 carried the same WeaponBolt handle bytes and were re-recorded on the final exe (BUGS row 45 cause); the cxx17 baseline is rewritten with one own rise, LG05 +2 in `msl_anim.cpp` (the two `return -1` refusals of `TG_AnimateShape::LoadBinaryCopy`, a function that already returned -1 for a bad version).
+Proof on the final exe (a73817ce7): ninja + doctest rc 0, sim pair mc2_03 / mc2_24 PASS, saveload mc2_10 PASS (then mc2_01/03/16/24 re-recorded and confirmed), tier1 5/5, campaign round trip (same lossy diff as before), ASan doctest rc 0, VK capture pair mc2_01 day and mc2_10 night: `verify.py --golden current` PASS (11 regions, 2 poses) on both runs, frames viewed (`A:/Games/mc2-capture-evidence/l1s5`).

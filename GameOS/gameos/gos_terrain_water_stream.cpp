@@ -25,7 +25,6 @@ extern int gos_WaterShoreMode();
 #include "gos_terrain_lighting.h"
 #include "gos_static_prop_killswitch.h"  // gos_GetTerrainMVPMat4()
 #include "gos_terrain_indirect.h"        // IsFrameSolidArmed()
-#include "gos_render_pass_timer.h"       // [RENDER_PASS_TIME v1] nesting guard (QueryActive)
 #include <algorithm>                     // std::sort -- surfaced by MC2_ASAN build (Tracy-disabled config drops the transitive include)
 #include <cassert>
 
@@ -1877,10 +1876,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
         if (!s_qSpike) glGenQueries(1, &s_qSpike);
     }
 
-    // [RENDER_PASS_TIME v1] coexistence: GL_TIME_ELAPSED cannot nest. This
-    // dispatch can run inside a render-pass-timer scope, so the spike query
-    // (and its readback below) yields while one of those scopes is open.
-    const bool spikeQ = s_spikeOn && !gos_render_pass_timer::QueryActive();
+    const bool spikeQ = s_spikeOn;
     const uint32_t groups = (dispatchCount + 63u) / 64u;   // 1B: full recipe set when authoritative
     if (spikeQ) glBeginQuery(GL_TIME_ELAPSED, s_qCand);
     glDispatchCompute(groups, 1, 1);   // AUTHORITATIVE dispatch (feeds draw): full-recipe (1B) or candidate (1A/legacy)

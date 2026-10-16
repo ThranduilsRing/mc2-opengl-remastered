@@ -24,6 +24,7 @@
 
 #include <volk.h>
 #include "Gates/gate.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate_cold.h"   // str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -461,6 +462,8 @@ extern "C" int mc2_vk_vfx_island_run(
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(s->cbuf, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    vk_render_pass_timer::Begin(s->cbuf, gos_render_pass_timer::Pass_AlphaVfx);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
     VkClearValue clears[3]{};   // all LOAD; ignored
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -481,9 +484,10 @@ extern "C" int mc2_vk_vfx_island_run(
         ++groupsDrawn;
     }
     vkCmdEndRenderPass(s->cbuf);
+    vk_render_pass_timer::End(s->cbuf, gos_render_pass_timer::Pass_AlphaVfx);
     if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    if (groupsDrawn == 0) return 0;   // nothing drawable this frame
+    if (groupsDrawn == 0) return 0;   // nothing drawable this frame: the recorded buffer is not submitted (the guard cancels its bracket)
 
     const VkFence fence = s->fence.get();
     vkResetFences(s->device, 1, &fence);
@@ -492,6 +496,7 @@ extern "C" int mc2_vk_vfx_island_run(
     si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
     { ZoneScopedN("VKIsl.Vfx.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
       if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    timerGuard.submitted();
     { ZoneScopedN("VKIsl.Vfx.InlineFenceWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire (never fence-deferred)
       if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
           setFallback("fence_timeout"); s->disabled = true; return 0;

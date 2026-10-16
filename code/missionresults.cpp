@@ -258,7 +258,7 @@ void MissionResults::render()
 			static int s_salvageFrames = 0;
 			if ( s_shotResults && s_salvageFrames >= 0 && ++s_salvageFrames == 30 )
 			{
-				gos_dev_shell::scheduleScreenshot( "results_salvage", true );
+				gos_dev_shell::scheduleScreenshot( "results_salvage" );
 				s_salvageFrames = -1;
 			}
 		}
@@ -280,7 +280,7 @@ void MissionResults::render()
 			static int s_promoteFrames = 0;
 			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 30 )
 			{
-				gos_dev_shell::scheduleScreenshot( "results_promote", true );
+				gos_dev_shell::scheduleScreenshot( "results_promote" );
 				s_promoteFrames = -1;
 			}
 		}

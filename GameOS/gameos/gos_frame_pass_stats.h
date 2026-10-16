@@ -16,8 +16,7 @@
 // from already-computed aggregates at the gameosmain snapshot seam. The
 // ImGui "Frame Inspector" tab is the next consumer (deferred).
 //
-// Enable: MC2_FRAME_PASS_STATS=1. Default OFF = zero cost: no GL state reads,
-// no log lines, no JSON addition (lazy init on first enabled frame; every
+// Enable: MC2_FRAME_PASS_STATS=1. Default OFF = zero cost: no log lines, no JSON addition (lazy init on first enabled frame; every
 // entry point early-returns on the cached env check).
 //
 // Pattern = gos_render_pass_timer + TERRAIN-PASS-PACKET-0.
@@ -31,13 +30,7 @@ namespace gos_frame_pass_stats {
 
 // Per-pass row. Mirrors the Pass enum index from gos_render_pass_timer.
 struct PassRow {
-    bool     ran = false;        // pass opened a scope this frame
-    uint32_t fbo = 0u;           // GL_DRAW_FRAMEBUFFER_BINDING at pass begin
-    int32_t  viewport[4] = {0,0,0,0};
-    bool     depthTest = false;  // GL_DEPTH_TEST
-    bool     depthMask = false;  // GL_DEPTH_WRITEMASK
-    bool     blend = false;      // GL_BLEND
-    bool     cull = false;       // GL_CULL_FACE
+    bool     ran = false;        // the GPU pass timer measured this pass
     uint32_t drawCount = 0u;     // pass draw calls (from aggregates; 0 if unknown)
     uint32_t instanceCount = 0u; // pass instances (from aggregates; 0 if unknown)
 };
@@ -56,10 +49,8 @@ bool Enabled();
 void SetCollect(bool on);
 bool CollectFlag();
 
-// Called at each gos_render_pass_timer::Begin(p): captures the live GL state
-// for pass p (one glGet burst, OFF=zero). Co-located so the per-pass GL state
-// is exactly what the matching timed scope rendered with.
-void RecordPassBegin(gos_render_pass_timer::Pass p);
+// The GPU pass timer reports pass p ran in a harvested frame. Ignored when OFF.
+void MarkPassRan(gos_render_pass_timer::Pass p);
 
 // Frame-level aggregates, filled once per frame at the gameosmain snapshot
 // seam from already-computed counters (no hot-loop counting).

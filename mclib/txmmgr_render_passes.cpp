@@ -14,7 +14,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 	{
 		ZoneScopedN("RenderLists.DynamicShadowPass");
 		GosGlLostDrawsScope _rlLost_("dyn_shadow");
-		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowDyn);
 		extern bool g_useGpuObjects;
 		extern bool g_useGpuMechs;
 		// ISSUE-34: modern-shadow-path predicate (was tess-keyed) — dynamic
@@ -351,7 +350,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 		// The VK shadow passes of the frame were recorded into one command buffer; submit it before any consumer (terrain, the screen shadow) reads.
 		if (mc2_vk_shadow_island_enabled()) mc2_vk_shadow_island_submit_frame();
 #endif
-		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowDyn);
 	}
 	g_numShadowShapes.store(0, std::memory_order_relaxed);
 }
@@ -367,7 +365,6 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 		ZoneScopedN("Render.TerrainSolid");
 	GosGlLostDrawsScope _rlLost_("terrain_solid");
 		TracyGpuZone("Render.TerrainSolid");
-		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_TerrainSolid);
 
 		// MC2_LOAD_RACE_TRACE: terrain GPU-residency probe. The degraded
 		// mission-load state renders terrain flat/untextured; this latches the
@@ -632,9 +629,7 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 		if (s_bucketCensusOn) {
 			TerrainPatchStream::emitCensus(legacyEligible);
 		}
-		gos_render_pass_timer::End(gos_render_pass_timer::Pass_TerrainSolid);
 	}   // end Render.TerrainSolid zone
-	drainGLErrors("terrain");
 }
 
 void MC_TextureManager::renderListsGpuStaticProps (void)
@@ -647,7 +642,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 	{
 		ZoneScopedN("Render.GpuStaticProps");
 		TracyGpuZone("Render.GpuStaticProps");
-		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_SpColor);
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {
@@ -743,9 +737,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
 #endif
 			}
-			// Pass_SpColor ends after the static-prop flush: GL_TIME_ELAPSED
-			// scopes cannot nest, so mechs get their own disjoint scope.
-			gos_render_pass_timer::End(gos_render_pass_timer::Pass_SpColor);
 		};
 
 		// Unit B: GPU mech batcher Slice A flush — runs adjacent to the static-prop
@@ -757,7 +748,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			ZoneScopedN("Render.GpuMechs");
 			TracyGpuZone("Render.GpuMechs");
 			GosGlLostDrawsScope _rlLost_("mech_flush");
-			gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Mechs);
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
 			// MECHOPAQUE-NOTE-RELOCATE-1: note fires at the real mech GPU draw
 			// site (after shadow, after static-prop flush) — NOT at the preamble.
@@ -789,7 +779,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 				}
 			}
 #endif
-			gos_render_pass_timer::End(gos_render_pass_timer::Pass_Mechs);
 		};
 
 		if (s_reorderSpMech) {
@@ -815,9 +804,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// in Stage 1b — both run; parity comparator validates the masks match).
 	// Default-off: IsFrameMaskSolidArmed() returns false unless
 	// MC2_TERRAIN_MASK_DISPATCH=1 AND MC2_TERRAIN_MASK_DISPATCH_SOLID != "0".
-	// Pass_Overlays = one coarse scope spanning Render.TerrainMask.Solid
-	// through Render.Decals (sub-zones stay Tracy-only).
-	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Overlays);
 	{
 		ZoneScopedN("Render.TerrainMask.Solid"); GosGlLostDrawsScope _lost_("overlays.mask_solid");
 		TracyGpuZone("Render.TerrainMask.Solid");
@@ -882,6 +868,5 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 			(void)mc2_vk_overlay_run(ppVkOv->getWidth(), ppVkOv->getHeight());
 	}
 #endif
-	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Overlays);
 	// ── End new world-space overlay batches ───────────────────────────────────
 }

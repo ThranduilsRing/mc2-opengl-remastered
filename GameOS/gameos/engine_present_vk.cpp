@@ -15,6 +15,7 @@
 #include "engine_present_vk.h"
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
+#include "gos_screenshot.h"
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "mc2fmt.h"
 
@@ -2595,6 +2596,8 @@ void EnginePresentVk::verifyReadbackContent() {
     // VK-VISUAL-CAPTURE-1: hand the presented image to a pending visual capture.
     if (gos::visual_capture::vkCapturePending())
         gos::visual_capture::vkCaptureDeliver(rw, rh, px);
+    if (gos::screenshot::pending())
+        gos::screenshot::deliver(rw, rh, px);
     vkUnmapMemory(s.dev, s.readbackMem.get());
 
     health_.prev_readback_checksum = health_.last_readback_checksum;

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 //-------------------------------------------------------------------------------
@@ -51,7 +52,7 @@ void _TG_Animation::SaveBinaryCopy (File *binFile)
 }
 
 //-------------------------------------------------------------------------------
-void _TG_Animation::LoadBinaryCopy (File *binFile)
+bool _TG_Animation::LoadBinaryCopy (File *binFile)
 {
 	binFile->read((MemoryPtr)nodeId,TG_NODE_ID);	
 	shapeId = binFile->readInt();
@@ -61,10 +62,27 @@ void _TG_Animation::LoadBinaryCopy (File *binFile)
 	
 	int quatRAM = binFile->readInt();
 	int posRAM = binFile->readInt();		
-	
+
+	// Frame counts and track sizes are file content: a track must be exactly numFrames records, and no animation has this many frames.
+	constexpr DWORD kMaxFrames = 100000;
+	const bool sizesOK = numFrames <= kMaxFrames
+		&& (quatRAM == 0 || static_cast<size_t>(quatRAM) == sizeof(Stuff::UnitQuaternion) * numFrames)
+		&& (posRAM == 0 || static_cast<size_t>(posRAM) == sizeof(Stuff::Point3D) * numFrames)
+		&& quatRAM >= 0 && posRAM >= 0;
+	if (!sizesOK)
+	{
+		MC2_LOG_ONCE(Io, Error, "[ANIM_TRACK_BAD] node={} frames={} quatBytes={} posBytes={} (the sizes do not match the frame count; animation file rejected)",
+			nodeId, numFrames, quatRAM, posRAM);
+		numFrames = 0;
+		quat = nullptr;
+		pos = nullptr;
+		return false;
+	}
+
 	if (quatRAM)
 	{
-		quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames); 
+		quatStore.resize(numFrames);
+		quat = quatStore.data();
 		binFile->read((MemoryPtr)quat,quatRAM);	
 	}
 	else
@@ -72,11 +90,13 @@ void _TG_Animation::LoadBinaryCopy (File *binFile)
 		
 	if (posRAM)
 	{
-		pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames); 
+		posStore.resize(numFrames);
+		pos = posStore.data();
 		binFile->read((MemoryPtr)pos,posRAM);	
 	}
 	else
 		pos = nullptr;
+	return true;
 }
 
 //-------------------------------------------------------------------------------
@@ -94,11 +114,23 @@ long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
 		
 		if (count)
 		{
-			listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * count);
-			gosASSERT(listOfAnimation != nullptr);
+			if (count < 0 || count > 4096)
+			{
+				MC2_LOG_ONCE(Io, Error, "[ANIM_TRACK_BAD] file={} animations={} (not a plausible animation count; rejected)", fileName, count);
+				count = 0;
+				return -1;
+			}
+			animationStore = std::vector<TG_Animation>(static_cast<size_t>(count));
+			listOfAnimation = animationStore.data();
  			
 			for (long i=0;i<count;i++)
-				listOfAnimation[i].LoadBinaryCopy(&binFile);
+			{
+				if (!listOfAnimation[i].LoadBinaryCopy(&binFile))
+				{
+					destroy();
+					return -1;
+				}
+			}
 		}
 		else
 			listOfAnimation = nullptr;
@@ -144,22 +176,8 @@ void TG_AnimateShape::SaveBinaryCopy (const char *fileName)
 //This function frees all of the RAM allocated by this class and resets vars to initial state.
 void TG_AnimateShape::destroy (void)
 {
-	if (listOfAnimation)
-	{
-		for ( int i = 0; i < count; ++i )
-		{
-			TG_Shape::tglHeap->Free( listOfAnimation[i].pos );
-			listOfAnimation[i].pos = nullptr;
-
-			TG_Shape::tglHeap->Free( listOfAnimation[i].quat );
-			listOfAnimation[i].quat = nullptr;
-		}
-
-		if (listOfAnimation)
-			TG_Shape::tglHeap->Free(listOfAnimation);
-			
-		listOfAnimation = nullptr;
-	}
+	std::vector<TG_Animation>().swap(animationStore);
+	listOfAnimation = nullptr;
 }	
 
 FilePtr tglLogFile = (FilePtr)nullptr;
@@ -314,8 +332,8 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		//----------------------------------------------------------------------------
 		// For each TG_Shape in MultiShape passed in, find any and all animation Data
 		count = shape->GetNumShapes();
-		listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * shape->GetNumShapes());
-		gosASSERT(listOfAnimation != nullptr);
+		animationStore = std::vector<TG_Animation>(static_cast<size_t>(count));
+		listOfAnimation = animationStore.data();
 	
 		//----------------------------------------------------------------------------
 		// Scan the Nodes.
@@ -397,7 +415,8 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		
 						//-----------------------------------------------------------
 						// We have positional data at least.  Store everything off.
-						listOfAnimation[i].pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames);
+						listOfAnimation[i].posStore.resize(numFrames);
+						listOfAnimation[i].pos = listOfAnimation[i].posStore.data();
 		
 						strcpy(listOfAnimation[i].nodeId,nodeId);
 						listOfAnimation[i].numFrames = numFrames;
@@ -469,8 +488,8 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		
 						//-----------------------------------------------------------
 						// We have rotational data at least.  Store everything off.
-						listOfAnimation[i].quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
-						gosASSERT(listOfAnimation[i].quat != nullptr);
+						listOfAnimation[i].quatStore.resize(numFrames);
+						listOfAnimation[i].quat = listOfAnimation[i].quatStore.data();
 		
 						//-------------------------------------------
 						// Setup basic variables.  May do this twice.

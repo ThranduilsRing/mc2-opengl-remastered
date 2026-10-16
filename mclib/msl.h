@@ -739,6 +739,7 @@ class TG_AnimateShape
 	//will shove the correct pointers to the data down to the TG_ShapeRecs.
 	//Other then data storage, parsing, and the pointer sets, does zipp!
 	protected:
+		std::vector<TG_Animation>	animationStore;	//Owns the animations; listOfAnimation is a view, never resized after it is taken.
 		TG_AnimationPtr		listOfAnimation;
 		int                 count;
 		int                 actualCount;

@@ -73,10 +73,10 @@ B4.2-terrain	mclib/terrtxm.cpp:754	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (M
 B4.2-terrain	mclib/terrtxm.cpp:874	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 B4.2-terrain	mclib/terrtxm.cpp:1426	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 B4.2-terrain	mclib/terrtxm.cpp:1573	heap_free	tileRAMHeap	tileRAMHeap->Free(ourRAM);
-B4.2-terrain	mclib/terrtxm2.cpp:180	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
-B4.2-terrain	mclib/terrtxm2.cpp:182	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1195	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1197	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
+B4.2-terrain	mclib/terrtxm2.cpp:156	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
+B4.2-terrain	mclib/terrtxm2.cpp:158	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_bake.cpp:1191	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_bake.cpp:1193	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
 B4.2-terrain	mclib/terrtxm2_load.cpp:312	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 B4.2-terrain	mclib/terrtxm2_load.cpp:314	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
 B4.2-terrain	mclib/terrtxm2_load.cpp:459	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
@@ -85,10 +85,8 @@ B4.2-terrain	mclib/terrtxm2_load.cpp:794	c_free	-	if (cpuDispAlpha) { free(cpuDi
 B4.2-terrain	mclib/terrtxm2_load.cpp:796	c_alloc	-	cpuDispAlpha = (unsigned char*)malloc(pixels);
 B4.3-txm	mclib/txmmgr.cpp:321	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer1);
 B4.3-txm	mclib/txmmgr.cpp:322	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer2);
-B4.3-txm	mclib/txmmgr.cpp:511	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
-B4.3-txm	mclib/txmmgr.cpp:516	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
-B4.3-txm	mclib/txmmgr.cpp:961	heap_free	textureStringHeap	mcTextureManager->textureStringHeap->Free(nodeName);
-B4.3-txm	mclib/txmmgr.cpp:962	heap_free	textureCacheHeap	mcTextureManager->textureCacheHeap->Free(textureData);
+B4.3-txm	mclib/txmmgr.cpp:942	heap_free	textureStringHeap	mcTextureManager->textureStringHeap->Free(nodeName);
+B4.3-txm	mclib/txmmgr.cpp:943	heap_free	textureCacheHeap	mcTextureManager->textureCacheHeap->Free(textureData);
 B4.3-txm	mclib/txmmgr_texture.cpp:105	heap_malloc	textureCacheHeap	lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 B4.3-txm	mclib/txmmgr_texture.cpp:108	heap_malloc	textureCacheHeap	lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 B4.3-txm	mclib/txmmgr_texture.cpp:123	heap_malloc	textureCacheHeap	masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmCompressSize);

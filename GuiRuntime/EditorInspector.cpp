@@ -62,20 +62,14 @@ static void drawFrameInspectorWindow() {
                     agg.mechBatchInstances, agg.vfxCount);
         ImGui::Separator();
 
-        if (ImGui::BeginTable("##framepass", 9,
+        if (ImGui::BeginTable("##framepass", 4,
                 ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg
                 | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY)) {
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableSetupColumn("Pass",  ImGuiTableColumnFlags_WidthFixed, 110.f);
             ImGui::TableSetupColumn("ms",    ImGuiTableColumnFlags_WidthFixed,  56.f);
             ImGui::TableSetupColumn("Draws", ImGuiTableColumnFlags_WidthFixed,  60.f);
-            ImGui::TableSetupColumn("Inst",  ImGuiTableColumnFlags_WidthFixed,  60.f);
-            ImGui::TableSetupColumn("FBO",   ImGuiTableColumnFlags_WidthFixed,  48.f);
-            ImGui::TableSetupColumn("VP",    ImGuiTableColumnFlags_WidthFixed,  92.f);
-            ImGui::TableSetupColumn("Depth(t/m)",
-                                             ImGuiTableColumnFlags_WidthFixed,  80.f);
-            ImGui::TableSetupColumn("Blend", ImGuiTableColumnFlags_WidthFixed,  48.f);
-            ImGui::TableSetupColumn("Cull",  ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Inst",  ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
 
             const int n = gos_frame_pass_stats::PassCount();
@@ -101,7 +95,7 @@ static void drawFrameInspectorWindow() {
 
                 if (!r.ran) {
                     // Pass did not run this frame: leave the rest blank.
-                    for (int c = 2; c < 9; ++c) {
+                    for (int c = 2; c < 4; ++c) {
                         ImGui::TableSetColumnIndex(c);
                         ImGui::TextDisabled("--");
                     }
@@ -109,15 +103,6 @@ static void drawFrameInspectorWindow() {
                 }
                 ImGui::TableSetColumnIndex(2); ImGui::Text("%u", r.drawCount);
                 ImGui::TableSetColumnIndex(3); ImGui::Text("%u", r.instanceCount);
-                ImGui::TableSetColumnIndex(4); ImGui::Text("%u", r.fbo);
-                ImGui::TableSetColumnIndex(5);
-                ImGui::Text("%dx%d", r.viewport[2], r.viewport[3]);
-                ImGui::TableSetColumnIndex(6);
-                ImGui::Text("%d/%d", r.depthTest ? 1 : 0, r.depthMask ? 1 : 0);
-                ImGui::TableSetColumnIndex(7);
-                ImGui::Text("%d", r.blend ? 1 : 0);
-                ImGui::TableSetColumnIndex(8);
-                ImGui::Text("%d", r.cull ? 1 : 0);
             }
             ImGui::EndTable();
         }

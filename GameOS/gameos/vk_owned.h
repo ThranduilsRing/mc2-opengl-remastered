@@ -38,6 +38,7 @@ struct Framebuffer { void operator()(VkDevice d, VkFramebuffer h) const { vkDest
 struct RenderPass { void operator()(VkDevice d, VkRenderPass h) const { vkDestroyRenderPass(d, h, nullptr); } };
 struct CommandPool { void operator()(VkDevice d, VkCommandPool h) const { vkDestroyCommandPool(d, h, nullptr); } };
 struct Fence { void operator()(VkDevice d, VkFence h) const { vkDestroyFence(d, h, nullptr); } };
+struct QueryPool { void operator()(VkDevice d, VkQueryPool h) const { vkDestroyQueryPool(d, h, nullptr); } };
 struct Semaphore { void operator()(VkDevice d, VkSemaphore h) const { vkDestroySemaphore(d, h, nullptr); } };
 struct RawImage { void operator()(VkDevice d, VkImage h) const { vkDestroyImage(d, h, nullptr); } };
 struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { vkFreeMemory(d, h, nullptr); } };
@@ -58,6 +59,7 @@ using OwnedFramebuffer = DeviceOwned<VkFramebuffer, release::Framebuffer>;
 using OwnedRenderPass = DeviceOwned<VkRenderPass, release::RenderPass>;
 using OwnedCommandPool = DeviceOwned<VkCommandPool, release::CommandPool>;
 using OwnedFence = DeviceOwned<VkFence, release::Fence>;
+using OwnedQueryPool = DeviceOwned<VkQueryPool, release::QueryPool>;
 using OwnedSemaphore = DeviceOwned<VkSemaphore, release::Semaphore>;
 // An image made by vkCreateImage whose memory the owner of the image allocates and binds itself (VMA images use OwnedImage).
 using OwnedRawImage = DeviceOwned<VkImage, release::RawImage>;

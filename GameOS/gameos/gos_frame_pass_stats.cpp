@@ -1,8 +1,6 @@
 //============================================================================
 // gos_frame_pass_stats — see gos_frame_pass_stats.h.
 //============================================================================
-#include <GL/glew.h>
-#include <GL/gl.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -63,7 +61,7 @@ void emitLine(unsigned long frameNo)
     for (int p = 0; p < Pass_Count; ++p) {
         const PassRow& r = s_last[p];
         if (!r.ran) continue;   // pass never ran this frame: key absent
-        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}{{fbo={:d} vp={:d}x{:d} dt={:d} dm={:d} bl={:d} cull={:d} draws={:d} inst={:d}}}", mc2::fmt::safe(kPassKey[p]), mc2::fmt::as_u32(r.fbo), mc2::fmt::as_i32(r.viewport[2]), mc2::fmt::as_i32(r.viewport[3]), mc2::fmt::as_i32(r.depthTest ? 1 : 0), mc2::fmt::as_i32(r.depthMask ? 1 : 0), mc2::fmt::as_i32(r.blend ? 1 : 0), mc2::fmt::as_i32(r.cull ? 1 : 0), mc2::fmt::as_u32(r.drawCount), mc2::fmt::as_u32(r.instanceCount));
+        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}{{draws={:d} inst={:d}}}", mc2::fmt::safe(kPassKey[p]), mc2::fmt::as_u32(r.drawCount), mc2::fmt::as_u32(r.instanceCount));
         if (off >= (int)sizeof(line) - 96) break;   // guard truncation
     }
     mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
@@ -96,26 +94,12 @@ bool Enabled()
 void SetCollect(bool on) { initEnv(); s_collect = on; }
 bool CollectFlag()       { return s_collect; }
 
-void RecordPassBegin(gos_render_pass_timer::Pass p)
+void MarkPassRan(gos_render_pass_timer::Pass p)
 {
     if (!Enabled()) return;
     const int pi = (int)p;
     if (pi < 0 || pi >= Pass_Count) return;
-    PassRow& r = s_rows[pi];
-
-    GLint fbo = 0;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fbo);
-    glGetIntegerv(GL_VIEWPORT, r.viewport);
-    GLboolean depthMask = GL_FALSE;
-    glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
-
-    r.ran           = true;
-    r.fbo           = (uint32_t)fbo;
-    r.depthTest     = glIsEnabled(GL_DEPTH_TEST) != GL_FALSE;
-    r.depthMask     = depthMask != GL_FALSE;
-    r.blend         = glIsEnabled(GL_BLEND) != GL_FALSE;
-    r.cull          = glIsEnabled(GL_CULL_FACE) != GL_FALSE;
-    // drawCount / instanceCount are filled separately via SetPassCounts.
+    s_rows[pi].ran = true;
 }
 
 void SetFrameAggregates(const FrameAggregates& a)

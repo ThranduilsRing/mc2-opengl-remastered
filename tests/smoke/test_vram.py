@@ -2,20 +2,17 @@
 from scripts.smoke_lib import logparse, report, vram
 from scripts.smoke_lib.report import Row
 
-GL_AMD = ("[VRAM v1] phase=load_end backend=gl gl_ati_tex_free_mb=21000 gl_ati_tex_largest_free_mb=20000 gl_nvx_dedicated_mb=-1 "
-          "gl_nvx_available_mb=-1 vk_budget_mb=-1 vk_usage_mb=-1 vk_allocated_mb=-1 adapter_dedicated_mb=24560 proc_dedicated_mb=3100 proc_budget_mb=23000")
-VK = ("[VRAM v1] phase=run_end backend=vk gl_ati_tex_free_mb=-1 gl_ati_tex_largest_free_mb=-1 gl_nvx_dedicated_mb=-1 gl_nvx_available_mb=-1 "
+GL_AMD = ("[VRAM v1] phase=load_end backend=gl vk_budget_mb=-1 vk_usage_mb=-1 vk_allocated_mb=-1 adapter_dedicated_mb=24560 proc_dedicated_mb=3100 proc_budget_mb=23000")
+VK = ("[VRAM v1] phase=run_end backend=vk "
       "vk_budget_mb=23000 vk_usage_mb=4200 vk_allocated_mb=4000 adapter_dedicated_mb=24560 proc_dedicated_mb=-1 proc_budget_mb=-1")
-GL_NVIDIA = ("[VRAM v1] phase=load_end backend=gl gl_ati_tex_free_mb=-1 gl_ati_tex_largest_free_mb=-1 gl_nvx_dedicated_mb=12288 "
-             "gl_nvx_available_mb=8000 vk_budget_mb=-1 vk_usage_mb=-1 vk_allocated_mb=-1 adapter_dedicated_mb=-1 proc_dedicated_mb=-1 proc_budget_mb=-1")
-NOTHING = ("[VRAM v1] phase=run_end backend=gl gl_ati_tex_free_mb=-1 gl_ati_tex_largest_free_mb=-1 gl_nvx_dedicated_mb=-1 gl_nvx_available_mb=-1 "
+NOTHING = ("[VRAM v1] phase=run_end backend=gl "
            "vk_budget_mb=-1 vk_usage_mb=-1 vk_allocated_mb=-1 adapter_dedicated_mb=-1 proc_dedicated_mb=-1 proc_budget_mb=-1")
 
 
 def test_a_line_is_parsed_by_field_name():
     (s,) = vram.parse("noise before\n" + GL_AMD + "\nnoise after")
     assert (s.phase, s.backend) == ("load_end", "gl")
-    assert s.get("proc_dedicated_mb") == 3100 and s.get("adapter_dedicated_mb") == 24560 and s.get("gl_ati_tex_free_mb") == 21000
+    assert s.get("proc_dedicated_mb") == 3100 and s.get("adapter_dedicated_mb") == 24560
     assert s.get("vk_usage_mb") is None            # -1 = the counter does not exist on this driver
     assert s.get("not_a_field") is None
 
@@ -26,7 +23,7 @@ def test_a_later_field_added_at_the_end_does_not_break_the_reader():
 
 
 def test_truncated_and_foreign_lines_are_skipped():
-    assert vram.parse("[VRAM v1] phase=load_end backend=gl gl_ati_tex_fr") == []
+    assert vram.parse("[VRAM v1] phase=load_end backend=gl vk_bud") == []
     assert vram.parse("[VRAM v2] phase=load_end backend=gl") == []
     assert vram.parse("") == []
 
@@ -34,10 +31,9 @@ def test_truncated_and_foreign_lines_are_skipped():
 def test_used_memory_prefers_the_process_counter_then_the_backend_counter():
     assert vram.used_mb(vram.parse(GL_AMD)[0]) == (3100, "dxgi-process")
     assert vram.used_mb(vram.parse(VK)[0]) == (4200, "vma-usage")
-    assert vram.used_mb(vram.parse(GL_NVIDIA)[0]) == (4288, "nvx-dedicated-minus-available")
     assert vram.used_mb(vram.parse(NOTHING)[0]) == (None, "none")
-    amd_no_process = GL_AMD.replace("proc_dedicated_mb=3100", "proc_dedicated_mb=-1")
-    assert vram.used_mb(vram.parse(amd_no_process)[0]) == (24560 - 21000, "adapter-minus-gl-free")
+    no_process = GL_AMD.replace("proc_dedicated_mb=3100", "proc_dedicated_mb=-1")
+    assert vram.used_mb(vram.parse(no_process)[0]) == (None, "none")
 
 
 def test_describe_says_what_it_read_or_that_it_read_nothing():

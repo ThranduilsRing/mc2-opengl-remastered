@@ -239,7 +239,7 @@ Decision needed per view (section 13).
 ## 11. Capture (2 files, 997 lines)
 
 `gos_visual_capture.cpp` (947) reads back `gl_fbo` or `vk_present` and writes the sidecar `backend` / `readback_source`; delete the `gl_fbo`
-arm only. `gos_screenshot.cpp` (50, GL readback): port to the VK present readback.
+arm only. `gos_screenshot.cpp`: DONE (0c31da555), now writes the VK present readback.
 
 ## 12. Tooling and tests that depend on a GL path
 
@@ -307,3 +307,38 @@ VK, and the owner has ruled on the fail-soft policy. Each step deletes whole fil
 | capture `gl_fbo` arm (`gos_visual_capture.cpp`, `gos_screenshot.cpp`) | STOPPED (session 30): it is the only readback of a GL-backend frame, and the same-exe GL capture is still the oracle of every open parity row (3, 5-22, 24: row 24 used it this session) and of the VFX oracle. Goes with the last GL capture consumer |
 | 10 debug views | STOPPED (session 30), each has a live reader or a ruling: lost-draws + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP by orchestrator ruling 2026-10-12: the proof that no GL draw reaches the VK scene before the GL interop goes; a full deletion was made and reverted); `gos_render_pass_timer` + `gos_frame_pass_stats` (editor Frame Inspector, dev-shell `framegraph`); `gos_dev_shell` (`tools/dev_shell`, `mission_order_ingress_witness.py`); `debug_renderer` (KEEP-LIVE, viewmode matrix + inspector toggle); HZB probe in `gos_postprocess_diag` (KEEP-LIVE, `hzb.json`); `gpu_memory_report` (`smoke_lib/vram.py`); `gos_validate` (`runner.py` `MC2_GL_ERROR_DRAIN_SILENT`); `gos_renderer_input_probe` (UI probe commands); `gos_object_parity` (checks the GPU static-prop producer the VK prop island also consumes); `mc2_hitch_trace` (hitch attribution, no VK equivalent). Each needs a VK port or an owner decision (section 14 question 3) |
 | `golden-e350d0b4a5c6-vk-1080p` | DONE (session 30, 91c1e0502): archived (tarball + sha256) and removed, RETIRED.md row |
+
+## 16. Session 35 (2026-10-16): the capture gl_fbo arm, and the step-2 list for the owner
+
+### Capture `gl_fbo` arm: NOT retired (task stopped, its consumers listed)
+The parity rows no longer need it once row 28's oracle (this session) is on record, but four consumers remain:
+| consumer | why it needs a GL-frame readback | what unblocks the deletion |
+|---|---|---|
+| VFX parity oracle (`tools/vfx_parity_oracle.py`, `scripts/capture_vfx_oracle.py`, `tools/test_vfx_parity_oracle.py`) | refuses anything but `readback: gl_fbo`; it is the MLR-vs-GPU-particle proof the MLR retirement waits on | a VK readback arm for the oracle (section 15 row "VFX oracle GL arm"), or the MLR retirement landing first |
+| `tools/visual_verify/capture_ab.py --gl-arm` | the GL noise-floor arm, kept while a GL exe ships | drop the flag with the arm (no caller in the lanes' scripts today) |
+| row 18 (cliff decal fill), if the owner rules "port" | the parity method needs a same-exe GL capture | the owner's row 18 ruling ("delete with GL" removes the need) |
+| `gos_screenshot.cpp` (dev-shell `screenshot`, GL `glReadPixels`) | DONE (session 36, 0c31da555): ported to the VK present readback (`gos::screenshot::request` / `deliver`); no longer a consumer | none |
+Order: rule row 18, give the VFX oracle a VK arm; then the arm (`gos_visual_capture.cpp` `gl_fbo` branch, `scripts/smoke_lib/capture_backend.py` GL spellings, `capture_index.py` GL rows, their tests) goes in one commit.
+
+### GL deletion step 2 (debug views and diagnostics): what needs no ruling, what does
+(a) Deletable with the GL exe (GL is still the runtime default), no ruling: a VK equivalent exists or nothing live reads the GL half. DONE in session 36:
+- DONE (806488128): `gos_render_pass_timer` GL `GL_TIME_ELAPSED` half (ring, Begin/End, QueryActive, 27 call sites, the two spike timers' nesting guard): the VK source (`vk_render_pass_timer`, sessions 34-35) feeds the same `LastMs` / log / framegraph.
+- DONE (806488128): `gos_validate` GL error drain (`drainGLErrors`, 9 call sites, the exit-time drain, the `gl_errors` JSON key). Left: the `MC2_GL_ERROR_DRAIN_SILENT` gate row (read only by the `[INSTR v1]` banner and the crash-bundle env echo; `runner.py` POPPED_ENV and `test_anti_churn.py` name it) goes in a gate-table commit. The VK validation layer is the error oracle every VK smoke reads; the drain goes with the GL context.
+- DONE (806488128): `gpu_memory_report` GL counters (`GL_TEXTURE_FREE_MEMORY_ATI`, `GL_NVX_gpu_memory_info`; the `[VRAM v1]` keys, `vram.py` and its tests). The GL-context LUID lookup for the DXGI adapter stays (GL run adapter choice). The VMA budget / usage half already reports under VK; `smoke_lib/vram.py` reads either.
+- DONE (806488128): `gos_frame_pass_stats` GL-state fields (FBO, viewport, depth, blend, cull read back with `glGet*`; dev-shell framegraph, debug-state dump and Frame Inspector columns): `ran` now comes from the VK timer; no VK meaning; the draw / instance counts are CPU aggregates both backends fill and stay.
+(b) Owner rulings (2026-10-16, orchestrator message to lane 2 session 36): RULED below; every item is a later session unless marked DONE.
+- `debug_renderer` (lines / boxes, view-mode matrix, editor inspector toggle): default PORT to a VK line pipeline, because the editor rework keeps the inspector. RULED 2026-10-16: PORT to a Vulkan line pipeline.
+- lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP ruling 2026-10-12): default DELETE in the same commit that removes the GL interop it proves absent. RULED 2026-10-16: DELETE with the GL interop.
+- `gos_object_parity` (checks the GPU static-prop producer both backends consume): default KEEP the CPU comparison, DELETE its GL buffer readback. RULED 2026-10-16: KEEP the CPU comparison, drop the GL readback. NOT taken in session 36: the readback is `glGetBufferSubData` in `candidateLogAndParityReadback` (`gos_static_prop_batcher_flush_prep.cpp`) plus the parity SSBO cursor in the flush / dispatch / state files (lane 3 territory), and `CompareAndReport` takes those bytes as its input, so dropping the readback needs a VK source of the parity bytes first: over the 50-line limit.
+- `mc2_hitch_trace` (GL fences for hitch attribution): default PORT to the VK island fences / timestamps, CPU phases unchanged. RULED 2026-10-16: PORT to Vulkan fences.
+- HZB probe in `gos_postprocess_diag` (`hzb.json`): default DELETE with the GL HZB, because the VK HZB pass is opt-in off; re-add on VK only if the VK HZB is turned on. RULED 2026-10-16: DELETE with the GL HZB.
+- `gos_renderer_input_probe` (UI probe commands): default KEEP, dropping its GL state reads (the probe is input / UI, not rendering). RULED 2026-10-16: KEEP.
+- `gos_dev_shell` GL calls: default KEEP the shell, port `screenshot` (above) and drop the GL `reload_shaders` path with the GL shaders. (screenshot DONE in session 36; the `reload_shaders` GL path goes with the GL shaders.)
+- terrain `tessDebug` view modes (section 3): default DELETE with the GL terrain path; VK has `MC2_VK_TERRAIN_CSM_DEBUG` channel views. RULED 2026-10-16: DELETE with the GL terrain.
+
+- Row 18 (cliff decal fill): RULED 2026-10-16 delete with GL, no port; closed in `.claude/VK-PARITY-GAPS.md` (no allowlist pin existed). That removes the row-18 consumer of the capture `gl_fbo` arm (section 16 table).
+## 17. Session 36 (2026-10-16): GL deletion step 2 (a) done, gos_screenshot on the VK readback
+- 806488128: the four "deletable with the GL exe" items of section 16 (a) (rows marked DONE there).
+- 0c31da555: `gos_screenshot` request / deliver on the present readback; callers moved: dev-shell `screenshot` (the `source=backbuffer` option and the `scheduleScreenshot` flag are gone), `MC2_SCREENSHOT_PATH` / `_AT_FRAME`, `VisualDiff` capture, `--validate --screenshot`. A GL run no longer produces these screenshots (the request is rejected with a log line).
+- Open (gate-table commits, each with the gate_gen cascade): `MC2_GL_ERROR_DRAIN_SILENT` (readers: `[INSTR v1]` banner, crash bundle, `runner.py` POPPED_ENV, `test_anti_churn.py`) and `MC2_SCREENSHOT_SOURCE` (no reader; `scripts/mechbay_preview_harness.py` still sets it and drives a GL run, so it needs a VK move first).
+- Still open from section 16: the (b) owner rulings, row 18, the VFX oracle VK arm, then the capture `gl_fbo` arm.

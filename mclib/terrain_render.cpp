@@ -275,7 +275,6 @@ void Terrain::flushDrawCommands (void)
 	}
 
 	if (s_blockMeta && s_cmdCount > 0) {
-		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_TerrainChunk);
 		// [FRAME_PASS_STATS v1] visible terrain chunks = draw-command count
 		// (one cmd per visible block); pulled from the existing aggregate, no
 		// per-block counting. OFF=zero cost (Set* early-returns).
@@ -288,7 +287,6 @@ void Terrain::flushDrawCommands (void)
 			s_shadowTierVec.empty() ? nullptr : s_shadowTierVec.data(),
 			s_morphFactorVec.empty() ? nullptr : s_morphFactorVec.data(),  // TERRAIN-LOD-GEOMORPH-1
 			s_cmdCount);
-		gos_render_pass_timer::End(gos_render_pass_timer::Pass_TerrainChunk);
 	}
 }
 

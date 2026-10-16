@@ -41,6 +41,7 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "gos_postprocess.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg PropShadowReceive
@@ -825,6 +826,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
         setFallback("record_failed"); return false;
     }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
 
     auto barrier = [&](VkImage image, VkImageAspectFlags aspect,
                        VkImageLayout oldL, VkImageLayout newL,
@@ -874,6 +877,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             VK_ACCESS_SHADER_READ_BIT, 0,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
         setFallback("record_failed"); return false;
     }
@@ -894,6 +898,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
+    timerGuard.submitted();
 
     // Slot-recycle guard: this frame's command buffer must be retired before reuse
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
@@ -1015,6 +1020,8 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
         setFallback("record_failed"); s->disabled = true; return 0;
     }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
 
     auto depthBarrier = [&](VkImageLayout oldL, VkImageLayout newL,
                             VkAccessFlags srcA, VkAccessFlags dstA,
@@ -1083,6 +1090,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
                   VK_ACCESS_SHADER_READ_BIT, 0,
                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
         setFallback("record_failed"); s->disabled = true; return 0;
     }
@@ -1103,6 +1111,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
+    timerGuard.submitted();
 
     // Slot-recycle guard: this frame's command buffer must be retired before reuse
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).

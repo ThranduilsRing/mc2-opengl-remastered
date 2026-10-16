@@ -5,7 +5,7 @@
 #include "vk_first_layout.h"
 
 #include "vk_image_resource.h"
-#include "vk_owned.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 
 #include <cstdint>
@@ -40,31 +40,8 @@ void record(const mc2vk::VulkanContext& ctx, VkCommandBuffer cb, const VkImageMe
 }  // namespace
 
 bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkImageResource& img, SharedImageStart start) {
-    const VkDevice device = ctx.device();
-    if (device == VK_NULL_HANDLE || img.image.get() == VK_NULL_HANDLE) return false;
-
-    mc2vk::OwnedCommandPool pool;
-    mc2vk::OwnedFence fence;
-    bool ok = false;
-    bool submitted = false;   // the GPU owns the fence and the pool from the submit until the fence signals
-    do {
-        VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-        pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-        pci.queueFamilyIndex = ctx.graphicsFamily();
-        if (!mc2vk::create(pool, device, [&](VkCommandPool* h) { return vkCreateCommandPool(device, &pci, nullptr, h); })) break;
-        VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        ai.commandPool = pool.get();
-        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        ai.commandBufferCount = 1;
-        VkCommandBuffer cb = VK_NULL_HANDLE;
-        if (vkAllocateCommandBuffers(device, &ai, &cb) != VK_SUCCESS) break;
-        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        if (!mc2vk::create(fence, device, [&](VkFence* h) { return vkCreateFence(device, &fci, nullptr, h); })) break;
-
-        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) break;
-
+    if (ctx.device() == VK_NULL_HANDLE || img.image.get() == VK_NULL_HANDLE) return false;
+    const bool ok = mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
         constexpr VkPipelineStageFlags2 kColorOut = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         constexpr VkAccessFlags2 kColorRw = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
         switch (start) {
@@ -89,23 +66,7 @@ bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkIm
                                              VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT));
                 break;
         }
-        if (vkEndCommandBuffer(cb) != VK_SUCCESS) break;
-
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        si.commandBufferCount = 1;
-        si.pCommandBuffers = &cb;
-        if (vkQueueSubmit(ctx.graphicsQueue(), 1, &si, fence.get()) != VK_SUCCESS) break;
-        submitted = true;
-        const VkFence fenceHandle = fence.get();
-        ok = vkWaitForFences(device, 1, &fenceHandle, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
-    } while (false);
-
-    if (submitted && !ok) {
-        // The GPU may still be executing the submit, and the fence and the pool are destroyed when this function returns: wait for the device first. A
-        // hung device is turned into a lost one by the driver, which ends the wait.
-        std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout fence did not signal in time; waiting for the device before releasing it (start=%d)\n", static_cast<int>(start));
-        ctx.waitIdle("first_layout_timeout");
-    }
+    }, "first_layout_timeout");
     if (!ok) std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout submit failed (start=%d)\n", static_cast<int>(start));
     return ok;
 }
