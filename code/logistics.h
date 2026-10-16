@@ -77,6 +77,7 @@ class Logistics
 		void destroySplashScreen (void);
 		
 		void start (long logState);		//Actually Starts execution of logistics in state Specified
+		bool initObjectiveFixture(const char* missionName);
 		void stop (void);				//Guess what this does!
 				
 		long update (void);
@@ -110,6 +111,7 @@ class Logistics
 
 		void initializeLogData();
 		bool		bMissionLoaded;
+		bool objectiveFixture = false;
 		long		lastMissionResult;
 };
 
