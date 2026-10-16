@@ -4,8 +4,71 @@
 #include <cmath>
 #include <limits>
 #include <format>
+#include <charconv>
+#include <set>
 
 namespace editor::document {
+const TeamFlagRow* TeamFlags::resolve(std::string_view id) const
+{
+    std::string memoryId;
+    for (std::size_t i = 0; i < id.size(); ++i) {
+        if (id[i] == '\n' && (i == 0 || id[i - 1] != '\r')) memoryId += '\r';
+        memoryId += id[i];
+    }
+    for (const auto& row : rows)
+        if (row.status == "initialized" && row.id && identifier(*row.id) == identifier(memoryId)) return &row;
+    return nullptr;
+}
+
+TeamFlags MissionDocument::teamFlags(std::uint32_t team) const
+{
+    TeamFlags result;
+    const auto block = identifier(std::format("Team{}BooleanFlags", team));
+    for (const auto& candidate : syntax().sections)
+        if (!candidate.parent && identifier(candidate.name) == block) { result.section = candidate.id; break; }
+    if (!result.section) return result;
+    std::set<std::size_t> indices;
+    for (const auto node : section(*result.section)->fields) {
+        const auto name = identifier(field(node)->name);
+        for (const std::string_view prefix : {"booleanstring", "booleanvalue"}) {
+            if (!name.starts_with(prefix)) continue;
+            const auto suffix = std::string_view(name).substr(prefix.size());
+            std::size_t index{};
+            const auto parsed = std::from_chars(suffix.data(), suffix.data() + suffix.size(), index);
+            if (parsed.ec == std::errc{} && parsed.ptr == suffix.data() + suffix.size() && suffix == std::to_string(index)) indices.insert(index);
+        }
+    }
+    bool stopped{};
+    for (const auto index : indices) {
+        if (index != result.stop) stopped = true;
+        const auto* id = find(*result.section, std::format("BooleanString{}", index));
+        const auto* value = find(*result.section, std::format("BooleanValue{}", index));
+        TeamFlagRow row{index};
+        if (id && !id->array && id->prefix == "st" && !id->opaque && id->value.size() == 1)
+            if (const auto* text = std::get_if<std::string>(&id->value[0]); text && text->size() <= objectiveTextLimit) {
+                row.id.emplace();
+                for (const auto c : *text) { if (c == '\n') *row.id += '\r'; *row.id += c; }
+            }
+        const bool oversized = id && !id->array && id->prefix == "st" && (id->warning == "reader_string_buffer_limit" ||
+            (id->value.size() == 1 && std::get_if<std::string>(&id->value[0]) && std::get<std::string>(id->value[0]).size() > objectiveTextLimit));
+        if (value && !value->array && value->prefix == "b") {
+            const auto wire = std::string_view(syntax().originalBytes).substr(value->syntax.begin, value->syntax.end - value->syntax.begin);
+            row.value = wire.empty() || (wire.front() != '0' && wire.front() != 'f' && wire.front() != 'F');
+        }
+        if (stopped) row.status = "ignored tail after first absent ID";
+        else if (oversized) { row.status = "oversized ID skipped"; ++result.stop; }
+        else if (!row.id) { row.status = "absent/unreadable ID ends loading"; stopped = true; }
+        else {
+            row.status = "initialized";
+            ++result.stop;
+        }
+        if (row.id) for (const auto& earlier : result.rows)
+            if (earlier.id && identifier(*earlier.id) == identifier(*row.id)) { row.duplicateOf = earlier.index; break; }
+        result.rows.push_back(std::move(row));
+    }
+    return result;
+}
+
 std::expected<void, LoadError> validateObjectiveBlock(std::string_view block)
 {
     auto syntax = decodeFit("FITini\r\n" + std::string(block) + "\r\nFITend\r\n");

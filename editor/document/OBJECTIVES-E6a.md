@@ -36,7 +36,7 @@ Text is limited to 2,000 characters after FIT assembly, before LF-to-CRLF conver
 
 PreviousObjectiveMustBeComplete supplies the previous-primary flag when the canonical key is absent/ignored; edits retain the alias. ActivateFlagIndex supplies a missing/ignored ActivateFlagID; ID edits add the canonical string without changing the index. Resource/flag IDs never rewrite string tables or ABL; model fields never regenerate one another.
 
-Saved state (IsActive, ActivationTime, IsResolved, ResolvedStatus, ChangedStatus) and TeamNBooleanFlags stay opaque. The game reads BooleanStringN/BooleanValueN until the first missing ID. Version/counts are structural: version 2 uses ObjectiveN roots/success conditions and Team0ObjectiveN for the other lists; version 3 uses TeamN blocks for eight teams.
+Saved state (IsActive, ActivationTime, IsResolved, ResolvedStatus, ChangedStatus) stays opaque. TeamNBooleanFlags is byte-exact and read-only: show reader initialization, skipped oversized IDs, ignored tails and first case-insensitive duplicate precedence. Version 2 uses ObjectiveN roots/success conditions and Team0ObjectiveN for other lists; version 3 uses TeamN blocks for eight teams.
 
 ## Preservation, unsupported entries and references
 
@@ -50,7 +50,7 @@ Independent typed decoding and expected changed outputs are required; passthroug
 
 ## Follow-ups
 
-Boolean payloads, condition Num/Time/area fields and existing WAV/text/technology/BIK/resource-text actions support authoring; numeric edits must round-trip through FIT conversion exactly. Action text keeps authored paths without runtime prefixes. Condition creation is restricted to condition lists and supplies required payloads atomically, including XY for specific targets and Guard. References use the existing resolution commands. Species-selectable action creation, `_RemoveStructure` and team-flag authoring/display remain deferred with exact bytes retained.
+E6c closed: four-list payload authoring and species-selectable creation, read-only team-flag initialization/resolution, per-entry unknown-species quarantine and skipped-group display. Team-flag authoring and `_RemoveStructure` authoring remain deferred; bytes stay exact. Templates/localization remain E6d; actual trigger/reward/video outcomes remain E6e.
 Unknown condition/action strings quarantine that entry with the actual DestroyAllEnemyUnits/PlayBIK fallback shown.
 Group predicates remain preserved and shown as skipped; numeric species fallback applies only to success conditions.
 Quarantined/skipped entries allow explicit deletion and whole-objective CRUD, but no individual edit/reorder; refuse tail awakening.

@@ -3,6 +3,7 @@
 #include "CommandHistory.h"
 #include "inifile.h"
 #include "objective_text.h"
+#include "objective_flags.h"
 #include <chrono>
 #include <fstream>
 #include <tuple>
@@ -11,6 +12,80 @@
 #include <bit>
 
 extern bool g_mc2TestStopFatal;
+namespace { std::string bytes(const std::filesystem::path& path); }
+
+TEST_CASE("reader/team flag gaps duplicates oversized IDs and default values match the runtime table")
+{
+    using namespace editor::document;
+    const auto& fixtures = editor::tests::inputs().byteGradeDirectory;
+    auto base = MissionDocument::read(fixtures / "fixture.fit", fixtures / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(base);
+    auto fit = base->fitBytes();
+    if (const auto table = fit.find("[Team0BooleanFlags]"); table != fit.npos) {
+        const auto end = fit.find('[', table + 1);
+        fit.erase(table, (end == fit.npos ? fit.find("FITend", table) : end) - table);
+    }
+    const auto huge = std::string(2001, 'x');
+    fit.insert(fit.find("FITend"),
+        "[Team0BooleanFlags]\r\nst BooleanString0 = \"Alpha\"\r\nb BooleanValue0 = TRUE\r\n"
+        "st BooleanString1 = \"aLPHA\"\r\nb BooleanValue1 = FALSE\r\n"
+        "st BooleanString2 = \"" + huge + "\"\r\nb BooleanValue2 = TRUE\r\n"
+        "st BooleanString3 = \"missing-value\"\r\n"
+        "st BooleanString4 = \"wrong-value-type\"\r\nl BooleanValue4 = 1\r\n"
+        "st BooleanString5 = \"noncanonical\"\r\nb BooleanValue5 = yes\r\n"
+        "st BooleanString6 = \"\r\nline\r\nflag\"\r\nb BooleanValue6 = TRUE\r\n"
+        "b BooleanValue7 = TRUE\r\n"
+        "st BooleanString8 = \"hidden\"\r\nb BooleanValue8 = TRUE\r\n"
+        "[Team1BooleanFlags]\r\nst BooleanString0 = \"ALPHA\"\r\nb BooleanValue0 = FALSE\r\n");
+    const auto output = std::filesystem::path("scratch/e6c-team-flags") / std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(output);
+    const auto check = [&](const std::string& source, const char* key, bool expected) {
+        auto doc = MissionDocument::decode(source, {base->pakBytes().begin(), base->pakBytes().end()}, "flags", {}, base->markerObjects()); REQUIRE(doc);
+        REQUIRE(doc->save(output / "flags", {}));
+        CHECK(bytes(output / "flags.fit") == source);
+        CHECK(bytes(output / "flags.pak") == bytes(fixtures / "fixture.pak"));
+        for (const bool disk : {false, true}) {
+            FitIniFile reader;
+            REQUIRE((disk ? reader.open((output / "flags.fit").string().c_str()) : reader.open(source.data(), static_cast<int>(source.size()))) == NO_ERR);
+            CBooleanArray game; game.load(0, &reader);
+            CHECK(game.getElementValue(key) == expected);
+            const auto flags = doc->teamFlags(0);
+            const auto* resolved = flags.resolve(key);
+            CHECK((resolved && resolved->value) == expected);
+            for (const auto& [id, value] : std::vector<std::pair<std::string, bool>>{
+                {"aLpHa", source.substr(source.find("BooleanValue0 = "), 20) == "BooleanValue0 = TRUE"},
+                {"wrong-value-type", false}, {"noncanonical", true}, {"line\r\nflag", true}, {"absent", false}, {huge, false}}) {
+                CAPTURE(id);
+                CHECK(game.getElementValue(id) == value);
+                const auto* row = flags.resolve(id); CHECK((row && row->value) == value);
+            }
+            game.setElementValue("AlPhA", false); CHECK_FALSE(game.getElementValue("alpha"));
+            CBooleanArray other; other.load(1, &reader); CHECK_FALSE(other.getElementValue("alpha"));
+            CBooleanArray missing; missing.load(2, &reader); CHECK_FALSE(missing.getElementValue("alpha"));
+        }
+        return doc->teamFlags(0);
+    };
+    const auto flags = check(fit, "hidden", false);
+    REQUIRE(flags.rows.size() == 9); CHECK(flags.stop == 7);
+    CHECK(flags.rows[1].duplicateOf == std::optional<std::size_t>{0});
+    CHECK(flags.rows[2].status == "oversized ID skipped");
+    CHECK(flags.rows[7].status == "absent/unreadable ID ends loading");
+    CHECK(flags.rows[8].status == "ignored tail after first absent ID");
+    CHECK_FALSE(flags.resolve("missing-value")->value);
+    auto changed = fit;
+    changed.insert(changed.find("b BooleanValue7"), "st BooleanString7 = \"gap-filled\"\r\n");
+    CHECK(check(changed, "hidden", true).stop == 9);
+    changed = fit; changed.replace(changed.find(huge), huge.size(), "short");
+    CHECK(check(changed, "short", true).rows[2].status == "initialized");
+    changed = fit; changed.replace(changed.find("BooleanValue0 = TRUE"), 20, "BooleanValue0 = FALSE");
+    check(changed, "alpha", false);
+    changed = fit; changed.insert(changed.find("st BooleanString4"), "b BooleanValue3 = TRUE\r\n");
+    check(changed, "missing-value", true);
+    changed = fit; changed.replace(changed.find("st BooleanString2"), 2, "st[1]");
+    auto array = MissionDocument::decode(changed, {base->pakBytes().begin(), base->pakBytes().end()}, "array-flags", {}, base->markerObjects()); REQUIRE(array);
+    CHECK(array->teamFlags(0).stop == 2); CHECK_FALSE(array->teamFlags(0).resolve("noncanonical"));
+    FitIniFile reader; REQUIRE(reader.open(changed.data(), static_cast<int>(changed.size())) == NO_ERR);
+    CBooleanArray game; game.load(0, &reader); CHECK_FALSE(game.getElementValue("noncanonical"));
+}
 
 namespace {
 std::string bytes(const std::filesystem::path& path)

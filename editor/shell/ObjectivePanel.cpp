@@ -23,6 +23,27 @@ void EntityPanels::objectives()
             }
         ImGui::EndCombo();
     }
+    const auto flags = document_.teamFlags(objectiveTeam_);
+    if (ImGui::TreeNode("Team BooleanFlags (read-only)")) {
+        ImGui::TextWrapped("Missing lookups read false. SetBooleanFlag updates the first case-insensitive match or creates a runtime flag.");
+        for (std::uint32_t team = 0; team < 8; ++team) {
+            const auto table = document_.teamFlags(team);
+            if (!table.section && team != objectiveTeam_) continue;
+            ImGui::TextWrapped("Team %u: first absent/unreadable BooleanString%zu ends loading.", team, table.stop);
+            if (!table.section) ImGui::TextUnformatted("No flag table initialized.");
+            for (const auto& flag : table.rows) {
+                ImGui::TextWrapped("BooleanString%zu: %s; value: %s; %s", flag.index,
+                    flag.id ? flag.id->c_str() : "<unreadable/oversized>", flag.value ? "true" : "false", flag.status.data());
+                if (flag.duplicateOf) ImGui::TextWrapped("Duplicate ID of BooleanString%zu (first initialized case-insensitive match wins).", *flag.duplicateOf);
+            }
+            if (table.section) {
+                const auto span = document_.section(*table.section)->syntax;
+                const auto& source = document_.syntax().originalBytes;
+                ImGui::TextUnformatted(source.data() + span.begin, source.data() + span.end);
+            }
+        }
+        ImGui::TreePop();
+    }
     if (button("objective.add", "Add objective")) {
         const auto result = history_.addObjective(objectiveTeam_);
         if (result) { objective_ = *result; status_ = "Applied"; }
@@ -244,9 +265,14 @@ void EntityPanels::objectives()
             }
             for (std::size_t j = 0; j < selected->entries[i].size(); ++j) {
                 const auto& entry = selected->entries[i][j];
-                const auto row = document_.section(entry.section)->name;
+                const auto row = document_.section(entry.section)->name + (entry.policy.empty() ? "" : " [" + std::string(entry.policy) + "]");
                 if (choice(key + ".select." + std::to_string(j), row.c_str(), objectiveEntry_ == entry.section)) {
                     objectiveEntry_ = entry.section; entryRevision_ = ~std::uint64_t{};
+                }
+                if (entry.flag && entry.flag->id) {
+                    const auto* resolved = flags.resolve(*entry.flag->id);
+                    if (resolved) ImGui::TextWrapped("Resolves to Team%uBooleanFlags / BooleanString%zu: %s (initial value %s)", selected->team, resolved->index, resolved->id->c_str(), resolved->value ? "true" : "false");
+                    else ImGui::TextUnformatted("not initialized: reads false");
                 }
                 if (objectiveEntry_ != entry.section) continue;
                 if (!entry.policy.empty()) ImGui::TextWrapped("%s", entry.policy.data());
@@ -346,7 +372,7 @@ void EntityPanels::objectives()
             }
             ImGui::PopID();
         }
-        ImGui::TextWrapped("Team BooleanFlags and saved runtime state are preserved. Quarantined or skipped entries can be deleted explicitly; individual editing and reordering are refused.");
+        ImGui::TextWrapped("Team BooleanFlags are read-only; saved runtime state is preserved. Quarantined or skipped entries can be deleted explicitly; individual editing and reordering are refused.");
     }
     ImGui::PopID();
 }

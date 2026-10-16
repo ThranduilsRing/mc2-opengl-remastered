@@ -2,6 +2,7 @@ add_executable(editor_objective_reader_tests EXCLUDE_FROM_ALL
     tests/test_main.cpp tests/test_objective_reader.cpp
     "${CMAKE_SOURCE_DIR}/tests/unit/heap_shim.cpp"
     "${CMAKE_SOURCE_DIR}/code/objective_text.cpp"
+    "${CMAKE_SOURCE_DIR}/code/objective_flags.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/gameos/utils/mc2log.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/file.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/inifile.cpp"

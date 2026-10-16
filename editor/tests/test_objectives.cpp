@@ -594,9 +594,29 @@ TEST_CASE("objectives/policy and collision rejection cannot consume history or f
     for (const auto list : {0, 2, 3}) {
         const auto entry = doc->objective(owner)->entries[list][0].section;
         CHECK_FALSE(doc->objective(owner)->entries[list][0].policy.empty());
+        if (list == 0) CHECK(doc->objective(owner)->entries[list][0].policy.find("DestroyAllEnemyUnits") != std::string_view::npos);
+        if (list == 2) CHECK(doc->objective(owner)->entries[list][0].policy == "unimplemented group predicate; game skips entry");
         rejected([&] { return history.reorderObjectiveEntry(entry, 0); });
         rejected([&] { return history.setObjectiveFlag(entry, std::string("bad"), 0, false); });
     }
+    const auto initialized = doc->teamFlags(0);
+    REQUIRE(initialized.resolve("EXISTING")); CHECK(initialized.resolve("existing")->value);
+    CHECK_FALSE(doc->teamFlags(1).resolve("existing"));
+    CHECK_FALSE(history.setText(doc->find("Team0BooleanFlags", "BooleanString0")->id, "renamed", "flag"));
+    CHECK(doc->fitBytes() == fixture());
+    auto unknown = fixture();
+    unknown.replace(unknown.find("ul FailureActionSpecies = 200"), std::string_view("ul FailureActionSpecies = 200").size(), "st FailureActionSpeciesString = \"VendorAction\"");
+    auto quarantined = MissionDocument::decode(unknown, packet(), "unknown-action", {}); REQUIRE(quarantined);
+    CHECK(quarantined->objectives()[0].entries[3][0].policy.find("PlayBIK") != std::string_view::npos);
+    CommandHistory quarantineHistory(*quarantined);
+    REQUIRE(quarantineHistory.setObjectiveFlag(quarantined->objectives()[0].entries[1][0].section, std::string("editable"), 0, false));
+    REQUIRE(quarantineHistory.undo()); CHECK(quarantined->fitBytes() == unknown);
+    auto supported = fixture();
+    supported.replace(supported.find("VendorPredicate"), 15, "DestroyAllEnemyUnits");
+    supported.replace(supported.find("DestroyEnemyUnitGroup"), 21, "DestroyAllEnemyUnits");
+    auto controlPolicy = MissionDocument::decode(supported, packet(), "supported-policy", {}); REQUIRE(controlPolicy);
+    CHECK(controlPolicy->objectives()[0].entries[0][0].policy.empty());
+    CHECK(controlPolicy->objectives()[0].entries[2][0].policy.empty());
     const auto flag = doc->objective(owner)->entries[1][0].section;
     rejected([&] { CommandHistory tiny(*doc, 1, [&](const auto& line) { logs.push_back(line); });
         return tiny.addObjectiveAction(owner, 1, {ActionSpecies::flag, {std::string("valid"), true}}); });

@@ -165,6 +165,19 @@ struct ObjectiveEntry {
     std::string_view policy;
 };
 inline constexpr std::size_t objectiveTextLimit = 2000;
+struct TeamFlagRow {
+    std::size_t index{};
+    std::optional<std::string> id;
+    bool value{};
+    std::string_view status;
+    std::optional<std::size_t> duplicateOf;
+};
+struct TeamFlags {
+    std::optional<NodeId> section;
+    std::size_t stop{};
+    std::vector<TeamFlagRow> rows;
+    const TeamFlagRow* resolve(std::string_view id) const;
+};
 struct ObjectiveFieldSpec {
     std::string_view key, prefix;
     std::size_t type;
@@ -246,6 +259,7 @@ public:
     const std::vector<Entity>& entities() const { return entities_; }
     std::span<const std::uint32_t> markerObjects() const { return markerObjects_; }
     const std::vector<Objective>& objectives() const { return objectives_; }
+    TeamFlags teamFlags(std::uint32_t team) const;
     const Objective* objective(NodeId id) const;
     const ObjectiveScalar* objectiveScalar(NodeId objective, std::string_view key) const;
     const Field* field(NodeId id) const;
