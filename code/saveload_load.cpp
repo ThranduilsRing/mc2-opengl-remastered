@@ -151,13 +151,6 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 void Mission::loadMissionScript(MissionLoadFrame& f) {
 	auto& loadFile = f.loadFile; auto& result = f.result; auto& currentPacket = f.currentPacket;
 	auto& tmpString = f.tmpString;
-	//----------------------
-	// Load ABL Libraries...
-	// ASS U ME that these are loaded when I call ABLi_Load
-	
-	//---------------------------
-	// Load the mission script...
-	//Create a dummy file to read the packet into.
 	FullPathFileName dmpName;
 	dmpName.init(savePath,tmpString,".abl");
 
@@ -165,7 +158,6 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 		STOP(("ABL SaveData missing from IN-Mission Save"));
 
 	{
-		//Create a dummy file to read the packet into.
 		File dmyFile;
 		result = dmyFile.create(dmpName);
 		DWORD fileSz = loadFile.getPacketSize();
@@ -177,7 +169,6 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 	
 		dmyFile.close();
 		free(tmpRAM);
-		//---------------------------
 	}
 
 	ABLFile ablFile;
@@ -192,8 +183,13 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 
 #ifdef USE_ABL_LOAD
 	missionBrain = ABLi_getModule(missionScriptHandle);
-	if (!missionBrain)
-		STOP(("Could not find mission brain in In-Mission Save"));
+	if (!missionBrain) {
+		if (missionScriptHandle != -1)
+			mc2::fmt::print_err("[ABL_LOAD_BAD] missing mission brain handle={}\n", missionScriptHandle);
+		missionBrainParams = nullptr;
+		missionBrainCallback = nullptr;
+		return;
+	}
 
 	missionBrain->setName("Mission");
 

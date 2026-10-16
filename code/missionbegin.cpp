@@ -333,18 +333,20 @@ void MissionBegin::begin()
 		ZoneScopedN("MissionBegin::begin tutorialBrain");
 		long numErrors, numLinesProcessed;
 		logisticsScriptHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
-		gosASSERT(logisticsScriptHandle >= 0);
-		
-		logisticsBrain = new ABLModule;
-		gosASSERT(logisticsBrain != NULL);
-			
+		if (logisticsScriptHandle >= 0) {
+			logisticsBrain = new ABLModule;
+			gosASSERT(logisticsBrain != NULL);
+
 	#ifdef _DEBUG
-		long brainErr = 
+			long brainErr =
 	#endif
-			logisticsBrain->init(logisticsScriptHandle);
-		gosASSERT(brainErr == NO_ERR);
-		
-		logisticsBrain->setName("Logistics");
+				logisticsBrain->init(logisticsScriptHandle);
+			gosASSERT(brainErr == NO_ERR);
+
+			logisticsBrain->setName("Logistics");
+		} else {
+			logisticsBrain = nullptr;
+		}
 	}
 	else
 	{

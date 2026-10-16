@@ -145,7 +145,7 @@ void Mission::save (const char *saveFileName)
 
 	tempFile.writeIdLong("OperationId"							, operationId);
 	tempFile.writeIdLong("MissionId"							, missionId);
-	tempFile.writeIdLong("ABLScriptHandle"						, missionBrain->getRealId());
+	tempFile.writeIdLong("ABLScriptHandle"						, missionBrain ? missionBrain->getRealId() : -1);
 	tempFile.writeIdBoolean("Active"							, active);
 	tempFile.writeIdFloat("ActualTime"							, actualTime);
 	tempFile.writeIdFloat("RunningTime"							, runningTime);

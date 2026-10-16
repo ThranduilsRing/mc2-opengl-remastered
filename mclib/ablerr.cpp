@@ -165,25 +165,14 @@ void ABL_Assert (bool test, long errCode, const char* s) {
 
 //***************************************************************************
 
-void syntaxError (int errCode) {
-
-	// Deduplicate: print only the first occurrence of each (file, line, errCode) triple.
-	static long s_lastFile = -1, s_lastLine = -1, s_lastCode = -1;
-	bool isDup = (FileNumber == s_lastFile && lineNumber == s_lastLine && errCode == s_lastCode);
-	s_lastFile = FileNumber; s_lastLine = lineNumber; s_lastCode = errCode;
-
-	char errMessage[MAXLEN_ERROR_MESSAGE];
-	mc2::fmt::to_buf(errMessage, "SYNTAX ERROR {} [line {:d}] - (type {:d}) {} \"{}\"\n", mc2::fmt::safe(SourceFiles[FileNumber]), mc2::fmt::as_i32(lineNumber), mc2::fmt::as_i32(errCode), mc2::fmt::safe(syntaxErrorMessages[errCode]), mc2::fmt::safe(wordString));
-	if (!isDup)
-		ABL_Fatal(0, errMessage);
-	
-	*tokenp = '\0';
-	errorCount++;
-	
-	if (errorCount > MAX_SYNTAX_ERRORS) {
-		mc2::fmt::to_buf(errMessage, "Way too many syntax errors. ABL aborted.\n");
-		ABL_Fatal(0, errMessage);
-	}
+[[noreturn]] void syntaxError (int errCode) {
+	if (errCode < 0 || errCode >= NUM_ABL_SYNTAX_ERRORS)
+		errCode = ABL_ERR_SYNTAX_UNEXPECTED_TOKEN;
+	mc2::fmt::print_err("SYNTAX ERROR {} [line {:d}] - (type {:d}) {}\n",
+		mc2::fmt::safe(SourceFiles[FileNumber]), mc2::fmt::as_i32(lineNumber),
+		mc2::fmt::as_i32(errCode), mc2::fmt::safe(syntaxErrorMessages[errCode]));
+	errorCount = 1;
+	throw ABLSyntaxFailure{};
 }
 
 //---------------------------------------------------------------------------

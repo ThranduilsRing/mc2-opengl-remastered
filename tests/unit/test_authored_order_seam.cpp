@@ -18,9 +18,209 @@
 #include <memory>
 #include <regex>
 #include <set>
+#include "abl.h"
+#include "ablscan.h"
+#include <io.h>
+#include <stdexcept>
+#include <cstring>
 
 bool missionFitOpordApplies(const MissionFitBrain&, unsigned long, bool);
 extern bool InitWayPath;
+
+namespace {
+struct CompileFixture {
+    std::set<void*> blocks;
+    std::map<std::string, std::string> sources;
+    int openFiles = 0;
+    long (*previousRemaining)(void*) = ABLFile::remainingCB;
+    struct Reader { std::string text; size_t offset = 0; };
+    static CompileFixture* current;
+    static void* allocate(unsigned long size) {
+        void* block = std::malloc(size);
+        current->blocks.insert(block);
+        return block;
+    }
+    static void release(void* block) {
+        current->blocks.erase(block);
+        std::free(block);
+    }
+    static long open(void** file, const char* name) {
+        auto found = current->sources.find(name);
+        if (found == current->sources.end()) return -1;
+        *file = new Reader{found->second};
+        ++current->openFiles;
+        return 0;
+    }
+    static long close(void** file) {
+        delete static_cast<Reader*>(*file);
+        *file = nullptr;
+        --current->openFiles;
+        return 0;
+    }
+    static bool eof(void* file) {
+        const auto& reader = *static_cast<Reader*>(file);
+        return reader.offset == reader.text.size();
+    }
+    static long read(void* file, unsigned char* buffer, long length) {
+        auto& reader = *static_cast<Reader*>(file);
+        long count = 0;
+        while (count < length && reader.offset < reader.text.size())
+            buffer[count++] = reader.text[reader.offset++];
+        return count;
+    }
+    static long remaining(void* file) {
+        const auto& reader = *static_cast<Reader*>(file);
+        return static_cast<long>(reader.text.size() - reader.offset);
+    }
+    CompileFixture() {
+        current = this;
+        ABLi_init(65536, 20480, 20, 100, allocate, allocate, allocate, allocate,
+            release, release, release, release, nullptr, open, close, eof,
+            read, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+            nullptr, [](long, const char* message) { throw std::runtime_error(message); });
+        ABLFile::remainingCB = remaining;
+        extern char* codeBuffer;
+        std::memset(codeBuffer, 0xa5, 20480);
+    }
+    ~CompileFixture() {
+        ABLi_close();
+        ABLFile::remainingCB = previousRemaining;
+        for (void* block : blocks) std::free(block);
+        current = nullptr;
+    }
+};
+CompileFixture* CompileFixture::current = nullptr;
+
+std::string compileBytes(const CompileFixture& fixture, const Routine& routine) {
+    // Symbol addresses vary between processes; retain their names in the byte control.
+    std::string result;
+    constexpr char hex[] = "0123456789abcdef";
+    for (long i = 0; i < routine.codeSegmentSize;) {
+        SymTableNodePtr symbol = nullptr;
+        if (i + sizeof(symbol) <= routine.codeSegmentSize) {
+            std::memcpy(&symbol, routine.codeSegment + i, sizeof(symbol));
+            if (!fixture.blocks.contains(symbol)) symbol = nullptr;
+        }
+        if (symbol) {
+            result += "<" + std::string(symbol->name) + ">";
+            i += sizeof(symbol);
+        } else {
+            const auto byte = static_cast<unsigned char>(routine.codeSegment[i++]);
+            result += hex[byte >> 4]; result += hex[byte & 15];
+        }
+    }
+    return result;
+}
+
+struct CompileLog {
+    FILE* file = nullptr;
+    int saved = -1;
+    CompileLog() {
+        const auto path = std::filesystem::temp_directory_path() / "abl-r1-compile-stderr.txt";
+        file = std::fopen(path.string().c_str(), "w+b");
+        if (!file) throw std::runtime_error("cannot capture compiler stderr");
+        std::fflush(stderr);
+        saved = _dup(_fileno(stderr));
+        _dup2(_fileno(file), _fileno(stderr));
+    }
+    ~CompileLog() {
+        std::fflush(stderr);
+        _dup2(saved, _fileno(stderr));
+        _close(saved);
+        std::fclose(file);
+    }
+    std::string text() {
+        std::fflush(stderr);
+        std::rewind(file);
+        std::string result;
+        for (int ch; (ch = std::fgetc(file)) != EOF;) result += static_cast<char>(ch);
+        return result;
+    }
+};
+}
+
+TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
+    extern int32_t NumModulesRegistered;
+    extern ModuleEntryPtr ModuleRegistry;
+    extern long eternalOffset;
+    extern TypePtr IntegerTypePtr;
+    extern SymTableNodePtr SymTableDisplay[MAX_NESTING_LEVEL];
+    extern bool EnterStateSymbol;
+    extern bool Crunch;
+    const std::string valid = "module retry;\nvar\neternal integer retained;\ncode\nendmodule.\n";
+    struct Failure { const char* name; std::string source; const char* error; bool library = false; };
+    const Failure failures[] = {
+        {"undefined expression", valid.substr(0, valid.find("code")) + "code\nundefined = ;\nendmodule\n", "Undefined identifier"},
+        {"failed state handle argument", "module retry;\ncode\ngetstatehandle(undefined);\nendmodule.\n", "Undefined identifier"},
+        {"failed suppressed print argument", "module retry;\ncode\nprint(undefined);\nendmodule.\n", "Undefined identifier"},
+        {"failed eternal array allocation", "module retry;\nvar\neternal integer[3] retained;\ncode\nundefined = ;\nendmodule.\n", "Undefined identifier"},
+        {"missing period after bytecode allocation", valid.substr(0, valid.size() - 2), "Missing period"},
+        {"unterminated comment", "/* unterminated", "Unexpected end-of-file"},
+        {"unterminated disabled debug block", "#debug_start\nunterminated\n", "Unexpected end-of-file"},
+        {"missing header", "code\nendmodule.\n", "Missing module"},
+        {"failed first library", "library retry;\ncode\nundefined = ;\nendlibrary.\n", "Undefined identifier", true},
+        {"failed include", "#include \"include.abl\"\n", "Missing module"},
+    };
+    for (const auto& failure : failures) SUBCASE(failure.name) {
+    CompileFixture fixture;
+    fixture.sources["bad.abl"] = failure.source;
+    fixture.sources["include.abl"] = "code\nendmodule.\n";
+    fixture.sources["valid.abl"] = valid;
+    const auto blockCount = fixture.blocks.size();
+    const auto typeCount = IntegerTypePtr->numInstances;
+    const auto root = SymTableDisplay[0];
+    CompileLog log;
+    long errors = 0;
+    if (failure.library)
+        CHECK(ABLi_loadLibrary("bad.abl", &errors) == nullptr);
+    else
+        CHECK(ABLi_preProcess("bad.abl", &errors) < 0);
+    CHECK(errors == 1);
+    CHECK(fixture.openFiles == 0);
+    CHECK(fixture.blocks.size() == blockCount);
+    CHECK(NumModulesRegistered == 0);
+    CHECK(eternalOffset == 0);
+    CHECK(IntegerTypePtr->numInstances == typeCount);
+    CHECK(SymTableDisplay[0] == root);
+    CHECK_FALSE(EnterStateSymbol);
+    CHECK(Crunch);
+    const auto message = log.text();
+    CHECK(std::count(message.begin(), message.end(), '\n') == 1);
+    CHECK(message.find(failure.name == std::string("failed include") ? "include.abl [line " : "bad.abl [line ") != std::string::npos);
+    CHECK(message.find(failure.error) != std::string::npos);
+    REQUIRE(ABLi_preProcess("valid.abl", &errors) == 0);
+    CHECK(errors == 0);
+    CHECK(IntegerTypePtr->numInstances == typeCount + 1);
+    CHECK(searchSymTable("retry", SymTableDisplay[0]) == ModuleRegistry[0].moduleIdPtr);
+    CHECK(log.text() == message);
+    }
+}
+
+TEST_CASE("ABLCompile/statements includes and library calls preserve parent bytecode after rejection") {
+    extern ModuleEntryPtr ModuleRegistry;
+    CompileFixture fixture;
+    fixture.sources["helpers.abx"] = "library helpers;\nfunction bump: integer;\ncode\nreturn(7);\nendfunction;\ncode\nendlibrary.\n";
+    fixture.sources["vars.abi"] = "var\neternal integer retained;\n";
+    fixture.sources["valid.abl"] = "module retry;\n#include \"vars.abi\"\ncode\nretained = helpers.bump;\nretained = retained + 1;\nprint(\"ordinary text\");\nendmodule.\n";
+    REQUIRE(ABLi_loadLibrary("helpers.abx") != nullptr);
+    SUBCASE("clean compile") {}
+    SUBCASE("undefined state handle does not turn a later string into a state") {
+        fixture.sources["bad.abl"] = "module broken;\ncode\ngetstatehandle(undefined);\nendmodule.\n";
+        CompileLog log;
+        CHECK(ABLi_preProcess("bad.abl") < 0);
+    }
+    SUBCASE("malformed suppressed print does not suppress the next module") {
+        fixture.sources["bad.abl"] = "module broken;\ncode\nprint(undefined);\nendmodule.\n";
+        CompileLog log;
+        CHECK(ABLi_preProcess("bad.abl") < 0);
+    }
+    REQUIRE(ABLi_preProcess("valid.abl") == 1);
+    const auto& routine = ModuleRegistry[1].moduleIdPtr->defn.info.routine;
+    CHECK(searchSymTableForState("ordinary text", routine.localSymTable) == nullptr);
+    constexpr auto expectedBytesFromD419c25bb =
+        "1a4a01<retained>0a01<bump>0e4a01<retained>0a01<retained>0902<1>0e2b12a5";
+    CHECK(compileBytes(fixture, routine) == expectedBytesFromD419c25bb);
+}
 
 namespace {
 // Supply world resources without replacing production constructors or order handling.

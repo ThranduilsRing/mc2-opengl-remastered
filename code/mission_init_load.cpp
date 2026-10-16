@@ -118,14 +118,11 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 			else
 			{
 				long moduleHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
-				gosASSERT(moduleHandle >= 0);
 				if (moduleHandle >= 0 && numErrors == 0)
 					soakBrainsLoaded++;
 				else
 				{
 					soakBrainsFailed++;
-					mc2::fmt::print_out("[SOAK] WARN abl brain load failed name={} errors={:d}\n",
-						mc2::fmt::safe(moduleName), mc2::fmt::as_i32((long)numErrors));
 				}
 
 #ifdef _DEBUG
@@ -153,19 +150,10 @@ void Mission::soakAutowinCheck(MissionInitFrame& f) {
 void Mission::loadBrainParamsPhase(MissionInitFrame& f) {
 	auto& result = f.result; auto& numWarriors = f.numWarriors; auto& loadBrainParameters = f.loadBrainParameters;
 	if (loadBrainParameters) {
-		//---------------------------------------------------------------
-		// Load the brain parameter file and load 'em for each warrior...
-		// BRAIN-EMPTY-BRAIN-SKIP-1: inline-Brain warriors carry no ABL brain (skipped above),
-		// so loadBrainParameters would Fatal(0,"NULL brain"). Skip them under the same gate.
-		static const bool inlineEmptySkipParams =
-			mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">();
 		for (unsigned long i = 1; i <= numWarriors; i++) {
-			if (inlineEmptySkipParams && MechWarrior::warriorList[i] &&
-			    !MechWarrior::warriorList[i]->getBrain())
+			if (MechWarrior::warriorList[i] && !MechWarrior::warriorList[i]->getBrain())
 				continue;
-			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1):
-			// warriorList[i] is NULL when newWarrior() ran out of slots above
-			// (the "Too many pilots" STOP continues in release) -- null-deref.
+			// Exhausting the warrior slots can leave a missing pilot.
 			if (!MC2_VERIFY(MechWarrior::warriorList[i] != NULL,
 					"Mission::init: warriorList[%lu] is NULL (loadBrainParameters)", i))
 				continue;	// log mode: skip the missing warrior

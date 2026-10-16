@@ -383,16 +383,13 @@ void skipLineComment (void) {
 
 void skipBlockComment (void) {
 
-	//----------------------------------------------------
-	// Snag the asterisk, then continue until we encounter
-	// the closing "*/"...
 	DumbGetCharOn = true;
 	getChar();
 	getChar();
 	do {
-		while ((curChar != '*') && (curChar != CHR_EOF))
+		while ((curChar != '*') && (curChar != CHAR_EOF))
 			getChar();
-		if (curChar == CHR_EOF) {
+		if (curChar == CHAR_EOF) {
 			syntaxError(ABL_ERR_SYNTAX_UNEXPECTED_EOF);
 			curToken = TKN_ERROR;
 		}
@@ -427,8 +424,6 @@ void languageDirective (void) {
 	S_strlwr(directive);
 
 	if (strcmp(directive, "include") == 0) {
-		//---------------------
-		// INCLUDE directive...
 		getChar();
 		if (curChar == '"') {
 			getChar();
@@ -439,12 +434,8 @@ void languageDirective (void) {
 				getChar();
 			}
 			fileName[fileNameLength] = '\0';
-			//-----------------------------------------------------------------------
-			// The language directive should be on a line by itself, since everything
-			// after the directive on this line is ignored...
+			// Include directives occupy a complete source line.
 			DumbGetCharOn = false;
-			//----------------------------------------------------
-			// Now that we have the file name, let's include it...
 			long openErr = ABL_NO_ERR;
 			if ((openErr = openSourceFile(fileName)) != ABL_NO_ERR) {
 				syntaxError(ABL_ERR_SYNTAX_SOURCE_FILE_OPEN);
@@ -457,8 +448,6 @@ void languageDirective (void) {
 		}
 		}
 	else if (strcmp(directive, "include_") == 0) {
-		//---------------------
-		// INCLUDE directive...
 		getChar();
 		if (curChar == '"') {
 			getChar();
@@ -469,16 +458,10 @@ void languageDirective (void) {
 				getChar();
 			}
 			fileName[fileNameLength] = '\0';
-			//-----------------------------------------------------------------------
-			// The language directive should be on a line by itself, since everything
-			// after the directive on this line is ignored...
+			// Include directives occupy a complete source line.
 			DumbGetCharOn = false;
-			//----------------------------------------------------
-			// Now that we have the file name, let's include it...
 			long openErr = ABL_NO_ERR;
 
-			//---------------------------------------
-			// What's the current module's directory?
 			char fullPath[255];
 			long curChar = static_cast<long>(strlen(SourceFiles[0]));
 #ifdef LINUX_BUILD
@@ -550,9 +533,8 @@ void languageDirective (void) {
 		if (!DebugCodeEnabled) {
 			long nestedLevel = 1;
 			getChar();
-//			getChar();
 			do {
-				while ((curChar != '#') && (curChar != CHR_EOF))
+				while ((curChar != '#') && (curChar != CHAR_EOF))
 					getChar();
 				if (curChar == '#') {
 					char directive2[32];
@@ -571,7 +553,7 @@ void languageDirective (void) {
 							stillCutting = false;
 					}
 					}
-				else if (curChar == CHR_EOF) {
+				else if (curChar == CHAR_EOF) {
 					syntaxError(ABL_ERR_SYNTAX_UNEXPECTED_EOF);
 					curToken = TKN_ERROR;
 					}

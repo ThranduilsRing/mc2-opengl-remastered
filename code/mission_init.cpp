@@ -875,7 +875,7 @@ void Mission::initAblCoreLibs(MissionInitFrame& f) {
 		}
 		numErrors = 0;
 		ABLModulePtr library = ABLi_loadLibrary(libPath, &numErrors, &numLinesProcessed);
-		if (ablCoreTrace || !library || numErrors > 0)
+		if (ablCoreTrace)
 			mc2::fmt::print_err("[ABL_CORE] load {}.abx -> {} (errors={:d})\n", mc2::fmt::safe(lib.name), mc2::fmt::safe(library ? "OK" : "NULL"), mc2::fmt::as_i32(numErrors));
 	}
 }
@@ -884,23 +884,12 @@ void Mission::initAblCoreLibs(MissionInitFrame& f) {
 void Mission::initMissionScript(MissionInitFrame& f) {
 	auto& result = f.result; auto& numErrors = f.numErrors; auto& numLinesProcessed = f.numLinesProcessed;
 	result = missionFile->seekBlock("Script");
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [Script] block");
 
 	result = missionFile->readIdString("ScenarioScript",missionScriptName,79);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
-	// missionScriptName drives ABLi_preProcess of the scenario .abl below; a failed
-	// read leaves it uninitialized (the MC2_BRAIN_INLINE_EMPTY_SKIP fallback below
-	// only triggers on an *empty*, not garbage, name).
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [Script] missing ScenarioScript");
 
-	// FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave
-	// ScenarioScript empty — the per-warrior brains move to inline Brain{} blocks and mission
-	// logic to *_specials.fit — but preserve the original scenario name as LegacyScenarioScript.
-	// An empty name builds "<missionPath>/.abl" and ABLi_preProcess STOPs before the mission can
-	// load. Fall back to the legacy name so the original scenario ABL (objectives/events) still
-	// drives. Gate MC2_BRAIN_INLINE_EMPTY_SKIP (default OFF); stock ScenarioScript is never empty
-	// so stock is byte-identical.
+	// Converted missions retain their ABL objectives and events under LegacyScenarioScript.
 	if (missionScriptName[0] == '\0' &&
 	    mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">()) {
 		char legacyScriptName[80] = {0};
@@ -912,16 +901,20 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 		}
 	}
 
-	visualTuning_applyProfile(missionScriptName);  // MISSION-VISUAL-TUNING-1
-	terrainMaterials_apply(missionScriptName);     // TERRAIN-MATERIAL-LIB-1: applied AFTER
-	                                                // visual_tuning.json so it wins on any
-	                                                // overlapping terrain material key.
+	// Explicit terrain materials take precedence over the visual profile.
+	visualTuning_applyProfile(missionScriptName);
+	terrainMaterials_apply(missionScriptName);
 
 	FullPathFileName brainFileName;
 	brainFileName.init(missionPath, missionScriptName, ".abl");
 	
 	missionScriptHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
-	gosASSERT(missionScriptHandle >= 0);
+	if (missionScriptHandle < 0) {
+		missionBrain = nullptr;
+		missionBrainParams = nullptr;
+		missionBrainCallback = nullptr;
+		return;
+	}
 	
 	missionBrain = new ABLModule;
 	gosASSERT(missionBrain != NULL);

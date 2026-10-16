@@ -185,8 +185,10 @@ TypePtr createType (void) {
 
 TypePtr setType (TypePtr type) {
 
-	if (type)
+	if (type) {
+		ablRememberTypeUse(type);
 		type->numInstances++;
+	}
 
 	return(type);
 }
@@ -425,8 +427,6 @@ SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) 
 	newNode->level = (unsigned char)level;
 	newNode->labelIndex = 0;
 
-	//-------------------------------------
-	// Find where to put this new symbol...
 	SymTableNodePtr curNode = *ptrToNodePtr;
 	SymTableNodePtr parentNode = nullptr;
 	while (curNode) {
@@ -438,6 +438,9 @@ SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) 
 		curNode = *ptrToNodePtr;
 	}
 	newNode->parent = parentNode;
+	// Display roots have their own snapshot; temporary root parameters cannot outlive insertion.
+	if (parentNode)
+		ablRememberSymbolInsertion(ptrToNodePtr);
 	*ptrToNodePtr = newNode;
 
 	return(newNode);
