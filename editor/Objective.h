@@ -675,11 +675,11 @@ public:
 	const ObjectiveModelDefinition& ModelDefinition() const { return m_modelDefinition; }
 };
 
-class CObjectives : public/*maybe protected*/ EList <CObjective *, CObjective *> {
+class CObjectives {
 private:
-	typedef EList <CObjective *, CObjective *> inherited;
 	int m_alignment;
 public:
+	std::vector<CObjective*> entries;
 	CObjectives() { m_alignment = 0; }
 	CObjectives(int alignment) { m_alignment = alignment; }
 	CObjectives(const CObjectives &master) { (*this) = master; }

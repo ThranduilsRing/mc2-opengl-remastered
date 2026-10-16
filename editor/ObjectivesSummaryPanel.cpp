@@ -3,7 +3,7 @@
 * DESCRIPTION: Read-only objectives explainer / mission-logic viewer.
 *   Phase 2 polish: three-pane shell (Objective List | WHEN/THEN flow |
 *   Inspector). Walks EditorData::instance->TeamsRef() -> per team CObjectives
-*   (an EList of CObjective*).
+*   (owned CObjective pointers).
 *
 *   LEFT pane lists every objective grouped first by team, then by CATEGORY
 *   (Primary / Secondary / Hidden Triggers) with expanded status badges per row
@@ -459,7 +459,7 @@ static void objDrawTeamCategories(CObjectives& objs, int team, bool* selStillVal
         // Count members of this category first; skip empty sections.
         int catCount = 0;
         {
-            for (CObjectives::EIterator it = objs.Begin(); !it.IsDone(); it++)
+            for (auto it = objs.entries.begin(); it != objs.entries.end(); it++)
             {
                 CObjective* obj = *it;
                 if (obj && objCategory(obj) == kCatOrder[c])
@@ -477,7 +477,7 @@ static void objDrawTeamCategories(CObjectives& objs, int team, bool* selStillVal
 
         ImGui::Indent();
         int idx = 0;   // index across the team's full list (stable per objective)
-        for (CObjectives::EIterator it = objs.Begin(); !it.IsDone(); it++, ++idx)
+        for (auto it = objs.entries.begin(); it != objs.entries.end(); it++, ++idx)
         {
             CObjective* obj = *it;
             if (!obj || objCategory(obj) != kCatOrder[c])
@@ -531,13 +531,13 @@ void ObjectivesSummaryPanel::Draw()
     for (int t = 0; t < GAME_MAX_PLAYERS; ++t)
     {
         CObjectives& objs = teams.TeamRef(t).ObjectivesRef();
-        if (objs.Count() == 0)
+        if (objs.entries.size() == 0)
             continue;
         anyObjectives = true;
 
         char teamHdr[64];
         std::snprintf(teamHdr, sizeof(teamHdr), "Team %d (%lu)###objteam%d",
-                      t, (unsigned long)objs.Count(), t);
+                      t, (unsigned long)objs.entries.size(), t);
         if (!ImGui::CollapsingHeader(teamHdr, ImGuiTreeNodeFlags_DefaultOpen))
             continue;
 

@@ -71,7 +71,7 @@ bool EditorInterface::runDefinitionSmoke()
         && replaceValue(authored, "Cameras", "ZoomMax", "1.25");
     if (!ok || !writeFixture(fit, authored) || !EditorData::initTerrainFromPCV(pak)) return false;
     auto getUnit = [] { return EditorObjectMgr::instance()->getUnits().front(); };
-    auto getObjective = [] { return *EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin(); };
+    auto getObjective = [] { return *EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.begin(); };
     const auto storedPart = getUnit()->partDefinition();
     const auto storedModel = getObjective()->ModelDefinition();
     ok = storedPart && storedPart->controlDataType == 7 && storedPart->objectProfile == "Authored_Profile"
@@ -131,7 +131,7 @@ bool EditorInterface::runDefinitionSmoke()
         "NavMarker0", "xPos", "yPos") && ok;
     CSpecificStructureObjectiveCondition* targetCondition = nullptr;
     auto& objectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef();
-    for (auto objective = objectives.Begin(); !objective.IsDone() && !targetCondition; objective++)
+    for (auto objective = objectives.entries.begin(); objective != objectives.entries.end() && !targetCondition; objective++)
         for (auto condition = (*objective)->m_conditions.entries.begin(); condition != (*objective)->m_conditions.entries.end() && !targetCondition; condition++)
             targetCondition = dynamic_cast<CSpecificStructureObjectiveCondition*>(*condition);
     ok = verifyTransform(targetCondition ? targetCondition->BuildingPtr() : nullptr,
@@ -173,7 +173,7 @@ bool EditorInterface::runDefinitionSmoke()
     fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=catalog_command_undo_redo_reload ok=%d\n", ok);
 
     // Oversized fields are ignored without discarding the rest of the mission.
-    const auto expectedObjectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Count();
+    const auto expectedObjectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.size();
     for (const char* field : {"Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel"})
     {
         std::string malformed = original;
@@ -188,10 +188,10 @@ bool EditorInterface::runDefinitionSmoke()
             : std::string_view(field) == "ResetStatusFlagID" ? objective->ResetStatusFlagID()
             : objective->ModelDefinition().name;
         const bool rejected = value.empty();
-        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin();
+        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.begin();
         after++;
-        const bool following = !after.IsDone() && (*after)->Title() == "after_objective"
-            && getUnit() && EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Count() == expectedObjectives;
+        const bool following = after != EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.end() && (*after)->Title() == "after_objective"
+            && getUnit() && EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.size() == expectedObjectives;
         ok = continued && rejected && following && ok;
         fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=oversized_text field=%s rejected=%d continued=%d ok=%d\n",
             field, rejected, continued && following, ok);
@@ -222,9 +222,9 @@ bool EditorInterface::runDefinitionSmoke()
             : std::string_view(field) == "Blurb2" ? "keep_blurb2"
             : std::string_view(field) == "AVIFilename" ? "keep_video" : "keep_url";
         const bool rejected = value == expected;
-        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin();
+        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.begin();
         after++;
-        const bool following = !after.IsDone() && (*after)->Title() == "after_objective";
+        const bool following = after != EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.end() && (*after)->Title() == "after_objective";
         ok = continued && rejected && following && getUnit() && ok;
         fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=oversized_text field=%s rejected=%d continued=%d ok=%d\n",
             field, rejected, continued && following, ok);

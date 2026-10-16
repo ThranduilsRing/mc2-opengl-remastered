@@ -730,11 +730,11 @@ CObjectives &CObjectives::operator=(const CObjectives &master) {
 	m_alignment = master.m_alignment;
 
 	Clear();
-	CObjectives::EConstIterator it = master.Begin();
-	while (!it.IsDone()) {
+	auto it = master.entries.begin();
+	while (it != master.entries.end()) {
 		CObjective *tmpObjective = new CObjective(m_alignment);
 		(*tmpObjective) = (*(*it));
-		Append(tmpObjective);
+		entries.push_back(tmpObjective);
 		it++;
 	}
 	return (*this);
@@ -744,12 +744,12 @@ bool CObjectives::operator==(const CObjectives &rhs) const {
 	bool retval = true;
 	if (m_alignment != rhs.m_alignment) {
 		retval = false;
-	} else if (Count() != rhs.Count()) {
+	} else if (entries.size() != rhs.entries.size()) {
 		retval = false;
 	} else {
-		EConstIterator it = Begin();
-		EConstIterator it2 = rhs.Begin();
-		while (!it.IsDone()) {
+		auto it = entries.begin();
+		auto it2 = rhs.entries.begin();
+		while (it != entries.end()) {
 			if (!((*(*it)) == (*(*it2)))) {
 				retval = false;
 				break;
@@ -762,18 +762,18 @@ bool CObjectives::operator==(const CObjectives &rhs) const {
 }
 
 void CObjectives::Clear() {
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		delete (*it);
 		it++;
 	}
-	inherited::Clear();
+	entries.clear();
 }
 
 void CObjectives::Alignment(int alignment) {
 	m_alignment = alignment;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		(*it)->Alignment(m_alignment);
 		it++;
 	}
@@ -817,7 +817,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			CObjective *pNewObjective = new CObjective(m_alignment);
 			bool bresult = pNewObjective->Read(missionFile, i, objectivesVersion);
 			if (true != bresult) { delete pNewObjective; return false; }
-			Append(pNewObjective);
+			entries.push_back(pNewObjective);
 		}
 	}
 	return true;
@@ -828,10 +828,10 @@ bool CObjectives::Save( FitIniFile* file )
 	std::string tmpStr;
 	tmpStr = std::format("Team{}Objectives", Alignment());
 	file->writeBlock( tmpStr.c_str() );
-	file->writeIdULong( "NumObjectives", Count() );
+	file->writeIdULong( "NumObjectives", static_cast<unsigned long>(entries.size()) );
 	int i = 0;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		std::string tmpStr;
 		tmpStr = std::format("Team{}Objective{}", Alignment(), i);
 		file->writeBlock( tmpStr.c_str() );
@@ -870,7 +870,7 @@ bool CObjectives::WriteMissionScript(const char *Name, const char *OutputPath)
 }
 
 void CObjectives::handleObjectInvalidation(const EditorObject *pObj) {
-	for (auto it = Begin(); !it.IsDone(); it++) {
+	for (auto it = entries.begin(); it != entries.end(); it++) {
 		CObjective *pObjective = *it;
 		for (auto* conditions : {&pObjective->m_conditions, &pObjective->m_failureConditionList}) {
 			for (size_t index = conditions->entries.size(); index > 0; --index) {
@@ -886,8 +886,8 @@ void CObjectives::handleObjectInvalidation(const EditorObject *pObj) {
 
 bool CObjectives::NoteThePositionsOfObjectsReferenced() {
 	bool retval = true;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		bool res = (*it)->NoteThePositionsOfObjectsReferenced();
 		if (false == res) {
 			retval = false;
@@ -899,8 +899,8 @@ bool CObjectives::NoteThePositionsOfObjectsReferenced() {
 
 bool CObjectives::RestoreObjectPointerReferencesFromNotedPositions() {
 	bool retval = true;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		bool res = (*it)->RestoreObjectPointerReferencesFromNotedPositions();
 		if (false == res) {
 			retval = false;
@@ -912,8 +912,8 @@ bool CObjectives::RestoreObjectPointerReferencesFromNotedPositions() {
 
 bool CObjectives::ThereAreObjectivesWithNoConditions() {
 	bool retval = false;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		bool res = (*it)->ThisObjectiveHasNoConditions();
 		if (true == res) {
 			retval = true;

@@ -108,8 +108,8 @@ void CObjectiveTemplateDlg::OnOK()
 
 static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListBox *pList) {
 	pList->ResetContent();
-	CObjectives::EConstIterator it = pObjectives->Begin();
-	while (!it.IsDone())
+	auto it = pObjectives->entries.begin();
+	while (it != pObjectives->entries.end())
 	{
 		std::string tmpEStr;
 		tmpEStr = _TEXT("[");
@@ -214,7 +214,7 @@ void ObjectivesDlg::OnObjectivesAddButton()
 		return;
 	} else {
 		if (true == result) {
-			m_ModifiedObjectives.Append(pNewObjective);
+			m_ModifiedObjectives.entries.push_back(pNewObjective);
 			m_List.SetCurSel(m_List.GetCount() - 1);
 			syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
 			nSelectionIndex = m_List.GetCurSel();
@@ -330,7 +330,7 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 		return;
 	} else {
 		if (true == result) {
-			m_ModifiedObjectives.Append(pNewObjective);
+			m_ModifiedObjectives.entries.push_back(pNewObjective);
 			m_List.SetCurSel(m_List.GetCount() - 1);
 			syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
 			nSelectionIndex = m_List.GetCurSel();
@@ -344,9 +344,9 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 void ObjectivesDlg::OnObjectivesRemoveButton()
 {
 	nSelectionIndex = m_List.GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.Count() > nSelectionIndex)) {
-		delete *(m_ModifiedObjectives.Iterator(nSelectionIndex));
-		m_ModifiedObjectives.Delete(nSelectionIndex);
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.entries.size() > nSelectionIndex)) {
+		delete m_ModifiedObjectives.entries[nSelectionIndex];
+		m_ModifiedObjectives.entries.erase(m_ModifiedObjectives.entries.begin() + nSelectionIndex);
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
 		if (0 < m_List.GetCount()) {
 			if (m_List.GetCount() <= (long)nSelectionIndex) {
@@ -363,14 +363,14 @@ void ObjectivesDlg::OnObjectivesEditButton()
 	CObjective *pSelectedObjective = 0;
 	if (!EditorInterface::instance()->ObjectSelectOnlyMode()) {
 		nSelectionIndex = m_List.GetCurSel();
-		if ((0 <= nSelectionIndex) && (((int)(m_ModifiedObjectives.Count())) > nSelectionIndex)) {
-			pSelectedObjective = *(m_ModifiedObjectives.Iterator(nSelectionIndex));
+		if ((0 <= nSelectionIndex) && (((int)(m_ModifiedObjectives.entries.size())) > nSelectionIndex)) {
+			pSelectedObjective = m_ModifiedObjectives.entries[nSelectionIndex];
 		} else {
 			return;
 		}
 	} else {
 		assert(CObjectivesEditState::EDIT == EditorInterface::instance()->objectivesEditState.objectiveFunction);
-		pSelectedObjective = *(m_ModifiedObjectives.Iterator(nSelectionIndex));
+		pSelectedObjective = m_ModifiedObjectives.entries[nSelectionIndex];
 	}
 	assert(0 != pSelectedObjective);
 	assert(0 <= nSelectionIndex);
@@ -400,15 +400,15 @@ void ObjectivesDlg::OnObjectivesEditButton()
 void ObjectivesDlg::OnObjectivesCopyButton() 
 {
 	nSelectionIndex = m_List.GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.Count() > nSelectionIndex)) {
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.entries.size() > nSelectionIndex)) {
 		CObjective *pSelectedObjective = 0;
-		pSelectedObjective = *(m_ModifiedObjectives.Iterator(nSelectionIndex));
+		pSelectedObjective = m_ModifiedObjectives.entries[nSelectionIndex];
 		assert(0 != pSelectedObjective);
 
 		CObjective *pNewObjective = new CObjective(pSelectedObjective->Alignment());
 		pNewObjective->Init();
 		*pNewObjective = *pSelectedObjective;
-		m_ModifiedObjectives.Append(pNewObjective);
+		m_ModifiedObjectives.entries.push_back(pNewObjective);
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
 		m_List.SetCurSel(m_List.GetCount() - 1);
 		nSelectionIndex = m_List.GetCurSel();
@@ -418,13 +418,13 @@ void ObjectivesDlg::OnObjectivesCopyButton()
 void ObjectivesDlg::OnObjectivesMoveUpButton() 
 {
 	nSelectionIndex = m_List.GetCurSel();
-	if ((1 <= nSelectionIndex) && (m_ModifiedObjectives.Count() > nSelectionIndex)) {
+	if ((1 <= nSelectionIndex) && (m_ModifiedObjectives.entries.size() > nSelectionIndex)) {
 		CObjective *pSelectedObjective = 0;
-		pSelectedObjective = *(m_ModifiedObjectives.Iterator(nSelectionIndex));
+		pSelectedObjective = m_ModifiedObjectives.entries[nSelectionIndex];
 		assert(0 != pSelectedObjective);
 
-		m_ModifiedObjectives.Delete(nSelectionIndex);
-		m_ModifiedObjectives.Insert(pSelectedObjective, nSelectionIndex - 1);
+		m_ModifiedObjectives.entries.erase(m_ModifiedObjectives.entries.begin() + nSelectionIndex);
+		m_ModifiedObjectives.entries.insert(m_ModifiedObjectives.entries.begin() + nSelectionIndex - 1, pSelectedObjective);
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
 		m_List.SetCurSel(nSelectionIndex - 1);
 		nSelectionIndex = m_List.GetCurSel();
@@ -434,16 +434,16 @@ void ObjectivesDlg::OnObjectivesMoveUpButton()
 void ObjectivesDlg::OnObjectivesMoveDownButton() 
 {
 	nSelectionIndex = m_List.GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.Count() - 1 > nSelectionIndex)) {
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.entries.size() - 1 > nSelectionIndex)) {
 		CObjective *pSelectedObjective = 0;
-		pSelectedObjective = *(m_ModifiedObjectives.Iterator(nSelectionIndex));
+		pSelectedObjective = m_ModifiedObjectives.entries[nSelectionIndex];
 		assert(0 != pSelectedObjective);
 
-		m_ModifiedObjectives.Delete(nSelectionIndex);
-		if (m_ModifiedObjectives.Count() -1 == nSelectionIndex) {
-			m_ModifiedObjectives.Append(pSelectedObjective);
+		m_ModifiedObjectives.entries.erase(m_ModifiedObjectives.entries.begin() + nSelectionIndex);
+		if (m_ModifiedObjectives.entries.size() -1 == nSelectionIndex) {
+			m_ModifiedObjectives.entries.push_back(pSelectedObjective);
 		} else {
-			m_ModifiedObjectives.Insert(pSelectedObjective, nSelectionIndex + 1);
+			m_ModifiedObjectives.entries.insert(m_ModifiedObjectives.entries.begin() + nSelectionIndex + 1, pSelectedObjective);
 		}
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);
 		m_List.SetCurSel(nSelectionIndex + 1);

@@ -214,9 +214,9 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	auto condition = std::make_unique<CDestroyAllEnemyUnits>(0);
 	objective->m_conditions.entries.push_back(condition.get());
 	condition.release();
-	objectives.Append(objective.get());
+	objectives.entries.push_back(objective.get());
 	objective.release();
-	const unsigned long authoredCount = objectives.Count();
+	const auto authoredCount = objectives.entries.size();
 	bool objectiveRoundtrip = false;
 	{
 		EditorFit::MissionTextReader file;
@@ -236,7 +236,7 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 		}
 	}
 	objectives = before;
-	EditorSmokePanelFact("objectives", "ObjectivesSummary", authoredCount == before.Count() + 1 && objectiveRoundtrip && objectives == before, true);
+	EditorSmokePanelFact("objectives", "ObjectivesSummary", authoredCount == before.entries.size() + 1 && objectiveRoundtrip && objectives == before, true);
 
 	CampaignSummaryPanel::Open();
 	CCampaignData campaign;
