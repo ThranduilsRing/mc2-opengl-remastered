@@ -399,6 +399,12 @@ typedef struct _TG_TinyTexture
 typedef TG_TinyTexture* TG_TinyTexturePtr;
 
 class TG_Shape;
+
+// Ceilings for the counts a shape file claims (mod content): no stock shape comes near them, a larger count is a corrupt file.
+inline constexpr DWORD kMaxShapeVertices = 1u << 20;
+inline constexpr DWORD kMaxShapeTriangles = 1u << 20;
+inline constexpr DWORD kMaxShapeTextures = 4096;
+inline constexpr int kMaxMultiShapeNodes = 4096;
 //-------------------------------------------------------------------------------
 // TG_Animation
 typedef struct _TG_Animation

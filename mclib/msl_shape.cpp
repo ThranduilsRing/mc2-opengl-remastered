@@ -449,10 +449,8 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	resultShape->myMultiType = myMultiType;
 	resultShape->numTG_Shapes = curShape;
 	
-	resultShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * curShape);
-	gosASSERT(resultShape->listOfShapes != nullptr);
-
-	memset(resultShape->listOfShapes,0,sizeof(TG_ShapeRec) * curShape);
+	resultShape->shapeRecStore.assign(curShape, TG_ShapeRec{});
+	resultShape->listOfShapes = resultShape->shapeRecStore.data();
 
 	resultShape->frameNum = 0;
 	
@@ -493,11 +491,9 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	
  	//-------------------------------------------------------------
 	// Rebuild the currentShape heirarchy to reflect removed things
-	TG_ShapeRecPtr newListOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * (numTG_Shapes - curShape));
-	gosASSERT(newListOfShapes != nullptr);
+	std::vector<TG_ShapeRec> newShapeRecs(numTG_Shapes - curShape, TG_ShapeRec{});
+	TG_ShapeRecPtr newListOfShapes = newShapeRecs.data();
 
-	memset(newListOfShapes,0,sizeof(TG_ShapeRec) * (numTG_Shapes - curShape));
-	
 	long newShapeIndex = 0;
 	for (i=0;i<numTG_Shapes;i++)
 	{
@@ -510,9 +506,8 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 
 	//-------------------------------------------------------------
 	// Move the new list over the old list.
-	if (listOfShapes)
-		TG_Shape::tglHeap->Free(listOfShapes);
-	listOfShapes = newListOfShapes;
+	shapeRecStore = std::move(newShapeRecs);
+	listOfShapes = shapeRecStore.data();
 	
 	numTG_Shapes -= curShape;
 

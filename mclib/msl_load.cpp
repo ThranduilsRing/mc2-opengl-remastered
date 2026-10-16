@@ -58,26 +58,30 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 	{
 		numTG_TypeShapes = binFile.readInt();
 		numTextures = binFile.readInt();
-	
+		if (numTG_TypeShapes < 0 || numTG_TypeShapes > kMaxMultiShapeNodes || numTextures < 0 || numTextures > static_cast<int>(kMaxShapeTextures))
+		{
+			MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] file={} shapes={} textures={} (over {} / {}; multi-shape rejected)", fileName, numTG_TypeShapes, numTextures, kMaxMultiShapeNodes, kMaxShapeTextures);
+			numTG_TypeShapes = numTextures = 0;
+			return -1;
+		}
+
 		//ListOfTextures
 		if (numTextures)
 		{
-			listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
-			gosASSERT(listOfTextures != nullptr);
-		
+			textureStore.resize(numTextures);
+			listOfTextures = textureStore.data();
+
 			binFile.read((MemoryPtr)listOfTextures,sizeof(TG_Texture) * numTextures);
 		}
 		else
 		{
 			listOfTextures = nullptr;
 		}
-	
+
 		//listOfShapes
-		listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
-		gosASSERT(listOfTypeShapes != nullptr);
-	
-		memset(listOfTypeShapes,0,sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
-	
+		typeNodeStore.assign(numTG_TypeShapes, nullptr);
+		listOfTypeShapes = typeNodeStore.data();
+
 		bool aborted = false;
 		long loadedShapes = 0;
 		for (long i=0;i<numTG_TypeShapes;i++)
@@ -210,10 +214,8 @@ void TG_TypeMultiShape::AllocateImportedShapes(int numShapes)
 	gosASSERT(listOfTypeShapes == nullptr);  // freshly init()'d multi-shape
 
 	numTG_TypeShapes = numShapes;
-	listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(
-		sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
-	gosASSERT(listOfTypeShapes != nullptr);
-	memset(listOfTypeShapes, 0, sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
+	typeNodeStore.assign(numTG_TypeShapes, nullptr);
+	listOfTypeShapes = typeNodeStore.data();
 
 	// Construct empty TG_TypeShape per slot — caller fills via
 	// listOfTypeShapes[i]->InitFromImportedMesh(...). This mirrors the
@@ -238,10 +240,8 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 		return;
 	}
 
-	listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(
-		sizeof(TG_Texture) * numTextures);
-	gosASSERT(listOfTextures != nullptr);
-	memset(listOfTextures, 0, sizeof(TG_Texture) * numTextures);
+	textureStore.assign(numTextures, TG_Texture{});
+	listOfTextures = textureStore.data();
 
 	for (DWORD i = 0; i < numTextures; i++)
 	{
@@ -372,13 +372,10 @@ void TG_TypeMultiShape::destroy (void)
 		}
 	}
 
-	if (listOfTypeShapes)
-		TG_Shape::tglHeap->Free(listOfTypeShapes);
-		
+	std::vector<TG_TypeNodePtr>().swap(typeNodeStore);
 	listOfTypeShapes = nullptr;
 
-	if (listOfTextures)
-		TG_Shape::tglHeap->Free(listOfTextures);
+	std::vector<TG_Texture>().swap(textureStore);
 	listOfTextures= nullptr;
 
 	numTextures = 0;
@@ -405,9 +402,8 @@ void TG_MultiShape::destroy (void)
 		}
 	}
 
-	if (listOfShapes)
-		TG_Shape::tglHeap->Free(listOfShapes);
-	listOfShapes = nullptr;	
+	std::vector<TG_ShapeRec>().swap(shapeRecStore);
+	listOfShapes = nullptr;
 
 	numTG_Shapes = 0;
 }	
@@ -621,9 +617,8 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		if (numTextures)
 		{
 			numTextures *= 2;
-			listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
-			gosASSERT(listOfTextures != nullptr);
-			memset(listOfTextures,0x0,sizeof(TG_Texture) * numTextures);
+			textureStore.assign(numTextures, TG_Texture{});
+			listOfTextures = textureStore.data();
 
 			char *txmData = (char *)aseContents;
 			for (int i=0;i<(numTextures/2);i++)
@@ -752,10 +747,8 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			aseScan = strstr(aseScan,ASE_HELP_OBJECT);
 		}
 	
-		listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * (numTG_TypeShapes+1));
-		gosASSERT(listOfTypeShapes != nullptr);
-	
-		memset(listOfTypeShapes,0,sizeof(TG_TypeNodePtr) * (numTG_TypeShapes+1));
+		typeNodeStore.assign(numTG_TypeShapes + 1, nullptr);
+		listOfTypeShapes = typeNodeStore.data();
 	
 		//------------------------------------------------------------
 		// SECOND PASS.  Load HelperObjects.

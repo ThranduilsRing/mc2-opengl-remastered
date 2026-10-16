@@ -80,10 +80,8 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 
 	//listOfShapes
 	newShape->numTG_Shapes = numTG_TypeShapes;
-	newShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * numTG_TypeShapes);
-	gosASSERT(newShape->listOfShapes != nullptr);
-
-	memset(newShape->listOfShapes,0,sizeof(TG_ShapeRec) * numTG_TypeShapes);
+	newShape->shapeRecStore.assign(numTG_TypeShapes, TG_ShapeRec{});
+	newShape->listOfShapes = newShape->shapeRecStore.data();
 
 	for (long i=0;i<numTG_TypeShapes;i++)
 	{

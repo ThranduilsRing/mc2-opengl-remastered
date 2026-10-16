@@ -8,13 +8,7 @@
 #ifndef TGL_H
 #include"tgl.h"
 #include "gos_crashbundle.h"
-#include "../GameOS/gameos/utils/mc2log.h"  // shape loaders reject malformed counts with a log line
-
-// Ceilings for the counts a shape file claims (mod content): no stock shape comes near them, a larger count is a corrupt file.
-inline constexpr DWORD kMaxShapeVertices = 1u << 20;
-inline constexpr DWORD kMaxShapeTriangles = 1u << 20;
-inline constexpr DWORD kMaxShapeTextures = 4096;
-#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "../GameOS/gameos/utils/mc2log.h"  // shape loaders reject malformed counts with a log line#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero accumulators
 #endif

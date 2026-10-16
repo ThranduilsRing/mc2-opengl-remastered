@@ -75,7 +75,12 @@ class TG_TypeMultiShape
 		int                 numTextures;			//Total Textures for all shapes.
 		TG_TypeNodePtr		*listOfTypeShapes;		//Memory holding all TG_TypeNodes and TypeShapes
 		TG_TexturePtr		listOfTextures;			//List of texture Structures for all shapes.
-		
+
+		// The two lists above are views of these stores, which own the arrays. The nodes the first list points at are still new / delete'd
+		// one by one in destroy() until the node classes leave tglHeap.
+		std::vector<TG_TypeNodePtr>	typeNodeStore;
+		std::vector<TG_Texture>		textureStore;
+
 #ifdef _DEBUG
 		char				*shapeName;				//FileName of shape
 #endif
@@ -295,7 +300,8 @@ class TG_MultiShape
 	protected:
 		TG_TypeMultiShapePtr	myMultiType;			//Pointer to the type
 		int                     numTG_Shapes;			//Number of TG_Shapes
-		TG_ShapeRecPtr			listOfShapes;			//Memory holding all TG_ShapeRecs
+		TG_ShapeRecPtr			listOfShapes;			//Memory holding all TG_ShapeRecs; a view of shapeRecStore
+		std::vector<TG_ShapeRec>	shapeRecStore;		//Owns the records; parent pointers point into it, so it is sized once per list
 		float					frameNum;				//Frame number of animation
 		bool					d_useShadows;
 		bool					isHudElement;
