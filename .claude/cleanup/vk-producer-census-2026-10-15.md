@@ -60,8 +60,10 @@ grid (VK-PARITY-GAPS row 1 is open for that reason).
 | T4-T6 | CLOSED: terrain field store | 242b9582c |
 | T10 / T11 | CLOSED: shore sidecars in the field store | 970156084 |
 | P4 / P7 | CLOSED: mech feeds carry no GL names; the FEED-AUDIT readbacks and `MC2_VK_MECH_FEED_AUDIT` are deleted | fe0de149c |
-| T3 | OPEN, step 1 done: the CPU mip filter (`mc2tex::boxDownsampleRgba8`, doctested) exists; the array builder and both uploads from it are not written (plan below) | ee6e0e77a |
-| T7, T8, T9 | OPEN (see below) | |
+| T3 | CLOSED (lane 2 session 24): the batcher assembles each group array as CPU levels (`mc2tex::TextureArrayCpu`: box chain, pre-baked `.ktx2` levels applied; BC7 groups keep their blocks per level), GL uploads every level from it (no `glGenerateMipmap`), the Vulkan prop island copies it; its `glGetTexImage` / `glGetCompressedTexImage` loop is deleted. GL before/after on mc2_10 204523: 26 pixels changed (>6 summed RGB), mean 0.008. Resident cost measured (accepted like the geometry copy, released at map unload): mc2_10 11.6 MB (alpha-OFF 2.7 + alpha-ON 8.7), mc2_01 4.8 MB; the 63 MB estimate was for a 256-edge array | 39c1ca805, acce838f5 |
+| T8 | CLOSED (lane 2 session 24): the cement atlas is written to the terrain field store (RGBA8) when it is built (a missing store logs `[TERRAIN_FIELDS v1] cement atlas built with no terrain field store`; not seen on mc2_01 / mc2_10: the store existed, versions 3 / 4), the island imports from the store keyed on its version; the readback is deleted. Cost 4 MB (1024^2) | c63b3df73 |
+| T9 | CLOSED WITH A COST QUESTION (lane 2 session 24): the renderer keeps the uploaded levels of the detail-normal array (`terrain_normal_array_cpu_`), the island imports level 0 from it; the readback is deleted. Resident cost about 200 MB on mc2_01 (2048^2 x 9 layers RGBA8 with mips) in every run: needs an orchestrator ruling (keep level 0 only = 151 MB, or have the island read the 9 slot textures through `gos_GetTextureTexels` and drop the copy) | 5be553c44 |
+| T7 | OPEN: the colormap atlas (BC7 or RGBA8) still reads back; the decoded image is not retained (next: keep it in the field store like T8, BC7 blocks via the T1 path) | |
 
 Accepted cost (lane 2 review should-fix 1): the static-prop CPU geometry copy (the shared VBO + IBO staging) stays resident for
 the map's lifetime in every run, GL-only runs included, where nothing reads it. Measured from the `[VK_COLOR_PROP_ISLAND] prop
