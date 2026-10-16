@@ -12,7 +12,6 @@
 #endif
 
 #ifndef ELIST_H
-#include "elist.h"
 #endif
 
 #include <utility>

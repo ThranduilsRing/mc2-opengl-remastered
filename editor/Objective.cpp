@@ -25,12 +25,12 @@
 
 CObjectiveConditionList &CObjectiveConditionList::operator=(const CObjectiveConditionList &master) {
 	Clear();
-	CObjectiveConditionList::EConstIterator it = master.Begin();
-	while (!it.IsDone()) {
+	auto it = master.entries.begin();
+	while (it != master.entries.end()) {
 		condition_species_type conditionSpecies = (*it)->Species();
 		CObjectiveCondition *pTmpCondition = CObjective::new_CObjectiveCondition(conditionSpecies, (*it)->Alignment());
 		(*pTmpCondition).CastAndCopy(*it);
-		Append(pTmpCondition);
+		entries.push_back(pTmpCondition);
 		it++;
 	}
 	return (*this);
@@ -38,13 +38,13 @@ CObjectiveConditionList &CObjectiveConditionList::operator=(const CObjectiveCond
 
 bool CObjectiveConditionList::operator==(const CObjectiveConditionList &rhs) const {
 	bool retval = true;
-	if (Count() != rhs.Count()) {
+	if (entries.size() != rhs.entries.size()) {
 		retval = false;
 	} else {
-		CObjectiveConditionList::EConstIterator it = Begin();
-		CObjectiveConditionList::EConstIterator it2 = rhs.Begin();
-		while (!it.IsDone()) {
-			assert(!it2.IsDone()); assert(*it); assert(*it2);
+		auto it = entries.begin();
+		auto it2 = rhs.entries.begin();
+		while (it != entries.end()) {
+			assert(it2 != rhs.entries.end()); assert(*it); assert(*it2);
 			if (!((*(*it)) == (*(*it2)))) {
 				retval = false;
 				break;
@@ -57,21 +57,21 @@ bool CObjectiveConditionList::operator==(const CObjectiveConditionList &rhs) con
 }
 
 void CObjectiveConditionList::Clear() {
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		delete (*it);
 		it++;
 	}
-	EList <CObjectiveCondition *, CObjectiveCondition *>::Clear();
+	entries.clear();
 }
 
 CObjectiveActionList &CObjectiveActionList::operator=(const CObjectiveActionList &master) {
-	CObjectiveActionList::EConstIterator it = master.Begin();
-	while (!it.IsDone()) {
+	auto it = master.entries.begin();
+	while (it != master.entries.end()) {
 		action_species_type actionSpecies = (*it)->Species();
 		CObjectiveAction *pTmpAction = CObjective::new_CObjectiveAction(actionSpecies, (*it)->Alignment());
 		(*pTmpAction).CastAndCopy(*it);
-		Append(pTmpAction);
+		entries.push_back(pTmpAction);
 		it++;
 	}
 	return (*this);
@@ -79,13 +79,13 @@ CObjectiveActionList &CObjectiveActionList::operator=(const CObjectiveActionList
 
 bool CObjectiveActionList::operator==(const CObjectiveActionList &rhs) const {
 	bool retval = true;
-	if (Count() != rhs.Count()) {
+	if (entries.size() != rhs.entries.size()) {
 		retval = false;
 	} else {
-		CObjectiveActionList::EConstIterator it = Begin();
-		CObjectiveActionList::EConstIterator it2 = rhs.Begin();
-		while (!it.IsDone()) {
-			assert(!it2.IsDone()); assert(*it); assert(*it2);
+		auto it = entries.begin();
+		auto it2 = rhs.entries.begin();
+		while (it != entries.end()) {
+			assert(it2 != rhs.entries.end()); assert(*it); assert(*it2);
 			if (!((*(*it)) == (*(*it2)))) {
 				retval = false;
 				break;
@@ -98,12 +98,12 @@ bool CObjectiveActionList::operator==(const CObjectiveActionList &rhs) const {
 }
 
 void CObjectiveActionList::Clear() {
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		delete (*it);
 		it++;
 	}
-	EList <CObjectiveAction *, CObjectiveAction *>::Clear();
+	entries.clear();
 }
 
 CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment) {
@@ -234,7 +234,7 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	m_highlightColor2 = master.m_highlightColor2;
 	m_baseColor = master.m_baseColor;
 
-	CObjectiveConditionList::operator=(master);
+	m_conditions = master.m_conditions;
 	m_actionList = master.m_actionList;
 	m_failureConditionList = master.m_failureConditionList;
 	m_failureActionList = master.m_failureActionList;
@@ -268,7 +268,7 @@ bool CObjective::operator==(const CObjective &rhs) const {
 		(m_highlightColor == rhs.m_highlightColor) &&
 		(m_highlightColor2 == rhs.m_highlightColor2) &&
 		(m_baseColor == rhs.m_baseColor)) {
-		if ((inherited::operator==(rhs)) &&
+		if ((m_conditions == rhs.m_conditions) &&
 			(m_actionList == rhs.m_actionList) &&
 			(m_failureConditionList == rhs.m_failureConditionList) &&
 			(m_failureActionList == rhs.m_failureActionList)) {
@@ -279,7 +279,7 @@ bool CObjective::operator==(const CObjective &rhs) const {
 }
 
 void CObjective::Clear() {
-	inherited::Clear();
+	m_conditions.Clear();
 	m_actionList.Clear();
 	m_failureConditionList.Clear();
 	m_failureActionList.Clear();
@@ -288,32 +288,32 @@ void CObjective::Clear() {
 void CObjective::Alignment(int alignment) {
 	m_alignment = alignment;
 	{
-		EIterator it = Begin();
-		while (!it.IsDone()) {
+		auto it = m_conditions.entries.begin();
+		while (it != m_conditions.entries.end()) {
 			(*it)->Alignment(m_alignment);
 			it++;
 		}
 	}
 
 	{
-		action_list_type::EIterator it = m_actionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_actionList.entries.begin();
+		while (it != m_actionList.entries.end()) {
 			(*it)->Alignment(m_alignment);
 			it++;
 		}
 	}
 
 	{
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_failureConditionList.entries.begin();
+		while (it != m_failureConditionList.entries.end()) {
 			(*it)->Alignment(m_alignment);
 			it++;
 		}
 	}
 
 	{
-		action_list_type::EIterator it = m_failureActionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_failureActionList.entries.begin();
+		while (it != m_failureActionList.entries.end()) {
 			(*it)->Alignment(m_alignment);
 			it++;
 		}
@@ -327,7 +327,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	text.title = m_title;
 	text.description = m_description;
 	text.activateFlagID = m_activateFlagID;
-	// C9: an absent activation ID preserves its value so existing flag references survive an edit.
+	// An absent activation ID preserves its value so existing flag references survive an edit.
 	text.resetStatusFlagID = m_resetStatusFlagID;
 	std::string value;
 	const auto titleStatus = EditorFit::readText(*missionFile, "Title", value);
@@ -419,7 +419,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 					reader->missionName().c_str(), tmpStr.c_str(), g_conditionSpeciesStringArray[*speciesIndex]);
 				delete pNewObjectiveCondition; return false;
 			}
-			Append(pNewObjectiveCondition);
+			m_conditions.entries.push_back(pNewObjectiveCondition);
 		}
 	}
 
@@ -438,7 +438,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			if (!pNewObjectiveAction) { continue; }
 			bool bresult = pNewObjectiveAction->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveAction; continue; }
-			m_actionList.Append(pNewObjectiveAction);
+			m_actionList.entries.push_back(pNewObjectiveAction);
 		}
 	}
 
@@ -461,7 +461,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 					reader->missionName().c_str(), tmpStr.c_str(), g_conditionSpeciesStringArray[*speciesIndex]);
 				delete pNewObjectiveFailureCondition; return false;
 			}
-			m_failureConditionList.Append(pNewObjectiveFailureCondition);
+			m_failureConditionList.entries.push_back(pNewObjectiveFailureCondition);
 		}
 	}
 
@@ -480,7 +480,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 			if (!pNewObjectiveFailureAction) { continue; }
 			bool bresult = pNewObjectiveFailureAction->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveFailureAction; continue; }
-			m_failureActionList.Append(pNewObjectiveFailureAction);
+			m_failureActionList.entries.push_back(pNewObjectiveFailureAction);
 		}
 	}
 	return true;
@@ -534,10 +534,10 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 	file->writeIdBoolean( "ResetStatusOnFlag", m_resetStatusOnFlag );
 	file->writeIdString("ResetStatusFlagID", m_resetStatusFlagID.c_str());
 
-	file->writeIdULong( "NumConditions", Count() );
-	file->writeIdULong( "NumActions", m_actionList.Count() );
-	file->writeIdULong( "NumFailureConditions", m_failureConditionList.Count() );
-	file->writeIdULong( "NumFailureActions", m_failureActionList.Count() );
+	file->writeIdULong( "NumConditions", static_cast<unsigned long>(m_conditions.entries.size()) );
+	file->writeIdULong( "NumActions", static_cast<unsigned long>(m_actionList.entries.size()) );
+	file->writeIdULong( "NumFailureConditions", static_cast<unsigned long>(m_failureConditionList.entries.size()) );
+	file->writeIdULong( "NumFailureActions", static_cast<unsigned long>(m_failureActionList.entries.size()) );
 
 	file->writeIdString( "ObjectiveModel", m_modelDefinition.name.c_str() );
 	file->writeIdLong( "ModelType", m_modelDefinition.type );
@@ -552,8 +552,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 
 	{
 		int i = 0;
-		EIterator it = Begin();
-		while (!it.IsDone()) {
+		auto it = m_conditions.entries.begin();
+		while (it != m_conditions.entries.end()) {
 			std::string tmpStr;
 			tmpStr = std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.c_str() );
@@ -567,8 +567,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 
 	{
 		int i = 0;
-		action_list_type::EIterator it = m_actionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_actionList.entries.begin();
+		while (it != m_actionList.entries.end()) {
 			std::string tmpStr;
 			tmpStr = std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.c_str() );
@@ -582,8 +582,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 
 	{
 		int i = 0;
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_failureConditionList.entries.begin();
+		while (it != m_failureConditionList.entries.end()) {
 			std::string tmpStr;
 			tmpStr = std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.c_str() );
@@ -597,8 +597,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 
 	{
 		int i = 0;
-		action_list_type::EIterator it = m_failureActionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_failureActionList.entries.begin();
+		while (it != m_failureActionList.entries.end()) {
 			std::string tmpStr;
 			tmpStr = std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.c_str() );
@@ -643,8 +643,8 @@ bool CObjective::EditDialog() {
 bool CObjective::NoteThePositionsOfObjectsReferenced() {
 	bool retval = true;
 	{
-		EIterator it = Begin();
-		while (!it.IsDone()) {
+		auto it = m_conditions.entries.begin();
+		while (it != m_conditions.entries.end()) {
 			bool res = (*it)->NoteThePositionsOfObjectsReferenced();
 			if (false == res) {
 				retval = false;
@@ -653,8 +653,8 @@ bool CObjective::NoteThePositionsOfObjectsReferenced() {
 		}
 	}
 	{
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_failureConditionList.entries.begin();
+		while (it != m_failureConditionList.entries.end()) {
 			bool res = (*it)->NoteThePositionsOfObjectsReferenced();
 			if (false == res) {
 				retval = false;
@@ -668,8 +668,8 @@ bool CObjective::NoteThePositionsOfObjectsReferenced() {
 bool CObjective::RestoreObjectPointerReferencesFromNotedPositions() {
 	bool retval = true;
 	{
-		EIterator it = Begin();
-		while (!it.IsDone()) {
+		auto it = m_conditions.entries.begin();
+		while (it != m_conditions.entries.end()) {
 			bool res = (*it)->RestoreObjectPointerReferencesFromNotedPositions();
 			if (false == res) {
 				retval = false;
@@ -678,8 +678,8 @@ bool CObjective::RestoreObjectPointerReferencesFromNotedPositions() {
 		}
 	}
 	{
-		condition_list_type::EIterator it = m_failureConditionList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_failureConditionList.entries.begin();
+		while (it != m_failureConditionList.entries.end()) {
 			bool res = (*it)->RestoreObjectPointerReferencesFromNotedPositions();
 			if (false == res) {
 				retval = false;
@@ -730,11 +730,11 @@ CObjectives &CObjectives::operator=(const CObjectives &master) {
 	m_alignment = master.m_alignment;
 
 	Clear();
-	CObjectives::EConstIterator it = master.Begin();
-	while (!it.IsDone()) {
+	auto it = master.entries.begin();
+	while (it != master.entries.end()) {
 		CObjective *tmpObjective = new CObjective(m_alignment);
 		(*tmpObjective) = (*(*it));
-		Append(tmpObjective);
+		entries.push_back(tmpObjective);
 		it++;
 	}
 	return (*this);
@@ -744,12 +744,12 @@ bool CObjectives::operator==(const CObjectives &rhs) const {
 	bool retval = true;
 	if (m_alignment != rhs.m_alignment) {
 		retval = false;
-	} else if (Count() != rhs.Count()) {
+	} else if (entries.size() != rhs.entries.size()) {
 		retval = false;
 	} else {
-		EConstIterator it = Begin();
-		EConstIterator it2 = rhs.Begin();
-		while (!it.IsDone()) {
+		auto it = entries.begin();
+		auto it2 = rhs.entries.begin();
+		while (it != entries.end()) {
 			if (!((*(*it)) == (*(*it2)))) {
 				retval = false;
 				break;
@@ -762,18 +762,18 @@ bool CObjectives::operator==(const CObjectives &rhs) const {
 }
 
 void CObjectives::Clear() {
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		delete (*it);
 		it++;
 	}
-	inherited::Clear();
+	entries.clear();
 }
 
 void CObjectives::Alignment(int alignment) {
 	m_alignment = alignment;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		(*it)->Alignment(m_alignment);
 		it++;
 	}
@@ -817,7 +817,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			CObjective *pNewObjective = new CObjective(m_alignment);
 			bool bresult = pNewObjective->Read(missionFile, i, objectivesVersion);
 			if (true != bresult) { delete pNewObjective; return false; }
-			Append(pNewObjective);
+			entries.push_back(pNewObjective);
 		}
 	}
 	return true;
@@ -828,10 +828,10 @@ bool CObjectives::Save( FitIniFile* file )
 	std::string tmpStr;
 	tmpStr = std::format("Team{}Objectives", Alignment());
 	file->writeBlock( tmpStr.c_str() );
-	file->writeIdULong( "NumObjectives", Count() );
+	file->writeIdULong( "NumObjectives", static_cast<unsigned long>(entries.size()) );
 	int i = 0;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		std::string tmpStr;
 		tmpStr = std::format("Team{}Objective{}", Alignment(), i);
 		file->writeBlock( tmpStr.c_str() );
@@ -870,67 +870,24 @@ bool CObjectives::WriteMissionScript(const char *Name, const char *OutputPath)
 }
 
 void CObjectives::handleObjectInvalidation(const EditorObject *pObj) {
-	/* if we cared about performance, we could maintain a mapping */
-	if (Count() <= 0) {
-		return;
-	}
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	for (auto it = entries.begin(); it != entries.end(); it++) {
 		CObjective *pObjective = *it;
-		if (pObjective->Count() > 0) {
-			CObjective::EIterator it2 = pObjective->End();
-			while (!it2.IsDone()) {
-				if (true == (*it2)->RefersTo(pObj)) {
-					CObjective::EIterator it3 = it2;
-					it2--;
-					bool weAreDeletingTheLastCondition = false;
-					if (it2.IsDone()) {
-						weAreDeletingTheLastCondition = true;
-					}
-					delete (*it3);
-					pObjective->Delete(it3);
-					if (weAreDeletingTheLastCondition) {
-						/* after deleting the last element in the EList, it seems that any iterators
-						of that EList (eg. it2) are no longer valid, so we have to break out of the
-						loop here so that we don't try refer to it2 again (i.e. evaluating it2.IsDone()). */
-						break;
-					}
-				} else {
-					it2--;
+		for (auto* conditions : {&pObjective->m_conditions, &pObjective->m_failureConditionList}) {
+			for (size_t index = conditions->entries.size(); index > 0; --index) {
+				auto* condition = conditions->entries[index - 1];
+				if (condition->RefersTo(pObj)) {
+					delete condition;
+					conditions->entries.erase(conditions->entries.begin() + index - 1);
 				}
 			}
 		}
-		if (pObjective->m_failureConditionList.Count() > 0) {
-			CObjective::EIterator it2 = pObjective->m_failureConditionList.End();
-			while (!it2.IsDone()) {
-				if (true == (*it2)->RefersTo(pObj)) {
-					CObjective::EIterator it3 = it2;
-					it2--;
-					bool weAreDeletingTheLastCondition = false;
-					if (it2.IsDone()) {
-						weAreDeletingTheLastCondition = true;
-					}
-					delete (*it3);
-					pObjective->m_failureConditionList.Delete(it3);
-					if (weAreDeletingTheLastCondition) {
-						/* after deleting the last element in the EList, it seems that any iterators
-						of that EList (eg. it2) are no longer valid, so we have to break out of the
-						loop here so that we don't try refer to it2 again (i.e. evaluating it2.IsDone()). */
-						break;
-					}
-				} else {
-					it2--;
-				}
-			}
-		}
-		it++;
 	}
 }
 
 bool CObjectives::NoteThePositionsOfObjectsReferenced() {
 	bool retval = true;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		bool res = (*it)->NoteThePositionsOfObjectsReferenced();
 		if (false == res) {
 			retval = false;
@@ -942,8 +899,8 @@ bool CObjectives::NoteThePositionsOfObjectsReferenced() {
 
 bool CObjectives::RestoreObjectPointerReferencesFromNotedPositions() {
 	bool retval = true;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		bool res = (*it)->RestoreObjectPointerReferencesFromNotedPositions();
 		if (false == res) {
 			retval = false;
@@ -955,8 +912,8 @@ bool CObjectives::RestoreObjectPointerReferencesFromNotedPositions() {
 
 bool CObjectives::ThereAreObjectivesWithNoConditions() {
 	bool retval = false;
-	EIterator it = Begin();
-	while (!it.IsDone()) {
+	auto it = entries.begin();
+	while (it != entries.end()) {
 		bool res = (*it)->ThisObjectiveHasNoConditions();
 		if (true == res) {
 			retval = true;

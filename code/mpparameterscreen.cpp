@@ -7,6 +7,7 @@ MPParameterScreen.cpp			: Implementation of the MPParameterScreen component.
 //===========================================================================//
 \*************************************************************************************************/
 
+#include <algorithm>
 #include"mpparameterscreen.h"
 #include"prefs.h"
 #include"inifile.h"
@@ -2309,36 +2310,33 @@ void CFocusManager::clear()
 	speciesOfTheControlWhichHasTheFocus = CS_NONE;
 
 	pDropListThatHasTheFocus = nullptr;
-	listOfDropListPointers.Clear();
+	listOfDropListPointers.clear();
 }
 
 void *CFocusManager::registerDropList(aDropList &DropList)
 {
-	listOfDropListPointers.Append(&DropList);
+	listOfDropListPointers.push_back(&DropList);
 	return ((void *)&DropList);
 }
 
 void CFocusManager::unregisterDropList(aDropList &DropList)
 {
-	listOfDropListPointers.Delete(listOfDropListPointers.Find(&DropList));
+	const auto found = std::find(listOfDropListPointers.begin(), listOfDropListPointers.end(), &DropList);
+	if (found != listOfDropListPointers.end()) listOfDropListPointers.erase(found);
 }
 
 void CFocusManager::update()
 {
 	if (userInput->isLeftClick())
 	{
-		/*focus may have changed*/
 		if (nullptr != pControlThatHasTheFocus())
 		{
 			if (pControlThatHasTheFocus()->pointInside(userInput->getMouseX(), userInput->getMouseY()))
 			{
-				/*the pointer was clicked on the control that already has the focus, so the focus
-				is unaffected*/
+				/* A click inside the focused control preserves focus. */
 				return;
 			}
 		}
-
-		/*reset focus*/
 		switch (speciesOfTheControlWhichHasTheFocus)
 		{
 		case CS_DROPLIST:
@@ -2346,10 +2344,8 @@ void CFocusManager::update()
 			break;
 		}
 		speciesOfTheControlWhichHasTheFocus = CS_NONE;
-
-		/*check the droplists to see the pointer was clicked in one of them*/
-		CListOfDropListPointers::EIterator DropListIter = listOfDropListPointers.Begin();
-		while (!DropListIter.IsDone())
+		auto DropListIter = listOfDropListPointers.begin();
+		while (DropListIter != listOfDropListPointers.end())
 		{
 			if ((*DropListIter)->pointInside(userInput->getMouseX(), userInput->getMouseY()))
 			{
@@ -2364,10 +2360,8 @@ void CFocusManager::update()
 		{
 			/*No droplist got the focus. Check the other control species.*/
 		}
-
-		/*make sure all drop lists that do not have focus are unexpanded*/
-		DropListIter = listOfDropListPointers.Begin();
-		while (!DropListIter.IsDone())
+		DropListIter = listOfDropListPointers.begin();
+		while (DropListIter != listOfDropListPointers.end())
 		{
 			if ((CS_DROPLIST != speciesOfTheControlWhichHasTheFocus)
 				|| ((*DropListIter) != pDropListThatHasTheFocus))

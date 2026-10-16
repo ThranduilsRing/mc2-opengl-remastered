@@ -9,7 +9,6 @@ TargetAreaDlg.h		: Interface for the TargetAreaDlg component.
 
 #include "stdafx.h"
 #include "resource.h"
-#include <elist.h>
 #include "Objective.h"
 #include "EditorObjectMgr.h"
 

@@ -81,7 +81,7 @@ bool EditorInterface::refreshMissionDefinitionsFromCatalog()
     for (int team = 0; team < GAME_MAX_PLAYERS; ++team)
     {
         auto& objectives = EditorData::instance->TeamsRef().TeamRef(team).ObjectivesRef();
-        for (auto it = objectives.Begin(); !it.IsDone(); it++) (*it)->refreshModelFromCatalog();
+        for (auto it = objectives.entries.begin(); it != objectives.entries.end(); it++) (*it)->refreshModelFromCatalog();
     }
     undoMgr.AddAction(action.release());
     EditorData::instance->MissionNeedsSaving(true);

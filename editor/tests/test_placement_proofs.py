@@ -16,7 +16,170 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
     packet, reference_evidence, verify_frozen)
 
 
+def legacy_elist(root):
+    result = subprocess.run(['git', 'show', '2f4bd7996:mclib/elist.h'], cwd=root,
+                            capture_output=True, text=True, timeout=30,
+                            **child_kwargs(redirected=True))
+    if result.returncode:
+        raise RuntimeError(result.stderr)
+    return re.sub(r'^#include.*$', '', result.stdout, flags=re.M)
+
+
 class LegacyLinkTests(unittest.TestCase):
+    def test_objective_clone_keeps_numbering_and_empty_invalidation(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / 'mc2-el67-objectives' / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def original(path):
+            result = subprocess.run(['git', 'show', '2f4bd7996:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30,
+                                    **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return result.stdout
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == '{') - (source[end] == '}')
+                end += 1
+            return source[start:end] + '\n'
+
+        def fixture(header, implementation):
+            legacy = 'public EList' in header
+            outer_legacy = 'EList <CObjective *' in header
+            source = r'''
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <format>
+#include <fstream>
+#include <string>
+#include <utility>
+#include <vector>
+#define _TEXT(x) x
+#define gosASSERT(x) assert(x)
+struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } } heap;
+Heap* systemHeap = &heap;
+struct ObjectiveModelDefinition {
+    std::string name; long type = 0; float scale = 1;
+    bool operator==(const ObjectiveModelDefinition&) const = default;
+};
+struct EditorObject {};
+struct FitIniFile {
+    std::string bytes;
+    void writeBlock(const char* s) { bytes += std::format("[{}]\n", s); }
+    template<class T> void field(const char* s, T value) { bytes += std::format("{}={}\n", s, value); }
+    void writeIdString(const char* s, const char* v) { field(s, v); }
+    void writeIdULong(const char* s, unsigned long v) { field(s, v); }
+    void writeIdLong(const char* s, long v) { field(s, v); }
+    void writeIdFloat(const char* s, float v) { field(s, v); }
+    void writeIdBoolean(const char* s, bool v) { field(s, v); }
+};
+namespace objective_text { void write(FitIniFile& f, const char* s, const std::string& v) { f.field(s, v); } }
+namespace mc2::str { bool iequals(const std::string& a, const std::string& b) { return a == b; } }
+using condition_species_type = int; using action_species_type = int;
+const char* g_conditionSpeciesStringArray[] = {"condition"};
+const char* g_actionSpeciesStringArray[] = {"action"};
+std::vector<int>* destroyed = nullptr;
+struct CObjectiveCondition {
+    int value = 0, alignment = 0;
+    ~CObjectiveCondition() { if (destroyed) destroyed->push_back(value); }
+    int Species() const { return 0; } int Alignment() const { return alignment; }
+    void Alignment(int a) { alignment = a; }
+    void CastAndCopy(const CObjectiveCondition* p) { *this = *p; }
+    bool operator==(const CObjectiveCondition&) const = default;
+    bool RefersTo(const EditorObject*) { return true; }
+    void Save(FitIniFile* f) { f->field("value", value); }
+};
+struct CObjectiveAction : CObjectiveCondition {
+    void CastAndCopy(const CObjectiveAction* p) { *this = *p; }
+};
+'''
+            if 'EList' in header:
+                source += legacy_elist(root)
+            source += header[header.index('class  CObjectiveConditionList'):header.index('class CObjectivesEditState')]
+            for cls in ('CObjectiveConditionList', 'CObjectiveActionList', 'CObjectives'):
+                for member in ('operator=', 'operator==', 'Clear'):
+                    result = 'bool ' if member == 'operator==' else 'void ' if member == 'Clear' else cls + ' &'
+                    source += method(implementation, result + cls + '::' + member)
+            for signature in ('void CObjective::Construct', 'CObjective &CObjective::operator=',
+                              'bool CObjective::operator==', 'void CObjective::Clear',
+                              'bool CObjective::Save', 'bool CObjectives::Save',
+                              'void CObjectives::handleObjectInvalidation'):
+                source += method(implementation, signature)
+            source += r'''
+CObjectiveCondition* CObjective::new_CObjectiveCondition(int, int a) {
+    auto* p = new CObjectiveCondition; p->alignment = a; return p;
+}
+CObjectiveAction* CObjective::new_CObjectiveAction(int, int a) {
+    auto* p = new CObjectiveAction; p->alignment = a; return p;
+}
+int main(int argc, char** argv) {
+    assert(argc == 2);
+    std::vector<int> destructionLog; destroyed = &destructionLog;
+    CObjective emptyObjective(2); FitIniFile emptyObjectiveFile; emptyObjective.Save(&emptyObjectiveFile, 0);
+    assert(emptyObjectiveFile.bytes.find("NumConditions=0\nNumActions=0\nNumFailureConditions=0\nNumFailureActions=0\n") != std::string::npos);
+    CObjectives objectives(2);
+    auto* objective = new CObjective(2);
+    objectives.OUTERAPPEND(objective);
+    for (int n : {11, 12}) { auto* p = new CObjectiveCondition; p->value = n; objective->CONDAPPEND(p); }
+    for (int n : {21, 22}) { auto* p = new CObjectiveAction; p->value = n; objective->m_actionList.APPEND(p); }
+    for (int n : {31, 32}) { auto* p = new CObjectiveCondition; p->value = n; objective->m_failureConditionList.APPEND(p); }
+    auto* action = new CObjectiveAction; action->value = 41; objective->m_failureActionList.APPEND(action);
+    FitIniFile before; objectives.Save(&before);
+    CObjectives clone = objectives;
+    assert(clone == objectives);
+    objective->CONDINDEX.value = 99;
+    assert(!(clone == objectives));
+    *objective = *clone.OUTERINDEX;
+    FitIniFile after; objectives.Save(&after); assert(before.bytes == after.bytes);
+    assert(before.bytes.find("[Team2Objective0Action1]\n") != std::string::npos);
+    destroyed->clear(); objectives.Clear();
+    assert((*destroyed == std::vector<int>{11,12,21,22,31,32,41}));
+    FitIniFile empty; objectives.Save(&empty); assert(empty.bytes == "[Team2Objectives]\nNumObjectives=0\n");
+    EditorObject object;
+    destroyed->clear(); clone.handleObjectInvalidation(&object);
+    assert((*destroyed == std::vector<int>{12,11,32,31}));
+    assert(clone.OUTERINDEX->ThisObjectiveHasNoConditions());
+    clone.handleObjectInvalidation(&object);
+    FitIniFile deleted; clone.Save(&deleted);
+    assert(deleted.bytes.find("NumConditions=0\nNumActions=2\nNumFailureConditions=0\nNumFailureActions=1\n") != std::string::npos);
+    std::ofstream file(argv[1], std::ios::binary); file << before.bytes << empty.bytes << deleted.bytes << emptyObjectiveFile.bytes;
+}
+'''
+            replacements = {
+                'OUTERAPPEND': 'Append' if outer_legacy else 'entries.push_back',
+                'CONDAPPEND': 'Append' if legacy else 'm_conditions.entries.push_back',
+                'CONDINDEX': 'GetHead()->' if legacy else 'm_conditions.entries[0]->',
+                'OUTERINDEX': 'GetHead()' if outer_legacy else 'entries[0]',
+                'APPEND': 'Append' if legacy else 'entries.push_back',
+            }
+            for key, value in replacements.items():
+                source = source.replace(key, value)
+            return source.replace('->.value', '->value')
+
+        def run(source, label, succeeds=True):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(source, encoding='utf-8')
+            result = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                    capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(exe), str(output / (label + '.fit'))], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        paths = ('editor/Objective.h', 'editor/Objective.cpp')
+        run(fixture(*(original(p) for p in paths)), 'old')
+        header, implementation = ((root / p).read_text() for p in paths)
+        run(fixture(header, implementation), 'current')
+        self.assertEqual((output / 'old.fit').read_bytes(), (output / 'current.fit').read_bytes())
+        mutated = implementation.replace('i += 1;', 'i += 2;')
+        self.assertNotEqual(mutated, implementation)
+        run(fixture(header, mutated), 'wrong-numbering', False)
+        print(f'Objective fixture artifacts: {output}')
+
     def save_order_fixture(self, name, main, mutation):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / ('mc2-' + name) / uuid.uuid4().hex
@@ -37,7 +200,7 @@ class LegacyLinkTests(unittest.TestCase):
 struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } } heap;
 Heap* systemHeap = &heap;
 '''
-        prefix += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+        prefix += legacy_elist(root)
         prefix += r'''
 struct FitIniFile {
     std::string bytes;
@@ -177,7 +340,7 @@ int main() {
                       '#include <vector>\n#include <algorithm>\n#define gosASSERT(x) assert(x)\n'
                       'struct Heap { void* Malloc(size_t n) { return malloc(n); } '
                       'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
-            source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+            source += legacy_elist(root)
             source += ('constexpr int DRAW_BARS = 1; struct ObjectAppearance { int selected = 0; };\n'
                        'struct EditorObject { virtual ~EditorObject() = default; '
                        'ObjectAppearance state; bool present = true; bool isSelected() { return state.selected; } '
@@ -299,7 +462,7 @@ int main() {
             if legacy:
                 source += ('struct Heap { void* Malloc(size_t n) { return malloc(n); } '
                            'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+                source += legacy_elist(root)
             source += ('struct AppearanceType {}; using DWORD = unsigned long;\n'
                        'constexpr int MECH_TYPE = 1, GV_TYPE = 2;\nclass EditorObjectMgr { public:\n')
             source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST' if 'class EDITOR_OBJECT_LIST' in header else '\t// Borrowed pointers;')]
@@ -407,7 +570,7 @@ int main() {
             if 'public EList' in header:
                 source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
                 source += 'Heap heap; Heap* systemHeap = &heap;\n#define gosASSERT(x) assert(x)\n'
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+                source += legacy_elist(root)
             source += '''
 struct Combo {
     std::vector<int> items; int selected = -1;
@@ -484,7 +647,7 @@ struct Dialog {
             if 'EList< Action*' in header:
                 source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
                 source += 'Heap heap; Heap* systemHeap = &heap;\n'
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+                source += legacy_elist(root)
             source += 'constexpr int MAX_DESC_LENGTH = 256;\n'
             source += header[header.index('class Action\n{'):header.index('struct VertexInfo')]
             source += header[header.index('class ActionUndoMgr\n{'):header.index('}; // class SActionMgr') + 2]
@@ -643,7 +806,7 @@ struct FitIniFile {
             if legacy:
                 source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
                 source += 'Heap* systemHeap;\n'
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+                source += legacy_elist(root)
             source += re.sub(r'^#include.*$', '', header, flags=re.M)
             for signature in ('CMissionData::CMissionData()', 'bool CMissionData::operator==',
                               'bool CMissionData::Save', 'CGroupData::CGroupData()',
