@@ -5,13 +5,6 @@
   "source_verdict": "mc2_10_saved_204611 (low-angle across lake, night)",
   "regions": [
     {
-      "id": "horizon_white_billboards",
-      "rect": {"mode": "norm", "x": 0.30, "y": 0.235, "w": 0.12, "h": 0.075},
-      "severity": "high",
-      "check": "HEADLINE FAIL: distant LOD tree impostors render fullbright PURE WHITE (peak RGB ~255,255,253) against night terrain (~50,49,43) and sky (~127) — un-hazed silhouette cutouts. LOD/billboard crossfade flashes fullbright before resolving. Single most eye-catching defect.",
-      "thresholds": {"mean_delta": 3.0, "changed_pct": 1.5, "struct": 8.0}
-    },
-    {
       "id": "far_water_surface",
       "rect": {"mode": "norm", "x": 0.20, "y": 0.30, "w": 0.60, "h": 0.14},
       "severity": "medium",

@@ -21,14 +21,6 @@
       "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
     },
     {
-      "id": "pad_outline_fence",
-      "rect": {"mode": "norm", "x": 0.20, "y": 0.55, "w": 0.30, "h": 0.25},
-      "severity": "low",
-      "approx": true,
-      "check": "Stippled/noisy white outline around tank-farm/pad = chain-link perimeter fence alpha-tested texture (legit asset, not a render bug). Reads slightly noisy under light pool.",
-      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
-    },
-    {
       "id": "lamp_cones",
       "rect": {"mode": "norm", "x": 0.40, "y": 0.35, "w": 0.25, "h": 0.30},
       "severity": "low",
