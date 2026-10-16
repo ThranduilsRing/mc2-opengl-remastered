@@ -32,6 +32,24 @@
 #include "mc2fmt.h"
 #include "objective.h"
 
+void VideoObjectiveReceipt::capture(const char* resolvedPath)
+{
+    if (auto* observation = objectiveObservation(); observation && observation->dispatch) {
+        cause = observation->dispatch;
+        missionHash = observation->missionHash;
+        path = resolvedPath;
+    }
+}
+
+void VideoObjectiveReceipt::decoded()
+{
+    if (!cause) { return; }
+    if (auto* observation = objectiveObservation(); observation && observation->missionHash == missionHash) {
+        observation->SinkResult("movie", "decoded_frame", "accepted", objectiveObservationQuote(path), cause);
+    }
+    cause = 0;
+}
+
 // Frame-rate averaging globals referenced by mechcmd2.cpp.
 // Defined here to keep them co-located with the movie subsystem.
 float averageFrameRate = 0.0f;

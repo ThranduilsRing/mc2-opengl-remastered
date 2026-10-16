@@ -185,6 +185,7 @@ bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
 // Session open/close/update/render — implemented in Tasks 9-15
 //-----------------------------------------------------------------------------
 struct VideoSession {
+    VideoObjectiveReceipt objectiveReceipt;
     // Demuxer / video decoder
     AVFormatContext* fmt       = nullptr;
     int              vStream   = -1;
@@ -346,7 +347,8 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
 
     VideoSession* s = new VideoSession();
 
-    // 1. Demux
+    s->objectiveReceipt.capture(p.resolvedPath);
+
     if (avformat_open_input(&s->fmt, p.resolvedPath, nullptr, nullptr) < 0) {
         VIDEO_LOG("avformat_open_input failed for '%s'", p.resolvedPath);
         video_close(s); return nullptr;
@@ -356,7 +358,6 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
         video_close(s); return nullptr;
     }
 
-    // 2. Video stream
     s->vStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     if (s->vStream < 0) {
         VIDEO_LOG("no video stream in '%s'", p.resolvedPath);
@@ -380,7 +381,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
               ? av_q2d(vst->avg_frame_rate) : 30.0;
     s->timeBase = av_q2d(vst->time_base);
 
-    // 3. Swscale — target BGRA (matches gos_LockTexture pixel layout)
+    // BGRA matches the destination texture format.
     s->sws = sws_getContext(s->srcW, s->srcH, s->vCodec->pix_fmt,
                              s->srcW, s->srcH, AV_PIX_FMT_BGRA,
                              SWS_BILINEAR, nullptr, nullptr, nullptr);
@@ -389,8 +390,6 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     s->vFrame = av_frame_alloc();
     s->pkt    = av_packet_alloc();
 
-    // 4. gos texture (Path GL-A) — sized to source, gos_Texture_Alpha = BGRA8.
-    //    RECT_TEX(w,h) packs non-square dims into one DWORD.
     s->texHandle = gos_NewEmptyTexture(gos_Texture_Alpha,
                                         "mc2video",
                                         RECT_TEX((DWORD)s->srcW, (DWORD)s->srcH),
@@ -400,12 +399,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
         video_close(s); return nullptr;
     }
 
-    // 5. Quad geometry — preserve the caller's origin (X,Y), not just
-    //    the width/height. Callers with non-zero origins (mission
-    //    briefing VIDCOM at ~(667,5), pilot-cam slots in the force
-    //    group bar, in-mission pop-up cinemas) depend on the video
-    //    landing at MC2Rect.left/top. Fullscreen callers pass (0,0)
-    //    and see no behavioural change.
+    // Briefing panels and pilot cameras require the destination origin.
     s->rectX = p.destRectX;
     s->rectY = p.destRectY;
     s->rectW = p.destRectW;
@@ -414,14 +408,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
                          s->rectX, s->rectY, s->rectW, s->rectH,
                          s->quadX0, s->quadY0, s->quadX1, s->quadY1);
 
-    // 6. Audio — precedence ladder (Task 14, spec §Audio-source precedence):
-    //   1. useWaveFile=true  → prefer sidecar WAV
-    //   2. useWaveFile=false → prefer embedded audio
-    //   3. if preferred fails, fall back to the other source
-    //   4. if both fail, play silent video
-    // Note: tryOpenEmbeddedAudio owns av_find_best_stream + decoder open.
-    //       s->aStream >= 0 iff embeddedOK. Wall-clock master kicks in
-    //       automatically when audioStreamStarted stays false.
+    // Prefer the requested audio source; silent videos use the wall clock.
     {
         bool sidecarOK  = false;
         bool embeddedOK = false;
@@ -444,7 +431,6 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
         }
     }
 
-    // 7. Fill out
     if (out) {
         out->srcW = s->srcW; out->srcH = s->srcH;
         out->sar  = s->sar;  out->fps  = s->fps;
@@ -453,7 +439,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
                          s->vCodec->pix_fmt == AV_PIX_FMT_ARGB ||
                          s->vCodec->pix_fmt == AV_PIX_FMT_RGBA ||
                          s->vCodec->pix_fmt == AV_PIX_FMT_BGRA);
-        out->glTextureId = 0;             // Path GL-A: we don't expose GL id
+        out->glTextureId = 0;
         out->quadX0 = s->quadX0; out->quadY0 = s->quadY0;
         out->quadX1 = s->quadX1; out->quadY1 = s->quadY1;
     }
@@ -461,7 +447,6 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     VIDEO_LOG("init: opened '%s' (%dx%d, sar=%.3f, fps=%.2f, audio=%d)",
               p.resolvedPath, s->srcW, s->srcH, s->sar, s->fps, (int)(s->aStream >= 0));
 
-    // 8. Clock
     s->clockStart   = (double)av_gettime() / 1000000.0;
     s->presentedPTS = -1.0;
 
@@ -648,47 +633,40 @@ bool video_update(VideoSession* s)
 
     const double masterNow = videoMasterClock(s);
 
-    // Step A: if we have a pending frame, check whether it is now due.
+    // Future frames remain pending until their presentation time.
     if (s->pendingFrameValid) {
         if (s->pendingFramePTS > masterNow) {
-            // Still in the future — hold, do not upload, do not present.
             return false;
         }
-        // Due. Promote to the display texture.
         uploadFrameToTexture(s);
         s->presentedPTS = s->pendingFramePTS;
         s->pendingFrameValid = false;
     }
 
-    // Step B: pull frames from the decoder. Future frames park in the
-    // pending slot. Severely-late frames drop silently without upload.
-    // On-time frames upload and we keep looking for a future frame
-    // to park before returning.
+    // Decode ahead for presentation; severely late frames need no upload.
     for (;;) {
         int r = decodeNextVideoFrame(s);
         if (r < 0) { s->eof = true; return true; }
+        s->objectiveReceipt.decoded();
 
         double pts = (s->vFrame->pts == AV_NOPTS_VALUE)
                      ? (s->presentedPTS + 1.0 / s->fps)
                      : s->vFrame->pts * s->timeBase;
 
         if (pts > masterNow) {
-            // Future frame — park and return. Do NOT upload yet.
             s->pendingFrameValid = true;
             s->pendingFramePTS   = pts;
             return false;
         }
 
-        // Frame is due or late. If more than ~2 frames behind, drop
-        // without upload and keep pulling; else upload and continue.
+        // Severely late frames would prolong catch-up without improving playback.
         const double lateThreshold = 2.0 / (s->fps > 0 ? s->fps : 30.0);
         if (masterNow - pts > lateThreshold) {
-            continue;  // drop silently; vFrame gets overwritten next iter
+            continue;
         }
 
         uploadFrameToTexture(s);
         s->presentedPTS = pts;
-        // loop; next iteration parks a future frame or continues catching up
     }
 }
 
