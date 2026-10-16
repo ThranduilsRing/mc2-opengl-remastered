@@ -825,6 +825,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         for (uint32_t lvl = 0; lvl < levelCount; ++lvl) {
             const uint32_t lw = mc2tex::mipExtent(cpuArray.width, lvl), lh = mc2tex::mipExtent(cpuArray.height, lvl);
             const size_t layerBytes = static_cast<size_t>(lw) * lh * 4u;
+            std::vector<uint8_t>& level = cpuArray.levels[lvl];
+            level.resize(layerBytes * layerTexels.size());
+            for (size_t k = 0; k < layerTexels.size(); ++k) std::memcpy(level.data() + k * layerBytes, layerTexels[k].data(), layerBytes);
+            // A pre-baked level replaces its layer at that level only: the chain below it keeps deriving from level 0, as
+            // glGenerateMipmap did before the baked levels were uploaded over it.
             if (lvl > 0)
                 for (const auto& [layerK, img] : ktxMipLayers) {
                     if (static_cast<int>(lvl) >= img.mipCount || lvl >= img.mipByteOffsets.size()) continue;
@@ -836,12 +841,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                             mc2::fmt::as_size(layerK), mc2::fmt::as_u32(lvl), mc2::fmt::as_u32(kw), mc2::fmt::as_u32(kh), mc2::fmt::as_u32(lw), mc2::fmt::as_u32(lh));
                         continue;
                     }
-                    blitRows(layerTexels[layerK], lw, img.pixels.data() + off, kw, kh);
+                    std::vector<uint8_t> patched = layerTexels[layerK];
+                    blitRows(patched, lw, img.pixels.data() + off, kw, kh);
+                    std::memcpy(level.data() + layerK * layerBytes, patched.data(), layerBytes);
                     ++bakedLevels;
                 }
-            std::vector<uint8_t>& level = cpuArray.levels[lvl];
-            level.resize(layerBytes * layerTexels.size());
-            for (size_t k = 0; k < layerTexels.size(); ++k) std::memcpy(level.data() + k * layerBytes, layerTexels[k].data(), layerBytes);
             if (lvl + 1u < levelCount)
                 for (auto& layer : layerTexels) layer = mc2tex::boxDownsampleRgba8(layer, lw, lh);
         }

@@ -197,3 +197,11 @@ def test_a_candidate_set_records_the_backend_and_the_options_it_was_drawn_with(d
     record = json.loads((set_dir / "set.json").read_text(encoding="utf-8"))
     assert record["backend"] == {"requested": "vulkan", "drew": ["vulkan"]}
     assert record["render_options"] == {"ShadowCSM": True}
+
+
+def test_the_deterministic_clock_also_seeds_the_simulation_stream(tmp_path):
+    rvc = _load("scripts/run_visual_capture.py", "run_visual_capture_rng_under_test")
+    env, _ = rvc.build_capture_env(tmp_path / "bm.json", tmp_path, 431, 30, True, None)
+    assert env.get("MC2_DETERMINISTIC_RNG") == "1"
+    env, _ = rvc.build_capture_env(tmp_path / "bm.json", tmp_path, 431, 30, False, None)
+    assert "MC2_DETERMINISTIC_RNG" not in env

@@ -1,4 +1,4 @@
-<!-- doc-status: current | reviewed:2026-10-15 -->
+<!-- doc-status: current | reviewed:2026-10-16 -->
 # VK golden set: blessing plan and the 14 refused regions
 
 WHAT: how the Vulkan golden set is blessed from Vulkan captures, and what happens to the 14 regions the GL 1080p set refused.
@@ -84,7 +84,21 @@ Order: re-author region 8 and retire 2, 6, 13 (manifest edit, no capture) -> P1 
 -> acceptance -> GL deletion step 1. An interim VK set may be blessed before every row closes, under its own name and never as CURRENT_GOLDEN,
 to give the GL-arm removal a VK reference; the final set is re-blessed after the last row closes.
 
-## 3. Follow-ups (not done here)
+## 3. Blessed 2026-10-16: `golden-e350d0b4a5c6-vk-1080p` (interim, not CURRENT_GOLDEN)
+
+| item | value |
+|---|---|
+| runs | `.claude/l2cap/vkgold26-r{1,2,3}`, exe e350d0b4a5c6 (clean), lane install, the 10 poses of section 2, umbrella pair + `MC2_SMOKE_FREEZE_ANIM=1`, validation off |
+| P1 | LANDED (06c4c08be): the capture harness sets `MC2_DETERMINISTIC_RNG=1` with the deterministic clock. The varying night light was the turret searchlights, whose idle sweep targets come from the simulation RNG (wall-clock seeded in play); `MC2_LIGHT_POOL_DUMP` showed slots 58 / 59 at different positions in two launches |
+| noise floor (mean abs RGB sum / px over 30, all pairs) | 205644 0.002 / 61; 205843 0.000 / 1; 204523 0.000 / 0; 204611 0.004 / 15; 204753 0.000 / 0; 204907 0.001 / 0; 205952 0.004 / 7; 212019, 212140, 212258 0.000 / 0. GL at 204753 (three runs) 0.000 / 0 |
+| blessed | 36 of 36 regions, 0 refused; `verify.py --golden golden-e350d0b4a5c6-vk-1080p` on r2: 10 poses PASS, 36 regions PASS |
+| retired (manifest edit, same commit) | 2 `horizon_white_billboards`, 6 `pad_outline_fence`, 13 `cement_tile_seams` |
+| region 8 `distant_ridge_base` | blessed with its rect UNCHANGED: under VK the 4K-referenced rect lands on the lit ridge-top compound (viewed, `scratch` grid overlay of r1); the rect proposed in section 1 (x 1300-1600, y 400-520) lands on the lake and was not taken |
+| region 3 `far_water_surface` | blessed: with the RNG seeded the water is stable run to run (204611 worst pair 0.004 mean), so P2 is not needed for this pose |
+| viewed | every pose of r1 next to the same-exe GL capture `gl26-r1`: `.claude/l2cap/montages/s26-vkgold-gl-vk-{1,2}.png` (GL left, VK right); VK-GL mean 205644 2.49, 205843 6.07, 204523 1.67, 204611 3.53, 204753 3.75, 204907 5.14, 205952 10.1 (the white GL map-edge skirt), 212019 4.17, 212140 3.11, 212258 3.04 |
+| why interim | parity rows that change these poses are still open (1, 2, 4, 6, 7, 9 at least), so this set is the VK reference for GL deletion step 1, not the final golden; re-bless after the last row closes and then point `CURRENT_GOLDEN` at it |
+
+## 4. Follow-ups (not done here)
 - `verify.py` does not compare the golden's backend with the candidate's; add a refusal (with an explicit cross-backend switch for the
   oracle use) when the VK set becomes current.
 - `capture_ab.py` uses two GL arms as its noise floor; switch to two VK arms (inventory section 12).

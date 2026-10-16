@@ -72,9 +72,9 @@ unsigned int gos_GetTerrainNormalArrayTex() {
     gosRenderer* r = getGosRenderer();
     return r ? r->getTerrainNormalArrayTexEnsureBuilt() : 0u;
 }
-const mc2tex::TextureArrayCpu* gos_GetTerrainNormalArrayCpu() {
+uint32_t gos_GetTerrainMaterialNormalHandle(int slot) {
     gosRenderer* r = getGosRenderer();
-    return r && !r->getTerrainNormalArrayCpu().levels.empty() ? &r->getTerrainNormalArrayCpu() : nullptr;
+    return r ? (uint32_t)r->getTerrainMaterialNormalHandle(slot) : (uint32_t)INVALID_TEXTURE_ID;
 }
 
 // ─── gos_terrain_bridge implementation ────────────────────────────────────

@@ -66,9 +66,8 @@ extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 #endif
 
 extern unsigned int gos_GetTerrainNormalArrayTex();
-namespace mc2tex { struct TextureArrayCpu; }
-// The CPU copy of the array gos_GetTerrainNormalArrayTex built; null before the first build.
-const mc2tex::TextureArrayCpu* gos_GetTerrainNormalArrayCpu();
+// The gos texture handle of detail-normal slot `slot` (0-8), one layer source of that array; INVALID_TEXTURE_ID when absent.
+uint32_t gos_GetTerrainMaterialNormalHandle(int slot);
 
 extern void  gos_GetTerrainMatTiling(float*, float*, float*, float*, float*);
 

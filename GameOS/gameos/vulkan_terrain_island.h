@@ -23,8 +23,6 @@
 
 #include <cstdint>
 
-namespace mc2tex { struct TextureArrayCpu; }
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -77,6 +75,12 @@ struct Mc2TerrainTier1Feed {
     // island imports copy-once, plus the atlas-UV reconstruction params (same source
     // as the GL LOD-chunk u_colormap / u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits).
     uint32_t                    glColormapTex;         // GL name of g_atlasGLTex (0 = not built yet)
+    const uint8_t*              colormapBytes;         // the field store's colormap atlas (RGBA8 or BC7 level 0); null = none
+    size_t                      colormapByteCount;
+    int32_t                     colormapWidth;
+    int32_t                     colormapHeight;
+    uint32_t                    colormapVkFormat;      // 37 RGBA8, 145 / 146 BC7 UNORM / SRGB
+    uint64_t                    colormapVersion;       // changes on every rebuild; the island re-imports on a change
     float                       atlasTopLeftX;
     float                       atlasTopLeftY;
     float                       atlasOneOverWorldUnits;
@@ -125,7 +129,7 @@ struct Mc2TerrainTier1Feed {
     // (byte-identical to the lighting-only frame).
     int32_t                     detailEnabled;         // 1 iff MC2_VK_TERRAIN_DETAIL gate on
     uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built); the island's re-import key
-    const mc2tex::TextureArrayCpu* matNormalArrayCpu;  // its CPU copy (null = none), the bytes the island imports
+    uint32_t                    matNormalHandles[9];   // gos texture handle per array layer (0 = absent slot)
     float                       nfhStrength;           // terrainNormalsFromHeightStrength (GL default 1.0)
     float                       detailTiling;          // detailNormalTiling.x (GL default 1.0)
     float                       detailStrength;        // detailNormalStrength.x (GL default 1.0)

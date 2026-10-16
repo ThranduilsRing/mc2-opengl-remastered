@@ -92,10 +92,10 @@ layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 #include "../include/axis.hglsl"
 
 // StaticPropPbr option: Schlick-Fresnel sun specular added to the lit prop colour. The albedo-tinted F0 and the power lobe are the GL terms; metallic 0 and roughness 1
-// are the GL literal defaults, because the island carries no per-material scalars.
+// are the GL literal defaults, because the island carries no per-material scalars; the GL roughness override (on at 0.95 by default) replaces the roughness as in GL.
 vec3 propSunSpecular(vec3 albedo) {
     const float metallic  = 0.0;
-    const float roughness = 1.0;
+    const float roughness = uFrame.pbrV1RoughnessOverride >= 0.0 ? uFrame.pbrV1RoughnessOverride : 1.0;
     vec3 N = mc2ToRender(normalize(vNormalStuff));
     vec3 V = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
     vec3 L = mc2ToRender(normalize(-vSunDirStuff));

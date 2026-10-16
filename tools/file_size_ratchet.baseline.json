@@ -18,9 +18,9 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2332,
   "GameOS/gameos/gpu_cull_compute.cpp": 1510,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1776,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1779,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1583,
-  "GameOS/include/gameos.hpp": 3753,
+  "GameOS/include/gameos.hpp": 3757,
   "RenderCore/RendererFeatureRegistry.h": 1734,
   "code/artlry.cpp": 1818,
   "code/bldng.cpp": 1692,
@@ -56,14 +56,14 @@
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1860,
+  "mclib/move.h": 1837,
   "mclib/render_contract.cpp": 1530,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1777,
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "5e7440c75",
+ "head": "cddaacc61",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -75,7 +75,7 @@
    "files": 347,
    "files_over_1500": 8,
    "files_over_3000": 1,
-   "max_lines": 3753
+   "max_lines": 3757
   },
   "GuiRuntime": {
    "files": 14,
@@ -114,7 +114,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 593,
+   "files": 592,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2632
@@ -133,7 +133,7 @@
  "top": [
   {
    "file": "GameOS/include/gameos.hpp",
-   "lines": 3753
+   "lines": 3757
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -216,10 +216,6 @@
    "lines": 1908
   },
   {
-   "file": "mclib/move.h",
-   "lines": 1860
-  },
-  {
    "file": "code/multplyr.h",
    "lines": 1849
   },
@@ -232,6 +228,10 @@
    "lines": 1842
   },
   {
+   "file": "mclib/move.h",
+   "lines": 1837
+  },
+  {
    "file": "code/artlry.cpp",
    "lines": 1818
   },
@@ -240,23 +240,23 @@
    "lines": 1812
   },
   {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1779
+  },
+  {
    "file": "mclib/ablrtn.cpp",
    "lines": 1778
   },
   {
    "file": "mclib/terrtxm.cpp",
    "lines": 1777
-  },
-  {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1776
   }
  ],
  "total": {
-  "files": 1904,
+  "files": 1903,
   "files_over_1500": 49,
   "files_over_3000": 1,
-  "max_lines": 3753
+  "max_lines": 3757
  },
  "version": 1
 }

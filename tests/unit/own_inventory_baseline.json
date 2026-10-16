@@ -7473,10 +7473,10 @@
    "delete_array": 0,
    "files": {
     "GameOS/gameos/gameos_graphics_capi.cpp": {
-     "new": 5
+     "new": 6
     }
    },
-   "new": 5,
+   "new": 6,
    "new_array": 0,
    "owners": []
   },

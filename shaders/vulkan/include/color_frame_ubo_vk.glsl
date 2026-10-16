@@ -19,7 +19,7 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     float ambientV1Strength;  // off 256
     int   hotTableReady;  // off 260
     float pbrV1Strength;  // off 264
-    float _padEye;  // off 268
+    float pbrV1RoughnessOverride;  // off 268
     vec4  cameraWorldPos;  // off 272
 } uFrame;
 #endif

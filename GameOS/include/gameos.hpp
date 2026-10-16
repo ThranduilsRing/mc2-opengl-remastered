@@ -2499,11 +2499,15 @@ void gos_SetTerrainLightDir(float x, float y, float z);
 void gos_SetTerrainMissionFlatLight(float r, float g, float b);
 void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 void gos_SetTerrainDetailParams(float tiling, float strength);
-void gos_SetTerrainMaterialNormal(int index, unsigned int glTexId);
+// Detail-normal slot `index` (0-8) takes a texture from gos_NewTerrainNormalTexture and owns it from then on.
+void gos_SetTerrainMaterialNormal(int index, DWORD handle);
 void gos_SetTerrainWorldScale(float scale);
 void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation);
 void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers);
 unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width);
+// A width x width RGBA8 detail-normal texture as a gos texture handle (REPEAT, linear, no mips); its texels stay with the handle
+// while the Vulkan umbrella is armed, for the Vulkan terrain island. INVALID_TEXTURE_ID on failure.
+DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width);
 void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
 void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
 void gos_SetTerrainViewDir(float x, float y, float z);

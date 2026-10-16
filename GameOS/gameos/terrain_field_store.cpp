@@ -82,11 +82,12 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
 
 namespace {
 
-// A shore sidecar covers the map at most a few texels per vertex; beyond kMaxSide * 4 on an edge it is malformed.
+// A field image (shore sidecar, cement atlas) covers the map at most a few texels per vertex; beyond kMaxSide * 4 on an edge it
+// is malformed.
 template <typename Texel>
 bool setImage(FieldImage<Texel>& image, const Texel* texels, int width, int height, size_t texelsPerPixel) {
     if (!texels || width <= 0 || height <= 0 || width > kMaxSide * 4 || height > kMaxSide * 4) {
-        MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a shore sidecar of {:d}x{:d}", mc2::fmt::as_i32(width),
+        MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a field image of {:d}x{:d}", mc2::fmt::as_i32(width),
                 mc2::fmt::as_i32(height));
         return false;
     }
@@ -109,6 +110,25 @@ bool TerrainFieldStore::setWaterShoreHeight(const float* heights, int width, int
 
 bool TerrainFieldStore::setCementAtlas(const uint8_t* rgba, int width, int height) {
     return setImage(cementAtlas_, rgba, width, height, 4);
+}
+
+bool TerrainFieldStore::setColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat) {
+    const bool bc7 = vkFormat == ColormapAtlas::kBc7Unorm || vkFormat == ColormapAtlas::kBc7Srgb;
+    const bool sizeOk = width > 0 && height > 0 && width <= kMaxSide * 4 && height <= kMaxSide * 4;
+    const size_t want = !sizeOk ? 0
+                      : bc7     ? (size_t)((width + 3) / 4) * (size_t)((height + 3) / 4) * 16u
+                      : vkFormat == ColormapAtlas::kRgba8 ? (size_t)width * (size_t)height * 4u : 0;
+    if (bytes.empty() || want == 0 || bytes.size() != want) {
+        MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a colormap atlas of {:d}x{:d}, format {:d}, {:d} bytes",
+                mc2::fmt::as_i32(width), mc2::fmt::as_i32(height), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_size(bytes.size()));
+        return false;
+    }
+    colormapAtlas_.bytes.assign(bytes.begin(), bytes.end());
+    colormapAtlas_.width = width;
+    colormapAtlas_.height = height;
+    colormapAtlas_.vkFormat = vkFormat;
+    colormapAtlas_.version = nextVersion();
+    return true;
 }
 
 }  // namespace mc2terrain

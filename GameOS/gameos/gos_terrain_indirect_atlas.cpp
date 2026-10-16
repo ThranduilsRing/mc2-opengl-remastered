@@ -3,6 +3,7 @@
 #include "gos_terrain_indirect_internal.h"
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
+#include "vk_shared_gbuffer_gate.h"   // mc2vkgate::umbrellaOn: whether the colormap atlas is kept on the CPU
 
 
 // ---------------------------------------------------------------------------
@@ -178,6 +179,18 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
 namespace gos_terrain_indirect_detail {
 
 
+// The CPU copy of the colormap atlas the Vulkan terrain island imports, kept in the terrain field store.
+// WHY only under the umbrella: GL frees its CPU colormap after the upload (MC2_COLORMAP_CPU_RETIRE), and an RGBA8 atlas is
+// 100-150 MB that only the Vulkan island reads.
+static void keepColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat) {
+    if (!mc2vkgate::umbrellaOn())
+        return;
+    if (mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore())
+        store->setColormapAtlas(bytes, width, height, vkFormat);
+    else
+        mc2::fmt::print_err("[TERRAIN_FIELDS v1] colormap atlas built with no terrain field store: the Vulkan terrain stays olive\n");
+}
+
 void BuildColormapAtlas() {
     ZoneScopedN("Terrain::IndirectAtlasUpload");
     // Negative control (MC2_LOAD_RACE_DELAY_ATLAS): defer the real upload for
@@ -241,6 +254,7 @@ void BuildColormapAtlas() {
 
             atlasSizeCapture = img.width;
             atlasBuilt = true;
+            keepColormapAtlas(std::span<const uint8_t>(img.pixels.data(), mip0Bytes), img.width, img.height, img.vkFormat);
 
             mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded {:d}x{:d} BC7 fmt=0x{:x} bytes={:d} gltex={:d}\n", mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)g_atlasGLTex));
 
@@ -286,6 +300,19 @@ void BuildColormapAtlas() {
         MC2_GL_BindTexture(GL_TEXTURE_2D, 0);
 
         atlasSizeCapture = tcm->cpuColorMapSize;
+        if (mc2vkgate::umbrellaOn()) {
+            // RGBA order: the GL upload above swizzles the same BGRA bytes.
+            const size_t texels = (size_t)tcm->cpuColorMapSize * (size_t)tcm->cpuColorMapSize;
+            std::vector<uint8_t> rgba(texels * 4u);
+            for (size_t i = 0; i < texels; ++i) {
+                rgba[i * 4 + 0] = tcm->cpuColorMap[i * 4 + 2];
+                rgba[i * 4 + 1] = tcm->cpuColorMap[i * 4 + 1];
+                rgba[i * 4 + 2] = tcm->cpuColorMap[i * 4 + 0];
+                rgba[i * 4 + 3] = tcm->cpuColorMap[i * 4 + 3];
+            }
+            keepColormapAtlas(rgba, tcm->cpuColorMapSize, tcm->cpuColorMapSize,
+                              mc2terrain::ColormapAtlas::kRgba8);
+        }
 
         if (retireCpuColorMap()) {
             // Atlas is on GPU — release the CPU copies (COLORMAP-CPU-RETIRE-1).

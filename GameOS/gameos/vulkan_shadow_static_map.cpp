@@ -223,15 +223,10 @@ bool ShadowStaticMap::stageBuildings(const StaticPropGeometryView& geometry) {
     std::vector<uint8_t> packed(static_cast<size_t>(bytes));
     for (size_t k = 0; k < order.size(); ++k) std::memcpy(packed.data() + k * sizeof(GpuStaticPropInstance), &instances[order[k]], sizeof(GpuStaticPropInstance));
     if (!instBuf_.upload(packed.data(), bytes)) { slog("building instance upload failed."); return false; }
+    std::vector<uint32_t> sortedTypes(order.size());
+    for (size_t k = 0; k < order.size(); ++k) sortedTypes[k] = instances[order[k]].typeID;
     uint32_t dropped = 0;
-    for (uint32_t i = 0; i < order.size();) {
-        const uint32_t tid = instances[order[i]].typeID;
-        uint32_t j = i;
-        while (j < order.size() && instances[order[j]].typeID == tid) ++j;
-        if (tid < geometry.typeFirstPacket.size() && tid < geometry.typePacketCount.size()) buildingRuns_.push_back({tid, i, j - i});
-        else dropped += j - i;
-        i = j;
-    }
+    buildingRuns_ = planShadowBuildingRuns(sortedTypes, std::min(geometry.typeFirstPacket.size(), geometry.typePacketCount.size()), dropped);
     if (dropped) mc2::fmt::print_err("[VK_SHADOW_STATIC] {} building instances name a type the geometry does not have; dropped.\n", dropped);
     return true;
 }
@@ -296,7 +291,7 @@ bool ShadowStaticMap::record(VkCommandBuffer cb, const StaticPropGeometryView& g
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, buildingPipe_.get());
         vkCmdBindVertexBuffers(cb, 0, 1, &geometry.vbo, &zero);
         vkCmdBindIndexBuffer(cb, geometry.ibo, 0, VK_INDEX_TYPE_UINT32);
-        for (const BuildingRun& run : buildingRuns_) {
+        for (const ShadowBuildingRun& run : buildingRuns_) {
             const uint32_t first = geometry.typeFirstPacket[run.typeID], count = geometry.typePacketCount[run.typeID];
             for (uint32_t k = 0; k < count; ++k) {
                 const uint32_t pk = first + k;

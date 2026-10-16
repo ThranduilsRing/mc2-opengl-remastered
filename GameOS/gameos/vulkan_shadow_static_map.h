@@ -18,6 +18,7 @@
 
 #include "vk_owned.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
+#include "shadow_static_building_runs.h"
 
 #include <cstdint>
 #include <span>
@@ -80,9 +81,7 @@ private:
     uint32_t terrainIndexCount_ = 0;
     uint64_t terrainHeightVersion_ = 0;
 
-    // A run of building instances of one type in the sorted instance buffer.
-    struct BuildingRun { uint32_t typeID; uint32_t firstInstance; uint32_t count; };
-    std::vector<BuildingRun> buildingRuns_;
+    std::vector<ShadowBuildingRun> buildingRuns_;   // runs of one type in the sorted instance buffer
 
     // Declared in creation order: released in reverse, so the framebuffer and view go before the image, the pipelines before their layout.
     OwnedImage image_;

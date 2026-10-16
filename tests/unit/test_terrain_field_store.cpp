@@ -102,3 +102,21 @@ TEST_CASE("terrain field store: the cement atlas is kept with a fresh version, m
     REQUIRE(store.setCementAtlas(px, 2, 2));
     CHECK(store.cementAtlas().version != v);
 }
+
+TEST_CASE("terrain field store: the colormap atlas keeps RGBA8 or BC7 level 0 and rejects a byte count that is not one level") {
+    mc2terrain::TerrainFieldStore store;
+    const std::vector<uint8_t> rgba(4 * 2 * 4, 7);
+    CHECK(store.setColormapAtlas(rgba, 4, 2, mc2terrain::ColormapAtlas::kRgba8));
+    const uint64_t v = store.colormapAtlas().version;
+    CHECK(v != 0);
+    const std::vector<uint8_t> bc7(2 * 1 * 16, 9);   // 5x4 texels = 2x1 blocks
+    CHECK(store.setColormapAtlas(bc7, 5, 4, mc2terrain::ColormapAtlas::kBc7Srgb));
+    CHECK(store.colormapAtlas().version != v);
+    CHECK(store.colormapAtlas().vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb);
+    const uint64_t v2 = store.colormapAtlas().version;
+    CHECK_FALSE(store.setColormapAtlas(std::span<const uint8_t>(bc7).first(bc7.size() - 1), 5, 4, mc2terrain::ColormapAtlas::kBc7Unorm));
+    CHECK_FALSE(store.setColormapAtlas(rgba, 4, 2, 99u));
+    CHECK_FALSE(store.setColormapAtlas({}, 4, 2, mc2terrain::ColormapAtlas::kRgba8));
+    CHECK(store.colormapAtlas().version == v2);
+    CHECK(store.colormapAtlas().width == 5);
+}

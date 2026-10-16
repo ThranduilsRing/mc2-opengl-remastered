@@ -738,8 +738,8 @@ void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b) {
 void gos_SetTerrainDetailParams(float tiling, float strength) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDetailParams(tiling, strength);
 }
-void gos_SetTerrainMaterialNormal(int index, unsigned int glTexId) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainMaterialNormal(index, glTexId);
+void gos_SetTerrainMaterialNormal(int index, DWORD handle) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainMaterialNormal(index, handle);
 }
 void gos_SetTerrainWorldScale(float scale) {
     if (g_gos_renderer) g_gos_renderer->setTerrainWorldScale(scale);

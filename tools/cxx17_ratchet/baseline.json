@@ -49,13 +49,13 @@
   "GameOS": {
    "LG01": 10,
    "LG02": 191,
-   "LG03": 265,
+   "LG03": 266,
    "LG04": 6,
-   "LG05": 120,
+   "LG05": 122,
    "LG06": 509,
    "LG07": 0,
    "LG08": 259,
-   "LG09": 1953,
+   "LG09": 1956,
    "LG10": 42,
    "LG11": 101,
    "LG12a": 95,
@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 389,
+   "LG01": 416,
    "LG02": 280,
    "LG03": 1077,
    "LG04": 15,
-   "LG05": 138,
-   "LG06": 679,
+   "LG05": 134,
+   "LG06": 674,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2070,
+   "LG09": 2115,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 209,
@@ -364,13 +364,13 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_bridge.cpp": {
-   "LG09": 19
+   "LG09": 20
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
-   "LG03": 7,
-   "LG05": 6,
+   "LG03": 8,
+   "LG05": 8,
    "LG06": 10,
-   "LG09": 7,
+   "LG09": 8,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_draw.cpp": {
@@ -429,7 +429,7 @@
    "LG02": 1,
    "LG03": 1,
    "LG06": 3,
-   "LG09": 10,
+   "LG09": 8,
    "LG10": 1,
    "LG17": 8,
    "LG18": 1
@@ -803,7 +803,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
-   "LG09": 43
+   "LG09": 44
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
@@ -1011,7 +1011,7 @@
    "LG05": 1
   },
   "GameOS/gameos/terrain_field_store.cpp": {
-   "LG09": 7,
+   "LG09": 9,
    "LG17": 1
   },
   "GameOS/gameos/terrain_field_store.h": {
@@ -4325,16 +4325,17 @@
    "LG17": 1
   },
   "mclib/move_globalmap_build.cpp": {
+   "LG01": 23,
    "LG05": 1,
-   "LG06": 1,
-   "LG09": 87,
+   "LG09": 95,
    "LG12b": 7,
    "LG16": 14
   },
   "mclib/move_globalmap_doors.cpp": {
+   "LG01": 1,
    "LG03": 2,
    "LG05": 1,
-   "LG09": 5,
+   "LG09": 9,
    "LG16": 6
   },
   "mclib/move_globalmap_path.cpp": {
@@ -4881,7 +4882,7 @@
    "LG01": 21,
    "LG03": 4,
    "LG06": 4,
-   "LG09": 43,
+   "LG09": 46,
    "LG11": 1,
    "LG12a": 3,
    "LG12b": 29
@@ -4912,7 +4913,7 @@
   "mclib/terrtxm2_bake.cpp": {
    "LG03": 4,
    "LG06": 8,
-   "LG09": 34
+   "LG09": 44
   },
   "mclib/terrtxm2_internal.h": {
    "LG05": 8,
@@ -4925,22 +4926,14 @@
   },
   "mclib/terrtxm2_load.cpp": {
    "LG03": 5,
-   "LG05": 2,
    "LG06": 1,
-   "LG09": 50
+   "LG09": 65
   },
   "mclib/tex_resolve_table.cpp": {
    "LG09": 13
   },
   "mclib/tex_resolve_table.h": {
    "LG09": 1
-  },
-  "mclib/tga_scratch.cpp": {
-   "LG06": 2
-  },
-  "mclib/tga_scratch.h": {
-   "LG05": 2,
-   "LG06": 2
   },
   "mclib/tgainfo.cpp": {
    "LG04": 2,
@@ -5008,11 +5001,11 @@
    "LG02": 3
   },
   "mclib/txmmgr.cpp": {
-   "LG01": 1,
+   "LG01": 4,
    "LG03": 29,
    "LG06": 2,
    "LG08": 1,
-   "LG09": 8,
+   "LG09": 13,
    "LG11": 1,
    "LG12a": 7,
    "LG12b": 3
@@ -5134,7 +5127,7 @@
    "LG20": 3
   }
  },
- "head": "d2913b12e",
+ "head": "505f85088",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

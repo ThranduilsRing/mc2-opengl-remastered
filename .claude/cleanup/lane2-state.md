@@ -1,5 +1,102 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-SIXTH session (2026-10-16 00:10-02:15 CDT, cap 5 h, Opus 5.5) -- night capture determinism (P1) found and fixed in the harness, row 5 closed, row 22 residual fixed, VK golden set blessed (interim), review should-fix 1 + NOTE 1, static-map doctest; nifty NOT merged ("merge lane2 c0cfd7070" absent from mc2-main)
+
+### Commits (after c0cfd7070)
+06c4c08be capture harness seeds the simulation stream | e350d0b4a static-map building runs + doctest (census review NOTE 1) | 9a0b0ac35 row 22 roughness override | 2c89c4a9c VK golden `golden-e350d0b4a5c6-vk-1080p` + regions 2/6/13 retired + plan | 669e23d81 review row23 should-fix 1 + NOTE 1 | 71fc1d310 gated-layout-macros regenerated | this state/gaps commit. MERGEABLE TIP = the commit carrying this line (code = 669e23d81).
+
+### Task 1: night light determinism (P1) and row 5
+- Evidence first: two VK launches of mc2_10 nightlow a with `MC2_LIGHT_POOL_DUMP=1` (13.3 mean |RGB sum| apart): the frame-481 dumps differ in exactly two lights, slots 58 / 59, type spot, argb ff3f3f3b, far 450 = the turret searchlights (`code/turret.cpp`), at different positions. Their idle sweep targets come from `RandomNumber` (the simulation stream, `gos_rand`), which is wall-clock seeded unless `MC2_DETERMINISTIC_RNG=1`; the capture harness set the fixed clock but not the seed.
+- Fix (06c4c08be, harness only, play unchanged): `run_visual_capture.build_capture_env` sets `MC2_DETERMINISTIC_RNG=1` with the deterministic clock (per-mission seed = hash of the mission name); pytest case added.
+- Proof: three same-exe launches each, nightlow a and c, VK and GL: every pair 0.000 mean / 0 px over 30 (explicit env `s26b-*`, harness default `s26d-*`); 204753 (the lane-7 floodlight pose) VK three runs and GL three runs 0.000 / 0. Day noise floor for comparison (VK golden runs): 205644 0.002 / 61 px.
+- Row 5 CLOSED: same-exe VK vs GL, seeded: nightlow a 4.66, c 5.01 (were 43.9 / 27.6 and 96.8 / 3.79 unseeded); 99.4% of differing pixels VK-darker, all on props and vehicles (row 1's object pool term), the apron and pads agree (montage `s26-r5-nightlow-gl-vk-diff.png`, viewed).
+
+### Task 2: doctest and BUGS rows
+- Census review NOTE 1: `shadow_static_building_runs.h` (Vulkan-free) plans the static map's per-type runs; `test_shadow_static_runs.cpp` pins: no geometry -> no runs, every instance dropped; no instances -> nothing; per-type runs with out-of-range types counted. doctest 3239 -> 3242.
+- BUGS rows proposed (BUGS-FOUND-FIXED.md shape; numbers left to the orchestrator):
+| # | Found | Bug (symptom) | Root cause | Fix (sha) | Proof | Status |
+|---|---|---|---|---|---|---|
+| ? | 2026-10-15 | VK drew the small hexagonal lattice props at the mc2_10 base with a solid dark top wedge GL does not have | the VK colour prop pipelines drew double-sided (cull NONE) where GL's StaticPropOpaque / AlphaTest pipelines cull back faces; packets identical in both backends | 56270f2e4 | mc2_10 204523 VK-GL 1.695 -> 1.671, hex windows 9.12 / 8.30 / 7.70 -> 6.38 / 5.27 / 4.57; GL 0 px changed; VK tier1 validation 0 | fixed |
+| ? | 2026-10-15 | with PropShadowReceive=1, GL static props show a sun-facing dark band their shadow depth does not justify (bldgB: 27,212 darkened pixels) | not pinned (compare or sampler state on texture units 3 / 4 suspected): GL's hardware compare says occluded where a raw read of the same texel against the same biased reference says lit; VK's compare agrees with its depth | none in GL (GL is deleted after parity; VK is the reference backend) | row 20 per-tap counts: bldgB GL compare 27,212 / raw 0, VK 0 / 0 | open (GL only) |
+| ? | 2026-10-16 | the VK colour prop specular (StaticPropPbr) used roughness 1.0 where GL uses its override 0.95 | the island never received GL's roughness override | 9a0b0ac35 | 205644, StaticPropPbr=1: on the 8,909 pixels the option changes, GL +42.78, VK +42.65 | fixed (minor: option off by default; orchestrator may keep it in the lane review instead) |
+- Review should-fix 2 (census review) taken: the GL self-shadow row says "not pinned"; session 25's proposal 3 (night capture non-determinism) is withdrawn as a BUGS row (no player-visible symptom; harness item, fixed by 06c4c08be).
+
+### Task 3: VK goldens
+- Blessed `tests/visual/goldens/golden-e350d0b4a5c6-vk-1080p` (INTERIM, not CURRENT_GOLDEN) with `bless.py --backend vulkan` from `.claude/l2cap/vkgold26-r{1,2,3}` (10 poses, 1080p, umbrella, frozen animation, seeded): 36 regions, 0 refused. Noise floors, region decisions (2 / 6 / 13 retired, 8 unchanged because its rect is lit under VK, 3 blessed because the water is stable with the seed) and the GL/VK view are in `tools/visual_verify/vk_golden_plan.md` section 3. `verify.py` r2: 36/36 PASS; the final exe default VK capture `s26f-vkdef`: 36/36 PASS.
+- Not done: `CURRENT_GOLDEN` not switched (open parity rows 1, 2, 4, 6, 7, 9 change these poses); RETIRED.md rows for the GL sets wait for that switch.
+
+### Task 4: rows
+- Row 22: residual FIXED (9a0b0ac35), metallic residual named in the row. Row 18: unchanged (no stock content; negative result stands). Rows 13-23 still open after this session: 18 (not ported, no content), 22 metallic sub-residual only. Every other row 13-23 is fixed, closed or decided.
+- Review lane2-2026-10-16-row23 should-fix 1 fixed (669e23d81: decoder constants, unknown atlas format rejected with one log line per version, static_assert on the store's constants); NOTE 1 fixed. Not taken: NOTE 2 (move overload, transient VK-only copy), NOTE 4 (coordinator question), NOTE 5 (pre-existing slot reset). NOTE 3 recorded here: the six gos texture factories (incl. `gos_NewTerrainNormalTexture`, LG03 +1 / LG05 +2 at cddaacc61) belong to the step-4 ownership batch "gos texture factories x6 -> owner-returning addTexture".
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 (`scratch/build_s26{a,b,c}.log`) | exit 0 at e350d0b4a, 9a0b0ac35, 669e23d81; every exe built after its commit |
+| build_contract_harnesses --run --unit (`scratch/harn26{a,b}.log`) | doctest 3242/3242 (+3 static-map cases); FAIL mc2_authored_order_seam (nifty compile error in test_authored_movement_fixture.cpp:189, not this lane, as in session 25) |
+| file_size / log_tag_census / own_inventory / cxx17 ratchet / gate_gen / gpu_abi_gen --check | all OK (file size: vulkan_color_prop_island.cpp 1779 -> 1780 warning, within the 49-file baseline) |
+| check-contracts (`scratch/cc_s26.log`) | gated_layout_macros regenerated (71fc1d310); remaining reds not this lane: doc_links (pre-existing), script_callers (scripts/tests/test_journal_comment_ratchet.py from the c905df64d merge has no caller), sim_include_firewall (code/warrior_orders.cpp -> mission.h), scripts_tests 41 fails in files this lane did not touch (journal ratchet 17, tracy compare 9 while the host lease was held by this lane's tier1, editor smoke 3, compiler presets 7, vk_pipeline_layout, background_launch, contract coverage / harness migration) |
+| P1 determinism | three launches per backend, nightlow a / c and 204753: 0.000 mean, 0 px > 30 on every pair (`s26b-*`, `s26d-*`, `vkgold26-r*`, `gl26-r*`) |
+| row 22 | `s26e-{vk,gl}-pbr` vs defaults, VK validation 0; montage `s26-r22-pbr-205644-gl-vk.png` viewed |
+| VK golden | bless 36/0; verify r2 36/36 PASS; final exe `s26f-vkdef` 36/36 PASS, validation_errors=0 on all 10 poses |
+| montages viewed | `s26-r5-nightlow-gl-vk-diff.png`, `s26-vkgold-gl-vk-{1,2}.png`, `s26-r22-pbr-205644-gl-vk.png` |
+| tier1 VK + validation, final exe (`scratch/b26f_vk_t1.log`, run 2026-10-16T01-44-31) | 5/5 PASS, errors=0 warnings=0 on all five (145/134/108/120/100 fps), DEPLOY_FINGERPRINT OK (ancestor 669e23d81) |
+| tier1 GL, final exe (`scratch/b26f_gl_t1.log`, run 2026-10-16T01-55-22) | 5/5 PASS (143/113/141/142/132 fps), +0 destroys, DEPLOY_FINGERPRINT OK |
+| tier1 on 9a0b0ac35 (`scratch/b26_{vk,gl}_t1.log`) | INVALID by fingerprint (669e23d81 committed while it ran); superseded by the pair above |
+
+### Open
+1. CURRENT_GOLDEN switch to a VK set after rows 1, 2, 4, 6, 7, 9 close (re-bless then). 2. Row 1 object pool term: the remaining night VK-GL residue at nightlow a / c is VK-darker props and vehicles. 3. Row 22 metallic sub-residual; row 18 (no content). 4. Not this lane: mc2_authored_order_seam, script_callers, sim_include_firewall, the scripts_tests reds above. 5. Carried: T7 / T9 VK resident cost (BC7 colormap sidecars); row 20 GL cause.
+6. Scratch (mine, deletable): `scratch/` r26a/b/c .sh/.out, r26.py, r26g.py, r8.png, crlf_edit.py, b26a/b26b .sh, t1_26.sh/.out, t1_26f.sh/.out, state26.md, build_s26*.log, deploy_s26*.log, harn26*.log, cc_s26.log, b26_*_t1.log, b26f_*_t1.log; `.claude/l2cap/` s26a-*, s26b-*, s26d-*, s26e-*, s26f-vkdef, gl26-r*, vkgold26-r* (KEEP vkgold26-r1..3 and gl26-r1 while vk_golden_plan.md cites them). Montages `s26-*.png` are committed (rows and the plan cite them).
+
+### Lessons (26)
+- Dump the light set beside the pixels: two launches and one diff of `MC2_LIGHT_POOL_DUMP` named the varying lights (turret searchlights) in minutes; a fixed clock is not determinism while the sim RNG is wall-clock seeded.
+- A golden plan's proposed rect must be checked on a frame of the backend being blessed: the 1080p re-author suggestion for region 8 landed on the lake, while the existing rect was valid under VK.
+- Do not commit code while a tier1 chain on the previous exe is still queued: the DEPLOY_FINGERPRINT check voids it and costs a second pair.
+
+## TWENTY-FIFTH session (2026-10-15 night, cap 5 h, Opus 5.5) -- T9 per the ruling, row 20 decided (VK is the reference), row 23 fixed (back-face cull), T7 closed, row 14 closed for the cliff material, row 5 oracle shown non-deterministic; nifty NOT merged ("merge lane2 6bcfb5d8b" absent from mc2-main)
+
+### Commits (after 6bcfb5d8b)
+b8739f240 T9 | d4bdc86a6 + 4da948f2d TEMP row-20 / row-23 diags, reverted by 4e15a2ac2 (`git diff d4bdc86a6^ 4e15a2ac2` empty on the six files) | 61f5c881d census review should-fix 2 + log text | 56270f2e4 row 23 cull | 0fa0c839d T7 | 404bc46f6 TEMP row-14 diag, reverted by e3bcd857d | 59e6f66c2 T7 umbrella-only | 505f85088 T7 span | cddaacc61 cxx17 + log-tag baselines (reason in the message) | 889c424a5 file-size + ownership baselines (reason in the message) | this state/gaps/census commit. MERGEABLE TIP = the commit carrying this line (code = cddaacc61).
+
+### Review (lane2-2026-10-15-census-cleanup.md)
+Should-fix 1 (T9 size) = task 1 below. Should-fix 2 (T3 chain below a baked level) fixed in 61f5c881d. Cosmetic setImage log text fixed. Notes 1-4 not taken (NOTE 1 asks for a no-prop doctest of the row-17 static map; open).
+
+### Rows and census
+- T9 (ruling): slots are gos handles (`gos_NewTerrainNormalTexture`), the island reads them with `gos_GetTextureTexels` into a transient upload; `terrain_normal_array_cpu_` deleted; slot texels kept only under the VK umbrella (GL runs 0 MB, VK 151 MB: the session-24 copy was one level, so 151 MB, not 200); a replaced slot texture is deleted. mc2_10 204523 GL and VK before/after 0 px, `[VRAM v1] load_end proc_dedicated_mb=1763` unchanged.
+- Row 20: DECIDED, VK is the reference backend for the prop self-shadow term. Per tap of sampleDynamicShadow: bldgB GL compare occluded 27,212 / raw occluded 0 (every one a disagreement), VK 0 / 0; 205644 GL 43,694 / 1,079 (42,617 disagreements), VK 4,843 / 4,589 (406). Raw depths agree GL/VK (100% / 94.5%).
+- Row 23: FIXED (56270f2e4). Types 374 / 379 / 380 at the hex props; their packets are identical in both backends (alpha-OFF, no alpha test); the VK colour pipeline drew double-sided where GL culls back faces. mc2_10 204523 VK-GL 1.695 -> 1.671, hex windows 9.12 / 8.30 / 7.70 -> 6.38 / 5.27 / 4.57; 205644 2.671 -> 2.495; bldgB 1.756 -> 1.689; GL 0 px changed.
+- T7: CLOSED with a cost question (colormap atlas in the field store; stock missions are RGBA8: 105 MB mc2_01 / 151 MB mc2_10 resident in VK runs only; BC7 sidecars would make it 26 / 38 MB). Before/after 0 px (mc2_10 GL+VK, bldgB VK).
+- Row 14: CLOSED for the cliff material (normal view corr 0.999 / 0.973 / 0.999 and albedo view abs 0.23 on the steepest 2% of terrain pixels, mc2_05 205843); the night overshoot is a lighting term.
+- Row 5: oracle invalid at the nightlow poses (run-to-run VK pose a 94.6, GL pose c 42.0; second pair pose a VK-GL 3.79; with MC2_TERRAIN_LIGHTING_GPU=0 GL = VK to 0.02 / 0.12). Not fixed.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 | exit 0 at every commit; the final exe built after cddaacc61 (fingerprint clean) |
+| build_contract_harnesses --run --unit (`scratch/harn25b.log`, after 505f85088) | doctest 3239/3239 cases (+1 colormap store case); FAIL mc2_authored_order_seam (nifty compile error, not this lane) |
+| cxx17 ratchet / log_tag_census / file_size_ratchet / own_inventory --check | OK after the baseline commits cddaacc61 and 889c424a5 (rises: LG03 +1, LG05 +2, gameos.hpp +4 lines, gosTexture.new +1, all from the T9 handle factory; reasons in the commit messages) |
+| gate_gen --check | consistent |
+| check-contracts (`scratch/cc_s25.log`, before the size/ownership baselines) | this lane's reds (file_size, own_inventory) re-frozen; not this lane: estring/container callsites, background-launch (`scripts/tests/test_host_lease_batch.py:69`), test_check_vk_pipeline_layout split-unit case, test_build_compiler_presets, mc2_authored_order_seam |
+| same-exe GL vs VK on the final exe (s25n, VK validation on) | mc2_10 204523 1.671, 205644 2.494, bldgB 1.689; validation_errors=0 on all; montage `.claude/l2cap/montages/s25-final-gl-vk.png` viewed |
+| montages viewed | `s25-t9-gl-vk.png`, `s25-r23-hex-gl-vkbefore-vkafter.png`, `s25-r23-205644-gl-vkbefore-vkafter.png`, `s25-r14-mc2_05-normal-albedo-gl-vk.png`, `s25-r5-{a,c}-final-albedo-shadow-gl-vk.png`, `s25-r5-a-vk-normallight.png`, `s25-final-gl-vk.png` |
+| tier1 VK+validation / GL on the final exe (`scratch/b25_{vk,gl}_t1.log`) | VK 5/5 PASS, errors=0 warnings=0 on all five (142/127/111/127/112 fps); GL 5/5 PASS (143/114/142/143/130 fps), +0 destroys; DEPLOY_FINGERPRINT OK (ancestor cddaacc61) |
+
+### BUGS rows proposed
+1. GL prop self-shadow (row 20): symptom: GL static props show a sun-facing self-shadow band when PropShadowReceive=1 that the shadow depth map does not justify; root cause: GL's hardware depth compare on the CSM array / full map (units 3 / 4) returns occluded for taps whose stored depth is farther than the biased reference (27,212 of 27,212 darkened bldgB pixels); fix: none in GL (deleted after parity), VK is the reference; proof: row 20 numbers.
+2. VK hex lattice props (row 23, FIXED 56270f2e4): symptom: VK draws the hex lattice props with a solid dark top wedge; root cause: VK colour prop pipeline cullMode NONE where GL culls back faces; proof: row 23 numbers.
+3. Night capture non-determinism (row 5): symptom: the same exe and night pose give different frames run to run (VK 94.6, GL 42.0 mean |RGB sum|); root cause: the night light-pool term (GPU terrain lighting off makes both runs and both backends agree); fix: not started (owner determinism ruling applies).
+
+### Open
+1. Row 5: deterministic light pool in capture mode, then re-measure. 2. T7 / T9 resident cost (VK only): BC7 colormap sidecars; T9 151 MB is the slot texels. 3. Row 20 GL cause (sampler or compare state on units 3/4) not pinned; only matters if GL stays. 4. Review NOTE 1 (no-prop static-map doctest). 5. Not this lane: mc2_authored_order_seam, background-launch, vk_pipeline_layout split-unit test, compiler presets tests.
+6. Scratch (mine): `scratch/` r25a-r25l .sh/.out, r23cmp.py, r25b.py, r14.py, r14b.py, r5.py, r5b.py, r5c.py, t9cmp.py, t1_25.sh/.out, pkt25/, build_s25*.log, deploy_s25*.log, harn25*.log, cc_s25.log, cxx17_25.log, cxx17_wb25.log, gate25.log, ltc25.log, ltc_w25.log, fsr25.log, own25.log, b25_*_t1.log; `.claude/l2cap/s25*` capture sets (montages `s25-*.png` keep: the gaps rows cite them). Deleted: `.claude/l2cap/s25m-*` (superseded by s25n, cited nowhere).
+
+### Lessons (25)
+- A per-tap encode beside the hardware compare settles "which backend is right" in one capture pair; aggregate compares only narrow.
+- Before chasing a lighting delta at a pose, capture the same pose twice: the nightlow oracle was mostly run-to-run noise.
+- A packet dump plus each instance's projected origin finds a prop's types without a pick tool; equal packets point at pipeline state.
+- A `ps | grep` wait inside a script launched from a shell whose command line holds the same string never ends; wait on a file instead.
+
+
 ## TWENTY-FOURTH session (2026-10-15 night, cap 5 h, Opus 5.5) -- row 20 negative (images agree, GL compare is the odd reading), row 17 edge closed, row 23 narrowed, census T3 / T8 / T9 closed (T9 with a cost question); nifty fast-forwarded at the start (21ad1da90)
 
 ### Commits (after 21ad1da90)
