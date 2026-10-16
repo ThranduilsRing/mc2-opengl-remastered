@@ -20,6 +20,9 @@ ObjectAppearance.h	: Interface for the ObjectAppearance component, building and 
 #include"objstatus.h"
 #endif
 
+#include<memory>
+#include<string>
+
 //*************************************************************************************************
 
 // WEAPON TYPES
