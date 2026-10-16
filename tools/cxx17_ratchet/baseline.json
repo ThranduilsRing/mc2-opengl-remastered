@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 416,
+   "LG01": 392,
    "LG02": 280,
    "LG03": 1077,
    "LG04": 15,
    "LG05": 134,
-   "LG06": 674,
+   "LG06": 675,
    "LG07": 0,
    "LG08": 68,
-   "LG09": 2115,
+   "LG09": 2103,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 209,
@@ -4325,17 +4325,16 @@
    "LG17": 1
   },
   "mclib/move_globalmap_build.cpp": {
-   "LG01": 23,
    "LG05": 1,
-   "LG09": 95,
+   "LG06": 1,
+   "LG09": 87,
    "LG12b": 7,
    "LG16": 14
   },
   "mclib/move_globalmap_doors.cpp": {
-   "LG01": 1,
    "LG03": 2,
    "LG05": 1,
-   "LG09": 9,
+   "LG09": 5,
    "LG16": 6
   },
   "mclib/move_globalmap_path.cpp": {
@@ -5127,7 +5126,7 @@
    "LG20": 3
   }
  },
- "head": "21ad1da90",
+ "head": "edb806c55",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
