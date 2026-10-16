@@ -1,5 +1,6 @@
 <!-- doc-status: current | reviewed:2026-10-15 -->
 # C++23 step 4, batch B4 (raw-buffer heaps): batch notes (lane 1, 2026-10-15; before-review `cxx23-step4-b4-before-review.md`)
+B4.1c DONE (2026-10-15 final, 2d049e588 include-only + 85b6a283f): GlobalMap buffers are std::vector stores with the pointers kept as views (claimed readers), pak counts range-checked (`mclib/globalmap_limits.h`, doctest `test_globalmap_limits.cpp`); census 317 -> 262. `tempSpecialAreaFootPrints` stays (its owner is in Sol-claimed code/mission_init_load.cpp, objmgr.cpp). NEXT: B4.2 terrain / B4.3 txm need the render-proof assignment (before-review section 6); B4.4 sound and radio need the claims of notes section 3 item 1; B4.5/B4.6 small.
 BATCH STATUS (2026-10-15 late, lane 1): B4.0 DONE (a3d8ce85a: sealed census, before-review `cxx23-step4-b4-before-review.md`); B4.1a DONE (a2651bba3, MoveMap grid);
 B4.1b DONE for the MissionMap grid and mine counts (2f13054fc include-only, objhash identical; 8e49ebe5d + 889bd02fc; 059366c0e: a rejected map packet refuses the
 mission load, the size-checked read is `mc2::pak::readExact` with its malformed-pak doctest `tests/unit/test_pak_read_exact.cpp`). Census 331 -> 317.
