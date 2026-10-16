@@ -49,6 +49,44 @@ struct TimerState : mc2vk::IslandState {
 
 bool s_unsupported = false;   // the device cannot time on the graphics queue: decided once, logged once
 
+// Puts every query of the new pool in the reset state with one GPU submit, so a read of a bracket whose command buffer was
+// recorded but never submitted finds an unavailable query (counted as not ready) instead of an uninitialized one.
+bool resetAll(const mc2vk::VulkanContext& ctx, VkQueryPool qp, uint32_t count) {
+    const VkDevice device = ctx.device();
+    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedFence fence;
+    bool ok = false, submitted = false;
+    do {
+        VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+        pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+        pci.queueFamilyIndex = ctx.graphicsFamily();
+        if (!mc2vk::create(cpool, device, [&](VkCommandPool* h) { return vkCreateCommandPool(device, &pci, nullptr, h); })) break;
+        VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        ai.commandPool = cpool.get();
+        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        ai.commandBufferCount = 1;
+        VkCommandBuffer cb = VK_NULL_HANDLE;
+        if (vkAllocateCommandBuffers(device, &ai, &cb) != VK_SUCCESS) break;
+        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        if (!mc2vk::create(fence, device, [&](VkFence* h) { return vkCreateFence(device, &fci, nullptr, h); })) break;
+        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) break;
+        vkCmdResetQueryPool(cb, qp, 0, count);
+        if (vkEndCommandBuffer(cb) != VK_SUCCESS) break;
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &cb;
+        if (vkQueueSubmit(ctx.graphicsQueue(), 1, &si, fence.get()) != VK_SUCCESS) break;
+        submitted = true;
+        const VkFence fh = fence.get();
+        ok = vkWaitForFences(device, 1, &fh, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
+    } while (false);
+    // The fence and the pool are released on return: a submit whose fence did not signal must finish first.
+    if (submitted && !ok) ctx.waitIdle("pass_timer_reset");
+    return ok;
+}
+
 TimerState* state(bool create) {
     if (s_unsupported) return nullptr;
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -80,6 +118,11 @@ TimerState* state(bool create) {
     if (!mc2vk::create(t->pool, t->device, [&](auto* h) { return vkCreateQueryPool(t->device, &qpci, nullptr, h); })) {
         s_unsupported = true;
         mc2::fmt::print_out("[RENDER_PASS_TIME v1] vk: vkCreateQueryPool failed; VK pass times stay empty\n");
+        return nullptr;
+    }
+    if (!resetAll(ctx, t->pool.get(), qpci.queryCount)) {
+        s_unsupported = true;
+        mc2::fmt::print_out("[RENDER_PASS_TIME v1] vk: the query pool reset submit failed; VK pass times stay empty\n");
         return nullptr;
     }
     mc2::fmt::print_out("[RENDER_PASS_TIME v1] vk: armed ring={:d} brackets={:d} ns_per_tick={:.3f}\n", mc2::fmt::as_i32(kRing),
