@@ -892,8 +892,7 @@ void Mission::initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f) {
 void Mission::initWeatherCamera(MissionInitFrame& f) {
 	auto& gameSystemFile = f.gameSystemFile; auto& result = f.result;
 	gameSystemFile->close();
-	delete gameSystemFile;
-	gameSystemFile = NULL;
+	gameSystemFile.reset();
 
 	weather = new Weather;
 	weather->init(missionFile);
@@ -984,7 +983,6 @@ void Mission::initLabTimingAndClose() {
 #endif
 
 	missionFile->close();
-	delete missionFile;
 	missionFile = NULL;
 }
 

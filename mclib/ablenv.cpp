@@ -264,10 +264,8 @@ void UserFile::operator delete (void* us) {
 
 void UserFile::dump (void) {
 
-	//----------------
-	// Dump to file...
 	for (long i = 0; i < numLines; i++)
-		filePtr->writeString(lines[i]);
+		filePtr.writeString(lines[i]);
 	numLines = 0;
 }
 
@@ -275,12 +273,12 @@ void UserFile::dump (void) {
 
 void UserFile::close (void) {
 
-	if (filePtr && inUse) {
+	if (inUse) {
 		dump();
 		char s[512];
 		sprintf(s, "\nNum Total Lines = %d\n", totalLines);
-		filePtr->writeString(s);
-		filePtr->close();
+		filePtr.writeString(s);
+		filePtr.close();
 		inUse = false;
 		numLines = 0;
 		totalLines = 0;
@@ -293,7 +291,7 @@ long UserFile::open (const char* fileName) {
 
 	numLines = 0;
 	totalLines = 0;
-	if (filePtr->create(fileName) != ABL_NO_ERR)
+	if (filePtr.create(fileName) != ABL_NO_ERR)
 		return(-1);
 
 	inUse = true;
@@ -347,13 +345,10 @@ UserFile* UserFile::getNewFile (void) {
 void UserFile::setup (void) {
 
 	for (long i = 0; i < MAX_USER_FILES; i++) {
-		files[i] = (UserFile*)ABLSystemMallocCallback(sizeof(UserFile));
-		files[i]->init();
+		files[i] = new UserFile;
 		files[i]->handle = i;
 		files[i]->inUse = false;
-		files[i]->filePtr = new ABLFile;
-		if (!files[i]->filePtr)
-			ABL_Fatal(0, " ABL: Unable to malloc UserFiles ");
+
 	}
 }
 
@@ -366,11 +361,7 @@ void UserFile::cleanup (void) {
 		if (files[i]) {
 			if (files[i]->inUse)
 				files[i]->close();
-			//Should actually free the memory allocated above here!
-			delete files[i]->filePtr;
-			files[i]->filePtr = nullptr;
-
-			ABLSystemFreeCallback(files[i]);
+			delete files[i];
 			files[i] = nullptr;
 		}
 	}
@@ -660,34 +651,34 @@ void ABLModule::write (ABLFile* moduleFile) {
 
 void ABLModule::read (ABLFile* moduleFile) {
 
-	//----------------------------------------------------------------------------
-	// If this is called on a newly init'd module, then it will do all appropriate
-	// memory alloc, etc. If it's being called on a module that's already been
-	// setup (via a call to init(moduleHandle)), then it simply loads the
-	// module's data...
+	// Existing modules retain their allocations while their saved data is restored.
 	bool fresh = (id == -1);
 	if (fresh) {
 		id = NumModules++;
-		moduleFile->readString((unsigned char*)name);
+		if (moduleFile->readString((unsigned char*)name, sizeof(name)) < 0)
+			return;
 		handle = moduleFile->readInt();
 		staticData = nullptr;
 		}
 	else {
 		char tempName[1024];
-		moduleFile->readString((unsigned char*)tempName);
+		if (moduleFile->readString((unsigned char*)tempName, sizeof(tempName)) < 0)
+			return;
 		long ignore = moduleFile->readInt();
         (void)ignore;
 	}
 
 	char stateName[256];
 	memset(stateName,0,256);
-	moduleFile->readString((unsigned char*)stateName);
+	if (moduleFile->readString((unsigned char*)stateName, sizeof(stateName)) < 0)
+		return;
 	prevState = nullptr;
 	if (strcmp(stateName, "NULLPrevState"))
 		prevState = findState(stateName);
 	
 	memset(stateName,0,256);
-	moduleFile->readString((unsigned char*)stateName);
+	if (moduleFile->readString((unsigned char*)stateName, sizeof(stateName)) < 0)
+		return;
 	state = nullptr;
 	if (strcmp(stateName, "NULLState"))
 		state = findState(stateName);
@@ -750,8 +741,6 @@ void ABLModule::read (ABLFile* moduleFile) {
 		ModuleRegistry[handle].numInstances++;
 		initCalled = savedInitCalled;
 
-		//------------------------------------------------------
-		// This Active Module is now on the instance registry...
 		ModuleInstanceRegistry[NumModuleInstances++] = this;
 
 		if (debugger) {
@@ -1542,7 +1531,9 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 
 	for (int i = 0; i < numLibs; i++) {
 		unsigned char fileName[1024];
-		long result = ablFile->readString(fileName);
+		long result = ablFile->readString(fileName, sizeof(fileName));
+		if (result < 0)
+			return;
 		if (!result) {
 			char err[255];
 			sprintf(err, "ABLi_loadEnvironment: Unable to read filename [Module %d]", i);
@@ -1561,7 +1552,9 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 
 	for (int i = 0; i < (numModsRegistered - numLibs); i++) {
 		unsigned char fileName[1024];
-		long result = ablFile->readString(fileName);
+		long result = ablFile->readString(fileName, sizeof(fileName));
+		if (result < 0)
+			return;
 		if (!result) {
 			char err[255];
 			sprintf(err, "ABLi_loadEnvironment: Unable to read filename [Module %d]", i);

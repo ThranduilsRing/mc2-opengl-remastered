@@ -592,8 +592,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
     char* source_fn = strdup(sourceFileName);
     source_fn = S_strlwr(source_fn);
-	//--------------------------------------------------------------------------------
-	// First, check if this module has already been registered into the environment...
 	for (int i = 0; i < NumModulesRegistered; i++)
     {
 		if (strcmp(source_fn, ModuleRegistry[i].fileName) == 0)
@@ -603,8 +601,8 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
         }
     }
 
-	//---------------------------------
-	// Init some important variables...
+	ABLSourceFiles sourceFiles;
+
 	level = 0;
 	lineNumber = 0;
 	FileNumber = 0;
@@ -641,8 +639,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	if (numLinesProcessed)
 		*numLinesProcessed = 0;
 
-	//---------------------------------------
-	// Now, let's open the ABL source file...	
 	long openErr = ABL_NO_ERR;
 	if ((openErr = openSourceFile(source_fn)) != ABL_NO_ERR)
 	{
@@ -650,24 +646,13 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		return(openErr);
 	}
 
-	//------------------------
-	// Set up the code buffer.
 	codeBufferPtr = codeBuffer;
 
-	//------------------
-	// Get it rolling...
 	getToken();
 
 	SymTableNodePtr moduleIdPtr = moduleHeader();
 
-	//------------------------------------------------------------------------------------
-	// FAIL LOUD ON MISSING/INVALID ABL FILE (2026-06-11, missing-ABL-file playtest incident):
-	// A NULL moduleIdPtr means the source opened but parsed no module identifier -- the file is
-	// missing or its content is invalid (the open-callback's STOP() is a no-op in RelWithDebInfo,
-	// so a genuinely-missing file slips through openSourceFile with garbage in the buffer).
-	// Continuing here dereferences NULL through declarations()/analyzeBlock() (the WRITE AV at
-	// moduleHeader:1223 was this exact path).  Rather than corrupt-then-crash, emit one clear
-	// line and exit cleanly so the failure is diagnosable instead of an opaque AV.
+	// A missing header cannot supply the symbol table required by declarations.
 	if (moduleIdPtr == nullptr)
 	{
 		mc2::fmt::print_err("[PLAYTEST] FATAL: missing or invalid ABL file '{}' -- cannot preprocess module.\n", mc2::fmt::safe(source_fn ? source_fn : "(null)"));
@@ -681,18 +666,12 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	CurModuleIdPtr = moduleIdPtr;
 	CurRoutineIdPtr = moduleIdPtr;
 
-	//---------------------
-	// Error synchronize...
 	synchronize(followHeaderList, declarationStartList, statementStartList);
 	if (curToken == TKN_SEMICOLON)
 		getToken();
 	else if (tokenIn(declarationStartList) || tokenIn(statementStartList))
 		syntaxError(ABL_ERR_SYNTAX_MISSING_SEMICOLON);
 
-	//-------------------------------------------------------------
-	// Parse the module's block. Use to call block(), now we do the
-	// stuff right here...
-	//block(moduleIdPtr);
 	declarations(moduleIdPtr, true);
 	if ((moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM) == 0) {
 		synchronize(followModuleDeclsList, nullptr, nullptr);
@@ -715,8 +694,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 				if (curToken == endToken)
 					break;
 		
-				//------------------------------------
-				// Synchronize after possible error...
 				synchronize(statementStartList, nullptr, nullptr);
 			} while (tokenIn(statementStartList));
 	}
@@ -742,8 +719,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		getToken();
 	}
 
-	//------------------------------------------
-	// Done with the source file, so close it...
 	closeSourceFile();
 
 	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABLStackMallocCallback(static_cast<unsigned long>(strlen(source_fn) + 1));
@@ -793,25 +768,9 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		memcpy(ModuleRegistry[NumModulesRegistered].stateHandles, StateHandleList, sizeof(StateHandleInfo) * NumStateHandles);
 	}
 
-	// OMNITECH-ABL-EXECEXPRESSION-RECON-1: record this module's compile error count
-	// (errorCount is this module's STOPSYNTAX total here, same value reported via numErrors
-	// below). A module that failed to compile has malformed/incomplete bytecode; executing
-	// it underflows the ABL VM stack -> READ AV (ablxexpr.cpp:501 execExpression). The gate
-	// in ABLModule::execute() skips such modules when MC2_ABL_SKIP_ERRORED_MODULES is set.
 	ModuleRegistry[NumModulesRegistered].compileErrorCount = errorCount;
 
-	// ASAN-3-ABL-COMPILE-FATAL-1 (docs/asan-follow-ups.md #3): a module that failed
-	// to compile has partial/garbage bytecode; the VM trusts its own tables, so
-	// execution later derefs a corrupt codeSegmentPtr (getCodeToken, confirmed on
-	// Exodus / Magic's-patch content: pointers like 0x127f00000001). HARD-FAIL the
-	// load NOW with a clean, attributable error instead of crashing later in an
-	// unrelated subsystem. Single choke point: every mission-init compile path
-	// (mission script, warrior brains, logistics, saveload, environment) funnels
-	// through ABLi_preProcess. Escape hatches (both leave the crash class dead or
-	// contained): MC2_ABL_SKIP_ERRORED_MODULES=1 loads the mission and skips the
-	// errored brains (DarkRain-style content); MC2_ABL_COMPILE_FATAL=0 restores the
-	// full legacy execute-anyway roulette. Stock content compiles clean -> this
-	// branch never fires on tier1 (zero behavior change).
+	// Failed modules carry partial bytecode that the VM cannot safely execute.
 	{
 		static const bool s_compileFatal = mc2::gate::get<"MC2_ABL_COMPILE_FATAL">();
 		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
@@ -827,8 +786,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 	NumModulesRegistered++;
 
-	//---------------------------------------------------------------
-	// Now, exit with the number of source lines processed, if any...
 	if (numLinesProcessed)
 		*numLinesProcessed = lineNumber;
 
