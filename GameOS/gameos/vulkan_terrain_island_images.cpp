@@ -2,6 +2,11 @@
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
 #include "texture_decode.h"
+#include "terrain_field_store.h"
+
+// The field store names the atlas format with its own constants (its header stays free of the decoder); they are the same VkFormat numbers.
+static_assert(mc2terrain::ColormapAtlas::kRgba8 == mc2tex::kVkFormatRgba8Unorm && mc2terrain::ColormapAtlas::kBc7Unorm == mc2tex::kVkFormatBc7Unorm
+              && mc2terrain::ColormapAtlas::kBc7Srgb == mc2tex::kVkFormatBc7Srgb, "colormap atlas formats drifted from the decoder's VkFormat values");
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -162,9 +167,19 @@ bool ensure_dummy_colormap(TerrainIsland* s) {
 void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.colormapBytes || feed.colormapVersion == 0) return;                          // atlas not built yet -> stay olive
     if (feed.colormapVersion == s->colormapVersionImported && s->colormapReady) return;     // already imported
-    const VkFormat fmt = feed.colormapVkFormat == 146u ? VK_FORMAT_BC7_SRGB_BLOCK
-                       : feed.colormapVkFormat == 145u ? VK_FORMAT_BC7_UNORM_BLOCK
-                       : VK_FORMAT_R8G8B8A8_UNORM;
+    VkFormat fmt;
+    switch (feed.colormapVkFormat) {
+        case mc2tex::kVkFormatBc7Srgb:    fmt = VK_FORMAT_BC7_SRGB_BLOCK; break;
+        case mc2tex::kVkFormatBc7Unorm:   fmt = VK_FORMAT_BC7_UNORM_BLOCK; break;
+        case mc2tex::kVkFormatRgba8Unorm: fmt = VK_FORMAT_R8G8B8A8_UNORM; break;
+        default: {
+            static decltype(feed.colormapVersion) s_rejectedVersion = 0;   // one log line per atlas version
+            if (s_rejectedVersion != feed.colormapVersion)
+                vlog("COLORMAP-BASE: colormap atlas format %u is not one the island uploads; staying on the fallback colour.", feed.colormapVkFormat);
+            s_rejectedVersion = feed.colormapVersion;
+            return;
+        }
+    }
     if (upload_colormap_image(s, fmt, (uint32_t)feed.colormapWidth, (uint32_t)feed.colormapHeight, feed.colormapBytes,
                               (VkDeviceSize)feed.colormapByteCount)) {
         s->colormapVersionImported = feed.colormapVersion;
