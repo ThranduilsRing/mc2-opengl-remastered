@@ -170,6 +170,7 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             "backend_disagree": (result.get("backend") or {}).get("disagree") or [],
             "seconds": round(dt, 1),
             "log": result.get("log"),
+            "harness_set": (result.get("mc2_env") or {}).get("harness_set") or {},
         })
         ok = "OK" if (primary and primary.get("present")) else "MISSING"
         log(f"    {ok}  fired={result.get('engine_capture_fired')} "
@@ -204,6 +205,10 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
                     "drew": sorted({d for p in poses for d in _as_list(p.get("backend_drew"))})},
         "n_captured": sum(1 for p in poses if p["primary_png"]),
         "n_requested": len(bookmark_files),
+        # What the harness itself set (determinism seed and clock, size, capture switches), so a golden shows the conditions its frames were
+        # drawn under; the per-pose paths are left out because they name the sweep's own directories.
+        "harness_env": _harness_env(poses),
+        "effective_mc2_env": sorted({k for p in poses for k in p.get("harness_set", {})} | set(declared_env or {})),
     }
     ms.attach(manifest, ms.identity_block(
         generator="visual_verify_capture",
@@ -219,6 +224,15 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
 def _as_list(value) -> list:
     """`drew` is a list of backend names (a string from an older record counts as one)."""
     return [] if not value else [value] if isinstance(value, str) else list(value)
+
+
+_PER_POSE_PATH_KEYS = ("MC2_VISUAL_BOOKMARK_CAPTURE", "MC2_VISUAL_CAPTURE_DIR")
+
+
+def _harness_env(poses: list) -> dict:
+    """The harness-set MC2_* values shared by the sweep (first pose that recorded them), without the per-pose path keys."""
+    first = next((p["harness_set"] for p in poses if p.get("harness_set")), {})
+    return {k: v for k, v in sorted(first.items()) if k not in _PER_POSE_PATH_KEYS}
 
 
 def backend_failures(manifest: dict) -> "list[str]":
