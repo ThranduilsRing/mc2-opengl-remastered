@@ -27,6 +27,7 @@ public:
     std::expected<void, LoadError> setObjectiveText(NodeId objective, std::string_view key, const ObjectiveTextDraft& draft);
     std::expected<void, LoadError> setObjectiveModel(NodeId objective, const ObjectiveModelDraft& draft);
     std::expected<NodeId, LoadError> addObjective(std::uint32_t team);
+    std::expected<NodeId, LoadError> addObjectiveTemplate(std::uint32_t team, const ObjectiveTemplateDraft& draft);
     std::expected<NodeId, LoadError> copyObjective(NodeId objective);
     std::expected<void, LoadError> deleteObjective(NodeId objective);
     std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);

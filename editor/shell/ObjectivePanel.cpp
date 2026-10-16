@@ -50,6 +50,7 @@ void EntityPanels::objectives()
         if (result) { objective_ = *result; status_ = "Applied"; }
         else status_ = result.error().reason;
     }
+    objectiveTemplates();
     const auto* selected = document_.objective(objective_);
     if (!selected) {
         for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_) {

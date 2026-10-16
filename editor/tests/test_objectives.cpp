@@ -97,6 +97,128 @@ TEST_CASE("objectives/message assembly limit includes retained whitespace")
     CHECK(logs.size() == 1); CHECK(scalarDoc->fitBytes() == padded);
 }
 
+namespace {
+MissionDocument savedTemplate(const ObjectiveTemplateDraft& draft, bool v3)
+{
+    auto fit = fixture();
+    if (v3) {
+        fit.erase(fit.find("[Objectives Version]"));
+        fit += "[Objectives Version]\r\nul Version = 3\r\n";
+        for (unsigned team = 0; team < 8; ++team)
+            fit += std::format("[Team{}Objectives]\r\nul NumObjectives = 0\r\n", team);
+        fit += "FITend\r\n";
+    }
+    auto doc = MissionDocument::decode(fit, packet(), "templates", {});
+    if (!doc) INFO(doc.error().reason);
+    REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto added = history.addObjectiveTemplate(v3 ? 7 : 0, draft); REQUIRE(added);
+    const auto path = scratch() / "template";
+    REQUIRE(doc->save(path, {}));
+    auto reopened = MissionDocument::read(path.string() + ".fit", path.string() + ".pak", {}); REQUIRE(reopened);
+    CHECK(reopened->fitBytes() == doc->fitBytes());
+    CHECK(std::ranges::equal(reopened->pakBytes(), packet()));
+    REQUIRE(reopened->objectives().size() == (v3 ? 1 : 2));
+    const auto& objective = reopened->objectives().back();
+    CHECK(objective.team == (v3 ? 7 : 0));
+    REQUIRE(objective.entries[0].size() == 1);
+    CHECK(objective.entries[2].empty()); CHECK(objective.entries[3].empty());
+    CHECK(reopened->objectiveScalar(objective.section, "Priority")->value == Scalar{std::int64_t{1}});
+    return std::move(*reopened);
+}
+}
+
+TEST_CASE("objectives/template hidden trigger saves the flag predicate and success action")
+{
+    for (const bool v3 : {false, true}) for (const bool custom : {false, true}) {
+        auto draft = objectiveTemplateDraft(ObjectiveTemplate::hiddenTrigger);
+        if (custom) { draft.conditionFlag = "ready"; draft.conditionValue = false; draft.actionFlag = "done"; draft.actionValue = false; }
+        const auto doc = savedTemplate(draft, v3);
+        const auto& objective = doc.objectives().back();
+        const auto& condition = objective.entries[0][0];
+        CHECK(std::get<ConditionSpecies>(condition.species) == ConditionSpecies::flag);
+        REQUIRE(condition.flag);
+        CHECK(condition.flag->id == (custom ? "ready" : "flag0")); CHECK(condition.flag->value == !custom);
+        REQUIRE(objective.entries[1].size() == 1);
+        const auto& action = objective.entries[1][0];
+        CHECK(std::get<ActionSpecies>(action.species) == ActionSpecies::flag);
+        REQUIRE(action.flag);
+        CHECK(action.flag->id == (custom ? "done" : "flag0")); CHECK(action.flag->value == !custom);
+        CHECK(doc.objectiveScalar(objective.section, "HiddenTrigger")->value == Scalar{true});
+        CHECK(doc.objectiveScalar(objective.section, "Title")->value == Scalar{std::string("Hidden trigger")});
+        CHECK(doc.objectiveScalar(objective.section, "Description")->value == Scalar{std::string("Flag-driven hidden trigger. Set the activation/condition flags.")});
+        const auto wire = doc.fitBytes(); const FitReader reader(wire);
+        CHECK(reader.read(v3 ? "Team7Objective0Condition0" : "Objective1Condition0", "st", "ConditionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("BooleanFlagIsSet")});
+        CHECK(reader.read(v3 ? "Team7Objective0Action0" : "Team0Objective1Action0", "st", "ActionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("SetBooleanFlag")});
+    }
+}
+
+TEST_CASE("objectives/template destroy enemies saves the requested count and presentation")
+{
+    for (const bool v3 : {false, true}) for (const bool custom : {false, true}) {
+        auto draft = objectiveTemplateDraft(ObjectiveTemplate::destroyEnemies);
+        if (custom) {
+            draft.count = 7; draft.title = {true, "Fallback title", 123};
+            draft.description = {false, "First\n\nlast\n", 456}; draft.model = ObjectiveModelDraft{"atlas", 13, 53, 2, 1.5};
+        }
+        const auto doc = savedTemplate(draft, v3);
+        const auto& objective = doc.objectives().back();
+        CHECK(std::get<ConditionSpecies>(objective.entries[0][0].species) == ConditionSpecies::destroyNumber);
+        CHECK(objective.entries[0][0].payload == std::vector<Scalar>{std::int64_t{custom ? 7 : 1}});
+        CHECK(objective.entries[1].empty());
+        CHECK(doc.objectiveScalar(objective.section, "HiddenTrigger")->value == Scalar{false});
+        CHECK(doc.objectiveScalar(objective.section, "Title")->value == Scalar{std::string(custom ? "Fallback title" : "Destroy enemy units")});
+        CHECK(doc.objectiveScalar(objective.section, "Description")->value == Scalar{std::string(custom ? "First\n\nlast\n" : "Destroy the required number of enemy units.")});
+        CHECK(doc.objectiveScalar(objective.section, "TitleUseResourceString")->value == Scalar{custom});
+        CHECK(doc.objectiveScalar(objective.section, "TitleResourceStringID")->value == Scalar{std::int64_t{custom ? 123 : 0}});
+        CHECK(doc.objectiveScalar(objective.section, "ObjectiveModel")->value == Scalar{std::string(custom ? "atlas" : "")});
+        CHECK(doc.objectiveScalar(objective.section, "ModelType")->value == Scalar{std::int64_t{custom ? 13 : 0}});
+        CHECK(doc.objectiveScalar(objective.section, "ModelScale")->value == Scalar{custom ? 1.5 : 1.0});
+        CHECK(doc.objectiveScalar(objective.section, "ModelID")->value == Scalar{std::int64_t{custom ? 53 : -1}});
+        const auto wire = doc.fitBytes(); const FitReader reader(wire);
+        CHECK(reader.read(v3 ? "Team7Objective0Condition0" : "Objective1Condition0", "st", "ConditionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("DestroyNumberOfEnemyUnits")});
+    }
+}
+
+TEST_CASE("objectives/template move to area saves its center and nonzero default radius")
+{
+    for (const bool v3 : {false, true}) for (const bool custom : {false, true}) {
+        auto draft = objectiveTemplateDraft(ObjectiveTemplate::moveToArea);
+        if (custom) { draft.centerX = 12.5; draft.centerY = -9.25; draft.radius = 64; }
+        const auto doc = savedTemplate(draft, v3);
+        const auto& objective = doc.objectives().back();
+        CHECK(std::get<ConditionSpecies>(objective.entries[0][0].species) == ConditionSpecies::moveAny);
+        CHECK(objective.entries[0][0].payload == std::vector<Scalar>{custom ? 12.5 : 0.0, custom ? -9.25 : 0.0, custom ? 64.0 : 256.0});
+        CHECK(objective.entries[1].empty());
+        CHECK(doc.objectiveScalar(objective.section, "Title")->value == Scalar{std::string("Move to area")});
+        CHECK(doc.objectiveScalar(objective.section, "Description")->value == Scalar{std::string("Move any unit into the target area. Set the area center via Edit.")});
+        const auto wire = doc.fitBytes(); const FitReader reader(wire);
+        CHECK(reader.read(v3 ? "Team7Objective0Condition0" : "Objective1Condition0", "st", "ConditionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("MoveAnyUnitToArea")});
+    }
+}
+
+TEST_CASE("objectives/template add undoes the whole recipe and rejects partial additions")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "templates", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    for (const auto recipe : {ObjectiveTemplate::hiddenTrigger, ObjectiveTemplate::destroyEnemies, ObjectiveTemplate::moveToArea}) {
+        auto draft = objectiveTemplateDraft(recipe);
+        REQUIRE(history.addObjectiveTemplate(0, draft));
+        const auto added = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == fixture()); CHECK_FALSE(history.canUndo());
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == added); REQUIRE(history.undo());
+        if (recipe == ObjectiveTemplate::hiddenTrigger) draft.actionFlag = "bad\"flag";
+        else if (recipe == ObjectiveTemplate::destroyEnemies) draft.count = 2147483648LL;
+        else draft.radius = std::numeric_limits<double>::infinity();
+        CHECK_FALSE(history.addObjectiveTemplate(0, draft));
+        CHECK(doc->fitBytes() == fixture()); CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
+    }
+}
+
 TEST_CASE("objectives/text source apply is atomic and retains missing IDs and empty final lines")
 {
     auto doc = MissionDocument::decode(fixture(), packet(), "presentation", {}); REQUIRE(doc);
