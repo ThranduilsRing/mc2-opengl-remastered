@@ -312,9 +312,8 @@ GLuint loadHdriTexture(const char* path,
     const char* err = nullptr;
     int rc = LoadEXR(&pixels, &w, &h, path, &err);
     if (rc != TINYEXR_SUCCESS) {
-        MC2_DIAGFE(stderr,
-            "[HDRI_SKY v1] enabled=0 reason=load_failed path=%s rc=%d err=%s\n",
-            path, rc, err ? err : "(null)");
+        mc2::fmt::print_err("[HDRI_SKY v1] enabled=0 reason=load_failed path={} rc={:d} err={}\n",
+            mc2::fmt::safe(path), mc2::fmt::as_i32(rc), mc2::fmt::safe(err ? err : "(null)"));
         if (err) FreeEXRErrorMessage(err);
         if (pixels) free(pixels);  // defensive — should be null on failure
         return 0;
@@ -328,8 +327,7 @@ GLuint loadHdriTexture(const char* path,
     // TEX-CLASS: asset-pool -- HDRI sky LDR content texture
     glGenTextures(1, &tex);
     if (!tex) {
-        MC2_DIAGFE(stderr,
-            "[HDRI_SKY v1] enabled=0 reason=glGenTextures_failed path=%s\n", path);
+        mc2::fmt::print_err("[HDRI_SKY v1] enabled=0 reason=glGenTextures_failed path={}\n", mc2::fmt::safe(path));
         free(pixels);
         return 0;
     }
@@ -369,9 +367,8 @@ GLuint loadHdriTexture(const char* path,
 
     const GLenum glErr = glGetError();
     if (glErr != GL_NO_ERROR) {
-        MC2_DIAGFE(stderr,
-            "[HDRI_SKY v1] enabled=0 reason=gl_error path=%s err=0x%x\n",
-            path, glErr);
+        mc2::fmt::print_err("[HDRI_SKY v1] enabled=0 reason=gl_error path={} err=0x{:x}\n",
+            mc2::fmt::safe(path), mc2::fmt::as_u32(static_cast<unsigned>(glErr)));
         glDeleteTextures(1, &tex);
         if (outCpu) { outCpu->levels.clear(); outCpu->dims.clear(); }
         return 0;
