@@ -192,6 +192,13 @@ RETIRED_SETS = {
         "Retired by the 2026-10-05 reset without promotion: blessed the 11 regions "
         "later refused as unstable plus the degenerate crop; its install is "
         "archived. Superseded by reset-50331d5. Copy at E:/mc2-archive-2026-10/goldens."),
+    "golden-e9e3f19d6-1080p": (
+        "Retired by the 2026-10-16 CURRENT_GOLDEN switch: a GL set at 1920x1080, superseded by the Vulkan set "
+        "golden-d9e1f3801716-vk-1080p (GL is deleted after VK parity). Copy at "
+        "E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16."),
+    "reset-50331d5": (
+        "Retired by the 2026-10-16 CURRENT_GOLDEN switch: a GL set at 3840x2160 (ungradeable at the pinned size), "
+        "superseded by golden-d9e1f3801716-vk-1080p. Copy at E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16."),
 }
 
 

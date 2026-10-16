@@ -120,5 +120,6 @@ three runs, see `tools/visual_verify/vk_golden_plan.md` section 4), and `verify.
 - `golden-e9e3f19d6-1080p`: GL at 1920x1080, superseded by the VK set (GL is deleted after VK parity).
 - `reset-50331d5`: GL at 3840x2160; already ungradeable at the pinned size.
 
-The directories leave the tree in the GL-golden archive commit of the same session (tarball under
+The directories left the tree in the GL-golden archive commit (tarball + sha256 under
 `E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16/`, `RETIRED_SETS` entries in `scripts/check-golden-coverage.py`).
+Restore: extract the tarball into `tests/visual/goldens/` and remove the two `RETIRED_SETS` entries.
