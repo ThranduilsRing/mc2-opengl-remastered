@@ -396,6 +396,7 @@ void main() {
     // solid-cement hit -> flat-lit + no static shadow. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
+    bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
         // Mirror terrain_lod_chunk.frag:466-482 EXACTLY (world-XY -> atlas-UV, then
         // the 9-tap disc blur) so the VK base color matches GL's colormap sample.
@@ -428,7 +429,6 @@ void main() {
     // uT.useCement==0 (gate off / atlas or words not ready) -> whole block skipped ->
     // colormap base only, byte-identical to the colormap-only frame.
     if (uT.useCement != 0) {
-        bool cementHit = false;
         int  ctX = clamp(int(floor((v_worldPos.x + uT.halfMap) / 128.0)), 0, uT.mapSide - 1);
         int  ctY = clamp(int(floor((uT.halfMap - v_worldPos.y) / 128.0)), 0, uT.mapSide - 1);
         uint cw  = uC.cementWordsF[ctX + ctY * uT.mapSide];
