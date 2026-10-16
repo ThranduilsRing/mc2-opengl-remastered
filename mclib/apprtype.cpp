@@ -94,8 +94,8 @@ void AppearanceType::operator delete (void* treePtr)
 //---------------------------------------------------------------------------
 void AppearanceType::init (const char *fileName)
 {
-	name = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(fileName)+1);
-	strcpy(name,fileName);
+	nameStore = fileName;
+	name = nameStore.data();
 
 	//Dig out the Type Bounds here for selections
 	FullPathFileName iniName;
@@ -233,7 +233,7 @@ void AppearanceType::reinit (void)
 //---------------------------------------------------------------------------
 void AppearanceType::destroy (void)
 {
-	AppearanceTypeList::appearanceHeap->Free(name);
+	std::string().swap(nameStore);
 	name = nullptr;
 }
 
@@ -517,15 +517,14 @@ long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 void AppearanceTypeList::destroy (void)
 {
 	//---------------------------------------------------------------------
-	// Run through the list and force a destroy call for each list element.
-	// This will free any RAM used by each individual appearance.
-	// DO NOT really need to do this.  Just toss the heap!
-	
+	// Delete every type still in the list, once each: the destructor chain runs the type's destroy(), the same path removeAppearance
+	// takes. The types must go before the heap they were taken from.
+
 	AppearanceTypePtr currentAppr = head;
 	while (currentAppr)
 	{
 		AppearanceTypePtr nextPtr = currentAppr->next;
-		currentAppr->destroy();
+		delete currentAppr;
 		currentAppr = nextPtr;
 	}
 	

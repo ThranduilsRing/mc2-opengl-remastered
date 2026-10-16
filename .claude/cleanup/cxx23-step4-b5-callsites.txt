@@ -52,18 +52,16 @@ B5.3-appearance	mclib/apprtype.cpp:78	heap_malloc	result = AppearanceTypeList::a
 B5.3-appearance	mclib/apprtype.cpp:85	class_op	void AppearanceType::operator delete (void* treePtr)
 B5.3-appearance	mclib/apprtype.cpp:85	asset_delete	void AppearanceType::operator delete (void* treePtr)
 B5.3-appearance	mclib/apprtype.cpp:90	heap_free	result = AppearanceTypeList::appearanceHeap->Free(treePtr);
-B5.3-appearance	mclib/apprtype.cpp:97	heap_malloc	name = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(fileName)+1);
-B5.3-appearance	mclib/apprtype.cpp:236	heap_free	AppearanceTypeList::appearanceHeap->Free(name);
 B5.3-appearance	mclib/apprtype.cpp:311	asset_new	appearanceType = new Mech3DAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:338	asset_new	appearanceType = new GVAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:365	asset_new	appearanceType = new TreeAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:392	asset_new	appearanceType = new GenericAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:419	asset_new	appearanceType = new BldgAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:508	asset_delete	delete appearanceType;
-B5.3-appearance	mclib/apprtype.cpp:535	asset_delete	delete appearanceHeap;
-B5.3-appearance	mclib/apprtype.cpp:540	asset_delete	delete GVAppearanceType::SensorCircleShape;
-B5.3-appearance	mclib/apprtype.cpp:546	asset_delete	delete GVAppearanceType::SensorTriangleShape;
-B5.3-appearance	mclib/apprtype.cpp:552	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
+B5.3-appearance	mclib/apprtype.cpp:534	asset_delete	delete appearanceHeap;
+B5.3-appearance	mclib/apprtype.cpp:539	asset_delete	delete GVAppearanceType::SensorCircleShape;
+B5.3-appearance	mclib/apprtype.cpp:545	asset_delete	delete GVAppearanceType::SensorTriangleShape;
+B5.3-appearance	mclib/apprtype.cpp:551	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
 B5.1-texture	mclib/bdactor.cpp:280	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
 B5.1-texture	mclib/bdactor.cpp:287	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
 B5.3-appearance	mclib/bdactor.cpp:362	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
