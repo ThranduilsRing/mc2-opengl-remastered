@@ -486,7 +486,10 @@ extern "C" int mc2_vk_vfx_island_run(
     vk_render_pass_timer::End(s->cbuf, gos_render_pass_timer::Pass_AlphaVfx);
     if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    if (groupsDrawn == 0) return 0;   // nothing drawable this frame
+    if (groupsDrawn == 0) {   // nothing drawable this frame: the recorded buffer is not submitted
+        vk_render_pass_timer::Cancel(gos_render_pass_timer::Pass_AlphaVfx);
+        return 0;
+    }
 
     const VkFence fence = s->fence.get();
     vkResetFences(s->device, 1, &fence);

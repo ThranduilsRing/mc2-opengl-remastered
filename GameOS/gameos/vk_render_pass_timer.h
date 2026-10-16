@@ -28,11 +28,13 @@ inline double TicksToMs(uint64_t begin, uint64_t end, uint64_t validMask, double
 // True when the VK backend drew this session and the pass timer collects: the GL timer then skips its own queries.
 bool Active();
 
-// Bracket the work an island records on `cb` for pass `p`. Call outside a render pass (the begin stamp resets its own two
-// queries first). A pass bracketed more than once in a frame reports the sum of its brackets. No-ops in a build without
-// Vulkan islands.
+// Bracket the work an island records on `cb` for pass `p`; Begin goes outside a render pass. A pass bracketed more than
+// once in a frame reports the sum of its brackets. No-ops in a build without Vulkan islands.
 void Begin(VkCommandBuffer cb, gos_render_pass_timer::Pass p);
 void End(VkCommandBuffer cb, gos_render_pass_timer::Pass p);
+// The island decided not to submit the command buffer that holds the pass's latest bracket: that bracket's queries keep
+// an older frame's results, so it must never be read (it would publish a stale time as current).
+void Cancel(gos_render_pass_timer::Pass p);
 
 // Once per frame from gos_render_pass_timer::FrameEnd: closes the frame's slot, harvests every finished older slot into
 // gos_render_pass_timer::SubmitBackendFrame, and counts a slot still unfinished when it comes round again as dropped.
