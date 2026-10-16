@@ -621,8 +621,8 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	else if ((torsoEntryAngle <= -91.0/*-135.0*/) || (torsoEntryAngle >= 91.0/*135.0*/))
 		hitFromBehindThisFrame = true;
 
-	// The hit-gesture threshold sums the damage of one sim step. WHY a turn stamp: the reset used to live in render(), so
-	// at N sim steps per drawn frame the sum spanned N steps and a mech flinched where the 1x game did not.
+	// The hit-gesture threshold sums the damage of one sim turn. WHY a turn stamp: the sum must not depend on how often
+	// the frame is drawn or how many sim steps run per drawn frame.
 	if (damageTurn != turn)
 	{
 		damageThisFrame = 0.0f;
