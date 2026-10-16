@@ -44,7 +44,19 @@ std::expected<void, LoadError> CommandHistory::commitObjectiveFit(std::string fi
 
 std::expected<NodeId, LoadError> CommandHistory::addObjectiveEntry(NodeId objective, std::size_t list)
 {
+    if (list % 2 != 0) return std::unexpected(rejectObjective("required_action_payload"));
     return editObjectiveEntries(ObjectiveEdit::add, objective, list);
+}
+std::expected<NodeId, LoadError> CommandHistory::addObjectiveAction(NodeId objective, std::size_t list, const ActionDraft& draft)
+{
+    if (list != 1 && list != 3) return std::unexpected(rejectObjective("unsupported_action_list"));
+    auto payload = encodeActionDraft(draft);
+    if (!payload) return std::unexpected(rejectObjective(payload.error().reason));
+    const auto schema = actionSchema(true);
+    const auto spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+    const auto suffix = list == 1 ? "Action" : "FailureAction";
+    auto text = std::string("st ") + suffix + "SpeciesString = \"" + std::string(spec->name) + "\"\r\n" + *payload;
+    return editObjectiveEntries(ObjectiveEdit::add, objective, list, {}, 0, {}, {}, std::move(text));
 }
 std::expected<NodeId, LoadError> CommandHistory::addObjectiveCondition(NodeId objective, std::size_t list, ConditionSpecies species,
     std::optional<EntityId> target)
@@ -86,16 +98,13 @@ std::expected<void, LoadError> CommandHistory::setObjectivePayload(NodeId id, st
     if (!syntax) return reject(syntax.error().reason);
     const auto index = static_cast<std::size_t>(old - document_.syntax().fields.data());
     const auto& fresh = syntax->fields[index];
-    auto encoded = value;
-    if (auto* text = std::get_if<std::string>(&encoded); text && text->find('\n') != text->npos) {
-        std::string wire = "\r\n";
-        for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
-        *text = std::move(wire);
-    }
-    const auto wire = fieldSpec->type == 1 ? std::format("{:.9g}", std::get<double>(value)) : formatValue(*old, Value{encoded});
+    const auto wire = objectivePayloadWire(*fieldSpec, value);
     fit.replace(fresh.syntax.begin, fresh.syntax.end - fresh.syntax.begin, wire);
     auto check = decodeFit(fit);
     if (!check) return reject(check.error().reason);
+    const auto& block = check->sections[static_cast<std::size_t>(document_.section(id) - document_.syntax().sections.data())];
+    if (auto valid = validateObjectiveBlock(std::string_view(fit).substr(block.syntax.begin, block.syntax.end - block.syntax.begin)); !valid)
+        return reject(valid.error().reason);
     if (check->fields[index].warning == "reader_string_buffer_limit") return reject("reader_string_buffer_limit");
     auto decoded = check->fields[index].value[0];
     if (decoded != value) return reject("reader_conversion_changes_value");
@@ -115,7 +124,8 @@ std::expected<void, LoadError> CommandHistory::reorderObjectiveEntry(NodeId entr
 }
 
 std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveEdit edit, NodeId owner,
-    std::size_t list, NodeId id, std::uint32_t index, std::optional<ConditionSpecies> species, std::optional<EntityId> target)
+    std::size_t list, NodeId id, std::uint32_t index, std::optional<ConditionSpecies> species, std::optional<EntityId> target,
+    std::string action)
 {
     const auto reject = [&](std::string reason) -> std::expected<NodeId, LoadError> {
         return std::unexpected(rejectObjective(std::move(reason)));
@@ -126,6 +136,7 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveE
     }
     const auto* objective = document_.objective(owner);
     if (!objective || list >= 4) return reject("missing_objective_or_list");
+    if (edit == ObjectiveEdit::add && list % 2 != 0 && action.empty()) return reject("required_action_payload");
     const auto& entries = objective->entries[list];
     const auto found = std::ranges::find(entries, id, &ObjectiveEntry::section);
     if (edit != ObjectiveEdit::add && found == entries.end()) return reject("missing_entry");
@@ -183,7 +194,7 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveE
         for (const auto& section : fresh->sections) if (!section.parent && identifier(section.name) == identifier(name))
             return reject("entry_add_would_awaken_ignored_tail");
         auto text = (fresh->endMarker && fit[fresh->endMarker - 1] != '\n' ? std::string(nl) : std::string{}) + "[" + name + "]" + nl + "st " + suffixes[list] +
-            "SpeciesString = \"" + (list % 2 == 0 ? "BooleanFlagIsSet" : "SetBooleanFlag") + "\"" + nl +
+            "SpeciesString = \"BooleanFlagIsSet\"" + nl +
             "st FlagID = \"\"" + nl + "b Value = TRUE" + nl;
         if (species) {
             const auto spec = std::ranges::find(conditionSchema(), *species, &ConditionSpec::species);
@@ -195,6 +206,10 @@ std::expected<NodeId, LoadError> CommandHistory::editObjectiveEntries(ObjectiveE
                 const auto wire = spec->reference ? std::format("{:.9g}", static_cast<float>(entity->position[field.key == "PositionX" ? 0 : 1])) : "0";
                 text += std::string(field.prefix) + " " + std::string(field.key) + " = " + wire + nl;
             }
+        }
+        if (list % 2 != 0) {
+            text = "[" + name + "]" + nl + action;
+            if (fresh->endMarker && fit[fresh->endMarker - 1] != '\n') text.insert(0, nl);
         }
         edits.insert(edits.begin(), {{fresh->endMarker, fresh->endMarker}, text});
     }
@@ -275,6 +290,11 @@ std::expected<void, LoadError> CommandHistory::setObjectiveFlag(NodeId id, std::
     std::ranges::sort(edits, [](const Edit& a, const Edit& b) { return a.span.begin > b.span.begin; });
     for (const auto& change : edits) fit.replace(change.span.begin, change.span.end - change.span.begin, change.text);
     if (fit == document_.fitBytes()) return {};
+    auto check = decodeFit(fit);
+    if (!check) return reject(check.error().reason);
+    const auto& block = check->sections[static_cast<std::size_t>(document_.section(id) - document_.syntax().sections.data())];
+    if (auto valid = validateObjectiveBlock(std::string_view(fit).substr(block.syntax.begin, block.syntax.end - block.syntax.begin)); !valid)
+        return reject(valid.error().reason);
     return commitObjectiveFit(std::move(fit), "Set objective boolean flag");
 }
 

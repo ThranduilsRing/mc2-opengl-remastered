@@ -1,23 +1,136 @@
 #include "MissionDocument.h"
 #include "CommandHistory.h"
+#include "FitReader.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <format>
+#include <charconv>
+#include <set>
 
 namespace editor::document {
-std::span<const ActionSpec> actionSchema()
+const TeamFlagRow* TeamFlags::resolve(std::string_view id) const
+{
+    std::string memoryId;
+    for (std::size_t i = 0; i < id.size(); ++i) {
+        if (id[i] == '\n' && (i == 0 || id[i - 1] != '\r')) memoryId += '\r';
+        memoryId += id[i];
+    }
+    for (const auto& row : rows)
+        if (row.status == "initialized" && row.id && identifier(*row.id) == identifier(memoryId)) return &row;
+    return nullptr;
+}
+
+TeamFlags MissionDocument::teamFlags(std::uint32_t team) const
+{
+    TeamFlags result;
+    const auto block = std::format("Team{}BooleanFlags", team);
+    const auto bytes = fitBytes();
+    const FitReader reader(bytes);
+    if (!reader.block(block)) return result;
+    for (const auto& candidate : syntax().sections)
+        if (!candidate.parent && candidate.name == block) { result.section = candidate.id; break; }
+    std::set<std::size_t> indices;
+    if (result.section) for (const auto node : section(*result.section)->fields) {
+        const auto name = identifier(field(node)->name);
+        for (const std::string_view prefix : {"booleanstring", "booleanvalue"}) {
+            if (!name.starts_with(prefix)) continue;
+            const auto suffix = std::string_view(name).substr(prefix.size());
+            std::size_t index{};
+            const auto parsed = std::from_chars(suffix.data(), suffix.data() + suffix.size(), index);
+            if (parsed.ec == std::errc{} && parsed.ptr == suffix.data() + suffix.size() && suffix == std::to_string(index)) indices.insert(index);
+        }
+    }
+    for (std::size_t index = 0; index < nodeLimit; ++index) {
+        const auto id = reader.read(block, "st", std::format("BooleanString{}", index));
+        if (!id && id.error() == "absent") break;
+        indices.insert(index);
+    }
+    bool stopped{};
+    for (const auto index : indices) {
+        if (index != result.stop) stopped = true;
+        const auto id = reader.read(block, "st", std::format("BooleanString{}", index));
+        const auto value = reader.read(block, "b", std::format("BooleanValue{}", index));
+        TeamFlagRow row{index};
+        if (id) {
+            row.id.emplace();
+            for (const auto c : std::get<std::string>(*id)) { if (c == '\n') *row.id += '\r'; *row.id += c; }
+        }
+        const bool oversized = !id && id.error() == "reader_string_buffer_limit";
+        if (value) row.value = std::get<bool>(*value);
+        if (stopped) row.status = "ignored tail after first absent ID";
+        else if (oversized) { row.status = "oversized ID skipped"; ++result.stop; }
+        else if (!row.id) { row.status = "absent/unreadable ID ends loading"; stopped = true; }
+        else {
+            row.status = "initialized";
+            ++result.stop;
+        }
+        if (row.id) for (const auto& earlier : result.rows)
+            if (earlier.id && identifier(*earlier.id) == identifier(*row.id)) { row.duplicateOf = earlier.index; break; }
+        result.rows.push_back(std::move(row));
+    }
+    return result;
+}
+
+std::span<const ActionSpec> actionSchema(bool creation)
 {
     static constexpr ObjectiveFieldSpec bik[] = {{"AVIFileName", "st", 3}};
     static constexpr ObjectiveFieldSpec wav[] = {{"WAVFileName", "st", 3}};
     static constexpr ObjectiveFieldSpec text[] = {{"Message", "st", 3}};
     static constexpr ObjectiveFieldSpec technology[] = {{"PurchaseFileName", "st", 3}};
     static constexpr ObjectiveFieldSpec resource[] = {{"ResourceStringID", "ul", 0, -2147483648.0, 2147483647.0}};
+    static constexpr ObjectiveFieldSpec flag[] = {{"FlagID", "st", 3}, {"Value", "b", 2}};
     static constexpr ActionSpec specs[] = {
         {ActionSpecies::bik, "PlayBIK", bik}, {ActionSpecies::wav, "PlayWAV", wav},
         {ActionSpecies::text, "DisplayTextMessage", text},
         {ActionSpecies::technology, "MakeNewTechnologyAvailable", technology},
-        {ActionSpecies::resourceText, "DisplayResourceTextMessage", resource}};
-    return specs;
+        {ActionSpecies::resourceText, "DisplayResourceTextMessage", resource},
+        {ActionSpecies::flag, "SetBooleanFlag", flag}};
+    return std::span{specs}.first(creation ? 6 : 5);
+}
+
+std::string objectivePayloadWire(const ObjectiveFieldSpec& field, const Scalar& value)
+{
+    auto encoded = value;
+    // FIT assembles multiline text differently unless the opening line is empty.
+    if (auto* text = std::get_if<std::string>(&encoded); text && text->find('\n') != text->npos) {
+        std::string wire = "\r\n";
+        for (const char c : *text) { if (c == '\n') wire += '\r'; wire += c; }
+        *text = std::move(wire);
+    }
+    Field spelling; spelling.prefix = field.prefix;
+    return field.type == 1 ? std::format("{:.9g}", std::get<double>(value)) : formatValue(spelling, Value{encoded});
+}
+
+std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft)
+{
+    const auto schema = actionSchema(true);
+    const auto spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+    const auto reject = [](std::string reason) { return std::unexpected(LoadError{"action", std::move(reason), 0}); };
+    if (spec == schema.end()) return reject("unsupported_action_creation");
+    if (draft.payload.size() != spec->fields.size()) return reject("required_action_payload");
+    if (draft.flagIndex && draft.species != ActionSpecies::flag) return reject("unexpected_FlagIndex");
+    std::string result;
+    for (std::size_t i = 0; i < spec->fields.size(); ++i) {
+        auto field = spec->fields[i];
+        if (draft.flagIndex && i == 0) field = {"FlagIndex", "ul", 0, -2147483648.0, 2147483647.0};
+        auto value = draft.payload[i];
+        if (auto* text = std::get_if<std::string>(&value)) {
+            for (auto at = text->find("\r\n"); at != text->npos; at = text->find("\r\n", at)) text->erase(at, 1);
+            if (text->empty() && field.key != "FlagID") return reject("required_action_text");
+        }
+        if (auto valid = validateObjectiveScalar(field, value); !valid) return std::unexpected(valid.error());
+        const auto wire = objectivePayloadWire(field, value);
+        const auto declaration = std::string(field.prefix) + " " + std::string(field.key) + " = " + wire + "\r\n";
+        auto check = decodeFit("FITini\r\n[Team0Objective0Action0]\r\n" + declaration + "FITend\r\n");
+        if (!check || check->fields.size() != 1 || check->fields[0].opaque ||
+            check->fields[0].warning == "reader_string_buffer_limit" || check->fields[0].value != Value{value})
+            return reject("reader_conversion_changes_value");
+        result += declaration;
+    }
+    if (auto valid = validateObjectiveBlock("[Action]\r\nst ActionSpeciesString = \"" + std::string(spec->name) + "\"\r\n" + result); !valid)
+        return std::unexpected(valid.error());
+    return result;
 }
 
 std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry)
@@ -128,6 +241,8 @@ void MissionDocument::preserveObjectiveField(NodeId id, std::string_view warning
 }
 std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective& item)
 {
+    const FitReader reader(syntax_.originalBytes);
+    const auto& block = section(item.section)->name;
     for (const auto& spec : objectiveSchema()) {
         const auto* field = find(item.section, spec.key);
         if (!field && spec.key == "PreviousPrimaryObjectiveMustBeComplete") field = find(item.section, "PreviousObjectiveMustBeComplete");
@@ -167,17 +282,18 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                 return valid;
             }
         }
-        // Activation indices supply fallback IDs without losing authored spelling.
-        if ((!field || !warning.empty()) && spec.key == "ActivateFlagID")
-            if (const auto* legacy = find(item.section, "ActivateFlagIndex")) {
-                if (legacy->prefix == "ul" && legacy->value.size() == 1 && std::holds_alternative<std::int64_t>(legacy->value[0])) {
-                    value = std::to_string(std::get<std::int64_t>(legacy->value[0]));
-                }
-                if (!field && !legacy->warning.empty()) { field = legacy; warning = legacy->warning; }
-            }
-        if (!warning.empty() && spec.key == "PreviousPrimaryObjectiveMustBeComplete")
-            if (const auto* legacy = find(item.section, "PreviousObjectiveMustBeComplete"); legacy && legacy->prefix == "b" &&
-                legacy->value.size() == 1 && std::holds_alternative<bool>(legacy->value[0])) value = legacy->value[0];
+        auto actual = reader.read(block, spec.prefix, spec.key);
+        if (!actual && spec.key == "PreviousPrimaryObjectiveMustBeComplete") actual = reader.read(block, "b", "PreviousObjectiveMustBeComplete");
+        if (actual) value = std::move(*actual);
+        else {
+            if (spec.type == 0) value = spec.integerDefault;
+            else if (spec.type == 1) value = static_cast<double>(spec.integerDefault);
+            else if (spec.type == 2) value = false;
+            else value = spec.key == "Description" ? item.scalars.front().value : Scalar{std::string{}};
+            if (field) warning = "ignored by the game";
+            if (spec.key == "ActivateFlagID")
+                if (auto index = reader.read(block, "ul", "ActivateFlagIndex")) value = std::to_string(std::get<std::int64_t>(*index));
+        }
         if (field && !warning.empty()) preserveObjectiveField(field->id, warning);
         item.scalars.push_back({spec.key, field ? std::optional{field->id} : std::nullopt, std::move(value), warning});
     }
@@ -234,6 +350,9 @@ std::expected<void, LoadError> CommandHistory::setObjectiveScalar(NodeId id, std
         }
         auto decoded = decodeFit(fit);
         if (!decoded) return reject(decoded.error().reason);
+        const auto& block = decoded->sections[static_cast<std::size_t>(section - document_.syntax().sections.data())];
+        if (auto valid = validateObjectiveBlock(std::string_view(fit).substr(block.syntax.begin, block.syntax.end - block.syntax.begin)); !valid)
+            return reject(valid.error().reason);
         const auto& fields = decoded->sections[static_cast<std::size_t>(section - document_.syntax().sections.data())].fields;
         const auto field = std::ranges::find_if(decoded->fields, [&](const Field& field) {
             return field.name == actualKey && std::ranges::find(fields, field.id) != fields.end();

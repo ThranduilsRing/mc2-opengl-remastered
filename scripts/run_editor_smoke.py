@@ -1489,6 +1489,11 @@ def crud_negative_controls(directory):
             raise ValueError("CRUD wrong-value negative control did not change output")
         controls = [baseline, wrong, swapped]
         if operation.startswith("entry-"):
+            if operation in ("entry-1-add", "entry-3-add"):
+                changed = originals[0].replace(b'st FlagID = "created-flag"', b'st FlagID = ""')
+                if changed == originals[0]:
+                    raise ValueError("action creation control did not clear its required ID")
+                controls.append(changed)
             for source, replacement in ((b'e6c-first', b'wrong-id'), (b'Value = FALSE', b'Value = TRUE'),
                                         (b'BooleanFlagIsSet', b'UnknownCondition'), (b'SetBooleanFlag', b'UnknownAction'),
                                         (b'st FailureActionSpeciesString = "SetBooleanFlag"', b'ul FailureActionSpecies = 4')):
