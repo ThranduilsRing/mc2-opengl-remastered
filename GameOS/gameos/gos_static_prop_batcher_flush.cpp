@@ -150,7 +150,7 @@ void GpuStaticPropBatcher::drawStaticPopulation() {
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
             // Criterion 2: fence this draw so the next dirty in-place fill waits on it.
             if (s_staticDrawFence) glDeleteSync(s_staticDrawFence);
-            s_staticDrawFence = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+            s_staticDrawFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
         }
 }
 

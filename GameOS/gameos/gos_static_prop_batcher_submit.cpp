@@ -811,7 +811,7 @@ bool uploadAllBucketsIfNeeded() {
     }
     if (s_fence[s_frameSlot]) {
         ZoneScopedN("GpuSP.FenceWaitRender");
-        MC2_GL_ClientWaitSync(s_fence[s_frameSlot], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
+        glClientWaitSync(s_fence[s_frameSlot], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
         glDeleteSync(s_fence[s_frameSlot]);
         s_fence[s_frameSlot] = 0;
     }

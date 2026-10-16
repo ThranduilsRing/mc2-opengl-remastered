@@ -18,6 +18,7 @@
 #include "gos_screenshot.h"
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "mc2fmt.h"
+#include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -1943,6 +1944,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         health_.composite_wait_us_last =
             std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
         health_.composite_wait_us_accum += health_.composite_wait_us_last;
+        mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
         ++health_.composite_wait_samples;
         if ((health_.composite_wait_samples % 600) == 1)
             plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",

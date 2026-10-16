@@ -484,7 +484,7 @@ static void fillStaticInstanceBufferIfDirty() {
     // static draw to drain before clobbering it (dirties are rare, so the stall
     // is rare; GPU in-order execution makes one wait cover all earlier frames).
     if (s_staticDrawFence) {
-        MC2_GL_ClientWaitSync(s_staticDrawFence, GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
+        glClientWaitSync(s_staticDrawFence, GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
         glDeleteSync(s_staticDrawFence);
         s_staticDrawFence = nullptr;
     }
@@ -914,7 +914,7 @@ void batcher_prepareBaseInstanceTable() {
 
     // Wait on the fence for the slot we just took (from RING_FRAMES frames ago).
     if (s_coalesceFence[s_coalesceFrameSlot]) {
-        MC2_GL_ClientWaitSync(s_coalesceFence[s_coalesceFrameSlot],
+        glClientWaitSync(s_coalesceFence[s_coalesceFrameSlot],
                          GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
         glDeleteSync(s_coalesceFence[s_coalesceFrameSlot]);
         s_coalesceFence[s_coalesceFrameSlot] = nullptr;
