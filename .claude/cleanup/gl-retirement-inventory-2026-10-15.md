@@ -326,16 +326,17 @@ Order: rule row 18, give the VFX oracle a VK arm; then the arm (`gos_visual_capt
 - DONE (806488128): `gos_validate` GL error drain (`drainGLErrors`, 9 call sites, the exit-time drain, the `gl_errors` JSON key). Left: the `MC2_GL_ERROR_DRAIN_SILENT` gate row (read only by the `[INSTR v1]` banner and the crash-bundle env echo; `runner.py` POPPED_ENV and `test_anti_churn.py` name it) goes in a gate-table commit. The VK validation layer is the error oracle every VK smoke reads; the drain goes with the GL context.
 - DONE (806488128): `gpu_memory_report` GL counters (`GL_TEXTURE_FREE_MEMORY_ATI`, `GL_NVX_gpu_memory_info`; the `[VRAM v1]` keys, `vram.py` and its tests). The GL-context LUID lookup for the DXGI adapter stays (GL run adapter choice). The VMA budget / usage half already reports under VK; `smoke_lib/vram.py` reads either.
 - DONE (806488128): `gos_frame_pass_stats` GL-state fields (FBO, viewport, depth, blend, cull read back with `glGet*`; dev-shell framegraph, debug-state dump and Frame Inspector columns): `ran` now comes from the VK timer; no VK meaning; the draw / instance counts are CPU aggregates both backends fill and stay.
-(b) Need an owner ruling, with the proposed Fable default.
-- `debug_renderer` (lines / boxes, view-mode matrix, editor inspector toggle): default PORT to a VK line pipeline, because the editor rework keeps the inspector.
-- lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP ruling 2026-10-12): default DELETE in the same commit that removes the GL interop it proves absent.
-- `gos_object_parity` (checks the GPU static-prop producer both backends consume): default KEEP the CPU comparison, DELETE its GL buffer readback.
-- `mc2_hitch_trace` (GL fences for hitch attribution): default PORT to the VK island fences / timestamps, CPU phases unchanged.
-- HZB probe in `gos_postprocess_diag` (`hzb.json`): default DELETE with the GL HZB, because the VK HZB pass is opt-in off; re-add on VK only if the VK HZB is turned on.
-- `gos_renderer_input_probe` (UI probe commands): default KEEP, dropping its GL state reads (the probe is input / UI, not rendering).
-- `gos_dev_shell` GL calls: default KEEP the shell, port `screenshot` (above) and drop the GL `reload_shaders` path with the GL shaders.
-- terrain `tessDebug` view modes (section 3): default DELETE with the GL terrain path; VK has `MC2_VK_TERRAIN_CSM_DEBUG` channel views.
+(b) Owner rulings (2026-10-16, orchestrator message to lane 2 session 36): RULED below; every item is a later session unless marked DONE.
+- `debug_renderer` (lines / boxes, view-mode matrix, editor inspector toggle): default PORT to a VK line pipeline, because the editor rework keeps the inspector. RULED 2026-10-16: PORT to a Vulkan line pipeline.
+- lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (KEEP ruling 2026-10-12): default DELETE in the same commit that removes the GL interop it proves absent. RULED 2026-10-16: DELETE with the GL interop.
+- `gos_object_parity` (checks the GPU static-prop producer both backends consume): default KEEP the CPU comparison, DELETE its GL buffer readback. RULED 2026-10-16: KEEP the CPU comparison, drop the GL readback. NOT taken in session 36: the readback is `glGetBufferSubData` in `candidateLogAndParityReadback` (`gos_static_prop_batcher_flush_prep.cpp`) plus the parity SSBO cursor in the flush / dispatch / state files (lane 3 territory), and `CompareAndReport` takes those bytes as its input, so dropping the readback needs a VK source of the parity bytes first: over the 50-line limit.
+- `mc2_hitch_trace` (GL fences for hitch attribution): default PORT to the VK island fences / timestamps, CPU phases unchanged. RULED 2026-10-16: PORT to Vulkan fences.
+- HZB probe in `gos_postprocess_diag` (`hzb.json`): default DELETE with the GL HZB, because the VK HZB pass is opt-in off; re-add on VK only if the VK HZB is turned on. RULED 2026-10-16: DELETE with the GL HZB.
+- `gos_renderer_input_probe` (UI probe commands): default KEEP, dropping its GL state reads (the probe is input / UI, not rendering). RULED 2026-10-16: KEEP.
+- `gos_dev_shell` GL calls: default KEEP the shell, port `screenshot` (above) and drop the GL `reload_shaders` path with the GL shaders. (screenshot DONE in session 36; the `reload_shaders` GL path goes with the GL shaders.)
+- terrain `tessDebug` view modes (section 3): default DELETE with the GL terrain path; VK has `MC2_VK_TERRAIN_CSM_DEBUG` channel views. RULED 2026-10-16: DELETE with the GL terrain.
 
+- Row 18 (cliff decal fill): RULED 2026-10-16 delete with GL, no port; closed in `.claude/VK-PARITY-GAPS.md` (no allowlist pin existed). That removes the row-18 consumer of the capture `gl_fbo` arm (section 16 table).
 ## 17. Session 36 (2026-10-16): GL deletion step 2 (a) done, gos_screenshot on the VK readback
 - 806488128: the four "deletable with the GL exe" items of section 16 (a) (rows marked DONE there).
 - 0c31da555: `gos_screenshot` request / deliver on the present readback; callers moved: dev-shell `screenshot` (the `source=backbuffer` option and the `scheduleScreenshot` flag are gone), `MC2_SCREENSHOT_PATH` / `_AT_FRAME`, `VisualDiff` capture, `--validate --screenshot`. A GL run no longer produces these screenshots (the request is rejected with a log line).
