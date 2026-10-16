@@ -52,18 +52,28 @@ class TerrainColorMap
 	//Data Members
 	//-------------
 	protected:
+		// The stores own the memory; ColorMap, textures and txmRAM are views into them. ColorMap and txmRAM only live while a
+		// load or bake function runs (releaseColorMapScratch ends them); textures live until destroy().
+		std::vector<unsigned char>	colorMapStore;
+		std::vector<unsigned char>	tileRamStore;
+		std::vector<ColorMapRAM>	txmRamStore;
+		std::vector<ColorMapTextures>	texturesStore;
+		std::vector<ColorMapTextures>	normalMapStore;
+
 		MemoryPtr				ColorMap;
-		
+
 		DWORD					numTextures;
-		
+
 		float					numTexturesAcross;
 		float					fractionPerTexture;
-		
+
 		ColorMapTextures		*textures;
 		ColorMapRAM				*txmRAM;
-		
-		UserHeapPtr				colorMapHeap;
-		UserHeapPtr				colorMapRAMHeap;
+
+		MemoryPtr ownColorMap (size_t bytes);
+		void ownTextureHandles (DWORD count);
+		void ownTileRam (DWORD count);
+		void releaseColorMapScratch (void);
 		
 		MemoryPtr				detailTextureRAM;
 		DWORD					detailTextureNodeIndex;

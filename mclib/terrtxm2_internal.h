@@ -49,8 +49,6 @@
 #include "mc2_dialog.h"
 #include "Gates/gate.h"
 
-inline constexpr int COLOR_MAP_HEAP_SIZE = 419430400;
-inline constexpr int COLOR_TXM_HEAP_SIZE = 16384;
 #define COLOR_MAP_TEXTURE_SIZE			256
 #define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
 
@@ -63,14 +61,14 @@ extern bool forceShadowBurnIn;
 extern "C" unsigned char* BurninJpeg_DecodeRGB(const unsigned char* data, int dataLen, int* outW, int* outH);
 extern "C" void BurninJpeg_FreePixels(unsigned char* px);
 
-inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
-                                  UserHeap* ramHeap, long* outWidth)
+// The decoded B,G,R,A colour map, or an empty vector when the sidecar is absent or unusable (the caller falls back to the .tga).
+inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, const char* fileName, long* outWidth)
 {
 	if (outWidth) *outWidth = 0;
 
 	// Kill-switch: prefer the .tga path entirely.
 	if (mc2::gate::get<"MC2_BURNIN_NO_JPG">())
-		return nullptr;
+		return {};
 
 	char jName[1024];
 	sprintf(jName, "%s.burnin", fileName);
@@ -80,60 +78,55 @@ inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	// Use File::open so the mod overlay (TryModOpen) is consulted — std::fopen bypasses it.
 	File jpgFile;
 	if (NO_ERR != jpgFile.open((const char*)burnInJpg))
-		return nullptr; // sidecar absent -> caller uses .tga
+		return {}; // sidecar absent -> caller uses .tga
 
 	long jFileSize = jpgFile.fileSize();
 	if (jFileSize <= 0)
 	{
 		jpgFile.close();
 		printf("[BURNIN_JPG] fallback name=%s reason=empty-file\n", fileName);
-		return nullptr;
+		return {};
 	}
 
-	unsigned char* jpgBytes = (unsigned char*)malloc((size_t)jFileSize);
-	if (!jpgBytes)
+	// A sidecar this large is not a colour map; refuse it rather than size a buffer from the file.
+	constexpr long kMaxJpgBytes = 256L * 1024 * 1024;
+	if (jFileSize > kMaxJpgBytes)
 	{
 		jpgFile.close();
-		printf("[BURNIN_JPG] fallback name=%s reason=read-alloc-failed (%ld bytes)\n", fileName, jFileSize);
-		return nullptr;
+		printf("[BURNIN_JPG] fallback name=%s reason=file-too-large (%ld bytes)\n", fileName, jFileSize);
+		return {};
 	}
-	if (jpgFile.read(jpgBytes, jFileSize) != jFileSize)
+
+	std::vector<unsigned char> jpgBytes((size_t)jFileSize);
+	if (jpgFile.read(jpgBytes.data(), jFileSize) != jFileSize)
 	{
-		free(jpgBytes);
 		jpgFile.close();
 		printf("[BURNIN_JPG] fallback name=%s reason=read-failed\n", fileName);
-		return nullptr;
+		return {};
 	}
 	jpgFile.close();
 
 	int w = 0, h = 0;
-	unsigned char* rgb = BurninJpeg_DecodeRGB(jpgBytes, (int)jFileSize, &w, &h);
-	free(jpgBytes);
+	unsigned char* rgb = BurninJpeg_DecodeRGB(jpgBytes.data(), (int)jFileSize, &w, &h);
 	if (!rgb)
 	{
 		printf("[BURNIN_JPG] fallback name=%s reason=jpeg-decode-failed\n", fileName);
-		return nullptr;
+		return {};
 	}
 	if (w <= 0 || h <= 0 || w != h)
 	{
 		BurninJpeg_FreePixels(rgb);
 		printf("[BURNIN_JPG] fallback name=%s reason=bad-dims (%dx%d)\n", fileName, w, h);
-		return nullptr;
+		return {};
 	}
 
 	long cmapBytes = (long)w * (long)h * (long)sizeof(DWORD);
-	MemoryPtr colorMap = (MemoryPtr)ramHeap->Malloc(cmapBytes);
-	if (!colorMap)
-	{
-		BurninJpeg_FreePixels(rgb);
-		printf("[BURNIN_JPG] fallback name=%s reason=colormap-alloc-failed (%ld bytes)\n", fileName, cmapBytes);
-		return nullptr;
-	}
+	std::vector<unsigned char> colorMap((size_t)cmapBytes);
 
 	// Pack stb RGB -> ColorMap B,G,R,A (matches the 24-bit .burnin.tga path).
 	const long pixels = (long)w * (long)h;
 	const unsigned char* src = rgb;
-	unsigned char* dst = (unsigned char*)colorMap;
+	unsigned char* dst = colorMap.data();
 	for (long i = 0; i < pixels; ++i)
 	{
 		dst[0] = src[2]; // Blue

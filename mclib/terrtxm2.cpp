@@ -31,9 +31,7 @@ DWORD			TerrainColorMap::terrainTypeIDs[ TOTAL_COLORMAP_TYPES ] =
 void TerrainColorMap::init (void)
 {
 	ColorMap = nullptr;
-	colorMapHeap = nullptr;
-	colorMapRAMHeap = nullptr;
-	
+
 	numTextures = 0;
 	textures = nullptr;
 	txmRAM = nullptr;
@@ -72,6 +70,39 @@ void TerrainColorMap::init (void)
 	cpuColorMap = nullptr;
 	cpuColorMapSize = 0;
 	ktx2ColormapPath[0] = '\0';
+}
+
+MemoryPtr TerrainColorMap::ownColorMap (size_t bytes)
+{
+	colorMapStore.assign(bytes ? bytes : 1, 0);
+	ColorMap = colorMapStore.data();
+	return ColorMap;
+}
+
+void TerrainColorMap::ownTextureHandles (DWORD count)
+{
+	texturesStore.assign(count ? count : 1, ColorMapTextures{0xffffffff});
+	textures = texturesStore.data();
+}
+
+void TerrainColorMap::ownTileRam (DWORD count)
+{
+	constexpr size_t tileBytes = sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE;
+	txmRamStore.assign(count ? count : 1, ColorMapRAM{nullptr});
+	tileRamStore.assign(tileBytes * (count ? count : 1), 0);
+	for (DWORD i = 0; i < count; i++)
+		txmRamStore[i].ourRAM = tileRamStore.data() + tileBytes * i;
+	txmRAM = txmRamStore.data();
+}
+
+// The full colour map and the per-tile copies handed to the texture manager are only needed while a load or bake runs.
+void TerrainColorMap::releaseColorMapScratch (void)
+{
+	txmRAM = nullptr;
+	ColorMap = nullptr;
+	std::vector<ColorMapRAM>().swap(txmRamStore);
+	std::vector<unsigned char>().swap(tileRamStore);
+	std::vector<unsigned char>().swap(colorMapStore);
 }
 
 void TerrainColorMap::destroy (void)
@@ -132,42 +163,12 @@ void TerrainColorMap::destroy (void)
 		}
 	}
 
-	if (textures)
-	{
-		colorMapHeap->Free(textures);
-		textures = nullptr;
-	}
+	textures = nullptr;
+	std::vector<ColorMapTextures>().swap(texturesStore);
+	normalMapTextures = nullptr;
+	std::vector<ColorMapTextures>().swap(normalMapStore);
+	releaseColorMapScratch();
 
-	if (txmRAM)
-	{
-		for (unsigned long i=0;i<numTextures;i++)
-		{
-			colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-			txmRAM[i].ourRAM = nullptr;
-		}
-		
-		colorMapRAMHeap->Free(txmRAM);
-		txmRAM = nullptr;
-	}
-
-	if (ColorMap)
-	{
-		colorMapRAMHeap->Free(ColorMap);
-		ColorMap = nullptr;
-	}
-	
- 	if (colorMapHeap)
-	{
-		delete colorMapHeap;
-		colorMapHeap = nullptr;
-	}
-	
- 	if (colorMapRAMHeap)
-	{
-		delete colorMapRAMHeap;
-		colorMapRAMHeap = nullptr;
-	}
-	
  	numTextures = 0;
 
 	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }

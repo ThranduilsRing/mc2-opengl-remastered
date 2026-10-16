@@ -225,11 +225,8 @@ long MapData::save( PacketFile* file, int whichPacket )
 //---------------------------------------------------------------------------
 void MapData::invalidateTerrainFaceCache (void)
 {
-	if (terrainFaceCache)
-	{
-		Terrain::terrainHeap->Free(terrainFaceCache);
-		terrainFaceCache = nullptr;
-	}
+	terrainFaceCache = nullptr;
+	std::vector<WorldQuadTerrainCacheEntry>().swap(terrainFaceCacheStore);
 }
 
 //---------------------------------------------------------------------------
@@ -256,8 +253,8 @@ void MapData::buildTerrainFaceCache (volatile float* progress, float progressRan
 	const long cacheCount = cacheWidth * cacheWidth;
 	if (!terrainFaceCache)
 	{
-		terrainFaceCache = (WorldQuadTerrainCacheEntry*)Terrain::terrainHeap->Malloc(sizeof(WorldQuadTerrainCacheEntry) * cacheCount);
-		gosASSERT(terrainFaceCache != nullptr);
+		terrainFaceCacheStore.resize(cacheCount);
+		terrainFaceCache = terrainFaceCacheStore.data();
 	}
 
 	for (long i = 0; i < cacheCount; ++i)

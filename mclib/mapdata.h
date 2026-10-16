@@ -34,6 +34,7 @@
 #endif
 
 #include<stuff/stuff.hpp>
+#include<vector>
 
 //---------------------------------------------------------------------------
 enum  Overlays
@@ -126,6 +127,9 @@ class MapData : public HeapManager
 				return (flags & TERRAIN_CACHE_COLORMAP) != 0;
 			}
 		};
+
+		// Owns the entries terrainFaceCache views; sized by buildTerrainFaceCache, emptied by invalidateTerrainFaceCache.
+		std::vector<WorldQuadTerrainCacheEntry>	terrainFaceCacheStore;
 
 		Stuff::Vector2DOf<float>	topLeftVertex;
 
