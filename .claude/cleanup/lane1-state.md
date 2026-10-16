@@ -1,5 +1,10 @@
 <!-- doc-status: current | reviewed:2026-10-16 -->
 # Lane 1 state (builder on A:/Games/mc2-main, branch claude/nifty-mendeleev). Hand-over file for the next agent; keep current at every report.
+SESSION 2026-10-16 seventh (lane-1 Sonnet 5.5, from tip 4cbd75065; install `mc2-win64-v0.4`; claims respected: no saveload*, baselines, logistics, mission_init/update, mechcmd2).
+- Commits: s6 review S1 + S3 (shape `LoadBinaryCopy` returns bool, the multi-shape load aborts and clears; `parse_fail` events for count and ASE rejections), B5.4b (`ObjectTypeManager` owns the types in `typeStore`; destroy deletes them: S2), B5.2d (`TG_Shape::shadowVertexStore`, both CreateFrom paths construct the shape), B5.5 prep note (b5 notes section 12).
+- Census B5 303 -> 300. Proof on the final exe: ninja + doctest + ASan rc 0, sim pair mc2_03/mc2_24 PASS, tier1 5/5, VK pair verified against the golden twice (PASS).
+- Ratchet own rise named: cxx17 LG05 +4 (the four bool returns of `LoadBinaryCopy` and its callers' refusals, the S1 fix; the sentinel idiom the ratchet counts).
+- OPEN: B5.5 (needs Sol's mission.cpp owner sites), instance tables (B7), saveload baselines after G3-b1.
 SESSION 2026-10-16 sixth (lane-1 Sonnet 5.5, from tip d1e7d1e88; install `mc2-win64-v0.4`; nothing pushed; claims respected: no saveload*, objmgr_io, baselines, mission init, logistics). Final exe = HEAD of the B5.4a commit.
 - Commits: s5 review S1/S2 (msl_anim destroy resets count, plain MC2_LOG), B5.2c include-only + B5.2c-1 (TG_TypeShape lists, `[SHAPE_COUNT_BAD]`) + B5.2c-2 (multi-shape arrays) + a line-break fix, B5.3 include-only (objectappearance.h, apprtype.h) + B5.3a (NodeData, type node tables) + B5.3c (AppearanceType name, list deletes each type once; teardown note = b5 notes section 10, no hazard), B5.4 include-only + B5.4a (ObjectTypeManager table vector, appearName string).
 - Census B5 351 -> 303. Proof on the final exe: ninja + doctest + ASan rc 0, sim pair mc2_03/mc2_24 PASS, tier1 5/5, VK pair `verify --golden current` PASS twice (frame viewed). Saveload baselines untouched (claim): refresh them once after G3-b1 merges.
