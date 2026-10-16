@@ -884,7 +884,8 @@ void BattleMech::CopyTo (MechData *data)
 																													 
 	data->descID 			                                    = descID;                                              
 																													 
-	data->damageThisFrame                                       = damageThisFrame;                                     
+	// One sim turn's damage sum; a load starts a new turn, so the save carries zero (what it carried while render() reset it).
+	data->damageThisFrame                                       = 0.0f;
 	data->sentCrippledMsg                                       = sentCrippledMsg;                                     
 																													 
 	memcpy(data->rotateValues,rotateValues, sizeof(float) * 6);
