@@ -213,6 +213,9 @@ def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, s
     }
     if deterministic_clock:
         harness_sets["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+        # The simulation stream is wall-clock seeded in play; the night turret searchlights pick their sweep targets from it, so without the
+        # per-mission seed two launches light a night pose differently (mc2_10 nightlow a: 13.3 mean |RGB| run to run, 0.000 with it).
+        harness_sets["MC2_DETERMINISTIC_RNG"] = "1"
 
     # BACKGROUND-SMOKE-1: an agent capture must never take the display
     # fullscreen or grab the pointer. These are HARNESS_CONTROL vars in
