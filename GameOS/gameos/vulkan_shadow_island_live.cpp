@@ -41,6 +41,7 @@
 #include <volk.h>
 #include <GL/glew.h>
 #include "Gates/gate.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate_cold.h"   // str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -1053,6 +1054,7 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return false; }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_ShadowDyn);
     s->recordEpoch = epoch;
     s->parity = par;
     s->passCount = 0;
@@ -1408,6 +1410,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
         s->disabled = true;
         g_dynShadowReadyThisFrame = g_csmFullMapReadyThisFrame = g_csmArrayReadyThisFrame = false;
     };
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_ShadowDyn);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); disableFrame(); return; }
     const VkFence fence = s->frameFence[s->parity].get();
     vkResetFences(s->device, 1, &fence);

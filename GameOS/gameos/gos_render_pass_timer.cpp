@@ -9,6 +9,7 @@
 
 #include "gos_render_pass_timer.h"
 #include "gos_frame_pass_stats.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -64,6 +65,7 @@ unsigned s_samples[Pass_Count] = {0};
 double   s_sumTotalMs = 0.0;
 unsigned s_frames = 0;          // harvested frames in window
 unsigned s_dropped = 0;
+unsigned s_lastDropped = 0;     // s_dropped of the last emitted window (LastDropped)
 unsigned long s_frameNo = 0;    // monotonic FrameEnd count
 
 int emitEvery()
@@ -116,6 +118,7 @@ void publishWindow()
 void emitWindow()
 {
     publishWindow();
+    s_lastDropped = s_dropped;
     if (s_frames == 0) {
         // No slot harvested this window (GPU results never became available).
         // Heartbeat so silence is diagnosable (ENV-gated only), then reset.
@@ -184,6 +187,24 @@ bool HasSample(Pass p)
     return s_publishedHas[p];
 }
 
+unsigned LastDropped() { return s_lastDropped; }
+
+void SubmitBackendFrame(const double ms[Pass_Count], const bool ran[Pass_Count])
+{
+    double total = 0.0;
+    for (int p = 0; p < Pass_Count; ++p) {
+        if (!ran[p]) continue;
+        s_sumMs[p] += ms[p];
+        ++s_samples[p];
+        total += ms[p];
+    }
+    // The VK frame has no single begin/end pair across its islands' submits: gpu_total is the sum of the timed passes.
+    s_sumTotalMs += total;
+    ++s_frames;
+}
+
+void SubmitBackendDropped() { ++s_dropped; }
+
 bool QueryActive()
 {
     return Enabled() && s_openPass >= 0 && s_openReal;
@@ -198,6 +219,7 @@ void Begin(Pass p)
     gos_frame_pass_stats::RecordPassBegin(p);
 
     if (!Enabled()) return;
+    if (vk_render_pass_timer::Active()) return;   // the VK islands time their own passes
     if (p < 0 || p >= Pass_Count) return;
     if (s_openPass >= 0) {
         // Defensive: GL_TIME_ELAPSED cannot nest. Record the open pass so the
@@ -247,6 +269,13 @@ void End(Pass p)
 void FrameEnd()
 {
     if (!Enabled()) return;
+    if (vk_render_pass_timer::Active()) {
+        ++s_frameNo;
+        vk_render_pass_timer::FrameEnd();
+        if (s_frameNo % (unsigned long)emitEvery() == 0)
+            emitWindow();
+        return;
+    }
     if (s_openPass >= 0) {
         // Scope leaked across the frame boundary (should not happen): close it
         // so the next frame starts clean.

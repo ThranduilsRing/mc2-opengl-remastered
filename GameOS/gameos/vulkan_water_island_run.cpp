@@ -1,6 +1,7 @@
 // VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
+#include "vk_render_pass_timer.h"
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -181,6 +182,7 @@ extern "C" int mc2_vk_water_island_run(
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+        vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Water);
 
         // All attachments LOAD -> clear values ignored (array must still cover them).
         VkClearValue clears[3]{};
@@ -194,6 +196,7 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 0, nullptr);
         vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
         vkCmdEndRenderPass(cb);
+        vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
         }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Record
         us_record = usSince(tRender0);

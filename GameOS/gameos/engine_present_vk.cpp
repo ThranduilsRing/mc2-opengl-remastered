@@ -13,6 +13,7 @@
 // otherwise so the GL shipping build never sees a Vulkan symbol.
 
 #include "engine_present_vk.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
@@ -1960,6 +1961,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
+    vk_render_pass_timer::Begin(cc, gos_render_pass_timer::Pass_Post);
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -2024,6 +2026,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     }
 
+    vk_render_pass_timer::End(cc, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cc) != VK_SUCCESS)
         return false;
     (void)fsScene; (void)fsObjectId;

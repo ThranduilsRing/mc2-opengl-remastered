@@ -37,6 +37,7 @@
 
 #include <volk.h>
 #include "Gates/gate.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg SunAxisFix
 
@@ -1083,6 +1084,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Mechs);
 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     s->gpuTimer.reset(cb);
@@ -1138,6 +1140,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     vkCmdEndRenderPass(cb);
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = mech instanced draws).
     s->gpuTimer.write(cb, 2);
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Mechs);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK

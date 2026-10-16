@@ -68,6 +68,15 @@ void SetCollect(bool on);
 double LastMs(Pass p);
 bool   HasSample(Pass p);
 
+// Results dropped (still unfinished when their ring slot came round again) in the last emitted window, both backends.
+unsigned LastDropped();
+
+// The Vulkan source (vk_render_pass_timer) hands one finished frame in: per-pass GPU ms and which passes ran. Folded into
+// the same window as a GL harvest, so LastMs / HasSample / the log line read VK values unchanged.
+void SubmitBackendFrame(const double ms[Pass_Count], const bool ran[Pass_Count]);
+// The Vulkan source dropped one frame's results.
+void SubmitBackendDropped();
+
 // True while a GL_TIME_ELAPSED scope opened by Begin() is still open.
 // Pre-existing standalone GL_TIME_ELAPSED spike timers must skip their own
 // begin/end while this is true (the target cannot nest).

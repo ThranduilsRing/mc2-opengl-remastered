@@ -421,6 +421,7 @@ std::string cmdFramegraph(const std::string& req)
     data += gos_frame_pass_stats::Enabled() ? "true" : "false";
     data += ",\"pass_time\":";
     data += gos_render_pass_timer::Enabled() ? "true" : "false";
+    data += ",\"pass_time_dropped\":" + std::to_string(gos_render_pass_timer::LastDropped());
     data += "},\"passes\":" + passes
         + ",\"edges\":" + edges
         + ",\"runtime\":" + runtime

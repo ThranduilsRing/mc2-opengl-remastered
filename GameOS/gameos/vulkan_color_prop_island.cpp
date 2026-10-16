@@ -23,6 +23,7 @@
 #include <volk.h>
 #include <GL/glew.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
+#include "vk_render_pass_timer.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -1604,6 +1605,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+        vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_SpColor);
 
         // Begin the LOAD renderpass — NO clear values (all attachments loadOp=LOAD).
         VkRenderPassBeginInfo rbi{};
@@ -1689,6 +1691,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         g_health.typeRuns = typeRuns;
 
         vkCmdEndRenderPass(cb);
+        vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
         // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
