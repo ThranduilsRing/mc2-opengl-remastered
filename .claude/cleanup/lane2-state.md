@@ -1,5 +1,27 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-NINTH session (2026-10-16, Sonnet 5.5) -- VK VFX island textured (row 29 partly closed), s38 review folded; nifty not merged
+
+### Commits (after 21d247eed; code tip f796fe717 + docs, later commit = state/baselines only)
+c33983edb VK VFX island samples the per-group sprite page | f796fe717 s38 review fold (Slot::refusal doctest, oracle `--install` one log line + test) | 66cbc8c8c row 29 + header/Total | state commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 29 oracle, VK both arms, mc2_24 ppc frame 154, exe c33983edb (`scratch/vo39/`) | both arms DEPLOY_FINGERPRINT OK, repeats byte-equal; 8,381 px differ (6,734 over 8 levels, 3,947 over 32) vs session 38's 8,800 / 7,471 / 5,121; mean abs RGB 1.50 -> 1.00; montages viewed, copied to `.claude/l2cap/s39-row29-*.png`; grade stays DIAGNOSTIC. Second cause (beam-head flares not in the particle stream; muzzle flares smaller/dimmer) recorded in the row, not chased |
+| validation run of the GPU arm (`MC2_VULKAN_VALIDATION=1` declared through the harness) | `validation=core`, 0 errors, 0 VUID |
+| doctest | `build_contract_harnesses --run --unit` exit 0, 3274 cases (+1: screenshot refusal) after the fold; 3273 after the island |
+| ledger | Manual 0 for the island (total over all islands 0) |
+| VK tier1 + validation, final exe 66cbc8c8c (`/tmp` run 2026-10-16T16-53-25, `tests/smoke/artifacts/2026-10-16T16-53-25-855513-35148`) | 5/5 PASS, DEPLOY_FINGERPRINT OK x5, `validation=core`, validation_errors 0, VUID 0, warnings 0 on all five (fps 119 / 108 / 91 / 92 / 73, host shared) |
+| verify.py vs CURRENT_GOLDEN, fresh VK capture on exe 66cbc8c8c (`scratch/s39-vk`, validation declared) | regions 36/36 PASS, poses 10/10 PASS (18 extra bookmarks NO_MANIFEST); validation_errors 0 in all 119 log lines; no golden pose shows VFX, nothing moved |
+| ratchets | log-tag census re-frozen (`[SCREENSHOT v1]` keys 6 -> 4: three rejection prints became one with the reason from `Slot::refusal`); own_inventory OK (0 rose); dup-lines OK (no rewrite); callers.json current; background-launch: the same 2 findings as session 38 (`tests/analyze/b5_asset_census.py`, `scripts/tests/test_host_lease_batch.py:69`), not from this diff, baseline not rewritten |
+
+### Lessons (39)
+- The shell's `MC2_VULKAN_VALIDATION=1` is SCRUBBED by the harness (env-pin); a validation run needs `--env-declare` through `run_visual_capture`/`capture.py`. The oracle script's own argv[0] ("capture_vfx_oracle.py") is what makes its lease exclusive: a driver script for the harness must carry "capture" in its file name or the lease upgrade fails.
+- The textured island first looked like a regression (the big pale discs vanished): they were the untextured stand-in; the real particles are small additive sprites on a black ground, dim next to the MLR cards.
+- Earlier journal sentence moved here from row 29: the first VK oracle montage (lane3 exe d3787704e) showed the MLR arm as opaque white squares because the HUD tail declined a missing texture mirror; it does not reproduce on the lane 2 exe.
+- Scratch (mine, deletable): `scratch/` vo39, s39-vk, b39/h39 logs; vo38 deleted.
+
 ## THIRTY-EIGHTH session (2026-10-16, Sonnet 5.5) -- VK VFX parity row 29 (cause found, not fixed), VFX oracle and capture_ab GL arms deleted, empty POPPED_ENV accepted, s37 review folded; nifty not merged
 
 ### Commits (after 05f081b35; code tip 1d8be954e, later commit = baselines/docs only)
