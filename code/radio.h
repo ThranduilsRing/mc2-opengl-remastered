@@ -35,54 +35,34 @@
 //------------------------------------------------------------------------------------------
 inline constexpr int MAX_FRAGMENTS = 16;
 inline constexpr int MAX_RADIOS = 256;
-/*
-struct RadioData
+// One decoded wave clip of a radio message. `requested` separates "this slot was asked for but its packet would not
+// load" (the pilot still keys the mike and the message goes on) from "this slot is unused".
+struct RadioClip
 {
-	uint32_t        msgId;
-	uint32_t        msgType;
-	uint32_t        noiseId;
-	int32_t         numFragments;
-	//MemoryPtr		data[MAX_FRAGMENTS];
-	DWORD           data_Legacy32BitPtr[MAX_FRAGMENTS];
-	int32_t         dataSize[MAX_FRAGMENTS];
-	//MemoryPtr		noise[MAX_FRAGMENTS];
-	MemoryPtr		noise_Legacy32BitPtr[MAX_FRAGMENTS];
-	int32_t         noiseSize[MAX_FRAGMENTS];
-	//UserHeapPtr		msgHeap;
-	DWORD           msgHeap_Legacy32BitPtr;
-	uint32_t        turnQueued;
-	byte			priority;
-	byte			movieCode;
-	float			expirationDate;
-	//MechWarriorPtr	pilot;
-	DWORD           pilot_Legacy32BitPtr;
+	std::vector<uint8_t>	bytes;
+	bool					requested = false;
+
+	bool playable (void) const {return !bytes.empty();}
 };
 
-struct RadioDataRuntime {
-	MemoryPtr		data[MAX_FRAGMENTS];
-	MemoryPtr		noise[MAX_FRAGMENTS];
-	UserHeapPtr		msgHeap;
-	MechWarriorPtr	pilot;
-};
-*/
-
+// One queued radio message; the queue and the player own it, and its clips die with it.
 struct RadioData
 {
-	uint32_t        msgId;
-	uint32_t        msgType;
-	uint32_t        noiseId;
-	int32_t         numFragments;
-	MemoryPtr		data[MAX_FRAGMENTS];
-	int32_t         dataSize[MAX_FRAGMENTS];
-	MemoryPtr		noise[MAX_FRAGMENTS];
-	int32_t         noiseSize[MAX_FRAGMENTS];
-	UserHeapPtr		msgHeap;
-	uint32_t        turnQueued;
-	byte			priority;
-	byte			movieCode;
-	float			expirationDate;
-	MechWarriorPtr	pilot;
+	uint32_t        msgId = 0;
+	uint32_t        msgType = 0;
+	uint32_t        noiseId = 0;
+	int32_t         numFragments = 0;
+	RadioClip		data[MAX_FRAGMENTS];
+	RadioClip		noise[MAX_FRAGMENTS];
+	uint32_t        turnQueued = 0;
+	byte			priority = 0;
+	byte			movieCode = 0;
+	float			expirationDate = 0.0f;
+	MechWarriorPtr	pilot = nullptr;
 };
+
+// Radio packets are a few hundred KB at most; a larger packet size means a damaged file.
+inline constexpr unsigned long MAX_RADIO_CLIP_BYTES = 16ul * 1024ul * 1024ul;
 
 struct RadioMessageInfo
 {

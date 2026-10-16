@@ -118,6 +118,28 @@ long Radio::init (char *fileName, unsigned long heapSize, char *movie)
 }
 		
 constexpr int NO_PLAY = -1;
+// Reads packet `id` of `file` into `clip`. The clip counts as requested either way; it stays empty when the packet is
+// oversized or unreadable, and the message then plays without that sample.
+static bool loadRadioClip (PacketFilePtr file, long id, RadioClip& clip)
+{
+	clip.requested = true;
+	unsigned long size = file->getPacketSize();
+	if (size == 0 || size > MAX_RADIO_CLIP_BYTES)
+	{
+		MC2_LOG(Audio, Warn, "radio: packet {} has a bad size ({} bytes); the message plays without it", id, size);
+		return false;
+	}
+
+	clip.bytes.resize(size);
+	if (!file->readPacket(id,clip.bytes.data()))
+	{
+		MC2_LOG(Audio, Warn, "radio: packet {} could not be read; the message plays without it", id);
+		clip.bytes.clear();
+		return false;
+	}
+	return true;
+}
+
 //------------------------------------------------------------------------------------------
 long Radio::playMessage (RadioMessageType msgType)
 {
@@ -160,19 +182,12 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 	else
 		i = 0;
 
-	RadioData *msgData = (RadioData *)radioHeap->Malloc(sizeof(RadioData));
-	if (!msgData)
-	{
-		return(NO_PLAY);
-	}
-	
-	memset(msgData,0,sizeof(RadioData));	
-			
+	auto msgData = std::make_unique<RadioData>();
+
 	msgData->noiseId = SHORT_STATIC;
 	msgData->msgType = msgType;
 	msgData->msgId = messageInfo[msgType].messageMapping + i;
 	msgData->movieCode = messageInfo[msgType].movieCode;
-	msgData->msgHeap = radioHeap;
 	msgData->turnQueued = turn;
 			
 	msgData->priority = messageInfo[msgType].priority;
@@ -211,96 +226,28 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 	{
 		if (messagesFile[radioID]->seekPacket(callsign) == NO_ERR)
 		{
-
-			unsigned long messageSize = messagesFile[radioID]->getPacketSize();
-			msgData->data[fragmentNum] = (MemoryPtr)radioHeap->Malloc(messageSize);
-			if (!msgData->data[fragmentNum]) 
-			{
-				radioHeap->Free(msgData);
-				return(NO_PLAY);
-			}
-			messagesFile[radioID]->readPacket(callsign,msgData->data[fragmentNum]);
-			msgData->dataSize[fragmentNum] = messageSize;
+			loadRadioClip(messagesFile[radioID],callsign,msgData->data[fragmentNum]);
 			fragmentNum++;
 		}
 	}
 
 	if (messagesFile[radioID]->seekPacket(msgData->msgId) == NO_ERR)
 	{
-		unsigned long messageSize = messagesFile[radioID]->getPacketSize();
-		msgData->data[fragmentNum] = (MemoryPtr)radioHeap->Malloc(messageSize);
-		if (!msgData->data[fragmentNum]) 
-		{
-			while (fragmentNum >= 0)
-			{
-				radioHeap->Free(msgData->data[fragmentNum]);
-				fragmentNum--;
-			}
-			radioHeap->Free(msgData);
-			return(NO_PLAY);
-		}
-		
-        // sebi: added failure handling
-        if(messagesFile[radioID]->readPacket(msgData->msgId,msgData->data[fragmentNum])) {
-    		msgData->dataSize[fragmentNum] = messageSize;
-        } else {
-            radioHeap->Free(msgData->data[fragmentNum]);
-            msgData->data[fragmentNum] = nullptr;
-        }
-        
-		
-		if (noiseFile->seekPacket(msgData->noiseId) == NO_ERR)
-		{
-			unsigned long messageSize = noiseFile->getPacketSize();
-			msgData->noise[0] = (MemoryPtr)radioHeap->Malloc(messageSize);
-			if (!msgData->noise[0])
-			{
-				radioHeap->Free(msgData);
-				if (fragmentNum > 0)
-					radioHeap->Free(msgData->data[0]);
+		loadRadioClip(messagesFile[radioID],msgData->msgId,msgData->data[fragmentNum]);
 
-				return(NO_PLAY);
-			}
-		
-            // sebi added failure handling
-			if(noiseFile->readPacket(msgData->noiseId,msgData->noise[0])) {
-				msgData->noiseSize[fragmentNum] = messageSize;
-			} else {
-				radioHeap->Free(msgData->noise[0]);
-				msgData->noise[0] = (MemoryPtr)-1;
-			}
-		}
+		if (noiseFile->seekPacket(msgData->noiseId) == NO_ERR)
+			loadRadioClip(noiseFile,msgData->noiseId,msgData->noise[0]);
 	}
 	
-	//------------------------------------------------------
-	// Big ol bug here.  We weren't checking to see if the
-	// queue was full.  If it was, memory would leak from
-	// the smacker window.  It wouldn't leak from the RadioHeap
-	// because we clear the radio heap every mission!!
-	if (soundSystem->queueRadioMessage(msgData) != NO_ERR)
-	{
-		if (msgData)
-		{
-			for (long j=0;j<MAX_FRAGMENTS;j++)
-			{
-				radioHeap->Free(msgData->data[j]);
-				msgData->data[j] = nullptr;
-				if(msgData->noise[j] != (MemoryPtr)-1) {
-					radioHeap->Free(msgData->noise[j]);
-				}
-				msgData->noise[j] = nullptr;
-			}
-			
-			radioHeap->Free(msgData);
-			msgData = nullptr;
-		}
+	// A full queue refuses the message; it is dropped here instead of playing late.
+	const long playedMsgId = msgData->msgId;
+	if (soundSystem->queueRadioMessage(std::move(msgData)) != NO_ERR)
 		return (NO_PLAY);
-	}
 	
 	if (msgType == RADIO_AMMO_OUT)
 		ammoOutPlayed = true;
 
-	return(msgData->msgId);
+	return(playedMsgId);
 }
 
 //------------------------------------------------------------------------------------------

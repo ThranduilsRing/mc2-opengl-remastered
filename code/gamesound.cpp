@@ -103,20 +103,7 @@ long i;
 		if (queue[msgNumber]->pilot)
 			queue[msgNumber]->pilot->clearMessagePlaying();
 
-		UserHeapPtr msgHeap = queue[msgNumber]->msgHeap;
-		for (i=0;i<MAX_FRAGMENTS;i++)
-		{
-			msgHeap->Free(queue[msgNumber]->data[i]);
-			queue[msgNumber]->data[i] = nullptr;
-
-            // sebi: TEMP AND UGLY! have to make it because noise sample fails to load and then game logic goes belly up
-            // and somehow just plays 2 times main radio message
-			if(queue[msgNumber]->noise[i]!=(MemoryPtr)-1)
-				msgHeap->Free(queue[msgNumber]->noise[i]);
-			queue[msgNumber]->noise[i] = nullptr;
-		}
-		
-		msgHeap->Free(queue[msgNumber]);
+		queue[msgNumber].reset();
 		if (messagesInQueue > 0)
 			messagesInQueue--;
 
@@ -131,7 +118,7 @@ long i;
 #endif
 
 		for (i=msgNumber;i<MAX_QUEUED_MESSAGES-1;i++)
-			queue[i] = queue[i+1];
+			queue[i] = std::move(queue[i+1]);
 		queue[MAX_QUEUED_MESSAGES-1] = nullptr;
 
 #ifdef _DEBUG
@@ -174,10 +161,10 @@ void GameSoundSystem::moveFromQueueToPlaying(void)
 		removeQueuedMessage(0);
 	}
 
-	currentMessage = queue[0];
+	currentMessage = std::move(queue[0]);
 
 	for (long i=0;i<MAX_QUEUED_MESSAGES-1;i++)
-		queue[i] = queue[i+1];
+		queue[i] = std::move(queue[i+1]);
 		
 	queue[MAX_QUEUED_MESSAGES-1] = nullptr;
 	if (messagesInQueue > 0)
@@ -192,19 +179,6 @@ void GameSoundSystem::removeCurrentMessage(void)
 		if (currentMessage->pilot)
 			currentMessage->pilot->clearMessagePlaying();
 
-		UserHeapPtr msgHeap = currentMessage->msgHeap;
-		for (long j=0;j<MAX_FRAGMENTS;j++)
-		{
-			msgHeap->Free(currentMessage->data[j]);
-			currentMessage->data[j] = nullptr;
-            // sebi: TEMP AND UGLY! have to make it because noise sample fails to load and then game logic goes belly up
-            // and somehow just plays 2 times main radio message
-			if(currentMessage->noise[j]!=(MemoryPtr)-1)
-				msgHeap->Free(currentMessage->noise[j]);
-			currentMessage->noise[j] = nullptr;
-		}
-		
-		msgHeap->Free(currentMessage);
 		currentMessage = nullptr;
 	}
 
@@ -213,7 +187,7 @@ void GameSoundSystem::removeCurrentMessage(void)
 }
 
 //---------------------------------------------------------------------------
-long GameSoundSystem::queueRadioMessage (RadioData *msgData)
+long GameSoundSystem::queueRadioMessage (std::unique_ptr<RadioData> msgData)
 {
 long i;
 
@@ -256,7 +230,7 @@ long i;
 		{											// push things down to make room.
 			for (long j=MAX_QUEUED_MESSAGES-1;j>i;j--)
 			{
-				queue[j] = queue[j-1];
+				queue[j] = std::move(queue[j-1]);
 			}
 			break;
 		}
@@ -268,7 +242,7 @@ long i;
 	if (queue[MAX_QUEUED_MESSAGES-1])
 		removeQueuedMessage(MAX_QUEUED_MESSAGES-1);
 
-	queue[i] = msgData;
+	queue[i] = std::move(msgData);
 
 #ifdef _DEBUG
 		for (long test=0;test<(long)messagesInQueue;test++)
@@ -291,6 +265,70 @@ long i;
 #endif
 
 	return NO_ERR;
+}
+
+//---------------------------------------------------------------------------
+// Hands one decoded clip to the radio channel. A clip whose wave header cannot be read is skipped with a log line, so a
+// damaged radio file silences that sample instead of reading past the buffer.
+bool GameSoundSystem::playClip (const RadioClip& clip)
+{
+	constexpr size_t MIN_WAVE_BYTES = 44;			// RIFF header plus the format chunk
+	MC2_WAVEFORMATEX *waveFormat = nullptr;
+	MemoryPtr dataOffset = nullptr;
+	DWORD length = 0;
+
+	if (clip.bytes.size() < MIN_WAVE_BYTES ||
+		!wave_ParseWaveMemory(const_cast<MemoryPtr>(clip.bytes.data()),&waveFormat,&dataOffset,&length) ||
+		!waveFormat || waveFormat->nChannels == 0)
+	{
+		MC2_LOG(Audio, Warn, "radio: a clip of {} bytes has no readable wave header; it is not played", clip.bytes.size());
+		return false;
+	}
+
+	gosAudio_Format soundFormat;
+	soundFormat.wFormatTag = 1;				//PCM
+	soundFormat.nChannels = waveFormat->nChannels;
+	soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
+	soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
+	soundFormat.nBlockAlign = waveFormat->nBlockAlign;
+	soundFormat.wBitsPerSample = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
+	soundFormat.cbSize = 0;
+
+	gosAudio_CreateResource(&radioHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
+	
+	if (isChannelPlaying(BETTY_CHANNEL))
+		gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
+	else
+		gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume);
+
+	gosAudio_AssignResourceToChannel(RADIO_CHANNEL, radioHandle);
+	gosAudio_SetChannelPlayMode(RADIO_CHANNEL,gosAudio_PlayOnce);
+	return true;
+}
+
+//---------------------------------------------------------------------------
+// The static before a fragment. A noise sample that failed to load still keys the mike, so the message goes on to its speech.
+void GameSoundSystem::playNoiseClip (void)
+{
+	const RadioClip& noise = currentMessage->noise[currentFragment];
+	if (noise.playable())
+		playClip(noise);
+
+	if (currentMessage->pilot)
+		currentMessage->pilot->setMessagePlaying();
+}
+
+//---------------------------------------------------------------------------
+// The speech of the current fragment; a fragment without playable speech ends the message.
+void GameSoundSystem::playNextDataClip (void)
+{
+	if (currentMessage->data[currentFragment].playable() && playClip(currentMessage->data[currentFragment]))
+	{
+		if (currentMessage->pilot)
+			currentMessage->pilot->setMessagePlaying();
+	}
+	else
+		wholeMsgDone = TRUE;
 }
 
 //---------------------------------------------------------------------------
@@ -324,131 +362,20 @@ void GameSoundSystem::update (void)
 			if (playingNoise)
 			{
 				playingNoise = FALSE;
-					
-				if (currentMessage->data[currentFragment])
-				{
-					//--------------------------------------------------------------------
-					// Hand GOS sound the data it needs to create the resource Handle
-					gosAudio_Format soundFormat;
-					soundFormat.wFormatTag = 1;				//PCM
-		
-					MC2_WAVEFORMATEX *waveFormat = nullptr;
-					MemoryPtr dataOffset = nullptr;
-					DWORD length = 0;
-					DWORD bitsPerSec = 0;
-					wave_ParseWaveMemory(currentMessage->data[currentFragment],&waveFormat,&dataOffset,&length);
-					
-					bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-			
-					soundFormat.nChannels = waveFormat->nChannels;
-					soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-					soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-					soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-					soundFormat.wBitsPerSample = bitsPerSec;
-					soundFormat.cbSize = 0;
-
-					gosAudio_CreateResource(&radioHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
-					
-					if (isChannelPlaying(BETTY_CHANNEL))
-						gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
-					else
-						gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume);
-
-					gosAudio_AssignResourceToChannel(RADIO_CHANNEL, radioHandle);
-					gosAudio_SetChannelPlayMode(RADIO_CHANNEL,gosAudio_PlayOnce);
-					
-					if (currentMessage->pilot)
-						currentMessage->pilot->setMessagePlaying();
-				}
-				else
-					wholeMsgDone = TRUE;
-					
+				playNextDataClip();
 				currentFragment++;
 			}
 			else
 			{
-				if (currentMessage->noise[currentFragment])
+				if (currentMessage->noise[currentFragment].requested)
 				{
-                    // sebi: TEMP AND UGLY! have to make it because noise sample fails to load and then game logic goes belly up
-                    // and somehow just plays 2 times main radio message
-					if(currentMessage->noise[currentFragment] != (MemoryPtr)-1) {
-
-					//--------------------------------------------------------------------
-					// Hand GOS sound the data it needs to create the resource Handle
-					gosAudio_Format soundFormat;
-					soundFormat.wFormatTag = 1;				//PCM
-		
-					MC2_WAVEFORMATEX *waveFormat = nullptr;
-					MemoryPtr dataOffset = nullptr;
-					DWORD length = 0;
-					DWORD bitsPerSec = 0;
-					wave_ParseWaveMemory(currentMessage->noise[currentFragment],&waveFormat,&dataOffset,&length);
-					
-					bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-			
-					soundFormat.nChannels = waveFormat->nChannels;
-					soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-					soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-					soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-					soundFormat.wBitsPerSample = bitsPerSec;
-					soundFormat.cbSize = 0;
-
-					gosAudio_CreateResource(&radioHandle, gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
-					
-					if (isChannelPlaying(BETTY_CHANNEL))
-						gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
-					else
-						gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume);
-
-					gosAudio_AssignResourceToChannel(RADIO_CHANNEL, radioHandle);
-					gosAudio_SetChannelPlayMode(RADIO_CHANNEL,gosAudio_PlayOnce);
-					
-					}
-					if (currentMessage->pilot)
-						currentMessage->pilot->setMessagePlaying();
+					playNoiseClip();
 					playingNoise = TRUE;
 				}
 				else
 				{
 					playingNoise = FALSE;
-					if (currentMessage->data[currentFragment])
-					{
-						//--------------------------------------------------------------------
-						// Hand GOS sound the data it needs to create the resource Handle
-						gosAudio_Format soundFormat;
-						soundFormat.wFormatTag = 1;				//PCM
-			
-						MC2_WAVEFORMATEX *waveFormat = nullptr;
-						MemoryPtr dataOffset = nullptr;
-						DWORD length = 0;
-						DWORD bitsPerSec = 0;
-						wave_ParseWaveMemory(currentMessage->data[currentFragment],&waveFormat,&dataOffset,&length);
-						
-						bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-				
-						soundFormat.nChannels = waveFormat->nChannels;
-						soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-						soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-						soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-						soundFormat.wBitsPerSample = bitsPerSec;
-						soundFormat.cbSize = 0;
-
-						gosAudio_CreateResource(&radioHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
-								
-						if (isChannelPlaying(BETTY_CHANNEL))
-							gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
-						else
-							gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume);
-
-						gosAudio_AssignResourceToChannel(RADIO_CHANNEL, radioHandle);
-						gosAudio_SetChannelPlayMode(RADIO_CHANNEL,gosAudio_PlayOnce);
-						
-						if (currentMessage->pilot)
-							currentMessage->pilot->setMessagePlaying();
-					}
-					else
-						wholeMsgDone = TRUE;
-						
+					playNextDataClip();
 					currentFragment++;
 				}
 			}
@@ -494,86 +421,16 @@ void GameSoundSystem::update (void)
 		}
 #endif
 
-		if (currentMessage->noise[currentFragment])
+		if (currentMessage->noise[currentFragment].requested)
 		{
-
-            // sebi: TEMP AND UGLY! have to make it because noise sample fails to load and then game logic goes belly up
-            // and somehow just plays 2 times main radio message
-            if(currentMessage->noise[currentFragment] != (MemoryPtr)-1) {
-			//--------------------------------------------------------------------
-			// Hand GOS sound the data it needs to create the resource Handle
-			gosAudio_Format soundFormat;
-			soundFormat.wFormatTag = 1;				//PCM
-
-			MC2_WAVEFORMATEX *waveFormat = nullptr;
-			MemoryPtr dataOffset = nullptr;
-			DWORD length = 0;
-			DWORD bitsPerSec = 0;
-			wave_ParseWaveMemory(currentMessage->noise[currentFragment],&waveFormat,&dataOffset,&length);
-			
-			bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-	
-			soundFormat.nChannels = waveFormat->nChannels;
-			soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-			soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-			soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-			soundFormat.wBitsPerSample = bitsPerSec;
-			soundFormat.cbSize = 0;
-
-			gosAudio_CreateResource(&radioHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
-				
-			if (isChannelPlaying(BETTY_CHANNEL))
-				gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
-			else
-				gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume);
-
-			gosAudio_AssignResourceToChannel(RADIO_CHANNEL, radioHandle);
-			gosAudio_SetChannelPlayMode(RADIO_CHANNEL,gosAudio_PlayOnce);
-			
-            }
-
-			if (currentMessage->pilot)
-				currentMessage->pilot->setMessagePlaying();
+			playNoiseClip();
 			playingNoise = TRUE;
 		}
 		else
 		{
 			playingNoise = FALSE;
-			if (currentMessage->data[currentFragment])
-			{
-				//--------------------------------------------------------------------
-				// Hand GOS sound the data it needs to create the resource Handle
-				gosAudio_Format soundFormat;
-				soundFormat.wFormatTag = 1;				//PCM
-	
-				MC2_WAVEFORMATEX *waveFormat = nullptr;
-				MemoryPtr dataOffset = nullptr;
-				DWORD length = 0;
-				DWORD bitsPerSec = 0;
-				wave_ParseWaveMemory(currentMessage->data[currentFragment],&waveFormat,&dataOffset,&length);
-				
-				bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
-		
-				soundFormat.nChannels = waveFormat->nChannels;
-				soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-				soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-				soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-				soundFormat.wBitsPerSample = bitsPerSec;
-				soundFormat.cbSize = 0;
-
-				gosAudio_CreateResource(&radioHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
-					
-				if (isChannelPlaying(BETTY_CHANNEL))
-					gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume * 0.5f);
-				else
-					gosAudio_SetChannelSlider(RADIO_CHANNEL, gosAudio_Volume, SoundSystem::digitalMasterVolume * radioVolume);
-
-				gosAudio_AssignResourceToChannel(RADIO_CHANNEL, radioHandle);
-				gosAudio_SetChannelPlayMode(RADIO_CHANNEL,gosAudio_PlayOnce);
-				
-				if (currentMessage->pilot)
-					currentMessage->pilot->setMessagePlaying();
-			}
+			if (currentMessage->data[currentFragment].playable())
+				playClip(currentMessage->data[currentFragment]);
 		}
 			
 		wholeMsgDone = FALSE;

@@ -31,6 +31,7 @@
 #include"paths.h"
 #endif
 
+#include<string>
 #include<vector>
 
 #ifndef INIFILE_H
@@ -84,15 +85,21 @@ struct MC2_WAVEFORMATEX {
 
 //---------------------------------------------------------------------------
 struct _SoundBite {
-	unsigned long		priority;
-	unsigned long		cacheStatus;
-	unsigned long		soundId;
-	unsigned long 		biteSize;
-	MemoryPtr			biteData;
-	float				volume;
-	HGOSAUDIO			resourceHandle;
+	unsigned long		priority = 0;
+	unsigned long		cacheStatus = 0;
+	unsigned long		soundId = 0;
+	std::vector<uint8_t>	biteData;
+	float				volume = 0.0f;
+	HGOSAUDIO			resourceHandle = nullptr;
 };
 using SoundBite = _SoundBite;
+
+// One digital music entry of the sound setup file.
+struct DigitalMusicEntry {
+	std::string			id;
+	bool				loop = false;
+	float				volume = 1.0f;
+};
 
 //---------------------------------------------------------------------------
 class SoundSystem
@@ -104,11 +111,8 @@ class SoundSystem
 		long				channelSampleId[MAX_DIGITAL_SAMPLES];
 		bool				fadeDown[MAX_DIGITAL_SAMPLES];
 		
-		unsigned long		soundHeapSize;
-		UserHeapPtr			soundHeap;
-		
 		unsigned long		numSoundBites;
-		SoundBite			*sounds;
+		std::vector<SoundBite>	sounds;
 
 		unsigned long		numBettySamples;
 		unsigned long		numSupportSamples;
@@ -137,17 +141,15 @@ class SoundSystem
 		HGOSAUDIO			stream3Handle;
 		bool				stream3Active;
 
-		char				**digitalMusicIds;
-		bool				*digitalMusicLoopFlags;
-		float				*digitalMusicVolume;
+		std::vector<DigitalMusicEntry>	digitalMusic;
 				
 		float				maxSoundDistance;
 		
-		MemoryPtr			bettySoundBite;							//Used to store current bitching betty sample
+		std::vector<uint8_t>	bettySoundBite;							//Used to store current bitching betty sample
 		long				lastBettyId;
 		HGOSAUDIO			bettyHandle;
 
-		MemoryPtr			supportSoundBite;						//USed to store current support officer sample
+		std::vector<uint8_t>	supportSoundBite;						//USed to store current support officer sample
 		long				lastSupportId;
 		HGOSAUDIO			supportHandle;
 		
@@ -188,11 +190,8 @@ class SoundSystem
 			memset(channelSampleId,-1,sizeof(long)*MAX_DIGITAL_SAMPLES);
 			memset(fadeDown,0,sizeof(bool)*MAX_DIGITAL_SAMPLES);
 			
-			soundHeapSize = 0;
-			soundHeap = NULL;
-
 			numSoundBites = 0;
-			sounds = NULL;
+			sounds.clear();
 			
 			
 			numDMS = 0;
@@ -200,12 +199,11 @@ class SoundSystem
 			digitalStreamBitDepth = 0;
 			digitalStreamChannels = 0;
 			
-			digitalMusicIds = NULL;
-			digitalMusicLoopFlags = NULL;
+			digitalMusic.clear();
 			
 			maxSoundDistance = 0.0;
 			
-			bettySoundBite = NULL;
+			bettySoundBite.clear();
 			lastBettyId = -1;
 			
 			currentMusicId = -1;
@@ -224,7 +222,7 @@ class SoundSystem
 			numBettySamples = 0;
 			bettyHandle = NULL;
 
-			supportSoundBite = NULL;
+			supportSoundBite.clear();
 			lastSupportId = -1;
 			
 			numSupportSamples = 0;

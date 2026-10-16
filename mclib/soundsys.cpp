@@ -88,18 +88,20 @@ namespace {
     }
 } // namespace
 
+// Limits on counts and packet sizes read from the sound setup and packet files; a larger value means a damaged file.
+constexpr unsigned long MAX_SOUND_BITES = 4096;
+constexpr long MAX_DIGITAL_MUSIC = 1024;
+constexpr long MAX_SOUND_PACKET_BYTES = 64l * 1024l * 1024l;
+
 //---------------------------------------------------------------------------
 // class SoundSystem
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
-	if (soundHeap)
-	{
-		soundHeap->destroy();
-
-		delete soundHeap;
-		soundHeap = nullptr;
-	}
+	sounds.clear();
+	digitalMusic.clear();
+	bettySoundBite.clear();
+	supportSoundBite.clear();
 
     soundDataFile.reset();
     bettyDataFile.reset();
@@ -122,16 +124,7 @@ long SoundSystem::init (const char *soundFileName)
 		result = soundFile.seekBlock("SoundSetup");
 		gosASSERT(result == NO_ERR);
 
-		result = soundFile.readIdULong("soundHeapSize",soundHeapSize);
-		gosASSERT(result == NO_ERR);
-		
 		result = soundFile.readIdFloat("MaxSoundDistance",maxSoundDistance);
-		gosASSERT(result == NO_ERR);
-
-		soundHeap = new UserHeap;
-		gosASSERT(soundHeap != NULL);
-
-		result = soundHeap->init(soundHeapSize,"SOUND");
 		gosASSERT(result == NO_ERR);
 
 		//-----------------------------------------------------------------------
@@ -178,9 +171,12 @@ long SoundSystem::init (const char *soundFileName)
 
 		//-----------------------------------------------------------------------
 		// Preallocate SoundBites
-		sounds = (SoundBite *)soundHeap->Malloc(sizeof(SoundBite) * numSoundBites);
-		gosASSERT(sounds != NULL);
-		memset(sounds,0,sizeof(SoundBite) * numSoundBites);
+		if (numSoundBites > MAX_SOUND_BITES)
+		{
+			MC2_LOG(Audio, Error, "sound setup: {} sound bites is over the limit of {}; none are loaded", numSoundBites, MAX_SOUND_BITES);
+			numSoundBites = 0;
+		}
+		sounds.assign(numSoundBites,SoundBite());
 		
 		for (long i=0;i<(long)numSoundBites;i++)
 		{
@@ -222,37 +218,37 @@ long SoundSystem::init (const char *soundFileName)
 		result = soundFile.readIdULong("StreamChannels",digitalStreamChannels);
 		gosASSERT(result == NO_ERR);
 
-		digitalMusicIds = (char **)soundHeap->Malloc(sizeof(char *) * numDMS);
-		gosASSERT(digitalMusicIds != NULL);
-			
-		digitalMusicLoopFlags = (bool *)soundHeap->Malloc(sizeof(bool)*numDMS);
-		gosASSERT(digitalMusicLoopFlags != NULL);
+		if (numDMS < 0 || numDMS > MAX_DIGITAL_MUSIC)
+		{
+			MC2_LOG(Audio, Error, "sound setup: {} digital music entries is outside 0..{}; none are loaded", numDMS, MAX_DIGITAL_MUSIC);
+			numDMS = 0;
+		}
+		digitalMusic.assign(numDMS,DigitalMusicEntry());
 
-		digitalMusicVolume = (float *)soundHeap->Malloc(sizeof(float) * numDMS);
-			
 		for (int i=0;i<numDMS;i++)
 		{
 			char digitalMSId[20];
 			sprintf(digitalMSId,"DMS%d",i);
-			
+
 			char digitalMSBId[20];
 			sprintf(digitalMSBId,"DMSLoop%d",i);
 
 			char digitalMSVId[25];
 			sprintf(digitalMSVId,"DMSVolume%d",i);
-			
-			digitalMusicIds[i] = (char *)soundHeap->Malloc(30);
-			result = soundFile.readIdString(digitalMSId,digitalMusicIds[i],29);
+
+			char musicName[30];
+			result = soundFile.readIdString(digitalMSId,musicName,29);
 			gosASSERT(result == NO_ERR);
-			
-			result = soundFile.readIdBoolean(digitalMSBId,digitalMusicLoopFlags[i]);
+			digitalMusic[i].id = musicName;
+
+			result = soundFile.readIdBoolean(digitalMSBId,digitalMusic[i].loop);
 			gosASSERT(result == NO_ERR);
 
-			result = soundFile.readIdFloat(digitalMSVId,digitalMusicVolume[i]);
+			result = soundFile.readIdFloat(digitalMSVId,digitalMusic[i].volume);
 			if (result != NO_ERR)
-				digitalMusicVolume[i] = 1.0f;
-		}	
-		
+				digitalMusic[i].volume = 1.0f;
+		}
+
 		soundFile.close();
 		
 		for (int i=0;i<MAX_DIGITAL_SAMPLES+4;i++)
@@ -399,15 +395,20 @@ void SoundSystem::preloadSoundBite (long soundId)
 		SoundBite *thisSoundBite = (&(sounds[soundId]));
 		thisSoundBite->resourceHandle = nullptr;
 			
-		if (thisSoundBite->biteSize == 0 || thisSoundBite->biteData == nullptr)
+		if (packetSize > MAX_SOUND_PACKET_BYTES)
 		{
-			thisSoundBite->biteSize = packetSize;
-			thisSoundBite->biteData = (MemoryPtr)soundHeap->Malloc(packetSize);
-			if (!thisSoundBite->biteData)
-				return;
+			MC2_LOG(Audio, Warn, "sound: bite {} has a bad size ({} bytes); it is silent", soundId, packetSize);
+			return;
 		}
-		
-		soundDataFile->readPacket(soundId,thisSoundBite->biteData);
+		if (thisSoundBite->biteData.empty())
+			thisSoundBite->biteData.resize(packetSize);
+
+		if (!soundDataFile->readPacket(soundId,thisSoundBite->biteData.data()))
+		{
+			MC2_LOG(Audio, Warn, "sound: bite {} could not be read; it is silent", soundId);
+			thisSoundBite->biteData.clear();
+			return;
+		}
 		
 		//--------------------------------------------------------------------
 		// Hand GOS sound the data it needs to create the resource Handle
@@ -418,9 +419,9 @@ void SoundSystem::preloadSoundBite (long soundId)
 		MemoryPtr dataOffset = nullptr;
 		DWORD length = 0;
 		DWORD bitsPerSec = 0;
-		wave_ParseWaveMemory(thisSoundBite->biteData,&waveFormat,&dataOffset,&length);
+		wave_ParseWaveMemory(thisSoundBite->biteData.data(),&waveFormat,&dataOffset,&length);
 	   
-		if (waveFormat && dataOffset)
+		if (waveFormat && dataOffset && waveFormat->nChannels)
 		{
 			bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
 
@@ -456,7 +457,7 @@ void SoundSystem::update (void)
 			channelSampleId[ourChannel] = isRaining;
 			channelInUse[ourChannel] = TRUE;
 				
-			if (sounds[isRaining].biteData)
+			if (!sounds[isRaining].biteData.empty())
 			{
 				gosAudio_AssignResourceToChannel( ourChannel, sounds[isRaining].resourceHandle );
 				gosAudio_SetChannelPlayMode( ourChannel, gosAudio_Loop );
@@ -476,7 +477,7 @@ void SoundSystem::update (void)
 		}
  	}
 	
-	if (useSound && bettySoundBite)
+	if (useSound && !bettySoundBite.empty())
 	{
 		//---------------------------------------------------
 		// Check if betty is done.  If so, whack the memory
@@ -484,13 +485,12 @@ void SoundSystem::update (void)
 		if (sampleStatus != gosAudio_PlayOnce)
 		{
 			gosAudio_DestroyResource(&bettyHandle);
-			soundHeap->Free(bettySoundBite);
-			bettySoundBite = nullptr;
+			bettySoundBite.clear();
 			bettyHandle = nullptr;
 		}
 	}
 
-	if (useSound && supportSoundBite)
+	if (useSound && !supportSoundBite.empty())
 	{
 		//---------------------------------------------------
 		// Check if betty is done.  If so, whack the memory
@@ -498,8 +498,7 @@ void SoundSystem::update (void)
 		if (sampleStatus != gosAudio_PlayOnce)
 		{
 			gosAudio_DestroyResource(&supportHandle);
-			soundHeap->Free(supportSoundBite);
-			supportSoundBite = nullptr;
+			supportSoundBite.clear();
 		}
 	}
 	
@@ -532,13 +531,13 @@ void SoundSystem::update (void)
 	if (stream1Handle && !stream1Active)
 	{
 		stream1Active = true;
-		gosAudio_SetChannelPlayMode( STREAM1CHANNEL, digitalMusicLoopFlags[currentMusicId] ? gosAudio_Loop : gosAudio_PlayOnce);
+		gosAudio_SetChannelPlayMode( STREAM1CHANNEL, digitalMusic[currentMusicId].loop ? gosAudio_Loop : gosAudio_PlayOnce);
 	}
 
 	if (stream2Handle && !stream2Active)
 	{
 		stream2Active = true;
-		gosAudio_SetChannelPlayMode( STREAM2CHANNEL, digitalMusicLoopFlags[currentMusicId] ? gosAudio_Loop : gosAudio_PlayOnce);
+		gosAudio_SetChannelPlayMode( STREAM2CHANNEL, digitalMusic[currentMusicId].loop ? gosAudio_Loop : gosAudio_PlayOnce);
 	}
 
  	if (useMusic && (stream1Active || stream2Active))
@@ -567,7 +566,7 @@ void SoundSystem::update (void)
 					if (volLevel > 1.0)
 						volLevel = 1.0;
 
-					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusicVolume[currentMusicId]);
+					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
 				}
 			}
 			else if (stream1Time > 0.0)
@@ -578,7 +577,7 @@ void SoundSystem::update (void)
 				if (stream1Time <= 0.0)
 				{
 					stream1Time = 0.0;
-					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * musicVolume * digitalMusicVolume[currentMusicId]);
+					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * musicVolume * digitalMusic[currentMusicId].volume);
 				}
 				else
 				{
@@ -590,7 +589,7 @@ void SoundSystem::update (void)
 					if (volLevel > 1.0)
 						volLevel = 1.0;
 
-					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusicVolume[currentMusicId]);
+					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
 				}
 			}
 		}
@@ -620,7 +619,7 @@ void SoundSystem::update (void)
 					if (volLevel > 1.0)
 						volLevel = 1.0;
 
-					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusicVolume[currentMusicId]);
+					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
 				}
 			}
 			else if (stream2Time > 0.0)
@@ -631,7 +630,7 @@ void SoundSystem::update (void)
 				if (stream2Time <= 0.0)
 				{
 					stream2Time = 0.0;
-					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * musicVolume * digitalMusicVolume[currentMusicId]);
+					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * musicVolume * digitalMusic[currentMusicId].volume);
 				}
 				else
 				{
@@ -643,7 +642,7 @@ void SoundSystem::update (void)
 					if (volLevel > 1.0)
 						volLevel = 1.0;
 
-					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusicVolume[currentMusicId]);
+					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
 				}
 			}
 		}
@@ -717,7 +716,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 	// Make sure we have a real music filename.
 	if (useMusic)
 	{
-		if ((musicId >= 0) && (musicId < numDMS) && (strncmp(digitalMusicIds[musicId],"NONE",4) != 0))
+		if ((musicId >= 0) && (musicId < numDMS) && (strncmp(digitalMusic[musicId].id.c_str(),"NONE",4) != 0))
 		{
 			if (musicId == currentMusicId)
 				return(-1);
@@ -728,7 +727,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 				// Just start tune.  No fade necessary.  Set fadeTime to 0.0 to tell update to leave it alone.
 				// Use Stream1 by default.
 				FullPathFileName digitalStream;
-				digitalStream.init(soundPath,digitalMusicIds[musicId],".wav");
+				digitalStream.init(soundPath,digitalMusic[musicId].id.c_str(),".wav");
 
 				//---------------------------------------------
 				// Gotta check if music file is there
@@ -866,7 +865,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
 //---------------------------------------------------------------------------
 long SoundSystem::playBettySample (unsigned long bettySampleId)
 {
-	if (useSound && (bettySoundBite == nullptr))	//Playing Betty takes precedence
+	if (useSound && bettySoundBite.empty())	//Playing Betty takes precedence
 	{
 
 		if (bettySampleId >= numBettySamples)
@@ -887,10 +886,18 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 			return(-1);
 			
 		long bettySize = bettyDataFile->getPacketSize();
-		bettySoundBite = (MemoryPtr)soundHeap->Malloc(bettySize);
-		gosASSERT(bettySoundBite != NULL);
-		
-		bettyDataFile->readPacket(bettySampleId,bettySoundBite);
+		if (bettySize <= 0 || bettySize > MAX_SOUND_PACKET_BYTES)
+		{
+			MC2_LOG(Audio, Warn, "sound: betty sample {} has a bad size ({} bytes); it is not played", bettySampleId, bettySize);
+			return(-1);
+		}
+		bettySoundBite.resize(bettySize);
+		if (!bettyDataFile->readPacket(bettySampleId,bettySoundBite.data()))
+		{
+			MC2_LOG(Audio, Warn, "sound: betty sample {} could not be read; it is not played", bettySampleId);
+			bettySoundBite.clear();
+			return(-1);
+		}
 		
 		//--------------------------------------------------------------------
 		// Hand GOS sound the data it needs to create the resource Handle
@@ -901,7 +908,13 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 		MemoryPtr dataOffset = nullptr;
 		DWORD length = 0;
 		DWORD bitsPerSec = 0;
-		wave_ParseWaveMemory(bettySoundBite,&waveFormat,&dataOffset,&length);
+		wave_ParseWaveMemory(bettySoundBite.data(),&waveFormat,&dataOffset,&length);
+		if (!waveFormat || !waveFormat->nChannels)
+		{
+			MC2_LOG(Audio, Warn, "sound: betty sample {} has no readable wave header; it is not played", bettySampleId);
+			bettySoundBite.clear();
+			return(-1);
+		}
 		
 		bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
 
@@ -925,7 +938,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 //---------------------------------------------------------------------------
 long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
 {
-	if (useSound && (supportSoundBite == nullptr))		//Playing Support takes precedence
+	if (useSound && supportSoundBite.empty())		//Playing Support takes precedence
 	{
 		if (!fileName)
 		{
@@ -953,17 +966,18 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 			if (result != NO_ERR)
 				return(-1);
 			long supportSize = supportDataFile->getPacketSize();
-			if (supportSize > 0)
+			if (supportSize <= 0 || supportSize > MAX_SOUND_PACKET_BYTES)
 			{
-				supportSoundBite = (MemoryPtr)soundHeap->Malloc(supportSize);
-				gosASSERT(supportSoundBite != NULL);
+				return -1;      //Sound Bite does NOT exist!!
 			}
-			else
+			supportSoundBite.resize(supportSize);
+
+			if (!supportDataFile->readPacket(supportSampleId,supportSoundBite.data()))
 			{
-				return -1;      //Sound Bite does NOT exist!! 
+				MC2_LOG(Audio, Warn, "sound: support sample {} could not be read; it is not played", supportSampleId);
+				supportSoundBite.clear();
+				return -1;
 			}
-			
-			supportDataFile->readPacket(supportSampleId,supportSoundBite);
 		}
 		
 		//--------------------------------------------------------------------
@@ -975,7 +989,13 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 		MemoryPtr dataOffset = nullptr;
 		DWORD length = 0;
 		DWORD bitsPerSec = 0;
-		wave_ParseWaveMemory(supportSoundBite,&waveFormat,&dataOffset,&length);
+		wave_ParseWaveMemory(supportSoundBite.data(),&waveFormat,&dataOffset,&length);
+		if (!waveFormat || !waveFormat->nChannels)
+		{
+			MC2_LOG(Audio, Warn, "sound: support sample {} has no readable wave header; it is not played", supportSampleId);
+			supportSoundBite.clear();
+			return -1;
+		}
 		
 		bitsPerSec = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
 
@@ -1098,7 +1118,7 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, Stuff::Vector3D pos
 			channelSampleId[ourChannel] = sampleId;
 			channelInUse[ourChannel] = TRUE;
 				
-			if (sounds[sampleId].biteData && sounds[sampleId].resourceHandle)
+			if (!sounds[sampleId].biteData.empty() && sounds[sampleId].resourceHandle)
 			{
 				gosAudio_AssignResourceToChannel( ourChannel, sounds[sampleId].resourceHandle );
 				gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
@@ -1174,8 +1194,7 @@ void SoundSystem::stopBettySample (void)
 	{
 			gosAudio_SetChannelPlayMode(BETTY_CHANNEL, gosAudio_Stop);
 			gosAudio_DestroyResource(&bettyHandle);
-			soundHeap->Free(bettySoundBite);
-			bettySoundBite = nullptr;
+			bettySoundBite.clear();
 			bettyHandle = nullptr;
 
 
@@ -1318,11 +1337,11 @@ void SoundSystem::playABLDigitalMusic (long musicId)
 
 	// The script's view of its request is armed from the file's length on the scenario clock, with audio on or off: what a
 	// script sees must never depend on the device (script_music.h). A request the stock code ignores is ignored here too.
-	if ((musicId < 0) || (musicId >= numDMS) || (strncmp(digitalMusicIds[musicId], "NONE", 4) == 0))
+	if ((musicId < 0) || (musicId >= numDMS) || (strncmp(digitalMusic[musicId].id.c_str(), "NONE", 4) == 0))
 		return;
 
 	FullPathFileName digitalStream;
-	digitalStream.init(soundPath, digitalMusicIds[musicId], ".wav");
+	digitalStream.init(soundPath, digitalMusic[musicId].id.c_str(), ".wav");
 	if (!fileExists(digitalStream))
 		return;
 

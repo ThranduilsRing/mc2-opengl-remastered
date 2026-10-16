@@ -34,9 +34,9 @@ class GameSoundSystem : public SoundSystem
 	//Data Members
 	//-------------
 	protected:
-		RadioData			*currentMessage;						//Radio message playing.
+		std::unique_ptr<RadioData>	currentMessage;						//Radio message playing.
 		unsigned long		messagesInQueue;						//Radio messages waiting to play.
-		RadioData			*queue[MAX_QUEUED_MESSAGES];			//Radio message queue.
+		std::unique_ptr<RadioData>	queue[MAX_QUEUED_MESSAGES];			//Radio message queue.
 		unsigned long		currentFragment;						//Which piece are we playing.
 		unsigned long		playingNoise;							//are we playing noise right now?
 		bool 				wholeMsgDone;							//Are all fragments played?
@@ -69,7 +69,7 @@ class GameSoundSystem : public SoundSystem
 			SoundSystem::init();
 
 			wholeMsgDone = true;
-			currentMessage = NULL;
+			currentMessage = nullptr;
 			messagesInQueue = 0;
 			currentFragment = 0;
 			playingNoise = false;
@@ -80,7 +80,7 @@ class GameSoundSystem : public SoundSystem
 			messagesInQueue = 0;
 			wholeMsgDone = true;
 			for (long i=0;i<MAX_QUEUED_MESSAGES;i++)
-				queue[i] = NULL;
+				queue[i] = nullptr;
 
 			generalAlarmTimer = 0.0f;
 		}
@@ -90,9 +90,14 @@ class GameSoundSystem : public SoundSystem
 		void purgeSoundSystem (void);					//This will shutdown all active sound.
 		void removeQueuedMessage (long msgNumber);
 		bool checkMessage (MechWarriorPtr pilot, byte priority, unsigned long messageType);
-		long queueRadioMessage (RadioData *msgData);
+		long queueRadioMessage (std::unique_ptr<RadioData> msgData);
 		void moveFromQueueToPlaying (void);
 		void removeCurrentMessage (void);
+
+	protected:
+		bool playClip (const RadioClip& clip);			//Starts one clip on the radio channel; false when its wave header is unreadable.
+		void playNoiseClip (void);						//The static before the current fragment.
+		void playNextDataClip (void);					//The speech of the current fragment, or the end of the message.
 };
 
 //---------------------------------------------------------------------------
