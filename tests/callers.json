@@ -11585,7 +11585,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-golden-coverage.py",
-          "line": 392,
+          "line": 395,
           "evidence": "import",
           "reference": "png_io",
           "text": "from png_io import encode_png"
