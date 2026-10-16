@@ -1,5 +1,33 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-SEVENTH session (2026-10-16, Sonnet 5.5) -- hitch trace and debug renderer off GL, two gate rows retired, s36 review folded; nifty not merged
+
+### Commits (after b951f2ca5; code tip 3b90168bd, later commit = docs/baselines only)
+4d1c840c0 hitch trace on the VK frame fence | 8e4d2bf2b s36 review fold (S1, S2, S5, nits) | c5b6fb023 debug_renderer on the ImGui overlay | 019ee0da7 mechbay harness on VK + gate rows MC2_GL_ERROR_DRAIN_SILENT / MC2_SCREENSHOT_SOURCE deleted | 3b90168bd pass-timer all-cancelled frame skipped + shared spvDir() | state/inventory/baselines commit. MERGEABLE TIP = the commit carrying this line. Detail: inventory section 18.
+- Coordinator note: the ratchet's "pass-timer bracket boilerplate copied nine times" was the per-island `spv_dir()` body, now `vk_island_util::spvDir()`; no timer-bracket helper was written (the shadow island's bracket spans two functions, so its guard stays at the submit function, now before the early return).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| item 1: VK mc2_01, `MC2_HITCH_TRACE=1 MC2_HITCH_MS=0.001`, validation (`scratch/v37a.log`, deployed 4d1c840c0, DEPLOY_FINGERPRINT OK) | PASS, errors 0 warnings 0; 5,588 `[HITCH_VK]` lines; `fenceWaitMs` 0.01-0.02 per frame, `fenceWaits=1` (a fast GPU: waits are short but non-zero); doctest 4 cases |
+| item 2: VK mc2_01 `MC2_DEBUG_RENDERER=1 MC2_DEBUG_RENDERER_TEST=1 MC2_VK_IMGUI=1 MC2_HZB_VIEW_FILE=scratch/view0.txt`, dev-shell `screenshot` (`dev_shell_out/d37_dbg4.tga`, viewed) | red X arm, white ring and the Y arm visible over the water, validation 0/0, `[DEBUGDRAW v1] event=first_draw queued=67`. Without `MC2_VK_IMGUI=1` the overlay is absent (ImGui draws on the GL context then): recorded, not hidden |
+| item 3: pytest `tests/smoke`, `scripts/tests`, `tools/repo_intel/test_anti_churn.py`; `gate_gen --check --rebuild` | 35 failures, all `test_tracy_capture_compare` / `test_tracy_driver_builds_the_pinned_env` (same failure on the previous tip, not touched); gate table consistent (976 gates); `check-env-drive-guard` PASS |
+| harnesses + doctest at 3b90168bd | `build_contract_harnesses --run --unit` exit 0 (mc2_tests incl. hitch fence, debug line project, all-cancelled frame) |
+| ratchets | dup-lines 55319 -> 55274 (baseline rewritten, the spv_dir dedupe); `own_inventory --check` ok; log-tag census rewritten (banner field, HITCH_VK); background-launch inventory regenerated (two findings in `tests/analyze/b5_asset_census.py` and `test_host_lease_batch.py` are not from this diff); `tests/callers.json` regenerated |
+| VK tier1 + validation, final exe 3b90168bd (`scratch/t37.log`) | 5/5 PASS, DEPLOY_FINGERPRINT OK on all five, errors 0 / warnings 0 on all five (fps 134 / 92 / 83 / 98 / 70, host shared) |
+| not run | GL tier1 (no GL draw path moved: only the static-prop fence call sites changed from the wrapper macro to the raw GL call), `check-contracts.sh`, the mechbay harness end to end, captures |
+
+### Open
+- `MC2_VK_IMGUI` default-off means the debug overlay (and the editor inspector's highlight) is invisible in a default VK run; flip it with the editor rework.
+- Hitch trace GL upload counters (`MC2_GL_BufferData*` and the `MC2_GPUBUF_COUNTER` tally, ~90 call sites in terrain / static-prop / light-SSBO files) go with their GL paths. POPPED_ENV keeps a retired name because `check-env-drive-guard` fails on an empty table (proof-standard question for the coordinator).
+- Section 16 (b) still open: lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY` (with the GL interop), `gos_object_parity` GL readback, HZB probe, input probe GL reads, dev-shell `reload_shaders` GL path, terrain `tessDebug`. VFX oracle VK arm, then the capture `gl_fbo` arm.
+- Scratch (mine, deletable): `scratch/` b37*.log, h37*.log, v37*.log, t37.log, d37*.log, gg*.log, shot37*, view0.txt, d37_dbg*.png; the TGAs are in the lane install's `dev_shell_out/`.
+
+### Lessons (37)
+- Never `git stash` while a build is running: the working tree flipped under ninja and the pop half-failed (recovered by checkout + pop; no loss).
+- `run_smoke.py --deploy lane2` does not deploy; run `deploy_payload.py --target game --ninja --allow-new-target <install>` after every commit-and-build or the fingerprint check fails.
+- `--duration` caps at 30; a dev-shell screenshot driver must poll `ping` and shoot ~8 s after the shell answers.
+
 ## THIRTY-SIXTH session (2026-10-16, Sonnet 5.5) -- GL deletion step 2 (a), gos_screenshot on the VK readback, s35 review should-fixes; nifty not merged
 
 ### Commits (after 3582651b6)
