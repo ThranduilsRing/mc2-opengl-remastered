@@ -691,8 +691,7 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	if ((nodeId < mechType->numSmokeNodes) || (nodeId >= (mechType->numSmokeNodes+mechType->numWeaponNodes)))
 		return result;
 
-	// No visibility test: update() poses every mech each sim step, and a weapon node that fell back to the mech
-	// origin off screen made where the camera pointed change where shots start.
+	// No visibility test: update() poses every mech each sim step, so shot origins never depend on the camera.
 
 	//We already know we are using this node.  Do NOT increment recycle or nodeUsed!
 

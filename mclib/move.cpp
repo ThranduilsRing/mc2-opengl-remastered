@@ -612,8 +612,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		GlobalMoveMap[2]->blank = true;
 		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets);
 		// Delete the pathExistsTable for this one, since we don't use it...
-		systemHeap->Free(GlobalMoveMap[2]->pathExistsTable);
-		GlobalMoveMap[2]->pathExistsTable = nullptr;
+		GlobalMoveMap[2]->releasePathExistsTable();
 
 		long numBytes = packetFile->readPacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, (unsigned char*)&tempNumSpecialAreas);
 		if (numBytes <= 0)

@@ -104,9 +104,15 @@ void GlobalMap::calcAreaDoors (void) {
 	for (long area = 0; area < numAreas; area++) {
 		areas[area].numDoors = numAreaDoors(area);
 		numDoorInfos += areas[area].numDoors;
+	}
+	// One pool for all areas, each area viewing its own run: the layout the packet-load path builds.
+	doorInfos = mc2::globalmap::ownZeroed(doorInfosStore, (size_t)numDoorInfos);
+	long nextDoorInfo = 0;
+	for (long area = 0; area < numAreas; area++) {
 		if (areas[area].numDoors) {
-			areas_doors[area] = (DoorInfoPtr)systemHeap->Malloc(sizeof(DoorInfo) * areas[area].numDoors);
+			areas_doors[area] = &doorInfos[nextDoorInfo];
 			getAreaDoors(area, areas_doors[area]);
+			nextDoorInfo += areas[area].numDoors;
 			}
 		else
 			areas_doors[area] = nullptr;
@@ -242,7 +248,27 @@ void GlobalMap::calcDoorLinks (void) {
 
 	numDoorLinks = 0;
 
+	// One pool for every link run, sized from the area door counts first: each door side views its own run of it, and the
+	// pool is never regrown while those views are held.
 	long maxDoors = 0;
+	long linkTotal = 0;
+	for (long d = 0; d < numDoors; d++)
+		for (long s = 0; s < 2; s++) {
+			long areaNumDoors = areas[doors[d].area[s]].numDoors;
+			linkTotal += (areaNumDoors - 1) + NUM_EXTRA_DOOR_LINKS;
+			if (areaNumDoors > maxDoors)
+				maxDoors = areaNumDoors;
+		}
+	linkTotal += 2 * (maxDoors + NUM_EXTRA_DOOR_LINKS) + 2 * NUM_EXTRA_DOOR_LINKS;
+	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, (size_t)linkTotal);
+	long nextLink = 0;
+	auto takeRun = [&](long count) {
+		DoorLinkPtr run = &doorLinks[nextLink];
+		nextLink += count;
+		return run;
+	};
+
+	maxDoors = 0;
 	for (long d = 0; d < numDoors; d++) {
 		GlobalMapDoorPtr thisDoor = &doors[d];
 		DoorInfoLinksPtr& thisDoor_links = doors_links[d];
@@ -255,9 +281,8 @@ void GlobalMap::calcDoorLinks (void) {
 				thisDoor->numLinks[s] = areaNumDoors - 1;
 				// Allocate enough links for all links to this door plus a scratch
 				// link used during path calc...
-				thisDoor_links[s] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (thisDoor->numLinks[s] + NUM_EXTRA_DOOR_LINKS));
+				thisDoor_links[s] = takeRun(thisDoor->numLinks[s] + NUM_EXTRA_DOOR_LINKS);
 				numDoorLinks += (thisDoor->numLinks[s] + NUM_EXTRA_DOOR_LINKS);
-				gosASSERT(thisDoor_links[s] != NULL);
 				long linkIndex = 0;
 				for (long areaDoor = 0; areaDoor < areaNumDoors; areaDoor++) {
 					long doorIndex = areas_doors[area][areaDoor].doorIndex;
@@ -277,17 +302,18 @@ void GlobalMap::calcDoorLinks (void) {
 
 	doors[numDoors + DOOR_OFFSET_START].numLinks[0] = maxDoors;
 	numDoorLinks += (doors[numDoors + DOOR_OFFSET_START].numLinks[0] + NUM_EXTRA_DOOR_LINKS);
-	doors_links[numDoors + DOOR_OFFSET_START][0] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (doors[numDoors + DOOR_OFFSET_START].numLinks[0] + NUM_EXTRA_DOOR_LINKS));
+	doors_links[numDoors + DOOR_OFFSET_START][0] = takeRun(doors[numDoors + DOOR_OFFSET_START].numLinks[0] + NUM_EXTRA_DOOR_LINKS);
 	doors[numDoors + DOOR_OFFSET_START].numLinks[1] = 0;
 	numDoorLinks += (doors[numDoors + DOOR_OFFSET_START].numLinks[1] + NUM_EXTRA_DOOR_LINKS);
-	doors_links[numDoors + DOOR_OFFSET_START][1] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (doors[numDoors + DOOR_OFFSET_START].numLinks[1] + NUM_EXTRA_DOOR_LINKS));
+	doors_links[numDoors + DOOR_OFFSET_START][1] = takeRun(doors[numDoors + DOOR_OFFSET_START].numLinks[1] + NUM_EXTRA_DOOR_LINKS);
 
 	doors[numDoors + DOOR_OFFSET_GOAL].numLinks[0] = maxDoors;
 	numDoorLinks += (doors[numDoors + DOOR_OFFSET_GOAL].numLinks[0] + NUM_EXTRA_DOOR_LINKS);
-	doors_links[numDoors + DOOR_OFFSET_GOAL][0] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (doors[numDoors + DOOR_OFFSET_GOAL].numLinks[0] + NUM_EXTRA_DOOR_LINKS));
+	doors_links[numDoors + DOOR_OFFSET_GOAL][0] = takeRun(doors[numDoors + DOOR_OFFSET_GOAL].numLinks[0] + NUM_EXTRA_DOOR_LINKS);
 	doors[numDoors + DOOR_OFFSET_GOAL].numLinks[1] = 0;
 	numDoorLinks += (doors[numDoors + DOOR_OFFSET_GOAL].numLinks[1] + NUM_EXTRA_DOOR_LINKS);
-	doors_links[numDoors + DOOR_OFFSET_GOAL][1] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (doors[numDoors + DOOR_OFFSET_GOAL].numLinks[1] + NUM_EXTRA_DOOR_LINKS));
+	doors_links[numDoors + DOOR_OFFSET_GOAL][1] = takeRun(doors[numDoors + DOOR_OFFSET_GOAL].numLinks[1] + NUM_EXTRA_DOOR_LINKS);
+	gosASSERT(nextLink == linkTotal);
 
 	long numberL = 0;
 	for (long i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
@@ -442,14 +468,9 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	numAreas = 0;
 	numSpecialAreas = 0;
-	if (specialAreas) {
-		systemHeap->Free(specialAreas);
-		specialAreas = nullptr;
-	}
+	specialAreas = nullptr;
 	if (mapData) {
-		specialAreas = (GlobalSpecialAreaInfo*)systemHeap->Malloc(sizeof(GlobalSpecialAreaInfo) * MAX_SPECIAL_AREAS);
-		if (specialAreas == nullptr)
-			Fatal(0, " GlobalMap.build: unable to malloc specialAreas ");
+		specialAreas = mc2::globalmap::ownZeroed(specialAreasStore, (size_t)MAX_SPECIAL_AREAS);
 		calcSpecialAreas(mapData);
 	}
 
@@ -469,10 +490,8 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 	#endif
 
 
-	if (specialAreas) {
-		systemHeap->Free(specialAreas);
-		specialAreas = nullptr;
-	}
+	specialAreas = nullptr;
+	std::vector<GlobalSpecialAreaInfo>().swap(specialAreasStore);
 
 	return(NO_ERR);	
 }

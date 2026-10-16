@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <string>
 
 extern bool g_mc2TestStopFatal;   // tests/unit/heap_shim.cpp: STOP counts and continues instead of aborting
@@ -41,19 +42,39 @@ size_t countOf (const std::string& text, const char* needle)
 	return count;
 }
 
+// Restores the process-wide test switches this case changes, so a failed REQUIRE cannot leak them into later cases.
+struct TestStateGuard
+{
+	std::FILE* capture = nullptr;
+	std::string path;
+	~TestStateGuard ()
+	{
+		mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
+		if (capture)
+			std::fclose(capture);
+		g_mc2TestStopFatal = true;
+		if (!path.empty())
+			std::remove(path.c_str());
+	}
+};
+
 } // namespace
 
 TEST_CASE("readExact accepts an exact packet and rejects a wrong-size or missing one with one log line each")
 {
-	const std::string path = "pak_read_exact_scratch.pak";
+	TestStateGuard guard;
+	guard.path = (std::filesystem::temp_directory_path() / "mc2_pak_read_exact_scratch.pak").string();
+	const std::string& path = guard.path;
 	{
 		PacketFile out;
 		REQUIRE(out.create(path.c_str()) == NO_ERR);
-		out.reserve(2);
+		out.reserve(3);
 		int32_t height = 120;
 		unsigned char shortPacket[2] = {7, 7};
+		unsigned char packed[8] = {1, 2, 3, 4, 1, 2, 3, 4};
 		REQUIRE(out.writePacket(0, reinterpret_cast<MemoryPtr>(&height), sizeof(height)) > 0);
 		REQUIRE(out.writePacket(1, shortPacket, sizeof(shortPacket)) > 0);
+		REQUIRE(out.writePacket(2, packed, sizeof(packed), STORAGE_TYPE_ZLIB) > 0);
 		out.close();
 	}
 
@@ -61,6 +82,7 @@ TEST_CASE("readExact accepts an exact packet and rejects a wrong-size or missing
 	g_mc2TestStopCount = 0;
 	std::FILE* capture = std::tmpfile();
 	REQUIRE(capture != nullptr);
+	guard.capture = capture;
 	mc2::log::setSpec("*:info");
 	mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, capture);
 
@@ -75,21 +97,24 @@ TEST_CASE("readExact accepts an exact packet and rejects a wrong-size or missing
 	CHECK_FALSE(mc2::pak::readExact(in, 1, &value, sizeof(value), "width"));   // 2 bytes where 4 are expected
 	CHECK(value == -1);
 
-	CHECK_FALSE(mc2::pak::readExact(in, 2, &value, sizeof(value), "planet"));  // the file holds packets 0 and 1 only
+	CHECK_FALSE(mc2::pak::readExact(in, 3, &value, sizeof(value), "planet"));  // the file holds packets 0 to 2 only
 	CHECK_FALSE(mc2::pak::readExact(in, -1, &value, sizeof(value), "planet"));
 	CHECK(value == -1);
+
+	// A compressed packet is decoded and size-checked like a raw one.
+	int64_t wide = 0;
+	CHECK(mc2::pak::readExact(in, 2, &wide, sizeof(wide), "packed"));
+	CHECK(wide != 0);
+	CHECK_FALSE(mc2::pak::readExact(in, 2, &value, sizeof(value), "packed4"));
 	in.close();
 
 	const std::string logged = captured(capture);
-	mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
-	std::fclose(capture);
 	CHECK(g_mc2TestStopCount == 0);
-	g_mc2TestStopFatal = true;
 
 	CHECK(countOf(logged, "width packet 1 is 2 bytes, expected 4") == 1);
-	CHECK(countOf(logged, "planet packet 2 is -1 bytes") == 1);
+	CHECK(countOf(logged, "planet packet 3 is -1 bytes") == 1);
 	CHECK(countOf(logged, "planet packet -1 is -1 bytes") == 1);
+	CHECK(countOf(logged, "packed4 packet 2 is 8 bytes, expected 4") == 1);
 	CHECK(countOf(logged, "height packet") == 0);
-
-	std::remove(path.c_str());
+	CHECK(countOf(logged, "packed packet") == 0);
 }

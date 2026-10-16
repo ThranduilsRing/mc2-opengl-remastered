@@ -1244,6 +1244,20 @@ class GlobalMap {
 		int						    numSpecialAreas;
 		GlobalSpecialAreaInfo*		specialAreas;	// used when building data
 
+		// The owners of the buffers the pointers above view, for the build and the pak load alike. Each is sized once and never
+		// regrown while its views are held; destroy() drops the views with the stores.
+		std::vector<short>				areaMapStore;
+		std::vector<GlobalMapArea>		areasStore;
+		std::vector<short*>				areasCellsCoveredStore;
+		std::vector<DoorInfoPtr>		areasDoorsStore;		// each pointer views a run of doorInfosStore
+		std::vector<GlobalMapDoor>		doorsStore;
+		std::vector<DoorLinkPtr>		doorLinkViewStore;		// pairs: doors_links[d][side]; each pointer views a run of doorLinksStore
+		std::vector<DoorInfo>			doorInfosStore;
+		std::vector<DoorLink>			doorLinksStore;
+		std::vector<GlobalMapDoor>		doorBuildStore;
+		std::vector<GlobalSpecialAreaInfo> specialAreasStore;
+		std::vector<unsigned char>		pathExistsStore;
+
 		bool						closes;
 		bool						opens;
 
@@ -1345,12 +1359,21 @@ class GlobalMap {
 		GlobalMap (void) {
 			init();
 		}
-		
+
+		// The pointer members are views into the stores, so a copy would alias the source's buffers.
+		GlobalMap (const GlobalMap&) = delete;
+		GlobalMap& operator= (const GlobalMap&) = delete;
+
 		void destroy (void);
+
+		// The helicopter map does not use the path table; this frees it early.
+		void releasePathExistsTable (void);
 
 		~GlobalMap (void) {
 			destroy();
 		}
+
+		DoorInfoLinksPtr* ownDoorLinkViews (size_t count);
 
 		void init (long h, long w);
 
