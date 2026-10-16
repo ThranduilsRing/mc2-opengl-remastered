@@ -147,6 +147,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool spritePool;
     std::unordered_map<uint32_t, SpritePage> pages;   // keyed on gos texture handle; after the pool so pages release first
     // Texel vector whose import failed, per handle: the same vector is not retried (a replaced texture publishes a new one).
+    // A transient failure (staging or device OOM) is cached like a bad texture: that handle stays undrawn until its texels are replaced.
     std::unordered_map<uint32_t, std::shared_ptr<const std::vector<uint8_t>>> failedSource;
     bool pageCapLogged = false;
     mc2vk::OwnedPipelineLayout playout;

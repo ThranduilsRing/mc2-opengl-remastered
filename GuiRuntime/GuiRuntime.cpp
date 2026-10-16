@@ -46,7 +46,12 @@ static bool isEnabled() {
 static bool vkImguiRequested() {
     static int cached = -1;
     if (cached < 0) {
-        cached = mc2::gate::get<"MC2_VK_IMGUI">();
+        // Only a Vulkan backend has a Vulkan ImGui renderer; a GL run keeps the GL one whatever the gate says.
+#ifdef MC2_VULKAN
+        cached = (mc2::gate::get<"MC2_VK_IMGUI">() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) ? 1 : 0;
+#else
+        cached = 0;
+#endif
     }
     return cached == 1;
 }
