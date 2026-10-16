@@ -435,7 +435,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         r = mc2vk::createChecked(s->shoreDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shore) failed (%d).", (int)r); return false; }
 
-        VkDescriptorSetLayoutBinding shadowBinds[8]{};
+        VkDescriptorSetLayoutBinding shadowBinds[6]{};
         shadowBinds[0].binding = 0; shadowBinds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         shadowBinds[0].descriptorCount = 1; shadowBinds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[1].binding = 1; shadowBinds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -448,16 +448,12 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         shadowBinds[4].descriptorCount = 1; shadowBinds[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[5].binding = 5; shadowBinds[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         shadowBinds[5].descriptorCount = 1; shadowBinds[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        shadowBinds[6].binding = 6; shadowBinds[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        shadowBinds[6].descriptorCount = 1; shadowBinds[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        shadowBinds[7].binding = 7; shadowBinds[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        shadowBinds[7].descriptorCount = 1; shadowBinds[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        lci.bindingCount = 8; lci.pBindings = shadowBinds;
+        lci.bindingCount = 6; lci.pBindings = shadowBinds;
         r = mc2vk::createChecked(s->shadowDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", (int)r); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 12;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 8;
         sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -801,19 +797,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         csmFullMapInfo.sampler = s->shadowCompareSampler.get();
         csmFullMapInfo.imageView = s->csmFullMapView;
         csmFullMapInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        VkDescriptorImageInfo csmRawInfo = csmArrayInfo;
-        csmRawInfo.sampler = s->gbufSampler.get();
-        VkDescriptorImageInfo fullRawInfo = csmFullMapInfo;
-        fullRawInfo.sampler = s->gbufSampler.get();
-        VkWriteDescriptorSet writes[4]{};
-        writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[3].dstSet = s->shadowSet; writes[3].dstBinding = 7; writes[3].descriptorCount = 1;
-        writes[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[3].pImageInfo = &fullRawInfo;
-        writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[2].dstSet = s->shadowSet; writes[2].dstBinding = 6; writes[2].descriptorCount = 1;
-        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[2].pImageInfo = &csmRawInfo;
+        VkWriteDescriptorSet writes[2]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = s->shadowSet; writes[0].dstBinding = 4; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -822,7 +806,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         writes[1].dstSet = s->shadowSet; writes[1].dstBinding = 5; writes[1].descriptorCount = 1;
         writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[1].pImageInfo = &csmFullMapInfo;
-        vkUpdateDescriptorSets(s->device, 4, writes, 0, nullptr);
+        vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
     }
 
     ++g_fx.attempted;

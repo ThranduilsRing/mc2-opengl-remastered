@@ -5,7 +5,6 @@
 #include "gos_static_prop_finalize_frame.h"
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
-#include "Gates/gate.h"
 
 
 
@@ -864,23 +863,6 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
-        // TEMP row-23 diag: GL's per-draw table next to the VK packet dump.
-        if (const std::string dp = mc2::gate::str<"MC2_VK_PROP_PACKET_DUMP">(); !dp.empty()) {
-            if (FILE* fg = std::fopen((dp + ".gl.csv").c_str(), "w")) {
-                std::fprintf(fg, "slot,packet,typeID,alphaClass,layer,flags,uvScaleX,uvScaleY,textureSlot,texAlpha,indexCount,firstIndex,baseVertex\n");
-                for (uint32_t i = 0; i < entries.size(); ++i) {
-                    const uint32_t gp = s_sortedPacketOrder[i];
-                    const auto& pk = s_packets[gp];
-                    const auto& ty = s_types[pk.owningTypeID];
-                    const int ta = (ty.source && ty.source->listOfTextures && pk.textureSlot < ty.source->numTextures)
-                        ? (int)ty.source->listOfTextures[pk.textureSlot].textureAlpha : -1;
-                    std::fprintf(fg, "%u,%u,%u,%u,%d,%d,%.4f,%.4f,%u,%d,%u,%u,%d\n", i, gp, pk.owningTypeID, (unsigned)ty.alphaClass,
-                                 entries[i].texArrayLayer, entries[i].materialFlags, entries[i].uvScaleX, entries[i].uvScaleY,
-                                 pk.textureSlot, ta, pk.indexCount, pk.firstIndex, pk.baseVertex);
-                }
-                std::fclose(fg);
-            }
-        }
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perDrawSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
