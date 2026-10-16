@@ -134,8 +134,8 @@ void ChooseUnitDlg::OnUsePointer()
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjects = EditorObjectMgr::instance()->getSelectedObjectList();
 		int num_units_selected = 0;
 		int validObjectIndex = -1;
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EConstIterator it = selectedObjects.Begin();
-		while (!it.IsDone()) {
+		auto it = selectedObjects.begin();
+		while (it != selectedObjects.end()) {
 			int index = 0;
 			auto it2 = m_unitList.begin();
 			while (it2 != m_unitList.end()) {

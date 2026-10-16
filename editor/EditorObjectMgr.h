@@ -25,6 +25,7 @@
 #endif
 
 #include <deque>
+#include <vector>
 
 #include "mclib.h"
 #include "../RenderCore/Handle.h"
@@ -71,29 +72,9 @@ public:
 		HELICOPTER
 	};
 
-	class EDITOR_OBJECT_LIST : public EList< EditorObject*, EditorObject*>
-	{
-	public:
-		void AddUnique(EditorObject* item)
-		{
-			if ((0 < Count()) && (INVALID_ITERATOR != Find(item)))
-			{
-				return;
-			}
-			Append(item);
-		}
-		void RemoveIfThere(EditorObject* item)
-		{
-			if (0 < Count())
-			{
-				EIterator it = Find(item);
-				if (INVALID_ITERATOR != it)
-				{
-					Delete(it);
-				}
-			}
-		}
-	};
+	// Borrowed pointers; snapshots copy selection order without owning objects.
+	using EDITOR_OBJECT_LIST = std::vector<EditorObject*>;
+	using SelectedUnits = std::vector<Unit*>;
 
 	
 	EditorObjectMgr();  // should only be one of these
@@ -237,7 +218,7 @@ public:
 	typedef EList< Unit*, Unit* > UNIT_LIST;
 	typedef EList< DropZone*, DropZone* > DROPZONE_LIST;
 
-	void getSelectedUnits( UNIT_LIST& );
+	void getSelectedUnits( SelectedUnits& );
 	UNIT_LIST getUnits() { return units; }
 	BUILDING_LIST getBuildings() { return buildings; }
 	DROPZONE_LIST getDropZones() { return dropZones; } // read-only snapshot (Scene Outliner)
@@ -317,6 +298,8 @@ public:
 		DROP_LIST						dropZones;
 		FOREST_LIST						forests;
 
+		void addToSelection(EditorObject* object);
+		void removeFromSelection(EditorObject* object);
 		EDITOR_OBJECT_LIST selectedObjects;
 		bool selectedObjectsNeedsToBeSynched;
 		void syncSelectedObjectPointerList();	// makes sure that the "selectedObjects" list corresponds to the objects marked as selected

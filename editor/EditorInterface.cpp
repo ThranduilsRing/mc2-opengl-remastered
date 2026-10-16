@@ -221,9 +221,9 @@ void EditorInterface::handleKeyDown( int Key )
 	if (selectionCount)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
+		auto it = selectedObjectsList.begin();
 		const EditorObject* pInfo = (*it);
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->position
+		// appearance() can be NULL; guard before ->position
 		// (mirror sibling readout ~line 1975).
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )

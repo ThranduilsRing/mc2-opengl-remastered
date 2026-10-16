@@ -173,7 +173,7 @@ bool Eraser::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int 
 Action* Eraser::applyToSelection()
 {
 	if ( !land )
-		return NULL;  // EDITOR-CRASH-HARDENING-1: no terrain -> realVerticesMapSide loop derefs NULL (sibling StampBrush.cpp:66)
+		return NULL;  // no terrain -> realVerticesMapSide loop derefs NULL
 
 	EraserAction* pRetAction = new EraserAction;
 
@@ -181,8 +181,8 @@ Action* Eraser::applyToSelection()
 		CTeams originalTeams = EditorData::instance->TeamsRef();
 		/*first remove all references to objects that are about to be deleted*/
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
-		while (!it.IsDone())
+		auto it = selectedObjectsList.begin();
+		while (it != selectedObjectsList.end())
 		{
 			const EditorObject* pInfo = (*it);
 			if ( pInfo )
@@ -200,8 +200,8 @@ Action* Eraser::applyToSelection()
 	}
 
 	EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-	EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
-	while (!it.IsDone())
+	auto it = selectedObjectsList.begin();
+	while (it != selectedObjectsList.end())
 	{
 		EditorObject* pInfo = (*it);
 		if ( pInfo )

@@ -1,6 +1,7 @@
 // EditorObjectMgr: selection handling and forest editing.
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
+#include <algorithm>
 
 
 void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D& pos2 )
@@ -40,17 +41,14 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 			if ( !pAppearance )
 				continue;
 
-			// BUG1 (zoomed-in marquee): use the modern GL forward projection (the same
-			// one getObjectAtScreenPosition / the drag jacobian use) instead of legacy
-			// projectZ. projectZ diverges from the rendered camera when zoomed in, so
-			// object centers landed outside the screen rect and nothing got selected.
+			// Marquee bounds must match the rendered camera projection at every zoom.
 			if ( !EditorObjectMgr_ProjectScreenXY_GL( pAppearance->position, screenPos ) )
 				continue;
 			if ( screenPos.x >= xMin && screenPos.x <= xMax
 				 && screenPos.y >= yMin && screenPos.y <= yMax )
 			{
 				pAppearance->selected = true;
-				selectedObjects.AddUnique(pObject);
+				addToSelection(pObject);
 			}
 		}
 
@@ -62,17 +60,14 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 			if ( !pAppearance )
 				continue;
 
-			// BUG1 (zoomed-in marquee): use the modern GL forward projection (the same
-			// one getObjectAtScreenPosition / the drag jacobian use) instead of legacy
-			// projectZ. projectZ diverges from the rendered camera when zoomed in, so
-			// object centers landed outside the screen rect and nothing got selected.
+			// Marquee bounds must match the rendered camera projection at every zoom.
 			if ( !EditorObjectMgr_ProjectScreenXY_GL( pAppearance->position, screenPos ) )
 				continue;
 			if ( screenPos.x >= xMin && screenPos.x <= xMax
 				 && screenPos.y >= yMin && screenPos.y <= yMax )
 			{
 				pAppearance->selected = true;
-				selectedObjects.AddUnique(pObject);
+				addToSelection(pObject);
 			}
 		}
 
@@ -85,14 +80,14 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 				continue;
 
 			Stuff::Vector3D pos = pObject->getPosition();
-			if ( !EditorObjectMgr_ProjectScreenXY_GL( pos, screenPos ) )   // BUG1: modern projection
+			if ( !EditorObjectMgr_ProjectScreenXY_GL( pos, screenPos ) )
 				continue;
 
 			if ( screenPos.x >= xMin && screenPos.x <= xMax
 				 && screenPos.y >= yMin && screenPos.y <= yMax )
 			{
 				pAppearance->selected = true;
-				selectedObjects.AddUnique(pObject);
+				addToSelection(pObject);
 			}
 			
 		}
@@ -105,33 +100,25 @@ void EditorObjectMgr::select( EditorObject &object, bool bSelect )
 	ObjectAppearance* pAppearance = object.appearance();
 	if ( !pAppearance )
 	{
-		// by Methuselas: left-click selection is live again under the embedded
-		// renderer.  Treat appearance-less legacy objects as non-selectable
-		// instead of dereferencing a partially loaded object.
+		// Partially loaded objects without appearances are not selectable.
 		return;
 	}
 
-	// by Methuselas: keep single-click selection on the same render flag path
-	// as the now-working drag-select code.  Drag-select writes `true`, which is
-	// equivalent to DRAW_BARS.  Avoid DRAW_TEXT because it can enter legacy
-	// cLoadString() name rendering, and avoid DRAW_BRACKETS here until the
-	// remastered Editor bracket path is separately proven safe for single-click.
+	// Bars match marquee selection without entering legacy text or bracket rendering.
 	pAppearance->selected = bSelect ? DRAW_BARS : 0;
 
 	if (true == bSelect)
 	{
-		selectedObjects.AddUnique(&object);
+		addToSelection(&object);
 	}
 	else 
 	{
-		selectedObjects.RemoveIfThere(&object);
+		removeFromSelection(&object);
 	}
 }
 
 void EditorObjectMgr::unselectAll()
 {
-	// mh: at somepoint we can change the code so that it iterates over the
-	// selectedObjects list instead of the lists of all the buildings and units
 	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
 		!iter.IsDone(); iter++ )
 		{
@@ -158,7 +145,7 @@ void EditorObjectMgr::unselectAll()
 				pAppearance->selected = false;
 		}
 
-		selectedObjects.Clear();
+		selectedObjects.clear();
 }
 
 
@@ -166,7 +153,7 @@ bool EditorObjectMgr::hasSelection()
 {
 #if 1
 	syncSelectedObjectPointerList();
-	if (0 < selectedObjects.Count())
+	if (!selectedObjects.empty())
 	{
 		return true;
 	}
@@ -192,7 +179,7 @@ int EditorObjectMgr::getSelectionCount()
 {
 #if 1
 	syncSelectedObjectPointerList();
-	return selectedObjects.Count();
+	return static_cast<int>(selectedObjects.size());
 #else
 	int counter = 0;
 	for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
@@ -224,14 +211,14 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 	{
 		return;
 	}
-	selectedObjects.Clear();
+	selectedObjects.clear();
 	for ( BUILDING_LIST::EConstIterator iter = buildings.Begin()
 		;!iter.IsDone(); iter++ )
 	{
 		const EditorObject* pObject = (*iter);
 		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 		if (pAppearance && pAppearance->selected )				
-			selectedObjects.Append(*iter);
+			selectedObjects.push_back(*iter);
 	}
 	for ( UNIT_LIST::EConstIterator mIter = units.Begin();
 	!mIter.IsDone(); mIter++ )
@@ -239,7 +226,7 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 		const EditorObject* pObject = (*mIter);
 		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 		if (pAppearance && pAppearance->selected )				
-			selectedObjects.Append(*mIter);
+			selectedObjects.push_back(*mIter);
 	}
 	for ( DROP_LIST::EIterator dIter = dropZones.Begin();
 	!dIter.IsDone(); dIter++ )
@@ -247,7 +234,7 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 		const EditorObject* pObject = (*dIter);
 		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 		if (pAppearance && pAppearance->selected )				
-			selectedObjects.Append(*dIter);
+			selectedObjects.push_back(*dIter);
 	}
 
 	selectedObjectsNeedsToBeSynched = false;
@@ -258,15 +245,11 @@ void EditorObjectMgr::deleteSelectedObjects()
 	for ( BUILDING_LIST::EIterator iter = buildings.End();
 		!iter.IsDone();  )
 		{
-			// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->selected
-			// (mirror syncSelectedObjectPointerList above, ~line 2177).
 			if ( (*iter)->appearance() && (*iter)->appearance()->selected )
 			{
-				// EDITOR-STATIC-DEDRAW: invalidate the static-prop recipe so the prop
-				// stops drawing (the shared/undo-held appearance keeps it registered
-				// otherwise -> ghost). undo re-registers (editor/Action.cpp:622).
+				// Undo-held appearances outlive removal; their static recipes must stop drawing.
 				(*iter)->appearance()->invalidateStaticRegistration();
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer for removed object (UAF guard).
+				// scrub drag pointer for removed object (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*iter);
 				BUILDING_LIST::EIterator tmpIter = iter;
@@ -280,10 +263,10 @@ void EditorObjectMgr::deleteSelectedObjects()
 		for ( UNIT_LIST::EIterator uIter = units.End();
 		!uIter.IsDone(); )
 		{
-			// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->selected.
+			// appearance() can be NULL; guard before ->selected.
 			if ( (*uIter)->appearance() && (*uIter)->appearance()->selected )
 			{
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer for removed object (UAF guard).
+				// scrub drag pointer for removed object (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*uIter);
 				UNIT_LIST::EIterator tmpIter = uIter;
@@ -297,12 +280,12 @@ void EditorObjectMgr::deleteSelectedObjects()
 		for ( DROP_LIST::EIterator dIter = dropZones.End();
 		!dIter.IsDone(); )
 		{
-			// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->selected.
+			// appearance() can be NULL; guard before ->selected.
 			if ( (*dIter)->appearance() && (*dIter)->appearance()->selected )
 			{
-				// EDITOR-STATIC-DEDRAW: invalidate the static-prop recipe before removal.
+				// invalidate the static-prop recipe before removal.
 				(*dIter)->appearance()->invalidateStaticRegistration();
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer for removed object (UAF guard).
+				// scrub drag pointer for removed object (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*dIter);
 				DROP_LIST::EIterator tmpIter = dIter;
@@ -314,7 +297,7 @@ void EditorObjectMgr::deleteSelectedObjects()
 		
 		}
 
-		selectedObjects.Clear();
+		selectedObjects.clear();
 }
 
 void EditorObjectMgr::adjustObjectsToNewTerrainHeights()
@@ -654,4 +637,17 @@ void EditorObjectMgr::getRandomTreeFromGroup( int treeGroup, int& group, int& in
 	}
 
 
+}
+
+void EditorObjectMgr::addToSelection(EditorObject* object)
+{
+    if (std::find(selectedObjects.begin(), selectedObjects.end(), object) == selectedObjects.end())
+        selectedObjects.push_back(object);
+}
+
+void EditorObjectMgr::removeFromSelection(EditorObject* object)
+{
+    const auto found = std::find(selectedObjects.begin(), selectedObjects.end(), object);
+    if (found != selectedObjects.end())
+        selectedObjects.erase(found);
 }

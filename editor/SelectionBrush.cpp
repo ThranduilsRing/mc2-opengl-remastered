@@ -148,7 +148,7 @@ float SelectionBrush::calcNewHeight( int vertexRow, int vertexCol, float deltaSc
 bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 {
 	if ( !land )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> land deref in every paint branch (sibling StampBrush.cpp:66)
+		return false;  // no terrain -> land deref in every paint branch
 
 	Stuff::Vector4D endPos;
 	endPos.x = (float)screenX;
@@ -218,7 +218,7 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 					return true;
 				}
 
-				// BUG3 (group move): the jacobian above is computed once at the grabbed
+				// the jacobian above is computed once at the grabbed
 				// ANCHOR (pDragBuilding). Convert this frame's cursor pixel delta into a
 				// single WORLD translation, then apply that SAME rigid translation to every
 				// selected object so a multi-select group moves together. For a single
@@ -229,8 +229,8 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 
 				EditorObjectMgr::EDITOR_OBJECT_LIST sel =
 					EditorObjectMgr::instance()->getSelectedObjectList();
-				for ( EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-					!it.IsDone(); it++ )
+				for ( auto it = sel.begin();
+					it != sel.end(); it++ )
 				{
 					EditorObject* pSel = *it;
 					if ( !pSel )
@@ -313,7 +313,7 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 		long bShift = GetAsyncKeyState( VK_SHIFT );
 		long bCtrl = GetAsyncKeyState( VK_CONTROL );
 
-		// BUG1: record the marquee corners in SCREEN space (endPos = current cursor).
+		// record the marquee corners in SCREEN space (endPos = current cursor).
 		// endPaint selects with these directly instead of round-tripping world positions
 		// through the broken inverseProject, which collapsed under zoom-in.
 		if ( !m_marqueeStarted )
@@ -355,7 +355,7 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 
 			eye->inverseProject( screenPos, lastWorldPos );
 
-			// by Methuselas: drag-select already works from projected object centers;
+			// drag-select already works from projected object centers;
 			// single-click needs to test the actual mouse screen point so remastered
 			// mech appearances do not miss through terrain inverse-project drift.
 			const EditorObject* pInfo = EditorObjectMgr::instance()->getObjectAtScreenPosition( screenX, screenY );
@@ -379,7 +379,7 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 					if ( fabs(worldPos.y - land->tileRowToWorldCoord[tileR]) >= land->worldUnitsPerVertex/2 )
 						tileR++;
 
-					// by Methuselas: the rounding above can push an edge click from the
+					// the rounding above can push an edge click from the
 					// last valid tile to one-past-the-end.  The original bounds check
 					// happened before rounding, so re-check before touching the terrain
 					// selection arrays.

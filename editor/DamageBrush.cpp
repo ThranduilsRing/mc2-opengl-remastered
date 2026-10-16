@@ -73,8 +73,8 @@ Action* DamageBrush::applyToSelection()
 	ModifyBuildingAction* pRetAction = new ModifyBuildingAction;
 
 	EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-	EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
-	while (!it.IsDone())
+	auto it = selectedObjectsList.begin();
+	while (it != selectedObjectsList.end())
 	{
 		EditorObject* pInfo = (*it);
 		if ( pInfo )

@@ -17,6 +17,119 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
 
 
 class LegacyLinkTests(unittest.TestCase):
+    def test_selection_preserves_borrowed_copies_unique_order_and_roster_sync(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / 'mc2-el9-selection' / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == '{') - (source[end] == '}')
+                end += 1
+            return source[start:end] + '\n'
+
+        def fixture(header, implementation, manager, interface):
+            legacy = 'class EDITOR_OBJECT_LIST' in header
+            source = ('#include <cassert>\n#include <cstdlib>\n#include <new>\n'
+                      '#include <vector>\n#include <algorithm>\n#define gosASSERT(x) assert(x)\n'
+                      'struct Heap { void* Malloc(size_t n) { return malloc(n); } '
+                      'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
+            source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+            source += ('constexpr int DRAW_BARS = 1; struct ObjectAppearance { int selected = 0; };\n'
+                       'struct EditorObject { virtual ~EditorObject() = default; '
+                       'ObjectAppearance state; bool present = true; bool isSelected() { return state.selected; } '
+                       'ObjectAppearance* appearance() { return present ? &state : nullptr; } '
+                       'const ObjectAppearance* appearance() const { return present ? &state : nullptr; } };\n'
+                       'struct Unit : EditorObject {}; struct DropZone : EditorObject {}; '
+                       'class EditorObjectMgr { public:\n')
+            start = header.index('\tclass EDITOR_OBJECT_LIST' if legacy else '\tusing EDITOR_OBJECT_LIST')
+            source += header[start:header.index('\tEditorObjectMgr();', start)]
+            source += ('using BUILDING_LIST = EList<EditorObject*, EditorObject*>; '
+                       'using UNIT_LIST = EList<Unit*, Unit*>; using DROP_LIST = BUILDING_LIST;\n'
+                       'BUILDING_LIST buildings, dropZones; UNIT_LIST units; EDITOR_OBJECT_LIST selectedObjects; '
+                       'bool selectedObjectsNeedsToBeSynched = false;\n')
+            signatures = ['void EditorObjectMgr::select( EditorObject &',
+                          'void EditorObjectMgr::unselectAll()',
+                          'bool EditorObjectMgr::hasSelection()',
+                          'int EditorObjectMgr::getSelectionCount()',
+                          'EditorObjectMgr::EDITOR_OBJECT_LIST EditorObjectMgr::getSelectedObjectList()',
+                          'void EditorObjectMgr::syncSelectedObjectPointerList()']
+            if not legacy:
+                signatures += ['void EditorObjectMgr::addToSelection(', 'void EditorObjectMgr::removeFromSelection(']
+            methods = [method(implementation, signature) for signature in signatures]
+            methods += [method(manager, 'void EditorObjectMgr::getSelectedUnits(')]
+            source += ''.join(m[:m.index('{')].replace('EditorObjectMgr::', '') + ';\n' for m in methods)
+            source += '};\n' + ''.join(methods)
+            settings = method(interface, 'int EditorInterface::UnitSettings()')
+            loop = method(settings, 'for ( iter = list2.End()' if legacy else 'for (size_t index = list2.size()')
+            source += ('void filter(EditorObjectMgr::EDITOR_OBJECT_LIST& list2) {\n' +
+                       ('EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator iter;\n' if legacy else '') + loop + '}\n')
+            main = r'''
+int main() {
+    EditorObjectMgr mgr;
+    EditorObject a, missing; Unit b, d; DropZone c; missing.present = false;
+    mgr.buildings.Append(&a); mgr.units.Append(&b); mgr.dropZones.Append(&c);
+    assert(!mgr.hasSelection() && mgr.getSelectionCount() == 0);
+    mgr.select(c, true); mgr.select(a, true); mgr.select(c, true); mgr.select(missing, true);
+    auto snapshot = mgr.getSelectedObjectList();
+    assert(snapshot.SIZE() == 2 && snapshot[0] == &c && snapshot[1] == &a);
+    mgr.select(c, false); mgr.select(c, false); mgr.select(c, true);
+    auto reordered = mgr.getSelectedObjectList();
+    assert(reordered[0] == &a && reordered[1] == &c);
+    snapshot[0]->state.selected = 9;
+    assert(c.state.selected == 9);
+    snapshot.CLEAR(); assert(mgr.getSelectionCount() == 2);
+    mgr.select(b, true); mgr.selectedObjectsNeedsToBeSynched = true;
+    auto synced = mgr.getSelectedObjectList();
+    assert(synced.SIZE() == 3 && synced[0] == &a && synced[1] == &b && synced[2] == &c);
+    mgr.unselectAll(); assert(!mgr.hasSelection() && mgr.getSelectionCount() == 0);
+    assert(!a.state.selected && !b.state.selected && !c.state.selected);
+    assert(synced.SIZE() == 3 && synced[0] == &a);
+    mgr.selectedObjects.APPEND(&a); mgr.selectedObjects.APPEND(&b); mgr.selectedObjects.APPEND(&a);
+    mgr.select(a, false);
+    auto duplicates = mgr.getSelectedObjectList();
+    assert(duplicates.SIZE() == 2 && duplicates[0] == &b && duplicates[1] == &a);
+    mgr.units.Append(&d); mgr.select(d, true); mgr.select(b, true);
+    SELECTED_UNITS selectedUnits; selectedUnits.APPEND(&d);
+    mgr.getSelectedUnits(selectedUnits);
+    assert(selectedUnits.SIZE() == 3 && selectedUnits[0] == &d && selectedUnits[1] == &b && selectedUnits[2] == &d);
+    EditorObjectMgr::EDITOR_OBJECT_LIST mixed;
+    EMPTY_FILTER
+    mixed.APPEND(&b); mixed.APPEND(&c); filter(mixed); assert(mixed.SIZE() == 0);
+    mixed.APPEND(&a); mixed.APPEND(&b); mixed.APPEND(&missing); mixed.APPEND(&c); mixed.APPEND(&a);
+    filter(mixed); assert(mixed.SIZE() == 3 && mixed[0] == &a && mixed[1] == &missing && mixed[2] == &a);
+}
+'''
+            return source + main.replace('EMPTY_FILTER', '' if legacy else 'filter(mixed); assert(mixed.size() == 0);').replace('SIZE', 'Count' if legacy else 'size').replace('CLEAR', 'Clear' if legacy else 'clear').replace('APPEND', 'Append' if legacy else 'push_back').replace('SELECTED_UNITS', 'EditorObjectMgr::UNIT_LIST' if legacy else 'EditorObjectMgr::SelectedUnits')
+
+        def run(source, label, succeeds=True):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(source, encoding='utf-8')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        old = [subprocess.check_output(['git', 'show', '904764753:' + path], cwd=root,
+               **child_kwargs(redirected=True)).decode('utf-8') for path in
+               ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr_select.cpp',
+                'editor/EditorObjectMgr.cpp', 'editor/EditorInterface_wnd.cpp')]
+        run(fixture(*old), 'old')
+        current = [(root / path).read_text(encoding='utf-8') for path in
+                   ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr_select.cpp',
+                    'editor/EditorObjectMgr.cpp', 'editor/EditorInterface_wnd.cpp')]
+        run(fixture(*current), 'current')
+        baseline = fixture(*current)
+        mutated = baseline.replace('selectedObjects.push_back(*dIter);',
+                                   'selectedObjects.insert(selectedObjects.begin(), *dIter);')
+        self.assertNotEqual(mutated, baseline)
+        run(mutated, 'wrong-order', False)
+        print(f'Selection fixture artifacts: {output}')
+
     def test_catalog_append_retains_names_order_first_match_and_value_copies(self):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / 'mc2-el8-catalog' / uuid.uuid4().hex
@@ -42,7 +155,7 @@ class LegacyLinkTests(unittest.TestCase):
                 source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
             source += ('struct AppearanceType {}; using DWORD = unsigned long;\n'
                        'constexpr int MECH_TYPE = 1, GV_TYPE = 2;\nclass EditorObjectMgr { public:\n')
-            source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST')]
+            source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST' if 'class EDITOR_OBJECT_LIST' in header else '\t// Borrowed pointers;')]
             source += header[header.index('\t\tstruct Building\n'):header.index('\t\ttypedef EList< BuildingLink*')]
             source += 'GROUP_LIST groups;\n'
             signatures = ('int EditorObjectMgr::getBuildingGroupCount',

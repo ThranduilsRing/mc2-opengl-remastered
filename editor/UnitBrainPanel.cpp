@@ -87,8 +87,8 @@ EditorObject* firstSelected(int* outCount)
 	if (mgr)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
-		for (EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-			!it.IsDone(); it++)
+		for (auto it = sel.begin();
+			it != sel.end(); it++)
 		{
 			if (*it)
 			{

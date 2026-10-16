@@ -132,7 +132,7 @@ void EditorObjectMgr::clear()
 
 		links.Clear();
 
-		selectedObjects.Clear();
+		selectedObjects.clear();
 		selectedObjectsNeedsToBeSynched = false;
 
 		for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
@@ -705,21 +705,21 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 				&& pInfo->cellRow == (*iter)->cellRow
 				&& pInfo->appearance() == (*iter)->appearance() )
 			{
-				// EDITOR-STATIC-DEDRAW: invalidate the static-prop RENDER recipe on
+				// invalidate the static-prop RENDER recipe on
 				// scene-delete so the prop stops drawing immediately. The undo system
 				// clones/snapshots the object (sharing the appearance), so the appearance
 				// usually outlives this delete (appearInfo refCount > 1) and ~appearance's
 				// destroy()-driven invalidate never fires -> the deleted building/tree
 				// kept rendering as a ghost. invalidateStaticRegistration() is virtual +
 				// public (same as the registerStatic() the editor already calls); undo
-				// re-registers via registerStatic() (editor/Action.cpp:622).
+				// re-registers via registerStatic().
 				if ( (*iter)->appearance() )
 					(*iter)->appearance()->invalidateStaticRegistration();
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer before freeing (UAF guard).
+				// scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*iter);
 				delete (*iter);
-				selectedObjects.RemoveIfThere(*iter);
+				removeFromSelection(*iter);
 				EditorData::instance->handleObjectInvalidation(*iter);
 				buildings.Delete( iter );
 				return true;
@@ -734,11 +734,11 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 			if( pInfo->cellColumn == (*mIter)->cellColumn
 				&& pInfo->cellRow == (*mIter)->cellRow )
 			{
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer before freeing (UAF guard).
+				// scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*mIter);
 				delete( *mIter );
-				selectedObjects.RemoveIfThere(*mIter);
+				removeFromSelection(*mIter);
 				EditorData::instance->handleObjectInvalidation(*mIter);
 				units.Delete( mIter );
 				return true;
@@ -751,11 +751,11 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 			if( pInfo->cellColumn == (*dIter)->cellColumn
 				&& pInfo->cellRow == (*dIter)->cellRow )
 			{
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer before freeing (UAF guard).
+				// scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*dIter);
 				delete( *dIter );
-				selectedObjects.RemoveIfThere(*dIter);
+				removeFromSelection(*dIter);
 				EditorData::instance->handleObjectInvalidation(*dIter);
 				dropZones.Delete( dIter );
 				return true;
@@ -1122,12 +1122,12 @@ int EditorObjectMgr::getUnitGroupCount( ) const
 
 }
 
-void EditorObjectMgr::getSelectedUnits( UNIT_LIST& selUnits )
+void EditorObjectMgr::getSelectedUnits( SelectedUnits& selUnits )
 {
 	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
 	{
 		if ( (*iter)->isSelected() )
-			selUnits.Append( (*iter) );
+			selUnits.push_back( (*iter) );
 	}
 }
 
