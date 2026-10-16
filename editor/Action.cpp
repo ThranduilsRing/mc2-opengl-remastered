@@ -19,6 +19,7 @@
 
 #include <winsock2.h>
 #include <string.h>
+#include <algorithm>
 
 #include "terrain.h"
 #include "Action.h"
@@ -44,34 +45,32 @@ void ActionUndoMgr::AddAction( Action* pAction )
 {
     gosASSERT( pAction );
 
-    if ( m_listUndoActions.Count() )
+    if ( !m_listUndoActions.empty() )
     {
         if (m_PosOfLastSave > m_CurrentPos)
         {
             m_PosOfLastSave = -1;
         }
 
-        ACTION_LIST::EIterator iter = m_listUndoActions.End();
-        for ( int i = m_listUndoActions.Count() - 1; i > m_CurrentPos; -- i )
+        while (static_cast<long>(m_listUndoActions.size()) - 1 > m_CurrentPos)
         {
-            delete (*iter);
-            iter--;
-            m_listUndoActions.DeleteTail();
+            delete m_listUndoActions.back();
+            m_listUndoActions.pop_back();
         }
     }
 
-    m_listUndoActions.Append( pAction );
-    m_CurrentPos = m_listUndoActions.Count() - 1;
+    m_listUndoActions.push_back( pAction );
+    m_CurrentPos = static_cast<long>(m_listUndoActions.size()) - 1;
 }
 
 void ActionUndoMgr::EmptyUndoList()
 {
-    for (ACTION_LIST::EIterator pos = m_listUndoActions.Begin(); !pos.IsDone(); pos++ )
+    for (Action* action : m_listUndoActions)
     {
-        delete (*pos);
+        delete action;
     }
 
-    m_listUndoActions.Clear();
+    m_listUndoActions.clear();
     m_CurrentPos = -1;
     m_PosOfLastSave = -1;
 }
@@ -84,8 +83,7 @@ const char* ActionUndoMgr::GetRedoString()
     {
         ACTION_POS tmp = m_CurrentPos;
         tmp++;
-        ACTION_LIST::EIterator iter = m_listUndoActions.Iterator( tmp );
-        return (*iter)->getDescription();
+        return m_listUndoActions[tmp]->getDescription();
     }
 
     return strRet;
@@ -97,8 +95,7 @@ const char* ActionUndoMgr::GetUndoString()
 
     if ( HaveUndo() )
     {
-        ACTION_LIST::EIterator iter = m_listUndoActions.Iterator( m_CurrentPos );
-        return (*iter)->getDescription();
+        return m_listUndoActions[m_CurrentPos]->getDescription();
     }
 
     return strRet;
@@ -106,7 +103,7 @@ const char* ActionUndoMgr::GetUndoString()
 
 bool ActionUndoMgr::HaveRedo() const
 {
-    return m_CurrentPos + 1 != m_listUndoActions.Count();
+    return m_CurrentPos + 1 != static_cast<long>(m_listUndoActions.size());
 }
 
 bool ActionUndoMgr::HaveUndo() const
@@ -119,9 +116,7 @@ bool ActionUndoMgr::Redo()
     gosASSERT( HaveRedo() );
 
     m_CurrentPos++;
-    ACTION_LIST::EIterator iter = m_listUndoActions.Iterator( m_CurrentPos );
-
-    return (*iter)->redo();
+    return m_listUndoActions[m_CurrentPos]->redo();
 }
 
 void ActionUndoMgr::Reset()
@@ -135,8 +130,7 @@ bool ActionUndoMgr::Undo()
 
     gosASSERT( HaveUndo() );
 
-    ACTION_LIST::EIterator iter = m_listUndoActions.Iterator( m_CurrentPos );
-    bRetVal = (*iter)->undo();
+    bRetVal = m_listUndoActions[m_CurrentPos]->undo();
     m_CurrentPos --;
 
     return bRetVal;
@@ -161,36 +155,16 @@ bool ActionUndoMgr::ThereHasBeenANetChangeFromWhenLastSaved()
 
 int ActionUndoMgr::GetActionCount() const
 {
-    return (int)m_listUndoActions.Count();
+    return (int)m_listUndoActions.size();
 }
 
-//************************************************************************
-// Function:    GetActionDescription
-// ParamsIn:    index -- 0-based index into the undo list
-// ParamsOut:   none
-// Returns:     description string of the action at that index, or "" on
-//              out-of-range. Never returns NULL.
-// Description: Read-only accessor for display panels.
-//              Uses the same EIterator/Begin()/IsDone() pattern as the
-//              rest of Action.cpp.
-//************************************************************************
 const char* ActionUndoMgr::GetActionDescription( int index ) const
 {
-    if ( index < 0 || index >= (int)m_listUndoActions.Count() )
+    if ( index < 0 || index >= (int)m_listUndoActions.size() )
         return "";
 
-    int i = 0;
-    for ( ACTION_LIST::EConstIterator iter = m_listUndoActions.Begin();
-          !iter.IsDone(); iter++, ++i )
-    {
-        if ( i == index )
-        {
-            const char* desc = (*iter)->getDescription();
-            return desc ? desc : "";
-        }
-    }
-
-    return "";
+    const char* desc = m_listUndoActions[index]->getDescription();
+    return desc ? desc : "";
 }
 
 int ActionUndoMgr::GetCurrentPosition() const
@@ -205,8 +179,7 @@ bool ActionPaintTile::redo()
 
 bool ActionPaintTile::doRedo()
 {
-    for ( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
-        !iter.IsDone(); iter++ )
+    for (auto iter = vertexInfoList.begin(); iter != vertexInfoList.end(); ++iter)
     {
         int terrain = land->getTerrain( (*iter).row, (*iter).column );
         int texture = land->getTexture( (*iter).row, (*iter).column );
@@ -239,33 +212,30 @@ bool ActionPaintTile::undo()
 
 void ActionPaintTile::addVertexInfo( VertexInfo& info )
 {
-    for( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
-        !iter.IsDone(); iter++ )
+    for (auto iter = vertexInfoList.begin(); iter != vertexInfoList.end(); ++iter)
     {
         if ( info.row == (*iter).row && info.column == (*iter).column )
             return;
     }
 
-    vertexInfoList.Append( info );
+    vertexInfoList.push_back( info );
 }
 
 void ActionPaintTile::addChangedVertexInfo( int row, int column )
 {
-    for( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
-        !iter.IsDone(); iter++ )
+    for (auto iter = vertexInfoList.begin(); iter != vertexInfoList.end(); ++iter)
     {
         if ( row == (*iter).row && column == (*iter).column )
             return;
     }
 
     VertexInfo info( row, column );
-    vertexInfoList.Append( info );
+    vertexInfoList.push_back( info );
 }
 
 bool ActionPaintTile::getOldHeight( int row, int column, float& height )
 {
-    for( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
-        !iter.IsDone(); iter++ )
+    for (auto iter = vertexInfoList.begin(); iter != vertexInfoList.end(); ++iter)
     {
         if ( row == (*iter).row && column == (*iter).column )
         {
@@ -298,13 +268,6 @@ VertexInfo::VertexInfo( long newRow, long newColumn )
 
 ModifyBuildingAction::EditorAppearanceSnapshot::EditorAppearanceSnapshot()
 {
-    /*
-        Keep this constructor boring and explicit.
-
-        EList constructs/copies node payloads by value. The snapshot must be a
-        plain value type so the editor can keep using the original undo-list
-        mechanics without requiring ObjectAppearance itself to be concrete.
-    */
     lightIntensity = 0.0f;
     rotation = 0.0f;
     selected = 0;
@@ -403,9 +366,9 @@ void ModifyBuildingAction::EditorAppearanceSnapshot::applyTo(ObjectAppearance& d
 
 ModifyBuildingAction::~ModifyBuildingAction()
 {
-    for ( OBJ_INFO_PTR_LIST::EIterator iter = buildingCopyPtrs.Begin(); !iter.IsDone(); iter++)
+    for (EditorObject* copy : buildingCopyPtrs)
     {
-        delete (*iter);
+        delete copy;
     }
 }
 
@@ -413,12 +376,10 @@ bool ModifyBuildingAction::doRedo()
 {
     bool bRetVal = true;
 
-    OBJ_INFO_PTR_LIST::EIterator iter2 = buildingPtrs.Begin();
-    OBJ_APPEAR_LIST::EIterator iter3 = buildingAppearanceCopies.Begin();
-    OBJ_ID_LIST::EIterator iter4 = buildingIDs.Begin();
+    auto iter3 = buildingAppearanceCopies.begin();
+    auto iter4 = buildingIDs.begin();
 
-    for ( OBJ_INFO_PTR_LIST::EIterator iter = buildingCopyPtrs.Begin();
-        !iter.IsDone(); iter++)
+    for (auto iter = buildingCopyPtrs.begin(); iter != buildingCopyPtrs.end(); ++iter)
     {
         EditorObject *pBuilding = EditorObjectMgr::instance()->getObjectAtLocation((*iter4).x, (*iter4).y);
 
@@ -426,25 +387,7 @@ bool ModifyBuildingAction::doRedo()
         {
             EditorObject *pBuildingSwap = (*iter)->Clone();
 
-            /*
-                Editor migration note:
-
-                This is the old swap algorithm, but using a local snapshot type
-                instead of ObjectAppearance-by-value.
-
-                Old behavior:
-                    1. Copy saved appearance to temporary.
-                    2. Replace saved appearance with current appearance.
-                    3. Replace current appearance with temporary.
-
-                New behavior:
-                    1. Copy saved snapshot to temporary.
-                    2. Capture current appearance into saved snapshot.
-                    3. Apply temporary snapshot back onto the live appearance.
-
-                That keeps undo and redo symmetric while avoiding construction
-                of ObjectAppearance itself.
-            */
+            // Swapping the saved and live states makes undo and redo symmetric.
             EditorAppearanceSnapshot appearanceSwap = (*iter3);
 
             (*iter)->CastAndCopy(*pBuilding);
@@ -456,7 +399,7 @@ bool ModifyBuildingAction::doRedo()
             delete pBuildingSwap;
 
             {
-                /*this is just to make sure the visuals are up-to-date*/
+                // Damage transitions refresh the visuals.
                 bool d = pBuilding->getDamage();
                 pBuilding->setDamage(!d);
                 pBuilding->setDamage(d);
@@ -464,9 +407,7 @@ bool ModifyBuildingAction::doRedo()
 
             long row, column;
             pBuilding->getCells(row, column);
-            // Preserve the snapshot's (possibly free, sub-cell) position across the
-            // cell/link bookkeeping moveBuilding, so undo/redo of a freely-placed
-            // building does not snap it back to the grid.
+            // Preserve free placement across the cell/link bookkeeping update.
             ObjectAppearance* pUndoApp = pBuilding->appearance();
             Stuff::Vector3D undoFreePos;
             if (pUndoApp)
@@ -488,7 +429,6 @@ bool ModifyBuildingAction::doRedo()
             gosASSERT(false);
         }
 
-        iter2++;
         iter3++;
         iter4++;
     }
@@ -509,28 +449,23 @@ bool ModifyBuildingAction::undo()
 
 void ModifyBuildingAction::addBuildingInfo(EditorObject& info)
 {
-    if ((0 < buildingPtrs.Count()) && (OBJ_INFO_PTR_LIST::INVALID_ITERATOR != buildingPtrs.Find(&info)))
+    if (std::find(buildingPtrs.begin(), buildingPtrs.end(), &info) != buildingPtrs.end())
     {
         return;
     }
 
     EditorObject *pInfoCopy = info.Clone();
-    buildingCopyPtrs.Append( pInfoCopy );
+    buildingCopyPtrs.push_back( pInfoCopy );
 
-    /*
-        Store an editor-owned appearance snapshot instead of trying to append
-        ObjectAppearance by value. Remastered owns the polymorphic appearance
-        model; the editor only needs undo/redo state.
-    */
     EditorAppearanceSnapshot appearanceSnapshot(*(info.appearance()));
-    buildingAppearanceCopies.Append(appearanceSnapshot);
+    buildingAppearanceCopies.push_back(appearanceSnapshot);
 
-    buildingPtrs.Append( &info );
+    buildingPtrs.push_back( &info );
 
     CObjectID id;
     id.x = info.getPosition().x;
     id.y = info.getPosition().y;
-    buildingIDs.Append(id);
+    buildingIDs.push_back(id);
 }
 
 
@@ -606,9 +541,9 @@ bool ForestAction::redo()
 
 void ModifyBuildingAction::updateNotedObjectPositions()
 {
-    OBJ_ID_LIST::EIterator iter4 = buildingIDs.Begin();
+    auto iter4 = buildingIDs.begin();
 
-    for ( OBJ_INFO_PTR_LIST::EIterator iter = buildingPtrs.Begin(); !iter.IsDone(); iter++)
+    for (auto iter = buildingPtrs.begin(); iter != buildingPtrs.end(); ++iter)
     {
         EditorObject *pBuilding = (*iter);
 

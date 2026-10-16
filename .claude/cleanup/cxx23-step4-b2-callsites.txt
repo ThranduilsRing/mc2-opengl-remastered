@@ -1,20 +1,19 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 831 sites in 51 files
+# total 753 sites in 44 files
 # per kind:
-#     234  EList::Begin
-#     173  EList
-#     143  EList::Count
-#     107  EList::Append
-#      39  EList::~EList
+#     218  EList::Begin
+#     148  EList
+#     127  EList::Count
+#      99  EList::Append
+#      36  EList::~EList
 #      26  EList::operator[]
 #      23  EList::Delete
-#      21  EList::Iterator
-#      19  EList::Clear
-#      18  EList::EList
-#      12  EList::End
+#      18  EList::Clear
+#      17  EList::Iterator
+#      15  EList::EList
+#      11  EList::End
 #      10  EList::GetHead
 #       2  EList::Insert
-#       1  EList::DeleteTail
 #       1  EList::operator=
 #       1  EList::Find
 #       1  EList::INVALID_ITERATOR
@@ -22,8 +21,8 @@
 #       1  B2.3
 #       6  B6
 #     245  E1
-#     411  E2
-#      20  E3
+#     347  E2
+#       6  E3
 #     148  E4
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
@@ -31,7 +30,6 @@
 #      98  editor/ObjectiveDlg.cpp
 #      72  editor/EditorObjectMgr_select.cpp
 #      59  editor/EditorObjectMgr_io.cpp
-#      58  editor/Action.cpp
 #      56  editor/Objective.cpp
 #      48  editor/UnitSettingsDlg.cpp
 #      37  editor/EditorObjectMgr.h
@@ -46,45 +44,36 @@
 #      11  editor/Objective.h
 #      10  editor/ChooseUnitDlg.cpp
 #       9  editor/EditorData_save.cpp
-#       8  editor/Action.h
 #       8  editor/EditorDebugOverlay.cpp
 #       8  editor/Objective_conditions.cpp
 #       7  editor/EditorInterface_wnd.cpp
 #       5  code/mpparameterscreen.cpp
-#       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_mouse.cpp
-#       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
 #       3  editor/TelemetryPanel.cpp
 #       3  editor/UnitBrainPanel.cpp
-#       3  editor/eraser.cpp
+#       2  editor/Action.cpp
 #       2  editor/BuildingSettingsDlg.h
 #       2  editor/EditorData_terrain.cpp
 #       2  editor/EditorObjects_unit.cpp
 #       2  editor/GameplayDebugger.cpp
 #       2  editor/InspectorPanel.cpp
-#       2  editor/ObjectSelectionBrush.cpp
 #       2  editor/ObjectiveDlg.h
-#       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
+#       2  editor/eraser.cpp
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
 #       1  editor/DamageBrush.cpp
 #       1  editor/EditorInterface.cpp
 #       1  editor/EditorInterface_imgui.cpp
 #       1  editor/EditorObjects.h
-#       1  editor/FlattenBrush.cpp
-#       1  editor/HeightBrush.cpp
+#       1  editor/ObjectSelectionBrush.cpp
 #       1  editor/ObjectSelectionBrush.h
-#       1  editor/ScatterBrush.cpp
-#       1  editor/StampBrush.cpp
+#       1  editor/SelectionBrush.cpp
 # blob e5eb973f75d5b9dd9a5f240099990aabe605157c code/mission_update.cpp
 # blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
-# blob 973998713a2f192ea86d2319e2985382a37b60ad editor/Action.cpp
-# blob b31494e4c1a6dde629f4314019849e47784999da editor/Action.h
-# blob 3bb73f78efe7050a2464d40c8f5c56aa0adf36be editor/BuildingBrush.cpp
-# blob ffba17cb457c4844b67e5b8344a8854efded1cf4 editor/BuildingBrush.h
+# blob aa65678541609a56de326827137f7e3d99eaf80b editor/Action.cpp
 # blob a7df5ac1a2d8e07091214366b2e3b6996f1b28a6 editor/BuildingSettingsDlg.cpp
 # blob 1edc9812c84eab22d662e03a49b712b36ac952ac editor/BuildingSettingsDlg.h
 # blob a6f769cf0e1eb38edaddb4e103b56db8eccd6fff editor/ChooseBuildingDlg.cpp
@@ -106,12 +95,10 @@
 # blob 06ad882fea0a5f7f0bd5ad8c14a2288f3269f4de editor/EditorObjectMgr_select.cpp
 # blob 4063c29b001fee029ae2c4a2847fe94978b3d001 editor/EditorObjects.h
 # blob 18734ac4e8ac5a3942f4c425aa1c4b7604868e22 editor/EditorObjects_unit.cpp
-# blob 3653e5921154cc44d905ee0622acc0e700f26d4b editor/FlattenBrush.cpp
 # blob ff740c13ca3709a3480c2c769ace041b33312484 editor/GameplayDebugger.cpp
-# blob cfccb98b3478c7f5cba34acacfb7fe73b8aee829 editor/HeightBrush.cpp
 # blob ce78979d26d339bc9bdaf034338fefc8e60e20b4 editor/InspectorPanel.cpp
 # blob 12d303e40ff570baf923ab693f5fb42761a867e4 editor/MissionValidation.cpp
-# blob f5bc0d48faff08df66c80bc4467224f71aeadccd editor/ObjectSelectionBrush.cpp
+# blob 01b34a4860bbeffe43ecaff6ff91e8b1a098405f editor/ObjectSelectionBrush.cpp
 # blob 60fc1db428d58d4068d0612e0a34840172e52047 editor/ObjectSelectionBrush.h
 # blob 1ed87ad1d854026d0cfe4055ddec68c11cafbba7 editor/Objective.cpp
 # blob e66ca41422e6bff99c5fcb9d38c9bbc7449bb722 editor/Objective.h
@@ -120,15 +107,13 @@
 # blob af2eb82892266fc51e47ab1c33aec1f8b22934d3 editor/Objective_conditions.cpp
 # blob 945de4f932649474771b7eaacf9aedc6c6faa4a9 editor/ObjectivesDlg.cpp
 # blob 40a6e8664fb78547a7de3d2f8c722247ed94ea1f editor/ObjectivesSummaryPanel.cpp
-# blob dfac67d130e5adfb2af5c179faae53b90d7000d9 editor/ScatterBrush.cpp
 # blob f5dff2d7511d3e178d450c145ff3eabf1b546021 editor/SceneOutliner.cpp
-# blob b3c487752565c75a1004f5105a8c50c8ab37d2ef editor/SelectionBrush.cpp
-# blob 5ad8b4c641b201e16f14acfda67e77b745f8561d editor/StampBrush.cpp
+# blob 7b471f576b84bfae0e217161ef55d449381790f4 editor/SelectionBrush.cpp
 # blob 177b0e9d2e0f618dd81148126f87a8b99ee81a68 editor/TelemetryPanel.cpp
 # blob d86529592c91137c96c85a9dd6a7c07c0d21eeec editor/UnitBrainPanel.cpp
 # blob b557cf5e488f4035bb350b1edb2095ffe3282a01 editor/UnitSettingsDlg.cpp
 # blob 74ef015b489c98a38a7b9d374e843fb92fbcabb9 editor/UnitSettingsDlg.h
-# blob c931869d1cfab7b3f3de2e51d23993c7a1c476cd editor/eraser.cpp
+# blob 750a8a4dcc5620e9638f66241e9bc2108556cbd7 editor/eraser.cpp
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 2
 #   editor/EditorObjectMgr_select.cpp:174 (branch opened at 167): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
 #   editor/EditorObjectMgr_select.cpp:198 (branch opened at 193): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
@@ -140,79 +125,8 @@ code/mpparameterscreen.cpp:2323:EList::Delete
 code/mpparameterscreen.cpp:2351:EList::Begin
 code/mpparameterscreen.cpp:2369:EList::Begin
 code/mpparameterscreen.h:102:EList
-editor/Action.cpp:31:EList::EList
-editor/Action.cpp:39:EList::~EList
-editor/Action.cpp:47:EList::Count
-editor/Action.cpp:54:EList
-editor/Action.cpp:54:EList::End
-editor/Action.cpp:55:EList::Count
-editor/Action.cpp:59:EList::DeleteTail
-editor/Action.cpp:63:EList::Append
-editor/Action.cpp:64:EList::Count
-editor/Action.cpp:69:EList
-editor/Action.cpp:69:EList::Begin
-editor/Action.cpp:74:EList::Clear
-editor/Action.cpp:87:EList
-editor/Action.cpp:87:EList::Iterator
-editor/Action.cpp:100:EList
-editor/Action.cpp:100:EList::Iterator
-editor/Action.cpp:109:EList::Count
-editor/Action.cpp:122:EList
-editor/Action.cpp:122:EList::Iterator
-editor/Action.cpp:138:EList
-editor/Action.cpp:138:EList::Iterator
-editor/Action.cpp:164:EList::Count
-editor/Action.cpp:179:EList::Count
-editor/Action.cpp:183:EList
-editor/Action.cpp:183:EList::Begin
-editor/Action.cpp:208:EList
-editor/Action.cpp:208:EList::Begin
-editor/Action.cpp:242:EList
-editor/Action.cpp:242:EList::Begin
-editor/Action.cpp:249:EList::Append
-editor/Action.cpp:254:EList
-editor/Action.cpp:254:EList::Begin
-editor/Action.cpp:262:EList::Append
-editor/Action.cpp:267:EList
-editor/Action.cpp:267:EList::Begin
-editor/Action.cpp:405:EList::~EList
-editor/Action.cpp:406:EList
-editor/Action.cpp:406:EList::Begin
-editor/Action.cpp:416:EList
-editor/Action.cpp:416:EList::Begin
-editor/Action.cpp:417:EList
-editor/Action.cpp:417:EList::Begin
-editor/Action.cpp:418:EList
-editor/Action.cpp:418:EList::Begin
-editor/Action.cpp:420:EList
-editor/Action.cpp:420:EList::Begin
-editor/Action.cpp:512:EList
-editor/Action.cpp:512:EList::Count
-editor/Action.cpp:518:EList::Append
-editor/Action.cpp:526:EList::Append
-editor/Action.cpp:528:EList::Append
-editor/Action.cpp:533:EList::Append
-editor/Action.cpp:609:EList
-editor/Action.cpp:609:EList::Begin
-editor/Action.cpp:611:EList
-editor/Action.cpp:611:EList::Begin
-editor/Action.cpp:665:EList::~EList
-editor/Action.cpp:666:EList::Begin
-editor/Action.h:73:EList
-editor/Action.h:82:EList::EList
-editor/Action.h:90:EList::EList
-editor/Action.h:114:EList::Count
-editor/Action.h:119:EList
-editor/Action.h:171:EList
-editor/Action.h:178:EList
-editor/Action.h:265:EList
-editor/BuildingBrush.cpp:208:EList::Count
-editor/BuildingBrush.cpp:242:EList::Begin
-editor/BuildingBrush.cpp:263:EList::Begin
-editor/BuildingBrush.cpp:286:EList::Append
-editor/BuildingBrush.h:68:EList
-editor/BuildingBrush.h:70:EList::~EList
-editor/BuildingBrush.h:72:EList::Begin
+editor/Action.cpp:600:EList::~EList
+editor/Action.cpp:601:EList::Begin
 editor/BuildingSettingsDlg.cpp:21:EList
 editor/BuildingSettingsDlg.cpp:91:EList
 editor/BuildingSettingsDlg.cpp:91:EList::Begin
@@ -640,10 +554,8 @@ editor/EditorObjectMgr_select.cpp:642:EList::Begin
 editor/EditorObjects.h:333:EList
 editor/EditorObjects_unit.cpp:173:EList::Count
 editor/EditorObjects_unit.cpp:546:EList::Begin
-editor/FlattenBrush.cpp:34:EList::Count
 editor/GameplayDebugger.cpp:77:EList::Begin
 editor/GameplayDebugger.cpp:207:EList::Begin
-editor/HeightBrush.cpp:56:EList::Count
 editor/InspectorPanel.cpp:61:EList::Count
 editor/InspectorPanel.cpp:62:EList::Begin
 editor/MissionValidation.cpp:156:EList::~EList
@@ -658,7 +570,6 @@ editor/MissionValidation.cpp:311:EList::~EList
 editor/MissionValidation.cpp:312:EList::Begin
 editor/MissionValidation.cpp:348:EList::~EList
 editor/MissionValidation.cpp:349:EList::Begin
-editor/ObjectSelectionBrush.cpp:66:EList::Count
 editor/ObjectSelectionBrush.cpp:191:EList::EList
 editor/ObjectSelectionBrush.h:19:EList
 editor/Objective.cpp:28:EList::Begin
@@ -883,7 +794,6 @@ editor/ObjectivesSummaryPanel.cpp:462:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:480:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:534:EList::Count
 editor/ObjectivesSummaryPanel.cpp:540:EList::Count
-editor/ScatterBrush.cpp:75:EList::Count
 editor/SceneOutliner.cpp:142:EList::~EList
 editor/SceneOutliner.cpp:143:EList::Count
 editor/SceneOutliner.cpp:145:EList::~EList
@@ -902,9 +812,7 @@ editor/SceneOutliner.cpp:275:EList::Begin
 editor/SceneOutliner.cpp:292:EList::~EList
 editor/SceneOutliner.cpp:301:EList::~EList
 editor/SceneOutliner.cpp:302:EList::Begin
-editor/SelectionBrush.cpp:77:EList::Count
-editor/SelectionBrush.cpp:239:EList::Begin
-editor/StampBrush.cpp:137:EList::Count
+editor/SelectionBrush.cpp:232:EList::Begin
 editor/TelemetryPanel.cpp:63:EList::Count
 editor/TelemetryPanel.cpp:64:EList::Count
 editor/TelemetryPanel.cpp:65:EList::Count
@@ -961,6 +869,5 @@ editor/UnitSettingsDlg.cpp:839:EList
 editor/UnitSettingsDlg.cpp:839:EList::Begin
 editor/UnitSettingsDlg.h:24:EList
 editor/UnitSettingsDlg.h:69:EList
-editor/eraser.cpp:44:EList::Count
 editor/eraser.cpp:184:EList::Begin
 editor/eraser.cpp:203:EList::Begin

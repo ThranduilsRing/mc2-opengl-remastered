@@ -17,6 +17,119 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
 
 
 class LegacyLinkTests(unittest.TestCase):
+    def test_undo_history_truncates_redo_and_preserves_save_positions(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / "mc2-el4-history" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def fixture(header, implementation):
+            source = r'''
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <new>
+#include <vector>
+#define gosASSERT(x) assert(x)
+'''
+            if 'EList< Action*' in header:
+                source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
+                source += 'Heap heap; Heap* systemHeap = &heap;\n'
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+            source += 'constexpr int MAX_DESC_LENGTH = 256;\n'
+            source += header[header.index('class Action\n{'):header.index('struct VertexInfo')]
+            source += header[header.index('class ActionUndoMgr\n{'):header.index('}; // class SActionMgr') + 2]
+            source += implementation[implementation.index('ActionUndoMgr* ActionUndoMgr::instance'):implementation.index('bool ActionPaintTile::redo()')]
+            return source + r'''
+std::vector<int> visits;
+struct Tracked : Action {
+    int id;
+    Tracked(int n, const char* name) : Action(name), id(n) {}
+    ~Tracked() { visits.push_back(-id); }
+    bool undo() override { visits.push_back(id * 10); return false; }
+    bool redo() override { visits.push_back(id * 100); return false; }
+};
+int main() {
+    ActionUndoMgr history;
+    assert(!history.HaveUndo() && !history.HaveRedo());
+    assert(history.GetCurrentPosition() == -1 && history.GetActionCount() == 0);
+    assert(!history.GetUndoString() && !history.GetRedoString());
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!strcmp(history.GetActionDescription(-1), ""));
+    assert(!strcmp(history.GetActionDescription(0), ""));
+    history.AddAction(new Tracked(1, "A"));
+    history.AddAction(new Tracked(2, "B"));
+    history.AddAction(new Tracked(3, "C"));
+    assert(visits.empty());
+    history.NoteThatASaveHasJustOccurred();
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Undo() && !history.Undo());
+    assert((visits == std::vector<int>{30,20}));
+    assert(!strcmp(history.GetUndoString(), "A") && !strcmp(history.GetRedoString(), "B"));
+    assert(history.ThereHasBeenANetChangeFromWhenLastSaved());
+    visits.clear();
+    history.AddAction(new Tracked(4, "D"));
+    assert((visits == std::vector<int>{-3,-2}));
+    assert(history.GetActionCount() == 2 && history.GetCurrentPosition() == 1);
+    assert(!history.HaveRedo() && !history.GetRedoString());
+    assert(!strcmp(history.GetActionDescription(0), "A"));
+    assert(!strcmp(history.GetActionDescription(1), "D"));
+    assert(!strcmp(history.GetActionDescription(2), ""));
+    assert(history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Undo() && !history.Undo());
+    // Truncating the saved branch retains the legacy -1 save marker.
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.HaveUndo() && history.HaveRedo());
+    visits.clear(); history.Reset();
+    assert((visits == std::vector<int>{-1,-4}));
+    assert(history.GetActionCount() == 0 && history.GetCurrentPosition() == -1);
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    history.AddAction(new Tracked(5, "E")); history.NoteThatASaveHasJustOccurred();
+    history.AddAction(new Tracked(6, "F")); assert(!history.Undo());
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    visits.clear(); history.AddAction(new Tracked(7, "G"));
+    assert((visits == std::vector<int>{-6}));
+    assert(history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Undo() && !history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Redo() && history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!strcmp(history.GetUndoString(), "G"));
+    history.NoteThatASaveHasJustOccurred();
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    visits.clear(); history.Reset(); assert((visits == std::vector<int>{-5,-7}));
+    history.Reset(); assert((visits == std::vector<int>{-5,-7}));
+}
+'''
+
+        def run(source, label, succeeds=True):
+            cpp = output / (label + '.cpp'); cpp.write_text(source)
+            exe = output / (label + '.exe')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        paths = ('editor/Action.h', 'editor/Action.cpp')
+        old = []
+        for path in paths:
+            result = subprocess.run(['git', 'show', '94faecce2:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            old.append(result.stdout)
+        run(fixture(*old), 'old')
+        source = fixture(*((root / path).read_text() for path in paths))
+        run(source, 'current')
+        if 'm_listUndoActions.pop_back();' in source:
+            truncation = 'while (static_cast<long>(m_listUndoActions.size()) - 1 > m_CurrentPos)'
+            self.assertIn(truncation, source)
+            run(source.replace(truncation, 'while (false)'), 'broken-truncation', False)
+            save = 'm_PosOfLastSave = -1;'
+            start = source.index('void ActionUndoMgr::AddAction')
+            end = source.index('void ActionUndoMgr::EmptyUndoList')
+            wrong = source[:start] + source[start:end].replace(save, '') + source[end:]
+            self.assertNotEqual(source, wrong)
+            run(wrong, 'broken-save-position', False)
+        print(f'History fixture artifacts: {output}')
+
     def test_campaign_bytes_nested_copies_and_first_last_moves(self):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / "mc2-el3-campaign" / uuid.uuid4().hex

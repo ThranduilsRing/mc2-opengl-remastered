@@ -63,7 +63,7 @@ Action* ObjectSelectionBrush::endPaint()
 	Action* pRetAction = nullptr;
 	if ( pCurAction )
 	{
-		if ( pCurAction->vertexInfoList.Count() )
+		if ( !pCurAction->vertexInfoList.empty() )
 		{
 			pRetAction = pCurAction;
 			pCurAction = nullptr;
@@ -194,4 +194,4 @@ EditorObjectPointerList ObjectSelectionBrush::selectedObjectPointerList()
 
 //*************************************************************************************************
 // end of file ( ObjectSelectionBrush.cpp )
- 
+

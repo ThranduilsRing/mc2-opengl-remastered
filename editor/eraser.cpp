@@ -41,7 +41,7 @@ Action* Eraser::endPaint()
 	Action* pRetAction = NULL;
 	if (pCurAction)
 	{
-		if ( pCurAction->vertexInfoList.Count() || pCurAction->bldgAction.objInfoPtrList.Count() )
+		if ( !pCurAction->vertexInfoList.empty() || !pCurAction->bldgAction.objInfoPtrList.empty() )
 		{
 			pRetAction = pCurAction;
 		}

@@ -31,7 +31,7 @@ Action* FlattenBrush::endPaint()
 	ActionPaintTile* pRetAction = pCurAction;
 	if (pCurAction)
 	{
-		if ( !pCurAction->vertexInfoList.Count() )
+		if ( pCurAction->vertexInfoList.empty() )
 		{
 			delete pCurAction;
 			pRetAction = nullptr;
@@ -39,7 +39,6 @@ Action* FlattenBrush::endPaint()
 		}
 	}
 
-//	land->reCalcLight();
 	land->recalcWater();
 	pCurAction = nullptr;
 	return pRetAction;

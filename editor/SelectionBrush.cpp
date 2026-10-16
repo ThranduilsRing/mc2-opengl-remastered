@@ -74,7 +74,7 @@ Action* SelectionBrush::endPaint()
 	Action* pRetAction = nullptr;
 	if ( pCurAction )
 	{
-		if ( pCurAction->vertexInfoList.Count() )
+		if ( !pCurAction->vertexInfoList.empty() )
 		{
 			pRetAction = pCurAction;
 			pCurAction = nullptr;
@@ -91,9 +91,7 @@ Action* SelectionBrush::endPaint()
 	{
 		if ( pCurModifyBuildingAction->isNotNull() )
 		{
-			/*we have to call updateNotedObjectPositions because we use the object's position
-			to identify which building to apply the "undo" action to, and the object might have been
-			moved since we last noted the object's info*/
+			// Undo identifies buildings by their positions, which may have changed.
 			pCurModifyBuildingAction->updateNotedObjectPositions();
 			pRetAction = pCurModifyBuildingAction;
 			pCurModifyBuildingAction = nullptr;
@@ -106,12 +104,7 @@ Action* SelectionBrush::endPaint()
 		}
 	}
 
-	// BUG1: select using the SCREEN-space marquee rect captured during the drag.
-	// Old path: project firstWorldPos/lastWorldPos (built via the broken inverseProject)
-	// back to screen — under zoom-in those world points were garbage/equal so the rect was
-	// empty and nothing got selected. The marquee is inherently a screen rectangle, so use
-	// the recorded screen corners directly. EditorObjectMgr::select / selectVerticesInRect
-	// both take screen-space Vector4D corners and forward-project candidates to test them.
+	// Screen-space corners keep the marquee independent of terrain unprojection.
 	if ( m_marqueeStarted &&
 		( m_marqueeFirstScreen.x != m_marqueeLastScreen.x ||
 		  m_marqueeFirstScreen.y != m_marqueeLastScreen.y ) )
@@ -669,4 +662,4 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 }
 
 
- 
+

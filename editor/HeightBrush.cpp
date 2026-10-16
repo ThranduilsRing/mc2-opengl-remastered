@@ -53,7 +53,7 @@ bool HeightBrush::beginPaint()
 Action* HeightBrush::endPaint()
 {
 	ActionPaintTile* pRet = pCurAction;
-	if ( pCurAction && !pCurAction->vertexInfoList.Count() )
+	if ( pCurAction && pCurAction->vertexInfoList.empty() )
 	{
 		delete pCurAction;
 		pRet = nullptr;
@@ -62,19 +62,11 @@ Action* HeightBrush::endPaint()
 	{
 		land->recalcWater();
 
-		// Rebuild the water recipe set against the new terrain heights, else the
-		// baked-at-load water surface ignores sculpted ridges/pathways (water
-		// "passes through" the new terrain). Build() reads MapData::blocks live.
+		// Water surfaces must reflect the sculpted terrain heights.
 		WaterStream::Reset();
 		WaterStream::Build();
 
-		// Recompute vertex normals over the map so sculpted terrain lights
-		// correctly. setVertexHeight only changes elevation; the per-vertex
-		// normals (and vertex light) are derived in MapData::calcLight from the
-		// 8 neighbouring faces. Without this the sculpted area keeps its pre-edit
-		// (flat) normals and renders unlit/flat. Then re-invalidate the touched
-		// quads so the GPU-direct terrain recipes re-bake with the fresh normals
-		// (the recipe bakes p*.vertexNormal at build time).
+		// Sculpted terrain needs fresh normals and lighting in its render recipes.
 		if ( Terrain::mapData )
 			Terrain::mapData->calcLight();
 

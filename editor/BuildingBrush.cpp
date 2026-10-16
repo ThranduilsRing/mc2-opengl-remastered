@@ -205,7 +205,7 @@ Action* BuildingBrush::endPaint( )
 {
 	if (pAction)
 	{
-		if ( !pAction->objInfoPtrList.Count() )
+		if ( pAction->objInfoPtrList.empty() )
 		{
 			delete pAction;
 			pAction = nullptr;
@@ -216,30 +216,17 @@ Action* BuildingBrush::endPaint( )
 	return pRetAction;
 }
 
+BuildingBrush::BuildingAction::~BuildingAction()
+{
+	for (EditorObject* copy : objInfoPtrList)
+		delete copy;
+}
+
 bool BuildingBrush::BuildingAction::undo()
 {
 	bool bRetVal = true;
 
-	/*
-	OBJ_APPEAR_LIST::EIterator iter3 = buildingAppearanceCopies.Begin();
-	for ( OBJ_INFO_LIST::EIterator iter = positions.Begin();
-		!iter.IsDone(); iter++ )
-	{
-		EditorObject* pObj = EditorObjectMgr::instance()->getObjectAtLocation((*iter3).position.x, (*iter3).position.y);
-		if (pObj)
-		{
-			bRetVal = EditorObjectMgr::instance()->deleteBuilding( pObj ) && bRetVal;
-		}
-		else
-		{
-			gosASSERT(false);
-		}
-
-		iter3++;
-	}
-	*/
-	
-	for ( OBJ_INFO_PTR_LIST::EIterator iter = objInfoPtrList.Begin(); !iter.IsDone(); iter++ )
+	for (auto iter = objInfoPtrList.begin(); iter != objInfoPtrList.end(); ++iter)
 	{
 		ObjectAppearance *pAppearance = (*(*iter)).appearance();
 		EditorObject* pObj = EditorObjectMgr::instance()->getObjectAtLocation(pAppearance->position.x, pAppearance->position.y);
@@ -260,7 +247,7 @@ bool BuildingBrush::BuildingAction::redo()
 {
 	bool bRetVal = true;
 
-	for ( OBJ_INFO_PTR_LIST::EIterator iter = objInfoPtrList.Begin(); !iter.IsDone(); iter++ )
+	for (auto iter = objInfoPtrList.begin(); iter != objInfoPtrList.end(); ++iter)
 	{
 		ObjectAppearance *pAppearance = (*(*iter)).appearance();
 		EditorObject* pObj = EditorObjectMgr::instance()->addBuilding( pAppearance->position, EditorObjectMgr::instance()->getGroup( (*(*iter)).getID() ), EditorObjectMgr::instance()->getIndexInGroup( (*(*iter)).getID() ), pAppearance->teamId, pAppearance->rotation );
@@ -283,7 +270,7 @@ void BuildingBrush::BuildingAction::addBuildingInfo(EditorObject& info)
 {
 	EditorObject *pCopy = info.Clone();
 	gosASSERT(pCopy);
-	objInfoPtrList.Append(pCopy);
+	objInfoPtrList.push_back(pCopy);
 }
 
 // WYSIWYG placement snap: convert a world position to the cell addBuilding()
