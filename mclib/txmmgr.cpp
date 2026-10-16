@@ -9,6 +9,8 @@
 //===========================================================================//
 
 #include "txmmgr_internal.h"
+#include "texture_ref.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
