@@ -102,3 +102,13 @@ Proof on the final exe (a73817ce7): ninja + doctest rc 0, sim pair mc2_03 / mc2_
 4. Order any conversion must keep: types before `appearanceHeap` (they free their names through it) and before `tglHeap` (their shapes live there); the texture manager outlives all of them (`TextureRef` release is null-safe in any case, review s5 S5: `mcTextureManager` is nulled only after `delete`, so a `TextureRef` member released inside `~MC_TextureManager` would see a half-destroyed manager; none is today).
 5. Hazard checked: making the list `delete` each remaining type (one destroy via the destructor, the removeAppearance path) is the only change B5.3 needs there; calling `destroy()` first and then `delete` would run each subclass `destroy()` twice. `pointerCanBeDeleted` (`simplecamera.cpp`) tests an APPEARANCE INSTANCE's address against `appearanceHeap`, so it stays valid while `Appearance::operator new` routes there (deleted with the heap in B5.5, not B5.3).
 Verdict: no ordering hazard; B5.3 proceeds with the list `delete`-ing each type once.
+
+## 11. Results (lane 1, 2026-10-16 sixth session)
+| batch | content | census |
+|---|---|---|
+| s5 review | `TG_AnimateShape::destroy` resets `count` (S1); `[ANIM_TRACK_BAD]` logs every rejection (S2); null-after-delete note in section 10 item 4 (S5) | |
+| B5.2c-1 | `TG_TypeShape` vertex / triangle / texture lists are vector stores with views; `InitFromImportedMesh` takes vectors by move; shape files reject oversized counts (`[SHAPE_COUNT_BAD]`) | 351 -> 333 |
+| B5.2c-2 | `TG_TypeMultiShape` node-pointer array and texture list, `TG_MultiShape` shape records are vector stores; multi-shape count checks | 333 -> 320 |
+| B5.3a-c | `NodeData` owns its id text, the three type classes own their node tables; `AppearanceType::name` is a `std::string`; `AppearanceTypeList::destroy` deletes each type once (section 10: no ordering hazard) | 320 -> 303 |
+| B5.4a | `ObjectTypeManager` table is a vector; `ObjectType::appearName` is a `std::string` | 303 |
+Left in B5.2/B5.3: `TG_Shape::listOfShadowVertices` (raw instance memory), the per-instance `nodeUsed` / `nodeRecycle` / `paintSchemata` tables (instances, B7), the node objects the multi-shape pointer array points at, and every class `operator new/delete` (B5.5). Include-only commits this session (objhash: executable bytes identical; std comdat instantiations from the logging header differ in `tgl_types` and `msl_shape`): mc2log.h in tgl_internal.h / msl_internal.h, `<string>` in apprtype.h, `<memory>` and `<string>` in objectappearance.h, `<vector>` in objtype.h.
