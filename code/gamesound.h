@@ -23,6 +23,8 @@
 #include"radio.h"
 #endif
 
+#include<memory>
+
 //---------------------------------------------------------------------------
 // Macro Defintiions
 

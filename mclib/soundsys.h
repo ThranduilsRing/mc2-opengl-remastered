@@ -31,6 +31,8 @@
 #include"paths.h"
 #endif
 
+#include<vector>
+
 #ifndef INIFILE_H
 #include"inifile.h"
 #endif

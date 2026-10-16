@@ -17,6 +17,9 @@
 #include"mclib.h"
 #endif
 
+#include<cstdint>
+#include<vector>
+
 #ifndef DRADIO_H
 #include"dradio.h"
 #endif
