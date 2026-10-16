@@ -45,8 +45,8 @@
   "code/warrior.h": 2173,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1608,
-  "mclib/ablrtn.cpp": 1798,
+  "mclib/ablenv.cpp": 1541,
+  "mclib/ablrtn.cpp": 1748,
   "mclib/assimp_importer.cpp": 1577,
   "mclib/camera.h": 1812,
   "mclib/file.cpp": 2599,
@@ -59,10 +59,10 @@
   "mclib/render_contract.cpp": 1530,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1771,
-  "mclib/tgl.h": 1734,
+  "mclib/tgl.h": 1736,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "7fcca45de",
+ "head": "8d686c49d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -247,8 +247,8 @@
    "lines": 1808
   },
   {
-   "file": "mclib/ablrtn.cpp",
-   "lines": 1798
+   "file": "mclib/terrtxm.cpp",
+   "lines": 1771
   }
  ],
  "total": {
