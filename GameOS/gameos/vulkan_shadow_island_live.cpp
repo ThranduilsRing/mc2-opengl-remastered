@@ -1380,7 +1380,14 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
 // follows: the render pass dependencies order the consumers behind the writes, and the parity's fence retires the buffers two frames later.
 extern "C" void mc2_vk_shadow_island_submit_frame() {
     ShadowIsland* s = parkedIsland();
-    if (!s || !s->recording) return;
+    if (!s) return;
+    if (!s->recording) {
+        // No caster pass opened the frame (a map without registry props has no prop caster geometry): the static sun map still builds once per
+        // generation, so terrain keeps its static shadow.
+        if (s->disabled || !s->inited || !(s->useInterop || s->directChain) || !s->staticMap.stale()) return;
+        if (!begin_frame(s, g_shadowFrameEpoch)) return;
+        record_static_map_if_stale(s);
+    }
     VkCommandBuffer cb = s->cbuf[s->parity];
     // The single dynamic map is recorded only when a receiver would otherwise have no dynamic shadow at all.
     if (s->pendingDyn.valid && !(g_csmArrayReadyThisFrame && g_csmFullMapReadyThisFrame)) {
