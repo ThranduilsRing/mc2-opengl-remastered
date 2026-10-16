@@ -27,6 +27,7 @@
 
 #ifndef STUFF_HPP
 #include<stuff/stuff.hpp>
+#include<vector>
 #endif
 
 #include "unitprofile.h"            // UNIT-PROFILE-SEAM-1
