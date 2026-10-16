@@ -286,11 +286,24 @@ VK, and the owner has ruled on the fail-soft policy. Each step deletes whole fil
 
 ## 14. Open questions (not decided here)
 
-1. Fail-soft: with GL gone, what does a failed VK init do (exit with a message, or a software fallback)? `forceGLFallback` and the smoke's
-   `capture_backend` mismatch check exist only because of it.
+1. DECIDED 2026-10-16 (owner): with GL gone, a failed VK init shows a clear message and exits; no fallback. `forceGLFallback` and the smoke's
+   `capture_backend` mismatch check exist only because of the old fail-soft and go with GL.
 2. `tools/asset_viewer`, `mc2fx_preview`, `mc2weapon_gui`: port to VK or retire?
 3. Which debug views survive (`debug_renderer`, terrain `tessDebug` modes, `gos_object_parity`, `gos_dev_shell`)?
 4. Does the VK colour-prop feed depend on the GL compute cull's visible set (section 4)? Not established by reading; decides whether step 7
    needs a VK cull before or with the GL deletion.
 5. Current scope of the VK terrain island (LOD0 only per its header, or all bands); decides how much of section 3 is a port, not a deletion.
 6. Row 18 (decal fill) has no stock content: port blind, or delete the GL feature with GL?
+
+## 15. Step 1 status (lane 2 session 29, 2026-10-16)
+
+| item | state |
+|---|---|
+| CURRENT_GOLDEN | switched to `golden-d9e1f3801716-vk-1080p`; the two GL golden sets archived and removed |
+| `capture_ab.py` noise floor | two VK arms; GL arm behind `--gl-arm` (kept while a GL exe ships) |
+| Tracy compare GL arm | PARTIAL: `baseline` defaults to vk. The `selfcheck` and `matrix` subcommands still measure on GL: the selfcheck proves harness sensitivity with `MC2_LIGHT_POOL_MAX`, a GL terrain knob (`gos_terrain_lighting.cpp`) with no VK equivalent, so deleting the arm would blind that proof. Needs a VK-visible known cost first |
+| VFX oracle GL arm | NOT DONE: `capture_vfx_oracle.py` runs `MC2_RENDER_BACKEND=gl` and compares MLR vs GPU particles; it is the proof the MLR retirement waits on, and no VK readback arm exists. Needs the VK arm (not a deletion) |
+| GL-reference provers (`glsl_port_diff`, `gl_vk_feature_coverage`, `vk_not_ported.allowlist`) | NOT DONE: rows 3, 5-22 and 24 of `.claude/VK-PARITY-GAPS.md` are still open and these provers are what pins them; delete after the last row closes |
+| capture `gl_fbo` arm (`gos_visual_capture.cpp`, `gos_screenshot.cpp`) | NOT DONE: GameOS code, outside this session; `capture_backend.py` keeps the `gl_fbo` mapping for old sidecars |
+| 10 debug views | NOT DONE: every file is in `GameOS/gameos`; a decision per view is still open (section 14 question 3) |
+| `golden-e350d0b4a5c6-vk-1080p` | candidate: interim VK set superseded by `golden-d9e1f3801716-vk-1080p`; not in the step-1 list, left in place |
