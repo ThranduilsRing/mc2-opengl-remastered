@@ -118,20 +118,51 @@ long ABLFile::readLong (void) {
 
 //-----------------------------------------------------------------------------
 
-long ABLFile::readString (unsigned char* buffer) {
+long ABLFile::readString (unsigned char* buffer, long capacity) {
 
-	if (file)
-		return(readStringCB(file, buffer));
-	return(0);
+	if (buffer && capacity > 0)
+		buffer[0] = 0;
+	if (file && buffer && capacity > 0 && remainingCB && readCB) {
+		for (long count = 0; count < capacity && remainingCB(file) > 0; ++count) {
+			unsigned char ch;
+			if (readCB(file, &ch, 1) != 1)
+				break;
+			if (ch == 0) {
+				buffer[count] = 0;
+				return count;
+			}
+			if (count == capacity - 1)
+				break;
+			buffer[count] = ch;
+			buffer[count + 1] = 0;
+		}
+	}
+	MC2_LOG(Sim, Error, "[ABL_FILE_STRING_BAD] truncated or oversized string from {}", fileName);
+	return -1;
 }
 
 //-----------------------------------------------------------------------------
 
 long ABLFile::readLineEx (unsigned char* buffer, long maxLength) {
 
-	if (file)
-		return(readLineExCB(file, buffer, maxLength));
-	return(0);
+	if (buffer && maxLength > 0)
+		buffer[0] = 0;
+	if (file && buffer && maxLength > 0 && remainingCB && readCB) {
+		long count = 0;
+		while (remainingCB(file) > 0 && count < maxLength - 1) {
+			unsigned char ch;
+			if (readCB(file, &ch, 1) != 1)
+				break;
+			buffer[count++] = ch;
+			buffer[count] = 0;
+			if (ch == '\n')
+				return count + 1;
+		}
+		if (remainingCB(file) == 0)
+			return count ? count + 1 : 0;
+	}
+	MC2_LOG(Sim, Error, "[ABL_FILE_LINE_BAD] truncated or oversized line from {}", fileName);
+	return 0;
 }
 
 //-----------------------------------------------------------------------------

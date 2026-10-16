@@ -51,7 +51,7 @@
 # blob 4738675ca85caa3dcf34a6bee10ef0f93ba2b239 code/weaponbolt.cpp
 # blob 67f0795dff2cd52b0732230e31207e63789b847d editor/Editor.cpp
 # blob 5995a7b6cc76234e77b9305930ae42f517724fe0 editor/EditorObjectMgr.cpp
-# blob 33242a3efc7bacea97c09c90e63e6e34a64c2bbb mclib/ablenv.cpp
+# blob ca75e5b5c91ea30239bf90dfa4c0783d518fd8bf mclib/ablenv.cpp
 # blob e2f6238cdb7e9ad805b1271f9b5e9e393098b86e mclib/txmmgr_texture.cpp
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 0
 # file:line:kind

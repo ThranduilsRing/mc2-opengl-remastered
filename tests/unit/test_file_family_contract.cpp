@@ -265,6 +265,113 @@ struct AblCallbacks {
 		ABLFile::openCB = open; ABLFile::closeCB = close;
 	}
 };
+
+struct AblRamCallbacks {
+	decltype(ABLFile::remainingCB) remaining = ABLFile::remainingCB;
+	decltype(ABLFile::readCB) read = ABLFile::readCB;
+	decltype(ABLFile::readStringCB) string = ABLFile::readStringCB;
+	decltype(ABLFile::readLineExCB) line = ABLFile::readLineExCB;
+	decltype(ABLFile::closeCB) close = ABLFile::closeCB;
+	AblRamCallbacks() {
+		ABLFile::remainingCB = [](void* h) -> long { auto& f = *static_cast<File*>(h); return f.getLength() - f.getLogicalPosition(); };
+		ABLFile::readCB = [](void* h, unsigned char* out, long n) { return static_cast<File*>(h)->read(out, n); };
+		ABLFile::readStringCB = [](void* h, unsigned char* out) { return static_cast<File*>(h)->readString(out); };
+		ABLFile::readLineExCB = [](void* h, unsigned char* out, long n) { return static_cast<File*>(h)->readLineEx(out, n); };
+		ABLFile::closeCB = [](void**) { return 0L; };
+	}
+	~AblRamCallbacks() {
+		ABLFile::remainingCB = remaining; ABLFile::readCB = read;
+		ABLFile::readStringCB = string; ABLFile::readLineExCB = line; ABLFile::closeCB = close;
+	}
+};
+
+struct AblReadLog {
+	std::FILE* capture = std::tmpfile();
+	AblReadLog() {
+		REQUIRE(capture != nullptr);
+		mc2::log::setSpec("*:info");
+		mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, capture);
+	}
+	~AblReadLog() {
+		mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
+		std::fclose(capture);
+	}
+	void checkOne(const char* tag) {
+		std::rewind(capture);
+		std::string logged;
+		char line[512];
+		while (std::fgets(line, sizeof(line), capture)) logged += line;
+		const auto first = logged.find(tag);
+		REQUIRE(first != std::string::npos);
+		CHECK(logged.find(tag, first + 1) == std::string::npos);
+	}
+};
+}
+
+TEST_CASE("FileFamilyContract/ABL final line stops at the RAM image boundary") {
+	AblRamCallbacks callbacks;
+	char image[] = "first\nlastX\n";
+	File ram;
+	REQUIRE(ram.open(image, 10) == NO_ERR);
+	ABLFile file;
+	file.set(&ram);
+	unsigned char out[32] = {};
+	CHECK(file.readLineEx(out, sizeof(out)) == 7);
+	CHECK(std::string(reinterpret_cast<char*>(out)) == "first\n");
+	CHECK(file.readLineEx(out, sizeof(out)) == 5);
+	CHECK(std::string(reinterpret_cast<char*>(out)) == "last");
+	CHECK(ram.getLogicalPosition() == 10);
+}
+
+TEST_CASE("FileFamilyContract/ABL overlong line cannot overwrite its destination") {
+	AblRamCallbacks callbacks;
+	AblReadLog log;
+	std::string image(MAXLEN_SOURCELINE, 'a');
+	image += "\n";
+	File ram;
+	REQUIRE(ram.open(image.data(), static_cast<int>(image.size())) == NO_ERR);
+	ABLFile file;
+	file.set(&ram);
+	unsigned char out[MAXLEN_SOURCELINE + 2] = {};
+	out[MAXLEN_SOURCELINE] = 0x5a;
+	out[MAXLEN_SOURCELINE + 1] = 0x5a;
+	CHECK(file.readLineEx(out, MAXLEN_SOURCELINE) == 0);
+	CHECK(out[MAXLEN_SOURCELINE] == 0x5a);
+	CHECK(out[MAXLEN_SOURCELINE + 1] == 0x5a);
+	log.checkOne("[ABL_FILE_LINE_BAD]");
+	image.resize(MAXLEN_SOURCELINE - 1);
+	ram.close();
+	REQUIRE(ram.open(image.data(), static_cast<int>(image.size())) == NO_ERR);
+	CHECK(file.readLineEx(out, MAXLEN_SOURCELINE) == MAXLEN_SOURCELINE);
+	CHECK(std::string(reinterpret_cast<char*>(out)) == image);
+}
+
+TEST_CASE("FileFamilyContract/ABL oversized or unterminated string is rejected") {
+	AblRamCallbacks callbacks;
+	for (const bool terminated : {true, false}) {
+		AblReadLog log;
+		std::string image(terminated ? 1024 : 3, 'a');
+		image += '\0';
+		File ram;
+		REQUIRE(ram.open(image.data(), static_cast<int>(image.size() - (terminated ? 0 : 1))) == NO_ERR);
+		ABLFile file;
+		file.set(&ram);
+		unsigned char out[1026] = {};
+		out[1024] = 0x5a;
+		CHECK(file.readString(out, 1024) == -1);
+		CHECK(out[1024] == 0x5a);
+		CHECK(ram.getLogicalPosition() <= ram.getLength());
+		log.checkOne("[ABL_FILE_STRING_BAD]");
+	}
+	std::string image(1023, 'a');
+	image += '\0';
+	File ram;
+	REQUIRE(ram.open(image.data(), static_cast<int>(image.size())) == NO_ERR);
+	ABLFile file;
+	file.set(&ram);
+	unsigned char out[1024] = {};
+	CHECK(file.readString(out, sizeof(out)) == 1023);
+	CHECK(std::memcmp(out, image.data(), image.size()) == 0);
 }
 
 TEST_CASE("FileFamilyContract/ABL truncation and oversized reads never reach the unchecked callback") {

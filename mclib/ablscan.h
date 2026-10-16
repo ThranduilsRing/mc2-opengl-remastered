@@ -230,7 +230,7 @@ class ABLFile {
 
 		long readLong (void);
 
-		long readString (unsigned char* buffer);
+		long readString (unsigned char* buffer, long capacity);
 
 		long readLineEx (unsigned char* buffer, long maxLength);
 
