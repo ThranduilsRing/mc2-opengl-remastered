@@ -3,6 +3,33 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "Gates/gate.h"
+
+#include <cstdlib>
+#include <string>
+
+namespace {
+// Parity row 28 oracle: a fixed highlight on every building so a frozen-sim capture can compare the GL and VK highlight
+// terms (in play only a damage flash lights a building, which a capture cannot time). Capture-only: read solely while the
+// capture replay is armed; a malformed value is rejected with a log line and the hook stays off.
+uint32_t captureForcedBuildingHighlight()
+{
+	static const uint32_t s_forced = []() -> uint32_t {
+		if (!mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">()) return 0u;
+		const std::string v = mc2::gate::str<"MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT">();
+		if (v.empty()) return 0u;
+		char* end = nullptr;
+		const unsigned long argb = std::strtoul(v.c_str(), &end, 16);
+		if (end == v.c_str() || *end != '\0' || argb > 0xFFFFFFFFul) {
+			mc2::fmt::print_err("[CAPTURE_HIGHLIGHT v1] rejected MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT=\"{}\" (want hex ARGB)\n", mc2::fmt::safe(v.c_str()));
+			return 0u;
+		}
+		mc2::fmt::print_out("[CAPTURE_HIGHLIGHT v1] forcing building highlight 0x{:08x}\n", mc2::fmt::as_u32(static_cast<uint32_t>(argb)));
+		return static_cast<uint32_t>(argb);
+	}();
+	return s_forced;
+}
+}  // namespace
 
 long BldgAppearance::render (long depthFixup)
 {
@@ -36,7 +63,9 @@ long BldgAppearance::render (long depthFixup)
 		{
 			bldgShape->SetARGBHighLight(flashColor);
 		}
-		
+		if (const uint32_t forced = captureForcedBuildingHighlight())
+			bldgShape->SetARGBHighLight(forced);
+
 		// Call Multi-shape render stuff here.
 		// Slice 1 path (g_useGpuObjects). No cull bypass; submitMultiShape
 		// is per-child Layer-B by construction. Returns false only when

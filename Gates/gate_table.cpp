@@ -1240,6 +1240,7 @@ G("MC2_VIEW_MODE", String, "", "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1:
 // history: docs/gate-history.md#MC2_VIEW_UNIFORMS
 L(Lead0Kill, "MC2_VIEW_UNIFORMS", Bool, true, "props", "", "ViewUniforms UBO at binding=3.", passthrough | registry(Feature, "MC2_FEATURE_VIEW_UNIFORMS", 12, true) | verified),
 G("MC2_VISUAL_BOOKMARK_CAPTURE", String, "", "vk", "", "Path of the bookmarks.json the capture replay drives; any set value (even empty) arms the replay.", passthrough | verified),
+G("MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT", String, "", "props", "", "CAPTURE-ONLY (parity row 28 oracle): hex ARGB forced as the highlight of every building, read only while MC2_VISUAL_BOOKMARK_CAPTURE arms the capture replay; ignored in play.", passthrough | verified),
 L(Lead0, "MC2_VISUAL_CAPTURE_CLEAN", Bool, false, "gameos", "", "", verified),
 G("MC2_VISUAL_CAPTURE_DIR", String, "", "gameos", "", "Directory the visual capture primitive and the bookmark replay write into; set-but-empty is kept as empty (replay falls back to .).", passthrough | verified),
 L(Presence, "MC2_VISUAL_CAPTURE_EXIT_AFTER", Bool, false, "gameos", "", "VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT] logHealth...", verified),
