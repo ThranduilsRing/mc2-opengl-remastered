@@ -183,6 +183,8 @@ typedef struct _WeaponBoltData : public GameObjectData
 	DWORD				gosTextureHandle;
 	float				startUV;
 	float				goalHeight;
+	std::uint64_t retireDeadlineTick;
+	mc2::combat::SavedDeadlineState retireDeadlineState;
 } WeaponBoltData;
 
 class WeaponBolt : public GameObject
