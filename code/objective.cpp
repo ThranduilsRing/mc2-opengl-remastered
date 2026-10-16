@@ -129,7 +129,7 @@ void CObjectives::Observation::Begin(FitIniFile& file) {
 
 unsigned long long CObjectives::Observation::Emit(const char* kind, unsigned long long cause,
                                                  const std::string& data, unsigned long long id) {
-	if (!objectiveObservationEnabled() || rejected || missionHash.empty()) { return 0; }
+	if (!objectiveObservationEnabled() || completed || rejected || missionHash.empty()) { return 0; }
 	const double time = mission ? mission->actualTime : 0;
 	if (!std::isfinite(time) || time < 0 || turn < 0) {
 		rejected = true;
@@ -2230,7 +2230,9 @@ int C_RemoveStructure::Execute()
 	Building * m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
 	m_pBuilding->position = ludicrousPos;
 	m_pBuilding->update();
-	objectiveObservationSink("structure", "updated", "removed", std::to_string(m_pBuildingWID).c_str());
+	if (objectiveObservationEnabled()) {
+		objectiveObservationSink("structure", "updated", "removed", std::to_string(m_pBuildingWID).c_str());
+	}
 	return true;
 }
 
