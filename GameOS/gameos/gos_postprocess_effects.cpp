@@ -490,18 +490,6 @@ void gosPostProcess::runScreenShadow()
     glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTex_);
-    {   // TEMP row-24 probe: which sampler objects an earlier pass left on the shadow units
-        static int s_probeOnce = 0;
-        if (s_probeOnce++ == 300) {
-            GLint s3 = 0, s4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &s3); glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &s4);
-            GLint cm3 = -1, cm4 = -1;
-            if (s3) glGetSamplerParameteriv((GLuint)s3, GL_TEXTURE_COMPARE_MODE, &cm3);
-            if (s4) glGetSamplerParameteriv((GLuint)s4, GL_TEXTURE_COMPARE_MODE, &cm4);
-            fprintf(stderr, "[R24_PROBE] sampler unit3=%d compare=%d unit4=%d compare=%d\n", s3, cm3, s4, cm4);
-        }
-    }
-    glBindSampler(3, 0);
-    glBindSampler(4, 0);
     glActiveTexture(GL_TEXTURE3);
     if (csmActive)
         glBindTexture(GL_TEXTURE_2D_ARRAY, dynShadowArrayTex_);
