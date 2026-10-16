@@ -3,22 +3,22 @@
 
 Subcommands:
 
-  capture  -- record a headless Tracy trace of an MC2 smoke run (GL or VK arm):
+  capture  -- record a headless Tracy trace of an MC2 smoke run (the VK arm):
       py -3 tools/tracy_capture_compare.py capture \
-          --install A:/Games/mc2-opengl/mc2-win64-0.4c --arm gl \
-          --mission mc2_01 --seconds 30 -o gl_before.tracy
+          --install A:/Games/mc2-opengl/mc2-win64-0.4c --arm vk \
+          --mission mc2_01 --seconds 30 -o vk_before.tracy
 
   compare  -- per-zone before/after delta table from two .tracy files:
       py -3 tools/tracy_capture_compare.py compare before.tracy after.tracy \
           [--zones DrawScreen,SwapWindow.SDL]
 
-  baseline -- capture the vk arm (--arms gl,vk adds GL) at a named pose and write a dated
+  baseline -- capture the vk arm at a named pose and write a dated
               baseline dir (traces + baseline.json + summary.md). Uncapped,
               free-timestep (the only hygienic FPS measurement -- see below):
       py -3 tools/tracy_capture_compare.py baseline \
           --install A:/Games/mc2-opengl/mc2-win64-0.4c [--name 2026-07-23]
 
-  regress  -- re-capture both arms and compare against a named baseline dir,
+  regress  -- re-capture the baseline's arms and compare against a named baseline dir,
               with pass/warn/fail thresholds on frame-count drop + per-zone
               mean deltas (exit 0=pass, 1=warn, 2=fail):
       py -3 tools/tracy_capture_compare.py regress \
@@ -106,7 +106,10 @@ MIN_STEADY_FRAMES = 60
 DEFAULT_POSE = "-6656,-6656,150.625,10.9094,6045.2358@600"
 DEFAULT_BASELINE_MISSION = "mc2_10"
 DEFAULT_BASELINE_SECONDS = 15  # 15s runs (standing launch rule); ~9s of parked frames
-DEFAULT_ARMS = ["vk"]   # the GL arm is opt-in (--arms gl,vk) while the selfcheck and matrix subcommands still measure on GL
+DEFAULT_ARMS = ["vk"]
+# The only arm: perf is measured on the shipped backend, and the selfcheck proves the harness on VK. A GL arm was retired with
+# GL deletion step 1; a request for any other arm is refused.
+ARMS = ("vk",)
 BASELINE_ROOT = Path("release_assets/tracy-baselines")  # gitignored; traces never committed
 REGRESS_WARN_PCT = 5.0   # frame-count drop that WARNs (exit 1)
 REGRESS_FAIL_PCT = 10.0  # frame-count drop that FAILs (exit 2)
@@ -176,6 +179,8 @@ def vary_list(text) -> "list[str]":
 def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
     """The environment the game runs under for a trace: the shell's, minus stray backend variables, plus the harness's settings, the pinned
     drawable size, the arm, and the caller's --env entries (which win). A function of its inputs so the pin is testable without an engine."""
+    if arm not in ARMS:
+        sys.exit(f"ERROR: arm '{arm}' refused: the only measured arm is {', '.join(ARMS)} (the GL arm was retired)")
     env = os.environ.copy()
     # scrub stray backend vars so the arm is exactly what we asked for
     for k in list(env):
@@ -800,21 +805,34 @@ def cmd_regress(args: argparse.Namespace) -> int:
 
 # ------------------------------------------------------------- selfcheck ----
 
-# Two light-pool caps that MUST measure apart at a busy night pose. 64 vs 256
-# is the exact pair whose ~34% regression the old harness reported as 0.6%.
-SELFCHECK_CAPS = (64, 256)
+# Two drawable sizes that MUST measure apart: the 4K arm shades four times the
+# fragments of the pinned 1080p arm with the same scene, so the pair is a known
+# fragment-bound cost on the VK frame (the shipped backend). The former pair, the
+# GL light-pool cap 64 vs 256, does not move the VK frame (1.3% apart on mc2_10,
+# lane 2 session 30), so it could not prove a VK harness.
+SELFCHECK_SIZES = (render_resolution.RESOLUTION_TIER_SIZES[0], render_resolution.RESOLUTION_TIER_SIZES[1])
 # Minimum p50 separation (%) we require between those two arms before we are
 # willing to believe this harness can see a fragment-bound cost at all.
 SELFCHECK_MIN_PCT = 8.0
+VK_RECEIPT = "Vulkan backend selected"
+FAIL_SOFT_RECEIPT = "[RENDER_BACKEND] fail-soft"
+
+
+def assert_drew_vk(game_log: Path) -> None:
+    """A VK measurement is refused unless the engine selected VK and never fell back to GL."""
+    assert_receipt(game_log, VK_RECEIPT, "the VK backend")
+    if FAIL_SOFT_RECEIPT in game_log.read_text(encoding="utf-8", errors="replace"):
+        sys.exit(f"REFUSING TO REPORT: {game_log.name} logs a VK fail-soft to GL -- the run measured the GL frame.")
 
 
 def _measure_pose(install: Path, out_dir: Path, tag: str, mission: str, pose: str,
                   seconds: int, env_list, export_exe: Path, zone: str) -> dict:
-    """One capture + verified per-sample stats. Refuses on any integrity failure."""
+    """One VK capture + verified per-sample stats. Refuses on any integrity failure."""
     trace = out_dir / f"{tag}.tracy"
-    capture_trace(install, "gl", mission, seconds, trace, extra_env=env_list,
+    capture_trace(install, "vk", mission, seconds, trace, extra_env=env_list,
                   pose=pose, fixed_timestep=False, fps_cap=0, show_window=True)
     assert_window_was_visible(trace, export_exe, context=tag)
+    assert_drew_vk(trace.with_suffix(".game.log"))
     if pose:
         assert_receipt(trace.with_suffix(".game.log"), "[CAMERA_PARK", f"pose {pose}")
     # TRUE frame time (wall-clock frame-to-frame), NOT the CPU zone duration --
@@ -837,39 +855,39 @@ def _measure_pose(install: Path, out_dir: Path, tag: str, mission: str, pose: st
 def cmd_selfcheck(args: argparse.Namespace) -> int:
     """Prove the harness can SEE a known fragment-bound cost, or fail loudly.
 
-    Runs the light-pool cap at 64 and at 256 (grid OFF so the cost is the raw
-    per-fragment loop) at a busy night pose. Those two arms are known to differ
+    Runs the same VK scene at the pinned 1080p and at 4K (four times the
+    fragments) at a busy night pose. Those two arms are known to differ
     substantially. If this harness reports them as the same, it cannot see
     fragment cost, and every perf number it produces is suspect -- so we exit
     non-zero instead of letting a future lane cite a flat table.
     """
     export_exe = tracy_exe("tracy-csvexport.exe")
     out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[selfcheck] caps={SELFCHECK_CAPS} pose={args.pose} "
+    print(f"[selfcheck] sizes={SELFCHECK_SIZES} pose={args.pose} "
           f"mission={args.mission} zone={args.zone}")
     res = {}
-    for cap in SELFCHECK_CAPS:
-        res[cap] = _measure_pose(
-            Path(args.install), out_dir, f"selfcheck_cap{cap}", args.mission,
+    for w, h in SELFCHECK_SIZES:
+        res[(w, h)] = _measure_pose(
+            Path(args.install), out_dir, f"selfcheck_{w}x{h}", args.mission,
             args.pose, args.seconds,
-            [f"MC2_LIGHT_POOL_MAX={cap}", "MC2_LIGHT_GRID=0"],
+            [f"{k}={v}" for k, v in render_resolution.size_env(w, h).items()],
             export_exe, args.zone)
-        print(f"  cap={cap:<4} p50={res[cap]['p50_ms']:.3f}ms "
-              f"p99={res[cap]['p99_ms']:.3f}ms n={res[cap]['n']}")
+        print(f"  {w}x{h} p50={res[(w, h)]['p50_ms']:.3f}ms "
+              f"p99={res[(w, h)]['p99_ms']:.3f}ms n={res[(w, h)]['n']}")
 
-    lo, hi = res[SELFCHECK_CAPS[0]]["p50_ms"], res[SELFCHECK_CAPS[1]]["p50_ms"]
+    lo, hi = res[SELFCHECK_SIZES[0]]["p50_ms"], res[SELFCHECK_SIZES[1]]["p50_ms"]
     sep = abs(hi - lo) / lo * 100.0 if lo else 0.0
     print(f"[selfcheck] p50 separation = {sep:.1f}% "
           f"(require >= {SELFCHECK_MIN_PCT:.0f}%)")
     if sep < SELFCHECK_MIN_PCT:
         print(
-            f"\nSELFCHECK FAILED: cap={SELFCHECK_CAPS[0]} and cap={SELFCHECK_CAPS[1]} "
-            f"measured within {sep:.1f}% of each other. Raising the per-fragment "
-            f"light-pool loop 4x MUST cost more than that at a busy night pose, so "
+            f"\nSELFCHECK FAILED: {SELFCHECK_SIZES[0]} and {SELFCHECK_SIZES[1]} "
+            f"measured within {sep:.1f}% of each other. Shading 4x the fragments "
+            f"MUST cost more than that at a busy night pose, so "
             f"this harness is NOT seeing fragment-bound work. Do not report frame "
             f"times from it. Likely causes, in the order they have actually bitten:\n"
             f"  1. Measuring CPU ZONE DURATION instead of frame-to-frame wall time. "
-            f"GL is async, so GPU fragment cost never shows up in a CPU zone. This "
+            f"The GPU is async, so fragment cost never shows up in a CPU zone. This "
             f"is what made the original 34% regression read as 0.2%.\n"
             f"  2. Window minimized/hidden -> 10ms background throttle.\n"
             f"  3. The pose did not apply (no [CAMERA_PARK] receipt).",
@@ -926,7 +944,7 @@ def main() -> int:
 
     c = sub.add_parser("capture", help="record a headless Tracy trace of an MC2 smoke run")
     c.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
-    c.add_argument("--arm", choices=["gl", "vk"], required=True)
+    c.add_argument("--arm", choices=list(ARMS), default="vk")
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=30, help="Tracy recording window")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")
@@ -989,7 +1007,7 @@ def main() -> int:
     r.set_defaults(fn=cmd_regress)
 
     s = sub.add_parser("selfcheck", help="prove the harness can see a known "
-                                         "fragment-bound cost (cap 64 vs 256)")
+                                         "fragment-bound cost (1080p vs 4K on VK)")
     s.add_argument("--install", required=True)
     s.add_argument("--mission", default=DEFAULT_BASELINE_MISSION)
     s.add_argument("--pose", default=DEFAULT_POSE)
