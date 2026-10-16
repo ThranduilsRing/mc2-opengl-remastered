@@ -22,7 +22,7 @@ GL_CAP = {"backend": {"requested": "gl", "drew": ["gl"]}}
 
 def _golden(tmp_path: Path, body: dict) -> Path:
     d = tmp_path / "golden"
-    d.mkdir()
+    d.mkdir(exist_ok=True)
     (d / "golden.json").write_text(json.dumps(body), encoding="utf-8")
     return d
 
@@ -61,7 +61,14 @@ def test_override_logged_and_recorded(tmp_path, capsys):
     assert "--allow-backend-mismatch" in capsys.readouterr().err
 
 
-def test_legacy_golden_not_checked(tmp_path, capsys):
-    rec = verify.check_backend(_golden(tmp_path, {}), GL_CAP, allow_mismatch=False)
-    assert rec["golden"] is None
+def test_vk_candidate_against_a_gl_golden_refused(tmp_path):
+    with pytest.raises(SystemExit, match="BACKEND MISMATCH"):
+        verify.check_backend(_golden(tmp_path, {"capture_env": {"backend": {"requested": "gl", "drew": ["gl"]}}}), VK_CAP, allow_mismatch=False)
+
+
+def test_golden_with_no_backend_record_refused_unless_allowed(tmp_path, capsys):
+    with pytest.raises(SystemExit, match="BACKEND UNRECORDED"):
+        verify.check_backend(_golden(tmp_path, {}), GL_CAP, allow_mismatch=False)
+    rec = verify.check_backend(_golden(tmp_path, {}), GL_CAP, allow_mismatch=True)
+    assert rec["golden"] is None and rec["mismatch_allowed"] is True
     assert "records no backend" in capsys.readouterr().err
