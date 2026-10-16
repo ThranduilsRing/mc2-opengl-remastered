@@ -28,6 +28,7 @@
 #include"heap.h"
 #endif
 #include<vector>
+#include"tgl.h"   // TG_HWLightsData is stored by value in the manager
 #include<string.h>
 #include<gameos.hpp>
 #include<mutex>  // std::recursive_mutex — FRAME-JOBS-2 precondition (vertex node allocators)
