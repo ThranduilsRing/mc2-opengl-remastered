@@ -243,37 +243,19 @@ bool ensure_dummy_cement(TerrainIsland* s) {
     return true;
 }
 
-// Copy-once import of the GL cement atlas. Re-imports only when the GL tex name changes
-// (per-mission rebuild). The cement atlas is ALWAYS RGBA8 storage (runtime-assembled;
-// never BC7), uploaded from BGRA source swizzled to RGBA8 on upload — so reading it back
-// as GL_RGBA -> VK_FORMAT_R8G8B8A8_UNORM preserves channel order end-to-end, IDENTICAL
-// to the colormap RGBA8 path. Fail-soft: on failure the dummy stays bound.
+// Copy-once import of the cement atlas from the terrain field store (RGBA8, the texels GL uploaded), again whenever the store's
+// version changes (a per-mission rebuild). Fail-soft: on failure the dummy stays bound and the FS uses the colormap base.
 void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    const uint32_t glTex = feed.glCementAtlasTex;
-    if (glTex == 0) return;                     // atlas not built yet -> cement stays off
-    if (glTex == s->cementTexImported && s->cementReady) return; // already imported
-
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0) { glBindTexture(GL_TEXTURE_2D, 0); return; }
-    std::vector<uint8_t> px((size_t)w * (size_t)h * 4u);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    if (upload_sampled_image(s, s->cementImg, s->cementView,
-                             VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
-                             px.data(), (VkDeviceSize)px.size())) {
-        s->cementTexImported = glTex;
+    if (!feed.cementAtlasRgba || feed.cementAtlasSide <= 0 || feed.cementAtlasVersion == 0) return;   // atlas not built yet
+    if (feed.cementAtlasVersion == s->cementVersionImported && s->cementReady) return;              // already imported
+    const uint32_t side = static_cast<uint32_t>(feed.cementAtlasSide);
+    if (upload_sampled_image(s, s->cementImg, s->cementView, VK_FORMAT_R8G8B8A8_UNORM, side, side,
+                             feed.cementAtlasRgba, static_cast<VkDeviceSize>(side) * side * 4u)) {
+        s->cementVersionImported = feed.cementAtlasVersion;
         s->cementReady = true;
         write_descriptors(s);
-        static bool s_firstCem = false;
-        if (!s_firstCem) {
-            vlog("CEMENT/ROAD: imported GL cement atlas gltex=%u %dx%d (RGBA8->R8G8B8A8, "
-                 "REPEAT wrap); VK terrain concrete apron now matches GL.", glTex, w, h);
-            s_firstCem = true;
-        }
+        vlog("CEMENT/ROAD: imported the cement atlas %ux%u from the terrain field store (version %llu).", side, side,
+             static_cast<unsigned long long>(feed.cementAtlasVersion));
     }
     // On failure the dummy stays bound (cementReady=false) -> FS uses colormap base.
 }

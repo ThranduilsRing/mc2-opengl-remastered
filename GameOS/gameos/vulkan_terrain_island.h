@@ -85,6 +85,9 @@ struct Mc2TerrainTier1Feed {
     // LOD-chunk frag reads (gos_terrain_lod_chunk.cpp:1122-1143). All 0/false when the
     // cement atlas isn't ready -> VK frag falls back to the colormap base (no hole).
     uint32_t                    glCementAtlasTex;      // GL name of g_cementAtlasGLTex (0 = not ready)
+    const uint8_t*              cementAtlasRgba;       // the field store's CPU atlas (RGBA8, side^2 texels); null = none
+    int32_t                     cementAtlasSide;
+    uint64_t                    cementAtlasVersion;    // changes on every rebuild; the island re-imports on a change
     int32_t                     cementGridSide;        // gos_terrain_indirect_getCementAtlasGridSide()
     float                       cementWUPT;            // world units per cement tile (== 128)
     int32_t                     useCement;             // 1 iff cement atlas ready AND cement SSBO live

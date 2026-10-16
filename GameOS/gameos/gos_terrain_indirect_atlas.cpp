@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
 #include "mc2fmt.h"
+#include "terrain_field_store.h"
 
 
 // ---------------------------------------------------------------------------
@@ -669,6 +670,20 @@ void BuildCementCatalogAtlas() {
     MC2_GL_BindTexture(GL_TEXTURE_2D, (GLuint)savedTex0Binding);
     glActiveTexture((GLenum)savedActive);
 
+    // The CPU copy the Vulkan terrain island imports (RGBA order; the GL upload above swizzles the same BGRA words).
+    if (mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore()) {
+        std::vector<uint8_t> rgba(atlasBuf.size() * 4u);
+        for (size_t i = 0; i < atlasBuf.size(); ++i) {
+            const uint32_t w = atlasBuf[i];   // BGRA in memory: B lowest byte
+            rgba[i * 4 + 0] = static_cast<uint8_t>(w >> 16);
+            rgba[i * 4 + 1] = static_cast<uint8_t>(w >> 8);
+            rgba[i * 4 + 2] = static_cast<uint8_t>(w);
+            rgba[i * 4 + 3] = static_cast<uint8_t>(w >> 24);
+        }
+        store->setCementAtlas(rgba.data(), atlasPixelSide, atlasPixelSide);
+    } else {
+        mc2::fmt::print_err("[TERRAIN_FIELDS v1] cement atlas built with no terrain field store: the Vulkan terrain keeps the colormap base\n");
+    }
     g_cementAtlasGridSide    = gridSide;
     g_cementAtlasTileCount   = N;
     g_cementCatalogTruncated = truncated ? 1 : 0;

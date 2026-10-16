@@ -64,6 +64,13 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     const bool cementLive  = cementReady && s_cementSsbo.created();
     out->glCementAtlasTex   = static_cast<uint32_t>(gos_terrain_indirect_getCementAtlasGLTex());
     out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
+    {
+        const auto& atlas = fields->cementAtlas();
+        const bool have = !atlas.texels.empty() && atlas.width == atlas.height;
+        out->cementAtlasRgba    = have ? atlas.texels.data() : nullptr;
+        out->cementAtlasSide    = have ? atlas.width : 0;
+        out->cementAtlasVersion = have ? atlas.version : 0;
+    }
     out->cementWUPT         = 128.0f;  // Terrain::worldUnitsPerVertex (GL uploads 128.0)
     out->useCement          = cementLive ? 1 : 0;
     out->useTransitionMask  = gos_terrain_indirect_isTransitionMaskReady() ? 1 : 0;
