@@ -164,6 +164,8 @@ char* getCodeAddress (void);
 
 void pop (void);
 void getCodeToken (void);
+void initializeEntryFrame ();
+bool pushEntryValueParameter (TypePtr formalTypePtr, const ABLParam& param);
 void pushInteger (int value);
 void pushReal (float value);
 void pushByte (char value);

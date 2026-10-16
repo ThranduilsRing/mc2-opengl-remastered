@@ -872,69 +872,42 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 //***************************************************************************
 
-long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, ABLParamPtr paramList, StackItemPtr returnVal) {
-
-	//insertSymTable(&SymTableDisplay[0], moduleIdPtr);
-
-	//--------------------------
-	// Execute the ABL module...
-
-	//----------------------------------------------------------------------------------
-	// NOTE: Ultimately, we want the ABL virtual machine to be set up once, and then
-	// ABL modules/routines can be called multiple times from within a program. For now,
-	// to test, let's just assume every time we run a module, it is a self-contained
-	// ABL program.
-
-	//---------------------------------
-	// Init some important variables...
-	//lineNumber = 0;
-	//printFlag = true;
-	//blockFlag = false;
-	//blockType = BLOCK_MODULE;
-	CurModuleIdPtr = nullptr;
-	CurRoutineIdPtr = nullptr;
-	//bufferOffset = 0;
-	//bufferp = sourceBuffer;
-	//tokenp = tokenString;
-	//digitCount = 0;
-	//countError = false;
+void initializeEntryFrame () {
 	errorCount = 0;
 	execStatementCount = 0;
-
 	NumExecutions++;
-
-	//------------------
-	// Init the stack...
 	stackFrameBasePtr = tos = (stack + eternalOffset);
-
-	//---------------------------------------
-	// Initialize the module's stack frame...
 	level = 1;
 	CallStackLevel = 0;
 	stackFrameBasePtr = tos + 1;
-	
-	//-------------------------
-	// Function return value...
 	pushInteger(0);
-	//---------------
-	// Static Link...
 	pushAddress(nullptr);
-	//----------------
-	// Dynamic Link...
 	pushAddress(nullptr);
-	//------------------
-	// Return Address...
 	pushAddress(nullptr);
+}
 
-	//initDebugger();
+bool pushEntryValueParameter (TypePtr formalTypePtr, const ABLParam& param) {
+	if (formalTypePtr == RealTypePtr) {
+		if (param.type == ABL_PARAM_INTEGER)
+			pushReal((float)param.integer);
+		else if (param.type == ABL_PARAM_REAL)
+			pushReal(param.real);
+	} else if (formalTypePtr == IntegerTypePtr) {
+		if (param.type == ABL_PARAM_INTEGER)
+			pushInteger(param.integer);
+		else
+			return false;
+	}
+	return true;
+}
 
-	//----------
-	// Run it...
+long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, ABLParamPtr paramList, StackItemPtr returnVal) {
+
+	CurModuleIdPtr = nullptr;
+	CurRoutineIdPtr = nullptr;
+	initializeEntryFrame();
 
 	if (paramList) {
-		//------------------------------------------------------------------------------
-		// NOTE: Currently, parameter passing of arrays is not functioning. This MUST be
-		// done...
 		long curParam = 0;
 		for (SymTableNodePtr formalIdPtr = moduleIdPtr->defn.info.routine.params;
 			 formalIdPtr != nullptr;
@@ -944,24 +917,9 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 
 			if (formalIdPtr->defn.key == DFN_VALPARAM) {
 
-				if (formalTypePtr == RealTypePtr) {
-					if (paramList[curParam].type == ABL_PARAM_INTEGER) {
-						//---------------------------------------------
-						// Real formal parameter, but integer actual...
-						pushReal((float)(paramList[curParam].integer));
-						}
-					else if (paramList[curParam].type == ABL_PARAM_REAL)
-						pushReal(paramList[curParam].real);
-					}
-				else if (formalTypePtr == IntegerTypePtr) {
-					if (paramList[curParam].type== ABL_PARAM_INTEGER)
-						pushInteger(paramList[curParam].integer);
-					else
-						return(0);
-				}
+				if (!pushEntryValueParameter(formalTypePtr, paramList[curParam]))
+					return 0;
 
-				//----------------------------------------------------------
-				// Formal parameter is an array or record, so it gets a block of its own...
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 					long size = formalTypePtr->size;
 					char* dest = (char*)ABLStackMallocCallback((size_t)size);
@@ -975,16 +933,12 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 				}
 				}
 			else {
-				//-------------------------------
-				// pass by reference parameter...
 				if (formalTypePtr == RealTypePtr)
 					pushAddress((Address)&(paramList[curParam].real));
 				else if (formalTypePtr == IntegerTypePtr)
 					pushAddress((Address)&(paramList[curParam].integer));
 				else
 					return(0);
-				//SymTableNodePtr idPtr = getCodeSymTableNodePtr();
-				//execVariable(idPtr, USE_REFPARAM);
 			}
 			curParam++;
 		}
@@ -995,10 +949,6 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 	if (returnVal)
 		memcpy(returnVal, &returnValue, sizeof(StackItem));
 
-	//extractSymTable(&SymTableDisplay[0], moduleIdPtr);
-
-	//-----------
-	// Summary...
 	return(execStatementCount);
 }
 
