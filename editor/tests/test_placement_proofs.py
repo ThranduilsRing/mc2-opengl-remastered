@@ -17,6 +17,90 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
 
 
 class LegacyLinkTests(unittest.TestCase):
+    def test_species_reordering_cannot_change_combo_selection(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / "mc2-el5-species" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+        conditions = (
+            "DESTROY_ALL_ENEMY_UNITS DESTROY_NUMBER_OF_ENEMY_UNITS DESTROY_SPECIFIC_ENEMY_UNIT "
+            "DESTROY_SPECIFIC_STRUCTURE CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS "
+            "CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT "
+            "CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE DEAD_OR_FLED_ALL_ENEMY_UNITS "
+            "DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT CAPTURE_UNIT "
+            "CAPTURE_STRUCTURE GUARD_SPECIFIC_UNIT GUARD_SPECIFIC_STRUCTURE MOVE_ANY_UNIT_TO_AREA "
+            "MOVE_ALL_UNITS_TO_AREA MOVE_ALL_SURVIVING_UNITS_TO_AREA MOVE_ALL_SURVIVING_MECHS_TO_AREA "
+            "BOOLEAN_FLAG_IS_SET ELAPSED_MISSION_TIME").split()
+        actions = ("PLAY_BIK PLAY_WAV DISPLAY_TEXT_MESSAGE DISPLAY_RESOURCE_TEXT_MESSAGE "
+                   "SET_BOOLEAN_FLAG MAKE_NEW_TECHNOLOGY_AVAILABLE").split()
+
+        def fixture(header, implementation):
+            source = '#include <cassert>\n#include <cstdlib>\n#include <new>\n#include <string>\n#include <vector>\n'
+            model = (root / 'editor/Objective.h').read_text()
+            for kind in ('condition', 'action'):
+                source += re.search(r'enum ' + kind + r'_species_type\s*\{[^}]*\};', model)[0] + '\n'
+            if 'public EList' in header:
+                source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
+                source += 'Heap heap; Heap* systemHeap = &heap;\n#define gosASSERT(x) assert(x)\n'
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+            source += '''
+struct Combo {
+    std::vector<int> items; int selected = -1;
+    void AddString(const char* text) { items.push_back(std::stoi(text)); }
+    void SetCurSel(int index) { selected = index; }
+};
+struct Model {
+    std::string DescriptionOfConditionSpecies(condition_species_type value) { return std::to_string(value); }
+    std::string DescriptionOfActionSpecies(action_species_type value) { return std::to_string(value); }
+};
+struct Dialog {
+    Model m_ModifiedObjective;
+    Combo m_ComboBox, m_ActionComboBox, m_FailureConditionComboBox, m_FailureActionComboBox;
+'''
+            start = header.index('\tclass CConditionSpeciesList' if 'public EList' in header
+                                 else '\tstd::vector<condition_species_type>')
+            source += header[start:header.index('\t/* for persistent storage')]
+            start = re.search(r'^\s*comboBoxItems[ .=]', implementation[implementation.index('BOOL ObjectiveDlg::OnInitDialog'):], re.M)
+            body = implementation[implementation.index('BOOL ObjectiveDlg::OnInitDialog'):]
+            source += 'void populate() {\n{\n{\n' + body[start.start():body.index('\n\tLoadDialogValues();')] + '}\n'
+            members = ('comboBoxItems', 'actionComboBoxItems', 'failureConditionComboBoxItems', 'failureActionComboBoxItems')
+            for index, member in enumerate(members):
+                expression = re.search(r'(?:condition|action)_species_type species = ([^;]*' + member + r'[^;]*);', implementation)[1]
+                source += f'int select{index}(int comboboxSelection, int actionComboboxSelection) {{ return {expression}; }}\n'
+            source += '};\nint main() { Dialog dialog; dialog.populate();\n'
+            for index, (member, combo) in enumerate(zip(members, ('m_ComboBox', 'm_ActionComboBox', 'm_FailureConditionComboBox', 'm_FailureActionComboBox'))):
+                expected = ','.join(conditions if index % 2 == 0 else actions)
+                source += f'assert((dialog.{combo}.items == std::vector<int>{{{expected}}}));\n'
+                source += f'assert(dialog.{combo}.selected == 0);\n'
+                source += f'for (int i = 0; i < dialog.{combo}.items.size(); ++i) assert(dialog.select{index}(i, i) == dialog.{combo}.items[i]);\n'
+                source += f'auto copy{index} = dialog.{member}; copy{index}[0] = copy{index}[1]; assert(dialog.{member}[0] != copy{index}[0]);\n'
+            return source + '}\n'
+
+        def run(source, label, succeeds=True):
+            cpp = output / (label + '.cpp'); cpp.write_text(source)
+            exe = output / (label + '.exe')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        paths = ('editor/ObjectiveDlg.h', 'editor/ObjectiveDlg.cpp')
+        old = []
+        for path in paths:
+            result = subprocess.run(['git', 'show', '0f77d7458:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            old.append(result.stdout)
+        run(fixture(*old), 'old')
+        header, implementation = ((root / path).read_text() for path in paths)
+        run(fixture(header, implementation), 'current')
+        for first, second in ((conditions[0], conditions[1]), (actions[0], actions[1])):
+            wrong = re.sub(r'\b' + first + r'\b', 'SWAPPED_SPECIES', implementation)
+            wrong = re.sub(r'\b' + second + r'\b', first, wrong).replace('SWAPPED_SPECIES', second)
+            self.assertNotEqual(wrong, implementation)
+            run(fixture(header, wrong), 'reordered-' + first, False)
+        print(f'Species fixture artifacts: {output}')
+
     def test_undo_history_truncates_redo_and_preserves_save_positions(self):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / "mc2-el4-history" / uuid.uuid4().hex

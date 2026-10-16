@@ -15,6 +15,7 @@
 #include "resource.h"
 
 #include "Objective.h"
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////
 // ObjectiveDlg dialog
@@ -45,12 +46,10 @@ public:
 	int nFailureConditionSpeciesSelectionIndex;
 	int nFailureActionSpeciesSelectionIndex;
 
-	class CConditionSpeciesList : public EList <condition_species_type, condition_species_type> {};
-	class CActionSpeciesList : public EList <action_species_type, action_species_type> {};
-	CConditionSpeciesList comboBoxItems;
-	CActionSpeciesList actionComboBoxItems;
-	CConditionSpeciesList failureConditionComboBoxItems;
-	CActionSpeciesList failureActionComboBoxItems;
+	std::vector<condition_species_type> comboBoxItems;
+	std::vector<action_species_type> actionComboBoxItems;
+	std::vector<condition_species_type> failureConditionComboBoxItems;
+	std::vector<action_species_type> failureActionComboBoxItems;
 
 	/* for persistent storage of miscellaneous working data*/
 	CObjectiveCondition *pNewCondition;
