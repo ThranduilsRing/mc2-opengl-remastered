@@ -54,8 +54,8 @@
    "LG05": 120,
    "LG06": 509,
    "LG07": 0,
-   "LG08": 261,
-   "LG09": 1966,
+   "LG08": 259,
+   "LG09": 1953,
    "LG10": 42,
    "LG11": 101,
    "LG12a": 95,
@@ -429,7 +429,7 @@
    "LG02": 1,
    "LG03": 1,
    "LG06": 3,
-   "LG09": 8,
+   "LG09": 10,
    "LG10": 1,
    "LG17": 8,
    "LG18": 1
@@ -723,7 +723,7 @@
    "LG09": 12
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
-   "LG08": 15,
+   "LG08": 13,
    "LG09": 7
   },
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": {
@@ -1165,7 +1165,7 @@
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG09": 37,
+   "LG09": 28,
    "LG10": 1,
    "LG11": 1,
    "LG13": 4,
@@ -1259,7 +1259,7 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 25
+   "LG09": 19
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -5126,7 +5126,7 @@
    "LG20": 3
   }
  },
- "head": "edb806c55",
+ "head": "5e7440c75",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
