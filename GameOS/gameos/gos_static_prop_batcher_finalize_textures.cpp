@@ -826,18 +826,17 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             const uint32_t lw = mc2tex::mipExtent(cpuArray.width, lvl), lh = mc2tex::mipExtent(cpuArray.height, lvl);
             const size_t layerBytes = static_cast<size_t>(lw) * lh * 4u;
             if (lvl > 0)
-                for (const auto& lm : ktxMipLayers) {
-                    const RenderCore::KtxImage& img = lm.second;
+                for (const auto& [layerK, img] : ktxMipLayers) {
                     if (static_cast<int>(lvl) >= img.mipCount || lvl >= img.mipByteOffsets.size()) continue;
                     const uint32_t kw = mc2tex::mipExtent(static_cast<uint32_t>(img.width), lvl);
                     const uint32_t kh = mc2tex::mipExtent(static_cast<uint32_t>(img.height), lvl);
                     const size_t off = img.mipByteOffsets[lvl];
                     if (kw > lw || kh > lh || off + static_cast<size_t>(kw) * kh * 4u > img.pixels.size()) {
                         mc2::fmt::print_err("[KTX2_MIP] layer {:d} level {:d} rejected: {:d}x{:d} does not fit the {:d}x{:d} array level or its bytes\n",
-                            mc2::fmt::as_size(lm.first), mc2::fmt::as_u32(lvl), mc2::fmt::as_u32(kw), mc2::fmt::as_u32(kh), mc2::fmt::as_u32(lw), mc2::fmt::as_u32(lh));
+                            mc2::fmt::as_size(layerK), mc2::fmt::as_u32(lvl), mc2::fmt::as_u32(kw), mc2::fmt::as_u32(kh), mc2::fmt::as_u32(lw), mc2::fmt::as_u32(lh));
                         continue;
                     }
-                    blitRows(layerTexels[lm.first], lw, img.pixels.data() + off, kw, kh);
+                    blitRows(layerTexels[layerK], lw, img.pixels.data() + off, kw, kh);
                     ++bakedLevels;
                 }
             std::vector<uint8_t>& level = cpuArray.levels[lvl];

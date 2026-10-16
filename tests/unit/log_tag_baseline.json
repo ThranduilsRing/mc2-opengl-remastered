@@ -4703,6 +4703,42 @@
    "count": 1
   },
   {
+   "tag": "HDRI_SKY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "reason",
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDRI_SKY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "reason",
+    "path",
+    "err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDRI_SKY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "reason",
+    "path",
+    "rc",
+    "err"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HDRI_SUN_SYNC",
    "ver": -1,
    "stream": "stderr",
@@ -8001,22 +8037,6 @@
    "count": 1
   },
   {
-   "tag": "PROP_MIP_PROBE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "glTexArray",
-    "w",
-    "h",
-    "layers",
-    "glTexMaxLevel",
-    "vkComputedMips",
-    "vkSamplerMaxLod"
-   ],
-   "count": 1
-  },
-  {
    "tag": "PROP_REINJECT",
    "ver": -1,
    "stream": "stderr",
@@ -10264,6 +10284,13 @@
    "stream": "log",
    "keys": [],
    "count": 5
+  },
+  {
+   "tag": "TERRAIN_FIELDS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
   },
   {
    "tag": "TERRAIN_HEIGHT_TEX",

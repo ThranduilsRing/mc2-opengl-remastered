@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 978;
+inline constexpr std::size_t kGateCount = 977;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -925,7 +925,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PROP_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_PROP_LIGHT_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_LIGHT_VERTEX_PROBE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_VK_PROP_MIP_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_PACKET_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_PROP_PERF", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_SCENE_GL_PRODUCER_QUERY", Kind::Bool, Rule::Lead1, {}},

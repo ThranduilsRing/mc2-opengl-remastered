@@ -25760,32 +25760,6 @@
    "retireVerdict": "tierB:MERGE"
   },
   {
-   "name": "MC2_VK_PROP_MIP_PROBE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "ADJUDICATION-1 FENCE-RECON: one-shot mip-count-parity verdict.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_color_prop_island.cpp:741",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": "tierB:MERGE"
-  },
-  {
    "name": "MC2_VK_PROP_PACKET_DUMP",
    "kind": "Bool",
    "default": false,
