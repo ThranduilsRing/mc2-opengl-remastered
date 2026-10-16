@@ -120,3 +120,22 @@ TEST_CASE("release() gives the node up without a release call")
 	CHECK(node == 9);
 	CHECK(released().empty());
 }
+
+namespace
+{
+struct FakeManager
+{
+	std::vector<std::uint32_t> got;
+	void releaseNode (std::uint32_t node) { got.push_back(node); }
+};
+} // namespace
+
+TEST_CASE("releaseThrough forwards to a manager and is a no-op without one")
+{
+	FakeManager manager;
+	mc2::releaseThrough(&manager, 12);
+	REQUIRE(manager.got.size() == 1);
+	CHECK(manager.got[0] == 12);
+	mc2::releaseThrough(static_cast<FakeManager*>(nullptr), 13);
+	CHECK(manager.got.size() == 1);
+}

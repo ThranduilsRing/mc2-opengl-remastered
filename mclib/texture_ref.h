@@ -57,7 +57,15 @@ private:
 	std::uint32_t node_ = kNoTextureNode;
 };
 
-// The engine's release: MC_TextureManager::releaseNode on the global manager; a no-op once the manager is gone (process shutdown).
+// Releases `node` through `manager`; a no-op when there is no manager (the process is shutting down and the manager is already gone).
+template <class Manager>
+void releaseThrough (Manager* manager, std::uint32_t node) noexcept
+{
+	if (manager)
+		manager->releaseNode(node);
+}
+
+// The engine's release: MC_TextureManager::releaseNode on the global manager.
 struct ManagerTextureRelease
 {
 	void operator() (std::uint32_t node) const noexcept;

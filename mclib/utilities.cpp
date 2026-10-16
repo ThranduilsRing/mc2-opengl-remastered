@@ -172,7 +172,7 @@ void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 
 StaticInfo::~StaticInfo()
 {
-	if (mcTextureManager)
+	if (mcTextureManager && textureHandle)
 		mcTextureManager->releaseNode( textureHandle );
 }
 

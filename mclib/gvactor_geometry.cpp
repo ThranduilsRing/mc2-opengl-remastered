@@ -135,7 +135,8 @@ void GVAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 {
 	
-	mcTextureManager->releaseNode(localTextureHandle);
+	if (localTextureHandle)
+		mcTextureManager->releaseNode(localTextureHandle);
 	
 	char txmName[1024];
 	gvShape->GetTextureName(0,txmName,256);

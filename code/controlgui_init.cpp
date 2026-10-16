@@ -600,7 +600,8 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	{
 		for ( int i = 0; i < buttonCount; i++ )
 		{
-			mcTextureManager->releaseNode( buttonData[i].textureHandle );
+			if ( buttonData[i].textureHandle )
+				mcTextureManager->releaseNode( buttonData[i].textureHandle );
 		}
 	}
 
@@ -608,7 +609,8 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	{
 		for ( int i = 0; i < LAST_VEHICLE; i++ )
 		{
-			mcTextureManager->releaseNode( vehicleData[i].textureHandle );
+			if ( vehicleData[i].textureHandle )
+				mcTextureManager->releaseNode( vehicleData[i].textureHandle );
 		}
 	}
 

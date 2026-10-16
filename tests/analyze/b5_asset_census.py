@@ -61,6 +61,10 @@ OTHER_BATCH_DELETE = re.compile(r"delete\s+(?:\[\s*\]\s*)?(?:appearance|Abl\w*H
 CLASS_OP_CLASSES = re.compile(r"\b(AppearanceType|\w*AppearanceType|\w*Appearance|TG_\w+|ObjectType|\w*ObjectType|\w*Shape)::operator")
 
 
+class CensusError(Exception):
+    """An input the census cannot read: reported as one line, exit code 2."""
+
+
 def strip_comments(text: str) -> list[str]:
     """Blank out // and /* */ comments and string literals, keeping line numbers."""
     i, n = 0, len(text)
@@ -92,7 +96,10 @@ def strip_comments(text: str) -> list[str]:
 
 
 def tracked() -> list[str]:
-    out = subprocess.run(["git", "-C", ROOT, "ls-files"] + SCAN_DIRS, capture_output=True, text=True, check=True).stdout
+    try:
+        out = subprocess.run(["git", "-C", ROOT, "ls-files"] + SCAN_DIRS, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError) as e:
+        raise CensusError(f"git ls-files failed: {e}")
     return [p for p in out.splitlines() if p.endswith(SOURCE_EXT)]
 
 
@@ -107,8 +114,11 @@ def census() -> list[str]:
     rows = []
     for path in sorted(tracked()):
         fb = file_batch(path)
-        with open(os.path.join(ROOT, path), encoding="latin-1") as f:
-            raw = f.read().replace("\r\n", "\n")
+        try:
+            with open(os.path.join(ROOT, path), encoding="latin-1") as f:
+                raw = f.read().replace("\r\n", "\n")
+        except OSError as e:
+            raise CensusError(f"tracked file {path} is unreadable: {e}")
         src_lines = raw.split("\n")
         for lineno, line in enumerate(strip_comments(raw), 1):
             for kind, rx in RX.items():
@@ -148,7 +158,11 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--check", action="store_true")
     g.add_argument("--write", action="store_true")
     args = ap.parse_args(argv)
-    rows = census()
+    try:
+        rows = census()
+    except CensusError as e:
+        print(f"b5_asset_census: {e}")
+        return 2
     if args.write:
         with open(LIST, "w", encoding="utf-8", newline="\n") as f:
             f.write("\n".join(rows) + "\n")
@@ -158,8 +172,12 @@ def main(argv: list[str] | None = None) -> int:
         def key(r: str) -> str:
             batch, loc, rest = r.split("\t", 2)
             return f"{batch}\t{loc.rsplit(':', 1)[0]}\t{rest}"
-        with open(LIST, encoding="utf-8") as f:
-            sealed = collections.Counter(key(r) for r in f.read().splitlines() if r)
+        try:
+            with open(LIST, encoding="utf-8") as f:
+                sealed = collections.Counter(key(r) for r in f.read().splitlines() if r)
+        except OSError as e:
+            print(f"b5_asset_census: the sealed list {LIST} is unreadable: {e}")
+            return 2
         now = collections.Counter(key(r) for r in rows)
         gone, new = sealed - now, now - sealed
         for r in sorted(gone.elements()):

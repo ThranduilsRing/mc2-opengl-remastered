@@ -530,7 +530,10 @@ void MC_TextureManager::releaseNode (DWORD textureNode)
 
 	MC_TextureNode& node = masterTextureNodes[textureNode];
 	if (node.numUsers == 0)
+	{
+		MC2_LOG_ONCE(Render, Warn, "[TEXTURE_RELEASE_BAD] node={} (released with no reference counted; ignored)", textureNode);
 		return;
+	}
 
 	if (--node.numUsers == 0)
 		node.destroy();
@@ -538,8 +541,7 @@ void MC_TextureManager::releaseNode (DWORD textureNode)
 
 void mc2::ManagerTextureRelease::operator() (std::uint32_t node) const noexcept
 {
-	if (mcTextureManager)
-		mcTextureManager->releaseNode(node);
+	mc2::releaseThrough(mcTextureManager, node);
 }
 
 constexpr int cache_Threshold = 150;
