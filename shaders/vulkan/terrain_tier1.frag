@@ -546,6 +546,7 @@ void main() {
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
                     base = texture(u_cementAtlas, dAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
+                    cementHit = true;   // as GL's diag-connect branch
                 }
             }
         }
