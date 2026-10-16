@@ -1,5 +1,15 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-SIXTH session (2026-10-16, Sonnet 5.5) -- GL deletion step 2 (a), gos_screenshot on the VK readback, s35 review should-fixes; nifty not merged
+
+### Commits (after 3582651b6)
+806488128 step 2 (a): GL pass-timer half, GL error drain, GL memory counters, GL frame-pass-stats fields | 2dbb4965b s35 review S1 + S3 | 0c31da555 gos_screenshot on the VK present readback | state/inventory/baselines commit after it.
+- Deleted (item 1): `gos_render_pass_timer` ring + Begin/End/QueryActive (27 call sites, two spike-timer guards); `drainGLErrors` (9 call sites) + exit-time drain + `gl_errors` key; `[VRAM v1]` GL_ATI / GL_NVX keys (`vram.py`, tests); FramePassStats FBO / viewport / depth / blend / cull (dev-shell framegraph keys, debug-state-dump keys, four Frame Inspector columns). Pass `ran` is set from the VK timer's harvest.
+- Item 2: `gos::screenshot::request(path, done)` / `pending()` / `deliver(w,h,rgbaBottomUp)`; `engine_present_vk.cpp` delivers next to the capture hook, `frameSwapWindow` reads the frame back while a request is pending. Callers: dev-shell, `MC2_SCREENSHOT_PATH`, VisualDiff, `--validate --screenshot`. `source=backbuffer` and the `scheduleScreenshot` flag are gone.
+- Review s35: S1 `vk_render_pass_timer::CancelUnlessSubmitted` (over the testable `SubmitGuard` in the ring header) on every island, the VFX island's one-off Cancel folded in; the dynamic shadow pass opens the bracket in its begin function and guards in the submit function. S2 accepted: the session 35 dup-lines baseline rewrite was GameOS +5 lines from the timer Begin/End inside the three near-copy record functions (reason belongs in the commit message; it is now in this file and in 2dbb4965b). S3 exactly eight hex digits. Nit (skip a frame whose brackets were all cancelled) not done.
+- Lessons: (1) the Bash tool halves doubled backslashes, so a python heredoc writing `\n` into C++ produced raw newlines in string literals (the compile error is the only signal): write C++ with the Edit/Write tools or `chr(92)`; (2) a python `index()` of a function name hit the non-Windows stub first and a slice replace wiped 500 lines of gos_dev_shell.cpp (restored from git): anchor slices on unique text and diff after every scripted edit; (3) entangled files were split into two commits through temp blobs (`git hash-object` + `update-index --cacheinfo`).
+- Open: gate rows `MC2_GL_ERROR_DRAIN_SILENT` and `MC2_SCREENSHOT_SOURCE` (see inventory section 17); section 16 (b) rulings; row 18; VFX oracle VK arm; capture `gl_fbo` arm.
+
 ## THIRTY-FIFTH session (2026-10-16, cap 6 h, Opus 5.5) -- s34 review M1 fixed first (fix-then-merge), row 28 closed with numbers, Post covers the native passes, gl_fbo arm NOT retired (consumers listed), step-2 list for the owner; nifty not merged (queued tips)
 
 ### Commits (after 3a7322523; final exe = 77b0d2a80, later commits docs / baselines only)
@@ -7,7 +17,7 @@
 - dup-lines baseline rewritten (55326 -> 55319 total): the total fell (the shared one-shot submit), but GameOS rose +5 because the timer's Begin/End lines sit inside the fog / SSAO / screen-FX record functions, which were already a three-way near-copy; the calls are not reshaped to dodge the counter.
 
 ### Review s34 (FIX-THEN-MERGE) folded
-- M1: `vk_render_pass_timer::Cancel(pass)`; the VFX island cancels on its nothing-to-draw path; the present composite (recorded in one frame, submitted or dropped later: resize, re-record, skipped present) no longer carries a bracket. Audit of the other islands: terrain / props / mechs / shadow / water / fog / SSAO / screen FX return between End and submit only on error paths that disable the island (accepted by the review).
+- M1: `vk_render_pass_timer::Cancel(pass)`; the VFX island cancels on its nothing-to-draw path; the present composite (recorded in one frame, submitted or dropped later: resize, re-record, skipped present) no longer carries a bracket. Audit of the other islands: terrain / props / mechs / shadow / water / fog / SSAO / screen FX return between End and submit on error paths. CORRECTION (s35 review, fixed in session 36, 2dbb4965b): not all of them disable the island; the static-shadow post pass (`runVkPostScreenShadowStaticNative`) returns false without `disabled` and retries next frame, and the other islands could publish one stale frame before disabling.
 - S1: `vk_render_pass_timer_ring.h` (Vulkan-free ring: bracket query pairs, cancel, drop at reuse, younger slots wait, hard errors apart, overflow count) with doctests incl. the M1 case (8 cases / 50 assertions pass). S2: a hard result-read error discards the frame and logs once. S3: the unsupported verdict is keyed to the device handle. N1: overflow logged once. N2/N3: comments say why.
 
 ### Proof

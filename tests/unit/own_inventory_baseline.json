@@ -5532,25 +5532,6 @@
     "Mission"
    ]
   },
-  "TG_HWLightsData": {
-   "delete": 0,
-   "delete_array": 3,
-   "files": {
-    "mclib/txmmgr.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/txmmgr_lights.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    }
-   },
-   "new": 0,
-   "new_array": 3,
-   "owners": [
-    "MC_TextureManager"
-   ]
-  },
   "TG_HWSceneData": {
    "delete": 1,
    "delete_array": 0,
@@ -6119,7 +6100,7 @@
    "owners": []
   },
   "UserHeap": {
-   "delete": 17,
+   "delete": 16,
    "delete_array": 0,
    "files": {
     "code/ablmc2.cpp": {
@@ -6164,10 +6145,6 @@
      "delete": 1,
      "new": 1
     },
-    "mclib/soundsys.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/terrain.cpp": {
      "delete": 1
     },
@@ -6183,7 +6160,7 @@
      "new": 2
     }
    },
-   "new": 22,
+   "new": 21,
    "new_array": 0,
    "owners": [
     "",
@@ -6192,7 +6169,6 @@
     "MC_TextureManager",
     "Mission",
     "ObjectTypeManager",
-    "SoundSystem",
     "Terrain",
     "TerrainTextures"
    ]
@@ -7659,7 +7635,6 @@
   "GameOS/gameos/gos_font.cpp": 6,
   "GameOS/gameos/gos_lightgrid_build.cpp": 2,
   "GameOS/gameos/gos_postprocess_blur.cpp": 2,
-  "GameOS/gameos/gos_screenshot.cpp": 2,
   "GameOS/gameos/gos_terrain_lighting.cpp": 5,
   "GameOS/gameos/gpu_cull_compute.cpp": 8,
   "GameOS/gameos/gpu_cull_readback.cpp": 1,

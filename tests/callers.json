@@ -5102,7 +5102,7 @@
         },
         {
           "path": "tests/smoke/test_vram.py",
-          "line": 54,
+          "line": 50,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -5445,7 +5445,7 @@
         },
         {
           "path": "tests/smoke/test_vram.py",
-          "line": 55,
+          "line": 51,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import Verdict"

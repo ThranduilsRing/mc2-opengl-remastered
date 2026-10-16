@@ -2515,7 +2515,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "DEV_SHELL",
@@ -3966,29 +3966,6 @@
     "MC2_GL_DEBUG"
    ],
    "count": 2
-  },
-  {
-   "tag": "GL_ERROR",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "frame",
-    "pass",
-    "code",
-    "mono_count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GL_ERROR",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "pass",
-    "elapsed_frames",
-    "count_in_window"
-   ],
-   "count": 1
   },
   {
    "tag": "GOM_UPDATE_COST",
@@ -8421,8 +8398,7 @@
    "ver": 1,
    "stream": "stdout",
    "keys": [
-    "every",
-    "ring"
+    "every"
    ],
    "count": 1
   },
@@ -8833,10 +8809,17 @@
    "tag": "SCREENSHOT",
    "ver": 1,
    "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "SCREENSHOT",
+   "ver": 1,
+   "stream": "stderr",
    "keys": [
-    "frame"
+    "pixels"
    ],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "SEAMPROBE",
@@ -11851,7 +11834,7 @@
     "reason",
     "out"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VISUAL_HEIGHT",
@@ -12693,10 +12676,6 @@
    "keys": [
     "phase",
     "backend",
-    "gl_ati_tex_free_mb",
-    "gl_ati_tex_largest_free_mb",
-    "gl_nvx_dedicated_mb",
-    "gl_nvx_available_mb",
     "vk_budget_mb",
     "vk_usage_mb",
     "vk_allocated_mb",
