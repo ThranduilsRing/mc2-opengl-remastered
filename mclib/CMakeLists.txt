@@ -115,6 +115,7 @@ set(SOURCES ${SOURCES}
     terrtxm2.cpp
     terrtxm2_bake.cpp
     terrtxm2_load.cpp
+    tga_scratch.cpp
     burnin_jpeg_decode.cpp
     control_map_png_decode.cpp
     appear.cpp

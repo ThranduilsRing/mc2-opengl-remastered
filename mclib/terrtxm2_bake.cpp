@@ -6,6 +6,10 @@
 #include "tga_scratch.h"
 #include "appearance_rng.h"
 
+using mc2::tga::loadTga;
+using mc2::tga::tgaPixelsPresent;
+
+
 //---------------------------------------------------------------------------
 inline void fractalPass (float *heightMap, long edgeSize, long THRESHOLD, long NOISE)
 {
@@ -13,7 +17,8 @@ inline void fractalPass (float *heightMap, long edgeSize, long THRESHOLD, long N
 	// This works as follows:
 	// If there is a Height Difference between the points, Add noise based on difference.
 	// If there is NO height difference, DO NOT ADD NOISE.  Let smooth be smooth!
-	float *noiseMap = (float *) malloc(sizeof(float) * edgeSize * edgeSize);
+	std::vector<float> noiseStore(static_cast<size_t>(edgeSize) * static_cast<size_t>(edgeSize));
+	float *noiseMap = noiseStore.data();
 	for (long y=THRESHOLD;y<(edgeSize-THRESHOLD);y++)
 	{
 		for (long x=THRESHOLD;x<(edgeSize-THRESHOLD);x++)
@@ -37,7 +42,6 @@ inline void fractalPass (float *heightMap, long edgeSize, long THRESHOLD, long N
 		heightMap[i] += noiseMap[i];
 	}
 	
-	free(noiseMap);
 }
 
 //---------------------------------------------------------------------------
@@ -83,8 +87,8 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	//Create an image which is x by x for the existing terrain.
 	// Scale it into the range of 0 to 255.
 	// these can be floats!!!!!!!
-	float *srcData = (float *)malloc(sizeof(float) * Terrain::realVerticesMapSide * Terrain::realVerticesMapSide);
-	memset(srcData,0,sizeof(float) * Terrain::realVerticesMapSide * Terrain::realVerticesMapSide); 
+	std::vector<float> srcStore(static_cast<size_t>(Terrain::realVerticesMapSide) * static_cast<size_t>(Terrain::realVerticesMapSide));
+	float *srcData = srcStore.data(); 
 	
 	for (int y=0;y<Terrain::realVerticesMapSide;y++)
 	{
@@ -97,8 +101,8 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	}
 	
 	//Spit out original Targa as well.
-	MemoryPtr sourceData = (MemoryPtr)malloc(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide);
-	memset(sourceData,0,Terrain::realVerticesMapSide * Terrain::realVerticesMapSide);
+	std::vector<unsigned char> sourceStore(static_cast<size_t>(Terrain::realVerticesMapSide) * static_cast<size_t>(Terrain::realVerticesMapSide));
+	MemoryPtr sourceData = sourceStore.data();
 	
 	float *tmpEdge = srcData;
 	MemoryPtr tmpOutput = sourceData;
@@ -139,8 +143,8 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	OEMtgaFile.close();
  	
 	long edgeSize = (numTexturesAcross * COLOR_MAP_RES);
-	float *dstData = (float *)malloc(sizeof(float) * edgeSize * edgeSize);
-	memset(dstData,0,sizeof(float) * edgeSize * edgeSize);
+	std::vector<float> dstStore(static_cast<size_t>(edgeSize) * static_cast<size_t>(edgeSize));
+	float *dstData = dstStore.data();
 
 	rescaleMap(dstData,srcData,edgeSize,Terrain::realVerticesMapSide);
 	
@@ -157,8 +161,8 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	
 	SetFileAttributes(heightName,FILE_ATTRIBUTE_NORMAL);
 	
-	MemoryPtr outputData = (MemoryPtr)malloc(edgeSize * edgeSize);
-	memset(outputData,0,sizeof(BYTE) * edgeSize * edgeSize);
+	std::vector<unsigned char> outputStore(static_cast<size_t>(edgeSize) * static_cast<size_t>(edgeSize));
+	MemoryPtr outputData = outputStore.data();
 	
 	tmpEdge = dstData;
 	tmpOutput = outputData;
@@ -192,7 +196,8 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	tgaFile.write((MemoryPtr)&tgaOutput,sizeof(TGAFileHeader));
 
 	MemoryPtr outputByte = outputData;
-	MemoryPtr output24Bit = (MemoryPtr)malloc(edgeSize * edgeSize * 3);
+	std::vector<unsigned char> output24Store(static_cast<size_t>(edgeSize) * static_cast<size_t>(edgeSize) * 3);
+	MemoryPtr output24Bit = output24Store.data();
 	MemoryPtr output24Temp = output24Bit;
 	for (int i=0;i<edgeSize*edgeSize;i++)
 	{
@@ -209,16 +214,10 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	tgaFile.write(output24Bit,edgeSize * edgeSize * 3);
 	tgaFile.close();
 	
-	free(output24Bit);
 		
 	//ReBurn the shadows.
 	recalcLight(fileName);
 
-	//Destroy RAM allocated.  No Leaking!!
-	free(dstData);
-	free(srcData);
-	free(sourceData);
-	free(outputData);
 }
 
 float ContrastEnhance = 1.5f;
@@ -233,14 +232,11 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 	//first create a height map which is pixel for pixel identical to
 	// the color map.
 	long pixelWidth = numTexturesAcross * COLOR_MAP_TEXTURE_SIZE;
-	float *heightMap = (float *)malloc(sizeof(float) * pixelWidth * pixelWidth);
-	gosASSERT(heightMap != nullptr);
-	memset(heightMap,0,sizeof(float) * pixelWidth * pixelWidth);
+	std::vector<float> heightStore(static_cast<size_t>(pixelWidth) * static_cast<size_t>(pixelWidth));
+	float *heightMap = heightStore.data();
 	
-	float *shadowMap = (float *)malloc(sizeof(float) * pixelWidth * pixelWidth);
-	gosASSERT(shadowMap != nullptr);
-
-	memset(shadowMap,0,sizeof(float) * pixelWidth * pixelWidth);
+	std::vector<float> shadowStore(static_cast<size_t>(pixelWidth) * static_cast<size_t>(pixelWidth));
+	float *shadowMap = shadowStore.data();
 	
 	float worldUnitsPerPixel = (Terrain::worldUnitsMapSide / pixelWidth);
 	
@@ -275,13 +271,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			if (result != NO_ERR)
 				STOP(("Unable to find Hi-Res Height Data"));
 				
-			MemoryPtr tgaFileImage = (MemoryPtr)malloc(heightMapFile.fileSize());
-			gosASSERT(tgaFileImage != nullptr);
-			
-			heightMapFile.read(tgaFileImage,heightMapFile.fileSize());
-			
-			TGAFileHeader heightMapInfo;
-			memcpy(&heightMapInfo,tgaFileImage,sizeof(TGAFileHeader));
+			std::vector<unsigned char> tgaFileImage;
+			TGAFileHeader heightMapInfo{};
+			if (!loadTga(heightMapFile, tgaFileImage, heightMapInfo, "hi-res height map"))
+				return;
 			
 			if (heightMapInfo.width != pixelWidth)
 			{
@@ -291,9 +284,11 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 
 			if (heightMapInfo.image_type == UNC_TRUE)
 			{
-				MemoryPtr loadBuffer = tgaFileImage + sizeof(TGAFileHeader);
+				MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 				if (heightMapInfo.width != heightMapInfo.height)
 					STOP(("Height Map is not a perfect Square"));
+				if (!tgaPixelsPresent(tgaFileImage, heightMapInfo, "hi-res height map"))
+					return;
 				
 				//-----------------------------------------------------------------
 				// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
@@ -376,9 +371,6 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 						}
 					}
 				}
-				
-				free(tgaFileImage);
-				tgaFileImage = nullptr;
 				
 				//------------------------------------------------------------------------
 				// Must check image_descriptor to see if we need to un upside down image.
@@ -771,8 +763,6 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 	}
 	
 	//All Done.  Get rid of the height and Shadow maps
-	free(heightMap);
-	free(shadowMap);
 }
 	
 //---------------------------------------------------------------------------
@@ -943,19 +933,18 @@ void TerrainColorMap::recalcLight(const char *fileName)
 		return;
 	}
 			
-	MemoryPtr tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-	gosASSERT(tgaFileImage != nullptr);
-		
-	colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
-		
-	TGAFileHeader colorMapInfo;
-	memcpy(&colorMapInfo,tgaFileImage,sizeof(TGAFileHeader));
-		
+	std::vector<unsigned char> tgaFileImage;
+	TGAFileHeader colorMapInfo{};
+	if (!loadTga(colorMapFile, tgaFileImage, colorMapInfo, "colour map"))
+		return;
+
 	if (colorMapInfo.image_type == UNC_TRUE)
 	{
-		MemoryPtr loadBuffer = tgaFileImage + sizeof(TGAFileHeader);
+		MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 		if (colorMapInfo.width != colorMapInfo.height)
 			STOP(("Color Map is not a perfect Square"));
+		if (!tgaPixelsPresent(tgaFileImage, colorMapInfo, "colour map"))
+			return;
 			
 		//-----------------------------------------------------------------
 		// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
@@ -991,9 +980,6 @@ void TerrainColorMap::recalcLight(const char *fileName)
 			memcpy(ColorMap,loadBuffer,colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
 		}
 		
-		free(tgaFileImage);
-		tgaFileImage = nullptr;
-			
 		numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 		numTexturesAcross = numTextures;
 		fractionPerTexture = 1.0f / numTextures;

@@ -5,7 +5,11 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
 #include <vector>
+
+class File;
+struct TGAFileHeader;
 
 namespace mc2::tga
 {
@@ -20,6 +24,16 @@ inline bool bodyFits (std::size_t fileBytes, std::size_t headerBytes, long width
 		return false;
 	const std::size_t bytesPerPixel = pixelDepth == 24 ? 3 : 4;
 	return fileBytes - headerBytes >= static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * bytesPerPixel;
+}
+
+// Copies the leading header out of `bytes`; false when the file is shorter than the header.
+template <class HeaderT>
+bool readHeader (const std::vector<unsigned char>& bytes, HeaderT& out)
+{
+	if (bytes.size() < sizeof(HeaderT))
+		return false;
+	std::memcpy(&out, bytes.data(), sizeof(HeaderT));
+	return true;
 }
 
 // Replaces `out` with the whole contents of an open file. False (and `out` empty) for an empty or oversized file or a short read.
@@ -38,4 +52,11 @@ bool readAllBytes (FileT& file, std::vector<unsigned char>& out)
 	}
 	return true;
 }
+
+// Reads a whole TGA file and its header. Terrain textures are mod content, so an empty, unreadable or header-less file is
+// refused with a log line instead of being decoded. `what` names the texture in the log line.
+bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info, const char* what);
+
+// True when the file holds the pixels its header claims; a truncated file is refused with a log line, never walked past its end.
+bool tgaPixelsPresent (const std::vector<unsigned char>& bytes, const TGAFileHeader& info, const char* what);
 }

@@ -1354,24 +1354,19 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			if (fr == NO_ERR)
 			{
 				long mipSize = TERRAIN_TXM_SIZE;
-				DWORD fileSize = txmFile.fileSize();
-				MemoryPtr fileRAM = (MemoryPtr)malloc(fileSize);
-				long result = txmFile.read(fileRAM,fileSize);
-				if (result != fileSize)
+				std::vector<unsigned char> fileRAM;
+				if (!mc2::tga::readAllBytes(txmFile, fileRAM))
 					STOP(("Read Error with Texture %s",(const char*)testPath));
 
-				MemoryPtr lzBuffer = (MemoryPtr)malloc(mipSize * mipSize * sizeof(DWORD));
-				long bufferSize = static_cast<long>(LZDecomp(lzBuffer,fileRAM,fileSize,mipSize * mipSize * sizeof(DWORD)));
+				std::vector<unsigned char> lzBuffer(mipSize * mipSize * sizeof(DWORD));
+				long bufferSize = static_cast<long>(LZDecomp(lzBuffer.data(),fileRAM.data(),fileRAM.size(),mipSize * mipSize * sizeof(DWORD)));
 				if (bufferSize != (mipSize * mipSize * sizeof(DWORD)))
 					STOP(("Texture not correct size!"));
 
 				txmFile.close();
 
-				result = textureFromMemoryAlpha(lzBuffer,mipSize);
+				long result = textureFromMemoryAlpha(lzBuffer.data(),mipSize);
 				txmResult = result;
-
-				free(fileRAM);
-				free(lzBuffer);
 
 				transitions[nextTransition].transitionIndex = typeInfo;
 				transitions[nextTransition].baseTXMIndex = txmResult;
@@ -1564,19 +1559,18 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 				listTransitionFile->writeByte(0);
 			}
 
-			MemoryPtr lzBuffer = (MemoryPtr)malloc(mipSize * mipSize * sizeof(DWORD) * 2);
-			long bufferSize = static_cast<long>(LZCompress(lzBuffer,ourRAM,(mipSize * mipSize * sizeof(DWORD))));
+			std::vector<unsigned char> lzBuffer(mipSize * mipSize * sizeof(DWORD) * 2);
+			long bufferSize = static_cast<long>(LZCompress(lzBuffer.data(),ourRAM,(mipSize * mipSize * sizeof(DWORD))));
 
 			File txmFile;
 			txmFile.create(testPath);
-			txmFile.write(lzBuffer,bufferSize);
+			txmFile.write(lzBuffer.data(),bufferSize);
 			txmFile.close();
 				
 			if (kmp == 0)
 				txmResult = result;
 
 			tileRAMHeap->Free(ourRAM);
-			free(lzBuffer);
 		}
 
 		transitions[nextTransition].transitionIndex = typeInfo;

@@ -4,6 +4,9 @@
 #include "mc2fmt.h"
 #include "tga_scratch.h"
 
+using mc2::tga::loadTga;
+using mc2::tga::tgaPixelsPresent;
+
 //---------------------------------------------------------------------------
 //Used by editor for TacMap
 void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
@@ -44,19 +47,18 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 			}
 		}
 			
-		MemoryPtr tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-		gosASSERT(tgaFileImage != nullptr);
-		
-		colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
-		
-		TGAFileHeader colorMapInfo;
-		memcpy(&colorMapInfo,tgaFileImage,sizeof(TGAFileHeader));
+		std::vector<unsigned char> tgaFileImage;
+		TGAFileHeader colorMapInfo{};
+		if (!loadTga(colorMapFile, tgaFileImage, colorMapInfo, "colour map"))
+			return;
 		
 		if (colorMapInfo.image_type == UNC_TRUE)
 		{
-			MemoryPtr loadBuffer = tgaFileImage + sizeof(TGAFileHeader);
+			MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 			if (colorMapInfo.width != colorMapInfo.height)
 				STOP(("Color Map is not a perfect Square"));
+			if (!tgaPixelsPresent(tgaFileImage, colorMapInfo, "colour map"))
+				return;
 			
 			//-----------------------------------------------------------------
 			// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
@@ -92,8 +94,6 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 				memcpy(ColorMap,loadBuffer,colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
 			}
 			
-			free(tgaFileImage);
-			tgaFileImage = nullptr;
 			
 			DWORD numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 			numTexturesAcross = numTextures;
@@ -345,9 +345,10 @@ long TerrainColorMap::init (char *fileName)
 		else
 		{
 			bool burnedIn = false;
-			MemoryPtr tgaFileImage = nullptr;
+			std::vector<unsigned char> tgaFileImage;
+			TGAFileHeader colorMapInfo{};
 
-			if (tgaFileImage == nullptr)
+			if (tgaFileImage.empty())
 			{
 				File colorMapFile;
 				result = colorMapFile.open(burnInName);
@@ -363,19 +364,18 @@ long TerrainColorMap::init (char *fileName)
 				}
 
 				ZoneScopedN("TerrainColorMap::init colorMap read");
-				tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-				gosASSERT(tgaFileImage != nullptr);
-				colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
+				if (!loadTga(colorMapFile, tgaFileImage, colorMapInfo, "colour map"))
+					return -1;
 			}
 
-			TGAFileHeader colorMapInfo;
-			memcpy(&colorMapInfo,tgaFileImage,sizeof(TGAFileHeader));
 
 			if (colorMapInfo.image_type == UNC_TRUE)
 			{
-				MemoryPtr loadBuffer = tgaFileImage + sizeof(TGAFileHeader);
+				MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 				if (colorMapInfo.width != colorMapInfo.height)
 					STOP(("Color Map is not a perfect Square"));
+				if (!tgaPixelsPresent(tgaFileImage, colorMapInfo, "colour map"))
+					return -1;
 
 				//-----------------------------------------------------------------
 				// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
@@ -414,8 +414,6 @@ long TerrainColorMap::init (char *fileName)
 				}
 				}
 
-				free(tgaFileImage);
-				tgaFileImage = nullptr;
 
 				numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 				numTexturesAcross = numTextures;
@@ -565,26 +563,25 @@ long TerrainColorMap::init (char *fileName)
 			File nmFile;
 			if (nmFile.open(normalMapPath) == NO_ERR)
 			{
-				MemoryPtr nmData = nullptr;
+				std::vector<unsigned char> nmData;
+				TGAFileHeader nmInfo{};
+				bool nmLoaded = false;
 				{
 					ZoneScopedN("TerrainColorMap::init normalMap read");
-					nmData = (MemoryPtr)malloc(nmFile.fileSize());
-					nmFile.read(nmData, nmFile.fileSize());
+					nmLoaded = loadTga(nmFile, nmData, nmInfo, "normal map");
 				}
 
-				TGAFileHeader nmInfo;
-				memcpy(&nmInfo, nmData, sizeof(TGAFileHeader));
-
-			if (nmInfo.image_type == UNC_TRUE && nmInfo.width == nmInfo.height)
+			if (nmLoaded && nmInfo.image_type == UNC_TRUE && nmInfo.width == nmInfo.height && tgaPixelsPresent(nmData, nmInfo, "normal map"))
 				{
 					DWORD nmTilesAcross = nmInfo.width / COLOR_MAP_TEXTURE_SIZE;
 					numNormalMapTextures = nmTilesAcross * nmTilesAcross;
 
 					long nmHeapSize = (long)nmInfo.width * (long)nmInfo.width * (long)sizeof(DWORD);
-					MemoryPtr nmColorMap = (MemoryPtr)malloc(nmHeapSize);
+					std::vector<unsigned char> nmColorMapStore(static_cast<size_t>(nmHeapSize));
+					MemoryPtr nmColorMap = nmColorMapStore.data();
 
 					// Load pixel data (24 or 32 bit)
-					MemoryPtr loadBuf = nmData + sizeof(TGAFileHeader);
+					MemoryPtr loadBuf = nmData.data() + sizeof(TGAFileHeader);
 					{
 						ZoneScopedN("TerrainColorMap::init normalMap decode");
 						if (nmInfo.pixel_depth == 24)
@@ -615,10 +612,12 @@ long TerrainColorMap::init (char *fileName)
 					}
 
 					// Slice and upload tiles (same grid as colormap)
+					std::vector<unsigned char> tileStore;
 					MemoryPtr tileRAM = nullptr;
 					{
 						ZoneScopedN("TerrainColorMap::init normalMap allocTileBuffer");
-						tileRAM = (MemoryPtr)malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
+						tileStore.assign(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE, 0);
+						tileRAM = tileStore.data();
 					}
 					{ ZoneScopedN("TerrainColorMap::init normalMap tileLoop");
 					for (DWORD i = 0; i < numNormalMapTextures; i++)
@@ -652,10 +651,7 @@ long TerrainColorMap::init (char *fileName)
 					}
 
 					hasNormalMap = true;
-					free(tileRAM);
-					free(nmColorMap);
 				}
-				free(nmData);
 			}
 		}
 
@@ -668,15 +664,15 @@ long TerrainColorMap::init (char *fileName)
 			File detNmFile;
 			if (detNmFile.open(detailNmPath) == NO_ERR)
 			{
-				MemoryPtr detData = (MemoryPtr)malloc(detNmFile.fileSize());
-				detNmFile.read(detData, detNmFile.fileSize());
-				TGAFileHeader detInfo;
-				memcpy(&detInfo, detData, sizeof(TGAFileHeader));
-				if (detInfo.image_type == UNC_TRUE && detInfo.width == detInfo.height)
+				std::vector<unsigned char> detData;
+				TGAFileHeader detInfo{};
+				const bool detLoaded = loadTga(detNmFile, detData, detInfo, "detail normal map");
+				if (detLoaded && detInfo.image_type == UNC_TRUE && detInfo.width == detInfo.height && tgaPixelsPresent(detData, detInfo, "detail normal map"))
 				{
 					long detPixels = (long)detInfo.width * (long)detInfo.width;
-					DWORD *detRGBA = (DWORD*)malloc(detPixels * sizeof(DWORD));
-					MemoryPtr loadBuf = detData + sizeof(TGAFileHeader);
+					std::vector<DWORD> detStore(static_cast<size_t>(detPixels));
+					DWORD *detRGBA = detStore.data();
+					MemoryPtr loadBuf = detData.data() + sizeof(TGAFileHeader);
 					if (detInfo.pixel_depth == 24)
 					{
 						MemoryPtr cMap = (MemoryPtr)detRGBA;
@@ -697,9 +693,7 @@ long TerrainColorMap::init (char *fileName)
 					// Create GL texture directly (bypasses MC2 texture manager to avoid handle issues)
 					unsigned int glTexId = gos_CreateTerrainNormalTexture((const unsigned char*)detRGBA, detInfo.width);
 					gos_SetTerrainDetailNormalTexture(glTexId);
-					free(detRGBA);
 				}
-				free(detData);
 			}
 		}
 	}
@@ -712,15 +706,15 @@ long TerrainColorMap::init (char *fileName)
 		File detDispFile;
 		if (detDispFile.open(detailDispPath) == NO_ERR)
 		{
-			MemoryPtr dispData = (MemoryPtr)malloc(detDispFile.fileSize());
-			detDispFile.read(dispData, detDispFile.fileSize());
-			TGAFileHeader dispInfo;
-			memcpy(&dispInfo, dispData, sizeof(TGAFileHeader));
-			if (dispInfo.image_type == UNC_TRUE && dispInfo.width == dispInfo.height)
+			std::vector<unsigned char> dispData;
+			TGAFileHeader dispInfo{};
+			const bool dispLoaded = loadTga(detDispFile, dispData, dispInfo, "detail displacement map");
+			if (dispLoaded && dispInfo.image_type == UNC_TRUE && dispInfo.width == dispInfo.height && tgaPixelsPresent(dispData, dispInfo, "detail displacement map"))
 			{
 				long dispPixels = (long)dispInfo.width * (long)dispInfo.width;
-				DWORD *dispRGBA = (DWORD*)malloc(dispPixels * sizeof(DWORD));
-				MemoryPtr loadBuf = dispData + sizeof(TGAFileHeader);
+				std::vector<DWORD> dispStore(static_cast<size_t>(dispPixels));
+				DWORD *dispRGBA = dispStore.data();
+				MemoryPtr loadBuf = dispData.data() + sizeof(TGAFileHeader);
 				if (dispInfo.pixel_depth == 24)
 				{
 					MemoryPtr cMap = (MemoryPtr)dispRGBA;
@@ -740,9 +734,7 @@ long TerrainColorMap::init (char *fileName)
 
 				unsigned int glTexId = gos_CreateTerrainNormalTexture((const unsigned char*)dispRGBA, dispInfo.width);
 				gos_SetTerrainDisplacementTexture(glTexId);
-				free(dispRGBA);
 			}
-			free(dispData);
 		}
 	}
 
@@ -760,6 +752,8 @@ long TerrainColorMap::init (char *fileName)
 		};
 		const unsigned char* normalLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 		const unsigned char* dispLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+		// The decoded layers; the pointers above view these until the block ends.
+		std::vector<DWORD> normalStore[9], dispStore[9];
 		int arrayWidth = 0;
 		bool allLoaded = true;
 
@@ -777,21 +771,21 @@ long TerrainColorMap::init (char *fileName)
 
 			File nmFile;
 			if (nmFile.open(nmPath) != NO_ERR) { if (mat >= 4) continue; allLoaded = false; break; }
-			MemoryPtr nmData = (MemoryPtr)malloc(nmFile.fileSize());
-			nmFile.read(nmData, nmFile.fileSize());
-			TGAFileHeader nmInfo;
-			memcpy(&nmInfo, nmData, sizeof(TGAFileHeader));
-
-			if (nmInfo.image_type != UNC_TRUE || nmInfo.width != nmInfo.height)
-			{ free(nmData); allLoaded = false; break; }
+			std::vector<unsigned char> nmData;
+			TGAFileHeader nmInfo{};
+			if (!loadTga(nmFile, nmData, nmInfo, "terrain material normal map"))
+			{ allLoaded = false; break; }
+			if (nmInfo.image_type != UNC_TRUE || nmInfo.width != nmInfo.height || !tgaPixelsPresent(nmData, nmInfo, "terrain material normal map"))
+			{ allLoaded = false; break; }
 
 			if (arrayWidth == 0) arrayWidth = nmInfo.width;
 			else if (nmInfo.width != arrayWidth)
-			{ free(nmData); allLoaded = false; break; }
+			{ allLoaded = false; break; }
 
 			long pixels = (long)nmInfo.width * (long)nmInfo.width;
-			DWORD* rgba = (DWORD*)malloc(pixels * sizeof(DWORD));
-			MemoryPtr loadBuf = nmData + sizeof(TGAFileHeader);
+			normalStore[mat].assign(static_cast<size_t>(pixels), 0);
+			DWORD* rgba = normalStore[mat].data();
+			MemoryPtr loadBuf = nmData.data() + sizeof(TGAFileHeader);
 			if (nmInfo.pixel_depth == 24) {
 				MemoryPtr cMap = (MemoryPtr)rgba;
 				MemoryPtr lMap = loadBuf;
@@ -803,7 +797,6 @@ long TerrainColorMap::init (char *fileName)
 			bool top = (nmInfo.image_descriptor & 32) != 0;
 			if (!top) flipTopToBottom((MemoryPtr)rgba, 32, nmInfo.width, nmInfo.height);
 			normalLayers[mat] = (const unsigned char*)rgba;
-			free(nmData);
 		}
 
 		// Load displacement layers (same pattern) — slot 4+ optional.
@@ -816,17 +809,17 @@ long TerrainColorMap::init (char *fileName)
 
 				File dispFile;
 				if (dispFile.open(dispPath) != NO_ERR) { if (mat >= 4) continue; allLoaded = false; break; }
-				MemoryPtr dispData = (MemoryPtr)malloc(dispFile.fileSize());
-				dispFile.read(dispData, dispFile.fileSize());
-				TGAFileHeader dispInfo;
-				memcpy(&dispInfo, dispData, sizeof(TGAFileHeader));
-
-				if (dispInfo.image_type != UNC_TRUE || dispInfo.width != arrayWidth)
-				{ free(dispData); allLoaded = false; break; }
+				std::vector<unsigned char> dispData;
+				TGAFileHeader dispInfo{};
+				if (!loadTga(dispFile, dispData, dispInfo, "terrain material displacement map"))
+				{ allLoaded = false; break; }
+				if (dispInfo.image_type != UNC_TRUE || dispInfo.width != arrayWidth || !tgaPixelsPresent(dispData, dispInfo, "terrain material displacement map"))
+				{ allLoaded = false; break; }
 
 				long pixels = (long)dispInfo.width * (long)dispInfo.width;
-				DWORD* rgba = (DWORD*)malloc(pixels * sizeof(DWORD));
-				MemoryPtr loadBuf = dispData + sizeof(TGAFileHeader);
+				dispStore[mat].assign(static_cast<size_t>(pixels), 0);
+				DWORD* rgba = dispStore[mat].data();
+				MemoryPtr loadBuf = dispData.data() + sizeof(TGAFileHeader);
 				if (dispInfo.pixel_depth == 24) {
 					MemoryPtr cMap = (MemoryPtr)rgba;
 					MemoryPtr lMap = loadBuf;
@@ -838,7 +831,6 @@ long TerrainColorMap::init (char *fileName)
 				bool top = (dispInfo.image_descriptor & 32) != 0;
 				if (!top) flipTopToBottom((MemoryPtr)rgba, 32, dispInfo.width, dispInfo.height);
 				dispLayers[mat] = (const unsigned char*)rgba;
-				free(dispData);
 			}
 		}
 
@@ -868,10 +860,6 @@ long TerrainColorMap::init (char *fileName)
 			mc2::fmt::print_out("[SPLATTING] retained matNormal2 alpha on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(arrayWidth), mc2::fmt::as_i32(arrayWidth));
 		}
 
-		for (int i = 0; i < 9; i++) {
-			if (normalLayers[i]) free((void*)normalLayers[i]);
-			if (dispLayers[i]) free((void*)dispLayers[i]);
-		}
 	}
 
 	// ROAD-PBR-ABANDON-1: asphalt_albedo.tga / gravel_albedo.tga loaders removed —
