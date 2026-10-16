@@ -43,7 +43,7 @@
   "code/turret.cpp": 2338,
   "code/warrior.cpp": 2683,
   "code/warrior.h": 2173,
-  "editor/tests/test_objectives.cpp": 1683,
+  "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1608,
   "mclib/ablrtn.cpp": 1798,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1724,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "9ae2d7383",
+ "head": "b8fcd2986",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -101,10 +101,10 @@
    "max_lines": 2770
   },
   "editor": {
-   "files": 280,
+   "files": 284,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1683
+   "max_lines": 1996
   },
   "gui": {
    "files": 25,
@@ -199,6 +199,10 @@
    "lines": 2096
   },
   {
+   "file": "editor/tests/test_objectives.cpp",
+   "lines": 1996
+  },
+  {
    "file": "code/mechicon.cpp",
    "lines": 1966
   },
@@ -245,14 +249,10 @@
   {
    "file": "mclib/ablrtn.cpp",
    "lines": 1798
-  },
-  {
-   "file": "mclib/terrtxm.cpp",
-   "lines": 1771
   }
  ],
  "total": {
-  "files": 1918,
+  "files": 1922,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757

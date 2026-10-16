@@ -2417,14 +2417,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 442,
+          "line": 444,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 445,
+          "line": 447,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -2610,6 +2610,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tests/smoke/objectives_e6e/generate_assets.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts.console_child import child_kwargs"
         },
         {
           "path": "tests/smoke/test_launcher_legacy_env.py",
@@ -3906,28 +3913,28 @@
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1006,
+          "line": 1169,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import main"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1025,
+          "line": 1188,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import run_owned_marker_reload"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1056,
+          "line": 1219,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import run_owned_objective_reload"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1121,
+          "line": 1284,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import marker_reload_provenance"
@@ -8316,7 +8323,7 @@
           "line": 8,
           "evidence": "import",
           "reference": "objective_outcomes",
-          "text": "from objective_outcomes import MAX_RECORD_BYTES, PREFIX, Path, compare, main"
+          "text": "from objective_outcomes import MAX_RECORD_BYTES, PREFIX, Path, compare, compare_family, main"
         }
       ]
     },

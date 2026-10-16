@@ -1898,18 +1898,6 @@
     "ClipPolygon2"
    ]
   },
-  "ENode": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/elist.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "Editor": {
    "delete": 1,
    "delete_array": 0,
@@ -7706,8 +7694,9 @@
   "editor/EditorObjectMgr.cpp": 1,
   "editor/EditorObjects.cpp": 1,
   "editor/ObjectSelectionBrush.cpp": 1,
-  "editor/Objective.cpp": 6,
-  "editor/ObjectiveDlg.cpp": 9,
+  "editor/Objective.cpp": 7,
+  "editor/ObjectiveDlg.cpp": 13,
+  "editor/ObjectivesDlg.cpp": 1,
   "editor/ScatterBrush.cpp": 1,
   "editor/UnitSettingsDlg.cpp": 4,
   "editor/tgawnd.cpp": 1,

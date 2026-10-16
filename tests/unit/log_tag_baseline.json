@@ -63,18 +63,6 @@
    "count": 1
   },
   {
-   "tag": "ABL_COMPILE_FATAL",
-   "ver": -1,
-   "stream": "buffer",
-   "keys": [
-    "file",
-    "syntaxErrors",
-    "MC2_ABL_SKIP_ERRORED_MODULES",
-    "MC2_ABL_COMPILE_FATAL"
-   ],
-   "count": 1
-  },
-  {
    "tag": "ABL_COMPILE_FATAL_REPRO",
    "ver": -1,
    "stream": "stderr",
@@ -125,6 +113,15 @@
    "ver": -1,
    "stream": "log",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ABL_LOAD_BAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle"
+   ],
    "count": 1
   },
   {
@@ -7748,13 +7745,6 @@
    "count": 1
   },
   {
-   "tag": "PLAYTEST",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "POSTPROCESS_BLUR",
    "ver": 1,
    "stream": "stderr",
@@ -9575,16 +9565,6 @@
    "keys": [
     "mission",
     "t"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SOAK",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "name",
-    "errors"
    ],
    "count": 1
   },

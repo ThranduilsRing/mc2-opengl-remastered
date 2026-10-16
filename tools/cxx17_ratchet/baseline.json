@@ -48,20 +48,20 @@
   },
   "GameOS": {
    "LG01": 10,
-   "LG02": 191,
-   "LG03": 266,
+   "LG02": 192,
+   "LG03": 263,
    "LG04": 6,
-   "LG05": 122,
-   "LG06": 509,
+   "LG05": 124,
+   "LG06": 510,
    "LG07": 0,
    "LG08": 259,
-   "LG09": 1955,
+   "LG09": 1949,
    "LG10": 42,
    "LG11": 101,
-   "LG12a": 95,
+   "LG12a": 93,
    "LG12b": 30,
    "LG13": 317,
-   "LG14": 61,
+   "LG14": 60,
    "LG15": 0,
    "LG16": 7,
    "LG17": 85,
@@ -144,10 +144,10 @@
    "LG03": 872,
    "LG04": 21,
    "LG05": 198,
-   "LG06": 466,
+   "LG06": 468,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 2279,
+   "LG09": 2278,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -185,21 +185,21 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 370,
+   "LG01": 354,
    "LG02": 280,
    "LG03": 1054,
    "LG04": 15,
-   "LG05": 136,
+   "LG05": 137,
    "LG06": 679,
    "LG07": 0,
-   "LG08": 68,
-   "LG09": 2026,
+   "LG08": 69,
+   "LG09": 2024,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 208,
    "LG12b": 237,
-   "LG13": 449,
-   "LG14": 113,
+   "LG13": 448,
+   "LG14": 112,
    "LG15": 0,
    "LG16": 156,
    "LG17": 94,
@@ -517,7 +517,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_dev_shell.cpp": {
-   "LG06": 13,
+   "LG06": 14,
    "LG08": 4,
    "LG11": 17
   },
@@ -539,7 +539,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_frame_pass_stats.cpp": {
-   "LG09": 5
+   "LG09": 4
   },
   "GameOS/gameos/gos_gpu_sync.cpp": {
    "LG06": 1,
@@ -684,7 +684,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_render_pass_timer.cpp": {
-   "LG09": 8
+   "LG09": 4
   },
   "GameOS/gameos/gos_render_pass_timer.h": {
    "LG14": 1
@@ -697,11 +697,10 @@
    "LG05": 1
   },
   "GameOS/gameos/gos_screenshot.cpp": {
-   "LG03": 3,
    "LG06": 1
   },
   "GameOS/gameos/gos_screenshot.h": {
-   "LG06": 1
+   "LG06": 2
   },
   "GameOS/gameos/gos_smoke.cpp": {
    "LG06": 3,
@@ -896,15 +895,11 @@
    "LG09": 102
   },
   "GameOS/gameos/gos_validate.cpp": {
-   "LG05": 1,
-   "LG06": 4,
-   "LG09": 1,
-   "LG11": 1,
-   "LG12a": 2,
-   "LG14": 1
+   "LG06": 2,
+   "LG11": 1
   },
   "GameOS/gameos/gos_validate.h": {
-   "LG06": 2
+   "LG06": 1
   },
   "GameOS/gameos/gos_vegetation.cpp": {
    "LG06": 1,
@@ -928,6 +923,7 @@
    "LG19": 1
   },
   "GameOS/gameos/gos_visual_diff.cpp": {
+   "LG06": 1,
    "LG09": 1
   },
   "GameOS/gameos/gpu_cull_compute.cpp": {
@@ -1156,6 +1152,15 @@
   },
   "GameOS/gameos/vk_island_util.h": {
    "LG06": 3
+  },
+  "GameOS/gameos/vk_render_pass_timer.cpp": {
+   "LG06": 1
+  },
+  "GameOS/gameos/vk_render_pass_timer.h": {
+   "LG02": 1
+  },
+  "GameOS/gameos/vk_render_pass_timer_ring.h": {
+   "LG05": 3
   },
   "GameOS/gameos/vk_shared_light_feed.cpp": {
    "LG09": 7
@@ -2278,7 +2283,7 @@
   },
   "code/mc2movie.cpp": {
    "LG03": 4,
-   "LG06": 1,
+   "LG06": 2,
    "LG09": 1,
    "LG11": 1
   },
@@ -2296,7 +2301,7 @@
    "LG12b": 2
   },
   "code/mc2video.h": {
-   "LG06": 1
+   "LG06": 2
   },
   "code/mech.cpp": {
    "LG03": 1,
@@ -2466,7 +2471,7 @@
    "LG01": 5,
    "LG03": 3,
    "LG04": 2,
-   "LG09": 19
+   "LG09": 18
   },
   "code/mission_init_parts.cpp": {
    "LG01": 1,
@@ -3216,7 +3221,9 @@
   },
   "mclib/ablrtn.cpp": {
    "LG03": 8,
+   "LG05": 1,
    "LG06": 13,
+   "LG08": 1,
    "LG09": 21,
    "LG17": 5
   },
@@ -3577,12 +3584,6 @@
   },
   "mclib/dynamic_decal_ring.cpp": {
    "LG09": 9
-  },
-  "mclib/elist.h": {
-   "LG01": 16,
-   "LG09": 2,
-   "LG13": 1,
-   "LG14": 1
   },
   "mclib/err.cpp": {
    "LG06": 2
@@ -5131,7 +5132,7 @@
    "LG20": 3
   }
  },
- "head": "b0674c15b",
+ "head": "b8fcd2986",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
