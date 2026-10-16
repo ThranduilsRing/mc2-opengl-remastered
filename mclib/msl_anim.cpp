@@ -71,7 +71,7 @@ bool _TG_Animation::LoadBinaryCopy (File *binFile)
 		&& quatRAM >= 0 && posRAM >= 0;
 	if (!sizesOK)
 	{
-		MC2_LOG_ONCE(Io, Error, "[ANIM_TRACK_BAD] node={} frames={} quatBytes={} posBytes={} (the sizes do not match the frame count; animation file rejected)",
+		MC2_LOG(Io, Error, "[ANIM_TRACK_BAD] node={} frames={} quatBytes={} posBytes={} (the sizes do not match the frame count; animation file rejected)",
 			nodeId, numFrames, quatRAM, posRAM);
 		numFrames = 0;
 		quat = nullptr;
@@ -116,7 +116,7 @@ long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
 		{
 			if (count < 0 || count > 4096)
 			{
-				MC2_LOG_ONCE(Io, Error, "[ANIM_TRACK_BAD] file={} animations={} (not a plausible animation count; rejected)", fileName, count);
+				MC2_LOG(Io, Error, "[ANIM_TRACK_BAD] file={} animations={} (not a plausible animation count; rejected)", fileName, count);
 				count = 0;
 				return -1;
 			}
@@ -178,7 +178,8 @@ void TG_AnimateShape::destroy (void)
 {
 	std::vector<TG_Animation>().swap(animationStore);
 	listOfAnimation = nullptr;
-}	
+	count = actualCount = 0;
+}
 
 FilePtr tglLogFile = (FilePtr)nullptr;
 
