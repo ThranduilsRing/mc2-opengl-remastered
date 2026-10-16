@@ -692,13 +692,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
             first = false;
             s << "      {\n";
             s << "        \"pass\": \"" << gos_frame_pass_stats::PassKey(p) << "\",\n";
-            s << "        \"fbo\": "       << r.fbo            << ",\n";
-            s << "        \"viewportW\": " << r.viewport[2]    << ",\n";
-            s << "        \"viewportH\": " << r.viewport[3]    << ",\n";
-            s << "        \"depthTest\": " << (r.depthTest ? "true" : "false") << ",\n";
-            s << "        \"depthMask\": " << (r.depthMask ? "true" : "false") << ",\n";
-            s << "        \"blend\": "     << (r.blend     ? "true" : "false") << ",\n";
-            s << "        \"cull\": "      << (r.cull      ? "true" : "false") << ",\n";
             s << "        \"drawCount\": "     << r.drawCount     << ",\n";
             s << "        \"instanceCount\": " << r.instanceCount << "\n";
             s << "      }";

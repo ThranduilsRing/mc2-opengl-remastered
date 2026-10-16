@@ -116,6 +116,7 @@ set(SOURCES ${SOURCES}
     gpu_cull_readback.cpp
     render_snapshot.cpp
     gos_render_pass_timer.cpp
+    vk_render_pass_timer.cpp
     gos_frame_pass_stats.cpp
     draw_packet_emitter.cpp
     pipeline_binder.cpp
@@ -252,6 +253,8 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_image_resource.cpp)
         # The first layout of the shared scene images (UNDEFINED at creation; every island declares an attachment layout from frame 1).
         list(APPEND SOURCES vk_first_layout.cpp)
+        # Record, submit and wait for one setup command buffer (first layouts, query pool resets).
+        list(APPEND SOURCES vk_one_shot.cpp)
         # Move-only owners of the Vulkan objects an island creates (RAII; the destructor is the only release path).
         list(APPEND SOURCES vk_owned.cpp)
         # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot

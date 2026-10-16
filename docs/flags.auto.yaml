@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 977
+gate_count: 978
 registry_entry_count: 203
-verified_count: 968
+verified_count: 969
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -723,6 +723,14 @@ flags:
     rule: Lead1
     owner: code
     doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT
+    kind: String
+    default: ""
+    rule: Std
+    owner: props
+    doc: "CAPTURE-ONLY (parity row 28): hex ARGB forced as every building's highlight; read only while MC2_VISUAL_BOOKMARK_CAPTURE arms the replay."
     smoke_passthrough: true
     verified: true
   - name: MC2_CEMENT_ATLAS_DUMP

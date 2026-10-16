@@ -25,7 +25,7 @@
 //                           3=albedo 4=overdraw 5=normals 6=chunk). Fans out
 //                           to every lane's debug channel via
 //                           gos_SetGlobalDebugView(); runtime, no restart.
-//   screenshot <name> [backbuffer] - end-of-frame TGA via the DEV-SHELL
+//   screenshot <name>       - TGA of the presented frame via the DEV-SHELL
 //                           capture point (gos_dev_shell::scheduleScreenshot,
 //                           writes dev_shell_out/<name>.tga). Requires
 //                           MC2_DEV_SHELL=1 (the capture hook is gated on the
@@ -280,12 +280,9 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 	}
 	else if (line.compare(0, 11, "screenshot ") == 0) {
 		std::string name = line.substr(11);
-		bool backbuffer = false;
 		const size_t sp = name.find(' ');
-		if (sp != std::string::npos) {
-			backbuffer = (name.substr(sp + 1) == "backbuffer");
+		if (sp != std::string::npos)
 			name = name.substr(0, sp);
-		}
 		if (!mc2::gate::get<"MC2_DEV_SHELL">()) {
 			result = "blocked";
 			note = "needs MC2_DEV_SHELL=1 (capture hook is shell-gated)";
@@ -293,7 +290,7 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 			note = "missing name";
 		} else {
 			_mkdir("dev_shell_out");  // capture hook does not create it
-			gos_dev_shell::scheduleScreenshot(name.c_str(), backbuffer);
+			gos_dev_shell::scheduleScreenshot(name.c_str());
 			result = "ok";
 			note = "dev_shell_out/" + name + ".tga at end of frame";
 		}

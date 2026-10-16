@@ -156,8 +156,8 @@ uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 bool     g_cementAlphaLayerMapReady = false;
 
 // cementWord bit 23 = OWN-ALPHA transition: layerIdx addresses an alpha cell
-// whose own texel alpha is the coverage. Bits 31,30 and 29:24 (maskId) and
-// 19:16 (runway edge-blend) are already spoken for; 23:20 are free.
+// whose own texel alpha is the coverage. Bits 31,30 and 29:24 (maskId) are
+// spoken for; 21:16 are free (19:16 held the deleted runway edge-blend mask).
 static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 
 // ---------------------------------------------------------------------------
@@ -224,7 +224,7 @@ static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 // authored art of EITHER kind is treated as a genuine concrete transition and
 // repainted, and when the oracle's inputs are not ready the tile is protected.
 //
-// Inert to every pre-existing reader by construction: bits 30/23/22/19:16/15:0
+// Inert to every pre-existing reader by construction: bits 30/23/22/15:0
 // are untouched, and no existing code path masks or compares bit 24.
 static constexpr uint32_t kCementAuthoredArtBit = 0x01000000u;
 

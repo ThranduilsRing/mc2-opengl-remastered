@@ -108,6 +108,9 @@ flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's 
 layout(location = 6) out vec3 vWorldPos;
 flat layout(location = 7) out vec3 vSunDirStuff;
 flat layout(location = 8) out vec3 vSunColor;
+// Per-instance objective / selection highlight (static_prop.vert step 6 + static_prop.frag): added to the vertex light and,
+// alpha-weighted, to the fragment colour; zero when the game highlights nothing.
+flat layout(location = 9) out vec4 vHighlight;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -216,8 +219,9 @@ void main() {
                                   hotOk ? uTypeHot.c[hotBase + 1u].rgb : vec3(0.0),
                                   hotOk ? uTypeHot.c[hotBase + 2u].rgb : vec3(0.0));
     // A window node carries only its hot-colour light: no ambient, sun or IBL (they would wash out the night glow and the by-day grey).
+    vHighlight = inst.aRGBHighlight;
     if ((inst.flags & kFlagIsWindow) != 0u) {
-        vArgb = seed;
+        vArgb = clamp(seed + inst.aRGBHighlight.rgb, 0.0, 1.0);
         return;
     }
 
@@ -342,4 +346,5 @@ void main() {
     const vec3 kAmbientV1Ground = vec3(0.10, 0.09, 0.07);
     vec3 ambientV1 = mix(kAmbientV1Ground, kAmbientV1Sky, 0.5 + 0.5 * worldNormalStuff.y) * uFrame.ambientV1Strength;
     vArgb = clamp((seed + ambientTerm) * propDirFactor + ambientV1 + iblTerm + sunTerm * ndl, 0.0, 1.0);
+    vArgb = clamp(vArgb + inst.aRGBHighlight.rgb, 0.0, 1.0);
 }

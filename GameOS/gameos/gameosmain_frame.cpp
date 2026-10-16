@@ -390,55 +390,13 @@ void frameScreenshotOracle() {
             static const char* s_ssPath  = s_ssPathText.empty() ? nullptr : s_ssPathText.c_str();
             static const long s_ssFrame = static_cast<long>(mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
             static bool s_ssDone = false;
-            // MC2_SCREENSHOT_SOURCE=backbuffer: capture FBO 0 (the real, finished
-            // present-ready framebuffer -- includes the legacy 2D HUD/logistics
-            // draws AND GuiRuntime::Render()'s ImGui compositing) instead of the
-            // mission-only offscreen scene FBO below. Needed for validating
-            // logistics/menu UI (Mech Bay, Mechlopedia, etc.) headlessly -- those
-            // screens never touch sceneFBO_ at all, so the default sceneFBO
-            // capture always shows stale/unrelated mission terrain for them.
-            // Requires a non-minimized window (driver only composites to FBO 0
-            // then); the default (unset) sceneFBO path remains the robust
-            // works-when-minimized oracle for mission/terrain visual diffs.
-            static const bool s_ssBackbuffer = mc2::gate::is<"MC2_SCREENSHOT_SOURCE", "backbuffer">();
             if (s_ssPath && s_ssFrame >= 0 && !s_ssDone
                 && (long)g_mc2FrameCounter >= s_ssFrame) {
-                if (s_ssBackbuffer) {
-                    const int ssW = Environment.drawableWidth  > 0 ? Environment.drawableWidth  : Environment.screenWidth;
-                    const int ssH = Environment.drawableHeight > 0 ? Environment.drawableHeight : Environment.screenHeight;
-                    if (ssW > 0 && ssH > 0) {
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                        glReadBuffer(GL_BACK);
-                        gos::screenshot::writeTGA(s_ssPath, ssW, ssH);
-                        s_ssDone = true;
-                        mc2::fmt::print_err("[SCREENSHOT v1] frame={:d} wrote {} ({:d}x{:d}, backbuffer)\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::safe(s_ssPath), mc2::fmt::as_i32(ssW), mc2::fmt::as_i32(ssH));
-                        fflush(stderr);
-                    }
-                } else {
-                // Capture the offscreen post-process scene FBO, NOT the window
-                // backbuffer (FBO 0) — when the window is minimized the driver
-                // never composites to FBO 0 (it reads black), but sceneFBO_ is
-                // a real offscreen RGBA16F target that always holds the rendered
-                // scene. endScene() samples it (does not clear it), so it is
-                // still intact here, just before swap. Reading RGBA16F as
-                // GL_UNSIGNED_BYTE clamps HDR->LDR in the driver — fine for a
-                // visual oracle.
-                gosPostProcess* ppShot = getGosPostProcess();
-                GLuint ssFbo = ppShot ? ppShot->getSceneFBO() : 0;
-                int ssW = ppShot ? ppShot->getWidth()  : 0;
-                int ssH = ppShot ? ppShot->getHeight() : 0;
-                if (ssFbo && ssW > 0 && ssH > 0) {
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, ssFbo);
-                    glReadBuffer(GL_COLOR_ATTACHMENT0);
-                    gos::screenshot::writeTGA(s_ssPath, ssW, ssH);
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                    s_ssDone = true;
-                    mc2::fmt::print_err("[SCREENSHOT v1] frame={:d} wrote {} ({:d}x{:d}, sceneFBO)\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::safe(s_ssPath), mc2::fmt::as_i32(ssW), mc2::fmt::as_i32(ssH));
-                    fflush(stderr);
-                }
-                }
+                // The finished frame is read back by the Vulkan present path; the request completes on that frame.
+                gos::screenshot::request(s_ssPath);
+                s_ssDone = true;   // one attempt: a rejected request logs why and is not retried every frame
             }
-            // DEV-SHELL-1: pending shell screenshot, same sceneFBO source.
+            // DEV-SHELL-1: pending shell screenshot.
             gos_dev_shell::capturePendingScreenshot(g_mc2FrameCounter);
         }
 }
@@ -766,7 +724,8 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                         const bool verify =
                             ((mc2::gate::get<"MC2_VK_PRESENT_VERIFY">()) &&
                              inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||
-                            gos::visual_capture::vkCapturePending();   // VK-VISUAL-CAPTURE-1
+                            gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
+                            gos::screenshot::pending();
                         if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
                             vkPresented = true;
                             static unsigned long s_vkHealthCadence = 0;

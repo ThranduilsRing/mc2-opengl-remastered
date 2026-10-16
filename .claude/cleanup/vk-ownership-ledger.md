@@ -61,6 +61,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | Memory | 1 |
 | Pipeline | 1 |
 | PipelineLayout | 1 |
+| QueryPool | 1 |
 | RenderPass | 1 |
 | Sampler | 1 |
 | Semaphore | 1 |
@@ -98,7 +99,6 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | water | DescriptorSets | 1 | 0 |
 | present | CommandBuffers | 3 | 0 |
 | present | DescriptorSets | 3 | 1 |
-| shared_scene | CommandBuffers | 1 | 0 |
 | context | Allocator | 1 | 1 |
 | context | Device | 1 | 1 |
 | context | Instance | 1 | 1 |

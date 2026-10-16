@@ -19,9 +19,9 @@ namespace gos_dev_shell {
 // true when a "quit" command was received — caller sets g_exit.
 bool pollCommands(uint32_t frame);
 
-// Execute a pending screenshot request, if any. Called at the post-render
-// capture point (same site as [SCREENSHOT v1] / visual capture — sceneFBO is
-// intact just before swap). No-op when nothing pending.
+// Hand a pending shell screenshot to gos::screenshot, if any. Called at the
+// post-render capture point, before the present path reads the frame back.
+// No-op when nothing pending.
 void capturePendingScreenshot(uint32_t frame);
 
 // Extension seam: upper layers (game code, editor) register their own shell
@@ -40,6 +40,6 @@ void registerCommand(const char* name, CommandHandler fn);
 // MissionResults) can request the same end-of-frame capture the socket
 // "screenshot" command uses. No-op when the shell gate is OFF or a shot is
 // already pending. name is sanitized like the socket path.
-void scheduleScreenshot(const char* name, bool backbuffer);
+void scheduleScreenshot(const char* name);
 
 }  // namespace gos_dev_shell

@@ -35,6 +35,7 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "gos_postprocess.h"
+#include "vk_render_pass_timer.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -633,6 +634,8 @@ bool gosPostProcess::runVkPostFogNative()
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
         setFallback("record_failed"); s->disabled = true; return false;
     }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
 
     // Depth: DEPTH_STENCIL_ATTACHMENT (GL hand-off layout) -> SHADER_READ_ONLY for
     // sampling; BOTH aspects in the range (combined depth/stencil layout rules).
@@ -676,6 +679,7 @@ bool gosPostProcess::runVkPostFogNative()
                  VK_ACCESS_SHADER_READ_BIT, 0,
                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
         setFallback("record_failed"); s->disabled = true; return false;
     }
@@ -699,6 +703,7 @@ bool gosPostProcess::runVkPostFogNative()
     if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
+    timerGuard.submitted();
 
     // Slot-recycle guard: this frame's command buffer must be retired before reuse
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).

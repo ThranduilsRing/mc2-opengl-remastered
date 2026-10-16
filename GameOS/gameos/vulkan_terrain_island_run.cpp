@@ -1,6 +1,7 @@
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "vk_render_pass_timer.h"
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -476,6 +477,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     s->gpuTimer.reset(cb);
@@ -550,6 +553,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     vkCmdEndRenderPass(cb);
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
     s->gpuTimer.write(cb, 2);
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     // Item-4 submit: wait/signal NO GL<->VK semaphores. The fence orders CPU access;
@@ -559,6 +563,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Terrain.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
       if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    timerGuard.submitted();
 
     // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
     // (the shared parity-slot fence) is waited at the slot's next

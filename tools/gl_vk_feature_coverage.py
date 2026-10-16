@@ -50,7 +50,8 @@ VK_CPP_GLOBS = (("GameOS/gameos/vulkan_", (".cpp", ".h")), ("GameOS/gameos/engin
                 ("RenderCore/gpu_abi/", (".h",)))
 MIN_STEM = 6            # shorter stems ("tex", "mode") match too much to count as evidence
 # Live GL features that no MC2_* gate drives, so the gate trace cannot find them: (GL shader, the name the VK twin must
-# carry, the .claude/VK-PARITY-GAPS.md row). Graded under the pseudo-gate UNGATED.
+# carry, the .claude/VK-PARITY-GAPS.md row). Graded under the pseudo-gate UNGATED. Hand-kept on purpose: the entries come
+# from the manual ungated census (gaps file), which no tool can derive; add one per ungated row found.
 UNGATED_GATE = "UNGATED"
 UNGATED_FEATURES = (
     ("shaders/static_prop.vert", "aRGBHighlight", "row 28"),

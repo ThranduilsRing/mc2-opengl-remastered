@@ -5,8 +5,7 @@ WHAT: `parse(text)` returns one `Sample` per line; `describe(sample)` is the one
 use" number the sample carries and where it came from.
 WHY: a frame-time baseline that does not say how much GPU memory it ran at cannot tell a regression from a bigger working set, and a change that
 doubles texture memory looks like nothing in fps. The line carries every counter the driver offers (-1 = that counter does not exist here):
-the process's dedicated video memory from DXGI (any API), the Vulkan Memory Allocator's budget and usage (the VK backend), and
-GL_ATI_meminfo / GL_NVX_gpu_memory_info (the GL backend on AMD / NVIDIA).
+the process's dedicated video memory from DXGI (any API) and the Vulkan Memory Allocator's budget and usage (the VK backend).
 """
 from __future__ import annotations
 
@@ -18,8 +17,7 @@ LINE_RE = re.compile(r"\[VRAM v1\] phase=(?P<phase>\w+) backend=(?P<backend>\w+)
 FIELD_RE = re.compile(r"(\w+)=(-?\d+)")
 
 #: Every numeric field of a v1 line, in the engine's order. Parsing is by name, so a later field added at the end does not break an older reader.
-FIELDS = ("gl_ati_tex_free_mb", "gl_ati_tex_largest_free_mb", "gl_nvx_dedicated_mb", "gl_nvx_available_mb", "vk_budget_mb", "vk_usage_mb",
-          "vk_allocated_mb", "adapter_dedicated_mb", "proc_dedicated_mb", "proc_budget_mb")
+FIELDS = ("vk_budget_mb", "vk_usage_mb", "vk_allocated_mb", "adapter_dedicated_mb", "proc_dedicated_mb", "proc_budget_mb")
 
 
 @dataclass
@@ -50,18 +48,12 @@ def parse(text: str) -> "list[Sample]":
 
 def used_mb(sample: Sample) -> "tuple[Optional[int], str]":
     """(MiB in use, source). Source order is the one a reader should trust: the process's own DXGI counter, then the Vulkan allocator's usage on a
-    VK run, then the adapter's dedicated memory minus the GL free texture pool. (None, 'none') when the line carries no usable counter."""
+    VK run. (None, 'none') when the line carries no usable counter."""
     proc = sample.get("proc_dedicated_mb")
     if proc is not None:
         return proc, "dxgi-process"
     if sample.backend == "vk" and sample.get("vk_usage_mb") is not None:
         return sample.get("vk_usage_mb"), "vma-usage"
-    adapter, free = sample.get("adapter_dedicated_mb"), sample.get("gl_ati_tex_free_mb")
-    if adapter is not None and free is not None:
-        return max(0, adapter - free), "adapter-minus-gl-free"
-    nvx_total, nvx_free = sample.get("gl_nvx_dedicated_mb"), sample.get("gl_nvx_available_mb")
-    if nvx_total is not None and nvx_free is not None:
-        return max(0, nvx_total - nvx_free), "nvx-dedicated-minus-available"
     return None, "none"
 
 

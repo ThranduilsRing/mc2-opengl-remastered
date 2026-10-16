@@ -391,7 +391,6 @@ void gosRenderer::endShadowPrePass() {
     // GL calls. Invalidate cache so next applyRenderStates does a full re-apply.
     invalidateRenderStateCache();
 
-    drainGLErrors("shadow_static");
 }
 
 void gosRenderer::beginDynamicShadowPass() {
@@ -510,7 +509,6 @@ void gosRenderer::endDynamicShadowPass() {
     // RENDER_STATES v1: dynamic shadow pass disturbed program/depth/buffers.
     invalidateRenderStateCache();
 
-    drainGLErrors("shadow_dynamic");
 }
 
 // Shared helper called from each of the three terrain uniform-upload sites below.

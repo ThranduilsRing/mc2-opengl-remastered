@@ -1989,6 +1989,22 @@
    "count": 1
   },
   {
+   "tag": "CAPTURE_HIGHLIGHT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CAPTURE_HIGHLIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "CEMENT_DIAG",
    "ver": -1,
    "stream": "stdout",
@@ -2544,7 +2560,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "DEV_SHELL",
@@ -3995,29 +4011,6 @@
     "MC2_GL_DEBUG"
    ],
    "count": 2
-  },
-  {
-   "tag": "GL_ERROR",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "frame",
-    "pass",
-    "code",
-    "mono_count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GL_ERROR",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "pass",
-    "elapsed_frames",
-    "count_in_window"
-   ],
-   "count": 1
   },
   {
    "tag": "GOM_UPDATE_COST",
@@ -8441,10 +8434,23 @@
   {
    "tag": "RENDER_PASS_TIME",
    "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
    "stream": "stdout",
    "keys": [
-    "every",
-    "ring"
+    "every"
    ],
    "count": 1
   },
@@ -8456,6 +8462,17 @@
     "frame",
     "n",
     "dropped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "ring",
+    "brackets",
+    "ns_per_tick"
    ],
    "count": 1
   },
@@ -8844,10 +8861,17 @@
    "tag": "SCREENSHOT",
    "ver": 1,
    "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "SCREENSHOT",
+   "ver": 1,
+   "stream": "stderr",
    "keys": [
-    "frame"
+    "pixels"
    ],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "SEAMPROBE",
@@ -11862,7 +11886,7 @@
     "reason",
     "out"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VISUAL_HEIGHT",
@@ -11997,7 +12021,7 @@
    "keys": [
     "start"
    ],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "VK_GL_LOST_DRAWS",
@@ -12155,6 +12179,13 @@
     "fence_wait_us",
     "island_total_us"
    ],
+   "count": 1
+  },
+  {
+   "tag": "VK_ONE_SHOT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
    "count": 1
   },
   {
@@ -12697,10 +12728,6 @@
    "keys": [
     "phase",
     "backend",
-    "gl_ati_tex_free_mb",
-    "gl_ati_tex_largest_free_mb",
-    "gl_nvx_dedicated_mb",
-    "gl_nvx_available_mb",
     "vk_budget_mb",
     "vk_usage_mb",
     "vk_allocated_mb",

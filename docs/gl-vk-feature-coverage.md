@@ -7,8 +7,8 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
-| PORTED | 42 | 133 | 0 |
-| NOT_PORTED | 66 | 30 | 0 |
+| PORTED | 43 | 133 | 0 |
+| NOT_PORTED | 65 | 30 | 0 |
 | NO_TWIN | 24 | 57 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
@@ -112,9 +112,8 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MEANDER` | OFF | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderWu` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
-| `UNGATED` | **ON (live drift)** | `shaders/static_prop.vert` | `aRGBHighlight` (ungated) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 
-- NOT_PORTED pairs: 85, of which already default ON: 30
+- NOT_PORTED pairs: 84, of which already default ON: 29
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED
@@ -296,6 +295,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MODE` | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMaskBounds` | `shaders/vulkan/water_geom.frag` | MEDIUM |
 | `MC2_WATER_SHORE_MODE` | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMode` | `shaders/vulkan/water_geom.frag` | HIGH |
 | `MC2_WATER_SKYTINT` | `shaders/gos_terrain_water_mdi.frag` | `u_waterSkyTintStrength` | `shaders/vulkan/water_geom.frag` | MEDIUM |
+| `UNGATED` | `shaders/static_prop.vert` | `aRGBHighlight` | `shaders/vulkan/color_prop_tier1.vert` | HIGH |
 
 ## NO_TWIN: gate-driven GL features whose shader has no VK twin at all
 

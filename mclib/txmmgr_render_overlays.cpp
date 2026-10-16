@@ -9,7 +9,6 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
 	{
 	ZoneScopedN("RenderLists.TerrainAlphaWaterLoops");
 	GosGlLostDrawsScope _rlLost_("water_loops");
-	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Water);
     for(int states = 0; states < 2; ++states)
     {
         gos_SetRenderState( gos_State_AlphaTest, states);
@@ -76,7 +75,6 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
     }
     //reset alpha test at the end
     gos_SetRenderState( gos_State_AlphaTest, 0);
-	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Water);
 	} // end RenderLists.TerrainAlphaWaterLoops
 }
 
@@ -157,7 +155,6 @@ void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const R
 	{
 	ZoneScopedN("RenderLists.ShadowBlobs");
 	GosGlLostDrawsScope _rlLost_("shadow_blobs");
-	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Blobs);
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
@@ -230,7 +227,6 @@ void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const R
 	if (vkLegacyOn)
 		vkLegacyRun();   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
 #endif
-	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Blobs);
 	} // end RenderLists.ShadowBlobs
 }
 
@@ -242,7 +238,6 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] con
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
 	GosGlLostDrawsScope _rlLost_("alpha_loops");
-	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_AlphaVfx);
 	gos_SetRenderState( gos_State_ZCompare, 1);
 	if (Environment.Renderer != 3)
 	{
@@ -314,7 +309,6 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] con
 		// inherit render state from this block).
 		gos_SetRenderState(	gos_State_ZWrite, 1);
 	}
-	gos_render_pass_timer::End(gos_render_pass_timer::Pass_AlphaVfx);
 	} // end RenderLists.NonTerrainAlphaLoops
 }
 
@@ -326,7 +320,6 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
 	GosGlLostDrawsScope _rlLost_("vfx_hud");
-	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Hud);
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -546,7 +539,6 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 
 	// Reset terrain extra buffer after rendering — will be re-filled during next frame's TerrainQuad::draw() calls
 	gos_TerrainExtraReset();
-	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Hud);
 	} // end RenderLists.VfxHudSubmit
 }
 
