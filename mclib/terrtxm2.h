@@ -25,6 +25,7 @@
 #include"inifile.h"
 #endif
 #include<vector>
+#include"texture_ref.h"
 
 //---------------------------------------------------------------------------
 // Macro Definitions
