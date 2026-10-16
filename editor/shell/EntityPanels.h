@@ -27,6 +27,7 @@ public:
         unit_ = {}; building_ = {}; player_ = {}; unitDraft_ = {}; buildingDraft_ = {};
         module_.clear(); status_.clear(); revision_ = ~std::uint64_t{};
         objective_ = {}; objectiveRevision_ = ~std::uint64_t{};
+        presentationObjective_ = {}; presentationRevision_ = ~std::uint64_t{}; modelDraft_.reset();
         objectiveEntry_ = {}; entryRevision_ = ~std::uint64_t{}; showObjectiveEntries_ = false;
         refresh();
     }
@@ -102,5 +103,12 @@ private:
         const document::Transform& transform, unsigned variant);
     void chooser();
     void objectives();
+    void objectivePresentation();
+    void resourceDraft(const std::string& key, std::int64_t& id);
+    document::NodeId presentationObjective_;
+    std::uint64_t presentationRevision_ = ~std::uint64_t{};
+    std::array<document::ObjectiveTextDraft, 2> textDrafts_;
+    std::optional<document::ObjectiveModelDraft> modelDraft_;
+    std::string resourceSearch_, modelSearch_;
 };
 }

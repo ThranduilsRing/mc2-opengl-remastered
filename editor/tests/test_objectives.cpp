@@ -97,6 +97,70 @@ TEST_CASE("objectives/message assembly limit includes retained whitespace")
     CHECK(logs.size() == 1); CHECK(scalarDoc->fitBytes() == padded);
 }
 
+TEST_CASE("objectives/text source apply is atomic and retains missing IDs and empty final lines")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "presentation", {}); REQUIRE(doc);
+    const auto id = doc->objectives()[0].section;
+    const auto original = doc->fitBytes();
+    CommandHistory history(*doc);
+    for (const auto& literal : {std::string{}, std::string("\n"), std::string("first\n\nlast\n\n"), std::string(2000, 'x')}) {
+        REQUIRE(history.setObjectiveText(id, "Title", {true, literal, -2147483648LL}));
+        const auto saved = doc->fitBytes();
+        FitReader reader(saved);
+        CHECK(reader.read("Objective0", "st", "Title") == std::expected<Scalar, std::string_view>{literal});
+        CHECK(doc->objectiveScalar(id, "TitleResourceStringID")->value == Scalar{std::int64_t{-2147483648LL}});
+        CHECK(doc->objectiveScalar(id, "TitleUseResourceString")->value == Scalar{true});
+        auto reopened = MissionDocument::decode(saved, packet(), "reopen", {}); REQUIRE(reopened);
+        CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, "Title")->value == Scalar{literal});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == saved);
+        REQUIRE(history.undo());
+    }
+    REQUIRE(history.setObjectiveText(id, "Description", {false, "literal\n", 2147483647LL}));
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+    CHECK_FALSE(history.setObjectiveText(id, "Title", {true, "changed", 2147483648LL}));
+    CHECK_FALSE(history.setObjectiveText(id, "Title", {false, std::string(2001, 'x'), 0}));
+    CHECK(doc->fitBytes() == original); CHECK_FALSE(history.canUndo());
+}
+
+TEST_CASE("objectives/model preview applies appearance types atomically without rewriting colors or custom fields")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "models", {}); REQUIRE(doc);
+    const auto id = doc->objectives()[0].section;
+    CommandHistory history(*doc);
+    REQUIRE(history.setObjectiveScalar(id, "ObjectiveModel", std::string("custom")));
+    REQUIRE(history.setObjectiveScalar(id, "ModelID", std::int64_t{-123}));
+    const auto original = doc->fitBytes();
+    const std::pair<CatalogAppearance, std::int64_t> types[] = {
+        {CatalogAppearance::mech, 13}, {CatalogAppearance::vehicle, 5},
+        {CatalogAppearance::building, 14}, {CatalogAppearance::tree, 15}};
+    for (const auto& [appearance, camera] : types) {
+        CatalogEntry entry; entry.id = 117; entry.stem = "catalog"; entry.appearance = "different";
+        entry.appearanceType = appearance; entry.runtimeClass = 999; entry.scale = 0.75;
+        auto preview = objectiveModel(entry); REQUIRE(preview);
+        CHECK(doc->fitBytes() == original);
+        CHECK(preview->type == camera); CHECK(preview->name == "catalog"); CHECK(preview->id == 117);
+        REQUIRE(history.setObjectiveModel(id, *preview));
+        const auto saved = doc->fitBytes();
+        FitReader reader(saved);
+        CHECK(std::get<std::int64_t>(*reader.read("Objective0", "l", "ModelType")) == camera);
+        CHECK(doc->objectiveScalar(id, "BaseColor")->value == Scalar{std::int64_t{-1}});
+        auto reopened = MissionDocument::decode(saved, packet(), "reopen", {}); REQUIRE(reopened);
+        CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, "ObjectiveModel")->value == Scalar{std::string("catalog")});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == saved);
+        REQUIRE(history.undo());
+    }
+    for (const double scale : {0.0, -2.0}) {
+        REQUIRE(history.setObjectiveModel(id, {"custom", 14, -123, 1, scale}));
+        CHECK(doc->objectiveScalar(id, "ModelScale")->value == Scalar{scale});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+    }
+    CHECK_FALSE(history.setObjectiveModel(id, {"invalid", 6, 117, 2, 1}));
+    CHECK_FALSE(history.setObjectiveModel(id, {"invalid", 14, 2147483648LL, 2, 1}));
+    CHECK(doc->fitBytes() == original);
+}
+
 TEST_CASE("objectives/LF blank line collapse matches the RAM reader")
 {
     const auto fit = messageFixture("\"a\n\nb\"");
