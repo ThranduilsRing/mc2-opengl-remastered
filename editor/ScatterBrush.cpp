@@ -72,7 +72,7 @@ bool ScatterBrush::beginPaint()
 Action* ScatterBrush::endPaint()
 {
 	BuildingBrush::BuildingAction* pAct = (BuildingBrush::BuildingAction*)m_pAction;
-	if ( pAct && !pAct->objInfoPtrList.Count() )
+	if ( pAct && pAct->objInfoPtrList.empty() )
 	{
 		delete pAct;
 		pAct = nullptr;

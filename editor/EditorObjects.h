@@ -24,9 +24,7 @@ class FitIniFile;
 #include <heap.h>
 #endif
 
-#ifndef ELIST_H
-#include "EList.h"
-#endif
+#include <list>
 
 #include "DAprType.h"
 inline constexpr int MAX_PILOT = 64;
@@ -231,7 +229,6 @@ public:
 };
 
 
-class CUnitList;
 
 class Unit : public EditorObject
 {
@@ -306,7 +303,7 @@ public:
 	int getBrainBehavior() const { return brainBehavior; }
 	const char* getBrainName() const { return brain.getBrainName(); }
 
-	CUnitList *pAlternativeInstances;
+	std::list<Unit> alternatives;
 	unsigned long tmpNumAlternativeInstances;
 	unsigned long tmpAlternativeStartIndex;
 
@@ -338,7 +335,6 @@ protected:
 };
 
 
-class CUnitList : public EList<Unit, Unit&> {};
 
 class DropZone : public EditorObject
 {

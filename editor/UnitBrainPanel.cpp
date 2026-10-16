@@ -52,7 +52,7 @@ Unit* findUnitById( long id )
 	if ( !mgr )
 		return nullptr;
 	EditorObjectMgr::UNIT_LIST list = mgr->getUnits();
-	for ( EditorObjectMgr::UNIT_LIST::EIterator it = list.Begin(); !it.IsDone(); it++ )
+	for ( auto it = list.begin(); it != list.end(); it++ )
 		if ( *it && (*it)->getID() == id )
 			return *it;
 	return nullptr;
@@ -87,8 +87,8 @@ EditorObject* firstSelected(int* outCount)
 	if (mgr)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
-		for (EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-			!it.IsDone(); it++)
+		for (auto it = sel.begin();
+			it != sel.end(); it++)
 		{
 			if (*it)
 			{

@@ -222,11 +222,11 @@ void EditorInterface::OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 int EditorInterface::UnitSettings()
 {
-	EList<Unit*, Unit* > list;
+	EditorObjectMgr::SelectedUnits list;
 
 	EditorObjectMgr::instance()->getSelectedUnits( list );
 
-	if ( list.Count() )
+	if ( static_cast<int>(list.size()) )
 	{
 		UnitSettingsDlg dlg( list, undoMgr );
 		if ( IDOK == dlg.DoModal() )
@@ -235,18 +235,16 @@ int EditorInterface::UnitSettings()
 	}
 
 	EditorObjectMgr::EDITOR_OBJECT_LIST list2 = EditorObjectMgr::instance()->getSelectedObjectList();
-	if (list2.Count() > list.Count())
+	if (static_cast<int>(list2.size()) > static_cast<int>(list.size()))
 	{
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator iter;
-		for ( iter = list2.End(); !iter.IsDone(); iter-- )
+		for (size_t index = list2.size(); index > 0; )
 		{
-			if ((0 != dynamic_cast<Unit *>(*iter)) || (0 != dynamic_cast<::DropZone *>(*iter)))
-			{
-				list2.Delete(iter);
-			}
+			--index;
+			if (dynamic_cast<Unit*>(list2[index]) || dynamic_cast<::DropZone*>(list2[index]))
+				list2.erase(list2.begin() + index);
 		}
 
-		if ( list2.Count() )
+		if ( static_cast<int>(list2.size()) )
 		{
 			BuildingSettingsDlg dlg( list2, undoMgr );
 			if ( IDOK == dlg.DoModal() )

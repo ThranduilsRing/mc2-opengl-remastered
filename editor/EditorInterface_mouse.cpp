@@ -31,10 +31,10 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	if ( ObjectSelectOnlyMode() && objectivesEditState.pendingPickPoint )
 	{
 		// inverseProject ALWAYS yields a usable on-map world coord: it returns 0 on a
-		// real terrain hit (camera.cpp:1488) and 1 on an off-map miss that still
-		// clamps to the nearest on-map vertex (camera.cpp:1482) -- BOTH are valid
+		// real terrain hit and 1 on an off-map miss that still
+		// clamps to the nearest on-map vertex -- BOTH are valid
 		// points to accept. The only degenerate is the camera-not-ready case
-		// (turn < 4), which zeroes the point (camera.cpp:997) and is unreachable
+		// (turn < 4), which zeroes the point and is unreachable
 		// during an interactive pick. So guard on the zeroed POINT, not the return
 		// code (return 0 is the COMMON hit case -- gating on it would reject every
 		// valid click). Skip only an exact (0,0) so a later real click can deliver.
@@ -100,8 +100,8 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 			if ( pHit->isSelected() && pDragMgr->getSelectionCount() > 1 )
 			{
 				EditorObjectMgr::EDITOR_OBJECT_LIST sel = pDragMgr->getSelectedObjectList();
-				for ( EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-					!it.IsDone(); it++ )
+				for ( auto it = sel.begin();
+					it != sel.end(); it++ )
 					if ( *it && (*it)->appearance() )
 						m_pDragAction->addBuildingInfo( **it );
 			}
@@ -270,14 +270,14 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			pApp->registerStatic();
 		};
 
-		// BUG3 (group drag): if the grabbed object is part of a multi-selection, move
+		// if the grabbed object is part of a multi-selection, move
 		// the WHOLE selection by the same world delta. Otherwise move just the grab.
 		EditorObjectMgr* pMoveMgr = EditorObjectMgr::instance();
 		if ( m_pDragObject->isSelected() && pMoveMgr->getSelectionCount() > 1 )
 		{
 			EditorObjectMgr::EDITOR_OBJECT_LIST sel = pMoveMgr->getSelectedObjectList();
-			for ( EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-				!it.IsDone(); it++ )
+			for ( auto it = sel.begin();
+				it != sel.end(); it++ )
 				dragMoveOne( *it );
 		}
 		else
@@ -386,12 +386,12 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	if (selectionCount)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
+		auto it = selectedObjectsList.begin();
 		const EditorObject* pInfo = (*it);
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
-			// by Methuselas: selected-object distance is updated during mouse move,
+			// selected-object distance is updated during mouse move,
 			// including immediately after left-click selection.  Guard the legacy
 			// appearance pointer so restored mouse routing cannot crash the status
 			// bar when a catalog object is only partially initialized.
@@ -970,9 +970,9 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	if (selectionCount)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
+		auto it = selectedObjectsList.begin();
 		const EditorObject* pInfo = (*it);
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->position
+		// appearance() can be NULL; guard before ->position
 		// (mirror sibling readout ~line 1975).
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )

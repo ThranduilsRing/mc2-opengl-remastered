@@ -134,7 +134,7 @@ bool StampBrush::paint( Stuff::Vector3D& worldPos, int /*screenX*/, int /*screen
 Action* StampBrush::endPaint()
 {
 	ActionPaintTile* pRet = m_pAction;
-	if ( m_pAction && !m_pAction->vertexInfoList.Count() )
+	if ( m_pAction && m_pAction->vertexInfoList.empty() )
 	{
 		delete m_pAction;
 		pRet = nullptr;

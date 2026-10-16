@@ -874,7 +874,7 @@ void EditorInterface::renderObjectInfoPanel()
 	EditorObject* obj = nullptr;
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST list = mgr->getSelectedObjectList();
-		for (EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = list.Begin(); !it.IsDone(); it++)
+		for (auto it = list.begin(); it != list.end(); it++)
 		{
 			if (*it)
 			{

@@ -8,9 +8,882 @@ import struct
 import unittest
 from unittest.mock import patch
 import uuid
+import subprocess
+import tempfile
+from scripts.console_child import child_kwargs
 
 from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compare_frozen,
     packet, reference_evidence, verify_frozen)
+
+
+class LegacyLinkTests(unittest.TestCase):
+    def save_order_fixture(self, name, main, mutation):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / ('mc2-' + name) / uuid.uuid4().hex
+        output.mkdir(parents=True)
+        prefix = r'''
+#include <cassert>
+#include <climits>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <new>
+#include <vector>
+#include <list>
+#include <string>
+#include <format>
+#include <malloc.h>
+#define gosASSERT(x) assert(x)
+struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } } heap;
+Heap* systemHeap = &heap;
+'''
+        prefix += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+        prefix += r'''
+struct FitIniFile {
+    std::string bytes;
+    const char* getFilename() { return "fixture.fit"; }
+    void writeBlock(const char* s) { bytes += std::string("[") + s + "]\n"; }
+    void writeIdULong(const char* s, unsigned long n) { bytes += std::format("{}={}\n", s, n); }
+    void writeIdLongArray(const char* s, long* v, int n) {
+        bytes += s; for (int i = 0; i < n; ++i) bytes += std::format(",{}", v[i]); bytes += '\n';
+    }
+};
+struct EditorObject {
+    int id; bool nav = true; int label = 0;
+    int getID() { return id; }
+    bool save(FitIniFile* f, int n) {
+        if (nav) { f->writeIdULong(std::format("nav{}", n).c_str(), id);
+            f->writeIdULong("label", label); } return nav;
+    }
+};
+using DropZone = EditorObject;
+struct Unit {
+    int id, player, squad; int lance = -1, mate = -1;
+    ALTERNATIVES alternatives;
+    int getAlignment() { return player; } int getSquad() { return squad; }
+    void setLanceInfo(int l, int m) { lance = l; mate = m; }
+    void save(FitIniFile* f, int n) { f->writeIdULong(std::format("unit{}", n).c_str(), id); }
+};
+struct Asset { void AddRelationship(const char*, const char*) {} void Close() {} } asset;
+using IProviderAsset = Asset; using IProviderAssetPtr = Asset*;
+enum AssetType { unused }; constexpr int ProviderType_Primary = 0;
+struct Provider { Asset* OpenAsset(const char*, AssetType, int) { return &asset; } } provider;
+Asset* mapAsset = &asset; Asset* mechAsset = nullptr; Provider* armProvider = &provider;
+bool justResaveAllMaps = true;
+struct Player { int DefaultTeam() { return 0; } };
+struct Players { Player PlayerRef(int) { return {}; } };
+struct EditorData { static EditorData* instance; bool IsSinglePlayer() { return true; }
+    Players PlayersRef() { return {}; } int MaxPlayers() { return 8; } } data;
+EditorData* EditorData::instance = &data;
+constexpr int IDS_NO_ENEMY_UNITS = 0, IDS_WARNING = 0, IDS_NO_PLAYER_UNITS = 0,
+    IDS_PLAYERS_WITH_NO_UNITS = 0, IDS_TOO_MANY_PILOTS = 0;
+void EMessageBox(int, int, int) {} constexpr int MB_OK = 0;
+void EditorObjMgrTrace(const char*, ...) {}
+namespace mc2::fmt { int as_i32(int n) { return n; }
+    void to_buf_n(char* p, size_t n, const char*, int v) { snprintf(p, n, "warrior%02d", v); } }
+class EditorObjectMgr { public:
+    USING_UNIT
+    USING_BUILDING
+    USING_DROP
+    UNIT_LIST units; BUILDING_LIST buildings; DROP_LIST dropZones;
+    int getFitID(int n) { return n; }
+    bool saveMechs(FitIniFile&); bool saveDropZones(FitIniFile&);
+};
+'''
+
+        def source(old):
+            def read(path):
+                return (subprocess.check_output(['git', 'show', '4bf149ed0:' + path], cwd=root,
+                        **child_kwargs(redirected=True)).decode('utf-8') if old else
+                        (root / path).read_text(encoding='utf-8'))
+            header, implementation = read('editor/EditorObjectMgr.h'), read('editor/EditorObjectMgr_io.cpp')
+            text = prefix
+            for token, alias in [('USING_UNIT', 'UNIT_LIST'), ('USING_BUILDING', 'BUILDING_LIST'), ('USING_DROP', 'DROP_LIST')]:
+                text = text.replace(token, next(line.strip().split('//')[0] for line in header.splitlines()
+                    if re.search(r'(typedef|using).*\b' + alias + r'\b', line)))
+            legacy = 'typedef EList< Unit*' in header
+            text = text.replace('ALTERNATIVES', 'EList<Unit, Unit&>' if legacy else 'std::list<Unit>')
+            signature = 'EditorObjectMgr::' + name
+            start = implementation.index('bool', implementation.index(signature) - 10)
+            opening = implementation.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (implementation[end] == '{') - (implementation[end] == '}')
+                end += 1
+            body = implementation[start:end]
+            if legacy:
+                body = body.replace('pAlternativeInstances->', 'alternatives.').replace('(*((*iter)->pAlternativeInstances))[i]', '(*iter)->alternatives[i]')
+            return text + body + main.replace('APPEND', 'Append' if legacy else 'push_back')
+
+        def run(text, label):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(text, encoding='utf-8')
+            result = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)], capture_output=True,
+                                    text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            (output / (label + '.fit')).write_bytes(result.stdout)
+            return result.stdout
+
+        before = run(source(True), 'old')
+        current = source(False)
+        self.assertEqual(before, run(current, 'current'))
+        changed = mutation(current)
+        self.assertNotEqual(current, changed)
+        self.assertNotEqual(before, run(changed, 'wrong-order'))
+        print(f'Save order fixture artifacts: {output}')
+
+    def test_equal_squad_export_preserves_first_minimum_and_player_order(self):
+        self.save_order_fixture('saveMechs', r'''
+int main() {
+    EditorObjectMgr mgr; Unit a{10,1,2}, b{11,0,3}, c{12,1,2}, d{13,0,1}, e{14,0,3};
+    Unit alternative{15,0,3}; b.alternatives.APPEND(alternative);
+    for (auto* u : {&a,&b,&c,&d,&e}) mgr.units.APPEND(u);
+    FitIniFile file; mgr.saveMechs(file); fwrite(file.bytes.data(), 1, file.bytes.size(), stdout);
+}
+''', lambda text: text.replace('unitsByPlayer[alignment].Append((*iter));',
+                               'if (unitsByPlayer[alignment].Count()) unitsByPlayer[alignment].Insert((*iter), 0UL); else unitsByPlayer[alignment].Append((*iter));').replace(
+                               'unitsByPlayer[alignment].push_back((*iter));',
+                               'unitsByPlayer[alignment].insert(unitsByPlayer[alignment].begin(), (*iter));'))
+
+    def test_nav_export_preserves_custom_swap_permutation(self):
+        self.save_order_fixture('saveDropZones', r'''
+int main() {
+    EditorObjectMgr mgr; EditorObject a{3,true,10}, b{2,true,11}, c{1,true,12}, d{2,true,13}, e{0,false}, zone{9};
+    for (auto* o : {&a,&b,&c,&d,&e}) mgr.buildings.APPEND(o);
+    mgr.dropZones.APPEND(&zone);
+    FitIniFile file; mgr.saveDropZones(file); fwrite(file.bytes.data(), 1, file.bytes.size(), stdout);
+}
+''', lambda text: text.replace('break;', 'cur = pObjects[i];'))
+
+    def test_selection_preserves_borrowed_copies_unique_order_and_roster_sync(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / 'mc2-el9-selection' / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == '{') - (source[end] == '}')
+                end += 1
+            return source[start:end] + '\n'
+
+        def fixture(header, implementation, manager, interface):
+            legacy = 'class EDITOR_OBJECT_LIST' in header
+            source = ('#include <cassert>\n#include <cstdlib>\n#include <new>\n'
+                      '#include <vector>\n#include <algorithm>\n#define gosASSERT(x) assert(x)\n'
+                      'struct Heap { void* Malloc(size_t n) { return malloc(n); } '
+                      'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
+            source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+            source += ('constexpr int DRAW_BARS = 1; struct ObjectAppearance { int selected = 0; };\n'
+                       'struct EditorObject { virtual ~EditorObject() = default; '
+                       'ObjectAppearance state; bool present = true; bool isSelected() { return state.selected; } '
+                       'ObjectAppearance* appearance() { return present ? &state : nullptr; } '
+                       'const ObjectAppearance* appearance() const { return present ? &state : nullptr; } };\n'
+                       'struct Unit : EditorObject {}; struct DropZone : EditorObject {}; '
+                       'class EditorObjectMgr { public:\n')
+            start = header.index('\tclass EDITOR_OBJECT_LIST' if legacy else '\tusing EDITOR_OBJECT_LIST')
+            source += header[start:header.index('\tEditorObjectMgr();', start)]
+            roster_vector = 'using UNIT_LIST = std::vector' in header
+            building_vector = 'using BUILDING_LIST = std::vector' in header
+            source += (('using BUILDING_LIST = std::vector<EditorObject*>; ' if building_vector else 'using BUILDING_LIST = EList<EditorObject*, EditorObject*>; ')
+                       + ('using UNIT_LIST = std::vector<Unit*>; ' if roster_vector else 'using UNIT_LIST = EList<Unit*, Unit*>; ')
+                       + 'using DROP_LIST = BUILDING_LIST;\n'
+                       'BUILDING_LIST buildings, dropZones; UNIT_LIST units; EDITOR_OBJECT_LIST selectedObjects; '
+                       'bool selectedObjectsNeedsToBeSynched = false;\n')
+            signatures = ['void EditorObjectMgr::select( EditorObject &',
+                          'void EditorObjectMgr::unselectAll()',
+                          'bool EditorObjectMgr::hasSelection()',
+                          'int EditorObjectMgr::getSelectionCount()',
+                          'EditorObjectMgr::EDITOR_OBJECT_LIST EditorObjectMgr::getSelectedObjectList()',
+                          'void EditorObjectMgr::syncSelectedObjectPointerList()']
+            if not legacy:
+                signatures += ['void EditorObjectMgr::addToSelection(', 'void EditorObjectMgr::removeFromSelection(']
+            methods = [method(implementation, signature) for signature in signatures]
+            methods += [method(manager, 'void EditorObjectMgr::getSelectedUnits(')]
+            source += ''.join(m[:m.index('{')].replace('EditorObjectMgr::', '') + ';\n' for m in methods)
+            source += '};\n' + ''.join(methods)
+            settings = method(interface, 'int EditorInterface::UnitSettings()')
+            loop = method(settings, 'for ( iter = list2.End()' if legacy else 'for (size_t index = list2.size()')
+            source += ('void filter(EditorObjectMgr::EDITOR_OBJECT_LIST& list2) {\n' +
+                       ('EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator iter;\n' if legacy else '') + loop + '}\n')
+            main = r'''
+int main() {
+    EditorObjectMgr mgr;
+    EditorObject a, missing; Unit b, d; DropZone c; missing.present = false;
+    mgr.buildings.Append(&a); mgr.units.Append(&b); mgr.dropZones.Append(&c);
+    assert(!mgr.hasSelection() && mgr.getSelectionCount() == 0);
+    mgr.select(c, true); mgr.select(a, true); mgr.select(c, true); mgr.select(missing, true);
+    auto snapshot = mgr.getSelectedObjectList();
+    assert(snapshot.SIZE() == 2 && snapshot[0] == &c && snapshot[1] == &a);
+    mgr.select(c, false); mgr.select(c, false); mgr.select(c, true);
+    auto reordered = mgr.getSelectedObjectList();
+    assert(reordered[0] == &a && reordered[1] == &c);
+    snapshot[0]->state.selected = 9;
+    assert(c.state.selected == 9);
+    snapshot.CLEAR(); assert(mgr.getSelectionCount() == 2);
+    mgr.select(b, true); mgr.selectedObjectsNeedsToBeSynched = true;
+    auto synced = mgr.getSelectedObjectList();
+    assert(synced.SIZE() == 3 && synced[0] == &a && synced[1] == &b && synced[2] == &c);
+    mgr.unselectAll(); assert(!mgr.hasSelection() && mgr.getSelectionCount() == 0);
+    assert(!a.state.selected && !b.state.selected && !c.state.selected);
+    assert(synced.SIZE() == 3 && synced[0] == &a);
+    mgr.selectedObjects.APPEND(&a); mgr.selectedObjects.APPEND(&b); mgr.selectedObjects.APPEND(&a);
+    mgr.select(a, false);
+    auto duplicates = mgr.getSelectedObjectList();
+    assert(duplicates.SIZE() == 2 && duplicates[0] == &b && duplicates[1] == &a);
+    mgr.units.Append(&d); mgr.select(d, true); mgr.select(b, true);
+    SELECTED_UNITS selectedUnits; selectedUnits.APPEND(&d);
+    mgr.getSelectedUnits(selectedUnits);
+    assert(selectedUnits.SIZE() == 3 && selectedUnits[0] == &d && selectedUnits[1] == &b && selectedUnits[2] == &d);
+    EditorObjectMgr::EDITOR_OBJECT_LIST mixed;
+    EMPTY_FILTER
+    mixed.APPEND(&b); mixed.APPEND(&c); filter(mixed); assert(mixed.SIZE() == 0);
+    mixed.APPEND(&a); mixed.APPEND(&b); mixed.APPEND(&missing); mixed.APPEND(&c); mixed.APPEND(&a);
+    filter(mixed); assert(mixed.SIZE() == 3 && mixed[0] == &a && mixed[1] == &missing && mixed[2] == &a);
+}
+'''
+            if building_vector:
+                main = main.replace('mgr.buildings.Append', 'mgr.buildings.push_back').replace('mgr.dropZones.Append', 'mgr.dropZones.push_back')
+            if roster_vector:
+                main = main.replace('mgr.units.Append', 'mgr.units.push_back')
+            return source + main.replace('EMPTY_FILTER', '' if legacy else 'filter(mixed); assert(mixed.size() == 0);').replace('SIZE', 'Count' if legacy else 'size').replace('CLEAR', 'Clear' if legacy else 'clear').replace('APPEND', 'Append' if legacy else 'push_back').replace('SELECTED_UNITS', 'EditorObjectMgr::UNIT_LIST' if legacy else 'EditorObjectMgr::SelectedUnits')
+
+        def run(source, label, succeeds=True):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(source, encoding='utf-8')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        old = [subprocess.check_output(['git', 'show', '904764753:' + path], cwd=root,
+               **child_kwargs(redirected=True)).decode('utf-8') for path in
+               ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr_select.cpp',
+                'editor/EditorObjectMgr.cpp', 'editor/EditorInterface_wnd.cpp')]
+        run(fixture(*old), 'old')
+        current = [(root / path).read_text(encoding='utf-8') for path in
+                   ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr_select.cpp',
+                    'editor/EditorObjectMgr.cpp', 'editor/EditorInterface_wnd.cpp')]
+        run(fixture(*current), 'current')
+        baseline = fixture(*current)
+        mutated = baseline.replace('selectedObjects.push_back(*dIter);',
+                                   'selectedObjects.insert(selectedObjects.begin(), *dIter);')
+        self.assertNotEqual(mutated, baseline)
+        run(mutated, 'wrong-order', False)
+        print(f'Selection fixture artifacts: {output}')
+
+    def test_catalog_append_retains_names_order_first_match_and_value_copies(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / 'mc2-el8-catalog' / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == '{') - (source[end] == '}')
+                end += 1
+            return source[start:end] + '\n'
+
+        def fixture(header, implementation):
+            legacy = 'EList< Group' in header
+            source = ('#include <cassert>\n#include <cstdlib>\n#include <cstring>\n'
+                      '#include <new>\n#include <deque>\n#include <vector>\n'
+                      '#define gosASSERT(x) assert(x)\n')
+            if legacy:
+                source += ('struct Heap { void* Malloc(size_t n) { return malloc(n); } '
+                           'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+            source += ('struct AppearanceType {}; using DWORD = unsigned long;\n'
+                       'constexpr int MECH_TYPE = 1, GV_TYPE = 2;\nclass EditorObjectMgr { public:\n')
+            source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST' if 'class EDITOR_OBJECT_LIST' in header else '\t// Borrowed pointers;')]
+            source += header[header.index('\t\tstruct Building\n'):header.index('\t\tusing LINK_LIST' if 'using LINK_LIST' in header else '\t\ttypedef EList< BuildingLink*')]
+            source += 'GROUP_LIST groups;\n'
+            signatures = ('int EditorObjectMgr::getBuildingGroupCount',
+                          'int EditorObjectMgr::getNumberBuildingsInGroup',
+                          'void EditorObjectMgr::getBuildingGroupNames',
+                          'void EditorObjectMgr::getBuildingNamesInGroup',
+                          'bool EditorObjectMgr::getBuildingFromID',
+                          'void EditorObjectMgr::getUnitGroupNames',
+                          'int EditorObjectMgr::getUnitGroupCount')
+            methods = [method(implementation, signature) for signature in signatures]
+            source += ''.join(m[:m.index('{')].replace('EditorObjectMgr::', '') + ';\n' for m in methods)
+            source += '};\nEditorObjectMgr::Building::~Building() {}\n' + ''.join(methods)
+            main = r'''
+int main() {
+    EditorObjectMgr mgr;
+    const char* names[4096]{}; int count = 4096;
+    mgr.getBuildingGroupNames(names, count); assert(count == 4096);
+    assert(mgr.getNumberBuildingsInGroup(-1) == 0);
+    char* variants[16]{};
+    EditorObjectMgr::Building building{}; strcpy(building.name, "first"); building.fitID = 7; building.varNames = variants;
+    EditorObjectMgr::Group group{}; strcpy(group.name, "structures");
+    group.buildings.APPEND(building); mgr.groups.APPEND(group);
+    building.type = MECH_TYPE; strcpy(building.name, "mech");
+    group.buildings.APPEND(building); strcpy(group.name, "mixed"); mgr.groups.APPEND(group);
+    EditorObjectMgr::Group movers{}; strcpy(movers.name, "movers");
+    movers.buildings.APPEND(building); mgr.groups.APPEND(movers);
+    count = 4096; mgr.getBuildingGroupNames(names, count);
+    assert(!strcmp(names[0], "structures") && !strcmp(names[1], "mixed") && !strcmp(names[2], "movers"));
+    const char* groupName = names[0];
+    count = 0; mgr.getBuildingNamesInGroup(0, names, count);
+    assert(count == 1 && !strcmp(names[0], "first")); const char* buildingName = names[0];
+    unsigned long g = 99, b = 99;
+    assert(mgr.getBuildingFromID(7, g, b, true) && g == 0 && b == 0);
+    assert(mgr.getBuildingFromID(7, g, b, false) && g == 0 && b == 0);
+    assert(!mgr.getBuildingFromID(999, g, b, true) && g == 3 && b == 1);
+    int ids[4]{-1,-1,-1,-1}; count = 0; mgr.getUnitGroupNames(names, ids, count);
+    assert(count == 1 && ids[0] == -1 && mgr.getUnitGroupCount() == 1);
+    count = 4; mgr.getUnitGroupNames(names, ids, count);
+    assert(count == 1 && ids[0] == 2 && !strcmp(names[0], "movers"));
+    auto copy = mgr.groups;
+    assert(copy[0].buildings[0].varNames == variants);
+    strcpy(copy[0].name, "copy"); strcpy(copy[0].buildings[0].name, "changed");
+    assert(!strcmp(groupName, "structures") && !strcmp(buildingName, "first"));
+    for (int i = 0; i < 2048; ++i) mgr.groups[0].buildings.APPEND(building);
+    count = 4096; mgr.getBuildingNamesInGroup(0, names, count);
+    assert(names[0] == buildingName);
+    for (int i = 0; i < 2048; ++i) mgr.groups.APPEND(movers);
+    count = 4096; mgr.getBuildingGroupNames(names, count);
+    assert(names[0] == groupName);
+    assert(!strcmp(groupName, "structures") && !strcmp(buildingName, "first"));
+}
+'''
+            return source + main.replace('APPEND', 'Append' if legacy else 'push_back')
+
+        def run(source, label, succeeds=True):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(source, encoding='utf-8')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        old = []
+        for path in ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr.cpp'):
+            result = subprocess.run(['git', 'show', '9f77631c7:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            old.append(result.stdout)
+        run(fixture(*old), 'old')
+        header, implementation = ((root / path).read_text(encoding='utf-8') for path in
+                                  ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr.cpp'))
+        run(fixture(header, implementation), 'current')
+        if 'std::deque' in header:
+            for old_type in ('std::deque<Building>', 'std::deque<Group>'):
+                mutated = header.replace(old_type, old_type.replace('deque', 'vector'))
+                self.assertNotEqual(mutated, header)
+                run(fixture(mutated, implementation), 'reallocated-' + old_type[11:-1], False)
+        print(f'Catalog fixture artifacts: {output}')
+
+    def test_species_reordering_cannot_change_combo_selection(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / "mc2-el5-species" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+        conditions = (
+            "DESTROY_ALL_ENEMY_UNITS DESTROY_NUMBER_OF_ENEMY_UNITS DESTROY_SPECIFIC_ENEMY_UNIT "
+            "DESTROY_SPECIFIC_STRUCTURE CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS "
+            "CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT "
+            "CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE DEAD_OR_FLED_ALL_ENEMY_UNITS "
+            "DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT CAPTURE_UNIT "
+            "CAPTURE_STRUCTURE GUARD_SPECIFIC_UNIT GUARD_SPECIFIC_STRUCTURE MOVE_ANY_UNIT_TO_AREA "
+            "MOVE_ALL_UNITS_TO_AREA MOVE_ALL_SURVIVING_UNITS_TO_AREA MOVE_ALL_SURVIVING_MECHS_TO_AREA "
+            "BOOLEAN_FLAG_IS_SET ELAPSED_MISSION_TIME").split()
+        actions = ("PLAY_BIK PLAY_WAV DISPLAY_TEXT_MESSAGE DISPLAY_RESOURCE_TEXT_MESSAGE "
+                   "SET_BOOLEAN_FLAG MAKE_NEW_TECHNOLOGY_AVAILABLE").split()
+
+        def fixture(header, implementation):
+            source = '#include <cassert>\n#include <cstdlib>\n#include <new>\n#include <string>\n#include <vector>\n'
+            model = (root / 'editor/Objective.h').read_text()
+            for kind in ('condition', 'action'):
+                source += re.search(r'enum ' + kind + r'_species_type\s*\{[^}]*\};', model)[0] + '\n'
+            if 'public EList' in header:
+                source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
+                source += 'Heap heap; Heap* systemHeap = &heap;\n#define gosASSERT(x) assert(x)\n'
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+            source += '''
+struct Combo {
+    std::vector<int> items; int selected = -1;
+    void AddString(const char* text) { items.push_back(std::stoi(text)); }
+    void SetCurSel(int index) { selected = index; }
+};
+struct Model {
+    std::string DescriptionOfConditionSpecies(condition_species_type value) { return std::to_string(value); }
+    std::string DescriptionOfActionSpecies(action_species_type value) { return std::to_string(value); }
+};
+struct Dialog {
+    Model m_ModifiedObjective;
+    Combo m_ComboBox, m_ActionComboBox, m_FailureConditionComboBox, m_FailureActionComboBox;
+'''
+            start = header.index('\tclass CConditionSpeciesList' if 'public EList' in header
+                                 else '\tstd::vector<condition_species_type>')
+            source += header[start:header.index('\t/* for persistent storage')]
+            start = re.search(r'^\s*comboBoxItems[ .=]', implementation[implementation.index('BOOL ObjectiveDlg::OnInitDialog'):], re.M)
+            body = implementation[implementation.index('BOOL ObjectiveDlg::OnInitDialog'):]
+            source += 'void populate() {\n{\n{\n' + body[start.start():body.index('\n\tLoadDialogValues();')] + '}\n'
+            members = ('comboBoxItems', 'actionComboBoxItems', 'failureConditionComboBoxItems', 'failureActionComboBoxItems')
+            for index, member in enumerate(members):
+                expression = re.search(r'(?:condition|action)_species_type species = ([^;]*' + member + r'[^;]*);', implementation)[1]
+                source += f'int select{index}(int comboboxSelection, int actionComboboxSelection) {{ return {expression}; }}\n'
+            source += '};\nint main() { Dialog dialog; dialog.populate();\n'
+            for index, (member, combo) in enumerate(zip(members, ('m_ComboBox', 'm_ActionComboBox', 'm_FailureConditionComboBox', 'm_FailureActionComboBox'))):
+                expected = ','.join(conditions if index % 2 == 0 else actions)
+                source += f'assert((dialog.{combo}.items == std::vector<int>{{{expected}}}));\n'
+                source += f'assert(dialog.{combo}.selected == 0);\n'
+                source += f'for (int i = 0; i < dialog.{combo}.items.size(); ++i) assert(dialog.select{index}(i, i) == dialog.{combo}.items[i]);\n'
+                source += f'auto copy{index} = dialog.{member}; copy{index}[0] = copy{index}[1]; assert(dialog.{member}[0] != copy{index}[0]);\n'
+            return source + '}\n'
+
+        def run(source, label, succeeds=True):
+            cpp = output / (label + '.cpp'); cpp.write_text(source)
+            exe = output / (label + '.exe')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        paths = ('editor/ObjectiveDlg.h', 'editor/ObjectiveDlg.cpp')
+        old = []
+        for path in paths:
+            result = subprocess.run(['git', 'show', '0f77d7458:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            old.append(result.stdout)
+        run(fixture(*old), 'old')
+        header, implementation = ((root / path).read_text() for path in paths)
+        run(fixture(header, implementation), 'current')
+        for first, second in ((conditions[0], conditions[1]), (actions[0], actions[1])):
+            wrong = re.sub(r'\b' + first + r'\b', 'SWAPPED_SPECIES', implementation)
+            wrong = re.sub(r'\b' + second + r'\b', first, wrong).replace('SWAPPED_SPECIES', second)
+            self.assertNotEqual(wrong, implementation)
+            run(fixture(header, wrong), 'reordered-' + first, False)
+        print(f'Species fixture artifacts: {output}')
+
+    def test_undo_history_truncates_redo_and_preserves_save_positions(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / "mc2-el4-history" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def fixture(header, implementation):
+            source = r'''
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <new>
+#include <vector>
+#define gosASSERT(x) assert(x)
+'''
+            if 'EList< Action*' in header:
+                source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
+                source += 'Heap heap; Heap* systemHeap = &heap;\n'
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+            source += 'constexpr int MAX_DESC_LENGTH = 256;\n'
+            source += header[header.index('class Action\n{'):header.index('struct VertexInfo')]
+            source += header[header.index('class ActionUndoMgr\n{'):header.index('}; // class SActionMgr') + 2]
+            source += implementation[implementation.index('ActionUndoMgr* ActionUndoMgr::instance'):implementation.index('bool ActionPaintTile::redo()')]
+            return source + r'''
+std::vector<int> visits;
+struct Tracked : Action {
+    int id;
+    Tracked(int n, const char* name) : Action(name), id(n) {}
+    ~Tracked() { visits.push_back(-id); }
+    bool undo() override { visits.push_back(id * 10); return false; }
+    bool redo() override { visits.push_back(id * 100); return false; }
+};
+int main() {
+    ActionUndoMgr history;
+    assert(!history.HaveUndo() && !history.HaveRedo());
+    assert(history.GetCurrentPosition() == -1 && history.GetActionCount() == 0);
+    assert(!history.GetUndoString() && !history.GetRedoString());
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!strcmp(history.GetActionDescription(-1), ""));
+    assert(!strcmp(history.GetActionDescription(0), ""));
+    history.AddAction(new Tracked(1, "A"));
+    history.AddAction(new Tracked(2, "B"));
+    history.AddAction(new Tracked(3, "C"));
+    assert(visits.empty());
+    history.NoteThatASaveHasJustOccurred();
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Undo() && !history.Undo());
+    assert((visits == std::vector<int>{30,20}));
+    assert(!strcmp(history.GetUndoString(), "A") && !strcmp(history.GetRedoString(), "B"));
+    assert(history.ThereHasBeenANetChangeFromWhenLastSaved());
+    visits.clear();
+    history.AddAction(new Tracked(4, "D"));
+    assert((visits == std::vector<int>{-3,-2}));
+    assert(history.GetActionCount() == 2 && history.GetCurrentPosition() == 1);
+    assert(!history.HaveRedo() && !history.GetRedoString());
+    assert(!strcmp(history.GetActionDescription(0), "A"));
+    assert(!strcmp(history.GetActionDescription(1), "D"));
+    assert(!strcmp(history.GetActionDescription(2), ""));
+    assert(history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Undo() && !history.Undo());
+    // Truncating the saved branch retains the legacy -1 save marker.
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.HaveUndo() && history.HaveRedo());
+    visits.clear(); history.Reset();
+    assert((visits == std::vector<int>{-1,-4}));
+    assert(history.GetActionCount() == 0 && history.GetCurrentPosition() == -1);
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    history.AddAction(new Tracked(5, "E")); history.NoteThatASaveHasJustOccurred();
+    history.AddAction(new Tracked(6, "F")); assert(!history.Undo());
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    visits.clear(); history.AddAction(new Tracked(7, "G"));
+    assert((visits == std::vector<int>{-6}));
+    assert(history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Undo() && !history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!history.Redo() && history.ThereHasBeenANetChangeFromWhenLastSaved());
+    assert(!strcmp(history.GetUndoString(), "G"));
+    history.NoteThatASaveHasJustOccurred();
+    assert(!history.ThereHasBeenANetChangeFromWhenLastSaved());
+    visits.clear(); history.Reset(); assert((visits == std::vector<int>{-5,-7}));
+    history.Reset(); assert((visits == std::vector<int>{-5,-7}));
+}
+'''
+
+        def run(source, label, succeeds=True):
+            cpp = output / (label + '.cpp'); cpp.write_text(source)
+            exe = output / (label + '.exe')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        paths = ('editor/Action.h', 'editor/Action.cpp')
+        old = []
+        for path in paths:
+            result = subprocess.run(['git', 'show', '94faecce2:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            old.append(result.stdout)
+        run(fixture(*old), 'old')
+        source = fixture(*((root / path).read_text() for path in paths))
+        run(source, 'current')
+        if 'm_listUndoActions.pop_back();' in source:
+            truncation = 'while (static_cast<long>(m_listUndoActions.size()) - 1 > m_CurrentPos)'
+            self.assertIn(truncation, source)
+            run(source.replace(truncation, 'while (false)'), 'broken-truncation', False)
+            save = 'm_PosOfLastSave = -1;'
+            start = source.index('void ActionUndoMgr::AddAction')
+            end = source.index('void ActionUndoMgr::EmptyUndoList')
+            wrong = source[:start] + source[start:end].replace(save, '') + source[end:]
+            self.assertNotEqual(source, wrong)
+            run(wrong, 'broken-save-position', False)
+        print(f'History fixture artifacts: {output}')
+
+    def test_campaign_bytes_nested_copies_and_first_last_moves(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / "mc2-el3-campaign" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index("{", start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == "{") - (source[end] == "}")
+                end += 1
+            return source[start:end] + "\n"
+
+        def original(path):
+            result = subprocess.run(['git', 'show', 'ab843f226:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30,
+                                    **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return result.stdout
+
+        def fixture(header, campaign, dialog):
+            legacy = 'public EList' in header
+            source = r'''
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <format>
+#include <string>
+#include <vector>
+#include "GameOS/include/mc2fmt.h"
+#define gosASSERT(x) assert(x)
+#define PAUSE(x) assert(false)
+constexpr int NO_ERR = 0;
+constexpr bool TRUE = true, FALSE = false;
+using MemoryPtr = unsigned char*;
+struct CString {
+    std::string value;
+    CString() = default;
+    CString(const char* s) : value(s) {}
+    char* GetBuffer(int = 0) { return value.data(); }
+    bool IsEmpty() const { return value.empty(); }
+    bool operator==(const CString&) const = default;
+};
+struct FitIniFile {
+    std::ofstream file;
+    int create(char* path) { file.open(path, std::ios::binary); file << "FITini \r\n"; return file ? 0 : 1; }
+    void close() { file << "FITend \r\n"; file.close(); }
+    long write(MemoryPtr data, size_t size) { file.write((char*)data, size); return size; }
+    long writeBlock(const char*);
+    long writeIdBoolean(const char*, bool);
+    long writeIdLong(const char*, long);
+    long writeIdString(const char*, const char*);
+};
+'''
+            writer = (root / 'mclib/inifile.cpp').read_text()
+            for name in ('writeBlock', 'writeIdBoolean', 'writeIdLong', 'writeIdString'):
+                source += method(writer, 'long FitIniFile::' + name)
+            if legacy:
+                source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
+                source += 'Heap* systemHeap;\n'
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+            source += re.sub(r'^#include.*$', '', header, flags=re.M)
+            for signature in ('CMissionData::CMissionData()', 'bool CMissionData::operator==',
+                              'bool CMissionData::Save', 'CGroupData::CGroupData()',
+                              'bool CGroupData::operator==', 'bool CGroupData::Save',
+                              'CCampaignData::CCampaignData()', 'bool CCampaignData::operator==',
+                              'bool CCampaignData::Save'):
+                source += method(campaign, signature)
+            source += r'''
+struct CListBox { int selected = 0; int GetCurSel() { return selected; } void SetCurSel(int n) { selected = n; } };
+void setGroupListBoxValues(CListBox&, const CGroupList&) {}
+struct CCampaignDialog {
+    CCampaignData m_CampaignData;
+    CListBox m_GroupListControl;
+    void UpdateData(bool) {}
+    void OnCaMoveUpButton(); void OnCaMoveDownButton();
+};
+'''
+            for name in ('OnCaMoveUpButton', 'OnCaMoveDownButton'):
+                source += method(dialog, 'void CCampaignDialog::' + name)
+            main = r'''
+int main(int argc, char** argv) {
+    assert(argc == 2);
+    CCampaignDialog dialog;
+    auto& campaign = dialog.m_CampaignData;
+    campaign.m_Name = "Order fixture";
+    campaign.m_CBills = 54321;
+    campaign.m_FinalVideo = "final.bik";
+    for (auto label : {"A", "B", "C"}) {
+        CGroupData group; group.m_Label = label;
+        group.m_ABLScript = "script";
+        for (auto filename : {"mc2_24", "mc2_01", "mc2_24", "mc2_03"}) {
+            CMissionData mission; mission.m_MissionFile = filename;
+            mission.m_IsMandatory = false;
+            group.m_MissionList.APPEND(mission);
+        }
+        campaign.m_GroupList.APPEND(group);
+    }
+    const CCampaignData snapshot = campaign;
+    campaign.m_GroupList[0].m_MissionList[0].m_MissionFile = "changed";
+    assert(snapshot.m_GroupList[0].m_MissionList[0].m_MissionFile == CString("mc2_24"));
+    campaign = snapshot;
+    auto save = [&](const char* suffix) {
+        CString path; path.value = std::string(argv[1]) + suffix; assert(campaign.Save(path));
+    };
+    auto order = [&](const char* a, const char* b, const char* c, int selected) {
+        assert(campaign.m_GroupList[0].m_Label == CString(a));
+        assert(campaign.m_GroupList[1].m_Label == CString(b));
+        assert(campaign.m_GroupList[2].m_Label == CString(c));
+        assert(dialog.m_GroupListControl.selected == selected);
+    };
+    save("-null.fit");
+    dialog.m_GroupListControl.selected = 0; dialog.OnCaMoveUpButton(); order("A","B","C",0);
+    dialog.OnCaMoveDownButton(); order("B","A","C",1); save("-first-down.fit");
+    dialog.OnCaMoveUpButton(); order("A","B","C",0);
+    dialog.m_GroupListControl.selected = 2; dialog.OnCaMoveDownButton(); order("A","B","C",2);
+    dialog.OnCaMoveUpButton(); order("A","C","B",1); save("-last-up.fit");
+    dialog.OnCaMoveDownButton(); order("A","B","C",2); save("-restored.fit");
+    assert(campaign == snapshot);
+}
+'''
+            if legacy:
+                main = main.replace('    CCampaignDialog dialog;', '    Heap heap; systemHeap = &heap;\n    CCampaignDialog dialog;')
+            return source + main.replace('APPEND', 'Append' if legacy else 'push_back')
+
+        def run(source, label, succeeds=True):
+            cpp = output / (label + '.cpp'); cpp.write_text(source)
+            exe = output / (label + '.exe')
+            result = subprocess.run(['clang++', '-std=c++23', '-I', str(root), str(cpp), '-o', str(exe)],
+                                    capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(exe), str(output / label)], capture_output=True, timeout=30,
+                                    **child_kwargs(redirected=True))
+            if succeeds:
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            else:
+                self.assertNotEqual(result.returncode, 0)
+
+        paths = ('editor/campaignData.h', 'editor/CampaignData.cpp', 'editor/CampaignDialog.cpp')
+        run(fixture(*(original(p) for p in paths)), 'old')
+        source = fixture(*((root / p).read_text() for p in paths))
+        run(source, 'current')
+        for suffix in ('null', 'first-down', 'last-up', 'restored'):
+            self.assertEqual((output / f'old-{suffix}.fit').read_bytes(),
+                             (output / f'current-{suffix}.fit').read_bytes())
+        self.assertEqual((output / 'current-null.fit').read_bytes(), (output / 'current-restored.fit').read_bytes())
+        if 'public EList' not in (root / paths[0]).read_text():
+            for member in ('m_GroupList', 'm_MissionList'):
+                wrong = source.replace(member + '.begin()', member + '.rbegin()').replace(member + '.end()', member + '.rend()')
+                self.assertNotEqual(source, wrong)
+                label = 'wrong-save-order-' + member
+                run(wrong, label)
+                self.assertNotEqual((output / 'current-null.fit').read_bytes(), (output / (label + '-null.fit')).read_bytes())
+            for direction, offset in (('up', '- 1'), ('down', '+ 1')):
+                expression = f'm_GroupList[selectedItemIndex {offset}]'
+                self.assertIn(expression, source)
+                run(source.replace(expression, 'm_GroupList[selectedItemIndex]'), 'wrong-move-' + direction, False)
+        print(f'Campaign fixture artifacts: {output}')
+
+    def test_child_order_snapshots_and_reverse_undo(self):
+        root = Path(__file__).resolve().parents[2]
+        output = root / "scratch/el2-links" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index("{", start)
+            depth = 1
+            end = opening + 1
+            while depth:
+                depth += (source[end] == "{") - (source[end] == "}")
+                end += 1
+            return source[start:end] + "\n"
+        building = (root / "editor/BuildingLink.cpp").read_text()
+        brush = (root / "editor/LinkBrush.cpp").read_text()
+        header = (root / "editor/BuildingLink.h").read_text()
+        header = re.sub(r'^#include.*$', '', header, flags=re.M)
+        nested = (root / "editor/LinkBrush.h").read_text()
+        nested = nested[nested.index("\tstruct LinkInfo"):nested.index("\tLinkAction* pAction;")]
+        source = r'''
+#include <algorithm>
+#include <cassert>
+#include <vector>
+#define gosASSERT(x) ((void)0)
+#define SPEW(x) ((void)0)
+namespace Stuff { struct Vector3D { float x{}, y{}, z{}; bool operator==(const Vector3D&) const = default; }; }
+'''
+        source += r'''
+struct EditorObject {
+    int id, alignment; Stuff::Vector3D pos;
+    int getID() const { return id; } auto getPosition() const { return pos; }
+    int getAlignment() const { return alignment; }
+    void setAlignment(int a) { alignment = a; }
+};
+struct Terrain { float getTerrainElevation(const Stuff::Vector3D&) { return 0; } };
+Terrain* land;
+'''
+        source += header + '\nstruct Action {};\nclass LinkBrush { public:\n' + nested + '\n};\n'
+        source += r'''
+struct EditorObjectMgr {
+    std::vector<EditorObject> objects;
+    std::vector<BuildingLink*> links;
+    std::vector<int> visits;
+    static EditorObjectMgr* active;
+    static auto instance() { return active; }
+    EditorObject* getObjectAtLocation(float x, float y) {
+        for (auto& o : objects) if (o.pos.x == x && o.pos.y == y) return &o;
+        return nullptr;
+    }
+    BuildingLink* getLinkWithParent(const EditorObject* o) {
+        for (auto* l : links) if (l->HasParent(o)) return l;
+        return nullptr;
+    }
+    BuildingLink* getLinkWithBuilding(const EditorObject* o) {
+        for (auto* l : links) if (l->HasParent(o) || l->HasChild(o)) return l;
+        return nullptr;
+    }
+    void deleteLink(BuildingLink* l) {
+        visits.push_back(-static_cast<int>(l->GetParentPosition().x));
+        links.erase(std::find(links.begin(), links.end(), l)); delete l;
+    }
+    void addLink(BuildingLink* l) { visits.push_back(static_cast<int>(l->GetParentPosition().x)); links.push_back(l); }
+    ~EditorObjectMgr() { for (auto* l : links) delete l; }
+};
+EditorObjectMgr* EditorObjectMgr::active;
+'''
+        for signature in ('BuildingLink::BuildingLink( const EditorObject*',
+                          'BuildingLink::BuildingLink( const Stuff::Vector3D&',
+                          'BuildingLink::BuildingLink( const BuildingLink&',
+                          'BuildingLink& BuildingLink::operator=', 'void BuildingLink::CopyData',
+                          'bool BuildingLink::AddChild', 'int BuildingLink::GetLinkCount',
+                          'const Stuff::Vector3D& BuildingLink::GetParentPosition',
+                          'bool BuildingLink::HasChild', 'bool BuildingLink::HasParent',
+                          'bool BuildingLink::RemoveObject', 'int BuildingLink::GetChildrenPositions',
+                          'void\tBuildingLink::FixHeights'):
+            source += method(building, signature)
+        for signature in ('void LinkBrush::LinkAction::AddToListOnce', 'LinkBrush::LinkAction::LinkAction',
+                          'bool LinkBrush::LinkAction::undo', 'bool LinkBrush::LinkAction::redo',
+                          'LinkBrush::LinkInfo::LinkInfo'):
+            source += method(brush, signature)
+        source += r'''
+int main() {
+    EditorObjectMgr mgr; EditorObjectMgr::active = &mgr;
+    mgr.objects = {{1, 1, {1,0,0}}, {2, 2, {2,0,0}}, {3, 0, {3,0,0}}, {4, 0, {4,0,0}}};
+    auto& a = mgr.objects[0]; auto& b = mgr.objects[1]; auto& c = mgr.objects[2]; auto& d = mgr.objects[3];
+    BuildingLink link(&a);
+    assert(link.AddChild(&d)); assert(link.AddChild(&c)); assert(!link.AddChild(&d));
+    Stuff::Vector3D positions[3]{{99,0,0}};
+    assert(link.GetChildrenPositions(positions, 1) == 2 && positions[0].x == 99);
+    assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == d.pos && positions[1] == c.pos);
+    BuildingLink copy(link); BuildingLink assigned(&b); assigned = link; assigned = assigned;
+    assert(!link.RemoveObject(&a)); assert(link.RemoveObject(&d)); assert(!link.RemoveObject(&d));
+    assert(link.AddChild(&d));
+    assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos && positions[1] == d.pos);
+    for (auto* snapshot : {&copy, &assigned}) {
+        assert(snapshot->GetChildrenPositions(positions, 3) == 2 && positions[0] == d.pos && positions[1] == c.pos);
+    }
+    assert(link.RemoveObject(&c)); assert(link.RemoveObject(&d)); assert(link.GetLinkCount() == 0);
+    assert(link.GetChildrenPositions(positions, 3) == 0);
+    EditorObject elevated = d; elevated.pos.z = 1;
+    assert(link.AddChild(&d)); assert(link.AddChild(&c)); assert(link.AddChild(&elevated));
+    Terrain terrain; land = &terrain; link.FixHeights();
+    assert(link.RemoveObject(&d));
+    assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos && positions[1] == d.pos);
+    LinkBrush::LinkAction empty; assert(empty.undo()); assert(empty.redo());
+    BuildingLink first(&a); first.AddChild(&c); first.AddChild(&d);
+    BuildingLink second(&b); second.AddChild(&c);
+    LinkBrush::LinkAction action;
+    action.AddToListOnce({&first, LinkBrush::LinkInfo::REMOVE});
+    action.AddToListOnce({&second, LinkBrush::LinkInfo::REMOVE});
+    BuildingLink duplicate(&a);
+    action.AddToListOnce({&duplicate, LinkBrush::LinkInfo::ADD});
+    assert(action.undo()); assert((mgr.visits == std::vector<int>{2,1}));
+    assert(c.alignment == 1 && d.alignment == 1);
+    assert(mgr.links[1]->GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos && positions[1] == d.pos);
+    mgr.visits.clear(); assert(action.redo()); assert((mgr.visits == std::vector<int>{-2,-1})); assert(mgr.links.empty());
+    mgr.visits.clear(); assert(action.undo()); assert((mgr.visits == std::vector<int>{2,1}));
+    LinkBrush::LinkAction edit; edit.AddToListOnce({mgr.links[1]});
+    mgr.links[1]->RemoveObject(&c);
+    assert(edit.undo()); assert(mgr.links[1]->GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos);
+    assert(edit.redo()); assert(mgr.links[1]->GetChildrenPositions(positions, 3) == 1 && positions[0] == d.pos);
+}
+'''
+        def run(contents, label):
+            cpp = output / (label + '.cpp'); cpp.write_text(contents)
+            exe = output / (label + '.exe')
+            built = subprocess.run(['clang++', '-std=c++23', '-I', str(root), str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            if label == 'links':
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return result.returncode
+        self.assertEqual(run(source, 'links'), 0)
+        # Mutate the production bodies, keeping the fixture's expected order fixed.
+        append = 'children.push_back( tmp );'
+        self.assertIn(append, source)
+        self.assertNotEqual(run(source.replace(append, 'children.insert(children.begin(), tmp);'), 'wrong-child-order'), 0)
+        reverse = 'changedLinks.rbegin(); iter != changedLinks.rend(); ++iter'
+        self.assertIn(reverse, source)
+        self.assertNotEqual(run(source.replace(reverse, 'changedLinks.begin(); iter != changedLinks.end(); ++iter'), 'wrong-undo-order'), 0)
+        print(f'Link fixture artifacts: {output}')
 
 
 class FrozenParityTests(unittest.TestCase):

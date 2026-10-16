@@ -9,25 +9,25 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 {
 	File file;
 	
-	if ( !buildings.Count() )
+	if ( !static_cast<int>(buildings.size()) )
 	{
 		PakFile.writePacket( whichPacket, NULL );
 		PakFile.writePacket( whichPacket + 1, NULL );
 	}
 
-	int bufferSize = buildings.Count() * (4 * sizeof(float) + 6 * sizeof(long) ) + 2 * sizeof(long);
+	int bufferSize = static_cast<int>(buildings.size()) * (4 * sizeof(float) + 6 * sizeof(long) ) + 2 * sizeof(long);
 	char* pBuffer = (char *) malloc( bufferSize );
-	long* pTacMapPoints = (long *)malloc( sizeof(long) * ( buildings.Count() * 2 + 1 ) );
+	long* pTacMapPoints = (long *)malloc( sizeof(long) * ( static_cast<int>(buildings.size()) * 2 + 1 ) );
 	long* pPoints = pTacMapPoints + 1;
 	long pointCounter = 0;
 	
 	file.open(pBuffer, bufferSize );
-	file.writeLong( buildings.Count() );
+	file.writeLong( static_cast<int>(buildings.size()) );
 
 	gos_VERTEX point;
 	
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			int id = (*iter)->id;
 			Building& bldg = groups[(id >> 16) & 0x000000ff].buildings[(id >> 8) & 0x000000ff];
@@ -55,13 +55,11 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 			if ( pLink )
 			{
 				Stuff::Vector3D pos = pLink->GetParentPosition();
-				// convert to cells
 				int cellI, cellJ;
 				land->worldToCell( pos, cellJ, cellI );
 
 				long val = (cellJ << 16) | cellI;
 
-				//How about BEFORE we write this, we make sure there's really a building there!
 				EditorObject* pObject = getObjectAtCell( cellJ, cellI );
 				if (!pObject)
 				{
@@ -98,7 +96,7 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 
 	if (!justResaveAllMaps) {
 		int numTurrets = 0;
-		for ( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = buildings.begin(); iter != buildings.end(); iter++ )
 		{
 			switch ((*iter)->getSpecialType())
 			{
@@ -188,8 +186,8 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			pos.z = land->getTerrainElevation( pos );
 
 			bool bFound = false;
-			for ( LINK_LIST::EIterator iter = links.Begin();
-			!iter.IsDone(); iter++ )
+			for ( auto iter = links.begin();
+			iter != links.end(); iter++ )
 			{
 				if ( (*iter)->GetParentPosition() == pos )
 				{
@@ -203,7 +201,7 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			{
 				BuildingLink* pLink = new BuildingLink( pos );
 				pLink->AddChild( pInfo );
-				links.Append( pLink );       
+				links.push_back( pLink );
 			}
 		}
 
@@ -215,17 +213,12 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 
 	LINK_LIST linksToDelete;
 
-	// gotta go through all the links and make sure they have id's
-	for ( LINK_LIST::EIterator iter = links.Begin();
-			!iter.IsDone(); iter++ )
+	for ( auto iter = links.begin();
+			iter != links.end(); iter++ )
 			{
 				if ( (*iter)->parent.m_ID == -1 )
 				{
-					// This absolutely positively could never have worked!
-					// Why?  Because getObjectAtPosition depends upon the object BEING ON SCREEN!!!!!!!
-					// At this point, we're still loading!!!
-					// We should, instead, be checking getObjectAtCell which ALWAYS works!
-					// -fs
+					// Loading resolves links without depending on screen visibility.
 					int cellR, cellC;
 					land->worldToCell((*iter)->parent.pos,cellR,cellC);
 
@@ -235,11 +228,11 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 					if ( pObject )
 						(*iter)->parent.m_ID = pObject->getID();
 					else
-						linksToDelete.Append( *iter );
+						linksToDelete.push_back( *iter );
 				}
 			}
 
-	for ( LINK_LIST::EIterator iter = linksToDelete.Begin();	!iter.IsDone(); iter++ )
+	for ( auto iter = linksToDelete.begin();	iter != linksToDelete.end(); iter++ )
 	{
 		deleteLink( *iter );
 	}
@@ -321,7 +314,7 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 				if (pAltObject) deleteBuilding(pAltObject);
 				return false;
 			}
-			((Unit *)(pObject))->pAlternativeInstances->Append(*((Unit *)(pAltObject)));
+			((Unit *)(pObject))->alternatives.push_back(*((Unit *)(pAltObject)));
 			deleteBuilding(pAltObject);
 
 			alternativeInstancesCounter += 1;
@@ -334,17 +327,17 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 
 bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 {
-	EditorObjMgrTrace("EditorObjectMgr::saveMechs: enter units.Count=%d", units.Count());
+	EditorObjMgrTrace("EditorObjectMgr::saveMechs: enter units.Count=%d", static_cast<int>(units.size()));
 	file.writeBlock( "Warriors" );
 
 	UNIT_LIST unitsByPlayer[8/*max players*/];
 	{
-		for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( UNIT_LIST::iterator iter = units.begin(); iter != units.end(); iter++ )
 		{
 			int alignment = (*iter)->getAlignment();
 			if (8/*max players*/ > alignment)
 			{
-				unitsByPlayer[alignment].Append((*iter));
+				unitsByPlayer[alignment].push_back((*iter));
 			}
 			else 
 			{
@@ -357,45 +350,43 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 	UNIT_LIST reorderedUnitsByPlayer[8/*max players*/];
 	for (int playerNum = 0; 8/*max players*/ > playerNum; playerNum += 1)
 	{
-		/*O(n-squared) sort. Who cares.*/
-		int numUnitsOfThisPlayer = unitsByPlayer[playerNum].Count();
+		int numUnitsOfThisPlayer = static_cast<int>(unitsByPlayer[playerNum].size());
 		for (int i = 0; i < numUnitsOfThisPlayer; i+= 1)
 		{
 			int lowestSquadNum = INT_MAX;
-			UNIT_LIST::EIterator iter;
-			for ( iter = unitsByPlayer[playerNum].Begin(); !iter.IsDone(); iter++ )
+			UNIT_LIST::iterator iter;
+			for ( iter = unitsByPlayer[playerNum].begin(); iter != unitsByPlayer[playerNum].end(); iter++ )
 			{
 				if ((*iter)->getSquad() < lowestSquadNum)
 				{
 					lowestSquadNum = (*iter)->getSquad();
 				}
 			}
-			for ( iter = unitsByPlayer[playerNum].Begin(); !iter.IsDone(); iter++ )
+			for ( iter = unitsByPlayer[playerNum].begin(); iter != unitsByPlayer[playerNum].end(); iter++ )
 			{
 				if (lowestSquadNum == (*iter)->getSquad())
 				{
 					break;
 				}
 			}
-			if (!iter.IsDone())
+			if (iter != unitsByPlayer[playerNum].end())
 			{
-				reorderedUnitsByPlayer[playerNum].Append(*iter);
-				/*we delete the unit from unitsByPlayer[playerNum] because more than one unit
-				may have the same squad number*/
-				unitsByPlayer[playerNum].Delete(iter);
+				reorderedUnitsByPlayer[playerNum].push_back(*iter);
+				// Equal squad numbers retain insertion order.
+				unitsByPlayer[playerNum].erase(iter);
 			}
 			else
 			{
 				assert(false);
 			}
 		}
-		UNIT_LIST::EIterator iter;
-		for ( iter = reorderedUnitsByPlayer[playerNum].Begin(); !iter.IsDone(); iter++ )
+		UNIT_LIST::iterator iter;
+		for ( iter = reorderedUnitsByPlayer[playerNum].begin(); iter != reorderedUnitsByPlayer[playerNum].end(); iter++ )
 		{
-			reorderedUnits.Append(*iter);
+			reorderedUnits.push_back(*iter);
 		}
 	}
-	assert(reorderedUnits.Count() == units.Count());
+	assert(static_cast<int>(reorderedUnits.size()) == static_cast<int>(units.size()));
 
 	{
 		/*When saving, each player's units need to be grouped into "lances" of 12 units
@@ -404,8 +395,8 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 		{
 			int lanceGroup = 0;
 			int mateIndex = 0;
-			UNIT_LIST::EIterator iter;
-			for ( iter = reorderedUnitsByPlayer[playerNum].Begin(); !iter.IsDone(); iter++ )
+			UNIT_LIST::iterator iter;
+			for ( iter = reorderedUnitsByPlayer[playerNum].begin(); iter != reorderedUnitsByPlayer[playerNum].end(); iter++ )
 			{
 				(*iter)->setLanceInfo(lanceGroup, mateIndex);
 				mateIndex += 1;
@@ -418,14 +409,6 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 		}
 	}
 
-	/*
-	if ( 1 > reorderedUnitsByPlayer[EDITOR_TEAM1].Count() )
-	{
-		EMessageBox( IDS_MUST_HAVE_PLAYER, IDS_CANT_SAVE, MB_OK );
-		return false;
-	}
-	*/
-
 	if (!justResaveAllMaps)
 	{
 		if (EditorData::instance->IsSinglePlayer())
@@ -435,7 +418,7 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 			{
 				if (0/*player1's (user's) team*/ != EditorData::instance->PlayersRef().PlayerRef(playerNum).DefaultTeam())
 				{
-					if (0 < reorderedUnitsByPlayer[playerNum].Count())
+					if (0 < static_cast<int>(reorderedUnitsByPlayer[playerNum].size()))
 					{
 						enemyUnitFound = true;
 						break;
@@ -447,7 +430,7 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 				EMessageBox( IDS_NO_ENEMY_UNITS, IDS_WARNING, MB_OK );
 			}
 
-			if (0 >= reorderedUnitsByPlayer[0/*user player*/].Count())
+			if (0 >= static_cast<int>(reorderedUnitsByPlayer[0/*user player*/].size()))
 			{
 				EMessageBox( IDS_NO_PLAYER_UNITS, IDS_WARNING, MB_OK );
 			}
@@ -456,7 +439,7 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 		{
 			for (int playerNum = 0; EditorData::instance->MaxPlayers() > playerNum; playerNum += 1)
 			{
-				if (1 > reorderedUnitsByPlayer[playerNum].Count())
+				if (1 > static_cast<int>(reorderedUnitsByPlayer[playerNum].size()))
 				{
 					EMessageBox( IDS_PLAYERS_WITH_NO_UNITS, IDS_WARNING, MB_OK );
 					break;
@@ -466,37 +449,34 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 	}
 
 
-	file.writeIdULong( "NumWarriors", units.Count() );
+	file.writeIdULong( "NumWarriors", static_cast<int>(units.size()) );
 
-	if (!justResaveAllMaps && (units.Count() > 104))
+	if (!justResaveAllMaps && (static_cast<int>(units.size()) > 104))
 	{
 		EMessageBox( IDS_TOO_MANY_PILOTS, IDS_WARNING, MB_OK);
 	}
 
 	file.writeBlock( "Parts" );
-	file.writeIdULong( "NumParts", units.Count() );
+	file.writeIdULong( "NumParts", static_cast<int>(units.size()) );
 
 	char buffer[256];
-	int counter = 1; // for some unknown reason we index from 1
-	int alternativeInstancesCounter = reorderedUnits.Count() + 1;
+	int counter = 1; // FIT warrior indices are 1-based.
+	int alternativeInstancesCounter = static_cast<int>(reorderedUnits.size()) + 1;
 
-	UNIT_LIST::EIterator iter;
-	for ( iter = reorderedUnits.Begin(); !iter.IsDone(); counter++, iter++ )
+	UNIT_LIST::iterator iter;
+	for ( iter = reorderedUnits.begin(); iter != reorderedUnits.end(); counter++, iter++ )
 	{
 		sprintf( buffer, "Warrior%ld", counter );
 		file.writeBlock( buffer );
 
-		// Make a new name of the form "level23_warrior8"
 		char armName[512] = {0};
 		strcpy(armName, file.getFilename());
 		_strlwr(armName);
 		char * fitExt = strstr(armName, ".fit");
-		// Guard: if getFilename() returns a path without .fit extension, skip ARM relationship.
 		if (!fitExt) {
 			EditorObjMgrTrace("EditorObjectMgr::saveMechs: armName has no .fit: '%s' (skipping ARM warrior relationship)", armName);
 		} else {
 			*fitExt = '_';
-			// the bound is what is left of armName[512] after the '_' that replaced ".fit"
 			mc2::fmt::to_buf_n(fitExt + 1, sizeof(armName) - static_cast<size_t>(fitExt + 1 - armName), "warrior{:02d}", mc2::fmt::as_i32(counter));
 			mapAsset->AddRelationship("warrior", armName);
 		}
@@ -514,7 +494,7 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 		file.writeIdULong( "AlternativeStartIndex", alternativeInstancesCounter + 1 );
 
 		long IndicesOfAlternatives[15/*max alternatives*/] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
-		int numAlternatives = (*iter)->pAlternativeInstances->Count();
+		int numAlternatives = static_cast<int>((*iter)->alternatives.size());
 		if (15/*max alternatives*/ < numAlternatives)
 		{
 			gosASSERT(false);
@@ -529,12 +509,11 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 
 
 		alternativeInstancesCounter += 1;
-		int i;
-		for (i = 0; i < (*iter)->pAlternativeInstances->Count(); i++)
+		for (auto& alternative : (*iter)->alternatives)
 		{
 			sprintf( buffer, "Warrior%ld", alternativeInstancesCounter );
 			file.writeBlock( buffer );
-			(*((*iter)->pAlternativeInstances))[i].save( &file, alternativeInstancesCounter );
+			alternative.save( &file, alternativeInstancesCounter );
 			alternativeInstancesCounter += 1;
 		}
 	}
@@ -551,13 +530,13 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 		{
 			int reorderedUnitByPlayerIndex = 0;
 			int lanceGroup = 0;
-			for ( lanceGroup = 0; lanceGroup * (12/*just twelve*/) < reorderedUnitsByPlayer[playerNum].Count(); lanceGroup += 1 )
+			for ( lanceGroup = 0; lanceGroup * (12/*just twelve*/) < static_cast<int>(reorderedUnitsByPlayer[playerNum].size()); lanceGroup += 1 )
 			{
 				long mates[12/*just twelve*/];
 				int mateIndex = 0;
 				for (mateIndex = 0; 12/*just twelve*/ > mateIndex; mateIndex += 1)
 				{
-					if (reorderedUnitByPlayerIndex < reorderedUnitsByPlayer[playerNum].Count())
+					if (reorderedUnitByPlayerIndex < static_cast<int>(reorderedUnitsByPlayer[playerNum].size()))
 					{
 						mates[mateIndex] = reorderedUnitIndex;
 						reorderedUnitIndex += 1;
@@ -586,7 +565,7 @@ bool EditorObjectMgr::saveForests( FitIniFile& file )
 {
 	long counter = 0;
 	char header[256];
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++, counter++)
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++, counter++)
 	{
 		sprintf( header, "Forest%ld", counter );
 		file.writeBlock( header );
@@ -617,7 +596,7 @@ bool EditorObjectMgr::loadForests( FitIniFile& file )
 		pForest->init( file );
 		pForest->ID = counter;
 
-		forests.Append( pForest );
+		forests.push_back( pForest );
 		counter++;
 	}
 
@@ -630,23 +609,17 @@ bool EditorObjectMgr::saveDropZones( FitIniFile& file )
 	int counter = 0;
 	char Header[256];
 
-	for ( DROP_LIST::EIterator iter = dropZones.Begin(); !iter.IsDone(); iter++, counter++ )
+	for ( auto iter = dropZones.begin(); iter != dropZones.end(); iter++, counter++ )
 	{
 		sprintf( Header, "DropZone%ld", counter );
 		file.writeBlock( Header );
 		(*iter)->save( &file, counter );
 	}
 
-	// going to do nav markers here
-	// need to sort this list first.  ick.
-	EditorObject** pObjects = (EditorObject**)_alloca( sizeof( EditorObject* )  * buildings.Count() );
-	int i = 0;
-	for ( BUILDING_LIST::EIterator bIter = buildings.Begin(); !bIter.IsDone(); bIter++ )
-	{
-		pObjects[i++] = *bIter;
-	}
-
-	long count = i;
+	// Nav export retains the authored swap permutation, including equal IDs.
+	std::vector<EditorObject*> pObjects(buildings.begin(), buildings.end());
+	long count = static_cast<long>(pObjects.size());
+	int i;
 
 	for ( i = 1; i < count; ++i )
 	{
@@ -669,7 +642,6 @@ bool EditorObjectMgr::saveDropZones( FitIniFile& file )
 			counter++;
 	}
 
-	// so  it writes out afterward....
 	file.writeBlock( "NavMarkers" );
 	file.writeIdULong( "NumNavMarkers", counter );
 
@@ -714,10 +686,10 @@ bool EditorObjectMgr::loadNavMarkers(FitIniFile& file)
 {
 	if (file.seekBlock("NavMarkers") != NO_ERR) return true;
 	long count = 0;
-	if (!EditorFit::longValue(file, "NumNavMarkers", count, true) || count > buildings.Count())
+	if (!EditorFit::longValue(file, "NumNavMarkers", count, true) || count > static_cast<int>(buildings.size()))
 		return EditorFit::reject("NavMarker count");
 	std::vector<NavMarker*> markers;
-	for (auto it = buildings.Begin(); !it.IsDone(); it++)
+	for (auto it = buildings.begin(); it != buildings.end(); it++)
 		if (auto* marker = dynamic_cast<NavMarker*>(*it)) markers.push_back(marker);
 	if (static_cast<size_t>(count) != markers.size()) return EditorFit::reject("NavMarker count mismatch");
 	for (long i = 0; i < count; ++i)

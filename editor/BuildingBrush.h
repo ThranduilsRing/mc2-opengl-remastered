@@ -60,22 +60,12 @@ class BuildingBrush: public Brush
 		{
 		public:
 			
-			virtual ~BuildingAction(){}
+			virtual ~BuildingAction();
 			virtual bool redo();
 			virtual bool undo();
 			virtual void addBuildingInfo(EditorObject& info);
 
-			class OBJ_INFO_PTR_LIST : public EList<EditorObject *, EditorObject *> {
-			public:
-				~OBJ_INFO_PTR_LIST() {
-					EIterator it;
-					for (it = Begin(); !it.IsDone(); it++) {
-						delete (*it);
-					}
-				}
-			};
-			
-			OBJ_INFO_PTR_LIST objInfoPtrList;
+			std::vector<EditorObject*> objInfoPtrList;
 		};
 
 		protected:

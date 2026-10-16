@@ -100,7 +100,7 @@ EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& posit
 	float bestDistSq = 1.0e30f;
 	EditorObject* pBest = nullptr;
 
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin(); iter != buildings.end(); iter++ )
 	{
 		EditorObject* o = (*iter);
 		if ( !o || !o->appearance() ) continue;
@@ -112,7 +112,7 @@ EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& posit
 		if ( d <= r * r && d < bestDistSq ) { bestDistSq = d; pBest = o; }
 	}
 
-	for ( UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++ )
+	for ( auto mIter = units.begin(); mIter != units.end(); mIter++ )
 	{
 		EditorObject* o = (*mIter);
 		if ( !o || !o->appearance() ) continue;
@@ -124,7 +124,7 @@ EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& posit
 		if ( d <= r * r && d < bestDistSq ) { bestDistSq = d; pBest = o; }
 	}
 
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 	{
 		EditorObject* o = (*dIter);
 		if ( !o || !o->appearance() ) continue;
@@ -301,13 +301,13 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	float bestPixSq = 1.0e30f;
 	EditorObject* pBest = nullptr;
 
-	for( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
+	for( auto iter = buildings.begin(); iter != buildings.end(); iter++ )
 		EditorObjectMgr_ConsiderScreenPick(*iter, clickX, clickY, pixelFloor, bestPixSq, pBest);
 
-	for( UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++ )
+	for( auto mIter = units.begin(); mIter != units.end(); mIter++ )
 		EditorObjectMgr_ConsiderScreenPick(*mIter, clickX, clickY, pixelFloor, bestPixSq, pBest);
 
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 		EditorObjectMgr_ConsiderScreenPick(*dIter, clickX, clickY, pixelFloor, bestPixSq, pBest);
 
 	// MC2_EDITOR_PICK_TRACE diagnostic (default-off). Independent measurement of the
@@ -323,7 +323,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 			float nbest = 1.0e30f, nSx = -1.f, nSy = -1.f;
 			Stuff::Vector3D nWorld; nWorld.x = nWorld.y = nWorld.z = 0.f;
 			const char* nKind = "none";
-			for ( BUILDING_LIST::EIterator i = buildings.Begin(); !i.IsDone(); i++ )
+			for ( auto i = buildings.begin(); i != buildings.end(); i++ )
 			{
 				if ( !(*i) || !(*i)->appearance() ) continue;
 				Stuff::Vector3D wp = (*i)->appearance()->position; Stuff::Vector4D sp;
@@ -331,7 +331,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 				float dx = sp.x - clickX, dy = sp.y - clickY, d2 = dx*dx + dy*dy;
 				if ( d2 < nbest ) { nbest = d2; nWorld = wp; nSx = sp.x; nSy = sp.y; nKind = "bldg"; }
 			}
-			for ( UNIT_LIST::EIterator i = units.Begin(); !i.IsDone(); i++ )
+			for ( auto i = units.begin(); i != units.end(); i++ )
 			{
 				if ( !(*i) || !(*i)->appearance() ) continue;
 				Stuff::Vector3D wp = (*i)->appearance()->position; Stuff::Vector4D sp;
@@ -370,8 +370,8 @@ static bool areCloseEnough(float f1, float f2)
 
 EditorObject* EditorObjectMgr::getObjectAtLocation( float x, float y )
 {
-	for( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 	{
 		if (areCloseEnough((*iter)->getPosition().x, x) && areCloseEnough((*iter)->getPosition().y, y))
 		{
@@ -379,7 +379,7 @@ EditorObject* EditorObjectMgr::getObjectAtLocation( float x, float y )
 		}
 	}
 
-	for( UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++ )
+	for( auto mIter = units.begin(); mIter != units.end(); mIter++ )
 	{
 		if (areCloseEnough((*mIter)->getPosition().x, x) && areCloseEnough((*mIter)->getPosition().y, y))
 		{
@@ -387,7 +387,7 @@ EditorObject* EditorObjectMgr::getObjectAtLocation( float x, float y )
 		}
 	}
 
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 	{
 		// need to change this when we get drop zone art
 		if (areCloseEnough((*dIter)->getPosition().x, x) && areCloseEnough((*dIter)->getPosition().y, y))

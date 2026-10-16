@@ -123,14 +123,13 @@ bool CGroupData::Save(FitIniFile &fitFile, const char *groupName) {
 	fitFile.writeIdString( "Video", m_VideoFile.GetBuffer(0));
 	fitFile.writeIdString( "PreVideo", m_PreVideoFile.GetBuffer(0));
 	fitFile.writeIdLong("Tune", m_TuneNumber);
-	fitFile.writeIdLong("MissionCount", m_MissionList.Count());
+	fitFile.writeIdLong("MissionCount", static_cast<long>(m_MissionList.size()));
 	if (!m_ABLScript.IsEmpty()) {
 		fitFile.writeIdString( "ABLScript", m_ABLScript.GetBuffer(0));
 	}
 
-	CMissionList::EIterator it;
-	int index;
-	for (it = m_MissionList.Begin(), index = 0; !it.IsDone(); it++, index+=1) {
+	int index = 0;
+	for (auto it = m_MissionList.begin(); it != m_MissionList.end(); ++it, ++index) {
 		std::string blockName;
 		blockName = std::format("{}Mission{}", mc2::fmt::safe(groupName), index);
 		fitFile.writeBlock(blockName.c_str());
@@ -161,7 +160,7 @@ bool CGroupData::Read(FitIniFile &fitFile, const char *groupName) {
 		CMissionData missionData;
 		bool bresult = missionData.Read(fitFile);
 		if (true != bresult) { assert(false); continue; }
-		m_MissionList.Append(missionData);
+		m_MissionList.push_back(missionData);
 	}
 
 	return true;
@@ -203,11 +202,10 @@ bool CCampaignData::Save(CString pathName) {
 	}
 	fitFile.writeIdLong("CBills", m_CBills);
 	fitFile.writeIdString( "FinalVideo", m_FinalVideo.GetBuffer(0));
-	fitFile.writeIdLong("GroupCount", m_GroupList.Count());
+	fitFile.writeIdLong("GroupCount", static_cast<long>(m_GroupList.size()));
 
-	CGroupList::EIterator it;
-	int index;
-	for (it = m_GroupList.Begin(), index = 0; !it.IsDone(); it++, index+=1) {
+	int index = 0;
+	for (auto it = m_GroupList.begin(); it != m_GroupList.end(); ++it, ++index) {
 		std::string blockName;
 		blockName = std::format("Group{}", index);
 		fitFile.writeBlock(blockName.c_str());
@@ -245,7 +243,7 @@ bool CCampaignData::Read(CString pathName) {
 		CGroupData groupData;
 		bool bresult = groupData.Read(fitFile, blockName.c_str());
 		if (true != bresult) { assert(false); continue; }
-		m_GroupList.Append(groupData);
+		m_GroupList.push_back(groupData);
 	}
 
 	fitFile.close();

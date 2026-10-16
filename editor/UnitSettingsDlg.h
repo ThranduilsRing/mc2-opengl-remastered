@@ -14,14 +14,14 @@
 /////////////////////////////////////////////////////////////////////////////
 // UnitSettingsDlg dialog
 
-#include "EList.h"
+#include <vector>
 #include "Action.h"
 class Unit;
 
 class UnitSettingsDlg : public CDialog
 {
 public:
-	UnitSettingsDlg(EList<Unit*, Unit*>&, ActionUndoMgr &undoMgr);   // standard constructor
+	UnitSettingsDlg(std::vector<Unit*>&, ActionUndoMgr &undoMgr);   // standard constructor
 
 	//{{AFX_DATA(UnitSettingsDlg)
 	enum { IDD = IDD_UNITSETTINGS };
@@ -66,7 +66,7 @@ protected:
 	void applyChanges();
 	ModifyBuildingAction *pAction;
 
-	typedef EList< Unit*, Unit* > UNIT_LIST;
+	using UNIT_LIST = std::vector<Unit*>;
 	UNIT_LIST& units;
 
 	CBrush		baseBrush;

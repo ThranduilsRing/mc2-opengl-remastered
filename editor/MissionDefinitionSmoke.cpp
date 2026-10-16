@@ -70,7 +70,7 @@ bool EditorInterface::runDefinitionSmoke()
         && replaceValue(authored, "Cameras", "NewScale", "0.375")
         && replaceValue(authored, "Cameras", "ZoomMax", "1.25");
     if (!ok || !writeFixture(fit, authored) || !EditorData::initTerrainFromPCV(pak)) return false;
-    auto getUnit = [] { return *EditorObjectMgr::instance()->getUnits().Begin(); };
+    auto getUnit = [] { return EditorObjectMgr::instance()->getUnits().front(); };
     auto getObjective = [] { return *EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin(); };
     const auto storedPart = getUnit()->partDefinition();
     const auto storedModel = getObjective()->ModelDefinition();
@@ -126,7 +126,7 @@ bool EditorInterface::runDefinitionSmoke()
     };
     NavMarker* marker = nullptr;
     const auto buildings = EditorObjectMgr::instance()->getBuildings();
-    for (auto it = buildings.Begin(); !it.IsDone() && !marker; it++) marker = dynamic_cast<NavMarker*>(*it);
+    for (auto it = buildings.begin(); it != buildings.end() && !marker; it++) marker = dynamic_cast<NavMarker*>(*it);
     ok = verifyTransform(marker, [marker](FitIniFile& file) { return marker->save(&file, 0); },
         "NavMarker0", "xPos", "yPos") && ok;
     CSpecificStructureObjectiveCondition* targetCondition = nullptr;
@@ -147,7 +147,7 @@ bool EditorInterface::runDefinitionSmoke()
         && EditorData::initTerrainFromPCV("terrain_gen_out/ew_moved.pak");
     bool foundMovedMarker = false;
     const auto loadedBuildings = EditorObjectMgr::instance()->getBuildings();
-    for (auto it = loadedBuildings.Begin(); !it.IsDone(); it++)
+    for (auto it = loadedBuildings.begin(); it != loadedBuildings.end(); it++)
         if (dynamic_cast<NavMarker*>(*it) && (*it)->getPosition().x == authoredMarkerPosition.x
             && (*it)->getPosition().y == authoredMarkerPosition.y) foundMovedMarker = true;
     markerReloaded = markerReloaded && foundMovedMarker;

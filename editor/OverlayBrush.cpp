@@ -8,9 +8,10 @@ OverlayBrush.cpp			: Implementation of the OverlayBrush component.
 
 #include "OverlayBrush.h"
 #include "Action.h"
-#include "EList.h"
 #include "EditorData.h"
+#include <algorithm>
 #include <map>
+#include <vector>
 
 
 class OTMap : public std::map<int, Overlays> {};
@@ -67,17 +68,17 @@ static int connectivityMask() {
 }
 
 static int numberOfOverlayTypes(int mask) {
-	EList<Overlays, Overlays> overlayTypeList;
+	std::vector<Overlays> overlayTypeList;
 	int i;
 	for (i = 0; i < 4; i++) {
 		Overlays type = overlayType(mask, i);
 		if (INVALID_OVERLAY != type) {
-			if ((0 == overlayTypeList.Count()) || (EList<Overlays, Overlays>::INVALID_ITERATOR == overlayTypeList.Find(type))) {
-				overlayTypeList.Append(type);
+			if (std::find(overlayTypeList.begin(), overlayTypeList.end(), type) == overlayTypeList.end()) {
+				overlayTypeList.push_back(type);
 			}
 		}
 	}
-	return overlayTypeList.Count();
+	return static_cast<int>(overlayTypeList.size());
 }
 
 /* Non-transition overlays */

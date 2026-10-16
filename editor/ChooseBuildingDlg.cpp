@@ -53,19 +53,16 @@ BOOL ChooseBuildingDlg::OnInitDialog()
 		(*m_pModifiedBuildingPtr) = (*m_pBuildingPtr);
 	}
 
-	m_buildingList.Clear();
+	m_buildingList.clear();
 	EditorObjectMgr::BUILDING_LIST completeBuildingList = EditorObjectMgr::instance()->getBuildings();
-	EditorObjectMgr::BUILDING_LIST::EConstIterator it2 = completeBuildingList.Begin();
-	while (!it2.IsDone()) {
-		//if ((BUILDING == typeNum) || (TREEBUILDING == typeNum)) {
-		if (true) {
-			m_buildingList.Append(*it2);
-		}
+	auto it2 = completeBuildingList.begin();
+	while (it2 != completeBuildingList.end()) {
+		m_buildingList.push_back(*it2);
 		it2++;
 	}
 
-	EditorObjectMgr::BUILDING_LIST::EConstIterator it = m_buildingList.Begin();
-	while (!it.IsDone()) {
+	auto it = m_buildingList.begin();
+	while (it != m_buildingList.end()) {
 		std::string tmpEStr;
 		Stuff::Vector3D pos = (*it)->getPosition();
 		const char *szDisplayName = (*it)->getDisplayName(); // nb: localization
@@ -75,7 +72,7 @@ BOOL ChooseBuildingDlg::OnInitDialog()
 		it++;
 	}
 
-	if (1 <= m_buildingList.Count()) {
+	if (!m_buildingList.empty()) {
 		m_pComboBox->SetCurSel(0);
 	} else {
 		AfxMessageBox(IDS_NO_STRUCTURES);
@@ -130,11 +127,11 @@ void ChooseBuildingDlg::OnUsePointer()
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjects = EditorObjectMgr::instance()->getSelectedObjectList();
 		int num_buildings_selected = 0;
 		int validObjectIndex = -1;
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EConstIterator it = selectedObjects.Begin();
-		while (!it.IsDone()) {
+		auto it = selectedObjects.begin();
+		while (it != selectedObjects.end()) {
 			int index = 0;
-			EditorObjectMgr::BUILDING_LIST::EConstIterator it2 = m_buildingList.Begin();
-			while (!it2.IsDone()) {
+			auto it2 = m_buildingList.begin();
+			while (it2 != m_buildingList.end()) {
 				if ((*it) == (*it2)) {
 					num_buildings_selected += 1;
 					validObjectIndex = index;
@@ -166,8 +163,7 @@ void ChooseBuildingDlg::OnOK()
 {
 	int nSelectionIndex = m_pComboBox->GetCurSel();
 	assert(0 <= nSelectionIndex);
-	//(*m_pModifiedBuildingPtr) = m_buildingList[nSelectionIndex];
-	(*m_pModifiedBuildingPtr) = *(m_buildingList.Iterator(nSelectionIndex));
+	(*m_pModifiedBuildingPtr) = m_buildingList[nSelectionIndex];
 
 	(*m_pBuildingPtr) = (*m_pModifiedBuildingPtr);
 	delete m_pModifiedBuildingPtr;

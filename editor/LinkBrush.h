@@ -20,6 +20,7 @@ LinkBrush.h			: Interface for the LinkBrush component.
 #endif
 
 #include "mclib.h"
+#include <vector>
 
 class EditorObject;
 
@@ -79,7 +80,7 @@ class LinkBrush: public Brush
 		virtual bool redo();
 		virtual bool undo();
 
-		EList< LinkInfo, const LinkInfo& > changedLinks;
+		std::vector<LinkInfo> changedLinks;
 		void AddToListOnce( const LinkBrush::LinkInfo& info );
 	};
 

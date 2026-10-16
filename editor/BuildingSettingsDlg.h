@@ -14,14 +14,14 @@
 /////////////////////////////////////////////////////////////////////////////
 // BuildingSettingsDlg dialog
 
-#include "EList.h"
+#include <vector>
 #include "Action.h"
 class EditorObject;
 
 class BuildingSettingsDlg : public CDialog
 {
 public:
-	BuildingSettingsDlg(EList<EditorObject*, EditorObject*>&, ActionUndoMgr &undoMgr);   // standard constructor
+	BuildingSettingsDlg(std::vector<EditorObject*>&, ActionUndoMgr &undoMgr);   // standard constructor
 
 	//{{AFX_DATA(BuildingSettingsDlg)
 	enum { IDD = IDD_BUILDINGSETTINGS };
@@ -58,7 +58,7 @@ protected:
 	void applyChanges();
 	ModifyBuildingAction *pAction;
 
-	typedef EList< EditorObject*, EditorObject* > EDITOROBJECT_LIST;
+	using EDITOROBJECT_LIST = std::vector<EditorObject*>;
 	EDITOROBJECT_LIST& units;
 
 	void updateMemberVariables();

@@ -5,7 +5,7 @@
 #ifndef CAMPAIGNDATA_H
 #define CAMPAIGNDATA_H
 
-#include "EList.h"
+#include <vector>
 #include "Inifile.h"
 
 class CMissionData {
@@ -26,7 +26,7 @@ public:
 	bool	m_SalvageEnabled;
 };
 
-class CMissionList : public EList<CMissionData, CMissionData> {};
+using CMissionList = std::vector<CMissionData>;
 
 class CGroupData {
 public:
@@ -46,7 +46,7 @@ public:
 	CString	m_ABLScript;
 };
 
-class CGroupList : public EList<CGroupData, CGroupData> {};
+using CGroupList = std::vector<CGroupData>;
 
 class CCampaignData {
 public:

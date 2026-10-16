@@ -14,7 +14,7 @@
 
 
 
-UnitSettingsDlg::UnitSettingsDlg( EList< Unit*, Unit* >& newList/*=NULL*/, ActionUndoMgr &undoMgr)
+UnitSettingsDlg::UnitSettingsDlg( std::vector<Unit*>& newList/*=NULL*/, ActionUndoMgr &undoMgr)
 	: CDialog(UnitSettingsDlg::IDD), units( newList )
 {
 	//{{AFX_DATA_INIT(UnitSettingsDlg)
@@ -224,7 +224,7 @@ void UnitSettingsDlg::applyChanges()
 
 		if ( indexInGroup != -1 )
 		{
-			for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+			for ( auto iter = units.begin(); iter != units.end(); iter++ )
 			{
 				(*iter)->setAppearance( group, indexInGroup );
 			}
@@ -232,7 +232,7 @@ void UnitSettingsDlg::applyChanges()
 			int variant = m_Variant.GetCurSel();
 			if ( variant != -1 )
 			{
-				for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+				for ( auto iter = units.begin(); iter != units.end(); iter++ )
 				{
 					(*iter)->setVariant( variant );
 				}
@@ -245,7 +245,7 @@ void UnitSettingsDlg::applyChanges()
 
 	if ( index != -1 )
 	{
-		for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = units.begin(); iter != units.end(); iter++ )
 		{
 			CString txt;
 			m_Pilot.GetLBText( index, txt );
@@ -258,7 +258,7 @@ void UnitSettingsDlg::applyChanges()
 
 	if ( index != -1 )
 	{
-		for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = units.begin(); iter != units.end(); iter++ )
 		{
 			(*iter)->setAlignment( index );
 		}
@@ -268,9 +268,9 @@ void UnitSettingsDlg::applyChanges()
 	{
 		index = _ttol(m_SquadEdit.GetBuffer(0));
 
-		if (1 != units.Count())
+		if (1 != static_cast<int>(units.size()))
 		{
-			for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+			for ( auto iter = units.begin(); iter != units.end(); iter++ )
 			{
 				(*iter)->setSquad( index );
 			}
@@ -286,7 +286,7 @@ void UnitSettingsDlg::applyChanges()
 	{
 		bSelfRepairBehavior = false;
 	}
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		(*iter)->setSelfRepairBehaviorEnabled(bSelfRepairBehavior);
 	}
@@ -351,7 +351,7 @@ void UnitSettingsDlg::applyChanges()
 
 	if ( bBase && bColor1 && bColor2 )
 	{
-		for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = units.begin(); iter != units.end(); iter++ )
 		{
 			(*iter)->setColors( base, color1, color2 );
 		}
@@ -381,22 +381,22 @@ BOOL UnitSettingsDlg::OnInitDialog()
 
 	pAction = new ModifyBuildingAction;
 
-	UNIT_LIST::EIterator iter;
+	UNIT_LIST::iterator iter;
 
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		pAction->addBuildingInfo(*(*iter));
 	}
 
 	updateMemberVariables();
 
-	if (1 != units.Count())
+	if (1 != static_cast<int>(units.size()))
 	{
 		pFirstPossibility = NULL;
 	}
 	else
 	{
-		pFirstPossibility = (*(units.Begin()));
+		pFirstPossibility = (*(units.begin()));
 	}
 	updatePossibiltyControls();
 
@@ -524,15 +524,15 @@ int UnitSettingsDlg::getPossibilityIndex()
 {
 	if (!pFirstPossibility) { gosASSERT(false); return -1; }
 
-	const Unit * pUnit = (*(units.Begin()));
+	const Unit * pUnit = (*(units.begin()));
 	if (pUnit == pFirstPossibility)
 	{
 		return 0;
 	}
 	int i;
-	for (i = 0; i < (int)pFirstPossibility->pAlternativeInstances->Count(); i++)
+	for (i = 0; i < (int)pFirstPossibility->alternatives.size(); i++)
 	{
-		if (pUnit == &(*(pFirstPossibility->pAlternativeInstances->Iterator(i))))
+		if (pUnit == &(*std::next(pFirstPossibility->alternatives.begin(), i)))
 		{
 			return i + 1;
 		}
@@ -550,10 +550,10 @@ void UnitSettingsDlg::updateMemberVariables()
 	bool	bHighlight2 = true;
 
 
-	Unit* pUnit = units.GetHead();
+	Unit* pUnit = units.front();
 
 	m_Alignment = pUnit->getAlignment();
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->getAlignment() != m_Alignment )
 		{
@@ -567,7 +567,7 @@ void UnitSettingsDlg::updateMemberVariables()
 	{
 		m_SelfRepairBehavior = 1;
 	}
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->getSelfRepairBehaviorEnabled() != pUnit->getSelfRepairBehaviorEnabled() )
 		{
@@ -579,7 +579,7 @@ void UnitSettingsDlg::updateMemberVariables()
 	unsigned long tmpSquadNum = pUnit->getSquad();
 	m_SquadEdit.Format("%lu", tmpSquadNum);
 
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->getSquad() != tmpSquadNum )
 		{
@@ -595,7 +595,7 @@ void UnitSettingsDlg::updateMemberVariables()
 	char	pH1[256];
 	char	pH2[256];
 
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		(*iter)->getColors( tmpBase, tmpHighlight1, tmpHighlight2 );
 
@@ -649,8 +649,8 @@ void UnitSettingsDlg::updateMemberVariables()
 	delete [] pGroups;
 	delete [] groupIDs;
 
-	int group = units.GetHead()->getGroup();	
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	int group = units.front()->getGroup();
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->getGroup() != group )
 		{
@@ -677,9 +677,9 @@ void UnitSettingsDlg::updateMemberVariables()
 			m_Mech.AddString( MechNames[i] );
 		}
 
-		int indexInGroup = units.GetHead()->getIndexInGroup();
+		int indexInGroup = units.front()->getIndexInGroup();
 
-		for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = units.begin(); iter != units.end(); iter++ )
 		{
 			if ( (*iter)->getIndexInGroup() != indexInGroup )
 			{
@@ -690,7 +690,7 @@ void UnitSettingsDlg::updateMemberVariables()
 
 		if ( indexInGroup != -1 )
 		{
-			const char* pName = units.GetHead()->getDisplayName();
+			const char* pName = units.front()->getDisplayName();
 			index = m_Mech.FindString( -1, pName );
 
 			if ( index != -1 )
@@ -715,8 +715,8 @@ void UnitSettingsDlg::updateMemberVariables()
 					delete[] VariantNames;
 					VariantNames = 0;
 
-					int variant = units.GetHead()->getVariant();	
-					for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+					int variant = units.front()->getVariant();
+					for ( auto iter = units.begin(); iter != units.end(); iter++ )
 					{
 						if ( (*iter)->getVariant() != variant )
 						{
@@ -756,15 +756,13 @@ void UnitSettingsDlg::updateMemberVariables()
 
 	Pilot* pPilot = pUnit->getPilot();
 
-	// EDITOR-CRASH-HARDENING-1: pPilot and pPilot->info can be NULL (Pilot::info
-	// defaults to 0, EditorObjects.h:137); mirror save-path guard EditorObjects.cpp:1018-1021.
+	// Partially initialized units may have no pilot profile.
 	const char* defaultPilot = (pPilot && pPilot->info) ? pPilot->info->fileName : nullptr;
 
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		pPilot = (*iter)->getPilot();
 
-		// EDITOR-CRASH-HARDENING-1: skip compare when pilot or its info is NULL.
 		const char* tmpName = (pPilot && pPilot->info) ? pPilot->info->fileName : nullptr;
 
 		if ( !defaultPilot || !tmpName || stricmp( tmpName, defaultPilot ) != 0 )
@@ -831,12 +829,12 @@ void UnitSettingsDlg::OnAlign1( UINT whichID )
 		}
 	}
 
-	Unit * pUnit = (*(units.Begin()));
+	Unit * pUnit = (*(units.begin()));
 	Pilot* pPilot = pUnit->getPilot();
 
 	const char* defaultPilot = pPilot->getName();
 
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		pPilot = (*iter)->getPilot();
 

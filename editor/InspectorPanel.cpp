@@ -58,8 +58,8 @@ static EditorObject* inspectorFirstSelected(int* selCount)
         return nullptr;
     }
     EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
-    if (selCount) *selCount = (int)sel.Count();
-    for (EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin(); !it.IsDone(); it++)
+    if (selCount) *selCount = static_cast<int>(sel.size());
+    for (auto it = sel.begin(); it != sel.end(); it++)
     {
         if (*it)
             return (*it);

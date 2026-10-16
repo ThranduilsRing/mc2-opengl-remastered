@@ -222,10 +222,10 @@ static bool s_moveDirty = false;
 	long gateTotalCount = 0;
 	long landBridgeTotalCount = 0;
 	EditorObjectMgr::BUILDING_LIST completeBuildingList = EditorObjectMgr::instance()->getBuildings();
-	if (completeBuildingList.Count() > 0)
+	if (static_cast<int>(completeBuildingList.size()) > 0)
 	{
-		EditorObjectMgr::BUILDING_LIST::EConstIterator it = completeBuildingList.Begin();
-		while (!it.IsDone())
+		auto it = completeBuildingList.begin();
+		while (it != completeBuildingList.end())
 		{
 			if ((*it)->getType() == BLDG_TYPE)
 			{
@@ -240,10 +240,10 @@ static bool s_moveDirty = false;
 	long gateCount = 0;
 	long landBridgeCount = 0;
 	completeBuildingList = EditorObjectMgr::instance()->getBuildings();
-	if (completeBuildingList.Count() > 0)
+	if (static_cast<int>(completeBuildingList.size()) > 0)
 	{
-		EditorObjectMgr::BUILDING_LIST::EConstIterator it = completeBuildingList.Begin();
-		while (!it.IsDone())
+		auto it = completeBuildingList.begin();
+		while (it != completeBuildingList.end())
 		{
 			if ((*it)->getType() == BLDG_TYPE)
 			{
@@ -576,12 +576,12 @@ bool EditorData::save( const char* fileName, bool quickSave )
 	}
 
 	EditorObjectMgr::BUILDING_LIST completeBuildingList = EditorObjectMgr::instance()->getBuildings();
-	if (completeBuildingList.Count() > 0)
+	if (static_cast<int>(completeBuildingList.size()) > 0)
 	{
-		EditorObjectMgr::BUILDING_LIST::EConstIterator it = completeBuildingList.Begin();
+		auto it = completeBuildingList.begin();
 		std::set<long> doneIds;
 
-		while (!it.IsDone())
+		while (it != completeBuildingList.end())
 		{
 			long id = (*it)->getID();
 
