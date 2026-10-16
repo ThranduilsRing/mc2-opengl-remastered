@@ -34,11 +34,14 @@ void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, u
 // Future spec: billboard projected from 'pos' to screen, rendered in flushScreenPrims.
 void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba);
 
-// Flush collected world-space primitives to the GPU and draw.
-// Must be called while the scene FBO is still bound
-// (inside Environment.UpdateRenderers, after weather->render()).
-// No-op when MC2_DEBUG_RENDERER is unset.
+// Freeze the primitives collected this frame together with the scene view-projection. Call once per frame after the
+// scene has set its matrices. No-op when MC2_DEBUG_RENDERER is unset.
 void flushWorldPrims();
+
+// Draw the frozen primitives on the UI overlay (the layer the Vulkan present draws over the scene). Call once per
+// frame after the UI frame has begun. Lines are not depth-tested. No-op when nothing is frozen. Under Vulkan the overlay
+// is visible only while the Vulkan ImGui renderer is on (MC2_VK_IMGUI).
+void drawFrozenPrimsToOverlay();
 
 // Reserved: future crisp HUD/debug-text pass (post post-process). No-op in M1.
 void flushScreenPrims();

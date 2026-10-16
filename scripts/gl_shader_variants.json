@@ -382,19 +382,6 @@
   {
    "assemble": "engine",
    "defines": [],
-   "id": "debug_prim",
-   "key": "debug_prim",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/debug_renderer.cpp:59",
-   "stages": {
-    "frag": "shaders/debug_prim.frag",
-    "vert": "shaders/debug_prim.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
    "id": "decal",
    "key": "decal",
    "optional_groups_on": [],

@@ -2,18 +2,16 @@
 
 #include <cstdlib>   // getenv
 #include <cstdio>    // fprintf, stderr
-#include <cstddef>   // offsetof
 #include <vector>
 #include <cmath>     // sinf, cosf
 
-#include <GL/glew.h>
+#include "imgui.h"
 
-#include "utils/shader_builder.h"  // glsl_program::makeProgram
+#include "debug_line_project.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
-// Forward-declare the scene viewproj getter (defined in gameos_graphics.cpp).
-// Upload with the same transpose convention as the existing terrain MVP upload sites.
+// Scene view-projection of the frame being drawn (defined in gameos_graphics.cpp).
 extern const float* gos_GetTerrainMVPMat4();
 
 namespace DebugRenderer {
@@ -22,112 +20,27 @@ namespace DebugRenderer {
 // Internal types
 // ---------------------------------------------------------------------------
 
-struct DbgVert { float x, y, z, r, g, b, a; };
+struct DbgVert { float x, y, z; uint32_t rgba; };
 
-static constexpr int kVertCapacity = 65536;
+// Segments kept per frame; a frame that queues more is truncated with one log line.
+static constexpr size_t kVertCapacity = 65536;
 
 // ---------------------------------------------------------------------------
-// Static state
+// State
 // ---------------------------------------------------------------------------
 
 static bool              s_enabled       = mc2::gate::get<"MC2_DEBUG_RENDERER">();
 static bool              s_testCanary    = mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">();
-static bool              s_initialized        = false;
-static bool              s_capWarnedOnce      = false;
-static bool              s_restoreWarnedOnce  = false;
-static bool              s_drawBufWarnedOnce  = false;
+static bool              s_capWarnedOnce = false;
 
-static GLuint            s_vao = 0;
-static GLuint            s_vbo = 0;
-static glsl_program*     s_program = nullptr;
-static GLuint            s_programId = 0;  // cached for glProgramUniformMatrix4fv
-static GLint             s_mvpLoc = -1;
-
+// Primitives collect in s_verts during the scene; flushWorldPrims freezes them with the frame's matrix and the
+// overlay pass draws the frozen set once the UI frame is open.
 static std::vector<DbgVert> s_verts;
-
-// ---------------------------------------------------------------------------
-// Internal: init on first flush
-// ---------------------------------------------------------------------------
-
-static void init_once() {
-    if (s_initialized) return;
-    s_initialized = true;
-
-    mc2::fmt::print_err("[DEBUGDRAW v1] event=init enabled=1\n");
-
-    // Load shader (no #version in files; prefix injected here per project rule)
-    s_program = glsl_program::makeProgram(
-        "debug_prim",
-        "shaders/debug_prim.vert",
-        "shaders/debug_prim.frag",
-        "#version 430\n"
-    );
-    if (!s_program) {
-        mc2::fmt::print_err("[DEBUGDRAW v1] event=shader_fail -- debug draw disabled\n");
-        s_enabled = false;
-        return;
-    }
-
-    // Cache program ID for explicit-program uniform upload.
-    // We read shp_ directly (public field, same as gos_static_prop_batcher.cpp:539 and
-    // gameos_graphics.cpp:2094) instead of going through apply() -- apply() flushes dirty
-    // matrix uniforms with GL_TRUE (shader_builder.cpp:781), wrong for our GL_FALSE MVP.
-    s_programId = s_program->shp_;
-
-    s_mvpLoc = glGetUniformLocation(s_programId, "uMVP");
-    if (s_mvpLoc < 0) {
-        mc2::fmt::print_err("[DEBUGDRAW v1] event=uniform_missing name=uMVP -- debug draw disabled\n");
-        s_enabled = false;
-        return;
-    }
-
-    // VAO + VBO
-    glGenVertexArrays(1, &s_vao);
-    glGenBuffers(1, &s_vbo);
-
-    glBindVertexArray(s_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
-
-    // Allocate buffer at max capacity once
-    glBufferData(GL_ARRAY_BUFFER,
-                 kVertCapacity * (GLsizeiptr)sizeof(DbgVert),
-                 nullptr, GL_DYNAMIC_DRAW);
-
-    // layout(location=0) aPosition: vec3 at offset 0
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(DbgVert),
-                          (const void*)offsetof(DbgVert, x));
-
-    // layout(location=1) aColor: vec4 at offset 12
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE,
-                          sizeof(DbgVert),
-                          (const void*)offsetof(DbgVert, r));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    // Drain any errors left in the GL queue by makeProgram introspection.
-    // shader_builder::apply() checks glGetError() after each glUniform* call;
-    // a stale error here would be mis-attributed to the next program that calls apply().
-    while (glGetError() != GL_NO_ERROR) {}
-
-    s_verts.reserve(4096);
-}
-
-// ---------------------------------------------------------------------------
-// Color unpack helper
-// ---------------------------------------------------------------------------
+static std::vector<DbgVert> s_frozen;
+static float                s_frozenMvp[16];
 
 static DbgVert makeVert(float x, float y, float z, uint32_t rgba) {
-    DbgVert v;
-    v.x = x; v.y = y; v.z = z;
-    v.r = ((rgba >> 24) & 0xFF) / 255.0f;
-    v.g = ((rgba >> 16) & 0xFF) / 255.0f;
-    v.b = ((rgba >>  8) & 0xFF) / 255.0f;
-    v.a = ((rgba >>  0) & 0xFF) / 255.0f;
-    return v;
+    return DbgVert{x, y, z, rgba};
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +62,6 @@ void drawAabbWorld(Vec3 mn, Vec3 mx, uint32_t rgba) {
         cy[i] = (i & 2) ? mx.y : mn.y;
         cz[i] = (i & 4) ? mx.z : mn.z;
     }
-    // 12 edges: explicit list, no __builtin_popcount (MSVC portability)
     static constexpr int kEdges[12][2] = {
         {0,1}, {0,2}, {0,4},
         {1,3}, {1,5},
@@ -263,10 +175,8 @@ void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, u
     }
 }
 
-void drawTextWorld(Vec3 /*pos*/, const char* /*text*/, uint32_t /*rgba*/) {
-    // Reserved: world-space text label. No-op in M1/M2.
-    // Future spec: billboard projected from pos to screen, rendered in
-    // flushScreenPrims (post post-process) via a font atlas (M3 TBD).
+void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba) {
+    (void)pos; (void)text; (void)rgba;   // reserved: no world-space text yet
 }
 
 void flushWorldPrims() {
@@ -285,127 +195,56 @@ void flushWorldPrims() {
 
     if (s_verts.empty()) return;
 
-    if (!s_initialized) init_once();
-    if (!s_enabled) { s_verts.clear(); return; }  // init_once() may disable on shader fail
-
     const float* vp = gos_GetTerrainMVPMat4();
     if (!vp) {
         s_verts.clear();
         return;
     }
 
-    // Truncate to capacity
-    if (s_verts.size() > static_cast<size_t>(kVertCapacity)) {
+    if (s_verts.size() > kVertCapacity) {
         if (!s_capWarnedOnce) {
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32(kVertCapacity), mc2::fmt::as_i32((int)s_verts.size()));
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32((int)kVertCapacity), mc2::fmt::as_i32((int)s_verts.size()));
             s_capWarnedOnce = true;
         }
         s_verts.resize(kVertCapacity);
-        // Ensure even count for GL_LINES (pairs)
-        if (s_verts.size() % 2 != 0) s_verts.pop_back();
     }
+    if (s_verts.size() % 2 != 0) s_verts.pop_back();   // segments come in pairs
 
-    const GLsizeiptr byteSize = (GLsizeiptr)(s_verts.size() * sizeof(DbgVert));
-
-    // --- Save GL state ---
-    GLint  prevProg = 0, prevVAO = 0, prevVBO = 0;
-    GLint  depthFuncWas = 0;
-    GLint  blendSrcRGB = 0, blendDstRGB = 0, blendSrcAlpha = 0, blendDstAlpha = 0;
-    GLint  blendEqRGB = 0, blendEqAlpha = 0;
-    GLboolean depthTestWas = GL_FALSE, blendWas = GL_FALSE, cullWas = GL_FALSE, depthMaskWas = GL_FALSE;
-    GLfloat lineWidthWas = 1.0f;
-    GLint  drawBuf0Was = GL_NONE;  // for draw-buffer preservation assertion
-
-    glGetIntegerv(GL_CURRENT_PROGRAM,      &prevProg);
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevVBO);
-    depthTestWas = glIsEnabled(GL_DEPTH_TEST);
-    blendWas     = glIsEnabled(GL_BLEND);
-    cullWas      = glIsEnabled(GL_CULL_FACE);
-    glGetBooleanv(GL_DEPTH_WRITEMASK,      &depthMaskWas);
-    glGetIntegerv(GL_DEPTH_FUNC,           &depthFuncWas);
-    glGetIntegerv(GL_BLEND_SRC_RGB,        &blendSrcRGB);
-    glGetIntegerv(GL_BLEND_DST_RGB,        &blendDstRGB);
-    glGetIntegerv(GL_BLEND_SRC_ALPHA,      &blendSrcAlpha);
-    glGetIntegerv(GL_BLEND_DST_ALPHA,      &blendDstAlpha);
-    glGetIntegerv(GL_BLEND_EQUATION_RGB,   &blendEqRGB);
-    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &blendEqAlpha);
-    glGetFloatv(GL_LINE_WIDTH,             &lineWidthWas);
-    glGetIntegerv(GL_DRAW_BUFFER0,         &drawBuf0Was);
-
-    // --- Set known state ---
-    // Use glUseProgram directly (not s_program->apply()) because apply() would
-    // flush dirty matrix uniforms with GL_TRUE -- wrong for our GL_FALSE MVP.
-    glUseProgram(s_programId);
-    glBindVertexArray(s_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glDepthMask(GL_FALSE);
-    glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
-                        GL_ONE,       GL_ONE_MINUS_SRC_ALPHA);
-    glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-    glDisable(GL_CULL_FACE);
-    glLineWidth(1.0f);
-
-    // Upload MVP. GL_FALSE: matrix from gos_GetTerrainMVPMat4 is already
-    // row-major (converted at gos_SetWorldToClipGL). All terrain upload
-    // sites use GL_FALSE with the same matrix (gameos_graphics.cpp:5012,
-    // 5091, 5202, 5245, 7376).
-    glProgramUniformMatrix4fv(s_programId, s_mvpLoc, 1, GL_FALSE, vp);
-
-    // Orphan at full capacity for stable allocation; upload only the needed range.
-    glBufferData(GL_ARRAY_BUFFER,
-                 kVertCapacity * (GLsizeiptr)sizeof(DbgVert),
-                 nullptr, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, byteSize, s_verts.data());
-
-    glDrawArrays(GL_LINES, 0, (GLsizei)s_verts.size());
-
-    // --- Restore GL state ---
-    glDepthMask(depthMaskWas);
-    if (depthTestWas) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-    if (blendWas)     glEnable(GL_BLEND);      else glDisable(GL_BLEND);
-    if (cullWas)      glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
-    glDepthFunc(depthFuncWas);
-    glBlendFuncSeparate(blendSrcRGB, blendDstRGB, blendSrcAlpha, blendDstAlpha);
-    glBlendEquationSeparate(blendEqRGB, blendEqAlpha);
-    glLineWidth(lineWidthWas);
-    glUseProgram(prevProg);
-    glBindVertexArray(prevVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, prevVBO);
-
-    // State restore assertion: verify critical bindings were fully restored.
-    // Fires once on first mismatch to catch incomplete-restore regressions.
-    if (!s_restoreWarnedOnce) {
-        GLint chkProg = 0, chkVAO = 0, chkVBO = 0;
-        glGetIntegerv(GL_CURRENT_PROGRAM,      &chkProg);
-        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &chkVAO);
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &chkVBO);
-        if (chkProg != prevProg || chkVAO != prevVAO || chkVBO != prevVBO) {
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=restore_mismatch prog exp={:d} got={:d}  vao exp={:d} got={:d}  vbo exp={:d} got={:d}\n", mc2::fmt::as_i32(prevProg), mc2::fmt::as_i32(chkProg), mc2::fmt::as_i32(prevVAO), mc2::fmt::as_i32(chkVAO), mc2::fmt::as_i32(prevVBO), mc2::fmt::as_i32(chkVBO));
-            s_restoreWarnedOnce = true;
-        }
-    }
-
-    // Draw-buffer preservation assertion: our flush must not touch draw buffers.
-    if (!s_drawBufWarnedOnce) {
-        GLint chkDrawBuf0 = GL_NONE;
-        glGetIntegerv(GL_DRAW_BUFFER0, &chkDrawBuf0);
-        if (chkDrawBuf0 != drawBuf0Was) {
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=drawbuf_mismatch expected=0x{:X} got=0x{:X}\n", mc2::fmt::as_u32((unsigned)drawBuf0Was), mc2::fmt::as_u32((unsigned)chkDrawBuf0));
-            s_drawBufWarnedOnce = true;
-        }
-    }
-
-    // Drain any errors generated by our GL calls (e.g. glLineWidth > 1.0 on some
-    // drivers, or driver-side validation during glDrawArrays). shader_builder::apply()
-    // checks glGetError() after each glUniform* call, so a stale error here would be
-    // mis-attributed to the next program that calls apply().
-    while (glGetError() != GL_NO_ERROR) {}
-
+    s_frozen.swap(s_verts);
     s_verts.clear();
+    for (int i = 0; i < 16; ++i) s_frozenMvp[i] = vp[i];
+}
+
+void drawFrozenPrimsToOverlay() {
+    if (s_frozen.empty()) return;
+    ImDrawList* dl = ImGui::GetForegroundDrawList();
+    const ImVec2 size = ImGui::GetIO().DisplaySize;
+    if (!dl || !(size.x > 0.0f) || !(size.y > 0.0f)) { s_frozen.clear(); return; }
+    static bool s_firstDrawLogged = false;
+    size_t drawn = 0;
+    for (size_t i = 0; i + 1 < s_frozen.size(); i += 2) {
+        const DbgVert& a = s_frozen[i];
+        const DbgVert& b = s_frozen[i + 1];
+        const float pa[3] = {a.x, a.y, a.z};
+        const float pb[3] = {b.x, b.y, b.z};
+        ScreenSegment seg;
+        if (!projectSegment(s_frozenMvp, pa, pb, size.x, size.y, &seg)) continue;
+        // Colour packs r,g,b,a from the top byte down.
+        const uint32_t c = a.rgba;
+        const ImU32 col = IM_COL32((c >> 24) & 0xFF, (c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
+        dl->AddLine(ImVec2(seg.x0, seg.y0), ImVec2(seg.x1, seg.y1), col, 1.0f);
+        ++drawn;
+        if (!s_firstDrawLogged) {
+            s_firstDrawLogged = true;
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=first_draw queued={:d} display={:.0f}x{:.0f} seg0=({:.1f},{:.1f})-({:.1f},{:.1f})\n", mc2::fmt::as_i32((int)(s_frozen.size() / 2)), size.x, size.y, seg.x0, seg.y0, seg.x1, seg.y1);
+        }
+    }
+    static bool s_cullLogged = false;
+    if (drawn == 0 && !s_cullLogged) {
+        s_cullLogged = true;
+        mc2::fmt::print_err("[DEBUGDRAW v1] event=all_culled queued={:d}\n", mc2::fmt::as_i32((int)(s_frozen.size() / 2)));
+    }
+    s_frozen.clear();
 }
 
 void flushScreenPrims() {

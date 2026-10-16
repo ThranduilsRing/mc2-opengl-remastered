@@ -125,7 +125,8 @@ add_executable(mc2_tests
     test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan
-    test_hitch_fence.cpp  # hitch trace Vulkan fence-wait record; header-only, no Vulkan
+    test_debug_line_project.cpp  # debug overlay segment projection; header-only
+    test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan
     test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)
     ${MC2_WORKTREE_ROOT}/RenderCore/KtxLoader.cpp
 
