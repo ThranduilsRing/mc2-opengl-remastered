@@ -171,6 +171,7 @@ void MC_TextureManager::start (void)
 		
 	masterVertexNodeStore.assign(MC_MAXTEXTURES, MC_VertexArrayNode{});
 	masterVertexNodes = masterVertexNodeStore.data();
+	vertexNodeExtras.assign(MC_MAXTEXTURES, std::vector<gos_TERRAIN_EXTRA>());
 
 	masterHardwareVertexNodeStore.assign(MC_MAXTEXTURES, MC_HardwareVertexArrayNode{});
 	masterHardwareVertexNodes = masterHardwareVertexNodeStore.data();
@@ -220,7 +221,7 @@ void MC_TextureManager::start (void)
 
     lightDataStructuresCapacity = 128;
     lightDataStructuresCount = 0;
-    lightData_ = new TG_HWLightsData[lightDataStructuresCapacity];
+    lightData_.assign(lightDataStructuresCapacity, TG_HWLightsData());
 	// [LIGHTSSBO v1] EAGER create+bind here (not lazy). The old UBO was
 	// created in this constructor so SSBO/UBO binding always had a valid
 	// buffer for EVERY consumer regardless of frame phase — notably the
@@ -230,7 +231,7 @@ void MC_TextureManager::start (void)
 	// (batcher drew before first upload -> binding 20 empty -> black
 	// props). Allocate-once/update-many is the correct lifetime model.
 	gos_LightDataSsbo_Upload(
-		lightData_,
+		lightData_.data(),
 		(size_t)lightDataStructuresCapacity * sizeof(TG_HWLightsData));
 
     sceneData_ = new TG_HWSceneData;
@@ -285,6 +286,7 @@ void MC_TextureManager::destroy (void)
 	indexArray = nullptr;
 	std::vector<MC_TextureNode>().swap(masterTextureNodeStore);
 	std::vector<MC_VertexArrayNode>().swap(masterVertexNodeStore);
+	std::vector<std::vector<gos_TERRAIN_EXTRA>>().swap(vertexNodeExtras);
 	std::vector<MC_HardwareVertexArrayNode>().swap(masterHardwareVertexNodeStore);
 	std::vector<WORD>().swap(indexArrayStore);
 	
@@ -296,8 +298,7 @@ void MC_TextureManager::destroy (void)
 
 	gos_LightDataSsbo_Destroy();  // [LIGHTSSBO v1]
 
-    delete[] lightData_;
-    lightData_ = nullptr;
+    std::vector<TG_HWLightsData>().swap(lightData_);
 
 	if(sceneDataBuffer_)
 		gos_DestroyBuffer(sceneDataBuffer_);

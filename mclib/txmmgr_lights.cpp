@@ -510,7 +510,7 @@ uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
         const uint32_t slot = it->second;
         // Verify with memcmp on hash match (collision safety).
         if (slot < lightDataStructuresCount &&
-            0 == memcmp(lightData_ + slot, light_data, sizeof(TG_HWLightsData))) {
+            0 == memcmp(lightData_.data() + slot, light_data, sizeof(TG_HWLightsData))) {
             ++s_lightSlotDedupHits;   // [LIGHTSLOT v1] content dedup matched an existing slot
             return slot;
         }
@@ -521,11 +521,8 @@ uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
 
     if(lightDataStructuresCount + 1 >= lightDataStructuresCapacity)
     {
-        TG_HWLightsData* new_lights_data = new TG_HWLightsData[lightDataStructuresCapacity + 128];
-        memcpy(new_lights_data, lightData_, sizeof(TG_HWLightsData)*lightDataStructuresCount);
-        delete[] lightData_;
-        lightData_ = new_lights_data;
         lightDataStructuresCapacity += 128;
+        lightData_.resize(lightDataStructuresCapacity);
     }
 
     lightData_[lightDataStructuresCount] = *light_data;
@@ -653,12 +650,9 @@ void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLigh
     {
         uint32_t newCap = lightDataStructuresCapacity;
         while (ri + 1 >= newCap) newCap += 128;            // +128 chunks, like the dynamic grow
-        TG_HWLightsData* grown = new TG_HWLightsData[newCap];
-        // Preserve the FULL old array (static prefix is in [0..S); copying
-        // only `count` would drop persisted static slots).
-        memcpy(grown, lightData_, sizeof(TG_HWLightsData) * lightDataStructuresCapacity);
-        delete[] lightData_;
-        lightData_ = grown;
+        // The whole old array survives the resize (static prefix is in [0..S);
+        // keeping only `count` would drop persisted static slots).
+        lightData_.resize(newCap);
         lightDataStructuresCapacity = newCap;
     }
     lightData_[ri] = baked;                                 // CPU mirror (persists)
@@ -685,7 +679,7 @@ void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLigh
 MC_TextureManager::LightSlotPeek MC_TextureManager::peekLightSlot(uint32_t idx) const
 {
     LightSlotPeek p = {-1, -1, 0.0f, 0.0f, 0.0f};
-    if (idx >= lightDataStructuresCount || !lightData_) return p;
+    if (idx >= lightDataStructuresCount || idx >= lightData_.size()) return p;
     const TG_HWLightsData& d = lightData_[idx];
     p.numLights = d.numLights_;
     if (d.numLights_ > 0) {
@@ -703,7 +697,7 @@ MC_TextureManager::LightSlotPeek MC_TextureManager::peekLightSlot(uint32_t idx) 
 // [LIGHTBAKE-PROOF v1] read-only full-slot copy for the parity trace.
 bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
 {
-    if (idx >= lightDataStructuresCount || !lightData_) return false;
+    if (idx >= lightDataStructuresCount || idx >= lightData_.size()) return false;
     out = lightData_[idx];
     return true;
 }
@@ -715,7 +709,7 @@ bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
 // remainder of the frame after renderLists.
 const void* MC_TextureManager::getLightDataPtr() const
 {
-    return lightData_;
+    return lightData_.empty() ? nullptr : lightData_.data();
 }
 
 uint64_t MC_TextureManager::getLightDataBytes() const

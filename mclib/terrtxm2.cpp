@@ -171,6 +171,12 @@ void TerrainColorMap::destroy (void)
 
  	numTextures = 0;
 
+	retireCpuCopies();
+}
+
+//---------------------------------------------------------------------------
+void TerrainColorMap::retireCpuCopies (void)
+{
 	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
 	cpuDispAlphaSize = 0;
 	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }

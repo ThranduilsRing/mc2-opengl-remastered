@@ -132,6 +132,10 @@ class TerrainColorMap
 
 		void destroy (void);
 
+		// Frees the CPU copies of the colour map and the displacement alpha once the GPU atlas holds them. The atlas builder
+		// (GameOS, lane 2) calls this in place of freeing the two buffers itself, so the pointers and sizes always agree.
+		void retireCpuCopies (void);
+
 		~TerrainColorMap (void)
 		{
 			destroy();

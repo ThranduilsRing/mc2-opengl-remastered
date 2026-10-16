@@ -586,6 +586,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	GlobalMoveMap[0] = new GlobalMap;
 	if (!GlobalMoveMap[0])
 		Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap0 ");
+	// The mission map reports a small packet count (zero is Fatal above), so this one sum cannot overflow and needs no saturation.
 	long numGlobalMap0Packets = GlobalMoveMap[0]->init(packetFile, whichPacket + numMissionMapPackets);
 	long numGlobalMap1Packets = 0;
 	long numGlobalMap2Packets = 0;

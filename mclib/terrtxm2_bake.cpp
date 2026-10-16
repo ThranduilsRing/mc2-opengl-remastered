@@ -1029,7 +1029,8 @@ void TerrainColorMap::recalcLight(const char *fileName)
 //---------------------------------------------------------------------------
 void TerrainColorMap::resetBaseTexture (const char *fileName)
 {
-	//First, free up the existing colormap.
+	// The existing tiles go first, so a replacement TGA that is refused below leaves the map without colour tiles rather than reading past
+	// the end of the file.
 	for (unsigned long i=0;i<numTextures;i++)
 	{
 		mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);

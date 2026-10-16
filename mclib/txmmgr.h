@@ -99,8 +99,7 @@ typedef struct _MC_VertexArrayNode
 		long				numVertices;				//Number of vertices this texture will be used to draw this frame.
 		gos_VERTEX			*currentVertex;				//CurrentVertex data being added.
 		gos_VERTEX			*vertices;					//Pointer into the vertex Pool for this texture to draw.
-		gos_TERRAIN_EXTRA	*extras;					//Per-node terrain extra data (world pos + normal)
-		gos_TERRAIN_EXTRA	*currentExtra;				//Write pointer for terrain extra data
+		long				numExtras;					//Terrain extra records written to this node's store (MC_TextureManager::vertexNodeExtras)
 
 	void init (void)
 	{
@@ -109,12 +108,7 @@ typedef struct _MC_VertexArrayNode
 		currentVertex = 0;
 		vertices = NULL;
 		textureIndex = 0;
-		extras = NULL;
-		currentExtra = NULL;
-	}
-
-	void destroy(void) {
-		if (extras) { free(extras); extras = NULL; currentExtra = NULL; }
+		numExtras = 0;
 	}
 
 } MC_VertexArrayNode;
@@ -397,6 +391,9 @@ class MC_TextureManager
 		long							peakUsedTextures;			//Mission high-water mark for currentUsedTextures.
 													
 		MC_VertexArrayNode 				*masterVertexNodes;			//Dynamically allocated from an MC Heap.
+		// Terrain extra data (world pos + normal) per vertex node, in step with masterVertexNodes. The nodes are zero-filled each
+		// frame, so the owning stores sit beside them; clearArrays empties a store and keeps its capacity.
+		std::vector<std::vector<gos_TERRAIN_EXTRA>>	vertexNodeExtras;
 		long							nextAvailableVertexNode;	//index to next available vertex Node
 
 		MC_HardwareVertexArrayNode 		*masterHardwareVertexNodes;			//Dynamically allocated from an MC Heap.
@@ -450,7 +447,7 @@ class MC_TextureManager
 		MC_HardwareVertexArrayNode 		*hardwareVertexData4;		//This holds the vertex draw data for UNTEXTURED triangles!
 		MC_HardwareVertexArrayNode 		*hardwareVertexData5;		//This holds the vertex draw data for UNTEXTURED triangles!
 
-        TG_HWLightsData*                lightData_;
+        std::vector<TG_HWLightsData>    lightData_;               // CPU mirror of the light SSBO; size() == lightDataStructuresCapacity
         uint32_t                        lightDataStructuresCapacity;
         uint32_t                        lightDataStructuresCount;
 		// [LIGHTSSBO v1] lightDataBuffer_ removed: LightsData is now an
@@ -485,7 +482,6 @@ class MC_TextureManager
 			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = NULL;
 			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = NULL;
 
-			lightData_ = nullptr;
             lightDataStructuresCapacity = 0;
             lightDataStructuresCount = 0;
 
@@ -1302,14 +1298,15 @@ class MC_TextureManager
 				node = masterTextureNodes[nodeId].vertexData3;
 			if (!node) return;
 
-			// Lazy-allocate extra block sized to match vertex capacity
-			if (!node->extras) {
-				node->extras = (gos_TERRAIN_EXTRA*)malloc(node->numVertices * sizeof(gos_TERRAIN_EXTRA));
-				node->currentExtra = node->extras;
-			}
-			if (node->currentExtra && node->currentExtra < (node->extras + node->numVertices)) {
-				memcpy(node->currentExtra, data, sizeof(gos_TERRAIN_EXTRA) * 3);
-				node->currentExtra += 3;
+			// The store is sized to the node's vertex capacity on the first extra; a triangle that would not fit is dropped.
+			const size_t nodeIndex = (size_t)(node - masterVertexNodes);
+			if (nodeIndex >= vertexNodeExtras.size()) return;
+			std::vector<gos_TERRAIN_EXTRA>& store = vertexNodeExtras[nodeIndex];
+			if (store.empty() && node->numVertices > 0)
+				store.resize((size_t)node->numVertices);
+			if ((size_t)node->numExtras + 3 <= store.size()) {
+				memcpy(&store[(size_t)node->numExtras], data, sizeof(gos_TERRAIN_EXTRA) * 3);
+				node->numExtras += 3;
 			}
 		}
 
@@ -1322,13 +1319,9 @@ class MC_TextureManager
 
 		void clearArrays (void)
 		{
-			// Free per-node terrain extra allocations before zeroing
-			for (long j=0;j<nextAvailableVertexNode;j++)
-			{
-				if (masterVertexNodes[j].extras) {
-					free(masterVertexNodes[j].extras);
-				}
-			}
+			// The extra stores are emptied (capacity kept) before the nodes are zero-filled
+			for (long j=0;j<nextAvailableVertexNode && j<(long)vertexNodeExtras.size();j++)
+				vertexNodeExtras[j].clear();
 
 			for (long i=0;i<MC_MAXTEXTURES;i++)
 			{

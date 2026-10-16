@@ -327,9 +327,9 @@ void MC_TextureManager::renderListsLightDataUpload (void)
         const size_t prefixCount = (S < lightUploadCount) ? S : lightUploadCount;
         const size_t prefixBytes = prefixCount * sizeof(TG_HWLightsData);
         const bool prefixDirty = mc2ConsumeStaticLightPrefixDirty();
-        gos_LightDataSsbo_UploadSplit(lightData_, prefixBytes, totalBytes, prefixDirty);
+        gos_LightDataSsbo_UploadSplit(lightData_.data(), prefixBytes, totalBytes, prefixDirty);
     } else {
-        gos_LightDataSsbo_Upload(lightData_, totalBytes);   // legacy whole-buffer
+        gos_LightDataSsbo_Upload(lightData_.data(), totalBytes);   // legacy whole-buffer
     }
 	} // end RenderLists.LightDataUpload
 }
