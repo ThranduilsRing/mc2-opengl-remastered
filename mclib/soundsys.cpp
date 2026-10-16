@@ -1346,7 +1346,7 @@ void SoundSystem::playABLDigitalMusic (long musicId)
 	if (!fileExists(digitalStream))
 		return;
 
-	scriptMusic.request(musicId, scenarioTime, musicSeconds(static_cast<const char *>(digitalStream)), digitalMusicLoopFlags[musicId]);
+	scriptMusic.request(musicId, scenarioTime, musicSeconds(static_cast<const char *>(digitalStream)), digitalMusic[musicId].loop);
 }
 
 //---------------------------------------------------------------------------
